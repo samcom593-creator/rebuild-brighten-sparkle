@@ -72,7 +72,7 @@ function rankEmoji(i: number): string {
 
 // New applications are visible growth wins for the whole production/numbers
 // room. Pipeline operations remain in the private recruiting channel.
-const RECRUITING_EVENTS = new Set(["agent_activated", "pipeline_leaderboard"]);
+const RECRUITING_EVENTS = new Set(["agent_activated", "pipeline_leaderboard", "licensing_milestone"]);
 
 function getDiscordAudience(eventType: string): DiscordAudience {
   return RECRUITING_EVENTS.has(eventType) ? "recruiting" : "production";
@@ -163,6 +163,39 @@ function embedAgentActivated(d: Record<string, unknown>) {
       title:       "🚀 New Agent Activated",
       description: `**${name}${insta}** is officially on the team!`,
       color:       CLR.green,
+      fields,
+      timestamp:   new Date().toISOString(),
+    }],
+  };
+}
+
+// MP-337 — XCEL / licensing milestone hype post (Sam: "trigger hype broadcast to
+// Slack #apex-licensing-milestones and Discord"). Reads candidate_name,
+// milestone_type, state, exam_date. Never the candidate's phone/email.
+const MILESTONE_COPY: Record<string, { title: string; line: string }> = {
+  enrolled_course:       { title: "📚 Pre-licensing course started",  line: "just enrolled in the pre-licensing course" },
+  course_halfway:        { title: "⚡ Halfway through the course",     line: "is 50%+ through the pre-licensing course — keep pushing" },
+  completed_course:      { title: "🎓 Course complete",                line: "finished the pre-licensing course — exam next" },
+  scheduled_exam:        { title: "📅 State exam scheduled",           line: "booked the state exam" },
+  passed_exam:           { title: "🏆 PASSED the state exam",          line: "passed the state exam — license incoming" },
+  fingerprints_submitted:{ title: "🖐️ Fingerprints submitted",         line: "submitted fingerprints — last step before the license" },
+  license_issued:        { title: "🔥 LICENSED",                       line: "is officially licensed. Let's go." },
+};
+
+function embedLicensingMilestone(d: Record<string, unknown>) {
+  const name  = (d.candidate_name as string) || "A future agent";
+  const type  = String(d.milestone_type ?? "");
+  const copy  = MILESTONE_COPY[type] ?? { title: "🎯 Licensing milestone", line: `hit a licensing milestone (${type || "update"})` };
+  const state = (d.state as string) || null;
+  const exam  = (d.exam_date as string) || null;
+  const fields: {name:string;value:string;inline:boolean}[] = [];
+  if (state) fields.push({ name: "State", value: state, inline: true });
+  if (exam)  fields.push({ name: "Exam date", value: exam, inline: true });
+  return {
+    embeds: [{
+      title:       copy.title,
+      description: `**${name}** ${copy.line}.`,
+      color:       type === "license_issued" || type === "passed_exam" ? CLR.gold : CLR.blue,
       fields,
       timestamp:   new Date().toISOString(),
     }],
@@ -321,6 +354,7 @@ function buildPayload(event_type: string, details: Record<string, unknown>): Rec
   switch (event_type) {
     case "new_application":      return embedNewApplication(details);
     case "agent_activated":      return embedAgentActivated(details);
+    case "licensing_milestone":  return embedLicensingMilestone(details);
     case "deal_closed":          return embedDealClosed(details);
     case "streak_7day":          return embedStreak7Day(details);
     case "deal_milestone":       return embedDealMilestone(details);

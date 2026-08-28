@@ -240,10 +240,18 @@ Deno.serve(async (req) => {
             body: JSON.stringify({ phone: r.phone, message: `${first}: ${SMS_TEXT}`.slice(0, 160) }),
           });
           const body = await resp.json().catch(() => ({} as any));
-          if (resp.ok && body?.success === true) {
-            legs.sms = { status: "sent", receipt: body?.carrier ? `gateway:${body.carrier}` : "gateway" };
-          } else if (body?.skipped || /carrier/i.test(String(body?.error ?? ""))) {
-            legs.sms = { status: "skipped_unknown_carrier", error: String(body?.error ?? "carrier unknown").slice(0, 200) };
+          // MP-336: send-sms-auto-detect's contract (MP-270) is `outcome` in
+          // {sent, skipped, failed}; "skipped" = no carrier on file, nothing sent.
+          // This branch used to test a `skipped` field that does not exist and a
+          // regex on an `error` string that is never set, so every honest
+          // "skipped" came back as `failed HTTP 200` — 7 of 11 SMS attempts on
+          // 2026-08-26 recorded as failures, errors=7 in automation_run_log,
+          // while notification_log held the truth. Branch on the contract.
+          const outcome = String(body?.outcome ?? "");
+          if (resp.ok && (outcome === "sent" || body?.success === true)) {
+            legs.sms = { status: "sent", receipt: body?.carrierSelected ? `gateway:${body.carrierSelected}` : "gateway" };
+          } else if (outcome === "skipped" || body?.skipped || /carrier/i.test(String(body?.error ?? ""))) {
+            legs.sms = { status: "skipped_unknown_carrier", error: String(body?.error ?? "no carrier on file").slice(0, 200) };
           } else {
             legs.sms = { status: "failed", error: `HTTP ${resp.status} ${String(body?.error ?? "").slice(0, 160)}` };
           }

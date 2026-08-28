@@ -373,6 +373,25 @@ async function deliverApplicationSlackInvite(sb: any, event: any): Promise<Dispa
 }
 
 async function deliverDiscord(sb: any, event: any): Promise<string | undefined> {
+  // MP-337: licensing milestones (XCEL course progress, exam, license) — the
+  // Slack leg was live; this is the Discord half the directive asked for. The
+  // payload is the milestone row (no candidate contact details), so no DB read.
+  if (event.aggregate_type === "licensing_milestone") {
+    const p = (event.payload ?? {}) as Record<string, unknown>;
+    const response = await callFunction("discord-webhook-notify", {
+      event_type: "licensing_milestone",
+      details: {
+        candidate_name: p.candidateName ?? null,
+        milestone_type: p.milestoneType ?? null,
+        state: p.state ?? null,
+        exam_date: p.examDate ?? null,
+      },
+    });
+    if (response?.suppressed === true) throw new Error("Discord licensing-milestone delivery was suppressed");
+    if (response?.ok !== true) throw new Error("Discord did not confirm licensing-milestone delivery");
+    return typeof response.provider_message_id === "string" ? response.provider_message_id : undefined;
+  }
+
   if (event.aggregate_type === "agent" && event.event_type === "agent.hired") {
     const { data: hired, error } = await sb
       .from("agents")
@@ -852,6 +871,15 @@ async function deliverContractingIntake(sb: any, event: any): Promise<DispatchRe
 }
 
 async function dispatch(sb: any, event: any): Promise<DispatchResult> {
+  // MP-335: a Slack row is a Slack row regardless of aggregate. Before this,
+  // contracting_intake rows were routed to the contracting handler FIRST — which
+  // has no 'slack' case — so the seeded contracting.intake_submitted → Slack route
+  // (enqueued by fn_queue_contracting_slack) could never deliver even once the
+  // outbox guard admitted it. deliverSlack resolves the channel from
+  // messaging_route_rules by event_type, so it needs no aggregate knowledge.
+  if (event.destination === "slack") {
+    return await deliverSlack(sb, event);
+  }
   if (event.aggregate_type === "contracting_intake") {
     return await deliverContractingIntake(sb, event);
   }
@@ -859,9 +887,6 @@ async function dispatch(sb: any, event: any): Promise<DispatchResult> {
   if (event.destination === "discord" || event.destination === "discord_subagency") {
     const providerMessageId = await deliverDiscord(sb, event);
     return { state: "delivered", providerMessageId, deliveryConfirmed: true };
-  }
-  if (event.destination === "slack") {
-    return await deliverSlack(sb, event);
   }
   if (event.destination === "application_slack_invite") {
     return await deliverApplicationSlackInvite(sb, event);

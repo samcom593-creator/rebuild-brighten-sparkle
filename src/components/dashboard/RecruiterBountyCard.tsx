@@ -95,7 +95,7 @@ export function RecruiterBountyCard({ agentId, className }: { agentId?: string |
       </div>
 
       {link.data?.link ? (
-        <code className="mt-3 block truncate rounded-md border border-border bg-muted/40 px-3 py-1.5 text-[11px] text-muted-foreground">{link.data.link}</code>
+        <code className="mt-3 block select-all break-all rounded-md border border-border bg-muted/40 px-3 py-1.5 text-[11px] text-muted-foreground">{link.data.link}</code>
       ) : null}
 
       {agentId ? (

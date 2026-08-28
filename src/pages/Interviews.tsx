@@ -166,11 +166,14 @@ function statusOf(row: Applicant, now: Date) {
   }
   if (row.stage === "interview_complete") return { tone: "text-primary", dot: "bg-primary", label: "Interviewed", timing: "record the decision" };
   if (row.stage === "no_show") return { tone: "text-warning", dot: "bg-warning", label: "No-show", timing: "follow up or reschedule" };
-  if (row.stage === "rescheduled") return { tone: "text-warning", dot: "bg-warning", label: "Rescheduled", timing: appointment ? format(appointment, "EEE MMM d · h:mma") : "set a new time" };
+  // Overdue is decided before the rescheduled special-case: the Overdue group
+  // already admits a rescheduled row whose new time has passed, so its badge
+  // must say so too — not "Rescheduled · <a time that is already gone>".
   if (appointment && isPast(appointment) && OPEN.includes(row.stage)) {
     const days = Math.abs(differenceInCalendarDays(now, appointment));
     return { tone: "text-destructive", dot: "bg-destructive", label: "Overdue", timing: `${days} day${days === 1 ? "" : "s"} · needs action` };
   }
+  if (row.stage === "rescheduled") return { tone: "text-warning", dot: "bg-warning", label: "Rescheduled", timing: appointment ? format(appointment, "EEE MMM d · h:mma") : "set a new time" };
   if (appointment) return { tone: "text-primary", dot: "bg-primary", label: row.stage === "confirmed" ? "Confirmed" : "Up next", timing: format(appointment, "EEE MMM d · h:mma") };
   return { tone: "text-muted-foreground", dot: "bg-muted-foreground", label: STAGE_META[row.stage]?.label ?? row.stage, timing: "no time set" };
 }
@@ -259,7 +262,11 @@ export default function Interviews() {
     refetchOnWindowFocus: true,
     placeholderData: (previous) => previous,
   });
+  // The tab badge counts WORK on that tab (upcoming calls + licensed hires still
+  // needing a booking), not just calendar rows — otherwise it reads "0" beside
+  // a KPI tile saying 26 hires have no onboarding call.
   const onboardingUpcoming = onboarding.data?.calls.filter((call) => call.bucket === "upcoming").length ?? 0;
+  const onboardingWork = onboardingUpcoming + (onboarding.data?.gaps.length ?? 0);
 
   const sendBookingLink = async (gap: OnboardingGap) => {
     setSendingGap(gap.agent_id);
@@ -705,7 +712,7 @@ export default function Interviews() {
             <div className="mt-4 grid grid-cols-2 gap-2">
               {phoneHref(priorityCandidate.phone) && <Button asChild className="h-11 bg-[#C9A961] font-bold text-black hover:bg-[#C9A961]/90"><a href={phoneHref(priorityCandidate.phone)!}><Phone className="h-4 w-4" /> Call</a></Button>}
               {smsHref(priorityCandidate.phone) && <Button asChild variant="outline" className="h-11 border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white"><a href={smsHref(priorityCandidate.phone)!}><MessageSquare className="h-4 w-4" /> Text</a></Button>}
-              {availableActions(priorityCandidate, pipeline.data?.role).length > 0 && <Button className="col-span-2 h-11 bg-white font-bold text-black hover:bg-white/90" onClick={() => chooseAction(priorityCandidate, availableActions(priorityCandidate, pipeline.data?.role)[0])}>Update outcome <ArrowRight className="h-4 w-4" /></Button>}
+              {availableActions(priorityCandidate, pipeline.data?.role).length > 0 && <Button className="col-span-2 h-11 bg-white font-bold text-black hover:bg-white/90" onClick={() => chooseAction(priorityCandidate, availableActions(priorityCandidate, pipeline.data?.role)[0])}>{ACTION_LABEL[availableActions(priorityCandidate, pipeline.data?.role)[0]]} <ArrowRight className="h-4 w-4" /></Button>}
             </div>
             <p className="mt-3 text-center text-[9px] uppercase tracking-wide text-white/25">J / K moves through priority candidates</p>
           </div>
@@ -761,7 +768,8 @@ export default function Interviews() {
           <Input ref={searchRef} value={query} onChange={(event) => setQuery(event.target.value)} placeholder={tab === "onboarding" || tab === "hired" ? "Search agent, phone, email, license, or stage" : "Search every candidate, phone, email, or Instagram"} className="h-11 rounded-xl border-border/80 bg-card pl-9 pr-10" aria-label="Search interviews" />
           <kbd className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded border border-border bg-muted px-1.5 py-0.5 text-[9px] font-bold text-muted-foreground">/</kbd>
         </div>
-        <div className="flex max-w-full items-center gap-1.5 overflow-x-auto">
+        {/* Wrap, never scroll: at 1500px the main column is ~800px wide and a scrolling strip hid Active hires / Onboarding / History with no affordance. */}
+        <div className="flex max-w-full flex-wrap items-center gap-1.5">
           {tab !== "hired" && tab !== "onboarding" && <DropdownMenu>
             <DropdownMenuTrigger asChild><Button type="button" size="sm" variant="outline" className="h-11 shrink-0 rounded-xl"><SlidersHorizontal className="h-4 w-4" /> {SORT_LABEL[sortMode]} <ChevronDown className="h-3.5 w-3.5" /></Button></DropdownMenuTrigger>
             <DropdownMenuContent align="start">{(Object.entries(SORT_LABEL) as Array<[SortMode, string]>).map(([key, label]) => <DropdownMenuItem key={key} onSelect={() => setSortMode(key)}>{label}{sortMode === key && <CheckCircle2 className="ml-auto h-4 w-4 text-primary" />}</DropdownMenuItem>)}</DropdownMenuContent>
@@ -770,7 +778,7 @@ export default function Interviews() {
             <Button key={key} type="button" size="sm" variant={tab === key ? "default" : "ghost"} onClick={() => switchTab(key)} aria-pressed={tab === key} className={`h-11 shrink-0 rounded-xl px-3 ${tab === key ? "shadow-md" : "text-muted-foreground"}`}>
               {label}
               <span className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] tabular-nums ${tab === key ? "bg-black/15" : "bg-muted"}`}>
-                {key === "open" ? openAll.length : key === "overdue" ? overdue.length : key === "upcoming" ? upcoming.length : key === "hired" ? activeHires.length : key === "onboarding" ? onboardingUpcoming : applicants.length}
+                {key === "open" ? openAll.length : key === "overdue" ? overdue.length : key === "upcoming" ? upcoming.length : key === "hired" ? activeHires.length : key === "onboarding" ? onboardingWork : applicants.length}
               </span>
             </Button>
           ))}

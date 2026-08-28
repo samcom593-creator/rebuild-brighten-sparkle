@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "Interview Control Room and Purchase Leads flow fixes: the tab strip now wraps instead of hiding Active hires / Onboarding / History behind a scroll on desktop; a rescheduled interview whose new time has passed is badged Overdue like the group it sits in; the Onboarding tab badge counts the licensed hires still needing a booking, not just calendar rows; the Work-next button names the action it opens (Confirm appointment, Record outcome) instead of a generic Update outcome; the weekly lead-drop countdown is computed in America/Chicago so it is no longer an hour off all summer; the Purchase Leads support line is a real link to the Help Center; the recruiter link is selectable when the clipboard is blocked.",
+    detail:
+      "Found by reading the rendered pages at 1500px and 390px against the local production build, not just the source. The countdown pinned a -6h CST offset, which is wrong from March to November — it counted down to 1:00 AM Chicago. The Onboarding tab read 0 beside a KPI tile saying 26 hires had no onboarding call, because the badge counted upcoming calls only. No data or RPC changes; every fix is presentation and flow.",
+    commit: "mp-335-ui-flow-sweep",
+  },
+  {
+    ts: "today",
+    label:
       "Two standing guards for things that used to live only in one chat: a production-integrity view that re-measures duplicate submissions (same policy number AND same client) and placeholder policy numbers across every production source, and a single 'who hasn't logged numbers today' operand that the 6 PM reminder, the weekly doctor and any future channel post now share. XCEL licensing is live on real data: this morning's roster advanced Jaylin Horozewski and Rowan Blair to course-complete, gave Moses Leo his halfway milestone, and all three posted to Slack and Discord within a minute.",
     detail:
       "Integrity is graded on movement (rows POSTED after an anchor), never on the frozen upstream backlog (21 duplicate groups / $45,726 and 296 placeholder numbers all-time, reported as context) — the first cut keyed movement on synced_at, which is the book's last-sync time, so 21 of 21 read as 'new' and the check would have been permanently red; caught before it reached the doctor. The numbers operand reconciles with the function's own count (19 due = 26 candidates minus 3 logged minus exclusions), with reminder-dedupe deliberately left to the sender. The directive's launchd copy of the reminder was refused: it is already live on pg_cron with DST handled, and a laptop that sleeps through business hours would only double-fire. Doctor checks for both proven on every branch with stubbed data, then renumbered off a check-number collision with a concurrent worker's new check. The XCEL daemon's unattended IMAP leg still waits on the owner-only Gmail App Password; the replayable sample makes the parser provable without it.",

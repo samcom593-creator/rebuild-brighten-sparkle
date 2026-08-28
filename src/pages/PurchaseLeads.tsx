@@ -66,18 +66,32 @@ function parseInventoryCount(value: unknown): number | null {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
-function getNextSundayMidnightCST(): Date {
+// Next Sunday 00:00 in America/Chicago, DST-correct. The previous version
+// pinned a -6h offset ("CST"), which is an hour wrong from March to November —
+// the countdown reached zero at 1:00 AM Chicago all summer.
+function chicagoParts(date: Date) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Chicago", hourCycle: "h23",
+    weekday: "short", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit",
+  }).formatToParts(date);
+  const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
+  return {
+    weekday: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(get("weekday")),
+    secondsIntoDay: Number(get("hour")) * 3600 + Number(get("minute")) * 60 + Number(get("second")),
+  };
+}
+
+function getNextSundayMidnightChicago(): Date {
   const now = new Date();
-  const cstOffset = -6 * 60;
-  const utcOffset = now.getTimezoneOffset();
-  const cstNow = new Date(now.getTime() + (cstOffset - utcOffset) * 60000);
-  
-  const daysUntilSunday = (7 - cstNow.getDay()) % 7 || 7;
-  const nextSunday = new Date(cstNow);
-  nextSunday.setDate(nextSunday.getDate() + daysUntilSunday);
-  nextSunday.setHours(0, 0, 0, 0);
-  
-  return new Date(nextSunday.getTime() - (cstOffset - utcOffset) * 60000);
+  const { weekday, secondsIntoDay } = chicagoParts(now);
+  const daysUntilSunday = (7 - weekday) % 7 || 7;
+  // Walk to the target calendar day, then remove the time already elapsed in
+  // Chicago. Re-reading the Chicago clock at the candidate corrects for a DST
+  // transition inside the window (the day is 23 or 25 hours long).
+  let candidate = new Date(now.getTime() + daysUntilSunday * 86_400_000 - secondsIntoDay * 1000);
+  const drift = chicagoParts(candidate).secondsIntoDay;
+  if (drift !== 0) candidate = new Date(candidate.getTime() - (drift > 43_200 ? drift - 86_400 : drift) * 1000);
+  return candidate;
 }
 
 function useCountdown(targetDate: Date) {
@@ -159,7 +173,7 @@ export default function PurchaseLeads() {
     }
   };
 
-  const nextSunday = useMemo(() => getNextSundayMidnightCST(), []);
+  const nextSunday = useMemo(() => getNextSundayMidnightChicago(), []);
   const countdown = useCountdown(nextSunday);
 
   useEffect(() => {
@@ -352,7 +366,7 @@ export default function PurchaseLeads() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Next Drop Opens</p>
-                <p className="text-xs text-muted-foreground/70">Sunday 12:00 AM CST</p>
+                <p className="text-xs text-muted-foreground/70">Sunday 12:00 AM Central</p>
               </div>
             </div>
             <div className="grid grid-cols-4 gap-2 mt-4">
@@ -464,9 +478,9 @@ export default function PurchaseLeads() {
         <div className="text-center py-8 border-t border-border/50">
           <p className="text-sm text-muted-foreground">
             Questions about lead packages?{" "}
-            <span className="text-primary font-medium">
-              Join our Discord for support
-            </span>
+            <Link to="/dashboard/help" className="text-primary font-medium underline-offset-4 hover:underline">
+              Open the Help Center
+            </Link>
           </p>
         </div>
       </div>

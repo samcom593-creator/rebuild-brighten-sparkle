@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "WhatsApp is retired from onboarding and every Vantage Discord sale now lands under the agent who actually wrote it. Unlicensed applicants get one durable email — account and course setup, the live roadmap, the Slack join link, and the support call — instead of a third channel nobody ran; pending WhatsApp queue rows were closed as retired without ever being stamped 'sent'. Twelve verified Vantage #daily-sales messages (Marquay Vaughns, Kaeden Vaughns, David Ladd, Pranav Kodali) were caught up by their immutable Discord message IDs so a replay can never double-count, and leaderboards keep the writing agent's name — canonical IDs are used only to reconcile duplicates, never to relabel a sale.",
+    detail:
+      "Built by Codex, verified and shipped here: its new onboarding-email policy test passes (6/6), every edited edge function type-checks under Deno, and both migrations were already live before commit. Six TypeScript errors that surfaced in the same tree came from a stricter regenerated applications type, not Codex's logic — five update() payloads now use the repo's established cast and one missing icon import was added — so the type gate holds at its baseline. Two 8/26 Discord messages belong to an 'Alonzo' who cannot be safely matched to anyone on the roster; their aggregate is preserved as a daily snapshot rather than falsely assigned to someone else.",
+    commit: "codex-retire-whatsapp-vantage-attribution",
+  },
+  {
+    ts: "today",
+    label:
       "Interview Control Room and Purchase Leads flow fixes: the tab strip now wraps instead of hiding Active hires / Onboarding / History behind a scroll on desktop; a rescheduled interview whose new time has passed is badged Overdue like the group it sits in; the Onboarding tab badge counts the licensed hires still needing a booking, not just calendar rows; the Work-next button names the action it opens (Confirm appointment, Record outcome) instead of a generic Update outcome; the weekly lead-drop countdown is computed in America/Chicago so it is no longer an hour off all summer; the Purchase Leads support line is a real link to the Help Center; the recruiter link is selectable when the clipboard is blocked.",
     detail:
       "Found by reading the rendered pages at 1500px and 390px against the local production build, not just the source. The countdown pinned a -6h CST offset, which is wrong from March to November — it counted down to 1:00 AM Chicago. The Onboarding tab read 0 beside a KPI tile saying 26 hires had no onboarding call, because the badge counted upcoming calls only. No data or RPC changes; every fix is presentation and flow.",

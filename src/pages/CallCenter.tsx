@@ -532,7 +532,7 @@ export default function CallCenter() {
         };
         const { error } = await supabase
           .from("aged_leads")
-          .update(patch)
+          .update(patch as never)
           .eq("id", currentLead.id);
 
         if (error) throw error;
@@ -559,7 +559,7 @@ export default function CallCenter() {
 
         const { error } = await supabase
           .from("applications")
-          .update(updateData)
+          .update(updateData as never)
           .eq("id", currentLead.id);
 
         if (error) throw error;
@@ -830,7 +830,7 @@ export default function CallCenter() {
 
         await supabase
           .from("applications")
-          .update(updateData)
+          .update(updateData as never)
           .eq("id", currentLead.id);
       } else {
         // For aged_leads, just update status
@@ -878,7 +878,7 @@ export default function CallCenter() {
         }
         const { error } = await supabase
           .from("applications")
-          .update(updateData)
+          .update(updateData as never)
           .eq("id", currentLead.id);
         if (error) throw error;
       }

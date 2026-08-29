@@ -278,7 +278,7 @@ export default function AgentPipeline() {
       const updateData: Record<string, unknown> = { license_progress: newStage };
       if (newStage === "licensed") updateData.license_status = "licensed";
 
-      const { error } = await supabase.from("applications").update(updateData).eq("id", applicationId);
+      const { error } = await supabase.from("applications").update(updateData as never).eq("id", applicationId);
       if (error) throw error;
 
       setApplications((prev) =>

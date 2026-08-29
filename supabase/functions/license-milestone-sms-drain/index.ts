@@ -28,9 +28,9 @@ Deno.serve(async (req) => {
     // bot-sql token is also accepted so an operator can dry-run by hand
     const botToken = Deno.env.get("APEX_BOT_TOKEN") ?? "";
     // pg_cron reaches this fn through run_automation_job, which signs with the
-    // SERVICE-ROLE key (not APEX_BOT_TOKEN). Proven 2026-08-29: jobid 94 fired
-    // "succeeded" while every row stayed pending at send_attempts=0 because
-    // this line answered 401 to its own scheduler. Accept either bearer.
+    // service-role key; operators dry-run by hand with APEX_BOT_TOKEN. Either
+    // bearer is accepted (6b41fe36 restructured this; auth was never the 16:10
+    // fault — see the persistence note below).
     const okBot = Boolean(botToken) && token === botToken;
     const okService = Boolean(SERVICE_KEY) && token === SERVICE_KEY;
     if (!okBot && !okService) return json({ error: "unauthorized" }, 401);
@@ -49,11 +49,15 @@ Deno.serve(async (req) => {
   if (error) return json({ ok: false, error: error.message }, 500);
 
   const results: Array<Record<string, unknown>> = [];
+  let persistFailures = 0;
   for (const r of (rows ?? []) as any[]) {
     const phone = String(r.to_phone ?? "").replace(/\D/g, "");
     const body = String(r.rendered_body ?? "").trim();
     if (phone.length < 10 || !body) {
-      if (!dryRun) await sb.from("license_milestone_outbox").update({ status: "skipped", last_error: phone.length < 10 ? "phone_too_short" : "empty_body" }).eq("id", r.id);
+      if (!dryRun) {
+        const { error: pe } = await sb.from("license_milestone_outbox").update({ status: "skipped", last_error: phone.length < 10 ? "phone_too_short" : "empty_body" }).eq("id", r.id);
+        if (pe) { persistFailures++; results.push({ id: r.id, outcome: "skipped", persisted: false, persist_error: pe.message.slice(0, 160) }); continue; }
+      }
       results.push({ id: r.id, outcome: "skipped", reason: phone.length < 10 ? "phone_too_short" : "empty_body" });
       continue;
     }
@@ -72,10 +76,21 @@ Deno.serve(async (req) => {
 
     const patch: Record<string, unknown> = { send_attempts: (r.send_attempts ?? 0) + 1 };
     if (outcome === "sent") { patch.status = "sent"; patch.sent_at = new Date().toISOString(); patch.last_error = null; }
-    else if (outcome === "skipped") { patch.status = "skipped_no_carrier"; patch.last_error = "no carrier on file"; }
+    // license_milestone_outbox_status_check admits ONLY pending|sent|failed|skipped.
+    // The first cut wrote "skipped_no_carrier": the UPDATE violated the CHECK, the
+    // error was discarded, and the 16:10 tick answered {processed:3} with zero rows
+    // changed — fake success inside the fn whose one job is to refuse it. The
+    // distinction lives in last_error; the status stays inside the contract.
+    else if (outcome === "skipped") { patch.status = "skipped"; patch.last_error = "no carrier on file"; }
     else { patch.last_error = err || "gateway failed"; if ((r.send_attempts ?? 0) + 1 >= MAX_ATTEMPTS) patch.status = "failed"; }
-    await sb.from("license_milestone_outbox").update(patch).eq("id", r.id);
-    results.push({ id: r.id, outcome, error: err || undefined });
+    const { error: persistErr } = await sb.from("license_milestone_outbox").update(patch).eq("id", r.id);
+    if (persistErr) { persistFailures++; results.push({ id: r.id, outcome, persisted: false, persist_error: persistErr.message.slice(0, 160) }); continue; }
+    results.push({ id: r.id, outcome, persisted: true, error: err || undefined });
   }
-  return json({ ok: true, dry_run: dryRun, processed: results.length, results });
+  // A row the gateway answered but the table refused is NOT processed. Non-2xx
+  // so pg_net/automation_run_log record the failure instead of a green tick.
+  return json(
+    { ok: persistFailures === 0, dry_run: dryRun, processed: results.length - persistFailures, persist_failures: persistFailures, results },
+    persistFailures === 0 ? 200 : 500,
+  );
 });

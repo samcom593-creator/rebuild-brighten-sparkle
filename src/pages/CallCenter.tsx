@@ -547,14 +547,23 @@ export default function CallCenter() {
           updateData.status = "rejected";
         } else if (actionId === "no_pickup") {
           updateData.status = "no_pickup";
-        } else if (actionId === "contacted") {
-          updateData.status = "contacted";
-        } else if (actionId === "needs_followup") {
-          updateData.status = "contacted";
-          // Bump next-action to tomorrow so the follow-up cohort catches it.
-          const tomorrow = new Date();
-          tomorrow.setDate(tomorrow.getDate() + 1);
-          (updateData as Record<string, unknown>).next_action_due_at = tomorrow.toISOString();
+        } else if (actionId === "contacted" || actionId === "needs_followup") {
+          // "contacted" is not a member of application_status. Writing it made
+          // PostgREST fail the whole request with 22P02, so both dispositions
+          // threw and recorded nothing — proven against the live type on
+          // 2026-08-29. Contact state is not a status on this table: this
+          // payload already carries contacted_at/last_contacted_at, which is
+          // exactly what every read-side filter uses to mean "contacted".
+          // The one status worth touching is a stale no_pickup, because the
+          // contacted filter excludes it and a lead we just reached would stay
+          // invisible. Any other funnel stage is left alone.
+          if (currentLead.status === "no_pickup") updateData.status = "reviewing";
+          if (actionId === "needs_followup") {
+            // Bump next-action to tomorrow so the follow-up cohort catches it.
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            (updateData as Record<string, unknown>).next_action_due_at = tomorrow.toISOString();
+          }
         }
 
         const { error } = await supabase
@@ -634,11 +643,16 @@ export default function CallCenter() {
       // list — just advance so the caller can loop back later.
       const advanceOnly = actionId === "no_pickup" || actionId === "contacted" || actionId === "needs_followup";
       if (advanceOnly) {
-        const patchStatus = actionId === "contacted"
-          ? "contacted"
-          : actionId === "needs_followup"
-            ? "contacted"
-            : "no_pickup";
+        // Mirror what the write actually persisted. The old value showed
+        // "contacted" on a row whose status the enum cannot hold, so the
+        // optimistic state disagreed with the next refetch.
+        const patchStatus = currentLead.source === "aged_leads"
+          ? (actionId === "no_pickup" ? "no_pickup" : actionId)
+          : actionId === "no_pickup"
+            ? "no_pickup"
+            : currentLead.status === "no_pickup"
+              ? "reviewing"
+              : currentLead.status;
         setLeads((prev) =>
           prev.map((l) => l.id === currentLead.id ? { ...l, status: patchStatus } : l)
         );

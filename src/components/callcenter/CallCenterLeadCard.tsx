@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ApplicationDetailSheet } from "@/components/dashboard/ApplicationDetailSheet";
 import { cn } from "@/lib/utils";
+import { APPLICATION_STATUS_OPTIONS, AGED_LEAD_STATUS_OPTIONS } from "@/lib/applicationStatus";
 import { formatDistanceToNow, format } from "date-fns";
 import { CallCenterVoiceRecorder } from "./CallCenterVoiceRecorder";
 import { CallCenterStageSelector, type LicensingStage } from "./CallCenterStageSelector";
@@ -268,8 +269,8 @@ export function CallCenterLeadCard({
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" className="min-w-[160px]">
                     {(lead.source === "applications"
-                      ? ["new", "contacted", "no_pickup", "reviewing", "hired", "rejected"]
-                      : ["new", "contacted", "no_pickup", "hired", "bad_applicant"]
+                      ? APPLICATION_STATUS_OPTIONS
+                      : AGED_LEAD_STATUS_OPTIONS
                     ).map((status) => (
                       <DropdownMenuItem
                         key={status}

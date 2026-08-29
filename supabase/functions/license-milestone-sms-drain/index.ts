@@ -27,7 +27,13 @@ Deno.serve(async (req) => {
   if (!token || token !== SERVICE_KEY) {
     // bot-sql token is also accepted so an operator can dry-run by hand
     const botToken = Deno.env.get("APEX_BOT_TOKEN") ?? "";
-    if (!botToken || token !== botToken) return json({ error: "unauthorized" }, 401);
+    // pg_cron reaches this fn through run_automation_job, which signs with the
+    // SERVICE-ROLE key (not APEX_BOT_TOKEN). Proven 2026-08-29: jobid 94 fired
+    // "succeeded" while every row stayed pending at send_attempts=0 because
+    // this line answered 401 to its own scheduler. Accept either bearer.
+    const okBot = Boolean(botToken) && token === botToken;
+    const okService = Boolean(SERVICE_KEY) && token === SERVICE_KEY;
+    if (!okBot && !okService) return json({ error: "unauthorized" }, 401);
   }
   let dryRun = false;
   try { dryRun = Boolean((await req.json())?.dry_run); } catch { /* empty-catch-allow:no-body-means-live-run */ }

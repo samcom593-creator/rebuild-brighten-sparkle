@@ -767,3 +767,6 @@ verify_jwt = false
 
 [functions.onboarding-call-invites]
 verify_jwt = false
+
+[functions.license-milestone-sms-drain]
+verify_jwt = false

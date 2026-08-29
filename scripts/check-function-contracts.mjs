@@ -197,6 +197,10 @@ const PUBLIC_ALLOWLIST = new Set([
   // bearer in-code, fail closed when configuration is missing, and expose no
   // anonymous success path.
   "numbers-reminder",
+  // license-milestone-sms-drain (MP-341): pg_cron jobid 94 invokes it every 10 min
+  // through run_automation_job with the bot bearer; the handler rejects any
+  // caller without it, so verify_jwt=false is the cron seam, not an open door.
+  "license-milestone-sms-drain",
   "slack-identity-admin",
 ]);
 

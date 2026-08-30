@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { useConfirm } from "@/hooks/useConfirm";
 import { APPLICATION_RECORD_TYPE } from "@/shared/api/applicationRecordType";
+import { TELEGRAM_GROUP_TYPES, isPlaceholderChatId } from "@/lib/telegramGroups";
 
 /* ---------------- types ---------------- */
 type Bucket = "MUST" | "SHOULD" | "COULD";
@@ -487,10 +488,13 @@ function NextActionsSection() {
     queryFn: async () => {
       const [drafts, groups, unclaimed] = await Promise.all([
         (supabase as any).from("social_bot_drafts").select("id", { count: "exact", head: true }).in("status", ["pending", "awaiting_approval"]),
-        supabase.from("telegram_groups").select("chat_id", { count: "exact" }).in("type", ["onboarding", "licensing_reference", "daily_movement", "seminar_reminders", "ask_apex_ai"]),
+        supabase.from("telegram_groups").select("chat_id", { count: "exact" }).in("type", TELEGRAM_GROUP_TYPES as unknown as string[]),
         supabase.from("applications").select("id", { count: "exact", head: true }).eq("record_type", APPLICATION_RECORD_TYPE).eq("status", "new"),
       ]);
-      const pendingTelegram = ((groups.data ?? []) as unknown as Array<{ chat_id: number }>).filter((g) => Number(g.chat_id) > -1000 && Number(g.chat_id) < 0).length;
+      // "Pending" = the row exists but its chat_id is still a seeded placeholder.
+      // This tested `> -1000 && < 0`, which excludes -1001 and -1006 — the only two
+      // placeholders that have ever existed — so the count was structurally 0.
+      const pendingTelegram = ((groups.data ?? []) as unknown as Array<{ chat_id: number }>).filter((g) => isPlaceholderChatId(g.chat_id)).length;
       return {
         draftCount: drafts.count ?? 0,
         pendingTelegram,
@@ -708,12 +712,8 @@ function TelegramStatusTile() {
         supabase.from("telegram_users").select("chat_id", { count: "exact", head: true }),
       ]);
       const groups = (groupsResp.data ?? []) as unknown as Array<{ chat_id: string | number; is_active: boolean }>;
-      const isSentinel = (n: string | number) => {
-        const v = Number(n);
-        return Number.isFinite(v) && v > -1000 && v < 0;
-      };
-      const bound = groups.filter((g) => !isSentinel(g.chat_id)).length;
-      const active = groups.filter((g) => !isSentinel(g.chat_id) && g.is_active).length;
+      const bound = groups.filter((g) => !isPlaceholderChatId(g.chat_id)).length;
+      const active = groups.filter((g) => !isPlaceholderChatId(g.chat_id) && g.is_active).length;
       const settingsMap = new Map((settingsResp.data ?? []).map((s: { key: string; value: unknown }) => [s.key, String(s.value ?? "")]));
       const botUsername = settingsMap.get("telegram_bot_username") ?? "";
       const lastSent = (sentResp.data?.[0] as { sent_at?: string } | undefined)?.sent_at ?? null;

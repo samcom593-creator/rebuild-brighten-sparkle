@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-enum-catalog.sh (bot_sql -> pg_enum + pg_attribute.atttypid)",
- "_generated_at": "2026-08-30T01:39:31Z",
+ "_generated_at": "2026-08-30T04:27:59Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "A repo guard cannot query prod. This is a snapshot of every enum-typed column in the public schema and the exact member list Postgres will accept for it, so scripts/check-enum-filter-literals.mjs can decide whether a filter or write literal will survive PostgREST's coercion. Enum types are SCHEMA-QUALIFIED because this database has more than one type sharing a bare name. Views are included: a bad literal in a filter against a view column raises the same 22P02 as one against a table. apex-doctor Check #29 re-queries pg_enum weekly and goes red when this snapshot drifts from the live catalog.",
  "_ambiguous_bare_names": {
@@ -567,5 +567,1456 @@
   "v_xcel_latest.application_status": "public.application_status",
   "v_xcel_stage_gaps.current_progress": "public.license_progress",
   "v_xcel_stage_gaps.current_status": "public.license_status"
+ },
+ "_check_vocab_why": "Text columns whose CHECK constraint is a pure value list. Postgres refuses any other value with 23514 on INSERT/UPDATE, and a read filter carrying a non-member matches nothing at all \u2014 the silent-empty this guard exists for. Only single-column, VALIDATED, pure-vocabulary CHECKs are here; everything else is listed in _check_vocab_skipped and graded by nobody.",
+ "_check_vocab_skipped": [
+  "license_renewal_alerts.days_out: column is integer, not a string vocabulary",
+  "manual_interview_entries.called_outcome: CHECK is not a pure vocabulary (manual_interview_entries_called_outcome_chk)"
+ ],
+ "check_vocab": {
+  "account_claims.outcome": {
+   "members": [
+    "linked",
+    "unmatched",
+    "ambiguous",
+    "already_linked",
+    "email_in_use",
+    "refused_privileged",
+    "error"
+   ],
+   "constraint": "account_claims_outcome_check"
+  },
+  "aged_leads.lead_source": {
+   "members": [
+    "aged",
+    "new_drip"
+   ],
+   "constraint": "aged_leads_lead_source_check"
+  },
+  "agencyhub_ai_conversation.role": {
+   "members": [
+    "user",
+    "assistant",
+    "tool_result"
+   ],
+   "constraint": "agencyhub_ai_conversation_role_check"
+  },
+  "agent_carrier_comp.contract_status": {
+   "members": [
+    "not_started",
+    "ready_to_send",
+    "sent",
+    "agent_action_required",
+    "submitted",
+    "active",
+    "issue",
+    "declined",
+    "not_needed"
+   ],
+   "constraint": "agent_carrier_comp_contract_status_check"
+  },
+  "agent_credentials.service": {
+   "members": [
+    "readymode",
+    "insuracloud",
+    "agentlink",
+    "xcel",
+    "other"
+   ],
+   "constraint": "agent_credentials_service_check"
+  },
+  "agent_inbox.list": {
+   "members": [
+    "APEX-Daily",
+    "Recruiting",
+    "Build",
+    "Follow-ups"
+   ],
+   "constraint": "agent_inbox_list_check"
+  },
+  "agent_inbox.priority": {
+   "members": [
+    "low",
+    "medium",
+    "high",
+    "urgent"
+   ],
+   "constraint": "agent_inbox_priority_check"
+  },
+  "agent_inbox.source": {
+   "members": [
+    "cli",
+    "vscode",
+    "siri",
+    "shortcut",
+    "ui",
+    "reminders",
+    "supabase"
+   ],
+   "constraint": "agent_inbox_source_check"
+  },
+  "agent_inbox.status": {
+   "members": [
+    "open",
+    "in_progress",
+    "blocked",
+    "done",
+    "cancelled"
+   ],
+   "constraint": "agent_inbox_status_check"
+  },
+  "agent_lead_stats.period_type": {
+   "members": [
+    "daily",
+    "weekly",
+    "monthly"
+   ],
+   "constraint": "agent_lead_stats_period_type_check"
+  },
+  "agent_onboarding_queue.email_kind": {
+   "members": [
+    "course",
+    "discord",
+    "hired_whatsapp",
+    "onboarding_call"
+   ],
+   "constraint": "agent_onboarding_queue_email_kind_check"
+  },
+  "agent_removal_requests.status": {
+   "members": [
+    "pending",
+    "approved",
+    "denied"
+   ],
+   "constraint": "agent_removal_requests_status_check"
+  },
+  "agent_touches.touch_type": {
+   "members": [
+    "referred",
+    "interviewed",
+    "recovered",
+    "dispositioned",
+    "called",
+    "manual"
+   ],
+   "constraint": "agent_touches_touch_type_check"
+  },
+  "agentlink_discord_policy_ledger.destination": {
+   "members": [
+    "discord",
+    "discord_subagency",
+    "slack"
+   ],
+   "constraint": "agentlink_discord_policy_ledger_destination_check"
+  },
+  "agents.builder_track": {
+   "members": [
+    "agent",
+    "manager_track",
+    "agency_owner_track"
+   ],
+   "constraint": "agents_builder_track_check"
+  },
+  "agents.comp_approval_status": {
+   "members": [
+    "approved",
+    "pending_sam",
+    "denied"
+   ],
+   "constraint": "agents_comp_approval_status_check"
+  },
+  "apex_agent_journeys.path": {
+   "members": [
+    "licensed",
+    "unlicensed"
+   ],
+   "constraint": "apex_agent_journeys_path_check"
+  },
+  "apex_call_reminders.channel": {
+   "members": [
+    "email",
+    "sms",
+    "both"
+   ],
+   "constraint": "apex_call_reminders_channel_check"
+  },
+  "apex_call_reminders.reminder_kind": {
+   "members": [
+    "confirmation",
+    "reminder_24h",
+    "reminder_2h",
+    "no_show_followup"
+   ],
+   "constraint": "apex_call_reminders_reminder_kind_check"
+  },
+  "apex_carrier_contracts.status": {
+   "members": [
+    "active",
+    "pending_upline_assignment",
+    "submitted",
+    "rejected",
+    "terminated",
+    "onhold"
+   ],
+   "constraint": "apex_carrier_contracts_status_check"
+  },
+  "apex_challenges.tier": {
+   "members": [
+    "bronze",
+    "silver",
+    "gold",
+    "platinum"
+   ],
+   "constraint": "apex_challenges_tier_check"
+  },
+  "apex_commands.kind": {
+   "members": [
+    "claude",
+    "codex"
+   ],
+   "constraint": "apex_commands_kind_check"
+  },
+  "apex_commands.priority": {
+   "members": [
+    "normal",
+    "urgent"
+   ],
+   "constraint": "apex_commands_priority_check"
+  },
+  "apex_commands.status": {
+   "members": [
+    "queued",
+    "running",
+    "done",
+    "failed"
+   ],
+   "constraint": "apex_commands_status_check"
+  },
+  "apex_contact_actions.channel": {
+   "members": [
+    "call",
+    "sms",
+    "email"
+   ],
+   "constraint": "apex_contact_actions_channel_check"
+  },
+  "apex_contact_actions.status": {
+   "members": [
+    "initiated",
+    "queued",
+    "processing",
+    "retrying",
+    "provider_accepted",
+    "fallback_required",
+    "failed",
+    "dead_letter"
+   ],
+   "constraint": "apex_contact_actions_status_check"
+  },
+  "apex_contact_actions.subject_kind": {
+   "members": [
+    "application",
+    "toolkit_agent"
+   ],
+   "constraint": "apex_contact_actions_subject_kind_check"
+  },
+  "apex_scheduled_calls.call_type": {
+   "members": [
+    "licensed_prospect",
+    "unlicensed_prospect",
+    "agent_oneonone",
+    "followup",
+    "team_meeting",
+    "unknown"
+   ],
+   "constraint": "apex_scheduled_calls_call_type_check"
+  },
+  "apex_scheduled_calls.outcome": {
+   "members": [
+    "won",
+    "lost",
+    "follow_up",
+    "rescheduled"
+   ],
+   "constraint": "apex_scheduled_calls_outcome_check"
+  },
+  "apex_scheduled_calls.status": {
+   "members": [
+    "scheduled",
+    "in_progress",
+    "completed",
+    "no_show",
+    "cancelled"
+   ],
+   "constraint": "apex_scheduled_calls_status_check"
+  },
+  "apex_standard_facts.confidence": {
+   "members": [
+    "high",
+    "medium",
+    "low"
+   ],
+   "constraint": "apex_standard_facts_confidence_check"
+  },
+  "apex_toolkit_agent_contact_log.channel": {
+   "members": [
+    "call",
+    "sms",
+    "email",
+    "note"
+   ],
+   "constraint": "apex_toolkit_agent_contact_log_channel_check"
+  },
+  "apex_toolkit_agents.license_status": {
+   "members": [
+    "licensed",
+    "unlicensed"
+   ],
+   "constraint": "apex_toolkit_agents_license_status_check"
+  },
+  "apex_toolkit_agents.status": {
+   "members": [
+    "active",
+    "hired",
+    "passed"
+   ],
+   "constraint": "apex_toolkit_agents_status_check"
+  },
+  "applicant_touchpoints.channel": {
+   "members": [
+    "email",
+    "sms",
+    "telegram"
+   ],
+   "constraint": "applicant_touchpoints_channel_check"
+  },
+  "applicant_touchpoints.touch_type": {
+   "members": [
+    "day0",
+    "day3",
+    "day7",
+    "day14"
+   ],
+   "constraint": "applicant_touchpoints_touch_type_check"
+  },
+  "application_contact_log.channel": {
+   "members": [
+    "call",
+    "sms",
+    "email",
+    "note"
+   ],
+   "constraint": "application_contact_log_channel_check"
+  },
+  "applications.record_type": {
+   "members": [
+    "application",
+    "interview_booking",
+    "test"
+   ],
+   "constraint": "applications_record_type_check"
+  },
+  "availability_blocks.kind": {
+   "members": [
+    "travel",
+    "focus",
+    "meeting",
+    "gym",
+    "lunch",
+    "sleep",
+    "buffer",
+    "driving",
+    "personal"
+   ],
+   "constraint": "availability_blocks_kind_check"
+  },
+  "bot_alerts.severity": {
+   "members": [
+    "info",
+    "warn",
+    "critical",
+    "celebrate"
+   ],
+   "constraint": "bot_alerts_severity_check"
+  },
+  "bot_audits.severity": {
+   "members": [
+    "info",
+    "warn",
+    "critical"
+   ],
+   "constraint": "bot_audits_severity_check"
+  },
+  "calendly_reconciliation_runs.status": {
+   "members": [
+    "ok",
+    "failed"
+   ],
+   "constraint": "calendly_reconciliation_runs_status_check"
+  },
+  "call_activity.direction": {
+   "members": [
+    "outbound",
+    "inbound",
+    "missed"
+   ],
+   "constraint": "call_activity_direction_check"
+  },
+  "call_recordings.recording_status": {
+   "members": [
+    "pending",
+    "downloaded",
+    "failed"
+   ],
+   "constraint": "call_recordings_recording_status_check"
+  },
+  "call_recordings.transcript_status": {
+   "members": [
+    "pending",
+    "done",
+    "failed"
+   ],
+   "constraint": "call_recordings_transcript_status_check"
+  },
+  "call_scores.outcome": {
+   "members": [
+    "winner",
+    "promising",
+    "average",
+    "concerning",
+    "lost"
+   ],
+   "constraint": "call_scores_outcome_check"
+  },
+  "candidate_notes.author_role": {
+   "members": [
+    "sam",
+    "milford",
+    "va",
+    "manager",
+    "admin"
+   ],
+   "constraint": "candidate_notes_author_role_check"
+  },
+  "candidate_notes.note_type": {
+   "members": [
+    "call_log",
+    "objection",
+    "goal_update",
+    "blocker",
+    "general"
+   ],
+   "constraint": "candidate_notes_note_type_check"
+  },
+  "carrier_registry.relationship": {
+   "members": [
+    "active",
+    "inactive",
+    "dormant",
+    "never_used"
+   ],
+   "constraint": "carrier_registry_relationship_check"
+  },
+  "client_pipeline_overrides.stage_override": {
+   "members": [
+    "NEW_INITIAL",
+    "WORKING",
+    "PITCHED",
+    "ALMOST_THERE",
+    "SOLD",
+    "FOLLOW_UP",
+    "INACTIVE",
+    "LOST"
+   ],
+   "constraint": "client_pipeline_stage_check"
+  },
+  "commission_ledger.status": {
+   "members": [
+    "pending",
+    "paid",
+    "clawed_back",
+    "voided"
+   ],
+   "constraint": "commission_ledger_status_check"
+  },
+  "comp_rate_imports.status": {
+   "members": [
+    "received",
+    "validating",
+    "applied",
+    "partially_applied",
+    "rejected"
+   ],
+   "constraint": "comp_rate_imports_status_check"
+  },
+  "comp_rates.approval_status": {
+   "members": [
+    "pending",
+    "approved",
+    "rejected"
+   ],
+   "constraint": "comp_rates_approval_status_check"
+  },
+  "contact_history.contact_type": {
+   "members": [
+    "call",
+    "email",
+    "note",
+    "followup",
+    "cold_outreach"
+   ],
+   "constraint": "contact_history_contact_type_check"
+  },
+  "contract_sends.status": {
+   "members": [
+    "pending",
+    "sent",
+    "failed",
+    "skipped"
+   ],
+   "constraint": "contract_sends_status_check"
+  },
+  "contract_templates.carrier": {
+   "members": [
+    "aflac",
+    "baltimore_life",
+    "americo",
+    "globe_life"
+   ],
+   "constraint": "contract_templates_carrier_check"
+  },
+  "contract_templates.role_required": {
+   "members": [
+    "agent",
+    "manager",
+    "agency_owner"
+   ],
+   "constraint": "contract_templates_role_required_check"
+  },
+  "contract_templates.send_method": {
+   "members": [
+    "email_attachment",
+    "onboard_portal_link",
+    "docusign"
+   ],
+   "constraint": "contract_templates_send_method_check"
+  },
+  "contracting_intake_deliveries.destination": {
+   "members": [
+    "contracting_email",
+    "contracting_discord",
+    "contracting_workbook",
+    "ethos_sheet"
+   ],
+   "constraint": "contracting_intake_deliveries_destination_check"
+  },
+  "contracting_intake_deliveries.state": {
+   "members": [
+    "queued",
+    "attempting",
+    "unknown_outcome",
+    "accepted",
+    "delivered",
+    "failed",
+    "dead_letter",
+    "manual_review",
+    "not_configured",
+    "awaiting_license"
+   ],
+   "constraint": "contracting_intake_deliveries_state_check"
+  },
+  "contracting_intakes.status": {
+   "members": [
+    "accepted",
+    "needs_review",
+    "completed"
+   ],
+   "constraint": "contracting_intakes_status_check"
+  },
+  "data_deletion_requests.status": {
+   "members": [
+    "pending",
+    "processing",
+    "completed",
+    "rejected"
+   ],
+   "constraint": "data_deletion_requests_status_check"
+  },
+  "deal_attachments.mime_type": {
+   "members": [
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "application/pdf"
+   ],
+   "constraint": "deal_attachments_mime_type_check"
+  },
+  "deal_attachments.scan_status": {
+   "members": [
+    "pending",
+    "clean",
+    "quarantined",
+    "failed"
+   ],
+   "constraint": "deal_attachments_scan_status_check"
+  },
+  "deal_drafts.status": {
+   "members": [
+    "draft",
+    "submitted",
+    "abandoned"
+   ],
+   "constraint": "deal_drafts_status_check"
+  },
+  "deals.payment_method": {
+   "members": [
+    "bank_draft",
+    "credit_card",
+    "debit_card",
+    "direct_express",
+    "check",
+    "social_security"
+   ],
+   "constraint": "deals_payment_method_check"
+  },
+  "deals.premium_mode": {
+   "members": [
+    "annual",
+    "semiannual",
+    "quarterly",
+    "monthly",
+    "single_pay",
+    "other"
+   ],
+   "constraint": "deals_premium_mode_check"
+  },
+  "deals.status": {
+   "members": [
+    "draft",
+    "submitted",
+    "needs_review",
+    "approved",
+    "declined",
+    "withdrawn",
+    "issued",
+    "in_force",
+    "active",
+    "lapsed",
+    "chargeback",
+    "charged_back",
+    "cancelled"
+   ],
+   "constraint": "deals_status_check"
+  },
+  "delivery_attempts.status": {
+   "members": [
+    "started",
+    "delivered",
+    "manual_action_required",
+    "retryable_failure",
+    "permanent_failure"
+   ],
+   "constraint": "delivery_attempts_status_check"
+  },
+  "dialer_weekly_payments.paid_status": {
+   "members": [
+    "pending",
+    "paid",
+    "bounced",
+    "waived",
+    "overdue"
+   ],
+   "constraint": "dialer_weekly_payments_paid_status_check"
+  },
+  "external_identities.status": {
+   "members": [
+    "pending",
+    "active",
+    "inactive",
+    "conflict",
+    "archived"
+   ],
+   "constraint": "external_identities_status_check"
+  },
+  "free_leads_weekly_delivery_log.channel": {
+   "members": [
+    "email",
+    "slack"
+   ],
+   "constraint": "free_leads_weekly_delivery_log_channel_check"
+  },
+  "free_leads_weekly_delivery_log.status": {
+   "members": [
+    "delivered",
+    "skipped",
+    "failed"
+   ],
+   "constraint": "free_leads_weekly_delivery_log_status_check"
+  },
+  "hub_course_progress.kind": {
+   "members": [
+    "lesson",
+    "quiz"
+   ],
+   "constraint": "hub_course_progress_kind_check"
+  },
+  "inbound_leads.stage": {
+   "members": [
+    "new",
+    "diagnosing",
+    "quoted",
+    "follow_up",
+    "won",
+    "lost"
+   ],
+   "constraint": "inbound_leads_stage_check"
+  },
+  "inbound_leads.urgency": {
+   "members": [
+    "hot",
+    "warm",
+    "normal"
+   ],
+   "constraint": "inbound_leads_urgency_check"
+  },
+  "inbox_messages.direction": {
+   "members": [
+    "inbound",
+    "outbound"
+   ],
+   "constraint": "inbox_messages_direction_check"
+  },
+  "instagram_dm_threads.bucket": {
+   "members": [
+    "fresh",
+    "recent",
+    "stale"
+   ],
+   "constraint": "instagram_dm_threads_bucket_check"
+  },
+  "instagram_dm_threads.last_sender": {
+   "members": [
+    "me",
+    "them"
+   ],
+   "constraint": "instagram_dm_threads_last_sender_check"
+  },
+  "integration_accounts.environment": {
+   "members": [
+    "sandbox",
+    "staging",
+    "production"
+   ],
+   "constraint": "integration_accounts_environment_check"
+  },
+  "integration_accounts.status": {
+   "members": [
+    "not_configured",
+    "healthy",
+    "degraded",
+    "failed",
+    "disabled"
+   ],
+   "constraint": "integration_accounts_status_check"
+  },
+  "integration_capabilities.support_state": {
+   "members": [
+    "supported",
+    "not_configured",
+    "unsupported"
+   ],
+   "constraint": "integration_capabilities_support_state_check"
+  },
+  "interview_events.call_track": {
+   "members": [
+    "licensed",
+    "leader",
+    "seminar",
+    "exam",
+    "other",
+    "onboarding"
+   ],
+   "constraint": "interview_events_call_track_check"
+  },
+  "interview_events.match_method": {
+   "members": [
+    "instagram",
+    "email",
+    "phone",
+    "manual",
+    "none",
+    "booking_backfill"
+   ],
+   "constraint": "interview_events_match_method_check"
+  },
+  "interview_events.outcome": {
+   "members": [
+    "completed",
+    "hired",
+    "contracted",
+    "passed",
+    "no_show",
+    "no_answer",
+    "rescheduled",
+    "bad_number",
+    "callback",
+    "not_interested",
+    "not_a_fit"
+   ],
+   "constraint": "interview_events_outcome_check"
+  },
+  "interview_events.source": {
+   "members": [
+    "calendly",
+    "manual",
+    "application",
+    "readymode"
+   ],
+   "constraint": "interview_events_source_check"
+  },
+  "invite_tokens.kind": {
+   "members": [
+    "hire",
+    "join"
+   ],
+   "constraint": "invite_tokens_kind_check"
+  },
+  "invite_tokens.target_role": {
+   "members": [
+    "agent",
+    "hired_unlicensed",
+    "hired_licensed",
+    "manager_candidate",
+    "referral_prospect",
+    "hired_manager",
+    "manager",
+    "agency_owner",
+    "staff"
+   ],
+   "constraint": "invite_tokens_target_role_check"
+  },
+  "job_runs.status": {
+   "members": [
+    "running",
+    "ok",
+    "error",
+    "skipped"
+   ],
+   "constraint": "job_runs_status_check"
+  },
+  "lead_purchases.lead_type_tier": {
+   "members": [
+    "A",
+    "B",
+    "C",
+    "Free"
+   ],
+   "constraint": "lead_purchases_tier_chk"
+  },
+  "license_milestone_outbox.status": {
+   "members": [
+    "pending",
+    "sent",
+    "failed",
+    "skipped"
+   ],
+   "constraint": "license_milestone_outbox_status_check"
+  },
+  "licensing_courses.line": {
+   "members": [
+    "life",
+    "health",
+    "life_health",
+    "property_casualty"
+   ],
+   "constraint": "licensing_courses_line_check"
+  },
+  "licensing_milestone_events.milestone_type": {
+   "members": [
+    "enrolled_course",
+    "course_halfway",
+    "completed_course",
+    "scheduled_exam",
+    "passed_exam",
+    "fingerprints_submitted",
+    "license_issued"
+   ],
+   "constraint": "licensing_milestone_events_milestone_type_check"
+  },
+  "licensing_milestone_events.source": {
+   "members": [
+    "application_progress",
+    "agent_update",
+    "admin",
+    "import"
+   ],
+   "constraint": "licensing_milestone_events_source_check"
+  },
+  "manager_touches.channel": {
+   "members": [
+    "discord_dm",
+    "sms",
+    "email"
+   ],
+   "constraint": "manager_touches_channel_check"
+  },
+  "manual_interview_entries.interview_type": {
+   "members": [
+    "licensed_prospect",
+    "licensed_call",
+    "leader_call",
+    "unlicensed_lead",
+    "final_expense_review",
+    "callback",
+    "general",
+    "new",
+    "reviewing",
+    "interview",
+    "contracting",
+    "approved",
+    "rejected",
+    "no_pickup",
+    "lead",
+    "registered",
+    "attended",
+    "attended_no_show",
+    "paid",
+    "onboarding",
+    "producing",
+    "lapsed",
+    "disqualified",
+    "quick_qualified"
+   ],
+   "constraint": "manual_interview_entries_type_chk"
+  },
+  "mentorship_leads.source": {
+   "members": [
+    "instagram_dm",
+    "x_dm",
+    "linkedin_dm",
+    "tiktok_dm",
+    "email",
+    "referral",
+    "website",
+    "seminar",
+    "other"
+   ],
+   "constraint": "mentorship_leads_source_check"
+  },
+  "mentorship_leads.status": {
+   "members": [
+    "lead",
+    "draft_sent",
+    "reply_received",
+    "call_booked",
+    "paid",
+    "refunded",
+    "lost",
+    "dormant"
+   ],
+   "constraint": "mentorship_leads_status_check"
+  },
+  "mentorship_leads.tier_interest": {
+   "members": [
+    "inner_circle",
+    "one_on_one",
+    "sales_academy",
+    "apex_fit",
+    "undecided"
+   ],
+   "constraint": "mentorship_leads_tier_interest_check"
+  },
+  "messaging_delivery_receipts.status": {
+   "members": [
+    "pending",
+    "claimed",
+    "delivered",
+    "retrying",
+    "dead_letter",
+    "suppressed"
+   ],
+   "constraint": "messaging_delivery_receipts_status_check"
+  },
+  "messaging_destinations.privacy_level": {
+   "members": [
+    "public",
+    "private",
+    "restricted",
+    "direct"
+   ],
+   "constraint": "messaging_destinations_privacy_level_check"
+  },
+  "messaging_destinations.scope_type": {
+   "members": [
+    "organization",
+    "agency",
+    "manager",
+    "personal"
+   ],
+   "constraint": "messaging_destinations_scope_type_check"
+  },
+  "messaging_identity_links.match_method": {
+   "members": [
+    "manual",
+    "oauth",
+    "email_claim",
+    "admin_verified",
+    "system"
+   ],
+   "constraint": "messaging_identity_links_match_method_check"
+  },
+  "messaging_identity_links.verification_status": {
+   "members": [
+    "pending",
+    "verified",
+    "conflict",
+    "revoked"
+   ],
+   "constraint": "messaging_identity_links_verification_status_check"
+  },
+  "messaging_route_rules.audience_scope": {
+   "members": [
+    "destination",
+    "organization",
+    "agency",
+    "manager",
+    "actor",
+    "subject"
+   ],
+   "constraint": "messaging_route_rules_audience_scope_check"
+  },
+  "messaging_route_rules.batch_policy": {
+   "members": [
+    "instant",
+    "hourly_digest",
+    "daily_digest",
+    "manual"
+   ],
+   "constraint": "messaging_route_rules_batch_policy_check"
+  },
+  "messaging_workspace_installations.environment": {
+   "members": [
+    "sandbox",
+    "staging",
+    "production"
+   ],
+   "constraint": "messaging_workspace_installations_environment_check"
+  },
+  "messaging_workspace_installations.status": {
+   "members": [
+    "not_configured",
+    "active",
+    "degraded",
+    "revoked",
+    "disabled"
+   ],
+   "constraint": "messaging_workspace_installations_status_check"
+  },
+  "next_step_events.event_type": {
+   "members": [
+    "advance",
+    "stall",
+    "unstall",
+    "reassign",
+    "nudge",
+    "message_sent",
+    "message_failed",
+    "manual_override",
+    "closed_lost",
+    "reopened",
+    "recompute",
+    "seed",
+    "auto_licensed_from_booking"
+   ],
+   "constraint": "next_step_events_event_type_check"
+  },
+  "next_step_events.source": {
+   "members": [
+    "trigger",
+    "manual",
+    "cron",
+    "webhook",
+    "self",
+    "seed",
+    "recompute",
+    "calendly"
+   ],
+   "constraint": "next_step_events_source_check"
+  },
+  "next_step_messages.channel": {
+   "members": [
+    "telegram",
+    "sms",
+    "email",
+    "in_app",
+    "discord",
+    "manager_task"
+   ],
+   "constraint": "next_step_messages_channel_check"
+  },
+  "next_step_progress.person_type": {
+   "members": [
+    "applicant",
+    "agent"
+   ],
+   "constraint": "next_step_progress_person_type_check"
+  },
+  "next_step_progress.status": {
+   "members": [
+    "active",
+    "completed",
+    "stalled",
+    "closed_lost"
+   ],
+   "constraint": "next_step_progress_status_check"
+  },
+  "next_step_stages.audience": {
+   "members": [
+    "applicant",
+    "agent",
+    "both"
+   ],
+   "constraint": "next_step_stages_audience_check"
+  },
+  "next_step_stages.owner_role": {
+   "members": [
+    "self",
+    "recruiter",
+    "hiring_manager",
+    "kj",
+    "sam",
+    "system"
+   ],
+   "constraint": "next_step_stages_owner_role_check"
+  },
+  "next_step_stages.stall_action": {
+   "members": [
+    "reassign",
+    "auto_close",
+    "flag",
+    "escalate",
+    "retry"
+   ],
+   "constraint": "next_step_stages_stall_action_check"
+  },
+  "onboarding_call_invites.kind": {
+   "members": [
+    "request",
+    "cancel"
+   ],
+   "constraint": "onboarding_call_invites_kind_check"
+  },
+  "onboarding_call_invites.status": {
+   "members": [
+    "queued",
+    "sent",
+    "failed",
+    "skipped"
+   ],
+   "constraint": "onboarding_call_invites_status_check"
+  },
+  "onboarding_modules.phase_key": {
+   "members": [
+    "foundation",
+    "systems"
+   ],
+   "constraint": "onboarding_modules_phase_key_check"
+  },
+  "onboarding_modules.transcript_kind": {
+   "members": [
+    "verbatim",
+    "edited-transcript",
+    "visual-notes",
+    "lesson-notes"
+   ],
+   "constraint": "onboarding_modules_transcript_kind_check"
+  },
+  "outbox_events.status": {
+   "members": [
+    "pending",
+    "processing",
+    "delivered",
+    "manual_action_required",
+    "failed",
+    "dead_letter"
+   ],
+   "constraint": "outbox_events_status_check"
+  },
+  "outreach_queue.channel": {
+   "members": [
+    "sms",
+    "email",
+    "manual_call",
+    "discord"
+   ],
+   "constraint": "outreach_queue_channel_check"
+  },
+  "outreach_queue.status": {
+   "members": [
+    "pending",
+    "sent",
+    "error",
+    "skipped",
+    "snoozed"
+   ],
+   "constraint": "outreach_queue_status_check"
+  },
+  "outreach_templates.channel": {
+   "members": [
+    "sms",
+    "email",
+    "manual_call",
+    "discord"
+   ],
+   "constraint": "outreach_templates_channel_check"
+  },
+  "people.active_state": {
+   "members": [
+    "provisional",
+    "active",
+    "inactive",
+    "archived"
+   ],
+   "constraint": "people_active_state_check"
+  },
+  "personal_records.record_type": {
+   "members": [
+    "daily_alp",
+    "weekly_alp",
+    "daily_policies",
+    "selling_streak"
+   ],
+   "constraint": "personal_records_record_type_check"
+  },
+  "phc_delivery_queue.channel": {
+   "members": [
+    "sheets",
+    "ntfy",
+    "email_internal",
+    "email_consumer",
+    "crm_webhook"
+   ],
+   "constraint": "phc_delivery_queue_channel_check"
+  },
+  "phc_delivery_queue.status": {
+   "members": [
+    "pending",
+    "ok",
+    "failed"
+   ],
+   "constraint": "phc_delivery_queue_status_check"
+  },
+  "phc_leads.status": {
+   "members": [
+    "new",
+    "spam",
+    "contacted",
+    "appointment",
+    "application",
+    "issued",
+    "dead"
+   ],
+   "constraint": "phc_leads_status_check"
+  },
+  "production_ledger.entry_type": {
+   "members": [
+    "approved_alp",
+    "issued_alp",
+    "in_force_alp",
+    "chargeback",
+    "reversal",
+    "correction"
+   ],
+   "constraint": "production_ledger_entry_type_check"
+  },
+  "production_ledger.status": {
+   "members": [
+    "qualifying",
+    "pending",
+    "reversed",
+    "voided"
+   ],
+   "constraint": "production_ledger_status_check"
+  },
+  "production_submission_notifications.status": {
+   "members": [
+    "pending",
+    "delivered",
+    "unknown_outcome",
+    "failed"
+   ],
+   "constraint": "production_submission_notifications_status_check"
+  },
+  "recruiter_bounties.status": {
+   "members": [
+    "pending",
+    "qualified",
+    "approved",
+    "paid",
+    "reversed"
+   ],
+   "constraint": "recruiter_bounties_status_check"
+  },
+  "sam_daily_tasks.bucket": {
+   "members": [
+    "MUST",
+    "SHOULD",
+    "COULD"
+   ],
+   "constraint": "sam_daily_tasks_bucket_check"
+  },
+  "sam_daily_tasks.status": {
+   "members": [
+    "pending",
+    "done",
+    "skipped"
+   ],
+   "constraint": "sam_daily_tasks_status_check"
+  },
+  "social_snapshots.platform": {
+   "members": [
+    "instagram",
+    "youtube",
+    "tiktok",
+    "snapchat",
+    "twitter",
+    "linkedin"
+   ],
+   "constraint": "social_snapshots_platform_check"
+  },
+  "social_snapshots.source": {
+   "members": [
+    "auto",
+    "manual",
+    "imported"
+   ],
+   "constraint": "social_snapshots_source_check"
+  },
+  "support_requests.category": {
+   "members": [
+    "website",
+    "contracting",
+    "readymode",
+    "recruiting",
+    "licensing_training",
+    "sales_deals",
+    "account_access",
+    "other"
+   ],
+   "constraint": "support_requests_category_check"
+  },
+  "support_requests.priority": {
+   "members": [
+    "low",
+    "normal",
+    "high",
+    "urgent"
+   ],
+   "constraint": "support_requests_priority_check"
+  },
+  "support_requests.status": {
+   "members": [
+    "open",
+    "in_progress",
+    "waiting_on_requester",
+    "resolved",
+    "closed"
+   ],
+   "constraint": "support_requests_status_check"
+  },
+  "system_health_events.severity": {
+   "members": [
+    "ok",
+    "warning",
+    "critical"
+   ],
+   "constraint": "system_health_events_severity_check"
+  },
+  "team_memberships.role": {
+   "members": [
+    "agent",
+    "manager",
+    "recruiter",
+    "contracting_assistant",
+    "admin",
+    "owner",
+    "va",
+    "va_manager"
+   ],
+   "constraint": "team_memberships_role_check"
+  },
+  "team_memberships.status": {
+   "members": [
+    "pending",
+    "active",
+    "inactive",
+    "offboarded"
+   ],
+   "constraint": "team_memberships_status_check"
+  },
+  "telegram_faq.category": {
+   "members": [
+    "licensing",
+    "application",
+    "seminar",
+    "money",
+    "contract",
+    "training",
+    "tech",
+    "general"
+   ],
+   "constraint": "telegram_faq_category_check"
+  },
+  "telegram_groups.type": {
+   "members": [
+    "pipeline",
+    "ai_dm",
+    "manager_alerts",
+    "wins",
+    "onboarding"
+   ],
+   "constraint": "telegram_groups_type_check"
+  },
+  "telegram_messages.direction": {
+   "members": [
+    "inbound",
+    "outbound"
+   ],
+   "constraint": "telegram_messages_direction_check"
+  },
+  "telegram_scheduled_messages.status": {
+   "members": [
+    "pending",
+    "sent",
+    "skipped",
+    "failed",
+    "cancelled"
+   ],
+   "constraint": "telegram_scheduled_messages_status_check"
+  },
+  "today_tasks.priority": {
+   "members": [
+    "low",
+    "med",
+    "high"
+   ],
+   "constraint": "today_tasks_priority_check"
+  },
+  "transfer_requests.status": {
+   "members": [
+    "pending",
+    "approved",
+    "denied",
+    "withdrawn"
+   ],
+   "constraint": "transfer_requests_status_check"
+  },
+  "xcel_events.kind": {
+   "members": [
+    "enrollment",
+    "completion"
+   ],
+   "constraint": "xcel_events_kind_check"
+  }
  }
 }

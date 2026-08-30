@@ -292,7 +292,11 @@ async function handleSingle(
     await supabase
       .from("outreach_queue")
       .update({
-        status: "failed",
+        // outreach_queue.status is CHECK-constrained to pending/sent/error/skipped/
+        // snoozed. "failed" was never a member, so this UPDATE raised 23514 and rolled
+        // back — last_attempted_at and last_error included — leaving the row at
+        // 'pending' to be retried forever with no record that it had ever failed.
+        status: "error",
         last_attempted_at: nowIso,
         last_error: r.error?.slice(0, 500) ?? "unknown",
       })
@@ -315,7 +319,10 @@ async function handleBatch(
     .select("id, application_id, to_email, do_not_contact, sent_at, idempotency_key")
     .eq("source_run", SOURCE_RUN)
     .is("sent_at", null)
-    .neq("status", "failed_permanent")
+    // (Removed: .neq("status", "failed_permanent") — outreach_queue.status has no
+    // such member, so the filter excluded nothing and always had. Dropping it keeps
+    // today's behaviour exactly; pointing it at 'error' instead would silently turn
+    // every transient send failure into a permanent one.)
     .order("created_at", { ascending: true })
     .limit(batchSize);
 
@@ -359,7 +366,7 @@ async function handleBatch(
       out.failed += 1;
       await supabase
         .from("outreach_queue")
-        .update({ status: "failed", last_error: "missing email" })
+        .update({ status: "error", last_error: "missing email" })
         .eq("id", row.id);
       out.details!.push({ queue_id: row.id, status: "failed", reason: "missing email" });
       continue;
@@ -384,7 +391,7 @@ async function handleBatch(
       await supabase
         .from("outreach_queue")
         .update({
-          status: "failed",
+          status: "error",
           last_attempted_at: nowIso,
           last_error: r.error?.slice(0, 500) ?? "unknown",
         })

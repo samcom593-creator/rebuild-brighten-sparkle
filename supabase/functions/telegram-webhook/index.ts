@@ -780,23 +780,33 @@ async function handleMyChatMember(update: any) {
     return;
   }
   if (["group", "supergroup", "channel"].includes(ev.chat.type)) {
-    await sb.from("telegram_groups").upsert({
+    // telegram_groups.type is CHECK-constrained to pipeline/ai_dm/manager_alerts/
+    // wins/onboarding and the column is NOT NULL with no default, so a provisional
+    // row has to name one of them. "lobby" is a survivor of the pre-2026-06-03
+    // seven-type model; it has never been accepted, so this upsert raised 23514 on
+    // every bot-add and the error was discarded — no provisional row has ever been
+    // written, and /admin/telegram-bot could not show a group the bot had joined but
+    // nobody had registered. The meaningful field here is is_active:false; every
+    // consumer gates on it, and /register overwrites type on the same chat_id.
+    const { error: provisionErr } = await sb.from("telegram_groups").upsert({
       chat_id: ev.chat.id,
       title: ev.chat.title ?? "(unnamed)",
-      type: "lobby",
+      type: "pipeline",
       is_active: false,
     }, { onConflict: "chat_id", ignoreDuplicates: true });
+    if (provisionErr) console.error("telegram_groups provisional upsert failed", provisionErr);
     await tgSend({
       chat_id: ev.chat.id,
       text:
+        // Must match the `valid` list in /register. This message still advertised the
+        // pre-2026-06-03 seven-type model: four of the seven (lobby, licensing,
+        // seminar, training) are rejected by /register AND by the column's CHECK, and
+        // "pipeline" — the one /register calls THE manager-only group — was missing.
         "Bot online here. To finish setup, send:\n" +
-        "  /register onboarding   (recruit/hire pipeline)\n" +
-        "  /register lobby        (top-of-funnel)\n" +
-        "  /register licensing    (pre-license Q&A)\n" +
-        "  /register seminar      (one-way blasts)\n" +
-        "  /register training     (training library)\n" +
-        "  /register wins         (proof board)\n" +
-        "  /register manager_alerts (escalations)\n\n" +
+        "  /register pipeline       (THE manager-only group — applicants are never in it)\n" +
+        "  /register onboarding     (alias for pipeline, backward compat)\n" +
+        "  /register manager_alerts (escalations)\n" +
+        "  /register wins           (proof board)\n\n" +
         "One command, one tap, you're live.",
     });
   }

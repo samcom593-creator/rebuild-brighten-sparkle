@@ -23,6 +23,7 @@ import {
 import { format, formatDistanceToNow, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { useConfirm } from "@/hooks/useConfirm";
+import { TELEGRAM_GROUP_TYPES } from "@/lib/telegramGroups";
 
 type Dashboard = {
   total_users: number; dau: number; wau: number;
@@ -97,13 +98,10 @@ const GROUP_TYPE_LABEL: Record<string, string> = {
   ask_apex_ai: "Ask Apex AI (channel)",
 };
 
-const PRE_AGENT_HQ_TYPES = [
-  "onboarding",
-  "licensing_reference",
-  "daily_movement",
-  "seminar_reminders",
-  "ask_apex_ai",
-] as const;
+// Was a second, independent copy of the vocabulary — four of its five words are
+// not members of telegram_groups_type_check, so this panel could only ever surface
+// rows of type 'onboarding' and was blind to pipeline / ai_dm / manager_alerts / wins.
+const PRE_AGENT_HQ_TYPES = TELEGRAM_GROUP_TYPES;
 
 type PreAgentHqFaq = {
   id: number;

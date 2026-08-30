@@ -36,6 +36,11 @@ const ENUMS = {
   ],
   agent_status: ["active", "inactive", "pending", "terminated"],
   license_status: ["licensed", "unlicensed", "pending"],
+  license_progress: [
+    "unlicensed", "course_purchased", "finished_course", "test_scheduled",
+    "passed_test", "fingerprints_done", "waiting_on_license", "licensed",
+    "waiting_fingerprints", "failed_test", "exam_passed", "in_field_training",
+  ],
 };
 
 // (table, column) -> enum name. Only unambiguous, high-traffic pairs are policed; a wrong
@@ -43,6 +48,7 @@ const ENUMS = {
 const COLUMN_ENUM = {
   "applications.status": "application_status",
   "applications.license_status": "license_status",
+  "applications.license_progress": "license_progress",
   "agents.status": "agent_status",
   "agents.license_status": "license_status",
 };

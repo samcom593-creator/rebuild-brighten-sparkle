@@ -660,6 +660,14 @@ if match '^(src/.*\.(tsx|jsx|ts)$|scripts/check-enum-filter-literals\.mjs$)'; th
   npm run --silent check:enum-filter-literals || exit 1
 fi
 
+# ---------- check-kanban-stage-vocabulary (MP-342) ----------
+# Board stage words vs the license_progress enum, both directions. The write is a
+# variable, so the literal guard above structurally cannot see this class.
+if match '^(src/components/pipeline/KanbanBoard\.tsx$|src/pages/(AgentPipeline|DashboardApplicants)\.tsx$|scripts/check-(kanban-stage-vocabulary|enum-filter-literals)\.mjs$)'; then
+  echo "[pre-commit] kanban stage vocabulary affected — running check:kanban-stage-vocabulary…"
+  npm run --silent check:kanban-stage-vocabulary || exit 1
+fi
+
 # ---------- check-discarded-email-send (2026-07-30) ----------
 # Resend SDK v2 does not throw on API errors; it resolves { data, error }. Discarding that
 # tuple reports a rejected send as a successful one. 100 pre-existing sites are baselined.

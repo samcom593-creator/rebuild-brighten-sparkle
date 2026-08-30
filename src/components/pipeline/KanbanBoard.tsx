@@ -66,21 +66,21 @@ export const KANBAN_COLUMNS: KanbanColumn[] = [
   {
     id: "test_phase",
     label: "Test Phase",
-    stages: ["test_scheduled", "passed_test"],
+    stages: ["test_scheduled", "passed_test", "exam_passed", "failed_test"],
     color: "border-info/30 bg-info/5",
     emoji: "📝",
   },
   {
     id: "final_steps",
     label: "Final Steps",
-    stages: ["fingerprints_done", "waiting_on_license"],
+    stages: ["fingerprints_done", "waiting_fingerprints", "waiting_on_license"],
     color: "border-violet-500/30 bg-violet-500/5",
     emoji: "🔑",
   },
   {
     id: "licensed",
     label: "Licensed ✓",
-    stages: ["licensed"],
+    stages: ["licensed", "in_field_training"],
     color: "border-emerald-500/30 bg-emerald-500/5",
     emoji: "🏆",
   },
@@ -98,26 +98,40 @@ function isDormant(app: PipelineCardData): boolean {
   return differenceInHours(new Date(), new Date(last)) >= FOLLOWUP_TIMING.dormantDays * 24;
 }
 
-export function getColumnForStage(stage: string | null | undefined): string {
-  if (!stage) return "applicants";
-  if (stage === "licensed") return "licensed";
-  for (const col of KANBAN_COLUMNS) {
-    if (col.stages.includes(stage)) return col.id;
-  }
-  return "needs_outreach";
+// "new_applicant" and "dormant" are board vocabulary, NOT license_progress
+// members: the first is how an uncontacted lead is displayed, the second is
+// derived from contact recency. Writing either raised 22P02 and the whole
+// stage change was rolled back (MP-342).
+const UI_ONLY_STAGES: readonly KanbanStage[] = ["new_applicant", "dormant"];
+
+/**
+ * Board stage -> a value the license_progress enum can actually hold.
+ * Every writer MUST go through this. Two pages previously disagreed: one
+ * mapped inline, the other wrote the raw stage and 22P02'd on 2 of 7 columns.
+ */
+export function toDbStage(stage: KanbanStage): string {
+  return UI_ONLY_STAGES.includes(stage) ? "unlicensed" : stage;
 }
 
+/**
+ * The ONE placement rule. Any surface counting these columns must call this —
+ * a second derivation is how the Pipeline Funnel came to disagree with the
+ * board underneath it on 6 of 7 columns (MP-342).
+ *
+ * A real licensing stage owns the card. Dormancy is a freshness attribute, not
+ * a stage, so it must never evict someone from the column describing where they
+ * actually are — it was hiding 82 in-progress applicants (69 course-stage)
+ * behind a 14-day contact rule.
+ */
 export function getColumnForApp(app: PipelineCardData): string {
-  if (app.license_progress === "licensed") return "licensed";
-  if (isDormant(app)) return "dormant";
   const stage = app.license_progress;
-  if (!stage || stage === "unlicensed") {
-    if (!app.contacted_at && !app.last_contacted_at) return "applicants";
-    return "needs_outreach";
+  if (stage && stage !== "unlicensed") {
+    for (const col of KANBAN_COLUMNS) {
+      if (col.stages.includes(stage)) return col.id;
+    }
   }
-  for (const col of KANBAN_COLUMNS) {
-    if (col.stages.includes(stage)) return col.id;
-  }
+  if (isDormant(app)) return "dormant";
+  if (!app.contacted_at && !app.last_contacted_at) return "applicants";
   return "needs_outreach";
 }
 

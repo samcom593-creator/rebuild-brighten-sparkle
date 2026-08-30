@@ -21,7 +21,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
-  KanbanBoard, KanbanApplication, KanbanStage, KANBAN_COLUMNS, getColumnForStage,
+  KanbanBoard, KanbanApplication, KanbanStage, KANBAN_COLUMNS, getColumnForApp, toDbStage,
 } from "@/components/pipeline/KanbanBoard";
 import { InterviewScheduler } from "@/components/dashboard/InterviewScheduler";
 import { ApplicationDetailSheet } from "@/components/dashboard/ApplicationDetailSheet";
@@ -275,7 +275,7 @@ export default function AgentPipeline() {
     const app = applications.find((a) => a.id === applicationId);
     const prevStage = app?.license_progress ?? "new_applicant";
     try {
-      const updateData: Record<string, unknown> = { license_progress: newStage };
+      const updateData: Record<string, unknown> = { license_progress: toDbStage(newStage) };
       if (newStage === "licensed") updateData.license_status = "licensed";
 
       const { error } = await supabase.from("applications").update(updateData as never).eq("id", applicationId);
@@ -284,7 +284,7 @@ export default function AgentPipeline() {
       setApplications((prev) =>
         prev.map((a) =>
           a.id === applicationId
-            ? { ...a, license_progress: newStage, license_status: newStage === "licensed" ? "licensed" : a.license_status }
+            ? { ...a, license_progress: toDbStage(newStage), license_status: newStage === "licensed" ? "licensed" : a.license_status }
             : a
         )
       );
@@ -413,7 +413,7 @@ export default function AgentPipeline() {
   // ─── Group for accordion ───────────────────────────────────────────────────
   const sectionApps = useMemo(() =>
     KANBAN_COLUMNS.reduce<Record<string, Application[]>>((acc, col) => {
-      acc[col.id] = filteredApps.filter((app) => getColumnForStage(app.license_progress) === col.id);
+      acc[col.id] = filteredApps.filter((app) => getColumnForApp(app) === col.id);
       return acc;
     }, {}),
     [filteredApps]
@@ -428,7 +428,7 @@ export default function AgentPipeline() {
 
   const funnelStages = useMemo(() => KANBAN_COLUMNS.map((col) => ({
     label: col.label,
-    count: applications.filter((a) => getColumnForStage(a.license_progress) === col.id).length,
+    count: applications.filter((a) => getColumnForApp(a) === col.id).length,
     color: col.id === "licensed"
       ? "bg-emerald-500" : col.id === "dormant"
       ? "bg-slate-500"   : col.id === "needs_outreach"

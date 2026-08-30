@@ -73,7 +73,7 @@ import { ReassignManagerButton } from "@/components/agents/ReassignManagerButton
 import { InlineEditApplicantField } from "@/components/applicants/InlineEditApplicantField";
 import { ResendLicensingButton } from "@/components/callcenter/ResendLicensingButton";
 import { ApplicationDispositionCluster } from "@/components/applicants/ApplicationDispositionCluster";
-import { KanbanBoard, type KanbanStage } from "@/components/pipeline/KanbanBoard";
+import { KanbanBoard, toDbStage, type KanbanStage } from "@/components/pipeline/KanbanBoard";
 import type { PipelineCardData } from "@/components/pipeline/PipelineCard";
 import { logLeadActivity } from "@/lib/logLeadActivity";
 import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
@@ -782,11 +782,9 @@ export default function DashboardApplicants() {
   };
 
   const handleKanbanStageChange = async (applicationId: string, newStage: KanbanStage) => {
-    const dbStage = newStage === "new_applicant" || newStage === "dormant" ? "unlicensed" : newStage;
-
     const { error } = await supabase
       .from("applications")
-      .update({ license_progress: dbStage as any })
+      .update({ license_progress: toDbStage(newStage) as never })
       .eq("id", applicationId);
 
     if (error) {

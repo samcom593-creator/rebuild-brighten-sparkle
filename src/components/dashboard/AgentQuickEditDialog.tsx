@@ -67,6 +67,7 @@ interface LinkedProfile {
 
 interface AgentData {
   user_id: string | null;
+  ref_slug: string | null;
   profile_id: string | null;
   display_name: string | null;
   invited_by_manager_id: string | null;
@@ -182,6 +183,7 @@ export function AgentQuickEditDialog({
           comp_percentage,
           comp_approval_status,
           license_states,
+          ref_slug,
           eo_certificate_url,
           eo_policy_number,
           eo_expires_at,
@@ -215,6 +217,7 @@ export function AgentQuickEditDialog({
           comp_percentage: Number(agent.comp_percentage ?? 60),
           comp_approval_status: agent.comp_approval_status ?? "approved",
           license_states: agent.license_states ?? null,
+          ref_slug: (agent as { ref_slug?: string | null }).ref_slug ?? null,
           eo_certificate_url: agent.eo_certificate_url ?? null,
           eo_policy_number: agent.eo_policy_number ?? null,
           eo_expires_at: agent.eo_expires_at ?? null,
@@ -842,6 +845,28 @@ export function AgentQuickEditDialog({
               <p className="text-[11px] text-muted-foreground">
                 Switches this person&rsquo;s role immediately and syncs their login role. Pure Recruiter = recruits only, no production book or sales team.
               </p>
+            </div>
+          )}
+
+          {agentData?.ref_slug && (
+            <div className="flex items-center justify-between gap-2 rounded-lg border border-border/60 p-3">
+              <div className="min-w-0">
+                <Label>Recruiting link</Label>
+                <p className="text-xs text-muted-foreground truncate">apex-financial.org/r/{agentData.ref_slug}</p>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={() => {
+                  navigator.clipboard
+                    .writeText(`https://apex-financial.org/r/${agentData.ref_slug}`)
+                    .then(() => toast({ title: "Link copied", description: "Applications through it credit and place under this person." }))
+                    .catch(() => toast({ title: "Could not copy", variant: "destructive" }));
+                }}
+              >
+                Copy
+              </Button>
             </div>
           )}
 

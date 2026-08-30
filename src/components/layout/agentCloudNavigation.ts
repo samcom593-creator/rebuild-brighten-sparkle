@@ -27,6 +27,7 @@ import {
   Users,
   WalletCards,
   Wrench,
+  Link2,
 } from "lucide-react";
 
 import type { AccountMode } from "@/hooks/useAuth";
@@ -92,6 +93,7 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
       { label: "Follow-ups", href: "/dashboard/recruiting/follow-ups", icon: Target, modes: ["recruiter", "va", "va_manager", "manager", "agency_owner"] },
       { label: trainingLabel, href: "/dashboard/recruiting/training", icon: BookOpenCheck },
       { label: "Call Center", href: "/dashboard/call-center", icon: Target, modes: PRODUCERS },
+      { label: "Recruiting Links", href: "/dashboard/recruiting-links", icon: Link2, adminOnly: true },
       { label: "Awards", href: "/dashboard/awards", icon: Trophy, modes: PRODUCERS },
     ],
   },

@@ -107,6 +107,7 @@ const OffersPage = lazy(() => import("./pages/OffersPage"));
 const Storefront = lazy(() => import("./pages/Storefront"));
 const XcelPipeline = lazy(() => import("./pages/XcelPipeline"));
 const DashboardCRM = lazy(() => import("./pages/DashboardCRM"));
+const RecruitingLinks = lazy(() => import("./pages/RecruitingLinks"));
 const DashboardAgedLeads = lazy(() => import("./pages/DashboardAgedLeads"));
 const DashboardCommandCenter = lazy(() => import("./pages/DashboardCommandCenter"));
 const ManagerNextStepBoard = lazy(() => import("./pages/ManagerNextStepBoard"));
@@ -477,6 +478,7 @@ const App = () => (
                         the roster to self + recursive downline; staff keep their
                         agency-wide operating view. */}
                     <Route path="/dashboard/team" element={<ProtectedRoute><DashboardCRM /></ProtectedRoute>} />
+                  <Route path="/dashboard/recruiting-links" element={<ProtectedRoute requireAdmin><RecruitingLinks /></ProtectedRoute>} />
                     <Route path="/dashboard/contracting" element={<ProtectedRoute><CarrierContracts /></ProtectedRoute>} />
                     <Route path="/dashboard/contracting/contracts" element={<ProtectedRoute><CarrierContracts /></ProtectedRoute>} />
                     <Route path="/dashboard/contracting/carriers" element={<ProtectedRoute><CarrierContracts /></ProtectedRoute>} />

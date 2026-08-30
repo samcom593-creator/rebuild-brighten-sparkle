@@ -109049,6 +109049,17 @@ export type Database = {
           agent_id: string
         }[]
       }
+      admin_recruiting_links: {
+        Args: never
+        Returns: {
+          agent_id: string
+          display_name: string | null
+          account_mode: string
+          is_manager: boolean
+          ref_slug: string | null
+          avatar_url: string | null
+        }[]
+      }
       my_recruiting_link: { Args: never; Returns: Json }
       my_referral_status: { Args: never; Returns: Json }
       my_touched_subject_ids: {

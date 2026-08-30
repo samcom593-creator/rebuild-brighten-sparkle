@@ -19,58 +19,73 @@
 // What this checks: for every `supabase.from("<table>")` chain, any .eq / .neq / .in / .not
 // filter on a column KNOWN to be a Postgres enum must use only real members of that enum.
 //
-// The enum members below are copied from the live database (pg_enum, 2026-07-27). If a
-// migration adds a label, update this map in the same commit — that is the point: the
-// allowed set becomes a reviewed, visible artifact instead of a string nobody validates.
+// Where the allowed member lists come from: scripts/data/enum-catalog.json,
+// generated from the live catalog by scripts/refresh-enum-catalog.sh.
+//
+// 2026-08-30 — this map used to be five (table, column) pairs hand-copied out of
+// pg_enum on 2026-07-27, with a comment saying it stayed small because a wrong
+// entry would be worse than no entry. Measured, both halves of that tradeoff had
+// already come due:
+//
+//   COVERAGE. src/ writes or filters enum literals against TEN enum columns.
+//   Four were registered. Six were not: user_roles.role (10 files — the RBAC
+//   read path), agents.onboarding_stage (6), agents.deactivation_reason (2),
+//   agent_attendance.attendance_type (2), v_agents_full.status (2, and no view
+//   column was registered at all), agent_attendance.status (1). All ten are
+//   currently valid, so this is prevention, not recovered money — but the two
+//   bugs this guard has already caught (MP-341 CallCenter, MP-342 kanban) both
+//   landed on registered columns, which is the only reason it caught them.
+//
+//   CORRECTNESS. The map was keyed by BARE type name, and this database has two
+//   enums named app_role: public.app_role (admin, manager, agent, va_manager,
+//   va, recruiter) and recruit.app_role (agent, manager, admin, super_admin).
+//   Registering "app_role" by hand is a coin flip. Proven, not theorised: the
+//   audit that produced this commit resolved column types by joining
+//   information_schema.udt_name to pg_type.typname, matched both, and reported
+//   UnlicensedAll.tsx:213's entirely valid `role = "va"` as a violation. A guard
+//   that can be aimed at the wrong enum by an ordinary-looking edit is a guard
+//   whose green means nothing.
+//
+// Generating the map fixes both at once: coverage is total by construction (all
+// 127 enum-typed columns, tables and views), and every type is schema-qualified,
+// so the app_role ambiguity is recorded in the catalog rather than resolved by
+// whoever last copied a list. apex-doctor Check #29 re-queries pg_enum weekly
+// and goes red when the snapshot drifts.
 
 import fs from "node:fs";
 import path from "node:path";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 
-const ENUMS = {
-  application_status: [
-    "new", "reviewing", "interview", "contracting", "approved", "rejected",
-    "no_pickup", "lead", "registered", "attended", "attended_no_show", "paid",
-    "onboarding", "producing", "lapsed", "disqualified", "quick_qualified",
-  ],
-  agent_status: ["active", "inactive", "pending", "terminated"],
-  license_status: ["licensed", "unlicensed", "pending"],
-  license_progress: [
-    "unlicensed", "course_purchased", "finished_course", "test_scheduled",
-    "passed_test", "fingerprints_done", "waiting_on_license", "licensed",
-    "waiting_fingerprints", "failed_test", "exam_passed", "in_field_training",
-  ],
-};
+const CATALOG_PATH = path.join(repoRoot, "scripts", "data", "enum-catalog.json");
+// A missing or shape-broken catalog must stop the run. Falling back to an empty
+// map would check zero literals and print the same tick as a clean pass — the
+// blank-means-green failure this repo has shipped a cure for four times.
+let CATALOG;
+try {
+  CATALOG = JSON.parse(fs.readFileSync(CATALOG_PATH, "utf8"));
+} catch (err) {
+  console.error(`\n✗ check:enum-filter-literals — cannot read ${path.relative(repoRoot, CATALOG_PATH)}: ${err.message}`);
+  console.error("Regenerate it: bash scripts/refresh-enum-catalog.sh");
+  process.exit(1);
+}
+const ENUMS = CATALOG.enums;
+const COLUMN_ENUM = CATALOG.column_enum;
+if (!ENUMS || !COLUMN_ENUM || Object.keys(COLUMN_ENUM).length === 0) {
+  console.error("\n✗ check:enum-filter-literals — enum catalog has no columns; it would check nothing and pass.");
+  console.error("Regenerate it: bash scripts/refresh-enum-catalog.sh");
+  process.exit(1);
+}
+// Every column must resolve to a member list. An unresolvable entry would make
+// `allowed` undefined and throw mid-scan on whichever file happened to hit it.
+for (const [col, enumName] of Object.entries(COLUMN_ENUM)) {
+  if (!Array.isArray(ENUMS[enumName]) || ENUMS[enumName].length === 0) {
+    console.error(`\n✗ check:enum-filter-literals — catalog maps ${col} to ${enumName}, which has no members.`);
+    console.error("Regenerate it: bash scripts/refresh-enum-catalog.sh");
+    process.exit(1);
+  }
+}
 
-// (table, column) -> enum name. Only unambiguous, high-traffic pairs are policed; a wrong
-// entry here would be worse than no entry, so the map stays small and verified.
-const COLUMN_ENUM = {
-  "applications.status": "application_status",
-  "applications.license_status": "license_status",
-  "applications.license_progress": "license_progress",
-  "agents.status": "agent_status",
-  "agents.license_status": "license_status",
-};
-
-// 2026-08-11 — two attribution bugs, both found when this guard reported
-// LicensedInbox.tsx:114 `applications.status = "active"`. That filter is not on
-// applications at all: it is on the NEXT chain in the same Promise.all, against
-// apex_toolkit_agents, whose status column is CHECK (status IN
-// ('active','hired','passed')) — i.e. correct code. "Fixing" it would have broken
-// a working query to satisfy a broken guard.
-//
-//   1. The receiver was hardcoded to `supabase`, so any chain built on a typed
-//      wrapper (`toolkitInboxClient.from(...)`) was never scanned — a silent gap,
-//      not a false pass, which is the worse of the two failure modes.
-//   2. Neither this nor NEXT_FROM_RX tolerated a generic parameter, so
-//      `.from<Omit<LicensedRow, "origin">>("apex_toolkit_agents")` did not read as
-//      a chain boundary. The preceding `applications` chain therefore never
-//      terminated and swallowed the following chain's filters.
-//
-// Receiver is now any identifier. That cannot over-match: the table argument must
-// still be a quoted bare identifier AND must own a registered enum column, so
-// Array.from(...) and friends are filtered out before any literal is checked.
 const GENERIC = String.raw`(?:<[^(]*>)?`;
 const FROM_RX = new RegExp(
   String.raw`[A-Za-z_$][\w$]*\s*\.\s*from\s*${GENERIC}\s*\(\s*["'\`]([a-z_]+)["'\`]`,
@@ -109,7 +124,7 @@ const PAYLOAD_KV_RX = /([a-z_]+)\s*:\s*["'`]([^"'`]*)["'`]/g;
 // half of the chain scan can reach them — but every member is written verbatim
 // to the column. Registering the const makes the list a checked artifact.
 const CONST_ENUM = {
-  APPLICATION_STATUS_OPTIONS: "application_status",
+  APPLICATION_STATUS_OPTIONS: "public.application_status",
 };
 
 

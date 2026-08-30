@@ -18,9 +18,14 @@
  * variable. So this guard grades the VOCABULARY and the write path, not the
  * instance.
  *
- * The enum snapshot is read out of check-enum-filter-literals.mjs rather than
+ * The enum snapshot is read out of scripts/data/enum-catalog.json rather than
  * copied, because two snapshots of one enum is the drift this guard exists to
- * stop.
+ * stop. Until 2026-08-30 it was scraped out of check-enum-filter-literals.mjs's
+ * hand-written ENUMS map; that map is now generated from pg_enum by
+ * scripts/refresh-enum-catalog.sh, so both guards read the same live-derived
+ * artifact and neither owns a copy. The type is addressed by its QUALIFIED name
+ * (public.license_progress) — this database has two enums sharing a bare name,
+ * so a bare-name lookup is a coin flip.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -30,14 +35,21 @@ const R = (p) => fs.readFileSync(path.join(repoRoot, p), "utf8");
 const fail = [];
 
 // ── enum snapshot (single-sourced) ───────────────────────────────────────────
-const enumSrc = R("scripts/check-enum-filter-literals.mjs");
-const enumBlock = enumSrc.match(/license_progress:\s*\[([\s\S]*?)\]/);
-if (!enumBlock) {
-  console.error("✗ could not read license_progress from check-enum-filter-literals.mjs ENUMS.");
-  console.error("  That file is the single source for this enum — do not add a second copy here.");
+let MEMBERS;
+try {
+  const catalog = JSON.parse(R("scripts/data/enum-catalog.json"));
+  const members = catalog.enums?.["public.license_progress"];
+  if (!Array.isArray(members) || members.length === 0) throw new Error("public.license_progress has no members");
+  MEMBERS = new Set(members);
+} catch (err) {
+  // An unreadable snapshot must stop the run. Defaulting to an empty set would
+  // make every board word "not a member" AND every member "in no column" — a
+  // wall of noise — or, worse under a different default, check nothing and pass.
+  console.error(`✗ could not read public.license_progress from scripts/data/enum-catalog.json: ${err.message}`);
+  console.error("  That catalog is the single source for this enum — do not add a second copy here.");
+  console.error("  Regenerate it: bash scripts/refresh-enum-catalog.sh");
   process.exit(1);
 }
-const MEMBERS = new Set([...enumBlock[1].matchAll(/"([a-z_]+)"/g)].map((m) => m[1]));
 
 // ── board vocabulary ─────────────────────────────────────────────────────────
 const board = R("src/components/pipeline/KanbanBoard.tsx");

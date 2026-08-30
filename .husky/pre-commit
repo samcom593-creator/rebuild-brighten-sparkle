@@ -655,9 +655,21 @@ fi
 # A PostgREST filter literal that is not a member of the column's enum 400s the WHOLE
 # request (22P02). LicensedInbox swallowed that error and rendered a cleared-queue empty
 # state for three days while 73 licensed applicants were invisible.
-if match '^(src/.*\.(tsx|jsx|ts)$|scripts/check-enum-filter-literals\.mjs$)'; then
+# MP-345: the trigger used to match src/ only, while MP-344 had extended the
+# SCANNER to supabase/functions the same day — so an edge-function-only commit
+# skipped the guard whose motivating bug lived in an edge function.
+if match '^(src/.*\.(tsx|jsx|ts)$|supabase/functions/.*\.ts$|scripts/check-enum-filter-literals\.mjs$|scripts/data/enum-catalog\.json$)'; then
   echo "[pre-commit] Supabase-filter-affecting file staged — running check:enum-filter-literals…"
   npm run --silent check:enum-filter-literals || exit 1
+fi
+
+# ---------- check-relation-exists (MP-345) ----------
+# A `.from("x")` naming a relation that does not exist is a runtime 404 PostgREST
+# resolves, never a build error. MP-330 fixed four such sites in src/ by hand; a
+# fifth survived in supabase/functions/, silently returning {success:true}.
+if match '^(src/.*\.(tsx|jsx|ts)$|supabase/functions/.*\.ts$|scripts/check-relation-exists\.mjs$|scripts/lib/scan-utils\.mjs$|scripts/data/relation-catalog\.json$)'; then
+  echo "[pre-commit] relation-affecting file staged — running check:relation-exists…"
+  npm run --silent check:relation-exists || exit 1
 fi
 
 # ---------- check-kanban-stage-vocabulary (MP-342) ----------

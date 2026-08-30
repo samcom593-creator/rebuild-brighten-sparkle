@@ -295,12 +295,16 @@ const handler = async (req: Request): Promise<Response> => {
       .update({ onboarding_stage: "in_field_training" })
       .eq("id", agentId);
 
-    // Log the progression event
-    await supabase.from("agent_onboarding").insert({
-      agent_id: agentId,
-      stage: "in_field_training",
-      notes: "Completed online coursework, ready for field training",
-    });
+    // NOTE (MP-345): the progression event is deliberately NOT logged here.
+    // This previously inserted into `agent_onboarding`, a relation that exists in
+    // NO schema of this database. MP-330 removed the four `src/` writers of that
+    // same dead table on 2026-08-27 but never scanned `supabase/functions/`, so
+    // this fifth site survived one directory over. Unlike the BulkStageActions
+    // site, this insert destructured nothing, and supabase-js RESOLVES with
+    // {error} rather than throwing -- so the failure was silent and the handler
+    // still returned {success:true} with a 200. The stage update above lands;
+    // only the audit row was lost, and none has been written since the drop.
+    // Restoring it means creating a real table and deciding who reads it.
 
     console.log(`Course completion processed for ${finalAgentName}`);
 

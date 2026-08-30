@@ -141,10 +141,18 @@ for (const file of walk(join(repoRoot, "src"))) {
     const receiver = m[1] ?? "";
     if (NOT_SUPABASE.has(receiver)) continue;
     const arg = m[2];
-    const lit = arg.match(/^"([a-z_][a-z0-9_]*)"$|^'([a-z_][a-z0-9_]*)'$/);
+    // MP-345: the trailing cast is REQUIRED here. `.from("error_logs" as any)` is
+    // the dominant shape in this repo — 288 sites across 93 files — and the old
+    // anchored literal did not match it, while the unprovable branch below only
+    // caught args starting with a backtick or identifier. A cast literal matched
+    // NEITHER, so it was dropped silently: not graded, not counted, not reported.
+    // `as any` is exactly the cast MP-329 recorded as "why nothing objected".
+    const lit = arg.match(/^"([a-z_][a-z0-9_]*)"(?:\s+as\s+[\w$.<>|\s]+)?$|^'([a-z_][a-z0-9_]*)'(?:\s+as\s+[\w$.<>|\s]+)?$/);
     const line = src.slice(0, m.index).split("\n").length;
     if (!lit) {
-      if (/^[`$]/.test(arg) || /^[A-Za-z_$]/.test(arg)) unprovable.push(`${rel}:${line}  .from(${arg.slice(0, 40)})`);
+      // Anything that is not a resolvable literal is UNPROVABLE. It used to fall
+      // through this branch and vanish when it matched neither test.
+      unprovable.push(`${rel}:${line}  .from(${arg.replace(/\s+/g, " ").slice(0, 40)})`);
       continue;
     }
     const name = lit[1] ?? lit[2];

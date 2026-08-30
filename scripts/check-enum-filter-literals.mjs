@@ -67,6 +67,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { stripComments, walk } from "./lib/scan-utils.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 
@@ -234,29 +235,8 @@ function chainSegment(text, start, afterFrom) {
   return text.slice(start, end);
 }
 
-// Comments must be blanked before matching, or the guard fires on prose. Writing
-// `.neq("status","terminated")` inside an explanatory comment — as the fix for
-// WhaleRecruiting.tsx does — otherwise reports itself as a violation forever.
-// Blanking (rather than deleting) preserves byte offsets so reported line numbers stay true.
-function stripComments(text) {
-  let out = text.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "));
-  out = out
-    .split("\n")
-    .map((line) => (/^\s*\/\//.test(line) ? " ".repeat(line.length) : line))
-    .join("\n");
-  return out;
-}
-
-function walk(dir, acc = []) {
-  if (!fs.existsSync(dir)) return acc;
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (entry.name.startsWith(".") || entry.name === "node_modules") continue;
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) walk(full, acc);
-    else if (/\.(tsx?|jsx?)$/.test(entry.name)) acc.push(full);
-  }
-  return acc;
-}
+// stripComments/walk live in scripts/lib/scan-utils.mjs (MP-345) so the second
+// guard that needs them imports rather than copies them.
 
 // A variable payload is resolved against the whole file once per chain that
 // writes it, so sites B/C/D of one handler each report the same assignment.

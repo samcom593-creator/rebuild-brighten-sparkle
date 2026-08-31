@@ -98,8 +98,24 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
+    // MP-340: a dead address on the CC line suppresses the WHOLE message.
+    // sam@apex-financial.org has been on Resend's suppression list since
+    // 2026-07-27 (origin: bounce, and a fresh probe hard-bounced again — the
+    // mailbox does not exist even though the domain has valid Google MX
+    // records). Because this email CC'd it, Kayla Maiten's login link was
+    // recorded "sent" by this function and then SUPPRESSED by the provider:
+    // she never received it and nothing here noticed. Her own address delivers
+    // fine, proven with a direct probe.
+    //
+    // The agent is the recipient that matters, so a courtesy copy must never be
+    // able to block their mail. UNDELIVERABLE_CC is the known-dead list; the
+    // real fix is pointing ADMIN_EMAIL at an address Sam actually reads
+    // (info@kingofsales.net and sam.com593@gmail.com both deliver), which is
+    // his call to make, not a guess to bake into 91 functions.
+    const UNDELIVERABLE_CC = new Set(["sam@apex-financial.org"]);
     const ccList = [ADMIN_EMAIL, managerEmail]
       .filter(Boolean)
+      .filter((v) => !UNDELIVERABLE_CC.has(String(v).toLowerCase()))
       .filter((v, i, a) => a.indexOf(v) === i) as string[];
 
     // Never greet a person with their own email address. profiles.full_name is

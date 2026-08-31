@@ -73,10 +73,12 @@ serve(async (req: Request) => {
       );
     }
 
+    // .eq, not .ilike: PostgREST treats ilike input as a LIKE pattern, so an
+    // email containing _ or % matches other people's rows (MP-277).
     const { data: apps } = await supabaseAdmin
       .from("applications")
       .select("id, first_name, last_name, email, phone, assigned_agent_id, license_status")
-      .ilike("email", userEmail)
+      .eq("email", userEmail)
       .eq("license_status", "licensed")
       .order("created_at", { ascending: false })
       .limit(1);
@@ -91,6 +93,40 @@ serve(async (req: Request) => {
 
     const app = apps[0];
     console.log(`Found licensed application for ${app.first_name} ${app.last_name}`);
+
+    // The application may belong to a person who ALREADY has an agent row under
+    // a different login. Proven live 2026-08-31: Sam signed in with his
+    // alternate email, this function matched his own old application, minted a
+    // nameless duplicate agent, and the hire trigger announced "unnamed agent"
+    // to Slack and Discord. An existing agent for the same person means LINK,
+    // never INSERT — creating an "active" agent row here is a hire event.
+    const { data: sameEmailProfiles } = await supabaseAdmin
+      .from("profiles")
+      .select("id, user_id")
+      .eq("email", userEmail);
+    const profileIds = (sameEmailProfiles ?? []).map((r) => r.id);
+    const profileUserIds = (sameEmailProfiles ?? []).map((r) => r.user_id).filter(Boolean);
+    if (profileIds.length || profileUserIds.length) {
+      const filters = [
+        profileIds.length ? `profile_id.in.(${profileIds.join(",")})` : null,
+        profileUserIds.length ? `user_id.in.(${profileUserIds.join(",")})` : null,
+      ].filter(Boolean).join(",");
+      const { data: twin } = await supabaseAdmin
+        .from("agents")
+        .select("id, display_name")
+        .or(filters)
+        .limit(1);
+      if (twin && twin.length > 0) {
+        console.log(`Agent already exists for ${userEmail} under another login: ${twin[0].id}`);
+        return new Response(
+          JSON.stringify({
+            error: "An agent account already exists for this email under a different login. Sign in with that account, or ask an admin to link this login to it.",
+            existingAgentId: twin[0].id,
+          }),
+          { status: 409, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+    }
 
     // 3. Get or create profile
     const { data: existingProfile } = await supabaseAdmin
@@ -142,6 +178,9 @@ serve(async (req: Request) => {
       .insert({
         user_id: userId,
         profile_id: profileId,
+        // Without this, the hire announcement fires with a null name — Slack
+        // and Discord delivered "unnamed agent" hires before it was set.
+        display_name: `${app.first_name ?? ""} ${app.last_name ?? ""}`.trim() || userEmail,
         invited_by_manager_id: app.assigned_agent_id || null,
         status: "active",
         license_status: "licensed",

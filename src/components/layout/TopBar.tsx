@@ -23,6 +23,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { agentCloudBreadcrumb } from "./agentCloudNavigation";
 import { favoriteLabelFor, useFavoriteRoutes } from "./favoriteRoutes";
 import { cn } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 export function TopBar() {
   const { pathname } = useLocation();
@@ -33,7 +35,27 @@ export function TopBar() {
   const favorites = useFavoriteRoutes((state) => state.favorites);
   const toggleFavorite = useFavoriteRoutes((state) => state.toggleFavorite);
   const isFavorite = favorites.some((entry) => entry.href === pathname);
-  const name = String(user?.user_metadata?.full_name || user?.user_metadata?.name || "").trim();
+  // The greeting must never show an email address. Auth metadata full_name is
+  // set at signup and for some logins it IS the raw email (proven live:
+  // info@kingofsales.net rendered "Good evening, info@kingofsales.net"). The
+  // profiles table holds the curated name, so it wins; metadata is trusted
+  // only when it doesn't look like an email; the last resort is the email's
+  // local part with a capital, never the full address.
+  const { data: profileName } = useQuery({
+    queryKey: ["topbar-profile-name", user?.id],
+    enabled: Boolean(user?.id),
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles").select("full_name").eq("user_id", user!.id).limit(1);
+      return data?.[0]?.full_name?.trim() || null;
+    },
+  });
+  const metaName = String(user?.user_metadata?.full_name || user?.user_metadata?.name || "").trim();
+  const emailLocal = (user?.email ?? "").split("@")[0];
+  const name = profileName
+    || (metaName && !metaName.includes("@") ? metaName : "")
+    || (emailLocal ? emailLocal[0].toUpperCase() + emailLocal.slice(1) : "");
   const firstName = name.split(/\s+/)[0] || "there";
   const initials = (name || user?.email || "U").split(/[\s@]/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("");
   const crumbs = agentCloudBreadcrumb(pathname);

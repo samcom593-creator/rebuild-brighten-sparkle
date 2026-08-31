@@ -192,6 +192,11 @@ export function InviteTeamModal({ open, onClose }: InviteTeamModalProps) {
         .insert({
           user_id: newUserId,
           profile_id: newProfileId,
+          // The modal has the name in hand; without it the hire announcement
+          // fired with a null name ("unnamed agent" in Slack/Discord). The DB
+          // backstop (trg_y_agent_attribution_from_application) also fills it,
+          // but stating it here keeps this writer honest on its own.
+          display_name: fullName.trim(),
           status: "active",
           license_status: licenseStatus,
           invited_by_manager_id: currentAgent.id,

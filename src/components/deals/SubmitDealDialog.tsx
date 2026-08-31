@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { invalidateOperationalTruth } from "@/lib/invalidateOperationalTruth";
+import { normalizePolicyNumber, sanitizePolicyInput } from "@/lib/policyNumber";
 
 type PremiumMode = "annual" | "semiannual" | "quarterly" | "monthly" | "single_pay" | "other";
 type PaymentMethod = "" | "bank_draft" | "credit_card" | "debit_card" | "direct_express" | "check" | "social_security";
@@ -395,7 +396,7 @@ export function SubmitDealDialog({ trigger, initialClient }: { trigger?: ReactNo
     }
     if (index === 1) {
       if (!selectedAgentId) return "A writing agent must be linked before the deal can be saved.";
-      if (!form.carrierId || !form.product.trim() || !form.policyNumber.trim()) return "Carrier, product, and application or policy number are required.";
+      if (!form.carrierId || !form.product.trim() || !normalizePolicyNumber(form.policyNumber)) return "Carrier, product, and application or policy number are required.";
       if (!form.applicationDate) return "Application date is required.";
     }
     if (index === 2) {
@@ -415,6 +416,7 @@ export function SubmitDealDialog({ trigger, initialClient }: { trigger?: ReactNo
 
   const payload = useMemo(() => ({
     ...form,
+    policyNumber: normalizePolicyNumber(form.policyNumber),
     annualizedPaidPremium: calculatedAnnualPaid.toFixed(2),
     annualizedCommissionablePremium: calculatedAlp.toFixed(2),
     calculationNeedsReview: form.calculationNeedsReview || form.premiumMode === "single_pay" || form.premiumMode === "other" || evidence.some((file) => file.scan_status !== "clean"),
@@ -447,14 +449,17 @@ export function SubmitDealDialog({ trigger, initialClient }: { trigger?: ReactNo
       if (validation) { toast.error(validation); return; }
     }
     setChecking(true);
+    // Ask about the normalized string, because that is what submit_apex_deal
+    // stores: a pasted tab used to make these two disagree.
+    const policyNumber = normalizePolicyNumber(form.policyNumber);
     const { count, error } = await supabase
       .from("deals")
       .select("id", { count: "exact", head: true })
-      .ilike("policy_number", likeLiteral(form.policyNumber.trim()));
+      .ilike("policy_number", likeLiteral(policyNumber));
     setChecking(false);
     if (error) { toast.error(`The duplicate check could not run: ${error.message}`); return; }
     if ((count ?? 0) > 0) {
-      toast.error(`Policy number ${form.policyNumber.trim()} is already on a deal. Change it before posting.`);
+      toast.error(`Policy number ${policyNumber} is already on a deal. Change it before posting.`);
       return;
     }
     toast.success(`Ready to post — ${formatMoney(calculatedAnnualPaid)} annual, policy number is unused.`);
@@ -752,7 +757,7 @@ export function SubmitDealDialog({ trigger, initialClient }: { trigger?: ReactNo
                         {(carrierProducts.data ?? []).map((row) => <option key={row.product} value={row.product} />)}
                       </datalist>
                     </div>
-                    <Field label="Policy number" id="deal-policy" value={form.policyNumber} onChange={(value) => update("policyNumber", value)} placeholder="e.g., POL-123456" autoComplete="off" />
+                    <Field label="Policy number" id="deal-policy" value={form.policyNumber} onChange={(value) => update("policyNumber", sanitizePolicyInput(value))} placeholder="e.g., POL-123456" autoComplete="off" />
                     <Field label="Effective date" id="deal-effective-date" value={form.effectiveDate} onChange={(value) => update("effectiveDate", value)} type="date" />
                     <div className="space-y-1.5">
                       <Field label="Sale date" id="deal-application-date" value={form.applicationDate} onChange={(value) => update("applicationDate", value)} type="date" max={TODAY} />

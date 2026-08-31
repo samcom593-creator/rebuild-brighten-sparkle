@@ -56,7 +56,7 @@ const RANK_ICONS: Record<number, { icon: typeof Crown; color: string }> = {
 };
 
 const BOARD_META: Record<Board, { label: string; icon: typeof Crown; source: string }> = {
-  production: { label: "Production", icon: Crown, source: "agentlink_book · posted date · dead statuses excluded" },
+  production: { label: "Production", icon: Crown, source: "AgentLink book + deals posted in-app + Discord-reported · posted date · dead statuses excluded" },
   recruiting: { label: "Recruiting", icon: Target, source: "applications.created_at + owner attribution" },
   referrals: { label: "Referral", icon: Users, source: "applications.referral_manager_id" },
   activity: { label: "Activity", icon: Activity, source: "daily_production manual activity fields" },
@@ -136,6 +136,8 @@ export default function Leaderboard() {
             prior_ap: number | string | null;
             day_of_month: number | string | null;
             days_in_month: number | string | null;
+            external_gap_ap: number | string | null;
+            external_gap_deals: number | string | null;
           }
         | undefined;
 
@@ -145,6 +147,14 @@ export default function Leaderboard() {
       const priorAp = Number(row?.prior_ap ?? 0);
       const dayOfMonth = Number(row?.day_of_month ?? 0);
       const daysInMonth = Number(row?.days_in_month ?? 0);
+      // Another agency's reported-but-unattributed production. It belongs to
+      // no producer, so no row on the board below can carry it. It used to be
+      // summed into total_ap, which left the headline $15,986 and 10 "deals"
+      // above a list that could not account for either (measured 2026-08-31),
+      // and divided into a producer count that excluded it. Kept, labelled,
+      // and never mixed back in.
+      const externalGapAp = Number(row?.external_gap_ap ?? 0);
+      const externalGapDeals = Number(row?.external_gap_deals ?? 0);
 
       const avgPerProducer = producers > 0 ? totalAp / producers : 0;
       // Pace projection: linearly extrapolate month-to-date to full month.
@@ -161,6 +171,8 @@ export default function Leaderboard() {
         paceDelta,
         dayOfMonth,
         daysInMonth,
+        externalGapAp,
+        externalGapDeals,
       };
     },
   });
@@ -175,17 +187,24 @@ export default function Leaderboard() {
     queryFn: async () => {
       const { data } = await supabase
         .from("v_agentlink_book_freshness" as any)
-        .select("latest_posted, days_since_last_posted, deals")
+        .select("latest_posted, days_since_last_posted, deals, last_import")
         .maybeSingle();
       return (data ?? null) as {
         latest_posted: string | null;
         days_since_last_posted: number | string | null;
         deals: number | string | null;
+        last_import: string | null;
       } | null;
     },
   });
   const staleDays = bookFreshness.data?.days_since_last_posted != null
     ? Number(bookFreshness.data.days_since_last_posted)
+    : null;
+  // Hours since the book was last IMPORTED, which is the pipeline question.
+  // days_since_last_posted answers a business question instead: how long since
+  // anybody wrote a deal into AgentLink.
+  const importHours = bookFreshness.data?.last_import
+    ? Math.floor((Date.now() - new Date(bookFreshness.data.last_import).getTime()) / 3_600_000)
     : null;
 
   const buildRows = useCallback(async (ids: string[], grouped: Map<string, { primary: number; secondary: number; tertiary: number }>) => {
@@ -480,10 +499,27 @@ export default function Leaderboard() {
         subtitle="Production, recruiting, referral, and activity rankings from live platform tables."
         actions={
           <div className="flex items-center gap-2">
+            {/* The badge used to read "Book Nd stale", which says the sync is
+                broken. It measures something else: the age of the newest deal
+                POSTED in the AgentLink book. On 2026-08-31 that was 6 days
+                while the import itself had run 0h earlier and the board was
+                carrying deals through 08-28 from the other two sources. Both
+                facts are worth having; conflating them turns a quiet week into
+                a red alarm and teaches Sam to ignore the one badge here. */}
             {board === "production" && staleDays !== null && staleDays > 3 && (
-              <Badge variant="destructive" className="gap-1.5">
+              <Badge
+                variant={importHours !== null && importHours > 48 ? "destructive" : "outline"}
+                className="gap-1.5"
+                title={
+                  importHours !== null
+                    ? `Newest AgentLink-posted deal is ${staleDays}d old. The book itself was last imported ${importHours}h ago.`
+                    : `Newest AgentLink-posted deal is ${staleDays}d old. The last import time is unknown.`
+                }
+              >
                 <Clock3 className="h-3 w-3" />
-                Book {staleDays}d stale
+                {importHours !== null && importHours > 48
+                  ? `Book not imported in ${Math.floor(importHours / 24)}d`
+                  : `No AgentLink deal posted in ${staleDays}d`}
               </Badge>
             )}
             {lastUpdatedAt && (
@@ -498,7 +534,10 @@ export default function Leaderboard() {
 
       {/* v6 §31 canonical hero — month-to-date agency AP, producer count, avg
           per producer, and projected pace vs prior month.
-          Truth source: agentlink_book via leaderboard_book_hero.
+          Truth source: v_production_comp_truth via leaderboard_book_hero,
+          which is the same population leaderboard_board ranks below — the two
+          reconcile to the dollar. Unattributed external-agency production is
+          reported on its own line, never inside these figures.
           Month-to-date AP is the one number Sam reads first, so it is the only
           emerald figure in the strip; every other tile stays neutral. */}
       <GlassCard className="p-4">
@@ -513,7 +552,7 @@ export default function Leaderboard() {
           </span>
         </div>
         <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
-          Source · agentlink_book · posted date · America/Phoenix month window · refreshes every 60s
+          Source · v_production_comp_truth (AgentLink book + deals posted in-app + Discord-reported, de-duplicated) · posted date · America/Phoenix month window · same rows as the board below
         </p>
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -527,6 +566,11 @@ export default function Leaderboard() {
             </p>
             <p className="mt-1.5 truncate text-[11px] tabular-nums text-muted-foreground">
               {heroData.data?.dealCount ?? 0} deals · day {heroData.data?.dayOfMonth ?? "—"}/{heroData.data?.daysInMonth ?? "—"}
+            </p>
+            <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+              {(heroData.data?.externalGapAp ?? 0) > 0
+                ? `+ ${formatMoney(heroData.data!.externalGapAp)} reported by an outside agency and not yet attributed to a producer — not in the figure above, and not on the board below.`
+                : "Every dollar here is on the board below."}
             </p>
           </div>
 

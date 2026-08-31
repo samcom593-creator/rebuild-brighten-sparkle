@@ -8,7 +8,8 @@ import { Link } from "react-router-dom";
 // BoardLive — the screenshot/post-ready production board.
 // Deliberately its own page (not the /leaderboard control surface): this one is
 // built to be captured and posted, so it is dark, dense, and reads like a live
-// game tracker. Numbers are the real agentlink_book figures via leaderboard_board;
+// game tracker. Numbers come from leaderboard_board (AgentLink book + deals
+// posted in-app + Discord-reported, de-duplicated by v_production_canonical);
 // nothing here is padded. Est. income is computed from each producer's true carrier
 // contract levels — we never expose the comp % itself (agents must not be able to
 // compare contracts off a public board).

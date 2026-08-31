@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DollarSign, Save, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { celebrateDeal } from "@/lib/gameFx";
+import { normalizePolicyNumber, sanitizePolicyInput } from "@/lib/policyNumber";
 
 interface Carrier { id: string; name: string }
 
@@ -101,7 +102,7 @@ export function DealEntryForm({ onSaved }: { onSaved?: () => void }) {
         client_phone: form.client_phone,
         client_dob: form.client_dob,
         product_sold: form.product_sold,
-        policy_number: form.policy_number,
+        policy_number: normalizePolicyNumber(form.policy_number),
         monthly_premium: parseFloat(form.monthly_premium),
         annual_premium: annualPremium,
         face_amount: parseFloat(form.face_amount),
@@ -178,7 +179,7 @@ export function DealEntryForm({ onSaved }: { onSaved?: () => void }) {
           </div>
           <div>
             <Label className="text-xs">Policy Number *</Label>
-            <Input value={form.policy_number} onChange={e => set("policy_number", e.target.value)} />
+            <Input value={form.policy_number} onChange={e => set("policy_number", sanitizePolicyInput(e.target.value))} />
           </div>
           <div>
             <Label className="text-xs">Effective Date *</Label>

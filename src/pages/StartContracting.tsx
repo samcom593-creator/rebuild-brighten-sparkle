@@ -396,7 +396,7 @@ export default function StartContracting() {
             </Button>
 
             <p className="text-center text-xs text-muted-foreground">
-              We never ask for your SSN, date of birth, or bank details on this form.
+              Every required launch step stays visible in your roadmap. Sensitive identity and banking details are completed only inside protected carrier portals.
             </p>
           </form>
         </>

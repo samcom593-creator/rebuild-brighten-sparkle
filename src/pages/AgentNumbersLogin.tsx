@@ -143,7 +143,7 @@ export default function AgentNumbersLogin() {
     if (user) {
       const { data: agent } = await supabase
         .from("agents")
-        .select("has_training_course, onboarding_stage, portal_password_set")
+        .select("portal_password_set")
         .eq("user_id", user.id)
         .maybeSingle();
 
@@ -153,11 +153,11 @@ export default function AgentNumbersLogin() {
         return;
       }
       
-      if (agent?.has_training_course) {
-        navigate("/onboarding-course", { replace: true });
-        return;
-      }
     }
+    // Always return agents to the launch dashboard (or the protected page that
+    // originally sent them here). Auto-routing training-enabled users straight
+    // into one course skipped contracting, Slack, documents, and the rest of
+    // their receipt-backed roadmap.
     const from = (location.state as any)?.from?.pathname || "/agent-portal";
     navigate(from, { replace: true });
   };

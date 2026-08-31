@@ -8,6 +8,9 @@ describe("agent onboarding roadmap", () => {
   const migration = source("supabase/migrations/20260827213000_agent_onboarding_roadmap.sql");
   const roadmap = source("src/components/dashboard/AgentOnboardingStepper.tsx");
   const portal = source("src/pages/AgentPortal.tsx");
+  const command = source("src/pages/AgentCommandDashboard.tsx");
+  const agentLogin = source("src/pages/AgentNumbersLogin.tsx");
+  const contractingSuccess = source("src/components/contracting/ContractingSuccessModal.tsx");
   const welcome = source("supabase/functions/welcome-new-agent/index.ts");
   const resources = source("src/components/training/RequiredOnboardingResources.tsx");
   const trainingMigration = source("supabase/migrations/20260827214500_training_experience_redesign.sql");
@@ -23,12 +26,41 @@ describe("agent onboarding roadmap", () => {
     expect(migration).not.toMatch(/v_training\s*:=\s*v_agent\.has_training_course/);
   });
 
-  it("puts the live roadmap at the top of the agent portal", () => {
+  it("puts the live roadmap on the real post-login agent dashboard", () => {
     expect(portal).toContain("<AgentOnboardingStepper agentId={agentId}");
-    expect(roadmap).toContain("You always know what happens next");
+    expect(command).toContain("<AgentOnboardingStepper agentId={agentId}");
+    expect(roadmap).toContain("Nothing skipped. You always know what happens next.");
     expect(roadmap).toContain('table: "messaging_identity_links"');
     expect(roadmap).toContain('table: "interview_events"');
     expect(roadmap).toContain('table: "onboarding_progress"');
+    expect(roadmap).toContain('table: "agent_documents"');
+  });
+
+  it("keeps every required launch milestone visible", () => {
+    for (const step of [
+      "Confirm your account and profile",
+      "Finish licensing and confirm your NPN",
+      "Submit your contracting intake",
+      "Book your onboarding call",
+      "Upload license and identity documents",
+      "Secure and upload E&O coverage",
+      "Prepare EFT documentation",
+      "Finish carrier appointments",
+      "Complete every onboarding module",
+      "Get ReadyMode field-ready",
+      "Post your first deal",
+    ]) {
+      expect(roadmap).toContain(step);
+    }
+    expect(roadmap).toContain('label: `Join the ${BRAND.shortName} Slack`');
+    expect(contractingSuccess).toContain("Your complete launch path");
+    expect(contractingSuccess).toContain("Continue to your onboarding roadmap");
+  });
+
+  it("returns trained agents to the launch dashboard instead of skipping the roadmap", () => {
+    expect(agentLogin).not.toContain('if (agent?.has_training_course)');
+    expect(agentLogin).not.toContain('navigate("/onboarding-course", { replace: true })');
+    expect(agentLogin).toContain('|| "/agent-portal"');
   });
 
   it("makes Slack and Milver the first post-hire contacts", () => {

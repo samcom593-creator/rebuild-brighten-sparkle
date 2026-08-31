@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
 
 const invoke = vi.fn();
 const getSession = vi.fn();
@@ -34,6 +35,9 @@ vi.mock("@/integrations/supabase/client", () => ({
   },
 }));
 vi.mock("@/hooks/usePageTitle", () => ({ usePageTitle: () => {} }));
+vi.mock("react-router-dom", () => ({
+  Link: ({ to, children }: { to: string; children: ReactNode }) => <a href={to}>{children}</a>,
+}));
 
 import StartContracting from "@/pages/StartContracting";
 
@@ -135,7 +139,7 @@ describe("StartContracting · the five-field contract", () => {
   it("states plainly that it does not ask for sensitive data", async () => {
     render(<StartContracting />);
     await screen.findByLabelText("First name");
-    expect(screen.getByText(/never ask for your SSN/i)).toBeTruthy();
+    expect(screen.getByText(/sensitive identity and banking details/i)).toBeTruthy();
   });
 });
 
@@ -197,7 +201,10 @@ describe("StartContracting · after a durable acceptance", () => {
     await screen.findByText(/profile is active/i);
     const links = screen.getAllByRole("link") as HTMLAnchorElement[];
     expect(links.map((link) => link.href)).not.toContain("https://example.com/obsolete");
-    expect(screen.getByRole("link", { name: /sign in to onboarding/i })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /continue to your onboarding roadmap/i })).toHaveAttribute(
+      "href",
+      "/agent-portal",
+    );
     expect(screen.getByRole("link", { name: /e&o coverage/i })).toBeTruthy();
     expect(screen.getByRole("link", { name: /join team slack/i })).toHaveAttribute(
       "href",

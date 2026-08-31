@@ -34,7 +34,7 @@ function loadCompleted(): string[] {
 }
 
 export function AgentCloudSetupChecklist() {
-  const { user } = useAuth();
+  const { user, isAdmin, isManager } = useAuth();
   const brand = resolveBrand();
   const [collapsed, setCollapsed] = useState(true);
   const [completed, setCompleted] = useState<string[]>(() => {
@@ -57,7 +57,10 @@ export function AgentCloudSetupChecklist() {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   };
 
-  if (dismissed || completedSet.size === STEPS.length) return null;
+  // Producers have a receipt-backed launch roadmap on their real landing page.
+  // Showing this manual platform checklist beside it creates two competing
+  // versions of "what next." Keep this workspace-setup aid for leaders only.
+  if ((!isAdmin && !isManager) || dismissed || completedSet.size === STEPS.length) return null;
 
   return (
     <aside className="fixed bottom-24 right-6 z-40 hidden w-80 overflow-hidden rounded-lg border border-border bg-card shadow-lg xl:block" aria-label="Setup checklist">

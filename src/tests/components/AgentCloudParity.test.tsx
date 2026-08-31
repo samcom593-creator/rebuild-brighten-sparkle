@@ -3,13 +3,30 @@ import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 
-vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: "samuel" } }) }));
+vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: "samuel" }, isAdmin: true, isManager: false }) }));
 
 import { AgentCloudSetupChecklist } from "@/components/layout/AgentCloudSetupChecklist";
 
 const source = (file: string) => fs.readFileSync(path.resolve(__dirname, `../../${file}`), "utf8");
 
-beforeEach(() => window.localStorage.clear());
+class MemoryStorage implements Storage {
+  private map = new Map<string, string>();
+  get length(): number { return this.map.size; }
+  clear(): void { this.map.clear(); }
+  getItem(key: string): string | null { return this.map.get(key) ?? null; }
+  key(index: number): string | null { return Array.from(this.map.keys())[index] ?? null; }
+  removeItem(key: string): void { this.map.delete(key); }
+  setItem(key: string, value: string): void { this.map.set(key, String(value)); }
+}
+
+beforeEach(() => {
+  Object.defineProperty(window, "localStorage", {
+    value: new MemoryStorage(),
+    configurable: true,
+    writable: true,
+  });
+  window.localStorage.clear();
+});
 
 describe("AgentCloud parity surfaces", () => {
   it("ships the persistent 11-step setup checklist", () => {

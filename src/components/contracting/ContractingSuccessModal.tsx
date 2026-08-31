@@ -6,8 +6,10 @@ import {
   MessageSquare,
   ShieldAlert,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 
 import { ONBOARDING_CONTACT, SCHEDULING_LINKS, TEAM_COMMUNITY_LINKS } from "@/lib/apexConfig";
+import { resolveBrand } from "@/config/brand";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/glass-card";
 import { EO_COVERAGE_URL } from "@/components/contracting/ContractingReadinessCard";
@@ -18,6 +20,19 @@ export interface ContractingAcceptance {
   review_reason: string | null;
   onboarding_email_sent?: boolean;
 }
+
+const BRAND = resolveBrand();
+const FULL_LAUNCH_PATH = [
+  "Confirm account and producer profile",
+  `Join the ${BRAND.shortName} Slack`,
+  "Finish licensing and confirm NPN",
+  "Submit contracting intake",
+  "Book the onboarding call",
+  "Upload license, ID, E&O, and EFT documents privately",
+  "Complete carrier appointments",
+  "Finish every training and ReadyMode module",
+  "Post the first deal",
+] as const;
 
 /**
  * The public intake's durable-result surface. It deliberately describes the
@@ -61,12 +76,28 @@ export function ContractingSuccessModal({ accepted }: { accepted: ContractingAcc
           </div>
         ) : (
           <div className="mt-5 border-t border-border pt-5">
-            <p className="text-sm font-semibold">Next: book your fast-track call with {ONBOARDING_CONTACT.name}</p>
+            <p className="text-sm font-semibold">Your complete launch path</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              {ONBOARDING_CONTACT.role}. Bring your NPN, EFT bank letter or voided check, and active E&amp;O certificate. Enter banking details only in a secure carrier portal.
+              Nothing is skipped. Your dashboard verifies progress and always keeps one next action at the top.
+            </p>
+            <ol className="mt-3 grid gap-1.5 sm:grid-cols-2">
+              {FULL_LAUNCH_PATH.map((step, index) => (
+                <li key={step} className="flex items-start gap-2 rounded-md border border-border/60 bg-background/30 px-3 py-2 text-xs">
+                  <span className="font-semibold text-primary">{index + 1}.</span>
+                  <span>{step}</span>
+                </li>
+              ))}
+            </ol>
+            <p className="mt-3 text-xs text-muted-foreground">
+              {ONBOARDING_CONTACT.name} is your {ONBOARDING_CONTACT.role}. Bring your NPN, EFT bank letter or voided check, and active E&amp;O certificate. Put account and routing numbers only into secure carrier portals.
             </p>
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
               <Button asChild size="sm" className="sm:col-span-2">
+                <Link to="/agent-portal">
+                  <GraduationCap className="mr-1.5 h-4 w-4" /> Continue to your onboarding roadmap
+                </Link>
+              </Button>
+              <Button asChild size="sm" variant="outline" className="sm:col-span-2">
                 <a href={SCHEDULING_LINKS.onboarding} target="_blank" rel="noopener noreferrer">
                   <CalendarCheck2 className="mr-1.5 h-4 w-4" /> Book with {ONBOARDING_CONTACT.name}
                 </a>
@@ -74,11 +105,6 @@ export function ContractingSuccessModal({ accepted }: { accepted: ContractingAcc
               <Button asChild size="sm" variant="outline">
                 <a href={TEAM_COMMUNITY_LINKS.slack} target="_blank" rel="noopener noreferrer">
                   <MessageSquare className="mr-1.5 h-4 w-4" /> Join team Slack
-                </a>
-              </Button>
-              <Button asChild size="sm" variant="outline">
-                <a href="https://apex-financial.org/login">
-                  <GraduationCap className="mr-1.5 h-4 w-4" /> Sign in to onboarding
                 </a>
               </Button>
               <Button asChild size="sm" variant="outline">

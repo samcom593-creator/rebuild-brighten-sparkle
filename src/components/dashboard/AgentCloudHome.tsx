@@ -23,6 +23,7 @@ import { SubmitDealDialog } from "@/components/deals/SubmitDealDialog";
 import { ScopedProductionScoreboard } from "@/components/dashboard/ScopedProductionScoreboard";
 import { OperationsCommandCenter } from "@/components/dashboard/OperationsCommandCenter";
 import { JustHiredPanel } from "@/components/dashboard/JustHiredPanel";
+import { OnboardingRollCall } from "@/components/dashboard/OnboardingRollCall";
 import { cn } from "@/lib/utils";
 import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 import { invalidateOperationalTruth } from "@/lib/invalidateOperationalTruth";
@@ -238,6 +239,9 @@ export function AgentCloudHome() {
       {/* Recent hires — names + who they're routed to + when, so Sam can follow
           up directly. Independent of AgentLink/InsuraCloud: reads agents/hires. */}
       <JustHiredPanel />
+      {/* MP-339: who is new and still not in, with each blocker named. Renders
+          nothing when the viewer has no new hires. */}
+      <OnboardingRollCall />
 
       {/* WHAT NEEDS YOU TODAY */}
       <div>

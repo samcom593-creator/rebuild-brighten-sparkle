@@ -59,9 +59,28 @@ if ("serviceWorker" in navigator) {
     window.addEventListener("load", scheduleRegister, { once: true });
   }
 
+  // 2026-08-30 — every FIRST-TIME visitor was loading this site twice.
+  //
+  // On a first visit navigator.serviceWorker.controller is null. The SW
+  // registers, installs, activates and takes control, which fires
+  // controllerchange — and this handler reloaded the page. The `reloading`
+  // flag only stopped a second fire within one page instance; it could not
+  // stop the first-install reload at all. Measured on a cold profile against
+  // production: the main frame navigated 3 times for one visit, and
+  // Lighthouse scored the `redirects` audit 0 with "Est savings of 4,150 ms"
+  // while showing the SAME url twice — a client-side self-reload, not an
+  // HTTP redirect (curl confirms 0 HTTP redirects, 200 straight from cache).
+  // That cost lands on exactly the people who matter most: a recruit opening
+  // a manager's /r/ link for the first time.
+  //
+  // A reload is only ever worth it when an EXISTING controller is REPLACED,
+  // i.e. a genuinely new shell took over a page that was already running the
+  // old one. On a first install there is nothing stale to refresh away — the
+  // bundle in memory was just fetched from the network this instant.
+  const hadController = Boolean(navigator.serviceWorker.controller);
   let reloading = false;
   navigator.serviceWorker.addEventListener("controllerchange", () => {
-    if (reloading) return;
+    if (!hadController || reloading) return;
     reloading = true;
     window.location.reload();
   });

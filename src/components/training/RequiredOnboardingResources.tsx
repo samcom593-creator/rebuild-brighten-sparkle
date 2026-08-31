@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ExternalLink, FileText, Headphones, Phone, PlayCircle } from "lucide-react";
+import { ArrowRight, ExternalLink, FileText, Phone, PlayCircle } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { resolveBrand } from "@/config/brand";
@@ -7,22 +7,25 @@ import { resolveBrand } from "@/config/brand";
 function onboardingResources(brandName: string) {
   return [
   {
-    title: `Start here · ${brandName} onboarding`,
-    detail: "Watch the orientation first.",
-    href: "https://youtu.be/Gm62pf3SywU",
+    title: `Start here · ${brandName} closer system`,
+    detail: "Build the pre-call routine and reset protocol first.",
+    href: "/dashboard/training/sales-course",
     icon: PlayCircle,
+    internal: true,
   },
   {
-    title: "Script walkthrough",
-    detail: "Learn the approved presentation flow.",
-    href: "https://drive.google.com/file/d/1FZIMIdqDRf7HAox9egfVWpAvhterF2Vy/view?ts=6a8d0638",
+    title: "Script mastery",
+    detail: "Control the first seconds, presentation, and close.",
+    href: "/dashboard/training/sales-course",
     icon: PlayCircle,
+    internal: true,
   },
   {
-    title: "Objection handling",
-    detail: "Watch before taking live appointments.",
-    href: "https://www.youtube.com/watch?v=jOtqBnnLsR0",
-    icon: Headphones,
+    title: "Field playbook",
+    detail: "ReadyMode, call review, pipeline, and quoting.",
+    href: "/dashboard/training/sales-course",
+    icon: PlayCircle,
+    internal: true,
   },
   {
     title: "Field-release course",
@@ -50,6 +53,7 @@ export function RequiredOnboardingResources() {
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {resources.map((resource, index) => {
+          const ActionIcon = "internal" in resource && resource.internal ? ArrowRight : ExternalLink;
           const content = (
             <Card className="flex h-full items-start gap-3 p-4 hover:border-primary/40">
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">{index + 1}</span>
@@ -59,12 +63,12 @@ export function RequiredOnboardingResources() {
                 </span>
                 <span className="mt-1 block text-xs text-muted-foreground">{resource.detail}</span>
               </span>
-              <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <ActionIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             </Card>
           );
           return "internal" in resource && resource.internal
-            ? <Link key={resource.href} to={resource.href}>{content}</Link>
-            : <a key={resource.href} href={resource.href} target="_blank" rel="noopener noreferrer">{content}</a>;
+            ? <Link key={resource.title} to={resource.href}>{content}</Link>
+            : <a key={resource.title} href={resource.href} target="_blank" rel="noopener noreferrer">{content}</a>;
         })}
         <a href="tel:+19788047212">
           <Card className="flex h-full items-start gap-3 border-primary/30 p-4 hover:border-primary">

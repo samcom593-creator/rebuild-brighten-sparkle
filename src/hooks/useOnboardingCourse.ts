@@ -18,12 +18,20 @@ export interface TranscriptSegment {
   text: string;
 }
 
+export interface OnboardingVideoPart {
+  title: string;
+  url: string;
+  duration_seconds: number;
+}
+
 export interface OnboardingModule {
   id: string;
   order_index: number;
   title: string;
   description: string | null;
   video_url: string;
+  poster_url: string | null;
+  video_parts: OnboardingVideoPart[];
   pass_threshold: number;
   is_active: boolean;
   phase_key: "foundation" | "systems" | null;
@@ -86,6 +94,18 @@ export function useOnboardingCourse(agentId: string | null) {
         : null,
       learning_objectives: Array.isArray(module.learning_objectives)
         ? module.learning_objectives.filter((item): item is string => typeof item === "string")
+        : [],
+      video_parts: Array.isArray(module.video_parts)
+        ? module.video_parts.flatMap((item) => {
+          if (!item || typeof item !== "object" || Array.isArray(item)) return [];
+          const part = item as { title?: unknown; url?: unknown; duration_seconds?: unknown };
+          return typeof part.title === "string"
+            && typeof part.url === "string"
+            && typeof part.duration_seconds === "number"
+            && part.duration_seconds > 0
+            ? [{ title: part.title, url: part.url, duration_seconds: part.duration_seconds }]
+            : [];
+        })
         : [],
       transcript_segments: Array.isArray(module.transcript_segments)
         ? module.transcript_segments.flatMap((item) => {
@@ -156,11 +176,16 @@ export function useOnboardingCourse(agentId: string | null) {
     
     if (existing) {
       if (percent > existing.video_watched_percent) {
-        await supabase
+        const { error } = await supabase
           .from("onboarding_progress")
           .update({ video_watched_percent: percent })
           .eq("id", existing.id);
-        
+
+        if (error) {
+          console.error("Error saving video progress:", error);
+          return;
+        }
+
         setProgress(prev => ({
           ...prev,
           [moduleId]: { ...prev[moduleId], video_watched_percent: percent }

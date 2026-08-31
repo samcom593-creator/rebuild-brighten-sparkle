@@ -28,6 +28,7 @@ import {
   CartesianGrid, PieChart, Pie, Cell,
 } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
+import { ensureCurrentAgentRecord } from "@/lib/ensureCurrentAgentRecord";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { PageHeader } from "@/components/ui/page-header";
@@ -155,12 +156,16 @@ export default function AgentCommandDashboard() {
     queryKey: ["me-agent-row", user?.id],
     enabled: !isAdmin && !!user?.id,
     queryFn: async () => {
+      await ensureCurrentAgentRecord(user!.id);
       const { data, error } = await (supabase as any)
         .from("agents")
         .select("id, license_status, license_progress")
         .eq("user_id", user!.id)
         .maybeSingle();
       if (error) throw error;
+      if (data?.id) {
+        void queryClient.invalidateQueries({ queryKey: ["scoped-production-scoreboard"] });
+      }
       return data as { id: string; license_status: string | null; license_progress: string | null } | null;
     },
   });
@@ -315,14 +320,14 @@ export default function AgentCommandDashboard() {
       <div className="page-enter px-4 sm:px-6 pb-24">
         <PageHeader
           eyebrow="Command Center" eyebrowIcon={<Crown className="h-3 w-3" />}
-          title="Agent profile not linked yet"
-          subtitle="We couldn't find an agent record for your account. Ask Sam to wire your auth user to an agents row, then refresh."
+          title="We’re finishing your profile"
+          subtitle="Your login is secure, but we could not find one unambiguous licensed producer record to connect automatically."
           accent="amber"
         />
         <EmptyState
           icon={<Users className="h-7 w-7" />}
-          title="No agent record"
-          description="Your user ID isn't linked to an agents.user_id. Contact ops to fix."
+          title="Profile connection needs review"
+          description="We tried the automatic repair. Contact the APEX team so we can verify the correct producer record and connect it safely."
           actions={
             <Button asChild variant="outline">
               <a href="mailto:sam.com593@gmail.com?subject=Agent%20profile%20not%20linked">Email Sam</a>

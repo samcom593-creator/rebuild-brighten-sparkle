@@ -11,6 +11,8 @@ const visualModule: OnboardingModule = {
   title: "Review calls",
   description: "Use call data to improve.",
   video_url: "https://www.awesomescreenshot.com/video/55930238?key=share-key",
+  poster_url: null,
+  video_parts: [],
   pass_threshold: 80,
   is_active: true,
   phase_key: "systems",
@@ -51,5 +53,48 @@ describe("field-course lesson media", () => {
     fireEvent.click(screen.getByRole("button", { name: /mark watched/i }));
     expect(onProgressUpdate).toHaveBeenCalledWith(100);
     expect(onVideoComplete).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows branded artwork and accessible controls for native lesson video", () => {
+    render(
+      <CourseVideoPlayer
+        videoUrl="https://cdn.example.com/apex-script-mastery.mp4"
+        posterUrl="https://cdn.example.com/apex-script-mastery.jpg"
+        title="Script Mastery"
+        watchedPercent={35}
+        onProgressUpdate={vi.fn()}
+        onVideoComplete={vi.fn()}
+      />,
+    );
+
+    const video = screen.getByLabelText("Script Mastery video");
+    expect(video).toHaveAttribute("poster", "https://cdn.example.com/apex-script-mastery.jpg");
+    expect(video).toHaveAttribute("preload", "metadata");
+    expect(screen.getByText("35% watched")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Watch at 1.5x" })).toBeInTheDocument();
+  });
+
+  it("presents long finished lessons as an ordered chapter experience", () => {
+    render(
+      <CourseVideoPlayer
+        videoUrl="https://cdn.example.com/part-1.mp4"
+        posterUrl="https://cdn.example.com/poster.jpg"
+        title="Closer Operating System"
+        videoParts={[
+          { title: "The closer operating system", url: "https://cdn.example.com/part-1.mp4", duration_seconds: 240 },
+          { title: "Emotional discipline", url: "https://cdn.example.com/part-2.mp4", duration_seconds: 240 },
+        ]}
+        watchedPercent={0}
+        onProgressUpdate={vi.fn()}
+        onVideoComplete={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText("Closer Operating System: The closer operating system video")).toHaveAttribute(
+      "src",
+      "https://cdn.example.com/part-1.mp4",
+    );
+    expect(screen.getByText("Lesson chapters")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /emotional discipline/i })).toBeDisabled();
   });
 });

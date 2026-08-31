@@ -79,6 +79,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
 import { PageHeader } from "@/components/ui/page-header";
 import { supabase } from "@/integrations/supabase/client";
+import { ensureCurrentAgentRecord } from "@/lib/ensureCurrentAgentRecord";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyDownline } from "@/hooks/useMyDownline";
 import { useRolePreview, type RolePreview } from "@/hooks/useRolePreview";
@@ -569,6 +570,7 @@ function useCurrentAgent(userId: string | undefined) {
     queryKey: ["current-agent-for-dashboard", userId],
     queryFn: async (): Promise<CurrentAgent | null> => {
       if (!userId) return null;
+      await ensureCurrentAgentRecord(userId);
       const { data, error } = await supabase
         .from("agents")
         .select("id, display_name")

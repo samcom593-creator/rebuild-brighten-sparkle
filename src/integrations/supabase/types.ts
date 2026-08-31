@@ -58450,9 +58450,11 @@ export type Database = {
           order_index: number
           pass_threshold: number | null
           phase_key: string | null
+          poster_url: string | null
           title: string
           transcript_kind: string
           transcript_segments: Json
+          video_parts: Json
           video_url: string
         }
         Insert: {
@@ -58466,9 +58468,11 @@ export type Database = {
           order_index: number
           pass_threshold?: number | null
           phase_key?: string | null
+          poster_url?: string | null
           title: string
           transcript_kind?: string
           transcript_segments?: Json
+          video_parts?: Json
           video_url: string
         }
         Update: {
@@ -58482,9 +58486,11 @@ export type Database = {
           order_index?: number
           pass_threshold?: number | null
           phase_key?: string | null
+          poster_url?: string | null
           title?: string
           transcript_kind?: string
           transcript_segments?: Json
+          video_parts?: Json
           video_url?: string
         }
         Relationships: []

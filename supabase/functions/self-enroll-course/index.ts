@@ -39,6 +39,7 @@ serve(async (req: Request) => {
 
     const userId = claims.user.id;
     const userEmail = claims.user.email?.toLowerCase().trim();
+    const escapeLikePattern = (value: string) => value.replace(/[\\%_]/g, "\\$&");
     console.log(`Self-enroll request from user ${userId} (${userEmail})`);
 
     // 1. Check if agent record already exists
@@ -73,21 +74,35 @@ serve(async (req: Request) => {
       );
     }
 
-    // .eq, not .ilike: PostgREST treats ilike input as a LIKE pattern, so an
-    // email containing _ or % matches other people's rows (MP-277).
-    const { data: apps } = await supabaseAdmin
+    // Email addresses are case-insensitive, while PostgREST .eq is not. Escape
+    // LIKE metacharacters before the case-insensitive lookup, then enforce an
+    // exact normalized match again in memory. This preserves the MP-277 safety
+    // control for _ and % without stranding legitimate mixed-case addresses.
+    const { data: appMatches } = await supabaseAdmin
       .from("applications")
       .select("id, first_name, last_name, email, phone, assigned_agent_id, license_status")
-      .eq("email", userEmail)
+      .ilike("email", escapeLikePattern(userEmail))
       .eq("license_status", "licensed")
       .order("created_at", { ascending: false })
-      .limit(1);
+      .limit(10);
 
-    if (!apps || apps.length === 0) {
+    const apps = (appMatches ?? []).filter(
+      (candidate) => candidate.email?.toLowerCase().trim() === userEmail,
+    );
+
+    if (apps.length === 0) {
       console.log(`No licensed application found for ${userEmail}`);
       return new Response(
         JSON.stringify({ error: "No licensed application found", noLicense: true }),
         { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    if (apps.length > 1) {
+      console.log(`Ambiguous licensed application match for ${userEmail}`);
+      return new Response(
+        JSON.stringify({ error: "Multiple licensed applications match this login", ambiguous: true }),
+        { status: 409, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
@@ -100,10 +115,14 @@ serve(async (req: Request) => {
     // nameless duplicate agent, and the hire trigger announced "unnamed agent"
     // to Slack and Discord. An existing agent for the same person means LINK,
     // never INSERT — creating an "active" agent row here is a hire event.
-    const { data: sameEmailProfiles } = await supabaseAdmin
+    const { data: sameEmailProfileMatches } = await supabaseAdmin
       .from("profiles")
-      .select("id, user_id")
-      .eq("email", userEmail);
+      .select("id, user_id, email")
+      .ilike("email", escapeLikePattern(userEmail))
+      .limit(10);
+    const sameEmailProfiles = (sameEmailProfileMatches ?? []).filter(
+      (profile) => profile.email?.toLowerCase().trim() === userEmail,
+    );
     const profileIds = (sameEmailProfiles ?? []).map((r) => r.id);
     const profileUserIds = (sameEmailProfiles ?? []).map((r) => r.user_id).filter(Boolean);
     if (profileIds.length || profileUserIds.length) {
@@ -178,6 +197,7 @@ serve(async (req: Request) => {
       .insert({
         user_id: userId,
         profile_id: profileId,
+        source_application_id: app.id,
         // Without this, the hire announcement fires with a null name — Slack
         // and Discord delivered "unnamed agent" hires before it was set.
         display_name: `${app.first_name ?? ""} ${app.last_name ?? ""}`.trim() || userEmail,

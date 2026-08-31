@@ -7,6 +7,13 @@ import { resolveBrand } from "@/config/brand";
 
 interface CourseVideoPlayerProps {
   videoUrl: string;
+  posterUrl?: string | null;
+  title?: string;
+  videoParts?: Array<{
+    title: string;
+    url: string;
+    duration_seconds: number;
+  }>;
   onProgressUpdate: (percent: number) => void;
   watchedPercent: number;
   onVideoComplete: () => void;
@@ -59,12 +66,28 @@ const UNLOCK_THRESHOLD = 80;
 
 export function CourseVideoPlayer({
   videoUrl,
+  posterUrl,
+  title = "Course lesson",
+  videoParts = [],
   onProgressUpdate,
   watchedPercent,
   onVideoComplete,
   playbackRate = 1,
   onPlaybackRateChange,
 }: CourseVideoPlayerProps & { playbackRate?: number; onPlaybackRateChange?: (rate: number) => void }) {
+  if (videoParts.length > 1) {
+    return (
+      <SegmentedVideoPlayer
+        parts={videoParts}
+        posterUrl={posterUrl}
+        title={title}
+        watchedPercent={watchedPercent}
+        onProgressUpdate={onProgressUpdate}
+        onVideoComplete={onVideoComplete}
+      />
+    );
+  }
+
   const isYouTube = videoUrl.includes("youtube.com") || videoUrl.includes("youtu.be");
   const youtubeId = isYouTube ? getYouTubeId(videoUrl) : null;
   const driveId = videoUrl.match(/drive\.google\.com\/file\/d\/([^/?#]+)/)?.[1] ?? null;
@@ -123,6 +146,8 @@ export function CourseVideoPlayer({
   return (
     <NativeVideoPlayer
       videoUrl={videoUrl}
+      posterUrl={posterUrl}
+      title={title}
       onProgressUpdate={onProgressUpdate}
       watchedPercent={watchedPercent}
       onVideoComplete={onVideoComplete}
@@ -479,20 +504,172 @@ function YouTubePlayer({
   );
 }
 
+// ─── Segmented native video player ─────────────────────────────────────
+
+interface SegmentedVideoPart {
+  title: string;
+  url: string;
+  duration_seconds: number;
+}
+
+function SegmentedVideoPlayer({
+  parts,
+  posterUrl,
+  title,
+  watchedPercent,
+  onProgressUpdate,
+  onVideoComplete,
+}: {
+  parts: SegmentedVideoPart[];
+  posterUrl?: string | null;
+  title: string;
+  watchedPercent: number;
+  onProgressUpdate: (percent: number) => void;
+  onVideoComplete: () => void;
+}) {
+  const totalDuration = parts.reduce((sum, part) => sum + Math.max(1, part.duration_seconds), 0);
+  const initialWatchedSeconds = (Math.max(0, Math.min(100, watchedPercent)) / 100) * totalDuration;
+  const firstIncompleteIndex = parts.findIndex((_, index) => {
+    const end = parts.slice(0, index + 1).reduce((sum, part) => sum + Math.max(1, part.duration_seconds), 0);
+    return initialWatchedSeconds < end - 1;
+  });
+  const [activeIndex, setActiveIndex] = useState(firstIncompleteIndex === -1 ? parts.length - 1 : firstIncompleteIndex);
+  const [overallProgress, setOverallProgress] = useState(Math.max(0, Math.min(100, watchedPercent)));
+  const maxOverallRef = useRef(overallProgress);
+  const completedRef = useRef(overallProgress >= UNLOCK_THRESHOLD);
+
+  const secondsBefore = (index: number) => parts
+    .slice(0, index)
+    .reduce((sum, part) => sum + Math.max(1, part.duration_seconds), 0);
+
+  const watchedSeconds = (overallProgress / 100) * totalDuration;
+  const unlockedThrough = parts.reduce((highest, _, index) => (
+    secondsBefore(index) <= watchedSeconds + 1 ? index : highest
+  ), 0);
+  const activePart = parts[activeIndex];
+  const activeStart = secondsBefore(activeIndex);
+  const activePartProgress = Math.max(0, Math.min(100,
+    ((watchedSeconds - activeStart) / Math.max(1, activePart.duration_seconds)) * 100,
+  ));
+
+  const saveOverallProgress = (next: number) => {
+    const bounded = Math.max(0, Math.min(100, Math.round(next)));
+    if (bounded <= maxOverallRef.current) return;
+    maxOverallRef.current = bounded;
+    setOverallProgress(bounded);
+    onProgressUpdate(bounded);
+    if (bounded >= UNLOCK_THRESHOLD && !completedRef.current) {
+      completedRef.current = true;
+      onVideoComplete();
+    }
+  };
+
+  const handlePartProgress = (partPercent: number) => {
+    const seconds = activeStart + (Math.max(0, Math.min(100, partPercent)) / 100) * activePart.duration_seconds;
+    saveOverallProgress((seconds / totalDuration) * 100);
+  };
+
+  const handlePartEnded = () => {
+    const completedSeconds = activeStart + activePart.duration_seconds;
+    saveOverallProgress((completedSeconds / totalDuration) * 100);
+    if (activeIndex < parts.length - 1) setActiveIndex((index) => index + 1);
+  };
+
+  return (
+    <div className="space-y-4">
+      <NativeVideoPlayer
+        key={`${activeIndex}-${activePart.url}`}
+        videoUrl={activePart.url}
+        posterUrl={posterUrl}
+        title={`${title}: ${activePart.title}`}
+        onProgressUpdate={handlePartProgress}
+        watchedPercent={activePartProgress}
+        onVideoComplete={() => undefined}
+        onEnded={handlePartEnded}
+        progressMode="chapter"
+      />
+
+      <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">Lesson chapters</p>
+            <h3 className="mt-1 text-base font-bold">{Math.round(overallProgress)}% of the full lesson complete</h3>
+            <p className="mt-1 text-xs text-muted-foreground">Finish each chapter in order. The next one opens automatically.</p>
+          </div>
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-primary/25 bg-primary/10 text-sm font-black text-primary">
+            {activeIndex + 1}/{parts.length}
+          </span>
+        </div>
+        <Progress value={overallProgress} className="mt-4 h-2" />
+
+        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+          {parts.map((part, index) => {
+            const partEnd = secondsBefore(index) + part.duration_seconds;
+            const isComplete = watchedSeconds >= partEnd - 1;
+            const isActive = index === activeIndex;
+            const isUnlocked = index <= unlockedThrough;
+            return (
+              <button
+                key={part.url}
+                type="button"
+                disabled={!isUnlocked}
+                onClick={() => setActiveIndex(index)}
+                className={cn(
+                  "flex min-h-14 items-center gap-3 rounded-lg border px-3 py-2 text-left transition-colors focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
+                  isActive
+                    ? "border-primary bg-primary/10"
+                    : isUnlocked
+                      ? "border-border bg-muted/20 hover:border-primary/40 hover:bg-muted/40"
+                      : "cursor-not-allowed border-border/60 bg-muted/10 opacity-55",
+                )}
+              >
+                <span className={cn(
+                  "grid h-8 w-8 shrink-0 place-items-center rounded-full border text-xs font-black",
+                  isComplete
+                    ? "border-success/30 bg-success/15 text-success"
+                    : isActive
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-card text-muted-foreground",
+                )}>
+                  {isComplete ? <CheckCircle className="h-4 w-4" /> : index + 1}
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-bold">{part.title}</span>
+                  <span className="block text-[11px] text-muted-foreground">
+                    {Math.max(1, Math.round(part.duration_seconds / 60))} min {isActive ? "· Now playing" : isComplete ? "· Complete" : ""}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Native Video Player ────────────────────────────────────────────────
 
 interface NativeVideoPlayerProps {
   videoUrl: string;
+  posterUrl?: string | null;
+  title: string;
   onProgressUpdate: (percent: number) => void;
   watchedPercent: number;
   onVideoComplete: () => void;
+  onEnded?: () => void;
+  progressMode?: "lesson" | "chapter";
 }
 
 function NativeVideoPlayer({
   videoUrl,
+  posterUrl,
+  title,
   onProgressUpdate,
   watchedPercent,
   onVideoComplete,
+  onEnded,
+  progressMode = "lesson",
 }: NativeVideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [localProgress, setLocalProgress] = useState(watchedPercent);
@@ -503,14 +680,28 @@ function NativeVideoPlayer({
   const localProgressRef = useRef(watchedPercent);
   const onProgressUpdateRef = useRef(onProgressUpdate);
   const onVideoCompleteRef = useRef(onVideoComplete);
+  const onEndedRef = useRef(onEnded);
 
   // Keep callback refs current without re-mounting the effect
   onProgressUpdateRef.current = onProgressUpdate;
   onVideoCompleteRef.current = onVideoComplete;
+  onEndedRef.current = onEnded;
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
+
+    const handleLoadedMetadata = () => {
+      if (!Number.isFinite(video.duration) || video.duration <= 0) return;
+      const resumeAt = Math.min(video.duration, (watchedPercent / 100) * video.duration);
+      maxWatchedRef.current = resumeAt;
+
+      // Resume inside the material the agent has already watched. A completed
+      // lesson starts at the beginning so it remains useful for review.
+      if (resumeAt > 2 && resumeAt < video.duration - 2 && video.currentTime < 1) {
+        video.currentTime = resumeAt;
+      }
+    };
 
     const handleTimeUpdate = () => {
       if (video.currentTime > maxWatchedRef.current) {
@@ -535,8 +726,22 @@ function NativeVideoPlayer({
       }
     };
 
+    const handleEnded = () => {
+      maxWatchedRef.current = video.duration;
+      localProgressRef.current = 100;
+      setLocalProgress(100);
+      onProgressUpdateRef.current(100);
+      if (!completedRef.current) {
+        completedRef.current = true;
+        onVideoCompleteRef.current();
+      }
+      onEndedRef.current?.();
+    };
+
+    video.addEventListener("loadedmetadata", handleLoadedMetadata);
     video.addEventListener("timeupdate", handleTimeUpdate);
     video.addEventListener("seeking", handleSeeking);
+    video.addEventListener("ended", handleEnded);
 
     // Save progress to DB every 15 seconds
     saveTimerRef.current = setInterval(() => {
@@ -547,8 +752,10 @@ function NativeVideoPlayer({
     }, 15000);
 
     return () => {
+      video.removeEventListener("loadedmetadata", handleLoadedMetadata);
       video.removeEventListener("timeupdate", handleTimeUpdate);
       video.removeEventListener("seeking", handleSeeking);
+      video.removeEventListener("ended", handleEnded);
       if (saveTimerRef.current) clearInterval(saveTimerRef.current);
     };
   }, []); // mount-only — refs carry live callbacks and current progress
@@ -563,45 +770,68 @@ function NativeVideoPlayer({
   const SPEEDS = [0.5, 1, 1.5, 2];
 
   return (
-    <div className="relative w-full aspect-video rounded-md overflow-hidden bg-white dark:bg-black group">
-      <video
-        ref={videoRef}
-        src={videoUrl}
-        controls
-        className="w-full h-full object-contain native-video-no-seek"
-      />
-
-      {/* Speed controls */}
-      <div className="absolute top-3 left-3 z-20 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        {SPEEDS.map(s => (
-          <button
-            key={s}
-            onClick={() => handleSpeedChange(s)}
-            className={cn(
-              "px-2 py-0.5 rounded text-[10px] font-bold transition-all",
-              playbackSpeed === s
-                ? "bg-primary text-primary-foreground"
-                : "bg-white dark:bg-black/60 text-white/70 hover:bg-white dark:bg-black/80"
-            )}
-          >
-            {s}x
-          </button>
-        ))}
+    <div className="space-y-3">
+      <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-border bg-black shadow-sm">
+        <video
+          ref={videoRef}
+          src={videoUrl}
+          poster={posterUrl || undefined}
+          aria-label={`${title} video`}
+          controls
+          playsInline
+          preload="metadata"
+          className="h-full w-full object-contain native-video-no-seek"
+        />
+        <div className="pointer-events-none absolute left-3 top-3 rounded-full border border-white/15 bg-black/70 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white/90 backdrop-blur-sm">
+          APEX lesson
+        </div>
       </div>
 
-      <div className="absolute bottom-0 left-0 right-0 p-3 bg-white dark:bg-card pointer-events-none">
-        <div className="flex items-center gap-2">
-          <Progress value={localProgress} className="flex-1 h-2" />
-          <span className="text-xs text-white/80">{localProgress}%</span>
+      <div className="rounded-xl border border-border bg-muted/25 p-3 sm:p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-bold">
+              {progressMode === "chapter"
+                ? (localProgress >= UNLOCK_THRESHOLD ? "Chapter almost complete" : `${localProgress}% of this chapter`)
+                : (localProgress >= UNLOCK_THRESHOLD ? "Knowledge check unlocked" : `${localProgress}% watched`)}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {progressMode === "chapter"
+                ? "Your place is saved automatically across every chapter."
+                : localProgress >= UNLOCK_THRESHOLD
+                  ? "Your progress is saved. Take the check when you are ready."
+                  : `Progress saves automatically. Reach ${UNLOCK_THRESHOLD}% to unlock the check.`}
+            </p>
+          </div>
           {localProgress >= UNLOCK_THRESHOLD && (
-            <CheckCircle className="h-4 w-4 text-emerald-400" />
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-success/15 text-success">
+              <CheckCircle className="h-5 w-5" />
+            </span>
           )}
         </div>
-        <p className="text-[10px] text-white/50 mt-1">
-          {localProgress >= UNLOCK_THRESHOLD
-            ? "✅ Quiz unlocked!"
-            : `Watched ${localProgress}% — need ${UNLOCK_THRESHOLD}% to unlock quiz`}
-        </p>
+        <Progress value={localProgress} className="mt-3 h-2" />
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-border/70 pt-3">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Playback speed</span>
+          <div className="flex flex-wrap gap-1.5">
+            {SPEEDS.map((speed) => (
+              <button
+                key={speed}
+                type="button"
+                aria-label={`Watch at ${speed}x`}
+                aria-pressed={playbackSpeed === speed}
+                onClick={() => handleSpeedChange(speed)}
+                className={cn(
+                  "min-h-8 rounded-md border px-2.5 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
+                  playbackSpeed === speed
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-card text-muted-foreground hover:border-primary/50 hover:text-foreground",
+                )}
+              >
+                {speed}x
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

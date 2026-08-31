@@ -133,6 +133,14 @@ export function renderSlackEventText(
     const carrier = carrierText ? ` · ${carrierText}` : "";
     const product = productText ? ` · ${productText}` : "";
     const url = safeSlackUrl(p.openUrl, SLACK_DEFAULT_URLS.productionDashboard);
+    // MP-341: the first sale of the day sets the tone in a sales room, and it
+    // read exactly like the fifth. The flag is decided at ENQUEUE time (see
+    // fn_is_first_slack_deal_today) because this template is stateless and a
+    // dispatcher retry hours later would otherwise crown the wrong deal.
+    // Still the producer only — no policyholder field is ever read here.
+    if (p.firstOfDay === true) {
+      return `:trophy: *FIRST DEAL ON THE BOARD TODAY* — *${agent}* — ${usd(p.annualPremium)}${carrier}${product}\n<${url}|Open production dashboard>`;
+    }
     return `APEX sale posted: *${agent}* — ${usd(p.annualPremium)}${carrier}${product}\n<${url}|Open production dashboard>`;
   }
 

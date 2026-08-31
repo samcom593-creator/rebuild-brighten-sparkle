@@ -1,0 +1,5662 @@
+{
+  "_source": "pg_proc x pg_namespace (schema public, prokind f/p) via bot-sql",
+  "_generated_by": "scripts/refresh-rpc-catalog.sh",
+  "_note": "PostgREST resolves an RPC by name AND parameter names. A key the function does not declare is PGRST202, which supabase-js resolves with {error} rather than throwing.",
+  "functions": {
+    "_agent_credentials_key": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "acknowledge_strike": [
+      {
+        "all": [
+          "p_strike_id"
+        ],
+        "required": [
+          "p_strike_id"
+        ],
+        "unnamed": false,
+        "raw": "p_strike_id uuid"
+      }
+    ],
+    "admin_configure_integration": [
+      {
+        "all": [
+          "p_key",
+          "p_value"
+        ],
+        "required": [
+          "p_key",
+          "p_value"
+        ],
+        "unnamed": false,
+        "raw": "p_key text, p_value text"
+      }
+    ],
+    "admin_enqueue_onboarding_call": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
+      }
+    ],
+    "admin_reassign_application_owner": [
+      {
+        "all": [
+          "p_application_id",
+          "p_new_agent_id"
+        ],
+        "required": [
+          "p_application_id",
+          "p_new_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_application_id uuid, p_new_agent_id uuid"
+      }
+    ],
+    "admin_recruiting_links": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "admin_verify_slack_identity": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_slack_email",
+          "p_slack_user_id"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_slack_email",
+          "p_slack_user_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_slack_user_id text, p_slack_email text"
+      }
+    ],
+    "advance_referral_status": [
+      {
+        "all": [
+          "p_new_status",
+          "p_note",
+          "p_referral_id"
+        ],
+        "required": [
+          "p_new_status",
+          "p_referral_id"
+        ],
+        "unnamed": false,
+        "raw": "p_referral_id uuid, p_new_status referral_status, p_note text DEFAULT NULL::text"
+      }
+    ],
+    "agent_call_activity": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
+      }
+    ],
+    "agent_claim_state": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
+      }
+    ],
+    "agent_credentials_coverage": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "agent_credentials_list": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
+      }
+    ],
+    "agent_credentials_reveal": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_service"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_service"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_service text"
+      }
+    ],
+    "agent_credentials_upsert": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_notes",
+          "p_password",
+          "p_service",
+          "p_username"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_password",
+          "p_service",
+          "p_username"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_service text, p_username text, p_password text, p_notes text DEFAULT NULL::text"
+      }
+    ],
+    "agent_inbox_touch_updated_at": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "agentlink_award_top_producers": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "agentlink_book_rebuild": [
+      {
+        "all": [
+          "p_deals"
+        ],
+        "required": [
+          "p_deals"
+        ],
+        "unnamed": false,
+        "raw": "p_deals jsonb"
+      }
+    ],
+    "agentlink_live_pull": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "agentlink_mark_stale_deals_cancelled": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "agentlink_pull_appointments": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "agentlink_pull_book_of_business": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "agentlink_pull_commissions": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "agentlink_pull_leads": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "agentlink_refresh_downline": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "agentlink_sync_snapshot_from_book": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "agentlink_upsert_from_payload": [
+      {
+        "all": [
+          "p_payload"
+        ],
+        "required": [
+          "p_payload"
+        ],
+        "unnamed": false,
+        "raw": "p_payload jsonb"
+      }
+    ],
+    "agentlink_watchdog": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "agents_autogen_ref_slug": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "agents_track_stage_change": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "alert_on_repeated_automation_failures": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "alert_stuck_xcel_students": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "apex_admin_home_dashboard": [
+      {
+        "all": [
+          "p_end",
+          "p_start"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_start date DEFAULT NULL::date, p_end date DEFAULT NULL::date"
+      }
+    ],
+    "apex_admin_operations_snapshot": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "apex_agent_book": [
+      {
+        "all": [
+          "_agent_id"
+        ],
+        "required": [
+          "_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "_agent_id uuid"
+      }
+    ],
+    "apex_agent_contract_checklist": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
+      }
+    ],
+    "apex_agent_onboarding_roadmap": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
+      }
+    ],
+    "apex_can_read_agent": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
+      }
+    ],
+    "apex_can_read_candidate": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_application_id",
+          "p_profile_id"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_application_id uuid DEFAULT NULL::uuid, p_agent_id uuid DEFAULT NULL::uuid, p_profile_id uuid DEFAULT NULL::uuid"
+      }
+    ],
+    "apex_can_read_person": [
+      {
+        "all": [
+          "p_person_id"
+        ],
+        "required": [
+          "p_person_id"
+        ],
+        "unnamed": false,
+        "raw": "p_person_id uuid"
+      }
+    ],
+    "apex_contract_scope_agents": [
+      {
+        "all": [
+          "p_scope"
+        ],
+        "required": [
+          "p_scope"
+        ],
+        "unnamed": false,
+        "raw": "p_scope text"
+      }
+    ],
+    "apex_contracts_list": [
+      {
+        "all": [
+          "p_limit",
+          "p_offset",
+          "p_scope",
+          "p_search",
+          "p_status"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_scope text DEFAULT 'agency'::text, p_status text DEFAULT 'all'::text, p_search text DEFAULT NULL::text, p_limit integer DEFAULT 100, p_offset integer DEFAULT 0"
+      }
+    ],
+    "apex_contracts_summary": [
+      {
+        "all": [
+          "p_scope",
+          "p_search"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_scope text DEFAULT 'agency'::text, p_search text DEFAULT NULL::text"
+      }
+    ],
+    "apex_daily_briefing": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "apex_dashboard_summary": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "apex_has_any_role": [
+      {
+        "all": [
+          "p_roles"
+        ],
+        "required": [
+          "p_roles"
+        ],
+        "unnamed": false,
+        "raw": "p_roles text[]"
+      }
+    ],
+    "apex_home_dashboard": [
+      {
+        "all": [
+          "p_end",
+          "p_scope",
+          "p_start"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_scope text DEFAULT 'agency'::text, p_start date DEFAULT NULL::date, p_end date DEFAULT NULL::date"
+      }
+    ],
+    "apex_is_admin": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "apex_provision_licensed_applicant": [
+      {
+        "all": [
+          "p_application_id"
+        ],
+        "required": [
+          "p_application_id"
+        ],
+        "unnamed": false,
+        "raw": "p_application_id uuid"
+      }
+    ],
+    "apex_records_and_bounties": [
+      {
+        "all": [
+          "p_limit"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_limit integer DEFAULT 20"
+      }
+    ],
+    "apex_render_plaque": [
+      {
+        "all": [
+          "p_amount",
+          "p_date",
+          "p_name",
+          "p_photo_url",
+          "p_tier"
+        ],
+        "required": [
+          "p_amount",
+          "p_date",
+          "p_name",
+          "p_tier"
+        ],
+        "unnamed": false,
+        "raw": "p_name text, p_tier text, p_amount numeric, p_date date, p_photo_url text DEFAULT NULL::text"
+      }
+    ],
+    "apex_set_agent_contract_status": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_carrier_id",
+          "p_note",
+          "p_status"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_carrier_id",
+          "p_status"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_carrier_id uuid, p_status text, p_note text DEFAULT NULL::text"
+      }
+    ],
+    "apex_submit_support_request": [
+      {
+        "all": [
+          "p_category",
+          "p_details",
+          "p_priority",
+          "p_subject"
+        ],
+        "required": [
+          "p_category",
+          "p_details",
+          "p_subject"
+        ],
+        "unnamed": false,
+        "raw": "p_category text, p_subject text, p_details text, p_priority text DEFAULT 'normal'::text"
+      }
+    ],
+    "apex_support_requests": [
+      {
+        "all": [
+          "p_limit"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_limit integer DEFAULT 100"
+      }
+    ],
+    "apex_toolkit_can_work_application": [
+      {
+        "all": [
+          "p_application_id",
+          "p_user_id"
+        ],
+        "required": [
+          "p_application_id"
+        ],
+        "unnamed": false,
+        "raw": "p_application_id uuid, p_user_id uuid DEFAULT auth.uid()"
+      }
+    ],
+    "apex_toolkit_is_staff": [
+      {
+        "all": [
+          "p_user_id"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_user_id uuid DEFAULT auth.uid()"
+      }
+    ],
+    "apex_training_needs_nudge": [
+      {
+        "all": [
+          "_limit"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "_limit integer DEFAULT 5"
+      }
+    ],
+    "apex_training_rollup": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "apex_try_jsonb": [
+      {
+        "all": [
+          "p_value"
+        ],
+        "required": [
+          "p_value"
+        ],
+        "unnamed": false,
+        "raw": "p_value text"
+      }
+    ],
+    "apex_update_support_request": [
+      {
+        "all": [
+          "p_id",
+          "p_resolution_note",
+          "p_status"
+        ],
+        "required": [
+          "p_id",
+          "p_status"
+        ],
+        "unnamed": false,
+        "raw": "p_id uuid, p_status text, p_resolution_note text DEFAULT NULL::text"
+      }
+    ],
+    "app_visible_to": [
+      {
+        "all": [
+          "p_application_id",
+          "p_user_id"
+        ],
+        "required": [
+          "p_application_id",
+          "p_user_id"
+        ],
+        "unnamed": false,
+        "raw": "p_user_id uuid, p_application_id uuid"
+      }
+    ],
+    "applicant_contacted_recently": [
+      {
+        "all": [
+          "p_app_id",
+          "p_hours"
+        ],
+        "required": [
+          "p_app_id"
+        ],
+        "unnamed": false,
+        "raw": "p_app_id uuid, p_hours integer DEFAULT 24"
+      }
+    ],
+    "applicant_login_drain": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "applicant_login_fire": [
+      {
+        "all": [
+          "p_limit"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_limit integer DEFAULT 50"
+      }
+    ],
+    "applicant_login_send": [
+      {
+        "all": [
+          "p_limit"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_limit integer DEFAULT 999"
+      }
+    ],
+    "applicant_login_tick": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "applications_auto_route_hiring_manager": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "applications_flag_duplicates": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "applications_trigger_new_applicant_discord": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "applications_trigger_stage_change_discord": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "assign_va_to_application": [
+      {
+        "all": [
+          "p_application_id",
+          "p_va_user_id"
+        ],
+        "required": [
+          "p_application_id",
+          "p_va_user_id"
+        ],
+        "unnamed": false,
+        "raw": "p_application_id uuid, p_va_user_id uuid"
+      }
+    ],
+    "audit_phantom_assignments": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "auth_user_id_by_email": [
+      {
+        "all": [
+          "p_email"
+        ],
+        "required": [
+          "p_email"
+        ],
+        "unnamed": false,
+        "raw": "p_email text"
+      }
+    ],
+    "auto_admin_for_sam": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "auto_advance_getting_started": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "auto_advance_on_production": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "auto_advance_stale_applications": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "auto_assign_hiring_manager": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "auto_assign_unassigned_application": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "auto_create_getting_started": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "auto_kickoff_new_licensee": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "auto_nipr_verify_on_apply": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "auto_pass_quizless_module": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "auto_set_first_deal": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "autoposter_leak_watchdog": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "backfill_monthly_awards": [
+      {
+        "all": [
+          "p_months_back",
+          "p_threshold"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_threshold numeric DEFAULT 20000, p_months_back integer DEFAULT 6"
+      }
+    ],
+    "backfill_plaque_images": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "block_duplicate_agent_per_email": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "bot_alert_agent_contracted": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "bot_alert_agent_deactivated": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "bot_alert_automation_failure": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "bot_alert_big_deal": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "bot_alert_insuracloud_err_throttled": [
+      {
+        "all": [
+          "p_action_link",
+          "p_body",
+          "p_subject"
+        ],
+        "required": [
+          "p_body",
+          "p_subject"
+        ],
+        "unnamed": false,
+        "raw": "p_subject text, p_body text, p_action_link text DEFAULT NULL::text"
+      }
+    ],
+    "bot_alert_licensed_app": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "bot_alert_newly_licensed": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "bot_alert_sync_error": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "bridge_hh_hire": [
+      {
+        "all": [
+          "p_hh_id"
+        ],
+        "required": [
+          "p_hh_id"
+        ],
+        "unnamed": false,
+        "raw": "p_hh_id uuid"
+      }
+    ],
+    "broadcast_to_all_channels": [
+      {
+        "all": [
+          "p_body",
+          "p_priority",
+          "p_title"
+        ],
+        "required": [
+          "p_body",
+          "p_title"
+        ],
+        "unnamed": false,
+        "raw": "p_title text, p_body text, p_priority text DEFAULT 'normal'::text"
+      }
+    ],
+    "build_plaque_svg": [
+      {
+        "all": [
+          "p_agent_name",
+          "p_amount",
+          "p_avatar_url",
+          "p_color",
+          "p_milestone_type",
+          "p_sub_label"
+        ],
+        "required": [
+          "p_agent_name",
+          "p_amount",
+          "p_avatar_url",
+          "p_color",
+          "p_milestone_type"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_name text, p_amount numeric, p_milestone_type text, p_color text, p_avatar_url text, p_sub_label text DEFAULT NULL::text"
+      }
+    ],
+    "bump_manager_post": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_delta"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_delta integer DEFAULT 1, p_agent_id uuid DEFAULT NULL::uuid"
+      }
+    ],
+    "calculate_closing_rate": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "calendar_window": [
+      {
+        "all": [
+          "p_from",
+          "p_kinds",
+          "p_to"
+        ],
+        "required": [
+          "p_from",
+          "p_to"
+        ],
+        "unnamed": false,
+        "raw": "p_from date, p_to date, p_kinds text[] DEFAULT NULL::text[]"
+      }
+    ],
+    "calendar_window_counts": [
+      {
+        "all": [
+          "p_from",
+          "p_to"
+        ],
+        "required": [
+          "p_from",
+          "p_to"
+        ],
+        "unnamed": false,
+        "raw": "p_from date, p_to date"
+      }
+    ],
+    "can_work_application": [
+      {
+        "all": [
+          "p_application_id"
+        ],
+        "required": [
+          "p_application_id"
+        ],
+        "unnamed": false,
+        "raw": "p_application_id uuid"
+      }
+    ],
+    "cc_dispose": [
+      {
+        "all": [
+          "p_entity_id",
+          "p_entity_type",
+          "p_field",
+          "p_notes",
+          "p_value"
+        ],
+        "required": [
+          "p_entity_id",
+          "p_entity_type",
+          "p_field"
+        ],
+        "unnamed": false,
+        "raw": "p_entity_type text, p_entity_id text, p_field text, p_value text DEFAULT NULL::text, p_notes text DEFAULT NULL::text"
+      }
+    ],
+    "cc_dispose_interview": [
+      {
+        "all": [
+          "p_followup_due_at",
+          "p_id",
+          "p_notes",
+          "p_outcome"
+        ],
+        "required": [
+          "p_id",
+          "p_outcome"
+        ],
+        "unnamed": false,
+        "raw": "p_id uuid, p_outcome text, p_notes text DEFAULT NULL::text, p_followup_due_at timestamp with time zone DEFAULT NULL::timestamp with time zone"
+      }
+    ],
+    "check_banned_prospect": [
+      {
+        "all": [
+          "p_email",
+          "p_first_name",
+          "p_last_name",
+          "p_phone"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_email text DEFAULT NULL::text, p_phone text DEFAULT NULL::text, p_first_name text DEFAULT NULL::text, p_last_name text DEFAULT NULL::text"
+      }
+    ],
+    "check_rate_limit": [
+      {
+        "all": [
+          "_bucket_key",
+          "_max_requests",
+          "_window_seconds"
+        ],
+        "required": [
+          "_bucket_key",
+          "_max_requests",
+          "_window_seconds"
+        ],
+        "unnamed": false,
+        "raw": "_bucket_key text, _max_requests integer, _window_seconds integer"
+      }
+    ],
+    "check_speed_to_lead": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "churn_calc": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "claim_apex_contact_action_event": [
+      {
+        "all": [
+          "p_action_id"
+        ],
+        "required": [
+          "p_action_id"
+        ],
+        "unnamed": false,
+        "raw": "p_action_id uuid"
+      }
+    ],
+    "claim_apex_outbox_events": [
+      {
+        "all": [
+          "p_limit"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_limit integer DEFAULT 20"
+      }
+    ],
+    "claim_contracting_intake_events": [
+      {
+        "all": [
+          "p_intake_id"
+        ],
+        "required": [
+          "p_intake_id"
+        ],
+        "unnamed": false,
+        "raw": "p_intake_id uuid"
+      }
+    ],
+    "claim_messaging_delivery_receipt": [
+      {
+        "all": [
+          "p_correlation_id",
+          "p_destination_id",
+          "p_idempotency_key",
+          "p_installation_id",
+          "p_outbox_event_id",
+          "p_template_version"
+        ],
+        "required": [
+          "p_correlation_id",
+          "p_destination_id",
+          "p_idempotency_key",
+          "p_installation_id",
+          "p_outbox_event_id",
+          "p_template_version"
+        ],
+        "unnamed": false,
+        "raw": "p_outbox_event_id uuid, p_installation_id uuid, p_destination_id uuid, p_idempotency_key text, p_template_version integer, p_correlation_id uuid"
+      }
+    ],
+    "claim_unclaimed_lead": [
+      {
+        "all": [
+          "p_application_id"
+        ],
+        "required": [
+          "p_application_id"
+        ],
+        "unnamed": false,
+        "raw": "p_application_id uuid"
+      }
+    ],
+    "cleanup_expired_idempotency_keys": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "client_birthday_wisher": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "commission_ledger_reconcile": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "content_library_search_update": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "count_unscheduled_agents": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "course_max_attempts": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "create_apex_toolkit_agent": [
+      {
+        "all": [
+          "p_contract_version",
+          "p_email",
+          "p_first_name",
+          "p_last_name",
+          "p_npn",
+          "p_phone"
+        ],
+        "required": [
+          "p_email",
+          "p_first_name",
+          "p_last_name",
+          "p_npn",
+          "p_phone"
+        ],
+        "unnamed": false,
+        "raw": "p_first_name text, p_last_name text, p_email text, p_phone text, p_npn text, p_contract_version text DEFAULT 'npn-v1'::text"
+      }
+    ],
+    "create_apex_toolkit_agent_legacy": [
+      {
+        "all": [
+          "p_email",
+          "p_first_name",
+          "p_last_name",
+          "p_pa_number",
+          "p_phone"
+        ],
+        "required": [
+          "p_email",
+          "p_first_name",
+          "p_last_name",
+          "p_pa_number",
+          "p_phone"
+        ],
+        "unnamed": false,
+        "raw": "p_first_name text, p_last_name text, p_email text, p_phone text, p_pa_number text"
+      }
+    ],
+    "crm_agent_contacts": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "crm_agent_free_leads_status": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "crm_agent_roster": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "crm_agent_roster_unguarded": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
+      }
+    ],
+    "crm_agent_sales_pulse": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "crm_can_read_agent_scope": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
+      }
+    ],
+    "crm_can_read_roster": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "crm_roster_segments": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "crm_today_production": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "current_agent_id": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "current_manager_agent_id": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "cw_auto_open_vein": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "cw_dashboard_payload": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "cw_enforce_3_formats": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "cw_enforce_hooks_before_shot": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "cw_enforce_vein_close": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "cw_ingest_smb_backfill": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "cw_ingest_smb_shipped": [
+      {
+        "all": [
+          "p_draft_id"
+        ],
+        "required": [
+          "p_draft_id"
+        ],
+        "unnamed": false,
+        "raw": "p_draft_id bigint"
+      }
+    ],
+    "cw_record_kpi_snapshot": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "cw_set_updated_at": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "cw_smb_drafts_auto_ingest": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "cw_smb_platform_to_enum": [
+      {
+        "all": [
+          "p"
+        ],
+        "required": [
+          "p"
+        ],
+        "unnamed": false,
+        "raw": "p text"
+      }
+    ],
+    "cw_winner_schedule_ig": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "dashboard_paid_today_summary": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "data_quality_audit": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "deal_sync_queue_promote_dead": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "deals_ensure_posted_at": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "deals_rollup_to_daily_production": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "deals_touch_updated_at": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "deals_trigger_insuracloud_push": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "dedupe_applications_by_email": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "detect_duplicate_applicants": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "detect_milestone_verge": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "dialer_payment_summary": [
+      {
+        "all": [
+          "target_week"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "target_week date DEFAULT NULL::date"
+      }
+    ],
+    "discord_audit_ok": [
+      {
+        "all": [
+          "p_claimed_value",
+          "p_metric",
+          "p_source",
+          "p_tolerance_pct"
+        ],
+        "required": [
+          "p_claimed_value",
+          "p_metric",
+          "p_source"
+        ],
+        "unnamed": false,
+        "raw": "p_source text, p_metric text, p_claimed_value numeric, p_tolerance_pct numeric DEFAULT 5.0"
+      }
+    ],
+    "discord_route": [
+      {
+        "all": [
+          "p_body",
+          "p_channel",
+          "p_entity_id",
+          "p_event_type"
+        ],
+        "required": [
+          "p_body",
+          "p_channel",
+          "p_entity_id",
+          "p_event_type"
+        ],
+        "unnamed": false,
+        "raw": "p_event_type text, p_entity_id text, p_channel text, p_body jsonb"
+      }
+    ],
+    "disposition_interview": [
+      {
+        "all": [
+          "p_field",
+          "p_id",
+          "p_source",
+          "p_value"
+        ],
+        "required": [
+          "p_field",
+          "p_id",
+          "p_source",
+          "p_value"
+        ],
+        "unnamed": false,
+        "raw": "p_source text, p_id uuid, p_field text, p_value text"
+      }
+    ],
+    "dm_overnight_digest": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "dm_send_retry": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "drain_sms_fallback_queue": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "enforce_builder_track_admin_only": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "ensure_next_month_partitions": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "execute_sql": [
+      {
+        "all": [
+          "q"
+        ],
+        "required": [
+          "q"
+        ],
+        "unnamed": false,
+        "raw": "q text"
+      }
+    ],
+    "finance_snapshot": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "finances_overview": [
+      {
+        "all": [
+          "p_month",
+          "p_scope"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_scope text DEFAULT 'agency'::text, p_month date DEFAULT NULL::date"
+      }
+    ],
+    "finances_overview_base": [
+      {
+        "all": [
+          "p_month",
+          "p_scope"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_scope text DEFAULT 'agency'::text, p_month date DEFAULT NULL::date"
+      }
+    ],
+    "flex_hire": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
+      }
+    ],
+    "fn_agent_contract_pct": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
+      }
+    ],
+    "fn_agent_deprovision": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_agent_is_roster_excluded": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
+      }
+    ],
+    "fn_agent_license_returned_alert": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_agent_onboarding_call_booking": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
+      }
+    ],
+    "fn_agent_strikes_updated_at": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_agent_subagency": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
+      }
+    ],
+    "fn_agentlink_outbox_uuid": [
+      {
+        "all": [
+          "p_deal_key"
+        ],
+        "required": [
+          "p_deal_key"
+        ],
+        "unnamed": false,
+        "raw": "p_deal_key text"
+      }
+    ],
+    "fn_agentlink_policy_fingerprint": [
+      {
+        "all": [
+          "p_agent_name",
+          "p_annual_premium",
+          "p_carrier",
+          "p_client_name",
+          "p_effective_date"
+        ],
+        "required": [
+          "p_agent_name",
+          "p_annual_premium",
+          "p_carrier",
+          "p_client_name",
+          "p_effective_date"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_name text, p_client_name text, p_annual_premium numeric, p_effective_date date, p_carrier text"
+      }
+    ],
+    "fn_agentlink_policy_outbox_uuid": [
+      {
+        "all": [
+          "p_fingerprint"
+        ],
+        "required": [
+          "p_fingerprint"
+        ],
+        "unnamed": false,
+        "raw": "p_fingerprint text"
+      }
+    ],
+    "fn_agentlink_reap_stuck": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_alert_blacklisted_carrier_deal": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_alert_licensed_applicant": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_alert_sms_fix_anchor": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_applicant_first_dm_on_apply": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_application_milestone_broadcast": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_applications_derive_record_type": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_apply_invite_target_role": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_auto_advance_licensed_to_contracting": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_auto_license_from_licensed_booking": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_auto_merge_clear_duplicates": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_auto_register_applicant_for_seminar": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_auto_seminar_signup_on_course_paid": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_auto_stamp_referral_touch": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_automation_liveness_check": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_backfill_orphan_agent_id": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_backfill_orphan_failed_payments": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_backfill_orphan_lead_purchases": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_backfill_refund_sync": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_block_new_agent_identity_dup": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_block_retired_cloud_outbox": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_bridge_hh_hire_to_apex": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_broadcast_to_telegram_chat": [
+      {
+        "all": [
+          "p_chat_type",
+          "p_message"
+        ],
+        "required": [
+          "p_chat_type",
+          "p_message"
+        ],
+        "unnamed": false,
+        "raw": "p_chat_type text, p_message text"
+      }
+    ],
+    "fn_business_day_ordinal": [
+      {
+        "all": [
+          "p_date"
+        ],
+        "required": [
+          "p_date"
+        ],
+        "unnamed": false,
+        "raw": "p_date date"
+      }
+    ],
+    "fn_calls_today_summary": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_can_access_pipeline_client": [
+      {
+        "all": [
+          "p_client_id"
+        ],
+        "required": [
+          "p_client_id"
+        ],
+        "unnamed": false,
+        "raw": "p_client_id uuid"
+      }
+    ],
+    "fn_canonical_agent_id": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
+      }
+    ],
+    "fn_capture_application_licensing_milestone": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_carrier_policies_touch": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_client_pipeline_action": [
+      {
+        "all": [
+          "p_activity_body",
+          "p_activity_type",
+          "p_callback_date",
+          "p_callback_time",
+          "p_client_id",
+          "p_communication_notes",
+          "p_next_action_date",
+          "p_reminder_notes",
+          "p_replace_notes",
+          "p_replace_schedule",
+          "p_stage"
+        ],
+        "required": [
+          "p_client_id"
+        ],
+        "unnamed": false,
+        "raw": "p_client_id uuid, p_stage text DEFAULT NULL::text, p_callback_date date DEFAULT NULL::date, p_callback_time text DEFAULT NULL::text, p_next_action_date timestamp with time zone DEFAULT NULL::timestamp with time zone, p_communication_notes text DEFAULT NULL::text, p_reminder_notes text DEFAULT NULL::text, p_activity_type text DEFAULT NULL::text, p_activity_body text DEFAULT NULL::text, p_replace_schedule boolean DEFAULT false, p_replace_notes boolean DEFAULT false"
+      }
+    ],
+    "fn_client_pipeline_create": [
+      {
+        "all": [
+          "p_email",
+          "p_first_name",
+          "p_last_name",
+          "p_phone"
+        ],
+        "required": [
+          "p_first_name",
+          "p_last_name",
+          "p_phone"
+        ],
+        "unnamed": false,
+        "raw": "p_first_name text, p_last_name text, p_phone text, p_email text DEFAULT NULL::text"
+      }
+    ],
+    "fn_close_communication_gaps": [
+      {
+        "all": [
+          "p_limit"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_limit integer DEFAULT 200"
+      }
+    ],
+    "fn_commission_rate": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_carrier_id"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_carrier_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_carrier_id uuid"
+      }
+    ],
+    "fn_commission_recovery_next_batch": [
+      {
+        "all": [
+          "p_limit"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_limit integer DEFAULT 50"
+      }
+    ],
+    "fn_contact_log_stamp_application": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_culture_loop_on_deal": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_deal_capture_writing_npn": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_dedupe_phantom_lead_purchases": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_default_agent_manager_to_sam": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_default_application_manager_to_sam": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_dm_referral_manager_on_new_applicant": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_email_failure_alarm": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_emit_bounty_reversed": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_emit_inbox_notification": [
+      {
+        "all": [
+          "p_body",
+          "p_link",
+          "p_metadata",
+          "p_priority",
+          "p_title",
+          "p_type",
+          "p_user_id"
+        ],
+        "required": [
+          "p_body",
+          "p_title",
+          "p_type",
+          "p_user_id"
+        ],
+        "unnamed": false,
+        "raw": "p_user_id uuid, p_type text, p_title text, p_body text, p_link text DEFAULT NULL::text, p_priority text DEFAULT 'normal'::text, p_metadata jsonb DEFAULT '{}'::jsonb"
+      }
+    ],
+    "fn_enforce_quiz_attempt_cap": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_enqueue_40d_reissue": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_enqueue_agent_onboarding_emails": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_enqueue_calendly_for_unlicensed": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_enqueue_hired_licensed_onboarding": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_enqueue_onboarding_call_booking": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_source"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_source text DEFAULT 'trigger'::text"
+      }
+    ],
+    "fn_enrich_contracting_intake": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_evaluate_personal_records": [
+      {
+        "all": [
+          "p_emit",
+          "p_since"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_since date DEFAULT NULL::date, p_emit boolean DEFAULT true"
+      }
+    ],
+    "fn_evaluate_recruiter_bounties": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_guard_daily_production_date": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_hierarchy_first_hops": [
+      {
+        "all": [
+          "p_roots"
+        ],
+        "required": [
+          "p_roots"
+        ],
+        "unnamed": false,
+        "raw": "p_roots uuid[]"
+      }
+    ],
+    "fn_identity_collision_anchor": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_insuracloud_refusal_anchor": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_interview_events_classify_onboarding": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_license_milestone_emit": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_license_renewal_sweep": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_license_stage_rank": [
+      {
+        "all": [
+          "p"
+        ],
+        "required": [
+          "p"
+        ],
+        "unnamed": false,
+        "raw": "p license_progress"
+      }
+    ],
+    "fn_licensing_readiness": [
+      {
+        "all": [
+          "p_student_id"
+        ],
+        "required": [
+          "p_student_id"
+        ],
+        "unnamed": false,
+        "raw": "p_student_id uuid"
+      }
+    ],
+    "fn_logged_backfill_orphan_agent_id": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_logged_backfill_orphan_failed_payments": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_logged_backfill_orphan_lead_purchases": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_logged_backfill_refund_sync": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_logged_dedupe_phantom_lead_purchases": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_manager_alerts_licensed_application": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_match_carrier_policy_agents": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_match_readymode_calls": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_match_xcel_students": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_mirror_licensing_tracker": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_missed_opportunity_digest": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_next_onboarding_window": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_next_seminar_date": [
+      {
+        "all": [
+          "p_from"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_from timestamp with time zone DEFAULT now()"
+      }
+    ],
+    "fn_next_seminar_slot": [
+      {
+        "all": [
+          "p_from"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_from timestamp with time zone DEFAULT now()"
+      }
+    ],
+    "fn_next_step_agents_recompute_trigger": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_next_step_applications_recompute_trigger": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_next_step_deal_first_check": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_next_step_manual_advance": [
+      {
+        "all": [
+          "p_actor",
+          "p_agent_id",
+          "p_application_id",
+          "p_reason",
+          "p_to_stage"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_application_id uuid DEFAULT NULL::uuid, p_agent_id uuid DEFAULT NULL::uuid, p_to_stage text DEFAULT NULL::text, p_actor uuid DEFAULT NULL::uuid, p_reason text DEFAULT NULL::text"
+      }
+    ],
+    "fn_next_step_messages_auto_dispatch": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_next_step_nudge_sweep": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_next_step_recompute_all": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_next_step_recompute_one": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_application_id"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_application_id uuid DEFAULT NULL::uuid, p_agent_id uuid DEFAULT NULL::uuid"
+      }
+    ],
+    "fn_next_step_stall_sweep": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_normalize_contracting_email": [
+      {
+        "all": [
+          "p_raw"
+        ],
+        "required": [
+          "p_raw"
+        ],
+        "unnamed": false,
+        "raw": "p_raw text"
+      }
+    ],
+    "fn_normalize_contracting_npn": [
+      {
+        "all": [
+          "p_raw"
+        ],
+        "required": [
+          "p_raw"
+        ],
+        "unnamed": false,
+        "raw": "p_raw text"
+      }
+    ],
+    "fn_normalize_contracting_phone": [
+      {
+        "all": [
+          "p_raw"
+        ],
+        "required": [
+          "p_raw"
+        ],
+        "unnamed": false,
+        "raw": "p_raw text"
+      }
+    ],
+    "fn_normalize_license_progress": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_notify_agent_hired": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_onboarding_email_backfill_sweep": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_post_deal_celebration": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_annual_premium",
+          "p_note",
+          "p_product_sold"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_annual_premium",
+          "p_product_sold"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_annual_premium numeric, p_product_sold text, p_note text DEFAULT NULL::text"
+      }
+    ],
+    "fn_post_new_applicant_to_onboarding_chat": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_production_integrity_anchor": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_protect_application_attribution": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_prune_agentlink_alerts": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_queue_application_slack": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_queue_contracting_slack": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_queue_deal_slack": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_queue_external_deal_channels": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_queue_high_value_applicant_alert": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_queue_interview_noshow_slack": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_queue_licensing_milestone_slack": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_queue_onboarding_call_invites": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_readymode_ingest": [
+      {
+        "all": [
+          "p_payload"
+        ],
+        "required": [
+          "p_payload"
+        ],
+        "unnamed": false,
+        "raw": "p_payload jsonb"
+      }
+    ],
+    "fn_reconcile_licensing_vocabularies": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_recover_stale_applicant": [
+      {
+        "all": [
+          "p_action",
+          "p_application_id",
+          "p_new_agent_id",
+          "p_note"
+        ],
+        "required": [
+          "p_action",
+          "p_application_id"
+        ],
+        "unnamed": false,
+        "raw": "p_application_id uuid, p_action text, p_new_agent_id uuid DEFAULT NULL::uuid, p_note text DEFAULT NULL::text"
+      }
+    ],
+    "fn_reissue_40d_html": [
+      {
+        "all": [
+          "p_cohort",
+          "p_first_name"
+        ],
+        "required": [
+          "p_cohort",
+          "p_first_name"
+        ],
+        "unnamed": false,
+        "raw": "p_first_name text, p_cohort text"
+      }
+    ],
+    "fn_reissue_40d_template_for": [
+      {
+        "all": [
+          "p_license_progress"
+        ],
+        "required": [
+          "p_license_progress"
+        ],
+        "unnamed": false,
+        "raw": "p_license_progress text"
+      }
+    ],
+    "fn_reissue_40d_text": [
+      {
+        "all": [
+          "p_cohort",
+          "p_first_name"
+        ],
+        "required": [
+          "p_cohort",
+          "p_first_name"
+        ],
+        "unnamed": false,
+        "raw": "p_first_name text, p_cohort text"
+      }
+    ],
+    "fn_run_applicant_nudges": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_seminar_registration_ntfy": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_site_page_ladder_anchor": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_skool_members_replace": [
+      {
+        "all": [
+          "p_members"
+        ],
+        "required": [
+          "p_members"
+        ],
+        "unnamed": false,
+        "raw": "p_members jsonb"
+      }
+    ],
+    "fn_stamp_agent_licensed_at": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_stamp_applications_licensed_at": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_stamp_candidate_note_author": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_status_answer_indicates_licensed": [
+      {
+        "all": [
+          "p_status"
+        ],
+        "required": [
+          "p_status"
+        ],
+        "unnamed": false,
+        "raw": "p_status text"
+      }
+    ],
+    "fn_sweep_interview_reminders": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_sweep_manager_followup_reminders": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_sweep_onboarding_call_gaps": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_sync_is_manager": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_telegram_queue_inactivity_nudges": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_today_tasks_touch_updated_at": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_touch_agent_credentials_updated_at": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_touch_candidate_smart_goal": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_touch_contracting_updated_at": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_touch_manual_interview_entries_updated_at": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_touch_messaging_updated_at": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_xcel_auto_upgrade_all": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_xcel_events_auto_upgrade": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_xcel_stage_rank": [
+      {
+        "all": [
+          "p_stage"
+        ],
+        "required": [
+          "p_stage"
+        ],
+        "unnamed": false,
+        "raw": "p_stage text"
+      }
+    ],
+    "generate_invite_token": [
+      {
+        "all": [
+          "p_expires_hours",
+          "p_kind",
+          "p_notes",
+          "p_prefill",
+          "p_target_manager_id",
+          "p_target_role"
+        ],
+        "required": [
+          "p_kind"
+        ],
+        "unnamed": false,
+        "raw": "p_kind text, p_expires_hours integer DEFAULT 168, p_target_role text DEFAULT NULL::text, p_target_manager_id uuid DEFAULT NULL::uuid, p_prefill jsonb DEFAULT '{}'::jsonb, p_notes text DEFAULT NULL::text"
+      }
+    ],
+    "generate_weekly_dialer_invoices": [
+      {
+        "all": [
+          "target_week"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "target_week date DEFAULT NULL::date"
+      }
+    ],
+    "get_agent_free_leads_status": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
+      }
+    ],
+    "get_agent_id": [
+      {
+        "all": [
+          "_user_id"
+        ],
+        "required": [
+          "_user_id"
+        ],
+        "unnamed": false,
+        "raw": "_user_id uuid"
+      }
+    ],
+    "get_agent_production_stats": [
+      {
+        "all": [
+          "end_date",
+          "start_date"
+        ],
+        "required": [
+          "end_date",
+          "start_date"
+        ],
+        "unnamed": false,
+        "raw": "start_date date, end_date date"
+      }
+    ],
+    "get_application_seminar_invite": [
+      {
+        "all": [
+          "p_application_id"
+        ],
+        "required": [
+          "p_application_id"
+        ],
+        "unnamed": false,
+        "raw": "p_application_id uuid"
+      }
+    ],
+    "get_application_status": [
+      {
+        "all": [
+          "p_application_id"
+        ],
+        "required": [
+          "p_application_id"
+        ],
+        "unnamed": false,
+        "raw": "p_application_id uuid"
+      }
+    ],
+    "get_canonical_sam_agent": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "get_cron_jobs_with_status": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "get_daily_leaderboard": [
+      {
+        "all": [
+          "p_date"
+        ],
+        "required": [
+          "p_date"
+        ],
+        "unnamed": false,
+        "raw": "p_date date"
+      }
+    ],
+    "get_downline_agent_ids": [
+      {
+        "all": [
+          "p_root_agent_id"
+        ],
+        "required": [
+          "p_root_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_root_agent_id uuid"
+      }
+    ],
+    "get_invite_token_prefill": [
+      {
+        "all": [
+          "p_token"
+        ],
+        "required": [
+          "p_token"
+        ],
+        "unnamed": false,
+        "raw": "p_token text"
+      }
+    ],
+    "get_just_hired_30d": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "get_leaderboard_profiles": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "get_my_agency_branding": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "get_my_insuracloud_token": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "get_or_create_ics_token": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "get_weekly_leaderboard": [
+      {
+        "all": [
+          "p_end",
+          "p_start"
+        ],
+        "required": [
+          "p_end",
+          "p_start"
+        ],
+        "unnamed": false,
+        "raw": "p_start date, p_end date"
+      }
+    ],
+    "gin_extract_query_trgm": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": true,
+        "raw": "text, internal, smallint, internal, internal, internal, internal"
+      }
+    ],
+    "gin_extract_value_trgm": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": true,
+        "raw": "text, internal"
+      }
+    ],
+    "gin_trgm_consistent": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": true,
+        "raw": "internal, smallint, text, integer, internal, internal, internal, internal"
+      }
+    ],
+    "gin_trgm_triconsistent": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": true,
+        "raw": "internal, smallint, text, integer, internal, internal, internal"
+      }
+    ],
+    "gtrgm_compress": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": true,
+        "raw": "internal"
+      }
+    ],
+    "gtrgm_consistent": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": true,
+        "raw": "internal, text, smallint, oid, internal"
+      }
+    ],
+    "gtrgm_decompress": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": true,
+        "raw": "internal"
+      }
+    ],
+    "gtrgm_distance": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": true,
+        "raw": "internal, text, smallint, oid, internal"
+      }
+    ],
+    "gtrgm_in": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": true,
+        "raw": "cstring"
+      }
+    ],
+    "gtrgm_options": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": true,
+        "raw": "internal"
+      }
+    ],
+    "gtrgm_out": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": true,
+        "raw": "gtrgm"
+      }
+    ],
+    "gtrgm_penalty": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": true,
+        "raw": "internal, internal, internal"
+      }
+    ],
+    "gtrgm_picksplit": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": true,
+        "raw": "internal, internal"
+      }
+    ],
+    "gtrgm_same": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": true,
+        "raw": "gtrgm, gtrgm, internal"
+      }
+    ],
+    "gtrgm_union": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": true,
+        "raw": "internal, internal"
+      }
+    ],
+    "handle_new_user": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "has_board_access": [
+      {
+        "all": [
+          "_board_key",
+          "_user_id"
+        ],
+        "required": [
+          "_board_key",
+          "_user_id"
+        ],
+        "unnamed": false,
+        "raw": "_user_id uuid, _board_key text"
+      }
+    ],
+    "has_role": [
+      {
+        "all": [
+          "_role",
+          "_user_id"
+        ],
+        "required": [
+          "_role",
+          "_user_id"
+        ],
+        "unnamed": false,
+        "raw": "_user_id uuid, _role app_role"
+      }
+    ],
+    "hh_activity_append_only": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "hh_applicants_no_delete": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "hh_rate_limit": [
+      {
+        "all": [
+          "p_bucket",
+          "p_max",
+          "p_window_seconds"
+        ],
+        "required": [
+          "p_bucket",
+          "p_max",
+          "p_window_seconds"
+        ],
+        "unnamed": false,
+        "raw": "p_bucket text, p_max integer, p_window_seconds integer"
+      }
+    ],
+    "hh_touch_applicant": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "hh_touch_user": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "ig_bucket": [
+      {
+        "all": [
+          "last_msg_at",
+          "last_sender"
+        ],
+        "required": [
+          "last_msg_at",
+          "last_sender"
+        ],
+        "unnamed": false,
+        "raw": "last_msg_at timestamp with time zone, last_sender text"
+      }
+    ],
+    "imo_by_agency_period": [
+      {
+        "all": [
+          "p_end",
+          "p_start"
+        ],
+        "required": [
+          "p_end",
+          "p_start"
+        ],
+        "unnamed": false,
+        "raw": "p_start date, p_end date"
+      }
+    ],
+    "in_course_peer_pressure": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "ingest_external_production_deal": [
+      {
+        "all": [
+          "p_agency_name",
+          "p_agent_id",
+          "p_agent_name",
+          "p_annual_premium",
+          "p_carrier",
+          "p_external_ref",
+          "p_face_amount",
+          "p_metadata",
+          "p_monthly_premium",
+          "p_occurred_at",
+          "p_posted_date",
+          "p_product",
+          "p_source"
+        ],
+        "required": [
+          "p_agency_name",
+          "p_agent_id",
+          "p_agent_name",
+          "p_annual_premium",
+          "p_carrier",
+          "p_external_ref",
+          "p_face_amount",
+          "p_monthly_premium",
+          "p_occurred_at",
+          "p_posted_date",
+          "p_product",
+          "p_source"
+        ],
+        "unnamed": false,
+        "raw": "p_source text, p_external_ref text, p_agency_name text, p_agent_id uuid, p_agent_name text, p_carrier text, p_product text, p_monthly_premium numeric, p_annual_premium numeric, p_face_amount numeric, p_occurred_at timestamp with time zone, p_posted_date date, p_metadata jsonb DEFAULT '{}'::jsonb"
+      }
+    ],
+    "interview_conflicts": [
+      {
+        "all": [
+          "p_at"
+        ],
+        "required": [
+          "p_at"
+        ],
+        "unnamed": false,
+        "raw": "p_at timestamp with time zone"
+      }
+    ],
+    "is_agency_staff": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "is_first_monday_of_month": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "is_fresh_deal_close": [
+      {
+        "all": [
+          "p_created",
+          "p_eff_date",
+          "p_posted"
+        ],
+        "required": [
+          "p_created",
+          "p_eff_date",
+          "p_posted"
+        ],
+        "unnamed": false,
+        "raw": "p_eff_date date, p_posted timestamp with time zone, p_created timestamp with time zone"
+      }
+    ],
+    "issue_strike": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_description",
+          "p_evidence_urls",
+          "p_expires_at",
+          "p_reason_code",
+          "p_related_application_id",
+          "p_related_lead_purchase_id",
+          "p_severity"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_description",
+          "p_reason_code",
+          "p_severity"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_reason_code strike_reason_code, p_severity strike_severity, p_description text, p_expires_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_evidence_urls text[] DEFAULT '{}'::text[], p_related_application_id uuid DEFAULT NULL::uuid, p_related_lead_purchase_id uuid DEFAULT NULL::uuid"
+      }
+    ],
+    "job_run_finish": [
+      {
+        "all": [
+          "p_error",
+          "p_id",
+          "p_metadata",
+          "p_rows",
+          "p_status"
+        ],
+        "required": [
+          "p_id",
+          "p_status"
+        ],
+        "unnamed": false,
+        "raw": "p_id uuid, p_status text, p_rows integer DEFAULT NULL::integer, p_error text DEFAULT NULL::text, p_metadata jsonb DEFAULT '{}'::jsonb"
+      }
+    ],
+    "job_run_start": [
+      {
+        "all": [
+          "p_job_name"
+        ],
+        "required": [
+          "p_job_name"
+        ],
+        "unnamed": false,
+        "raw": "p_job_name text"
+      }
+    ],
+    "kj_seminar_metrics": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "landing_deal_highlights": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "landing_hire_meter": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "landing_live_stats": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "landing_next_step_for": [
+      {
+        "all": [
+          "p_application_id"
+        ],
+        "required": [
+          "p_application_id"
+        ],
+        "unnamed": false,
+        "raw": "p_application_id uuid"
+      }
+    ],
+    "landing_recent_applicants": [
+      {
+        "all": [
+          "p_limit"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_limit integer DEFAULT 14"
+      }
+    ],
+    "landing_recent_hires": [
+      {
+        "all": [
+          "p_limit"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_limit integer DEFAULT 12"
+      }
+    ],
+    "landing_unclaimed_summary": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "leaderboard_board": [
+      {
+        "all": [
+          "p_end",
+          "p_start"
+        ],
+        "required": [
+          "p_end",
+          "p_start"
+        ],
+        "unnamed": false,
+        "raw": "p_start date, p_end date"
+      }
+    ],
+    "leaderboard_book": [
+      {
+        "all": [
+          "p_end",
+          "p_include_dead",
+          "p_start"
+        ],
+        "required": [
+          "p_end",
+          "p_start"
+        ],
+        "unnamed": false,
+        "raw": "p_start date, p_end date, p_include_dead boolean DEFAULT false"
+      }
+    ],
+    "leaderboard_book_hero": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "leaderboard_book_tenure": [
+      {
+        "all": [
+          "p_end",
+          "p_start"
+        ],
+        "required": [
+          "p_end",
+          "p_start"
+        ],
+        "unnamed": false,
+        "raw": "p_start date, p_end date"
+      }
+    ],
+    "list_my_vas": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "log_contact_attempt": [
+      {
+        "all": [
+          "p_application_id",
+          "p_channel",
+          "p_notes",
+          "p_outcome"
+        ],
+        "required": [
+          "p_application_id",
+          "p_channel",
+          "p_outcome"
+        ],
+        "unnamed": false,
+        "raw": "p_application_id uuid, p_channel text, p_outcome text, p_notes text DEFAULT NULL::text"
+      }
+    ],
+    "manager_daily_accountability": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "map_al_status": [
+      {
+        "all": [
+          "p_al_status"
+        ],
+        "required": [
+          "p_al_status"
+        ],
+        "unnamed": false,
+        "raw": "p_al_status text"
+      }
+    ],
+    "mark_application_paid": [
+      {
+        "all": [
+          "p_amount_cents",
+          "p_application_id",
+          "p_email",
+          "p_paid_at",
+          "p_stripe_checkout_session_id",
+          "p_stripe_customer_id"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_application_id uuid DEFAULT NULL::uuid, p_email text DEFAULT NULL::text, p_amount_cents integer DEFAULT NULL::integer, p_stripe_customer_id text DEFAULT NULL::text, p_stripe_checkout_session_id text DEFAULT NULL::text, p_paid_at timestamp with time zone DEFAULT now()"
+      }
+    ],
+    "mark_phone_bad": [
+      {
+        "all": [
+          "p_application_id",
+          "p_reason"
+        ],
+        "required": [
+          "p_application_id"
+        ],
+        "unnamed": false,
+        "raw": "p_application_id uuid, p_reason text DEFAULT NULL::text"
+      }
+    ],
+    "merge_agent_into_canonical": [
+      {
+        "all": [
+          "p_canonical_agent_id",
+          "p_dup_agent_id"
+        ],
+        "required": [
+          "p_canonical_agent_id",
+          "p_dup_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_canonical_agent_id uuid, p_dup_agent_id uuid"
+      }
+    ],
+    "messaging_receipt_lease_interval": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "mp264_capture_stall_check": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "my_downline_agent_ids": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "my_recruiting_link": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "my_referral_status": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "my_touched_subject_ids": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "my_visible_applications": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "my_weekly_badges": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "next_step_message_stats_24h": [
+      {
+        "all": [
+          "since_ts"
+        ],
+        "required": [
+          "since_ts"
+        ],
+        "unnamed": false,
+        "raw": "since_ts timestamp with time zone"
+      }
+    ],
+    "notify_sam_on_licensing_milestone": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "nudge_day2_not_enrolled": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "nudge_day4_not_enrolled": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "nudge_unlicensed_applicants": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "nudge_xcel_completions_to_contract": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "onboarding_drip": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "orphan_deal_audit": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "phc_admin_lead_stats": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "phc_admin_leads": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "plaque_auto_generate_svg": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "plaque_color": [
+      {
+        "all": [
+          "p_color",
+          "p_type"
+        ],
+        "required": [
+          "p_color",
+          "p_type"
+        ],
+        "unnamed": false,
+        "raw": "p_type text, p_color text"
+      }
+    ],
+    "plaque_label": [
+      {
+        "all": [
+          "p_badge",
+          "p_type"
+        ],
+        "required": [
+          "p_badge",
+          "p_type"
+        ],
+        "unnamed": false,
+        "raw": "p_type text, p_badge text"
+      }
+    ],
+    "post_daily_top_producer": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "post_evening_recap": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "post_hiring_bottleneck_alert": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "post_midday_snapshot": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "post_morning_huddle": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "post_weekly_recap": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "producer_deep_dive": [
+      {
+        "all": [
+          "p_user_id"
+        ],
+        "required": [
+          "p_user_id"
+        ],
+        "unnamed": false,
+        "raw": "p_user_id integer"
+      }
+    ],
+    "producer_profile_detail": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
+      }
+    ],
+    "production_period_totals": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "production_reconciliation_receipt": [
+      {
+        "all": [
+          "p_business_date"
+        ],
+        "required": [
+          "p_business_date"
+        ],
+        "unnamed": false,
+        "raw": "p_business_date date"
+      }
+    ],
+    "promote_aged_lead_to_application": [
+      {
+        "all": [
+          "p_aged_id"
+        ],
+        "required": [
+          "p_aged_id"
+        ],
+        "unnamed": false,
+        "raw": "p_aged_id uuid"
+      }
+    ],
+    "promote_applicant_to_agent": [
+      {
+        "all": [
+          "p_application_id",
+          "p_manager_id"
+        ],
+        "required": [
+          "p_application_id"
+        ],
+        "unnamed": false,
+        "raw": "p_application_id uuid, p_manager_id uuid DEFAULT NULL::uuid"
+      }
+    ],
+    "queue_active_hired_slack_invites": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "queue_apex_contact_action": [
+      {
+        "all": [
+          "p_channel",
+          "p_idempotency_key",
+          "p_message",
+          "p_subject",
+          "p_subject_id",
+          "p_subject_kind"
+        ],
+        "required": [
+          "p_channel",
+          "p_idempotency_key",
+          "p_subject_id",
+          "p_subject_kind"
+        ],
+        "unnamed": false,
+        "raw": "p_subject_kind text, p_subject_id uuid, p_channel text, p_idempotency_key uuid, p_subject text DEFAULT NULL::text, p_message text DEFAULT NULL::text"
+      }
+    ],
+    "queue_sms": [
+      {
+        "all": [
+          "p_body",
+          "p_carrier",
+          "p_phone"
+        ],
+        "required": [
+          "p_body",
+          "p_phone"
+        ],
+        "unnamed": false,
+        "raw": "p_phone text, p_body text, p_carrier text DEFAULT NULL::text"
+      }
+    ],
+    "reactivate_nopickup_day3": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "reactivate_nopickup_day7": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "reassign_orphan_lead_managers": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "recompute_agent_metrics_for_period": [
+      {
+        "all": [
+          "p_end",
+          "p_start"
+        ],
+        "required": [
+          "p_end",
+          "p_start"
+        ],
+        "unnamed": false,
+        "raw": "p_start date, p_end date"
+      }
+    ],
+    "record_apex_licensed_disposition": [
+      {
+        "all": [
+          "p_outcome",
+          "p_subject_id",
+          "p_subject_kind"
+        ],
+        "required": [
+          "p_outcome",
+          "p_subject_id",
+          "p_subject_kind"
+        ],
+        "unnamed": false,
+        "raw": "p_subject_kind text, p_subject_id uuid, p_outcome text"
+      }
+    ],
+    "record_charge_action": [
+      {
+        "all": [
+          "p_action",
+          "p_lead_purchase_id",
+          "p_notes",
+          "p_refund_amount_cents"
+        ],
+        "required": [
+          "p_action",
+          "p_lead_purchase_id"
+        ],
+        "unnamed": false,
+        "raw": "p_lead_purchase_id uuid, p_action charge_action_type, p_notes text DEFAULT NULL::text, p_refund_amount_cents integer DEFAULT NULL::integer"
+      }
+    ],
+    "record_snap_stats_public": [
+      {
+        "all": [
+          "p_note",
+          "p_secret",
+          "p_spotlight_views",
+          "p_story_views",
+          "p_subscribers"
+        ],
+        "required": [
+          "p_secret"
+        ],
+        "unnamed": false,
+        "raw": "p_secret text, p_subscribers integer DEFAULT NULL::integer, p_story_views integer DEFAULT NULL::integer, p_spotlight_views integer DEFAULT NULL::integer, p_note text DEFAULT NULL::text"
+      }
+    ],
+    "recover_partial_applications": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "recruiting_income_estimate": [
+      {
+        "all": [
+          "p_end",
+          "p_recruiter_id",
+          "p_start"
+        ],
+        "required": [
+          "p_end",
+          "p_recruiter_id",
+          "p_start"
+        ],
+        "unnamed": false,
+        "raw": "p_recruiter_id uuid, p_start date, p_end date"
+      }
+    ],
+    "recruiting_pipeline_rollup": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "refresh_sync_health": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "register_for_seminar": [
+      {
+        "all": [
+          "p_email",
+          "p_first_name",
+          "p_last_name",
+          "p_license_status",
+          "p_phone",
+          "p_reminder_opt_in",
+          "p_seminar_date",
+          "p_source",
+          "p_utm_campaign",
+          "p_utm_medium",
+          "p_utm_source"
+        ],
+        "required": [
+          "p_email",
+          "p_first_name",
+          "p_last_name",
+          "p_phone",
+          "p_seminar_date"
+        ],
+        "unnamed": false,
+        "raw": "p_first_name text, p_last_name text, p_email text, p_phone text, p_seminar_date date, p_license_status text DEFAULT 'unknown'::text, p_source text DEFAULT 'website-seminar-form'::text, p_utm_source text DEFAULT NULL::text, p_utm_medium text DEFAULT NULL::text, p_utm_campaign text DEFAULT NULL::text, p_reminder_opt_in boolean DEFAULT false"
+      }
+    ],
+    "rescue_stale_applications": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "reset_quiz_attempts": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_module_id"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_module_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_module_id uuid"
+      }
+    ],
+    "resolve_application_for_invitee": [
+      {
+        "all": [
+          "p_email",
+          "p_phone"
+        ],
+        "required": [
+          "p_email",
+          "p_phone"
+        ],
+        "unnamed": false,
+        "raw": "p_email text, p_phone text"
+      },
+      {
+        "all": [
+          "p_email",
+          "p_instagram",
+          "p_phone"
+        ],
+        "required": [
+          "p_email",
+          "p_phone"
+        ],
+        "unnamed": false,
+        "raw": "p_email text, p_phone text, p_instagram text DEFAULT NULL::text"
+      }
+    ],
+    "resolve_hiring_manager_for_scope": [
+      {
+        "all": [
+          "p_scope"
+        ],
+        "required": [
+          "p_scope"
+        ],
+        "unnamed": false,
+        "raw": "p_scope hiring_scope"
+      }
+    ],
+    "resolve_strike": [
+      {
+        "all": [
+          "p_resolution_note",
+          "p_strike_id"
+        ],
+        "required": [
+          "p_resolution_note",
+          "p_strike_id"
+        ],
+        "unnamed": false,
+        "raw": "p_strike_id uuid, p_resolution_note text"
+      }
+    ],
+    "revive_dead_leads": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "run_automation_job": [
+      {
+        "all": [
+          "p_body",
+          "p_function_name",
+          "p_job_name"
+        ],
+        "required": [
+          "p_function_name",
+          "p_job_name"
+        ],
+        "unnamed": false,
+        "raw": "p_job_name text, p_function_name text, p_body jsonb DEFAULT '{}'::jsonb"
+      }
+    ],
+    "run_policy_quality_check": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "sam_agent_ids_to_exclude": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "sam_todo_dismiss": [
+      {
+        "all": [
+          "p_source",
+          "p_source_id"
+        ],
+        "required": [
+          "p_source",
+          "p_source_id"
+        ],
+        "unnamed": false,
+        "raw": "p_source text, p_source_id text"
+      }
+    ],
+    "sam_todo_list": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "sam_todo_snooze": [
+      {
+        "all": [
+          "p_hours",
+          "p_source",
+          "p_source_id"
+        ],
+        "required": [
+          "p_source",
+          "p_source_id"
+        ],
+        "unnamed": false,
+        "raw": "p_source text, p_source_id text, p_hours integer DEFAULT 4"
+      }
+    ],
+    "save_apex_deal_draft": [
+      {
+        "all": [
+          "p_idempotency_key",
+          "p_payload",
+          "p_section"
+        ],
+        "required": [
+          "p_idempotency_key",
+          "p_payload",
+          "p_section"
+        ],
+        "unnamed": false,
+        "raw": "p_idempotency_key uuid, p_section text, p_payload jsonb"
+      }
+    ],
+    "save_my_agency_branding": [
+      {
+        "all": [
+          "p_accent_color",
+          "p_display_name",
+          "p_show_leaderboard",
+          "p_show_personal_deals",
+          "p_show_recruiting",
+          "p_subdomain"
+        ],
+        "required": [
+          "p_accent_color",
+          "p_display_name",
+          "p_show_leaderboard",
+          "p_show_personal_deals",
+          "p_show_recruiting",
+          "p_subdomain"
+        ],
+        "unnamed": false,
+        "raw": "p_display_name text, p_subdomain text, p_accent_color text, p_show_personal_deals boolean, p_show_leaderboard boolean, p_show_recruiting boolean"
+      }
+    ],
+    "save_partial_application": [
+      {
+        "all": [
+          "p_city",
+          "p_email",
+          "p_first_name",
+          "p_form_data",
+          "p_last_name",
+          "p_phone",
+          "p_session_id",
+          "p_state",
+          "p_step_completed",
+          "p_user_agent"
+        ],
+        "required": [
+          "p_session_id"
+        ],
+        "unnamed": false,
+        "raw": "p_session_id text, p_email text DEFAULT NULL::text, p_phone text DEFAULT NULL::text, p_first_name text DEFAULT NULL::text, p_last_name text DEFAULT NULL::text, p_city text DEFAULT NULL::text, p_state text DEFAULT NULL::text, p_step_completed integer DEFAULT NULL::integer, p_form_data jsonb DEFAULT '{}'::jsonb, p_user_agent text DEFAULT NULL::text"
+      }
+    ],
+    "schedule_auto_populate_tick": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "scoped_production_scoreboard": [
+      {
+        "all": [
+          "p_end",
+          "p_start"
+        ],
+        "required": [
+          "p_end",
+          "p_start"
+        ],
+        "unnamed": false,
+        "raw": "p_start date, p_end date"
+      }
+    ],
+    "send_completion_contracting_handoff": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "send_reapply_blast": [
+      {
+        "all": [
+          "p_dry_run",
+          "p_limit"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_dry_run boolean DEFAULT false, p_limit integer DEFAULT 999"
+      }
+    ],
+    "send_reapply_email_blast": [
+      {
+        "all": [
+          "p_dry"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_dry boolean DEFAULT false"
+      }
+    ],
+    "send_reapply_sms_blast": [
+      {
+        "all": [
+          "p_dry"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_dry boolean DEFAULT false"
+      }
+    ],
+    "set_account_mode": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_mode"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_mode"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_mode text"
+      }
+    ],
+    "set_agent_active": [
+      {
+        "all": [
+          "p_active",
+          "p_agent_ids"
+        ],
+        "required": [
+          "p_active",
+          "p_agent_ids"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_ids uuid[], p_active boolean"
+      }
+    ],
+    "set_agent_al_link": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_al_id"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_al_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_al_id integer"
+      }
+    ],
+    "set_agent_contract_pct": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_note",
+          "p_pct"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_pct"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_pct numeric, p_note text DEFAULT NULL::text"
+      }
+    ],
+    "set_agent_license_progress": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_progress",
+          "p_test_date"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_progress"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_progress text, p_test_date date DEFAULT NULL::date"
+      }
+    ],
+    "set_agent_training_stage": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_stage"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_stage agent_training_stage DEFAULT NULL::agent_training_stage"
+      }
+    ],
+    "set_apex_journey_step": [
+      {
+        "all": [
+          "p_complete",
+          "p_step_key",
+          "p_subject_id",
+          "p_subject_type"
+        ],
+        "required": [
+          "p_complete",
+          "p_step_key",
+          "p_subject_id",
+          "p_subject_type"
+        ],
+        "unnamed": false,
+        "raw": "p_subject_type text, p_subject_id uuid, p_step_key text, p_complete boolean"
+      }
+    ],
+    "set_limit": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": true,
+        "raw": "real"
+      }
+    ],
+    "set_my_insuracloud_token": [
+      {
+        "all": [
+          "p_token"
+        ],
+        "required": [
+          "p_token"
+        ],
+        "unnamed": false,
+        "raw": "p_token text"
+      }
+    ],
+    "set_recruiter_bounty_status": [
+      {
+        "all": [
+          "p_id",
+          "p_note",
+          "p_status"
+        ],
+        "required": [
+          "p_id",
+          "p_status"
+        ],
+        "unnamed": false,
+        "raw": "p_id uuid, p_status text, p_note text DEFAULT NULL::text"
+      }
+    ],
+    "should_post_to_discord": [
+      {
+        "all": [
+          "p_category",
+          "p_max_per_hour"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_category text DEFAULT 'default'::text, p_max_per_hour integer DEFAULT 5"
+      }
+    ],
+    "show_limit": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "show_trgm": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": true,
+        "raw": "text"
+      }
+    ],
+    "similarity": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": true,
+        "raw": "text, text"
+      }
+    ],
+    "similarity_dist": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": true,
+        "raw": "text, text"
+      }
+    ],
+    "similarity_op": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": true,
+        "raw": "text, text"
+      }
+    ],
+    "slack_delivery_receipt_stats": [
+      {
+        "all": [
+          "p_window"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_window interval DEFAULT '24:00:00'::interval"
+      }
+    ],
+    "slack_outbox_emitters": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "sms_allowed": [
+      {
+        "all": [
+          "p_phone",
+          "p_window_minutes"
+        ],
+        "required": [
+          "p_phone"
+        ],
+        "unnamed": false,
+        "raw": "p_phone text, p_window_minutes integer DEFAULT 60"
+      }
+    ],
+    "snapshot_aged_leads_daily": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "staff_existing_auth_user_ids": [
+      {
+        "all": [
+          "p_user_ids"
+        ],
+        "required": [
+          "p_user_ids"
+        ],
+        "unnamed": false,
+        "raw": "p_user_ids uuid[]"
+      }
+    ],
+    "stale_submitted_alert": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "strict_word_similarity": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": true,
+        "raw": "text, text"
+      }
+    ],
+    "strict_word_similarity_commutator_op": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": true,
+        "raw": "text, text"
+      }
+    ],
+    "strict_word_similarity_dist_commutator_op": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": true,
+        "raw": "text, text"
+      }
+    ],
+    "strict_word_similarity_dist_op": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": true,
+        "raw": "text, text"
+      }
+    ],
+    "strict_word_similarity_op": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": true,
+        "raw": "text, text"
+      }
+    ],
+    "stuck_applicants_daily_digest": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "submit_apex_deal": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_idempotency_key",
+          "p_payload"
+        ],
+        "required": [
+          "p_idempotency_key",
+          "p_payload"
+        ],
+        "unnamed": false,
+        "raw": "p_idempotency_key uuid, p_payload jsonb, p_agent_id uuid DEFAULT NULL::uuid"
+      }
+    ],
+    "submit_apex_deal_ledger_impl": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_idempotency_key",
+          "p_payload"
+        ],
+        "required": [
+          "p_idempotency_key",
+          "p_payload"
+        ],
+        "unnamed": false,
+        "raw": "p_idempotency_key uuid, p_payload jsonb, p_agent_id uuid DEFAULT NULL::uuid"
+      }
+    ],
+    "submit_contracting_intake": [
+      {
+        "all": [
+          "p_email",
+          "p_first_name",
+          "p_last_name",
+          "p_license_status",
+          "p_npn",
+          "p_phone",
+          "p_source",
+          "p_submitted_by"
+        ],
+        "required": [
+          "p_email",
+          "p_first_name",
+          "p_last_name",
+          "p_npn",
+          "p_phone"
+        ],
+        "unnamed": false,
+        "raw": "p_first_name text, p_last_name text, p_email text, p_phone text, p_npn text, p_source text DEFAULT 'apex_contracting_page'::text, p_submitted_by uuid DEFAULT NULL::uuid, p_license_status text DEFAULT 'licensed'::text"
+      }
+    ],
+    "submit_referral": [
+      {
+        "all": [
+          "p_email",
+          "p_first_name",
+          "p_last_name",
+          "p_license",
+          "p_notes",
+          "p_phone",
+          "p_relationship",
+          "p_state"
+        ],
+        "required": [
+          "p_first_name",
+          "p_last_name"
+        ],
+        "unnamed": false,
+        "raw": "p_first_name text, p_last_name text, p_email text DEFAULT NULL::text, p_phone text DEFAULT NULL::text, p_state text DEFAULT NULL::text, p_license text DEFAULT NULL::text, p_relationship text DEFAULT NULL::text, p_notes text DEFAULT NULL::text"
+      }
+    ],
+    "sum_plaque_amounts": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "svg_url_encode": [
+      {
+        "all": [
+          "p_svg"
+        ],
+        "required": [
+          "p_svg"
+        ],
+        "unnamed": false,
+        "raw": "p_svg text"
+      }
+    ],
+    "sync_automation_status": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "sync_health_summary": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "sync_lead_counter": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "telegram_autolink_application": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "telegram_broadcast_ica_paid": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "telegram_broadcast_new_hire": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "telegram_due_nudges": [
+      {
+        "all": [
+          "limit_n",
+          "now_ts"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "now_ts timestamp with time zone DEFAULT now(), limit_n integer DEFAULT 50"
+      }
+    ],
+    "telegram_link_application": [
+      {
+        "all": [
+          "p_chat_id",
+          "p_email",
+          "p_phone"
+        ],
+        "required": [
+          "p_chat_id"
+        ],
+        "unnamed": false,
+        "raw": "p_chat_id bigint, p_phone text DEFAULT NULL::text, p_email text DEFAULT NULL::text"
+      }
+    ],
+    "telegram_set_updated_at": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "telegram_sync_stages": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "tg_application_paid_auto_enroll_license": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "tg_availability_blocks_touch": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "tg_block_phantom_lead_purchase": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "tg_call_activity_updated_at": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "tg_interview_events_touch": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "tg_licensing_students_touch": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "tg_sam_daily_tasks_touch": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "touch_getting_started": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "touch_inbound_leads_updated_at": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "touch_scheduled_calls_updated_at": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "track_license_milestones": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "transition_apex_deal_status": [
+      {
+        "all": [
+          "p_deal_id",
+          "p_expected_version",
+          "p_reason",
+          "p_to_status"
+        ],
+        "required": [
+          "p_deal_id",
+          "p_expected_version",
+          "p_reason",
+          "p_to_status"
+        ],
+        "unnamed": false,
+        "raw": "p_deal_id uuid, p_to_status text, p_reason text, p_expected_version integer"
+      }
+    ],
+    "trg_auto_dispatch_slack_invite": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "trg_fn_agent_activated_discord": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "trg_fn_agent_inserted_discord": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "trg_fn_agent_new_hire_flow": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "trg_fn_agentlink_book_announce": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "trg_fn_agentlink_book_queue_discord": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "trg_fn_applicant_autoprovision": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "trg_fn_application_discord": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "trg_fn_contracting_delivery_route_guard": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "trg_fn_contracting_outbox_route_guard": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "trg_fn_deal_broadcast": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "trg_fn_deal_celebration": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "trg_fn_deal_closed_discord": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "trg_fn_deal_status_transition": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "trg_fn_first_deal_welcome": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "trg_fn_hot_streak": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "trg_fn_inbox_interview_scheduled": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "trg_fn_inbox_license_milestone": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "trg_fn_inbox_new_applicant": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "trg_fn_inbox_onboarding_step_done": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "trg_fn_match_lead_purchase": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "trg_fn_match_xcel_progress": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "trg_fn_new_app_notify": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "trg_fn_notify_hire_announcement": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "trg_fn_referral_ask": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "trg_fn_reject_junk_deals": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "trg_fn_reward_broadcast": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "trg_fn_siri_notify": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "trg_fn_streak_7day_discord": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "trigger_interview_noshow_recovery": [
+      {
+        "all": [
+          "p_interview_id"
+        ],
+        "required": [
+          "p_interview_id"
+        ],
+        "unnamed": false,
+        "raw": "p_interview_id uuid"
+      }
+    ],
+    "trigger_stripe_sync": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "unified_assign_va": [
+      {
+        "all": [
+          "p_id",
+          "p_source",
+          "p_va_user_id"
+        ],
+        "required": [
+          "p_id",
+          "p_source",
+          "p_va_user_id"
+        ],
+        "unnamed": false,
+        "raw": "p_id uuid, p_va_user_id uuid, p_source text"
+      }
+    ],
+    "unified_mark_contacted": [
+      {
+        "all": [
+          "p_by_user_id",
+          "p_id",
+          "p_source"
+        ],
+        "required": [
+          "p_id",
+          "p_source"
+        ],
+        "unnamed": false,
+        "raw": "p_id uuid, p_source text, p_by_user_id uuid DEFAULT auth.uid()"
+      }
+    ],
+    "unified_mark_phone_bad": [
+      {
+        "all": [
+          "p_id",
+          "p_reason",
+          "p_source"
+        ],
+        "required": [
+          "p_id",
+          "p_source"
+        ],
+        "unnamed": false,
+        "raw": "p_id uuid, p_source text, p_reason text DEFAULT NULL::text"
+      }
+    ],
+    "unified_set_license_progress": [
+      {
+        "all": [
+          "p_id",
+          "p_progress",
+          "p_source"
+        ],
+        "required": [
+          "p_id",
+          "p_progress",
+          "p_source"
+        ],
+        "unnamed": false,
+        "raw": "p_id uuid, p_progress text, p_source text"
+      }
+    ],
+    "update_scheduled_interviews_updated_at": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "update_updated_at_column": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "uuid_from_text": [
+      {
+        "all": [
+          "p_value"
+        ],
+        "required": [
+          "p_value"
+        ],
+        "unnamed": false,
+        "raw": "p_value text"
+      }
+    ],
+    "void_strike": [
+      {
+        "all": [
+          "p_strike_id",
+          "p_void_reason"
+        ],
+        "required": [
+          "p_strike_id",
+          "p_void_reason"
+        ],
+        "unnamed": false,
+        "raw": "p_strike_id uuid, p_void_reason text"
+      }
+    ],
+    "webhook_health_check": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "weekly_dialer_status": [
+      {
+        "all": [
+          "target_week"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "target_week date DEFAULT NULL::date"
+      }
+    ],
+    "weekly_xcel_progress_emails": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "word_similarity": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": true,
+        "raw": "text, text"
+      }
+    ],
+    "word_similarity_commutator_op": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": true,
+        "raw": "text, text"
+      }
+    ],
+    "word_similarity_dist_commutator_op": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": true,
+        "raw": "text, text"
+      }
+    ],
+    "word_similarity_dist_op": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": true,
+        "raw": "text, text"
+      }
+    ],
+    "word_similarity_op": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": true,
+        "raw": "text, text"
+      }
+    ],
+    "zz_money": [
+      {
+        "all": [
+          "p_view"
+        ],
+        "required": [
+          "p_view"
+        ],
+        "unnamed": false,
+        "raw": "p_view text"
+      }
+    ],
+    "zz_probe": [
+      {
+        "all": [
+          "p_view"
+        ],
+        "required": [
+          "p_view"
+        ],
+        "unnamed": false,
+        "raw": "p_view text"
+      }
+    ]
+  }
+}

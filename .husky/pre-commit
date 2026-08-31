@@ -672,6 +672,16 @@ if match '^(src/.*\.(tsx|jsx|ts)$|supabase/functions/.*\.ts$|scripts/check-relat
   npm run --silent check:relation-exists || exit 1
 fi
 
+# ---------- check-rpc-args (MP-349) ----------
+# PostgREST resolves an RPC by function name AND parameter names; an unknown key
+# is PGRST202, which supabase-js RESOLVES with {error} rather than throwing. tsc
+# catches this only on an un-cast call, and 113 of 146 src/ sites are written
+# `(supabase as any).rpc` or `.rpc("name" as never)`, which removes the check.
+if match '^(src/.*\.(tsx|jsx|ts)$|supabase/functions/.*\.ts$|scripts/check-rpc-args\.mjs$|scripts/data/rpc-catalog\.json$)'; then
+  echo "[pre-commit] rpc call site staged — running check:rpc-args…"
+  npm run --silent check:rpc-args || exit 1
+fi
+
 # ---------- check-kanban-stage-vocabulary (MP-342) ----------
 # Board stage words vs the license_progress enum, both directions. The write is a
 # variable, so the literal guard above structurally cannot see this class.

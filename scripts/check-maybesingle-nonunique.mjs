@@ -77,10 +77,12 @@ import path from "node:path";
 // can branch on ambiguity instead of rendering absence. Or, where a single row is
 // genuinely guaranteed by something the catalog cannot see, annotate with
 //   single-row-allow:<why-one-row-is-guaranteed-here>
-// on the same line or the line directly above. Lower BASELINE by exactly the
-// number paid down in that commit.
+// on the same line or the line directly above. When you pay a site down, run
+//   node scripts/check-maybesingle-nonunique.mjs --write-baseline
+// to lock the ground in; the guard fails until you do.
 //
-// Baseline history:
+// Baseline history (a bare total until 2026-08-31; per-site-key after — see the
+// MP-356 note further down for why the total alone could be laundered):
 //   2026-08-12 wave-276 initial lock at 82. Distribution: 47 agents.user_id
 //   (the MP-275 shape, 4 already converted), 9 plaque_awards (date/week-scoped,
 //   measured at 0 live collisions — marker candidates), 11 profiles/applications
@@ -103,7 +105,7 @@ import path from "node:path";
 const CATALOG = "scripts/data/unique-index-catalog.json";
 const ROOTS = ["src", "supabase/functions"];
 const MARKER = "single-row-allow:";
-const BASELINE = 70;
+const SITE_BASELINE = "scripts/data/maybesingle-baseline.json";
 
 // The guard itself and the reusable resolver both discuss .maybeSingle() in prose.
 // Narrative files describe history. None are call sites.
@@ -230,6 +232,37 @@ for (const file of ROOTS.flatMap((r) => walk(r))) {
       safe++;
       continue;
     }
+
+    // A write that returns its OWN row is bounded by the write, not by a filter.
+    // .insert({...}) / .upsert({...}) of a SINGLE OBJECT returns exactly one row,
+    // so .maybeSingle() has nothing to be ambiguous about and there is no filter
+    // for a unique index to cover. Grading these on "does an .eq() column match a
+    // unique index" asks a question the shape cannot answer, and the answer is
+    // always no — so every such site was reported unsafe forever.
+    //
+    // WHY (found 2026-08-31, MP-356): all 9 "no equality filter" sites in the
+    // baseline were this shape — 8 single-object .insert(), 1 .upsert() with
+    // onConflict. Zero were genuine unfiltered reads. One of them
+    // (provision-agent-accounts:128) pushed the count to 71 and held verify:core
+    // RED for 8 commits over correct code, until an unrelated pay-down in another
+    // file put the total back to 70 and the accusation was never adjudicated.
+    //
+    // An ARRAY argument returns one row per element, so it falls through and is
+    // still graded (and, having no filter, still reported). A VARIABLE argument
+    // could be either, so it is unprovable — never silently called safe.
+    const writeArg = chain.match(/\.(insert|upsert)\(\s*([[{]?)/);
+    if (writeArg && writeArg[2] !== "[") {
+      if (writeArg[2] === "{") {
+        safe++;
+        continue;
+      }
+      unprovable.push({
+        rel,
+        lineNo,
+        why: `.${writeArg[1]}() argument is a variable — cannot prove it is a single row`,
+      });
+      continue;
+    }
     if (!table) {
       unprovable.push({ rel, lineNo, why: "table name is a variable or template literal" });
       continue;
@@ -270,31 +303,111 @@ for (const file of ROOTS.flatMap((r) => walk(r))) {
 }
 
 const count = unsafe.length;
+
+// ---------------------------------------------------------------------------
+// WHY THIS GRADES PER SITE-KEY AND NOT ON THE TOTAL (2026-08-31, MP-356).
+//
+// This guard used to compare one integer against one BASELINE. An integer is
+// FUNGIBLE: it cannot tell "nothing changed" from "one new violation here, one
+// unrelated pay-down there". That is not hypothetical — it is what happened:
+//
+//   b1d38d91 wave-onboarding-accounts  added a site  -> 71, verify:core RED
+//   ... 8 commits shipped with the ratchet red ...
+//   d4b982c1 "Resolve dashboard agent deterministically"
+//                                       paid down an UNRELATED site -> 70, GREEN
+//
+// The regression was never adjudicated; it was laundered. Worse, the pay-down
+// was real ground gained and it got spent absorbing someone else's regression
+// instead of ratcheting the floor down to 69. The `count < BASELINE` branch —
+// the entire mechanism for locking in gains — is structurally unreachable
+// whenever a regression offsets a pay-down, which is exactly when it is needed.
+//
+// The key is file + table + filter columns, and deliberately carries NO LINE
+// NUMBER: MP-355 added one line to DealEntryForm.tsx and moved a site from :92
+// to :93 without changing a thing about it. Keying on position would go red on
+// every unrelated edit above a site — the permanently-red guard this repo has
+// recorded ten costumes of.
+const keyOf = (u) => `${u.rel}::${u.why.split(" ")[0]}`;
+const observed = new Map();
+for (const u of unsafe) observed.set(keyOf(u), (observed.get(keyOf(u)) ?? 0) + 1);
+
+if (process.argv.includes("--write-baseline")) {
+  const sites = Object.fromEntries([...observed.entries()].sort(([a], [b]) => (a < b ? -1 : 1)));
+  fs.writeFileSync(
+    SITE_BASELINE,
+    JSON.stringify(
+      {
+        _why:
+          "Floor for check-maybesingle-nonunique.mjs, keyed per file+table+filter so a " +
+          "regression in one file cannot be offset by a pay-down in another. No line " +
+          "numbers: they shift under unrelated edits. See MP-356 in the guard header.",
+        _generated_from_catalog: catalog._generated_at,
+        total: count,
+        sites,
+      },
+      null,
+      2,
+    ) + "\n",
+  );
+  console.log(`wrote ${SITE_BASELINE}: ${observed.size} site-keys, ${count} sites`);
+  process.exit(0);
+}
+
+let baseline;
+try {
+  baseline = new Map(Object.entries(JSON.parse(fs.readFileSync(SITE_BASELINE, "utf8")).sites));
+} catch (e) {
+  console.error(`\u274c ${SITE_BASELINE} is missing or unreadable (${e.message}).`);
+  console.error("It is the floor this guard grades against — without it nothing is measured.");
+  process.exit(1);
+}
+
+const baselineTotal = [...baseline.values()].reduce((a, b) => a + b, 0);
 console.log(
-  `maybeSingle audit — unsafe:${count} (baseline ${BASELINE})  safe:${safe}  ` +
+  `maybeSingle audit — unsafe:${count} (baseline ${baselineTotal})  safe:${safe}  ` +
     `marked:${marked}  unprovable:${unprovable.length}`,
 );
 console.log(
   `  catalog snapshot ${catalog._generated_at} · unprovable is its own verdict, not a pass`,
 );
+console.log(`  grading ${observed.size} site-keys against ${baseline.size} baselined`);
 
-if (count > BASELINE) {
-  console.error(`\n❌ ${count - BASELINE} new .maybeSingle() call(s) on a non-unique filter.\n`);
+const regressions = [];
+const paydowns = [];
+for (const [k, n] of observed) {
+  const b = baseline.get(k) ?? 0;
+  if (n > b) regressions.push(`${k}: ${b} -> ${n}`);
+}
+for (const [k, b] of baseline) {
+  const n = observed.get(k) ?? 0;
+  if (n < b) paydowns.push(`${k}: ${b} -> ${n}`);
+}
+
+if (regressions.length) {
+  console.error(`\n\u274c ${regressions.length} new .maybeSingle() call(s) on a non-unique filter.\n`);
   console.error("PostgREST returns data=null when the filter matches >1 row, so an ambiguous");
   console.error("read is indistinguishable from a missing one. Use resolveOne() from");
   console.error("supabase/functions/_shared/resolve-one.ts, or annotate with");
   console.error(`  ${MARKER}<why-one-row-is-guaranteed-here>\n`);
-  for (const u of unsafe) console.error(`  ${u.rel}:${u.lineNo} — ${u.why}`);
+  for (const r of regressions) console.error(`  ${r}`);
+  for (const u of unsafe) {
+    if (regressions.some((r) => r.startsWith(keyOf(u)))) console.error(`    at ${u.rel}:${u.lineNo}`);
+  }
+  if (paydowns.length) {
+    console.error(`\n  (${paydowns.length} unrelated site-key(s) were paid down in the same tree.`);
+    console.error("   They do NOT offset the above — that is the whole point of this baseline.)");
+  }
   process.exit(1);
 }
 
-if (count < BASELINE) {
+if (paydowns.length) {
   console.error(
-    `\n❌ unsafe count is ${count}, below the baseline of ${BASELINE}. ` +
-      `${BASELINE - count} site(s) were paid down — lower BASELINE to ${count} in ` +
-      `scripts/check-maybesingle-nonunique.mjs so the ground gained cannot be given back.`,
+    `\n\u274c ${paydowns.length} site-key(s) were paid down. Update ${SITE_BASELINE} ` +
+      `so the ground gained cannot be given back:\n`,
   );
+  for (const p of paydowns) console.error(`  ${p}`);
+  console.error(`\nRegenerate with: node ${process.argv[1]} --write-baseline`);
   process.exit(1);
 }
 
-console.log("✅ No new ambiguity-reads-as-absence call sites.");
+console.log("\u2705 No new ambiguity-reads-as-absence call sites.");

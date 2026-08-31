@@ -3600,6 +3600,14 @@
         "raw": "p_eff_date date, p_posted timestamp with time zone, p_created timestamp with time zone"
       }
     ],
+    "is_owner": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "issue_strike": [
       {
         "all": [
@@ -3902,6 +3910,14 @@
       }
     ],
     "my_touched_subject_ids": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "my_training_next_step": [
       {
         "all": [],
         "required": [],

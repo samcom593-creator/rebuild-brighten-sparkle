@@ -16,6 +16,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ImoByAgency } from "@/components/dashboard/ImoByAgency";
+import { TrainingNextStep } from "@/components/dashboard/TrainingNextStep";
 import { ProducerPulse } from "@/components/dashboard/ProducerPulse";
 import { RecordsAndBounties } from "@/components/dashboard/RecordsAndBounties";
 import { SubmitDealDialog } from "@/components/deals/SubmitDealDialog";
@@ -220,6 +221,11 @@ export function AgentCloudHome() {
 
   return (
     <div className="space-y-5">
+      {/* Training first, above production. Sam: "as soon as they log in, the
+          first time, you should see it" — the module course had 92 agents in it
+          and the Training Hub 6, because nothing on the home screen pointed at
+          either. Renders nothing for a viewer with no agent record. */}
+      <TrainingNextStep />
       <ScopedProductionScoreboard />
       <OperationsCommandCenter />
       {/* Recent hires — names + who they're routed to + when, so Sam can follow

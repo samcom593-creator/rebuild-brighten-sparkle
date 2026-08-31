@@ -274,9 +274,12 @@ export function AgentCloudHome() {
         <Card>
           <CardContent className="p-5">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{period === "this_month" ? "Month-to-date ALP" : "ALP · " + win.label}</p>
-            <p className="mt-1 text-4xl font-bold tabular-nums text-primary">{money(mtd.team_ap)}</p>
+            <div className="mt-1 flex flex-wrap items-baseline gap-x-3">
+              <p className="text-4xl font-bold tabular-nums text-primary">{money(mtd.team_ap)}</p>
+              <p className="text-sm font-semibold tabular-nums text-foreground">{mtd.team_policies.toLocaleString()} policies</p>
+            </div>
             <p className="mt-1.5 text-xs text-muted-foreground">
-              Goal {money(mtd.goal)} · <span className="font-semibold text-foreground">{mtd.pct_to_goal}% there</span>{mtd.days_left > 0 ? ` · ${mtd.days_left} days left` : ""}
+              Goal {money(mtd.goal)} · <span className="font-semibold text-foreground">{mtd.pct_to_goal}% there</span>{mtd.days_left > 0 ? ` · ${mtd.days_left} days left` : ""} · all-time {data.lifetime.policies.toLocaleString()} policies
             </p>
             <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
               <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, mtd.pct_to_goal)}%` }} />

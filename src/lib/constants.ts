@@ -99,11 +99,7 @@ export const RESOURCE_TYPES = [
   { value: "faq", label: "FAQ", icon: "HelpCircle" },
 ];
 
-// Telegram group invite link. Authoritative value lives in
-// system_settings.telegram_invite_url (returned by get_application_status RPC);
-// this is the build-time fallback so the CTA renders even if the RPC fails.
-export const TELEGRAM_GROUP_URL = "https://t.me/+8jZjxbN9YzU0NjYx";
-
-// Concierge / AI assistant fallback (WhatsApp Business). Overridden at runtime
-// by system_settings.support_assistant_url via the status RPC.
-export const APEX_SUPPORT_ASSISTANT_URL = "https://wa.me/14695551234";
+// Telegram and WhatsApp are retired recruit channels (Sam, 2026-08: "Slack and
+// Discord only"). The last CTAs rendering them were removed with
+// ApplicationConfirmation V1/V2; the constants that pointed at them are gone so
+// a future surface cannot quietly resurrect a dead channel by importing one.

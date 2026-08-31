@@ -439,8 +439,20 @@ export default function CallCenter() {
   // since every disposition in the workflow implies a call attempt.
   const logContactAttempt = useCallback(
     (applicationId: string, outcome: string, channel: "call" | "sms" | "email" = "call") => {
-      // Wrap in Promise.resolve so the .catch is on a real Promise, not a
-      // PromiseLike (Supabase v2 typings). Fire-and-forget by design.
+      // MP-345: this used to swallow every failure. It was "fire-and-forget
+      // telemetry", which sounds harmless until you check what actually landed:
+      // application_contact_log holds 33 rows lifetime, and NOT ONE carries any
+      // of the disposition outcomes this screen sends (no_pickup, not_a_fit,
+      // needs_followup, reschedule_requested, contacted, hired, contracted).
+      // Only "initiated" is there, 8 times. So the record of what happened on a
+      // call has never been written, and the empty catch is precisely why
+      // nobody found out.
+      //
+      // Still non-blocking — a logging failure must never stop the rep moving to
+      // the next lead — but no longer silent. The RPC's own message is shown,
+      // because "not_authorized: that recruit is not assigned to you" is a
+      // different problem from a dropped connection and the rep can act on the
+      // difference.
       Promise.resolve(
         supabase.rpc("log_contact_attempt" as any, {
           p_application_id: applicationId,
@@ -448,9 +460,18 @@ export default function CallCenter() {
           p_outcome: outcome,
         }),
       )
-        .then(() => undefined)
-        // empty-catch-allow:fire-and-forget telemetry — cannot block navigation
-        .catch(() => undefined);
+        .then(({ error }: { error: { message?: string } | null }) => {
+          if (error) {
+            toast.error("Call outcome was NOT saved", {
+              description: error.message ?? "The disposition did not reach the server.",
+            });
+          }
+        })
+        .catch((err: unknown) => {
+          toast.error("Call outcome was NOT saved", {
+            description: err instanceof Error ? err.message : "Network error reaching the server.",
+          });
+        });
     },
     [],
   );
@@ -790,21 +811,30 @@ export default function CallCenter() {
       window.open(`tel:${num}`, "_self");
       return;
     }
-    // Desktop: `tel:` is a dead click with no softphone registered — the exact
-    // "I click Call and nothing happens" the floor reported. Open Google Voice
-    // so the call actually places from the browser (caller-ID on the GV number).
-    if (openGoogleVoice(num)) {
-      toast.success("Opening Google Voice", {
-        description: `Dialing ${who} — click Call in the tab`,
-      });
-      return;
-    }
-    // Only if GV can't dial the number: copy it so the rep can paste into ReadyMode.
-    navigator.clipboard?.writeText(num).catch(() => { // empty-catch-allow:clipboard blocked in insecure context; the toast still shows the number
-      /* no-op */
+    // MP-345: on desktop this used to PICK a path silently — try Google Voice,
+    // else copy to clipboard — and Sam reported getting neither a working call
+    // nor any indication of what happened. Guessing is the problem: `tel:` is a
+    // dead click without a softphone, Google Voice is unusable for the overseas
+    // VAs (they work the ReadyMode seats), and a clipboard copy looks identical
+    // to a no-op. So the number is always copied (the one action that works
+    // everywhere) and the caller is TOLD what happened plus offered Google Voice
+    // explicitly rather than having it chosen for them.
+    navigator.clipboard?.writeText(num).catch(() => { // empty-catch-allow:clipboard blocked in insecure context; the number is still shown in the toast
+      /* the toast below still shows the number, so this is recoverable */
     });
-    toast.success(`${num} copied — paste into your dialer`, {
-      description: `Calling ${who}`,
+    toast.success(`${num} — copied, ready to dial`, {
+      description: `${who}. Paste into ReadyMode, or open Google Voice.`,
+      action: {
+        label: "Google Voice",
+        onClick: () => {
+          if (!openGoogleVoice(num)) {
+            toast.error("Google Voice could not dial that number", {
+              description: `${num} is on your clipboard — paste it into ReadyMode.`,
+            });
+          }
+        },
+      },
+      duration: 8000,
     });
   }, [currentLead, logContactAttempt]);
 

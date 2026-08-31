@@ -1,5 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
+import { createRequire } from "node:module";
+
+// ESM module: esbuild is CJS, so reach it through createRequire.
+const nodeRequire = createRequire(import.meta.url);
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 
@@ -216,6 +220,24 @@ function shippedTotalMatchesData() {
   // Count entries by their `ts:` field rather than a brace pattern, so
   // reformatting the object literals cannot silently change the count.
   const dataSource = fs.readFileSync(dataAbs, "utf8");
+
+  // The count alone is not enough: it can agree with a file that does not
+  // compile. 2026-08-30 a rebase conflict spliced one entry into the entry
+  // above it, so that entry lost its `{`, its `ts:` AND its `}` together —
+  // both sides of the comparison dropped by one, this guard passed, and the
+  // breakage surfaced four minutes later as a red build on main. The
+  // property that was actually violated is "this file parses", so assert
+  // that directly instead of inferring it from a tally.
+  try {
+    const esbuild = nodeRequire("esbuild");
+    esbuild.transformSync(dataSource, { loader: "ts" });
+  } catch (err) {
+    violations.push(
+      `${dataPath}: does not parse (${String(err.message ?? err).split("\n")[0].slice(0, 160)}). A corrupted entry can still produce a self-consistent count, so the count below proves nothing until this parses.`,
+    );
+    return;
+  }
+
   const actual = (dataSource.match(/^ {4}ts: /gm) ?? []).length;
   if (actual === 0) {
     violations.push(

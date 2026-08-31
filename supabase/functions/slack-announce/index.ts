@@ -30,7 +30,30 @@ Deno.serve(async (req) => {
   const expected = (Deno.env.get("APEX_BOT_TOKEN") ?? "").trim();
   if (!expected || auth !== `Bearer ${expected}`) return json({ ok: false, error: "unauthorized" }, 401);
 
-  const { channel, text } = await req.json().catch(() => ({})) as { channel?: string; text?: string };
+  const { channel, text, probe_scopes } = await req.json().catch(() => ({})) as
+    { channel?: string; text?: string; probe_scopes?: boolean };
+
+  // MP-349: report which channel-management scopes this bot actually holds.
+  // #general-unlicensed is ARCHIVED and unarchive returned missing_scope; before
+  // concluding the room cannot be created either, ask Slack directly rather than
+  // inferring one refusal from another. auth.test is read-only and creates
+  // nothing, so this is safe to call.
+  if (probe_scopes === true) {
+    const t = (Deno.env.get("SLACK_BOT_TOKEN") ?? "").trim();
+    if (!t) return json({ ok: false, error: "SLACK_BOT_TOKEN is not configured" }, 503);
+    const r = await fetch("https://slack.com/api/auth.test", {
+      method: "POST", headers: { Authorization: `Bearer ${t}` },
+    });
+    const b = await r.json().catch(() => ({}));
+    return json({
+      ok: Boolean(b?.ok),
+      team: b?.team ?? null,
+      bot: b?.user ?? null,
+      granted_scopes: r.headers.get("x-oauth-scopes") ?? "(not reported)",
+      error: b?.ok ? null : (b?.error ?? "auth_test_failed"),
+    });
+  }
+
   if (!channel || !text?.trim()) return json({ ok: false, error: "channel and text are required" }, 400);
 
   const sb = createClient(

@@ -15,6 +15,7 @@ import {
   Network, Briefcase, Building2, AlertTriangle,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { AgentDocuments } from "@/components/profile/AgentDocuments";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent } from "@/components/ui/card";
@@ -911,6 +912,11 @@ export default function ProducerProfile() {
               )}
             </CardContent>
           </Card>
+
+          {/* An agent's own paperwork — license, E&O, voided check, ID,
+              contracting forms. Private bucket, per-agent RLS: only the agent
+              and their upline can read it. */}
+          <AgentDocuments agentId={ag?.id ?? null} />
         </div>
       </div>
     </div>

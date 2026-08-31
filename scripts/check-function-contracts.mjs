@@ -35,16 +35,19 @@ const MATRIX_OUTPUT = path.join(REPO_ROOT, "docs/audits/apex-function-contract-m
 // deploying would overwrite a working production function with a guess, so the
 // debt is recorded rather than papered over. Clear it by exporting the real
 // deployed source, not by writing a plausible replacement.
-const BASELINES = {
-  missing_config_block: 2,
-  missing_local_source: 2,
-  unallowlisted_public: 217,
-};
+// The floor is a SET of function names, not three integers — see the WHY block
+// at the bottom of this file. Regenerate with:  node scripts/check-function-contracts.mjs --write-baseline
+const BASELINE_PATH = path.join(REPO_ROOT, "scripts/data/function-contracts-baseline.json");
+const GLYPH_OK = "\u2705";
+const GLYPH_BAD = "\u274c";
 
 const buckets = { missing_config_block: [], missing_local_source: [], unallowlisted_public: [] };
 
-function logError(bucket, msg) {
-  buckets[bucket].push(msg);
+// Every violation carries the FUNCTION NAME as its key. The prose message is
+// for the human; the key is what the floor is graded on. See the WHY block at
+// the bottom of this file (MP-357) for why a bare count was not enough.
+function logError(bucket, key, msg) {
+  buckets[bucket].push({ key, msg });
 }
 
 // 1. Read config.toml function blocks
@@ -129,10 +132,10 @@ const sqlFunctions = scanMigrationFunctions();
 // This is the failure that silently 404s forever, so its baseline is 0.
 for (const fn of allInvocations) {
   if (!localFunctions.has(fn)) {
-    logError("missing_local_source", `Invoked edge function '${fn}' has no local directory in supabase/functions/`);
+    logError("missing_local_source", fn, `Invoked edge function '${fn}' has no local directory in supabase/functions/`);
   }
   if (!configBlocks.has(fn)) {
-    logError("missing_config_block", `Invoked edge function '${fn}' is missing from supabase/config.toml`);
+    logError("missing_config_block", fn, `Invoked edge function '${fn}' is missing from supabase/config.toml`);
   }
 }
 
@@ -140,7 +143,7 @@ for (const fn of allInvocations) {
 // pipeline will not ship it.
 for (const fn of localFunctions) {
   if (!configBlocks.has(fn)) {
-    logError("missing_config_block", `Local edge function '${fn}' is missing from supabase/config.toml`);
+    logError("missing_config_block", fn, `Local edge function '${fn}' is missing from supabase/config.toml`);
   }
 }
 
@@ -202,6 +205,18 @@ const PUBLIC_ALLOWLIST = new Set([
   // caller without it, so verify_jwt=false is the cron seam, not an open door.
   "license-milestone-sms-drain",
   "slack-identity-admin",
+  // provision-agent-accounts + slack-announce (MP-357): both landed after the
+  // floor was locked at 217 and turned verify:core red on every push. Gate READ
+  // before allowlisting, not assumed:
+  //   slack-announce/index.ts:29-31 — `auth !== \`Bearer ${APEX_BOT_TOKEN}\`` -> 401.
+  //   provision-agent-accounts/index.ts:57-67 — accepts SERVICE_ROLE_KEY,
+  //   APEX_BOT_TOKEN, or their system_settings copies, each required to be >16
+  //   chars, and returns 401 on anything else. Wider than a single constant
+  //   because the rotation leaves two live values (MP-304), but it fails closed.
+  // Both are cron/bot seams like the entries above: verify_jwt=false is the
+  // seam, not an open door.
+  "provision-agent-accounts",
+  "slack-announce",
 ]);
 
 // Rule 4: verify_jwt status. Ratcheted, not absolute. Flipping the ~236 legacy
@@ -211,7 +226,7 @@ const PUBLIC_ALLOWLIST = new Set([
 // while each flip is verified against its real caller inventory.
 for (const [fn, cfg] of configBlocks.entries()) {
   if (!cfg.verifyJwt && !PUBLIC_ALLOWLIST.has(fn)) {
-    logError("unallowlisted_public", `Function '${fn}' has verify_jwt = false but is not in the approved PUBLIC_ALLOWLIST`);
+    logError("unallowlisted_public", fn, `Function '${fn}' has verify_jwt = false but is not in the approved PUBLIC_ALLOWLIST`);
   }
 }
 
@@ -280,17 +295,96 @@ fs.mkdirSync(path.dirname(MATRIX_OUTPUT), { recursive: true });
 fs.writeFileSync(MATRIX_OUTPUT, matrixLines.join("\n"), "utf8");
 console.log(`Generated ${MATRIX_OUTPUT}`);
 
-let failed = false;
+// ---------------------------------------------------------------------------
+// WHY THIS GRADES A SET OF NAMES AND NOT THREE INTEGERS (2026-08-31, MP-357).
+//
+// This guard used to compare `found.length` against one integer per bucket. An
+// integer is FUNGIBLE, and on a SECURITY contract that is not a style problem:
+// allowlisting one existing function and adding one brand-new unguarded public
+// endpoint in the same tree nets zero, so the gate goes green over a live hole.
+//
+// PROVEN, not argued. From 2174bbf6 (green at exactly 217): allowlist
+// `discord-leaderboards` (-1) and add `totally-new-open-hole`, whose entire
+// body is `Deno.serve(() => new Response("secrets"))` with no auth of any kind
+// (+1). The old guard printed "unallowlisted_public: 217 (at baseline)" and
+// exited 0. The matrix it generated even LISTED the new endpoint. It saw it and
+// reported green.
+//
+// The reporting was wrong in the same direction. On 219-vs-217 it printed
+// "2 new" and then `found.slice(0, 20)` — the first twenty violators in scan
+// order. The two actual regressions (provision-agent-accounts, slack-announce)
+// were not among the twenty names it showed. An operator handed that output
+// fixes, or allowlists, whichever innocent function is at the top of the list.
+// A true alert nobody can act on costs what a false one costs.
+//
+// Keyed on function NAME only. No line numbers, no file positions: those move
+// under unrelated edits and produce the permanently-red guard this repo has
+// recorded many costumes of.
+const observed = {};
 for (const [bucket, found] of Object.entries(buckets)) {
-  const baseline = BASELINES[bucket];
-  if (found.length > baseline) {
+  observed[bucket] = new Set(found.map((f) => f.key));
+}
+
+if (process.argv.includes("--write-baseline")) {
+  const out = {
+    _why:
+      "Floor for check-function-contracts.mjs, keyed per function name so a new " +
+      "violation cannot be offset by an unrelated pay-down in the same tree. " +
+      "See the WHY block in the guard for the proof. Regenerate with --write-baseline.",
+    _generated_from: "supabase/config.toml + supabase/functions + src invocation scan",
+    buckets: Object.fromEntries(
+      Object.entries(observed).map(([b, set]) => [b, [...set].sort()]),
+    ),
+  };
+  fs.mkdirSync(path.dirname(BASELINE_PATH), { recursive: true });
+  fs.writeFileSync(BASELINE_PATH, JSON.stringify(out, null, 2) + "\n");
+  console.log(
+    `wrote ${path.relative(REPO_ROOT, BASELINE_PATH)}: ` +
+      Object.entries(out.buckets).map(([b, l]) => `${b}=${l.length}`).join("  "),
+  );
+  process.exit(0);
+}
+
+let baselineDoc;
+try {
+  baselineDoc = JSON.parse(fs.readFileSync(BASELINE_PATH, "utf8"));
+  if (!baselineDoc || typeof baselineDoc.buckets !== "object" || baselineDoc.buckets === null) {
+    throw new Error("no `buckets` object");
+  }
+} catch (e) {
+  // Never a silent pass. Without the floor nothing is being measured, and a
+  // guard that cannot read its own baseline must say so rather than exit 0.
+  console.error(`\n${GLYPH_BAD} ${path.relative(REPO_ROOT, BASELINE_PATH)} is missing or unreadable (${e.message}).`);
+  console.error("It is the floor this guard grades against — without it nothing is measured.");
+  console.error(`Regenerate with: node ${path.relative(REPO_ROOT, process.argv[1])} --write-baseline`);
+  process.exit(1);
+}
+
+let failed = false;
+const paydownBuckets = [];
+for (const bucket of Object.keys(buckets)) {
+  const now = observed[bucket];
+  const was = new Set(baselineDoc.buckets[bucket] ?? []);
+  const added = [...now].filter((k) => !was.has(k)).sort();
+  const cleared = [...was].filter((k) => !now.has(k)).sort();
+
+  if (added.length) {
     failed = true;
-    console.error(`\n❌ ${bucket}: ${found.length} (baseline ${baseline}) — ${found.length - baseline} new`);
-    for (const msg of found.slice(0, 20)) console.error(`   - ${msg}`);
-  } else if (found.length < baseline) {
-    console.log(`✅ ${bucket}: ${found.length} (baseline ${baseline}) — paid down ${baseline - found.length}; lower the baseline`);
+    console.error(`\n${GLYPH_BAD} ${bucket}: ${added.length} NEW (${now.size} total, floor ${was.size})`);
+    for (const key of added) {
+      const hit = buckets[bucket].find((f) => f.key === key);
+      console.error(`   - ${hit ? hit.msg : key}`);
+    }
+    if (cleared.length) {
+      console.error(
+        `   (${cleared.length} unrelated entr(y/ies) were cleared in the same tree. They do ` +
+          `NOT offset the above — that is the whole point of this floor.)`,
+      );
+    }
+  } else if (cleared.length) {
+    paydownBuckets.push({ bucket, cleared, size: now.size, was: was.size });
   } else {
-    console.log(`✅ ${bucket}: ${found.length} (at baseline)`);
+    console.log(`${GLYPH_OK} ${bucket}: ${now.size} (at floor)`);
   }
 }
 
@@ -299,4 +393,19 @@ if (failed) {
   console.error("endpoint into PUBLIC_ALLOWLIST with a written rationale.");
   process.exit(1);
 }
-console.log("✅ No new edge-function contract violations.");
+
+if (paydownBuckets.length) {
+  // Ground gained is locked in, not left available to absorb someone else's
+  // regression later. Same rule as check-maybesingle-nonunique (MP-356).
+  for (const p of paydownBuckets) {
+    console.error(`\n${GLYPH_BAD} ${p.bucket}: ${p.cleared.length} entr(y/ies) paid down (${p.was} -> ${p.size}):`);
+    for (const key of p.cleared) console.error(`   - ${key}`);
+  }
+  console.error(
+    `\nUpdate the floor so the ground gained cannot be given back:\n` +
+      `  node ${path.relative(REPO_ROOT, process.argv[1])} --write-baseline`,
+  );
+  process.exit(1);
+}
+
+console.log(`${GLYPH_OK} No new edge-function contract violations.`);

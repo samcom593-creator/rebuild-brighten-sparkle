@@ -1,15 +1,15 @@
 # APEX Function Contract Matrix
 
-Generated: 2026-08-28T02:43:59.388Z
+Generated: 2026-08-31T16:21:42.982Z
 Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 
 ## Inventory Summary
 
-- Total Local Edge Functions: **249**
-- Configured in `config.toml`: **251**
+- Total Local Edge Functions: **252**
+- Configured in `config.toml`: **254**
 - Invoked Edge Functions in Source: **101**
-- Invoked RPC Calls in Source: **129**
-- SQL Functions in Migrations: **444**
+- Invoked RPC Calls in Source: **135**
+- SQL Functions in Migrations: **468**
 
 ## Edge Function Auth & Verification Contracts
 
@@ -95,6 +95,7 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 | `insuracloud-sync` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `interviews-outcome` | Yes | Yes | `true` | Authenticated JWT | PASS |
 | `interviews-pipeline` | Yes | Yes | `true` | Authenticated JWT | PASS |
+| `license-milestone-sms-drain` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `licensing-stage-nudge` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `link-account` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `log-production` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -162,6 +163,7 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 | `post-plaque-to-instagram` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `postmark-approval-monitor` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `process-scheduled-tasks` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `provision-agent-accounts` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `readymode-ingest` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `readymode-sync` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `readymode-webhook` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
@@ -240,6 +242,7 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 | `simple-login` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `siri-command` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `site-shell-watch` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
+| `slack-announce` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `slack-identity-admin` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `slack-integration-health` | Yes | Yes | `true` | Authenticated JWT | PASS |
 | `stripe-sync` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -274,6 +277,6 @@ applied by hand through bot-sql and never round-tripped into
 `supabase/migrations`, so this directory does not model the deployed database.
 `apex-doctor` queries `pg_proc` and is the authority on deployed state.
 
-- Invoked RPCs: **129**
-- Also declared in this commit's migrations: **120**
+- Invoked RPCs: **135**
+- Also declared in this commit's migrations: **126**
 - Declared only in the database: **9**

@@ -1095,6 +1095,10 @@ export default function DashboardApplicants() {
     setMetricFilter("total");
     setShowDuplicates(true);
     setPipelineStage(null);
+    setListVisibleCount(100);
+    const params = new URLSearchParams(searchParams);
+    ["status", "license", "contacted", "stage"].forEach((key) => params.delete(key));
+    setSearchParams(params, { replace: true });
   };
 
   const counterTotal = statusFilter === "terminated" ? terminatedApplications.length : activeApplications.length;
@@ -2100,11 +2104,24 @@ export default function DashboardApplicants() {
               <EmptyState
                 icon={<Users className="h-7 w-7" />}
                 variant={activeApplications.length === 0 ? "warning" : "default"}
-                title={activeApplications.length === 0 ? "No active applications fetched" : "No applicants match these filters"}
+                title={
+                  activeApplications.length === 0
+                    ? "No active applications fetched"
+                    : newTodayOnly
+                      ? "Nobody applied today"
+                      : "No applicants match these filters"
+                }
+                // MP-346: name the filter that emptied the list. "New today" on a
+                // day with zero applicants is CORRECT and used to render exactly
+                // like a broken page, which is how it got reported as one. An
+                // empty result that cannot explain itself is indistinguishable
+                // from a failure.
                 description={
                   activeApplications.length === 0
                     ? "Nothing came back for your scope. If you expect rows here, your session or assignment scope is the thing to check."
-                    : "The feed is filtered down to nothing. Clear the filters to get the full applicant list back."
+                    : newTodayOnly
+                      ? `No new applications have come in today (Phoenix). This is the real count, not a loading error — ${activeApplications.length.toLocaleString()} active applicants are still here behind this filter.`
+                      : "The feed is filtered down to nothing. Clear the filters to get the full applicant list back."
                 }
                 actions={
                   activeApplications.length > 0 ? (
@@ -2112,21 +2129,15 @@ export default function DashboardApplicants() {
                       variant="outline"
                       size="sm"
                       className="h-10 w-full sm:h-9 sm:w-auto"
-                      onClick={() => {
-                        setSearchQuery("");
-                        setStatusFilter("all");
-                        setLicenseFilter("all");
-                        setMyDirectsOnly(false);
-                        setHotLeadsOnly(false);
-                        setShowDuplicates(true);
-                        setAgentFilter("all");
-                        setUplineFilter("all");
-                        setInterviewFilter("all");
-                        setNeedsFollowupOnly(false);
-                        const params = new URLSearchParams(searchParams);
-                        ["status", "license", "contacted", "stage"].forEach((key) => params.delete(key));
-                        setSearchParams(params, { replace: true });
-                      }}
+                      // MP-346: this used to inline its OWN reset, and that copy
+                      // missed newTodayOnly, duplicatesOnly, metricFilter and
+                      // pipelineStage. Clicking the "New today" card on a day with
+                      // no applicants (today: zero) emptied the list, and then
+                      // "Clear filters" did NOT clear the filter responsible — so
+                      // the list stayed empty and the page looked broken. The file
+                      // already warns "never inline a second definition"; this is
+                      // that bug, in the one control a stuck user reaches for.
+                      onClick={resetAllFilters}
                     >
                       Clear filters
                     </Button>

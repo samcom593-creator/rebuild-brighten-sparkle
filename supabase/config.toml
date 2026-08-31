@@ -251,6 +251,9 @@ verify_jwt = false
 # login against the record that already exists for them. It authenticates the
 # CALLER by matching them to an unlinked record, not by a JWT they don't have
 # yet. Guardrails live in the function (see its header).
+[functions.provision-agent-accounts]
+verify_jwt = false
+
 [functions.claim-account]
 verify_jwt = false
 

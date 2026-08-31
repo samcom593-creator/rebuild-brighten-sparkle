@@ -54,7 +54,7 @@ const handler = async (req: Request): Promise<Response> => {
     // license_status gates the Discord CTA in this email (LICENSED ONLY).
     const { data: agent, error: agentError } = await supabaseClient
       .from("agents")
-      .select("user_id, onboarding_stage, invited_by_manager_id, license_status")
+      .select("user_id, onboarding_stage, invited_by_manager_id, license_status, display_name")
       .eq("id", agentId)
       .single();
 
@@ -102,7 +102,16 @@ const handler = async (req: Request): Promise<Response> => {
       .filter(Boolean)
       .filter((v, i, a) => a.indexOf(v) === i) as string[];
 
-    const firstName = profile.full_name?.split(" ")[0] || "Agent";
+    // Never greet a person with their own email address. profiles.full_name is
+    // set to the raw email on 411 rows (2 of them active agents), so reading it
+    // alone sent Kayla Maiten an email opening "Hey maitenkayla@gmail.com" —
+    // her agents.display_name said "Kayla Maiten" the whole time. Prefer the
+    // agent row, fall back to the profile, and reject anything that still looks
+    // like an address rather than pasting it into a greeting.
+    const nameCandidates = [agent?.display_name, profile.full_name]
+      .map((v) => (typeof v === "string" ? v.trim() : ""))
+      .filter((v) => v.length > 0 && !v.includes("@"));
+    const firstName = nameCandidates[0]?.split(/\s+/)[0] || "Agent";
 
     // Discord invite gate: license_status MUST equal 'licensed' before we can
     // include the Discord CTA in ANY outbound email. Matches the guard in

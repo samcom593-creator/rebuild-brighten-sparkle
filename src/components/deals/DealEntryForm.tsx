@@ -86,12 +86,22 @@ export function DealEntryForm({ onSaved }: { onSaved?: () => void }) {
       // The token is read server-side by the deal-submit path; this form only
       // needs the agent id. (insuracloud_api_token is now column-restricted —
       // owners read it via get_my_insuracloud_token(), audit 2026-08-27.)
+      // MP-348: this was .maybeSingle(), and `agents` has NO unique index on
+      // user_id. PostgREST returns data=null on a MULTI-row match, so two agent
+      // rows for one login read as ZERO and the form threw "No agent record
+      // found for your account" at someone who has two. Matthew Anduha is in
+      // that state right now. Prefer the canonical row, then the newest, and
+      // take the first explicitly rather than asking for exactly one.
       const agentRes = await supabase
         .from("agents")
-        .select("id")
+        .select("id, canonical_agent_id, created_at")
         .eq("user_id", user.id)
-        .maybeSingle();
-      const agentRow = agentRes.data as unknown as { id: string } | null;
+        .order("created_at", { ascending: false })
+        .limit(5);
+      const rows = (agentRes.data ?? []) as unknown as Array<{ id: string; canonical_agent_id: string | null }>;
+      // A row that IS the canonical target (canonical_agent_id null) is the real
+      // one; a row pointing at another is the duplicate.
+      const agentRow = rows.find((r) => !r.canonical_agent_id) ?? rows[0] ?? null;
       if (!agentRow?.id) throw new Error("No agent record found for your account");
 
       const { error } = await supabase.from("deals" as any).insert({

@@ -215,7 +215,13 @@ export default function ClientPipeline() {
   const [bookFilter, setBookFilter] = useState<"all" | "hasnt_bought" | "missing">("all");
   const [sortKey, setSortKey] = useState<"recent" | "name" | "stage_changed" | "callback">("recent");
   const [createOpen, setCreateOpen] = useState(false);
-  const [newClient, setNewClient] = useState({ firstName: "", lastName: "", phone: "", email: "" });
+  // MP-348: the dialog offered 4 fields while agentlink_clients already stored
+  // street_address, city, state, zip_code and date_of_birth. Sam, mid-call:
+  // "not letting me input info like address or anything."
+  const [newClient, setNewClient] = useState({
+    firstName: "", lastName: "", phone: "", email: "",
+    street: "", city: "", state: "", zip: "", dob: "", notes: "",
+  });
 
   const { data: sourceRows = [], isLoading, refetch, isFetching } = useQuery({
     queryKey: ["client-pipeline", isAdmin],
@@ -273,6 +279,12 @@ export default function ClientPipeline() {
         p_last_name: newClient.lastName,
         p_phone: newClient.phone,
         p_email: newClient.email || null,
+        p_street_address: newClient.street || null,
+        p_city: newClient.city || null,
+        p_state: newClient.state || null,
+        p_zip_code: newClient.zip || null,
+        p_date_of_birth: newClient.dob || null,
+        p_notes: newClient.notes || null,
       });
       if (error || !data) throw new Error(error?.message || "Client could not be created");
       return data;
@@ -280,7 +292,7 @@ export default function ClientPipeline() {
     onSuccess: async (clientId) => {
       await queryClient.invalidateQueries({ queryKey: ["client-pipeline"] });
       setCreateOpen(false);
-      setNewClient({ firstName: "", lastName: "", phone: "", email: "" });
+      setNewClient({ firstName: "", lastName: "", phone: "", email: "", street: "", city: "", state: "", zip: "", dob: "", notes: "" });
       toast.success("Client added to the pipeline");
       navigate(`/dashboard/clients/${clientId}`);
     },
@@ -608,6 +620,34 @@ export default function ClientPipeline() {
             <div className="space-y-1.5">
               <Label htmlFor="new-client-email">Email (optional)</Label>
               <Input id="new-client-email" value={newClient.email} onChange={(event) => setNewClient((value) => ({ ...value, email: event.target.value }))} type="email" autoComplete="email" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="new-client-dob">Date of birth</Label>
+              <Input id="new-client-dob" value={newClient.dob} onChange={(event) => setNewClient((value) => ({ ...value, dob: event.target.value }))} type="date" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="new-client-street">Street address</Label>
+              <Input id="new-client-street" value={newClient.street} onChange={(event) => setNewClient((value) => ({ ...value, street: event.target.value }))} autoComplete="street-address" placeholder="123 Main St" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="new-client-city">City</Label>
+                <Input id="new-client-city" value={newClient.city} onChange={(event) => setNewClient((value) => ({ ...value, city: event.target.value }))} autoComplete="address-level2" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="new-client-state">State</Label>
+                  <Input id="new-client-state" value={newClient.state} maxLength={2} onChange={(event) => setNewClient((value) => ({ ...value, state: event.target.value.toUpperCase() }))} autoComplete="address-level1" placeholder="TX" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="new-client-zip">ZIP</Label>
+                  <Input id="new-client-zip" value={newClient.zip} onChange={(event) => setNewClient((value) => ({ ...value, zip: event.target.value }))} autoComplete="postal-code" inputMode="numeric" />
+                </div>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="new-client-notes">Notes from the call</Label>
+              <Input id="new-client-notes" value={newClient.notes} onChange={(event) => setNewClient((value) => ({ ...value, notes: event.target.value }))} placeholder="Anything worth remembering" />
             </div>
           </div>
           <DialogFooter>

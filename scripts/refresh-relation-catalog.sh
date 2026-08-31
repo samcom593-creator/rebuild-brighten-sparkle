@@ -30,7 +30,7 @@ RESP=$(curl -s --max-time 60 -X POST \
   -H "Content-Type: application/json" -d "$BODY")
 
 RESP="$RESP" python3 - "$OUT" <<'PY'
-import json, os, sys
+import json, os, re, sys
 out = sys.argv[1]
 d = json.loads(os.environ["RESP"])
 if not d.get("ok"):
@@ -40,11 +40,27 @@ rows = d["rows"]
 # file: the guard would keep exiting 0 while grading almost nothing.
 if len(rows) < 200:
     print("refusing to write a %d-row catalog (expected >=200)" % len(rows), file=sys.stderr); sys.exit(1)
+# Supabase rotates realtime.messages_YYYY_MM_DD on a 7-day sliding window: one
+# partition is created and one dropped every day. Snapshotting them made Check
+# #39 go CRITICAL on the CALENDAR rather than on a defect -- guaranteed within a
+# day of every refresh, forever, saying "a dead .from() would ship green" about a
+# partition no line of this repo has ever named. That is the permanently-red
+# guard apex-doctor.sh's own Check #19 header warns about, and it was invisible
+# until MP-350 fixed the undefined `crit` that had been eating the verdict.
+#
+# The pattern is written INTO the artifact rather than duplicated in the doctor,
+# because a rule applied to the snapshot here and to live prod there is two
+# copies of one rule -- the drift fn_alert_sms_fix_anchor() exists to prevent.
+EXCLUDE = r"^realtime\.messages_\d{4}_\d{2}_\d{2}$"
+keep = [n for n in ("%s.%s" % (r["table_schema"], r["table_name"]) for r in rows)
+        if not re.match(EXCLUDE, n)]
 cat = {
     "_source": "information_schema.tables via bot-sql, all non-system schemas",
     "_generated_by": "scripts/refresh-relation-catalog.sh",
     "_note": "Qualified names. `public.x` is what an unqualified .from('x') resolves to.",
-    "relations": sorted("%s.%s" % (r["table_schema"], r["table_name"]) for r in rows),
+    "_excluded_pattern": EXCLUDE,
+    "_excluded_why": "daily-rotating realtime partitions; snapshotting them made the drift check fire on the calendar, not on a defect",
+    "relations": sorted(keep),
 }
 json.dump(cat, open(out, "w"), indent=2)
 open(out, "a").write("\n")

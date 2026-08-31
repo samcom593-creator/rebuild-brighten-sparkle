@@ -38,7 +38,7 @@ export interface SendEmailResult {
 }
 
 const DEFAULT_FROM     = Deno.env.get("EMAIL_FROM")     ?? "Sam at APEX <sam@apex-financial.org>";
-const DEFAULT_REPLY_TO = Deno.env.get("EMAIL_REPLY_TO") ?? "sam@apex-financial.org";
+const DEFAULT_REPLY_TO = Deno.env.get("EMAIL_REPLY_TO") ?? "info@kingofsales.net";
 const DOMAIN           = Deno.env.get("APEX_DOMAIN")    ?? "apex-financial.org";
 
 export function htmlToText(html: string): string {

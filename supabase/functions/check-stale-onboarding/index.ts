@@ -295,7 +295,7 @@ serve(async (req) => {
         await resend.emails.send({
           from: "APEX Financial <notifications@apex-financial.org>",
           to: [agent.email],
-          cc: ["sam@apex-financial.org"],
+          cc: ["info@kingofsales.net"],
           subject,
           html: emailHtml,
         });
@@ -305,7 +305,7 @@ serve(async (req) => {
           await resend.emails.send({
             from: "APEX Financial <notifications@apex-financial.org>",
             to: [agent.managerEmail],
-            cc: ["sam@apex-financial.org"],
+            cc: ["info@kingofsales.net"],
             subject: `⚠️ Agent Alert: ${agent.agentName} stalled in course`,
             html: `
               <div style="font-family: sans-serif; max-width: 500px;">

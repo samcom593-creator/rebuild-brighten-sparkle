@@ -342,7 +342,7 @@ serve(async (req) => {
         const resend = new Resend(resendKey);
         await resend.emails.send({
           from: "APEX System <alerts@apex-financial.org>",
-          to: "sam@apex-financial.org",
+          to: "info@kingofsales.net",
           subject: `🚨 ${criticalIssues.length} Critical System Issue${criticalIssues.length > 1 ? "s" : ""} Detected`,
           html: `
             <div style="font-family:sans-serif;max-width:560px;background:#030712;color:white;padding:32px;border-radius:12px">

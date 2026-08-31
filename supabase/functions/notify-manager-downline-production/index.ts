@@ -216,7 +216,7 @@ serve(async (req: Request) => {
       await resend.emails.send({
         from: "APEX Financial <notifications@apex-financial.org>",
         to: [managerProfile.email],
-        cc: ["sam@apex-financial.org"],
+        cc: ["info@kingofsales.net"],
         subject: `${tierLabel}: ${agentName} hit $${roundedAmount.toLocaleString()} today`,
         html: emailHtml,
       });

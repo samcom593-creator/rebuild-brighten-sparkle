@@ -5,7 +5,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const ADMIN_EMAIL = "sam@apex-financial.org";
+const ADMIN_EMAIL = "info@kingofsales.net";
 const FROM_EMAIL = "APEX Financial <notifications@apex-financial.org>";
 
 Deno.serve(async (req: Request) => {

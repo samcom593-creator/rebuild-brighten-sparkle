@@ -12,7 +12,7 @@ const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-const ADMIN_EMAIL = "sam@apex-financial.org";
+const ADMIN_EMAIL = "info@kingofsales.net";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

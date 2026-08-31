@@ -9,7 +9,7 @@ const corsHeaders = {
 
 const UNLICENSED_CALENDLY = "https://calendly.com/apexfinancialempire/licensed-prospect-call-clone";
 const LICENSED_CALENDLY = "https://calendly.com/apexfinancialempire/1on1-call-clone";
-const ADMIN_EMAIL = "sam@apex-financial.org";
+const ADMIN_EMAIL = "info@kingofsales.net";
 
 async function getManagerEmail(supabase: any, agentId: string): Promise<string | null> {
   try {

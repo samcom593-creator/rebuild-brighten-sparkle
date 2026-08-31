@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
     });
 
     // Collect all CC emails
-    const adminEmail = "sam@apex-financial.org";
+    const adminEmail = "info@kingofsales.net";
     const ccList: string[] = [adminEmail];
 
     // Get direct manager email

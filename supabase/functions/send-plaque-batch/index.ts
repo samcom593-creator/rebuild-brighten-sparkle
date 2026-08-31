@@ -9,7 +9,7 @@
  *   - limit: how many plaques to process in one invocation (default 25)
  *   - dry_run: true → log what would be sent, don't actually email
  *   - force_resend: true → include plaques that already have email_sent_at
- *   - target_admin_email: true → email all rendered plaques to sam@apex-financial.org
+ *   - target_admin_email: true → email all rendered plaques to info@kingofsales.net
  *     (a single digest email with every plaque), instead of per-agent
  */
 

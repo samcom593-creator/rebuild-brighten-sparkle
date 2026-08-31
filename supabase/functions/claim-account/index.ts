@@ -46,7 +46,7 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
-const SUPPORT = "sam@apex-financial.org";
+const SUPPORT = "info@kingofsales.net";
 
 /**
  * PostgREST rewrites `*` to `%` before it becomes SQL, so .ilike() takes FOUR
@@ -148,7 +148,7 @@ serve(async (req: Request): Promise<Response> => {
   // from minting an admin. Refused here, ahead of createUser.
   const RESERVED = new Set([
     "sam.com593@gmail.com",
-    "sam@apex-financial.org",
+    "info@kingofsales.net",
     "info@kingofsales.net",
   ]);
   if (RESERVED.has(email)) {

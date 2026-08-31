@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
         headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           from: "APEX Alerts <alerts@apex-financial.org>",
-          to: ["sam@apex-financial.org"],
+          to: ["info@kingofsales.net"],
           subject: `⚠️ ${droppedLeads.length} Dropped Leads — No contact in 48+ hours`,
           html: `<div style="background:#030712;color:white;font-family:sans-serif;padding:32px;max-width:600px;margin:0 auto">
             <h2 style="color:#ef4444">⚠️ ${droppedLeads.length} Dropped Leads</h2>

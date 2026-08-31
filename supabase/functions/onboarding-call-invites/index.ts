@@ -30,7 +30,7 @@ const APEX_BOT_TOKEN = (Deno.env.get("APEX_BOT_TOKEN") ?? "").trim();
 const CALENDLY_TOKEN = (Deno.env.get("CALENDLY_API_TOKEN") ?? "").trim();
 
 const ORGANIZER_NAME = "Sam James";
-const ORGANIZER_EMAIL = "sam@apex-financial.org";
+const ORGANIZER_EMAIL = "info@kingofsales.net";
 const PHOENIX = "America/Phoenix";
 const CENTRAL = "America/Chicago";
 const MAX_ATTEMPTS = 5;

@@ -160,7 +160,7 @@ serve(async (req) => {
         await resend.emails.send({
           from: "APEX Financial <notifications@apex-financial.org>",
           to: [email],
-          cc: ["sam@apex-financial.org"],
+          cc: ["info@kingofsales.net"],
           subject: `📋 ${dayName} Checkpoint - Let's Talk Strategy`,
           html: emailHtml,
         });

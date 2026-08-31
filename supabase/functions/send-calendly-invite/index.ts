@@ -135,7 +135,7 @@ function buildHtml(firstName: string): string {
           <tr>
             <td style="background:#0f172a;padding:14px 24px;text-align:center;">
               <p style="margin:0;color:#94a3b8;font-size:11px;line-height:1.5;">
-                Apex Financial · sam@apex-financial.org<br>
+                Apex Financial · info@kingofsales.net<br>
                 You're receiving this because you applied to join our team.
               </p>
             </td>
@@ -173,7 +173,7 @@ async function sendOne(
       to: [toEmail],
       subject: SUBJECT,
       html,
-      reply_to: "sam@apex-financial.org",
+      reply_to: "info@kingofsales.net",
     }),
   });
   const text = await res.text();

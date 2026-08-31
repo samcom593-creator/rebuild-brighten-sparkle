@@ -187,7 +187,7 @@ async function sendViaResend(
         subject,
         html,
         text,
-        reply_to: "sam@apex-financial.org",
+        reply_to: "info@kingofsales.net",
       }),
     });
   } catch (err) {

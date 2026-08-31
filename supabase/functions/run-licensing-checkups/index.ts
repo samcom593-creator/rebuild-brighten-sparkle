@@ -310,7 +310,7 @@ serve(async (req: Request) => {
           if (resend) {
             await resend.emails.send({
               from: "Apex Financial <notifications@apex-financial.org>",
-              to: ["sam@apex-financial.org"],
+              to: ["info@kingofsales.net"],
               subject: `🚨 Stalled Agent: ${firstName} ${app.last_name} — ${daysSinceContracted} days, stage: ${stage}`,
               html: `<p><strong>${firstName} ${app.last_name}</strong> has been contracted for ${daysSinceContracted} days and is still in the "${stage}" stage. Personal follow-up recommended.</p>
                      <p>Email: ${app.email}<br/>Phone: ${app.phone || "N/A"}</p>`,
@@ -353,7 +353,7 @@ serve(async (req: Request) => {
             await resend.emails.send({
               from: "Apex Financial <notifications@apex-financial.org>",
               to: [app.email],
-              cc: ["sam@apex-financial.org"],
+              cc: ["info@kingofsales.net"],
               subject: `${firstName}, let's remove the blockers`,
               html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
                 <h2>Hey ${firstName},</h2>

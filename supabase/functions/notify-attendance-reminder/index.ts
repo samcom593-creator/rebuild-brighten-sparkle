@@ -92,10 +92,10 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send to Sam for agency meeting
     if (type === "meeting" || type === "all") {
-      const sent = await sendReminder("sam@apex-financial.org", "Samuel James", "Agency Meeting");
+      const sent = await sendReminder("info@kingofsales.net", "Samuel James", "Agency Meeting");
       if (sent) {
         try {
-          const phone = await getPhoneForEmail(supabase, "sam@apex-financial.org");
+          const phone = await getPhoneForEmail(supabase, "info@kingofsales.net");
           if (phone) {
             await supabase.functions.invoke("send-sms-auto-detect", {
               body: { phone, message: "⏰ Reminder: Mark Agency Meeting attendance today!" },

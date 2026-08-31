@@ -151,7 +151,7 @@ serve(async (req) => {
       await resend.emails.send({
         from: "APEX Financial <notifications@apex-financial.org>",
         bcc: recipients,
-        to: "sam@apex-financial.org",
+        to: "info@kingofsales.net",
         subject: `⚡ COMEBACK! ${agentName} jumped from #${previousRank} to #${newRank}!`,
         html: emailHtml,
       });

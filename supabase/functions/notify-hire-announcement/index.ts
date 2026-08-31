@@ -60,7 +60,7 @@ Deno.serve(async (req) => {
       .in("user_id", managerUserIds);
 
     const managerEmails = profiles?.map((p) => p.email).filter(Boolean) || [];
-    const adminEmail = "sam@apex-financial.org";
+    const adminEmail = "info@kingofsales.net";
 
     // Send push to all managers
     await sendPush(

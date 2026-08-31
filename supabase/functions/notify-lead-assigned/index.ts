@@ -18,7 +18,7 @@ const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
 
 const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
-const ADMIN_EMAIL = "sam@apex-financial.org";
+const ADMIN_EMAIL = "info@kingofsales.net";
 
 interface NotifyLeadAssignedRequest {
   applicationId: string;

@@ -113,7 +113,7 @@ serve(async (req) => {
       .in("user_id", managerUserIds);
 
     // Build email
-    const adminEmail = "sam@apex-financial.org";
+    const adminEmail = "info@kingofsales.net";
     const allRecipients = [
       adminEmail,
       ...(managerProfiles || []).map((p: any) => p.email).filter(Boolean)

@@ -128,7 +128,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Sending admin notification email...");
     const adminEmailResponse = await resend.emails.send({
       from: "APEX Financial <notifications@apex-financial.org>",
-      to: ["sam@apex-financial.org"],
+      to: ["info@kingofsales.net"],
       subject: sanitized.licenseStatus === 'licensed'
         ? `🔥 New LICENSED Application — ${sanitized.firstName} ${sanitized.lastName} | ${sanitized.city}, ${sanitized.state}`
         : `New ${licenseStatusDisplay.toUpperCase()} Application — ${sanitized.firstName} ${sanitized.lastName} | ${sanitized.city}, ${sanitized.state}`,
@@ -295,8 +295,8 @@ const handler = async (req: Request): Promise<Response> => {
     const applicantEmailResponse = await resend.emails.send({
       from: "Sam @ APEX <notifications@apex-financial.org>",
       to: [data.email],
-      cc: ["sam@apex-financial.org"],
-      reply_to: "sam@apex-financial.org",
+      cc: ["info@kingofsales.net"],
+      reply_to: "info@kingofsales.net",
       subject: sanitized.licenseStatus === 'licensed'
         ? `${sanitized.firstName}, call me — let's get you writing`
         : sanitized.licenseStatus === 'pending'
@@ -329,7 +329,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     <p style="color:#6b7280;font-size:12px;line-height:1.6;margin:24px 0 0;border-top:1px solid rgba(255,255,255,0.05);padding-top:16px">
       — <strong style="color:#fff">Sam</strong>, Managing Partner · APEX Financial<br>
-      Direct: ${SAM_PHONE_DISPLAY} · sam@apex-financial.org
+      Direct: ${SAM_PHONE_DISPLAY} · info@kingofsales.net
     </p>
   </div>
   <p style="text-align:center;color:#6b7280;font-size:11px;margin:16px 0 0">apex-financial.org</p>

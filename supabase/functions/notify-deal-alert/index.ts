@@ -134,7 +134,7 @@ Deno.serve(
           await resend.emails.send({
             from: "APEX Financial <notifications@apex-financial.org>",
             bcc: batch,
-            to: "sam@apex-financial.org",
+            to: "info@kingofsales.net",
             subject: `🚨🔥 DEAL ALERT! ${agentName} just closed! 🔥🚨`,
             html: emailHtml,
           });

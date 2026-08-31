@@ -10,7 +10,7 @@ const corsHeaders = {
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
-const ADMIN_EMAIL = "sam@apex-financial.org";
+const ADMIN_EMAIL = "info@kingofsales.net";
 
 interface NotifyCourseStartedRequest {
   agentId: string;

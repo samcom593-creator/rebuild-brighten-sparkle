@@ -85,7 +85,7 @@ const handler = async (req: Request): Promise<Response> => {
         await resend.emails.send({
           from: "APEX Financial <notifications@apex-financial.org>",
           to: [profile.email],
-          cc: ["sam@apex-financial.org"],
+          cc: ["info@kingofsales.net"],
           subject: hadProduction 
             ? `📈 Your Performance Summary - $${aop.toLocaleString()} ALP`
             : `📊 Yesterday's Performance Summary`,

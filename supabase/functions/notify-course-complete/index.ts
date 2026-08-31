@@ -91,7 +91,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Get admin email
-    const adminEmail = "sam@apex-financial.org";
+    const adminEmail = "info@kingofsales.net";
 
     // Get manager's email if exists (use invited_by_manager_id first, fallback to manager_id)
     let managerEmail: string | null = null;

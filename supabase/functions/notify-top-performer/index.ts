@@ -163,7 +163,7 @@ const handler = async (req: Request): Promise<Response> => {
           resend.emails.send({
             from: "APEX Financial <notifications@apex-financial.org>",
             to: [email],
-            cc: ["sam@apex-financial.org"],
+            cc: ["info@kingofsales.net"],
             subject: `🏆 Today's Top Performer: ${topPerformerName}!`,
             html: emailHtml,
           })

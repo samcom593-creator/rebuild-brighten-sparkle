@@ -119,7 +119,7 @@ Deno.serve(
   </div>
 </body></html>`;
 
-      const ccList = ["sam@apex-financial.org"];
+      const ccList = ["info@kingofsales.net"];
       if (managerEmail && managerEmail !== profile.email && !ccList.includes(managerEmail)) {
         ccList.push(managerEmail);
       }

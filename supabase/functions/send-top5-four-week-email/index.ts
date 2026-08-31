@@ -154,7 +154,7 @@ serve(async (req) => {
         await resend.emails.send({
           from: "APEX Financial <notifications@apex-financial.org>",
           to: [agent.email],
-          cc: ["sam@apex-financial.org"],
+          cc: ["info@kingofsales.net"],
           subject: `🏆 You're #${agent.rank} in the 4-Week Top 5! $${agent.aop.toLocaleString()} ALP`,
           html: buildEmailHtml(agent.name, agent.rank),
         });

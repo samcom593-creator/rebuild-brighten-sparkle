@@ -249,7 +249,7 @@ serve(async (req) => {
       await resend.emails.send({
         from: "APEX Financial <notifications@apex-financial.org>",
         bcc: recipients,
-        to: "sam@apex-financial.org",
+        to: "info@kingofsales.net",
         subject: `🏆 This Week's Champion: ${championName} with $${championStats.aop.toLocaleString()} ALP!`,
         html: emailHtml,
       });

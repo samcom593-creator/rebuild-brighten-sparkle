@@ -14,9 +14,9 @@ interface LinkAccountRequest {
 }
 
 const HUMAN_NOT_FOUND =
-  "We couldn't find an application matching your email or phone. Make sure you're using the same details you applied with — or contact sam@apex-financial.org for help.";
+  "We couldn't find an application matching your email or phone. Make sure you're using the same details you applied with — or contact info@kingofsales.net for help.";
 const HUMAN_GENERIC =
-  "Something went wrong linking your account. Please contact sam@apex-financial.org and we'll get you set up.";
+  "Something went wrong linking your account. Please contact info@kingofsales.net and we'll get you set up.";
 
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {

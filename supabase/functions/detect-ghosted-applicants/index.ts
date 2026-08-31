@@ -74,7 +74,7 @@ serve(async (req: Request) => {
         try {
           await resend.emails.send({
             from: "APEX Financial <notifications@apex-financial.org>",
-            to: ["sam@apex-financial.org"],
+            to: ["info@kingofsales.net"],
             subject: `👻 Ghosted Agent: ${app.first_name} ${app.last_name} — ${daysSinceActivity} days silent`,
             html: `<p><strong>${app.first_name} ${app.last_name}</strong> has gone ${daysSinceActivity} days without responding. Stage: ${app.license_progress || "unknown"}</p>
                    <p>Phone: ${app.phone || "N/A"} | Email: ${app.email}</p>

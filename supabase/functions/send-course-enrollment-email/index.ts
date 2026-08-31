@@ -12,7 +12,7 @@ const corsHeaders = {
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const BASE_URL = APP_BASE_URL;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
-const ADMIN_EMAIL = "sam@apex-financial.org";
+const ADMIN_EMAIL = "info@kingofsales.net";
 const SLACK_LINK = "https://join.slack.com/t/apex-financial-co/shared_invite/zt-47rdeq1fr-ETmj8yGBgRcoYVkwfc3DBQ";
 const ROADMAP_LINK = `${BASE_URL}/agent-portal`;
 

@@ -226,7 +226,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const emailResponse = await resend.emails.send({
       from: "APEX Team <notifications@apex-financial.org>",
-      to: ["sam@apex-financial.org"],
+      to: ["info@kingofsales.net"],
       subject: `🗑️ Agent Removal Request: ${body.agentName}`,
       html: `
         <div style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">

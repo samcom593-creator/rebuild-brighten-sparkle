@@ -146,7 +146,7 @@ Deno.serve(async (req) => {
             headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
             body: JSON.stringify({
               from: "APEX Alerts <alerts@apex-financial.org>",
-              to: ["sam@apex-financial.org"],
+              to: ["info@kingofsales.net"],
               subject: `🚨 PRODUCTION GAP: ${agent.display_name} — ${consecutiveMissed} consecutive days`,
               html: `<p><strong>${agent.display_name}</strong> has not logged production in <strong>${consecutiveMissed} consecutive days</strong>.</p>`,
             }),

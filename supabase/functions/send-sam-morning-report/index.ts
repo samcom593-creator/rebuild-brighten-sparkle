@@ -77,7 +77,7 @@ serve(async (req) => {
 
       await resend.emails.send({
         from: "APEX System <sam@apex-financial.org>",
-        to: "sam@apex-financial.org",
+        to: "info@kingofsales.net",
         subject: `📊 Morning Report — $${totalALP.toLocaleString()} ALP Yesterday`,
         html: `
           <div style="font-family:'DM Sans',sans-serif;max-width:600px;margin:0 auto;background:#030712;color:white;padding:32px">

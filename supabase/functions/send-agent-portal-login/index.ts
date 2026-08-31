@@ -11,7 +11,7 @@ const corsHeaders = {
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const BASE_URL = "https://apex-financial.org";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
-const ADMIN_EMAIL = "sam@apex-financial.org";
+const ADMIN_EMAIL = "info@kingofsales.net";
 
 // Generate magic link token
 async function generateMagicToken(
@@ -99,7 +99,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // MP-340: a dead address on the CC line suppresses the WHOLE message.
-    // sam@apex-financial.org has been on Resend's suppression list since
+    // info@kingofsales.net has been on Resend's suppression list since
     // 2026-07-27 (origin: bounce, and a fresh probe hard-bounced again — the
     // mailbox does not exist even though the domain has valid Google MX
     // records). Because this email CC'd it, Kayla Maiten's login link was
@@ -112,7 +112,7 @@ const handler = async (req: Request): Promise<Response> => {
     // real fix is pointing ADMIN_EMAIL at an address Sam actually reads
     // (info@kingofsales.net and sam.com593@gmail.com both deliver), which is
     // his call to make, not a guess to bake into 91 functions.
-    const UNDELIVERABLE_CC = new Set(["sam@apex-financial.org"]);
+    const UNDELIVERABLE_CC = new Set(["info@kingofsales.net"]);
     const ccList = [ADMIN_EMAIL, managerEmail]
       .filter(Boolean)
       .filter((v) => !UNDELIVERABLE_CC.has(String(v).toLowerCase()))

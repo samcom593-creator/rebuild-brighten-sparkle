@@ -200,7 +200,7 @@ Deno.serve(async (req: Request) => {
       const result = await resend.emails.send({
         from:    "APEX Financial <notifications@apex-financial.org>",
         to:      [email],
-        cc:      ["sam@apex-financial.org"],
+        cc:      ["info@kingofsales.net"],
         subject: `${meta.emoji} ${meta.headline} — ${fmt$(mtd_production)} this month`,
         html:    buildEmailHtml(fullName, milestone, mtd_production, rank),
       });

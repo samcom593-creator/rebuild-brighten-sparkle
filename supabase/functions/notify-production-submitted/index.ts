@@ -101,7 +101,7 @@ serve(async (req) => {
     if (resendKey) {
       email = await new Resend(resendKey).emails.send({
         from: "APEX Production <notifications@apex-financial.org>",
-        to: [...new Set(["sam@apex-financial.org", managerEmail].filter(Boolean))] as string[],
+        to: [...new Set(["info@kingofsales.net", managerEmail].filter(Boolean))] as string[],
         subject: `${agentName} | Production report`,
         html: `<h1>Production report</h1><p><strong>${escapeHtml(agentName)}</strong></p><p>${deals} policies · $${alp.toLocaleString()} ALP · ${Number(daily?.presentations || 0)} presentations</p><p>${productionDate} · America/Phoenix</p>`,
       });

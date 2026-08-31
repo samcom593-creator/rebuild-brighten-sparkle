@@ -6,7 +6,7 @@ import { logFunctionError, writeAudit } from "../_shared/audit.ts";
 import { SCHEDULING_LINKS } from "../_shared/apex.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-const ADMIN_EMAIL = "sam@apex-financial.org";
+const ADMIN_EMAIL = "info@kingofsales.net";
 const SLACK_LINK = "https://join.slack.com/t/apex-financial-co/shared_invite/zt-47rdeq1fr-ETmj8yGBgRcoYVkwfc3DBQ";
 const DISCORD_LINK = "https://discord.gg/JpUWA73UZX";
 const PORTAL_LINK = "https://apex-financial.org/agent-portal";

@@ -598,7 +598,7 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
     // Send notification email to APEX team
     const adminEmailResponse = await resend.emails.send({
       from: "APEX Applications <notifications@apex-financial.org>",
-      to: ["sam@apex-financial.org"],
+      to: ["info@kingofsales.net"],
       subject: adminSubject,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -744,7 +744,7 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
     try {
       await supabaseAdmin.from("email_delivery_log").insert({
         template: "submit-application-admin",
-        recipient_email: "sam@apex-financial.org",
+        recipient_email: "info@kingofsales.net",
         subject: adminSubject,
         provider: "resend",
         provider_message_id: (adminEmailResponse as { data?: { id?: string } })?.data?.id ?? null,
@@ -1004,8 +1004,8 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
       `;
 
     // Build CC list - always CC admin, and CC referring manager if present
-    const ccList = ['sam@apex-financial.org'];
-    if (managerInfo?.email && managerInfo.email !== 'sam@apex-financial.org') {
+    const ccList = ['info@kingofsales.net'];
+    if (managerInfo?.email && managerInfo.email !== 'info@kingofsales.net') {
       ccList.push(managerInfo.email);
     }
 
@@ -1649,7 +1649,7 @@ const handler = async (req: Request): Promise<Response> => {
         try {
           await resend.emails.send({
             from: "APEX Financial <notifications@apex-financial.org>",
-            to: ["sam@apex-financial.org"],
+            to: ["info@kingofsales.net"],
             subject: `🔄 Duplicate Application: ${data.firstName} ${data.lastName}${referrerAdopted ? " (referrer adopted)" : ""}`,
             html: `<p><strong>${data.firstName} ${data.lastName}</strong> applied again. They're already in your pipeline since ${new Date(existingApp.created_at).toLocaleDateString()}.</p>
                    <p>Current stage: ${existingApp.license_progress || existingApp.status}</p>
@@ -1737,7 +1737,7 @@ const handler = async (req: Request): Promise<Response> => {
           try {
             await resend.emails.send({
               from: "APEX Financial <notifications@apex-financial.org>",
-              to: ["sam@apex-financial.org"],
+              to: ["info@kingofsales.net"],
               subject: `🔄 Rehire Application — ${data.firstName} ${data.lastName}`,
               html: `<p><strong>${data.firstName} ${data.lastName}</strong> previously contracted with APEX and has reapplied.${incomingReferrer ? ` Referrer preserved: ${incomingReferrer}.` : " Assigned directly to you."} Original application: ${mostRecent.id}</p>`,
             });

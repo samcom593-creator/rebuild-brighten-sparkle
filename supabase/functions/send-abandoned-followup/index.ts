@@ -24,7 +24,7 @@ const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
 const APPLY_URL = "https://apex-financial.org/apply";
 const CALENDLY_URL = "https://calendly.com/apexfinancialempire/licensed-prospect-call-clone";
-const ADMIN_EMAIL = "sam@apex-financial.org";
+const ADMIN_EMAIL = "info@kingofsales.net";
 
 function sanitizeHtml(str: string | null | undefined): string {
   if (!str) return "";

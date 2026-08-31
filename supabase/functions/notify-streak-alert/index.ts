@@ -211,7 +211,7 @@ serve(async (req) => {
       await resend.emails.send({
         from: "APEX Financial <notifications@apex-financial.org>",
         bcc: recipients,
-        to: "sam@apex-financial.org",
+        to: "info@kingofsales.net",
         subject: `🔥 ${agentName} is on a ${dealStreak}-DAY DEAL STREAK!`,
         html: emailHtml,
       });

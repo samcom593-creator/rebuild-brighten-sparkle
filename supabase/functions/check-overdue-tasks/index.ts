@@ -38,7 +38,7 @@ Deno.serve(
 
       await supabase.from("notification_log").insert({
         notification_type: "task_overdue_check",
-        recipient_email: "sam@apex-financial.org",
+        recipient_email: "info@kingofsales.net",
         subject: `${ids.length} tasks marked overdue`,
         body: `Checked at ${new Date().toISOString()}. ${ids.length} tasks are now overdue.`,
         status: "sent",

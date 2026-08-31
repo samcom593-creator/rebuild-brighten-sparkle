@@ -125,7 +125,7 @@ serve(async (req) => {
     try {
       await resend.emails.send({
         from: "APEX System <alerts@apex-financial.org>",
-        to: "sam@apex-financial.org",
+        to: "info@kingofsales.net",
         subject: `🎯 ${firstName} is now LIVE — watch for their first deal`,
         html: `<p>${firstName} just went live on the platform. Production dashboard unlocked. Welcome email sent. They're on the leaderboard.</p>`,
       });

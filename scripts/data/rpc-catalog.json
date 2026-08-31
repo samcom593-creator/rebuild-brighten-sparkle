@@ -2187,6 +2187,41 @@
         ],
         "unnamed": false,
         "raw": "p_first_name text, p_last_name text, p_phone text, p_email text DEFAULT NULL::text"
+      },
+      {
+        "all": [
+          "p_city",
+          "p_date_of_birth",
+          "p_email",
+          "p_first_name",
+          "p_last_name",
+          "p_notes",
+          "p_phone",
+          "p_state",
+          "p_street_address",
+          "p_zip_code"
+        ],
+        "required": [
+          "p_first_name",
+          "p_last_name",
+          "p_phone"
+        ],
+        "unnamed": false,
+        "raw": "p_first_name text, p_last_name text, p_phone text, p_email text DEFAULT NULL::text, p_street_address text DEFAULT NULL::text, p_city text DEFAULT NULL::text, p_state text DEFAULT NULL::text, p_zip_code text DEFAULT NULL::text, p_date_of_birth date DEFAULT NULL::date, p_notes text DEFAULT NULL::text"
+      }
+    ],
+    "fn_client_pipeline_update": [
+      {
+        "all": [
+          "p_client_id",
+          "p_patch"
+        ],
+        "required": [
+          "p_client_id",
+          "p_patch"
+        ],
+        "unnamed": false,
+        "raw": "p_client_id uuid, p_patch jsonb"
       }
     ],
     "fn_close_communication_gaps": [
@@ -2818,6 +2853,14 @@
         "raw": ""
       }
     ],
+    "fn_post_unlicensed_digest": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "fn_production_integrity_anchor": [
       {
         "all": [],
@@ -3145,6 +3188,22 @@
       }
     ],
     "fn_touch_messaging_updated_at": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_unlicensed_digest_health": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_unlicensed_slack_digest": [
       {
         "all": [],
         "required": [],

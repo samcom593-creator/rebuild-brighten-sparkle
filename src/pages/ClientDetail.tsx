@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { EditableClientSection } from "@/components/clients/EditableClientSection";
 import { SubmitDealDialog } from "@/components/deals/SubmitDealDialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -302,9 +303,33 @@ export default function ClientDetail() {
             <main className="min-w-0">
               <TabsContent value="timeline" className="mt-0"><Panel title="Timeline">{activity.isLoading ? <Skeleton className="h-40 w-full" /> : (activity.data?.length ?? 0) === 0 ? <p className="py-12 text-center text-sm text-muted-foreground">No activity yet. Calls, texts, notes, schedules, and stage changes will appear here.</p> : <ol className="space-y-3">{activity.data!.map((item) => <li key={item.id} className="flex gap-3 border-b border-border pb-3 last:border-0"><span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" /><div><p className="text-sm font-medium capitalize">{item.activity_type.replaceAll("_", " ")}</p>{item.body && <p className="text-sm text-muted-foreground">{item.body}</p>}<p className="mt-1 text-[11px] text-muted-foreground">{formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}</p></div></li>)}</ol>}</Panel></TabsContent>
 
-              <TabsContent value="contact" className="mt-0"><Panel title="Contact"><dl className="grid gap-4 sm:grid-cols-2"><Field label="Phone" value={c.phone} /><Field label="Email" value={c.email} /><Field label="Address" value={[c.street_address, c.city, c.state, c.zip_code].filter(Boolean).join(", ")} /><Field label="Date of birth" value={fmtDate(c.date_of_birth)} /><Field label="Preferred channel" value={c.preferred_contact_method} /><Field label="Best time to call" value={c.best_time_to_call} /><Field label="Timezone" value={c.client_timezone} /><Field label="Lead source" value={c.lead_vendor_name ?? c.external_source} /></dl>{isAdmin && c.raw_payload && <details className="mt-5"><summary className="cursor-pointer text-xs text-muted-foreground">Raw AgentLink payload (admin)</summary><pre className="mt-2 max-h-64 overflow-auto rounded-md bg-muted p-3 text-[10px]">{JSON.stringify(c.raw_payload, null, 2)}</pre></details>}</Panel></TabsContent>
+              <TabsContent value="contact" className="mt-0"><Panel title="Contact"><EditableClientSection clientId={clientId!} values={c as unknown as Record<string, unknown>} fields={[
+                { key: "first_name", label: "First name" },
+                { key: "last_name", label: "Last name" },
+                { key: "phone", label: "Phone", type: "tel" },
+                { key: "email", label: "Email", type: "email" },
+                { key: "street_address", label: "Street address" },
+                { key: "city", label: "City" },
+                { key: "state", label: "State" },
+                { key: "zip_code", label: "ZIP" },
+                { key: "date_of_birth", label: "Date of birth", type: "date" },
+                { key: "preferred_contact_method", label: "Preferred channel" },
+                { key: "best_time_to_call", label: "Best time to call" },
+                { key: "client_timezone", label: "Timezone" },
+              ]} />{isAdmin && c.raw_payload && <details className="mt-5"><summary className="cursor-pointer text-xs text-muted-foreground">Raw AgentLink payload (admin)</summary><pre className="mt-2 max-h-64 overflow-auto rounded-md bg-muted p-3 text-[10px]">{JSON.stringify(c.raw_payload, null, 2)}</pre></details>}</Panel></TabsContent>
 
-              <TabsContent value="needs" className="mt-0"><Panel title="Needs Analysis"><dl className="grid gap-4 sm:grid-cols-2"><Field label="Completed" value={fmtDate(c.needs_analysis_completed_at)} /><Field label="Retirement goal age" value={c.retirement_age_goal ?? "—"} /><Field label="Retirement year" value={c.retirement_year ?? "—"} /><Field label="Legacy estate goal" value={fmtMoney(c.legacy_estate)} /><Field label="Occupation" value={c.employer_occupation} /><Field label="Employment status" value={c.employment_status} /><Field label="Smoker" value={c.is_smoker == null ? "—" : c.is_smoker ? "Yes" : "No"} /><Field label="Physician" value={c.physician_name} hint={c.physician_phone ?? undefined} />{c.objectives && <div className="sm:col-span-2"><Field label="Objectives" value={c.objectives} /></div>}{c.medical_notes && <div className="sm:col-span-2"><Field label="Medical notes" value={c.medical_notes} /></div>}</dl></Panel></TabsContent>
+              <TabsContent value="needs" className="mt-0"><Panel title="Needs Analysis"><EditableClientSection clientId={clientId!} values={c as unknown as Record<string, unknown>} fields={[
+                { key: "employer_occupation", label: "Occupation" },
+                { key: "employment_status", label: "Employment status" },
+                { key: "retirement_age_goal", label: "Retirement goal age", type: "number" },
+                { key: "retirement_year", label: "Retirement year", type: "number" },
+                { key: "legacy_estate", label: "Legacy estate goal", type: "number" },
+                { key: "is_smoker", label: "Smoker", hint: "true or false" },
+                { key: "physician_name", label: "Physician" },
+                { key: "physician_phone", label: "Physician phone", type: "tel" },
+                { key: "objectives", label: "Objectives" },
+                { key: "medical_notes", label: "Medical notes" },
+              ]} /></Panel></TabsContent>
 
               <TabsContent value="schedule" className="mt-0"><Panel title="Schedule"><div className="grid gap-4 sm:grid-cols-3"><div className="space-y-1.5"><Label htmlFor="client-callback-date">Callback date</Label><Input id="client-callback-date" type="date" value={schedule.callbackDate} onChange={(event) => setSchedule((value) => ({ ...value, callbackDate: event.target.value }))} /></div><div className="space-y-1.5"><Label htmlFor="client-callback-time">Callback time</Label><Input id="client-callback-time" type="time" value={schedule.callbackTime} onChange={(event) => setSchedule((value) => ({ ...value, callbackTime: event.target.value }))} /></div><div className="space-y-1.5"><Label htmlFor="client-next-action">Next action date</Label><Input id="client-next-action" type="date" value={schedule.nextAction} onChange={(event) => setSchedule((value) => ({ ...value, nextAction: event.target.value }))} /></div></div><Button className="mt-4" disabled={action.isPending} onClick={() => action.mutate({ p_callback_date: schedule.callbackDate || null, p_callback_time: schedule.callbackTime || null, p_next_action_date: schedule.nextAction || null, p_replace_schedule: true, p_activity_type: "schedule_updated", p_activity_body: "Client follow-up schedule updated" }, { onSuccess: () => toast.success("Schedule saved") })}><Save className="mr-1.5 h-4 w-4" /> Save Schedule</Button></Panel></TabsContent>
 
@@ -312,9 +337,30 @@ export default function ClientDetail() {
 
               <TabsContent value="referrals" className="mt-0"><Panel title="Referrals"><dl className="grid gap-4 sm:grid-cols-2"><Field label="Referred by" value={[c.referred_from_client_first_name, c.referred_from_client_last_name].filter(Boolean).join(" ") || "Direct lead"} /><Field label="Lead vendor" value={c.lead_vendor_name} /><Field label="Lead product" value={c.lead_product_name} /></dl></Panel></TabsContent>
 
-              <TabsContent value="financials" className="mt-0"><Panel title="Financials"><dl className="grid gap-4 sm:grid-cols-3"><Field label="Monthly income" value={fmtMoney(c.total_monthly_income)} /><Field label="Monthly expenses" value={fmtMoney(c.total_monthly_expenses)} /><Field label="Monthly surplus" value={fmtMoney(c.monthly_surplus)} /><Field label="Earned income" value={fmtMoney(c.earned_income)} /><Field label="Pension" value={fmtMoney(c.pension_income)} /><Field label="Social Security" value={fmtMoney(c.social_security_income)} /><Field label="Housing" value={Number(c.mortgage_payment ?? 0) > 0 ? `Mortgage ${fmtMoney(c.mortgage_payment)}` : Number(c.rent_payment ?? 0) > 0 ? `Rent ${fmtMoney(c.rent_payment)}` : "—"} /><Field label="Qualified accounts" value={fmtMoney(c.qualified_accounts)} /><Field label="Non-qualified accounts" value={fmtMoney(c.non_qualified_accounts)} /><Field label="Bank" value={c.bank_name ? `${c.bank_name} · ${c.bank_account_type ?? "—"}` : "—"} hint={c.ssn_last4 ? `SSN ****${c.ssn_last4}` : undefined} /></dl></Panel></TabsContent>
+              <TabsContent value="financials" className="mt-0"><Panel title="Financials"><EditableClientSection clientId={clientId!} values={c as unknown as Record<string, unknown>} fields={[
+                { key: "total_monthly_income", label: "Monthly income", type: "number" },
+                { key: "total_monthly_expenses", label: "Monthly expenses", type: "number" },
+                { key: "monthly_surplus", label: "Monthly surplus", type: "number" },
+                { key: "earned_income", label: "Earned income", type: "number" },
+                { key: "pension_income", label: "Pension", type: "number" },
+                { key: "social_security_income", label: "Social Security", type: "number" },
+                { key: "mortgage_payment", label: "Mortgage payment", type: "number" },
+                { key: "rent_payment", label: "Rent payment", type: "number" },
+                { key: "qualified_accounts", label: "Qualified accounts", type: "number" },
+                { key: "non_qualified_accounts", label: "Non-qualified accounts", type: "number" },
+                { key: "bank_name", label: "Bank" },
+                { key: "bank_account_type", label: "Account type" },
+              ]} /></Panel></TabsContent>
 
-              <TabsContent value="policies" className="mt-0"><Panel title="Policy Information"><dl className="grid gap-4 sm:grid-cols-3"><Field label="Carrier" value={c.pitch_carrier} /><Field label="Product sold" value={c.product_sold} /><Field label="Policy number" value={c.policy_number} /><Field label="Face amount" value={fmtMoney(c.face_amount)} /><Field label="Monthly premium" value={fmtMoney(c.pitch_price)} /><Field label="Effective date" value={fmtDate(c.policy_start_date)} /><Field label="Review date" value={fmtDate(c.policy_review_date)} /></dl>{(contracts.data?.length ?? 0) > 0 && <div className="mt-5 space-y-2 border-t border-border pt-4">{contracts.data!.map((contract) => <div key={contract.id} className="flex items-center justify-between rounded-md border border-border p-3 text-sm"><div><p className="font-semibold">{contract.carrier_name ?? "—"} · {contract.product_name ?? "—"}</p><p className="text-xs text-muted-foreground">{contract.status ?? "—"} · {fmtDate(contract.effective_date)}</p></div><div className="text-right"><p className="font-semibold">{fmtMoney(contract.face_amount)}</p><p className="text-xs text-muted-foreground">{fmtMoney(contract.monthly_premium)}/mo</p></div></div>)}</div>}<SubmitDealDialog initialClient={{ firstName: c.first_name ?? "", lastName: c.last_name ?? "", phone: c.phone ?? "", dob: dateInput(c.date_of_birth) }} trigger={<Button className="mt-4"><ReceiptText className="mr-1.5 h-4 w-4" /> Post Deal</Button>} /></Panel></TabsContent>
+              <TabsContent value="policies" className="mt-0"><Panel title="Policy Information"><EditableClientSection clientId={clientId!} values={c as unknown as Record<string, unknown>} fields={[
+                { key: "pitch_carrier", label: "Carrier" },
+                { key: "product_sold", label: "Product sold" },
+                { key: "policy_number", label: "Policy number" },
+                { key: "face_amount", label: "Face amount", type: "number" },
+                { key: "pitch_price", label: "Monthly premium", type: "number" },
+                { key: "policy_start_date", label: "Effective date", type: "date" },
+                { key: "policy_review_date", label: "Review date", type: "date" },
+              ]} />{(contracts.data?.length ?? 0) > 0 && <div className="mt-5 space-y-2 border-t border-border pt-4">{contracts.data!.map((contract) => <div key={contract.id} className="flex items-center justify-between rounded-md border border-border p-3 text-sm"><div><p className="font-semibold">{contract.carrier_name ?? "—"} · {contract.product_name ?? "—"}</p><p className="text-xs text-muted-foreground">{contract.status ?? "—"} · {fmtDate(contract.effective_date)}</p></div><div className="text-right"><p className="font-semibold">{fmtMoney(contract.face_amount)}</p><p className="text-xs text-muted-foreground">{fmtMoney(contract.monthly_premium)}/mo</p></div></div>)}</div>}<SubmitDealDialog initialClient={{ firstName: c.first_name ?? "", lastName: c.last_name ?? "", phone: c.phone ?? "", dob: dateInput(c.date_of_birth) }} trigger={<Button className="mt-4"><ReceiptText className="mr-1.5 h-4 w-4" /> Post Deal</Button>} /></Panel></TabsContent>
 
               <TabsContent value="notes" className="mt-0"><Panel title="Notes"><div className="space-y-4"><div className="space-y-1.5"><Label htmlFor="client-communication-notes">Communication notes</Label><Textarea id="client-communication-notes" value={notes.communication} onChange={(event) => setNotes((value) => ({ ...value, communication: event.target.value }))} rows={6} placeholder="Calls, messages, preferences, and context…" /></div><div className="space-y-1.5"><Label htmlFor="client-reminder-notes">Reminder notes</Label><Textarea id="client-reminder-notes" value={notes.reminder} onChange={(event) => setNotes((value) => ({ ...value, reminder: event.target.value }))} rows={4} placeholder="What must happen next…" /></div><Button disabled={action.isPending} onClick={() => action.mutate({ p_communication_notes: notes.communication, p_reminder_notes: notes.reminder, p_replace_notes: true, p_activity_type: "notes_updated", p_activity_body: "Client notes updated" }, { onSuccess: () => toast.success("Notes saved") })}><Save className="mr-1.5 h-4 w-4" /> Save Notes</Button></div></Panel></TabsContent>
             </main>

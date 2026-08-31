@@ -52,15 +52,45 @@ Deno.serve(async (req) => {
   const token = (Deno.env.get("SLACK_BOT_TOKEN") ?? "").trim();
   if (!token) return json({ ok: false, error: "SLACK_BOT_TOKEN is not configured" }, 503);
 
-  const res = await fetch("https://slack.com/api/chat.postMessage", {
-    method: "POST",
-    headers: { "Content-Type": "application/json; charset=utf-8", Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ channel: target.channel_id, text, unfurl_links: false }),
-  });
-  const body = await res.json().catch(() => ({}));
+  const slack = async (method: string, payload: Record<string, unknown>) => {
+    const r = await fetch(`https://slack.com/api/${method}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json; charset=utf-8", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(payload),
+    });
+    return await r.json().catch(() => ({} as Record<string, unknown>));
+  };
+
+  const post = () => slack("chat.postMessage", { channel: target.channel_id, text, unfurl_links: false });
+
+  let body = await post();
+
+  // MP-347: two refusals are recoverable and were previously fatal. Enabling
+  // #general-unlicensed for the pre-licensed cohort failed with is_archived —
+  // the channel existed and was simply archived, which no amount of retrying
+  // fixes. Slack answers HTTP 200 for both, so these only surface by reading
+  // `error`. Each repair is attempted ONCE and the post retried once; a second
+  // failure is reported with Slack's own error rather than looped.
+  const repairs: string[] = [];
+  if (body?.error === "is_archived") {
+    const un = await slack("conversations.unarchive", { channel: target.channel_id });
+    repairs.push(un?.ok ? "unarchived" : `unarchive_failed:${un?.error ?? "unknown"}`);
+    if (un?.ok) body = await post();
+  }
+  if (body?.error === "not_in_channel") {
+    const jn = await slack("conversations.join", { channel: target.channel_id });
+    repairs.push(jn?.ok ? "joined" : `join_failed:${jn?.error ?? "unknown"}`);
+    if (jn?.ok) body = await post();
+  }
+
   // Slack answers 200 even when it refuses. ok:false is a failure, not a send.
   if (!body?.ok) {
-    return json({ ok: false, error: body?.error ?? `slack_http_${res.status}`, channel: target.channel_name }, 502);
+    return json({
+      ok: false,
+      error: body?.error ?? `slack_http_unknown`,
+      channel: target.channel_name,
+      repairs_attempted: repairs,
+    }, 502);
   }
-  return json({ ok: true, channel: target.channel_name, ts: body.ts });
+  return json({ ok: true, channel: target.channel_name, ts: body.ts, repairs_attempted: repairs });
 });

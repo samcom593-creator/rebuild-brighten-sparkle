@@ -682,6 +682,27 @@ if match '^(src/.*\.(tsx|jsx|ts)$|supabase/functions/.*\.ts$|scripts/check-rpc-a
   npm run --silent check:rpc-args || exit 1
 fi
 
+# ---------- check-contact-actions (MP-351) ----------
+# 24 backend/UI/security contracts behind the Licensed Inbox contact actions:
+# the JWT gates on the SMS/email/dispatcher functions, the SMS-consent and
+# email-unsubscribe checks, staff dispatch ownership, the idempotency
+# constraint. The guard existed since 2026-08-11 and was run by NOTHING — not
+# verify:core, not this hook, not prebuild, not CI. It also passed on
+# commented-out security code until MP-351; code contracts now match
+# comment-stripped source.
+if match '^(supabase/(config\.toml|migrations/20260811222000_apex_contact_actions\.sql|functions/(apex-outbox-dispatcher|send-sms-auto-detect|send-outreach-email)/index\.ts)$|src/pages/LicensedInbox\.tsx$|scripts/check-contact-actions\.mjs$)'; then
+  echo "[pre-commit] contact-action contract file staged — running check:contact-actions…"
+  npm run --silent check:contact-actions || exit 1
+fi
+
+# ---------- check-guard-wiring (MP-351) ----------
+# A guard that nothing RUNS cannot fail, so it reports protection the repo does
+# not have. Fires whenever a guard file or its wiring is staged.
+if match '^(scripts/check-.*\.mjs$|package\.json$|\.husky/pre-commit$)'; then
+  echo "[pre-commit] guard file or wiring staged — running check:guard-wiring…"
+  npm run --silent check:guard-wiring || exit 1
+fi
+
 # ---------- check-kanban-stage-vocabulary (MP-342) ----------
 # Board stage words vs the license_progress enum, both directions. The write is a
 # variable, so the literal guard above structurally cannot see this class.

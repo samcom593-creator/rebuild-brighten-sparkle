@@ -37,11 +37,18 @@ export function AbandonedLeadsPanel() {
   const fetchAbandonedLeads = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("partial_applications")
-        .select("*")
-        .is("converted_at", null)
-        .order("created_at", { ascending: false });
+      // MP-354: this used to grade "abandoned" on converted_at alone. That
+      // marker was written by an anon UPDATE that never landed (see
+      // Apply.tsx markAsConverted), so the panel listed 62 leads of which 47
+      // had already completed a full application — 75.8% false, each with a
+      // "Send Followup" button beside it that would text someone who already
+      // applied. The rule now lives in one place,
+      // v_partial_applications_abandoned, which recover_partial_applications()
+      // (cron job 31) reads too, so the panel and the hourly SMS sender cannot
+      // disagree about who is abandoned.
+      const { data, error } = await (supabase.rpc as any)(
+        "list_abandoned_partial_applications",
+      );
 
       if (error) throw error;
 

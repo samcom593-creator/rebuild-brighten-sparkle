@@ -2259,6 +2259,18 @@
         "raw": ""
       }
     ],
+    "fn_email_is_sendable": [
+      {
+        "all": [
+          "p_email"
+        ],
+        "required": [
+          "p_email"
+        ],
+        "unnamed": false,
+        "raw": "p_email text"
+      }
+    ],
     "fn_emit_bounty_reversed": [
       {
         "all": [],
@@ -2405,6 +2417,14 @@
       }
     ],
     "fn_interview_events_classify_onboarding": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_is_first_slack_deal_today": [
       {
         "all": [],
         "required": [],
@@ -3800,6 +3820,14 @@
         "raw": "p_start date, p_end date"
       }
     ],
+    "list_abandoned_partial_applications": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "list_my_vas": [
       {
         "all": [],
@@ -3858,6 +3886,18 @@
         "required": [],
         "unnamed": false,
         "raw": "p_application_id uuid DEFAULT NULL::uuid, p_email text DEFAULT NULL::text, p_amount_cents integer DEFAULT NULL::integer, p_stripe_customer_id text DEFAULT NULL::text, p_stripe_checkout_session_id text DEFAULT NULL::text, p_paid_at timestamp with time zone DEFAULT now()"
+      }
+    ],
+    "mark_partial_application_converted": [
+      {
+        "all": [
+          "p_session_id"
+        ],
+        "required": [
+          "p_session_id"
+        ],
+        "unnamed": false,
+        "raw": "p_session_id text"
       }
     ],
     "mark_phone_bad": [

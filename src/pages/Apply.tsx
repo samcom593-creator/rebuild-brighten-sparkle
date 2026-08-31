@@ -362,13 +362,33 @@ export default function Apply() {
     }
   };
 
-  // Mark partial application as converted when full submission succeeds
+  // Mark partial application as converted when full submission succeeds.
+  //
+  // MP-354 (2026-08-31): this used to be a plain anon-client UPDATE on
+  // partial_applications. It has never once landed. Postgres applies SELECT
+  // policies to the rows an UPDATE's WHERE clause must read, and this table's
+  // only SELECT policy is admin/manager — so anon matched ZERO rows. PostgREST
+  // answered 204 with `content-range: */0`, supabase-js returned no error, and
+  // the call below did not read `error` anyway. Proven live on a throwaway
+  // row. 47 of 62 partial applications were left flagged "abandoned" on
+  // Sam's DashboardCommandCenter after their owners had already applied.
+  //
+  // Same fix, same table, one function over from savePartialApplication's:
+  // a SECURITY DEFINER RPC, which needs no SELECT grant.
   const markAsConverted = async () => {
     try {
-      await supabase
-        .from("partial_applications")
-        .update({ converted_at: new Date().toISOString() })
-        .eq("session_id", sessionId);
+      const { data: markedRows, error: markError } = await (supabase.rpc as any)(
+        "mark_partial_application_converted",
+        { p_session_id: sessionId },
+      );
+      // A refusal must not read like a success. The RPC returns the number of
+      // rows it actually stamped, so 0 is reported as its own outcome rather
+      // than being laundered into "converted".
+      if (markError) {
+        console.error("Error marking partial application converted:", markError);
+      } else if (markedRows === 0) {
+        console.warn("Partial application not marked converted: no row for this session");
+      }
       
       // Clear all session storage
       isSubmittedRef.current = true;

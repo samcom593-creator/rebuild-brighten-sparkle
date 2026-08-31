@@ -298,14 +298,20 @@ const PAGE_SIZE = 1000;
  * manager is precisely the leak; hiding them from everyone would drop them on
  * the floor, so they surface as the executive's queue to assign.
  */
-async function recruiterVisibleEmails(agentId: string): Promise<Set<string>> {
+async function recruiterVisibleEmails(agentId: string, authUserId: string): Promise<Set<string>> {
   const emails = new Set<string>();
   for (let from = 0; ; from += PAGE_SIZE) {
     const { data, error } = await admin
       .from("applications")
       .select("email")
+      // MP-334: five ownership columns, not three. Measured against the live
+      // table, the original trio hid 2 applicants from Chudi Ifediora and 1 from
+      // KJ Vaughn — people they own on referral_recruiter_id or
+      // hiring_manager_user_id and nothing else. Small, but a manager who cannot
+      // see a candidate cannot work them. hiring_manager_user_id holds an auth
+      // user id, NOT an agents.id, so it is matched on a different operand.
       .or(
-        `recruiter_id.eq.${agentId},assigned_agent_id.eq.${agentId},referral_manager_id.eq.${agentId}`,
+        `recruiter_id.eq.${agentId},assigned_agent_id.eq.${agentId},referral_manager_id.eq.${agentId},referral_recruiter_id.eq.${agentId},hiring_manager_user_id.eq.${authUserId}`,
       )
       .range(from, from + PAGE_SIZE - 1);
     if (error) throw error;
@@ -338,7 +344,7 @@ async function fetchApplicants(actor: Actor): Promise<ApplicantRow[]> {
   // recruiterVisibleEmails). An executive is unfiltered on purpose.
   if (actor.role === "recruiter") {
     if (!actor.agentId) return [];
-    const allowed = await recruiterVisibleEmails(actor.agentId);
+    const allowed = await recruiterVisibleEmails(actor.agentId, actor.authUserId);
     return rows.filter((r) => {
       const e = r.email?.trim().toLowerCase();
       return Boolean(e) && allowed.has(e as string);

@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -62,8 +63,13 @@ export function JustHiredPanel() {
       return data as HireRow[];
     },
     // Keep the list fresh even if Realtime reconnects slowly on a phone.
-    refetchInterval: 30_000,
+    // Was polling every 30s. Hires are a realtime-covered table (agents), so
+    // this refreshes on the actual event instead of twice a minute forever.
+    refetchOnWindowFocus: false,
   });
+
+  // Refresh on the realtime channel instead of the 30s poll this replaced.
+  useProductionRealtime(() => { void refetch(); }, 800);
 
   useRealtimeTable({ table: "agents", channelSuffix: "just-hired" }, () => {
     void refetch();

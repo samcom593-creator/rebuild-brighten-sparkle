@@ -51,7 +51,10 @@ export function RecruitingIncomeEstimateCard({ agentId }: { agentId?: string | n
     },
     enabled: Boolean(agentId),
     staleTime: 60_000,
-    refetchInterval: 60_000,
+    // 60s -> 5min. These read realtime-covered tables and a one-minute poll on
+    // a page left open all day is what produced 11+ hours of database time
+    // across the platform's top RPCs.
+    refetchInterval: 300_000,
   });
 
   if (!agentId) return null;

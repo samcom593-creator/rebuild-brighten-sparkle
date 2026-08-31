@@ -23,6 +23,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 import { useAuth } from "@/hooks/useAuth";
 import { useConfirm } from "@/hooks/useConfirm";
 import { toast } from "sonner";
@@ -976,7 +977,12 @@ export default function DashboardCRM() {
     queryKey: ["crm-today-production"],
     enabled: !authLoading && !!user,
     staleTime: 15_000,
-    refetchInterval: 30_000,
+    // No 30s poll. crm_today_production averages 2,683ms and this page also
+    // fires crm_agent_sales_pulse (3,825ms), crm_roster_segments (2,732ms) and
+    // crm_agent_roster (2,306ms) — a CRM tab left open was re-running the
+    // platform's most expensive queries twice a minute. Realtime below covers
+    // the tables these read.
+    refetchOnWindowFocus: false,
     queryFn: async (): Promise<TodayProduction | null> => {
       const { data, error } = await supabase.rpc("crm_today_production" as never);
       if (error) throw error;
@@ -985,6 +991,9 @@ export default function DashboardCRM() {
       return (row as TodayProduction) ?? null;
     },
   });
+
+  // Refresh on the realtime channel instead of the poll this replaced.
+  useProductionRealtime(() => { void todayProductionQuery.refetch(); }, 800);
 
   const rosterQuery = useQuery({
     queryKey: ["crm-agent-roster"],

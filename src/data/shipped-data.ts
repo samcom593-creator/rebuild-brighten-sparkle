@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "Navigation is agent-focused now, and training has its own place. Training used to be reachable ONLY inside the \"Recruiting\" group — a group about recruiting other agents, not about an agent's own skill — so an agent looking for a course or a script had no reason to open it. Nine agent-facing pages had no nav entry at all: the training library, the sales course, annuity training, scripts, the handbook, getting started, my commissions, hall of fame and challenges. The pages were all built and live; nothing pointed at them.",
+    detail:
+      "A new top-level Training group carries the library, the sales course, annuity training, scripts, the handbook and getting started. Hall of Fame and Challenges join the Agency group, and My Commissions sits with the agent's own book. Sidebar hrefs went from 37 to 46 with the route guard still reporting 0 mismatched, so every new entry points at a route that actually exists rather than adding a dead link — which is the failure this change was fixing in the first place. This also makes the Veteran Final Expense script shipped in the same session reachable: it had been published to a page with no way to navigate to it.",
+    commit: "wave-agent-nav",
+  },
+  {
+    ts: "today",
+    label:
       "The full Veteran Final Expense call script is now live in-app for every active agent, at /dashboard/scripts. All 13,596 characters of it — intro, needs analysis, both already-covered branches, the under-2-year and 3-year-plus pitches, medical, social objection loop, beneficiaries, carrier selection, pricing, bank, solidification and referral generation. Long scripts also stopped being unreadable: a full call script was rendering inside a 12rem box.",
     detail:
       "Delivery went through the platform rather than the Google Doc for a concrete reason: the Drive connector holds read-only scope, so it can open the doc but cannot change its sharing — a per-person share returns \"caller does not have permission\" even though the account owns the file. Publishing to sales_scripts reaches all 42 active agents through a page they already have, with no Drive permissions to administer and no link to keep re-sending. The RLS on that table is is_active = true, and visibility was verified by reading the row as a real plain agent rather than assumed from the policy text. The rendering fix was measured, not cosmetic: the card capped the body at max-h-48, which shows roughly the first eight lines of a 13,596-character script and forces an agent to scroll a tiny window through an entire call. Scripts over 1,500 characters now get a taller default and an explicit expand control to 70vh; short snippets keep the compact look they were designed for.",

@@ -12,12 +12,14 @@ import {
   FileSearch,
   FileText,
   FolderKanban,
+  GraduationCap,
   HelpCircle,
   IdCard,
   Import,
   Landmark,
   LayoutGrid,
   Megaphone,
+  ScrollText,
   Settings,
   Shield,
   Sparkles,
@@ -81,6 +83,7 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
       // the replication map — not the legacy book page.
       { label: "Book of Business", href: "/dashboard/production", icon: BookOpen },
       { label: "Retention", href: "/dashboard/retention", icon: Shield },
+      { label: "My Commissions", href: "/dashboard/my-commissions", icon: WalletCards, modes: PRODUCERS },
     ],
   },
   {
@@ -98,6 +101,27 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
     ],
   },
   {
+    // Training was reachable only inside the "Recruiting" group — a group about
+    // recruiting OTHER agents, not about an agent's own skill. An agent looking
+    // for a script or a course had no reason to open it. Nine agent-facing
+    // pages existed with no nav entry at all: the training library, the sales
+    // course, annuity training, scripts, the handbook, getting started, my
+    // commissions, hall of fame and challenges. The pages were built; nothing
+    // pointed at them.
+    label: "Training",
+    icon: GraduationCap,
+    modes: PRODUCERS,
+    kicker: "Learn",
+    items: [
+      { label: "Training Library", href: "/dashboard/recruiting/training/library", icon: BookOpenCheck },
+      { label: "Sales Course", href: "/dashboard/recruiting/training/sales-course", icon: GraduationCap },
+      { label: "Annuity Training", href: "/dashboard/annuity-training", icon: Landmark },
+      { label: "Scripts", href: "/dashboard/scripts", icon: ScrollText },
+      { label: "Handbook", href: "/dashboard/handbook", icon: BookOpen },
+      { label: "Getting Started", href: "/dashboard/getting-started", icon: Sparkles },
+    ],
+  },
+  {
     label: "Agency",
     icon: Building2,
     modes: [...PRODUCERS, "recruiter"],
@@ -105,6 +129,8 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
       { label: "Team", href: "/dashboard/team", icon: Users },
       { label: "Announcements", href: "/dashboard/community", icon: Megaphone },
       { label: "Leaderboard", href: "/dashboard/leaderboard", icon: Trophy, modes: PRODUCERS },
+      { label: "Hall of Fame", href: "/dashboard/hall-of-fame", icon: Trophy, modes: PRODUCERS },
+      { label: "Challenges", href: "/dashboard/challenges", icon: Target, modes: PRODUCERS },
     ],
   },
   {

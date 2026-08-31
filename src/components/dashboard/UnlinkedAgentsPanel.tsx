@@ -32,6 +32,16 @@ import { cn } from "@/lib/utils";
  * Merged duplicates are already excluded server-side, so a resolved duplicate
  * like Isaiah Caldwell's does not sit here looking like an open problem.
  */
+type IntegrityRow = {
+  agent_id: string;
+  cannot_sign_in: boolean;
+  no_production_credit: boolean;
+  unreachable: boolean;
+  no_start_date: boolean;
+  never_onboarded: boolean;
+  open_gaps: number;
+};
+
 type UnlinkedRow = {
   agent_id: string;
   display_name: string;
@@ -69,6 +79,21 @@ export function UnlinkedAgentsPanel() {
     await queryClient.invalidateQueries({ queryKey: ["unlinked-agents"] });
     await queryClient.invalidateQueries({ queryKey: ["onboarding-roll-call"] });
   };
+
+  // MP-354: the other four ways a hire falls out of onboarding, on the same row
+  // as the linkage gap. Kept in one panel rather than a second card — Sam's
+  // standing instruction is no clutter, and these are the same people.
+  const { data: integrity } = useQuery({
+    queryKey: ["onboarding-integrity"],
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("my_onboarding_integrity" as never, {} as never);
+      if (error) throw error;
+      const map = new Map<string, IntegrityRow>();
+      for (const r of (data ?? []) as unknown as IntegrityRow[]) map.set(r.agent_id, r);
+      return map;
+    },
+  });
 
   const setStatus = useMutation({
     mutationFn: async (input: { id: string; status: string }) => {
@@ -126,6 +151,26 @@ export function UnlinkedAgentsPanel() {
               {!row.al_user_id && <Link2Off className="h-3.5 w-3.5 shrink-0 text-amber-500" />}
               <Badge variant="outline" className="text-[10px] capitalize">{row.status}</Badge>
               <span className="text-[11px] text-muted-foreground">{row.blocker}</span>
+              {(() => {
+                const g = integrity?.get(row.agent_id);
+                if (!g) return null;
+                // Only the gaps that are actually open, named plainly. A blocker
+                // nobody can read is a blocker nobody closes.
+                const flags = [
+                  g.cannot_sign_in && "no login",
+                  g.unreachable && "no contact",
+                  g.never_onboarded && "never onboarded",
+                  g.no_start_date && "no start date",
+                ].filter(Boolean) as string[];
+                if (flags.length === 0) return null;
+                return (
+                  <span className="flex flex-wrap gap-1">
+                    {flags.map((f) => (
+                      <Badge key={f} variant="outline" className="border-rose-500/40 text-[10px] text-rose-500">{f}</Badge>
+                    ))}
+                  </span>
+                );
+              })()}
 
               <div className="ml-auto flex items-center gap-2">
                 {!row.al_user_id && (

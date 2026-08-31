@@ -2056,6 +2056,22 @@
         "raw": ""
       }
     ],
+    "fn_book_row_proves_license": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_book_row_sets_first_deal": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "fn_bridge_hh_hire_to_apex": [
       {
         "all": [],
@@ -4108,6 +4124,14 @@
         "required": [],
         "unnamed": false,
         "raw": "p_days integer DEFAULT 14"
+      }
+    ],
+    "my_onboarding_integrity": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
       }
     ],
     "my_onboarding_roll_call": [

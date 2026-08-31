@@ -270,6 +270,31 @@ function embedDealMilestone(d: Record<string, unknown>) {
   };
 }
 
+function embedRecruitingMilestone(d: Record<string, unknown>) {
+  // A recruiting milestone is about the RECRUITER. It deliberately carries no
+  // candidate names — publishing who was hired would put a roster into a chat
+  // channel, the same class as the client-PII leak closed in the deal feed.
+  const name  = (d.agent_name as string) || "An agent";
+  const badge = (d.badge as string) || "MILESTONE";
+  const hires = Number(d.hires) || 0;
+  const period = String(d.period ?? "month") === "day" ? "today" : "this month";
+  const photo = (d.photo_url as string) || null;
+
+  return {
+    embeds: [{
+      title:       `🏆 ${badge}`,
+      description: `**${name}** ${hires === 1 ? "hired 1 agent" : `hired ${hires} agents`} ${period}`,
+      color:       CLR.purple,
+      ...(photo ? { thumbnail: { url: photo } } : {}),
+      fields: [
+        { name: "Hires", value: String(hires), inline: true },
+        { name: "Period", value: period === "today" ? "Today" : "Month to date", inline: true },
+      ],
+      timestamp: new Date().toISOString(),
+    }],
+  };
+}
+
 function embedDailyLeaderboard(d: Record<string, unknown>) {
   const entries = (d.entries as Array<{rank:number;name:string;aop:number;instagram?:string}>) || [];
   const date    = (d.date_label as string) || new Date().toLocaleDateString("en-US", { month:"short", day:"numeric" });
@@ -358,6 +383,7 @@ function buildPayload(event_type: string, details: Record<string, unknown>): Rec
     case "deal_closed":          return embedDealClosed(details);
     case "streak_7day":          return embedStreak7Day(details);
     case "deal_milestone":       return embedDealMilestone(details);
+    case "recruiting_milestone": return embedRecruitingMilestone(details);
     case "daily_leaderboard":    return embedDailyLeaderboard(details);
     case "weekly_leaderboard":   return embedWeeklyLeaderboard(details);
     case "pipeline_leaderboard": return embedPipelineLeaderboard(details);

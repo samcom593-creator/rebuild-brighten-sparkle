@@ -26,6 +26,7 @@ export const SLACK_TEMPLATED_EVENT_TYPES = [
   "recruiting.bounty_qualified",
   "recruiting.bounty_reversed",
   "agent.hired",
+  "recruiting.milestone",
 ] as const;
 
 export type SlackTemplatedEventType = (typeof SLACK_TEMPLATED_EVENT_TYPES)[number];
@@ -168,6 +169,18 @@ export function renderSlackEventText(
     const reason = slackText(p.reason, 160);
     const url = safeSlackUrl(p.openUrl, SLACK_DEFAULT_URLS.teamDashboard);
     return `Recruiter bounty REVERSED — *${recruiter}* (recruit: ${recruit})${reason ? ` — ${reason}` : ""}\n<${url}|Review in Team>`;
+  }
+
+  if (eventType === "recruiting.milestone") {
+    // reads: agentName, badge, hires, period, openUrl. No candidate PII — a
+    // milestone is about the RECRUITER, and naming the people they hired would
+    // publish a roster into a chat channel.
+    const who = text(p.agentName, "An agent");
+    const badge = slackText(p.badge, 40) || "MILESTONE";
+    const hires = Math.max(0, Number(p.hires ?? 0) || 0);
+    const period = String(p.period ?? "month") === "day" ? "today" : "this month";
+    const url = safeSlackUrl(p.openUrl, SLACK_DEFAULT_URLS.teamDashboard);
+    return `:trophy: ${badge} — *${who}* ${hires === 1 ? "hired 1 agent" : `hired ${hires} agents`} ${period}\n<${url}|See the board>`;
   }
 
   if (eventType === "agent.hired") {

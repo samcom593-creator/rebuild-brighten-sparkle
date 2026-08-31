@@ -392,6 +392,24 @@ async function deliverDiscord(sb: any, event: any): Promise<string | undefined> 
     return typeof response.provider_message_id === "string" ? response.provider_message_id : undefined;
   }
 
+  if (event.aggregate_type === "recruiting_milestone") {
+    // Recruiting/hiring milestone. The payload carries everything needed, so
+    // there is no DB read and no chance of pulling candidate names into a chat
+    // channel — a milestone is about the recruiter, not the people hired.
+    const p = (event.payload ?? {}) as Record<string, unknown>;
+    const response = await callFunction("discord-webhook-notify", {
+      event_type: "recruiting_milestone",
+      details: {
+        agent_name: p.agentName ?? "An agent",
+        badge: p.badge ?? "MILESTONE",
+        hires: p.hires ?? 0,
+        period: p.period ?? "month",
+      },
+    });
+    if (response?.suppressed === true) throw new Error("Discord recruiting-milestone delivery was suppressed");
+    return undefined;
+  }
+
   if (event.aggregate_type === "agent" && event.event_type === "agent.hired") {
     const { data: hired, error } = await sb
       .from("agents")

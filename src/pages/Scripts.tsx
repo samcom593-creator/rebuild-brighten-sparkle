@@ -16,6 +16,7 @@ import {
   ScrollText, Copy, Check, RefreshCw, Filter, Tag, Phone, Shield, Users, Crown, Search,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent } from "@/components/ui/card";
@@ -48,6 +49,7 @@ export default function Scripts() {
   const [activeCat, setActiveCat] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const scripts = useQuery({
     queryKey: ["sales-scripts"],
@@ -219,9 +221,31 @@ export default function Scripts() {
                       {isCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                     </Button>
                   </div>
-                  <pre className="text-12 text-foreground/85 whitespace-pre-wrap font-sans leading-relaxed bg-muted/30 rounded-md p-3 max-h-48 overflow-auto">
+                  {/* Short snippets stay compact; a full call script does not fit
+                      in 12rem. The vet script is 13,596 characters — at max-h-48 an
+                      agent sees roughly the first eight lines and has to scroll a
+                      tiny window through the whole call. Long scripts get room and
+                      an expand control instead. */}
+                  <pre
+                    className={cn(
+                      "text-12 text-foreground/85 whitespace-pre-wrap font-sans leading-relaxed bg-muted/30 rounded-md p-3 overflow-auto",
+                      s.body.length > 1500
+                        ? expandedId === s.id ? "max-h-[70vh]" : "max-h-96"
+                        : "max-h-48",
+                    )}
+                  >
                     {s.body}
                   </pre>
+                  {s.body.length > 1500 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="mt-2 h-7 px-2 text-11"
+                      onClick={() => setExpandedId(expandedId === s.id ? null : s.id)}
+                    >
+                      {expandedId === s.id ? "Collapse" : "Expand full script"}
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             );

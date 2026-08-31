@@ -338,8 +338,37 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`[Push] Results: ${sent}/${subscriptions.length} sent successfully`);
 
+    // `success` must mean a push actually reached a device. This previously
+    // returned success:true unconditionally, so a call that delivered NOTHING
+    // still read as a win: a live probe against Sam's own account returned
+    // {success:true, sent:0, total:10, expired:10} — all ten of his
+    // subscriptions were dead and the caller was told everything was fine.
+    // That is the same fake-success class as the 465 InsuraCloud sync rows,
+    // and it is why push looked healthy while being 0-for-4 over 30 days.
+    //
+    // allExpired is called out separately because it is not an outage — it
+    // means the subscriptions themselves are gone and the user has to
+    // re-subscribe in the browser. A caller that cannot tell that apart will
+    // retry forever against endpoints that can never come back.
+    const allExpired = sent === 0 && expiredEndpoints.length === subscriptions.length;
     return new Response(
-      JSON.stringify({ success: true, sent, total: subscriptions.length, expired: expiredEndpoints.length, failedUserIds }),
+      JSON.stringify({
+        success: sent > 0,
+        sent,
+        total: subscriptions.length,
+        expired: expiredEndpoints.length,
+        failedUserIds,
+        ...(sent === 0
+          ? {
+              reason: allExpired
+                ? "all_subscriptions_expired"
+                : "no_push_delivered",
+              detail: allExpired
+                ? "Every stored subscription was rejected as gone (410/404) and has been removed. The user must re-enable notifications in their browser."
+                : "No push reached a device.",
+            }
+          : {}),
+      }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   } catch (error: any) {

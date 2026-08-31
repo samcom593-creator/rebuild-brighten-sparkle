@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { TRAINING_ROUTES } from "@/lib/trainingRoutes";
 
 interface OperationsData {
   as_of: string;
@@ -104,7 +105,7 @@ export function OperationsCommandCenter() {
         <MetricLink to="/dashboard/recruiting" icon={UserRoundSearch} label="New recruits" value={d.recruiting.new} detail={`${d.recruiting.uncontacted} need a call`} danger={d.recruiting.uncontacted_48h > 0} />
         <MetricLink to="/dashboard/interviews" icon={CalendarCheck2} label="Interviews" value={d.recruiting.interview} detail="live hiring pipeline" />
         <MetricLink to="/dashboard/team" icon={UserCheck2} label="Hired" value={d.recruiting.hired} detail={`${d.recruiting.contracting} at contracting`} />
-        <MetricLink to="/dashboard/recruiting/training/progress" icon={UsersRound} label="Onboarding" value={d.onboarding.stalled} detail={`${d.onboarding.carrier_contracting} at contracting`} danger={d.onboarding.stalled > 0} />
+        <MetricLink to={TRAINING_ROUTES.teamProgress} icon={UsersRound} label="Onboarding" value={d.onboarding.stalled} detail={`${d.onboarding.carrier_contracting} at contracting`} danger={d.onboarding.stalled > 0} />
         <MetricLink to="/dashboard/contracting" icon={FileCheck2} label="Contracting" value={d.contracting.active} detail={`${d.contracting.pending} pending · ${d.contracting.issues} issues`} danger={d.contracting.issues > 0} />
         <MetricLink to="/dashboard/production" icon={PhoneCall} label="Sold today" value={d.sales.sold_today} detail={`${d.sales.expected_to_sell} expected producers`} />
         <MetricLink to="/dashboard/team" icon={PhoneCall} label="Not selling" value={d.sales.not_selling} detail={`${d.sales.sold_today}/${d.sales.expected_to_sell} sold today`} danger={d.sales.not_selling > 0} />

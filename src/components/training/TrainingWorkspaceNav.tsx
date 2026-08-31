@@ -5,30 +5,29 @@ import {
   GraduationCap,
   ListChecks,
   TrendingUp,
-  Trophy,
   Users,
 } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
 import { resolveBrand } from "@/config/brand";
+import { TRAINING_ROUTES, toCanonicalTrainingHref } from "@/lib/trainingRoutes";
 import { cn } from "@/lib/utils";
 
-const BASE = "/dashboard/recruiting/training";
 const WORKSPACE_LABEL = `${resolveBrand().platformName} Training workspace`;
 
 const VIEWS = [
-  { label: "Recruit progress", href: BASE, icon: BookOpenCheck, staffOnly: true, exact: true },
-  { label: "Learning hub", href: `${BASE}/library`, icon: BookOpen },
-  { label: "Field course", href: `${BASE}/sales-course`, icon: GraduationCap },
-  { label: "Team progress", href: `${BASE}/progress`, icon: Users, staffOnly: true },
-  { label: "Course content", href: `${BASE}/content`, icon: ListChecks, staffOnly: true },
-  { label: "Annuities", href: `${BASE}/annuities`, icon: TrendingUp },
-  { label: "Weekly leaderboard", href: "/dashboard/leaderboard", icon: Trophy },
+  { label: "Recruit progress", href: TRAINING_ROUTES.root, icon: BookOpenCheck, staffOnly: true, exact: true },
+  { label: "Training home", href: TRAINING_ROUTES.home, icon: BookOpen },
+  { label: "Field course", href: TRAINING_ROUTES.fieldCourse, icon: GraduationCap },
+  { label: "Team progress", href: TRAINING_ROUTES.teamProgress, icon: Users, staffOnly: true },
+  { label: "Course content", href: TRAINING_ROUTES.courseContent, icon: ListChecks, staffOnly: true },
+  { label: "Annuities", href: TRAINING_ROUTES.annuities, icon: TrendingUp },
 ] as const;
 
-/** AgentCloud-style section switcher shared by every APEX Training surface. */
+/** A focused section switcher shared by every training surface. */
 export function TrainingWorkspaceNav() {
   const { pathname } = useLocation();
+  const canonicalPathname = toCanonicalTrainingHref(pathname);
   const { isAdmin, isManager, isVaManager, isVa } = useAuth();
   const isStaff = isAdmin || isManager || isVaManager || isVa;
 
@@ -40,8 +39,8 @@ export function TrainingWorkspaceNav() {
       <div className="flex min-w-max gap-1">
         {VIEWS.filter((view) => !("staffOnly" in view) || !view.staffOnly || isStaff).map((view) => {
           const active = "exact" in view && view.exact
-            ? pathname === view.href
-            : pathname === view.href || pathname.startsWith(`${view.href}/`);
+            ? canonicalPathname === view.href
+            : canonicalPathname === view.href || canonicalPathname.startsWith(`${view.href}/`);
           const Icon = view.icon;
           return (
             <Link

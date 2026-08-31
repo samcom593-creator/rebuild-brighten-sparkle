@@ -42,7 +42,7 @@ describe("agent onboarding roadmap", () => {
     for (const videoId of ["55929817", "55930238", "55934385", "55934661"]) {
       expect(trainingMigration).toContain(videoId);
     }
-    expect(resources).toContain("/dashboard/recruiting/training/sales-course");
+    expect(resources).toContain("TRAINING_ROUTES.fieldCourse");
     expect(trainingMigration).toContain("transcript_segments");
     expect(trainingMigration).toContain("onboarding_questions");
   });

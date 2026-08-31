@@ -508,7 +508,7 @@ const App = () => (
                       not the only one. */}
                   <Route path="/dashboard/analytics" element={<ProtectedRoute requireAdmin allowManagers><BusinessAnalytics /></ProtectedRoute>} />
                     <Route path="/dashboard/community" element={<ProtectedRoute><Announcements /></ProtectedRoute>} />
-                    <Route path="/dashboard/resources" element={<LegacyWorkspaceRedirect to="/dashboard/recruiting/training/library" />} />
+                    <Route path="/dashboard/resources" element={<LegacyWorkspaceRedirect to="/dashboard/training/library" />} />
                     <Route path="/dashboard/import" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager"]}><XcelImport /></ProtectedRoute>} />
                     <Route path="/dashboard/nova" element={<ProtectedRoute><HelpCenter /></ProtectedRoute>} />
                     <Route path="/dashboard/admin" element={<ProtectedRoute requireAdmin><DashboardCommandCenter /></ProtectedRoute>} />
@@ -581,7 +581,7 @@ const App = () => (
                     <Route path="/admin/licensed-inbox" element={<ProtectedRoute requireAdmin allowRoles={["va_manager", "va"]}><LicensedInbox /></ProtectedRoute>} />
                     {/* Executable Welcome Aboard toolkit: persisted licensed/unlicensed paths,
                         30/60/90-day milestones, and career qualification calculator. */}
-                    <Route path="/admin/apex-toolkit" element={<LegacyWorkspaceRedirect to="/dashboard/recruiting/training" />} />
+                    <Route path="/admin/apex-toolkit" element={<LegacyWorkspaceRedirect to="/dashboard/training" />} />
                     {/* 2026-07-05 Sam: unlicensed → licensed recovery queue for assistants. Sorted by cohort proximity to licensed. Tap-to-call. */}
                     <Route path="/admin/recovery-queue" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><RecoveryQueue /></ProtectedRoute>} />
                     {/* 2026-07-05 Sam: full unlicensed roster w/ VA assignment + ghosted-30d+ filter. */}
@@ -614,15 +614,15 @@ const App = () => (
                     <Route path="/agent-portal" element={<ProtectedRoute><AgentCommandDashboard /></ProtectedRoute>} />
                     <Route path="/agent-dashboard" element={<ProtectedRoute><AgentCommandDashboard /></ProtectedRoute>} />
                     <Route path="/agent-portal/legacy" element={<AgentPortal />} />
-                    <Route path="/onboarding-course" element={<LegacyWorkspaceRedirect to="/dashboard/recruiting/training/sales-course" />} />
-                    <Route path="/course-catalog" element={<LegacyWorkspaceRedirect to="/dashboard/recruiting/training/sales-course" />} />
+                    <Route path="/onboarding-course" element={<LegacyWorkspaceRedirect to="/dashboard/training/sales-course" />} />
+                    <Route path="/course-catalog" element={<LegacyWorkspaceRedirect to="/dashboard/training/sales-course" />} />
                     {/* Training Hub — live apex-resources content rendered in-app
                         (recordings / courses / library). Content API stays the
                         apex-resources admin portal; progress in hub_course_progress. */}
-                    <Route path="/dashboard/training-hub" element={<LegacyWorkspaceRedirect to="/dashboard/recruiting/training/library" />} />
+                    <Route path="/dashboard/training-hub" element={<LegacyWorkspaceRedirect to="/dashboard/training/library" />} />
                     <Route path="/dashboard/training-hub/course/:courseId" element={<ProtectedRoute><TrainingHubCourse /></ProtectedRoute>} />
-                    <Route path="/course-progress" element={<LegacyWorkspaceRedirect to="/dashboard/recruiting/training/progress" />} />
-                    <Route path="/course-progress/content" element={<LegacyWorkspaceRedirect to="/dashboard/recruiting/training/content" />} />
+                    <Route path="/course-progress" element={<LegacyWorkspaceRedirect to="/dashboard/training/progress" />} />
+                    <Route path="/course-progress/content" element={<LegacyWorkspaceRedirect to="/dashboard/training/content" />} />
                     <Route path="/numbers" element={<Numbers />} />
                     <Route path="/purchase-leads" element={<PurchaseLeads />} />
                     {/* Had NO route guard at all while every sibling recruiting route required

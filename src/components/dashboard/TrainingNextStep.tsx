@@ -29,6 +29,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { TRAINING_ROUTES, toCanonicalTrainingHref } from "@/lib/trainingRoutes";
 
 interface NextStep {
   state: string;
@@ -143,7 +144,7 @@ export function TrainingNextStep() {
           </div>
 
           <Button asChild size="sm" className="shrink-0 gap-1.5">
-            <Link to={done ? "/dashboard/recruiting/training/library" : (data.next_href ?? "/dashboard/recruiting/training/library")}>
+            <Link to={done ? TRAINING_ROUTES.home : toCanonicalTrainingHref(data.next_href ?? TRAINING_ROUTES.home)}>
               {done ? "Training library" : "Continue"}
               <ArrowRight className="h-4 w-4" />
             </Link>

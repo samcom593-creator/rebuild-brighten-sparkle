@@ -27,7 +27,6 @@ import { TrainingWorkspaceNav } from "@/components/training/TrainingWorkspaceNav
 import { TrainingPathPanel } from "@/components/training/TrainingPathPanel";
 import { TrainingLeaderPanel } from "@/components/training/TrainingLeaderPanel";
 import { RequiredOnboardingResources } from "@/components/training/RequiredOnboardingResources";
-import { AgentOnboardingStepper } from "@/components/dashboard/AgentOnboardingStepper";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -42,6 +41,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { TRAINING_ROUTES } from "@/lib/trainingRoutes";
 import {
   HUB_ORIGIN,
   HubRecording,
@@ -205,22 +205,6 @@ export default function TrainingHub() {
     staleTime: 60 * 1000,
   });
 
-  const { data: ownAgent } = useQuery({
-    queryKey: ["training-hub-own-agent", user?.id],
-    queryFn: async () => {
-      const { data: rows, error } = await supabase
-        .from("agents")
-        .select("id")
-        .eq("user_id", user!.id)
-        .order("created_at", { ascending: false })
-        .limit(1);
-      if (error) throw error;
-      return rows?.[0] ?? null;
-    },
-    enabled: !!user?.id,
-    staleTime: 5 * 60 * 1000,
-  });
-
   const courses = useMemo(
     () => (data?.resources ?? []).filter((r) => r.type === "course" && r.course),
     [data],
@@ -263,10 +247,10 @@ export default function TrainingHub() {
     <div className="page-enter mx-auto w-full max-w-6xl space-y-6 px-4 pb-24 sm:px-6">
       <TrainingWorkspaceNav />
       <PageHeader
-        eyebrow="Agent Hub · Resources"
+        eyebrow="Learn · Practice · Progress"
         eyebrowIcon={<Library className="h-3 w-3" />}
-        title="Training Hub"
-        subtitle="Recordings, courses, scripts, and tools — everything an APEX agent needs, in one place, live from the content library."
+        title="Training center"
+        subtitle="Continue your required course first, then use the library for extra practice, recordings, and field resources."
         accent="primary"
         actions={
           (isAdmin || isManager) && (
@@ -280,19 +264,6 @@ export default function TrainingHub() {
         }
       />
 
-      {data && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <StatTile value={courses.length} label="Courses" />
-          <StatTile value={data.recordings.length} label="Recorded trainings" />
-          <StatTile value={libraryItems.length} label="Library resources" />
-          <StatTile
-            value={completedCourses}
-            label="Courses completed"
-            tone={completedCourses > 0 ? "text-success" : undefined}
-          />
-        </div>
-      )}
-
       {/* The tab shell is OUTSIDE the `data &&` guard on purpose. "Your path"
           and the leader view read Supabase, not the external content library —
           an outage at apex-resources.vercel.app must not take an agent's own
@@ -301,11 +272,11 @@ export default function TrainingHub() {
         <TabsList className="mb-4 w-full justify-start overflow-x-auto">
           <TabsTrigger value="path" className="gap-1.5">
             <ListChecks className="h-4 w-4" />
-            Your path
+            My training
           </TabsTrigger>
           <TabsTrigger value="courses" className="gap-1.5">
             <GraduationCap className="h-4 w-4" />
-            Courses
+            More courses
           </TabsTrigger>
           <TabsTrigger value="recordings" className="gap-1.5">
             <Headphones className="h-4 w-4" />
@@ -313,7 +284,7 @@ export default function TrainingHub() {
           </TabsTrigger>
           <TabsTrigger value="library" className="gap-1.5">
             <BookOpen className="h-4 w-4" />
-            Library
+            Resources
           </TabsTrigger>
           {isLeader && (
             <TabsTrigger value="team" className="gap-1.5">
@@ -323,9 +294,21 @@ export default function TrainingHub() {
           )}
         </TabsList>
 
+        {data && tab !== "path" && tab !== "team" && (
+          <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <StatTile value={courses.length} label="Courses" />
+            <StatTile value={data.recordings.length} label="Recordings" />
+            <StatTile value={libraryItems.length} label="Resources" />
+            <StatTile
+              value={completedCourses}
+              label="Courses completed"
+              tone={completedCourses > 0 ? "text-success" : undefined}
+            />
+          </div>
+        )}
+
         <TabsContent value="path">
           <div className="space-y-6">
-            {ownAgent && <AgentOnboardingStepper agentId={ownAgent.id} />}
             <TrainingPathPanel />
             <RequiredOnboardingResources />
           </div>
@@ -365,7 +348,7 @@ export default function TrainingHub() {
         )}
       </Tabs>
 
-      {data && quickLinks.length > 0 && (
+      {data && quickLinks.length > 0 && tab !== "path" && tab !== "team" && (
         <section>
           <div className="mb-3 flex items-center gap-3">
             <div className="h-px flex-1 bg-border" />
@@ -433,7 +416,7 @@ function CoursesTab({
         const counts = hubCourseCounts(c.course!);
         const pct = completion[c.id] ?? 0;
         return (
-          <Link key={c.id} to={`/dashboard/recruiting/training/library/course/${c.id}`}>
+          <Link key={c.id} to={`${TRAINING_ROUTES.home}/course/${c.id}`}>
             <Card className="flex h-full cursor-pointer flex-col gap-3 p-5 hover:border-primary/40">
               <div className="flex items-center justify-between gap-2">
                 <Badge variant="outline" className={TYPE_BADGE.course.className}>

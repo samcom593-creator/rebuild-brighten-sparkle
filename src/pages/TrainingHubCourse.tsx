@@ -21,8 +21,10 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CourseQuiz } from "@/components/course/CourseQuiz";
+import { TrainingWorkspaceNav } from "@/components/training/TrainingWorkspaceNav";
 import { OnboardingQuestion } from "@/hooks/useOnboardingCourse";
 import { cn } from "@/lib/utils";
+import { TRAINING_ROUTES } from "@/lib/trainingRoutes";
 import {
   HUB_EMBED_SANDBOX,
   HubCourseItem,
@@ -165,6 +167,7 @@ export default function TrainingHubCourse() {
   if (isLoading) {
     return (
       <div className="page-enter mx-auto w-full max-w-4xl space-y-4 px-4 pb-24 sm:px-6">
+        <TrainingWorkspaceNav />
         <Skeleton className="h-10 w-48 rounded-md" />
         <Skeleton className="h-56 rounded-md" />
         <Skeleton className="h-40 rounded-md" />
@@ -175,6 +178,7 @@ export default function TrainingHubCourse() {
   if (isError || !resource?.course) {
     return (
       <div className="page-enter mx-auto w-full max-w-4xl px-4 pb-24 sm:px-6">
+        <TrainingWorkspaceNav />
         <GlassCard className="mt-8 p-8 text-center">
           <p className="mb-1 text-lg font-bold">
             {isError ? "Couldn't reach the content library" : "Course not found"}
@@ -192,7 +196,7 @@ export default function TrainingHubCourse() {
               </Button>
             )}
             <Button asChild variant="outline" className="gap-2">
-              <Link to="/dashboard/recruiting/training/library?tab=courses">
+              <Link to={`${TRAINING_ROUTES.home}?tab=courses`}>
                 <ArrowLeft className="h-4 w-4" />
                 Back to Training Hub
               </Link>
@@ -215,6 +219,7 @@ export default function TrainingHubCourse() {
 
     return (
       <div className="page-enter mx-auto w-full max-w-4xl space-y-4 px-4 pb-24 sm:px-6">
+        <TrainingWorkspaceNav />
         <div className="flex items-center justify-between pt-2">
           <button
             type="button"
@@ -322,9 +327,10 @@ export default function TrainingHubCourse() {
 
   return (
     <div className="page-enter mx-auto w-full max-w-4xl space-y-5 px-4 pb-24 sm:px-6">
+      <TrainingWorkspaceNav />
       <div className="pt-2">
         <Link
-          to="/dashboard/recruiting/training/library?tab=courses"
+          to={`${TRAINING_ROUTES.home}?tab=courses`}
           className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />

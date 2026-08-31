@@ -168,8 +168,8 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
     icon: GraduationCap,
     modes: PRODUCERS,
     items: [
-      { label: "Sales Course", href: "/dashboard/training/sales-course", icon: GraduationCap },
-      { label: "Training Library", href: "/dashboard/training/library", icon: BookOpenCheck },
+      { label: "Field Course", href: "/dashboard/training/sales-course", icon: GraduationCap },
+      { label: "Training Home", href: "/dashboard/training/library", icon: BookOpenCheck },
       { label: "Scripts", href: "/dashboard/scripts", icon: ScrollText },
     ],
   },

@@ -2,7 +2,7 @@
 // Curated annuity-specific training: product types, when to recommend,
 // commission structure, suitability requirements.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   TrendingUp, CheckCircle2, AlertCircle, DollarSign, Calculator, FileText,
   ShieldCheck, Clock, Calendar,
@@ -124,11 +124,23 @@ const ANNUITY_PRODUCTS = ["Fixed (FA)", "Indexed (FIA)", "Variable (VA)", "Immed
 
 const TOTAL_WORDS = MODULES.reduce((sum, m) => sum + m.body.split(/\s+/).length, 0);
 const READ_TIME_MIN = Math.max(1, Math.round(TOTAL_WORDS / 220));
+const COMPLETION_STORAGE_KEY = "apex-annuity-training-completed";
 
 export default function AnnuityTraining() {
   usePageTitle("Annuity Training · APEX");
   const [active, setActive] = useState(MODULES[0].key);
-  const [completed, setCompleted] = useState<Set<string>>(new Set());
+  const [completed, setCompleted] = useState<Set<string>>(() => {
+    try {
+      const saved = JSON.parse(window.localStorage.getItem(COMPLETION_STORAGE_KEY) ?? "[]");
+      return new Set(Array.isArray(saved) ? saved.filter((key) => MODULES.some((module) => module.key === key)) : []);
+    } catch {
+      return new Set();
+    }
+  });
+
+  useEffect(() => {
+    window.localStorage.setItem(COMPLETION_STORAGE_KEY, JSON.stringify([...completed]));
+  }, [completed]);
 
   const sec = MODULES.find((m) => m.key === active)!;
   const Icon = sec.icon;
@@ -136,7 +148,7 @@ export default function AnnuityTraining() {
   const idx = MODULES.findIndex((m) => m.key === active);
 
   return (
-    <div className="page-enter px-4 sm:px-6 pb-24 space-y-5">
+    <div className="page-enter mx-auto w-full max-w-7xl space-y-5 px-4 pb-24 sm:px-6">
       <TrainingWorkspaceNav />
       <PageHeader
         eyebrow="Training"

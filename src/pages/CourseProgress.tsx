@@ -63,6 +63,7 @@ import { AddToCourseButton } from "@/components/dashboard/AddToCourseButton";
 import { AddAgentToCourseDialog } from "@/components/dashboard/AddAgentToCourseDialog";
 import { CourseContentViewer } from "@/components/admin/CourseContentViewer";
 import { TrainingWorkspaceNav } from "@/components/training/TrainingWorkspaceNav";
+import { TRAINING_ROUTES } from "@/lib/trainingRoutes";
 
 interface ModuleInfo {
   id: string;
@@ -464,7 +465,7 @@ export default function CourseProgress() {
 
   return (
     <>
-      <div className="space-y-4 page-enter">
+      <div className="page-enter mx-auto w-full max-w-7xl space-y-4 px-4 pb-24 sm:px-6">
         <TrainingWorkspaceNav />
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -483,7 +484,7 @@ export default function CourseProgress() {
           </div>
           <div className="flex gap-2 flex-wrap">
             <AddAgentToCourseDialog onSuccess={() => refetch()} />
-            <Button variant="outline" size="sm" onClick={() => navigate('/dashboard/recruiting/training/content')} className="gap-1.5">
+            <Button variant="outline" size="sm" onClick={() => navigate(TRAINING_ROUTES.courseContent)} className="gap-1.5">
               <Eye className="h-3.5 w-3.5" />
               View Full Course
             </Button>

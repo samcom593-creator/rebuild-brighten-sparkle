@@ -3,34 +3,14 @@ import { ArrowRight, ExternalLink, FileText, Phone, PlayCircle } from "lucide-re
 
 import { Card } from "@/components/ui/card";
 import { resolveBrand } from "@/config/brand";
+import { TRAINING_ROUTES } from "@/lib/trainingRoutes";
 
 function onboardingResources(brandName: string) {
   return [
   {
-    title: `Start here · ${brandName} closer system`,
-    detail: "Build the pre-call routine and reset protocol first.",
-    href: "/dashboard/training/sales-course",
-    icon: PlayCircle,
-    internal: true,
-  },
-  {
-    title: "Script mastery",
-    detail: "Control the first seconds, presentation, and close.",
-    href: "/dashboard/training/sales-course",
-    icon: PlayCircle,
-    internal: true,
-  },
-  {
-    title: "Field playbook",
-    detail: "ReadyMode, call review, pipeline, and quoting.",
-    href: "/dashboard/training/sales-course",
-    icon: PlayCircle,
-    internal: true,
-  },
-  {
     title: "Field-release course",
-    detail: "Complete every tracked video, transcript, and knowledge check.",
-    href: "/dashboard/recruiting/training/sales-course",
+    detail: "Watch each lesson, use the transcript, and pass the knowledge checks.",
+    href: TRAINING_ROUTES.fieldCourse,
     icon: PlayCircle,
     internal: true,
   },
@@ -48,10 +28,10 @@ export function RequiredOnboardingResources() {
   return (
     <section aria-labelledby="required-onboarding-heading" className="space-y-3">
       <div>
-        <h2 id="required-onboarding-heading" className="text-lg font-bold">Required onboarding resources</h2>
-        <p className="text-sm text-muted-foreground">Keep these references close while you work through the tracked field-release course.</p>
+        <h2 id="required-onboarding-heading" className="text-lg font-bold">Practice toolkit</h2>
+        <p className="text-sm text-muted-foreground">The three essentials for completing training and practicing in the field.</p>
       </div>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-3">
         {resources.map((resource, index) => {
           const ActionIcon = "internal" in resource && resource.internal ? ArrowRight : ExternalLink;
           const content = (

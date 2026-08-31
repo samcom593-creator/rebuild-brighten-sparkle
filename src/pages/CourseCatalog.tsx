@@ -14,13 +14,11 @@ import {
   LockKeyhole,
   PlayCircle,
   Rocket,
-  Sparkles,
   Volume2,
   VolumeX,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
-import { AgentOnboardingStepper } from "@/components/dashboard/AgentOnboardingStepper";
 import { CourseQuiz } from "@/components/course/CourseQuiz";
 import { CourseTranscript } from "@/components/course/CourseTranscript";
 import { CourseVideoPlayer } from "@/components/course/CourseVideoPlayer";
@@ -36,6 +34,7 @@ import { useOnboardingCourse } from "@/hooks/useOnboardingCourse";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveBrand } from "@/config/brand";
+import { TRAINING_ROUTES } from "@/lib/trainingRoutes";
 import { cn } from "@/lib/utils";
 
 type LessonTab = "video" | "transcript" | "quiz";
@@ -49,6 +48,7 @@ function formatDuration(seconds: number | null): string {
 export default function CourseCatalog() {
   const brand = resolveBrand();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, isAdmin, isManager, isVaManager, isVa } = useAuth();
   const isStaff = isAdmin || isManager || isVaManager || isVa;
   const { playSound } = useSoundEffects();
@@ -61,6 +61,7 @@ export default function CourseCatalog() {
   const [isLicensed, setIsLicensed] = useState(false);
   const [licenseCheckLoading, setLicenseCheckLoading] = useState(true);
   const resumeSelectedRef = useRef(false);
+  const lessonRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -187,10 +188,18 @@ export default function CourseCatalog() {
 
   useEffect(() => {
     if (resumeSelectedRef.current || modules.length === 0) return;
+    const requestedModuleId = searchParams.get("module");
+    const requestedIndex = requestedModuleId
+      ? modules.findIndex((module) => module.id === requestedModuleId)
+      : -1;
+    const requestedUnlocked = requestedIndex >= 0 && (
+      requestedIndex === 0 || progress[modules[requestedIndex - 1].id]?.passed === true
+    );
     const firstIncomplete = modules.findIndex((module) => progress[module.id]?.passed !== true);
-    setCurrentModuleIndex(firstIncomplete >= 0 ? firstIncomplete : modules.length - 1);
+    const resumeIndex = firstIncomplete >= 0 ? firstIncomplete : modules.length - 1;
+    setCurrentModuleIndex(requestedUnlocked ? requestedIndex : resumeIndex);
     resumeSelectedRef.current = true;
-  }, [modules, progress, setCurrentModuleIndex]);
+  }, [modules, progress, searchParams, setCurrentModuleIndex]);
 
   const completedCount = modules.filter((module) => progress[module.id]?.passed).length;
   const totalMinutes = useMemo(
@@ -201,11 +210,14 @@ export default function CourseCatalog() {
   const currentProgress = currentModule ? progress[currentModule.id] : null;
 
   const selectModule = (index: number) => {
-    if (!isModuleUnlocked(index)) return;
+    if (!modules[index] || !isModuleUnlocked(index)) return;
     setCurrentModuleIndex(index);
+    setSearchParams({ module: modules[index].id }, { replace: true });
     setActiveTab("video");
     playSound("click");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.requestAnimationFrame(() => {
+      lessonRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   };
 
   const handleQuizSubmit = async (answers: number[], score: number, passed: boolean) => {
@@ -236,7 +248,7 @@ export default function CourseCatalog() {
 
   if (modules.length === 0) {
     return (
-      <div className="mx-auto max-w-4xl space-y-6">
+      <div className="page-enter mx-auto w-full max-w-4xl space-y-6 px-4 pb-24 sm:px-6">
         <TrainingWorkspaceNav />
         <Card>
           <CardContent className="p-10 text-center">
@@ -258,7 +270,12 @@ export default function CourseCatalog() {
     <div className="page-enter mx-auto w-full max-w-7xl space-y-6 px-4 pb-28 sm:px-6">
       <TrainingWorkspaceNav />
 
-      {agentId && <AgentOnboardingStepper agentId={agentId} />}
+      <Button asChild variant="ghost" size="sm" className="w-fit gap-1.5 px-0 text-muted-foreground hover:bg-transparent hover:text-foreground">
+        <Link to={TRAINING_ROUTES.home}>
+          <ArrowLeft className="h-4 w-4" />
+          Back to training home
+        </Link>
+      </Button>
 
       <motion.section
         initial={{ opacity: 0, y: -10 }}
@@ -267,14 +284,14 @@ export default function CourseCatalog() {
       >
         <div className="grid gap-6 p-5 sm:p-7 lg:grid-cols-[1fr_auto] lg:items-end">
           <div>
-            <Badge className="mb-3 gap-1.5 border-primary/30 bg-primary/10 text-primary hover:bg-primary/10">
-              <Sparkles className="h-3.5 w-3.5" /> Field-release course
+            <Badge className="mb-3 border-primary/30 bg-primary/10 text-primary hover:bg-primary/10">
+              Required course
             </Badge>
             <h1 className="max-w-3xl text-3xl font-extrabold tracking-tight sm:text-4xl">
-              Learn the playbook. Master the systems. Launch with confidence.
+              Field-release training
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-              One ordered path from {brand.shortName} fundamentals to ReadyMode, pipeline, deal posting, quoting, and field underwriting.
+              Follow one ordered path through {brand.shortName} fundamentals, scripts, ReadyMode, pipeline, quoting, and field underwriting. Your next unfinished lesson opens automatically.
             </p>
           </div>
           <div className="grid grid-cols-3 gap-2 lg:min-w-80">
@@ -363,7 +380,7 @@ export default function CourseCatalog() {
           </ol>
         </aside>
 
-        <main className="order-1 min-w-0 lg:order-2">
+        <main ref={lessonRef} className="order-1 min-w-0 scroll-mt-4 lg:order-2">
           {currentModule && (
             <motion.div
               key={currentModule.id}

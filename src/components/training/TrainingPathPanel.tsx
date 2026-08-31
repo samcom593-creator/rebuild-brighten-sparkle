@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { TRAINING_ROUTES } from "@/lib/trainingRoutes";
 import { cn } from "@/lib/utils";
 
 /**
@@ -32,8 +33,6 @@ import { cn } from "@/lib/utils";
  * open only once step N-1 is passed. The hub and the player must not disagree
  * about which module an agent may open.
  */
-
-const COURSE_HREF = "/dashboard/recruiting/training/sales-course";
 
 interface ModuleRow {
   id: string;
@@ -302,7 +301,7 @@ export function TrainingPathPanel() {
                       size="sm"
                       className="w-full gap-1.5 sm:w-auto"
                     >
-                      <Link to={COURSE_HREF}>
+                      <Link to={`${TRAINING_ROUTES.fieldCourse}?module=${encodeURIComponent(mod.id)}`}>
                         {state === "done" ? "Review it" : started ? "Continue" : "Start it"}
                         <ArrowRight className="h-4 w-4" />
                       </Link>

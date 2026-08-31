@@ -154,7 +154,7 @@ export default function CourseContent() {
 
   return (
     <>
-      <div className="space-y-6">
+      <div className="page-enter mx-auto w-full max-w-7xl space-y-6 px-4 pb-24 sm:px-6">
         <TrainingWorkspaceNav />
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -173,7 +173,7 @@ export default function CourseContent() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Badge variant="secondary">
               {modules.length} modules • {questions.length} questions
             </Badge>

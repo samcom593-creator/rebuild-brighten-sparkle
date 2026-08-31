@@ -24,7 +24,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { GraduationCap, ArrowRight, CheckCircle2 } from "lucide-react";
+import { GraduationCap, ArrowRight, CheckCircle2, Lightbulb } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,8 @@ interface NextStep {
   next_label?: string;
   next_href?: string;
   next_module_title?: string;
+  recommended_title?: string | null;
+  recommended_reason?: string | null;
 }
 
 const STAGE_LADDER = [
@@ -123,6 +125,19 @@ export function TrainingNextStep() {
               <div className="mt-2 max-w-xs">
                 <Progress value={pct} className="h-1.5" />
                 <p className="mt-1 text-[11px] text-muted-foreground">{pct}% complete</p>
+              </div>
+            )}
+
+            {/* Recommended because of something real. The reason ships WITH the
+                recommendation — a module suggested with no explanation is a
+                guess, and the server only sets these together. */}
+            {data.recommended_title && data.recommended_reason && (
+              <div className="mt-3 flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/[0.06] p-2.5">
+                <Lightbulb className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />
+                <div className="min-w-0">
+                  <p className="text-xs font-medium">Recommended: {data.recommended_title}</p>
+                  <p className="text-[11px] text-muted-foreground">{data.recommended_reason}</p>
+                </div>
               </div>
             )}
           </div>

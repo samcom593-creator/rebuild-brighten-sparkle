@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 import {
   ArrowRight,
   Building2,
@@ -210,7 +211,16 @@ export function ScopedProductionScoreboard() {
   const query = useQuery({
     queryKey: ["scoped-production-scoreboard", window.start, window.end],
     staleTime: 120_000,
-    refetchInterval: 300_000,
+    // No refetchInterval. MEASURED: scoped_production_scoreboard was the single
+    // most expensive call on the platform — 18,739 calls averaging 2,155ms, or
+    // 11.2 HOURS of database time. Across ~65 active agents that is ~288 calls
+    // each, which is what a 5-minute poll on an all-day dashboard produces.
+    //
+    // Polling was also the SLOWER way to be correct: it left the board stale
+    // for up to 5 minutes after a deal posted. This surface now refreshes from
+    // the realtime channel the moment deals/daily_production/agents change, so
+    // it is both fresher and dramatically cheaper.
+    refetchOnWindowFocus: false,
     queryFn: async () => {
       const { data, error } = await supabase.rpc("scoped_production_scoreboard" as never, {
         p_start: window.start,
@@ -220,6 +230,11 @@ export function ScopedProductionScoreboard() {
       return data as unknown as ScoreboardData;
     },
   });
+
+  // Refresh from the realtime channel instead of polling. See the comment on
+  // refetchInterval above: the poll cost 11.2 hours of database time and was
+  // still up to 5 minutes stale after a deal posted.
+  useProductionRealtime(() => { void query.refetch(); }, 800);
 
   const refreshProduction = () => { void query.refetch(); };
   useRealtimeTable({ table: "deals", channelSuffix: "production-scoreboard" }, refreshProduction);

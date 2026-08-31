@@ -135,7 +135,11 @@ export function AgentCloudHome() {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["apex-home-dashboard", win.start, win.end],
     staleTime: 120_000,
-    refetchInterval: 300_000,
+    // No poll. MEASURED: apex_admin_home_dashboard is the platform's second
+    // most expensive call — 10,755 calls averaging 2,205ms, 6.6 hours of
+    // database time. It refreshes from the realtime channel below instead,
+    // which is both cheaper and fresher than waiting up to 5 minutes.
+    refetchOnWindowFocus: false,
     enabled: period !== "custom" || customIsValid,
     queryFn: async () => {
       const { data, error } = await supabase.rpc("apex_admin_home_dashboard" as never, {
@@ -146,6 +150,9 @@ export function AgentCloudHome() {
       return data as unknown as HomeData;
     },
   });
+
+  // Realtime instead of the 5-minute poll it replaced.
+  useProductionRealtime(() => { void refetch(); }, 800);
 
   useProductionRealtime(() => invalidateOperationalTruth(queryClient), 350);
 

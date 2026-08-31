@@ -138,24 +138,34 @@ for (const [col, info] of Object.entries(CHECK_VOCAB)) {
 // one is printed on every run, and an entry that stops matching is an ERROR, so
 // the list can only shrink. Surfaced 2026-08-30 the first time this guard was
 // pointed at supabase/functions.
+// MP-353 took this list from 3 to 2. `confirm-agent-removal`'s
+// `deactivation_reason: "removed_from_system"` was baselined here as needing a
+// product decision; that was refuted by the tree rather than argued. The same
+// dialog handles the same "remove_from_system" action for an admin
+// (DeactivateAgentDialog.tsx:153-167) and already writes status='terminated',
+// is_deactivated, is_inactive and deactivation_reason='inactive'. The decision
+// existed; the email-approval path just disagreed with it. Fixed, not
+// re-baselined.
+//
+// The two survivors stay because the measurement supports the original reason
+// and adds to it: license_progress has no follow-up member, NOTHING in src/
+// reads one, and neither function is reachable — `apex-ghosted-applicants` was
+// registered by migration 20260419213557 but has no cron.job row, and
+// run-licensing-checkups has no caller anywhere in the repo. Adding an enum
+// member to serve a dead write that no surface reads is a migration for
+// nobody. Both sites now report the refusal instead of claiming the move.
 const KNOWN_DEAD_WRITES = [
-  {
-    file: "supabase/functions/confirm-agent-removal/index.ts",
-    column: "agents.deactivation_reason",
-    literal: "removed_from_system",
-    why: "written with `as any`, which is why nothing objected. The enum holds bad_business/inactive/switched_teams — none of them means 'removed via the removal-request flow'. Picking one, or adding a member, is Sam's call.",
-  },
   {
     file: "supabase/functions/detect-ghosted-applicants/index.ts",
     column: "applications.license_progress",
     literal: "need_follow_up",
-    why: "the day-14 auto-move for ghosted applicants. license_progress has no follow-up member, so this UPDATE has raised 22P02 and moved nobody since it shipped.",
+    why: "the day-14 auto-move for ghosted applicants. license_progress has no follow-up member, so this UPDATE has raised 22P02 and moved nobody since it shipped. Unreachable today: the migration that registered apex-ghosted-applicants produced no cron.job row.",
   },
   {
     file: "supabase/functions/run-licensing-checkups/index.ts",
     column: "applications.license_progress",
     literal: "need_follow_up",
-    why: "the day-60 twin of the same dead auto-move. Both want a state the enum does not have; adding one is a migration plus a decision about who reads it.",
+    why: "the day-60 twin of the same dead auto-move. Both want a state the enum does not have; adding one is a migration plus a decision about who reads it. Unreachable today: no cron.job row, no UI invoke, no workflow calls this function.",
   },
 ];
 const knownKey = (v) => `${v.file}|${v.table}.${v.column}|${v.literal}`;

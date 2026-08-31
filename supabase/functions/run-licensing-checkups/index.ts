@@ -328,9 +328,25 @@ serve(async (req: Request) => {
 
       // Day 60: Auto-move to need_follow_up and send final email
       if (daysSinceContracted >= 60 && stage !== "need_follow_up" && !["exam_passed", "test_scheduled", "finished_course", "licensed"].includes(stage)) {
-        await supabase.from("applications")
+        // MP-353: the day-60 twin of detect-ghosted-applicants' dead auto-move.
+        // "need_follow_up" is not a license_progress member (22P02, proven
+        // live), so this has moved nobody since it shipped. Left in place for
+        // the same reason as its twin — nothing reads a follow-up state, and
+        // this function has no caller at all: no cron.job row, no UI invoke,
+        // no workflow. Adding an enum member is Sam's call, not a typo fix.
+        //
+        // NOTE the storm this arms if anyone ever schedules it: the guard above
+        // is `stage !== "need_follow_up"`, and the write that would make it
+        // false is the one that cannot succeed. So every run would re-send the
+        // "let's remove the blockers" email to the same applicant, forever.
+        // That is inert only because nothing invokes this function — an
+        // accident, not a safety property. Recorded rather than relied on.
+        const { error: moveError } = await supabase.from("applications")
           .update({ license_progress: "need_follow_up" })
           .eq("id", app.id);
+        if (moveError) {
+          console.error("Day 60 auto-move REFUSED:", app.id, moveError.message);
+        }
 
         if (resend && app.email) {
           try {
@@ -352,7 +368,10 @@ serve(async (req: Request) => {
 
         results.push({
           appId: app.id, name: `${firstName} ${app.last_name}`,
-          stage, urgency: "critical", day: 60, type: "day60_auto_move",
+          stage, urgency: "critical", day: 60,
+          // `type` said day60_auto_move whether or not the move happened.
+          type: moveError ? "day60_auto_move_refused" : "day60_auto_move",
+          moved: !moveError,
           emailSent: true, smsSent: false,
         });
       }

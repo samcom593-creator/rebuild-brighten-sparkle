@@ -85,12 +85,32 @@ serve(async (req: Request) => {
       }
 
       // Day 14: Auto-move to need_follow_up
+      //
+      // MP-353: "need_follow_up" is not a member of the license_progress enum
+      // (proven live: select 'need_follow_up'::license_progress -> 22P02), so
+      // this UPDATE has moved nobody since it shipped. Left in place on
+      // purpose: nothing in src/ reads a follow-up state, and this function is
+      // not reachable today — the migration that registered
+      // `apex-ghosted-applicants` never produced a cron.job row, so nothing
+      // invokes it. Adding an enum member to serve a dead write that no
+      // surface reads would be a migration for nobody; that is still Sam's
+      // call. Baselined by name in scripts/check-enum-filter-literals.mjs.
+      //
+      // What IS fixed here is the claim: the error was discarded and the run
+      // then reported `Day 14 auto-moved: <name>` inside a `success: true`
+      // response, so the one observable output said the move happened. Report
+      // the refusal instead.
       if (daysSinceActivity >= 14) {
         if (app.license_progress !== "need_follow_up") {
-          await supabase.from("applications")
+          const { error: moveError } = await supabase.from("applications")
             .update({ license_progress: "need_follow_up" })
             .eq("id", app.id);
-          results.push(`Day 14 auto-moved: ${app.first_name} ${app.last_name}`);
+          if (moveError) {
+            console.error("Day 14 auto-move REFUSED:", app.id, moveError.message);
+            results.push(`Day 14 auto-move REFUSED (${moveError.code || "error"}): ${app.first_name} ${app.last_name}`);
+          } else {
+            results.push(`Day 14 auto-moved: ${app.first_name} ${app.last_name}`);
+          }
         }
       }
     }

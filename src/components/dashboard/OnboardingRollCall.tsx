@@ -15,11 +15,15 @@ import { formatTimeAgo } from "@/lib/dateUtils";
  * MP-339: the Monday roll call.
  *
  * Sam asked for "the full list of people who are new who should be joined
- * today". The list is only useful if it separates the blockers, because each
- * one is a different action: someone who is simply not in Discord needs a
- * nudge, someone with no contact details on file can only be reached by their
- * manager, and someone whose email is mistyped has been receiving nothing at
- * all while the system recorded sends as successful.
+ * today". The list separates the blockers, because each is a different action:
+ * no contact details means only their manager can reach them, a mistyped
+ * address means they have been receiving nothing while sends recorded as
+ * successful, and never-invited means the onboarding email simply never went.
+ *
+ * It reports whether the invite was SENT, never whether they joined.
+ * agents.has_discord_access is written by nothing in this codebase — its last
+ * true value dates to 2026-02-05 — so grading on it would report the entire
+ * roster as "not in Discord" forever.
  *
  * Unreachable people are shown, never filtered out. They are the ones most
  * likely to be quietly lost, so hiding them is the failure this panel exists
@@ -36,7 +40,7 @@ type RollCallRow = {
   email: string | null;
   phone: string | null;
   has_login: boolean;
-  in_discord: boolean;
+  invite_email_sent_on: string | null;
   email_deliverable: boolean;
   reachable: boolean;
   blocker: string;
@@ -63,7 +67,7 @@ export function OnboardingRollCall() {
   // A viewer with no new hires gets nothing rather than an empty box.
   if (isError || !data || data.length === 0) return null;
 
-  const notIn = data.filter((r) => !r.in_discord);
+  const noInvite = data.filter((r) => r.reachable && r.email_deliverable && r.has_login && !r.invite_email_sent_on);
   const unreachable = data.filter((r) => !r.reachable);
   const undeliverable = data.filter((r) => r.reachable && !r.email_deliverable);
   const noLogin = data.filter((r) => r.reachable && r.email_deliverable && !r.has_login);
@@ -88,7 +92,9 @@ export function OnboardingRollCall() {
           <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
             <CalendarCheck className="h-3 w-3" />Joining today · new hires
           </p>
-          <Badge variant="outline" className="border-primary/40 text-primary">{notIn.length} not in Discord</Badge>
+          {noInvite.length > 0 && (
+            <Badge variant="outline" className="border-primary/40 text-primary">{noInvite.length} never invited</Badge>
+          )}
           {unreachable.length > 0 && (
             <Badge variant="outline" className="border-rose-500/40 text-rose-500">{unreachable.length} unreachable</Badge>
           )}

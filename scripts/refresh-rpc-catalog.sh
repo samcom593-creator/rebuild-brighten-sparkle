@@ -45,44 +45,11 @@ rows = d["rows"]
 if len(rows) < 300:
     print("refusing to write a %d-row catalog (expected >=300)" % len(rows), file=sys.stderr); sys.exit(1)
 
-def parse(a):
-    """(all_param_names, required_param_names) for one signature.
-
-    OUT params are not supplied by a caller. A param with a DEFAULT is optional.
-    An unnamed param cannot be addressed by name at all, so it is recorded as
-    such rather than silently dropped -- see UNNAMED handling in the checker."""
-    if not a.strip():
-        return [], [], False
-    parts, depth, cur = [], 0, ""
-    for ch in a:
-        if ch in "([":
-            depth += 1
-        elif ch in ")]":
-            depth -= 1
-        if ch == "," and depth == 0:
-            parts.append(cur); cur = ""; continue
-        cur += ch
-    parts.append(cur)
-    allp, req, unnamed = [], [], False
-    for p in parts:
-        p = p.strip()
-        if not p:
-            continue
-        has_default = " DEFAULT " in p.upper()
-        toks = p.split()
-        mode = "IN"
-        if toks and toks[0].upper() in ("IN", "OUT", "INOUT", "VARIADIC"):
-            mode, toks = toks[0].upper(), toks[1:]
-        if mode == "OUT" or not toks:
-            continue
-        name = toks[0]
-        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name) or len(toks) == 1:
-            unnamed = True     # positional-only: `text` with no parameter name
-            continue
-        allp.append(name)
-        if not has_default:
-            req.append(name)
-    return sorted(allp), sorted(req), unnamed
+# The signature parser is SHARED with apex-doctor Check #42 (MP-350). Two
+# processes answering the same question from two copies is how they drift, so
+# there is exactly one copy and both import it.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(out)), "..", "lib"))
+from pg_args import parse  # noqa: E402
 
 fns = {}
 for r in rows:

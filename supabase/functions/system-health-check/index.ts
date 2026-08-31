@@ -98,7 +98,12 @@ serve(async (req) => {
       .is("terminated_at", null)
       .is("contracted_at", null)
       .lt("created_at", threeDaysAgo)
-      .is("contacted_at", null);
+      .is("contacted_at", null)
+      // An address the provider has permanently refused can never succeed, and
+      // this block runs every 15 minutes. One @example.com test row absorbed
+      // 663 send attempts in 7 days and made 91% of the email failure log
+      // unreadable. Permanent failures are excluded here and stamped below.
+      .is("email_bad_at", null);
 
     if (stalledApplicants && stalledApplicants.length > 0) {
       // MP-269: this block previously re-sent to the SAME applicants every 15 min forever
@@ -123,7 +128,37 @@ serve(async (req) => {
           // A non-2xx is a failure. Do not stamp contacted_at, so it retries next tick
           // instead of silently dropping the applicant.
           if (!res.ok) {
-            sendErrors.push(`${app.email}: HTTP ${res.status}`);
+            // MP-269 made a non-2xx retry next tick rather than silently drop
+            // the applicant. That is right for a TRANSIENT failure and wrong
+            // for a PERMANENT one: Resend will never accept an invalid
+            // recipient, so the retry cannot ever succeed and simply repeats
+            // every 15 minutes forever. Read the provider's reason and make a
+            // permanent refusal terminal.
+            let providerReason = "";
+            try {
+              const body = await res.json();
+              providerReason = String(body?.channelErrors?.email ?? body?.error ?? "");
+            } catch {
+              // empty-catch-allow:non-json-error-body; treated as transient below
+              providerReason = "";
+            }
+
+            const permanent = /invalid .*\bto\b|invalid recipient|does not exist|hard bounce|suppress|example\.com/i
+              .test(providerReason);
+
+            if (permanent) {
+              await supabase
+                .from("applications")
+                .update({
+                  email_bad_at: new Date().toISOString(),
+                  email_bad_reason: providerReason.slice(0, 300),
+                })
+                .eq("id", app.id);
+              sendErrors.push(`${app.email}: permanently undeliverable, will not retry — ${providerReason.slice(0, 120)}`);
+              continue;
+            }
+
+            sendErrors.push(`${app.email}: HTTP ${res.status}${providerReason ? ` — ${providerReason.slice(0, 120)}` : ""}`);
             continue;
           }
 

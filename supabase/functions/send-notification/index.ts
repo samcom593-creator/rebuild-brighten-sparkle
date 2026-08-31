@@ -72,6 +72,8 @@ const handler = async (req: Request): Promise<Response> => {
 
     const results = { push: false, sms: false, email: false };
 
+    const channelErrors: Record<string, string> = {};
+
     // Resolve profile info
     let profileData: any = null;
     if (userId) {
@@ -212,6 +214,11 @@ const handler = async (req: Request): Promise<Response> => {
         if (sendError) {
           console.error("Email send rejected by provider:", sendError);
           results.email = false;
+          // Surface WHY, not just that it failed. Callers cannot tell a
+          // transient outage from a permanently invalid recipient out of a bare
+          // 500, so they retry both — which is how one refused address absorbed
+          // 2,222 send attempts.
+          channelErrors.email = sendError.message ?? String(sendError);
           await logNotification(supabase, {
             recipient_user_id: userId,
             recipient_email: recipientEmail,
@@ -236,6 +243,7 @@ const handler = async (req: Request): Promise<Response> => {
         }
       } catch (err: any) {
         console.error("Email send failed:", err);
+        channelErrors.email = err?.message ?? String(err);
         await logNotification(supabase, {
           recipient_user_id: userId,
           recipient_email: recipientEmail,
@@ -254,7 +262,14 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (!anyDelivered) {
       return new Response(
-        JSON.stringify({ success: false, error: "All notification channels failed", channels: results }),
+        JSON.stringify({
+          success: false,
+          error: "All notification channels failed",
+          channels: results,
+          // The reason per channel, so a caller can decide whether retrying is
+          // even capable of working.
+          channelErrors,
+        }),
         { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }

@@ -474,6 +474,20 @@ const App = () => (
                     <Route path="/dashboard/recruiting/training/progress" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va", "recruiter"]}><CourseProgress /></ProtectedRoute>} />
                     <Route path="/dashboard/recruiting/training/content" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va", "recruiter"]}><CourseContent /></ProtectedRoute>} />
                     <Route path="/dashboard/recruiting/training/annuities" element={<ProtectedRoute><AnnuityTraining /></ProtectedRoute>} />
+                    {/* MP-338: training lives at a findable URL. It was filed
+                        under /dashboard/recruiting/* — "recruiting other
+                        agents" — which is exactly why an agent hunting for a
+                        script never opened it. These are the canonical paths
+                        the sidebar and the dashboard card now link; the
+                        /dashboard/recruiting/training/* routes above stay
+                        mounted so every link already shared keeps working. */}
+                    <Route path="/dashboard/training" element={<ProtectedRoute><ApexTrainingEntry /></ProtectedRoute>} />
+                    <Route path="/dashboard/training/library" element={<ProtectedRoute><TrainingHub /></ProtectedRoute>} />
+                    <Route path="/dashboard/training/library/course/:courseId" element={<ProtectedRoute><TrainingHubCourse /></ProtectedRoute>} />
+                    <Route path="/dashboard/training/sales-course" element={<ProtectedRoute><CourseCatalog /></ProtectedRoute>} />
+                    <Route path="/dashboard/training/progress" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va", "recruiter"]}><CourseProgress /></ProtectedRoute>} />
+                    <Route path="/dashboard/training/content" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va", "recruiter"]}><CourseContent /></ProtectedRoute>} />
+                    <Route path="/dashboard/training/annuities" element={<ProtectedRoute><AnnuityTraining /></ProtectedRoute>} />
                     {/* Every authenticated agent can open Team. Server RPCs scope
                         the roster to self + recursive downline; staff keep their
                         agency-wide operating view. */}

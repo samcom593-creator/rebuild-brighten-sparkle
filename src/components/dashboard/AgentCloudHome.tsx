@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import {
-  AlertTriangle, ArrowRight, CheckCircle2, LineChart as LineChartIcon, RefreshCw,
-  Shield, TrendingUp, UserPlus, Users,
+  AlertTriangle, ArrowRight, CheckCircle2, ChevronDown, LineChart as LineChartIcon,
+  RefreshCw, Shield, TrendingUp, UserPlus, Users,
 } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip as ChartTooltip, XAxis, YAxis } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
@@ -344,6 +344,23 @@ export function AgentCloudHome() {
       <ProducerPulse />
       <RecordsAndBounties />
 
+      {/* MP-338 declutter. Sam: "so much options, that looks kinda cluttery."
+          The home stacked ten full-width sections; the bottom two are the
+          analytical ones an agent reads occasionally, not daily. Collapsed by
+          default behind a disclosure rather than DELETED — the rule on this
+          codebase is that a surface is never removed to tidy a page, because
+          the numbers on it are the only place some of them exist. Native
+          <details> so it needs no state, no library, and stays keyboard- and
+          screen-reader-operable. The chart also stops mounting on first paint,
+          which is the single heaviest thing on this route. */}
+      <details className="group [&[open]_.chev]:rotate-180">
+        <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg border border-border bg-card px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground hover:text-foreground">
+          <LineChartIcon className="h-3.5 w-3.5" />
+          Trend and policy status
+          <ChevronDown className="chev ml-auto h-4 w-4 transition-transform" />
+        </summary>
+        <div className="mt-3 space-y-5">
+
       {/* PRODUCTION TREND */}
       <Card>
         <CardContent className="p-4">
@@ -392,6 +409,8 @@ export function AgentCloudHome() {
           )}
         </CardContent>
       </Card>
+        </div>
+      </details>
     </div>
   );
 }

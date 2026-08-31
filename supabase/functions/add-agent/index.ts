@@ -610,7 +610,13 @@ const handler = async (req: Request): Promise<Response> => {
     // cohort by design, so removing this call outright would silently stop
     // unlicensed hires receiving anything — a policy change dressed as a bug
     // fix. One owner per cohort: queue for licensed, this for unlicensed.
-    const courseHandledByQueue = agentLicenseStatus === "licensed";
+    // MP-357: the queue now owns BOTH cohorts — 'course' for licensed,
+    // 'get_licensed' for unlicensed — so this direct send has no remaining
+    // audience. An unlicensed hire must never receive the APEX SALES course:
+    // Sam, explicitly, "they don't have to go through any of the APEX training
+    // courses at all for a licence". Kept as dead-but-visible rather than
+    // deleted so the next reader sees WHY it does not fire.
+    const courseHandledByQueue = true;
     const courseEmailStatus: SideEffectStatus = hasTrainingCourse && !courseHandledByQueue
       ? await invokeSideEffect("send-course-enrollment-email", {
           agentName: `${firstName} ${lastName}`,

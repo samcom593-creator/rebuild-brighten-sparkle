@@ -37,7 +37,7 @@ function tokenMatches(presented: string, expected: string): boolean {
 interface QueueRow {
   id: string;
   agent_id: string;
-  email_kind: "course" | "discord" | "hired_whatsapp" | "onboarding_call";
+  email_kind: "course" | "discord" | "hired_whatsapp" | "onboarding_call" | "get_licensed";
   attempt_count: number;
   meta: Record<string, unknown> | null;
 }
@@ -156,6 +156,46 @@ function escapeHtml(s: string): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+// MP-357: the UNLICENSED path. Sam: "they don't have to go through any of the
+// APEX training courses at all for a licence. What they go over is the 'how to
+// get your insurance licence' video." Before this they received the APEX SALES
+// course, which is the wrong material for someone who cannot yet sell, and no
+// invite and no questions call because the enqueue trigger skipped them
+// entirely. /get-licensed is an existing PUBLIC page carrying the licensing
+// video and the XCEL partner link, so this points at it rather than inventing a
+// second surface that would drift from it.
+function buildGetLicensedEmail(
+  name: string,
+  bookingUrl: string | null,
+): { subject: string; html: string; text: string } {
+  const fn = escapeHtml(firstName(name));
+  const licenseUrl = "https://apex-financial.org/get-licensed";
+  const subject = "Step 1 — get your insurance licence";
+
+  const text = [
+    `Hey ${fn},`,
+    ``,
+    `Welcome to APEX. One thing stands between you and writing business: your state licence.`,
+    ``,
+    `Start here — the walkthrough video and the course link: ${licenseUrl}`,
+    ``,
+    `You do NOT need the APEX sales training yet. That unlocks the day your licence lands.`,
+    bookingUrl ? `Questions? Book a call any time: ${bookingUrl}` : `Questions? Reply here and your manager will get you on a call.`,
+    ``,
+    `Every step you take gets posted to the team — you'll see the whole floor moving with you.`,
+  ].join("\n");
+
+  const html = `
+  <p>Hey ${fn},</p>
+  <p>Welcome to APEX. One thing stands between you and writing business: <strong>your state licence</strong>.</p>
+  <p><a href="${escapeHtml(licenseUrl)}" style="display:inline-block;padding:12px 20px;background:#EDB81D;color:#0a0f1a;text-decoration:none;border-radius:6px;font-weight:600;">Start here — how to get licensed</a></p>
+  <p>You do <strong>not</strong> need the APEX sales training yet. That unlocks the day your licence lands.</p>
+  ${bookingUrl ? `<p><a href="${escapeHtml(bookingUrl)}">Questions? Book a call any time</a></p>` : `<p>Questions? Reply here and your manager will get you on a call.</p>`}
+  <p style="color:#666;font-size:13px;">Every step you take gets posted to the team — you'll see the whole floor moving with you.</p>`;
+
+  return { subject, html, text };
 }
 
 function buildCourseEmail(name: string): { subject: string; html: string; text: string } {
@@ -483,10 +523,14 @@ async function drainQueue(sb: any, settings: Settings): Promise<ProcessResult> {
     const licenseStatus = (agentRow?.license_status ?? "").toString().toLowerCase();
     const isLicensed = licenseStatus === "licensed";
 
+    // MP-357: 'discord' left this list deliberately. Sam put the unlicensed
+    // cohort IN Slack — "if they're unlicensed I want them in the Slack" — so
+    // the community invite is now correct for everyone. 'course' and
+    // 'onboarding_call' still require a licence: the sales course is the wrong
+    // material pre-licence, and the onboarding call is the licensed-hire call.
+    // 'get_licensed' is the inverse and is gated just below.
     if (
-      (row.email_kind === "course" ||
-        row.email_kind === "discord" ||
-        row.email_kind === "onboarding_call") &&
+      (row.email_kind === "course" || row.email_kind === "onboarding_call") &&
       !isLicensed
     ) {
       await sb
@@ -500,9 +544,22 @@ async function drainQueue(sb: any, settings: Settings): Promise<ProcessResult> {
       continue;
     }
 
+    if (row.email_kind === "get_licensed" && isLicensed) {
+      // They got licensed between enqueue and drain. Not a failure — the email
+      // is simply no longer true, so retire it rather than send stale advice.
+      await sb
+        .from("agent_onboarding_queue")
+        .update({ attempt_count: 5, last_error: "skipped_no_longer_needed: agent is now licensed" })
+        .eq("id", row.id);
+      result.skipped_wrong_cohort += 1;
+      continue;
+    }
+
     let built: { subject: string; html: string; text: string };
     let meta: Record<string, unknown> | null = null;
-    if (row.email_kind === "course") {
+    if (row.email_kind === "get_licensed") {
+      built = buildGetLicensedEmail(name ?? "", settings.onboarding_call_scheduling_url ?? null);
+    } else if (row.email_kind === "course") {
       built = buildCourseEmail(name ?? "");
     } else if (row.email_kind === "onboarding_call") {
       // Lane 3 (2026-08-26): ONE booking link per licensed hire. Re-check the

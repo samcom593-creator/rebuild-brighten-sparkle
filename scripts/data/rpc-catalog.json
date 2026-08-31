@@ -2994,6 +2994,16 @@
         "raw": ""
       }
     ],
+    "fn_sweep_recruiting_milestones": [
+      {
+        "all": [
+          "p_period"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_period text DEFAULT 'day'::text"
+      }
+    ],
     "fn_sync_is_manager": [
       {
         "all": [],
@@ -3893,7 +3903,25 @@
         "raw": ""
       }
     ],
+    "my_new_hire_showup": [
+      {
+        "all": [
+          "p_days"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_days integer DEFAULT 14"
+      }
+    ],
     "my_recruiting_link": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "my_recruiting_standing": [
       {
         "all": [],
         "required": [],
@@ -4337,6 +4365,20 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "recruiting_tier": [
+      {
+        "all": [
+          "p_count",
+          "p_period"
+        ],
+        "required": [
+          "p_count",
+          "p_period"
+        ],
+        "unnamed": false,
+        "raw": "p_count integer, p_period text"
       }
     ],
     "refresh_sync_health": [

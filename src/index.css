@@ -38,26 +38,32 @@
 
 @layer base {
   :root {
-    /* Light mode - ULTRA SOFT: Muted warm gray background + soft cream cards (zero eye strain) */
-    --background: 44 27% 92%;
+    /* Light mode. 2026-08-31, Sam: "fix white mode it's too bright".
+       The glare was PURE WHITE cards (--card was 0 0% 100%) sitting on a 92%
+       background — maximum luminance with almost no contrast step, which reads
+       as a lit panel rather than a surface. Cards are now a warm 95% and the
+       page sits at 87%, so the card still lifts off the background but nothing
+       on screen is pure white. Foreground/border/ring values are untouched, so
+       text contrast does not drop. */
+    --background: 44 24% 87%;
     --foreground: 43 14% 11%;
 
-    --card: 0 0% 100%;
+    --card: 44 30% 95%;
     --card-foreground: 43 14% 11%;
 
-    --popover: 0 0% 100%;
+    --popover: 44 30% 95%;
     --popover-foreground: 43 14% 11%;
 
     --primary: 41 52% 45%;
     --primary-foreground: 47 100% 5%;
 
-    --secondary: 44 31% 93%;
+    --secondary: 44 26% 90%;
     --secondary-foreground: 43 14% 11%;
 
-    --muted: 44 31% 93%;
+    --muted: 44 26% 90%;
     --muted-foreground: 45 8% 39%;
 
-    --accent: 43 27% 90%;
+    --accent: 43 24% 87%;
     --accent-foreground: 43 14% 11%;
 
     --destructive: 1 65% 54%;
@@ -131,7 +137,7 @@
     --gradient-glow: radial-gradient(ellipse at center, hsl(45 70% 45% / 0.05) 0%, transparent 70%);
 
     /* Sidebar - soft warm gray */
-    --sidebar-background: 0 0% 100%;
+    --sidebar-background: 44 28% 93%;  /* was pure white: a full-height glare panel */
     --sidebar-foreground: 43 14% 11%;
     --sidebar-primary: 41 52% 45%;
     --sidebar-primary-foreground: 47 100% 5%;
@@ -143,25 +149,25 @@
 
   .light {
     /* ULTRA SOFT light mode: Muted warm gray background + soft cream cards (zero eye strain) */
-    --background: 44 27% 92%;
+    --background: 44 24% 87%;
     --foreground: 43 14% 11%;
 
-    --card: 0 0% 100%;
+    --card: 44 30% 95%;
     --card-foreground: 43 14% 11%;
 
-    --popover: 0 0% 100%;
+    --popover: 44 30% 95%;
     --popover-foreground: 43 14% 11%;
 
     --primary: 41 52% 45%;
     --primary-foreground: 47 100% 5%;
 
-    --secondary: 44 31% 93%;
+    --secondary: 44 26% 90%;
     --secondary-foreground: 43 14% 11%;
 
-    --muted: 44 31% 93%;
+    --muted: 44 26% 90%;
     --muted-foreground: 45 8% 39%;
 
-    --accent: 43 27% 90%;
+    --accent: 43 24% 87%;
     --accent-foreground: 43 14% 11%;
 
     --destructive: 1 65% 54%;
@@ -181,7 +187,7 @@
     --gold-dim: 42 30% 47%;
 
     /* Sidebar - soft warm gray */
-    --sidebar-background: 0 0% 100%;
+    --sidebar-background: 44 28% 93%;  /* was pure white: a full-height glare panel */
     --sidebar-foreground: 43 14% 11%;
     --sidebar-primary: 41 52% 45%;
     --sidebar-primary-foreground: 47 100% 5%;

@@ -86170,6 +86170,43 @@ export type Database = {
         }
         Relationships: []
       }
+      v_hire_launch_board: {
+        Row: {
+          agent_id: string | null
+          book_ap: number | null
+          book_deals: number | null
+          calls_30d: number | null
+          calls_7d: number | null
+          contracted_at: string | null
+          conversations_30d: number | null
+          days_in_stage: number | null
+          days_since_hired: number | null
+          display_name: string | null
+          email: string | null
+          email_missing: boolean | null
+          first_deal_at: string | null
+          hired_at: string | null
+          hired_this_month: boolean | null
+          invited_by_manager_id: string | null
+          is_stalled: boolean | null
+          last_call_at: string | null
+          last_call_outcome: string | null
+          license_status: string | null
+          manager_name: string | null
+          modules_done: number | null
+          next_action_key: string | null
+          next_action_label: string | null
+          next_call_at: string | null
+          onboarding_stage: string | null
+          phone: string | null
+          phone_missing: boolean | null
+          source_application_id: string | null
+          stage_changed_at: string | null
+          stage_rank: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
       v_hire_notification_gaps: {
         Row: {
           agent_id: string | null

@@ -87,6 +87,22 @@
         "raw": "p_agent_id uuid, p_slack_user_id text, p_slack_email text"
       }
     ],
+    "advance_hire_stage": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_expected_stage",
+          "p_note",
+          "p_to_stage"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_to_stage"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_to_stage text, p_expected_stage text DEFAULT NULL::text, p_note text DEFAULT NULL::text"
+      }
+    ],
     "advance_referral_status": [
       {
         "all": [
@@ -2094,6 +2110,18 @@
         "raw": "p_client_id uuid"
       }
     ],
+    "fn_can_move_hire": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
+      }
+    ],
     "fn_canonical_agent_id": [
       {
         "all": [
@@ -2398,6 +2426,30 @@
         ],
         "unnamed": false,
         "raw": "p_roots uuid[]"
+      }
+    ],
+    "fn_hire_stage_for_rank": [
+      {
+        "all": [
+          "p_rank"
+        ],
+        "required": [
+          "p_rank"
+        ],
+        "unnamed": false,
+        "raw": "p_rank integer"
+      }
+    ],
+    "fn_hire_stage_rank": [
+      {
+        "all": [
+          "p_stage"
+        ],
+        "required": [
+          "p_stage"
+        ],
+        "unnamed": false,
+        "raw": "p_stage text"
       }
     ],
     "fn_identity_collision_anchor": [
@@ -3979,6 +4031,16 @@
         "raw": ""
       }
     ],
+    "my_hire_activity": [
+      {
+        "all": [
+          "p_days"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_days integer DEFAULT 60"
+      }
+    ],
     "my_new_hire_showup": [
       {
         "all": [
@@ -4888,6 +4950,22 @@
         ],
         "unnamed": false,
         "raw": "p_application_id uuid, p_stage text, p_note text DEFAULT NULL::text"
+      }
+    ],
+    "set_hire_license_status": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_expected_status",
+          "p_note",
+          "p_to_status"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_to_status"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_to_status text, p_expected_status text DEFAULT NULL::text, p_note text DEFAULT NULL::text"
       }
     ],
     "set_limit": [

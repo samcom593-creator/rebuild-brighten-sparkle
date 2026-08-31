@@ -28,6 +28,7 @@ import { phoneHref, smsHref } from "@/lib/phone";
 import { instagramProfileLink } from "@/lib/instagram";
 import { promoteApplicationToAgent } from "@/lib/hireToOnboarding";
 import { resolveBrand } from "@/config/brand";
+import { HireLaunchBoard } from "@/components/hires/HireLaunchBoard";
 import {
   formatPhoenix, gapEmailState, inviteReceipt, onboardingBucketMeta,
   type OnboardingCall, type OnboardingGap,
@@ -508,6 +509,10 @@ export default function Interviews() {
     );
   };
 
+  // MP-356: the launch board was a read-only rail over this month's hires
+  // only. It now lives in HireLaunchBoard, reads v_hire_launch_board (every
+  // active hire, not just this month's — 15 mid-process people were invisible
+  // here), and every step on every card is a control that writes.
   const renderActiveHires = () => {
     if (pipeline.isLoading) {
       // stable-key-allow:static-active-hire-skeleton — fixed placeholders never reorder or hold state.
@@ -516,84 +521,7 @@ export default function Interviews() {
     if (!pipeline.data) {
       return <div role="alert" className="rounded-xl border border-destructive/30 p-8 text-center text-sm text-destructive">The canonical hire roster is unavailable; no hire count should be read as zero. <button className="underline" onClick={() => pipeline.refetch()}>Retry</button></div>;
     }
-    const matchingHires = term
-      ? activeHires.filter((hire) => [hire.display_name, hire.email, hire.phone, hire.license_status, hire.onboarding_stage].some((value) => (value ?? "").toLowerCase().includes(term)))
-      : activeHires;
-    const visibleHires = matchingHires.filter((hire) => hireFilter === "all"
-      || (hireFilter === "licensed" && hire.license_status === "licensed")
-      || (hireFilter === "unlicensed" && hire.license_status !== "licensed")
-      || (hireFilter === "needs_action" && hireRailStep(hire) < 3));
-    if (!matchingHires.length) {
-      return <div role="status" className="rounded-xl border border-border p-10 text-center text-sm text-muted-foreground">{term ? `No active hires match “${query.trim()}”.` : "No canonical active hires have been added this month."}</div>;
-    }
-    const licensedCount = visibleHires.filter((hire) => hire.license_status === "licensed").length;
-    const onboardingCount = visibleHires.filter((hire) => hireRailStep(hire) >= 2).length;
-    return (
-      <section aria-labelledby="active-hires-heading" className="space-y-5">
-        <div className="overflow-hidden rounded-2xl border border-[#C9A961]/25 bg-[#0A0A0A] text-white shadow-[0_18px_60px_rgba(0,0,0,0.18)]">
-          <div className="relative grid gap-5 p-5 sm:p-6 lg:grid-cols-[1.3fr_1fr] lg:items-center">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_0%,rgba(212,175,55,0.17),transparent_38%)]" />
-            <div className="relative">
-              <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#C9A961]"><Sparkles className="h-3.5 w-3.5" /> New-hire launch board</div>
-              <h2 id="active-hires-heading" className="text-2xl font-black tracking-tight sm:text-3xl">Every hire has a next move.</h2>
-              <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/55">Canonical licensed and unlicensed hires from Add Agent, interviews, and one-link intake—organized by readiness, not buried in a roster.</p>
-            </div>
-            <div className="relative grid grid-cols-3 gap-2">
-              {[
-                { label: "Hired MTD", value: visibleHires.length, tone: "text-[#C9A961]" },
-                { label: "Licensed", value: licensedCount, tone: "text-emerald-300" },
-                { label: "Onboarding+", value: onboardingCount, tone: "text-sky-300" },
-              ].map((item) => <div key={item.label} className="rounded-xl border border-white/10 bg-white/[0.045] p-3 text-center"><p className={`text-2xl font-black tabular-nums ${item.tone}`}>{item.value}</p><p className="mt-1 text-[9px] font-bold uppercase tracking-wide text-white/45">{item.label}</p></div>)}
-            </div>
-          </div>
-        </div>
-        <div className="flex max-w-full gap-2 overflow-x-auto" aria-label="Filter active hires">
-          {([
-            ["all", "All hires", matchingHires.length],
-            ["licensed", "Licensed", matchingHires.filter((hire) => hire.license_status === "licensed").length],
-            ["unlicensed", "Licensing", matchingHires.filter((hire) => hire.license_status !== "licensed").length],
-            ["needs_action", "Needs action", matchingHires.filter((hire) => hireRailStep(hire) < 3).length],
-          ] as const).map(([key, label, count]) => <Button key={key} type="button" size="sm" variant={hireFilter === key ? "default" : "outline"} className="h-10 shrink-0 rounded-xl" onClick={() => setHireFilter(key)} aria-pressed={hireFilter === key}>{label}<span className="ml-1 rounded-full bg-black/10 px-1.5 text-[10px]">{count}</span></Button>)}
-        </div>
-        {visibleHires.length === 0 && <div role="status" className="rounded-2xl border border-border p-8 text-center text-sm text-muted-foreground">No hires are in this readiness filter. Choose another view to keep working.</div>}
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-          {visibleHires.map((hire) => {
-            const callHref = phoneHref(hire.phone);
-            const textHref = smsHref(hire.phone);
-            const stage = (hire.onboarding_stage ?? "onboarding").replace(/_/g, " ");
-            const progress = hireRailStep(hire);
-            return (
-              <article key={hire.agent_id} className="group overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:border-[#C9A961]/35 hover:shadow-xl">
-                <div className="h-1 bg-gradient-to-r from-[#C9A961] via-[#C9A961] to-transparent" />
-                <div className="p-4 sm:p-5">
-                <div className="flex items-start gap-3">
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-success/20 bg-success/10 text-sm font-black text-success shadow-inner">{initials(hire.display_name)}</span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0"><p className="truncate text-base font-black">{hire.display_name}</p><p className="mt-0.5 text-[11px] text-muted-foreground">Hired {format(new Date(hire.hired_at), "MMM d")} · {hire.email ?? "email missing"}</p></div>
-                      <Badge variant="outline" className={hire.license_status === "licensed" ? "shrink-0 border-success/30 bg-success/5 text-success" : "shrink-0 border-warning/30 bg-warning/5 text-warning"}>{hire.license_status}</Badge>
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-5 grid grid-cols-4 gap-1" aria-label={`Onboarding progress: ${HIRE_RAIL[progress]}`}>
-                  {HIRE_RAIL.map((label, index) => <div key={label} className="min-w-0"><div className={`h-1.5 rounded-full ${index <= progress ? "bg-[#C9A961]" : "bg-muted"}`} /><p className={`mt-1.5 truncate text-[9px] font-bold uppercase tracking-wide ${index <= progress ? "text-foreground" : "text-muted-foreground/60"}`}>{label}</p></div>)}
-                </div>
-                <div className="mt-4 flex flex-col gap-3 rounded-xl border border-border/70 bg-muted/25 p-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0"><p className="text-[9px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Next action</p><p className="truncate text-sm font-bold capitalize">{progress === 3 ? "Keep producing and coach the next win" : stage}</p></div>
-                  <div className="flex shrink-0 gap-2">
-                    {callHref && <Button asChild size="icon" aria-label={`Call ${hire.display_name}`} className="h-10 w-10"><a href={callHref}><Phone className="h-4 w-4" /></a></Button>}
-                    {textHref && <Button asChild size="icon" variant="outline" aria-label={`Text ${hire.display_name}`} className="h-10 w-10"><a href={textHref}><MessageSquare className="h-4 w-4" /></a></Button>}
-                    {hire.email && <Button asChild size="icon" variant="outline" aria-label={`Email ${hire.display_name}`} className="h-10 w-10"><a href={`mailto:${hire.email}`}><Mail className="h-4 w-4" /></a></Button>}
-                    <Button asChild size="sm" variant="outline" className="h-10"><Link to={`/dashboard/profile?agentId=${hire.agent_id}`}>Manage <ArrowRight className="h-4 w-4" /></Link></Button>
-                  </div>
-                </div>
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      </section>
-    );
+    return <HireLaunchBoard searchTerm={query} />;
   };
 
   const activeGeneratedAt = tab === "onboarding" ? onboarding.data?.generatedAt : pipeline.data?.generatedAt;

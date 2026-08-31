@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useRealtimeTable } from "@/shared/realtime/useRealtimeTable";
+import { useAuth } from "@/hooks/useAuth";
 
 // TOTAL IMO BY AGENCY — Agent Cloud's home-dashboard block. APEX (your direct
 // book) vs each sub-agency (Vantage = KJ Vaughn's team), rolled up from the real
@@ -35,9 +36,21 @@ export function ImoByAgency({
   end,
   windowLabel,
 }: { start?: string; end?: string; windowLabel?: string } = {}) {
+  // OWNER-ONLY. This card is the whole IMO's production plus Sam's personal
+  // override on each sub-agency — agency-wide ALP and owner comp. It was
+  // rendering for every signed-in agent, because /dashboard has no admin gate
+  // and AgentCloudHome mounted this unconditionally, so a rank-and-file agent
+  // saw "Total IMO by Agency · $151,930 ALP · $9,823 your override".
+  //
+  // Gated here rather than at each of the three render sites (AgentCloudHome,
+  // AgentCommandDashboard, Finances) so a fourth mount cannot reintroduce the
+  // leak. Returning null before the query also means a non-admin never even
+  // requests the data.
+  const { isAdmin } = useAuth();
   const queryClient = useQueryClient();
   const exactWindow = Boolean(start && end);
   const { data: imo = [] } = useQuery({
+    enabled: isAdmin,
     queryKey: ["imo-by-agency", start ?? "summary", end ?? "summary"],
     staleTime: 60_000,
     queryFn: async () => {
@@ -76,6 +89,11 @@ export function ImoByAgency({
   );
 
   if (imo.length === 0) return null;
+  // Second half of the gate: render nothing at all for a non-admin. The
+  // disabled query above already prevents the fetch; this makes sure no
+  // heading, skeleton or empty shell of an owner-only card is shown either.
+  if (!isAdmin) return null;
+
   const max = Math.max(1, ...imo.map((a) => a.alp));
   const periodTotal = imo.reduce((sum, agency) => sum + (exactWindow ? agency.alp : agency.alp_mtd ?? 0), 0);
   const periodLabel = exactWindow ? (windowLabel ?? "Selected period") : "Calendar MTD";

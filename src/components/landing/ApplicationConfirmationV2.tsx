@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { CheckCircle2, Crown, Send, Calendar, Sparkles, AlertTriangle } from "lucide-react";
+import { CheckCircle2, Crown, Calendar, Sparkles, AlertTriangle } from "lucide-react";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { GlassCard } from "@/components/ui/glass-card";
 import { CalendlyEmbed } from "@/components/landing/CalendlyEmbed";
@@ -18,8 +18,20 @@ import { resolveBrand } from "@/config/brand";
  * different per license_status. No seminar, no manager card, no support
  * assistant, no spam-folder warning, no support backup link.
  *
- * UNLICENSED: Start prelicensing course (primary) → Telegram bot DM (secondary).
- * LICENSED:   Book hire call via Calendly (primary) → Telegram bot DM (secondary).
+ * UNLICENSED: Start prelicensing course (primary) → book the licensing call.
+ * LICENSED:   Book hire call via Calendly (primary) → activate the portal.
+ *
+ * 2026-08-31: every branch used to end in "Open APEX bot on Telegram". Telegram
+ * had EIGHT registered users in its entire lifetime while that CTA sat on every
+ * applicant confirmation, so it converted essentially nobody, and Sam has moved
+ * the team to Slack + Discord.
+ *
+ * Slack is deliberately NOT offered here. These /apply/success routes are
+ * public, and the Slack invite is an open shared-invite URL — putting it on
+ * this page would let anyone who submits the form walk into the internal
+ * workspace. The page's own copy already states the real policy: team channels
+ * are issued after you are hired and your identity is verified. So each branch
+ * now ends in the next real step instead of a chat app.
  */
 
 interface Props {
@@ -28,7 +40,6 @@ interface Props {
   showCalendly?: boolean;
 }
 
-const TG_BOT = "ApexFinancialBot";
 const BRAND = resolveBrand();
 
 export function ApplicationConfirmationV2({
@@ -45,9 +56,6 @@ export function ApplicationConfirmationV2({
 
   const firstName = snap?.first_name?.trim() || "";
 
-  const tgDeepLink = applicationId
-    ? `https://t.me/${TG_BOT}?start=apply_${applicationId}`
-    : `https://t.me/${TG_BOT}`;
 
   // Mint a one-click magic-login URL the moment we have an applicationId.
   // Sam directive 2026-06-15 (voice): "Whenever I click the referral link,
@@ -124,9 +132,9 @@ export function ApplicationConfirmationV2({
           </div>
 
           {/* Branched body */}
-          {license === "licensed" ? <LicensedBody applicationId={applicationId} showCalendly={showCalendly} tgDeepLink={tgDeepLink} autoLoginUrl={autoLoginUrl} /> : null}
-          {license === "unlicensed" ? <UnlicensedBody firstName={firstName} email={snap?.email ?? ""} tgDeepLink={tgDeepLink} autoLoginUrl={autoLoginUrl} /> : null}
-          {license === "pending" ? <PendingBody tgDeepLink={tgDeepLink} /> : null}
+          {license === "licensed" ? <LicensedBody applicationId={applicationId} showCalendly={showCalendly} autoLoginUrl={autoLoginUrl} /> : null}
+          {license === "unlicensed" ? <UnlicensedBody firstName={firstName} email={snap?.email ?? ""} autoLoginUrl={autoLoginUrl} /> : null}
+          {license === "pending" ? <PendingBody /> : null}
 
           {/* Culture line — small, no CTA, no buttons */}
           <p className="text-center text-xs italic text-muted-foreground pt-2">
@@ -143,12 +151,10 @@ export function ApplicationConfirmationV2({
 function UnlicensedBody({
   firstName,
   email,
-  tgDeepLink,
   autoLoginUrl,
 }: {
   firstName: string;
   email: string;
-  tgDeepLink: string;
   autoLoginUrl: string | null;
 }) {
   // Pre-fill applicant email into the get-licensed URL so XCEL recognizes them.
@@ -190,11 +196,12 @@ function UnlicensedBody({
         </GradientButton>
       )}
 
-      {/* Secondary CTA: Telegram bot */}
+      {/* Secondary: talk to a human. Replaces the Telegram CTA — see the file
+          header for why that went away. */}
       <GradientButton asChild variant="outline" className="w-full" size="lg">
-        <a href={tgDeepLink} target="_blank" rel="noopener noreferrer" className="block">
-          <Send className="h-4 w-4 mr-2" />
-          Open APEX bot on Telegram
+        <a href={SCHEDULING_LINKS.unlicensed} target="_blank" rel="noopener noreferrer" className="block">
+          <Calendar className="h-4 w-4 mr-2" />
+          Book a call with your manager
         </a>
       </GradientButton>
 
@@ -210,12 +217,10 @@ function UnlicensedBody({
 function LicensedBody({
   applicationId,
   showCalendly,
-  tgDeepLink,
   autoLoginUrl,
 }: {
   applicationId: string | null;
   showCalendly: boolean;
-  tgDeepLink: string;
   autoLoginUrl: string | null;
 }) {
   // v9 wave-C complaint #6: applicants land on a Calendly with no idea who
@@ -264,16 +269,9 @@ function LicensedBody({
         </GradientButton>
       ) : null}
 
-      {/* Secondary CTA: Telegram bot */}
-      <GradientButton asChild variant="outline" className="w-full" size="lg">
-        <a href={tgDeepLink} target="_blank" rel="noopener noreferrer" className="block">
-          <Send className="h-4 w-4 mr-2" />
-          Open APEX bot on Telegram
-        </a>
-      </GradientButton>
-
       <p className="text-xs text-center text-muted-foreground">
-        Slack workspace access is issued after you are hired and your {BRAND.shortName} identity is verified.
+        Slack and Discord access is issued after you are hired and your {BRAND.shortName} identity
+        is verified — you'll get both links by email at that point.
       </p>
     </div>
   );
@@ -281,16 +279,19 @@ function LicensedBody({
 
 // ---------- Pending (license status unknown) ----------
 
-function PendingBody({ tgDeepLink }: { tgDeepLink: string }) {
+function PendingBody() {
+  // This branch previously had the Telegram link as its ONLY call to action, so
+  // removing it would have left an applicant with nowhere to go. Booking a call
+  // is the step that actually resolves an unknown license status.
   return (
     <div className="space-y-4">
       <p className="text-sm text-center text-muted-foreground">
         Your manager will reach out shortly to verify license status and route you to the right next step.
       </p>
       <GradientButton asChild variant="outline" className="w-full" size="lg">
-        <a href={tgDeepLink} target="_blank" rel="noopener noreferrer" className="block">
-          <Send className="h-4 w-4 mr-2" />
-          Open APEX bot on Telegram
+        <a href={SCHEDULING_LINKS.unlicensed} target="_blank" rel="noopener noreferrer" className="block">
+          <Calendar className="h-4 w-4 mr-2" />
+          Book a call now
         </a>
       </GradientButton>
     </div>

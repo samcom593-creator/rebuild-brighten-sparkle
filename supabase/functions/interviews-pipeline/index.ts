@@ -34,6 +34,8 @@ type ApplicantRow = {
 type Actor = {
   authUserId: string; email: string; role: ActorRole;
   hhUser: { id: string; name: string; role: string } | null;
+  /** agents.id for the caller. Used to scope a recruiter to their own book. */
+  agentId: string | null;
 };
 
 const ACTIONS = new Set<InterviewAction>([
@@ -82,10 +84,15 @@ async function authenticate(req: Request): Promise<Actor | Response> {
   const email = authUser?.email?.trim().toLowerCase();
   if (error || !authUser?.id || !email) return json({ error: "invalid token" }, 401);
 
-  const [{ data: roleRows, error: roleError }, { data: hhUser, error: hhError }] = await Promise.all([
-    admin.from("user_roles").select("role").eq("user_id", authUser.id),
-    admin.from("hh_users").select("id,name,role").eq("email", email).eq("active", true).maybeSingle(),
-  ]);
+  const [{ data: roleRows, error: roleError }, { data: hhUser, error: hhError }, { data: agentRows }] =
+    await Promise.all([
+      admin.from("user_roles").select("role").eq("user_id", authUser.id),
+      admin.from("hh_users").select("id,name,role").eq("email", email).eq("active", true).maybeSingle(),
+      // Not .maybeSingle(): agents is not unique on user_id, and a duplicate row
+      // would null the result and silently widen this caller's scope back to
+      // "everything". Take the first id explicitly instead.
+      admin.from("agents").select("id").eq("user_id", authUser.id).limit(1),
+    ]);
   if (roleError) throw roleError;
   if (hhError) throw hhError;
   const role = actorRole(new Set((roleRows ?? []).map((row) => row.role as string)));
@@ -93,7 +100,13 @@ async function authenticate(req: Request): Promise<Actor | Response> {
   if (role === "va" && !hhUser) {
     return json({ error: "Your APEX account is not linked to an active interview owner." }, 403);
   }
-  return { authUserId: authUser.id, email, role, hhUser: hhUser ?? null };
+  return {
+    authUserId: authUser.id,
+    email,
+    role,
+    hhUser: hhUser ?? null,
+    agentId: (agentRows ?? [])[0]?.id ?? null,
+  };
 }
 
 function patchFor(action: InterviewAction, current: ApplicantRow, body: Record<string, unknown>) {
@@ -266,6 +279,44 @@ function resolveApplicationIdentity(row: ApplicantRow, maps: IdentityMaps) {
 
 const PAGE_SIZE = 1000;
 
+/**
+ * The candidate emails a RECRUITER (manager) is allowed to see.
+ *
+ * THE LEAK THIS CLOSES: fetchApplicants filtered only when role === "va". An
+ * "executive" saw everything, which is correct, but a "recruiter" — which is
+ * what every `manager` maps to — also got NO filter, so all 7 managers were
+ * reading the entire 319-row interview pipeline including Sam's own recruits.
+ *
+ * WHY IT SCOPES BY EMAIL AND NOT recruiter_id: hh_applicants.recruiter_id is
+ * NULL on all 319 rows, so filtering on it would show every manager ZERO
+ * candidates and break the page rather than scope it. Real attribution lives on
+ * `applications` — 143 of the 319 match one by email and 143/143 of those carry
+ * assigned_agent_id and recruiter_id. So the join is the attribution.
+ *
+ * The remaining ~176 candidates cannot be attributed to anyone (many have no
+ * email at all). They stay visible to the executive only. Showing them to every
+ * manager is precisely the leak; hiding them from everyone would drop them on
+ * the floor, so they surface as the executive's queue to assign.
+ */
+async function recruiterVisibleEmails(agentId: string): Promise<Set<string>> {
+  const emails = new Set<string>();
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await admin
+      .from("applications")
+      .select("email")
+      .or(
+        `recruiter_id.eq.${agentId},assigned_agent_id.eq.${agentId},referral_manager_id.eq.${agentId}`,
+      )
+      .range(from, from + PAGE_SIZE - 1);
+    if (error) throw error;
+    for (const row of data ?? []) {
+      const e = (row as { email: string | null }).email?.trim().toLowerCase();
+      if (e) emails.add(e);
+    }
+    if ((data?.length ?? 0) < PAGE_SIZE) return emails;
+  }
+}
+
 async function fetchApplicants(actor: Actor): Promise<ApplicantRow[]> {
   const rows: ApplicantRow[] = [];
   for (let from = 0; ; from += PAGE_SIZE) {
@@ -279,8 +330,22 @@ async function fetchApplicants(actor: Actor): Promise<ApplicantRow[]> {
     const { data, error } = await query;
     if (error) throw error;
     rows.push(...((data ?? []) as ApplicantRow[]));
-    if ((data?.length ?? 0) < PAGE_SIZE) return rows;
+    if ((data?.length ?? 0) < PAGE_SIZE) break;
   }
+
+  // A recruiter sees only their own book. Filtered after the fetch because the
+  // attribution lives on `applications`, not on hh_applicants (see
+  // recruiterVisibleEmails). An executive is unfiltered on purpose.
+  if (actor.role === "recruiter") {
+    if (!actor.agentId) return [];
+    const allowed = await recruiterVisibleEmails(actor.agentId);
+    return rows.filter((r) => {
+      const e = r.email?.trim().toLowerCase();
+      return Boolean(e) && allowed.has(e as string);
+    });
+  }
+
+  return rows;
 }
 
 async function fetchApplications(): Promise<ApplicationRow[]> {

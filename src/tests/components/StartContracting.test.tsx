@@ -2,9 +2,36 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
 const invoke = vi.fn();
+const getSession = vi.fn();
+const prefillRows: Record<string, unknown> = {};
+
+class MemoryStorage implements Storage {
+  private map = new Map<string, string>();
+  get length(): number { return this.map.size; }
+  clear(): void { this.map.clear(); }
+  getItem(key: string): string | null { return this.map.get(key) ?? null; }
+  key(index: number): string | null { return Array.from(this.map.keys())[index] ?? null; }
+  removeItem(key: string): void { this.map.delete(key); }
+  setItem(key: string, value: string): void { this.map.set(key, String(value)); }
+}
+
+function queryFor(table: string) {
+  const query = {
+    select: () => query,
+    eq: () => query,
+    order: () => query,
+    limit: () => query,
+    maybeSingle: async () => ({ data: prefillRows[table] ?? null, error: null }),
+  };
+  return query;
+}
 
 vi.mock("@/integrations/supabase/client", () => ({
-  supabase: { functions: { invoke: (...args: unknown[]) => invoke(...args) } },
+  supabase: {
+    auth: { getSession: (...args: unknown[]) => getSession(...args) },
+    from: (table: string) => queryFor(table),
+    functions: { invoke: (...args: unknown[]) => invoke(...args) },
+  },
 }));
 vi.mock("@/hooks/usePageTitle", () => ({ usePageTitle: () => {} }));
 
@@ -18,7 +45,8 @@ const GOOD = {
   npn: "21346999",
 };
 
-function fill(values: Partial<typeof GOOD> = {}) {
+async function fill(values: Partial<typeof GOOD> = {}) {
+  await waitFor(() => expect(document.querySelector("#first_name")).toBeTruthy());
   const merged = { ...GOOD, ...values };
   for (const [name, value] of Object.entries(merged)) {
     const input = document.querySelector(`#${name}`) as HTMLInputElement;
@@ -27,13 +55,22 @@ function fill(values: Partial<typeof GOOD> = {}) {
 }
 
 beforeEach(() => {
+  Object.defineProperty(window, "localStorage", {
+    value: new MemoryStorage(),
+    configurable: true,
+    writable: true,
+  });
   invoke.mockReset();
+  getSession.mockReset();
+  getSession.mockResolvedValue({ data: { session: null } });
+  for (const key of Object.keys(prefillRows)) delete prefillRows[key];
   window.localStorage.clear();
 });
 
 describe("StartContracting · the five-field contract", () => {
-  it("asks for exactly five fields and nothing forbidden", () => {
+  it("asks for exactly five fields and nothing forbidden", async () => {
     render(<StartContracting />);
+    await waitFor(() => expect(document.querySelector("#first_name")).toBeTruthy());
     for (const name of Object.keys(GOOD)) {
       expect(document.querySelector(`#${name}`)).toBeTruthy();
     }
@@ -44,8 +81,60 @@ describe("StartContracting · the five-field contract", () => {
     expect(document.querySelectorAll("form input:not([tabindex='-1'])")).toHaveLength(5);
   });
 
-  it("states plainly that it does not ask for sensitive data", () => {
+  it("uses signed-in profile data and asks only for what is missing", async () => {
+    getSession.mockResolvedValue({
+      data: { session: { user: { id: "user-1", email: "auth@example.com" } } },
+    });
+    prefillRows.profiles = {
+      full_name: "Morgan Archer",
+      email: "jane@example.com",
+      phone: "(602) 555-0143",
+    };
+    prefillRows.agents = {
+      display_name: "Morgan Archer",
+      nipr_number: "21346999",
+      source_application_id: null,
+    };
+
     render(<StartContracting />);
+
+    expect(await screen.findByRole("heading", { name: "Your details are ready" })).toBeTruthy();
+    expect(screen.queryByLabelText("First name")).toBeNull();
+    expect(screen.getByText("jane@example.com")).toBeTruthy();
+    expect(screen.getByText("21346999")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    expect(screen.getByLabelText("First name")).toHaveValue("Morgan");
+    expect(screen.getByLabelText("Last name")).toHaveValue("Archer");
+  });
+
+  it("shows only the missing detail when saved information is incomplete", async () => {
+    getSession.mockResolvedValue({
+      data: { session: { user: { id: "user-1", email: "auth@example.com" } } },
+    });
+    prefillRows.profiles = {
+      full_name: "Morgan Archer",
+      email: "jane@example.com",
+      phone: "(602) 555-0143",
+    };
+    prefillRows.agents = {
+      display_name: "Morgan Archer",
+      nipr_number: null,
+      source_application_id: null,
+    };
+
+    render(<StartContracting />);
+
+    expect(await screen.findByRole("heading", { name: "4 details already filled" })).toBeTruthy();
+    expect(screen.getByText("One detail left")).toBeTruthy();
+    expect(screen.queryByLabelText("First name")).toBeNull();
+    expect(screen.getByLabelText("NPN")).toBeTruthy();
+    expect(document.querySelectorAll("form input:not([tabindex='-1'])")).toHaveLength(1);
+  });
+
+  it("states plainly that it does not ask for sensitive data", async () => {
+    render(<StartContracting />);
+    await screen.findByLabelText("First name");
     expect(screen.getByText(/never ask for your SSN/i)).toBeTruthy();
   });
 });
@@ -53,8 +142,8 @@ describe("StartContracting · the five-field contract", () => {
 describe("StartContracting · validation before the network", () => {
   it("marks every bad field at once and does not call the server", async () => {
     render(<StartContracting />);
-    fill({ phone: "123", npn: "1234", email: "nope" });
-    fireEvent.click(screen.getByRole("button", { name: /submit/i }));
+    await fill({ phone: "123", npn: "1234", email: "nope" });
+    fireEvent.click(screen.getByRole("button", { name: /start contracting/i }));
 
     await waitFor(() => expect(screen.getAllByRole("alert").length).toBeGreaterThan(0));
     expect(invoke).not.toHaveBeenCalled();
@@ -66,8 +155,8 @@ describe("StartContracting · validation before the network", () => {
 
   it("distinguishes a missing NPN from a malformed one", async () => {
     render(<StartContracting />);
-    fill({ npn: "abc" });
-    fireEvent.click(screen.getByRole("button", { name: /submit/i }));
+    await fill({ npn: "abc" });
+    fireEvent.click(screen.getByRole("button", { name: /start contracting/i }));
 
     // "abc" normalizes to no digits at all, so the honest message is that the
     // field is empty, not that its length is wrong.
@@ -83,8 +172,8 @@ describe("StartContracting · after a durable acceptance", () => {
       error: null,
     });
     render(<StartContracting />);
-    fill();
-    fireEvent.click(screen.getByRole("button", { name: /submit/i }));
+    await fill();
+    fireEvent.click(screen.getByRole("button", { name: /start contracting/i }));
 
     await waitFor(() => expect(screen.getByText(/profile is active/i)).toBeTruthy());
     expect(screen.getByRole("heading", { name: "Contracting Initiated — Fast Track Active" })).toBeTruthy();
@@ -102,8 +191,8 @@ describe("StartContracting · after a durable acceptance", () => {
       error: null,
     });
     render(<StartContracting />);
-    fill();
-    fireEvent.click(screen.getByRole("button", { name: /submit/i }));
+    await fill();
+    fireEvent.click(screen.getByRole("button", { name: /start contracting/i }));
 
     await screen.findByText(/profile is active/i);
     const links = screen.getAllByRole("link") as HTMLAnchorElement[];
@@ -122,8 +211,8 @@ describe("StartContracting · after a durable acceptance", () => {
       error: null,
     });
     const first = render(<StartContracting />);
-    fill();
-    fireEvent.click(screen.getByRole("button", { name: /submit/i }));
+    await fill();
+    fireEvent.click(screen.getByRole("button", { name: /start contracting/i }));
     await screen.findByText(/profile is active/i);
     first.unmount();
 
@@ -138,8 +227,8 @@ describe("StartContracting · after a durable acceptance", () => {
       error: null,
     });
     render(<StartContracting />);
-    fill();
-    fireEvent.click(screen.getByRole("button", { name: /submit/i }));
+    await fill();
+    fireEvent.click(screen.getByRole("button", { name: /start contracting/i }));
 
     await waitFor(() => expect(screen.getByText(/already on file under a different NPN/i)).toBeTruthy());
     expect(screen.getByText(/Nothing was overwritten/i)).toBeTruthy();
@@ -150,8 +239,8 @@ describe("StartContracting · failure paths", () => {
   it("shows a real error instead of a success screen when the call fails", async () => {
     invoke.mockResolvedValue({ data: null, error: { message: "boom" } });
     render(<StartContracting />);
-    fill();
-    fireEvent.click(screen.getByRole("button", { name: /submit/i }));
+    await fill();
+    fireEvent.click(screen.getByRole("button", { name: /start contracting/i }));
 
     await waitFor(() => expect(screen.getByText(/could not record that/i)).toBeTruthy());
     expect(screen.queryByText(/queued/i)).toBeNull();
@@ -165,8 +254,8 @@ describe("StartContracting · failure paths", () => {
       error: null,
     });
     render(<StartContracting />);
-    fill();
-    fireEvent.click(screen.getByRole("button", { name: /submit/i }));
+    await fill();
+    fireEvent.click(screen.getByRole("button", { name: /start contracting/i }));
 
     await waitFor(() => expect(screen.getByText(/could not record that/i)).toBeTruthy());
     expect(screen.queryByText(/You're in the queue/i)).toBeNull();
@@ -178,8 +267,8 @@ describe("StartContracting · failure paths", () => {
       error: null,
     });
     render(<StartContracting />);
-    fill();
-    fireEvent.click(screen.getByRole("button", { name: /submit/i }));
+    await fill();
+    fireEvent.click(screen.getByRole("button", { name: /start contracting/i }));
 
     await waitFor(() => expect(screen.getByText(/NPN is 5 to 10 digits/i)).toBeTruthy());
   });

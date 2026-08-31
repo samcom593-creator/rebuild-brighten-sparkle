@@ -652,7 +652,7 @@ export default function ProducerProfile() {
         <Button asChild variant="ghost" className="rounded-none border-b-2 border-transparent text-muted-foreground"><Link to="/dashboard/contracting/carriers">Carriers</Link></Button>
         <Button asChild variant="ghost" className="rounded-none border-b-2 border-transparent text-muted-foreground"><Link to="/dashboard/contracting/contracts">Contracts</Link></Button>
         <Button asChild variant="ghost" className="rounded-none border-b-2 border-transparent text-muted-foreground"><Link to="/dashboard/settings/security">Background</Link></Button>
-        <Button asChild variant="ghost" className="rounded-none border-b-2 border-transparent text-muted-foreground"><Link to="/dashboard/contracting/documents">Documents</Link></Button>
+        <Button asChild variant="ghost" className="rounded-none border-b-2 border-transparent text-muted-foreground"><Link to="/dashboard/profile#contracting-documents">Documents</Link></Button>
       </nav>
 
       <ContractingReadinessCard />
@@ -916,7 +916,9 @@ export default function ProducerProfile() {
           {/* An agent's own paperwork — license, E&O, voided check, ID,
               contracting forms. Private bucket, per-agent RLS: only the agent
               and their upline can read it. */}
-          <AgentDocuments agentId={ag?.id ?? null} />
+          <div id="contracting-documents" className="scroll-mt-4">
+            <AgentDocuments agentId={ag?.id ?? null} />
+          </div>
         </div>
       </div>
     </div>

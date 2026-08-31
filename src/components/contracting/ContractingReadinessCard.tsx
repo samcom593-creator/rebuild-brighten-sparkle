@@ -19,7 +19,7 @@ export function ContractingReadinessCard({ compact = false }: { compact?: boolea
           </p>
         </div>
         <div className="grid gap-3 md:grid-cols-3">
-          <ReadinessStep icon={FileCheck2} title="1. Submit your intake" body="Legal name, contact details, and NPN route to the contracting spreadsheet and private support channel." />
+          <ReadinessStep icon={FileCheck2} title="1. Review your intake" body="Saved profile and application details fill automatically. Add only what's missing, then submit once." />
           <ReadinessStep icon={Banknote} title="2. Prepare EFT" body="Have a voided check or bank letter ready. Enter routing and account numbers only when the carrier portal requests them." />
           <ReadinessStep icon={ShieldCheck} title="3. Confirm E&O" body="Keep an active certificate ready for carrier appointments. Compare the coverage and limits before purchasing." />
         </div>
@@ -33,7 +33,7 @@ export function ContractingReadinessCard({ compact = false }: { compact?: boolea
             </a>
           </Button>
           <Button asChild variant="outline">
-            <Link to="/dashboard/contracting/documents">Contracting documents</Link>
+            <Link to="/dashboard/profile#contracting-documents">My documents</Link>
           </Button>
         </div>
       </CardContent>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { CheckCircle2, Loader2, Pencil, UserRoundCheck } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -39,6 +39,27 @@ const FIELDS: Array<{ name: ContractingField; label: string; type: string; autoC
   { name: "npn", label: "NPN", type: "text", autoComplete: "off", inputMode: "numeric" },
 ];
 
+type PrefillRow = Partial<Record<ContractingField, string | null>>;
+const SUPPORTS_AUTH_PREFILL = typeof (supabase as typeof supabase & {
+  auth?: { getSession?: unknown };
+}).auth?.getSession === "function";
+
+function splitFullName(fullName: string | null | undefined): Pick<PrefillRow, "first_name" | "last_name"> {
+  const parts = (fullName ?? "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length < 2) return {};
+  return { first_name: parts[0], last_name: parts.slice(1).join(" ") };
+}
+
+function readStoredAcceptance(): ContractingAcceptance | null {
+  try {
+    const raw = window.localStorage?.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) as ContractingAcceptance : null;
+  } catch {
+    window.localStorage?.removeItem(STORAGE_KEY);
+    return null;
+  }
+}
+
 export default function StartContracting() {
   usePageTitle("Start Contracting · APEX Financial");
 
@@ -49,21 +70,104 @@ export default function StartContracting() {
   const [errors, setErrors] = useState<Partial<Record<ContractingField, string>>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [accepted, setAccepted] = useState<ContractingAcceptance | null>(null);
+  const [accepted, setAccepted] = useState<ContractingAcceptance | null>(readStoredAcceptance);
+  const [prefilledFields, setPrefilledFields] = useState<Set<ContractingField>>(new Set());
+  const [prefillLoading, setPrefillLoading] = useState(SUPPORTS_AUTH_PREFILL && !accepted);
+  const [showAllFields, setShowAllFields] = useState(false);
 
-  // Reload persistence. A producer who refreshes
-  // must not be shown an empty form as though nothing happened — they would
-  // submit again and wonder which one counted.
+  // Signed-in producers already supplied most of this during application and
+  // account setup. Merge those records here and leave only genuinely missing
+  // fields visible. The public/shareable version still shows the original five
+  // fields when no authenticated profile exists.
   useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (raw) setAccepted(JSON.parse(raw) as ContractingAcceptance);
-    } catch {
-      // A corrupt or unavailable store just means we show the form again, which
-      // is safe: resubmitting the same NPN returns the same intake.
-      window.localStorage?.removeItem(STORAGE_KEY);
-    }
-  }, []);
+    if (accepted) return;
+    let cancelled = false;
+
+    const loadSavedDetails = async () => {
+      const auth = (supabase as typeof supabase & {
+        auth?: { getSession?: () => Promise<{ data: { session: { user: { id: string; email?: string } } | null } }> };
+      }).auth;
+
+      if (!auth?.getSession) {
+        setPrefillLoading(false);
+        return;
+      }
+
+      try {
+        const { data: sessionData } = await auth.getSession();
+        const currentUser = sessionData.session?.user;
+        if (!currentUser || cancelled) return;
+
+        const [profileResult, agentResult] = await Promise.all([
+          supabase
+            .from("profiles")
+            .select("full_name, email, phone")
+            .eq("user_id", currentUser.id)
+            .maybeSingle(),
+          supabase
+            .from("agents")
+            .select("display_name, nipr_number, source_application_id")
+            .eq("user_id", currentUser.id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+        ]);
+
+        const profile = profileResult.data;
+        const agent = agentResult.data;
+        let application: {
+          first_name: string | null;
+          last_name: string | null;
+          email: string | null;
+          phone: string | null;
+          nipr_number: string | null;
+        } | null = null;
+
+        if (agent?.source_application_id) {
+          const applicationResult = await supabase
+            .from("applications")
+            .select("first_name, last_name, email, phone, nipr_number")
+            .eq("id", agent.source_application_id)
+            .maybeSingle();
+          application = applicationResult.data;
+        }
+
+        if (cancelled) return;
+        const splitName = splitFullName(profile?.full_name ?? agent?.display_name);
+        const saved: PrefillRow = {
+          first_name: application?.first_name ?? splitName.first_name,
+          last_name: application?.last_name ?? splitName.last_name,
+          email: profile?.email ?? currentUser.email ?? application?.email ?? null,
+          phone: profile?.phone ?? application?.phone ?? null,
+          npn: agent?.nipr_number ?? application?.nipr_number ?? null,
+        };
+        const found = new Set<ContractingField>();
+
+        setForm((previous) => {
+          const next = { ...previous };
+          for (const field of FIELDS) {
+            const value = saved[field.name]?.trim();
+            if (value) {
+              found.add(field.name);
+              if (!next[field.name].trim()) next[field.name] = value;
+            }
+          }
+          return next;
+        });
+        setPrefilledFields(found);
+      } catch { // empty-catch-allow:best-effort-prefill
+        // Prefill is a convenience. The original five-field intake remains
+        // fully usable when a saved record cannot be read.
+      } finally {
+        if (!cancelled) setPrefillLoading(false);
+      }
+    };
+
+    void loadSavedDetails();
+    return () => {
+      cancelled = true;
+    };
+  }, [accepted]);
 
   const setField = (name: ContractingField, value: string) => {
     setForm((prev) => ({ ...prev, [name]: value }));
@@ -154,6 +258,14 @@ export default function StartContracting() {
     }
   };
 
+  const missingFields = FIELDS.filter((field) => !form[field.name].trim());
+  const readySavedFields = FIELDS.filter(
+    (field) => prefilledFields.has(field.name) && form[field.name].trim(),
+  );
+  const visibleFields = showAllFields || prefilledFields.size === 0
+    ? FIELDS
+    : missingFields;
+
   return (
     // Recruits land here from the black+gold funnel; the audit flagged the
     // previous inherited washed-white ground as "looks like a broken unstyled
@@ -170,13 +282,69 @@ export default function StartContracting() {
         <>
           <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">Start contracting with APEX</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Five details route your request to the contracting spreadsheet and private support channel. Then you'll prepare EFT and E&O for carrier setup.
+            We'll use the information already on your profile and ask only for anything that's missing. Then you'll prepare EFT and E&amp;O in the secure carrier portals.
           </p>
 
           <form onSubmit={onSubmit} noValidate className="mt-6 space-y-4">
-            {FIELDS.map((field) => (
+            {prefillLoading && (
+              <div className="flex items-center gap-2 rounded-md border border-white/10 bg-white/5 px-4 py-3 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin text-primary" aria-hidden />
+                Checking for saved details…
+              </div>
+            )}
+
+            {!prefillLoading && readySavedFields.length > 0 && (
+              <section className="rounded-md border border-primary/30 bg-primary/5 p-4" aria-labelledby="saved-contracting-details">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+                      <UserRoundCheck className="h-4 w-4" aria-hidden />
+                    </span>
+                    <div>
+                      <h2 id="saved-contracting-details" className="text-sm font-semibold text-white">
+                        {missingFields.length === 0
+                          ? "Your details are ready"
+                          : `${readySavedFields.length} detail${readySavedFields.length === 1 ? "" : "s"} already filled`}
+                      </h2>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        Pulled securely from your profile and original application.
+                      </p>
+                    </div>
+                  </div>
+                  <Button type="button" variant="ghost" size="sm" className="shrink-0 gap-1.5" onClick={() => setShowAllFields((shown) => !shown)}>
+                    <Pencil className="h-3.5 w-3.5" aria-hidden />
+                    {showAllFields ? "Done" : "Edit"}
+                  </Button>
+                </div>
+
+                {!showAllFields && (
+                  <dl className="mt-4 grid gap-2 text-xs sm:grid-cols-2">
+                    {readySavedFields.map((field) => (
+                      <div key={field.name} className="min-w-0 rounded border border-white/10 bg-black/20 px-3 py-2">
+                        <dt className="text-muted-foreground">{field.label}</dt>
+                        <dd className="mt-0.5 truncate font-medium text-foreground">{form[field.name]}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                )}
+              </section>
+            )}
+
+            {!prefillLoading && missingFields.length > 0 && readySavedFields.length > 0 && !showAllFields && (
+              <div className="flex items-center gap-2 text-sm font-semibold text-white">
+                <CheckCircle2 className="h-4 w-4 text-primary" aria-hidden />
+                {missingFields.length === 1 ? "One detail left" : `${missingFields.length} details left`}
+              </div>
+            )}
+
+            {!prefillLoading && visibleFields.map((field) => (
               <div key={field.name}>
-                <Label htmlFor={field.name}>{field.label}</Label>
+                <div className="flex items-center justify-between gap-2">
+                  <Label htmlFor={field.name}>{field.label}</Label>
+                  {showAllFields && prefilledFields.has(field.name) && (
+                    <span className="text-[11px] font-medium text-primary">Saved</span>
+                  )}
+                </div>
                 <Input
                   id={field.name}
                   name={field.name}
@@ -216,20 +384,19 @@ export default function StartContracting() {
               <p role="alert" className="text-sm text-rose-600 dark:text-rose-400">{formError}</p>
             )}
 
-            <Button type="submit" disabled={submitting} className="w-full">
+            <Button type="submit" disabled={submitting || prefillLoading} className="w-full">
               {submitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
                   Submitting
                 </>
               ) : (
-                "Submit"
+                missingFields.length === 0 ? "Start contracting" : "Complete and start contracting"
               )}
             </Button>
 
             <p className="text-center text-xs text-muted-foreground">
-              We ask for these five details only. We never ask for your SSN, date of
-              birth, or bank details on this form.
+              We never ask for your SSN, date of birth, or bank details on this form.
             </p>
           </form>
         </>

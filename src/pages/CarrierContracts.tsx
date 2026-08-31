@@ -72,15 +72,19 @@ export default function CarrierContracts() {
     },
   });
 
+  const workspaceNavItems = [
+    ["requests", "/dashboard/contracting", isAdmin || isManager ? "Requests" : "Start"],
+    ["carriers", "/dashboard/contracting/carriers", "Carriers"],
+    ["contracts", "/dashboard/contracting/contracts", "Contracts"],
+    ...(isAdmin ? [
+      ["ops", "/dashboard/contracting/ops", "Operations"],
+      ["documents", "/dashboard/contracting/documents", "Documents"],
+    ] : []),
+  ] as Array<[string, string, string]>;
+
   const workspaceNav = (
     <nav className="flex gap-1 overflow-x-auto border-b border-border" aria-label="Contracting sections">
-      {([
-        ["requests", "/dashboard/contracting", "Requests"],
-        ["carriers", "/dashboard/contracting/carriers", "Carriers"],
-        ["contracts", "/dashboard/contracting/contracts", "Contracts"],
-        ["ops", "/dashboard/contracting/ops", "Operations"],
-        ["documents", "/dashboard/contracting/documents", "Documents"],
-      ] as const).map(([key, to, label]) => (
+      {workspaceNavItems.map(([key, to, label]) => (
         <Button
           key={key}
           asChild
@@ -110,14 +114,16 @@ export default function CarrierContracts() {
 
   const title = mode === "carriers" ? "Carrier Directory"
     : mode === "ops" ? "Contracting Operations"
-    : mode === "requests" ? "Contracting Requests"
+    : mode === "requests" ? (canInvite ? "Contracting Requests" : "Start Contracting")
     : "Contract Documents";
   const subtitle = mode === "carriers"
     ? "Active carrier access, portals, and contracting availability."
     : mode === "ops"
     ? "Licensing, carrier contracting, writing numbers, compensation and hierarchy — prepared here, submitted through whichever system each carrier requires."
     : mode === "requests"
-    ? "Start and monitor producer contracting requests."
+    ? (canInvite
+      ? "Start and monitor producer contracting requests."
+      : "Use the details already on your profile, add only what's missing, and start your carrier setup.")
     : "Writing numbers, contract numbers, and appointment records for the producers you cover.";
 
   return (
@@ -139,8 +145,8 @@ export default function CarrierContracts() {
       {mode === "ops" && <ContractingOps canInvite={canInvite} isAdmin={!!isAdmin} />}
       {mode === "requests" && (
         <>
-          <StartContractingCard copyLink={copyLink} copiedId={copiedId} />
-          <ContractingIntakeAdmin showEmptyState />
+          <StartContractingCard copyLink={copyLink} copiedId={copiedId} canShare={canInvite} />
+          {canInvite && <ContractingIntakeAdmin showEmptyState />}
         </>
       )}
       {mode === "documents" && <ContractDocuments />}
@@ -393,10 +399,11 @@ function ContractDocuments() {
 /* ───────────────────────── Shared pieces ───────────────────────── */
 
 function StartContractingCard({
-  copyLink, copiedId,
+  copyLink, copiedId, canShare,
 }: {
   copyLink: (id: string, url: string) => Promise<void>;
   copiedId: string | null;
+  canShare: boolean;
 }) {
   const origin = typeof window !== "undefined" ? window.location.origin : "https://apex-financial.org";
   const intakeUrl = `${origin}/start-contracting`;
@@ -408,18 +415,20 @@ function StartContractingCard({
         <div className="min-w-0 flex-1">
           <h2 className="text-base font-semibold">Start contracting</h2>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Five fields create one spreadsheet row and one private contracting Discord post. No agent invite link is used.
+            Saved profile and application details fill automatically. The producer adds only what's missing, then one request starts the spreadsheet and private support workflow.
           </p>
 
           <div className="mt-3 flex flex-wrap gap-2">
             <Button asChild size="sm">
               <a href="/start-contracting">Open the intake</a>
             </Button>
-            <Button size="sm" variant="outline" onClick={() => copyLink("start-contracting-link", intakeUrl)}>
-              {copiedId === "start-contracting-link"
-                ? <><Check className="mr-1.5 h-3.5 w-3.5" aria-hidden /> Copied</>
-                : <><Copy className="mr-1.5 h-3.5 w-3.5" aria-hidden /> Copy shareable link</>}
-            </Button>
+            {canShare && (
+              <Button size="sm" variant="outline" onClick={() => copyLink("start-contracting-link", intakeUrl)}>
+                {copiedId === "start-contracting-link"
+                  ? <><Check className="mr-1.5 h-3.5 w-3.5" aria-hidden /> Copied</>
+                  : <><Copy className="mr-1.5 h-3.5 w-3.5" aria-hidden /> Copy shareable link</>}
+              </Button>
+            )}
           </div>
         </div>
       </div>

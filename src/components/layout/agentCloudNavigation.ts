@@ -28,7 +28,6 @@ import {
   UserPlus,
   Users,
   WalletCards,
-  Wrench,
   Link2,
 } from "lucide-react";
 
@@ -67,100 +66,140 @@ export type AgentCloudNavEntry = AgentCloudNavItem | AgentCloudNavGroup;
 const BRAND = resolveBrand();
 const trainingLabel = `${BRAND.platformName} Training`;
 
+/**
+ * The sidebar, rebuilt 2026-08-31 around what an agent actually does.
+ *
+ * WHAT WAS WRONG WITH THE OLD SHAPE
+ *   * "Recruiting" was a junk drawer: recruit pipeline, interviews, follow-ups,
+ *     APEX Training, Call Center, recruiting links and Awards. Call Center and
+ *     Awards are not recruiting, and training being filed under "recruiting
+ *     other agents" is why an agent looking for a script never opened it.
+ *   * "Tools" was the second junk drawer: Import, Document review, Resources,
+ *     Quoter, Marketing — two owner tools and three agent tools in one bucket.
+ *   * TWO different groups both had an item called "Pipeline", one meaning
+ *     clients and one meaning recruits.
+ *   * Training appeared TWICE after the previous wave added a proper group.
+ *   * Owner-only items were scattered across five groups (Finances, Reports,
+ *     Contracting Ops, Contract Requests, Import, Document review), so a
+ *     manager's sidebar and Sam's differed by items sprinkled everywhere
+ *     instead of by one clearly separated section.
+ *
+ * THE NEW SHAPE is ordered by how often an agent touches it — sell today, run
+ * my book, learn, grow the team, then the agency — with everything owner-only
+ * collected into one section that simply is not there for anyone else.
+ *
+ * Ordering rule: if an agent does it daily it is near the top. Training sits
+ * third, above recruiting and the agency, because Sam's instruction was that it
+ * "should not be hidden away in resources" and it is the thing a new agent needs
+ * most in their first month.
+ */
 export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
   { label: "Home", href: "/dashboard", icon: LayoutGrid },
+
   {
-    label: "Clients",
-    icon: ContactRound,
+    // What an agent does today, in the order they do it.
+    label: "Sell",
+    icon: Target,
+    kicker: "TODAY",
+    // The GROUP admits VAs so the Call Center reaches them — VAs work the
+    // recruit call queue all day and would otherwise have no nav path to it.
+    // Every other item in here is scoped to producers, so a VA sees the one
+    // entry that is theirs rather than a quoter they have no use for.
+    modes: [...PRODUCERS, "va", "va_manager"],
+    items: [
+      { label: "My Pipeline", href: "/dashboard/agent-pipeline", icon: FolderKanban, modes: PRODUCERS },
+      { label: "Call Center", href: "/dashboard/call-center", icon: ContactRound },
+      { label: "Calendar", href: "/dashboard/calendar", icon: CalendarDays, modes: PRODUCERS },
+      { label: "Quoter", href: "/dashboard/quoter", icon: Cloud, modes: PRODUCERS },
+      { label: "Needs Analysis", href: "/dashboard/needs-analysis", icon: FileSearch, modes: PRODUCERS },
+    ],
+  },
+
+  {
+    // Their own book and their own money.
+    label: "My Business",
+    icon: BookOpen,
     modes: PRODUCERS,
     items: [
-      // Agent Cloud's Clients→Pipeline is the CLIENT pipeline. This pointed at
-      // /dashboard/recruiting (agent applicants), so the client pipeline was
-      // unreachable from the sidebar — "there's still no client pipeline".
-      { label: "Pipeline", href: "/dashboard/agent-pipeline", icon: FolderKanban },
-      { label: "Calendar", href: "/dashboard/calendar", icon: CalendarDays },
-      // Book of Business = the AgentLink production book (true numbers), per
-      // the replication map — not the legacy book page.
       { label: "Book of Business", href: "/dashboard/production", icon: BookOpen },
       { label: "Retention", href: "/dashboard/retention", icon: Shield },
-      { label: "My Commissions", href: "/dashboard/my-commissions", icon: WalletCards, modes: PRODUCERS },
+      { label: "My Commissions", href: "/dashboard/my-commissions", icon: WalletCards },
+      { label: "My Contracts", href: "/dashboard/contracting", icon: FileText },
+      { label: "Carrier Directory", href: "/dashboard/contracting/carriers", icon: Landmark },
+      { label: "My Documents", href: "/dashboard/profile", icon: FileSearch },
     ],
   },
+
   {
-    label: "Recruiting",
+    // Third from the top on purpose. Training used to be reachable only inside
+    // the recruiting group; the module course had 92 agents in it and the
+    // Training Hub 6, because nothing pointed at either.
+    label: "Learn",
+    icon: GraduationCap,
+    kicker: "TRAINING",
+    modes: PRODUCERS,
+    items: [
+      { label: "Getting Started", href: "/dashboard/getting-started", icon: Sparkles },
+      { label: "Sales Course", href: "/dashboard/recruiting/training/sales-course", icon: GraduationCap },
+      { label: "Training Library", href: "/dashboard/recruiting/training/library", icon: BookOpenCheck },
+      { label: "Scripts", href: "/dashboard/scripts", icon: ScrollText },
+      { label: "Annuity Training", href: "/dashboard/annuity-training", icon: Landmark },
+      { label: "Handbook", href: "/dashboard/handbook", icon: BookOpen },
+      { label: "Resources", href: "/dashboard/resources", icon: FileText },
+    ],
+  },
+
+  {
+    // Building a team. Only recruiting lives here now.
+    label: "Grow",
     icon: UserPlus,
+    kicker: "RECRUITING",
     modes: RECRUITING,
     items: [
-      { label: "Pipeline", href: "/dashboard/recruiting", icon: FolderKanban },
+      { label: "Recruit Pipeline", href: "/dashboard/recruiting", icon: FolderKanban },
       { label: "Interviews", href: "/dashboard/recruiting/interviews", icon: CalendarDays },
       { label: "Follow-ups", href: "/dashboard/recruiting/follow-ups", icon: Target, modes: ["recruiter", "va", "va_manager", "manager", "agency_owner"] },
-      { label: trainingLabel, href: "/dashboard/recruiting/training", icon: BookOpenCheck },
-      { label: "Call Center", href: "/dashboard/call-center", icon: Target, modes: PRODUCERS },
+      { label: "Invite an agent", href: "/admin/invite-links", icon: UserPlus },
       { label: "Recruiting Links", href: "/dashboard/recruiting-links", icon: Link2, adminOnly: true },
-      { label: "Awards", href: "/dashboard/awards", icon: Trophy, modes: PRODUCERS },
     ],
   },
+
   {
-    // Training was reachable only inside the "Recruiting" group — a group about
-    // recruiting OTHER agents, not about an agent's own skill. An agent looking
-    // for a script or a course had no reason to open it. Nine agent-facing
-    // pages existed with no nav entry at all: the training library, the sales
-    // course, annuity training, scripts, the handbook, getting started, my
-    // commissions, hall of fame and challenges. The pages were built; nothing
-    // pointed at them.
-    label: "Training",
-    icon: GraduationCap,
-    modes: PRODUCERS,
-    kicker: "Learn",
-    items: [
-      { label: "Training Library", href: "/dashboard/recruiting/training/library", icon: BookOpenCheck },
-      { label: "Sales Course", href: "/dashboard/recruiting/training/sales-course", icon: GraduationCap },
-      { label: "Annuity Training", href: "/dashboard/annuity-training", icon: Landmark },
-      { label: "Scripts", href: "/dashboard/scripts", icon: ScrollText },
-      { label: "Handbook", href: "/dashboard/handbook", icon: BookOpen },
-      { label: "Getting Started", href: "/dashboard/getting-started", icon: Sparkles },
-    ],
-  },
-  {
-    label: "Agency",
-    icon: Building2,
+    // The team around them, and the recognition that comes with it.
+    label: "Team",
+    icon: Users,
     modes: [...PRODUCERS, "recruiter"],
     items: [
-      { label: "Team", href: "/dashboard/team", icon: Users },
-      { label: "Announcements", href: "/dashboard/community", icon: Megaphone },
+      { label: "My Team", href: "/dashboard/team", icon: Users },
       { label: "Leaderboard", href: "/dashboard/leaderboard", icon: Trophy, modes: PRODUCERS },
       { label: "Hall of Fame", href: "/dashboard/hall-of-fame", icon: Trophy, modes: PRODUCERS },
       { label: "Challenges", href: "/dashboard/challenges", icon: Target, modes: PRODUCERS },
+      { label: "Awards", href: "/dashboard/awards", icon: Trophy, modes: PRODUCERS },
+      { label: "Announcements", href: "/dashboard/community", icon: Megaphone },
     ],
   },
+
+  { label: "Marketing", href: "/dashboard/client-marketing", icon: Megaphone, modes: PRODUCERS },
+  { label: "Nova", href: "/dashboard/nova", icon: Sparkles, modes: PRODUCERS },
+  { label: "VA Team", href: "/va-team", icon: Users, modes: ["va_manager"] },
+
   {
-    label: "Contracting",
-    icon: FileText,
-    kicker: "RUN CONTRACTING",
-    modes: [...PRODUCERS, "recruiter"],
+    // Everything owner-only, in ONE place rather than scattered through five
+    // groups. A manager's sidebar now differs from Sam's by this section being
+    // absent, not by items sprinkled everywhere — which matches the access
+    // split shipped the same day (is_owner vs is_agency_staff).
+    label: "Owner",
+    icon: Building2,
+    kicker: "ADMIN",
     items: [
-      { label: "My Contracts", href: "/dashboard/contracting", icon: FileText, modes: PRODUCERS },
-      { label: "Invite an agent", href: "/admin/invite-links", icon: UserPlus },
-      { label: "Carrier Directory", href: "/dashboard/contracting/carriers", icon: Landmark, modes: PRODUCERS },
+      { label: "Reports", href: "/dashboard/analytics", icon: BarChart3, adminOnly: true },
+      { label: "Finances", href: "/dashboard/finances", icon: WalletCards, adminOnly: true },
       { label: "Contracting Ops", href: "/dashboard/contracting/ops", icon: Target, adminOnly: true },
       { label: "Contract Requests", href: "/dashboard/contracting/requests", icon: FileSearch, adminOnly: true },
-    ],
-  },
-  { label: "Reports", href: "/dashboard/analytics", icon: BarChart3, modes: LEADERS },
-  { label: "Finances", href: "/dashboard/finances", icon: WalletCards, adminOnly: true },
-  {
-    label: "Tools",
-    icon: Wrench,
-    items: [
-      { label: "Import", href: "/dashboard/import", icon: Import, adminOnly: true },
       { label: "Document review", href: "/dashboard/contracting/documents", icon: FileSearch, adminOnly: true },
-      { label: "Resources", href: "/dashboard/resources", icon: BookOpen },
-      { label: "Quoter", href: "/dashboard/quoter", icon: Cloud, modes: PRODUCERS },
-      { label: "Marketing", href: "/dashboard/client-marketing", icon: Megaphone, modes: PRODUCERS },
+      { label: "Import", href: "/dashboard/import", icon: Import, adminOnly: true },
     ],
   },
-  { label: "VA Team", href: "/va-team", icon: Users, modes: ["va_manager"] },
-  { label: "Nova", href: "/dashboard/nova", icon: Sparkles, modes: PRODUCERS },
 ];
 
 export const AGENT_CLOUD_ACCOUNT_NAV: AgentCloudNavEntry[] = [

@@ -611,7 +611,10 @@ const App = () => (
                     <Route path="/course-progress/content" element={<LegacyWorkspaceRedirect to="/dashboard/recruiting/training/content" />} />
                     <Route path="/numbers" element={<Numbers />} />
                     <Route path="/purchase-leads" element={<PurchaseLeads />} />
-                    <Route path="/dashboard/call-center" element={<CallCenter />} />
+                    {/* Had NO route guard at all while every sibling recruiting route required
+                        a role. The page scopes its own data by caller, but an ungated route
+                        is one refactor away from being the leak. */}
+                    <Route path="/dashboard/call-center" element={<ProtectedRoute><CallCenter /></ProtectedRoute>} />
                      {/* v9 Wave A complaint #2: /dashboard/leads removed.
                          Inbound flow lives at /dashboard/inbound-leads now. */}
                      <Route path="/dashboard/leads" element={<Navigate to="/dashboard/command" replace />} />

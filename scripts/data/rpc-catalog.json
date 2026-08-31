@@ -4160,6 +4160,16 @@
         "raw": ""
       }
     ],
+    "my_unlinked_agents": [
+      {
+        "all": [
+          "p_days"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_days integer DEFAULT 120"
+      }
+    ],
     "my_visible_applications": [
       {
         "all": [],
@@ -4963,6 +4973,21 @@
         ],
         "unnamed": false,
         "raw": "p_agent_id uuid, p_progress text, p_test_date date DEFAULT NULL::date"
+      }
+    ],
+    "set_agent_status": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_reason",
+          "p_status"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_status"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_status text, p_reason text DEFAULT NULL::text"
       }
     ],
     "set_agent_training_stage": [

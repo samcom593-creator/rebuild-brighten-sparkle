@@ -25,6 +25,7 @@ import { ScopedProductionScoreboard } from "@/components/dashboard/ScopedProduct
 import { OperationsCommandCenter } from "@/components/dashboard/OperationsCommandCenter";
 import { JustHiredPanel } from "@/components/dashboard/JustHiredPanel";
 import { OnboardingRollCall } from "@/components/dashboard/OnboardingRollCall";
+import { UnlinkedAgentsPanel } from "@/components/dashboard/UnlinkedAgentsPanel";
 import { cn } from "@/lib/utils";
 import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 import { invalidateOperationalTruth } from "@/lib/invalidateOperationalTruth";
@@ -247,6 +248,9 @@ export function AgentCloudHome() {
       {/* MP-339: who is new and still not in, with each blocker named. Renders
           nothing when the viewer has no new hires. */}
       <OnboardingRollCall />
+      {/* MP-351: who production cannot credit, with hire/fire and AgentLink
+          linking on the row. Renders nothing when nobody is in scope. */}
+      <UnlinkedAgentsPanel />
 
       {/* WHAT NEEDS YOU TODAY */}
       <div>

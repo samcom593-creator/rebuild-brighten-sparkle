@@ -783,7 +783,7 @@ function NativeVideoPlayer({
           className="h-full w-full object-contain native-video-no-seek"
         />
         <div className="pointer-events-none absolute left-3 top-3 rounded-full border border-white/15 bg-black/70 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white/90 backdrop-blur-sm">
-          APEX lesson
+          {resolveBrand().shortName} lesson
         </div>
       </div>
 

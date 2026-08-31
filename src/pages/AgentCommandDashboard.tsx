@@ -161,12 +161,14 @@ export default function AgentCommandDashboard() {
         .from("agents")
         .select("id, license_status, license_progress")
         .eq("user_id", user!.id)
-        .maybeSingle();
+        .order("created_at", { ascending: false })
+        .limit(1);
       if (error) throw error;
-      if (data?.id) {
+      const agent = data?.[0] ?? null;
+      if (agent?.id) {
         void queryClient.invalidateQueries({ queryKey: ["scoped-production-scoreboard"] });
       }
-      return data as { id: string; license_status: string | null; license_progress: string | null } | null;
+      return agent as { id: string; license_status: string | null; license_progress: string | null } | null;
     },
   });
 
@@ -327,7 +329,7 @@ export default function AgentCommandDashboard() {
         <EmptyState
           icon={<Users className="h-7 w-7" />}
           title="Profile connection needs review"
-          description="We tried the automatic repair. Contact the APEX team so we can verify the correct producer record and connect it safely."
+          description={`We tried the automatic repair. Contact the ${APEX_BRAND.shortName} team so we can verify the correct producer record and connect it safely.`}
           actions={
             <Button asChild variant="outline">
               <a href="mailto:sam.com593@gmail.com?subject=Agent%20profile%20not%20linked">Email Sam</a>

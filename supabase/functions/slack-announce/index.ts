@@ -45,11 +45,23 @@ Deno.serve(async (req) => {
       method: "POST", headers: { Authorization: `Bearer ${t}` },
     });
     const b = await r.json().catch(() => ({}));
+    // channels:read is granted, so list the rooms too — which are open and which
+    // are archived decides where an automated post can actually land.
+    const lr = await fetch(
+      "https://slack.com/api/conversations.list?limit=200&exclude_archived=false&types=public_channel",
+      { headers: { Authorization: `Bearer ${t}` } },
+    );
+    const lb = await lr.json().catch(() => ({}));
+    const chans = (lb?.channels ?? []).map((c: Record<string, unknown>) => ({
+      name: c.name, id: c.id, archived: c.is_archived, members: c.num_members,
+    }));
     return json({
       ok: Boolean(b?.ok),
       team: b?.team ?? null,
       bot: b?.user ?? null,
       granted_scopes: r.headers.get("x-oauth-scopes") ?? "(not reported)",
+      channels: chans,
+      channels_error: lb?.ok ? null : (lb?.error ?? null),
       error: b?.ok ? null : (b?.error ?? "auth_test_failed"),
     });
   }

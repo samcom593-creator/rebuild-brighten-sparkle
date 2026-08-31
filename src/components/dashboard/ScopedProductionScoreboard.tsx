@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CompLevelEditor } from "@/components/dashboard/CompLevelEditor";
+import { useAuth } from "@/hooks/useAuth";
 import { resolveBrand } from "@/config/brand";
 import { scoreboardWindow, type ScoreboardPeriod } from "@/lib/scoreboardPeriod";
 import { useRealtimeTable } from "@/shared/realtime/useRealtimeTable";
@@ -251,8 +252,17 @@ export function ScopedProductionScoreboard() {
 
   const data = query.data;
   // The server returns `imo` only to admins; that is the authority for the
-  // admin-only tile and the comp editor, not a client-side role guess.
+  // admin-only tile, not a client-side role guess.
   const isAdmin = Boolean(data?.imo);
+  // MP-335: comp level is no longer admin-only. A manager may set a level for
+  // their own downline, so the editor renders for them too. This is presentation
+  // only — set_agent_contract_pct is the authority and independently refuses a
+  // target outside the caller's downline, the caller's own row, and any value
+  // above the caller's own level. Showing a control the server would refuse is
+  // a worse failure than hiding one it would allow, so `is_self` is excluded
+  // here as well rather than relying on the round trip to say no.
+  const { isManager } = useAuth();
+  const canEditComp = isAdmin || isManager;
   const gap = data?.earnings.external_gap_override ?? null;
   const unknownLevels = data?.comp.unknown_levels_in_scope ?? 0;
   const apexAgency = data?.reconciliation.agencies.find((row) => /apex/i.test(row.agency));
@@ -457,7 +467,7 @@ export function ScopedProductionScoreboard() {
                             <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
                               <span className="tabular-nums">{pct(row.seller_pct)}</span>
                               <ProvenanceChip value={row.seller_pct_provenance} />
-                              {isAdmin && (
+                              {canEditComp && !(isManager && !isAdmin && row.is_self) && (
                                 <CompLevelEditor
                                   agentId={row.agent_id}
                                   agentName={row.name}

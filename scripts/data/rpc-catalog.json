@@ -3895,6 +3895,22 @@
         "raw": ""
       }
     ],
+    "my_agent_account_gaps": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "my_agents_missing_comp_level": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "my_downline_agent_ids": [
       {
         "all": [],

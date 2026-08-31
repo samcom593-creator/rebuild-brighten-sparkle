@@ -9,10 +9,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
-// Admin-only inline editor for an agent's contract (comp) level. Writes through
-// public.set_agent_contract_pct, which lands on the canonical agent id with
-// source 'admin_ui'. The server refuses non-admins (42501), so this control is
-// only rendered when the scoreboard payload proves the viewer is an admin.
+// Inline editor for an agent's contract (comp) level. Writes through
+// public.set_agent_contract_pct, which lands on the canonical agent id.
+//
+// MP-335: no longer admin-only. An admin may set any level; a MANAGER may set
+// one for their own downline, never for themselves, and never above their own
+// resolved level, and the row is stamped 'manager_ui' rather than 'admin_ui' so
+// the provenance says who decided. The server owns all of that and raises 42501
+// otherwise — the caller renders this control for admins and managers, and the
+// refusal surfaces through onError as the toast the manager reads.
+//
+// The 0-200 range below is a client-side sanity bound, not the permission. A
+// manager capped at 85 can type 150 here and the server will refuse it.
 export function CompLevelEditor({
   agentId,
   agentName,

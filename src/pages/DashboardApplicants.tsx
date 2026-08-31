@@ -68,6 +68,7 @@ import { InterviewRecorder } from "@/components/dashboard/InterviewRecorder";
 import { LeadQualificationChat } from "@/components/dashboard/LeadQualificationChat";
 import { QuickAssignMenu } from "@/components/dashboard/QuickAssignMenu";
 import { LicenseProgressSelector } from "@/components/dashboard/LicenseProgressSelector";
+import { StageMover } from "@/components/dashboard/StageMover";
 import { PromoteApplicantButton } from "@/components/applicants/PromoteApplicantButton";
 import { ReassignManagerButton } from "@/components/agents/ReassignManagerButton";
 import { InlineEditApplicantField } from "@/components/applicants/InlineEditApplicantField";
@@ -1801,9 +1802,22 @@ export default function DashboardApplicants() {
                             />
                           </td>
                           <td className="px-2 py-2 align-middle">
-                            <Badge variant="outline" className={cn("text-[10px] capitalize", statusColors[status])}>
-                              {status}
-                            </Badge>
+                            <div className="flex flex-col items-start gap-1">
+                              <Badge variant="outline" className={cn("text-[10px] capitalize", statusColors[status])}>
+                                {status}
+                              </Badge>
+                              {/* MP-343: full pipeline control, forwards AND back. The
+                                  server owns the rules and refuses anyone outside
+                                  can_work_application. */}
+                              {!isTerminated && (
+                                <StageMover
+                                  applicationId={app.id}
+                                  currentStage={resolvePipelineStage(app)}
+                                  personName={`${app.first_name ?? ""} ${app.last_name ?? ""}`.trim() || undefined}
+                                  onMoved={fetchApplications}
+                                />
+                              )}
+                            </div>
                           </td>
                           <td className="px-2 py-2 align-middle">
                             {!isTerminated && app.license_status !== "licensed" ? (

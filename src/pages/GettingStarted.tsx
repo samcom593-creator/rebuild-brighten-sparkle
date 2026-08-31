@@ -39,7 +39,11 @@ const STAGE_META: Record<Stage, { label: string; color: string; order: number }>
 const CHECKLIST_STEPS = [
   { key: "watched_welcome_video", label: "Watched welcome video", stage: "signed_up" },
   { key: "completed_profile", label: "Completed profile", stage: "signed_up" },
-  { key: "joined_discord", label: "Joined team Slack", stage: "onboarding" },
+  // MP-342: this task named itself and offered no way to do it. New hires
+  // reported they could not find the Discord; the invites were live the whole
+  // time but existed only inside one email. settingKey resolves the real URL
+  // at render so the link can never drift from what the onboarding email sends.
+  { key: "joined_discord", label: "Joined team Slack + Discord", stage: "onboarding", settingKey: "community" },
   { key: "added_phone_number", label: "Added phone number", stage: "onboarding" },
   { key: "uploaded_id", label: "Uploaded ID", stage: "onboarding" },
   { key: "signed_ica", label: "Signed contract", stage: "onboarding" },
@@ -79,6 +83,24 @@ export default function GettingStarted() {
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState<Stage | "all" | "stalled">("all");
   const canViewAll = isAdmin || isManager;
+
+  // MP-342: the real invite URLs, read from the same system_settings keys the
+  // onboarding email sends, so the checklist link and the emailed link cannot
+  // drift apart. Non-admins can read these: the RLS policy on system_settings
+  // filters anything matching secret|token|cookie|password|_key.
+  const { data: communityLinks = { slack: "", discord: "" } } = useQuery({
+    queryKey: ["community-invite-links"],
+    staleTime: 10 * 60_000,
+    queryFn: async () => {
+      const { data } = await supabase.from("system_settings").select("key,value")
+        .in("key", ["discord_invite_url", "slack_community_invite_url"]);
+      const map = new Map((data ?? []).map((r) => [r.key as string, String(r.value ?? "").trim()]));
+      return {
+        slack: map.get("slack_community_invite_url") ?? "",
+        discord: map.get("discord_invite_url") ?? "",
+      };
+    },
+  });
 
   const { data: myAgentId } = useQuery({
     queryKey: ["my-agent-id-gs", user?.id],
@@ -246,6 +268,18 @@ export default function GettingStarted() {
                   <p className={`text-sm ${p[step.key] ? "text-muted-foreground line-through" : ""}`}>
                     {step.label}
                   </p>
+                  {"settingKey" in step && !p[step.key] && (
+                    <div className="mt-1 flex flex-wrap gap-3">
+                      {communityLinks.slack && (
+                        <a className="text-[11px] font-medium text-primary underline-offset-2 hover:underline"
+                           href={communityLinks.slack} target="_blank" rel="noopener noreferrer">Open Slack invite</a>
+                      )}
+                      {communityLinks.discord && (
+                        <a className="text-[11px] font-medium text-primary underline-offset-2 hover:underline"
+                           href={communityLinks.discord} target="_blank" rel="noopener noreferrer">Open Discord invite</a>
+                      )}
+                    </div>
+                  )}
                   {p[step.key] && (
                     <p className="text-[10px] text-muted-foreground">
                       {formatDistanceToNow(new Date(p[step.key]), { addSuffix: true })}

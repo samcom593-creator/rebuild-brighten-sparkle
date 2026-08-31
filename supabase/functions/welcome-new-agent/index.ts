@@ -31,7 +31,7 @@ const PORTAL_LINK = "https://apex-financial.org/agent-portal";
 const SLACK_LINK = "https://join.slack.com/t/apex-financial-co/shared_invite/zt-47rdeq1fr-ETmj8yGBgRcoYVkwfc3DBQ";
 const DISCORD_LINK = "https://discord.gg/JpUWA73UZX";
 const ONBOARDING_CALL_LINK = "https://calendly.com/apexfinancialempire/apex-onboarding-call";
-const APEX_TRAINING_LINK = "https://apex-financial.org/dashboard/recruiting/training/library";
+const APEX_TRAINING_LINK = "https://apex-financial.org/dashboard/training/library";
 
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {

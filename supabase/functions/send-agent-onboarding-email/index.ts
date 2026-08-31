@@ -160,7 +160,7 @@ function escapeHtml(s: string): string {
 
 function buildCourseEmail(name: string): { subject: string; html: string; text: string } {
   const fn = escapeHtml(firstName(name));
-  const trainingUrl = "https://apex-financial.org/dashboard/recruiting/training/library";
+  const trainingUrl = "https://apex-financial.org/dashboard/training/library";
   const roadmapUrl = "https://apex-financial.org/agent-portal";
   const url = escapeHtml(trainingUrl);
   const roadmap = escapeHtml(roadmapUrl);

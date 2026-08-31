@@ -11,7 +11,7 @@ const SLACK_LINK = "https://join.slack.com/t/apex-financial-co/shared_invite/zt-
 const DISCORD_LINK = "https://discord.gg/JpUWA73UZX";
 const PORTAL_LINK = "https://apex-financial.org/agent-portal";
 const CONTRACTING_LINK = "https://apex-financial.org/start-contracting";
-const TRAINING_LINK = "https://apex-financial.org/dashboard/recruiting/training/library";
+const TRAINING_LINK = "https://apex-financial.org/dashboard/training/library";
 const PRELICENSING_LINK = "https://partners.xcelsolutions.com/afe";
 
 interface LicensingEmailRequest {

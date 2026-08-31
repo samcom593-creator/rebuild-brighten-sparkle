@@ -599,7 +599,19 @@ const handler = async (req: Request): Promise<Response> => {
       contractingLink,
     });
 
-    const courseEmailStatus: SideEffectStatus = hasTrainingCourse
+    // MP-355: do NOT send this directly for a LICENSED hire — the
+    // fn_enqueue_hired_licensed_onboarding trigger already queues email_kind
+    // 'course' for them, and sending here too delivers the same message twice
+    // under two different subjects. Proven in Resend: Ramon Lopez received both
+    // "Your APEX online training is ready" (queue) and "Your APEX Training
+    // Course Is Ready!" (this call).
+    //
+    // The unlicensed path is left alone deliberately. The trigger skips that
+    // cohort by design, so removing this call outright would silently stop
+    // unlicensed hires receiving anything — a policy change dressed as a bug
+    // fix. One owner per cohort: queue for licensed, this for unlicensed.
+    const courseHandledByQueue = agentLicenseStatus === "licensed";
+    const courseEmailStatus: SideEffectStatus = hasTrainingCourse && !courseHandledByQueue
       ? await invokeSideEffect("send-course-enrollment-email", {
           agentName: `${firstName} ${lastName}`,
           agentEmail: normalizedEmail,

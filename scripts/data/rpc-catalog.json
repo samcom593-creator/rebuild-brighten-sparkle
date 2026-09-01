@@ -2048,6 +2048,14 @@
         "raw": ""
       }
     ],
+    "fn_block_profile_email_dup": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "fn_block_retired_cloud_outbox": [
       {
         "all": [],
@@ -2983,6 +2991,26 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "fn_record_auth_provision_failure": [
+      {
+        "all": [
+          "p_email",
+          "p_message",
+          "p_sqlstate",
+          "p_step",
+          "p_user_id"
+        ],
+        "required": [
+          "p_email",
+          "p_message",
+          "p_sqlstate",
+          "p_step",
+          "p_user_id"
+        ],
+        "unnamed": false,
+        "raw": "p_user_id uuid, p_email text, p_step text, p_sqlstate text, p_message text"
       }
     ],
     "fn_recover_stale_applicant": [

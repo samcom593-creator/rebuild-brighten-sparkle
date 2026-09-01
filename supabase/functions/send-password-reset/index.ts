@@ -36,20 +36,69 @@ const handler = async (req: Request): Promise<Response> => {
     const normalizedEmail = email.toLowerCase().trim();
 
     if (type === "magic_link") {
-      // Look up agent by email (check profiles first, then agents display_name)
-      const { data: profile } = await supabaseClient
+      // profiles.email carries NO unique index, so .maybeSingle() used to return
+      // data=null on a DUPLICATE address exactly as it does on an absent one
+      // (PostgREST raises PGRST116 and this caller only destructured `data`).
+      // Both landed in the branch below and answered "If an account exists, a
+      // link has been sent." — so an agent whose profile row had been duplicated
+      // could never obtain a magic link, and nothing anywhere said so. Measured
+      // 2026-09-01: 9 colliding addresses, 3 of them owning an ACTIVE agent.
+      //
+      // Ambiguity is its own outcome. It must never be laundered into absence.
+      // The caller-facing response is deliberately IDENTICAL in all three cases
+      // — it exists to avoid revealing whether an account exists, and that
+      // property is preserved. The difference is that ambiguity is now recorded
+      // where apex-doctor Check #43 reads it, instead of vanishing.
+      const { data: profileRows } = await supabaseClient
         .from("profiles")
         .select("user_id, full_name, email")
         .eq("email", normalizedEmail)
-        .maybeSingle();
+        .limit(10);
+
+      const silentOk = () =>
+        new Response(
+          JSON.stringify({ success: true, message: "If an account exists, a link has been sent." }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+
+      if (Array.isArray(profileRows) && profileRows.length > 1) {
+        // Record one row per affected account, de-stormed: a person locked out
+        // will retry, and a fresh row per retry would bury the signal it exists
+        // to raise. Recording is best-effort and must never change the answer.
+        for (const row of profileRows) {
+          if (!row?.user_id) continue;
+          try {
+            const { data: already } = await supabaseClient
+              .from("auth_provision_failures")
+              .select("id")
+              .eq("user_id", row.user_id)
+              .eq("step", "magic_link_ambiguous")
+              .is("resolved_at", null)
+              .limit(1);
+            if (Array.isArray(already) && already.length > 0) continue;
+            await supabaseClient.rpc("fn_record_auth_provision_failure", {
+              p_user_id: row.user_id,
+              p_email: normalizedEmail,
+              p_step: "magic_link_ambiguous",
+              p_sqlstate: "PGRST116",
+              p_message:
+                `${profileRows.length} profile rows share ${normalizedEmail}, so the magic-link lookup cannot ` +
+                `identify one account and no link was sent. Merge or correct the duplicate profile rows, then resolve this row.`,
+            });
+          } catch (e) {
+            console.error("magic_link ambiguity record failed:", e);
+          }
+        }
+        console.error("magic_link ambiguous for", normalizedEmail, "rows:", profileRows.length);
+        return silentOk();
+      }
+
+      const profile = Array.isArray(profileRows) ? profileRows[0] : null;
 
       if (!profile) {
         // Don't reveal whether email exists
         console.log("No profile found for email:", normalizedEmail);
-        return new Response(
-          JSON.stringify({ success: true, message: "If an account exists, a link has been sent." }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return silentOk();
       }
 
       // Find agent record

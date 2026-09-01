@@ -137,6 +137,17 @@ const SUSPECT_PATTERNS = [
   /(?<![$\d])\d+M\+/g,      // 150M+ but not the M+ inside $150M+
   /(?<![$\d])\d{2,}K\+/g,  // 166K+ but not the K+ inside $250K+
   /(?<![$\d])\d{1,3},\d{3}\+/g, // 166,000+
+  // MP-370: every pattern above requires a "+" and an ABBREVIATED magnitude,
+  // so a claim spelled out in words -- "$12 Million in Revenue", "3 Million
+  // Policies" -- was invisible to this guard no matter how large. Measured
+  // 2026-09-01: exactly one such string exists on the landing surfaces and it
+  // is the TITLE of Sam's own YouTube video (E2VJ1v85IRE), which is a citation
+  // of a real published video, not a statistic the page is authoring. So the
+  // pattern ships together with the video-title exemption below -- closing the
+  // hole without flagging an accurate reference, and without a permanently red
+  // guard that everyone learns to skip.
+  /\$\d[\d,.]*\s*(?:Million|Billion|Trillion)\b/gi,
+  /(?<![$\d])\d[\d,.]*\s*(?:Million|Billion|Trillion)\s+(?:in\s+)?(?:Revenue|Premium|Policies|Commissions|Volume|Sales|Paid|Written)\b/gi,
   // Wave-4 (2026-06-22): roster-count puff like "Join 100+ Successful
   // Agents" / "200+ Top Producers" — same disease as wave-2/wave-3 but
   // with bare "NNN+" instead of K/M suffix. Word-paired to avoid
@@ -242,6 +253,22 @@ const NUMERIC_FILES = fileList(NUMERIC_TRACKED_GLOBS);
 const SUPERLATIVE_FILES = fileList(SUPERLATIVE_TRACKED_GLOBS);
 const TOTAL_FILES = new Set([...NUMERIC_FILES, ...SUPERLATIVE_FILES]).size;
 
+
+/**
+ * A media title is a CITATION, not a claim the page is authoring.
+ *
+ * MP-370: `<LazyYouTube title="20 Years Old, $12 Million in Revenue. Samuel
+ * James." />` is the real title of Sam's published video E2VJ1v85IRE.
+ * Rendering it accurately is not the landing page inventing a statistic, and
+ * "fixing" it would mean mis-titling a real video. Narrow on purpose: only a
+ * title/alt/aria-label prop on a media embed is exempt, so the same string in
+ * body copy or a heading is still caught.
+ */
+function isMediaTitleLine(line) {
+  return /(?:LazyYouTube|iframe|video|VideoEmbed|YouTube)[^>]*\b(?:title|alt|aria-label)\s*=/.test(line)
+      || /^\s*(?:title|alt|aria-label)\s*=\s*["'{]/.test(line);
+}
+
 function isCommentLine(line) {
   const trimmed = line.trim();
   return (
@@ -261,6 +288,7 @@ for (const rel of NUMERIC_FILES) {
       pat.lastIndex = 0;
       const matches = line.match(pat);
       if (!matches) continue;
+      if (isMediaTitleLine(line)) continue;
       for (const m of matches) {
         if (ALLOW_LIST.has(m)) continue;
         violations.push(

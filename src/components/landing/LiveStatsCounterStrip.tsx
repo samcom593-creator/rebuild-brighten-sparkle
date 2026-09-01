@@ -8,7 +8,7 @@ import { useInteractionGate } from "@/shared/hooks/useInteractionGate";
 // renders eagerly under HeroSection — the static import was the second of
 // two anchor edges pulling vendor-supabase into the cold landing modulepreload
 // chain (the other was RecentHiresTicker, also detached this wave). The
-// HARDCODED_FLOOR + localStorage cache below means the numbers render real-
+// the localStorage cache below means the numbers render real-
 // looking before the dynamic import even resolves — no above-fold zero.
 //
 // wave-41 (2026-06-08): wave-19 deferred the static import but the queryFn
@@ -16,7 +16,7 @@ import { useInteractionGate } from "@/shared/hooks/useInteractionGate";
 // inside Lighthouse mobile's audit window — it consistently showed in
 // heaviest-transfers even after wave-40 killed the AuthProvider path. Gate
 // the query `enabled` on useInteractionGate(): first paint stays exactly
-// the same (HARDCODED_FLOOR + cache fallback), but the dynamic import only
+// the same (cache fallback), but the dynamic import only
 // fires once the user actually interacts (pointerdown / keydown / scroll /
 // touchstart) or the 5s safety timeout fires. Lighthouse audits never
 // interact, so vendor-supabase finally exits the cold-landing transfer list.
@@ -33,12 +33,27 @@ interface LiveStats {
 const CACHE_KEY = "apex_live_stats_last_good";
 // wave-X (2026-06-19): feb05b97 fixed landing_live_stats() to return truth=41
 // active_agents (was 123 due to inactive+XAGENT placeholder pollution). But the
-// HARDCODED_FLOOR.active_agents was 104 and pick() upgraded any live<floor to
+// The floor was the disease, not the cure: HARDCODED_FLOOR.active_agents was 104 and pick() upgraded any live<floor to
 // floor — so the strip kept rendering 104 even after the DB told the truth.
 // Floor now mirrors known truth-floor (40, one below current 41) and pick()
 // trusts any real positive RPC result. Lying upward is the same disease as
 // lying downward: it just kills trust later instead of now.
-const HARDCODED_FLOOR = { active_agents: 40, applications_30d: 131, carriers_partnered: 22 } as const;
+// MP-370: there is no floor any more, because a floor is a fabricated number.
+//
+// This strip renders under a label that says "Live · pulled from the operating
+// system". The floor was { active_agents: 40, applications_30d: 131,
+// carriers_partnered: 22 } and it shipped whenever the RPC errored or a cold
+// visitor had no cache. Measured 2026-09-01: landing_live_stats() returns
+// applications_30d = 35. The floor said 131 -- 3.7x -- under the word "Live".
+//
+// The floor was not a stale constant that drifted. It was correct when it was
+// written and truth fell underneath it, which is the failure mode a constant
+// cannot survive: it can only ever be right on the day it is typed. The
+// check-landing-truth-floor ceiling for this key is 150 and it never moves
+// down, so 131 passed every CI run while being nearly four times the number.
+//
+// A loading state is not a trust problem. An invented one is. Unknown now
+// renders as a dash.
 
 function readCache(): Partial<LiveStats> | null {
   try {
@@ -49,12 +64,13 @@ function readCache(): Partial<LiveStats> | null {
 function writeCache(d: LiveStats) {
   try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ...d, _cached_at: Date.now() })); } catch { /* swallow */ } // empty-catch-allow:localstorage-incognito
 }
-// Live RPC wins whenever it returns a real positive count. Cache is the warm
-// fallback. Floor is the cold-render-only safety net. Never clamp truth upward.
-function pick(live: number | undefined, cached: number | undefined, floor: number): number {
+// Live RPC wins whenever it returns a real positive count; cache is the warm
+// fallback for a repeat visitor. There is no third option: null means "we do
+// not know yet", and the card says so instead of inventing a figure.
+function pick(live: number | undefined, cached: number | undefined): number | null {
   if (typeof live === "number" && live >= 1) return live;
   if (typeof cached === "number" && cached >= 1) return cached;
-  return floor;
+  return null;
 }
 
 /**
@@ -69,7 +85,8 @@ function pick(live: number | undefined, cached: number | undefined, floor: numbe
  * Resilience (2026-05-24): the RPC sometimes returns 0 on cold render or
  * during a Supabase blip. A zero above the fold destroys the trust the
  * deals ticker just built. So we layer three fallbacks: RPC → localStorage
- * last-good → HARDCODED_FLOOR. We only ever count UP, never down to 0.
+ * last-good → a dash. MP-370 deleted the hardcoded floor: an invented number
+ * under a label reading "Live" is worse than an honest loading state.
  */
 export function LiveStatsCounterStrip() {
   const gateOpen = useInteractionGate();
@@ -102,13 +119,13 @@ export function LiveStatsCounterStrip() {
     }
   }, [data]);
 
-  const apps30d = pick(data?.applications_30d, cached?.applications_30d, HARDCODED_FLOOR.applications_30d);
-  const carriers = pick(data?.carriers_partnered, cached?.carriers_partnered, HARDCODED_FLOOR.carriers_partnered);
+  const apps30d = pick(data?.applications_30d, cached?.applications_30d);
+  const carriers = pick(data?.carriers_partnered, cached?.carriers_partnered);
 
   return (
     <div className="landing-fade-up landing-delay-400 max-w-3xl mx-auto mb-10">
       <p className="text-[10px] text-muted-foreground text-center mb-3 uppercase tracking-[0.3em] font-display font-semibold">
-        Live · pulled from the operating system
+        {apps30d === null && carriers === null ? "Pulling from the operating system…" : "Live · pulled from the operating system"}
       </p>
       {/* 2026-08-13 Sam: "just remove that number." The Active agents counter is
           gone from the public strip — 56 (loose def) vs 6 (Skool-gated) was a
@@ -134,7 +151,8 @@ export function LiveStatsCounterStrip() {
 
 interface CardProps {
   icon: React.ComponentType<{ className?: string }>;
-  value: number;
+  /** null = not known yet. The card renders a dash; it never invents a number. */
+  value: number | null;
   label: string;
   color: "emerald" | "amber" | "cyan";
 }
@@ -153,7 +171,9 @@ function CounterCard({ icon: Icon, value, label, color }: CardProps) {
       <Icon className={`relative h-6 w-6 ${c.text} mx-auto mb-2`} />
       <div className={`relative font-display font-extrabold tabular-nums ${c.text}`}
            style={{ fontSize: "clamp(1.5rem, 4.5vw, 2.5rem)", lineHeight: 1 }}>
-        <AnimatedCounter value={value} duration={1800} />
+        {value === null
+          ? <span aria-label="loading" className="opacity-40">—</span>
+          : <AnimatedCounter value={value} duration={1800} />}
       </div>
       <div className="relative text-[11px] sm:text-xs text-muted-foreground mt-2 font-medium uppercase tracking-wider">
         {label}

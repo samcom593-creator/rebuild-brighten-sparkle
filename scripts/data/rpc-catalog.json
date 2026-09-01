@@ -2519,6 +2519,14 @@
         "raw": ""
       }
     ],
+    "fn_identity_collision_observe": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "fn_insuracloud_refusal_anchor": [
       {
         "all": [],

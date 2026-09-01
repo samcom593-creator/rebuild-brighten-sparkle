@@ -1504,31 +1504,40 @@ export default function DashboardCRM() {
     queryClient.invalidateQueries({ queryKey: ["crm-today-production"] });
   }, [queryClient]);
 
+  // MP-361. Every handler below invalidates react-query keys and ignores the
+  // payload, so a burst of row events only ever needed ONE refetch. Undebounced,
+  // a `deals` write burst (measured: 11 rows in one second) fired one immediate
+  // refetch per row of crm-today-production + crm-agent-roster +
+  // crm-roster-segments. That is the same starvation proven on v_imo_by_agency,
+  // where 195 of 269 reads timed out at 57014 and the public landing_* RPCs
+  // 500'd as collateral in the same windows.
+  const CRM_COALESCE_MS = 750;
+
   // Phase 5: Live updates — invalidate when agents/applications change anywhere
-  useRealtimeTable({ table: "agents", channelSuffix: "crm" }, () => {
+  useRealtimeTable({ table: "agents", channelSuffix: "crm", coalesceMs: CRM_COALESCE_MS }, () => {
     queryClient.invalidateQueries({ queryKey: ["crm-agents"] });
   });
-  useRealtimeTable({ table: "applications", channelSuffix: "crm" }, () => {
+  useRealtimeTable({ table: "applications", channelSuffix: "crm", coalesceMs: CRM_COALESCE_MS }, () => {
     queryClient.invalidateQueries({ queryKey: ["crm-agents"] });
   });
-  useRealtimeTable({ table: "deals", channelSuffix: "crm-production" }, () => {
+  useRealtimeTable({ table: "deals", channelSuffix: "crm-production", coalesceMs: CRM_COALESCE_MS }, () => {
     queryClient.invalidateQueries({ queryKey: ["crm-today-production"] });
     queryClient.invalidateQueries({ queryKey: ["crm-agent-roster"] });
     queryClient.invalidateQueries({ queryKey: ["crm-roster-segments"] });
   });
-  useRealtimeTable({ table: "agentlink_book", channelSuffix: "crm-production" }, () => {
+  useRealtimeTable({ table: "agentlink_book", channelSuffix: "crm-production", coalesceMs: CRM_COALESCE_MS }, () => {
     queryClient.invalidateQueries({ queryKey: ["crm-today-production"] });
     queryClient.invalidateQueries({ queryKey: ["crm-agent-roster"] });
     queryClient.invalidateQueries({ queryKey: ["crm-roster-segments"] });
   });
   useRealtimeTable(
-    { table: "production_external_daily_snapshots", channelSuffix: "crm-production" },
+    { table: "production_external_daily_snapshots", channelSuffix: "crm-production", coalesceMs: CRM_COALESCE_MS },
     () => {
       queryClient.invalidateQueries({ queryKey: ["crm-today-production"] });
     },
   );
   useRealtimeTable(
-    { table: "production_external_deals", channelSuffix: "crm-production" },
+    { table: "production_external_deals", channelSuffix: "crm-production", coalesceMs: CRM_COALESCE_MS },
     () => {
       queryClient.invalidateQueries({ queryKey: ["crm-today-production"] });
       queryClient.invalidateQueries({ queryKey: ["crm-agent-roster"] });

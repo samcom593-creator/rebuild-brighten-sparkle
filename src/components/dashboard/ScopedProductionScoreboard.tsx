@@ -238,17 +238,31 @@ export function ScopedProductionScoreboard() {
   useProductionRealtime(() => { void query.refetch(); }, 800);
 
   const refreshProduction = () => { void query.refetch(); };
-  useRealtimeTable({ table: "deals", channelSuffix: "production-scoreboard" }, refreshProduction);
-  useRealtimeTable({ table: "agentlink_book", channelSuffix: "production-scoreboard" }, refreshProduction);
+  // MP-361. Three raw subscriptions were REMOVED here — deals,
+  // production_external_deals and production_external_daily_snapshots — because
+  // useProductionRealtime() above already watches all three and delivers them
+  // through an 800ms debounce. Every `deals` row event was therefore refetching
+  // this RPC TWICE: once debounced, and once immediately. The immediate leg is
+  // the expensive one: the comment on refetchInterval above measures
+  // scoped_production_scoreboard at 2,155ms average, and `deals` is written in
+  // bursts of 11 rows per second, so one burst fired 11 undebounced refetches
+  // of the most expensive call on the platform. That is the same starvation
+  // that timed out 195 of 269 reads of v_imo_by_agency at 57014 and took the
+  // public landing_* RPCs down with it.
+  //
+  // The two kept below are NOT covered by useProductionRealtime. Both are also
+  // absent from the supabase_realtime publication today (checked live via
+  // pg_publication_tables), so neither has ever fired — they are coalesced
+  // rather than deleted so that adding either to the publication cannot
+  // reopen this class.
   useRealtimeTable(
-    { table: "production_external_daily_snapshots", channelSuffix: "production-scoreboard" },
+    { table: "agentlink_book", channelSuffix: "production-scoreboard", coalesceMs: 750 },
     refreshProduction,
   );
   useRealtimeTable(
-    { table: "production_external_deals", channelSuffix: "production-scoreboard" },
+    { table: "agent_contract_levels", channelSuffix: "production-scoreboard", coalesceMs: 750 },
     refreshProduction,
   );
-  useRealtimeTable({ table: "agent_contract_levels", channelSuffix: "production-scoreboard" }, refreshProduction);
 
   const data = query.data;
   // The server returns `imo` only to admins; that is the authority for the

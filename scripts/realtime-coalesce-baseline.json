@@ -1,0 +1,20 @@
+{
+  "_comment": "MP-361 (2026-08-31). Realtime subscriptions whose handler invalidates react-query keys WITHOUT coalesceMs, as they stood when check:realtime-invalidate-coalesce shipped. Tolerated by IDENTITY (file::handler::table), never by count: a new violation fails even if an old one is fixed in the same commit (MP-356/MP-357 — a count-only floor is fungible, and file::handler alone would let a sixth subscription inherit five siblings' tolerance). NONE of these is a measured stampede; only ImoByAgency was proven from the edge logs, and ScopedProductionScoreboard + DashboardCRM were fixed in the same wave because they refetch on `deals`, the same burst source. Remove entries as they are converted.",
+  "_dead_today": "Checked live against pg_publication_tables: agent_documents, onboarding_progress, interview_events, messaging_identity_links and contracting_intakes are NOT in the supabase_realtime publication, so those subscriptions have never fired at all. `audit_log` is partitioned and only its partitions are published, so ActivityFeedWidget's parent-table subscription does not fire either. They are listed rather than deleted because the intent is legitimate; arming any of them means coalescing it first.",
+  "_live_but_low_volume": "agents and agent_strikes ARE published. Neither is a burst table — agents is written on hire, agent_strikes on a manual strike — so they were left alone rather than churned. If either starts taking bulk writes, coalesce before the burst, not after.",
+  "tolerated": [
+    "src/components/dashboard/ActivityFeedWidget.tsx::inline::audit_log",
+    "src/components/dashboard/AgentOnboardingStepper.tsx::refresh::agents",
+    "src/components/dashboard/AgentOnboardingStepper.tsx::refresh::agent_documents",
+    "src/components/dashboard/AgentOnboardingStepper.tsx::refresh::onboarding_progress",
+    "src/components/dashboard/AgentOnboardingStepper.tsx::refresh::interview_events",
+    "src/components/dashboard/AgentOnboardingStepper.tsx::refresh::messaging_identity_links",
+    "src/components/dashboard/JustHiredPanel.tsx::inline::agents",
+    "src/components/recruiting/NoHireLeftBehindPanel.tsx::refresh::agents",
+    "src/components/recruiting/NoHireLeftBehindPanel.tsx::refresh::onboarding_progress",
+    "src/components/recruiting/NoHireLeftBehindPanel.tsx::refresh::contracting_intakes",
+    "src/components/recruiting/NoHireLeftBehindPanel.tsx::refresh::messaging_identity_links",
+    "src/pages/AdminStrikes.tsx::inline::agent_strikes",
+    "src/pages/MyStrikes.tsx::inline::agent_strikes"
+  ]
+}

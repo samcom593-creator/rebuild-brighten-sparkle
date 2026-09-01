@@ -77,14 +77,33 @@ export function ImoByAgency({
     queryClient.invalidateQueries({ queryKey: ["apex-home-dashboard"] });
     queryClient.invalidateQueries({ queryKey: ["scoped-production-scoreboard"] });
   };
-  useRealtimeTable({ table: "deals", channelSuffix: "imo-agency" }, invalidateProduction);
-  useRealtimeTable({ table: "agentlink_book", channelSuffix: "imo-agency" }, invalidateProduction);
+  // COALESCED (2026-08-31, MP-361). invalidateProduction() refetches four
+  // query keys, and this component mounts at three render sites. Undebounced,
+  // a `deals` write burst (measured: 11 rows in one second) multiplied into 27
+  // identical GET /v_imo_by_agency requests inside a single second in the edge
+  // logs. That view costs ~1.9s per read, so the burst queued past the 8s
+  // statement timeout: 195 of 269 reads failed with 57014 in 24h, and the
+  // public landing_* RPCs 500'd as collateral in the same windows.
+  //
+  // 750ms is longer than the measured burst spacing (11 rows/s ~= 90ms apart)
+  // and short enough to stay live. Safe here specifically because
+  // invalidateProduction takes no arguments — it cannot lose a payload.
+  //
+  // MEASURED, not assumed: of these four tables only `deals` is currently a
+  // live driver. `agentlink_book` is NOT in the supabase_realtime publication
+  // at all, so its subscription has never fired; production_external_deals and
+  // production_external_daily_snapshots are in the publication but had zero
+  // writes in the last 48h. They are coalesced anyway so that a future bulk
+  // load into any of them cannot reopen this.
+  const COALESCE_MS = 750;
+  useRealtimeTable({ table: "deals", channelSuffix: "imo-agency", coalesceMs: COALESCE_MS }, invalidateProduction);
+  useRealtimeTable({ table: "agentlink_book", channelSuffix: "imo-agency", coalesceMs: COALESCE_MS }, invalidateProduction);
   useRealtimeTable(
-    { table: "production_external_daily_snapshots", channelSuffix: "imo-agency" },
+    { table: "production_external_daily_snapshots", channelSuffix: "imo-agency", coalesceMs: COALESCE_MS },
     invalidateProduction,
   );
   useRealtimeTable(
-    { table: "production_external_deals", channelSuffix: "imo-agency" },
+    { table: "production_external_deals", channelSuffix: "imo-agency", coalesceMs: COALESCE_MS },
     invalidateProduction,
   );
 

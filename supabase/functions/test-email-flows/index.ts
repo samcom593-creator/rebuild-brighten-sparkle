@@ -400,28 +400,28 @@ const handler = async (req: Request): Promise<Response> => {
         await resend.emails.send({
           from: "APEX Financial <noreply@apex-financial.org>",
           to: [testEmail],
-          subject: "[TEST] Need Help Getting Licensed? We're Here For You! 📋",
+          subject: "[TEST] Your APEX path is waiting: complete the license step",
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <div style="background: linear-gradient(135deg, #059669, #047857); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
-                <h1 style="color: white; margin: 0; font-size: 28px;">Need Help Getting Licensed?</h1>
-                <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0;">We're here to guide you every step of the way</p>
+                <h1 style="color: white; margin: 0; font-size: 28px;">The license unlocks the platform.</h1>
+                <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0;">APEX Financial · Licensing Path</p>
               </div>
               
               <div style="background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
                 <h2 style="color: #111827; margin-top: 0;">Hi ${testApplicant.firstName},</h2>
                 
                 <p style="color: #4b5563; line-height: 1.6;">
-                  We noticed you applied to join APEX Financial a few days ago. We wanted to check in and see if you have any questions about the licensing process!
+                  You applied to APEX because you wanted more than another job application. The next move is to finish the licensing step that gives you legal access to the business.
                 </p>
 
                 <div style="background: #d1fae5; border-left: 4px solid #059669; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
                   <p style="margin: 0; color: #047857; font-weight: 500;">
-                    Remember: We cover most of the licensing costs - the course, exam fees, and license application!
+                    You are not getting licensed just to sell one policy. The license opens the producer, manager, and agency-owner paths inside APEX.
                   </p>
                 </div>
 
-                <h3 style="color: #111827; margin-bottom: 15px;">Quick Links to Get Started:</h3>
+                <h3 style="color: #111827; margin-bottom: 15px;">Complete the next unfinished step:</h3>
                 <ul style="color: #4b5563; line-height: 2;">
                   <li><a href="https://apex-financial.org/get-licensed#licensing-video" style="color: #059669;">▶️ How to Get Your Life Insurance License</a></li>
                   <li><a href="https://docs.google.com/document/d/1WBN_bh7Tl6IkhdXwQvrUa6Q58xmV9As_q048aKAeyNg/edit" style="color: #059669;">📄 Review the Licensing Guide</a></li>
@@ -429,14 +429,14 @@ const handler = async (req: Request): Promise<Response> => {
                 </ul>
 
                 <div style="text-align: center; margin-top: 25px;">
-                  <a href="https://calendly.com/apexfinancialempire/licensed-prospect-call-clone" style="display: inline-block; background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600;">
-                    📅 Schedule a Call - Let's Talk!
+                  <a href="https://apex-financial.org/get-licensed#licensing-video" style="display: inline-block; background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+                    Open My Licensing Roadmap
                   </a>
                 </div>
 
                 <p style="color: #4b5563; margin-top: 30px;">
-                  Best regards,<br>
-                  <strong style="color: #059669;">The APEX Financial Team</strong>
+                  Every week you wait is a week you are not contracting, training, producing, or building your book.<br><br>
+                  <strong style="color: #059669;">Independent-contractor opportunity. Income is not guaranteed.</strong>
                 </p>
               </div>
               <div style="text-align: center; padding: 20px; color: #dc2626; font-weight: bold;">
@@ -451,34 +451,34 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // 7. 7-Day Unlicensed Follow-up ("Are You Licensed Yet?")
+    // 7. 7-Day Unlicensed Follow-up (decision checkpoint)
     if (allFlows || flowType === "unlicensed-followup-2") {
       try {
         await resend.emails.send({
           from: "APEX Financial <noreply@apex-financial.org>",
           to: [testEmail],
-          subject: "[TEST] Are You Licensed Yet? 🎓",
+          subject: "[TEST] Choose your next APEX step",
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <div style="background: linear-gradient(135deg, #059669, #047857); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
-                <h1 style="color: white; margin: 0; font-size: 26px;">How's It Coming Along?</h1>
+                <h1 style="color: white; margin: 0; font-size: 26px;">Continue the path or pause it.</h1>
               </div>
               
               <div style="background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
-                <h2 style="color: #111827; margin-top: 0;">Hey ${testApplicant.firstName}! 👋</h2>
+                <h2 style="color: #111827; margin-top: 0;">${testApplicant.firstName},</h2>
                 
                 <p style="color: #4b5563; line-height: 1.6; font-size: 16px;">
-                  It's been about a week since you applied to join APEX Financial. We wanted to check in and see how your licensing journey is going!
+                  It has been one week since you applied. Interest opened the door; completing the next step is what moves you through it.
                 </p>
 
                 <div style="background: #d1fae5; border-left: 4px solid #059669; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
                   <p style="margin: 0; color: #047857; font-weight: 600; font-size: 18px;">
-                    🎓 Are you licensed yet?
+                    Your application does not activate carrier, platform, training, or lead access by itself.
                   </p>
                 </div>
 
                 <p style="color: #4b5563; line-height: 1.6; font-size: 16px;">
-                  If you've completed your licensing, <strong>congratulations!</strong> Let's get you started right away. Book your onboarding call below:
+                  <strong>If your license is now active,</strong> book the brokerage activation call so the team can review contracting and your production path.
                 </p>
                 
                 <div style="text-align: center; margin: 25px 0;">
@@ -486,13 +486,13 @@ const handler = async (req: Request): Promise<Response> => {
                      style="display: inline-block; background: linear-gradient(135deg, #059669, #047857); color: white; 
                             padding: 16px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;
                             box-shadow: 0 4px 14px rgba(5, 150, 105, 0.4);">
-                    📅 I'm Licensed - Schedule My Call!
+                    My License Is Active — Book Activation
                   </a>
                 </div>
 
                 <div style="border-top: 1px solid #e5e7eb; margin: 25px 0; padding-top: 25px;">
                   <p style="color: #4b5563; line-height: 1.6; font-size: 16px;">
-                    <strong>Still working on it?</strong> No worries! Here are your resources again:
+                    <strong>If you are still unlicensed,</strong> reopen the roadmap and finish the next incomplete requirement:
                   </p>
                   
                   <ul style="color: #4b5563; line-height: 2; font-size: 15px; margin: 15px 0;">
@@ -504,7 +504,7 @@ const handler = async (req: Request): Promise<Response> => {
 
                 <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
                   <p style="margin: 0; color: #92400e; font-weight: 500;">
-                    💡 Need help? Schedule a quick call and we'll walk you through the process step-by-step!
+                    Serious builders learn to finish the small, unglamorous step in front of them. This is that step.
                   </p>
                 </div>
                 
@@ -512,16 +512,16 @@ const handler = async (req: Request): Promise<Response> => {
                   <a href="https://calendly.com/apexfinancialempire/licensed-prospect-call-clone" 
                      style="display: inline-block; background: #f59e0b; color: white; 
                             padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px;">
-                    📞 I Need Help Getting Licensed
+                    Book Licensing Support
                   </a>
                 </div>
 
                 <p style="color: #9ca3af; font-size: 13px; text-align: center; margin-top: 25px;">
-                  We're here to support you every step of the way!
+                  Independent-contractor opportunity. Income is not guaranteed. Licensing requirements vary by state.
                 </p>
               </div>
               <div style="text-align: center; padding: 20px; color: #dc2626; font-weight: bold;">
-                [TEST EMAIL - This is a preview of the 7-day "Are you licensed yet?" follow-up]
+                [TEST EMAIL - This is a preview of the 7-day licensing checkpoint]
               </div>
             </div>
           `,
@@ -538,44 +538,44 @@ const handler = async (req: Request): Promise<Response> => {
         await resend.emails.send({
           from: "APEX Financial <noreply@apex-financial.org>",
           to: [testEmail],
-          subject: "[TEST] Did We Get to You Yet? Let's Connect! 🚀",
+          subject: "[TEST] Your APEX application is not activated yet",
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <div style="background: linear-gradient(135deg, #059669, #047857); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
-                <h1 style="color: white; margin: 0; font-size: 28px;">Let's Get You Started!</h1>
-                <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0;">Your opportunity is waiting 🚀</p>
+                <h1 style="color: white; margin: 0; font-size: 28px;">The application was step one.</h1>
+                <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0;">APEX Financial · Licensed Producer</p>
               </div>
               
               <div style="background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
                 <h2 style="color: #111827; margin-top: 0;">Hi ${testApplicant.firstName},</h2>
                 
                 <p style="color: #4b5563; line-height: 1.6;">
-                  We saw that you applied to join APEX Financial and are already licensed - that's amazing! We want to make sure we connected with you.
+                  You already cleared the legal entry point by earning your license. The next step is a brokerage activation call to determine fit, contracting, and the cleanest path into production.
                 </p>
 
                 <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
                   <p style="margin: 0; color: #92400e; font-weight: 500;">
-                    If we haven't reached you yet, please schedule a call directly - we don't want you to miss this opportunity!
+                    APEX is not offering another comp sheet. It is offering an operating platform designed to move producers toward leadership and ownership.
                   </p>
                 </div>
 
-                <h3 style="color: #111827; margin-bottom: 15px;">Why Join APEX?</h3>
+                <h3 style="color: #111827; margin-bottom: 15px;">What activation covers</h3>
                 <ul style="color: #4b5563; line-height: 1.8;">
-                  <li>💰 70%–145% commissions, paid weekly</li>
-                  <li>📈 Warm leads delivered daily</li>
-                  <li>🎯 Real training and mentorship from day one</li>
-                  <li>🚀 Fast-track onboarding for licensed agents</li>
+                  <li>Your current license, carrier contracts, and market fit</li>
+                  <li>Contracting, lead access, ReadyMode, CRM, and scripts</li>
+                  <li>Live training, call review, and production expectations</li>
+                  <li>Your producer, manager, recruiter, or agency-builder path</li>
                 </ul>
 
                 <div style="text-align: center; margin-top: 25px;">
                   <a href="https://calendly.com/apexfinancialempire/1on1-call-clone" style="display: inline-block; background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600;">
-                    📅 Schedule Your 1-on-1 Call Now
+                    Book My APEX Activation Call
                   </a>
                 </div>
 
                 <p style="color: #4b5563; margin-top: 30px;">
-                  Best regards,<br>
-                  <strong style="color: #059669;">The APEX Financial Team</strong>
+                  Every week you wait is a week you are not building production history or leverage.<br><br>
+                  <strong style="color: #059669;">Independent-contractor opportunity. Income is not guaranteed.</strong>
                 </p>
               </div>
               <div style="text-align: center; padding: 20px; color: #dc2626; font-weight: bold;">

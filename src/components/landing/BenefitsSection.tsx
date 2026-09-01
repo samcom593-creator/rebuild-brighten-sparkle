@@ -5,14 +5,14 @@ import {
 import { SectionHeading } from "@/components/ui/section-heading";
 
 const benefits = [
-  { icon: DollarSign, title: "50–145% commission", description: "Real rates, paid weekly. Production bonuses up to $25K/mo on top." },
-  { icon: Target,     title: "Warm leads, daily",  description: "No cold calling. Prospects already asked for the appointment." },
-  { icon: GraduationCap, title: "Scripts that close", description: "Same scripts our top producers use. Mentorship from day one." },
-  { icon: Calendar,   title: "Your schedule",       description: "Work from anywhere. Set your own hours. Build the business around your life." },
-  { icon: Users,      title: "Team that picks up",  description: "Daily team huddle, weekly closer call, Discord that's never quiet." },
-  { icon: Trophy,     title: "Build your own team", description: "Clear path to manager. Earn overrides on every producing agent under you." },
-  { icon: Zap,        title: "$10K in 90 days",     description: "Fast-start bonuses for new agents who execute the playbook." },
-  { icon: HeartHandshake, title: "Protect real families", description: "Every policy is generational wealth for the family you wrote it for." },
+  { icon: DollarSign, title: "Independent brokerage", description: "Access multiple carrier and product options based on licensing, eligibility, production, and carrier approval." },
+  { icon: Target, title: "Lead-to-close execution", description: "Lead access, ReadyMode dialing, CRM workflows, scripts, and follow-up live in one operating path." },
+  { icon: GraduationCap, title: "Training tied to action", description: "Learn the opener, discovery, field underwriting, objections, close, and post-sale process in order." },
+  { icon: Calendar, title: "A visible next step", description: "Licensing, contracting, training, and production milestones show the one action that moves you forward." },
+  { icon: Users, title: "Coaching with receipts", description: "Use live huddles, call review, production data, and manager accountability instead of motivational guesswork." },
+  { icon: Trophy, title: "Producer-to-owner path", description: "Prove personal production, develop people, build a team, and graduate into manager or agency-owner mode." },
+  { icon: Zap, title: "Recruiting infrastructure", description: "Referral links, source attribution, applicant routing, hierarchy, and downline results remain measurable as you scale." },
+  { icon: HeartHandshake, title: "Work with real consequence", description: "Build a business by helping families protect income, final expenses, mortgages, and long-term financial goals." },
 ];
 
 export function BenefitsSection() {
@@ -23,8 +23,8 @@ export function BenefitsSection() {
       <div className="container mx-auto px-4 relative z-10">
         <SectionHeading
           badge="Why APEX"
-          title="Everything that closes. Nothing that doesn't."
-          subtitle="Lead flow, scripts, weekly pay, real mentorship. You bring the work."
+          title="The infrastructure behind the opportunity."
+          subtitle="APEX connects the work most agencies leave scattered—from licensing and the first sale through recruiting, leadership, and ownership."
         />
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-16">

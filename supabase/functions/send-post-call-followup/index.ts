@@ -142,8 +142,8 @@ const handler = async (req: Request): Promise<Response> => {
         </p>
 
         <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 16px; padding: 24px; margin-bottom: 16px;">
-          <h3 style="margin: 0 0 12px 0; font-size: 18px; font-weight: 700; color: #10b981;">📺 Step 1: Watch the Overview Video</h3>
-          ${stepButton("https://www.youtube.com/watch?v=i1e5p-GEfAU", "▶️ Watch Video", "#ef4444")}
+          <h3 style="margin: 0 0 12px 0; font-size: 18px; font-weight: 700; color: #10b981;">📺 Step 1: How to Get Your Life Insurance License</h3>
+          ${stepButton("https://apex-financial.org/get-licensed#licensing-video", "▶️ How to Get Your Life Insurance License", "#ef4444")}
         </div>
 
         <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 16px; padding: 24px; margin-bottom: 16px;">
@@ -278,8 +278,8 @@ const handler = async (req: Request): Promise<Response> => {
       </p>
 
       <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 16px; padding: 24px; margin-bottom: 16px;">
-        <h3 style="margin: 0 0 12px 0; font-size: 18px; font-weight: 700; color: #10b981;">📺 Step 1: Watch the Overview Video</h3>
-        ${stepButton("https://www.youtube.com/watch?v=i1e5p-GEfAU", "▶️ Watch Video", "#ef4444")}
+        <h3 style="margin: 0 0 12px 0; font-size: 18px; font-weight: 700; color: #10b981;">📺 Step 1: How to Get Your Life Insurance License</h3>
+        ${stepButton("https://apex-financial.org/get-licensed#licensing-video", "▶️ How to Get Your Life Insurance License", "#ef4444")}
       </div>
 
       <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 16px; padding: 24px; margin-bottom: 16px;">

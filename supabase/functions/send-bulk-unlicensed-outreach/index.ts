@@ -44,7 +44,7 @@ serve(async (req) => {
     const scheduleUrl = "https://apex-financial.org/schedule";
     const licensingGuideUrl = "https://docs.google.com/document/d/1WBN_bh7Tl6IkhdXwQvrUa6Q58xmV9As_q048aKAeyNg/edit";
     const preLicensingUrl = "https://partners.xcelsolutions.com/afe";
-    const licensingVideoUrl = "https://youtu.be/i1e5p-GEfAU";
+    const licensingVideoUrl = "https://apex-financial.org/get-licensed#licensing-video";
 
     for (const app of applicants || []) {
       if (!app.email) continue;
@@ -114,7 +114,7 @@ We provide <strong>free CRM, free dialer, 50+ carrier contracts</strong>, and 72
 <tr><td style="padding:16px;">
 <p style="color:#1e40af;font-weight:bold;font-size:14px;margin:0 0 8px;">📋 Licensing Resources</p>
 <ul style="color:#333;font-size:13px;line-height:2;margin:0;padding-left:20px;">
-<li><a href="${licensingVideoUrl}" style="color:#059669;">▶️ Watch: Licensing Overview Video</a></li>
+<li><a href="${licensingVideoUrl}" style="color:#059669;">▶️ Watch: How to Get Your Life Insurance License</a></li>
 <li><a href="${licensingGuideUrl}" style="color:#059669;">📄 Step-by-Step Licensing Guide</a></li>
 <li><a href="${preLicensingUrl}" style="color:#059669;">📚 Pre-Licensing Course (XcelSolutions)</a></li>
 </ul>

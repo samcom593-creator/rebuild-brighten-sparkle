@@ -764,7 +764,7 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
     // Licensed applicants get call scheduling, unlicensed get licensing resources
     const licensedCalendlyUrl = 'https://calendly.com/apexfinancialempire/1on1-call-clone';
     const testimonialsVideoUrl = 'https://youtu.be/YmlLSIwfGdE';
-    const unlicensedVideoUrl = 'https://youtu.be/i1e5p-GEfAU?si=KMthNhQzcQnj9A6u';
+    const unlicensedVideoUrl = 'https://apex-financial.org/get-licensed#licensing-video';
     const licensingDocUrl = 'https://docs.google.com/document/d/1WBN_bh7Tl6IkhdXwQvrUa6Q58xmV9As_q048aKAeyNg/edit?usp=sharing';
     const preLicensingCourseUrl = 'https://partners.xcelsolutions.com/afe';
 
@@ -912,7 +912,7 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
 
             ${recruiterContactSection}
 
-            <h3 style="color: #111827; margin-bottom: 15px;">Step 1: Watch How to Get Licensed</h3>
+            <h3 style="color: #111827; margin-bottom: 15px;">Step 1: How to Get Your Life Insurance License</h3>
             <p style="color: #4b5563; line-height: 1.6; margin-bottom: 20px;">
               This video explains exactly how to get your life insurance license:
             </p>
@@ -922,7 +922,7 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
                  style="display: inline-block; background: linear-gradient(135deg, #059669, #047857); color: white; 
                         padding: 16px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;
                         box-shadow: 0 4px 14px rgba(5, 150, 105, 0.4);">
-                ▶ How to Get Your License
+                ▶ How to Get Your Life Insurance License
               </a>
             </div>
 

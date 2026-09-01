@@ -1,16 +1,17 @@
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { SCHEDULING_LINKS } from "@/lib/apexConfig";
+import { Link } from "react-router-dom";
 
-// MP-224 §3: Polished /unlicensed-overview page for unlicensed applicants.
-// Mobile-first (375px friendly), no Unicode middots, single Calendly CTA.
+// Public bridge for unlicensed prospects. The licensing video is the primary
+// next step; a manager call remains available for applicants who need help.
 
 const CALENDLY_URL = SCHEDULING_LINKS.unlicensed;
 
 const steps = [
   {
     n: 1,
-    title: "Get licensed",
-    body: "We walk you through the pre-licensing course and the state exam. Most agents finish in about 4 weeks.",
+    title: "Watch the licensing walkthrough",
+    body: "Start with the six-minute 2026 process so you know the correct order for your course, exam, fingerprints, application, and license verification.",
   },
   {
     n: 2,
@@ -51,19 +52,25 @@ export default function UnlicensedOverview() {
           </p>
         </div>
 
-        <div className="mt-10 sm:mt-12 flex justify-center">
+        <div className="mt-10 sm:mt-12 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <Link
+            to="/get-licensed#licensing-video"
+            className="inline-block bg-teal-500 hover:bg-teal-400 transition-colors text-black font-bold text-base sm:text-lg px-7 py-4 rounded-lg shadow-lg shadow-teal-500/20"
+          >
+            Watch: How to Get Your Life Insurance License
+          </Link>
           <a
             href={CALENDLY_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-block bg-teal-500 hover:bg-teal-400 transition-colors text-black font-bold text-base sm:text-lg px-7 py-4 rounded-lg shadow-lg shadow-teal-500/20"
+            className="inline-block rounded-lg border border-border px-7 py-4 text-base font-semibold text-white transition-colors hover:border-teal-500/50 hover:bg-teal-500/10 sm:text-lg"
           >
-            Book Sam's Calendar
+            Ask a manager
           </a>
         </div>
 
         <p className="mt-3 text-center text-xs text-muted-foreground">
-          15 minutes. No pressure. Just a straight conversation.
+          Watch first. Then use the roadmap or ask a manager if you get stuck.
         </p>
       </section>
 
@@ -103,17 +110,15 @@ export default function UnlicensedOverview() {
 
         <div className="mt-10 sm:mt-12 rounded-xl border border-teal-500/20 bg-teal-500/5 p-5 sm:p-6 text-center">
           <p className="text-sm sm:text-base text-slate-200 leading-relaxed">
-            Pick a time on Sam's calendar and we'll map out exactly what your
-            first 2 months at Apex look like.
+            Put the licensing steps in the right order before you spend money,
+            schedule an exam, or submit an application.
           </p>
-          <a
-            href={CALENDLY_URL}
-            target="_blank"
-            rel="noopener noreferrer"
+          <Link
+            to="/get-licensed#licensing-video"
             className="mt-5 inline-block bg-teal-500 hover:bg-teal-400 transition-colors text-black font-bold text-base px-6 py-3 rounded-lg"
           >
-            Book Sam's Calendar
-          </a>
+            Watch the licensing walkthrough
+          </Link>
         </div>
 
         <p className="mt-10 text-center text-xs text-muted-foreground">

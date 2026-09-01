@@ -16,7 +16,6 @@ import {
   ShieldCheck,
   LifeBuoy,
   Circle,
-  Play,
   Download,
   ArrowUpRight,
   Sparkles,
@@ -25,12 +24,8 @@ import { GradientButton } from "@/components/ui/gradient-button";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { SCHEDULING_LINKS } from "@/lib/apexConfig";
+import { LICENSING_VIDEO } from "@/lib/licensingMedia";
 import { supabase } from "@/integrations/supabase/client";
-
-// Canonical overview video — MUST match BUMP_VERSION suffix (E2VJ1v85IRE).
-// Sam directive 2026-06-07: single video ID everywhere.
-const OVERVIEW_VIDEO_ID = "E2VJ1v85IRE";
-const OVERVIEW_VIDEO_TITLE = "Getting Licensed with APEX — Sam James";
 
 // Existing partner/course/document URLs (previously hard-coded in this page).
 // Kept identical so no live behavior regresses for applicants clicking through.
@@ -54,47 +49,21 @@ interface ApplicantProgress {
   first_name: string | null;
 }
 
-// Local LazyYouTube — mirrors the pattern in HeroSection so we don't pull
-// the SDK on first paint. Keeps LCP tight on mobile even though this page
-// is behind a CTA click.
-function LazyOverviewVideo({
-  videoId,
-  title,
-}: {
-  videoId: string;
-  title: string;
-}) {
-  const [loaded, setLoaded] = useState(false);
+function LicensingVideoPlayer() {
   return (
-    <div className="relative aspect-video rounded-md overflow-hidden border border-border/60 bg-black">
-      {loaded ? (
-        <iframe
-          src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0`}
-          title={title}
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-          className="absolute inset-0 w-full h-full"
-        />
-      ) : (
-        <button
-          type="button"
-          onClick={() => setLoaded(true)}
-          aria-label={`Play ${title}`}
-          className="absolute inset-0 w-full h-full flex items-center justify-center group"
-        >
-          <img
-            src={`/img/hero-poster-${videoId}.jpg`}
-            alt={title}
-            loading="lazy"
-            decoding="async"
-            className="absolute inset-0 w-full h-full object-cover"
-          />
-          <span className="absolute inset-0 bg-black/40 group-hover:bg-black/30 transition-colors" />
-          <span className="relative h-16 w-16 rounded-full bg-primary/95 flex items-center justify-center group-hover:scale-105 transition-transform">
-            <Play className="h-8 w-8 text-primary-foreground fill-primary-foreground ml-1" />
-          </span>
-        </button>
-      )}
+    <div className="relative aspect-video overflow-hidden rounded-xl border border-primary/25 bg-black shadow-[0_18px_60px_hsl(var(--primary)/0.12)]">
+      <video
+        controls
+        playsInline
+        preload="metadata"
+        poster={LICENSING_VIDEO.poster}
+        aria-label={LICENSING_VIDEO.title}
+        className="absolute inset-0 h-full w-full bg-black object-contain"
+      >
+        <source src={LICENSING_VIDEO.src} type="video/mp4" />
+        Your browser cannot play this video. Open the licensing roadmap in a
+        current browser to continue.
+      </video>
     </div>
   );
 }
@@ -206,7 +175,7 @@ const POST_LICENSE_STEPS = [
 ];
 
 export default function GetLicensed() {
-  usePageTitle("Get Licensed · Start Your APEX Career");
+  usePageTitle("How to Get Your Life Insurance License · APEX Financial");
   const [searchParams] = useSearchParams();
   const applicationId = searchParams.get("applicationId");
   const email = searchParams.get("email");
@@ -262,19 +231,19 @@ export default function GetLicensed() {
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 leading-tight">
             {firstName ? (
               <>
-                {firstName}, your path to{" "}
-                <span className="gradient-text">Getting Licensed</span>
+                {firstName}, here&apos;s how to get your{" "}
+                <span className="gradient-text">Life Insurance License</span>
               </>
             ) : (
               <>
-                Your Path to{" "}
-                <span className="gradient-text">Getting Licensed</span>
+                How to Get Your{" "}
+                <span className="gradient-text">Life Insurance License</span>
               </>
             )}
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto">
-            Complete the steps below to start your insurance career with APEX.
-            Licensing costs are covered.
+            Start with the complete 2026 walkthrough, then follow the guide and
+            course steps in order. APEX keeps the whole path in one place.
           </p>
           {isLicensed ? (
             <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-300">
@@ -284,39 +253,48 @@ export default function GetLicensed() {
           ) : null}
         </header>
 
-        {/* 3 Progress Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 sm:mb-8">
-          {/* Step 1 — Watch Overview */}
-          <GlassCard className="p-5 sm:p-6 flex flex-col">
-            <div className="flex items-center gap-3 mb-3">
-              <span className="text-xs font-mono tracking-wider text-primary/80">
-                01
-              </span>
-              <span className="h-px flex-1 bg-border/40" />
-              <span className="h-9 w-9 rounded-full bg-primary/15 flex items-center justify-center">
-                <PlayCircle className="h-5 w-5 text-primary" />
-              </span>
-            </div>
-            <h2 className="font-bold text-base mb-1.5">
-              Watch the Overview Video
-            </h2>
-            <p className="text-sm text-muted-foreground mb-4">
-              3-minute welcome from Sam James — how APEX works and what to
-              expect.
-            </p>
-
-            <div className="mt-auto">
-              <LazyOverviewVideo
-                videoId={OVERVIEW_VIDEO_ID}
-                title={OVERVIEW_VIDEO_TITLE}
-              />
-              <p className="text-xs text-muted-foreground mt-3 italic">
-                This is the same video every APEX agent watches on day one.
+        {/* Step 1 — canonical licensing video */}
+        <GlassCard
+          id="licensing-video"
+          className="mb-4 scroll-mt-4 overflow-hidden border border-primary/25 p-4 sm:p-6"
+        >
+          <div className="grid items-center gap-5 lg:grid-cols-[minmax(0,0.72fr)_minmax(0,1.45fr)] lg:gap-7">
+            <div>
+              <div className="mb-4 flex items-center gap-3">
+                <span className="font-mono text-xs tracking-wider text-primary/80">01</span>
+                <span className="h-px flex-1 bg-border/40" />
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/15">
+                  <PlayCircle className="h-5 w-5 text-primary" />
+                </span>
+              </div>
+              <div className="mb-3 flex flex-wrap gap-2">
+                <Badge variant="outline" className="border-primary/35 text-primary">Watch first</Badge>
+                <Badge variant="outline" className="border-border/50 text-muted-foreground">2026 process</Badge>
+                <Badge variant="outline" className="border-border/50 text-muted-foreground">
+                  <Clock className="mr-1 h-3 w-3" />
+                  {LICENSING_VIDEO.durationLabel}
+                </Badge>
+              </div>
+              <h2 className="text-xl font-bold leading-tight sm:text-2xl">
+                {LICENSING_VIDEO.title}
+              </h2>
+              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                {LICENSING_VIDEO.description}
               </p>
-              {/* No viewed_overview_at column exists on applications — per
-                  spec, no fake completion button here. */}
+              <div className="mt-5 rounded-lg border border-border/40 bg-muted/15 p-3">
+                <p className="text-xs font-semibold text-foreground">Your order after watching</p>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  Review the checklist, start XCEL, schedule the exam, submit fingerprints,
+                  apply with your state, then confirm the license is issued.
+                </p>
+              </div>
             </div>
-          </GlassCard>
+            <LicensingVideoPlayer />
+          </div>
+        </GlassCard>
+
+        {/* Steps 2–3 — keep the next actions directly under the video. */}
+        <div id="licensing-actions" className="mb-6 grid grid-cols-1 gap-4 sm:mb-8 md:grid-cols-2">
 
           {/* Step 2 — Licensing Guide */}
           <GlassCard className="p-5 sm:p-6 flex flex-col">

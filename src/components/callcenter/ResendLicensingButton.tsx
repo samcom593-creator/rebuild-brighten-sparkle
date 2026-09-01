@@ -75,7 +75,7 @@ export function ResendLicensingButton({
   const tooltipText =
     licenseStatus === "licensed"
       ? "Send onboarding steps & Calendly link"
-      : "Send licensing video, guide, and course link";
+      : "Send How to Get Your Life Insurance License, the guide, and the course link";
 
   return (
     <TooltipProvider>

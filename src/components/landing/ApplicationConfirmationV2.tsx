@@ -78,7 +78,7 @@ export function ApplicationConfirmationV2({
     // The edge fn looks up email by applicationId server-side — we don't
     // need to wait for the status snapshot to load.
     const redirectPath =
-      license === "licensed" ? "/start-contracting" : "/get-licensed";
+      license === "licensed" ? "/start-contracting" : "/get-licensed#licensing-video";
 
     (async () => {
       try {
@@ -159,8 +159,8 @@ function UnlicensedBody({
 }) {
   // Pre-fill applicant email into the get-licensed URL so XCEL recognizes them.
   const courseUrl = email
-    ? `/get-licensed?email=${encodeURIComponent(email)}`
-    : "/get-licensed";
+    ? `/get-licensed?email=${encodeURIComponent(email)}#licensing-video`
+    : "/get-licensed#licensing-video";
 
   // Primary CTA: when the magic-link mint succeeded, clicking the button
   // auto-logs the applicant in and drops them straight onto
@@ -175,8 +175,8 @@ function UnlicensedBody({
       <div className="rounded-md border border-border/40 bg-muted/20 p-4 sm:p-5 space-y-3">
         <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Your 3-step path</p>
         <Step done label="Application received" />
-        <Step current label="Activate your APEX account" detail={autoLoginUrl ? "One click signs you in and opens your licensing roadmap." : "Your licensing roadmap is ready."} />
-        <Step label="Complete course → exam → fingerprints → license" />
+        <Step current label="Watch: How to Get Your Life Insurance License" detail="A six-minute walkthrough puts every step in the right order." />
+        <Step label="Start course → exam → fingerprints → license" />
       </div>
 
       {/* Primary CTA — auto-login + course when the magic link is ready */}
@@ -184,14 +184,14 @@ function UnlicensedBody({
         <GradientButton asChild className="w-full text-base h-14" size="lg">
           <a href={primaryHref} className="block">
             <Sparkles className="h-5 w-5 mr-2" />
-            Activate account &amp; open roadmap
+            Watch licensing video &amp; open roadmap
           </a>
         </GradientButton>
       ) : (
         <GradientButton asChild className="w-full text-base h-14" size="lg">
           <Link to={primaryHref} className="block">
             <Sparkles className="h-5 w-5 mr-2" />
-            Open your licensing roadmap
+            Watch licensing video &amp; open roadmap
           </Link>
         </GradientButton>
       )}

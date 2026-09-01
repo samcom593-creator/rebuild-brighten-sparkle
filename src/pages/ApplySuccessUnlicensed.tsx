@@ -3,7 +3,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { ApplicationConfirmationV2 as ApplicationConfirmation } from "@/components/landing/ApplicationConfirmationV2";
 
 export default function ApplySuccessUnlicensed() {
-  usePageTitle("Get Licensed · APEX Financial");
+  usePageTitle("How to Get Your Life Insurance License · APEX Financial");
   const [search] = useSearchParams();
   const applicationId = search.get("aid") || search.get("application_id") || null;
 

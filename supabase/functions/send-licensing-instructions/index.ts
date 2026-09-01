@@ -236,8 +236,8 @@ const handler = async (req: Request): Promise<Response> => {
                 "4",
                 "Learn the Licensing Process",
                 "Watch the overview, then work the course modules in order until you are ready for the state exam.",
-                "https://youtu.be/i1e5p-GEfAU",
-                "🎬 Watch Licensing Overview",
+                "https://apex-financial.org/get-licensed#licensing-video",
+                "🎬 How to Get Your Life Insurance License",
                 "#4CAF50",
                 "76, 175, 80",
               )}

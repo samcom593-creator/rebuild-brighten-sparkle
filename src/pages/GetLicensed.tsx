@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { motion } from "framer-motion";
@@ -25,6 +25,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { SCHEDULING_LINKS } from "@/lib/apexConfig";
 import { LICENSING_VIDEO } from "@/lib/licensingMedia";
+import { ONBOARDING_VIDEO } from "@/lib/onboardingMedia";
 import { supabase } from "@/integrations/supabase/client";
 
 // Existing partner/course/document URLs (previously hard-coded in this page).
@@ -49,7 +50,7 @@ interface ApplicantProgress {
   first_name: string | null;
 }
 
-function LicensingVideoPlayer() {
+function LicensingVideoPlayer({ onEnded }: { onEnded: () => void }) {
   return (
     <div className="relative aspect-video overflow-hidden rounded-xl border border-primary/25 bg-black shadow-[0_18px_60px_hsl(var(--primary)/0.12)]">
       <video
@@ -58,6 +59,7 @@ function LicensingVideoPlayer() {
         preload="metadata"
         poster={LICENSING_VIDEO.poster}
         aria-label={LICENSING_VIDEO.title}
+        onEnded={onEnded}
         className="absolute inset-0 h-full w-full bg-black object-contain"
       >
         <source src={LICENSING_VIDEO.src} type="video/mp4" />
@@ -181,6 +183,16 @@ export default function GetLicensed() {
   const email = searchParams.get("email");
   const [progress, setProgress] = useState<ApplicantProgress | null>(null);
   const [loading, setLoading] = useState<boolean>(!!(applicationId || email));
+  const onboardingVideoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const targetId = decodeURIComponent(window.location.hash.replace(/^#/, ""));
+    if (!targetId) return;
+    const timer = window.setTimeout(() => {
+      document.getElementById(targetId)?.scrollIntoView({ block: "start" });
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -209,6 +221,17 @@ export default function GetLicensed() {
 
   const onboardingCallUrl = SCHEDULING_LINKS.licensed;
   const firstName = progress?.first_name?.trim();
+
+  const startOnboardingVideo = () => {
+    const video = onboardingVideoRef.current;
+    document.getElementById("apex-onboarding")?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+    if (!video) return;
+    video.currentTime = 0;
+    void video.play().catch(() => undefined); // empty-catch-allow:controls-remain-as-fallback
+  };
 
   return (
     <main className="min-h-screen bg-background py-6 sm:py-10 px-3 sm:px-4">
@@ -242,8 +265,8 @@ export default function GetLicensed() {
             )}
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto">
-            Start with the complete 2026 walkthrough, then follow the guide and
-            course steps in order. APEX keeps the whole path in one place.
+            Watch the two videos in order, then follow the guide and course
+            steps. APEX keeps the whole path in one place.
           </p>
           {isLicensed ? (
             <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-300">
@@ -289,18 +312,71 @@ export default function GetLicensed() {
                 </p>
               </div>
             </div>
-            <LicensingVideoPlayer />
+            <LicensingVideoPlayer onEnded={startOnboardingVideo} />
           </div>
         </GlassCard>
 
-        {/* Steps 2–3 — keep the next actions directly under the video. */}
+        {/* Step 2 — this follows the licensing walkthrough automatically. */}
+        <GlassCard
+          id="apex-onboarding"
+          className="mb-4 scroll-mt-4 overflow-hidden border border-primary/25 p-4 sm:p-6"
+        >
+          <div className="grid items-center gap-5 lg:grid-cols-[minmax(0,0.72fr)_minmax(0,1.45fr)] lg:gap-7">
+            <div>
+              <div className="mb-4 flex items-center gap-3">
+                <span className="font-mono text-xs tracking-wider text-primary/80">02</span>
+                <span className="h-px flex-1 bg-border/40" />
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/15">
+                  <Crown className="h-5 w-5 text-primary" />
+                </span>
+              </div>
+              <div className="mb-3 flex flex-wrap gap-2">
+                <Badge variant="outline" className="border-primary/35 text-primary">Watch next</Badge>
+                <Badge variant="outline" className="border-border/50 text-muted-foreground">Starts when video 1 ends</Badge>
+                <Badge variant="outline" className="border-border/50 text-muted-foreground">
+                  <Clock className="mr-1 h-3 w-3" />
+                  {ONBOARDING_VIDEO.durationLabel}
+                </Badge>
+              </div>
+              <h2 className="text-xl font-bold leading-tight sm:text-2xl">
+                {ONBOARDING_VIDEO.title}
+              </h2>
+              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                {ONBOARDING_VIDEO.description}
+              </p>
+              <div className="mt-5 rounded-lg border border-border/40 bg-muted/15 p-3">
+                <p className="text-xs font-semibold text-foreground">What this locks in</p>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  Your communication hub, licensing handoff, onboarding call,
+                  team meetings, and the exact next destination for your path.
+                </p>
+              </div>
+            </div>
+            <div className="relative aspect-video overflow-hidden rounded-xl border border-primary/25 bg-black shadow-[0_18px_60px_hsl(var(--primary)/0.12)]">
+              <video
+                ref={onboardingVideoRef}
+                controls
+                playsInline
+                preload="metadata"
+                poster={ONBOARDING_VIDEO.poster}
+                aria-label={ONBOARDING_VIDEO.title}
+                className="absolute inset-0 h-full w-full bg-black object-contain"
+              >
+                <source src={ONBOARDING_VIDEO.src} type="video/mp4" />
+                Your browser cannot play this video. Use a current browser to continue.
+              </video>
+            </div>
+          </div>
+        </GlassCard>
+
+        {/* Steps 3–4 — keep the next actions directly under both videos. */}
         <div id="licensing-actions" className="mb-6 grid grid-cols-1 gap-4 sm:mb-8 md:grid-cols-2">
 
-          {/* Step 2 — Licensing Guide */}
+          {/* Step 3 — Licensing Guide */}
           <GlassCard className="p-5 sm:p-6 flex flex-col">
             <div className="flex items-center gap-3 mb-3">
               <span className="text-xs font-mono tracking-wider text-primary/80">
-                02
+                03
               </span>
               <span className="h-px flex-1 bg-border/40" />
               <span className="h-9 w-9 rounded-full bg-primary/15 flex items-center justify-center">
@@ -394,11 +470,11 @@ export default function GetLicensed() {
             </ul>
           </GlassCard>
 
-          {/* Step 3 — Course */}
+          {/* Step 4 — Course */}
           <GlassCard className="p-5 sm:p-6 flex flex-col">
             <div className="flex items-center gap-3 mb-3">
               <span className="text-xs font-mono tracking-wider text-primary/80">
-                03
+                04
               </span>
               <span className="h-px flex-1 bg-border/40" />
               <span className="h-9 w-9 rounded-full bg-primary/15 flex items-center justify-center">

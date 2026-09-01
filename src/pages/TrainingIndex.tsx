@@ -12,6 +12,7 @@ import {
   TrendingUp,
   Users,
   ExternalLink,
+  PlayCircle,
 } from "lucide-react";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -26,6 +27,15 @@ import { Badge } from "@/components/ui/badge";
 
 const DESTINATIONS = [
   {
+    title: "Start Here: APEX Onboarding",
+    subtitle: "The official new-agent briefing for licensing, communication, meetings, and your next steps.",
+    href: "/get-licensed#apex-onboarding",
+    icon: PlayCircle,
+    highlight: true,
+    badge: "New agent · 1:45",
+    external: false,
+  },
+  {
     // 2026-08-10: the external password-gated apex-resources.vercel.app hub
     // now renders in-app at /dashboard/training-hub, live from the same
     // content API — this replaced both the external link and the stale
@@ -34,7 +44,7 @@ const DESTINATIONS = [
     subtitle: "Recorded trainings, courses, scripts, and PDFs — live from the APEX content library, with progress tracking.",
     href: "/dashboard/training-hub",
     icon: BookOpen,
-    highlight: true,
+    highlight: false,
     badge: "Courses · Recordings · Library",
     external: false,
   },

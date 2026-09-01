@@ -92,7 +92,7 @@ export default function JoinLink() {
           setLoadingPrefill(false);
           return;
         }
-        const resp = (data ?? {}) as PrefillResponse;
+        const resp = (data ?? {}) as unknown as PrefillResponse;
         if (!resp.ok) {
           setInvalid(resp.reason ?? "invalid_or_used");
           setLoadingPrefill(false);
@@ -183,9 +183,13 @@ export default function JoinLink() {
           ? "Locked in. Your manager will reach out fast."
           : "You're in. We'll be in touch.",
       );
-      const redirect = (data as { redirect_url?: string })?.redirect_url;
-      if (redirect) nav(redirect);
-      else nav("/get-licensed");
+      const response = data as { redirect_url?: string; application_id?: string };
+      const nextUrl = licensed
+        ? response.redirect_url || (response.application_id ? `/status/${response.application_id}` : "/")
+        : response.application_id
+          ? `/get-licensed?applicationId=${encodeURIComponent(response.application_id)}#licensing-video`
+          : "/get-licensed#licensing-video";
+      nav(nextUrl);
     } catch (err) {
       console.error("consume-invite-token (join) failed", err);
       toast.error("Network hiccup. Try again in a moment.");
@@ -352,7 +356,7 @@ export default function JoinLink() {
             <div className="flex items-center justify-center gap-1.5 pt-1 text-[11px] text-muted-foreground">
               <ShieldCheck className="h-3 w-3" />
               <span>
-                One-use link
+                One-use link · securely attributed to your APEX manager
                 {expiresAt
                   ? ` · expires ${new Date(expiresAt).toLocaleDateString()}`
                   : ""}

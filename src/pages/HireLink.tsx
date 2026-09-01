@@ -11,7 +11,7 @@
  * Invalid/used/expired tokens render <InviteTokenInvalid /> — no form.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Crown, Loader2, ArrowRight, ShieldCheck } from "lucide-react";
@@ -22,6 +22,10 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import {
+  PostSubmitOnboardingVideo,
+  type PostSubmitOnboardingVideoHandle,
+} from "@/components/onboarding/PostSubmitOnboardingVideo";
 
 interface Prefill {
   full_name?: string | null;
@@ -64,6 +68,7 @@ export default function HireLink() {
   const [licensedHire, setLicensedHire] = useState<boolean | null>(null);
   const [lockedLicenseStatus, setLockedLicenseStatus] = useState<"licensed" | "unlicensed" | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const onboardingPlayerRef = useRef<PostSubmitOnboardingVideoHandle>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -74,7 +79,7 @@ export default function HireLink() {
         return;
       }
       try {
-        const { data, error } = await (supabase as any).rpc("get_invite_token_prefill", {
+        const { data, error } = await supabase.rpc("get_invite_token_prefill", {
           p_token: token,
         });
         if (cancelled) return;
@@ -130,6 +135,7 @@ export default function HireLink() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!token || !canSubmit || submitting) return;
+    const onboardingPrepared = onboardingPlayerRef.current?.prepare() ?? false;
     setSubmitting(true);
     try {
       const { data, error } = await supabase.functions.invoke(
@@ -164,11 +170,13 @@ export default function HireLink() {
         } else {
           toast.error(`Couldn't activate: ${code}`);
         }
+        if (onboardingPrepared) await onboardingPlayerRef.current?.cancel();
         setSubmitting(false);
         return;
       }
       if (!data?.ok) {
         toast.error("Activation failed. Ask Sam for a fresh link.");
+        if (onboardingPrepared) await onboardingPlayerRef.current?.cancel();
         setSubmitting(false);
         return;
       }
@@ -177,11 +185,16 @@ export default function HireLink() {
       // /agent-hub does not exist — a just-hired agent was landing on the
       // NotFound catch-all right after "You're in." Send them to the real
       // agent home (or /agent-login if the session isn't established yet).
-      if (redirect) nav(redirect);
-      else nav("/agent-portal?welcome=1");
+      const nextUrl = redirect || "/agent-portal?welcome=1";
+      if (onboardingPrepared) {
+        await onboardingPlayerRef.current?.start(nextUrl);
+      } else {
+        nav(nextUrl);
+      }
     } catch (err) {
       console.error("consume-invite-token failed", err);
       toast.error("Network hiccup. Try again in a moment.");
+      if (onboardingPrepared) await onboardingPlayerRef.current?.cancel();
       setSubmitting(false);
     }
   }
@@ -200,6 +213,10 @@ export default function HireLink() {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-10 bg-background">
+      <PostSubmitOnboardingVideo
+        ref={onboardingPlayerRef}
+        onFinished={(nextUrl) => nav(nextUrl)}
+      />
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}

@@ -376,7 +376,19 @@ fi
 # per landing_live_stats() key so a future Lovable/AI completion can't re-
 # introduce the 104/95/123 lie that clamped truth=41 UPWARD twice (feb05b97
 # fix + 86f8d98e finish). Cost when fired: ~30ms (6 small files × 6 keys).
-if match '^(src/components/landing/.*\.(tsx?|jsx?)$|src/pages/Landing\.tsx$|scripts/check-landing-truth-floor\.mjs$)'; then
+# MP-373: the trigger used to be a SECOND hand list, and it had drifted off the
+# guard's own TRACKED_FILES -- it named src/pages/Landing.tsx (gone from the
+# repo) and missed src/pages/Apply.tsx, the page that shipped the stale `?? 104`
+# floor this guard exists to stop. The guard now publishes its list and this
+# asks for it, so the two cannot come apart again. If that call fails for any
+# reason we fall back to running the guard, never to skipping it.
+_LTF_TRACKED=$(node scripts/check-landing-truth-floor.mjs --list-tracked 2>/dev/null)
+if [ -z "$_LTF_TRACKED" ]; then
+  _LTF_PAT='^(src/components/landing/.*\.(tsx?|jsx?)$|scripts/check-landing-truth-floor\.mjs$)'
+else
+  _LTF_PAT="^($(printf '%s' "$_LTF_TRACKED" | sed 's/[.[\*^$()+?{|]/\\&/g' | paste -sd'|' -)|src/components/landing/.*\.(tsx?|jsx?)$|scripts/check-landing-truth-floor\.mjs)$"
+fi
+if match "$_LTF_PAT"; then
   echo "[pre-commit] Landing-truth-floor-affecting file staged — running check:landing-truth-floor…"
   node scripts/check-landing-truth-floor.mjs
 fi

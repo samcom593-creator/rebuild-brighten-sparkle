@@ -31,6 +31,23 @@ const TRACKED_FILES = [
   "src/pages/SeminarPage.tsx",
 ];
 
+// MP-373: pre-commit carried its OWN hand list of which paths should fire this
+// guard, and the two lists had come apart exactly where it mattered. The
+// trigger matched src/components/landing/** plus src/pages/Landing.tsx -- a
+// file that no longer exists -- while TRACKED_FILES also covers
+// src/pages/Apply.tsx and src/pages/SeminarPage.tsx. Apply.tsx is the page that
+// shipped the stale `?? 104` active-agent floor in the first place and was
+// added here on 2026-08-02 for that reason; editing it never fired this guard
+// at commit time. (verify:core still ran it on push, so nothing was unguarded
+// outright -- the commit-time leg simply claimed reach it did not have.)
+//
+// The list is now published instead of duplicated: pre-commit asks the guard
+// which files it tracks. One source, two callers.
+if (process.argv.includes("--list-tracked")) {
+  console.log(TRACKED_FILES.join("\n"));
+  process.exit(0);
+}
+
 // Ceiling = max allowed `?? N` fallback per key. Truth as of 2026-06-19:
 // active_agents=41, applications_30d=131, carriers_partnered=22.
 // MP-370: the ceiling is no longer the only bound, because a hand-typed
@@ -87,10 +104,44 @@ if (TRUTH && TRUTH_AGE_DAYS > 30) {
 function boundFor(key) {
   const ceiling = CEILINGS[key];
   const measured = TRUTH && typeof TRUTH[key] === "number" ? TRUTH[key] : null;
-  return measured === null ? ceiling : Math.min(ceiling, measured);
+  if (measured === null) return ceiling === undefined ? null : ceiling;
+  return ceiling === undefined ? measured : Math.min(ceiling, measured);
 }
 
-const KEY_NAMES = Object.keys(CEILINGS);
+// MP-373: the graded key set used to be Object.keys(CEILINGS) -- a hand list,
+// maintained separately from the RPC whose numbers it claims to bound. Measured
+// 2026-09-01, the two had already come apart in BOTH directions:
+//
+//   * three CEILINGS entries -- people_count, total_people_count,
+//     hires_this_week -- are not keys of landing_live_stats() and occur ZERO
+//     times anywhere in src/. They can never match a line, so they cost the
+//     scanner nothing and earned the OK line a coverage number ("6 keys") that
+//     was really 3.
+//   * two keys the RPC genuinely returns -- applications_total (777) and
+//     hires_recent (12) -- had no ceiling entry at all, so a `?? 777` fallback
+//     on the public landing would have been invisible to this guard. A
+//     cumulative all-time counter is the loudest possible number to render
+//     stale under a label reading "Live".
+//
+// Neither is a lie today: no surface currently writes a fallback for either
+// ungraded key (verified across all of src/, not just the tracked files). This
+// is prevention of a blind spot, and the OK line no longer overstates reach.
+//
+// The key set is now DERIVED from the operand: every numeric key present in
+// live truth, unioned with the hand ceilings so a non-RPC surface can still be
+// bounded by hand. One source for "which numbers exist", so a new RPC key is
+// graded the day it ships instead of the day someone remembers this file.
+const KEY_NAMES = [...new Set([
+  ...Object.keys(TRUTH ?? {}).filter((k) => typeof TRUTH[k] === "number"),
+  ...Object.keys(CEILINGS),
+])].filter((k) => boundFor(k) !== null);
+
+// Ceilings that bound nothing: reported, never graded. A dead entry is noise in
+// the coverage count, not a rendered lie -- going red on it would be the
+// permanently-red guard this repo keeps closing.
+const UNBOUND_KEYS = Object.keys(CEILINGS).filter(
+  (k) => !(TRUTH && typeof TRUTH[k] === "number")
+);
 
 
 /**
@@ -133,9 +184,19 @@ function stripComments(src) {
 
 const violations = [];
 
-for (const rel of TRACKED_FILES) {
+// MP-373: a tracked file that no longer exists was silently `continue`d, so the
+// OK line counted 8 surfaces while scanning 7 -- src/pages/Landing.tsx has been
+// gone from this repo for some time. Absent is REPORTED, never graded: a
+// renamed surface is a stale list, not a rendered lie, and failing on it is the
+// permanently-red guard this repo keeps closing. What it must never do again is
+// count toward coverage.
+const MISSING_FILES = TRACKED_FILES.filter(
+  (rel) => !fs.existsSync(path.join(repoRoot, rel))
+);
+const SCANNED_FILES = TRACKED_FILES.filter((rel) => !MISSING_FILES.includes(rel));
+
+for (const rel of SCANNED_FILES) {
   const abs = path.join(repoRoot, rel);
-  if (!fs.existsSync(abs)) continue;
   // Comments are documentation, not rendered numbers.
   const src = stripComments(fs.readFileSync(abs, "utf8"));
   const lines = src.split("\n");
@@ -151,7 +212,7 @@ for (const rel of TRACKED_FILES) {
         const fallback = Number.parseInt(m[1], 10);
         if (fallback > boundFor(key)) {
           violations.push(
-            `${rel}:${i + 1}: ?? ${fallback} fallback for landing_live_stats.${key} exceeds ${boundFor(key)} (hand ceiling ${CEILINGS[key]}, last measured live ${TRUTH?.[key] ?? "unknown"}) — clamps truth UP and lies on the public landing. Lower the fallback; raising the ceiling does not make the number true.`
+            `${rel}:${i + 1}: ?? ${fallback} fallback for landing_live_stats.${key} exceeds ${boundFor(key)} (hand ceiling ${CEILINGS[key] ?? "none"}, last measured live ${TRUTH?.[key] ?? "unknown"}) — clamps truth UP and lies on the public landing. Lower the fallback; raising the ceiling does not make the number true.`
           );
         }
       }
@@ -163,7 +224,7 @@ for (const rel of TRACKED_FILES) {
         const fallback = Number.parseInt(m2[1], 10);
         if (fallback > boundFor(key)) {
           violations.push(
-            `${rel}:${i + 1}: HARDCODED_FLOOR.${key}=${fallback} exceeds ceiling ${CEILINGS[key]} — pick() will clamp truth UP. Lower the floor or raise the ceiling in scripts/check-landing-truth-floor.mjs.`
+            `${rel}:${i + 1}: HARDCODED_FLOOR.${key}=${fallback} exceeds ${boundFor(key)} (hand ceiling ${CEILINGS[key] ?? "none"}, last measured live ${TRUTH?.[key] ?? "unknown"}) — pick() will clamp truth UP. Lower the floor. Raising the ceiling does NOT clear this when live truth is the binding side.`
           );
         }
       }
@@ -182,5 +243,11 @@ if (violations.length > 0) {
 }
 
 console.log(
-  `check:landing-truth-floor OK — ${TRACKED_FILES.length} surfaces × ${KEY_NAMES.length} keys, no fallback exceeds ceiling.`
+  `check:landing-truth-floor OK — ${SCANNED_FILES.length} surface(s) scanned × ${KEY_NAMES.length} bindable key(s) (${KEY_NAMES.join(", ")}), no fallback exceeds its bound.` +
+    (MISSING_FILES.length
+      ? ` NOTE: ${MISSING_FILES.length} tracked surface(s) do not exist and were NOT scanned (${MISSING_FILES.join(", ")}) — remove them from TRACKED_FILES or restore the file.`
+      : "") +
+    (UNBOUND_KEYS.length
+      ? ` NOTE: ${UNBOUND_KEYS.length} hand ceiling(s) bound nothing live (${UNBOUND_KEYS.join(", ")}) — bounded by hand ceiling only, not by measured truth.`
+      : "")
 );

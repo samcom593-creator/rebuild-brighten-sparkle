@@ -27,7 +27,7 @@ import type { ShippedItem } from "@/data/shipped-data";
 // check-metric-truth.mjs now recounts shipped-data.ts at commit time and fails
 // if this number disagrees. Do not hand-bump it past the real count again;
 // the guard prints the value to use.
-const SHIPPED_TOTAL = 347;
+const SHIPPED_TOTAL = 348;
 
 // Newest entries render first; the rest stay behind an explicit action so a
 // long history can never slow the first paint again.

@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { AgentDocuments } from "@/components/profile/AgentDocuments";
+import { AccountRoleControl } from "@/components/profile/AccountRoleControl";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent } from "@/components/ui/card";
@@ -270,6 +271,7 @@ function AgentProducerView({ agentId }: { agentId: string }) {
               )}>{a.license_status ?? "license unknown"}</Badge>
               {a.training_stage && <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-wide">{a.training_stage}</Badge>}
               {a.is_sync_only && <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-wide">sync only</Badge>}
+              <AccountRoleControl agentId={a.agent_id} agentName={a.full_name ?? "This agent"} />
             </div>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
               <span className="inline-flex items-center gap-1"><Mail className="h-3 w-3" />{a.email ?? <NotOnFile label="no email" />}</span>

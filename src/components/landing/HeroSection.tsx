@@ -298,7 +298,7 @@ export function HeroSection() {
             <div className="text-left">
               <p className="text-sm font-bold leading-tight">Samuel James</p>
               <p className="text-[11px] text-muted-foreground uppercase tracking-wider">
-                Founder · $1.2M income in one year
+                Founder · $1.2M income in first year
               </p>
             </div>
           </div>

@@ -38,7 +38,7 @@ describe("today production and landing elevation", () => {
     expect(hero).toContain("#030712");
     expect(hero).toContain("#C9A961");
     expect(hero).toContain("#D4AF37");
-    expect(hero).toContain("Founder · $1.2M income in one year");
+    expect(hero).toContain("Founder · $1.2M income in first year");
     expect(index).toContain("<AgencyOperatingSystemSection />");
     expect(operatingSystem).toContain("One platform. Every stage of agency growth.");
     expect(operatingSystem).toContain("Recruiting engine");

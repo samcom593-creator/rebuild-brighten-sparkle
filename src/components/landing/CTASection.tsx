@@ -15,12 +15,12 @@ import { applyHrefWithRef } from "@/lib/refSlug";
 // real number, so anonymous landings see the same pixels until they scroll/click.
 
 const benefits = [
-  "No experience required",
-  "Free training & mentorship",
-  "Exclusive warm leads provided",
-  "Work from anywhere",
-  "Daily pay",
-  "Production bonuses up to $25K/mo",
+  "Licensed and unlicensed routes",
+  "Multi-carrier contracting",
+  "Lead, dialer, CRM, and scripts",
+  "Live training and call review",
+  "Production and book visibility",
+  "Manager and agency-owner path",
 ];
 
 type LandingLiveStats = { active_agents: number };
@@ -61,13 +61,13 @@ export const CTASection = forwardRef<HTMLElement>((_, ref) => {
           </span>
 
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-6 text-[#f1f5f9] font-display">
-            Ready to{" "}
-            <span className="text-[#e8bb2b] text-glow">Run with the Standard?</span>
+            Do not join another agency.{" "}
+            <span className="text-[#e8bb2b] text-glow">Choose a platform to build on.</span>
           </h2>
 
           <p className="text-lg md:text-xl text-[#94a3b8] max-w-2xl mx-auto mb-8">
-            {activeAgents}+ agents are running the APEX system right now.
-            Your first $100K year is one application away.
+            {activeAgents}+ active agents are currently visible in the APEX system.
+            Every month you wait is a month without the skill, book, production history, or team you could be building.
           </p>
 
           {/* Benefits Grid */}
@@ -87,7 +87,7 @@ export const CTASection = forwardRef<HTMLElement>((_, ref) => {
           {/* Two CTA Buttons Side by Side */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link to={applyHref} className="inline-flex items-center justify-center gap-2 px-10 py-5 text-xl rounded-lg font-bold font-display bg-[#e8bb2b] text-[#030712] hover: transition-all duration-200 animate-pulse-glow group">
-              Start Your Application
+              Choose Your APEX Path
               <ArrowRight className="h-5 w-5 transition-base group-hover:translate-x-1" />
             </Link>
             <Link to="/schedule-call" className="inline-flex items-center justify-center gap-2 px-10 py-5 text-xl rounded-lg font-bold font-display border-2 border-[#e8bb2b] text-[#e8bb2b] bg-transparent hover:bg-[#e8bb2b]/10 transition-all duration-200">
@@ -96,7 +96,7 @@ export const CTASection = forwardRef<HTMLElement>((_, ref) => {
           </div>
 
           <p className="text-sm text-[#8395ab] mt-4">
-            5 minutes to apply • Real reply within 24 hours
+            5 minutes to apply • Independent-contractor opportunity • Income is not guaranteed
           </p>
         </div>
       </div>

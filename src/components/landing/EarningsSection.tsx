@@ -4,26 +4,26 @@ import { SectionHeading } from "@/components/ui/section-heading";
 
 const earningsData = {
   fullTime: {
-    label: "Licensed Path",
-    description: "You already have your state license",
-    headline: "Hit the phones day one",
-    supporting: "Warm leads on your phone, a dialer that auto-routes, and a manager on the daily huddle. Most new agents close their first deal inside 7 days.",
-    bullets: ["Warm leads, no fee", "Dialer + scripts", "Daily team huddle"],
+    label: "Licensed Producer",
+    description: "You already hold an active state license",
+    headline: "Activate the full production stack",
+    supporting: "Review carrier fit, complete contracting, learn the sales system, and enter production with your leads, calls, follow-up, and results visible in one place.",
+    bullets: ["Carrier contracting", "Lead + dialer access", "Coaching + production data"],
   },
   topProducer: {
-    label: "Pre-Licensing Path",
+    label: "Licensing Path",
     description: "Not licensed yet",
-    headline: "Licensed in 4 weeks",
-    supporting: "Course is on us. Pass the state exam, then we plug you straight into warm leads. No quotas, no waiting, no fee to start.",
-    bullets: ["Course paid for", "Pass the exam", "Straight into leads"],
+    headline: "Build the foundation once",
+    supporting: "Follow the licensing roadmap, complete the required course and exam, receive state approval, then move directly into contracting and the producer activation path.",
+    bullets: ["Licensing roadmap", "Course + exam support", "Direct contracting handoff"],
   },
 };
 
 const milestones = [
-  { icon: Clock, label: "First Sale", value: "Inside 7 days", description: "What most new agents see" },
-  { icon: TrendingUp, label: "Out of pocket", value: "$0", description: "No leads fee, course on us" },
-  { icon: Award, label: "Six Figures", value: "4-6 months", description: "To reach $100K+ pace" },
-  { icon: Users, label: "Build Team", value: "Year One", description: "Earn manager overrides" },
+  { icon: Clock, label: "Foundation", value: "Get Licensed", description: "Complete the legal entry requirement" },
+  { icon: TrendingUp, label: "Activation", value: "Get Contracted", description: "Connect carriers, tools, and training" },
+  { icon: Award, label: "Execution", value: "Produce", description: "Build skill and a measurable book" },
+  { icon: Users, label: "Leverage", value: "Build", description: "Develop people and agency infrastructure" },
 ];
 
 export function EarningsSection() {
@@ -36,9 +36,9 @@ export function EarningsSection() {
       
       <div className="container mx-auto px-4 relative z-10">
         <SectionHeading
-          badge="Earnings Potential"
-          title="How agents actually make money here"
-          subtitle="No hype, no posted screenshots, no fake checks. Pick your starting line — licensed or not — and see what your first 6 months look like."
+          badge="Choose Your Starting Point"
+          title="One brokerage. Two entry paths."
+          subtitle="Licensed and unlicensed applicants enter through different steps, then converge on the same standard: activate, produce, lead, and build."
         />
 
         {/* Earnings Toggle */}

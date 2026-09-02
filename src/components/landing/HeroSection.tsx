@@ -98,25 +98,25 @@ const carriers = [
 const stats = [
   { icon: TrendingUp, label: "Commission contracts", value: "70%–145%", color: "text-emerald-400" },
   { icon: Users, label: "Carriers on contract", value: "22 carriers", color: "text-info" },
-  { icon: Shield, label: "Course included, no fee", value: "Licensed in 4 wks", color: "text-amber-400" },
+  { icon: Shield, label: "Producer, builder, licensing", value: "3 entry paths", color: "text-amber-400" },
 ];
 
 const partnerPaths = [
   {
     title: "Agency Builders",
-    description: "Scale your downline with automated contracting ops, sub-agency hierarchy reporting, and top overrides.",
+    description: "Scale a real organization with recruiting attribution, contracting operations, team hierarchy, production reporting, and override visibility.",
     icon: Building2,
     track: "agency-builder",
   },
   {
     title: "Licensed Producers",
-    description: "Direct lines with 14+ top carriers, day-one script and portal access, and aggressive comp tiers up to 100%+.",
+    description: "Bring carrier contracting, lead access, scripts, CRM workflows, live coaching, and production intelligence into one platform.",
     icon: BadgeCheck,
     track: "licensed-producer",
   },
   {
     title: "Licensing Fast Track",
-    description: "XCEL pre-licensing prep, exam coaching, and contracting launched on day one after passing.",
+    description: "Follow a guided licensing roadmap with course support, exam preparation, and a direct handoff into contracting after approval.",
     icon: Route,
     track: "licensing-roadmap",
   },
@@ -213,8 +213,8 @@ export function HeroSection() {
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary" />
             </span>
             <span className="text-xs sm:text-sm text-foreground tracking-wide">
-              <span className="brand-gradient font-bold">Licensed & unlicensed</span>
-              <span className="text-muted-foreground"> paths open · new agents onboarding now</span>
+              <span className="brand-gradient font-bold">Independent IMO brokerage</span>
+              <span className="text-muted-foreground"> · producer, builder, and licensing paths</span>
             </span>
           </div>
 
@@ -224,13 +224,13 @@ export function HeroSection() {
             className="landing-scale-in landing-delay-100 font-display font-extrabold leading-[1.02] mb-5 tracking-tight"
             style={{ fontSize: "clamp(2.25rem, 5.5vw, 4rem)" }}
           >
-            <span className="block text-foreground">The Operating System for</span>
-            <span className="block brand-gradient">Elite Insurance Agencies</span>
+            <span className="block text-foreground">Build More Than a Book.</span>
+            <span className="block brand-gradient">Build a Business.</span>
           </h1>
 
           {/* Subheadline */}
           <p className="landing-fade-up landing-delay-200 text-base sm:text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto mb-10 leading-relaxed">
-            We partner with ambitious producers and agency builders to scale 6- and 7-figure operations on automated rails. Top carrier contracts, automated contracting, live production tracking, and a battle-tested training machine.
+            APEX combines carrier access, contracting, lead flow, sales training, production tracking, and recruiting infrastructure in one operating system—from licensing to agency ownership.
           </p>
 
           <div className="landing-fade-up landing-delay-300 mx-auto mb-10 grid max-w-5xl grid-cols-1 gap-3 text-left md:grid-cols-3">
@@ -264,7 +264,7 @@ export function HeroSection() {
           <div className="landing-fade-up landing-delay-300 flex flex-col items-center justify-center gap-3 mb-14">
             <Link
               to={applyHref}
-              onClick={() => track("hero_cta_click", { position: "hero", cta_label: "Start My Application" })}
+              onClick={() => track("hero_cta_click", { position: "hero", cta_label: "Choose My APEX Path" })}
               className="group relative"
             >
               <span
@@ -284,26 +284,26 @@ export function HeroSection() {
                   group-hover:bg-primary/90 transition-base
                 "
               >
-                Start My Application
+                Choose My APEX Path
                 <ArrowRight className="h-5 w-5 transition-base group-hover:translate-x-1" />
               </span>
             </Link>
             <p className="text-xs sm:text-sm text-muted-foreground text-center max-w-md">
-              Takes 90 seconds · auto-saves if you bounce · Sam replies within 24 hours
+              Takes 90 seconds · routes you by experience · income is not guaranteed
             </p>
             <a
               href="#hero-video"
               onClick={() => track("secondary_cta_click", { cta_label: "Watch the walkthrough" })}
               className="text-sm text-primary/90 hover:text-primary underline-offset-4 hover:underline transition-colors mt-1"
             >
-              Watch the 2-min walkthrough first →
+              See how the brokerage works →
             </a>
           </div>
 
           {/* Click-to-load operator story; kept below the decision paths so the
               enterprise offer and three primary audiences own the first fold. */}
           <div id="hero-video" className="landing-fade-up landing-delay-400 w-full max-w-2xl mx-auto mb-10 scroll-mt-24">
-            <LazyYouTube videoId="E2VJ1v85IRE" title="20 Years Old, $12 Million in Revenue. Samuel James." />
+            <LazyYouTube videoId="E2VJ1v85IRE" title="Inside APEX Financial: the producer-to-owner brokerage" />
           </div>
 
           {/* Founder credit — Brand Bible: "the face IS the brand".
@@ -335,7 +335,7 @@ export function HeroSection() {
             <div className="text-left">
               <p className="text-sm font-bold leading-tight">Samuel James</p>
               <p className="text-[11px] text-muted-foreground uppercase tracking-wider">
-                Founder · $120K/mo producer
+                Founder &amp; Managing Partner
               </p>
             </div>
           </div>
@@ -383,7 +383,7 @@ export function HeroSection() {
           {/* Carrier marquee — continuous scroll instead of single-cycle */}
           <div className="landing-fade-up landing-delay-600 rounded-md p-4 max-w-2xl mx-auto bg-card/90 backdrop-blur-xl border border-border/60 overflow-hidden shadow-md">
             <p className="text-[10px] text-muted-foreground mb-3 uppercase tracking-[0.25em] font-display font-semibold">
-              Partnered with top carriers
+              Independent carrier portfolio
             </p>
             <div className="relative h-10 overflow-hidden">
               <div

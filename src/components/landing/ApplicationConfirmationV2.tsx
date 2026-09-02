@@ -175,8 +175,8 @@ function UnlicensedBody({
       <div className="rounded-md border border-border/40 bg-muted/20 p-4 sm:p-5 space-y-3">
         <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Your 3-step path</p>
         <Step done label="Application received" />
-        <Step current label="Watch: How to Get Your Life Insurance License" detail="A six-minute walkthrough puts every step in the right order." />
-        <Step label="Start course → exam → fingerprints → license" />
+        <Step current label="Open your APEX licensing roadmap" detail="The license is the gateway to the producer, manager, and agency-owner paths." />
+        <Step label="Complete course → exam → fingerprints → state approval" />
       </div>
 
       {/* Primary CTA — auto-login + course when the magic link is ready */}
@@ -206,7 +206,7 @@ function UnlicensedBody({
       </GradientButton>
 
       <p className="text-xs text-center text-muted-foreground">
-        We also sent the course link to your email. Check inbox + spam.
+        Every week you wait is a week you are not contracting, training, producing, or building your book. We sent the roadmap to your email; check inbox + spam.
       </p>
     </div>
   );
@@ -232,8 +232,8 @@ function LicensedBody({
       <div className="rounded-md border border-border/40 bg-muted/20 p-4 sm:p-5 space-y-3">
         <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Activation path</p>
         <Step done label="Application received" />
-        <Step current label="Book your hire call" detail="The fastest path to your first check." />
-        <Step label="Activate portal → submit contracting → complete training" />
+        <Step current label="Book your brokerage activation call" detail="Your application does not activate carrier, platform, training, or lead access by itself." />
+        <Step label="Activate portal → contracting → training → production → ownership path" />
       </div>
 
       {/* Host disclosure — applicant should know whose calendar this is */}
@@ -251,7 +251,7 @@ function LicensedBody({
         <GradientButton asChild className="w-full text-base h-14" size="lg">
           <a href={SCHEDULING_LINKS.licensed} target="_blank" rel="noopener noreferrer" className="block">
             <Calendar className="h-5 w-5 mr-2" />
-            Book your hire call
+            Book your brokerage activation call
           </a>
         </GradientButton>
       )}
@@ -271,7 +271,8 @@ function LicensedBody({
 
       <p className="text-xs text-center text-muted-foreground">
         Slack and Discord access is issued after you are hired and your {BRAND.shortName} identity
-        is verified — you'll get both links by email at that point.
+        is verified — you'll get both links by email at that point. Income is not guaranteed;
+        advancement follows licensing, activity, production, and leadership execution.
       </p>
     </div>
   );

@@ -67,66 +67,67 @@ async function sendUnlicensedFollowup(app: {
        from: "APEX Financial <notifications@apex-financial.org>",
       to: [app.email],
       cc: ccList.length > 0 ? ccList : undefined,
-      subject: "Need Help Getting Licensed? We're Here For You! 📋",
+      subject: "Your APEX path is waiting: complete the license step",
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <div style="background: linear-gradient(135deg, #f59e0b, #d97706); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
-            <h1 style="color: white; margin: 0; font-size: 26px;">Having Trouble Getting Licensed?</h1>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #050505; padding: 24px;">
+          <div style="background: #0a0a0a; padding: 30px; border: 1px solid #d4af37; border-radius: 10px 10px 0 0; text-align: center;">
+            <p style="color: #d4af37; margin: 0 0 10px; font-size: 12px; font-weight: 700; letter-spacing: 2px;">APEX FINANCIAL · LICENSING PATH</p>
+            <h1 style="color: white; margin: 0; font-size: 26px;">The license unlocks the platform.</h1>
           </div>
           
-          <div style="background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
-            <h2 style="color: #111827; margin-top: 0;">Hey ${app.first_name}! 👋</h2>
+          <div style="background: #ffffff; padding: 30px; border: 1px solid #d4af37; border-top: none; border-radius: 0 0 10px 10px;">
+            <h2 style="color: #111827; margin-top: 0;">${app.first_name},</h2>
             
             <p style="color: #4b5563; line-height: 1.6; font-size: 16px;">
-              We noticed you submitted your application a few days ago and wanted to check in. 
-              <strong>Getting your insurance license can feel overwhelming</strong> — but don't worry, we're here to help!
+              You applied to APEX because you wanted more than another job application. The next move is not complicated: finish the licensing step that gives you legal access to the business.
             </p>
 
-            <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
-              <p style="margin: 0; color: #92400e; font-weight: 500;">
-                🎓 Remember: APEX covers most of your licensing costs. You're not alone in this process!
+            <div style="background: #fffbeb; border-left: 4px solid #d4af37; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+              <p style="margin: 0; color: #78350f; font-weight: 600;">
+                You are not getting licensed just to sell one policy. The license opens the producer, manager, and agency-owner paths inside APEX.
               </p>
             </div>
 
             <p style="color: #4b5563; line-height: 1.6; font-size: 16px;">
-              If you're stuck or have questions about:
+              After state approval, your path can include:
             </p>
             
             <ul style="color: #4b5563; line-height: 1.8; font-size: 15px;">
-              <li>The pre-licensing course</li>
-              <li>Exam preparation</li>
-              <li>State requirements</li>
-              <li>Scheduling your exam</li>
-              <li>Or anything else...</li>
+              <li>Multi-carrier contracting and product access</li>
+              <li>Lead access, ReadyMode, CRM workflows, and scripts</li>
+              <li>Live training, call review, and production coaching</li>
+              <li>Production and book-of-business visibility</li>
+              <li>A measurable path from producer to agency owner</li>
             </ul>
 
             <p style="color: #4b5563; line-height: 1.6; font-size: 16px; font-weight: 600;">
-              Book a quick call with us and we'll walk you through everything step-by-step!
+              Every week you wait is a week you are not contracting, training, producing, or building your book. Open the roadmap and complete the next unfinished step.
             </p>
             
             <div style="text-align: center; margin: 30px 0;">
               <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto;">
                 <tr>
-                  <td align="center" bgcolor="#059669" style="border-radius:8px;">
-                    <a href="${UNLICENSED_CALENDLY}" style="display:inline-block;color:#ffffff;padding:16px 32px;text-decoration:none;font-weight:bold;font-size:16px;">
-                      📞 Schedule a Licensing Help Call
+                  <td align="center" bgcolor="#d4af37" style="border-radius:8px;">
+                    <a href="https://apex-financial.org/get-licensed#licensing-video" style="display:inline-block;color:#111111;padding:16px 32px;text-decoration:none;font-weight:bold;font-size:16px;">
+                      Open My Licensing Roadmap
                     </a>
                   </td>
                 </tr>
               </table>
             </div>
 
-            <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin-top: 25px;">
-              <h3 style="color: #111827; margin-top: 0; margin-bottom: 15px; font-size: 16px;">Quick Resources:</h3>
+            <div style="background: #f9fafb; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin-top: 25px;">
+              <h3 style="color: #111827; margin-top: 0; margin-bottom: 15px; font-size: 16px;">Licensing resources</h3>
               <ul style="color: #4b5563; margin: 0; padding-left: 20px; line-height: 1.8;">
-                <li><a href="https://apex-financial.org/get-licensed#licensing-video" style="color: #059669;">Watch: How to Get Your Life Insurance License</a></li>
-                <li><a href="https://docs.google.com/document/d/1WBN_bh7Tl6IkhdXwQvrUa6Q58xmV9As_q048aKAeyNg/edit" style="color: #059669;">Licensing Step-by-Step Guide</a></li>
-                <li><a href="https://partners.xcelsolutions.com/afe" style="color: #059669;">Start Pre-Licensing Course</a></li>
+                <li><a href="https://apex-financial.org/get-licensed#licensing-video" style="color: #9a7418;">Watch the licensing walkthrough</a></li>
+                <li><a href="https://docs.google.com/document/d/1WBN_bh7Tl6IkhdXwQvrUa6Q58xmV9As_q048aKAeyNg/edit" style="color: #9a7418;">Review the step-by-step guide</a></li>
+                <li><a href="https://partners.xcelsolutions.com/afe" style="color: #9a7418;">Start or continue the pre-licensing course</a></li>
+                <li><a href="${UNLICENSED_CALENDLY}" style="color: #9a7418;">Book a licensing support call</a></li>
               </ul>
             </div>
 
             <p style="color: #9ca3af; font-size: 13px; text-align: center; margin-top: 25px;">
-              We believe in you! The license is just the first step to an incredible career.
+              Independent-contractor opportunity. Licensing requirements and fees vary by state. Income is not guaranteed.
             </p>
           </div>
         </div>
@@ -159,36 +160,37 @@ async function sendUnlicensedFollowup2(app: {
        from: "APEX Financial <notifications@apex-financial.org>",
       to: [app.email],
       cc: ccList2.length > 0 ? ccList2 : undefined,
-      subject: "Are You Licensed Yet? 🎓",
+      subject: "Choose your next APEX step",
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <div style="background: linear-gradient(135deg, #059669, #047857); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
-            <h1 style="color: white; margin: 0; font-size: 26px;">How's It Coming Along?</h1>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #050505; padding: 24px;">
+          <div style="background: #0a0a0a; padding: 30px; border: 1px solid #d4af37; border-radius: 10px 10px 0 0; text-align: center;">
+            <p style="color: #d4af37; margin: 0 0 10px; font-size: 12px; font-weight: 700; letter-spacing: 2px;">APEX FINANCIAL · LICENSING CHECKPOINT</p>
+            <h1 style="color: white; margin: 0; font-size: 26px;">Continue the path or pause it.</h1>
           </div>
           
-          <div style="background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
-            <h2 style="color: #111827; margin-top: 0;">Hey ${app.first_name}! 👋</h2>
+          <div style="background: #ffffff; padding: 30px; border: 1px solid #d4af37; border-top: none; border-radius: 0 0 10px 10px;">
+            <h2 style="color: #111827; margin-top: 0;">${app.first_name},</h2>
             
             <p style="color: #4b5563; line-height: 1.6; font-size: 16px;">
-              It's been about a week since you applied to join APEX Financial. We wanted to check in and see how your licensing journey is going!
+              It has been one week since you applied. Interest opened the door; completing the next step is what moves you through it.
             </p>
 
-            <div style="background: #d1fae5; border-left: 4px solid #059669; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
-              <p style="margin: 0; color: #047857; font-weight: 600; font-size: 18px;">
-                🎓 Are you licensed yet?
+            <div style="background: #fffbeb; border-left: 4px solid #d4af37; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+              <p style="margin: 0; color: #78350f; font-weight: 600; font-size: 17px;">
+                Your application does not activate carrier, platform, training, or lead access by itself.
               </p>
             </div>
 
             <p style="color: #4b5563; line-height: 1.6; font-size: 16px;">
-              If you've completed your licensing, <strong>congratulations!</strong> Let's get you started right away. Book your onboarding call below:
+              <strong>If your license is now active,</strong> book the brokerage activation call so the team can review contracting and your production path.
             </p>
             
             <div style="text-align: center; margin: 25px 0;">
               <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto;">
                 <tr>
-                  <td align="center" bgcolor="#059669" style="border-radius:8px;">
-                    <a href="${LICENSED_CALENDLY}" style="display:inline-block;color:#ffffff;padding:16px 32px;text-decoration:none;font-weight:bold;font-size:16px;">
-                      📅 I'm Licensed - Schedule My Call!
+                  <td align="center" bgcolor="#d4af37" style="border-radius:8px;">
+                    <a href="${LICENSED_CALENDLY}" style="display:inline-block;color:#111111;padding:16px 32px;text-decoration:none;font-weight:bold;font-size:16px;">
+                      My License Is Active — Book Activation
                     </a>
                   </td>
                 </tr>
@@ -197,19 +199,19 @@ async function sendUnlicensedFollowup2(app: {
 
             <div style="border-top: 1px solid #e5e7eb; margin: 25px 0; padding-top: 25px;">
               <p style="color: #4b5563; line-height: 1.6; font-size: 16px;">
-                <strong>Still working on it?</strong> No worries! Here are your resources again:
+                <strong>If you are still unlicensed,</strong> reopen the roadmap and finish the next incomplete requirement:
               </p>
               
               <ul style="color: #4b5563; line-height: 2; font-size: 15px; margin: 15px 0;">
-                <li><a href="https://apex-financial.org/get-licensed#licensing-video" style="color: #059669; font-weight: 500;">▶️ Watch: How to Get Your Life Insurance License</a></li>
-                <li><a href="https://docs.google.com/document/d/1WBN_bh7Tl6IkhdXwQvrUa6Q58xmV9As_q048aKAeyNg/edit" style="color: #059669; font-weight: 500;">📄 Licensing Step-by-Step Guide</a></li>
-                <li><a href="https://partners.xcelsolutions.com/afe" style="color: #059669; font-weight: 500;">📚 Start/Continue Pre-Licensing Course</a></li>
+                <li><a href="https://apex-financial.org/get-licensed#licensing-video" style="color: #9a7418; font-weight: 500;">Open the licensing roadmap</a></li>
+                <li><a href="https://docs.google.com/document/d/1WBN_bh7Tl6IkhdXwQvrUa6Q58xmV9As_q048aKAeyNg/edit" style="color: #9a7418; font-weight: 500;">Review the licensing guide</a></li>
+                <li><a href="https://partners.xcelsolutions.com/afe" style="color: #9a7418; font-weight: 500;">Start or continue the course</a></li>
               </ul>
             </div>
 
-            <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
-              <p style="margin: 0; color: #92400e; font-weight: 500;">
-                💡 Need help? Schedule a quick call and we'll walk you through the process step-by-step!
+            <div style="background: #f9fafb; border-left: 4px solid #111111; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+              <p style="margin: 0; color: #374151; font-weight: 500;">
+                Serious builders learn to finish the small, unglamorous step in front of them. This is that step.
               </p>
             </div>
             
@@ -217,12 +219,12 @@ async function sendUnlicensedFollowup2(app: {
               <a href="${UNLICENSED_CALENDLY}" 
                  style="display: inline-block; background: #f59e0b; color: white; 
                          padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px; max-width:100%; box-sizing:border-box;">
-                 📞 I Need Help Getting Licensed
+                 Book Licensing Support
               </a>
             </div>
 
             <p style="color: #9ca3af; font-size: 13px; text-align: center; margin-top: 25px;">
-              We're here to support you every step of the way!
+              Independent-contractor opportunity. Income is not guaranteed. Licensing requirements vary by state.
             </p>
           </div>
         </div>
@@ -255,58 +257,56 @@ async function sendLicensedFollowup(app: {
       from: "APEX Financial <notifications@apex-financial.org>",
       to: [app.email],
       cc: ccList3.length > 0 ? ccList3 : undefined,
-      subject: "Did We Get to You Yet? Let's Connect! 🚀",
+      subject: "Your APEX application is not activated yet",
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <div style="background: linear-gradient(135deg, #059669, #047857); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
-            <h1 style="color: white; margin: 0; font-size: 26px;">We Haven't Forgotten About You!</h1>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #050505; padding: 24px;">
+          <div style="background: #0a0a0a; padding: 30px; border: 1px solid #d4af37; border-radius: 10px 10px 0 0; text-align: center;">
+            <p style="color: #d4af37; margin: 0 0 10px; font-size: 12px; font-weight: 700; letter-spacing: 2px;">APEX FINANCIAL · LICENSED PRODUCER</p>
+            <h1 style="color: white; margin: 0; font-size: 26px;">The application was step one.</h1>
           </div>
           
-          <div style="background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
-            <h2 style="color: #111827; margin-top: 0;">Hi ${app.first_name}! 👋</h2>
+          <div style="background: #ffffff; padding: 30px; border: 1px solid #d4af37; border-top: none; border-radius: 0 0 10px 10px;">
+            <h2 style="color: #111827; margin-top: 0;">${app.first_name},</h2>
             
             <p style="color: #4b5563; line-height: 1.6; font-size: 16px;">
-              We wanted to follow up on your application. If you haven't had a chance to speak with our team yet, 
-              <strong>now is the perfect time to schedule your onboarding call!</strong>
+              You already cleared the legal entry point by earning your license. The next step is a brokerage activation call to determine fit, contracting, and the cleanest path into production.
             </p>
 
-            <div style="background: #d1fae5; border-left: 4px solid #059669; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
-              <p style="margin: 0; color: #047857; font-weight: 500;">
-                ⚡ As a licensed agent, you're ready to start earning immediately. Don't let this opportunity slip by!
+            <div style="background: #fffbeb; border-left: 4px solid #d4af37; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+              <p style="margin: 0; color: #78350f; font-weight: 600;">
+                APEX is not offering another comp sheet. It is offering an operating platform designed to move producers toward leadership and ownership.
               </p>
             </div>
 
             <p style="color: #4b5563; line-height: 1.6; font-size: 16px;">
-              On your onboarding call, we'll cover:
+              On the activation call, the team will review:
             </p>
             
             <ul style="color: #4b5563; line-height: 1.8; font-size: 15px;">
-              <li>Your personalized fast-track to production</li>
-              <li>Our proven sales systems and training</li>
-              <li>Commission structures and earning potential</li>
-              <li>Getting you contracted and ready to sell</li>
+              <li>Your current license, carrier contracts, and market fit</li>
+              <li>Contracting, lead access, ReadyMode, CRM, and scripts</li>
+              <li>Live training, call review, and production expectations</li>
+              <li>Your path as a producer, manager, recruiter, or agency builder</li>
             </ul>
+
+            <p style="color: #4b5563; line-height: 1.6; font-size: 16px; font-weight: 600;">
+              Until this step is complete, your application has not activated carrier, platform, training, or lead access through APEX. Every week you wait is a week you are not building production history or leverage.
+            </p>
             
             <div style="text-align: center; margin: 30px 0;">
               <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto;">
                 <tr>
-                  <td align="center" bgcolor="#dc2626" style="border-radius:8px;">
-                    <a href="${LICENSED_CALENDLY}" style="display:inline-block;color:#ffffff;padding:16px 32px;text-decoration:none;font-weight:bold;font-size:16px;">
-                      📅 Schedule Your Call NOW
+                  <td align="center" bgcolor="#d4af37" style="border-radius:8px;">
+                    <a href="${LICENSED_CALENDLY}" style="display:inline-block;color:#111111;padding:16px 32px;text-decoration:none;font-weight:bold;font-size:16px;">
+                      Book My APEX Activation Call
                     </a>
                   </td>
                 </tr>
               </table>
             </div>
 
-            <div style="background: #fef2f2; border: 1px solid #fecaca; padding: 15px 20px; border-radius: 8px; margin-top: 20px;">
-              <p style="margin: 0; color: #991b1b; font-size: 14px; text-align: center;">
-                <strong>Spots fill up fast!</strong> Our top performers started exactly where you are right now.
-              </p>
-            </div>
-
             <p style="color: #9ca3af; font-size: 13px; text-align: center; margin-top: 25px;">
-              Run with the Standard. We're glad you're here.
+              Independent-contractor opportunity. Contract levels, carrier appointments, and income vary. Income is not guaranteed.
             </p>
           </div>
         </div>

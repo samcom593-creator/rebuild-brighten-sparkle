@@ -71,8 +71,8 @@ const Index = () => {
 
   useEffect(() => {
     const previousTitle = document.title;
-    document.title = "APEX Financial · Operating System for Elite Insurance Agencies";
-    const description = "APEX helps ambitious producers and agency builders scale with contracting, training, carrier access, and live production operations.";
+    document.title = "APEX Financial · Independent IMO Brokerage";
+    const description = "APEX Financial gives unlicensed candidates, licensed producers, and agency builders one operating path for licensing, contracting, carrier access, lead execution, training, production, recruiting, and agency ownership.";
     const meta = document.querySelector<HTMLMetaElement>('meta[name="description"]');
     const previousDescription = meta?.content;
     if (meta) meta.content = description;

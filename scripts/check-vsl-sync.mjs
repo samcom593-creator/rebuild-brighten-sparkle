@@ -1,94 +1,62 @@
 #!/usr/bin/env node
 /**
- * check-vsl-sync — standalone port of vite.config.ts apex-vsl-sync-check plugin.
- *
- * The plugin runs at build start and fails any Vite build when index.html's VSL
- * references drift from HeroSection.tsx's <LazyYouTube videoId="..."> — but the
- * 2026-06-07 wave-27 cross-session race (commits e24adf69 -> 2ec9b695 -> 2b21d6df)
- * proved that the plugin only catches drift on the NEXT build (i.e., on Vercel,
- * after the bad commit has already been pushed). Local pre-commit catches it
- * before push, so a parallel session can't ship a state that fails the rule it
- * just enforced.
- *
- * Same 5 drift surfaces as the Vite plugin (wave-35: surface #1 moved
- * same-origin to public/img/hero-poster-<videoId>.jpg; the VideoObject
- * thumbnailUrl at surface #2 still references i.ytimg.com for canonical
- * SERP/AI-overview attribution — they are intentionally split now):
- *   1. <link rel="preload"> /img/hero-poster-<videoId>.jpg (self-hosted)
- *   2. VideoObject thumbnailUrl i.ytimg.com hqdefault.jpg (SEO metadata)
- *   3. VideoObject contentUrl
- *   4. VideoObject embedUrl
- *   5. BUMP_VERSION must contain current videoId
- *
- * Exit 0 = synced. Exit 1 = drift with full diff + fix instructions.
- *
- * Usage:
- *   node scripts/check-vsl-sync.mjs
- *
- * Wired into:
- *   - .husky/pre-commit (blocks bad commits locally)
- *   - package.json scripts.check:vsl-sync + verify:core
- *   - vite.config.ts vslSyncCheckPlugin (final ratchet at Vercel build)
+ * Keep the homepage player, /vsl media record, preload, structured data, and
+ * cache-bust marker on the same hosted VSL release.
  */
 import { readFileSync, existsSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const __filename = fileURLToPath(import.meta.url);
-const ROOT = resolve(dirname(__filename), "..");
-
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const HERO = resolve(ROOT, "src/components/landing/HeroSection.tsx");
+const MEDIA = resolve(ROOT, "src/lib/vslMedia.ts");
 const INDEX = resolve(ROOT, "index.html");
 
-if (!existsSync(HERO) || !existsSync(INDEX)) {
-  console.error(`[check-vsl-sync] missing source files (HERO=${existsSync(HERO)}, INDEX=${existsSync(INDEX)}). Run from repo root.`);
-  process.exit(1);
+for (const file of [HERO, MEDIA, INDEX]) {
+  if (!existsSync(file)) {
+    console.error(`[check-vsl-sync] missing required file: ${file}`);
+    process.exit(1);
+  }
 }
 
 const hero = readFileSync(HERO, "utf8");
+const media = readFileSync(MEDIA, "utf8");
 const index = readFileSync(INDEX, "utf8");
+const baseMatch = media.match(/const\s+VSL_MEDIA_BASE\s*=\s*["']([^"']+)["']/);
 
-const heroMatch = hero.match(/<LazyYouTube\s+videoId="([A-Za-z0-9_-]{8,15})"/);
-if (!heroMatch) {
-  console.error('[check-vsl-sync] could not find <LazyYouTube videoId="..."> in src/components/landing/HeroSection.tsx — has the hero VSL component been renamed? Update vite.config.ts vslSyncCheckPlugin regex AND this script.');
+if (!baseMatch) {
+  console.error("[check-vsl-sync] could not find VSL_MEDIA_BASE in src/lib/vslMedia.ts");
   process.exit(1);
 }
-const heroId = heroMatch[1];
 
+const mediaBase = baseMatch[1];
+const release = mediaBase.slice(mediaBase.lastIndexOf("/") + 1);
+const videoUrl = `${mediaBase}/apex-vsl.mp4`;
+const posterUrl = `${mediaBase}/apex-vsl-poster.jpg`;
 const checks = [
-  { label: '<link rel="preload"> self-hosted hero poster', pattern: /href="\/img\/hero-poster-([A-Za-z0-9_-]{8,15})\.jpg"/g },
-  { label: 'VideoObject thumbnailUrl',                     pattern: /"thumbnailUrl":"https:\/\/i\.ytimg\.com\/vi\/([A-Za-z0-9_-]{8,15})\/hqdefault\.jpg"/g },
-  { label: 'VideoObject contentUrl',                       pattern: /"contentUrl":"https:\/\/www\.youtube\.com\/watch\?v=([A-Za-z0-9_-]{8,15})"/g },
-  { label: 'VideoObject embedUrl',                         pattern: /"embedUrl":"https:\/\/www\.youtube-nocookie\.com\/embed\/([A-Za-z0-9_-]{8,15})"/g },
+  ["homepage video source", hero, "VSL_VIDEO.src"],
+  ["homepage video poster", hero, "VSL_VIDEO.poster"],
+  ["poster preload", index, `href="${posterUrl}"`],
+  ["VideoObject thumbnailUrl", index, `"thumbnailUrl":"${posterUrl}"`],
+  ["VideoObject contentUrl", index, `"contentUrl":"${videoUrl}"`],
+  ["VideoObject embedUrl", index, '"embedUrl":"https://apex-financial.org/vsl"'],
 ];
 
-const drift = [];
-for (const { label, pattern } of checks) {
-  const ids = Array.from(index.matchAll(pattern), (m) => m[1]);
-  if (ids.length === 0) {
-    drift.push(`  - ${label}: no match found in index.html (expected ${heroId})`);
-    continue;
-  }
-  for (const id of ids) {
-    if (id !== heroId) {
-      drift.push(`  - ${label}: index.html=${id} but HeroSection.tsx=${heroId}`);
-    }
-  }
-}
+const drift = checks
+  .filter(([, source, expected]) => !source.includes(expected))
+  .map(([label, , expected]) => `  - ${label}: missing ${expected}`);
 
 const bumpMatch = index.match(/var\s+BUMP_VERSION\s*=\s*"([^"]+)"/);
 if (!bumpMatch) {
-  drift.push('  - BUMP_VERSION: could not locate `var BUMP_VERSION = "..."` in index.html cache-bust script');
-} else if (!bumpMatch[1].includes(heroId)) {
-  drift.push(`  - BUMP_VERSION: "${bumpMatch[1]}" does not contain current videoId ${heroId} — caches will not evict on this swap`);
+  drift.push('  - BUMP_VERSION: missing `var BUMP_VERSION = "..."`');
+} else if (!bumpMatch[1].includes(release)) {
+  drift.push(`  - BUMP_VERSION: "${bumpMatch[1]}" does not contain release ${release}`);
 }
 
 if (drift.length > 0) {
-  console.error(`[check-vsl-sync] index.html VSL references DRIFTED from HeroSection.tsx LazyYouTube videoId="${heroId}":`);
+  console.error(`[check-vsl-sync] references drifted from canonical VSL release ${release}:`);
   console.error(drift.join("\n"));
-  console.error(`\nFix: update the /img/hero-poster-<id>.jpg preload + every i.ytimg.com / youtube.com / youtube-nocookie.com URL in index.html to videoId ${heroId}; also commit a fresh public/img/hero-poster-${heroId}.jpg (curl https://i.ytimg.com/vi/${heroId}/hqdefault.jpg -o public/img/hero-poster-${heroId}.jpg); AND bump the BUMP_VERSION string in the cache-bust script at index.html:14 to include "${heroId}" (e.g. "2026-MM-DD-new-vsl-${heroId}"). The wave-25 regression (commit 2da7ddc7) is exactly what this guard prevents.`);
   process.exit(1);
 }
 
-console.log(`[check-vsl-sync] OK — all 5 index.html surfaces match HeroSection.tsx videoId="${heroId}"`);
-process.exit(0);
+console.log(`[check-vsl-sync] OK — homepage and metadata use canonical VSL release ${release}`);

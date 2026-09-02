@@ -1,7 +1,8 @@
 import { Link, useSearchParams } from "react-router-dom";
-import { useEffect, useRef, useState, lazy, Suspense } from "react";
-import { ArrowRight, BadgeCheck, Building2, Play, Route, Shield, TrendingUp, Users } from "lucide-react";
+import { useEffect, useRef, lazy, Suspense } from "react";
+import { ArrowRight, BadgeCheck, Building2, Route, Shield, TrendingUp, Users } from "lucide-react";
 import { track } from "@/lib/analytics";
+import { VSL_VIDEO } from "@/lib/vslMedia";
 // S11 fix (2026-06-15): build the CTA href with ?ref= when the slug is
 // present so the landing -> /apply hop relays the referral via the URL
 // (the primary signal). The Index.tsx localStorage relay is the fallback.
@@ -29,60 +30,23 @@ const RecentApplicantsTicker = lazy(() =>
   import("./RecentApplicantsTicker").then((m) => ({ default: m.RecentApplicantsTicker })),
 );
 
-// LazyYouTube — render a static poster image as the LCP element, only
-// mount the iframe (and pull the YouTube SDK) when the user clicks.
-// Cuts ~5s off Largest Contentful Paint on the landing per Lighthouse 2026-05-18.
-function LazyYouTube({ videoId, title }: { videoId: string; title: string }) {
-  const [loaded, setLoaded] = useState(false);
+// The homepage and /vsl share one canonical media record. This prevents the
+// homepage from silently retaining an older cut after a VSL release.
+function HomepageVsl() {
   return (
-    // perf/site-wide-optimization (2026-08-06): glow was a hardcoded
-    // hsl(168 80% 50%) teal-green left over from before the black+gold
-    // rebrand — retargeted to the --primary gold token.
-    <div className="relative aspect-video rounded-md overflow-hidden border border-border/60 shadow-[0_8px_40px_hsl(var(--primary)/0.2)] bg-white dark:bg-black group">
-      {loaded ? (
-        <iframe
-          src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0`}
-          title={title}
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-          className="absolute inset-0 w-full h-full"
-        />
-      ) : (
-        <button
-          type="button"
-          onClick={() => setLoaded(true)}
-          aria-label={`Play ${title} video`}
-          className="absolute inset-0 w-full h-full flex items-center justify-center"
-        >
-          {/* hqdefault is 480x360 native — explicit dims + fetchpriority=high
-              match the <link rel="preload"> in index.html, telling the browser
-              "this is the LCP candidate, paint it first." Drops mobile LCP
-              another ~600ms per Lighthouse 2026-06-03.
-              wave-35 (2026-06-08): poster now served same-origin from
-              public/img/hero-poster-<videoId>.jpg instead of i.ytimg.com.
-              Eliminates the cross-origin DNS+TCP+TLS handshake on the LCP
-              fetch (was ~100-200ms cold). Vercel edge-caches it; the woff2
-              preconnect is gone (no longer needed). */}
-          <img
-            src={`/img/hero-poster-${videoId}.jpg`}
-            alt={title}
-            width={480}
-            height={360}
-            loading="eager"
-            decoding="async"
-            // ts-ignore-allow:fetchpriority-html-attr-react-types-lag
-            // @ts-expect-error — fetchpriority is a valid HTML attr, React types
-            // lag. Safe across Chrome/Edge/Safari 17+. Falls back to default
-            // priority on older browsers (no regression).
-            fetchpriority="high"
-            className="absolute inset-0 w-full h-full object-cover"
-          />
-          <span className="absolute inset-0 bg-white dark:bg-black/30 group-hover:bg-white dark:bg-black/45 transition-colors" />
-          <span className="relative h-20 w-20 rounded-full bg-primary/95 flex items-center justify-center  group-hover:bg-slate-50 dark:hover:bg-muted/50 transition-base">
-            <Play className="h-10 w-10 text-primary-foreground fill-primary-foreground ml-1" />
-          </span>
-        </button>
-      )}
+    <div className="relative aspect-video overflow-hidden rounded-md border border-border/60 bg-black shadow-[0_8px_40px_hsl(var(--primary)/0.2)]">
+      <video
+        controls
+        playsInline
+        preload="metadata"
+        poster={VSL_VIDEO.poster}
+        aria-label={VSL_VIDEO.title}
+        onPlay={() => track("hero_vsl_play", { video: "vsl-2026-09-02" })}
+        className="absolute inset-0 h-full w-full bg-black object-contain"
+      >
+        <source src={VSL_VIDEO.src} type="video/mp4" />
+        Your browser cannot play this video. Use a current browser to continue.
+      </video>
     </div>
   );
 }
@@ -296,14 +260,13 @@ export function HeroSection() {
               onClick={() => track("secondary_cta_click", { cta_label: "Watch the walkthrough" })}
               className="text-sm text-primary/90 hover:text-primary underline-offset-4 hover:underline transition-colors mt-1"
             >
-              Watch the 2-min walkthrough first →
+              Watch the walkthrough first →
             </a>
           </div>
 
-          {/* Click-to-load operator story; kept below the decision paths so the
-              enterprise offer and three primary audiences own the first fold. */}
+          {/* Canonical APEX recruiting VSL; the same final cut also lives at /vsl. */}
           <div id="hero-video" className="landing-fade-up landing-delay-400 w-full max-w-2xl mx-auto mb-10 scroll-mt-24">
-            <LazyYouTube videoId="E2VJ1v85IRE" title="20 Years Old, $12 Million in Revenue. Samuel James." />
+            <HomepageVsl />
           </div>
 
           {/* Founder credit — Brand Bible: "the face IS the brand".

@@ -34,6 +34,15 @@ describe("public APEX VSL placement", () => {
     expect(page).not.toContain("supabase.co/storage");
   });
 
+  it("uses the same final cut on the public homepage", () => {
+    const hero = read("src/components/landing/HeroSection.tsx");
+    expect(hero).toContain("VSL_VIDEO.src");
+    expect(hero).toContain("VSL_VIDEO.poster");
+    expect(hero).toContain("<HomepageVsl />");
+    expect(hero).not.toContain("E2VJ1v85IRE");
+    expect(hero).not.toContain("LazyYouTube");
+  });
+
   it("keeps /vsl routed and reachable, and does not re-gate /apply", () => {
     const app = read("src/App.tsx");
     expect(app).toContain('<Route path="/vsl" element={<Vsl />} />');

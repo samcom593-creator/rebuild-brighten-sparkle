@@ -847,7 +847,7 @@ export default function Apply() {
             <div className="text-left min-w-0">
               <p className="text-sm font-bold leading-tight">You're applying directly to Samuel James</p>
               <p className="text-[11px] text-muted-foreground uppercase tracking-[0.08em] sm:tracking-wider leading-snug">
-                <span className="block">Founder · $1.2M income in one year</span>
+                <span className="block">Founder · $1.2M income in first year</span>
                 <span className="block">Every application reviewed personally</span>
               </p>
             </div>

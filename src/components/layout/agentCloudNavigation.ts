@@ -10,7 +10,6 @@ import {
   ContactRound,
   Download,
   FileSearch,
-  FileText,
   FolderKanban,
   GraduationCap,
   HelpCircle,
@@ -159,7 +158,6 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
       { label: "Book of Business", href: "/dashboard/production", icon: BookOpen },
       { label: "My Commissions", href: "/dashboard/my-commissions", icon: WalletCards },
       { label: "Retention", href: "/dashboard/retention", icon: Shield },
-      { label: "My Contracts", href: "/dashboard/contracting", icon: FileText },
     ],
   },
 

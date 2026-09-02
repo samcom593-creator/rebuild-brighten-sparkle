@@ -13,6 +13,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { TRAINING_ROUTES } from "@/lib/trainingRoutes";
+import { useAuth } from "@/hooks/useAuth";
 
 interface OperationsData {
   as_of: string;
@@ -57,6 +58,7 @@ function MetricLink({
 }
 
 export function OperationsCommandCenter() {
+  const { isAdmin } = useAuth();
   const query = useQuery({
     queryKey: ["admin-operations-command-center"],
     staleTime: 60_000,
@@ -106,7 +108,14 @@ export function OperationsCommandCenter() {
         <MetricLink to="/dashboard/interviews" icon={CalendarCheck2} label="Interviews" value={d.recruiting.interview} detail="live hiring pipeline" />
         <MetricLink to="/dashboard/team" icon={UserCheck2} label="Hired" value={d.recruiting.hired} detail={`${d.recruiting.contracting} at contracting`} />
         <MetricLink to={TRAINING_ROUTES.teamProgress} icon={UsersRound} label="Onboarding" value={d.onboarding.stalled} detail={`${d.onboarding.carrier_contracting} at contracting`} danger={d.onboarding.stalled > 0} />
-        <MetricLink to="/dashboard/contracting" icon={FileCheck2} label="Contracting" value={d.contracting.active} detail={`${d.contracting.pending} pending · ${d.contracting.issues} issues`} danger={d.contracting.issues > 0} />
+        <MetricLink
+          to={isAdmin ? "/dashboard/contracting" : "/start-contracting"}
+          icon={FileCheck2}
+          label={isAdmin ? "Contracting" : "OneLink contracting"}
+          value={d.contracting.active}
+          detail={isAdmin ? `${d.contracting.pending} pending · ${d.contracting.issues} issues` : "Submit one secure intake"}
+          danger={d.contracting.issues > 0}
+        />
         <MetricLink to="/dashboard/production" icon={PhoneCall} label="Sold today" value={d.sales.sold_today} detail={`${d.sales.expected_to_sell} expected producers`} />
         <MetricLink to="/dashboard/team" icon={PhoneCall} label="Not selling" value={d.sales.not_selling} detail={`${d.sales.sold_today}/${d.sales.expected_to_sell} sold today`} danger={d.sales.not_selling > 0} />
         <MetricLink to="/dashboard/help?tab=desk" icon={HelpCircle} label="Support" value={d.support.open} detail={d.support.urgent ? `${d.support.urgent} urgent` : "open requests"} danger={d.support.urgent > 0} />

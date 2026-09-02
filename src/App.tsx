@@ -495,9 +495,9 @@ const App = () => (
                         agency-wide operating view. */}
                     <Route path="/dashboard/team" element={<ProtectedRoute><DashboardCRM /></ProtectedRoute>} />
                   <Route path="/dashboard/recruiting-links" element={<ProtectedRoute requireAdmin><RecruitingLinks /></ProtectedRoute>} />
-                    <Route path="/dashboard/contracting" element={<ProtectedRoute><CarrierContracts /></ProtectedRoute>} />
-                    <Route path="/dashboard/contracting/contracts" element={<ProtectedRoute><CarrierContracts /></ProtectedRoute>} />
-                    <Route path="/dashboard/contracting/carriers" element={<ProtectedRoute><CarrierContracts /></ProtectedRoute>} />
+                    <Route path="/dashboard/contracting" element={<ProtectedRoute requireAdmin><CarrierContracts /></ProtectedRoute>} />
+                    <Route path="/dashboard/contracting/contracts" element={<ProtectedRoute requireAdmin><CarrierContracts /></ProtectedRoute>} />
+                    <Route path="/dashboard/contracting/carriers" element={<ProtectedRoute requireAdmin><CarrierContracts /></ProtectedRoute>} />
                     <Route path="/dashboard/contracting/ops" element={<ProtectedRoute requireAdmin><CarrierContracts /></ProtectedRoute>} />
                     <Route path="/dashboard/contracting/requests" element={<ProtectedRoute requireAdmin><CarrierContracts /></ProtectedRoute>} />
                     <Route path="/dashboard/contracting/documents" element={<ProtectedRoute requireAdmin><CarrierContracts /></ProtectedRoute>} />

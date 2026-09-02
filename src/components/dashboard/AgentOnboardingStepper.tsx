@@ -185,12 +185,14 @@ function buildCompleteLaunchSteps(
     },
     {
       key: "intake",
-      label: "Submit your contracting intake",
+      label: "OneLink contracting",
       detail: intakeReceived
-        ? `Your ${BRAND.shortName} contracting intake has a durable receipt.`
-        : "Review the details already on file and submit only what is missing.",
+        ? `Your ${BRAND.shortName} OneLink intake is received and Milver owns the next handoff.`
+        : licensed
+          ? "Open one secure link, confirm your NPN and profile, and submit everything the contracting desk needs."
+          : "This tile unlocks as soon as your license and NPN are confirmed—no separate internal contracting page is required.",
       status: intakeReceived ? "complete" : licensed ? "available" : "locked",
-      action_label: intakeReceived || !licensed ? null : "Complete intake",
+      action_label: intakeReceived || !licensed ? null : "Open OneLink contracting",
       action_url: intakeReceived || !licensed ? null : "/start-contracting",
     },
     {
@@ -243,13 +245,13 @@ function buildCompleteLaunchSteps(
     },
     {
       key: "carriers",
-      label: "Finish carrier appointments",
+      label: "Carrier appointments with Milver",
       detail: carriersReady
         ? "Carrier contracting is recorded and your producer setup is active."
-        : "Complete carrier-specific forms, signatures, EFT, and appointment requirements in each secure carrier portal.",
+        : "Milver coordinates carrier-specific forms, signatures, EFT, and appointment requirements after your OneLink intake.",
       status: carriersReady ? "complete" : licensed ? "available" : "locked",
-      action_label: carriersReady || !licensed ? null : "Open carrier directory",
-      action_url: carriersReady || !licensed ? null : "/dashboard/contracting/carriers",
+      action_label: carriersReady || !licensed ? null : "Book with Milver",
+      action_url: carriersReady || !licensed ? null : SCHEDULING_LINKS.onboarding,
     },
     {
       key: "training",

@@ -17,6 +17,7 @@ const authState = {
   isRecruiter: false,
   accountMode: null,
   effectiveMode: "agent" as const,
+  signOut: vi.fn().mockResolvedValue({ error: null }),
 };
 
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ ...authState }) }));
@@ -178,6 +179,11 @@ describe("GlobalSidebar · AgentCloud application navigation", () => {
     setRoles({ isManager: true });
     renderSidebar();
     expect(screen.getByRole("button", { name: "Add Agent" })).toBeTruthy();
+  });
+
+  it("keeps sign out visible for every signed-in role", () => {
+    renderSidebar();
+    expect(screen.getByRole("button", { name: "Sign out" })).toBeTruthy();
   });
 });
 

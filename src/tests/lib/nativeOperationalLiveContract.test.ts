@@ -49,4 +49,15 @@ describe("APEX native live operating contract", () => {
     expect(legacyForm).not.toContain('invoke("insuracloud-outbox"');
     expect(dispatcher).toContain("Legacy cloud forwarding is retired");
   });
+
+  it("keeps OneLink agent-facing while internal contracting stays owner-only", () => {
+    const app = source("src/App.tsx");
+    const nav = source("src/components/layout/agentCloudNavigation.ts");
+    const addAgent = source("src/components/dashboard/AddAgentModal.tsx");
+    expect(app).toContain('path="/dashboard/contracting" element={<ProtectedRoute requireAdmin>');
+    expect(app).toContain('path="/start-contracting"');
+    expect(nav).not.toContain('label: "My Contracts"');
+    expect(addAgent).toContain("Copy welcome email");
+    expect(addAgent).toContain("email will also contain your portal and onboarding links.");
+  });
 });

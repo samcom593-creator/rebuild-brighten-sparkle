@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { ChevronDown, ChevronLeft, ChevronRight, Cloud, Star, UserPlus } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { ChevronDown, ChevronLeft, ChevronRight, Cloud, Loader2, LogOut, Star, UserPlus } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRolePreview } from "@/hooks/useRolePreview";
 import { useIsTouchDevice } from "@/hooks/useIsTouchDevice";
@@ -19,6 +19,7 @@ import {
 } from "./agentCloudNavigation";
 import { useFavoriteRoutes } from "./favoriteRoutes";
 import { AddAgentModal } from "@/components/dashboard/AddAgentModal";
+import { toast } from "sonner";
 
 interface GlobalSidebarProps {
   isOpen: boolean;
@@ -30,7 +31,8 @@ interface GlobalSidebarProps {
 export function GlobalSidebar({ isOpen, onToggle, isFullscreen }: GlobalSidebarProps) {
   const brand = useBrand();
   const { pathname } = useLocation();
-  const { isAdmin, isManager, effectiveMode } = useAuth();
+  const navigate = useNavigate();
+  const { isAdmin, isManager, effectiveMode, signOut } = useAuth();
   // MP-332: when Sam previews a role, the nav follows the preview too —
   // otherwise "Recruiter View" showed the recruiter home under the full admin
   // sidebar and told him nothing about what a recruiter actually sees.
@@ -43,6 +45,24 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen }: GlobalSidebarP
   const favorites = useFavoriteRoutes((state) => state.favorites);
   const collapsed = !isOpen;
   const [closedGroups, setClosedGroups] = useState<Record<string, boolean>>({});
+  const [signingOut, setSigningOut] = useState(false);
+
+  const handleSignOut = async () => {
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      const { error } = await signOut();
+      if (error) {
+        toast.error("Couldn’t sign out. Please try again.");
+        return;
+      }
+      navigate("/login", { replace: true });
+    } catch {
+      toast.error("Couldn’t sign out. Please try again.");
+    } finally {
+      setSigningOut(false);
+    }
+  };
 
   // MP-332: an entry is visible when it has no `modes` allowlist, or the
   // viewer's effective mode is in it. Admin always sees everything. Before this
@@ -196,6 +216,20 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen }: GlobalSidebarP
             />
           </div>
         )}
+
+        <div className="shrink-0 border-t border-border p-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => void handleSignOut()}
+            disabled={signingOut}
+            className={cn("h-9 text-muted-foreground hover:bg-destructive/10 hover:text-destructive", collapsed ? "w-full px-0" : "w-full justify-start gap-3 px-3")}
+            aria-label="Sign out"
+          >
+            {signingOut ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
+            {!collapsed && <span className="text-xs">{signingOut ? "Signing out…" : "Sign out"}</span>}
+          </Button>
+        </div>
 
         <div className="flex h-12 shrink-0 items-center border-t border-border px-2">
           <Button

@@ -25,6 +25,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { invalidateOperationalTruth } from "@/lib/invalidateOperationalTruth";
+import { ONBOARDING_CONTACT, SCHEDULING_LINKS, TEAM_COMMUNITY_LINKS } from "@/lib/apexConfig";
+import { resolveBrand } from "@/config/brand";
 
 interface Manager {
   id: string;
@@ -52,6 +54,8 @@ const BUILDER_TRACK_OPTIONS: Array<{
   { value: "manager_track", label: "Manager Track", icon: Users },
   { value: "agency_owner_track", label: "Agency Owner Track", icon: Crown },
 ];
+
+const BRAND = resolveBrand();
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -201,6 +205,47 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
       toast.success("One-link invite copied");
     } catch {
       toast.error("Clipboard blocked — use Open and copy the browser address");
+    }
+  };
+
+  const copyManagerWelcomeEmail = async () => {
+    if (!pathLink || !licenseStatus) return;
+    const managerName = managers.find((manager) => manager.id === managerId)?.name ?? "your assigned manager";
+    const licensedSteps = [
+      "1. Open your private OneLink and complete your profile, NPN, and contracting intake: " + pathLink,
+      "2. Set up or enter your " + BRAND.shortName + " portal: https://apex-financial.org/login",
+      "3. Join Slack: " + TEAM_COMMUNITY_LINKS.slack,
+      "4. Join Discord: " + TEAM_COMMUNITY_LINKS.discord,
+      "5. Book your onboarding call with " + ONBOARDING_CONTACT.name + ": " + SCHEDULING_LINKS.onboarding,
+      "6. Complete the onboarding training shown in your portal.",
+    ];
+    const unlicensedSteps = [
+      "1. Open your private OneLink and create your " + BRAND.shortName + " profile: " + pathLink,
+      "2. Set up or enter your " + BRAND.shortName + " portal: https://apex-financial.org/login",
+      "3. Join Slack: " + TEAM_COMMUNITY_LINKS.slack,
+      "4. Join Discord: " + TEAM_COMMUNITY_LINKS.discord,
+      "5. Follow the live course → exam → fingerprints → license roadmap in your portal.",
+      "6. When your license posts, add your NPN and OneLink contracting will unlock.",
+    ];
+    const message = [
+      "Subject: Welcome to " + BRAND.legalName + " — your next steps",
+      "",
+      "Hi there,",
+      "",
+      "Welcome to " + BRAND.legalName + ". I’m " + managerName + ", your assigned manager. Complete these steps in order so nothing gets missed:",
+      "",
+      ...(licenseStatus === "licensed" ? licensedSteps : unlicensedSteps),
+      "",
+      "Your automated " + BRAND.shortName + " email will also contain your portal and onboarding links. If you get stuck, contact " + ONBOARDING_CONTACT.name + ", " + ONBOARDING_CONTACT.role + ", at " + ONBOARDING_CONTACT.email + ".",
+      "",
+      "Reply when Step 1 is complete so we can keep you moving.",
+    ].join("\n");
+
+    try {
+      await navigator.clipboard.writeText(message);
+      toast.success("Manager welcome email copied");
+    } catch {
+      toast.error("Clipboard blocked — copy the OneLink and send it manually");
     }
   };
 
@@ -517,6 +562,9 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
                         <Button type="button" size="sm" onClick={() => void copyPathLink()} className="h-9 gap-1.5">
                           <Check className="h-3.5 w-3.5" /> Copy link
                         </Button>
+                        <Button type="button" size="sm" variant="secondary" onClick={() => void copyManagerWelcomeEmail()} className="h-9 gap-1.5">
+                          <Copy className="h-3.5 w-3.5" /> Copy welcome email
+                        </Button>
                         <Button asChild type="button" size="sm" variant="outline" className="h-9 gap-1.5">
                           <a href={pathLink} target="_blank" rel="noopener noreferrer">
                             <ExternalLink className="h-3.5 w-3.5" /> Open test
@@ -525,6 +573,11 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
                       </>
                     )}
                   </div>
+                  {pathLink && (
+                    <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+                      Copy welcome email gives the assigned manager a ready-to-send message with the recruit’s private link, portal login, Slack, Discord, and exact next steps.
+                    </p>
+                  )}
                 </div>
               </div>
           </div>

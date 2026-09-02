@@ -119,6 +119,7 @@ export const ONBOARDING_CONTACT = {
 
 export const TEAM_COMMUNITY_LINKS = {
   slack: "https://join.slack.com/t/apex-financial-co/shared_invite/zt-47rdeq1fr-ETmj8yGBgRcoYVkwfc3DBQ",
+  discord: "https://discord.gg/JpUWA73UZX",
 } as const;
 
 const CALENDLY_HOST_NAMES: Record<string, string> = {

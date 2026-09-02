@@ -15,6 +15,30 @@ describe("scoped production scoreboard", () => {
     expect(scoreboardWindow("year", "2026-08-26")).toMatchObject({ start: "2026-01-01", end: "2026-08-27" });
   });
 
+  it("MP-372: last month is the whole previous calendar month regardless of the through-date's day", () => {
+    expect(scoreboardWindow("last_month", "2026-09-02")).toMatchObject({ start: "2026-08-01", end: "2026-09-01", label: "Aug 1, 2026 – Aug 31, 2026" });
+    expect(scoreboardWindow("last_month", "2026-09-30")).toMatchObject({ start: "2026-08-01", end: "2026-09-01" });
+    // January rolls back a year.
+    expect(scoreboardWindow("last_month", "2027-01-15")).toMatchObject({ start: "2026-12-01", end: "2027-01-01" });
+    // March follows a 28-day month.
+    expect(scoreboardWindow("last_month", "2026-03-01")).toMatchObject({ start: "2026-02-01", end: "2026-03-01" });
+  });
+
+  it("MP-372: an empty window explains itself instead of reading as broken", () => {
+    const component = source("components/dashboard/ScopedProductionScoreboard.tsx");
+    expect(component).toContain('{ key: "last_month", label: "Last month" }');
+    expect(component).toContain('supabase.rpc("production_book_freshness"');
+    expect(component).toContain("Nothing posted in this window yet");
+    expect(component).toContain("Show last month");
+    expect(component).not.toContain("No policies posted in this window</p>");
+    const migration = source("../supabase/migrations/20260902144800_production_book_freshness.sql");
+    // Same truth view + same visibility predicate as the boards, or the line disagrees with the board it sits under.
+    expect(migration).toContain("public.v_production_comp_truth");
+    expect(migration).toContain("origin is distinct from 'external_daily_gap'");
+    expect(migration).toContain("public.apex_is_admin() or public.crm_can_read_agent_scope(t.agent_id)");
+    expect(source("pages/Leaderboard.tsx")).toContain('<TabsTrigger value="last_month">Last Month</TabsTrigger>');
+  });
+
   it("uses the unified ledger and recursively scopes non-admin hierarchy", () => {
     const migration = source("../supabase/migrations/20260825065000_scoped_production_scoreboard.sql");
     expect(migration).toContain("public.v_production_unified");

@@ -19,7 +19,7 @@ import { getMetricBounds, type MetricBounds } from "@/lib/metricTruth";
 import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 import { Link } from "react-router-dom";
 
-type Period = "daily" | "weekly" | "monthly" | "custom";
+type Period = "daily" | "weekly" | "monthly" | "last_month" | "custom";
 type Board = "production" | "recruiting" | "referrals" | "activity";
 // Wave B v9 §3/§12 check 8: Top Producing Leg sub-view EXCLUDES Sam James'
 // leg (so it surfaces actual downline managers, not Sam swallowing every
@@ -65,6 +65,9 @@ const BOARD_META: Record<Board, { label: string; icon: typeof Crown; source: str
 function periodToWindow(period: Period) {
   if (period === "daily") return "day";
   if (period === "weekly") return "week";
+  // MP-372: the previous full calendar month, so the 1st/2nd of a month is
+  // never a board that reads $0 with no way to see the month that just closed.
+  if (period === "last_month") return "last_month";
   return "month";
 }
 
@@ -684,10 +687,11 @@ export default function Leaderboard() {
           )}
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <Tabs value={period} onValueChange={(value) => setPeriod(value as Period)} className="min-w-0 flex-1 lg:flex-none">
-              <TabsList className="grid w-full grid-cols-4 lg:w-auto">
+              <TabsList className="grid w-full grid-cols-5 lg:w-auto">
                 <TabsTrigger value="daily">Daily</TabsTrigger>
                 <TabsTrigger value="weekly">Weekly</TabsTrigger>
                 <TabsTrigger value="monthly">Monthly</TabsTrigger>
+                <TabsTrigger value="last_month">Last Month</TabsTrigger>
                 <TabsTrigger value="custom">Custom</TabsTrigger>
               </TabsList>
             </Tabs>
@@ -775,17 +779,29 @@ export default function Leaderboard() {
                   title={rows.length === 0 ? `No ${BOARD_META[tab].label.toLowerCase()} rows fetched` : "Filters are hiding everything"}
                   description={
                     <>
-                      Fetched <span className="font-bold tabular-nums text-foreground">{rows.length.toLocaleString()}</span> ranked rows for the <span className="font-bold text-foreground">{period}</span> window.
+                      Fetched <span className="font-bold tabular-nums text-foreground">{rows.length.toLocaleString()}</span> ranked rows for the <span className="font-bold text-foreground">{period.replace("_", " ")}</span> window.
+                      {/* MP-372: on the 1st/2nd of a month every to-date window is honestly empty. Say when the book last moved so an empty board is not read as a broken one. */}
+                      {bookFreshness.data?.latest_posted && (
+                        <> Last policy posted <span className="font-bold text-foreground">{bookFreshness.data.latest_posted}</span>.</>
+                      )}
                     </>
                   }
                   actions={
-                    period !== "monthly" ? (
+                    period !== "monthly" && period !== "last_month" ? (
                       <Button
                         size="sm"
                         className="h-10 w-full sm:h-9 sm:w-auto"
                         onClick={() => setPeriod("monthly")}
                       >
                         Widen window · switch to monthly
+                      </Button>
+                    ) : period === "monthly" ? (
+                      <Button
+                        size="sm"
+                        className="h-10 w-full sm:h-9 sm:w-auto"
+                        onClick={() => setPeriod("last_month")}
+                      >
+                        Show last month
                       </Button>
                     ) : undefined
                   }

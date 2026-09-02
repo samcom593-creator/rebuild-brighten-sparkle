@@ -4438,6 +4438,14 @@
         "raw": "p_agent_id uuid"
       }
     ],
+    "production_book_freshness": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "production_period_totals": [
       {
         "all": [],

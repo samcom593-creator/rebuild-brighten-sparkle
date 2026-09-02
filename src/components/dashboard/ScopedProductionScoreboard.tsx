@@ -115,8 +115,22 @@ const PERIODS: Array<{ key: ScoreboardPeriod; label: string }> = [
   { key: "week", label: "Week to date" },
   { key: "past_week", label: "Past 7 days" },
   { key: "month", label: "Month to date" },
+  { key: "last_month", label: "Last month" },
   { key: "year", label: "Year to date" },
 ];
+
+// MP-372: what the book last saw, scoped exactly like the boards. Rendered
+// whenever a window is empty so a fresh month (nothing posted yet on the 1st
+// or 2nd) never reads as "the numbers are gone" — Sam switched periods on
+// Sept 2, every to-date window was honestly $0, and the page gave him no
+// context at all.
+interface BookFreshness {
+  last_posted_date: string | null;
+  last_posted_count: number;
+  last_posted_ap: number;
+  last_synced_at: string | null;
+  live_policies: number;
+}
 
 const money = (value: number | null | undefined) => new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -132,6 +146,10 @@ const pct = (value: number | null | undefined) => {
 
 const plural = (n: number, word: string) => `${n.toLocaleString()} ${word}${n === 1 ? "" : word.endsWith("y") ? "" : "s"}`;
 const policies = (n: number) => `${n.toLocaleString()} ${n === 1 ? "policy" : "policies"}`;
+// MP-372: freshness line formatters. Dates are business dates (no tz shift);
+// the sync instant is shown on the Phoenix clock the rest of the card uses.
+const shortDate = (ymd: string) => new Date(`${ymd}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+const shortTime = (iso: string) => new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: PHOENIX_TZ });
 
 // Provenance chips. Amber means "this number is an assumption", never "bad".
 const PROVENANCE: Record<string, { label: string; tone: "solid" | "assumed" }> = {
@@ -232,12 +250,33 @@ export function ScopedProductionScoreboard() {
     },
   });
 
+  // MP-372: only fetched when the selected window is empty. One cheap scoped
+  // read, never polled — it refetches with the board via the same realtime
+  // invalidation below.
+  const windowIsEmpty = Boolean(query.data && query.data.by_agent.length === 0);
+  const freshness = useQuery({
+    queryKey: ["production-book-freshness"],
+    enabled: windowIsEmpty,
+    staleTime: 120_000,
+    refetchOnWindowFocus: false,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("production_book_freshness" as never);
+      if (error) throw error;
+      const row = (Array.isArray(data) ? data[0] : data) as BookFreshness | undefined;
+      return row ?? null;
+    },
+  });
+
   // Refresh from the realtime channel instead of polling. See the comment on
   // refetchInterval above: the poll cost 11.2 hours of database time and was
   // still up to 5 minutes stale after a deal posted.
-  useProductionRealtime(() => { void query.refetch(); }, 800);
-
-  const refreshProduction = () => { void query.refetch(); };
+  const refreshProduction = () => {
+    void query.refetch();
+    // The freshness line only exists while the window is empty; a posted deal
+    // may fill the window (query above) or move "last posted" (this one).
+    if (windowIsEmpty) void freshness.refetch();
+  };
+  useProductionRealtime(refreshProduction, 800);
   // MP-361. Three raw subscriptions were REMOVED here — deals,
   // production_external_deals and production_external_daily_snapshots — because
   // useProductionRealtime() above already watches all three and delivers them
@@ -325,7 +364,7 @@ export function ScopedProductionScoreboard() {
               aria-label="Refresh production scoreboard"
               className="h-9 w-9 p-0"
               disabled={query.isFetching}
-              onClick={() => void query.refetch()}
+              onClick={refreshProduction}
               size="sm"
               variant="outline"
             >
@@ -451,7 +490,25 @@ export function ScopedProductionScoreboard() {
                 <p className="text-xs text-muted-foreground">{data.by_agent.length} of {data.all_members_count.toLocaleString()} in scope produced</p>
               </div>
               {data.by_agent.length === 0 ? (
-                <p className="px-4 pb-4 pt-2 text-sm text-muted-foreground">No policies posted in this window</p>
+                <div className="px-4 pb-4 pt-2">
+                  <p className="text-sm text-muted-foreground">Nothing posted in this window yet</p>
+                  {freshness.data?.last_posted_date ? (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Last policy posted {shortDate(freshness.data.last_posted_date)}
+                      {" · "}{policies(freshness.data.last_posted_count)}
+                      {" · "}{money(freshness.data.last_posted_ap)}
+                      {freshness.data.last_synced_at ? ` · book synced ${shortTime(freshness.data.last_synced_at)}` : ""}
+                      {" · "}{freshness.data.live_policies.toLocaleString()} live in your scope
+                    </p>
+                  ) : freshness.isLoading ? (
+                    <Skeleton className="mt-2 h-3 w-64" />
+                  ) : null}
+                  {period !== "last_month" && (
+                    <Button className="mt-2 h-8" onClick={() => setPeriod("last_month")} size="sm" variant="outline">
+                      Show last month
+                    </Button>
+                  )}
+                </div>
               ) : (
                 <div className="overflow-x-auto">
                   <Table>

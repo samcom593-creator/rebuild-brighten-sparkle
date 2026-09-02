@@ -254,6 +254,59 @@ function shippedTotalMatchesData() {
 }
 shippedTotalMatchesData();
 
+// MP-389 2026-09-02 — the count is guarded, the BYTES are guarded by nothing.
+//
+// shipped-data.ts was split out of the banner on 2026-07-25 because the array
+// "was 722 KB of prose and made the banner the single largest chunk on the
+// site (710 KB), loaded on every dashboard visit". The split WORKED and still
+// works: WhatShippedTodayBanner.tsx:51 reaches it through
+// `await import("@/data/shipped-data")`, the only value import is `import
+// type` (erased), and a full crawl of the deployed graph on 2026-09-02 found
+// it in no page chunk's static imports. It is off the critical path.
+//
+// What was never bounded is its SIZE. Measured on the live site the same day,
+// shipped-data-zdriAW9u.js is 962,349 bytes -- the single largest asset
+// deployed (14.0% of 6.87 MB of total JS), and LARGER than the 710 KB that
+// motivated the split. Source grew 971,594 -> 976,683 bytes in the 15 hours
+// across four commits, roughly 2.5 KB per wave, because every wave appends a
+// `detail` paragraph and nothing ever retires one.
+//
+// This is NOT the white-screen class: nobody who does not open the panel pays
+// for it. The cost lands on the one person who does -- Sam, on his phone,
+// checking what shipped. So this is a performance budget, not a correctness
+// ratchet, and deliberately NOT a bump-me-every-wave floor of the kind that
+// lets a real regression be laundered by an unrelated pay-down: it is a
+// CEILING with headroom that fires only when growth is genuinely unbounded.
+//
+// The remedy when it fires is available and specific: old entries' `detail`
+// prose can be dropped (the panel's value is in `label`), which is why this
+// can go green again by an action rather than by the calendar.
+const SHIPPED_DATA_BYTE_CEILING = 1_200_000;
+function shippedDataStaysWithinByteBudget() {
+  const dataPath = "src/data/shipped-data.ts";
+  const dataAbs = path.join(repoRoot, dataPath);
+  if (!fs.existsSync(dataAbs)) return;
+
+  const bytes = fs.statSync(dataAbs).size;
+  if (bytes > SHIPPED_DATA_BYTE_CEILING) {
+    const over = bytes - SHIPPED_DATA_BYTE_CEILING;
+    violations.push(
+      `${dataPath}: ${bytes.toLocaleString()} bytes exceeds the ${SHIPPED_DATA_BYTE_CEILING.toLocaleString()}-byte budget by ${over.toLocaleString()}. It ships as its own lazy chunk and is already the largest asset on the site; anyone opening "What shipped today" downloads all of it. Drop the \`detail\` prose from the oldest entries (keep \`label\`) rather than raising this ceiling.`,
+    );
+  }
+
+  // A budget nobody can see coming is a budget that fires as a surprise on the
+  // wave that happens to cross it. Growth here is ~2.5 KB/wave and monotonic,
+  // so warn while there is still room to act.
+  const WARN_AT = Math.floor(SHIPPED_DATA_BYTE_CEILING * 0.9);
+  if (bytes > WARN_AT && bytes <= SHIPPED_DATA_BYTE_CEILING) {
+    console.warn(
+      `[metric-truth] ${dataPath} is ${bytes.toLocaleString()} bytes, within 10% of the ${SHIPPED_DATA_BYTE_CEILING.toLocaleString()}-byte budget. Retire \`detail\` prose from the oldest entries soon.`,
+    );
+  }
+}
+shippedDataStaysWithinByteBudget();
+
 // wave-carrier-share-window-parity 2026-08-11 — the existing parity guards all
 // police the SOURCE of two operands (legacy `deals` vs `agentlink_book`). This
 // bug had one source and two WINDOWS, so every one of them passed it.

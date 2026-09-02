@@ -8,6 +8,10 @@ describe("contracting one-link lifecycle", () => {
   it("creates portal access, unlocks onboarding and drains only its own intake", () => {
     const submit = source("../supabase/functions/submit-contracting-intake/index.ts");
     expect(submit).toContain("provisionOnboarding");
+    expect(submit).toContain("validateNpnClaim");
+    expect(submit).toContain('error: "npn_in_use"');
+    expect(submit).toContain("nipr_verified: false");
+    expect(submit).toContain("normalizedPayload");
     expect(submit).toContain('has_training_course: true');
     expect(submit).toContain("send-course-enrollment-email");
     expect(submit).toContain("onboarding_email_sent: onboardingEmailSent");

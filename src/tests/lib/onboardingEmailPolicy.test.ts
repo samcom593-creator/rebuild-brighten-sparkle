@@ -41,12 +41,13 @@ describe("licensed and unlicensed onboarding email policy", () => {
 
   it("uses the APEX licensed curriculum instead of sending licensed agents to prelicensing", () => {
     expect(queueWorker).toContain("Your APEX online training is ready");
-    expect(queueWorker).toContain("dashboard/recruiting/training/library");
+    expect(queueWorker).toContain("dashboard/training/library");
     expect(queueWorker).not.toContain("Your APEX prelicensing course access is ready");
     expect(course).toContain("Your next-step roadmap");
     expect(course).toContain("Join the APEX Slack");
     expect(queueWorker).toContain("Join the APEX Discord");
     expect(course).not.toMatch(/whatsapp/i);
+    expect(queueWorker.match(/Slack is your <strong>primary team hub<\/strong>/g)).toHaveLength(1);
   });
 
   it("removes the retired channel from every active unlicensed email surface", () => {

@@ -119,6 +119,10 @@ export const SERVER_ERROR_COPY: Record<string, FieldError> = {
   email_invalid: { field: "email", message: "Enter a valid email address." },
   phone_invalid: { field: "phone", message: "Enter a 10-digit US mobile number." },
   npn_invalid: { field: "npn", message: "An NPN is 5 to 10 digits." },
+  npn_in_use: {
+    field: "npn",
+    message: "That NPN is already tied to another account. Contact APEX so we can correct the existing record safely.",
+  },
 };
 
 export type DeliveryState =

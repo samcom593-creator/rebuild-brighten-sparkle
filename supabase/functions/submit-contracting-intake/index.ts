@@ -58,6 +58,73 @@ export function licensePathFromBody(body: Record<string, unknown>): LicensePath 
   return raw === "unlicensed" || raw === "pending" ? raw : "licensed";
 }
 
+type NpnClaimVerdict =
+  | { ok: true; normalizedNpn: string }
+  | { ok: false; error: "npn_invalid" | "npn_in_use" | "npn_check_unavailable" };
+
+/**
+ * Public contracting can provision an account, so an NPN must already belong
+ * to the submitted mailbox when it exists in either canonical store. The RPC
+ * still owns transaction-level intake locking and replay idempotency; this
+ * guard closes the older-agent path and returns a useful field error instead
+ * of creating a second identity.
+ */
+async function validateNpnClaim(
+  sb: any,
+  rawNpn: string,
+  rawEmail: string,
+): Promise<NpnClaimVerdict> {
+  const normalizedNpn = String(rawNpn ?? "").replace(/[^0-9]/g, "");
+  const email = String(rawEmail ?? "").trim().toLowerCase();
+  if (!/^[0-9]{5,10}$/.test(normalizedNpn)) return { ok: false, error: "npn_invalid" };
+
+  const { data: intake, error: intakeError } = await sb
+    .from("contracting_intakes")
+    .select("email")
+    .eq("npn", normalizedNpn)
+    .limit(1)
+    .maybeSingle();
+  if (intakeError) return { ok: false, error: "npn_check_unavailable" };
+  if (intake?.email && String(intake.email).trim().toLowerCase() !== email) {
+    return { ok: false, error: "npn_in_use" };
+  }
+
+  const { data: agents, error: agentsError } = await sb
+    .from("agents")
+    .select("id,user_id,profile_id,source_application_id")
+    .eq("nipr_number", normalizedNpn)
+    .or("is_deactivated.is.null,is_deactivated.eq.false")
+    .neq("status", "terminated")
+    .limit(5);
+  if (agentsError) return { ok: false, error: "npn_check_unavailable" };
+  if (!agents?.length) return { ok: true, normalizedNpn };
+
+  const profileIds = agents.map((a: any) => a.profile_id).filter(Boolean);
+  const userIds = agents.map((a: any) => a.user_id).filter(Boolean);
+  const applicationIds = agents.map((a: any) => a.source_application_id).filter(Boolean);
+  const knownEmails = new Set<string>();
+
+  if (profileIds.length) {
+    const { data, error } = await sb.from("profiles").select("email").in("id", profileIds);
+    if (error) return { ok: false, error: "npn_check_unavailable" };
+    for (const row of data ?? []) if (row.email) knownEmails.add(String(row.email).trim().toLowerCase());
+  }
+  if (userIds.length) {
+    const { data, error } = await sb.from("profiles").select("email").in("user_id", userIds);
+    if (error) return { ok: false, error: "npn_check_unavailable" };
+    for (const row of data ?? []) if (row.email) knownEmails.add(String(row.email).trim().toLowerCase());
+  }
+  if (applicationIds.length) {
+    const { data, error } = await sb.from("applications").select("email").in("id", applicationIds);
+    if (error) return { ok: false, error: "npn_check_unavailable" };
+    for (const row of data ?? []) if (row.email) knownEmails.add(String(row.email).trim().toLowerCase());
+  }
+
+  return knownEmails.has(email)
+    ? { ok: true, normalizedNpn }
+    : { ok: false, error: "npn_in_use" };
+}
+
 async function provisionOnboarding(
   // supabase-js does not carry this project's generated database schema inside
   // edge functions, so an inferred generic collapses table writes to `never`.
@@ -122,6 +189,10 @@ async function provisionOnboarding(
       license_progress: "licensed",
       onboarding_stage: "onboarding",
       nipr_number: payload.npn,
+      // A typed NPN is a claim, not an official registry verification. A
+      // correction must never inherit the previous number's verified badge.
+      nipr_verified: false,
+      nipr_verified_at: null,
     };
   const agentPatch = {
     user_id: userId,
@@ -213,14 +284,37 @@ Deno.serve(async (req) => {
   const payload = pickAcceptedFields(body);
   const licensePath = licensePathFromBody(body);
 
+  // Check both canonical stores before any account is provisioned. Normalize
+  // the value used by the later agent write so the intake and profile cannot
+  // disagree merely because someone typed spaces or dashes.
+  let normalizedNpn = payload.npn;
+  if (licensePath === "licensed" || payload.npn) {
+    const claim = await validateNpnClaim(sb, payload.npn, payload.email);
+    if (!claim.ok) {
+      if (claim.error === "npn_check_unavailable") {
+        return errorResponse(
+          "We could not safely check that NPN right now. Try again shortly.",
+          503,
+          "NPN_CHECK_UNAVAILABLE",
+          { field: "npn" },
+        );
+      }
+      return errorResponse(claim.error, claim.error === "npn_in_use" ? 409 : 400, "VALIDATION_ERROR", {
+        field: "npn",
+      });
+    }
+    normalizedNpn = claim.normalizedNpn;
+  }
+  const normalizedPayload = { ...payload, npn: normalizedNpn };
+
   const { data, error } = await sb.rpc("submit_contracting_intake", {
-    p_first_name: payload.first_name,
-    p_last_name: payload.last_name,
-    p_email: payload.email,
-    p_phone: payload.phone,
+    p_first_name: normalizedPayload.first_name,
+    p_last_name: normalizedPayload.last_name,
+    p_email: normalizedPayload.email,
+    p_phone: normalizedPayload.phone,
     // Blank is a real value on the pre-license path; the RPC still rejects a
     // blank NPN for a licensed submission with npn_invalid.
-    p_npn: payload.npn || null,
+    p_npn: normalizedPayload.npn || null,
     p_source: "apex_contracting_page",
     p_submitted_by: null,
     p_license_status: licensePath,
@@ -259,12 +353,11 @@ Deno.serve(async (req) => {
   let onboardingEmailSent = false;
   if (result.status !== "needs_review") {
     try {
-      onboarding = await provisionOnboarding(sb, payload, licensePath);
-      // The public intake proves possession of an NPN, not possession of the
-      // email account. Send the one-click course login to that inbox instead
-      // of returning an authentication bearer token to an unauthenticated
-      // browser. The recruit still moves immediately; account access stays
-      // protected by email ownership.
+      onboarding = await provisionOnboarding(sb, normalizedPayload, licensePath);
+      // The public form proves neither registry ownership nor mailbox access.
+      // Send the one-click course login to that inbox instead of returning an
+      // authentication bearer token to an unauthenticated browser; possession
+      // of the inbox remains the account-access gate.
       const courseResponse = await fetch(`${SUPABASE_URL}/functions/v1/send-course-enrollment-email`, {
         method: "POST",
         headers: { authorization: `Bearer ${SERVICE_KEY}`, "content-type": "application/json" },
@@ -327,7 +420,7 @@ Deno.serve(async (req) => {
     replay: result.replay ?? false,
     upgraded: result.upgraded ?? false,
     license_status: result.license_status ?? licensePath,
-    npn_on_file: result.npn_on_file ?? Boolean(payload.npn),
+    npn_on_file: result.npn_on_file ?? Boolean(normalizedPayload.npn),
     contracting: result.contracting ?? null,
     agent_id: onboarding?.agentId ?? null,
     onboarding_ready: Boolean(onboarding?.agentId && onboardingEmailSent),

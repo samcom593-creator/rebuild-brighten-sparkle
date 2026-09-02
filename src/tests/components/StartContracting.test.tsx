@@ -279,4 +279,21 @@ describe("StartContracting · failure paths", () => {
 
     await waitFor(() => expect(screen.getByText(/NPN is 5 to 10 digits/i)).toBeTruthy());
   });
+
+  it("explains when an NPN belongs to another account", async () => {
+    invoke.mockResolvedValue({
+      data: null,
+      error: {
+        context: {
+          json: async () => ({ error: { message: "npn_in_use", field: "npn" } }),
+        },
+      },
+    });
+    render(<StartContracting />);
+    await fill();
+    fireEvent.click(screen.getByRole("button", { name: /start contracting/i }));
+
+    await waitFor(() => expect(screen.getByText(/already tied to another account/i)).toBeTruthy());
+    expect(screen.queryByText(/profile is active/i)).toBeNull();
+  });
 });

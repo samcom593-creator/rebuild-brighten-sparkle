@@ -26,6 +26,7 @@ import {
 import { formatDistanceToNow, format } from "date-fns";
 import { toast } from "sonner";
 import { AgentQuickEditDialog } from "@/components/dashboard/AgentQuickEditDialog";
+import { usePortalLoginSender } from "@/hooks/usePortalLoginSender";
 import { getBusinessMonthBounds, getBusinessWeekBounds } from "@/lib/dateUtils";
 import { DEAL_TRUTH_STATUS_FILTER, dealTruthWindowOr, getDealTruthTimestamp } from "@/lib/dealTruth";
 
@@ -113,6 +114,7 @@ export default function AgentManagement() {
   const [bulkAction, setBulkAction] = useState<"sms" | "email" | "portal_logins" | "deactivate" | null>(null);
   const [bulkMessage, setBulkMessage] = useState("");
   const [quickEditId, setQuickEditId] = useState<string | null>(null);
+  const portalLogins = usePortalLoginSender();
 
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ["agent-mgmt-rows", isAdmin, downlineIds.join(",")],
@@ -273,11 +275,10 @@ export default function AgentManagement() {
     if (ids.length === 0) { toast.error("Select agents first"); return; }
 
     if (bulkAction === "portal_logins") {
-      const { error } = await supabase.functions.invoke("send-bulk-portal-logins", {
-        body: { agent_ids: ids },
-      });
-      if (error) { toast.error(error.message); return; }
-      toast.success(`Portal logins sent to ${ids.length} agents`);
+      // Dry-run count + confirm + truthful receipt live in the hook.
+      setBulkDialogOpen(false);
+      const r = await portalLogins.send(ids);
+      if (!r) return;
     } else if (bulkAction === "sms" || bulkAction === "email") {
       const { error } = await supabase.functions.invoke("bulk-agent-message", {
         body: { agent_ids: ids, channel: bulkAction, message: bulkMessage },
@@ -333,6 +334,19 @@ export default function AgentManagement() {
             );
           })}
         </div>
+        {isAdmin && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 gap-1.5 border-primary/40"
+            disabled={portalLogins.sending}
+            onClick={() => portalLogins.send()}
+            title="Every active agent with a login gets a fresh one-tap portal link"
+          >
+            <KeyRound className="h-3.5 w-3.5" />
+            {portalLogins.sending ? "Sending…" : "Send Portal Logins (All)"}
+          </Button>
+        )}
       </div>
 
       {/* Stats strip */}

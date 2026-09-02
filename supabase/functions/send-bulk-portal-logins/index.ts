@@ -45,14 +45,31 @@ const handler = async (req: Request): Promise<Response> => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    // Get all active agents with valid profiles by joining via user_id.
+    // 2026-09-02 (MP-390): the body was never read. AgentManagement passed
+    // `agent_ids` for a hand-picked selection and this function mailed EVERY
+    // non-deactivated agent anyway — "select 3, send" reached ~100 people.
+    //   agent_ids: string[]  -> restrict to these agents (still deactivated-gated)
+    //   dry_run: boolean     -> return the recipient list, send nothing, mint no tokens
+    let body: { agent_ids?: unknown; dry_run?: unknown } = {};
+    // empty-catch-allow:no-body-means-send-to-all-eligible (an unparseable body is the documented "all" form, not a failure)
+    try { body = await req.json(); } catch { /* no body = send to all eligible */ }
+    const agentIds = Array.isArray(body.agent_ids)
+      ? body.agent_ids.filter((x): x is string => typeof x === "string" && x.length > 0)
+      : null;
+    const dryRun = body.dry_run === true;
+
+    // Eligible = not deactivated + has a login (user_id). Terminated agents are
+    // deactivated by the offboarding trigger, so they never make this list.
     // license_status is loaded to gate the Discord CTA in each email
     // (LICENSED ONLY — matches send-agent-onboarding-email guard).
-    const { data: agents, error: agentsError } = await supabaseAdmin
+    let agentsQuery = supabaseAdmin
       .from("agents")
-      .select("id, user_id, onboarding_stage, invited_by_manager_id, license_status")
+      .select("id, user_id, onboarding_stage, invited_by_manager_id, license_status, status")
       .eq("is_deactivated", false)
+      .neq("status", "terminated")
       .not("user_id", "is", null);
+    if (agentIds && agentIds.length > 0) agentsQuery = agentsQuery.in("id", agentIds);
+    const { data: agents, error: agentsError } = await agentsQuery;
 
     if (agentsError) {
       console.error("Error fetching agents:", agentsError);
@@ -80,6 +97,18 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Found ${profileMap.size} profiles with emails`);
 
+    if (dryRun) {
+      const recipients = (agents || [])
+        .map(a => ({ agent_id: a.id, status: a.status, profile: profileMap.get(a.user_id) }))
+        .filter(r => r.profile?.email && !r.profile.email.includes("placeholder"))
+        .filter((r, i, arr) => arr.findIndex(x => x.profile.email.toLowerCase() === r.profile.email.toLowerCase()) === i)
+        .map(r => ({ agent_id: r.agent_id, name: r.profile.full_name || "Unknown", email: r.profile.email, status: r.status }));
+      return new Response(
+        JSON.stringify({ success: true, dry_run: true, count: recipients.length, recipients }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
     const results = {
       total: 0,
       sent: 0,
@@ -88,8 +117,17 @@ const handler = async (req: Request): Promise<Response> => {
       details: [] as { name: string; email: string; status: string; error?: string }[],
     };
 
+    // One email per mailbox: duplicate agent rows sharing a profile (MP-275
+    // identity collisions) would otherwise get the same login twice.
+    const mailed = new Set<string>();
     for (const agent of agents || []) {
       const profile = profileMap.get(agent.user_id);
+      if (profile?.email && mailed.has(profile.email.toLowerCase())) {
+        results.skipped++;
+        results.details.push({ name: profile.full_name || "Unknown", email: profile.email, status: "skipped", error: "duplicate agent row for this email" });
+        continue;
+      }
+      if (profile?.email) mailed.add(profile.email.toLowerCase());
       if (!profile?.email) {
         console.log(`Skipping agent ${agent.id} - no email found`);
         results.skipped++;
@@ -173,15 +211,15 @@ const handler = async (req: Request): Promise<Response> => {
               <meta charset="utf-8">
               <meta name="viewport" content="width=device-width, initial-scale=1.0">
             </head>
-            <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #0a0f1a;">
+            <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #000000;">
               <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-                <div style="background: linear-gradient(135deg, #0d1526 0%, #1a2a4a 100%); border-radius: 16px; padding: 40px; border: 1px solid rgba(20, 184, 166, 0.3);">
+                <div style="background: linear-gradient(135deg, #0b0b0b 0%, #171512 100%); border-radius: 16px; padding: 40px; border: 1px solid rgba(201, 168, 76, 0.3);">
                   
                   <div style="text-align: center; margin-bottom: 24px;">
                     <span style="font-size: 64px;">🎯</span>
                   </div>
                   
-                  <h1 style="color: #14b8a6; font-size: 28px; margin: 0 0 16px 0; text-align: center;">
+                  <h1 style="color: #c9a84c; font-size: 28px; margin: 0 0 16px 0; text-align: center;">
                     Hey ${firstName}!
                   </h1>
                   
@@ -193,8 +231,8 @@ const handler = async (req: Request): Promise<Response> => {
                     You can now log your daily numbers and track your performance on the APEX Portal. Just tap the button below - no password needed!
                   </p>
                   
-                  <div style="background: rgba(20, 184, 166, 0.1); border-radius: 12px; padding: 24px; margin: 24px 0;">
-                    <h3 style="color: #14b8a6; font-size: 18px; margin: 0 0 16px 0;">What you can do:</h3>
+                  <div style="background: rgba(201, 168, 76, 0.1); border-radius: 12px; padding: 24px; margin: 24px 0;">
+                    <h3 style="color: #c9a84c; font-size: 18px; margin: 0 0 16px 0;">What you can do:</h3>
                     <ul style="color: #e2e8f0; font-size: 14px; line-height: 2; margin: 0; padding-left: 20px;">
                       <li>Log your daily production numbers</li>
                       <li>See how you rank on the leaderboard</li>
@@ -207,8 +245,8 @@ const handler = async (req: Request): Promise<Response> => {
                   <div style="text-align: center; margin: 32px 0;">
                     <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto;">
                       <tr>
-                        <td align="center" bgcolor="#14b8a6" style="border-radius:8px;">
-                          <a href="${portalMagicLink}" style="display:inline-block;color:#0a0f1a;text-decoration:none;padding:18px 48px;font-weight:bold;font-size:18px;">
+                        <td align="center" bgcolor="#c9a84c" style="border-radius:8px;">
+                          <a href="${portalMagicLink}" style="display:inline-block;color:#000000;text-decoration:none;padding:18px 48px;font-weight:bold;font-size:18px;">
                             🚀 Open My Portal →
                           </a>
                         </td>
@@ -251,7 +289,7 @@ const handler = async (req: Request): Promise<Response> => {
                   <!-- Fallback note -->
                   <div style="background: rgba(148, 163, 184, 0.1); border-radius: 8px; padding: 16px; margin: 24px 0;">
                     <p style="color: #94a3b8; font-size: 12px; margin: 0; text-align: center;">
-                      Link not working? You can also sign in at <a href="${BASE_URL}/agent-login" style="color: #14b8a6;">apex-financial.org/agent-login</a><br>
+                      Link not working? You can also sign in at <a href="${BASE_URL}/agent-login" style="color: #c9a84c;">apex-financial.org/agent-login</a><br>
                       using your email: <strong style="color: #e2e8f0;">${profile.email}</strong>
                     </p>
                   </div>

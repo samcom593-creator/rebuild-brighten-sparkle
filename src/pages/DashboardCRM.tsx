@@ -26,6 +26,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 import { useAuth } from "@/hooks/useAuth";
 import { useConfirm } from "@/hooks/useConfirm";
+import { usePortalLoginSender } from "@/hooks/usePortalLoginSender";
 import { toast } from "sonner";
 import { AddAgentModal } from "@/components/dashboard/AddAgentModal";
 import { AgentNotes } from "@/components/dashboard/AgentNotes";
@@ -936,7 +937,8 @@ export default function DashboardCRM() {
   const [showDeactivated, setShowDeactivated] = useState(persistedFilters.showDeactivated);
   const [showInactive, setShowInactive] = useState(persistedFilters.showInactive);
   const [deactivateAgent, setDeactivateAgent] = useState<AgentCRM | null>(null);
-  const [sendingBulkLogins, setSendingBulkLogins] = useState(false);
+  const portalLogins = usePortalLoginSender();
+  const sendingBulkLogins = portalLogins.sending;
   const [bulkMode, setBulkMode] = useState(false);
   const [selectedAgents, setSelectedAgents] = useState<Set<string>>(new Set());
   const [composeOpen, setComposeOpen] = useState(false);
@@ -1545,21 +1547,8 @@ export default function DashboardCRM() {
     },
   );
 
-  const handleBulkSendPortalLogins = async () => {
-    const ok = await askConfirm({
-      title: "Send portal login emails to all active agents?",
-      description: "Each active agent gets the standard portal login email so they can sign in.",
-      confirmText: "Send emails",
-    });
-    if (!ok) return;
-    setSendingBulkLogins(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("send-bulk-portal-logins");
-      if (error) throw error;
-      toast.success(`Sent ${data?.results?.sent || 0} portal login emails!`);
-    } catch { toast.error("Failed to send"); }
-    finally { setSendingBulkLogins(false); }
-  };
+  // Dry-run count → confirm → send → receipt from the function's own results.
+  const handleBulkSendPortalLogins = () => portalLogins.send();
 
   const onAgentUpdate = (id: string, updates: Partial<AgentCRM>) => {
     setAgents(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
@@ -2057,7 +2046,7 @@ export default function DashboardCRM() {
               )}
               {isAdmin && (
                 <Button onClick={handleBulkSendPortalLogins} variant="outline" size="sm" className="h-10 gap-1.5 sm:h-9" disabled={sendingBulkLogins}>
-                  <Mail className="h-4 w-4 shrink-0" /> {sendingBulkLogins ? "Sending..." : "Email All Logins"}
+                  <Mail className="h-4 w-4 shrink-0" /> {sendingBulkLogins ? "Sending..." : "Send Portal Logins (All)"}
                 </Button>
               )}
               <AddAgentModal onAgentAdded={fetchAgents} />

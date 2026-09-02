@@ -17,6 +17,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { AgentDocuments } from "@/components/profile/AgentDocuments";
 import { AccountRoleControl } from "@/components/profile/AccountRoleControl";
+import { AgentLicensingEditor } from "@/components/profile/AgentLicensingEditor";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent } from "@/components/ui/card";
@@ -173,6 +174,7 @@ function StatCard({ label, value, note, tone }: { label: string; value: string |
 }
 
 function AgentProducerView({ agentId }: { agentId: string }) {
+  const { isAdmin } = useAuth();
   const detail = useQuery({
     queryKey: ["producer-profile-detail", agentId],
     queryFn: async (): Promise<ProducerDetail | null> => {
@@ -288,6 +290,11 @@ function AgentProducerView({ agentId }: { agentId: string }) {
           )}
         </CardContent>
       </Card>
+
+      {/* MP-391 — admins edit the agent's NPN / license / E&O here. The
+          RPC refuses p_agent_id for anyone without the admin role, so a
+          non-admin who reaches this route still cannot write. */}
+      {isAdmin && <AgentLicensingEditor agentId={agentId} />}
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <StatCard label="Month to date" value={usdOrNull(a.mtd_alp)} note={`${a.mtd_deals ?? 0} deals posted`} tone="text-success" />
@@ -914,6 +921,14 @@ export default function ProducerProfile() {
               )}
             </CardContent>
           </Card>
+
+          {/* MP-391 — the agent owns their licensing record: NPN, license
+              number/states/expiry, E&O, contracting contact. Reads and writes
+              go through my_agent_profile / update_my_agent_profile because the
+              authenticated role has no grant on those agents columns. */}
+          <div id="licensing" className="scroll-mt-4">
+            <AgentLicensingEditor />
+          </div>
 
           {/* An agent's own paperwork — license, E&O, voided check, ID,
               contracting forms. Private bucket, per-agent RLS: only the agent

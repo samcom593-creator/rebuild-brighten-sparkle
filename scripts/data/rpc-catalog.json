@@ -2166,6 +2166,14 @@
         "raw": ""
       }
     ],
+    "fn_capture_pg_cron_timeout_state": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "fn_carrier_policies_touch": [
       {
         "all": [],
@@ -2915,6 +2923,17 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "fn_prune_cron_run_details": [
+      {
+        "all": [
+          "p_batch",
+          "p_keep"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_keep interval DEFAULT '14 days'::interval, p_batch integer DEFAULT 10000"
       }
     ],
     "fn_queue_application_slack": [
@@ -3734,6 +3753,49 @@
         "raw": ""
       }
     ],
+    "ingest_discord_production_deal": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_agent_name",
+          "p_annual_premium",
+          "p_carrier",
+          "p_channel_id",
+          "p_content_sha256",
+          "p_deal_ordinal",
+          "p_face_amount",
+          "p_guild_id",
+          "p_message_id",
+          "p_metadata",
+          "p_monthly_premium",
+          "p_occurred_at",
+          "p_policy_number",
+          "p_posted_date",
+          "p_product",
+          "p_source"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_agent_name",
+          "p_annual_premium",
+          "p_carrier",
+          "p_channel_id",
+          "p_content_sha256",
+          "p_deal_ordinal",
+          "p_face_amount",
+          "p_guild_id",
+          "p_message_id",
+          "p_monthly_premium",
+          "p_occurred_at",
+          "p_policy_number",
+          "p_posted_date",
+          "p_product",
+          "p_source"
+        ],
+        "unnamed": false,
+        "raw": "p_source text, p_guild_id text, p_channel_id text, p_message_id text, p_deal_ordinal integer, p_agent_id uuid, p_agent_name text, p_carrier text, p_product text, p_policy_number text, p_monthly_premium numeric, p_annual_premium numeric, p_face_amount numeric, p_occurred_at timestamp with time zone, p_posted_date date, p_content_sha256 text, p_metadata jsonb DEFAULT '{}'::jsonb"
+      }
+    ],
     "ingest_external_production_deal": [
       {
         "all": [
@@ -4124,6 +4186,16 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "my_agent_profile": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_agent_id uuid DEFAULT NULL::uuid"
       }
     ],
     "my_agents_missing_comp_level": [
@@ -4602,6 +4674,52 @@
         ],
         "unnamed": false,
         "raw": "p_lead_purchase_id uuid, p_action charge_action_type, p_notes text DEFAULT NULL::text, p_refund_amount_cents integer DEFAULT NULL::integer"
+      }
+    ],
+    "record_discord_deal_ingestion_exception": [
+      {
+        "all": [
+          "p_channel_id",
+          "p_content_sha256",
+          "p_deal_ordinal",
+          "p_guild_id",
+          "p_issue_code",
+          "p_issue_detail",
+          "p_message_created_at",
+          "p_message_id",
+          "p_parsed_payload",
+          "p_source"
+        ],
+        "required": [
+          "p_channel_id",
+          "p_content_sha256",
+          "p_deal_ordinal",
+          "p_guild_id",
+          "p_issue_code",
+          "p_issue_detail",
+          "p_message_created_at",
+          "p_message_id",
+          "p_source"
+        ],
+        "unnamed": false,
+        "raw": "p_source text, p_guild_id text, p_channel_id text, p_message_id text, p_deal_ordinal integer, p_message_created_at timestamp with time zone, p_issue_code text, p_issue_detail text, p_content_sha256 text, p_parsed_payload jsonb DEFAULT '{}'::jsonb"
+      }
+    ],
+    "record_discord_deal_ingestion_heartbeat": [
+      {
+        "all": [
+          "p_detail",
+          "p_last_ingested_at",
+          "p_last_message_at",
+          "p_source",
+          "p_status"
+        ],
+        "required": [
+          "p_source",
+          "p_status"
+        ],
+        "unnamed": false,
+        "raw": "p_source text, p_status text, p_last_message_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_last_ingested_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_detail text DEFAULT NULL::text"
       }
     ],
     "record_snap_stats_public": [
@@ -5913,6 +6031,19 @@
         ],
         "unnamed": false,
         "raw": "p_id uuid, p_progress text, p_source text"
+      }
+    ],
+    "update_my_agent_profile": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_patch"
+        ],
+        "required": [
+          "p_patch"
+        ],
+        "unnamed": false,
+        "raw": "p_patch jsonb, p_agent_id uuid DEFAULT NULL::uuid"
       }
     ],
     "update_scheduled_interviews_updated_at": [

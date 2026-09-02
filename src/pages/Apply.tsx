@@ -431,11 +431,12 @@ export default function Apply() {
   const liveActiveAgents = liveStats?.active_agents ?? 40;
   const liveCarriers = liveStats?.carriers_partnered ?? 22;
 
-  // Fetch only active MANAGERS for referral selection via edge function (bypasses RLS for public access)
+  // Public application attribution uses a minimal, rate-limited recruiter
+  // directory. The full manager endpoint remains authenticated for admin tools.
   useEffect(() => {
     const fetchActiveManagers = async () => {
       try {
-        const { data, error } = await supabase.functions.invoke("get-active-managers");
+        const { data, error } = await supabase.functions.invoke("get-public-recruiters");
 
         if (error) {
           console.error("Error fetching managers:", error);

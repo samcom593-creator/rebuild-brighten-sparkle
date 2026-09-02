@@ -106,6 +106,9 @@ verify_jwt = false
 [functions.get-active-managers]
 verify_jwt = false
 
+[functions.get-public-recruiters]
+verify_jwt = false
+
 [functions.notify-missed-dialer]
 verify_jwt = false
 

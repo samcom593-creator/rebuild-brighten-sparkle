@@ -206,3 +206,94 @@ describe("useProductionRealtime — cleanup", () => {
     expect(supabase.removeChannel).toHaveBeenCalledTimes(1);
   });
 });
+
+// ── MP-388: row-change coalescing ─────────────────────────────────────────
+// A sync UPDATEs ~1,068 deals rows in ~2 minutes. Before MP-388 each row was
+// its own window event and the 800ms per-subscriber throttle refetched three
+// 2-4s RPCs ~150 times per sync. These tests drive the real postgres_changes
+// handlers the hook registered and count the window events that come out.
+
+import {
+  REALTIME_COALESCE_QUIET_MS,
+  REALTIME_COALESCE_MAX_WAIT_MS,
+} from "@/hooks/useProductionRealtime";
+
+function buildHandlerCapturingMock() {
+  const handlers: Array<() => void> = [];
+  const mock: { on: ReturnType<typeof vi.fn>; subscribe: ReturnType<typeof vi.fn>; _handlers: typeof handlers } = {
+    on: vi.fn(),
+    subscribe: vi.fn(),
+    _handlers: handlers,
+  };
+  mock.on = vi.fn((_e: string, _f: unknown, cb: () => void) => {
+    handlers.push(cb);
+    return mock;
+  });
+  mock.subscribe = vi.fn().mockReturnValue(mock);
+  return mock;
+}
+
+describe("useProductionRealtime — MP-388 row-change coalescing", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it("a single row change dispatches exactly once, after the quiet period", () => {
+    const channelMock = buildHandlerCapturingMock();
+    vi.mocked(supabase.channel).mockReturnValue(channelMock as any);
+    const seen = vi.fn();
+    window.addEventListener(PRODUCTION_EVENT, seen);
+    const { unmount } = renderHook(() => useProductionRealtime(vi.fn(), 0));
+    const dealsHandler = channelMock._handlers[1]; // deals is the 2nd .on()
+
+    act(() => dealsHandler());
+    act(() => { vi.advanceTimersByTime(REALTIME_COALESCE_QUIET_MS - 1); });
+    expect(seen).toHaveBeenCalledTimes(0);
+    act(() => { vi.advanceTimersByTime(1); });
+    expect(seen).toHaveBeenCalledTimes(1);
+
+    window.removeEventListener(PRODUCTION_EVENT, seen);
+    unmount();
+  });
+
+  it("a 2-minute burst of 1,068 row changes dispatches floor(125s / MAX_WAIT) + 1 times, not 1,068", () => {
+    const channelMock = buildHandlerCapturingMock();
+    vi.mocked(supabase.channel).mockReturnValue(channelMock as any);
+    const seen = vi.fn();
+    window.addEventListener(PRODUCTION_EVENT, seen);
+    const { unmount } = renderHook(() => useProductionRealtime(vi.fn(), 0));
+    const dealsHandler = channelMock._handlers[1];
+
+    const BURST_MS = 125_000; // not a multiple of MAX_WAIT: the ceiling timer at an exact boundary is a float-rounding coin flip
+    const ROWS = 1068;
+    const step = BURST_MS / ROWS; // ~112ms apart — always inside the quiet window
+    act(() => {
+      for (let i = 0; i < ROWS; i++) {
+        dealsHandler();
+        vi.advanceTimersByTime(step);
+      }
+    });
+    const duringBurst = seen.mock.calls.length;
+    // Ceiling fires: once per MAX_WAIT while rows keep landing.
+    expect(duringBurst).toBe(Math.floor(BURST_MS / REALTIME_COALESCE_MAX_WAIT_MS));
+    // Trailing flush after the burst goes quiet.
+    act(() => { vi.advanceTimersByTime(REALTIME_COALESCE_QUIET_MS); });
+    expect(seen).toHaveBeenCalledTimes(duringBurst + 1);
+    expect(seen.mock.calls.length).toBeLessThan(10);
+
+    window.removeEventListener(PRODUCTION_EVENT, seen);
+    unmount();
+  });
+
+  it("a pending flush is dropped when the last subscriber unmounts", () => {
+    const channelMock = buildHandlerCapturingMock();
+    vi.mocked(supabase.channel).mockReturnValue(channelMock as any);
+    const seen = vi.fn();
+    window.addEventListener(PRODUCTION_EVENT, seen);
+    const { unmount } = renderHook(() => useProductionRealtime(vi.fn(), 0));
+    act(() => channelMock._handlers[1]());
+    unmount();
+    act(() => { vi.advanceTimersByTime(REALTIME_COALESCE_MAX_WAIT_MS * 2); });
+    expect(seen).toHaveBeenCalledTimes(0);
+    window.removeEventListener(PRODUCTION_EVENT, seen);
+  });
+});

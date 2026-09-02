@@ -336,12 +336,25 @@ Deno.serve(async (req) => {
     // map once (paginated — deals is already >1000 rows, past PostgREST's
     // default page) and the per-policy SELECT disappears.
     const existingByKey = new Map<string, string>();
+    // MP-378: the composite key above is a MUTABLE business key. When AgentLink
+    // corrects a deal's policyNumber (or reassigns its agent), the key changes,
+    // the map misses, and the row falls to the INSERT path -- where it collides
+    // with idx_deals_external_deal_id_unique, is caught as 23505, and is booked
+    // as deals_skipped. Measured 2026-09-01..02 in postgres_logs: 386 distinct
+    // external_deal_ids failing this way 8,887 times in 24h, i.e. the SAME rows
+    // on every run, with status_updated_at frozen as far back as 2026-07-28
+    // while the sync reported success. external_deal_id is the STABLE upstream
+    // identity and is exactly what the constraint keys on, so map it too and
+    // let it catch what the composite key drops. Second map, not a replacement:
+    // the composite path still owns rows whose external id is null (AgentLink
+    // sends placeholders that are coerced to NULL above).
+    const existingByExternal = new Map<string, string>();
     {
       const PAGE = 1000;
       for (let from = 0; ; from += PAGE) {
         const { data: page, error: pageErr } = await sb
           .from("deals")
-          .select("id, agent_id, policy_number")
+          .select("id, agent_id, policy_number, external_deal_id")
           .range(from, from + PAGE - 1);
         if (pageErr) {
           // Fail loud: a partial map would silently turn updates into inserts
@@ -353,9 +366,10 @@ Deno.serve(async (req) => {
           });
           return json({ ok: false, error: `deal prefetch failed: ${pageErr.message}` }, 500);
         }
-        const rows = (page ?? []) as { id: string; agent_id: string | null; policy_number: string | null }[];
+        const rows = (page ?? []) as { id: string; agent_id: string | null; policy_number: string | null; external_deal_id: string | null }[];
         for (const r of rows) {
           if (r.agent_id && r.policy_number) existingByKey.set(`${r.agent_id}|${r.policy_number}`, r.id);
+          if (r.external_deal_id) existingByExternal.set(r.external_deal_id, r.id);
         }
         if (rows.length < PAGE) break;
       }
@@ -431,7 +445,11 @@ Deno.serve(async (req) => {
       }
 
       const dealKey = `${row.agent_id}|${row.policy_number}`;
-      const existingId = existingByKey.get(dealKey);
+      // Composite key first (it owns external-id-less rows); fall back to the
+      // stable upstream id so a corrected policy_number/agent UPDATES the deal
+      // it belongs to instead of colliding on the unique index.
+      const existingId = existingByKey.get(dealKey)
+        ?? (external ? existingByExternal.get(external) : undefined);
 
       if (existingId) {
         const { error } = await sb.from("deals").update(row).eq("id", existingId);
@@ -456,7 +474,10 @@ Deno.serve(async (req) => {
         summary.deals_inserted++;
         // Keep the map truthful so a policy repeated inside one payload updates
         // instead of inserting a second row.
-        if (inserted?.id) existingByKey.set(dealKey, inserted.id as string);
+        if (inserted?.id) {
+          existingByKey.set(dealKey, inserted.id as string);
+          if (external) existingByExternal.set(external, inserted.id as string);
+        }
       }
     }
 

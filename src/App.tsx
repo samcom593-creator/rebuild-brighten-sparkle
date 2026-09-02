@@ -91,6 +91,7 @@ const UnlicensedOverview = lazy(() => import("./pages/UnlicensedOverview"));
 const ApplicationStatus = lazy(() => import("./pages/ApplicationStatus"));
 const StaleRecovery = lazy(() => import("./pages/StaleRecovery"));
 const GetLicensed = lazy(() => import("./pages/GetLicensed"));
+const Vsl = lazy(() => import("./pages/Vsl"));
 const ResourcesLicensing = lazy(() => import("./pages/ResourcesLicensing"));
 const TrainingIndex = lazy(() => import("./pages/TrainingIndex"));
 const Signup = lazy(() => import("./pages/Signup"));
@@ -392,6 +393,7 @@ const App = () => (
                       assigned manager, next seminar, status step. Powered by
                       get_application_status() RPC (SECURITY DEFINER, anon-callable). */}
                   <Route path="/status/:applicationId" element={<ApplicationStatus />} />
+                  <Route path="/vsl" element={<Vsl />} />
                   <Route path="/get-licensed" element={<GetLicensed />} />
                   {/* Mirror of apex-resources.vercel.app harvest — courses,
                       PDFs, scripts, and recorded presentations, on-site. */}

@@ -31,7 +31,7 @@ const registeredRoutes = new Set(
 );
 
 const PUBLIC_ROUTES = [
-  "/", "/apply", "/get-licensed", "/start-contracting", "/unlicensed-overview",
+  "/", "/apply", "/vsl", "/get-licensed", "/start-contracting", "/unlicensed-overview",
   "/resources/licensing", "/training", "/login", "/reset-password", "/signup",
   "/agent-signup", "/agent-login", "/magic-login",
   "/schedule-call", "/join", "/links", "/seminar",

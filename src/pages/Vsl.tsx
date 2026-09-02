@@ -61,12 +61,12 @@ export default function Vsl() {
         </GlassCard>
 
         <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
-          <Link to="/apply">
-            <GradientButton className="w-full sm:w-auto">
+          <GradientButton asChild className="w-full sm:w-auto">
+            <Link to="/apply">
               Apply to {BRAND.shortName}
               <ArrowRight className="ml-2 h-4 w-4" />
-            </GradientButton>
-          </Link>
+            </Link>
+          </GradientButton>
           <Link
             to="/get-licensed"
             className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"

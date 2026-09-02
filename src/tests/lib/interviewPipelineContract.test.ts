@@ -123,12 +123,13 @@ describe("native recruiting interview contract", () => {
 
   it("renders the interview control room instead of the legacy flat queue", () => {
     const page = read("src/pages/Interviews.tsx");
+    const hires = read("src/components/hires/HireLaunchBoard.tsx");
     expect(page).toContain('title="Interview Control Room"');
     expect(page).toContain("Work next");
     expect(page).toContain("INTERVIEW_RAIL.map");
-    expect(page).toContain("HIRE_RAIL.map");
+    expect(page).toContain("<HireLaunchBoard");
     expect(page).toContain("One-link candidate intake");
-    expect(page).toContain("New-hire launch board");
+    expect(hires).toContain("New-hire launch board");
     expect(page).toContain("Live recruiting pulse");
     expect(page).toContain("J / K moves through priority candidates");
     expect(page).toContain('type SortMode = "priority" | "appointment" | "newest"');

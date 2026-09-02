@@ -112,7 +112,7 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen }: GlobalSidebarP
 
   const renderGroup = (group: AgentCloudNavGroup) => {
     const active = group.items.some((item) => agentCloudPathIsActive(pathname, item.href))
-      || (group.label === "Recruiting" && pathname.startsWith("/dashboard/recruiting/"));
+      || (group.label === "Grow" && pathname.startsWith("/dashboard/recruiting/"));
     const open = active || !closedGroups[group.label];
     const Icon = group.icon;
     const trigger = (

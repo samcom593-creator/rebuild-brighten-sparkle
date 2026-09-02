@@ -96,43 +96,45 @@ beforeEach(() => {
 });
 
 describe("GlobalSidebar · AgentCloud application navigation", () => {
-  it("keeps every recruiting application inside one expanded group", () => {
+  it("keeps recruiting actions inside the Grow group", () => {
     setRoles({ isAdmin: true });
     renderSidebar();
-    expect(group("Recruiting")).toBeTruthy();
+    expect(group("Grow")).toBeTruthy();
     expect(link("Interviews")?.getAttribute("href")).toBe("/dashboard/recruiting/interviews");
-    expect(link("APEX Training")?.getAttribute("href")).toBe("/dashboard/recruiting/training");
+    expect(link("Recruit Pipeline")?.getAttribute("href")).toBe("/dashboard/recruiting");
+    expect(link("Invite an agent")?.getAttribute("href")).toBe("/admin/invite-links");
   });
 
   it.each([
     ["manager", { isManager: true }],
     ["va_manager", { isVaManager: true }],
     ["va", { isVa: true }],
-  ])("shows the AgentCloud recruiting applications to %s", (_label, roles) => {
+  ])("shows the recruiting workspace to %s", (_label, roles) => {
     setRoles(roles as Partial<typeof authState>);
     renderSidebar();
-    expect(group("Recruiting")).toBeTruthy();
+    expect(group("Grow")).toBeTruthy();
     expect(link("Interviews")).toBeTruthy();
-    expect(link("APEX Training")).toBeTruthy();
+    expect(link("Recruit Pipeline")).toBeTruthy();
   });
 
-  it("keeps non-admin AgentCloud applications discoverable to plain agents", () => {
+  it("keeps high-frequency work discoverable to plain agents without internal contracting", () => {
     renderSidebar();
-    expect(group("Recruiting")).toBeTruthy();
+    expect(group("Grow")).toBeTruthy();
     expect(link("Interviews")).toBeTruthy();
-    expect(link("APEX Training")).toBeTruthy();
+    expect(group("Learn")).toBeTruthy();
+    expect(link("Training Home")).toBeTruthy();
     expect(link("Call Center")).toBeTruthy();
-    expect(group("Contracting")).toBeTruthy();
+    expect(link("My Contracts")).toBeNull();
     expect(link("Finances")).toBeNull();
   });
 
   it("keeps the complete grouped admin map visible", () => {
     setRoles({ isAdmin: true });
     renderSidebar();
-    for (const label of ["Clients", "Recruiting", "Agency", "Contracting", "Tools", "Settings"]) {
+    for (const label of ["Sell", "Grow", "My Business", "Learn", "Team", "Owner", "Settings"]) {
       expect(group(label)).toBeTruthy();
     }
-    for (const label of ["Home", "Reports", "Finances", "Resources", "Nova", "Producer Profile"]) {
+    for (const label of ["Home", "Reports", "Finances", "Training Home", "Nova Pro", "Producer Profile"]) {
       expect(link(label)).toBeTruthy();
     }
   });
@@ -143,30 +145,33 @@ describe("GlobalSidebar · AgentCloud application navigation", () => {
   it("gives a Pure Recruiter recruiting + invite, and hides the selling surface", () => {
     setRoles({ isRecruiter: true, effectiveMode: "recruiter" as never });
     renderSidebar();
-    expect(group("Recruiting")).toBeTruthy();
+    expect(group("Grow")).toBeTruthy();
     expect(link("Interviews")).toBeTruthy();
     expect(link("Follow-ups")).toBeTruthy();
     expect(link("Invite an agent")).toBeTruthy();
-    expect(group("Clients")).toBeNull();
+    expect(group("Sell")).toBeNull();
     expect(link("Book of Business")).toBeNull();
     expect(link("Quoter")).toBeNull();
-    expect(link("Nova")).toBeNull();
+    expect(link("Nova Pro")).toBeTruthy();
     expect(link("Producer Profile")).toBeNull();
   });
 
-  it("hides the Clients selling surface from VA staff", () => {
+  it("gives VA staff the call center and recruiting workspace without producer books", () => {
     setRoles({ isVa: true });
     renderSidebar();
-    expect(group("Recruiting")).toBeTruthy();
-    expect(group("Clients")).toBeNull();
+    expect(group("Grow")).toBeTruthy();
+    expect(group("Sell")).toBeTruthy();
+    expect(link("Call Center")).toBeTruthy();
     expect(link("Book of Business")).toBeNull();
   });
 
-  it("shows Reports (a leader surface) to an Agency Owner", () => {
+  it("shows producer and team surfaces to an Agency Owner without owner-only reports", () => {
     setRoles({ isManager: true, effectiveMode: "agency_owner" as never });
     renderSidebar();
-    expect(link("Reports")).toBeTruthy();
-    expect(group("Clients")).toBeTruthy();
+    expect(group("Sell")).toBeTruthy();
+    expect(group("Team")).toBeTruthy();
+    expect(link("My Team")).toBeTruthy();
+    expect(link("Reports")).toBeNull();
   });
 
   it("hides Reports from a plain agent", () => {
@@ -197,18 +202,18 @@ describe("GlobalSidebar · recruiting active-state behavior", () => {
     "/dashboard/recruiting/follow-ups",
     "/dashboard/recruiting/hires",
     "/dashboard/recruiting/training",
-  ])("keeps Recruiting active across %s", (pathname) => {
+  ])("keeps Grow active across %s", (pathname) => {
     setRoles({ isAdmin: true });
     renderSidebar(pathname);
-    expect(group("Recruiting")!.className).toContain(ACTIVE_GROUP_CLASS);
+    expect(group("Grow")!.className).toContain(ACTIVE_GROUP_CLASS);
     expect(link("Home")!.className).not.toContain(ACTIVE_LINK_CLASS);
   });
 
-  it("marks APEX Training without also marking the pipeline", () => {
+  it("keeps a nested recruiting route from falsely marking the pipeline leaf", () => {
     setRoles({ isAdmin: true });
     renderSidebar("/dashboard/recruiting/training");
-    expect(link("APEX Training")!.className).toContain(ACTIVE_LINK_CLASS);
-    expect(screen.getAllByRole("link", { name: "Pipeline" }).every((item) => !item.className.includes(ACTIVE_LINK_CLASS))).toBe(true);
+    expect(group("Grow")!.className).toContain(ACTIVE_GROUP_CLASS);
+    expect(link("Recruit Pipeline")!.className).not.toContain(ACTIVE_LINK_CLASS);
   });
 
   it("Home is exact-match only", () => {

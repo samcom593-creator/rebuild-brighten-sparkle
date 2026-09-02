@@ -114,7 +114,6 @@ function initials(name: string | null) {
 }
 
 const INTERVIEW_RAIL = ["Booked", "Confirmed", "Interviewed", "Hired"] as const;
-const HIRE_RAIL = ["Hired", "Licensed", "Onboarding", "Field ready"] as const;
 const SORT_LABEL: Record<SortMode, string> = { priority: "Priority", appointment: "Appointment time", newest: "Newest" };
 
 function interviewRailStep(row: Applicant) {

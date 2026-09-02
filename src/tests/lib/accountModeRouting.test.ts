@@ -53,7 +53,8 @@ describe("account mode → home screen routing", () => {
   it("nav allowlists keep the selling surface off recruiter and VA modes", () => {
     const nav = src("components/layout/agentCloudNavigation.ts");
     expect(nav).toContain('const PRODUCERS: AccountMode[] = ["agent", "manager", "agency_owner"];');
-    expect(nav).toMatch(/label: "Clients",[\s\S]{0,80}modes: PRODUCERS/);
+    expect(nav).toContain('label: "Sell"');
+    expect(nav).toContain('modes: [...PRODUCERS, "va", "va_manager"]');
     const sidebar = src("components/layout/GlobalSidebar.tsx");
     // viewMode = the previewed role when Sam is previewing, else the real mode
     expect(sidebar).toContain("modes.includes(viewMode)");

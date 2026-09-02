@@ -29,10 +29,10 @@ describe("recruiting links (MP-342)", () => {
     expect(page).not.toMatch(/from\("agents"\)/); // never a direct table read on a public-ish surface
   });
 
-  it("route is admin-gated and sidebar entry is adminOnly", () => {
+  it("route stays admin-gated even though the low-frequency link is removed from the sidebar", () => {
     const app = read("src/App.tsx");
     expect(app).toMatch(/path="\/dashboard\/recruiting-links" element=\{<ProtectedRoute requireAdmin>/);
     const nav = read("src/components/layout/agentCloudNavigation.ts");
-    expect(nav).toMatch(/href: "\/dashboard\/recruiting-links", icon: Link2, adminOnly: true/);
+    expect(nav).not.toContain('href: "/dashboard/recruiting-links"');
   });
 });

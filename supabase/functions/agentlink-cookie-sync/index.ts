@@ -355,6 +355,14 @@ Deno.serve(async (req) => {
         const { data: page, error: pageErr } = await sb
           .from("deals")
           .select("id, agent_id, policy_number, external_deal_id")
+          // MP-378: .range() without ORDER BY is non-deterministic -- Postgres
+          // may return a row on two pages or on NONE, so a paginated prefetch
+          // silently drops rows and the map comes back incomplete. Measured:
+          // after the external_deal_id fallback landed, 190 collisions REMAINED
+          // in the same run, which is impossible if the map were complete (the
+          // 23505 proves the row exists). Order by the primary key so every row
+          // appears exactly once.
+          .order("id", { ascending: true })
           .range(from, from + PAGE - 1);
         if (pageErr) {
           // Fail loud: a partial map would silently turn updates into inserts

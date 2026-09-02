@@ -327,13 +327,13 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
   // cards shipped from a gpt-engineer placeholder seed on 2026-01-10
   // (commit 114cfd56) and never had a source. Replaced with brand-canon
   // truths the rest of the landing already claims:
-  //   - $120K/mo run rate (Hero "story" variant + CLAUDE.md)
+  //   - $1.2M income in one year (founder milestone supplied by Sam)
   //   - 70%-145% commission range (Hero stat pill + this page line 224)
   // active_agents + carriers stay live via landing_live_stats() RPC.
   // The check:landing-marketing-claims guard locks future $NNNM+/NNNK+
   // placeholders out of landing/* surfaces.
   const stats = [
-    { value: "$120K/mo", label: "Agency Top-Line" },
+    { value: "$1.2M", label: "Income in One Year" },
     { value: "70%–145%", label: "Commission Range" },
     { value: `${carriers}`, label: "Carrier Partners" },
     { value: `${activeAgents}`, label: "Active Agents", isLive: true },

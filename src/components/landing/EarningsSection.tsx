@@ -1,33 +1,40 @@
 import { useState } from "react";
-import { TrendingUp, Award, Clock, Users } from "lucide-react";
+import { BadgeCheck, BarChart3, FileCheck2, GraduationCap, Network, UserPlus } from "lucide-react";
 import { SectionHeading } from "@/components/ui/section-heading";
 
 const earningsData = {
-  fullTime: {
-    label: "Licensed Path",
-    description: "You already have your state license",
-    headline: "Hit the phones day one",
-    supporting: "Warm leads on your phone, a dialer that auto-routes, and a manager on the daily huddle. Most new agents close their first deal inside 7 days.",
-    bullets: ["Warm leads, no fee", "Dialer + scripts", "Daily team huddle"],
+  agencyBuilder: {
+    label: "Agency Builder",
+    description: "You are building a team and need operational leverage",
+    headline: "Run the entire agency",
+    supporting: "Recruiting, contracting, training progress, hierarchy visibility, production, and follow-up live in one command center.",
+    bullets: ["Downline visibility", "Hiring operations", "Agency analytics"],
   },
-  topProducer: {
-    label: "Pre-Licensing Path",
-    description: "Not licensed yet",
-    headline: "Licensed in 4 weeks",
-    supporting: "Course is on us. Pass the state exam, then we plug you straight into warm leads. No quotas, no waiting, no fee to start.",
-    bullets: ["Course paid for", "Pass the exam", "Straight into leads"],
+  licensedProducer: {
+    label: "Licensed Producer",
+    description: "You already hold an active insurance license",
+    headline: "Fast-track to production",
+    supporting: "Complete your profile and contracting intake, enter the training roadmap, and see every action required before field release.",
+    bullets: ["Contracting intake", "Sales training", "Production dashboard"],
+  },
+  licensingFastTrack: {
+    label: "Get Licensed",
+    description: "You are starting without an insurance license",
+    headline: "A guided licensing roadmap",
+    supporting: "Coursework, exam scheduling, fingerprints, licensing, contracting, and training are organized into one visible progression.",
+    bullets: ["Course roadmap", "Milestone tracking", "Licensed handoff"],
   },
 };
 
 const milestones = [
-  { icon: Clock, label: "First Sale", value: "Inside 7 days", description: "What most new agents see" },
-  { icon: TrendingUp, label: "Out of pocket", value: "$0", description: "No leads fee, course on us" },
-  { icon: Award, label: "Six Figures", value: "4-6 months", description: "To reach $100K+ pace" },
-  { icon: Users, label: "Build Team", value: "Year One", description: "Earn manager overrides" },
+  { icon: UserPlus, label: "Recruit", value: "One link", description: "Start the right workflow" },
+  { icon: FileCheck2, label: "Contract", value: "One intake", description: "Collect required information" },
+  { icon: GraduationCap, label: "Train", value: "Clear steps", description: "Know what comes next" },
+  { icon: BarChart3, label: "Produce", value: "Live view", description: "Track personal and team results" },
 ];
 
 export function EarningsSection() {
-  const [selected, setSelected] = useState<keyof typeof earningsData>("fullTime");
+  const [selected, setSelected] = useState<keyof typeof earningsData>("agencyBuilder");
   const data = earningsData[selected];
 
   return (
@@ -36,14 +43,14 @@ export function EarningsSection() {
       
       <div className="container mx-auto px-4 relative z-10">
         <SectionHeading
-          badge="Earnings Potential"
-          title="How agents actually make money here"
-          subtitle="No hype, no posted screenshots, no fake checks. Pick your starting line — licensed or not — and see what your first 6 months look like."
+          badge="Three ways to enter"
+          title="Your path changes. The operating system stays connected."
+          subtitle="Choose the track that matches where you are now. Each one leads into the same structured agency platform."
         />
 
         {/* Earnings Toggle */}
         <div className="flex justify-center mt-12 mb-8">
-          <div className="inline-flex rounded-lg bg-white dark:bg-[#0f172a] border border-[#1e293b] p-1">
+          <div className="inline-flex max-w-full flex-wrap justify-center rounded-lg bg-white dark:bg-[#0f172a] border border-[#1e293b] p-1">
             {Object.entries(earningsData).map(([key, value]) => (
               <button
                 key={key}
@@ -67,7 +74,10 @@ export function EarningsSection() {
         >
           <div className="p-8 md:p-12 rounded-md bg-white dark:bg-card border border-[#1e293b] ">
             <div className="text-center mb-8">
-              <p className="text-[#94a3b8] mb-2">{data.description}</p>
+              <div className="mb-3 flex items-center justify-center gap-2 text-[#e8bb2b]">
+                {selected === "agencyBuilder" ? <Network className="h-5 w-5" /> : <BadgeCheck className="h-5 w-5" />}
+                <p className="text-[#94a3b8]">{data.description}</p>
+              </div>
               <div className="text-4xl md:text-6xl font-extrabold text-[#e8bb2b] text-glow mb-2 font-display">
                 {data.headline}
               </div>

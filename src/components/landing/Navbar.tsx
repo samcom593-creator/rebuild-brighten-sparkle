@@ -6,9 +6,10 @@ import { applyHrefWithRef } from "@/lib/refSlug";
 // Sam-feedback 2026-06-03: removed #testimonials and #systems — no matching
 // section IDs on the landing, so taps did nothing. Five real anchors only.
 const NAV_LINKS = [
-  { href: "#benefits", label: "Benefits" },
-  { href: "#earnings", label: "Earnings" },
-  { href: "#career", label: "Career Path" },
+  { href: "#agency-system", label: "Platform" },
+  { href: "#benefits", label: "Capabilities" },
+  { href: "#earnings", label: "Growth Paths" },
+  { href: "#career", label: "Roadmap" },
 ];
 
 export function Navbar() {

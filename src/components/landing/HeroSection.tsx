@@ -194,7 +194,7 @@ export function HeroSection() {
 
           {/* Subheadline */}
           <p className="landing-fade-up landing-delay-200 text-base sm:text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto mb-10 leading-relaxed">
-            We partner with ambitious producers and agency builders to scale 6- and 7-figure operations on automated rails. Top carrier contracts, automated contracting, live production tracking, and a battle-tested training machine.
+            Recruit, license, contract, train, and manage production from one connected platform. Built for agency owners, licensed producers, and new agents who want a clear path forward.
           </p>
 
           <div className="landing-fade-up landing-delay-300 mx-auto mb-10 grid max-w-5xl grid-cols-1 gap-3 text-left md:grid-cols-3">
@@ -298,7 +298,7 @@ export function HeroSection() {
             <div className="text-left">
               <p className="text-sm font-bold leading-tight">Samuel James</p>
               <p className="text-[11px] text-muted-foreground uppercase tracking-wider">
-                Founder · $120K/mo producer
+                Founder · $1.2M income in one year
               </p>
             </div>
           </div>

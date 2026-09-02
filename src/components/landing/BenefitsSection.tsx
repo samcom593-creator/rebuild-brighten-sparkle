@@ -1,18 +1,24 @@
-import { 
-  DollarSign, GraduationCap, Calendar, Target, 
-  Users, Trophy, Zap, HeartHandshake
+import {
+  BarChart3,
+  FileCheck2,
+  GraduationCap,
+  Headphones,
+  Network,
+  Smartphone,
+  UserPlus,
+  Workflow,
 } from "lucide-react";
 import { SectionHeading } from "@/components/ui/section-heading";
 
 const benefits = [
-  { icon: DollarSign, title: "50–145% commission", description: "Real rates, paid weekly. Production bonuses up to $25K/mo on top." },
-  { icon: Target,     title: "Warm leads, daily",  description: "No cold calling. Prospects already asked for the appointment." },
-  { icon: GraduationCap, title: "Scripts that close", description: "Same scripts our top producers use. Mentorship from day one." },
-  { icon: Calendar,   title: "Your schedule",       description: "Work from anywhere. Set your own hours. Build the business around your life." },
-  { icon: Users,      title: "Team that picks up",  description: "Daily team huddle, weekly closer call, Discord that's never quiet." },
-  { icon: Trophy,     title: "Build your own team", description: "Clear path to manager. Earn overrides on every producing agent under you." },
-  { icon: Zap,        title: "$10K in 90 days",     description: "Fast-start bonuses for new agents who execute the playbook." },
-  { icon: HeartHandshake, title: "Protect real families", description: "Every policy is generational wealth for the family you wrote it for." },
+  { icon: UserPlus, title: "Recruiting CRM", description: "Applications, interviews, follow-ups, hires, and ownership stay in one operating view." },
+  { icon: FileCheck2, title: "One-link onboarding", description: "Licensed and unlicensed recruits enter the correct guided workflow from the start." },
+  { icon: Workflow, title: "Contracting operations", description: "Intake, required documents, carrier steps, and support are visible without guesswork." },
+  { icon: GraduationCap, title: "Structured training", description: "Clear modules, progress checkpoints, and next actions move every agent toward field readiness." },
+  { icon: BarChart3, title: "Live production", description: "See personal, team, sub-agency, and total production without mixing the hierarchy." },
+  { icon: Network, title: "Hierarchy control", description: "Owners and managers see the agents and numbers that belong to their organization." },
+  { icon: Headphones, title: "Human support", description: "Agents always know who to contact for licensing, contracting, training, or field help." },
+  { icon: Smartphone, title: "Mobile command center", description: "The core hiring and production workflows stay fast and usable from a phone." },
 ];
 
 export function BenefitsSection() {
@@ -22,9 +28,9 @@ export function BenefitsSection() {
       
       <div className="container mx-auto px-4 relative z-10">
         <SectionHeading
-          badge="Why APEX"
-          title="Everything that closes. Nothing that doesn't."
-          subtitle="Lead flow, scripts, weekly pay, real mentorship. You bring the work."
+          badge="Built for the whole agency"
+          title="The tools to recruit, launch, manage, and scale."
+          subtitle="Every capability is organized around the work your agents and leaders need to complete next."
         />
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-16">

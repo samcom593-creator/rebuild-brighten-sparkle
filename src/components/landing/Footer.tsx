@@ -19,8 +19,8 @@ export const Footer = forwardRef<HTMLElement>((_, ref) => {
               <span className="text-xl font-extrabold text-[#e8bb2b] font-display">APEX Financial</span>
             </Link>
             <p className="text-sm text-[#94a3b8] max-w-sm mb-4">
-              Where producers stop renting their income and start building it.
-              Warm leads, weekly pay, real coaching. No fee for leads ever.
+              One connected operating system for recruiting, contracting, training,
+              production, and agency growth.
             </p>
             <div className="flex flex-col gap-2 text-sm text-[#94a3b8]">
               <a href="mailto:info@apex-financial.org" className="flex min-h-6 items-center gap-2 hover:text-[#e8bb2b] transition-colors">
@@ -38,8 +38,9 @@ export const Footer = forwardRef<HTMLElement>((_, ref) => {
           <div>
             <h3 className="font-bold mb-4 text-[#f1f5f9] font-display">Quick Links</h3>
             <ul className="space-y-2 text-sm text-[#94a3b8]">
-              <li><a href="#benefits" className="inline-flex min-h-6 items-center hover:text-[#e8bb2b] transition-colors">Benefits</a></li>
-              <li><a href="#earnings" className="inline-flex min-h-6 items-center hover:text-[#e8bb2b] transition-colors">Earnings</a></li>
+              <li><a href="#agency-system" className="inline-flex min-h-6 items-center hover:text-[#e8bb2b] transition-colors">Platform</a></li>
+              <li><a href="#benefits" className="inline-flex min-h-6 items-center hover:text-[#e8bb2b] transition-colors">Capabilities</a></li>
+              <li><a href="#earnings" className="inline-flex min-h-6 items-center hover:text-[#e8bb2b] transition-colors">Growth Paths</a></li>
               <li><a href="#receipts" className="inline-flex min-h-6 items-center hover:text-[#e8bb2b] transition-colors">Receipts</a></li>
               <li><Link to={applyHref} className="inline-flex min-h-6 items-center hover:text-[#e8bb2b] transition-colors">Apply Now</Link></li>
             </ul>

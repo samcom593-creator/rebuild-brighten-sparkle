@@ -17,6 +17,7 @@ import { setRefSlug } from "@/lib/refSlug";
 import { LazyQueryRoot } from "@/shared/api/LazyQueryRoot";
 
 const BenefitsSection = lazy(() => import("@/components/landing/BenefitsSection").then((mod) => ({ default: mod.BenefitsSection })));
+const AgencyOperatingSystemSection = lazy(() => import("@/components/landing/AgencyOperatingSystemSection").then((mod) => ({ default: mod.AgencyOperatingSystemSection })));
 const EarningsSection = lazy(() => import("@/components/landing/EarningsSection").then((mod) => ({ default: mod.EarningsSection })));
 const CareerPathwaySection = lazy(() => import("@/components/landing/CareerPathwaySection").then((mod) => ({ default: mod.CareerPathwaySection })));
 const CTASection = lazy(() => import("@/components/landing/CTASection").then((mod) => ({ default: mod.CTASection })));
@@ -101,6 +102,7 @@ const Index = () => {
         <HeroSection />
         <Suspense fallback={<SectionFallback />}>
           <LazyQueryRoot>
+            <AgencyOperatingSystemSection />
             <Testimonials />
             <BenefitsSection />
             <EarningsSection />

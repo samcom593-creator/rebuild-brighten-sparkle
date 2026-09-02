@@ -15,12 +15,12 @@ import { applyHrefWithRef } from "@/lib/refSlug";
 // real number, so anonymous landings see the same pixels until they scroll/click.
 
 const benefits = [
-  "No experience required",
-  "Free training & mentorship",
-  "Exclusive warm leads provided",
-  "Work from anywhere",
-  "Daily pay",
-  "Production bonuses up to $25K/mo",
+  "Licensed and unlicensed tracks",
+  "One-link recruiting and onboarding",
+  "Guided contracting operations",
+  "Structured training roadmap",
+  "Live production visibility",
+  "Hierarchy-aware agency reporting",
 ];
 
 type LandingLiveStats = { active_agents: number };
@@ -61,13 +61,12 @@ export const CTASection = forwardRef<HTMLElement>((_, ref) => {
           </span>
 
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-6 text-[#f1f5f9] font-display">
-            Ready to{" "}
-            <span className="text-[#e8bb2b] text-glow">Run with the Standard?</span>
+            Ready to run your agency{" "}
+            <span className="text-[#e8bb2b] text-glow">on one system?</span>
           </h2>
 
           <p className="text-lg md:text-xl text-[#94a3b8] max-w-2xl mx-auto mb-8">
-            {activeAgents}+ agents are running the APEX system right now.
-            Your first $100K year is one application away.
+            {activeAgents}+ agents are already moving through the system. Choose the path that fits your current level and see exactly what comes next.
           </p>
 
           {/* Benefits Grid */}
@@ -96,7 +95,7 @@ export const CTASection = forwardRef<HTMLElement>((_, ref) => {
           </div>
 
           <p className="text-sm text-[#8395ab] mt-4">
-            5 minutes to apply • Real reply within 24 hours
+            One application • Correct path automatically • Clear next action
           </p>
         </div>
       </div>

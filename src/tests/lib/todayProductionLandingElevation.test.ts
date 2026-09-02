@@ -26,6 +26,8 @@ describe("today production and landing elevation", () => {
 
   it("positions the landing page for each APEX partner path", () => {
     const hero = source("src/components/landing/HeroSection.tsx");
+    const index = source("src/pages/Index.tsx");
+    const operatingSystem = source("src/components/landing/AgencyOperatingSystemSection.tsx");
     expect(hero).toContain("The Operating System for");
     expect(hero).toContain("Elite Insurance Agencies");
     expect(hero).toContain("Agency Builders");
@@ -36,6 +38,12 @@ describe("today production and landing elevation", () => {
     expect(hero).toContain("#030712");
     expect(hero).toContain("#C9A961");
     expect(hero).toContain("#D4AF37");
+    expect(hero).toContain("Founder · $1.2M income in one year");
+    expect(index).toContain("<AgencyOperatingSystemSection />");
+    expect(operatingSystem).toContain("One platform. Every stage of agency growth.");
+    expect(operatingSystem).toContain("Recruiting engine");
+    expect(operatingSystem).toContain("Launch control");
+    expect(operatingSystem).toContain("Agency intelligence");
     expect(hero.toLowerCase()).not.toContain("guaranteed placement");
   });
 });

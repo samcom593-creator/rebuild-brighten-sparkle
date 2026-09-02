@@ -28,6 +28,7 @@ interface BountyRow {
 }
 
 const dollars = (cents: number) => `$${Math.round(cents / 100).toLocaleString()}`;
+const APEX_ORIGIN = "https://apex-financial.org";
 
 export function RecruiterBountyCard({ agentId, className }: { agentId?: string | null; className?: string }) {
   const link = useQuery({
@@ -62,16 +63,19 @@ export function RecruiterBountyCard({ agentId, className }: { agentId?: string |
   const pending = live.filter((r) => r.status !== "paid");
   const earned = paid.reduce((s, r) => s + (r.amount_cents ?? 0), 0);
   const inFlight = pending.reduce((s, r) => s + (r.amount_cents ?? 0), 0);
+  const bioUrl = link.data?.ref_slug
+    ? `${APEX_ORIGIN}/r/${encodeURIComponent(link.data.ref_slug)}`
+    : link.data?.link;
 
   const copyLink = async () => {
-    const url = link.data?.link;
+    const url = bioUrl;
     if (!url) {
       toast({ title: "No recruiting link yet", description: "Ask an admin to set up your ref link.", variant: "destructive" });
       return;
     }
     try {
       await navigator.clipboard.writeText(url);
-      toast({ title: "Recruiter link copied with your attribution", description: url });
+      toast({ title: "Link in bio copied", description: "Every application through it is credited to you." });
     } catch {
       toast({ title: "Copy failed", description: "Select the link below and copy it manually.", variant: "destructive" });
     }
@@ -89,13 +93,20 @@ export function RecruiterBountyCard({ agentId, className }: { agentId?: string |
             </p>
           </div>
         </div>
-        <Button onClick={copyLink} disabled={link.isLoading} className="shrink-0 gap-2 font-bold">
-          <Copy className="h-3.5 w-3.5" /> Copy My Recruiter Link
+        <Button onClick={copyLink} disabled={link.isLoading || !bioUrl} className="shrink-0 gap-2 font-bold">
+          <Copy className="h-3.5 w-3.5" /> Copy Link in Bio
         </Button>
       </div>
 
-      {link.data?.link ? (
-        <code className="mt-3 block select-all break-all rounded-md border border-border bg-muted/40 px-3 py-1.5 text-[11px] text-muted-foreground">{link.data.link}</code>
+      {bioUrl ? (
+        <a
+          href={bioUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-3 block select-all break-all rounded-md border border-border bg-muted/40 px-3 py-2 text-[11px] text-muted-foreground underline-offset-2 hover:border-primary/50 hover:text-primary hover:underline"
+        >
+          {bioUrl}
+        </a>
       ) : null}
 
       {agentId ? (

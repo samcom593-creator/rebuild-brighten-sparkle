@@ -1063,8 +1063,9 @@ export default function Dashboard() {
   // - previewRole=admin: ExecutiveDashboard
   if (shouldRenderDefaultAdminCommand) {
     return (
-      <div className="mx-auto w-full max-w-7xl p-4 sm:p-6">
+      <div className="mx-auto w-full max-w-7xl space-y-5 p-4 sm:p-6">
         <AgentCloudHome />
+        <ReferralLinkCard />
       </div>
     );
   }

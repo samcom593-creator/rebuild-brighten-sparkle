@@ -23,6 +23,8 @@ type RecruitingLink = {
   link?: string;
 };
 
+const APEX_ORIGIN = "https://apex-financial.org";
+
 export function MyReferralLinkCard() {
   const { user } = useAuth();
   const [copied, setCopied] = useState(false);
@@ -39,13 +41,14 @@ export function MyReferralLinkCard() {
   });
   const code = linkQ.data?.ref_slug ?? null;
   const fullUrl = linkQ.data?.link ?? null;
+  const bioUrl = code ? `${APEX_ORIGIN}/r/${encodeURIComponent(code)}` : fullUrl;
 
   const handleCopy = async () => {
-    if (!fullUrl) return;
+    if (!bioUrl) return;
     try {
-      await navigator.clipboard.writeText(fullUrl);
+      await navigator.clipboard.writeText(bioUrl);
       setCopied(true);
-      toast.success("Link copied");
+      toast.success("Link in bio copied");
       setTimeout(() => setCopied(false), 1500);
     } catch (err) {
       toast.error("Could not copy. Try again or copy manually.");
@@ -65,34 +68,39 @@ export function MyReferralLinkCard() {
   return (
     <Card className="border-emerald-500/30 bg-white dark:bg-card">
       <CardContent className="space-y-3 p-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-300">Your referral link</p>
-            <p className="text-xs text-muted-foreground">Share it. Get credit for every applicant who signs up through it.</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-300">Your link in bio</p>
+            <p className="text-xs text-muted-foreground">Put it in Instagram, TikTok, or any bio. Every applicant is credited to you.</p>
           </div>
           <Badge variant="outline" className="border-emerald-500/40 bg-emerald-500/10 text-emerald-300">
             <QrCode className="mr-1 h-3 w-3" /> live
           </Badge>
         </div>
-        {fullUrl ? (
+        {bioUrl ? (
           <>
             <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
-              <div className="flex-1 truncate rounded-md border border-border/40 bg-background/50 px-3 py-2 font-mono text-xs">
-                {fullUrl}
-              </div>
+              <a
+                href={bioUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="min-w-0 flex-1 break-all rounded-md border border-border/40 bg-background/50 px-3 py-2 font-mono text-xs text-foreground underline-offset-2 hover:border-primary/50 hover:text-primary hover:underline"
+              >
+                {bioUrl}
+              </a>
               <Button
                 onClick={handleCopy}
                 size="sm"
                 variant="outline"
                 className="shrink-0"
-                aria-label="Copy referral link"
+                aria-label="Copy link in bio"
               >
                 {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                <span className="ml-1.5">{copied ? "Copied" : "Copy"}</span>
+                <span className="ml-1.5">{copied ? "Copied" : "Copy bio link"}</span>
               </Button>
-              <Button asChild size="sm" variant="ghost" aria-label="Open apply link">
-                <a href={fullUrl} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="h-4 w-4" />
+              <Button asChild size="sm" variant="ghost" aria-label="Open link in bio">
+                <a href={bioUrl} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="mr-1.5 h-4 w-4" /> Open
                 </a>
               </Button>
             </div>

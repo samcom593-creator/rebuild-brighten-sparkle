@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { ManagerPostCounter } from "@/components/dashboard/ManagerPostCounter";
+import { MyReferralLinkCard } from "@/components/agent/MyReferralLinkCard";
 
 interface AgentRow {
   id: string;
@@ -156,7 +157,9 @@ export default function ManagerCommandView() {
             ? "No agents in your downline yet."
             : `${downlineIds.length} agents · live production from AgentLink`
         }
-              />
+      />
+
+      <MyReferralLinkCard />
 
       <ManagerPostCounter />
 

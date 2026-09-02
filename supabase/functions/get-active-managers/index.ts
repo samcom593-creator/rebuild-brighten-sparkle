@@ -96,7 +96,7 @@ const handler = async (req: Request): Promise<Response> => {
     // 3. Batch fetch profiles
     const { data: profiles, error: profilesError } = await supabaseAdmin
       .from("profiles")
-      .select("user_id, full_name, instagram_handle, avatar_url")
+      .select("user_id, full_name, instagram_handle, avatar_url, photo_url")
       .in("user_id", userIds);
 
     if (profilesError) throw profilesError;
@@ -104,7 +104,7 @@ const handler = async (req: Request): Promise<Response> => {
     // 3b. Batch fetch agent photos as a fallback for avatar.
     const { data: agentExtras } = await supabaseAdmin
       .from("agents")
-      .select("id, photo_url, display_name")
+      .select("id, display_name")
       .in("id", agents.map(a => a.id));
 
     const profileMap = new Map((profiles || []).map(p => [p.user_id, p]));
@@ -129,7 +129,7 @@ const handler = async (req: Request): Promise<Response> => {
           id: a.id,
           name: normalizeName(extras?.display_name || profile?.full_name),
           instagramHandle: profile?.instagram_handle || undefined,
-          avatarUrl: extras?.photo_url || (profile as any)?.avatar_url || null,
+          avatarUrl: (profile as any)?.avatar_url || (profile as any)?.photo_url || null,
           role: "manager",
         };
       })

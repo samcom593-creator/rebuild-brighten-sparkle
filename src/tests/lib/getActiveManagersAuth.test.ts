@@ -31,7 +31,9 @@ describe("get-active-managers authorization boundary", () => {
     expect(applySource).toContain('invoke("get-public-recruiters")');
     expect(applySource).not.toContain('invoke("get-active-managers")');
     expect(publicSource).toContain("MAX_PER_WINDOW = 30");
-    expect(publicSource).toContain('.select("id, user_id, display_name, photo_url")');
+    expect(publicSource).toContain('.select("id, user_id, display_name")');
+    expect(publicSource).not.toContain('select("id, user_id, display_name, photo_url")');
+    expect(source).not.toContain('.select("id, photo_url, display_name")');
     expect(publicSource).not.toContain("email");
     expect(publicSource).not.toContain("phone");
   });

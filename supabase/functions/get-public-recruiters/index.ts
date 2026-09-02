@@ -55,7 +55,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: agents, error: agentError } = await admin
       .from("agents")
-      .select("id, user_id, display_name, photo_url")
+      .select("id, user_id, display_name")
       .in("user_id", userIds)
       .eq("status", "active")
       .or("is_deactivated.is.null,is_deactivated.eq.false")
@@ -66,7 +66,7 @@ Deno.serve(async (req: Request) => {
     const { data: profiles, error: profileError } = activeUserIds.length
       ? await admin
         .from("profiles")
-        .select("user_id, full_name, instagram_handle, avatar_url")
+        .select("user_id, full_name, instagram_handle, avatar_url, photo_url")
         .in("user_id", activeUserIds)
       : { data: [], error: null };
     if (profileError) throw profileError;
@@ -81,7 +81,7 @@ Deno.serve(async (req: Request) => {
           id: agent.id,
           name,
           instagramHandle: profile?.instagram_handle || undefined,
-          avatarUrl: agent.photo_url || profile?.avatar_url || null,
+          avatarUrl: profile?.avatar_url || profile?.photo_url || null,
         } : null;
       })
       .filter((manager): manager is NonNullable<typeof manager> => {

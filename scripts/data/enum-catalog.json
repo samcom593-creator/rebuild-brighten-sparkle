@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-enum-catalog.sh (bot_sql -> pg_enum + pg_attribute.atttypid)",
- "_generated_at": "2026-08-30T04:27:59Z",
+ "_generated_at": "2026-09-02T13:33:50Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "A repo guard cannot query prod. This is a snapshot of every enum-typed column in the public schema and the exact member list Postgres will accept for it, so scripts/check-enum-filter-literals.mjs can decide whether a filter or write literal will survive PostgREST's coercion. Enum types are SCHEMA-QUALIFIED because this database has more than one type sharing a bare name. Views are included: a bad literal in a filter against a view column raises the same 22P02 as one against a table. apex-doctor Check #29 re-queries pg_enum weekly and goes red when this snapshot drifts from the live catalog.",
  "_ambiguous_bare_names": {
@@ -13,6 +13,7 @@
   "agent_attendance": "r",
   "agent_strikes": "r",
   "agents": "r",
+  "agents_phantom_backup": "r",
   "applications": "r",
   "charge_review_actions": "r",
   "cw_competitors": "r",
@@ -40,6 +41,7 @@
   "v_agent_20k_target_leaderboard": "v",
   "v_agent_crm_active": "v",
   "v_agent_duplicate_candidates": "v",
+  "v_agent_owner_truth": "v",
   "v_agent_skool_membership": "v",
   "v_agent_strikes": "v",
   "v_agent_training_stage": "v",
@@ -453,6 +455,14 @@
   "agents.performance_tier": "public.performance_tier",
   "agents.status": "public.agent_status",
   "agents.training_stage_override": "public.agent_training_stage",
+  "agents_phantom_backup.attendance_status": "public.attendance_status",
+  "agents_phantom_backup.deactivation_reason": "public.deactivation_reason",
+  "agents_phantom_backup.license_progress": "public.license_progress",
+  "agents_phantom_backup.license_status": "public.license_status",
+  "agents_phantom_backup.onboarding_stage": "public.onboarding_stage",
+  "agents_phantom_backup.performance_tier": "public.performance_tier",
+  "agents_phantom_backup.status": "public.agent_status",
+  "agents_phantom_backup.training_stage_override": "public.agent_training_stage",
   "applications.hiring_scope_at_intake": "public.hiring_scope",
   "applications.license_progress": "public.license_progress",
   "applications.license_status": "public.license_status",
@@ -493,6 +503,7 @@
   "v_agent_crm_active.license_status": "public.license_status",
   "v_agent_crm_active.status": "public.agent_status",
   "v_agent_duplicate_candidates.status": "public.agent_status",
+  "v_agent_owner_truth.status": "public.agent_status",
   "v_agent_skool_membership.status": "public.agent_status",
   "v_agent_strikes.reason_code": "public.strike_reason_code",
   "v_agent_strikes.severity": "public.strike_severity",
@@ -625,6 +636,26 @@
    ],
    "constraint": "agent_credentials_service_check"
   },
+  "agent_documents.kind": {
+   "members": [
+    "license",
+    "eo_certificate",
+    "voided_check",
+    "id",
+    "contracting",
+    "other"
+   ],
+   "constraint": "agent_documents_kind_check"
+  },
+  "agent_documents.status": {
+   "members": [
+    "submitted",
+    "approved",
+    "rejected",
+    "needs_replacement"
+   ],
+   "constraint": "agent_documents_status_check"
+  },
   "agent_inbox.list": {
    "members": [
     "APEX-Daily",
@@ -678,7 +709,8 @@
     "course",
     "discord",
     "hired_whatsapp",
-    "onboarding_call"
+    "onboarding_call",
+    "get_licensed"
    ],
    "constraint": "agent_onboarding_queue_email_kind_check"
   },
@@ -689,6 +721,13 @@
     "denied"
    ],
    "constraint": "agent_removal_requests_status_check"
+  },
+  "agent_stage_moves.field": {
+   "members": [
+    "onboarding_stage",
+    "license_status"
+   ],
+   "constraint": "agent_stage_moves_field_check"
   },
   "agent_touches.touch_type": {
    "members": [
@@ -718,6 +757,22 @@
    "constraint": "agents_builder_track_check"
   },
   "agents.comp_approval_status": {
+   "members": [
+    "approved",
+    "pending_sam",
+    "denied"
+   ],
+   "constraint": "agents_comp_approval_status_check"
+  },
+  "agents_phantom_backup.builder_track": {
+   "members": [
+    "agent",
+    "manager_track",
+    "agency_owner_track"
+   ],
+   "constraint": "agents_builder_track_check"
+  },
+  "agents_phantom_backup.comp_approval_status": {
    "members": [
     "approved",
     "pending_sam",

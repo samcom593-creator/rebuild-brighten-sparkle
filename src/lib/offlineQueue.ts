@@ -289,7 +289,7 @@ export async function flushQueue(
       result = { ok: false, error: error instanceof Error ? error.message : String(error) };
     }
 
-    if (result.ok) {
+    if (result.ok === true) {
       removeEntry(live.id);
       sent += 1;
       continue;

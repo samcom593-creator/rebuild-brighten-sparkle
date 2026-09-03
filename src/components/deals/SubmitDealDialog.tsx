@@ -550,7 +550,7 @@ export function SubmitDealDialog({ trigger, initialClient }: { trigger?: ReactNo
         args: queuedArgs,
         label,
       });
-      if (!queued.ok) {
+      if (queued.ok === false) {
         const message = queued.reason === "queue-full"
           ? "This device already has 50 deals waiting to sync. Reconnect before posting another."
           : "This deal could not be stored safely on this device. Keep the form open and reconnect.";

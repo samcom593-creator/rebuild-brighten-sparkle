@@ -46,9 +46,13 @@ async function logClientError(scope: "query" | "mutation", key: string, error: u
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
+      // Render in-memory/service-worker cached truth immediately when the
+      // network disappears, then refetch every active view on reconnect.
+      networkMode: "offlineFirst",
       staleTime: 120_000, // 2 min
       gcTime: 300_000,    // 5 min
       refetchOnWindowFocus: false,
+      refetchOnReconnect: true,
       retry: smartRetry,
     },
     mutations: {

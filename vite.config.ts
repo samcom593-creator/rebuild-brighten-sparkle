@@ -128,10 +128,10 @@ export default defineConfig(({ mode }) => ({
     react(),
     mode === "development" && componentTagger(),
     VitePWA({
-      // Keep an active worker for installability and push notifications, but
-      // never precache the HTML/navigation shell. Documents stay network-only;
-      // only immutable hashed assets are cached. This preserves the stale-shell
-      // fix while allowing APEX to install and launch as a real app.
+      // Keep an active worker for installability, push, and an offline app
+      // shell. index.html is revisioned by Workbox on every deploy, while all
+      // JS/CSS references remain content-hashed, so an offline navigation can
+      // boot without pinning an old bundle after connectivity returns.
       selfDestroying: false,
       registerType: "autoUpdate",
       // wave-45 (2026-06-09): live mobile Lighthouse for e1530c22 (HEAD) found
@@ -179,12 +179,13 @@ export default defineConfig(({ mode }) => ({
         ],
       },
       workbox: {
-        navigateFallback: null,
+      navigateFallback: "/index.html",
         // Precache the boot shell, not every one of the 300+ lazy admin
         // chunks. The old broad glob installed ~6.5 MB after first load and
         // competed with real navigation on mobile. Visited route chunks are
         // cached by the /assets/ CacheFirst rule below.
         globPatterns: [
+          "index.html",
           "assets/index-*.{js,css}",
           "assets/rolldown-runtime-*.js",
           "assets/vendor-{router,react,react-dom,icons-landing}-*.js",

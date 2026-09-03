@@ -12,11 +12,11 @@ describe("APEX phone app contract", () => {
     expect(manifest.start_url).toContain("/dashboard");
   });
 
-  it("keeps the worker active without caching the HTML shell", () => {
+  it("keeps the worker active and provides a revisioned offline HTML shell", () => {
     const vite = source("vite.config.ts");
     expect(vite).toContain("selfDestroying: false");
-    expect(vite).toContain("navigateFallback: null");
-    expect(vite).not.toContain('          "index.html",');
+    expect(vite).toContain('navigateFallback: "/index.html"');
+    expect(vite).toContain('          "index.html",');
   });
 
   it("mounts role-aware mobile navigation across the authenticated OS", () => {

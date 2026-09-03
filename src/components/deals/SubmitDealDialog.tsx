@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, FilePlus2, FileCheck2, Loader2, Plus, Search, ShieldCheck, Trash2, UserCheck } from "lucide-react";
+import { CheckCircle2, Clock3, FilePlus2, FileCheck2, Loader2, Plus, Search, ShieldCheck, Trash2, UserCheck, WifiOff } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { invalidateOperationalTruth } from "@/lib/invalidateOperationalTruth";
 import { normalizePolicyNumber, sanitizePolicyInput } from "@/lib/policyNumber";
+import { enqueue, isOffline, isTransportError } from "@/lib/offlineQueue";
 
 type PremiumMode = "annual" | "semiannual" | "quarterly" | "monthly" | "single_pay" | "other";
 type PaymentMethod = "" | "bank_draft" | "credit_card" | "debit_card" | "direct_express" | "check" | "social_security";
@@ -86,6 +87,13 @@ interface Receipt {
   correlationId: string;
 }
 
+interface OfflineReceipt {
+  localId: string;
+  label: string;
+}
+
+type RpcError = { message?: string; code?: string; status?: number };
+
 const SECTIONS: Array<{ key: DealSection; label: string }> = [
   { key: "client", label: "Client" },
   { key: "policy", label: "Policy & Product" },
@@ -151,8 +159,8 @@ function likeLiteral(term: string): string {
   return term.replace(/[\\%_*]/g, (character) => `\\${character}`);
 }
 
-function rpc<T>(name: string, args: Record<string, unknown>): Promise<{ data: T | null; error: { message?: string } | null }> {
-  return (supabase.rpc as unknown as (fn: string, values: Record<string, unknown>) => Promise<{ data: T | null; error: { message?: string } | null }>)(name, args);
+function rpc<T>(name: string, args: Record<string, unknown>): Promise<{ data: T | null; error: RpcError | null }> {
+  return (supabase.rpc as unknown as (fn: string, values: Record<string, unknown>) => Promise<{ data: T | null; error: RpcError | null }>)(name, args);
 }
 
 interface InitialDealClient {
@@ -184,6 +192,7 @@ export function SubmitDealDialog({ trigger, initialClient }: { trigger?: ReactNo
   const [recovered, setRecovered] = useState(false);
   const [evidence, setEvidence] = useState<EvidenceRow[]>([]);
   const [receipt, setReceipt] = useState<Receipt | null>(null);
+  const [offlineReceipt, setOfflineReceipt] = useState<OfflineReceipt | null>(null);
 
   const storageKey = user?.id ? `apex.native-deal-draft.${user.id}` : "";
 
@@ -422,20 +431,23 @@ export function SubmitDealDialog({ trigger, initialClient }: { trigger?: ReactNo
     calculationNeedsReview: form.calculationNeedsReview || form.premiumMode === "single_pay" || form.premiumMode === "other" || evidence.some((file) => file.scan_status !== "clean"),
   }), [calculatedAlp, calculatedAnnualPaid, evidence, form]);
 
-  const saveSection = async (section: DealSection): Promise<string | null> => {
+  const saveSection = async (
+    section: DealSection,
+    showError = false,
+  ): Promise<{ draftId: string | null; error: RpcError | null }> => {
     const { data, error } = await rpc<{ draftId?: string }>("save_apex_deal_draft", {
       p_idempotency_key: idempotencyKey,
       p_section: section,
       p_payload: payload,
     });
     if (error) {
-      toast.error(error.message || "The draft could not be saved.");
-      return null;
+      if (showError) toast.error(error.message || "The draft could not be saved.");
+      return { draftId: null, error };
     }
     const savedDraftId = data?.draftId ?? draftId;
     if (savedDraftId) setDraftId(savedDraftId);
     if (storageKey) localStorage.setItem(storageKey, idempotencyKey);
-    return savedDraftId ?? null;
+    return { draftId: savedDraftId ?? null, error: null };
   };
 
   // Pre-flight. Runs the same gates the submit runs, then asks the database the
@@ -472,7 +484,10 @@ export function SubmitDealDialog({ trigger, initialClient }: { trigger?: ReactNo
     if (file.size > 10 * 1024 * 1024) { toast.error("Evidence must be 10 MB or smaller."); return; }
 
     setUploading(true);
-    const savedDraftId = draftId ?? await saveSection("evidence");
+    const saveResult = draftId
+      ? { draftId, error: null }
+      : await saveSection("evidence", true);
+    const savedDraftId = saveResult.draftId;
     if (!savedDraftId) { setUploading(false); return; }
     const extension = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "bin";
     const objectPath = `${user.id}/${idempotencyKey}/${crypto.randomUUID()}.${extension}`;
@@ -518,21 +533,59 @@ export function SubmitDealDialog({ trigger, initialClient }: { trigger?: ReactNo
       if (validation) { toast.error(validation); return; }
     }
     setSaving(true);
+    const queuedArgs = {
+      p_idempotency_key: idempotencyKey,
+      p_payload: payload,
+      p_agent_id: selectedAgentId || null,
+    };
+    const queueCurrentDeal = (): boolean => {
+      if (!user?.id) return false;
+      const clientName = `${form.clientFirstName} ${form.clientLastName}`.trim();
+      const policyNumber = normalizePolicyNumber(form.policyNumber);
+      const label = `${clientName} · ${policyNumber}`;
+      const queued = enqueue({
+        ownerUserId: user.id,
+        kind: "submit_apex_deal",
+        idempotencyKey,
+        args: queuedArgs,
+        label,
+      });
+      if (!queued.ok) {
+        const message = queued.reason === "queue-full"
+          ? "This device already has 50 deals waiting to sync. Reconnect before posting another."
+          : "This deal could not be stored safely on this device. Keep the form open and reconnect.";
+        toast.error(message);
+        return false;
+      }
+      setOfflineReceipt({ localId: queued.entry.id, label });
+      if (storageKey) localStorage.removeItem(storageKey);
+      toast.info("Saved on this device. The deal will post automatically when internet returns.");
+      return true;
+    };
+
+    if (isOffline()) {
+      queueCurrentDeal();
+      setSaving(false);
+      return;
+    }
+
     const saved = await saveSection("review");
-    if (!saved) { setSaving(false); return; }
+    if (!saved.draftId) {
+      if (saved.error && isTransportError(saved.error)) queueCurrentDeal();
+      else toast.error(saved.error?.message || "The draft could not be saved.");
+      setSaving(false);
+      return;
+    }
     const { data, error } = await rpc<{
       dealId?: string;
       status?: string;
       dealStatus?: string;
       downstreamState?: string;
       correlationId?: string;
-    }>("submit_apex_deal", {
-      p_idempotency_key: idempotencyKey,
-      p_payload: payload,
-      p_agent_id: selectedAgentId || null,
-    });
+    }>("submit_apex_deal", queuedArgs);
     if (error || !data?.dealId) {
-      toast.error(error?.message || "The deal could not be submitted. Your draft remains saved.");
+      if (error && isTransportError(error)) queueCurrentDeal();
+      else toast.error(error?.message || "The deal could not be submitted. Your draft remains saved.");
       setSaving(false);
       return;
     }
@@ -556,12 +609,13 @@ export function SubmitDealDialog({ trigger, initialClient }: { trigger?: ReactNo
   };
 
   const resetAfterClose = () => {
-    if (!receipt) return;
+    if (!receipt && !offlineReceipt) return;
     setForm(EMPTY_FORM);
     setStep(0);
     setDraftId(null);
     setEvidence([]);
     setReceipt(null);
+    setOfflineReceipt(null);
     setRecovered(false);
     setLinkedClient(null);
     setClientMode("new");
@@ -612,10 +666,12 @@ export function SubmitDealDialog({ trigger, initialClient }: { trigger?: ReactNo
       </DialogTrigger>
       <DialogContent className="flex max-h-[96dvh] w-[calc(100vw-1rem)] max-w-3xl flex-col overflow-hidden p-0 sm:w-full">
         <DialogHeader className="border-b border-border px-5 py-4 pr-12">
-          <DialogTitle>{receipt ? "Deal saved" : "Post a Deal"}</DialogTitle>
+          <DialogTitle>{receipt ? "Deal saved" : offlineReceipt ? "Deal waiting to sync" : "Post a Deal"}</DialogTitle>
           <DialogDescription>
             {receipt
               ? "The deal is durable. Integration delivery continues independently."
+              : offlineReceipt
+                ? "This deal is stored on this device and has not been recorded by the server yet."
               : "Record a new policy for yourself or a downline agent."}
           </DialogDescription>
         </DialogHeader>
@@ -635,6 +691,25 @@ export function SubmitDealDialog({ trigger, initialClient }: { trigger?: ReactNo
                 <Link to={`/dashboard/production?deal=${encodeURIComponent(receipt.dealId)}`} onClick={() => setOpen(false)}>
                   View deal
                 </Link>
+              </Button>
+            </div>
+          </div>
+        ) : offlineReceipt ? (
+          <div className="overflow-y-auto px-5 py-8">
+            <div className="mx-auto max-w-lg rounded-lg border border-amber-500/30 bg-amber-500/5 p-5">
+              <WifiOff className="mb-3 h-8 w-8 text-amber-500" />
+              <h3 className="text-lg font-semibold">Saved on this device</h3>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Keep this device signed in. It will submit automatically when internet returns, using the same duplicate-safe key.
+              </p>
+              <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+                <ReviewItem label="Pending deal" value={offlineReceipt.label} />
+                <ReviewItem label="Sync status" value="Waiting for internet" />
+                <ReviewItem label="Protection" value="Duplicate-safe retry" />
+                <ReviewItem label="Local receipt" value={offlineReceipt.localId} />
+              </dl>
+              <Button type="button" className="mt-5 h-11 w-full gap-2 sm:h-10" onClick={() => setOpen(false)}>
+                <Clock3 className="h-4 w-4" /> Done — sync in background
               </Button>
             </div>
           </div>

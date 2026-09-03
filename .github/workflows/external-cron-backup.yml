@@ -258,35 +258,57 @@ jobs:
             # decides, and `%%:*` stays correct even if a status ever grows a
             # colon. last_status is carried for the log line only and never
             # votes.
-            freshness=$(curl -sS -X POST "$BOT_SQL" \
-              -H "Authorization: Bearer $BOT_TOKEN" \
-              -H "content-type: application/json" \
-              --max-time 20 \
-              -d "{\"query\":\"SELECT COALESCE(EXTRACT(EPOCH FROM (now() - max(COALESCE(l.finished_at, l.started_at))))::int, 99999999) AS ok_age, COALESCE((SELECT n.status FROM agentlink_sync_log n ORDER BY n.started_at DESC LIMIT 1), 'none') AS last_status FROM agentlink_sync_log l WHERE l.status = 'ok';\"}" 2>/dev/null \
-              | jq -r 'if (.ok == true) and (.rows | length > 0) then "\(.rows[0].ok_age):\(.rows[0].last_status)" else "99999999:unreachable" end' 2>/dev/null || echo "99999999:unreachable")
-            # An empty body makes jq print nothing and still exit 0, so the
-            # `||` above never fires and freshness lands empty. Name it so the
-            # log line says "unreachable" instead of a blank — and so the
-            # numeric coercion below has something to reject.
-            if [ -z "$freshness" ]; then freshness="99999999:unreachable"; fi
-            ok_age=${freshness%%:*}
-            last_status=${freshness##*:}
-            # A non-numeric age coerces to "very stale", never to 0. Coercing to
-            # 0 would ACQUIT on a garbled response — fail-open. Same precedent
-            # as the pg_cron gap parser above.
-            case "$ok_age" in ''|*[!0-9]*) ok_age=99999999 ;; esac
-            case "$last_status" in '') last_status=unknown ;; esac
-            echo "agentlink-cookie-sync freshness verdict: last successful sync ${ok_age}s ago, newest row '$last_status' (stale bound ${STALE_MAX}s)"
-            if [ "$ok_age" -le "$STALE_MAX" ]; then
-              echo "::notice::agentlink-cookie-sync: curl timed out and the newest row is '$last_status', but the book was refreshed ${ok_age}s ago — the pipeline is moving"
-              REMAINING=()
-              for f in ${FAILED[@]+"${FAILED[@]}"}; do
-                if [ "$f" != "edge:agentlink-cookie-sync" ]; then REMAINING+=("$f"); fi
-              done
-              FAILED=(${REMAINING[@]+"${REMAINING[@]}"})
-            else
-              STALE_DETAIL="No successful AgentLink sync for ${ok_age}s (bound ${STALE_MAX}s); newest row '$last_status'. The book is stale."
+            # MP-407: RETRIED. A single unretried read is why runs 33787407080
+            # (~17:26Z) and 33787585735 (18:00:09Z) each paged Sam at priority 5
+            # with "No successful AgentLink sync for 99999999s". Measured after
+            # the fact, the book was 10,612s and 12,661s old at those instants —
+            # both UNDER STALE_MAX, i.e. this gate's own rule said ACQUIT both
+            # times. bot-sql blips under load; apex-doctor has wrapped it in a
+            # 3x/0-2-4s retry since 2026-07-19 for exactly this reason, and that
+            # hardening never reached here.
+            #
+            # ok_age must arrive as a NUMBER from the query or the attempt does
+            # not count — same type gate as the pg_cron gap parser above. That
+            # makes a garbled age impossible to mistake for a measured one,
+            # rather than merely coercing it after the fact.
+            freshness=""
+            for fr_delay in 0 2 4; do
+              [ "$fr_delay" -gt 0 ] && sleep "$fr_delay"
+              fr_raw=$(curl -sS -X POST "$BOT_SQL" \
+                -H "Authorization: Bearer $BOT_TOKEN" \
+                -H "content-type: application/json" \
+                --max-time 20 \
+                -d "{\"query\":\"SELECT COALESCE(EXTRACT(EPOCH FROM (now() - max(COALESCE(l.finished_at, l.started_at))))::int, 99999999) AS ok_age, COALESCE((SELECT n.status FROM agentlink_sync_log n ORDER BY n.started_at DESC LIMIT 1), 'none') AS last_status FROM agentlink_sync_log l WHERE l.status = 'ok';\"}" 2>/dev/null) || true
+              fr_parsed=$(printf '%s' "$fr_raw" | jq -r 'if (.ok == true) and (.rows | length > 0) and ((.rows[0].ok_age | type) == "number") then "\(.rows[0].ok_age):\(.rows[0].last_status)" else empty end' 2>/dev/null || true)
+              if [ -n "$fr_parsed" ]; then freshness="$fr_parsed"; break; fi
+            done
+            if [ -z "$freshness" ]; then
+              # Three reads failed. STILL RED — failing loud in the one place
+              # whose job is to fail loud is deliberate and stays. What changes
+              # is the SENTENCE. "I could not look" is not a duration, and
+              # printing 99999999 as one told Sam the book was 3.17 YEARS stale
+              # while it sat 3.5h old and inside the bound. A true page and a
+              # false page cost the same when both carry a fabricated number,
+              # because he cannot tell them apart.
+              STALE_DETAIL="Could not read agentlink_sync_log after 3 attempts — AgentLink freshness UNKNOWN, NOT measured. The book may be fine; this is a failure to look, not proof of staleness."
+              echo "agentlink-cookie-sync freshness verdict: UNREADABLE after 3 attempts (stale bound ${STALE_MAX}s)"
               echo "::warning::agentlink-cookie-sync: $STALE_DETAIL Keeping it red"
+            else
+              ok_age=${freshness%%:*}
+              last_status=${freshness##*:}
+              case "$last_status" in '') last_status=unknown ;; esac
+              echo "agentlink-cookie-sync freshness verdict: last successful sync ${ok_age}s ago, newest row '$last_status' (stale bound ${STALE_MAX}s)"
+              if [ "$ok_age" -le "$STALE_MAX" ]; then
+                echo "::notice::agentlink-cookie-sync: curl timed out and the newest row is '$last_status', but the book was refreshed ${ok_age}s ago — the pipeline is moving"
+                REMAINING=()
+                for f in ${FAILED[@]+"${FAILED[@]}"}; do
+                  if [ "$f" != "edge:agentlink-cookie-sync" ]; then REMAINING+=("$f"); fi
+                done
+                FAILED=(${REMAINING[@]+"${REMAINING[@]}"})
+              else
+                STALE_DETAIL="No successful AgentLink sync for ${ok_age}s (bound ${STALE_MAX}s); newest row '$last_status'. The book is stale."
+                echo "::warning::agentlink-cookie-sync: $STALE_DETAIL Keeping it red"
+              fi
             fi
           fi
           # InsuraCloud revival probe — deliberately NOT a per-tick sync.

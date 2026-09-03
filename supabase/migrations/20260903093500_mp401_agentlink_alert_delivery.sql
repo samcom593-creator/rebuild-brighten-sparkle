@@ -85,6 +85,7 @@ EXCEPTION WHEN OTHERS THEN
   -- so the next tick retries rather than silently swallowing the episode.
   RETURN false;
 END $function$
+;
 
 CREATE OR REPLACE FUNCTION public.agentlink_watchdog()
  RETURNS TABLE(status text, message text)
@@ -157,3 +158,4 @@ BEGIN
   UPDATE public.agentlink_alerts SET resolved_at = now() WHERE resolved_at IS NULL;
   RETURN QUERY SELECT 'healthy'::text, 'last ok ' || ROUND(v_hours_stale*60)::text || ' min ago';
 END $function$
+;

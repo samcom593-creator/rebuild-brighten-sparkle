@@ -8,6 +8,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
+import { advanceHireStage } from "@/components/hires/HireStageControl";
 import { toast } from "sonner";
 
 interface AddToCourseButtonProps {
@@ -61,13 +62,19 @@ export function AddToCourseButton({
         return;
       }
 
-      // 3. Update agent stage to training_online
+      // 3. Move the agent to training_online through the gated RPC (MP-392),
+      //    then flag the course enrollment directly.
+      try {
+        await advanceHireStage(agentId, "training_online", null, "add to course");
+      } catch (stageError) {
+        console.error("Error updating agent stage:", stageError);
+        toast.error(stageError instanceof Error ? stageError.message : "Failed to update agent stage");
+        setEnrolling(false);
+        return;
+      }
       const { error: stageError } = await supabase
         .from("agents")
-        .update({ 
-          onboarding_stage: "training_online",
-          has_training_course: true 
-        })
+        .update({ has_training_course: true })
         .eq("id", agentId);
 
       if (stageError) {

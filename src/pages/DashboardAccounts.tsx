@@ -24,6 +24,7 @@ import {
   BadgeDollarSign,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { HireStageSelect } from "@/components/hires/HireStageControl";
 import { useAuth } from "@/hooks/useAuth";
 
 import { GlassCard } from "@/components/ui/glass-card";
@@ -750,7 +751,13 @@ export default function DashboardAccounts() {
                     <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
                       <div>
                         <p className="text-muted-foreground">Onboarding</p>
-                        <p className="mt-1 truncate capitalize">{account.onboardingStage.replaceAll("_", " ")}</p>
+                        {account.hasAgentRecord ? (
+                          <div className="mt-1" onClick={(e) => e.stopPropagation()}>
+                            <HireStageSelect agentId={account.id} name={account.name} stage={account.onboardingStage} licenseStatus={account.licenseStatus} email={account.email} className="h-7 text-[11px]" />
+                          </div>
+                        ) : (
+                          <p className="mt-1 truncate capitalize">{account.onboardingStage.replaceAll("_", " ")}</p>
+                        )}
                       </div>
                       <div>
                         <p className="text-muted-foreground">Comp</p>
@@ -804,7 +811,13 @@ export default function DashboardAccounts() {
                           <Badge variant="outline" className={account.licenseStatus === "licensed" ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" : ""}>
                             {account.licenseStatus}
                           </Badge>
-                          <p className="max-w-40 truncate text-xs capitalize text-muted-foreground">{account.onboardingStage.replaceAll("_", " ")}</p>
+                          {account.hasAgentRecord ? (
+                            <div onClick={(e) => e.stopPropagation()}>
+                              <HireStageSelect agentId={account.id} name={account.name} stage={account.onboardingStage} licenseStatus={account.licenseStatus} email={account.email} className="h-7 max-w-40 text-[11px]" />
+                            </div>
+                          ) : (
+                            <p className="max-w-40 truncate text-xs capitalize text-muted-foreground">{account.onboardingStage.replaceAll("_", " ")}</p>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>

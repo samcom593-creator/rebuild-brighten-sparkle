@@ -66,6 +66,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AgentAvatar } from "@/components/ui/AgentAvatar";
 import { AgentTrainingStageBar } from "@/components/dashboard/AgentTrainingStageBar";
+import { HireStageStepper } from "@/components/hires/HireStageControl";
 import { LicenseProgressSelector } from "@/components/dashboard/LicenseProgressSelector";
 import { AgentReferralLinkCard } from "@/components/agent/AgentReferralLinkCard";
 import { CandidateGoalsNotesPanel } from "@/components/dashboard/CandidateGoalsNotesPanel";
@@ -838,6 +839,17 @@ const qnum = (v: number | string | null | undefined): number | null => {
             <AgentReferralLinkCard agentId={agent.id} />
 
             <CandidateGoalsNotesPanel agentId={agent.id} />
+
+            {/* MP-392: onboarding-stage control — admins/managers push the hire
+                through the ladder from the drawer; agents see a read-only badge. */}
+            <HireStageStepper
+              agentId={agent.id}
+              name={name}
+              stage={agent.onboarding_stage}
+              licenseStatus={agent.license_status ?? null}
+              email={agent.profile?.email}
+              readOnly={Boolean(agent.is_deactivated)}
+            />
 
             {/* Training stage tracker (NEW) */}
             <AgentTrainingStageBar agentId={agent.id} />

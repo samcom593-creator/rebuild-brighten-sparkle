@@ -57,6 +57,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
+import { advanceHireStage } from "@/components/hires/HireStageControl";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { AddToCourseButton } from "@/components/dashboard/AddToCourseButton";
@@ -314,12 +315,11 @@ export default function CourseProgress() {
   // Push to field training
   const pushToFieldMutation = useMutation({
     mutationFn: async (agentId: string) => {
+      // MP-392: stage via the gated RPC; only the timestamp is a direct write.
+      await advanceHireStage(agentId, "in_field_training", null, "course progress: push to field");
       const { error } = await supabase
         .from("agents")
-        .update({ 
-          onboarding_stage: "in_field_training",
-          field_training_started_at: new Date().toISOString()
-        })
+        .update({ field_training_started_at: new Date().toISOString() })
         .eq("id", agentId);
       if (error) throw error;
       const { error: flowError } = await supabase.functions.invoke("trigger-new-hire-flow", {
@@ -351,12 +351,11 @@ export default function CourseProgress() {
         .eq("agent_id", agentId);
       if (progressError) throw progressError;
 
+      // MP-392: stage via the gated RPC; the course flag stays a direct write.
+      await advanceHireStage(agentId, "onboarding", null, "course progress: unenroll");
       const { error: agentError } = await supabase
         .from("agents")
-        .update({ 
-          onboarding_stage: "onboarding",
-          has_training_course: false
-        })
+        .update({ has_training_course: false })
         .eq("id", agentId);
       if (agentError) throw agentError;
     },

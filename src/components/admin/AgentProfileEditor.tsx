@@ -22,6 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
+import { advanceHireStage } from "@/components/hires/HireStageControl";
 import { cn } from "@/lib/utils";
 
 interface AgentWithStats {
@@ -181,6 +182,13 @@ export function AgentProfileEditor({ agent, open, onClose, onUpdate }: AgentProf
 
       if (profileError) throw profileError;
 
+      // MP-392: stage moves go through advance_hire_stage (gated + audited +
+      // queues licensed→live emails), never a bare column write. Runs first so
+      // a refusal aborts before the rest of the row changes.
+      const loadedStage = agentDetails?.onboarding_stage ?? null;
+      if (onboardingStage && onboardingStage !== loadedStage) {
+        await advanceHireStage(agent.id, onboardingStage, loadedStage, "profile editor");
+      }
       // Update agent
       const { error: agentError } = await supabase
         .from("agents")
@@ -188,7 +196,6 @@ export function AgentProfileEditor({ agent, open, onClose, onUpdate }: AgentProf
           is_deactivated: status === "terminated",
           is_inactive: status === "inactive",
           status: status === "terminated" ? "terminated" : status === "inactive" ? "inactive" : "active",
-          onboarding_stage: onboardingStage as "onboarding" | "training_online" | "in_field_training" | "evaluated",
           invited_by_manager_id: managerId,
         })
         .eq("id", agent.id);

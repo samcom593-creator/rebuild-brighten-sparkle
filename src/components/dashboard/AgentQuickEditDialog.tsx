@@ -36,6 +36,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { advanceHireStage } from "@/components/hires/HireStageControl";
 
 interface AgentQuickEditDialogProps {
   open: boolean;
@@ -350,6 +351,17 @@ export function AgentQuickEditDialog({
       if (!Number.isFinite(normalizedComp) || normalizedComp < 50 || normalizedComp > 200) {
         throw new Error("Comp percentage must be between 50 and 200.");
       }
+      // MP-392: the stage moves through advance_hire_stage (gated, audited in
+      // agent_stage_moves, queues the licensed→live emails) — never as a bare
+      // column write. It runs first so a refusal aborts before anything else
+      // on the row changes.
+      let stageNote: string | null = null;
+      if (onboardingStage && onboardingStage !== (agentData?.onboarding_stage ?? "")) {
+        const moved = await advanceHireStage(agentId, onboardingStage, agentData?.onboarding_stage ?? null, "quick edit dialog");
+        if (moved.changed && moved.queuedEmails?.length) {
+          stageNote = `${moved.queuedEmails.length} onboarding email${moved.queuedEmails.length === 1 ? "" : "s"} queued.`;
+        }
+      }
       // Update agent display name
       const { error } = await supabase
         .from("agents")
@@ -357,7 +369,6 @@ export function AgentQuickEditDialog({
           display_name: displayName.trim(),
           license_status: licenseStatus as "licensed" | "unlicensed" | "pending",
           nipr_number: cleanedNpn || null,
-          onboarding_stage: onboardingStage as any,
           licensed_at: licenseStatus === "licensed" ? new Date().toISOString() : null,
           comp_percentage: normalizedComp,
           comp_approval_status: normalizedComp <= 100 || compApproved ? "approved" : "pending_sam",
@@ -441,7 +452,7 @@ export function AgentQuickEditDialog({
 
       toast({
         title: "Changes saved",
-        description: contractingWarning ?? `Agent "${displayName.trim()}" updated successfully.`,
+        description: contractingWarning ?? `Agent "${displayName.trim()}" updated successfully.${stageNote ? ` ${stageNote}` : ""}`,
         variant: contractingWarning ? "destructive" : undefined,
       });
       

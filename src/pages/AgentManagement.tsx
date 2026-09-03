@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { advanceHireStage, HireStageSelect } from "@/components/hires/HireStageControl";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyDownline } from "@/hooks/useMyDownline";
 import { Card, CardContent } from "@/components/ui/card";
@@ -286,11 +287,18 @@ export default function AgentManagement() {
       if (error) { toast.error(error.message); return; }
       toast.success(`${bulkAction.toUpperCase()} sent to ${ids.length} agents`);
     } else if (bulkAction === "deactivate") {
+      // MP-392: the stage flag goes through advance_hire_stage per agent
+      // (gated + audited); only the deactivation bit is a direct write.
+      let refused = 0;
+      for (const id of ids) {
+        try { await advanceHireStage(id, "inactive", null, "bulk deactivate"); }
+        catch { refused += 1; }
+      }
       const { error } = await supabase.from("agents")
-        .update({ is_deactivated: true, onboarding_stage: "inactive" })
+        .update({ is_deactivated: true })
         .in("id", ids);
       if (error) { toast.error(error.message); return; }
-      toast.success(`Deactivated ${ids.length} agents`);
+      toast.success(`Deactivated ${ids.length} agents${refused ? ` (${refused} stage move${refused === 1 ? "" : "s"} refused)` : ""}`);
       queryClient.invalidateQueries({ queryKey: ["agent-mgmt-rows"] });
     }
 
@@ -575,7 +583,10 @@ function BoardView({ rows, selectedIds, onToggleSelect, onQuickEdit }: {
                   <p className="font-semibold text-sm truncate">{r.name}</p>
                   <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                     <Badge variant="outline" className="text-[10px] capitalize">{r.role}</Badge>
-                    <Badge variant="outline" className="text-[10px] capitalize">{r.onboardingStage.replace(/_/g, " ")}</Badge>
+                    {/* MP-392: admins/managers move the hire right here; everyone else sees the badge. */}
+                    <span onClick={(e) => e.stopPropagation()}>
+                      <HireStageSelect agentId={r.id} name={r.name} stage={r.onboardingStage} licenseStatus={r.licenseStatus} email={r.email} readOnly={r.isDeactivated} className="h-6 min-w-[8rem] text-[10px]" />
+                    </span>
                     {r.licenseStatus === "licensed" && (
                       <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-400 border-emerald-500/30">Licensed</Badge>
                     )}
@@ -695,7 +706,9 @@ function TableView({ rows, selectedIds, onToggleSelect, onQuickEdit }: {
                       </div>
                     </div>
                   </td>
-                  <td className="p-2 text-xs capitalize">{r.onboardingStage.replace(/_/g, " ")}</td>
+                  <td className="p-2 text-xs" onClick={(e) => e.stopPropagation()}>
+                    <HireStageSelect agentId={r.id} name={r.name} stage={r.onboardingStage} licenseStatus={r.licenseStatus} email={r.email} readOnly={r.isDeactivated} className="h-7 min-w-[8.5rem] text-[11px]" />
+                  </td>
                   <td className="p-2 text-right font-semibold">${r.weekAlp.toLocaleString()}</td>
                   <td className="p-2 text-right">${r.monthAlp.toLocaleString()}</td>
                   <td className="p-2 text-right text-muted-foreground">${r.lifetimeAlp.toLocaleString()}</td>

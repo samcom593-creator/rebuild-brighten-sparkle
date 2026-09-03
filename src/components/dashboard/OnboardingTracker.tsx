@@ -9,6 +9,7 @@ import {
   Check,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { advanceHireStage } from "@/components/hires/HireStageControl";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -85,19 +86,20 @@ export function OnboardingTracker({
     setLoading(true);
     
     try {
-      // Update agent's onboarding stage
-      const { error: agentError } = await supabase
-        .from("agents")
-        .update({ 
-          onboarding_stage: targetStage.key,
-          ...(targetStage.key === "evaluated" ? { onboarding_completed_at: new Date().toISOString() } : {}),
-          ...(targetStage.key === "in_field_training" ? { field_training_started_at: new Date().toISOString() } : {})
-        })
-        .eq("id", agentId);
-
-      if (agentError) {
-        console.error("Agent update error:", agentError);
-        throw agentError;
+      // MP-392: the stage itself moves through advance_hire_stage (gated +
+      // audited + queues licensed→live emails); only the timestamps stay a
+      // direct write, and only after the move was accepted.
+      await advanceHireStage(agentId, targetStage.key, null, "onboarding tracker");
+      const stamps =
+        targetStage.key === "evaluated" ? { onboarding_completed_at: new Date().toISOString() }
+        : targetStage.key === "in_field_training" ? { field_training_started_at: new Date().toISOString() }
+        : null;
+      if (stamps) {
+        const { error: agentError } = await supabase.from("agents").update(stamps).eq("id", agentId);
+        if (agentError) {
+          console.error("Agent update error:", agentError);
+          throw agentError;
+        }
       }
 
       // NOTE (MP-330): dead write removed -- `agent_onboarding` was dropped from

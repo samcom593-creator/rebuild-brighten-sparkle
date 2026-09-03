@@ -24,6 +24,7 @@ import {
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
+import { HireStageSelect } from "@/components/hires/HireStageControl";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -939,7 +940,7 @@ export default function BuildersDashboard({ mode = "builders" }: { mode?: Dashbo
                         </div>
                         <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
                           <span>License: {agent.license_status ?? "unknown"}</span>
-                          <span>Stage: {agent.onboarding_stage ?? "unknown"}</span>
+                          <span className="inline-flex items-center gap-1" onClick={(e) => e.stopPropagation()}>Stage: <HireStageSelect agentId={agent.id} name={agentName(agent)} stage={agent.onboarding_stage} licenseStatus={agent.license_status ?? null} email={agent.profile?.email ?? undefined} /></span>
                         </div>
                       </div>
                     ))}

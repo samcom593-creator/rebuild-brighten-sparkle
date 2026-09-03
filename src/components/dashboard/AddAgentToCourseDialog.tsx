@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
+import { advanceHireStage } from "@/components/hires/HireStageControl";
 import { toast } from "sonner";
 
 interface EligibleAgent {
@@ -104,13 +105,11 @@ export function AddAgentToCourseDialog({ onSuccess }: AddAgentToCourseDialogProp
 
       const results = await Promise.allSettled(
         agentIds.map(async (agentId) => {
-          // 1. Update agent stage
+          // 1. Move the stage through the gated RPC (MP-392), then flag the course.
+          await advanceHireStage(agentId, "training_online", null, "add agents to course");
           const { error: agentError } = await supabase
             .from("agents")
-            .update({
-              onboarding_stage: "training_online",
-              has_training_course: true,
-            })
+            .update({ has_training_course: true })
             .eq("id", agentId);
 
           if (agentError) throw new Error(`Stage update failed for ${agentId}: ${agentError.message}`);

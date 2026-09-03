@@ -28,6 +28,8 @@ import {
   CartesianGrid, PieChart, Pie, Cell,
 } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
+import { HireStageSelect } from "@/components/hires/HireStageControl";
+import { AGENT_NAME_FALLBACK } from "@/shared/api/agentDisplayNames";
 import { ensureCurrentAgentRecord } from "@/lib/ensureCurrentAgentRecord";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -2917,7 +2919,7 @@ function AgencyCommandView() {
                       </div>
                       <div className="text-right shrink-0">
                         <p className="text-xs font-semibold text-primary tabular-nums">{h.days_on_team}d</p>
-                        <p className="text-[10px] text-muted-foreground truncate max-w-[8rem]">{h.onboarding_stage ?? "—"}</p>
+                        <span className="inline-block" onClick={(e) => e.stopPropagation()}><HireStageSelect agentId={h.id} name={h.display_name ?? AGENT_NAME_FALLBACK} stage={h.onboarding_stage} className="max-w-[10rem]" /></span>
                       </div>
                     </li>
                   ))}

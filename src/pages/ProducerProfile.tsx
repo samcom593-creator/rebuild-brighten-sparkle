@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { AgentDocuments } from "@/components/profile/AgentDocuments";
 import { AccountRoleControl } from "@/components/profile/AccountRoleControl";
 import { AgentLicensingEditor } from "@/components/profile/AgentLicensingEditor";
+import { HireStageStepper } from "@/components/hires/HireStageControl";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent } from "@/components/ui/card";
@@ -449,9 +450,19 @@ function AgentProducerView({ agentId }: { agentId: string }) {
                     ? <span className="tabular-nums">{new Date(d.training.last_activity).toLocaleDateString()}</span>
                     : <NotOnFile />}
                 </div>
-                <div className="flex items-center justify-between">
+                <div className="border-t border-border/40 pt-2">
                   <span className="text-muted-foreground">Onboarding stage</span>
-                  {a.onboarding_stage ? <span>{a.onboarding_stage.replace(/_/g, " ")}</span> : <NotOnFile />}
+                  {/* MP-392: the stage is movable here, not just readable. The
+                      control renders a badge for anyone who cannot move hires. */}
+                  <HireStageStepper
+                    className="mt-2"
+                    agentId={a.agent_id}
+                    name={a.full_name ?? "this agent"}
+                    stage={a.onboarding_stage}
+                    licenseStatus={a.license_status}
+                    email={a.email}
+                    readOnly={a.status === "terminated"}
+                  />
                 </div>
               </div>
             </CardContent>

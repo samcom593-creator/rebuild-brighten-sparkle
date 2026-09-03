@@ -22,6 +22,7 @@ import {
   GitBranch,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { advanceHireStage } from "@/components/hires/HireStageControl";
 import { useAuth } from "@/hooks/useAuth";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -362,12 +363,11 @@ export default function DashboardCommandCenter() {
 
   const handleChangeStage = useCallback(async (agentId: string, stage: string, label: string) => {
     try {
-      const { error } = await supabase
-        .from("agents")
-        .update({ onboarding_stage: stage as any })
-        .eq("id", agentId);
-      if (error) throw error;
-      toast.success(`Stage changed to ${label}`);
+      // MP-392: gated + audited RPC, never a bare onboarding_stage write.
+      const moved = await advanceHireStage(agentId, stage, null, "command center");
+      if (!moved.changed) { toast.info(moved.message ?? `Already at ${label}`); return; }
+      const queued = moved.queuedEmails?.length ?? 0;
+      toast.success(`Stage changed to ${label}${queued ? ` · ${queued} onboarding email${queued === 1 ? "" : "s"} queued` : ""}`);
       playSound("success");
       refetch();
     } catch (err: any) {

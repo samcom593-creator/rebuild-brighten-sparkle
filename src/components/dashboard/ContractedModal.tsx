@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
+import { advanceHireStage } from "@/components/hires/HireStageControl";
 import { toast } from "sonner";
 
 interface ContractedModalProps {
@@ -238,9 +239,12 @@ export function ContractedModal({
       if (newAgentId) {
         // For "already contracted" agents, ensure has_training_course is set
         if (alreadyContracted) {
+          // MP-392: stage via the gated RPC; the course flag stays a direct write.
+          await advanceHireStage(newAgentId, "training_online", null, "contracted modal")
+            .catch(err => console.error("Failed to move stage to training_online:", err));
           const { error: courseErr } = await supabase
             .from("agents")
-            .update({ has_training_course: true, onboarding_stage: "training_online" as any })
+            .update({ has_training_course: true })
             .eq("id", newAgentId);
           if (courseErr) console.error("Failed to set has_training_course:", courseErr);
         }

@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
+import { advanceHireStage } from "@/components/hires/HireStageControl";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Database } from "@/integrations/supabase/types";
@@ -129,19 +130,40 @@ export function BulkStageActions({
 
       const now = new Date().toISOString();
 
-      // Batch update agents in one round-trip
-      const { error: updateError } = await supabase
-        .from("agents")
-        .upsert(
-          updates.map(u => ({
-            id: u.id,
-            onboarding_stage: u.newStage,
-            ...(u.newStage === "evaluated" ? { onboarding_completed_at: now } : {}),
-            ...(u.newStage === "in_field_training" ? { field_training_started_at: now } : {}),
-          })),
-          { onConflict: "id" }
-        );
-      if (updateError) throw updateError;
+      // MP-392: every stage move goes through advance_hire_stage (gated per
+      // agent, audited in agent_stage_moves, queues licensed→live emails).
+      // Sequential on purpose: a manager can be refused on one agent and
+      // accepted on the next, and the receipt names both counts.
+      const moved: typeof updates = [];
+      let unchanged = 0;
+      let refused = 0;
+      for (const u of updates) {
+        try {
+          const r = await advanceHireStage(u.id, u.newStage, null, `bulk ${direction}`);
+          if (r.changed) moved.push(u); else unchanged += 1;
+        } catch (err) {
+          console.error("Stage move refused:", u.id, err);
+          refused += 1;
+        }
+      }
+      const stamped = moved.filter(u => u.newStage === "evaluated" || u.newStage === "in_field_training");
+      if (stamped.length > 0) {
+        const { error: updateError } = await supabase
+          .from("agents")
+          .upsert(
+            stamped.map(u => ({
+              id: u.id,
+              ...(u.newStage === "evaluated" ? { onboarding_completed_at: now } : {}),
+              ...(u.newStage === "in_field_training" ? { field_training_started_at: now } : {}),
+            })),
+            { onConflict: "id" }
+          );
+        if (updateError) throw updateError;
+      }
+      if (moved.length === 0) {
+        toast.info(refused ? `No agents moved — ${refused} refused` : "No agents moved");
+        return;
+      }
 
       // NOTE (MP-330): stage transitions are deliberately NOT logged here.
       // This previously inserted into `agent_onboarding`, a table that has been
@@ -158,7 +180,7 @@ export function BulkStageActions({
       // anon and authenticated inserts). Both were measured, not assumed.
 
       // Fire "evaluated" notifications in parallel (not serial)
-      const evalIds = updates.filter(u => u.newStage === "evaluated").map(u => u.id);
+      const evalIds = moved.filter(u => u.newStage === "evaluated").map(u => u.id);
       if (evalIds.length > 0) {
         await Promise.allSettled(
           evalIds.flatMap(id => [
@@ -168,7 +190,8 @@ export function BulkStageActions({
         );
       }
 
-      toast.success(`${updates.length} agent${updates.length > 1 ? "s" : ""} ${direction === "forward" ? "advanced" : "reverted"}`);
+      const tail = [unchanged ? `${unchanged} unchanged` : "", refused ? `${refused} refused` : ""].filter(Boolean).join(", ");
+      toast.success(`${moved.length} agent${moved.length > 1 ? "s" : ""} ${direction === "forward" ? "advanced" : "reverted"}${tail ? ` (${tail})` : ""}`);
       clearSelection();
       onBulkUpdate();
     } catch (error) {

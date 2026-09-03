@@ -44,6 +44,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
+import { advanceHireStage } from "@/components/hires/HireStageControl";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -275,12 +276,8 @@ export function TeamHierarchyManager() {
     setUpdatingStage(agentId);
 
     try {
-      const { error } = await supabase
-        .from("agents")
-        .update({ onboarding_stage: newStage as "onboarding" | "training_online" | "in_field_training" | "evaluated" })
-        .eq("id", agentId);
-
-      if (error) throw error;
+      // MP-392: gated + audited RPC, never a bare onboarding_stage write.
+      await advanceHireStage(agentId, newStage, null, "team hierarchy");
 
       const agentName = agents.find(a => a.id === agentId)?.name || "Agent";
       

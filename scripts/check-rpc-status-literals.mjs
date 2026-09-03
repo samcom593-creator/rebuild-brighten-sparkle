@@ -127,6 +127,31 @@ function isTypeofTest(line, idx) {
   return TYPEOF_PREFIX.test(line.slice(0, idx));
 }
 
+// MP-411 (2026-09-03) ATTEMPTED THE OBVIOUS WIDENING AND REFUSES IT. The "not looked at"
+// line below reports 69 of 110 called RPCs as unreachable because they return jsonb or a
+// scalar and expose no named column. The natural fix is to key on (function, json_key)
+// instead: parse each function's jsonb_build_object pairs, keep the keys whose value is a
+// CASE with only literal results, and grade `x.<key> === "<lit>"` in any file that calls
+// that function. That was built and run against live prod. It produced 69 catalogued
+// functions, 20 closed keys — and 9 violations, ALL NINE FALSE, every one of them on
+// AgentOnboardingStepper.tsx:
+//   - 136-151  `doc.status === "approved"` — doc comes from a .from("documents") query,
+//              not from the RPC; that shape is check-enum-filter-literals' job.
+//   - 284, 457 `step.status === "available"` — step is the CLIENT'S OWN rebuilt step. The
+//              component discards the RPC's statuses and synthesises complete/available/
+//              locked, then promotes the first available to current.
+// The defect is attribution, not parsing. A set-returning function's COLUMN name is a
+// usable key because the row shape survives to the call site; a jsonb payload is cast
+// through `as unknown as <HandWrittenType>` at every one of these call sites, which erases
+// provenance entirely, so co-occurrence in a file is all that is left to key on — and
+// co-occurrence is exactly the proxy-at-the-wrong-grain MP-410 already refused for
+// AgedLeadImporter. Grading 69 more functions this way would have put 9 false accusations
+// on the onboarding surface, and a guard that cries about correct code is one that gets
+// switched off. If a later wave wants this class, the sound direction is function -> type
+// (a literal the function CAN emit that the consuming type does not declare), because
+// clients only ever ADD values to a vocabulary, never remove the function's.
+// The wave found its real bug by hand instead: see MP-411 on TrainingNextStep's ladder.
+
 const violations = [];
 let graded = 0;
 const unprovable = new Set();

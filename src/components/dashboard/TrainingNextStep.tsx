@@ -44,7 +44,7 @@ interface NextStep {
   recommended_reason?: string | null;
 }
 
-const STAGE_LADDER = [
+export const STAGE_LADDER = [
   { key: "unlicensed", label: "Enrolled" },
   { key: "course_purchased", label: "Course" },
   { key: "finished_course", label: "Exam booked" },
@@ -52,6 +52,31 @@ const STAGE_LADDER = [
   { key: "passed_test", label: "Passed" },
   { key: "waiting_on_license", label: "Licensed" },
 ];
+
+// `stage` is applications.license_progress::text, a 12-value enum (see
+// scripts/data/enum-catalog.json, public.license_progress). The ladder above is the
+// six-rung HAPPY PATH and deliberately does not carry the other six:
+// fingerprints_done, waiting_fingerprints, failed_test, exam_passed, in_field_training
+// are not forward rungs on this path, and `licensed` cannot be a rung on a panel that
+// only renders when the agent is NOT licensed.
+//
+// MP-411 (2026-09-03). This used to read `Math.max(0, STAGE_LADDER.findIndex(...))`.
+// findIndex returns -1 for all six uncovered values, and the max() turned that -1 into
+// 0, so the panel highlighted "Enrolled" — the first rung — as the agent's current
+// stage. An unknown position was rendered as a confident wrong one, on the surface
+// whose whole job is telling a mid-licensing agent where they stand, and beside a label
+// that had already degraded honestly to "Continue your licensing" via the function's
+// own else-branch. MEASURED at ship time: 0 live agents sit on an uncovered stage
+// (135 applications carry license_progress='licensed', but their agents row is licensed
+// too, so they never reach this branch). LATENT, not a leak — it fires the first time
+// the licensing pipeline writes fingerprints_done or failed_test, or the first time the
+// known license_status/license_progress divergence recurs.
+//
+// -1 is the honest answer and the renderer is built for it: every rung tests
+// `i <= stageIdx`, so -1 highlights none of them rather than lying about one.
+export function stageLadderIndex(stage: string | null | undefined): number {
+  return STAGE_LADDER.findIndex((s) => s.key === (stage ?? "unlicensed"));
+}
 
 export function TrainingNextStep() {
   const { data, isLoading } = useQuery({
@@ -75,9 +100,7 @@ export function TrainingNextStep() {
     ? (typeof data.course_pct === "number" ? data.course_pct : null)
     : total > 0 ? Math.round((passed / total) * 100) : null;
 
-  const stageIdx = isPre
-    ? Math.max(0, STAGE_LADDER.findIndex((s) => s.key === (data.stage ?? "unlicensed")))
-    : -1;
+  const stageIdx = isPre ? stageLadderIndex(data.stage) : -1;
 
   return (
     <Card className="border-primary/30 bg-primary/[0.03]">

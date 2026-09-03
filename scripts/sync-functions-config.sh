@@ -40,6 +40,7 @@ PUBLIC_ALLOWLIST=(
   "unsubscribe"
   "manager-signup"
   "applicant-checkin"
+  "get-public-recruiters"
   "submit-contracting-intake"
   "numbers-reminder"
   "slack-identity-admin"

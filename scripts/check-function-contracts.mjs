@@ -185,6 +185,11 @@ const PUBLIC_ALLOWLIST = new Set([
   "unsubscribe",
   "manager-signup",
   "applicant-checkin",
+  // Public recruiter cards used by referral and link-in-bio entry points.
+  // The handler is rate-limited and returns only display name, public social
+  // handle, avatar, and the agent id required for attribution; no contact,
+  // auth, or production data is exposed.
+  "get-public-recruiters",
   // Public five-field contracting intake. No JWT because producers have no
   // APEX login; controls are the field allowlist, fail-closed rate limiting,
   // a honeypot, and a service-role-only RPC behind it.

@@ -19,7 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EditableClientSection } from "@/components/clients/EditableClientSection";
-import { SubmitDealDialog } from "@/components/deals/SubmitDealDialog";
+import { SubmitDealDialog, type PostedDealReceipt } from "@/components/deals/SubmitDealDialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -248,6 +248,21 @@ export default function ClientDetail() {
     onError: (error) => toast.error(error instanceof Error ? error.message : "Client action failed"),
   });
 
+  // Mark Sold IS the deal post. Flipping the CRM stage alone never created a
+  // deal, so nothing downstream (production, Discord, Slack, the phone push)
+  // could fire — Sam measured that as "notifications aren't sent anywhere".
+  const markSoldFromDeal = (receipt: PostedDealReceipt) => {
+    const annual = receipt.annualPaid.toLocaleString("en-US", { style: "currency", currency: "USD" });
+    action.mutate(
+      {
+        p_stage: "SOLD",
+        p_activity_type: "marked_sold",
+        p_activity_body: `Marked sold — deal posted (${annual} annual, policy ${receipt.policyNumber}, deal ${receipt.dealId.slice(0, 8)})`,
+      },
+      { onSuccess: () => toast.success("Client marked sold. The deal is posted and the win is on its way to Discord and Slack.") },
+    );
+  };
+
   const saveStage = (stage: string) => {
     action.mutate(
       { p_stage: stage, p_activity_body: `Pipeline stage changed to ${stage.replaceAll("_", " ").toLowerCase()}` },
@@ -284,7 +299,15 @@ export default function ClientDetail() {
             {c.phone && !c.do_not_call && <Button asChild size="sm" variant="outline"><a href={`tel:${c.phone}`} onClick={() => action.mutate({ p_activity_type: "call_opened", p_activity_body: "Call opened from client workspace" })}><PhoneCall className="mr-1.5 h-4 w-4" /> Call</a></Button>}
             {c.phone && !c.do_not_text && <Button asChild size="sm" variant="outline"><a href={`sms:${c.phone}`} onClick={() => action.mutate({ p_activity_type: "sms_opened", p_activity_body: "SMS opened from client workspace" })}><MessageSquare className="mr-1.5 h-4 w-4" /> SMS</a></Button>}
             <SubmitDealDialog initialClient={{ firstName: c.first_name ?? "", lastName: c.last_name ?? "", phone: c.phone ?? "", dob: dateInput(c.date_of_birth) }} trigger={<Button size="sm" variant="outline"><ReceiptText className="mr-1.5 h-4 w-4" /> Submit Case for Design</Button>} />
-            <Button size="sm" onClick={() => saveStage("SOLD")} disabled={action.isPending}><CheckCircle2 className="mr-1.5 h-4 w-4" /> Mark Sold</Button>
+            <SubmitDealDialog
+              title="Mark sold — post the deal"
+              description="Posting the policy is what marks this client sold: it lands on production and sends the win to Discord and Slack."
+              initialClient={{ firstName: c.first_name ?? "", lastName: c.last_name ?? "", phone: c.phone ?? "", dob: dateInput(c.date_of_birth) }}
+              initialDeal={{ carrierName: c.pitch_carrier, product: c.product_sold, policyNumber: c.policy_number, monthlyPremium: c.pitch_price, faceAmount: c.face_amount, effectiveDate: dateInput(c.policy_start_date) }}
+              onPosted={markSoldFromDeal}
+              secondaryAction={{ label: "Policy already posted elsewhere? Mark sold without posting", onClick: () => saveStage("SOLD") }}
+              trigger={<Button size="sm" disabled={action.isPending}><CheckCircle2 className="mr-1.5 h-4 w-4" /> Mark Sold</Button>}
+            />
           </div>
         </header>
 

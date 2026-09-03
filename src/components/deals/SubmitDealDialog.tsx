@@ -170,7 +170,35 @@ interface InitialDealClient {
   dob: string;
 }
 
-export function SubmitDealDialog({ trigger, initialClient }: { trigger?: ReactNode; initialClient?: InitialDealClient }) {
+// Mark Sold on a client hands the pitch the agent already recorded (carrier,
+// product, monthly price, policy number, face, start date) into the post so
+// nothing is typed twice. Carrier arrives as a NAME because the CRM stores
+// text; it is resolved against the live carriers list once that loads.
+export interface InitialDealDetails {
+  carrierName?: string | null;
+  product?: string | null;
+  policyNumber?: string | null;
+  monthlyPremium?: number | string | null;
+  faceAmount?: number | string | null;
+  effectiveDate?: string | null;
+}
+
+export interface PostedDealReceipt {
+  dealId: string;
+  status: string;
+  annualPaid: number;
+  policyNumber: string;
+}
+
+export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, description, onPosted, secondaryAction }: {
+  trigger?: ReactNode;
+  initialClient?: InitialDealClient;
+  initialDeal?: InitialDealDetails;
+  title?: string;
+  description?: string;
+  onPosted?: (receipt: PostedDealReceipt) => void;
+  secondaryAction?: { label: string; onClick: () => void };
+}) {
   const { user, isAdmin, isManager } = useAuth();
   const downline = useMyDownline();
   const queryClient = useQueryClient();
@@ -209,6 +237,15 @@ export function SubmitDealDialog({ trigger, initialClient }: { trigger?: ReactNo
     },
     staleTime: 10 * 60_000,
   });
+
+  useEffect(() => {
+    const wanted = initialDeal?.carrierName?.trim().toLowerCase();
+    if (!open || !wanted || form.carrierId || !carriers.data?.length) return;
+    const list = carriers.data;
+    const hit = list.find((c) => c.name.trim().toLowerCase() === wanted)
+      ?? list.find((c) => c.name.toLowerCase().includes(wanted) || wanted.includes(c.name.toLowerCase()));
+    if (hit) setForm((current) => (current.carrierId ? current : { ...current, carrierId: hit.id }));
+  }, [open, initialDeal?.carrierName, form.carrierId, carriers.data]);
 
   const carrierProducts = useQuery({
     queryKey: ["native-deal-carrier-products", form.carrierId],
@@ -596,6 +633,12 @@ export function SubmitDealDialog({ trigger, initialClient }: { trigger?: ReactNo
       correlationId: data.correlationId || "recorded",
     };
     setReceipt(nextReceipt);
+    onPosted?.({
+      dealId: data.dealId,
+      status: nextReceipt.status,
+      annualPaid: calculatedAnnualPaid,
+      policyNumber: normalizePolicyNumber(form.policyNumber),
+    });
     if (storageKey) localStorage.removeItem(storageKey);
     // One receipt refreshes every view of this same deal immediately. Realtime
     // remains the cross-device safety net; this closes the same-tab delay.
@@ -641,13 +684,21 @@ export function SubmitDealDialog({ trigger, initialClient }: { trigger?: ReactNo
   };
 
   const handleOpenChange = (next: boolean) => {
-    if (next && initialClient && !draftId) {
+    if (next && (initialClient || initialDeal) && !draftId) {
+      const money = (value: number | string | null | undefined) =>
+        value != null && Number(value) > 0 ? String(value) : "";
       setForm((current) => ({
         ...current,
-        clientFirstName: current.clientFirstName || initialClient.firstName,
-        clientLastName: current.clientLastName || initialClient.lastName,
-        clientPhone: current.clientPhone || initialClient.phone,
-        clientDob: current.clientDob || initialClient.dob,
+        clientFirstName: current.clientFirstName || initialClient?.firstName || "",
+        clientLastName: current.clientLastName || initialClient?.lastName || "",
+        clientPhone: current.clientPhone || initialClient?.phone || "",
+        clientDob: current.clientDob || initialClient?.dob || "",
+        product: current.product || initialDeal?.product || "",
+        policyNumber: current.policyNumber || initialDeal?.policyNumber || "",
+        modalPremium: current.modalPremium || money(initialDeal?.monthlyPremium),
+        premiumMode: current.modalPremium || !money(initialDeal?.monthlyPremium) ? current.premiumMode : "monthly",
+        faceAmount: current.faceAmount || money(initialDeal?.faceAmount),
+        effectiveDate: current.effectiveDate || initialDeal?.effectiveDate || "",
       }));
     }
     setOpen(next);
@@ -666,14 +717,23 @@ export function SubmitDealDialog({ trigger, initialClient }: { trigger?: ReactNo
       </DialogTrigger>
       <DialogContent className="flex max-h-[96dvh] w-[calc(100vw-1rem)] max-w-3xl flex-col overflow-hidden p-0 sm:w-full">
         <DialogHeader className="border-b border-border px-5 py-4 pr-12">
-          <DialogTitle>{receipt ? "Deal saved" : offlineReceipt ? "Deal waiting to sync" : "Post a Deal"}</DialogTitle>
+          <DialogTitle>{receipt ? "Deal saved" : offlineReceipt ? "Deal waiting to sync" : title ?? "Post a Deal"}</DialogTitle>
           <DialogDescription>
             {receipt
               ? "The deal is durable. Integration delivery continues independently."
               : offlineReceipt
                 ? "This deal is stored on this device and has not been recorded by the server yet."
-              : "Record a new policy for yourself or a downline agent."}
+              : description ?? "Record a new policy for yourself or a downline agent."}
           </DialogDescription>
+          {secondaryAction && !receipt && !offlineReceipt && (
+            <button
+              type="button"
+              className="mt-1 w-fit text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+              onClick={() => { secondaryAction.onClick(); setOpen(false); }}
+            >
+              {secondaryAction.label}
+            </button>
+          )}
         </DialogHeader>
 
         {receipt ? (

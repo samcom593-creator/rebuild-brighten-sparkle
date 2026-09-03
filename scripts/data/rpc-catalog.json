@@ -1642,6 +1642,14 @@
         "raw": "p_source text, p_metric text, p_claimed_value numeric, p_tolerance_pct numeric DEFAULT 5.0"
       }
     ],
+    "discord_deal_feed_health": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "discord_route": [
       {
         "all": [
@@ -1842,6 +1850,23 @@
         ],
         "unnamed": false,
         "raw": "p_agent_id uuid"
+      }
+    ],
+    "fn_agentlink_alert_page": [
+      {
+        "all": [
+          "p_alert_id",
+          "p_body",
+          "p_priority",
+          "p_title"
+        ],
+        "required": [
+          "p_alert_id",
+          "p_body",
+          "p_title"
+        ],
+        "unnamed": false,
+        "raw": "p_alert_id uuid, p_title text, p_body text, p_priority text DEFAULT 'high'::text"
       }
     ],
     "fn_agentlink_outbox_uuid": [

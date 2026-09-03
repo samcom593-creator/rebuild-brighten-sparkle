@@ -254,6 +254,24 @@ export function ScopedProductionScoreboard() {
   // read, never polled — it refetches with the board via the same realtime
   // invalidation below.
   const windowIsEmpty = Boolean(query.data && query.data.by_agent.length === 0);
+  // MP-394. Vantage's production reaches Apex only through their Discord chat,
+  // and the reader of that chat had no credential from 2026-07-29 with nothing
+  // on any surface saying so. This is the RPC's verdict, never a client guess.
+  const feed = useQuery({
+    queryKey: ["discord-deal-feed-health"],
+    staleTime: 300_000,
+    refetchOnWindowFocus: false,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("discord_deal_feed_health" as never);
+      if (error) throw error;
+      return ((data ?? []) as unknown) as Array<{
+        source: string; agency_name: string; status: string; detail: string | null;
+        last_ingested_at: string | null; last_heartbeat_at: string | null;
+      }>;
+    },
+  });
+  const blockedFeeds = (feed.data ?? []).filter((f) => f.status !== "ok");
+
   const freshness = useQuery({
     queryKey: ["production-book-freshness"],
     enabled: windowIsEmpty,
@@ -485,6 +503,17 @@ export function ScopedProductionScoreboard() {
             </div>
 
             <div className="border-t border-border">
+              {blockedFeeds.length > 0 && (
+                <div className="mx-4 mt-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+                  {blockedFeeds.map((f) => (
+                    <p key={f.source}>
+                      <span className="font-semibold">{f.agency_name} Discord deal feed: {f.status.replaceAll("_", " ")}.</span>{" "}
+                      {f.last_ingested_at ? `Last deal read ${shortTime(f.last_ingested_at)}.` : "Has never read a deal."}{" "}
+                      Deals posted only in that chat are not on this board.
+                    </p>
+                  ))}
+                </div>
+              )}
               <div className="flex items-center justify-between px-4 pt-3">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Who sold</p>
                 <p className="text-xs text-muted-foreground">{data.by_agent.length} of {data.all_members_count.toLocaleString()} in scope produced</p>

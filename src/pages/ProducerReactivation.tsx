@@ -20,6 +20,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { contactLinkProps, phoneHref } from "@/lib/phone";
 
 type Tier = "hot_winback" | "proven_cold" | "warm_winback" | "long_dormant" | "light_producer";
 
@@ -295,7 +296,7 @@ export default function ProducerReactivation() {
                     {r.agent_phone ? (
                       <Button asChild size="sm" className="h-10 w-full shrink-0 sm:h-9 sm:w-auto">
                         <a
-                          href={`tel:${r.agent_phone.replace(/[^\d+]/g, "")}`}
+                          href={phoneHref(r.agent_phone.replace(/[^\d+]/g, "")) ?? `tel:${r.agent_phone.replace(/[^\d+]/g, "")}`} {...contactLinkProps(phoneHref(r.agent_phone.replace(/[^\d+]/g, "")))}
                           aria-label={`Call ${r.agent_name}`}
                         >
                           <Phone className="mr-1.5 h-4 w-4" /> Call

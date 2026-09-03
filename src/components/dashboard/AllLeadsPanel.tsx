@@ -41,6 +41,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { QuickAssignMenu } from "@/components/dashboard/QuickAssignMenu";
+import { contactLinkProps, phoneHref } from "@/lib/phone";
 
 interface Lead {
   id: string;
@@ -257,7 +258,7 @@ export function AllLeadsPanel() {
           />
           <Button variant="ghost" size="icon"
           aria-label="Call lead" className="h-8 w-8" asChild>
-            <a href={`tel:${lead.phone}`}>
+            <a href={phoneHref(lead.phone) ?? `tel:${lead.phone}`} {...contactLinkProps(phoneHref(lead.phone))}>
               <Phone className="h-4 w-4" />
             </a>
           </Button>

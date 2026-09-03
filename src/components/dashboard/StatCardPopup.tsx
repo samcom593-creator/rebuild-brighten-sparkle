@@ -16,6 +16,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { LIVE_AGENT_DEAL_WINDOW_DAYS } from "@/lib/metricTruth";
+import { contactLinkProps, phoneHref, smsHref } from "@/lib/phone";
 
 export type StatType = "totalAlp" | "activeAgents" | "producers" | "needsAttention" | "totalDeals";
 
@@ -124,6 +125,7 @@ export function StatCardPopup({
     const picks = getSelectedAgents().filter(a => a.phone);
     if (picks.length === 0) { toast.error("No phones available in selection"); return; }
     const phones = picks.map(a => a.phone).join(",");
+    /* contact-scheme-allow: multi-recipient blast. Google Voice has no multi-recipient deep link and smsHref() normalises ONE number, so the helper cannot express this. Still a desktop dead click, and the toast below reports success on a no-op — published by MP-405, not fixed: a real remedy is a product decision. */
     window.location.href = `sms:${phones}`;
     toast.success(`Opening SMS for ${picks.length}`);
   }
@@ -314,12 +316,12 @@ export function StatCardPopup({
                       <div className="flex items-center gap-0.5 opacity-70 group-hover:opacity-100 transition">
                         {agent.phone && (
                           <Button size="sm" variant="ghost" className="h-7 w-7 p-0" asChild title="Call">
-                            <a href={`tel:${agent.phone}`}><Phone className="h-3.5 w-3.5" /></a>
+                            <a href={phoneHref(agent.phone) ?? `tel:${agent.phone}`} {...contactLinkProps(phoneHref(agent.phone))}><Phone className="h-3.5 w-3.5" /></a>
                           </Button>
                         )}
                         {agent.phone && (
                           <Button size="sm" variant="ghost" className="h-7 w-7 p-0" asChild title="Text">
-                            <a href={`sms:${agent.phone}`}><MessageSquare className="h-3.5 w-3.5" /></a>
+                            <a href={smsHref(agent.phone) ?? `sms:${agent.phone}`} {...contactLinkProps(smsHref(agent.phone))}><MessageSquare className="h-3.5 w-3.5" /></a>
                           </Button>
                         )}
                         {agent.email && (
@@ -356,7 +358,7 @@ export function StatCardPopup({
                             </DropdownMenuItem>
                             {agent.phone && (
                               <DropdownMenuItem asChild>
-                                <a href={`tel:${agent.phone}`}>
+                                <a href={phoneHref(agent.phone) ?? `tel:${agent.phone}`} {...contactLinkProps(phoneHref(agent.phone))}>
                                   <Phone className="h-3.5 w-3.5 mr-2" /> Call {agent.phone}
                                 </a>
                               </DropdownMenuItem>

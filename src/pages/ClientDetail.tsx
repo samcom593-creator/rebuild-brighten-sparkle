@@ -22,6 +22,7 @@ import { EditableClientSection } from "@/components/clients/EditableClientSectio
 import { SubmitDealDialog, type PostedDealReceipt } from "@/components/deals/SubmitDealDialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { contactLinkProps, phoneHref, smsHref } from "@/lib/phone";
 
 interface ClientRow {
   id: string;
@@ -296,8 +297,8 @@ export default function ClientDetail() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {dncFlags.length > 0 && <Badge variant="destructive">{dncFlags.join(" · ")}</Badge>}
-            {c.phone && !c.do_not_call && <Button asChild size="sm" variant="outline"><a href={`tel:${c.phone}`} onClick={() => action.mutate({ p_activity_type: "call_opened", p_activity_body: "Call opened from client workspace" })}><PhoneCall className="mr-1.5 h-4 w-4" /> Call</a></Button>}
-            {c.phone && !c.do_not_text && <Button asChild size="sm" variant="outline"><a href={`sms:${c.phone}`} onClick={() => action.mutate({ p_activity_type: "sms_opened", p_activity_body: "SMS opened from client workspace" })}><MessageSquare className="mr-1.5 h-4 w-4" /> SMS</a></Button>}
+            {c.phone && !c.do_not_call && <Button asChild size="sm" variant="outline"><a href={phoneHref(c.phone) ?? `tel:${c.phone}`} {...contactLinkProps(phoneHref(c.phone))} onClick={() => action.mutate({ p_activity_type: "call_opened", p_activity_body: "Call opened from client workspace" })}><PhoneCall className="mr-1.5 h-4 w-4" /> Call</a></Button>}
+            {c.phone && !c.do_not_text && <Button asChild size="sm" variant="outline"><a href={smsHref(c.phone) ?? `sms:${c.phone}`} {...contactLinkProps(smsHref(c.phone))} onClick={() => action.mutate({ p_activity_type: "sms_opened", p_activity_body: "SMS opened from client workspace" })}><MessageSquare className="mr-1.5 h-4 w-4" /> SMS</a></Button>}
             <SubmitDealDialog initialClient={{ firstName: c.first_name ?? "", lastName: c.last_name ?? "", phone: c.phone ?? "", dob: dateInput(c.date_of_birth) }} trigger={<Button size="sm" variant="outline"><ReceiptText className="mr-1.5 h-4 w-4" /> Submit Case for Design</Button>} />
             <SubmitDealDialog
               title="Mark sold — post the deal"

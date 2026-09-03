@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { TRAINING_ROUTES } from "@/lib/trainingRoutes";
 import { useAuth } from "@/hooks/useAuth";
+import { contactLinkProps, phoneHref } from "@/lib/phone";
 
 interface OperationsData {
   as_of: string;
@@ -142,7 +143,7 @@ export function OperationsCommandCenter() {
                   </div>
                   <Badge variant="outline" className={cn("hidden w-fit capitalize sm:inline-flex", person.pulse === "cold" && "border-rose-500/40 text-rose-400", person.pulse === "slipping" && "border-amber-500/40 text-amber-500")}>{person.pulse.replace("_", " ")}</Badge>
                   <div className="hidden text-right sm:block"><p className="text-xs font-semibold tabular-nums">{money(person.ap_mtd)}</p><p className="text-[10px] text-muted-foreground">{person.deals_mtd} MTD deals</p></div>
-                  {person.phone ? <Button asChild size="sm" variant="outline"><a href={`tel:${person.phone}`}><PhoneCall className="mr-1.5 h-3.5 w-3.5" />Call</a></Button> : <Button asChild size="sm" variant="outline"><Link to={`/dashboard/team?focusAgentId=${person.agent_id}`}>Open</Link></Button>}
+                  {person.phone ? <Button asChild size="sm" variant="outline"><a href={phoneHref(person.phone) ?? `tel:${person.phone}`} {...contactLinkProps(phoneHref(person.phone))}><PhoneCall className="mr-1.5 h-3.5 w-3.5" />Call</a></Button> : <Button asChild size="sm" variant="outline"><Link to={`/dashboard/team?focusAgentId=${person.agent_id}`}>Open</Link></Button>}
                 </div>
               ))}
             </div>

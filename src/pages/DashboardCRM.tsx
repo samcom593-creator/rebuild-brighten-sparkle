@@ -52,6 +52,7 @@ import { getCloseRate, sumAnnualPremium } from "@/lib/metricTruth";
 import { DEAL_TRUTH_STATUS_FILTER } from "@/lib/dealTruth";
 import { getNextBestAction, type NBAInput } from "@/lib/nextBestAction";
 import { priorityBadgeClasses } from "@/lib/priority";
+import { contactLinkProps, phoneHref } from "@/lib/phone";
 
 /** Feature flag: hide destructive bulk delete by default. Set VITE_ENABLE_CRM_BULK_DELETE=true to enable. */
 const ENABLE_BULK_DELETE = import.meta.env.VITE_ENABLE_CRM_BULK_DELETE === "true";
@@ -243,7 +244,7 @@ function ContactActions({ agent, onViewApp, onEditLogin, onDeactivate, onAgentUp
     <div className="flex flex-wrap items-center gap-2">
       {agent.phone && (
         <Button variant="outline" size="sm" className="h-10 gap-1 text-xs sm:h-8" asChild>
-          <a href={`tel:${agent.phone}`}><Phone className="h-3 w-3" /> Call</a>
+          <a href={phoneHref(agent.phone) ?? `tel:${agent.phone}`} {...contactLinkProps(phoneHref(agent.phone))}><Phone className="h-3 w-3" /> Call</a>
         </Button>
       )}
       {agent.email && (
@@ -818,7 +819,7 @@ function RosterPanel({ rows, isLoading, isError, onRetry }: {
                               </a>
                             ) : <p className="truncate text-[11px] italic text-muted-foreground">No email on file</p>}
                             {r.phone ? (
-                              <a href={`tel:${r.phone}`} className="block truncate text-[11px] tabular-nums text-muted-foreground hover:text-primary hover:underline">
+                              <a href={phoneHref(r.phone) ?? `tel:${r.phone}`} {...contactLinkProps(phoneHref(r.phone))} className="block truncate text-[11px] tabular-nums text-muted-foreground hover:text-primary hover:underline">
                                 <Phone className="mr-1 inline h-3 w-3" />{r.phone}
                               </a>
                             ) : <p className="truncate text-[11px] italic text-muted-foreground">No phone on file</p>}
@@ -1816,7 +1817,7 @@ export default function DashboardCRM() {
           )}
           {agent.phone && (
             <DropdownMenuItem asChild>
-              <a href={`tel:${agent.phone}`}><Phone className="h-3.5 w-3.5 mr-2" /> Call</a>
+              <a href={phoneHref(agent.phone) ?? `tel:${agent.phone}`} {...contactLinkProps(phoneHref(agent.phone))}><Phone className="h-3.5 w-3.5 mr-2" /> Call</a>
             </DropdownMenuItem>
           )}
           {agent.instagramHandle && (

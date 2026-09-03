@@ -4,6 +4,7 @@ import { ArrowRight, ExternalLink, FileText, Phone, PlayCircle } from "lucide-re
 import { Card } from "@/components/ui/card";
 import { resolveBrand } from "@/config/brand";
 import { TRAINING_ROUTES } from "@/lib/trainingRoutes";
+import { contactLinkProps, phoneHref } from "@/lib/phone";
 
 function onboardingResources(brandName: string) {
   return [
@@ -50,7 +51,7 @@ export function RequiredOnboardingResources() {
             ? <Link key={resource.title} to={resource.href}>{content}</Link>
             : <a key={resource.title} href={resource.href} target="_blank" rel="noopener noreferrer">{content}</a>;
         })}
-        <a href="tel:+19788047212">
+        <a href={phoneHref("+19788047212") ?? "tel:+19788047212"} {...contactLinkProps(phoneHref("+19788047212"))}>
           <Card className="flex h-full items-start gap-3 border-primary/30 p-4 hover:border-primary">
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground"><Phone className="h-4 w-4" /></span>
             <span>

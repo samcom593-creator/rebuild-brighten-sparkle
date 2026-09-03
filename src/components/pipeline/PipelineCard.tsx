@@ -2,7 +2,7 @@ import { Phone, Mail, Clock, Eye, Calendar, Target, Zap, Flame, TrendingUp } fro
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { phoneHref } from "@/lib/phone";
+import { contactLinkProps, phoneHref } from "@/lib/phone";
 import { formatDistanceToNow, differenceInDays, differenceInHours } from "date-fns";
 import { SCORE_THRESHOLDS } from "@/lib/apexConfig";
 import { ApplicationDetailSheet } from "@/components/dashboard/ApplicationDetailSheet";
@@ -267,7 +267,7 @@ export const PipelineCard = memo(function PipelineCard({ app, onClick, onSchedul
               className="h-7 w-7 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
               asChild onClick={(e) => e.stopPropagation()}
             >
-              <a href={phoneHref(app.phone)!}><Phone className="h-3.5 w-3.5" /></a>
+              <a href={phoneHref(app.phone)!} {...contactLinkProps(phoneHref(app.phone)!)}><Phone className="h-3.5 w-3.5" /></a>
             </Button>
           )}
           <Button variant="ghost" size="icon"

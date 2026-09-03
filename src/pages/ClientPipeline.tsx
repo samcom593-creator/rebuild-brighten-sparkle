@@ -84,6 +84,7 @@ import { FunnelStageCard } from "@/components/recruiting/FunnelStageCard";
 import { FunnelConnector } from "@/components/recruiting/FunnelConnector";
 import { BottleneckCallout } from "@/components/recruiting/BottleneckCallout";
 import { toast } from "sonner";
+import { contactLinkProps, phoneHref, smsHref } from "@/lib/phone";
 
 interface Client {
   id: string;
@@ -695,8 +696,8 @@ export default function ClientPipeline() {
                         </p>
                       </button>
                       <div className="mt-2 flex items-center gap-1 border-t border-border pt-2">
-                        {client.phone && !client.do_not_call && <Button asChild size="icon" variant="ghost" className="h-7 w-7" aria-label={`Call ${fullName(client)}`}><a href={`tel:${client.phone}`}><Phone className="h-3.5 w-3.5" /></a></Button>}
-                        {client.phone && <Button asChild size="icon" variant="ghost" className="h-7 w-7" aria-label={`Text ${fullName(client)}`}><a href={`sms:${client.phone}`}><MessageSquare className="h-3.5 w-3.5" /></a></Button>}
+                        {client.phone && !client.do_not_call && <Button asChild size="icon" variant="ghost" className="h-7 w-7" aria-label={`Call ${fullName(client)}`}><a href={phoneHref(client.phone) ?? `tel:${client.phone}`} {...contactLinkProps(phoneHref(client.phone))}><Phone className="h-3.5 w-3.5" /></a></Button>}
+                        {client.phone && <Button asChild size="icon" variant="ghost" className="h-7 w-7" aria-label={`Text ${fullName(client)}`}><a href={smsHref(client.phone) ?? `sms:${client.phone}`} {...contactLinkProps(smsHref(client.phone))}><MessageSquare className="h-3.5 w-3.5" /></a></Button>}
                         {client.email && <Button asChild size="icon" variant="ghost" className="h-7 w-7" aria-label={`Email ${fullName(client)}`}><a href={`mailto:${client.email}`}><Mail className="h-3.5 w-3.5" /></a></Button>}
                         <Button size="sm" variant="ghost" className="ml-auto h-7 px-2 text-[11px]" onClick={() => navigate(`/dashboard/clients/${client.id}`)}>Open</Button>
                       </div>
@@ -1184,7 +1185,7 @@ export default function ClientPipeline() {
                         <div className="flex items-center gap-1 shrink-0">
                           {c.phone && !c.do_not_call && (
                             <Button asChild size="icon" variant="ghost" title="Call" onClick={(e) => e.stopPropagation()}>
-                              <a href={`tel:${c.phone}`}><Phone className="h-4 w-4" /></a>
+                              <a href={phoneHref(c.phone) ?? `tel:${c.phone}`} {...contactLinkProps(phoneHref(c.phone))}><Phone className="h-4 w-4" /></a>
                             </Button>
                           )}
                           {c.email && (
@@ -1360,7 +1361,7 @@ function ClientRow({ client, meta, tone, onOpen }: ClientRowProps) {
         <span className={`text-xs font-semibold tabular-nums ${metaTint}`}>{meta}</span>
         {client.phone && !client.do_not_call && (
           <Button asChild size="icon" variant="ghost" title="Call" onClick={(e) => e.stopPropagation()}>
-            <a href={`tel:${client.phone}`}><Phone className="h-4 w-4" /></a>
+            <a href={phoneHref(client.phone) ?? `tel:${client.phone}`} {...contactLinkProps(phoneHref(client.phone))}><Phone className="h-4 w-4" /></a>
           </Button>
         )}
         {client.email && (

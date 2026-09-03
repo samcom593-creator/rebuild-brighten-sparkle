@@ -21,6 +21,7 @@ import {
 import { differenceInDays, format } from "date-fns";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { contactLinkProps, phoneHref, smsHref } from "@/lib/phone";
 
 /**
  * Pre-Licensing Manager
@@ -189,6 +190,7 @@ export default function PrelicensingManager() {
     const picks = apps.filter((a: any) => selected.has(a.id) && a.phone);
     if (picks.length === 0) { toast.error("No phones in selection"); return; }
     const phones = picks.map((a: any) => a.phone).join(",");
+    /* contact-scheme-allow: multi-recipient blast. Google Voice has no multi-recipient deep link and smsHref() normalises ONE number, so the helper cannot express this. Still a desktop dead click, and the toast below reports success on a no-op — published by MP-405, not fixed: a real remedy is a product decision. */
     window.location.href = `sms:${phones}`;
     toast.success(`Opening SMS for ${picks.length}`);
   }
@@ -421,14 +423,14 @@ export default function PrelicensingManager() {
                         asChild
                         title="Call"
                       >
-                        <a href={`tel:${a.phone}`}>
+                        <a href={phoneHref(a.phone) ?? `tel:${a.phone}`} {...contactLinkProps(phoneHref(a.phone))}>
                           <Phone className="h-3.5 w-3.5" />
                         </a>
                       </Button>
                     )}
                     {a.phone && (
                       <Button size="sm" variant="ghost" asChild title="Text">
-                        <a href={`sms:${a.phone}`}>
+                        <a href={smsHref(a.phone) ?? `sms:${a.phone}`} {...contactLinkProps(smsHref(a.phone))}>
                           <MessageSquare className="h-3.5 w-3.5" />
                         </a>
                       </Button>

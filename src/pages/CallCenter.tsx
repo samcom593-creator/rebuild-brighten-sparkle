@@ -808,6 +808,7 @@ export default function CallCenter() {
     const isMobile = /iphone|ipad|ipod|android/i.test(navigator.userAgent);
     if (isMobile) {
       // Phone: native dialer actually rings.
+      /* contact-scheme-allow: reached only inside the isMobile branch three lines up, where a native dialer exists. The desktop path below routes through Google Voice (MP-345). Correct as written. */
       window.open(`tel:${num}`, "_self");
       return;
     }

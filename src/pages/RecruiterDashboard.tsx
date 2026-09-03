@@ -54,6 +54,7 @@ import {
   ANIMATION_THRESHOLDS, SUGGESTION_RULES, FOLLOWUP_TIMING,
 } from "@/lib/apexConfig";
 import { isFeatureEnabled } from "@/lib/featureFlags";
+import { contactLinkProps, phoneHref, smsHref, startPhoneCall } from "@/lib/phone";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const AISHA_EMAIL = "kebbeh045@gmail.com";
@@ -565,7 +566,7 @@ const LeadCard = memo(function LeadCard({
                     key={o.key}
                     onClick={() => {
                       handleCallOutcome(o);
-                      window.open(`tel:${lead.phone}`, "_self");
+                      startPhoneCall(lead.phone);
                     }}
                     className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded-md hover:bg-accent transition-colors"
                   >
@@ -1491,7 +1492,7 @@ function RecruiterDashboardInner() {
                       </td>
                       <td className="px-3 py-2">
                         {lead.phone && (
-                          <a href={`tel:${lead.phone}`} className="text-emerald-500 hover:underline text-xs" onClick={e => e.stopPropagation()}>
+                          <a href={phoneHref(lead.phone) ?? `tel:${lead.phone}`} {...contactLinkProps(phoneHref(lead.phone))} className="text-emerald-500 hover:underline text-xs" onClick={e => e.stopPropagation()}>
                             {lead.phone}
                           </a>
                         )}
@@ -1563,12 +1564,12 @@ function RecruiterDashboardInner() {
                           </Tooltip>
                           {lead.phone && (
                             <Button variant="ghost" size="icon" aria-label={`Call ${lead.first_name ?? "lead"}`} className="h-6 w-6" asChild>
-                              <a href={`tel:${lead.phone}`} title="Call"><Phone className="h-3 w-3" /></a>
+                              <a href={phoneHref(lead.phone) ?? `tel:${lead.phone}`} {...contactLinkProps(phoneHref(lead.phone))} title="Call"><Phone className="h-3 w-3" /></a>
                             </Button>
                           )}
                           {lead.phone && (
                             <Button variant="ghost" size="icon" aria-label={`Text ${lead.first_name ?? "lead"}`} className="h-6 w-6" asChild>
-                              <a href={`sms:${lead.phone}`} title="Text"><MessageSquare className="h-3 w-3" /></a>
+                              <a href={smsHref(lead.phone) ?? `sms:${lead.phone}`} {...contactLinkProps(smsHref(lead.phone))} title="Text"><MessageSquare className="h-3 w-3" /></a>
                             </Button>
                           )}
                           <QuickEmailMenu

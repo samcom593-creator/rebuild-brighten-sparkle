@@ -39,6 +39,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatTimeAgo } from "@/lib/dateUtils";
 import { createCanonicalHire, promoteApplicationToAgent } from "@/lib/hireToOnboarding";
+import { startPhoneCall, startSmsThread } from "@/lib/phone";
 
 /**
  * /admin/licensed-inbox: immediate-call surface for licensed applicants and
@@ -278,7 +279,7 @@ export default function LicensedInbox() {
     setBusy(key);
     try {
       await queueContactAction(row, "call", crypto.randomUUID());
-      window.location.href = `tel:${row.phone}`;
+      if (!startPhoneCall(row.phone)) throw new Error(`Cannot dial ${row.phone ?? "this number"}`);
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "Call could not start";
       toast.error(message);
@@ -310,7 +311,7 @@ export default function LicensedInbox() {
       if (action.status === "fallback_required") {
         if (composer.channel === "sms" && composer.row.phone) {
           setContactReceipt("No verified SMS carrier is configured. Opening your device messaging app; the text is not logged as sent.");
-          window.location.href = `sms:${composer.row.phone}?body=${encodeURIComponent(contactMessage)}`;
+          startSmsThread(composer.row.phone, contactMessage);
           return;
         }
         throw new Error("The configured provider is unavailable for this recipient");

@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { contactLinkProps, phoneHref } from "@/lib/phone";
 
 /**
  * UnclaimedLeadsCommandCard — surfaces every status='new' applicant that
@@ -216,7 +217,7 @@ export function UnclaimedLeadsCommandCard() {
                   </div>
                   <div className="flex items-center gap-3 mt-0.5 text-[11px] text-muted-foreground">
                     {row.phone && (
-                      <a href={`tel:${row.phone}`} className="flex items-center gap-1 hover:text-foreground" onClick={e => e.stopPropagation()}>
+                      <a href={phoneHref(row.phone) ?? `tel:${row.phone}`} {...contactLinkProps(phoneHref(row.phone))} className="flex items-center gap-1 hover:text-foreground" onClick={e => e.stopPropagation()}>
                         <Phone className="h-3 w-3" /> {row.phone}
                       </a>
                     )}

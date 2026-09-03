@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils";
 import { useConfirm } from "@/hooks/useConfirm";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { contactLinkProps, phoneHref, smsHref } from "@/lib/phone";
 
 type InboxFilter = "all" | "email" | "sms" | "push" | "failed";
 type InboxChannel = "email" | "sms" | "push";
@@ -782,14 +783,14 @@ export default function InboxPage() {
                 <div className="flex items-center gap-1 flex-wrap">
                   {selectedMessage.recipient_phone && (
                     <Button variant="outline" size="sm" asChild>
-                      <a href={`tel:${selectedMessage.recipient_phone}`}>
+                      <a href={phoneHref(selectedMessage.recipient_phone) ?? `tel:${selectedMessage.recipient_phone}`} {...contactLinkProps(phoneHref(selectedMessage.recipient_phone))}>
                         <Phone className="mr-1 h-3.5 w-3.5" /> Call
                       </a>
                     </Button>
                   )}
                   {selectedMessage.recipient_phone && (
                     <Button variant="outline" size="sm" asChild>
-                      <a href={`sms:${selectedMessage.recipient_phone}`}>
+                      <a href={smsHref(selectedMessage.recipient_phone) ?? `sms:${selectedMessage.recipient_phone}`} {...contactLinkProps(smsHref(selectedMessage.recipient_phone))}>
                         <MessageSquare className="mr-1 h-3.5 w-3.5" /> Text
                       </a>
                     </Button>

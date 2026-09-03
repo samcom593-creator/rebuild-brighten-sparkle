@@ -86,6 +86,7 @@ import { useAgentProfileDrawer } from "@/stores/agentProfileDrawer";
 import { cn } from "@/lib/utils";
 import { formatEnumLabel } from "@/lib/formatEnumLabel";
 import { toast } from "sonner";
+import { startPhoneCall, startSmsThread } from "@/lib/phone";
 
 interface AgentRow {
   id: string;
@@ -894,7 +895,7 @@ const qnum = (v: number | string | null | undefined): number | null => {
                 size="sm"
                 className="h-9 gap-1.5"
                 disabled={!phone}
-                onClick={() => phone && (window.location.href = `tel:${phone}`)}
+                onClick={() => { if (phone && !startPhoneCall(phone)) toast.error(`Cannot dial ${phone}`); }}
               >
                 <Phone className="h-3.5 w-3.5" /> Call
               </Button>
@@ -912,7 +913,7 @@ const qnum = (v: number | string | null | undefined): number | null => {
                 size="sm"
                 className="h-9 gap-1.5"
                 disabled={!phone}
-                onClick={() => phone && (window.location.href = `sms:${phone}`)}
+                onClick={() => { if (phone && !startSmsThread(phone)) toast.error(`Cannot text ${phone}`); }}
               >
                 <MessageSquare className="h-3.5 w-3.5" /> SMS
               </Button>
@@ -1439,7 +1440,7 @@ const qnum = (v: number | string | null | undefined): number | null => {
               size="sm"
               className="h-9 gap-1.5"
               disabled={!phone}
-              onClick={() => phone && (window.location.href = `tel:${phone}`)}
+              onClick={() => { if (phone && !startPhoneCall(phone)) toast.error(`Cannot dial ${phone}`); }}
               title={phone ? `Call ${phone}` : "No phone on file"}
             >
               <Phone className="h-3.5 w-3.5" /> Call
@@ -1449,7 +1450,7 @@ const qnum = (v: number | string | null | undefined): number | null => {
               variant="outline"
               className="h-9 gap-1.5"
               disabled={!phone}
-              onClick={() => phone && (window.location.href = `sms:${phone}`)}
+              onClick={() => { if (phone && !startSmsThread(phone)) toast.error(`Cannot text ${phone}`); }}
               title={phone ? `Text ${phone}` : "No phone on file"}
             >
               <MessageSquare className="h-3.5 w-3.5" /> Text

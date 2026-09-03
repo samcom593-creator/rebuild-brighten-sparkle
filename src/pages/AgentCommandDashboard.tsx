@@ -62,6 +62,7 @@ import { AgentOnboardingStepper } from "@/components/dashboard/AgentOnboardingSt
 // just visual debt.
 import { DEAL_TRUTH_STATUS_FILTER, dealTruthWindowOr, getDealTruthTimestamp } from "@/lib/dealTruth";
 import { APPLICATION_RECORD_TYPE } from "@/shared/api/applicationRecordType";
+import { contactLinkProps, phoneHref } from "@/lib/phone";
 
 // ─── Formatters ─────────────────────────────────────────────────────────────
 function fmtUsd(n: number, compact = false): string {
@@ -4928,7 +4929,7 @@ function AgedLeadRowClickable({ l }: { l: AgedLeadRow }) {
       </div>
       {canDial ? (
         <a
-          href={`tel:${phoneClean}`}
+          href={phoneHref(phoneClean) ?? `tel:${phoneClean}`} {...contactLinkProps(phoneHref(phoneClean))}
           className="shrink-0 p-2 rounded-lg bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/25 hover:text-emerald-200 transition-colors"
           title={`Dial ${name}`}
         >

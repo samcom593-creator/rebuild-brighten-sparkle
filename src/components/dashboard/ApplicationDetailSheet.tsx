@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
-import { phoneHref } from "@/lib/phone";
+import { contactLinkProps, phoneHref } from "@/lib/phone";
 import { logLeadActivity } from "@/lib/logLeadActivity";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -342,7 +342,7 @@ export function ApplicationDetailSheet({
                       <Mail className="h-4 w-4 text-muted-foreground" />{app.email}
                     </a>
                     {phoneHref(app.phone) && (
-                      <a href={phoneHref(app.phone)!} className="flex items-center gap-3 text-sm hover:text-primary transition-colors">
+                      <a href={phoneHref(app.phone)!} {...contactLinkProps(phoneHref(app.phone)!)} className="flex items-center gap-3 text-sm hover:text-primary transition-colors">
                         <Phone className="h-4 w-4 text-muted-foreground" />{app.phone}
                       </a>
                     )}
@@ -590,7 +590,7 @@ export function ApplicationDetailSheet({
                 <div className="flex flex-wrap gap-2">
                   {phoneHref(app.phone) && (
                     <Button variant="outline" size="sm" asChild>
-                      <a href={phoneHref(app.phone)!}><Phone className="h-3.5 w-3.5 mr-1.5" /> Call</a>
+                      <a href={phoneHref(app.phone)!} {...contactLinkProps(phoneHref(app.phone)!)}><Phone className="h-3.5 w-3.5 mr-1.5" /> Call</a>
                     </Button>
                   )}
                   <Button variant="outline" size="sm" asChild>

@@ -66,6 +66,7 @@ import { ResendLicensingButton } from "@/components/callcenter/ResendLicensingBu
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { QuickAssignMenu } from "@/components/dashboard/QuickAssignMenu";
 import { LeadDetailSheet } from "@/components/recruiter/LeadDetailSheet";
+import { contactLinkProps, phoneHref, smsHref } from "@/lib/phone";
 
 interface AgedLead {
   id: string;
@@ -880,6 +881,7 @@ export default function DashboardAgedLeads() {
                     onClick={() => {
                       const picks = filteredLeads.filter(l => selectedIds.has(l.id) && l.phone);
                       if (picks.length === 0) { toast.error("No phones in selection"); return; }
+                      /* contact-scheme-allow: multi-recipient blast. Google Voice has no multi-recipient deep link and smsHref() normalises ONE number, so the helper cannot express this. Still a desktop dead click, and the toast below reports success on a no-op — published by MP-405, not fixed: a real remedy is a product decision. */
                       window.location.href = `sms:${picks.map(l => l.phone).join(",")}`;
                     }}
                   >
@@ -1073,7 +1075,7 @@ export default function DashboardAgedLeads() {
                     </div>
                     <div className="space-y-1 mb-3 text-xs">
                       {lead.phone && (
-                        <a href={`tel:${lead.phone}`} onClick={e => e.stopPropagation()} className="flex items-center gap-1.5 text-emerald-400 hover:underline">
+                        <a href={phoneHref(lead.phone) ?? `tel:${lead.phone}`} {...contactLinkProps(phoneHref(lead.phone))} onClick={e => e.stopPropagation()} className="flex items-center gap-1.5 text-emerald-400 hover:underline">
                           <Phone className="h-3 w-3" /> {lead.phone}
                         </a>
                       )}
@@ -1108,12 +1110,12 @@ export default function DashboardAgedLeads() {
                       <div className="flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
                         {lead.phone && (
                           <Button variant="ghost" size="icon" className="h-7 w-7" asChild title="Call">
-                            <a href={`tel:${lead.phone}`}><PhoneCall className="h-3.5 w-3.5 text-emerald-400" /></a>
+                            <a href={phoneHref(lead.phone) ?? `tel:${lead.phone}`} {...contactLinkProps(phoneHref(lead.phone))}><PhoneCall className="h-3.5 w-3.5 text-emerald-400" /></a>
                           </Button>
                         )}
                         {lead.phone && (
                           <Button variant="ghost" size="icon" className="h-7 w-7" asChild title="Text">
-                            <a href={`sms:${lead.phone}`}><MessageSquare className="h-3.5 w-3.5 text-info" /></a>
+                            <a href={smsHref(lead.phone) ?? `sms:${lead.phone}`} {...contactLinkProps(smsHref(lead.phone))}><MessageSquare className="h-3.5 w-3.5 text-info" /></a>
                           </Button>
                         )}
                         {lead.email && (

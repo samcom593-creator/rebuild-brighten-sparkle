@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/table";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
+import { contactLinkProps, phoneHref } from "@/lib/phone";
 
 interface AbandonedLead {
   id: string;
@@ -218,7 +219,7 @@ export function AbandonedLeadsPanel() {
                           className="h-7 w-7"
                           asChild
                         >
-                          <a href={`tel:${lead.phone}`}>
+                          <a href={phoneHref(lead.phone) ?? `tel:${lead.phone}`} {...contactLinkProps(phoneHref(lead.phone))}>
                             <Phone className="h-3.5 w-3.5 text-primary" />
                           </a>
                         </Button>

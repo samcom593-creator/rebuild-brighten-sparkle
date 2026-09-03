@@ -16,6 +16,7 @@ import {
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
+import { contactLinkProps, phoneHref, smsHref } from "@/lib/phone";
 
 type Stage =
   | "signed_up"
@@ -415,14 +416,14 @@ export default function GettingStarted() {
                   <div className="flex items-center gap-1">
                     {agent.phone && (
                       <Button size="sm" variant="ghost" className="h-8 w-8 p-0" asChild title="Call">
-                        <a href={`tel:${agent.phone}`}>
+                        <a href={phoneHref(agent.phone) ?? `tel:${agent.phone}`} {...contactLinkProps(phoneHref(agent.phone))}>
                           <Phone className="h-4 w-4" />
                         </a>
                       </Button>
                     )}
                     {agent.phone && (
                       <Button size="sm" variant="ghost" className="h-8 w-8 p-0" asChild title="Text">
-                        <a href={`sms:${agent.phone}`}>
+                        <a href={smsHref(agent.phone) ?? `sms:${agent.phone}`} {...contactLinkProps(smsHref(agent.phone))}>
                           <MessageSquare className="h-4 w-4" />
                         </a>
                       </Button>

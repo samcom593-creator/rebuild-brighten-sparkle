@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { XcelIngestDialog } from "@/components/admin/XcelIngestDialog";
+import { contactLinkProps, phoneHref } from "@/lib/phone";
 
 interface Report {
   id: string;
@@ -516,7 +517,7 @@ export default function PreLicensing() {
                     <div className="flex items-center gap-1 shrink-0">
                       {s.phone && (
                         <Button asChild size="icon" variant="ghost" title="Call">
-                          <a href={`tel:${s.phone}`}><Phone className="h-4 w-4" /></a>
+                          <a href={phoneHref(s.phone) ?? `tel:${s.phone}`} {...contactLinkProps(phoneHref(s.phone))}><Phone className="h-4 w-4" /></a>
                         </Button>
                       )}
                       {s.email && (

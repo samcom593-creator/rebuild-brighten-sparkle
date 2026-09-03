@@ -35,6 +35,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { contactLinkProps, phoneHref } from "@/lib/phone";
 
 interface ProfileForm {
   full_name: string;
@@ -287,7 +288,7 @@ function AgentProducerView({ agentId }: { agentId: string }) {
             <Button asChild variant="outline" size="sm"><a href={`mailto:${a.email}`}><Mail className="mr-1.5 h-3.5 w-3.5" /> Email</a></Button>
           )}
           {a.phone && (
-            <Button asChild variant="outline" size="sm"><a href={`tel:${a.phone}`}><Phone className="mr-1.5 h-3.5 w-3.5" /> Call</a></Button>
+            <Button asChild variant="outline" size="sm"><a href={phoneHref(a.phone) ?? `tel:${a.phone}`} {...contactLinkProps(phoneHref(a.phone))}><Phone className="mr-1.5 h-3.5 w-3.5" /> Call</a></Button>
           )}
         </CardContent>
       </Card>

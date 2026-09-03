@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 import { filterActionableNotifications } from "@/lib/notificationFilters";
 import confetti from "canvas-confetti";
 import { APPLICATION_RECORD_TYPE } from "@/shared/api/applicationRecordType";
+import { contactLinkProps, phoneHref, smsHref } from "@/lib/phone";
 
 // ─── Summary Stats ───
 function NotificationStats({ logs, onFilterChannel }: { logs: any[]; onFilterChannel: (ch: string) => void }) {
@@ -230,12 +231,12 @@ function NotificationLogTable({ logs, search, channelFilter, statusFilter, onRef
                       <div className="flex items-center gap-0.5">
                         {log.recipient_phone && (
                           <Button size="sm" variant="ghost" className="h-7 w-7 p-0" asChild title="Call">
-                            <a href={`tel:${log.recipient_phone}`}><Phone className="h-3.5 w-3.5" /></a>
+                            <a href={phoneHref(log.recipient_phone) ?? `tel:${log.recipient_phone}`} {...contactLinkProps(phoneHref(log.recipient_phone))}><Phone className="h-3.5 w-3.5" /></a>
                           </Button>
                         )}
                         {log.recipient_phone && (
                           <Button size="sm" variant="ghost" className="h-7 w-7 p-0" asChild title="Text">
-                            <a href={`sms:${log.recipient_phone}`}><MessageSquare className="h-3.5 w-3.5" /></a>
+                            <a href={smsHref(log.recipient_phone) ?? `sms:${log.recipient_phone}`} {...contactLinkProps(smsHref(log.recipient_phone))}><MessageSquare className="h-3.5 w-3.5" /></a>
                           </Button>
                         )}
                         {log.recipient_email && (

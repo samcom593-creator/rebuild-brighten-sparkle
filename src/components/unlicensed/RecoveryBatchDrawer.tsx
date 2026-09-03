@@ -41,6 +41,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { contactLinkProps, phoneHref } from "@/lib/phone";
 
 export interface RecoveryBatchRow {
   id: string;
@@ -158,7 +159,11 @@ function formatPhoneDisplay(raw: string | null): string {
 function telHref(raw: string | null): string {
   if (!raw) return "#";
   const d = raw.replace(/\D/g, "");
-  return `tel:${d.startsWith("1") ? "+" : "+1"}${d}`;
+  const e164 = `${d.startsWith("1") ? "+" : "+1"}${d}`;
+  // Desktop has no dialer, so a bare `tel:` here is a dead click (see @/lib/phone).
+  // The raw scheme stays as the fallback so an unnormalisable number keeps the
+  // control it has today instead of losing it.
+  return phoneHref(e164) ?? `tel:${e164}`;
 }
 
 function displayName(r: RecoveryBatchRow): string {
@@ -414,7 +419,7 @@ export function RecoveryBatchDrawer({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {row.phone && !row.phone_bad_at && (
                 <a
-                  href={telHref(row.phone)}
+                  href={telHref(row.phone)} {...contactLinkProps(telHref(row.phone))}
                   aria-label={`Call ${displayName(row)}`}
                   className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-200 px-3 py-3 text-sm font-semibold"
                 >

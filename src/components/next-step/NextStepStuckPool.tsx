@@ -6,6 +6,7 @@ import { AlertTriangle, Clock, ArrowRight, ExternalLink, Phone, Mail } from "luc
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { contactLinkProps, phoneHref } from "@/lib/phone";
 
 const SEVERITY_TONE: Record<string, { ring: string; chip: string; text: string }> = {
   critical: { ring: "border-rose-500/50",   chip: "bg-rose-500/20 text-rose-200 border-rose-500/40",     text: "text-rose-200" },
@@ -111,7 +112,7 @@ export function NextStepStuckPool({ ownerUserId, limit = 8, heading, subheading 
                   <div className="flex items-center gap-1">
                     {row.phone && (
                       <a
-                        href={`tel:${row.phone}`}
+                        href={phoneHref(row.phone) ?? `tel:${row.phone}`} {...contactLinkProps(phoneHref(row.phone))}
                         className="rounded-md border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 p-1.5 transition-colors"
                         title={`Call ${fullName}`}
                       >

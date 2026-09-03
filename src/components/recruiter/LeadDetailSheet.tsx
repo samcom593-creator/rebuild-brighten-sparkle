@@ -18,6 +18,7 @@ import { logLeadActivity } from "@/lib/logLeadActivity";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow, format } from "date-fns";
 import { toast } from "sonner";
+import { contactLinkProps, phoneHref } from "@/lib/phone";
 
 interface Lead {
   id: string;
@@ -233,7 +234,7 @@ export function LeadDetailSheet({ lead, open, onOpenChange, onRefresh }: LeadDet
           {/* Quick contact row */}
           <div className="flex gap-2 pt-1">
             {lead.phone && (
-              <a href={`tel:${lead.phone}`} className="text-xs text-emerald-400 hover:underline flex items-center gap-1">
+              <a href={phoneHref(lead.phone) ?? `tel:${lead.phone}`} {...contactLinkProps(phoneHref(lead.phone))} className="text-xs text-emerald-400 hover:underline flex items-center gap-1">
                 <Phone className="h-3 w-3" /> {lead.phone}
               </a>
             )}

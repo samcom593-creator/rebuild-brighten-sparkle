@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
+import { startPhoneCall } from "@/lib/phone";
 
 function formatPhoneDisplay(phone: string): string {
   const digits = phone.replace(/\D/g, "");
@@ -183,7 +184,7 @@ function formatPhoneDisplay(phone: string): string {
  
    const handleCall = useCallback(() => {
      if (currentLead?.phone) {
-       window.open(`tel:${currentLead.phone}`, "_self");
+       startPhoneCall(currentLead.phone);
      }
    }, [currentLead]);
  

@@ -20,6 +20,7 @@ import { QuickAssignMenu } from "./QuickAssignMenu";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { contactLinkProps, phoneHref } from "@/lib/phone";
 
 interface OrphanedLead {
   id: string;
@@ -228,7 +229,7 @@ export function TerminatedAgentLeadsPanel() {
                             {lead.email}
                           </a>
                           <a
-                            href={`tel:${lead.phone}`}
+                            href={phoneHref(lead.phone) ?? `tel:${lead.phone}`} {...contactLinkProps(phoneHref(lead.phone))}
                             className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1"
                           >
                             <Phone className="h-3 w-3" />

@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { contactLinkProps, phoneHref } from "@/lib/phone";
 
 /**
  * XcelStalledCard — every pre-licensing student who hasn't touched their
@@ -161,7 +162,7 @@ export function XcelStalledCard() {
                 </div>
                 <div className="flex items-center gap-3 mt-0.5 text-[11px] text-muted-foreground">
                   {row.app_phone && (
-                    <a href={`tel:${row.app_phone}`} className="flex items-center gap-1 hover:text-foreground" onClick={e => e.stopPropagation()}>
+                    <a href={phoneHref(row.app_phone) ?? `tel:${row.app_phone}`} {...contactLinkProps(phoneHref(row.app_phone))} className="flex items-center gap-1 hover:text-foreground" onClick={e => e.stopPropagation()}>
                       <Phone className="h-3 w-3" /> {row.app_phone}
                     </a>
                   )}

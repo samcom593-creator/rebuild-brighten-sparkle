@@ -52,7 +52,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ApplicationDetailSheet } from "@/components/dashboard/ApplicationDetailSheet";
 import { RecruitingWorkspaceNav } from "@/components/recruiting/RecruitingWorkspaceNav";
 import { RecruitingCommandHero } from "@/components/recruiting/RecruitingCommandHero";
-import { phoneHref } from "@/lib/phone";
+import { contactLinkProps, phoneHref } from "@/lib/phone";
 
 // ---------------------------------------------------------------------------
 // Types — mirror v_interview_pipeline
@@ -648,7 +648,7 @@ export default function InterviewRecovery() {
             <div className="flex flex-wrap gap-2">
               {phoneHref(current.best_phone) && (
                 <Button asChild className="h-10 sm:h-9">
-                  <a href={phoneHref(current.best_phone)!} target={phoneHref(current.best_phone)!.startsWith("https://") ? "_blank" : undefined} rel={phoneHref(current.best_phone)!.startsWith("https://") ? "noopener noreferrer" : undefined} aria-label={`Call ${current.display_name}`}>
+                  <a href={phoneHref(current.best_phone)!} {...contactLinkProps(phoneHref(current.best_phone)!)} target={phoneHref(current.best_phone)!.startsWith("https://") ? "_blank" : undefined} rel={phoneHref(current.best_phone)!.startsWith("https://") ? "noopener noreferrer" : undefined} aria-label={`Call ${current.display_name}`}>
                     <Phone className="mr-2 h-4 w-4" /> Call{" "}
                     <span className="tabular-nums">{current.best_phone}</span>
                   </a>
@@ -1279,7 +1279,7 @@ function InterviewRow({
           {phoneHref(row.best_phone) && (
             <Button asChild size="icon" variant="ghost" className="h-10 w-10 sm:h-9 sm:w-9"
                     aria-label={`Call ${row.display_name}`}>
-              <a href={phoneHref(row.best_phone)!} target={phoneHref(row.best_phone)!.startsWith("https://") ? "_blank" : undefined} rel={phoneHref(row.best_phone)!.startsWith("https://") ? "noopener noreferrer" : undefined}><Phone className="h-4 w-4" /></a>
+              <a href={phoneHref(row.best_phone)!} {...contactLinkProps(phoneHref(row.best_phone)!)} target={phoneHref(row.best_phone)!.startsWith("https://") ? "_blank" : undefined} rel={phoneHref(row.best_phone)!.startsWith("https://") ? "noopener noreferrer" : undefined}><Phone className="h-4 w-4" /></a>
             </Button>
           )}
           <Button size="icon" variant="ghost" className="h-10 w-10 sm:h-9 sm:w-9" onClick={onToggleExpand}
@@ -1524,7 +1524,7 @@ function ProspectRowCard({
           {phoneHref(row.invitee_phone) && (
             <Button asChild size="icon" variant="ghost" className="h-10 w-10 sm:h-9 sm:w-9"
                     aria-label={`Call ${name}`}>
-              <a href={phoneHref(row.invitee_phone)!} target={phoneHref(row.invitee_phone)!.startsWith("https://") ? "_blank" : undefined} rel={phoneHref(row.invitee_phone)!.startsWith("https://") ? "noopener noreferrer" : undefined}>
+              <a href={phoneHref(row.invitee_phone)!} {...contactLinkProps(phoneHref(row.invitee_phone)!)} target={phoneHref(row.invitee_phone)!.startsWith("https://") ? "_blank" : undefined} rel={phoneHref(row.invitee_phone)!.startsWith("https://") ? "noopener noreferrer" : undefined}>
                 <Phone className="h-4 w-4" />
               </a>
             </Button>
@@ -1573,7 +1573,7 @@ function ProspectRowCard({
           <div className="mt-3 flex flex-wrap gap-2">
             {phoneHref(row.invitee_phone) && (
               <Button asChild size="sm" className="h-10 sm:h-9">
-                <a href={phoneHref(row.invitee_phone)!} target={phoneHref(row.invitee_phone)!.startsWith("https://") ? "_blank" : undefined} rel={phoneHref(row.invitee_phone)!.startsWith("https://") ? "noopener noreferrer" : undefined} aria-label={`Call ${name}`}>
+                <a href={phoneHref(row.invitee_phone)!} {...contactLinkProps(phoneHref(row.invitee_phone)!)} target={phoneHref(row.invitee_phone)!.startsWith("https://") ? "_blank" : undefined} rel={phoneHref(row.invitee_phone)!.startsWith("https://") ? "noopener noreferrer" : undefined} aria-label={`Call ${name}`}>
                   <Phone className="mr-1.5 h-4 w-4" /> Call
                 </a>
               </Button>

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
+import { contactLinkProps, phoneHref } from "@/lib/phone";
 
 type InboxRow = {
   id: string;
@@ -170,7 +171,7 @@ export default function SamInbox() {
                         <div className="flex flex-wrap gap-2">
                           {row.phone ? (
                             <Button size="sm" asChild>
-                              <a href={`tel:${row.phone}`}>
+                              <a href={phoneHref(row.phone) ?? `tel:${row.phone}`} {...contactLinkProps(phoneHref(row.phone))}>
                                 <Phone className="mr-1 h-4 w-4" />
                                 Call
                               </a>

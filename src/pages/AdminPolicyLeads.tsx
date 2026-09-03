@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Phone, Mail, ExternalLink, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { contactLinkProps, phoneHref } from "@/lib/phone";
 
 /**
  * Policy Help Center — consumer leads, surfaced inside the APEX admin so Sam
@@ -156,7 +157,7 @@ export default function AdminPolicyLeads() {
               <CardContent className="space-y-2 pt-0 text-sm">
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                   <a
-                    href={`tel:${l.phone_e164}`}
+                    href={phoneHref(l.phone_e164) ?? `tel:${l.phone_e164}`} {...contactLinkProps(phoneHref(l.phone_e164))}
                     className="inline-flex items-center gap-1.5 font-medium text-emerald-400 hover:underline"
                   >
                     <Phone className="h-4 w-4" />

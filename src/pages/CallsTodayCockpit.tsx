@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { openGoogleVoice } from "@/lib/phone";
+import { contactLinkProps, openGoogleVoice, phoneHref } from "@/lib/phone";
 import { Phone, Clock, MapPin, ExternalLink, ArrowRight, CalendarCheck, PhoneCall, CheckCircle2, Timer, CalendarPlus } from "lucide-react";
 import { format, formatDistanceToNowStrict, isToday, isTomorrow, isThisWeek } from "date-fns";
 
@@ -120,6 +120,7 @@ export default function CallsTodayCockpit() {
       toast.success("Opening Google Voice", { description: `Dialing ${call.prospect_name || phone}` });
     } else {
       navigator.clipboard?.writeText(phone).catch(() => { /* empty-catch-allow:clipboard blocked; toast still shows the number */ });
+      /* contact-scheme-allow: the else-branch of an explicit Google Voice attempt. The number is copied to the clipboard and the toast says to paste it, so a desktop no-op is handled, not hidden. */
       window.open(`tel:${phone}`, "_self");
       toast.success(`${phone} copied — paste into your dialer`);
     }
@@ -227,7 +228,7 @@ function CallRow({ call, onStart }: { call: ScheduledCall; onStart: (c: Schedule
           </div>
           <div className="flex items-center gap-3 text-12 text-muted-foreground flex-wrap">
             {call.prospect_phone && (
-              <a href={`tel:${call.prospect_phone}`} className="flex items-center gap-1 hover:text-emerald-600">
+              <a href={phoneHref(call.prospect_phone) ?? `tel:${call.prospect_phone}`} {...contactLinkProps(phoneHref(call.prospect_phone))} className="flex items-center gap-1 hover:text-emerald-600">
                 <Phone className="h-3 w-3" /> {call.prospect_phone}
               </a>
             )}

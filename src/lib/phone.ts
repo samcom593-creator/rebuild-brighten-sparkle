@@ -139,3 +139,38 @@ export function contactLinkProps(href: string | null | undefined) {
     ? { target: "_blank" as const, rel: "noopener noreferrer" as const }
     : {};
 }
+
+/**
+ * Imperative twin of contactLinkProps, for the Call/Text controls that navigate
+ * from an onClick instead of rendering an <a href>.
+ *
+ * 2026-09-03 (MP-405): eight such controls still assigned
+ * `window.location.href = \`tel:${phone}\`` directly — the AgentProfileDrawer
+ * Call/SMS pair (twice over), CallModeInterface, RecruiterDashboard's outcome
+ * menu and LicensedInbox's post-queue dial. Those are the same dead click the
+ * 2026-08-16 note above describes, just reached through a handler instead of an
+ * href, which is why the declarative sweep did not see them.
+ *
+ * The scheme decides the navigation, exactly as it decides target/rel: a native
+ * `tel:`/`sms:` must stay in the current tab so the OS handoff works, and a
+ * desktop Google Voice URL must open a NEW tab or the operator loses the queue
+ * they were working. Returns false when the number cannot be normalised, so the
+ * caller can say so instead of silently doing nothing.
+ */
+function navigateToContactHref(href: string | null): boolean {
+  if (!href) return false;
+  if (href.startsWith("https://")) {
+    window.open(href, "_blank", "noopener");
+  } else {
+    window.location.href = href;
+  }
+  return true;
+}
+
+export function startPhoneCall(value: string | null | undefined): boolean {
+  return navigateToContactHref(phoneHref(value));
+}
+
+export function startSmsThread(value: string | null | undefined, body?: string): boolean {
+  return navigateToContactHref(smsHref(value, body));
+}

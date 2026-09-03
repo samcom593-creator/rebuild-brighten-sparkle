@@ -30,6 +30,7 @@ import { AgentQuickEditDialog } from "@/components/dashboard/AgentQuickEditDialo
 import { usePortalLoginSender } from "@/hooks/usePortalLoginSender";
 import { getBusinessMonthBounds, getBusinessWeekBounds } from "@/lib/dateUtils";
 import { DEAL_TRUTH_STATUS_FILTER, dealTruthWindowOr, getDealTruthTimestamp } from "@/lib/dealTruth";
+import { contactLinkProps, phoneHref, smsHref } from "@/lib/phone";
 
 // ─── Types ─────────────────────────────────────────────────────
 interface AgentRow {
@@ -624,14 +625,14 @@ function BoardView({ rows, selectedIds, onToggleSelect, onQuickEdit }: {
               <div className="flex items-center gap-1 flex-wrap">
                 {r.phone && (
                   <Button asChild size="sm" variant="outline" className="h-7 px-2" title={`Call ${r.phone}`}>
-                    <a href={`tel:${r.phone}`}>
+                    <a href={phoneHref(r.phone) ?? `tel:${r.phone}`} {...contactLinkProps(phoneHref(r.phone))}>
                       <Phone className="h-3 w-3" />
                     </a>
                   </Button>
                 )}
                 {r.phone && (
                   <Button asChild size="sm" variant="outline" className="h-7 px-2" title="Text">
-                    <a href={`sms:${r.phone}`}>
+                    <a href={smsHref(r.phone) ?? `sms:${r.phone}`} {...contactLinkProps(smsHref(r.phone))}>
                       <MessageSquare className="h-3 w-3" />
                     </a>
                   </Button>
@@ -720,8 +721,8 @@ function TableView({ rows, selectedIds, onToggleSelect, onQuickEdit }: {
                   </td>
                   <td className="p-2">
                     <div className="flex items-center gap-1 justify-end">
-                      {r.phone && <Button asChild size="sm" variant="ghost" className="h-7 w-7 p-0" aria-label={`Call ${r.name}`}><a href={`tel:${r.phone}`}><Phone className="h-3 w-3" /></a></Button>}
-                      {r.phone && <Button asChild size="sm" variant="ghost" className="h-7 w-7 p-0" aria-label={`Text ${r.name}`}><a href={`sms:${r.phone}`}><MessageSquare className="h-3 w-3" /></a></Button>}
+                      {r.phone && <Button asChild size="sm" variant="ghost" className="h-7 w-7 p-0" aria-label={`Call ${r.name}`}><a href={phoneHref(r.phone) ?? `tel:${r.phone}`} {...contactLinkProps(phoneHref(r.phone))}><Phone className="h-3 w-3" /></a></Button>}
+                      {r.phone && <Button asChild size="sm" variant="ghost" className="h-7 w-7 p-0" aria-label={`Text ${r.name}`}><a href={smsHref(r.phone) ?? `sms:${r.phone}`} {...contactLinkProps(smsHref(r.phone))}><MessageSquare className="h-3 w-3" /></a></Button>}
                       <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => onQuickEdit(r.id)} aria-label={`Quick edit ${r.name}`}><Eye className="h-3 w-3" /></Button>
                     </div>
                   </td>

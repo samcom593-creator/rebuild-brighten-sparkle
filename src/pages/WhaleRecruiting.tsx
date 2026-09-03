@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
+import { contactLinkProps, phoneHref } from "@/lib/phone";
 
 interface WhaleRow {
   id: string;
@@ -325,7 +326,7 @@ function WhaleRow({ row, agent }: { row: WhaleRow & { stage: string; heat: Heat 
             collapsed — text is fully self-describing, 3x3 icons added noise without aiding scan */}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-12 text-muted-foreground">
           {formattedPhone && (
-            <a href={`tel:${row.phone}`} className="hover:text-emerald-600">{formattedPhone}</a>
+            <a href={phoneHref(row.phone) ?? `tel:${row.phone}`} {...contactLinkProps(phoneHref(row.phone))} className="hover:text-emerald-600">{formattedPhone}</a>
           )}
           {row.email && (
             <a href={`mailto:${row.email}`} className="hover:text-emerald-600 truncate">{row.email}</a>

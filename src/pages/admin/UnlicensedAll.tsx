@@ -50,6 +50,7 @@ import { format } from "date-fns";
 import { RecoveryBatchDrawer, type RecoveryBatchRow } from "@/components/unlicensed/RecoveryBatchDrawer";
 import { SuppressionDialog, type SuppressionTarget } from "@/components/unlicensed/SuppressionDialog";
 import { APPLICATION_RECORD_TYPE } from "@/shared/api/applicationRecordType";
+import { contactLinkProps, phoneHref } from "@/lib/phone";
 
 // Row from v_unlicensed_all — now UNION of applications + aged_leads
 interface UnlicensedRow {
@@ -139,7 +140,11 @@ function formatPhone(raw: string | null): string {
 function telHref(raw: string | null): string {
   if (!raw) return "#";
   const digits = raw.replace(/\D/g, "");
-  return `tel:${digits.startsWith("1") ? "+" : "+1"}${digits}`;
+  const e164 = `${digits.startsWith("1") ? "+" : "+1"}${digits}`;
+  // Desktop has no dialer, so a bare `tel:` here is a dead click (see @/lib/phone).
+  // The raw scheme stays as the fallback so an unnormalisable number keeps the
+  // control it has today instead of losing it.
+  return phoneHref(e164) ?? `tel:${e164}`;
 }
 
 function fullName(r: UnlicensedRow): string {
@@ -951,7 +956,7 @@ export default function UnlicensedAll() {
                   <div className="flex flex-wrap items-center gap-2">
                     {r.phone && !isBadPhone && (
                       <a
-                        href={telHref(r.phone)}
+                        href={telHref(r.phone)} {...contactLinkProps(telHref(r.phone))}
                         aria-label={`Call ${fullName(r)}`}
                         className="inline-flex h-10 min-w-0 items-center gap-2 rounded-sm border border-border bg-background px-3 text-xs font-semibold tabular-nums text-foreground transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)] sm:h-9"
                         onClick={() => {

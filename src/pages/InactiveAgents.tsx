@@ -20,6 +20,7 @@ import {
 import { toast } from "sonner";
 import { formatDistanceToNow, format } from "date-fns";
 import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
+import { contactLinkProps, phoneHref, smsHref } from "@/lib/phone";
 
 interface InactiveEntry {
   id: string;
@@ -421,6 +422,7 @@ export default function InactiveAgents() {
                 toast.error("No phones");
                 return;
               }
+              /* contact-scheme-allow: multi-recipient blast. Google Voice has no multi-recipient deep link and smsHref() normalises ONE number, so the helper cannot express this. Still a desktop dead click, and the toast below reports success on a no-op — published by MP-405, not fixed: a real remedy is a product decision. */
               window.location.href = `sms:${phones.join(",")}`;
             }}
           >
@@ -542,7 +544,7 @@ export default function InactiveAgents() {
                           title="Call"
                           onClick={() => logAttempt(e.id, "Called")}
                         >
-                          <a href={`tel:${agent.phone}`}>
+                          <a href={phoneHref(agent.phone) ?? `tel:${agent.phone}`} {...contactLinkProps(phoneHref(agent.phone))}>
                             <Phone className="h-4 w-4" />
                           </a>
                         </Button>
@@ -554,7 +556,7 @@ export default function InactiveAgents() {
                           title="Text"
                           onClick={() => logAttempt(e.id, "Texted")}
                         >
-                          <a href={`sms:${agent.phone}`}>
+                          <a href={smsHref(agent.phone) ?? `sms:${agent.phone}`} {...contactLinkProps(smsHref(agent.phone))}>
                             <MessageSquare className="h-4 w-4" />
                           </a>
                         </Button>

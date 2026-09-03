@@ -20,6 +20,7 @@ import { LeadReassignButton } from "./LeadReassignButton";
 import { LeadExpiryCountdown } from "./LeadExpiryCountdown";
 import { QuickEmailMenu } from "@/components/dashboard/QuickEmailMenu";
 import { ResendLicensingButton } from "./ResendLicensingButton";
+import { contactLinkProps, smsHref } from "@/lib/phone";
 
 function CopyPhoneButton({ phone }: { phone: string }) {
   const [copied, setCopied] = useState(false);
@@ -388,7 +389,7 @@ export function CallCenterLeadCard({
           {/* SMS - secondary contact CTA */}
           {lead.phone && (
             <motion.a
-              href={`sms:${lead.phone}`}
+              href={smsHref(lead.phone) ?? `sms:${lead.phone}`} {...contactLinkProps(smsHref(lead.phone))}
               whileHover={{ scale: 1.01, x: 2 }}
               className="flex items-center gap-4 p-3 rounded-md bg-info/10 border border-info/30 hover:bg-info/20 transition-colors"
             >

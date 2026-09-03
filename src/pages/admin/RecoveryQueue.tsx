@@ -26,6 +26,7 @@ import {
 import { ApplicationDetailSheet } from "@/components/dashboard/ApplicationDetailSheet";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { contactLinkProps } from "@/lib/phone";
 
 // ---------- Types ----------
 interface Row {
@@ -403,7 +404,7 @@ function RowActions({ row, onOpen, onMarkContacted, onMarkPhoneBad, onSetStage, 
       <Tooltip>
         <TooltipTrigger asChild>
           <a
-            href={telHref(row.phone)}
+            href={telHref(row.phone)} {...contactLinkProps(telHref(row.phone))}
             aria-label={row.phone ? `Call ${row.name}` : "No phone on file"}
             onClick={row.phone ? onLogTel : (e) => e.preventDefault()}
             className={cn(
@@ -420,7 +421,7 @@ function RowActions({ row, onOpen, onMarkContacted, onMarkPhoneBad, onSetStage, 
       <Tooltip>
         <TooltipTrigger asChild>
           <a
-            href={smsHref(row.phone)}
+            href={smsHref(row.phone)} {...contactLinkProps(smsHref(row.phone))}
             aria-label={row.phone ? `Text ${row.name}` : "No phone on file"}
             onClick={row.phone ? onLogSms : (e) => e.preventDefault()}
             className={cn(

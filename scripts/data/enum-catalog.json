@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-enum-catalog.sh (bot_sql -> pg_enum + pg_attribute.atttypid)",
- "_generated_at": "2026-09-02T13:33:50Z",
+ "_generated_at": "2026-09-03T20:50:47Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "A repo guard cannot query prod. This is a snapshot of every enum-typed column in the public schema and the exact member list Postgres will accept for it, so scripts/check-enum-filter-literals.mjs can decide whether a filter or write literal will survive PostgREST's coercion. Enum types are SCHEMA-QUALIFIED because this database has more than one type sharing a bare name. Views are included: a bad literal in a filter against a view column raises the same 22P02 as one against a table. apex-doctor Check #29 re-queries pg_enum weekly and goes red when this snapshot drifts from the live catalog.",
  "_ambiguous_bare_names": {
@@ -1282,6 +1282,23 @@
     "overdue"
    ],
    "constraint": "dialer_weekly_payments_paid_status_check"
+  },
+  "discord_deal_ingestion_health.status": {
+   "members": [
+    "healthy",
+    "credential_blocked",
+    "channel_unavailable",
+    "error"
+   ],
+   "constraint": "discord_deal_ingestion_health_status_check"
+  },
+  "discord_deal_ingestion_receipts.status": {
+   "members": [
+    "ingested",
+    "duplicate",
+    "unresolved"
+   ],
+   "constraint": "discord_deal_ingestion_receipts_status_check"
   },
   "external_identities.status": {
    "members": [

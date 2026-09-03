@@ -1,0 +1,2851 @@
+{
+ "_generated_by": "scripts/refresh-rpc-column-vocabulary.sh (bot_sql -> pg_proc + pg_rewrite)",
+ "_generated_at": "2026-09-03T20:51:29Z",
+ "_project_ref": "xrzweoneiieddzxogewk",
+ "_why": "check-enum-filter-literals.mjs grades literals inside supabase.from().eq() chains. This is the other half of the same class: a status word that arrives from an RPC and is compared in JavaScript, where the return type is text and every wrong word type-checks. Per (function, returned column) this records the relation columns of that name reachable from the function body and the literals the function synthesises itself. It deliberately records CANDIDATES rather than one resolved source: provenance from a body regex is a guess, so check-rpc-status-literals.mjs refuses a literal only when NO candidate vocabulary and no body literal accepts it.",
+ "_vocabulary_source": "scripts/data/enum-catalog.json (check_vocab + column_enum + enums). Not copied here on purpose, so the two guards read one snapshot and cannot drift.",
+ "columns": {
+  "admin_recruiting_links.account_mode": {
+   "candidates": [
+    "agents.account_mode"
+   ],
+   "body_literals": [
+    "active",
+    "agent",
+    "public"
+   ]
+  },
+  "admin_recruiting_links.avatar_url": {
+   "candidates": [
+    "profiles.avatar_url"
+   ],
+   "body_literals": [
+    "active",
+    "agent",
+    "public"
+   ]
+  },
+  "admin_recruiting_links.display_name": {
+   "candidates": [
+    "agents.display_name"
+   ],
+   "body_literals": [
+    "active",
+    "agent",
+    "public"
+   ]
+  },
+  "admin_recruiting_links.is_manager": {
+   "candidates": [
+    "agents.is_manager"
+   ],
+   "body_literals": [
+    "active",
+    "agent",
+    "public"
+   ]
+  },
+  "admin_recruiting_links.ref_slug": {
+   "candidates": [
+    "agents.ref_slug"
+   ],
+   "body_literals": [
+    "active",
+    "agent",
+    "public"
+   ]
+  },
+  "agent_call_activity.id": {
+   "candidates": [
+    "agent_notes.id",
+    "call_activity.id",
+    "profiles.id"
+   ],
+   "body_literals": [
+    "call",
+    "note",
+    "public"
+   ]
+  },
+  "agent_call_activity.notes": {
+   "candidates": [
+    "call_activity.notes"
+   ],
+   "body_literals": [
+    "call",
+    "note",
+    "public"
+   ]
+  },
+  "agent_call_activity.outcome": {
+   "candidates": [
+    "call_activity.outcome"
+   ],
+   "body_literals": [
+    "call",
+    "note",
+    "public"
+   ]
+  },
+  "agent_credentials_coverage.service": {
+   "candidates": [
+    "agent_credentials.service"
+   ],
+   "body_literals": [
+    "admin",
+    "public"
+   ]
+  },
+  "agent_credentials_list.notes": {
+   "candidates": [
+    "agent_credentials.notes"
+   ],
+   "body_literals": [
+    "admin",
+    "public"
+   ]
+  },
+  "agent_credentials_list.service": {
+   "candidates": [
+    "agent_credentials.service"
+   ],
+   "body_literals": [
+    "admin",
+    "public"
+   ]
+  },
+  "agent_credentials_list.updated_at": {
+   "candidates": [
+    "agent_credentials.updated_at"
+   ],
+   "body_literals": [
+    "admin",
+    "public"
+   ]
+  },
+  "agent_credentials_list.updated_by": {
+   "candidates": [
+    "agent_credentials.updated_by"
+   ],
+   "body_literals": [
+    "admin",
+    "public"
+   ]
+  },
+  "agent_credentials_list.username": {
+   "candidates": [
+    "agent_credentials.username"
+   ],
+   "body_literals": [
+    "admin",
+    "public"
+   ]
+  },
+  "agent_credentials_reveal.notes": {
+   "candidates": [
+    "agent_credentials.notes"
+   ],
+   "body_literals": [
+    "admin",
+    "public"
+   ]
+  },
+  "agent_credentials_reveal.updated_at": {
+   "candidates": [
+    "agent_credentials.updated_at"
+   ],
+   "body_literals": [
+    "admin",
+    "public"
+   ]
+  },
+  "agent_credentials_reveal.updated_by": {
+   "candidates": [
+    "agent_credentials.updated_by"
+   ],
+   "body_literals": [
+    "admin",
+    "public"
+   ]
+  },
+  "agent_credentials_reveal.username": {
+   "candidates": [
+    "agent_credentials.username"
+   ],
+   "body_literals": [
+    "admin",
+    "public"
+   ]
+  },
+  "agentlink_watchdog.message": {
+   "candidates": [
+    "agentlink_alerts.message"
+   ],
+   "body_literals": [
+    "APEX AgentLink cookie missing",
+    "APEX AgentLink sync stalled",
+    "No successful Agent Link sync for ",
+    "agent_link_session_cookie",
+    "cookie missing",
+    "critical",
+    "error",
+    "failing",
+    "h",
+    "h stale",
+    "healthy",
+    "high",
+    "last ok ",
+    "ok",
+    "public",
+    "stale",
+    "urgent",
+    "warning"
+   ]
+  },
+  "agentlink_watchdog.status": {
+   "candidates": [
+    "agentlink_sync_log.status"
+   ],
+   "body_literals": [
+    "APEX AgentLink cookie missing",
+    "APEX AgentLink sync stalled",
+    "No successful Agent Link sync for ",
+    "agent_link_session_cookie",
+    "cookie missing",
+    "critical",
+    "error",
+    "failing",
+    "h",
+    "h stale",
+    "healthy",
+    "high",
+    "last ok ",
+    "ok",
+    "public",
+    "stale",
+    "urgent",
+    "warning"
+   ]
+  },
+  "apex_agent_contract_checklist.carrier_id": {
+   "candidates": [
+    "agent_carrier_comp.carrier_id",
+    "apex_carrier_contracts.carrier_id"
+   ],
+   "body_literals": [
+    "Not permitted to view this agent",
+    "active",
+    "not_started",
+    "public",
+    "submitted"
+   ]
+  },
+  "apex_agent_contract_checklist.carrier_name": {
+   "candidates": [
+    "agent_carrier_comp.carrier_name"
+   ],
+   "body_literals": [
+    "Not permitted to view this agent",
+    "active",
+    "not_started",
+    "public",
+    "submitted"
+   ]
+  },
+  "apex_agent_contract_checklist.contract_number": {
+   "candidates": [
+    "apex_carrier_contracts.contract_number"
+   ],
+   "body_literals": [
+    "Not permitted to view this agent",
+    "active",
+    "not_started",
+    "public",
+    "submitted"
+   ]
+  },
+  "apex_agent_contract_checklist.contract_pct": {
+   "candidates": [
+    "agent_carrier_comp.contract_pct"
+   ],
+   "body_literals": [
+    "Not permitted to view this agent",
+    "active",
+    "not_started",
+    "public",
+    "submitted"
+   ]
+  },
+  "apex_agent_contract_checklist.effective_pct": {
+   "candidates": [
+    "agent_carrier_comp.effective_pct"
+   ],
+   "body_literals": [
+    "Not permitted to view this agent",
+    "active",
+    "not_started",
+    "public",
+    "submitted"
+   ]
+  },
+  "apex_agent_contract_checklist.override_pct": {
+   "candidates": [
+    "agent_carrier_comp.override_pct"
+   ],
+   "body_literals": [
+    "Not permitted to view this agent",
+    "active",
+    "not_started",
+    "public",
+    "submitted"
+   ]
+  },
+  "apex_agent_contract_checklist.updated_at": {
+   "candidates": [
+    "agent_carrier_comp.updated_at",
+    "agents.updated_at",
+    "profiles.updated_at"
+   ],
+   "body_literals": [
+    "Not permitted to view this agent",
+    "active",
+    "not_started",
+    "public",
+    "submitted"
+   ]
+  },
+  "apex_agent_contract_checklist.writing_number": {
+   "candidates": [
+    "apex_carrier_contracts.writing_number"
+   ],
+   "body_literals": [
+    "Not permitted to view this agent",
+    "active",
+    "not_started",
+    "public",
+    "submitted"
+   ]
+  },
+  "apex_contracts_list.activated_date": {
+   "candidates": [
+    "apex_carrier_contracts.activated_date"
+   ],
+   "body_literals": [
+    "agency",
+    "all",
+    "apex-contract-",
+    "issue",
+    "jail",
+    "public"
+   ]
+  },
+  "apex_contracts_list.agent_id": {
+   "candidates": [
+    "apex_carrier_contracts.agent_id"
+   ],
+   "body_literals": [
+    "agency",
+    "all",
+    "apex-contract-",
+    "issue",
+    "jail",
+    "public"
+   ]
+  },
+  "apex_contracts_list.commission_level": {
+   "candidates": [
+    "apex_carrier_contracts.commission_level"
+   ],
+   "body_literals": [
+    "agency",
+    "all",
+    "apex-contract-",
+    "issue",
+    "jail",
+    "public"
+   ]
+  },
+  "apex_contracts_list.contract_number": {
+   "candidates": [
+    "apex_carrier_contracts.contract_number"
+   ],
+   "body_literals": [
+    "agency",
+    "all",
+    "apex-contract-",
+    "issue",
+    "jail",
+    "public"
+   ]
+  },
+  "apex_contracts_list.id": {
+   "candidates": [
+    "agents.id",
+    "apex_carrier_contracts.id",
+    "carriers.id"
+   ],
+   "body_literals": [
+    "agency",
+    "all",
+    "apex-contract-",
+    "issue",
+    "jail",
+    "public"
+   ]
+  },
+  "apex_contracts_list.requested_at": {
+   "candidates": [
+    "apex_carrier_contracts.requested_at"
+   ],
+   "body_literals": [
+    "agency",
+    "all",
+    "apex-contract-",
+    "issue",
+    "jail",
+    "public"
+   ]
+  },
+  "apex_contracts_list.status": {
+   "candidates": [
+    "agents.status",
+    "apex_carrier_contracts.status"
+   ],
+   "body_literals": [
+    "agency",
+    "all",
+    "apex-contract-",
+    "issue",
+    "jail",
+    "public"
+   ]
+  },
+  "apex_contracts_list.writing_number": {
+   "candidates": [
+    "apex_carrier_contracts.writing_number"
+   ],
+   "body_literals": [
+    "agency",
+    "all",
+    "apex-contract-",
+    "issue",
+    "jail",
+    "public"
+   ]
+  },
+  "apex_training_needs_nudge.agent_id": {
+   "candidates": [
+    "agentlink_book.agent_id",
+    "onboarding_progress.agent_id",
+    "roster_exclusions.agent_id",
+    "v_agentlink_book_scoped.agent_id"
+   ],
+   "body_literals": [
+    "admin",
+    "manager",
+    "public",
+    "va_manager"
+   ]
+  },
+  "apex_training_needs_nudge.display_name": {
+   "candidates": [
+    "agents.display_name",
+    "v_apex_roster.display_name"
+   ],
+   "body_literals": [
+    "admin",
+    "manager",
+    "public",
+    "va_manager"
+   ]
+  },
+  "calendar_window.status": {
+   "candidates": [
+    "agentlink_book.status",
+    "applications.status",
+    "calendar_events.status"
+   ],
+   "body_literals": [
+    "Applicant",
+    "Appointment",
+    "Callback owed",
+    "Carrier contracting complete",
+    "Client",
+    "Contracted",
+    "Course",
+    "Day ",
+    "Day  after test",
+    "Exam",
+    "Interview",
+    "License issued",
+    "Licensed",
+    "Licensing exam booked",
+    "Next action",
+    "Onboarding call",
+    "Onboarding start",
+    "Policy",
+    "Pre-licensing course started",
+    "Start date",
+    "Turns ",
+    "active",
+    "appointment",
+    "birthday",
+    "callback",
+    "cancelled",
+    "carrier_name",
+    "confirmed",
+    "contracted",
+    "course",
+    "draft_date",
+    "exam",
+    "follow_up",
+    "follow_up_day",
+    "interview",
+    "kind",
+    "licensed",
+    "milestone",
+    "onboarding",
+    "onboarding_call",
+    "pending",
+    "person_name",
+    "policy_effective",
+    "policy_status",
+    "post_test_follow_up",
+    "public",
+    "scheduled",
+    "start"
+   ]
+  },
+  "calendar_window.title": {
+   "candidates": [
+    "calendar_events.title"
+   ],
+   "body_literals": [
+    "Applicant",
+    "Appointment",
+    "Callback owed",
+    "Carrier contracting complete",
+    "Client",
+    "Contracted",
+    "Course",
+    "Day ",
+    "Day  after test",
+    "Exam",
+    "Interview",
+    "License issued",
+    "Licensed",
+    "Licensing exam booked",
+    "Next action",
+    "Onboarding call",
+    "Onboarding start",
+    "Policy",
+    "Pre-licensing course started",
+    "Start date",
+    "Turns ",
+    "active",
+    "appointment",
+    "birthday",
+    "callback",
+    "cancelled",
+    "carrier_name",
+    "confirmed",
+    "contracted",
+    "course",
+    "draft_date",
+    "exam",
+    "follow_up",
+    "follow_up_day",
+    "interview",
+    "kind",
+    "licensed",
+    "milestone",
+    "onboarding",
+    "onboarding_call",
+    "pending",
+    "person_name",
+    "policy_effective",
+    "policy_status",
+    "post_test_follow_up",
+    "public",
+    "scheduled",
+    "start"
+   ]
+  },
+  "crm_agent_contacts.email": {
+   "candidates": [
+    "applications.email",
+    "profiles.email"
+   ],
+   "body_literals": [
+    "Name not on file",
+    "auth",
+    "g",
+    "phone",
+    "public"
+   ]
+  },
+  "crm_agent_contacts.full_name": {
+   "candidates": [
+    "profiles.full_name"
+   ],
+   "body_literals": [
+    "Name not on file",
+    "auth",
+    "g",
+    "phone",
+    "public"
+   ]
+  },
+  "crm_agent_contacts.phone": {
+   "candidates": [
+    "applications.phone",
+    "profiles.phone"
+   ],
+   "body_literals": [
+    "Name not on file",
+    "auth",
+    "g",
+    "phone",
+    "public"
+   ]
+  },
+  "crm_agent_free_leads_status.agent_id": {
+   "candidates": [
+    "agentlink_book.agent_id",
+    "deals.agent_id",
+    "production_external_deals.agent_id",
+    "v_agent_canonical_map.agent_id",
+    "v_agentlink_book_scoped.agent_id",
+    "v_production_canonical.agent_id"
+   ],
+   "body_literals": [
+    "active",
+    "public",
+    "service_role"
+   ]
+  },
+  "crm_agent_roster.agent_code": {
+   "candidates": [
+    "agents.agent_code"
+   ],
+   "body_literals": [
+    "active",
+    "appointed",
+    "approved",
+    "course_purchased",
+    "fingerprints_done",
+    "finished_course",
+    "licensed",
+    "month",
+    "passed_test",
+    "public",
+    "test_scheduled",
+    "unlicensed",
+    "waiting_fingerprints",
+    "waiting_on_license"
+   ]
+  },
+  "crm_agent_roster.agent_id": {
+   "candidates": [
+    "agentlink_contracts.agent_id",
+    "mat_production_unified.agent_id",
+    "v_agent_training_stage.agent_id",
+    "v_production_canonical.agent_id",
+    "v_production_unified.agent_id"
+   ],
+   "body_literals": [
+    "active",
+    "appointed",
+    "approved",
+    "course_purchased",
+    "fingerprints_done",
+    "finished_course",
+    "licensed",
+    "month",
+    "passed_test",
+    "public",
+    "test_scheduled",
+    "unlicensed",
+    "waiting_fingerprints",
+    "waiting_on_license"
+   ]
+  },
+  "crm_agent_roster.avatar_url": {
+   "candidates": [
+    "profiles.avatar_url"
+   ],
+   "body_literals": [
+    "active",
+    "appointed",
+    "approved",
+    "course_purchased",
+    "fingerprints_done",
+    "finished_course",
+    "licensed",
+    "month",
+    "passed_test",
+    "public",
+    "test_scheduled",
+    "unlicensed",
+    "waiting_fingerprints",
+    "waiting_on_license"
+   ]
+  },
+  "crm_agent_roster.created_at": {
+   "candidates": [
+    "agentlink_contracts.created_at",
+    "agents.created_at",
+    "applications.created_at",
+    "profiles.created_at"
+   ],
+   "body_literals": [
+    "active",
+    "appointed",
+    "approved",
+    "course_purchased",
+    "fingerprints_done",
+    "finished_course",
+    "licensed",
+    "month",
+    "passed_test",
+    "public",
+    "test_scheduled",
+    "unlicensed",
+    "waiting_fingerprints",
+    "waiting_on_license"
+   ]
+  },
+  "crm_agent_roster.email": {
+   "candidates": [
+    "applications.email",
+    "profiles.email"
+   ],
+   "body_literals": [
+    "active",
+    "appointed",
+    "approved",
+    "course_purchased",
+    "fingerprints_done",
+    "finished_course",
+    "licensed",
+    "month",
+    "passed_test",
+    "public",
+    "test_scheduled",
+    "unlicensed",
+    "waiting_fingerprints",
+    "waiting_on_license"
+   ]
+  },
+  "crm_agent_roster.full_name": {
+   "candidates": [
+    "profiles.full_name"
+   ],
+   "body_literals": [
+    "active",
+    "appointed",
+    "approved",
+    "course_purchased",
+    "fingerprints_done",
+    "finished_course",
+    "licensed",
+    "month",
+    "passed_test",
+    "public",
+    "test_scheduled",
+    "unlicensed",
+    "waiting_fingerprints",
+    "waiting_on_license"
+   ]
+  },
+  "crm_agent_roster.is_deactivated": {
+   "candidates": [
+    "agents.is_deactivated",
+    "v_agent_training_stage.is_deactivated"
+   ],
+   "body_literals": [
+    "active",
+    "appointed",
+    "approved",
+    "course_purchased",
+    "fingerprints_done",
+    "finished_course",
+    "licensed",
+    "month",
+    "passed_test",
+    "public",
+    "test_scheduled",
+    "unlicensed",
+    "waiting_fingerprints",
+    "waiting_on_license"
+   ]
+  },
+  "crm_agent_roster.is_inactive": {
+   "candidates": [
+    "agents.is_inactive",
+    "v_agent_training_stage.is_inactive"
+   ],
+   "body_literals": [
+    "active",
+    "appointed",
+    "approved",
+    "course_purchased",
+    "fingerprints_done",
+    "finished_course",
+    "licensed",
+    "month",
+    "passed_test",
+    "public",
+    "test_scheduled",
+    "unlicensed",
+    "waiting_fingerprints",
+    "waiting_on_license"
+   ]
+  },
+  "crm_agent_roster.last_contacted_at": {
+   "candidates": [
+    "applications.last_contacted_at"
+   ],
+   "body_literals": [
+    "active",
+    "appointed",
+    "approved",
+    "course_purchased",
+    "fingerprints_done",
+    "finished_course",
+    "licensed",
+    "month",
+    "passed_test",
+    "public",
+    "test_scheduled",
+    "unlicensed",
+    "waiting_fingerprints",
+    "waiting_on_license"
+   ]
+  },
+  "crm_agent_roster.license_progress": {
+   "candidates": [
+    "agents.license_progress",
+    "applications.license_progress"
+   ],
+   "body_literals": [
+    "active",
+    "appointed",
+    "approved",
+    "course_purchased",
+    "fingerprints_done",
+    "finished_course",
+    "licensed",
+    "month",
+    "passed_test",
+    "public",
+    "test_scheduled",
+    "unlicensed",
+    "waiting_fingerprints",
+    "waiting_on_license"
+   ]
+  },
+  "crm_agent_roster.license_status": {
+   "candidates": [
+    "agents.license_status",
+    "applications.license_status",
+    "v_agent_training_stage.license_status"
+   ],
+   "body_literals": [
+    "active",
+    "appointed",
+    "approved",
+    "course_purchased",
+    "fingerprints_done",
+    "finished_course",
+    "licensed",
+    "month",
+    "passed_test",
+    "public",
+    "test_scheduled",
+    "unlicensed",
+    "waiting_fingerprints",
+    "waiting_on_license"
+   ]
+  },
+  "crm_agent_roster.manager_id": {
+   "candidates": [
+    "agents.manager_id"
+   ],
+   "body_literals": [
+    "active",
+    "appointed",
+    "approved",
+    "course_purchased",
+    "fingerprints_done",
+    "finished_course",
+    "licensed",
+    "month",
+    "passed_test",
+    "public",
+    "test_scheduled",
+    "unlicensed",
+    "waiting_fingerprints",
+    "waiting_on_license"
+   ]
+  },
+  "crm_agent_roster.onboarding_stage": {
+   "candidates": [
+    "agents.onboarding_stage",
+    "v_agent_training_stage.onboarding_stage"
+   ],
+   "body_literals": [
+    "active",
+    "appointed",
+    "approved",
+    "course_purchased",
+    "fingerprints_done",
+    "finished_course",
+    "licensed",
+    "month",
+    "passed_test",
+    "public",
+    "test_scheduled",
+    "unlicensed",
+    "waiting_fingerprints",
+    "waiting_on_license"
+   ]
+  },
+  "crm_agent_roster.phone": {
+   "candidates": [
+    "applications.phone",
+    "profiles.phone"
+   ],
+   "body_literals": [
+    "active",
+    "appointed",
+    "approved",
+    "course_purchased",
+    "fingerprints_done",
+    "finished_course",
+    "licensed",
+    "month",
+    "passed_test",
+    "public",
+    "test_scheduled",
+    "unlicensed",
+    "waiting_fingerprints",
+    "waiting_on_license"
+   ]
+  },
+  "crm_agent_roster.status": {
+   "candidates": [
+    "agentlink_contracts.status",
+    "agents.status",
+    "applications.status",
+    "mat_production_unified.status",
+    "v_production_canonical.status",
+    "v_production_unified.status"
+   ],
+   "body_literals": [
+    "active",
+    "appointed",
+    "approved",
+    "course_purchased",
+    "fingerprints_done",
+    "finished_course",
+    "licensed",
+    "month",
+    "passed_test",
+    "public",
+    "test_scheduled",
+    "unlicensed",
+    "waiting_fingerprints",
+    "waiting_on_license"
+   ]
+  },
+  "crm_agent_roster_unguarded.agent_code": {
+   "candidates": [
+    "agents.agent_code"
+   ],
+   "body_literals": [
+    "active",
+    "appointed",
+    "approved",
+    "course_purchased",
+    "fingerprints_done",
+    "finished_course",
+    "licensed",
+    "month",
+    "passed_test",
+    "public",
+    "test_scheduled",
+    "unlicensed",
+    "waiting_fingerprints",
+    "waiting_on_license"
+   ]
+  },
+  "crm_agent_roster_unguarded.agent_id": {
+   "candidates": [
+    "agentlink_contracts.agent_id",
+    "mat_production_unified.agent_id",
+    "v_agent_training_stage.agent_id",
+    "v_production_canonical.agent_id",
+    "v_production_unified.agent_id"
+   ],
+   "body_literals": [
+    "active",
+    "appointed",
+    "approved",
+    "course_purchased",
+    "fingerprints_done",
+    "finished_course",
+    "licensed",
+    "month",
+    "passed_test",
+    "public",
+    "test_scheduled",
+    "unlicensed",
+    "waiting_fingerprints",
+    "waiting_on_license"
+   ]
+  },
+  "crm_agent_roster_unguarded.avatar_url": {
+   "candidates": [
+    "profiles.avatar_url"
+   ],
+   "body_literals": [
+    "active",
+    "appointed",
+    "approved",
+    "course_purchased",
+    "fingerprints_done",
+    "finished_course",
+    "licensed",
+    "month",
+    "passed_test",
+    "public",
+    "test_scheduled",
+    "unlicensed",
+    "waiting_fingerprints",
+    "waiting_on_license"
+   ]
+  },
+  "crm_agent_roster_unguarded.created_at": {
+   "candidates": [
+    "agentlink_contracts.created_at",
+    "agents.created_at",
+    "applications.created_at",
+    "profiles.created_at"
+   ],
+   "body_literals": [
+    "active",
+    "appointed",
+    "approved",
+    "course_purchased",
+    "fingerprints_done",
+    "finished_course",
+    "licensed",
+    "month",
+    "passed_test",
+    "public",
+    "test_scheduled",
+    "unlicensed",
+    "waiting_fingerprints",
+    "waiting_on_license"
+   ]
+  },
+  "crm_agent_roster_unguarded.email": {
+   "candidates": [
+    "applications.email",
+    "profiles.email"
+   ],
+   "body_literals": [
+    "active",
+    "appointed",
+    "approved",
+    "course_purchased",
+    "fingerprints_done",
+    "finished_course",
+    "licensed",
+    "month",
+    "passed_test",
+    "public",
+    "test_scheduled",
+    "unlicensed",
+    "waiting_fingerprints",
+    "waiting_on_license"
+   ]
+  },
+  "crm_agent_roster_unguarded.full_name": {
+   "candidates": [
+    "profiles.full_name"
+   ],
+   "body_literals": [
+    "active",
+    "appointed",
+    "approved",
+    "course_purchased",
+    "fingerprints_done",
+    "finished_course",
+    "licensed",
+    "month",
+    "passed_test",
+    "public",
+    "test_scheduled",
+    "unlicensed",
+    "waiting_fingerprints",
+    "waiting_on_license"
+   ]
+  },
+  "crm_agent_roster_unguarded.is_deactivated": {
+   "candidates": [
+    "agents.is_deactivated",
+    "v_agent_training_stage.is_deactivated"
+   ],
+   "body_literals": [
+    "active",
+    "appointed",
+    "approved",
+    "course_purchased",
+    "fingerprints_done",
+    "finished_course",
+    "licensed",
+    "month",
+    "passed_test",
+    "public",
+    "test_scheduled",
+    "unlicensed",
+    "waiting_fingerprints",
+    "waiting_on_license"
+   ]
+  },
+  "crm_agent_roster_unguarded.is_inactive": {
+   "candidates": [
+    "agents.is_inactive",
+    "v_agent_training_stage.is_inactive"
+   ],
+   "body_literals": [
+    "active",
+    "appointed",
+    "approved",
+    "course_purchased",
+    "fingerprints_done",
+    "finished_course",
+    "licensed",
+    "month",
+    "passed_test",
+    "public",
+    "test_scheduled",
+    "unlicensed",
+    "waiting_fingerprints",
+    "waiting_on_license"
+   ]
+  },
+  "crm_agent_roster_unguarded.last_contacted_at": {
+   "candidates": [
+    "applications.last_contacted_at"
+   ],
+   "body_literals": [
+    "active",
+    "appointed",
+    "approved",
+    "course_purchased",
+    "fingerprints_done",
+    "finished_course",
+    "licensed",
+    "month",
+    "passed_test",
+    "public",
+    "test_scheduled",
+    "unlicensed",
+    "waiting_fingerprints",
+    "waiting_on_license"
+   ]
+  },
+  "crm_agent_roster_unguarded.license_progress": {
+   "candidates": [
+    "agents.license_progress",
+    "applications.license_progress"
+   ],
+   "body_literals": [
+    "active",
+    "appointed",
+    "approved",
+    "course_purchased",
+    "fingerprints_done",
+    "finished_course",
+    "licensed",
+    "month",
+    "passed_test",
+    "public",
+    "test_scheduled",
+    "unlicensed",
+    "waiting_fingerprints",
+    "waiting_on_license"
+   ]
+  },
+  "crm_agent_roster_unguarded.license_status": {
+   "candidates": [
+    "agents.license_status",
+    "applications.license_status",
+    "v_agent_training_stage.license_status"
+   ],
+   "body_literals": [
+    "active",
+    "appointed",
+    "approved",
+    "course_purchased",
+    "fingerprints_done",
+    "finished_course",
+    "licensed",
+    "month",
+    "passed_test",
+    "public",
+    "test_scheduled",
+    "unlicensed",
+    "waiting_fingerprints",
+    "waiting_on_license"
+   ]
+  },
+  "crm_agent_roster_unguarded.manager_id": {
+   "candidates": [
+    "agents.manager_id"
+   ],
+   "body_literals": [
+    "active",
+    "appointed",
+    "approved",
+    "course_purchased",
+    "fingerprints_done",
+    "finished_course",
+    "licensed",
+    "month",
+    "passed_test",
+    "public",
+    "test_scheduled",
+    "unlicensed",
+    "waiting_fingerprints",
+    "waiting_on_license"
+   ]
+  },
+  "crm_agent_roster_unguarded.onboarding_stage": {
+   "candidates": [
+    "agents.onboarding_stage",
+    "v_agent_training_stage.onboarding_stage"
+   ],
+   "body_literals": [
+    "active",
+    "appointed",
+    "approved",
+    "course_purchased",
+    "fingerprints_done",
+    "finished_course",
+    "licensed",
+    "month",
+    "passed_test",
+    "public",
+    "test_scheduled",
+    "unlicensed",
+    "waiting_fingerprints",
+    "waiting_on_license"
+   ]
+  },
+  "crm_agent_roster_unguarded.phone": {
+   "candidates": [
+    "applications.phone",
+    "profiles.phone"
+   ],
+   "body_literals": [
+    "active",
+    "appointed",
+    "approved",
+    "course_purchased",
+    "fingerprints_done",
+    "finished_course",
+    "licensed",
+    "month",
+    "passed_test",
+    "public",
+    "test_scheduled",
+    "unlicensed",
+    "waiting_fingerprints",
+    "waiting_on_license"
+   ]
+  },
+  "crm_agent_roster_unguarded.status": {
+   "candidates": [
+    "agentlink_contracts.status",
+    "agents.status",
+    "applications.status",
+    "mat_production_unified.status",
+    "v_production_canonical.status",
+    "v_production_unified.status"
+   ],
+   "body_literals": [
+    "active",
+    "appointed",
+    "approved",
+    "course_purchased",
+    "fingerprints_done",
+    "finished_course",
+    "licensed",
+    "month",
+    "passed_test",
+    "public",
+    "test_scheduled",
+    "unlicensed",
+    "waiting_fingerprints",
+    "waiting_on_license"
+   ]
+  },
+  "crm_agent_sales_pulse.agent_id": {
+   "candidates": [
+    "mat_production_unified.agent_id",
+    "v_production_canonical.agent_id",
+    "v_production_unified.agent_id"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "crm_today_production.business_date": {
+   "candidates": [
+    "v_external_production_gap.business_date"
+   ],
+   "body_literals": [
+    "external_daily_gap",
+    "public"
+   ]
+  },
+  "dialer_payment_summary.week_start": {
+   "candidates": [
+    "dialer_weekly_payments.week_start"
+   ],
+   "body_literals": [
+    "bounced",
+    "overdue",
+    "paid",
+    "pending",
+    "week"
+   ]
+  },
+  "discord_deal_feed_health.agency_name": {
+   "candidates": [
+    "discord_deal_sources.agency_name",
+    "v_discord_deal_ingestion_health.agency_name"
+   ],
+   "body_literals": [
+    "manager",
+    "public"
+   ]
+  },
+  "discord_deal_feed_health.detail": {
+   "candidates": [
+    "discord_deal_ingestion_health.detail",
+    "v_discord_deal_ingestion_health.detail"
+   ],
+   "body_literals": [
+    "manager",
+    "public"
+   ]
+  },
+  "discord_deal_feed_health.last_heartbeat_at": {
+   "candidates": [
+    "discord_deal_ingestion_health.last_heartbeat_at",
+    "v_discord_deal_ingestion_health.last_heartbeat_at"
+   ],
+   "body_literals": [
+    "manager",
+    "public"
+   ]
+  },
+  "discord_deal_feed_health.last_ingested_at": {
+   "candidates": [
+    "discord_deal_ingestion_health.last_ingested_at",
+    "v_discord_deal_ingestion_health.last_ingested_at"
+   ],
+   "body_literals": [
+    "manager",
+    "public"
+   ]
+  },
+  "discord_deal_feed_health.last_message_at": {
+   "candidates": [
+    "discord_deal_ingestion_health.last_message_at",
+    "v_discord_deal_ingestion_health.last_message_at"
+   ],
+   "body_literals": [
+    "manager",
+    "public"
+   ]
+  },
+  "discord_deal_feed_health.measured_at": {
+   "candidates": [
+    "v_discord_deal_ingestion_health.measured_at"
+   ],
+   "body_literals": [
+    "manager",
+    "public"
+   ]
+  },
+  "discord_deal_feed_health.source": {
+   "candidates": [
+    "discord_deal_ingestion_health.source",
+    "discord_deal_ingestion_receipts.source",
+    "discord_deal_sources.source",
+    "v_discord_deal_ingestion_health.source"
+   ],
+   "body_literals": [
+    "manager",
+    "public"
+   ]
+  },
+  "discord_deal_feed_health.status": {
+   "candidates": [
+    "discord_deal_ingestion_health.status",
+    "discord_deal_ingestion_receipts.status",
+    "v_discord_deal_ingestion_health.status"
+   ],
+   "body_literals": [
+    "manager",
+    "public"
+   ]
+  },
+  "discord_deal_feed_health.unresolved_24h": {
+   "candidates": [
+    "v_discord_deal_ingestion_health.unresolved_24h"
+   ],
+   "body_literals": [
+    "manager",
+    "public"
+   ]
+  },
+  "fn_commission_recovery_next_batch.agent_id": {
+   "candidates": [
+    "carrier_policies.agent_id"
+   ],
+   "body_literals": []
+  },
+  "fn_commission_recovery_next_batch.carrier_name": {
+   "candidates": [
+    "carrier_policies.carrier_name"
+   ],
+   "body_literals": []
+  },
+  "fn_commission_recovery_next_batch.effective_date": {
+   "candidates": [
+    "carrier_policies.effective_date"
+   ],
+   "body_literals": []
+  },
+  "fn_license_renewal_sweep.agent_code": {
+   "candidates": [
+    "agents.agent_code"
+   ],
+   "body_literals": [
+    "active",
+    "email",
+    "public"
+   ]
+  },
+  "fn_license_renewal_sweep.agent_id": {
+   "candidates": [
+    "license_renewal_alerts.agent_id"
+   ],
+   "body_literals": [
+    "active",
+    "email",
+    "public"
+   ]
+  },
+  "fn_license_renewal_sweep.days_out": {
+   "candidates": [
+    "license_renewal_alerts.days_out"
+   ],
+   "body_literals": [
+    "active",
+    "email",
+    "public"
+   ]
+  },
+  "fn_license_renewal_sweep.email": {
+   "candidates": [
+    "profiles.email"
+   ],
+   "body_literals": [
+    "active",
+    "email",
+    "public"
+   ]
+  },
+  "fn_license_renewal_sweep.full_name": {
+   "candidates": [
+    "profiles.full_name"
+   ],
+   "body_literals": [
+    "active",
+    "email",
+    "public"
+   ]
+  },
+  "fn_license_renewal_sweep.license_expires_at": {
+   "candidates": [
+    "agents.license_expires_at"
+   ],
+   "body_literals": [
+    "active",
+    "email",
+    "public"
+   ]
+  },
+  "fn_unlicensed_digest_health.http_status": {
+   "candidates": [
+    "automation_run_log.http_status"
+   ],
+   "body_literals": [
+    "delivered",
+    "dispatched",
+    "g",
+    "never_run",
+    "no response body",
+    "no_response_recorded",
+    "public",
+    "refused",
+    "unlicensed_slack_digest"
+   ]
+  },
+  "get_agent_production_stats.agent_id": {
+   "candidates": [
+    "daily_production.agent_id",
+    "deals.agent_id"
+   ],
+   "body_literals": [
+    "active",
+    "public",
+    "submitted"
+   ]
+  },
+  "get_canonical_sam_agent.agent_code": {
+   "candidates": [
+    "agents.agent_code"
+   ],
+   "body_literals": [
+    "admin",
+    "auth",
+    "public"
+   ]
+  },
+  "get_canonical_sam_agent.display_name": {
+   "candidates": [
+    "agents.display_name"
+   ],
+   "body_literals": [
+    "admin",
+    "auth",
+    "public"
+   ]
+  },
+  "get_canonical_sam_agent.profile_id": {
+   "candidates": [
+    "agents.profile_id"
+   ],
+   "body_literals": [
+    "admin",
+    "auth",
+    "public"
+   ]
+  },
+  "get_canonical_sam_agent.user_id": {
+   "candidates": [
+    "agents.user_id",
+    "profiles.user_id",
+    "user_roles.user_id"
+   ],
+   "body_literals": [
+    "admin",
+    "auth",
+    "public"
+   ]
+  },
+  "get_daily_leaderboard.full_name": {
+   "candidates": [
+    "profiles.full_name"
+   ],
+   "body_literals": [
+    "active",
+    "public",
+    "submitted"
+   ]
+  },
+  "get_daily_leaderboard.instagram_handle": {
+   "candidates": [
+    "profiles.instagram_handle"
+   ],
+   "body_literals": [
+    "active",
+    "public",
+    "submitted"
+   ]
+  },
+  "get_just_hired_30d.created_at": {
+   "candidates": [
+    "agents.created_at"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "get_just_hired_30d.display_name": {
+   "candidates": [
+    "agents.display_name"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "get_just_hired_30d.id": {
+   "candidates": [
+    "agents.id"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "get_just_hired_30d.start_date": {
+   "candidates": [
+    "agents.start_date"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "get_leaderboard_profiles.avatar_url": {
+   "candidates": [
+    "profiles.avatar_url"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "get_leaderboard_profiles.full_name": {
+   "candidates": [
+    "profiles.full_name"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "get_leaderboard_profiles.user_id": {
+   "candidates": [
+    "profiles.user_id"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "get_weekly_leaderboard.full_name": {
+   "candidates": [
+    "profiles.full_name"
+   ],
+   "body_literals": [
+    "active",
+    "public",
+    "submitted"
+   ]
+  },
+  "get_weekly_leaderboard.instagram_handle": {
+   "candidates": [
+    "profiles.instagram_handle"
+   ],
+   "body_literals": [
+    "active",
+    "public",
+    "submitted"
+   ]
+  },
+  "interview_conflicts.is_hard_block": {
+   "candidates": [
+    "availability_blocks.is_hard_block"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "interview_conflicts.kind": {
+   "candidates": [
+    "availability_blocks.kind"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "interview_conflicts.label": {
+   "candidates": [
+    "availability_blocks.label"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "landing_recent_applicants.city": {
+   "candidates": [
+    "applications.city",
+    "v_applications_real.city"
+   ],
+   "body_literals": [
+    "demo",
+    "public",
+    "qa",
+    "test",
+    "testing"
+   ]
+  },
+  "landing_recent_applicants.first_name": {
+   "candidates": [
+    "applications.first_name",
+    "v_applications_real.first_name"
+   ],
+   "body_literals": [
+    "demo",
+    "public",
+    "qa",
+    "test",
+    "testing"
+   ]
+  },
+  "landing_recent_applicants.state": {
+   "candidates": [
+    "applications.state",
+    "v_applications_real.state"
+   ],
+   "body_literals": [
+    "demo",
+    "public",
+    "qa",
+    "test",
+    "testing"
+   ]
+  },
+  "landing_recent_hires.agent_code": {
+   "candidates": [
+    "agents.agent_code",
+    "v_recent_hires.agent_code"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "landing_recent_hires.days_on_team": {
+   "candidates": [
+    "v_recent_hires.days_on_team"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "landing_recent_hires.display_name": {
+   "candidates": [
+    "agents.display_name",
+    "v_recent_hires.display_name"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "landing_recent_hires.first_name": {
+   "candidates": [
+    "v_recent_hires.first_name"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "landing_recent_hires.hired_on": {
+   "candidates": [
+    "v_recent_hires.hired_on"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "landing_recent_hires.manager_name": {
+   "candidates": [
+    "v_recent_hires.manager_name"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "landing_recent_hires.onboarding_stage": {
+   "candidates": [
+    "agents.onboarding_stage",
+    "v_recent_hires.onboarding_stage"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "leaderboard_board.agent_id": {
+   "candidates": [
+    "v_agent_canonical_map.agent_id",
+    "v_production_canonical.agent_id",
+    "v_production_comp_truth.agent_id",
+    "v_production_unified.agent_id"
+   ],
+   "body_literals": [
+    "New",
+    "external_daily_gap",
+    "public"
+   ]
+  },
+  "leaderboard_board.agent_name": {
+   "candidates": [
+    "agent_comp_levels.agent_name",
+    "v_production_canonical.agent_name",
+    "v_production_comp_truth.agent_name",
+    "v_production_unified.agent_name"
+   ],
+   "body_literals": [
+    "New",
+    "external_daily_gap",
+    "public"
+   ]
+  },
+  "leaderboard_board.avatar_url": {
+   "candidates": [
+    "profiles.avatar_url"
+   ],
+   "body_literals": [
+    "New",
+    "external_daily_gap",
+    "public"
+   ]
+  },
+  "leaderboard_book.agent_id": {
+   "candidates": [
+    "agentlink_book.agent_id",
+    "v_agent_canonical_map.agent_id"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "leaderboard_book.agent_name": {
+   "candidates": [
+    "agentlink_book.agent_name"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "leaderboard_book.avatar_url": {
+   "candidates": [
+    "profiles.avatar_url"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "leaderboard_book_tenure.agent_id": {
+   "candidates": [
+    "agentlink_book.agent_id",
+    "v_agent_canonical_map.agent_id"
+   ],
+   "body_literals": [
+    "New",
+    "public"
+   ]
+  },
+  "leaderboard_book_tenure.agent_name": {
+   "candidates": [
+    "agentlink_book.agent_name"
+   ],
+   "body_literals": [
+    "New",
+    "public"
+   ]
+  },
+  "leaderboard_book_tenure.avatar_url": {
+   "candidates": [
+    "profiles.avatar_url"
+   ],
+   "body_literals": [
+    "New",
+    "public"
+   ]
+  },
+  "list_my_vas.created_at": {
+   "candidates": [
+    "profiles.created_at"
+   ],
+   "body_literals": [
+    "full_name",
+    "public"
+   ]
+  },
+  "list_my_vas.email": {
+   "candidates": [
+    "profiles.email"
+   ],
+   "body_literals": [
+    "full_name",
+    "public"
+   ]
+  },
+  "list_my_vas.full_name": {
+   "candidates": [
+    "profiles.full_name"
+   ],
+   "body_literals": [
+    "full_name",
+    "public"
+   ]
+  },
+  "list_my_vas.user_id": {
+   "candidates": [
+    "profiles.user_id"
+   ],
+   "body_literals": [
+    "full_name",
+    "public"
+   ]
+  },
+  "merge_agent_into_canonical.canonical_agent_id": {
+   "candidates": [
+    "agents.canonical_agent_id"
+   ],
+   "body_literals": [
+    "Canonical and dup agent_ids must differ",
+    "One or both agents not found",
+    "Only admins may merge agent duplicates",
+    "admin",
+    "public"
+   ]
+  },
+  "my_agents_missing_comp_level.display_name": {
+   "candidates": [
+    "agents.display_name"
+   ],
+   "body_literals": [
+    "active",
+    "public"
+   ]
+  },
+  "my_agents_missing_comp_level.status": {
+   "candidates": [
+    "agents.status"
+   ],
+   "body_literals": [
+    "active",
+    "public"
+   ]
+  },
+  "my_hire_activity.activity_state": {
+   "candidates": [
+    "v_hire_activity.activity_state"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "my_hire_activity.agent_id": {
+   "candidates": [
+    "agentlink_book.agent_id",
+    "readymode_dialer_calls.agent_id",
+    "v_hire_activity.agent_id"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "my_hire_activity.calls_30d": {
+   "candidates": [
+    "v_hire_activity.calls_30d"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "my_hire_activity.calls_7d": {
+   "candidates": [
+    "v_hire_activity.calls_7d"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "my_hire_activity.conversations_30d": {
+   "candidates": [
+    "v_hire_activity.conversations_30d"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "my_hire_activity.days_since_hire": {
+   "candidates": [
+    "v_hire_activity.days_since_hire"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "my_hire_activity.deals_30d": {
+   "candidates": [
+    "v_hire_activity.deals_30d"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "my_hire_activity.display_name": {
+   "candidates": [
+    "agents.display_name",
+    "v_hire_activity.display_name"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "my_hire_activity.hired_on": {
+   "candidates": [
+    "v_hire_activity.hired_on"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "my_hire_activity.last_call_at": {
+   "candidates": [
+    "v_hire_activity.last_call_at"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "my_hire_activity.last_deal_on": {
+   "candidates": [
+    "v_hire_activity.last_deal_on"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "my_hire_activity.license_status": {
+   "candidates": [
+    "agents.license_status",
+    "v_hire_activity.license_status"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "my_hire_activity.manager_name": {
+   "candidates": [
+    "v_hire_activity.manager_name"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "my_hire_activity.onboarding_stage": {
+   "candidates": [
+    "agents.onboarding_stage",
+    "v_hire_activity.onboarding_stage"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "my_onboarding_integrity.added_on": {
+   "candidates": [
+    "v_onboarding_integrity.added_on"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "my_onboarding_integrity.agent_id": {
+   "candidates": [
+    "agent_onboarding_queue.agent_id",
+    "v_onboarding_integrity.agent_id"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "my_onboarding_integrity.cannot_sign_in": {
+   "candidates": [
+    "v_onboarding_integrity.cannot_sign_in"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "my_onboarding_integrity.display_name": {
+   "candidates": [
+    "agents.display_name",
+    "v_onboarding_integrity.display_name"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "my_onboarding_integrity.manager_name": {
+   "candidates": [
+    "v_onboarding_integrity.manager_name"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "my_onboarding_integrity.never_onboarded": {
+   "candidates": [
+    "v_onboarding_integrity.never_onboarded"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "my_onboarding_integrity.no_production_credit": {
+   "candidates": [
+    "v_onboarding_integrity.no_production_credit"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "my_onboarding_integrity.no_start_date": {
+   "candidates": [
+    "v_onboarding_integrity.no_start_date"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "my_onboarding_integrity.open_gaps": {
+   "candidates": [
+    "v_onboarding_integrity.open_gaps"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "my_onboarding_integrity.status": {
+   "candidates": [
+    "agents.status",
+    "applications.status",
+    "v_onboarding_integrity.status"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "my_onboarding_integrity.unreachable": {
+   "candidates": [
+    "v_onboarding_integrity.unreachable"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "my_onboarding_roll_call.agent_id": {
+   "candidates": [
+    "agent_onboarding_queue.agent_id"
+   ],
+   "body_literals": [
+    "Mon DD",
+    "Unassigned",
+    "active",
+    "discord",
+    "invite sent ",
+    "not_started",
+    "public"
+   ]
+  },
+  "my_onboarding_roll_call.display_name": {
+   "candidates": [
+    "agents.display_name"
+   ],
+   "body_literals": [
+    "Mon DD",
+    "Unassigned",
+    "active",
+    "discord",
+    "invite sent ",
+    "not_started",
+    "public"
+   ]
+  },
+  "my_onboarding_roll_call.email": {
+   "candidates": [
+    "applications.email",
+    "profiles.email"
+   ],
+   "body_literals": [
+    "Mon DD",
+    "Unassigned",
+    "active",
+    "discord",
+    "invite sent ",
+    "not_started",
+    "public"
+   ]
+  },
+  "my_onboarding_roll_call.license_status": {
+   "candidates": [
+    "agents.license_status",
+    "applications.license_status"
+   ],
+   "body_literals": [
+    "Mon DD",
+    "Unassigned",
+    "active",
+    "discord",
+    "invite sent ",
+    "not_started",
+    "public"
+   ]
+  },
+  "my_onboarding_roll_call.onboarding_stage": {
+   "candidates": [
+    "agents.onboarding_stage"
+   ],
+   "body_literals": [
+    "Mon DD",
+    "Unassigned",
+    "active",
+    "discord",
+    "invite sent ",
+    "not_started",
+    "public"
+   ]
+  },
+  "my_onboarding_roll_call.phone": {
+   "candidates": [
+    "applications.phone",
+    "profiles.phone"
+   ],
+   "body_literals": [
+    "Mon DD",
+    "Unassigned",
+    "active",
+    "discord",
+    "invite sent ",
+    "not_started",
+    "public"
+   ]
+  },
+  "my_unlinked_agents.agent_id": {
+   "candidates": [
+    "agentlink_book.agent_id"
+   ],
+   "body_literals": [
+    "Unassigned",
+    "linked and producing",
+    "public",
+    "terminated"
+   ]
+  },
+  "my_unlinked_agents.al_user_id": {
+   "candidates": [
+    "agents.al_user_id"
+   ],
+   "body_literals": [
+    "Unassigned",
+    "linked and producing",
+    "public",
+    "terminated"
+   ]
+  },
+  "my_unlinked_agents.display_name": {
+   "candidates": [
+    "agents.display_name"
+   ],
+   "body_literals": [
+    "Unassigned",
+    "linked and producing",
+    "public",
+    "terminated"
+   ]
+  },
+  "my_unlinked_agents.license_status": {
+   "candidates": [
+    "agents.license_status"
+   ],
+   "body_literals": [
+    "Unassigned",
+    "linked and producing",
+    "public",
+    "terminated"
+   ]
+  },
+  "my_unlinked_agents.status": {
+   "candidates": [
+    "agentlink_book.status",
+    "agents.status"
+   ],
+   "body_literals": [
+    "Unassigned",
+    "linked and producing",
+    "public",
+    "terminated"
+   ]
+  },
+  "my_weekly_badges.id": {
+   "candidates": [
+    "agents.id",
+    "daily_production.id"
+   ],
+   "body_literals": [
+    "ALP Champion",
+    "Deal Machine",
+    "Presentation Pro",
+    "Referral King",
+    "Rising Star",
+    "Top 3 in multiple categories",
+    "Top Closer",
+    "alp-champion",
+    "amber",
+    "crown",
+    "cyan",
+    "deal-machine",
+    "emerald",
+    "flame",
+    "presentation-pro",
+    "primary",
+    "public",
+    "referral-king",
+    "rising-star",
+    "rose",
+    "star",
+    "target",
+    "top-closer",
+    "trophy",
+    "violet",
+    "week",
+    "zap"
+   ]
+  },
+  "next_step_message_stats_24h.channel": {
+   "candidates": [
+    "next_step_messages.channel"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "phc_admin_leads.callback_time": {
+   "candidates": [
+    "phc_leads.callback_time"
+   ],
+   "body_literals": [
+    "admin",
+    "public",
+    "spam"
+   ]
+  },
+  "phc_admin_leads.created_at": {
+   "candidates": [
+    "phc_leads.created_at"
+   ],
+   "body_literals": [
+    "admin",
+    "public",
+    "spam"
+   ]
+  },
+  "phc_admin_leads.current_carrier": {
+   "candidates": [
+    "phc_leads.current_carrier"
+   ],
+   "body_literals": [
+    "admin",
+    "public",
+    "spam"
+   ]
+  },
+  "phc_admin_leads.email": {
+   "candidates": [
+    "phc_leads.email"
+   ],
+   "body_literals": [
+    "admin",
+    "public",
+    "spam"
+   ]
+  },
+  "phc_admin_leads.first_name": {
+   "candidates": [
+    "phc_leads.first_name"
+   ],
+   "body_literals": [
+    "admin",
+    "public",
+    "spam"
+   ]
+  },
+  "phc_admin_leads.gclid": {
+   "candidates": [
+    "phc_leads.gclid"
+   ],
+   "body_literals": [
+    "admin",
+    "public",
+    "spam"
+   ]
+  },
+  "phc_admin_leads.help_category": {
+   "candidates": [
+    "phc_leads.help_category"
+   ],
+   "body_literals": [
+    "admin",
+    "public",
+    "spam"
+   ]
+  },
+  "phc_admin_leads.lead_code": {
+   "candidates": [
+    "phc_leads.lead_code"
+   ],
+   "body_literals": [
+    "admin",
+    "public",
+    "spam"
+   ]
+  },
+  "phc_admin_leads.phone_e164": {
+   "candidates": [
+    "phc_leads.phone_e164"
+   ],
+   "body_literals": [
+    "admin",
+    "public",
+    "spam"
+   ]
+  },
+  "phc_admin_leads.state": {
+   "candidates": [
+    "phc_leads.state"
+   ],
+   "body_literals": [
+    "admin",
+    "public",
+    "spam"
+   ]
+  },
+  "phc_admin_leads.status": {
+   "candidates": [
+    "phc_leads.status"
+   ],
+   "body_literals": [
+    "admin",
+    "public",
+    "spam"
+   ]
+  },
+  "phc_admin_leads.utm_campaign": {
+   "candidates": [
+    "phc_leads.utm_campaign"
+   ],
+   "body_literals": [
+    "admin",
+    "public",
+    "spam"
+   ]
+  },
+  "phc_admin_leads.utm_source": {
+   "candidates": [
+    "phc_leads.utm_source"
+   ],
+   "body_literals": [
+    "admin",
+    "public",
+    "spam"
+   ]
+  },
+  "queue_active_hired_slack_invites.agent_id": {
+   "candidates": [
+    "messaging_audience_exclusions.agent_id",
+    "messaging_identity_links.agent_id",
+    "v_slack_invite_eligibility.agent_id"
+   ],
+   "body_literals": [
+    "Service role required",
+    "agent",
+    "agentId",
+    "application_slack_invite",
+    "eligible",
+    "production",
+    "public",
+    "service_role",
+    "slack",
+    "verified"
+   ]
+  },
+  "queue_active_hired_slack_invites.eligibility_status": {
+   "candidates": [
+    "v_slack_invite_eligibility.eligibility_status"
+   ],
+   "body_literals": [
+    "Service role required",
+    "agent",
+    "agentId",
+    "application_slack_invite",
+    "eligible",
+    "production",
+    "public",
+    "service_role",
+    "slack",
+    "verified"
+   ]
+  },
+  "recover_partial_applications.email": {
+   "candidates": [
+    "applications.email",
+    "partial_applications.email",
+    "v_partial_applications_abandoned.email"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "recover_partial_applications.step": {
+   "candidates": [
+    "partial_applications.step",
+    "v_partial_applications_abandoned.step"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "register_for_seminar.application_id": {
+   "candidates": [
+    "seminar_registrations.application_id"
+   ],
+   "body_literals": [
+    "APEX seminar confirmation",
+    "APEX seminar reminder opt-in",
+    "Email is required",
+    "First name is required",
+    "Last name is required",
+    "Seminar date is required",
+    "application_id",
+    "discord",
+    "email",
+    "g",
+    "info",
+    "licensed",
+    "name",
+    "new",
+    "pending",
+    "phone",
+    "public",
+    "register_for_seminar",
+    "registration_id",
+    "reminder_opt_in",
+    "seminar",
+    "seminar_confirmation",
+    "seminar_date",
+    "seminar_follow_up",
+    "seminar_meeting_url",
+    "seminar_registration",
+    "seminar_sms_opt_in",
+    "seminar_zoom_url",
+    "sms-auto",
+    "source",
+    "unknown",
+    "unlicensed",
+    "website-seminar-form"
+   ]
+  },
+  "sam_todo_list.created_at": {
+   "candidates": [
+    "codex_blockers.created_at",
+    "sam_todo_manual_items.created_at",
+    "v_sam_todo.created_at",
+    "v_sam_todo_blocker_source.created_at",
+    "v_sam_todo_manual_source.created_at"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "sam_todo_list.due_at": {
+   "candidates": [
+    "v_sam_todo.due_at",
+    "v_sam_todo_blocker_source.due_at",
+    "v_sam_todo_manual_source.due_at"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "sam_todo_list.link": {
+   "candidates": [
+    "sam_todo_manual_items.link",
+    "v_sam_todo.link",
+    "v_sam_todo_blocker_source.link",
+    "v_sam_todo_manual_source.link"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "sam_todo_list.priority": {
+   "candidates": [
+    "codex_blockers.priority",
+    "sam_todo_manual_items.priority",
+    "v_sam_todo.priority",
+    "v_sam_todo_blocker_source.priority",
+    "v_sam_todo_manual_source.priority"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "sam_todo_list.source": {
+   "candidates": [
+    "sam_todo_dismissed.source",
+    "sam_todo_manual_items.source",
+    "sam_todo_snoozed.source",
+    "v_sam_todo.source",
+    "v_sam_todo_blocker_source.source",
+    "v_sam_todo_manual_source.source"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "sam_todo_list.source_id": {
+   "candidates": [
+    "sam_todo_dismissed.source_id",
+    "sam_todo_snoozed.source_id",
+    "v_sam_todo.source_id",
+    "v_sam_todo_blocker_source.source_id",
+    "v_sam_todo_manual_source.source_id"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "sam_todo_list.status": {
+   "candidates": [
+    "sam_todo_manual_items.status",
+    "v_sam_todo.status",
+    "v_sam_todo_blocker_source.status",
+    "v_sam_todo_manual_source.status"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "sam_todo_list.text": {
+   "candidates": [
+    "sam_todo_manual_items.text",
+    "v_sam_todo.text",
+    "v_sam_todo_blocker_source.text",
+    "v_sam_todo_manual_source.text"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "submit_referral.duplicate_of": {
+   "candidates": [
+    "applications.duplicate_of",
+    "referrals.duplicate_of"
+   ],
+   "body_literals": [
+    "Make first contact",
+    "No agent record for user",
+    "g",
+    "licensed",
+    "public",
+    "submit_referral requires authentication",
+    "transfer",
+    "unlicensed"
+   ]
+  },
+  "submit_referral.is_duplicate": {
+   "candidates": [
+    "applications.is_duplicate",
+    "referrals.is_duplicate"
+   ],
+   "body_literals": [
+    "Make first contact",
+    "No agent record for user",
+    "g",
+    "licensed",
+    "public",
+    "submit_referral requires authentication",
+    "transfer",
+    "unlicensed"
+   ]
+  },
+  "telegram_due_nudges.chat_id": {
+   "candidates": [
+    "telegram_scheduled_messages.chat_id"
+   ],
+   "body_literals": [
+    "pending"
+   ]
+  },
+  "telegram_due_nudges.context": {
+   "candidates": [
+    "telegram_scheduled_messages.context"
+   ],
+   "body_literals": [
+    "pending"
+   ]
+  },
+  "telegram_due_nudges.id": {
+   "candidates": [
+    "telegram_scheduled_messages.id"
+   ],
+   "body_literals": [
+    "pending"
+   ]
+  },
+  "telegram_due_nudges.reason": {
+   "candidates": [
+    "telegram_scheduled_messages.reason"
+   ],
+   "body_literals": [
+    "pending"
+   ]
+  },
+  "telegram_due_nudges.template_key": {
+   "candidates": [
+    "telegram_scheduled_messages.template_key"
+   ],
+   "body_literals": [
+    "pending"
+   ]
+  },
+  "telegram_link_application.ica_paid_at": {
+   "candidates": [
+    "applications.ica_paid_at"
+   ],
+   "body_literals": [
+    "applied_paid",
+    "applied_unpaid"
+   ]
+  },
+  "telegram_sync_stages.chat_id": {
+   "candidates": [
+    "telegram_users.chat_id"
+   ],
+   "body_literals": [
+    "active_agent",
+    "applied_paid",
+    "applied_unpaid",
+    "hired",
+    "onboarding_d1",
+    "onboarding_d14",
+    "onboarding_d3",
+    "onboarding_d7",
+    "opt_out",
+    "pending",
+    "stage_transition_",
+    "transition_"
+   ]
+  },
+  "weekly_dialer_status.agent_code": {
+   "candidates": [
+    "agents.agent_code"
+   ],
+   "body_literals": [
+    "week"
+   ]
+  },
+  "weekly_dialer_status.agent_id": {
+   "candidates": [
+    "dialer_weekly_payments.agent_id"
+   ],
+   "body_literals": [
+    "week"
+   ]
+  },
+  "weekly_dialer_status.amount_due": {
+   "candidates": [
+    "dialer_weekly_payments.amount_due"
+   ],
+   "body_literals": [
+    "week"
+   ]
+  },
+  "weekly_dialer_status.amount_paid": {
+   "candidates": [
+    "dialer_weekly_payments.amount_paid"
+   ],
+   "body_literals": [
+    "week"
+   ]
+  },
+  "weekly_dialer_status.bounce_reason": {
+   "candidates": [
+    "dialer_weekly_payments.bounce_reason"
+   ],
+   "body_literals": [
+    "week"
+   ]
+  },
+  "weekly_dialer_status.id": {
+   "candidates": [
+    "agents.id",
+    "dialer_weekly_payments.id",
+    "profiles.id"
+   ],
+   "body_literals": [
+    "week"
+   ]
+  },
+  "weekly_dialer_status.manager_id": {
+   "candidates": [
+    "agents.manager_id"
+   ],
+   "body_literals": [
+    "week"
+   ]
+  },
+  "weekly_dialer_status.notes": {
+   "candidates": [
+    "agents.notes",
+    "dialer_weekly_payments.notes"
+   ],
+   "body_literals": [
+    "week"
+   ]
+  },
+  "weekly_dialer_status.paid_status": {
+   "candidates": [
+    "dialer_weekly_payments.paid_status"
+   ],
+   "body_literals": [
+    "week"
+   ]
+  },
+  "weekly_dialer_status.payment_method": {
+   "candidates": [
+    "dialer_weekly_payments.payment_method"
+   ],
+   "body_literals": [
+    "week"
+   ]
+  },
+  "weekly_dialer_status.reference": {
+   "candidates": [
+    "dialer_weekly_payments.reference"
+   ],
+   "body_literals": [
+    "week"
+   ]
+  },
+  "weekly_dialer_status.week_start": {
+   "candidates": [
+    "dialer_weekly_payments.week_start"
+   ],
+   "body_literals": [
+    "week"
+   ]
+  }
+ }
+}

@@ -39,6 +39,20 @@ describe("scoped production scoreboard", () => {
     expect(source("pages/Leaderboard.tsx")).toContain('<TabsTrigger value="last_month">Last Month</TabsTrigger>');
   });
 
+  it("MP-394: warns staff when Discord-only production cannot reach the ledger", () => {
+    const component = source("components/dashboard/ScopedProductionScoreboard.tsx");
+    const migration = source("../supabase/migrations/20260903170000_discord_deal_feed_health_rpc.sql");
+
+    expect(component).toContain('supabase.rpc("discord_deal_feed_health"');
+    expect(component).toContain('f.status !== "healthy"');
+    expect(component).toContain("Deals posted only in that chat are not on this board.");
+    expect(component).toContain("Deal-feed health could not be checked.");
+    expect(component).toContain("void feed.refetch()");
+    expect(migration).toContain("security definer");
+    expect(migration).toContain("public.apex_is_admin() or public.apex_has_any_role(array['manager'])");
+    expect(migration).toContain("revoke all on function public.discord_deal_feed_health() from public");
+  });
+
   it("uses the unified ledger and recursively scopes non-admin hierarchy", () => {
     const migration = source("../supabase/migrations/20260825065000_scoped_production_scoreboard.sql");
     expect(migration).toContain("public.v_production_unified");

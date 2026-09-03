@@ -14,6 +14,17 @@ describe("Vantage external production reconciliation", () => {
     expect(migration).toContain("agency aggregate pending individual policy sync");
   });
 
+  it("records the reported September 2 gap without fabricating policy details", () => {
+    const repair = source("supabase/migrations/20260903171000_vantage_september_2_reported_gap.sql");
+    expect(repair).toContain("'Vantage Financial'");
+    expect(repair).toContain("date '2026-09-02'");
+    expect(repair).toContain("2000.00");
+    expect(repair).toContain("'policy_count_known', false");
+    expect(repair).toContain("pending individual Discord policy ingestion");
+    expect(repair).toContain("on conflict (agency_name, business_date, source) do update");
+    expect(repair).not.toContain("production_external_deals");
+  });
+
   it("contributes only the positive gap so later AgentLink rows cannot double count", () => {
     expect(migration).toContain("public.v_production_canonical");
     expect(migration).toContain("public.v_external_production_gap");

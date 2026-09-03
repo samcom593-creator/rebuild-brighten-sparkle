@@ -260,7 +260,6 @@ export function ScopedProductionScoreboard() {
   const feed = useQuery({
     queryKey: ["discord-deal-feed-health"],
     staleTime: 300_000,
-    refetchOnWindowFocus: false,
     queryFn: async () => {
       const { data, error } = await supabase.rpc("discord_deal_feed_health" as never);
       if (error) throw error;
@@ -270,7 +269,7 @@ export function ScopedProductionScoreboard() {
       }>;
     },
   });
-  const blockedFeeds = (feed.data ?? []).filter((f) => f.status !== "ok");
+  const blockedFeeds = (feed.data ?? []).filter((f) => f.status !== "healthy");
 
   const freshness = useQuery({
     queryKey: ["production-book-freshness"],
@@ -290,6 +289,7 @@ export function ScopedProductionScoreboard() {
   // still up to 5 minutes stale after a deal posted.
   const refreshProduction = () => {
     void query.refetch();
+    void feed.refetch();
     // The freshness line only exists while the window is empty; a posted deal
     // may fill the window (query above) or move "last posted" (this one).
     if (windowIsEmpty) void freshness.refetch();
@@ -503,7 +503,11 @@ export function ScopedProductionScoreboard() {
             </div>
 
             <div className="border-t border-border">
-              {blockedFeeds.length > 0 && (
+              {feed.isError ? (
+                <div className="mx-4 mt-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+                  Deal-feed health could not be checked. Production posted only in Discord may be missing from this board.
+                </div>
+              ) : blockedFeeds.length > 0 && (
                 <div className="mx-4 mt-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
                   {blockedFeeds.map((f) => (
                     <p key={f.source}>

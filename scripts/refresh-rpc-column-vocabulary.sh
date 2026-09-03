@@ -88,29 +88,54 @@ with func as (
   union select r.proname, e.basename from rel r join edges e on e.viewname = r.relname
   union select r.proname, e2.basename from rel r join edges e on e.viewname = r.relname
                                                 join edges e2 on e2.viewname = e.basename
+), allcols as (
+  -- EVERY returned column of every qualifying function, whether or not a public
+  -- relation supplies it. This is the base the catalog is built on: a function
+  -- that synthesises its output (calendar_window.kind) or reads a non-public
+  -- schema (get_cron_jobs_with_status reads cron.job) has NO candidate relation,
+  -- and inner-joining candidates deleted those pairs from the catalog entirely --
+  -- which also removed them from the guard's `unprovable` set, so they were not
+  -- ungraded-and-counted, they were invisible. See MP-410.
+  select f.proname, col as colname
+  from f cross join lateral unnest(f.outcols) as col
 ), cand as (
-  select x.proname, col as colname, x.relname || '.' || col as candidate
-  from expanded x
-  join f on f.proname = x.proname
-  cross join lateral unnest(f.outcols) as col
+  select a.proname, a.colname, x.relname || '.' || a.colname as candidate
+  from allcols a
+  join expanded x on x.proname = a.proname
   join pg_class c on c.relname = x.relname
   join pg_namespace n on n.oid = c.relnamespace and n.nspname = 'public'
-  join pg_attribute a on a.attrelid = c.oid and a.attname = col
-       and a.attnum > 0 and not a.attisdropped
+  join pg_attribute at on at.attrelid = c.oid and at.attname = a.colname
+       and at.attnum > 0 and not at.attisdropped
   where c.relkind in ('r','p','v','m')
 ), lits as (
   select f.proname, array_agg(distinct m[1]) as body_literals
   from f, regexp_matches(f.def, '''([a-zA-Z][a-zA-Z0-9_ -]{0,40})''', 'g') m
   group by 1
 )
-select c.proname, c.colname,
-       array_agg(distinct c.candidate) as candidates,
-       coalesce((select l.body_literals from lits l where l.proname = c.proname), '{}') as body_literals
-from cand c
+select a.proname, a.colname,
+       coalesce(array_agg(distinct c.candidate) filter (where c.candidate is not null), '{}') as candidates,
+       coalesce((select l.body_literals from lits l where l.proname = a.proname), '{}') as body_literals
+from allcols a
+left join cand c on c.proname = a.proname and c.colname = a.colname
 group by 1, 2
 order by 1, 2
 SQL
 
+read -r -d '' Q2 <<'SQL' || true
+-- Public functions that CANNOT have a (function, column) pair, because they return
+-- jsonb / a scalar / setof record with no named OUT columns. A guard that compares
+-- <row>.<col> against a literal has nothing to key on for these, so they are
+-- structurally uncoverable rather than a gap in the catalog. Recorded so the guard
+-- can tell the two apart and print an honest denominator instead of a bare pass.
+select distinct p.proname, pg_get_function_result(p.oid) as result
+from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public' and p.prokind = 'f'
+  and not (p.proretset and cardinality(array(
+        select an from unnest(p.proargnames, p.proargmodes) as u(an, am) where am = 't')) > 0)
+order by 1
+SQL
+
+bot_sql "$Q2" > /tmp/rpc-uncoverable.raw.json
 bot_sql "$Q" > /tmp/rpc-column-vocabulary.raw.json
 python3 <<'PY'
 import json, os, datetime
@@ -122,6 +147,10 @@ for r in rows:
         "candidates": sorted(r["candidates"] or []),
         "body_literals": sorted(r["body_literals"] or []),
     }
+unc_raw = json.load(open("/tmp/rpc-uncoverable.raw.json"))
+unc_rows = unc_raw if isinstance(unc_raw, list) else unc_raw["rows"]
+uncoverable = {r["proname"]: r["result"] for r in unc_rows}
+
 cat = {
     "_generated_by": "scripts/refresh-rpc-column-vocabulary.sh (bot_sql -> pg_proc + pg_rewrite)",
     "_generated_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -141,8 +170,15 @@ cat = {
         "scripts/data/enum-catalog.json (check_vocab + column_enum + enums). Not copied "
         "here on purpose, so the two guards read one snapshot and cannot drift."
     ),
+    "_uncoverable_why": (
+        "Public functions with no named output columns (jsonb / scalar / setof record). "
+        "A `<row>.<col> === \"lit\"` comparison has nothing to key on for these, so they "
+        "are structurally uncoverable, not a catalog gap. check-rpc-status-literals.mjs "
+        "prints the two populations separately so a pass states what it did NOT look at."
+    ),
+    "uncoverable": dict(sorted(uncoverable.items())),
     "columns": dict(sorted(cols.items())),
 }
 json.dump(cat, open(os.environ["OUT"], "w"), indent=1, sort_keys=False)
-print(f'wrote {os.environ["OUT"]}: {len(cols)} (function, returned column) pairs')
+print(f'wrote {os.environ["OUT"]}: {len(cols)} (function, returned column) pairs, {len(uncoverable)} uncoverable function(s)')
 PY

@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 
 // check-recruiting-contact-actions — MP-392
@@ -214,24 +214,48 @@ if (failures.length) {
 // ---- Context, deliberately NOT graded --------------------------------------
 // Published so the unswept remainder stays visible instead of being silently
 // implied clean by a passing guard.
-let unswept = 0;
-const { globSync } = await import("node:fs");
-const all = globSync("src/**/*.tsx", { cwd: root });
-for (const rel of all) {
-  const p = rel.split("\\").join("/");
-  if (WATCHED.includes(p) || PUBLIC_RAW_TEL_OK.includes(p)) continue;
-  let code;
-  try { code = stripComments(read(p)); } catch { continue; }
-  for (const m of code.matchAll(/\b(tel|sms):/g)) {
-    if (!/phoneHref\(|smsHref\(/.test(enclosingTag(code, m.index))) unswept += 1;
+// NODE VERSION SKEW (MP-404): this block first used fs.globSync, which exists on
+// the Node 26 this repo is developed on and NOT on the Node 20 pinned by
+// .github/workflows/verify-core.yml. Every contract above passed and the guard
+// then died here with `globSync is not a function` — green locally, permanently
+// red in CI, which is worse than no guard. Walk with readdirSync/withFileTypes,
+// available since Node 10; do not reintroduce a post-20 fs API here.
+function walkTsx(dir, acc = []) {
+  for (const entry of readdirSync(resolve(root, dir), { withFileTypes: true })) {
+    if (entry.name === "node_modules" || entry.name.startsWith(".")) continue;
+    const rel = `${dir}/${entry.name}`;
+    if (entry.isDirectory()) walkTsx(rel, acc);
+    else if (entry.name.endsWith(".tsx")) acc.push(rel);
   }
+  return acc;
+}
+
+// Context gathering must NEVER decide this guard's exit code: the contracts have
+// already passed by the time we get here, so a fault in an ungraded statistic
+// would fail a clean tree. Reported, never swallowed silently.
+let unswept = null;
+try {
+  unswept = 0;
+  for (const p of walkTsx("src")) {
+    if (WATCHED.includes(p) || PUBLIC_RAW_TEL_OK.includes(p)) continue;
+    let code;
+    try { code = stripComments(read(p)); } catch { continue; }
+    for (const m of code.matchAll(/\b(tel|sms):/g)) {
+      if (!/phoneHref\(|smsHref\(/.test(enclosingTag(code, m.index))) unswept += 1;
+    }
+  }
+} catch (error) {
+  unswept = null;
+  console.log(`  context UNAVAILABLE — could not sweep the remainder (${error.message}).`);
 }
 
 console.log(
   `✓ check:recruiting-contact-actions — ${WATCHED.length} recruiting surfaces clean ` +
   `(no unguarded tel:/sms:, every phoneHref/smsHref anchor sets target/rel; 4 helper contracts intact).`,
 );
-console.log(
-  `  context (not graded): ${unswept} raw tel:/sms: site(s) remain outside the recruiting scope ` +
-  `and outside the ${PUBLIC_RAW_TEL_OK.length} public pages where raw tel: is correct.`,
-);
+if (unswept !== null) {
+  console.log(
+    `  context (not graded): ${unswept} raw tel:/sms: site(s) remain outside the recruiting scope ` +
+    `and outside the ${PUBLIC_RAW_TEL_OK.length} public pages where raw tel: is correct.`,
+  );
+}

@@ -81,7 +81,7 @@ import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
 import { ApplicationDetailSheet } from "@/components/dashboard/ApplicationDetailSheet";
 import { GlassCard } from "@/components/ui/glass-card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { phoneHref, smsHref } from "@/lib/phone";
+import { phoneHref, smsHref, contactLinkProps } from "@/lib/phone";
 import { ReferralLinkCard } from "@/components/dashboard/ReferralLinkCard";
 import { APPLICATION_RECORD_TYPE } from "@/shared/api/applicationRecordType";
 import { RecruitingWorkspaceNav } from "@/components/recruiting/RecruitingWorkspaceNav";
@@ -1968,8 +1968,7 @@ export default function DashboardApplicants() {
                                     >
                                       <a
                                         href={phoneHref(app.phone)!}
-                                        target={phoneHref(app.phone)!.startsWith("https://") ? "_blank" : undefined}
-                                        rel={phoneHref(app.phone)!.startsWith("https://") ? "noopener noreferrer" : undefined}
+                                        {...contactLinkProps(phoneHref(app.phone))}
                                         onClick={() => logContactAttempt(app.id, "call")}
                                       >
                                         <Phone className="h-3.5 w-3.5" />
@@ -1987,8 +1986,7 @@ export default function DashboardApplicants() {
                                     >
                                       <a
                                         href={smsHref(app.phone)!}
-                                        target={smsHref(app.phone)!.startsWith("https://") ? "_blank" : undefined}
-                                        rel={smsHref(app.phone)!.startsWith("https://") ? "noopener noreferrer" : undefined}
+                                        {...contactLinkProps(smsHref(app.phone))}
                                         onClick={() => logContactAttempt(app.id, "sms")}
                                       >
                                         <MessageCircle className="h-3.5 w-3.5" />

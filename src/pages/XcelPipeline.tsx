@@ -13,6 +13,7 @@ import {
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { PageHeader } from "@/components/ui/page-header";
 import { cn } from "@/lib/utils";
+import { phoneHref, contactLinkProps } from "@/lib/phone";
 
 interface Row {
   student_email: string;
@@ -205,7 +206,7 @@ export default function XcelPipeline() {
                 <div className="flex flex-col gap-1.5">
                   {r.app_phone && (
                     <Button asChild size="sm" variant="outline" className="h-7 text-[11px] gap-1">
-                      <a href={`tel:${r.app_phone}`}><Phone className="h-3 w-3" /> Call</a>
+                      <a href={phoneHref(r.app_phone) ?? `tel:${r.app_phone}`} {...contactLinkProps(phoneHref(r.app_phone))}><Phone className="h-3 w-3" /> Call</a>
                     </Button>
                   )}
                   {r.student_email && (

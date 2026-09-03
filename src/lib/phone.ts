@@ -71,10 +71,21 @@ export function phoneHref(value: string | null | undefined): string | null {
   return isTouchDevice() ? `tel:${normalized}` : googleVoiceHref(normalized);
 }
 
-export function smsHref(value: string | null | undefined): string | null {
+export function smsHref(value: string | null | undefined, body?: string): string | null {
   const normalized = normalizePhoneForDial(value);
   if (!normalized) return null;
-  return isTouchDevice() ? `sms:${normalized}` : googleVoiceSmsHref(normalized);
+  if (isTouchDevice()) {
+    return body
+      ? `sms:${normalized}?body=${encodeURIComponent(body)}`
+      : `sms:${normalized}`;
+  }
+  // Google Voice's web composer has no documented body/prefill parameter, so a
+  // desktop rep gets the right conversation opened but types the script
+  // themselves. Stated rather than hidden: this is still strictly better than
+  // the bare `sms:` it replaces, which was a dead click on a desktop with no
+  // SMS app (see the 2026-08-16 note above) — a prefilled message nobody can
+  // open is worth less than an empty thread they can.
+  return googleVoiceSmsHref(normalized);
 }
 
 /**
@@ -106,4 +117,25 @@ export function openGoogleVoice(value: string | null | undefined): boolean {
   if (!href) return false;
   window.open(href, "_blank", "noopener");
   return true;
+}
+
+/**
+ * Anchor props for a contact href produced by phoneHref/smsHref.
+ *
+ * 2026-09-02 (MP-392): phoneHref/smsHref return a Google Voice **https** URL on
+ * desktop (see the 2026-08-16 note above). An https href in a bare <a> navigates
+ * the CURRENT tab, so a recruiter who taps Call on the interview queue loses the
+ * workspace — filters, scroll position, the open queue — and pays a full SPA cold
+ * boot to get back. tel:/sms: hand off to a native app and must NOT be forced into
+ * a new tab, which would leave a blank orphan tab behind on mobile.
+ *
+ * So the target is decided by the scheme, never hardcoded. Interviews.tsx carried
+ * this logic as a private helper and four of its six call sites used it; the two
+ * that did not were the highest-traffic buttons on the page. Shared here so a new
+ * surface cannot get it half-right.
+ */
+export function contactLinkProps(href: string | null | undefined) {
+  return href?.startsWith("https://")
+    ? { target: "_blank" as const, rel: "noopener noreferrer" as const }
+    : {};
 }

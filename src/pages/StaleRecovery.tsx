@@ -29,6 +29,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { phoneHref, smsHref, contactLinkProps } from "@/lib/phone";
 
 // ---------------------------------------------------------------------------
 // Severity vocabulary — the only three tones, each paired so it stays legible
@@ -44,6 +45,12 @@ const NEUTRAL = "text-muted-foreground";
 const CHIP_BASE = "shrink-0 border-border bg-muted/40 text-[10px] font-bold uppercase tracking-wide";
 
 /** Contact actions are the point of this page — full touch target on phones. */
+// The stale-applicant recovery script. Named so the SMS template is written
+// once and the href and its fallback cannot drift apart.
+function recoveryScript(firstName: string): string {
+  return `Hey ${firstName}, this is APEX Financial — saw your application. Quick text to confirm: are you still looking to get started with insurance recruiting?`;
+}
+
 const CONTACT_CHIP =
   "inline-flex h-10 max-w-full items-center gap-1.5 rounded-md border border-border bg-card px-2.5 " +
   "text-[11px] font-medium text-foreground transition-colors hover:bg-muted/30 " +
@@ -298,7 +305,8 @@ function RecoveryRowCard({
           <div className="mt-2 flex flex-wrap gap-2">
             {row.phone ? (
               <a
-                href={`tel:${row.phone}`}
+                href={phoneHref(row.phone) ?? `tel:${row.phone}`}
+                {...contactLinkProps(phoneHref(row.phone))}
                 className={CONTACT_CHIP}
                 aria-label={`Call ${fullName || "applicant"}`}
               >
@@ -318,7 +326,8 @@ function RecoveryRowCard({
             ) : null}
             {row.phone ? (
               <a
-                href={`sms:${row.phone}?body=${encodeURIComponent(`Hey ${row.firstName}, this is APEX Financial — saw your application. Quick text to confirm: are you still looking to get started with insurance recruiting?`)}`}
+                href={smsHref(row.phone, recoveryScript(row.firstName)) ?? `sms:${row.phone}?body=${encodeURIComponent(recoveryScript(row.firstName))}`}
+                {...contactLinkProps(smsHref(row.phone, recoveryScript(row.firstName)))}
                 className={CONTACT_CHIP}
                 aria-label={`Text ${fullName || "applicant"} the recovery template`}
               >

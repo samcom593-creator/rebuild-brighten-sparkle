@@ -20,6 +20,7 @@ import { differenceInDays, format } from "date-fns";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
+import { phoneHref, smsHref, contactLinkProps } from "@/lib/phone";
 
 /**
  * Hiring Pipeline — drag-drop kanban + row actions on every card.
@@ -832,7 +833,8 @@ function ApplicantCard({
       {/* Phone (prominent, click-to-call) — always visible */}
       {app.phone && (
         <a
-          href={`tel:${app.phone}`}
+          href={phoneHref(app.phone) ?? `tel:${app.phone}`}
+          {...contactLinkProps(phoneHref(app.phone))}
           onClick={(e) => e.stopPropagation()}
           className="flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-md px-2 py-1.5 mb-1.5 text-sm font-mono font-semibold tracking-tight transition"
         >
@@ -882,7 +884,7 @@ function ApplicantCard({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-52">
               <DropdownMenuItem asChild>
-                <a href={`tel:${app.phone}`} className="cursor-pointer">
+                <a href={phoneHref(app.phone) ?? `tel:${app.phone}`} {...contactLinkProps(phoneHref(app.phone))} className="cursor-pointer">
                   <Phone className="h-3.5 w-3.5 mr-2" /> Dial now ({formatPhone(app.phone)})
                 </a>
               </DropdownMenuItem>
@@ -914,7 +916,7 @@ function ApplicantCard({
             onClick={(e) => e.stopPropagation()}
             title="Text"
           >
-            <a href={`sms:${app.phone}`}><MessageSquare className="h-3 w-3" /></a>
+            <a href={smsHref(app.phone) ?? `sms:${app.phone}`} {...contactLinkProps(smsHref(app.phone))}><MessageSquare className="h-3 w-3" /></a>
           </Button>
         )}
         <Button

@@ -24,7 +24,7 @@ import {
 import { RecruitingWorkspaceNav } from "@/components/recruiting/RecruitingWorkspaceNav";
 import { RecruitingCommandHero } from "@/components/recruiting/RecruitingCommandHero";
 import { PromoteApplicantButton } from "@/components/applicants/PromoteApplicantButton";
-import { phoneHref, smsHref } from "@/lib/phone";
+import { phoneHref, smsHref, contactLinkProps } from "@/lib/phone";
 import { instagramProfileLink } from "@/lib/instagram";
 import { promoteApplicationToAgent } from "@/lib/hireToOnboarding";
 import { resolveBrand } from "@/config/brand";
@@ -137,12 +137,6 @@ function availableActions(row: Applicant, role: ActorRole | undefined) {
   // strands onboarding. Staff can repair the identity/application link first.
   const actions = (LEGAL_BY_STAGE[row.stage] ?? []).filter((action) => action !== "hire" || Boolean(row.application_id));
   return role === "va" ? actions.filter((action) => VA_ACTIONS.has(action)) : actions;
-}
-
-function externalLinkProps(href: string | null) {
-  return href?.startsWith("https://")
-    ? { target: "_blank" as const, rel: "noopener noreferrer" }
-    : {};
 }
 
 function actionPrompt(row: Applicant) {
@@ -466,8 +460,8 @@ export default function Interviews() {
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 md:justify-end">
-                      {callHref && <Button asChild size="icon" aria-label={`Call ${name}`} className="h-11 w-11 sm:h-9 sm:w-9"><a href={callHref} {...externalLinkProps(callHref)}><Phone className="h-4 w-4" /></a></Button>}
-                      {textHref && <Button asChild size="icon" variant="outline" aria-label={`Text ${name}`} className="h-11 w-11 sm:h-9 sm:w-9"><a href={textHref} {...externalLinkProps(textHref)}><MessageSquare className="h-4 w-4" /></a></Button>}
+                      {callHref && <Button asChild size="icon" aria-label={`Call ${name}`} className="h-11 w-11 sm:h-9 sm:w-9"><a href={callHref} {...contactLinkProps(callHref)}><Phone className="h-4 w-4" /></a></Button>}
+                      {textHref && <Button asChild size="icon" variant="outline" aria-label={`Text ${name}`} className="h-11 w-11 sm:h-9 sm:w-9"><a href={textHref} {...contactLinkProps(textHref)}><MessageSquare className="h-4 w-4" /></a></Button>}
                       {row.invitee_email && <Button asChild size="icon" variant="outline" aria-label={`Email ${name}`} className="h-11 w-11 sm:h-9 sm:w-9"><a href={`mailto:${row.invitee_email}`}><Mail className="h-4 w-4" /></a></Button>}
                       {row.bucket === "upcoming" && row.reschedule_url && <Button asChild size="sm" variant="outline" className="h-11 sm:h-9"><a href={row.reschedule_url} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-4 w-4" /> Reschedule</a></Button>}
                     </div>
@@ -643,8 +637,8 @@ export default function Interviews() {
               </div>
             </div>
             <div className="mt-4 grid grid-cols-2 gap-2">
-              {phoneHref(priorityCandidate.phone) && <Button asChild className="h-11 bg-[#C9A961] font-bold text-black hover:bg-[#C9A961]/90"><a href={phoneHref(priorityCandidate.phone)!}><Phone className="h-4 w-4" /> Call</a></Button>}
-              {smsHref(priorityCandidate.phone) && <Button asChild variant="outline" className="h-11 border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white"><a href={smsHref(priorityCandidate.phone)!}><MessageSquare className="h-4 w-4" /> Text</a></Button>}
+              {phoneHref(priorityCandidate.phone) && <Button asChild className="h-11 bg-[#C9A961] font-bold text-black hover:bg-[#C9A961]/90"><a href={phoneHref(priorityCandidate.phone)!} {...contactLinkProps(phoneHref(priorityCandidate.phone))}><Phone className="h-4 w-4" /> Call</a></Button>}
+              {smsHref(priorityCandidate.phone) && <Button asChild variant="outline" className="h-11 border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white"><a href={smsHref(priorityCandidate.phone)!} {...contactLinkProps(smsHref(priorityCandidate.phone))}><MessageSquare className="h-4 w-4" /> Text</a></Button>}
               {availableActions(priorityCandidate, pipeline.data?.role).length > 0 && <Button className="col-span-2 h-11 bg-white font-bold text-black hover:bg-white/90" onClick={() => chooseAction(priorityCandidate, availableActions(priorityCandidate, pipeline.data?.role)[0])}>{ACTION_LABEL[availableActions(priorityCandidate, pipeline.data?.role)[0]]} <ArrowRight className="h-4 w-4" /></Button>}
             </div>
             <p className="mt-3 text-center text-[9px] uppercase tracking-wide text-white/25">J / K moves through priority candidates</p>
@@ -784,8 +778,8 @@ export default function Interviews() {
                       </div>
 
                       <div className="mt-4 flex flex-wrap items-center gap-2">
-                        {callHref && <Button asChild size="icon" aria-label={`Call ${personName}`} className="h-11 w-11 sm:h-9 sm:w-9"><a href={callHref} {...externalLinkProps(callHref)}><Phone className="h-4 w-4" /></a></Button>}
-                        {textHref && <Button asChild size="icon" variant="outline" aria-label={`Text ${personName}`} className="h-11 w-11 sm:h-9 sm:w-9"><a href={textHref} {...externalLinkProps(textHref)}><MessageSquare className="h-4 w-4" /></a></Button>}
+                        {callHref && <Button asChild size="icon" aria-label={`Call ${personName}`} className="h-11 w-11 sm:h-9 sm:w-9"><a href={callHref} {...contactLinkProps(callHref)}><Phone className="h-4 w-4" /></a></Button>}
+                        {textHref && <Button asChild size="icon" variant="outline" aria-label={`Text ${personName}`} className="h-11 w-11 sm:h-9 sm:w-9"><a href={textHref} {...contactLinkProps(textHref)}><MessageSquare className="h-4 w-4" /></a></Button>}
                         {row.email && <Button asChild size="icon" variant="outline" aria-label={`Email ${personName}`} className="h-11 w-11 sm:h-9 sm:w-9"><a href={`mailto:${row.email}`}><Mail className="h-4 w-4" /></a></Button>}
                         {instagram && <Button asChild size="icon" variant="outline" aria-label={`Open Instagram for ${personName}`} title={`Open @${instagram.handle} on Instagram`} className="h-11 w-11 border-pink-500/30 text-pink-400 hover:bg-pink-500/10 hover:text-pink-400 sm:h-9 sm:w-9"><a href={instagram.href} target="_blank" rel="noopener noreferrer" onClick={(event) => event.stopPropagation()}><Instagram className="h-4 w-4" /></a></Button>}
                         <div className="min-w-0 flex-1" />

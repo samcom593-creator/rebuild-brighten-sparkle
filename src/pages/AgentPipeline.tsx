@@ -32,6 +32,7 @@ import { ResendLicensingButton } from "@/components/callcenter/ResendLicensingBu
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { FOLLOWUP_TIMING } from "@/lib/apexConfig";
 import { formatDistanceToNow, differenceInDays, differenceInHours } from "date-fns";
+import { phoneHref, contactLinkProps } from "@/lib/phone";
 
 interface Application extends KanbanApplication {
   status: string;
@@ -600,7 +601,7 @@ export default function AgentPipeline() {
                 className="h-8 w-8 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
                 asChild
               >
-                <a href={`tel:${app.phone}`}><Phone className="h-4 w-4" /></a>
+                <a href={phoneHref(app.phone) ?? `tel:${app.phone}`} {...contactLinkProps(phoneHref(app.phone))}><Phone className="h-4 w-4" /></a>
               </Button>
             )}
           </div>

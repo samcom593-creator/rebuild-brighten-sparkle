@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { looseSupabase } from "@/lib/looseSupabase";
+import { phoneHref, contactLinkProps } from "@/lib/phone";
 
 type OldApplicantKind = "managers" | "licensedRecruiters";
 
@@ -298,7 +299,7 @@ export default function OldApplicants({ kind }: { kind: OldApplicantKind }) {
                         <div className="flex justify-end gap-1">
                           {row.phone ? (
                             <Button asChild variant="ghost" size="icon" aria-label="Call">
-                              <a href={`tel:${row.phone}`}><Phone className="h-4 w-4" /></a>
+                              <a href={phoneHref(row.phone) ?? `tel:${row.phone}`} {...contactLinkProps(phoneHref(row.phone))}><Phone className="h-4 w-4" /></a>
                             </Button>
                           ) : null}
                           <Button asChild variant="ghost" size="icon" aria-label="Email">

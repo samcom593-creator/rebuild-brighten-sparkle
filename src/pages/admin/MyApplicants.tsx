@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { phoneHref, contactLinkProps } from "@/lib/phone";
 
 /**
  * Manager self-serve view of recruits they're attributed on.
@@ -233,7 +234,7 @@ export default function MyApplicants() {
                           </div>
                           <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
                             {r.phone ? (
-                              <a href={`tel:${r.phone}`} className="flex items-center gap-1 hover:text-primary">
+                              <a href={phoneHref(r.phone) ?? `tel:${r.phone}`} {...contactLinkProps(phoneHref(r.phone))} className="flex items-center gap-1 hover:text-primary">
                                 <Phone className="h-3 w-3" /> {r.phone}
                               </a>
                             ) : null}

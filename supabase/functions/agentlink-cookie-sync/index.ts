@@ -16,6 +16,20 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
+/**
+ * MP-400: unwrap a cookie that a writer JSON-encoded into a TEXT column.
+ * A real Cookie header never starts with a double quote, so a leading+trailing
+ * quote pair is unambiguously a storage-format artefact, not cookie data.
+ */
+function unwrapCookie(raw: unknown): string {
+  let v = String(raw ?? "").trim();
+  if (v.length > 1 && v.startsWith('"') && v.endsWith('"')) {
+    // empty-catch-allow:not-json-means-not-quoted-so-the-raw-value-is-already-correct
+    try { const p = JSON.parse(v); if (typeof p === "string") v = p; } catch { /* keep raw */ }
+  }
+  return v.trim();
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -227,7 +241,14 @@ Deno.serve(async (req) => {
         .select("value")
         .eq("key", "agent_link_session_cookie")
         .maybeSingle();
-      cookie = String((setting as { value?: string } | null)?.value ?? "").trim();
+      // MP-400: system_settings.value is TEXT, and a writer that stored
+      // to_jsonb(cookie::text) landed the value WITH its surrounding JSON
+      // quotes. .trim() strips whitespace, not quotes, so this function sent
+      // `"connect.sid=..."` as the Cookie header and AgentLink returned 401 on
+      // a live cookie for 7h on 2026-09-03. The writer now stores plain text,
+      // but a cookie can never legitimately begin with a double quote, so
+      // unwrap defensively rather than trusting every future writer.
+      cookie = unwrapCookie((setting as { value?: string } | null)?.value);
     }
 
     if (!cookie || cookie.length < 20) {

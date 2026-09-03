@@ -82,7 +82,15 @@ Deno.serve(async (req) => {
 
   try {
     const { data: ck } = await sb.from("system_settings").select("value").eq("key", "agent_link_session_cookie").maybeSingle();
-    const cookie = (ck as { value?: string } | null)?.value ?? "";
+    // MP-400: same storage-format hazard as agentlink-cookie-sync — a writer
+    // stored to_jsonb(cookie::text) into a TEXT column, so the value arrived
+    // wrapped in literal double quotes and this function sent them verbatim as
+    // the Cookie header. A Cookie header never legitimately starts with a quote.
+    let cookie = String((ck as { value?: string } | null)?.value ?? "").trim();
+    if (cookie.length > 1 && cookie.startsWith('"') && cookie.endsWith('"')) {
+      // empty-catch-allow:not-json-means-not-quoted-so-the-raw-value-is-already-correct
+      try { const p = JSON.parse(cookie); if (typeof p === "string") cookie = p.trim(); } catch { /* keep raw */ }
+    }
     if (cookie.length < 20) {
       await finish({ status: "error", error: "no session cookie in system_settings" });
       return json({ ok: false, error: "no session cookie" }, 500);

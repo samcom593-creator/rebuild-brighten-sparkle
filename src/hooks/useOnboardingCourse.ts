@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
 /**
@@ -72,6 +73,39 @@ export function useOnboardingCourse(agentId: string | null) {
   const [currentModuleIndex, setCurrentModuleIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+
+  /**
+   * MP-365 — review mode.
+   *
+   * Sam: "For managers, for MILVER and VA — isn't for me, of course — unlock all
+   * training courses... to properly see what the courses entail."
+   *
+   * Every lesson but the first was gated on passing the previous quiz, and that
+   * gate applied to leaders too. Measured on prod: of the 8 managers, John Riley
+   * had passed 0 quizzes so could open lesson 1 of 6, Chudi / Jacob / Obiajulu
+   * had passed 1 so could open 2, and KJ — furthest along — could open 5. Not
+   * one of them could look at the whole course they are supposed to coach
+   * against. Milver and April have no agent record at all, so the viewer loaded
+   * with no progress and locked them at lesson 1.
+   *
+   * Review mode unlocks every lesson AND stops the viewer writing: browsing does
+   * not create a progress row, does not advance a watch percentage, and does not
+   * record a quiz. Without that, a leader clicking through six lessons to read
+   * them would appear on the very team-progress report they just opened, as a
+   * half-finished learner going stale. It is a toggle, not a permanent state,
+   * because managers do genuinely take this course — KJ has 4 of 6 passed — and
+   * silently taking that away would be a regression nobody asked for.
+   *
+   * The rule lives here rather than in the page so a second course viewer cannot
+   * re-implement it slightly differently.
+   */
+  const { isAdmin, isManager, isVaManager, isVa } = useAuth();
+  const canReviewCourse = isAdmin || isManager || isVaManager || isVa;
+  const [reviewOverride, setReviewOverride] = useState<boolean | null>(null);
+  // Roles arrive after the first render, so the default has to be derived, not
+  // captured in state — otherwise review mode is decided before anyone knows
+  // who is asking. An explicit choice always wins over the default.
+  const reviewMode = canReviewCourse && (reviewOverride ?? true);
 
   const fetchModules = useCallback(async () => {
     const { data, error } = await supabase
@@ -170,7 +204,7 @@ export function useOnboardingCourse(agentId: string | null) {
   }, [agentId]);
 
   const updateVideoProgress = useCallback(async (moduleId: string, percent: number) => {
-    if (!agentId) return;
+    if (!agentId || reviewMode) return;
 
     const existing = progress[moduleId];
     
@@ -230,7 +264,7 @@ export function useOnboardingCourse(agentId: string | null) {
         }
       }
     }
-  }, [agentId, progress]);
+  }, [agentId, progress, reviewMode]);
 
   const submitQuiz = useCallback(async (
     moduleId: string,
@@ -238,6 +272,11 @@ export function useOnboardingCourse(agentId: string | null) {
     score: number,
     passed: boolean
   ) => {
+    // In review mode the answers are graded in the browser and nothing is
+    // written: no attempt is spent, no score is recorded, and the
+    // notify-course-complete side effect below cannot fire from a leader
+    // reading through the last lesson.
+    if (reviewMode) return true;
     if (!agentId) return false;
 
     const existing = progress[moduleId];
@@ -313,14 +352,15 @@ export function useOnboardingCourse(agentId: string | null) {
     }
 
     return true;
-  }, [agentId, progress, modules, toast, fetchProgress]);
+  }, [agentId, progress, modules, toast, fetchProgress, reviewMode]);
 
   const isModuleUnlocked = useCallback((moduleIndex: number) => {
+    if (reviewMode) return true;
     if (moduleIndex === 0) return true;
     const prevModule = modules[moduleIndex - 1];
     if (!prevModule) return false;
     return progress[prevModule.id]?.passed === true;
-  }, [modules, progress]);
+  }, [modules, progress, reviewMode]);
 
   /** Tries left on this module. 0 means the agent needs a manager reset. */
   const attemptsRemaining = useCallback((moduleId: string) => {
@@ -330,6 +370,10 @@ export function useOnboardingCourse(agentId: string | null) {
   }, [progress]);
 
   const canTakeQuiz = useCallback((moduleId: string) => {
+    // The knowledge check is part of "what the course entails", and review mode
+    // writes no progress row for the 80%-watched test to read, so gating on one
+    // would hide every test from the people who came to look at them.
+    if (reviewMode) return true;
     const prog = progress[moduleId];
     if (!prog) return false;
     // Primary: 80% watched
@@ -340,7 +384,7 @@ export function useOnboardingCourse(agentId: string | null) {
       if (elapsed > 5 * 60 * 1000) return true;
     }
     return false;
-  }, [progress]);
+  }, [progress, reviewMode]);
 
   const getOverallProgress = useCallback(() => {
     if (modules.length === 0) return 0;
@@ -364,7 +408,7 @@ export function useOnboardingCourse(agentId: string | null) {
 
   // Auto-initialize progress record when viewing a module (ensures started_at is set)
   const initializeProgress = useCallback(async (moduleId: string) => {
-    if (!agentId || progress[moduleId]) return;
+    if (!agentId || reviewMode || progress[moduleId]) return;
     
     // upsert with ignoreDuplicates so re-viewing a module never 409s on the
     // (agent_id, module_id) unique key — if a row already exists, leave it be
@@ -402,7 +446,7 @@ export function useOnboardingCourse(agentId: string | null) {
         }
       }
     }
-  }, [agentId, progress]);
+  }, [agentId, progress, reviewMode]);
 
   useEffect(() => {
     const current = modules[currentModuleIndex];
@@ -424,6 +468,10 @@ export function useOnboardingCourse(agentId: string | null) {
     isModuleUnlocked,
     canTakeQuiz,
     attemptsRemaining,
+    /** True for admin / manager / va_manager / va — the roles offered review mode. */
+    canReviewCourse,
+    reviewMode,
+    setReviewMode: setReviewOverride,
     getOverallProgress,
     isCourseComplete,
     currentModule: modules[currentModuleIndex] || null

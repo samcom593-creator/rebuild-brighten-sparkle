@@ -76,7 +76,6 @@ interface AgentProgress {
   agentId: string;
   agentName: string;
   email: string;
-  managerId: string | null;
   managerName: string;
   onboardingStage: string;
   modules: Record<string, { 
@@ -93,6 +92,37 @@ interface AgentProgress {
   isAtRisk: boolean;
   hasStarted: boolean;
   courseStartedAt: string | null;
+}
+
+/** The shape my_course_progress() returns. */
+interface RpcPayload {
+  scope?: "all" | "downline" | "none";
+  scope_label?: string;
+  total_modules?: number;
+  agents?: Array<{
+    agent_id: string;
+    display_name: string;
+    email: string;
+    manager_name: string;
+    onboarding_stage: string;
+    modules: Record<string, {
+      passed?: boolean;
+      completed_at?: string | null;
+      watched_percent?: number;
+      score?: number | null;
+    }> | null;
+    last_activity?: string | null;
+    course_started_at?: string | null;
+  }>;
+}
+
+interface ScopedProgress {
+  /** 'all' for admin and agency staff, 'downline' for a manager, 'none' if the
+   *  caller has no leader role. Rendered, never hidden — an empty table means
+   *  something different in each case and the reader has to be told which. */
+  scope: "all" | "downline" | "none";
+  scopeLabel: string;
+  agents: AgentProgress[];
 }
 
 type FilterType = "in_progress" | "complete" | "not_started";
@@ -142,154 +172,89 @@ export default function CourseProgress() {
     staleTime: 60_000,
   });
 
-  // Fetch agents in course with their progress
-  const { data: agentProgress = [], isLoading, refetch } = useQuery({
+  // MP-365: one server-side call that returns only the agents this leader is
+  // entitled to the truth about.
+  //
+  // This page used to read every course agent — 108 rows — and let RLS blank the
+  // ones the caller could not see. A row it was not allowed to read came back as
+  // no progress rows, and `hasStarted = size > 0` drew that identically to a
+  // person who had never opened the course: 0%, "not started", with a reminder
+  // button beside it. Measured on prod: KJ could read 18 of 108, Milver and
+  // April 0 of 108, so a VA's whole view of the company was people who had all
+  // done nothing. my_course_progress() returns the roster and its progress
+  // together, so a short list now means a small scope and 0% means 0%.
+  const { data: scoped, isLoading, refetch } = useQuery({
     queryKey: ["course-progress-full"],
     staleTime: 60_000,
-    queryFn: async () => {
-      const { data: agents } = await supabase
-        .from("agents")
-        .select(`
-          id,
-          onboarding_stage,
-          invited_by_manager_id,
-          has_training_course,
-          profiles!agents_profile_id_fkey (
-            full_name,
-            email
-          )
-        `)
-        .eq("has_training_course", true)
-        .eq("is_deactivated", false);
+    queryFn: async (): Promise<ScopedProgress> => {
+      const { data, error } = await supabase.rpc("my_course_progress" as never);
+      if (error) throw error;
+      const payload = (data ?? {}) as unknown as RpcPayload;
+      const totalModules = Number(payload.total_modules ?? 0);
 
-      if (!agents?.length) return [];
-
-      const agentIds = agents.map((a) => a.id);
-      const managerIds = [...new Set(agents.map(a => a.invited_by_manager_id).filter(Boolean))];
-
-      const managerMap = new Map<string, string>();
-      if (managerIds.length > 0) {
-        const { data: managerAgents } = await supabase
-          .from("agents")
-          .select("id, user_id")
-          .in("id", managerIds);
-        
-        if (managerAgents?.length) {
-          const managerUserIds = managerAgents.map(a => a.user_id).filter(Boolean);
-          const { data: managerProfiles } = await supabase
-            .from("profiles")
-            .select("user_id, full_name")
-            .in("user_id", managerUserIds);
-          
-          const userToName = new Map(managerProfiles?.map(p => [p.user_id, p.full_name]) || []);
-          managerAgents.forEach(ma => {
-            if (ma.user_id) {
-              managerMap.set(ma.id, userToName.get(ma.user_id) || "—");
-            }
-          });
-        }
-      }
-
-      const { data: progress } = await supabase
-        .from("onboarding_progress")
-        .select("agent_id, module_id, passed, completed_at, video_watched_percent, score, started_at")
-        .in("agent_id", agentIds);
-
-      const { data: allModules } = await supabase
-        .from("onboarding_modules")
-        .select("id")
-        .eq("is_active", true);
-      const totalModules = allModules?.length || 0;
-
-      const progressByAgent = new Map<string, Map<string, { passed: boolean; completedAt: string | null; watchedPercent: number; quizScore: number | null }>>();
-      const lastActivityByAgent = new Map<string, string>();
-      const courseStartByAgent = new Map<string, string>();
-
-      progress?.forEach((p) => {
-        if (!progressByAgent.has(p.agent_id)) {
-          progressByAgent.set(p.agent_id, new Map());
-        }
-        progressByAgent.get(p.agent_id)!.set(p.module_id, {
-          passed: p.passed || false,
-          completedAt: p.completed_at,
-          watchedPercent: p.video_watched_percent || 0,
-          quizScore: p.score || null,
-        });
-
-        if (p.completed_at) {
-          const current = lastActivityByAgent.get(p.agent_id);
-          if (!current || p.completed_at > current) {
-            lastActivityByAgent.set(p.agent_id, p.completed_at);
-          }
-        }
-        
-        const startedAt = p.started_at || p.completed_at;
-        if (startedAt) {
-          const currentStart = courseStartByAgent.get(p.agent_id);
-          if (!currentStart || startedAt < currentStart) {
-            courseStartByAgent.set(p.agent_id, startedAt);
-          }
-        }
-      });
-
-      const result: AgentProgress[] = agents.map((agent) => {
-        const profile = agent.profiles;
-        const agentModules = progressByAgent.get(agent.id) || new Map();
-        const lastActivity = lastActivityByAgent.get(agent.id) || null;
-        const courseStartedAt = courseStartByAgent.get(agent.id) || null;
-        
+      const rows: AgentProgress[] = (payload.agents ?? []).map((row) => {
+        const modules: AgentProgress["modules"] = {};
         let completedCount = 0;
-        const modulesRecord: Record<string, { passed: boolean; completedAt: string | null; watchedPercent: number; quizScore: number | null }> = {};
-        
-        agentModules.forEach((value, key) => {
-          if (value.passed) completedCount++;
-          modulesRecord[key] = value;
-        });
+        for (const [moduleId, value] of Object.entries(row.modules ?? {})) {
+          const passed = value?.passed === true;
+          if (passed) completedCount++;
+          modules[moduleId] = {
+            passed,
+            completedAt: value?.completed_at ?? null,
+            watchedPercent: Number(value?.watched_percent ?? 0),
+            quizScore: value?.score ?? null,
+          };
+        }
 
-        const percentComplete = totalModules > 0 ? Math.round((completedCount / totalModules) * 100) : 0;
-        const hasStarted = agentModules.size > 0;
-        
-        const daysSinceActivity = lastActivity 
+        const percentComplete = totalModules > 0
+          ? Math.round((completedCount / totalModules) * 100)
+          : 0;
+        const hasStarted = Object.keys(modules).length > 0;
+        const lastActivity = row.last_activity ?? null;
+        const daysSinceActivity = lastActivity
           ? differenceInDays(new Date(), new Date(lastActivity))
           : hasStarted ? 999 : 0;
-        
-        const isStalled = hasStarted && !lastActivity ? true : daysSinceActivity >= 3 && percentComplete < 100;
-        const isAtRisk = daysSinceActivity >= 7 && percentComplete < 100;
 
         return {
-          agentId: agent.id,
-          agentName: profile?.full_name || "—",
-          email: profile?.email || "",
-          managerId: agent.invited_by_manager_id,
-          managerName: agent.invited_by_manager_id ? managerMap.get(agent.invited_by_manager_id) || "—" : "Unassigned",
-          onboardingStage: agent.onboarding_stage || "onboarding",
-          modules: modulesRecord,
+          agentId: row.agent_id,
+          agentName: row.display_name || "—",
+          email: row.email || "",
+          managerName: row.manager_name || "Unassigned",
+          onboardingStage: row.onboarding_stage || "onboarding",
+          modules,
           completedCount,
           totalModules,
           percentComplete,
           lastActivity,
-          isStalled,
-          isAtRisk,
+          isStalled: hasStarted && !lastActivity ? true : daysSinceActivity >= 3 && percentComplete < 100,
+          isAtRisk: daysSinceActivity >= 7 && percentComplete < 100,
           hasStarted,
-          courseStartedAt,
+          courseStartedAt: row.course_started_at ?? null,
         };
       });
 
-      return result.sort((a, b) => {
+      rows.sort((a, b) => {
         const priority = (agent: AgentProgress) => {
           if (agent.percentComplete >= 100) return 0;
           if (agent.hasStarted && agent.percentComplete < 100 && !agent.isStalled && !agent.isAtRisk) return 1;
           if (agent.isStalled && !agent.isAtRisk) return 2;
           if (agent.isAtRisk) return 3;
-          if (!agent.hasStarted) return 4;
           return 4;
         };
         const pa = priority(a), pb = priority(b);
         if (pa !== pb) return pa - pb;
         return b.percentComplete - a.percentComplete;
       });
+
+      return {
+        scope: payload.scope ?? "none",
+        scopeLabel: payload.scope_label ?? "",
+        agents: rows,
+      };
     },
   });
+
+  const agentProgress = scoped?.agents ?? [];
 
   // Send reminder mutation
   const sendReminderMutation = useMutation({
@@ -361,8 +326,8 @@ export default function CourseProgress() {
     },
     onSuccess: (_, agentId) => {
       toast.success("Agent unenrolled from course");
-      queryClient.setQueryData(["course-progress-full"], (old: AgentProgress[] | undefined) => 
-        old?.filter(a => a.agentId !== agentId) || []
+      queryClient.setQueryData(["course-progress-full"], (old: ScopedProgress | undefined) =>
+        old ? { ...old, agents: old.agents.filter((a) => a.agentId !== agentId) } : old
       );
       queryClient.invalidateQueries({ queryKey: ["course-progress-full"] });
       queryClient.invalidateQueries({ queryKey: ["course-progress-admin"] });
@@ -479,6 +444,16 @@ export default function CourseProgress() {
               <p className="text-xs text-muted-foreground mt-0.5">
                 Track agent coursework completion and send reminders
               </p>
+              {/* Who this table covers. An empty table means "nobody in your
+                  scope", not "nobody has started", and the two are only
+                  distinguishable if the scope is stated. */}
+              {scoped && (
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  {scoped.scope === "none"
+                    ? scoped.scopeLabel
+                    : `${scoped.scopeLabel} · ${scoped.agents.length} on the course`}
+                </p>
+              )}
             </div>
           </div>
           <div className="flex gap-2 flex-wrap">

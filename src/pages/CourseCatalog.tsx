@@ -8,6 +8,7 @@ import {
   Captions,
   CheckCircle2,
   Clock3,
+  GraduationCap,
   Headphones,
   HelpCircle,
   Loader2,
@@ -184,6 +185,9 @@ export default function CourseCatalog() {
     getOverallProgress,
     isCourseComplete,
     currentModule,
+    canReviewCourse,
+    reviewMode,
+    setReviewMode,
   } = useOnboardingCourse(agentId);
 
   useEffect(() => {
@@ -192,14 +196,16 @@ export default function CourseCatalog() {
     const requestedIndex = requestedModuleId
       ? modules.findIndex((module) => module.id === requestedModuleId)
       : -1;
-    const requestedUnlocked = requestedIndex >= 0 && (
-      requestedIndex === 0 || progress[modules[requestedIndex - 1].id]?.passed === true
-    );
+    // Ask the hook rather than restating its rule. This line used to carry its
+    // own copy of "unlocked means the previous quiz is passed", so a deep link
+    // to lesson 5 would still bounce back to the resume point for someone the
+    // hook considers unlocked — the same rule in two places, disagreeing.
+    const requestedUnlocked = requestedIndex >= 0 && isModuleUnlocked(requestedIndex);
     const firstIncomplete = modules.findIndex((module) => progress[module.id]?.passed !== true);
     const resumeIndex = firstIncomplete >= 0 ? firstIncomplete : modules.length - 1;
     setCurrentModuleIndex(requestedUnlocked ? requestedIndex : resumeIndex);
     resumeSelectedRef.current = true;
-  }, [modules, progress, searchParams, setCurrentModuleIndex]);
+  }, [modules, progress, searchParams, setCurrentModuleIndex, isModuleUnlocked]);
 
   const completedCount = modules.filter((module) => progress[module.id]?.passed).length;
   const totalMinutes = useMemo(
@@ -285,14 +291,31 @@ export default function CourseCatalog() {
         <div className="grid gap-6 p-5 sm:p-7 lg:grid-cols-[1fr_auto] lg:items-end">
           <div>
             <Badge className="mb-3 border-primary/30 bg-primary/10 text-primary hover:bg-primary/10">
-              Required course
+              {reviewMode ? "Review mode" : "Required course"}
             </Badge>
             <h1 className="max-w-3xl text-3xl font-extrabold tracking-tight sm:text-4xl">
               Field-release training
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-              Follow one ordered path through {brand.shortName} fundamentals, scripts, ReadyMode, pipeline, quoting, and field underwriting. Your next unfinished lesson opens automatically.
+              {reviewMode
+                ? `Every lesson is open so you can read the whole course before you coach it. Nothing you do here is recorded — no progress, no watch time, no test attempts.`
+                : `Follow one ordered path through ${brand.shortName} fundamentals, scripts, ReadyMode, pipeline, quoting, and field underwriting. Your next unfinished lesson opens automatically.`}
             </p>
+            {/* MP-365: leaders land in review mode, and can leave it. A manager
+                who is genuinely taking the course still can — the switch is the
+                only thing standing between reading and being recorded, so it is
+                stated rather than inferred. */}
+            {canReviewCourse && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-4 gap-1.5"
+                onClick={() => setReviewMode(!reviewMode)}
+              >
+                {reviewMode ? <GraduationCap className="h-3.5 w-3.5" /> : <BookOpenCheck className="h-3.5 w-3.5" />}
+                {reviewMode ? "Take the course for credit" : "Back to review mode"}
+              </Button>
+            )}
           </div>
           <div className="grid grid-cols-3 gap-2 lg:min-w-80">
             <CourseStat value={`${overallProgress}%`} label="complete" />
@@ -511,14 +534,23 @@ export default function CourseCatalog() {
                       <CardContent className="p-8 text-center">
                         <BookOpenCheck className="mx-auto mb-3 h-10 w-10 text-primary" />
                         <h3 className="font-bold">Confirm lesson completion</h3>
-                        <p className="mt-1 text-sm text-muted-foreground">This lesson has no questions. Finish the video to continue.</p>
-                        <Button
-                          className="mt-5"
-                          onClick={() => handleQuizSubmit([], 100, true)}
-                          disabled={!canTakeQuiz(currentModule.id)}
-                        >
-                          {canTakeQuiz(currentModule.id) ? "Complete lesson" : "Watch 80% to unlock"}
-                        </Button>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {reviewMode
+                            ? "This lesson has no questions. Move on whenever you like — review mode records nothing."
+                            : "This lesson has no questions. Finish the video to continue."}
+                        </p>
+                        {/* Hidden rather than disabled in review mode: the click
+                            would succeed and store nothing, which reads as a
+                            completion that never happened. */}
+                        {!reviewMode && (
+                          <Button
+                            className="mt-5"
+                            onClick={() => handleQuizSubmit([], 100, true)}
+                            disabled={!canTakeQuiz(currentModule.id)}
+                          >
+                            {canTakeQuiz(currentModule.id) ? "Complete lesson" : "Watch 80% to unlock"}
+                          </Button>
+                        )}
                       </CardContent>
                     </Card>
                   )}
@@ -536,7 +568,9 @@ export default function CourseCatalog() {
                   <ArrowLeft className="h-4 w-4" /> Previous
                 </Button>
                 <span className="hidden text-xs text-muted-foreground sm:block">
-                  Pass each check to unlock the next lesson.
+                  {reviewMode
+                    ? "Every lesson is open. Nothing here is recorded."
+                    : "Pass each check to unlock the next lesson."}
                 </span>
                 <Button
                   variant="ghost"

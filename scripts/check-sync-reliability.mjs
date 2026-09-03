@@ -271,6 +271,34 @@ function walk(dir, exts, fn) {
         `precedent, so a broken parse fails loud rather than silent.`,
       );
     }
+    // MP-407. Two rules, because the 2026-09-03 false pages needed both.
+    //
+    // (a) The freshness read must RETRY. It was a single curl, and on 09-03 two
+    //     bot-sql blips 35 minutes apart each became a priority-5 push claiming
+    //     the book was stale while it was 10,612s / 12,661s old -- inside the
+    //     14,400s bound, i.e. this gate's own rule said acquit both times.
+    if (!/for\s+fr_delay\s+in\s+0\s+2\s+4/.test(src)) {
+      violations.push(
+        `${cronYml}: the AgentLink freshness read must retry (3x, 0/2/4s backoff) before it is ` +
+        `allowed to conclude anything. A single unretried read turns a transient bot-sql blip ` +
+        `into a page that says the book is stale when it is fresh -- measured twice on 2026-09-03.`,
+      );
+    }
+    // (b) An unreadable answer must never be dressed as a measured duration.
+    //     "99999999" is the sentinel for "I could not look"; printing it inside
+    //     "No successful AgentLink sync for ${ok_age}s" told Sam the book had not
+    //     synced in 3.17 YEARS. Staying red on an unreadable answer is correct and
+    //     deliberate -- the SENTENCE is what must not lie.
+    const staleDetails = [...src.matchAll(/STALE_DETAIL="([^"]*)"/g)].map((m) => m[1]);
+    for (const detail of staleDetails) {
+      if (detail.includes("99999999")) {
+        violations.push(
+          `${cronYml}: a STALE_DETAIL page text interpolates the 99999999 unreadable-sentinel as if ` +
+          `it were a measured age. Report "freshness UNKNOWN, not measured" instead. A true page and ` +
+          `a false page cost the same when both carry a fabricated number.`,
+        );
+      }
+    }
   }
 }
 

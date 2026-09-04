@@ -37,7 +37,7 @@ import path from "node:path";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 const SCAN_DIR = path.join(repoRoot, "supabase/functions");
-const BASELINE = 98;
+const BASELINE = 97;
 
 // `await resend.emails.send(` NOT preceded by a destructure/assignment on the same line.
 const SEND_RX = /await\s+resend\s*\.\s*emails\s*\.\s*send\s*\(/;

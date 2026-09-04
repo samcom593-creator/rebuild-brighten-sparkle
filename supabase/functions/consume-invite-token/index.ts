@@ -371,7 +371,18 @@ serve(async (req) => {
     if (!linkedAuthError && linkedAuth?.user) {
       const linkedEmail = (linkedAuth.user.email ?? "").trim().toLowerCase();
       if (linkedEmail && linkedEmail !== email) {
-        return json({ ok: false, error: "identity_conflict" }, 409);
+        // The person is already on file (matched by NPN/profile) under a
+        // DIFFERENT email than the one typed. Cari Mullen 2026-09-04: Add
+        // Agent created her account, she opened the hire link with another
+        // address, and four 409s rendered as "non-2xx status code". Name it,
+        // and hand back a masked hint so she can recognise the address on
+        // file. Never rebind the auth email from a typed value — anyone
+        // holding the link plus an NPN could hijack the account.
+        const at = linkedEmail.indexOf("@");
+        const emailHint = at > 1
+          ? `${linkedEmail[0]}***${linkedEmail.slice(at)}`
+          : "***";
+        return json({ ok: false, error: "email_mismatch", email_hint: emailHint }, 409);
       }
       if (authUserId && authUserId !== existingAgent.user_id) {
         return json({ ok: false, error: "identity_conflict" }, 409);

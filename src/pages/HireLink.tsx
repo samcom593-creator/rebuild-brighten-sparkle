@@ -152,12 +152,19 @@ export default function HireLink() {
         },
       );
       if (error) {
-        const detail = (error as { context?: { body?: string } })?.context?.body;
-        let parsed: { error?: string } | null = null;
-        try {
-          if (detail) parsed = JSON.parse(detail);
-        } catch { // empty-catch-allow:jsonparse-fallback
-          // noop
+        // supabase-js wraps a non-2xx in FunctionsHttpError whose `context` is
+        // the raw Response — its body is a stream, not a string, so the old
+        // JSON.parse(context.body) never parsed and EVERY refusal rendered as
+        // "Edge Function returned a non-2xx status code" (Cari, 2026-09-04:
+        // four identity_conflict 409s shown as that sentence). Read the body.
+        let parsed: { error?: string; email_hint?: string } | null = null;
+        const ctx = (error as { context?: Response })?.context;
+        if (ctx && typeof ctx.json === "function") {
+          try {
+            parsed = (await ctx.clone().json()) as { error?: string; email_hint?: string };
+          } catch { // empty-catch-allow:jsonparse-fallback
+            parsed = null;
+          }
         }
         const code = parsed?.error ?? error.message ?? "unknown_error";
         if (
@@ -167,6 +174,14 @@ export default function HireLink() {
           code === "invite_revoked"
         ) {
           setInvalid(code);
+        } else if (code === "email_mismatch") {
+          toast.error(
+            `You already have an account under ${parsed?.email_hint ?? "a different email"}. Sign in with that address, or ask your manager to correct the email on file — this link can't change it.`,
+          );
+        } else if (code === "identity_conflict") {
+          toast.error(
+            "This email, phone, or NPN is already on file for another account. Sign in with that account, or ask your manager to merge the records before using this link.",
+          );
         } else {
           toast.error(`Couldn't activate: ${code}`);
         }

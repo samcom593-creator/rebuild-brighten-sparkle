@@ -323,7 +323,8 @@ export function ScopedProductionScoreboard() {
     queryFn: async () => {
       const { data, error } = await supabase.rpc("production_book_freshness" as never);
       if (error) throw error;
-      const row = (Array.isArray(data) ? data[0] : data) as BookFreshness | undefined;
+      const value: unknown = data;
+      const row = (Array.isArray(value) ? value[0] : value) as BookFreshness | null | undefined;
       return row ?? null;
     },
   });

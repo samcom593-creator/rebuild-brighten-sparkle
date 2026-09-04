@@ -2,6 +2,8 @@ import { Suspense, lazy, useEffect, useRef } from "react";
 import { Outlet } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { secondsUntilExpiry } from "@/lib/sessionClock";
+import { SessionClockBanner } from "@/components/SessionClockBanner";
 import { SidebarLayout } from "./SidebarLayout";
 import { PushNotificationPrompt } from "./PushNotificationPrompt";
 import { CommandHintFab } from "./CommandHintFab";
@@ -95,14 +97,35 @@ function InnerPageLoader() {
  * re-fire with the fresh JWT. If refresh fails, leave it to the
  * per-page diagnostic banner to offer the user a fix path.
  */
+/**
+ * MP-366: the floor between refresh attempts. supabase-js already auto-refreshes
+ * the steady state; this hook only exists to catch the near-expiry edge, so one
+ * attempt a minute is generous. Anything faster is the loop, not the feature.
+ */
+const MIN_REFRESH_SPACING_MS = 60_000;
+
 function useGlobalSessionRefresh() {
   const queryClient = useQueryClient();
   const onceRef = useRef(false);
+  // MP-366: two guards this loop never had. `inFlight` stops mount, the
+  // interval and a visibilitychange overlapping each other; `lastAttemptMs`
+  // enforces a floor between attempts. Without them the success path below —
+  // invalidateQueries(), which re-fires the 70-90 request first-paint burst
+  // MP-361 documented — could feed the next refresh, and on one agent's machine
+  // it did: 135 POST /token in 55 minutes, ending in Supabase's rate limiter
+  // and a logout he could not explain.
+  const inFlightRef = useRef(false);
+  const lastAttemptRef = useRef(0);
   useEffect(() => {
     if (onceRef.current) return;
     onceRef.current = true;
     let cancelled = false;
     const refresh = async (label: string) => {
+      if (inFlightRef.current) return;
+      const now = Date.now();
+      if (now - lastAttemptRef.current < MIN_REFRESH_SPACING_MS) return;
+      inFlightRef.current = true;
+      lastAttemptRef.current = now;
       try {
         // CRITICAL: never call refreshSession() blindly. On a page reload it
         // races the client's own init/auto-refresh, and the refresh-token
@@ -114,7 +137,15 @@ function useGlobalSessionRefresh() {
         const { data: { session } } = await supabase.auth.getSession();
         if (cancelled) return;
         if (!session) return; // nothing to refresh — do NOT wipe/sign out
-        const secondsLeft = (session.expires_at ?? 0) - Math.floor(Date.now() / 1000);
+        // Ask against SERVER time, not the device's. This line used to read
+        // `session.expires_at - Date.now()/1000`, which asks a clock the device
+        // owns how old a token the server stamped is. A device running far
+        // enough ahead makes every fresh token look nearly expired, so this
+        // fired every time it was called. secondsUntilExpiry corrects by the
+        // skew measured from the token's own `iat`, and returns null rather
+        // than a confident wrong number when it cannot measure at all.
+        const secondsLeft = secondsUntilExpiry(session.expires_at, Date.now());
+        if (secondsLeft === null) return; // no expiry to age — nothing to top up
         if (secondsLeft > 15 * 60) return; // still fresh; skip to avoid the race
         // Pass the explicit session so refresh can never throw "session missing".
         const { data, error } = await supabase.auth.refreshSession(session);
@@ -127,6 +158,8 @@ function useGlobalSessionRefresh() {
         queryClient.invalidateQueries();
       } catch (e) {
         console.warn(`[GlobalSessionRefresh:${label}] threw:`, e);
+      } finally {
+        inFlightRef.current = false;
       }
     };
     refresh("mount");
@@ -156,6 +189,7 @@ export function AuthenticatedShell() {
         <TooltipProvider>
         <ConfirmProvider>
           <SidebarLayout showPhoneBanner={true}>
+            <SessionClockBanner />
             <OfflineSyncStatus />
             <CelebrationProvider />
             <CommandPalette />

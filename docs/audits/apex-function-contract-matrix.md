@@ -1,15 +1,15 @@
 # APEX Function Contract Matrix
 
-Generated: 2026-09-03T20:44:54.228Z
+Generated: 2026-09-04T14:52:39.540Z
 Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 
 ## Inventory Summary
 
-- Total Local Edge Functions: **252**
-- Configured in `config.toml`: **254**
+- Total Local Edge Functions: **253**
+- Configured in `config.toml`: **255**
 - Invoked Edge Functions in Source: **101**
-- Invoked RPC Calls in Source: **141**
-- SQL Functions in Migrations: **480**
+- Invoked RPC Calls in Source: **145**
+- SQL Functions in Migrations: **490**
 
 ## Edge Function Auth & Verification Contracts
 
@@ -84,6 +84,7 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 | `generate-monthly-awards` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `generate-quiz-questions` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `get-active-managers` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `get-public-recruiters` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `get-vapid-public-key` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `ics-feed` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `ig-voice-broadcast` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -277,6 +278,6 @@ applied by hand through bot-sql and never round-tripped into
 `supabase/migrations`, so this directory does not model the deployed database.
 `apex-doctor` queries `pg_proc` and is the authority on deployed state.
 
-- Invoked RPCs: **141**
-- Also declared in this commit's migrations: **132**
+- Invoked RPCs: **145**
+- Also declared in this commit's migrations: **136**
 - Declared only in the database: **9**

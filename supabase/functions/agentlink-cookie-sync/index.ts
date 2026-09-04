@@ -69,7 +69,7 @@ function json(body: unknown, status = 200) {
 
 function num(v: unknown): number {
   if (v === null || v === undefined || v === "") return 0;
-  const n = typeof v === "number" ? v : parseFloat(String(v).replace(/[^0-9.\-]/g, ""));
+  const n = typeof v === "number" ? v : parseFloat(String(v).replace(/[^0-9.-]/g, ""));
   return Number.isFinite(n) ? n : 0;
 }
 

@@ -9,6 +9,19 @@ interface VitalEntry {
   rating?: "good" | "needs-improvement" | "poor";
 }
 
+interface LayoutShiftEntry extends PerformanceEntry {
+  readonly hadRecentInput: boolean;
+  readonly value: number;
+}
+
+interface EventTimingEntry extends PerformanceEntry {
+  readonly duration: number;
+}
+
+interface EventTimingObserverInit extends PerformanceObserverInit {
+  durationThreshold: number;
+}
+
 // One row per vital per page is enough to diagnose user experience. Event
 // Timing emits one entry for every interaction; pushing every entry produced
 // 28,875 web_vital.INP rows in 24 hours (94% of all analytics writes) from only
@@ -75,32 +88,35 @@ export function initWebVitals() {
   try {
     new PerformanceObserver((list) => {
       const entries = list.getEntries();
-      const last = entries[entries.length - 1] as any;
+      const last = entries[entries.length - 1];
       if (last) enqueue({ name: "LCP", value: last.startTime, rating: last.startTime < 2500 ? "good" : last.startTime < 4000 ? "needs-improvement" : "poor" });
     }).observe({ type: "largest-contentful-paint", buffered: true });
-  } catch {} // empty-catch-allow:telemetry-fire-and-forget
+  } catch { // empty-catch-allow:telemetry-fire-and-forget
+  }
 
   // CLS
   try {
     let cls = 0;
     new PerformanceObserver((list) => {
-      for (const entry of list.getEntries() as any[]) {
+      for (const entry of list.getEntries() as LayoutShiftEntry[]) {
         if (!entry.hadRecentInput) cls += entry.value;
       }
       enqueue({ name: "CLS", value: cls, rating: cls < 0.1 ? "good" : cls < 0.25 ? "needs-improvement" : "poor" });
     }).observe({ type: "layout-shift", buffered: true });
-  } catch {} // empty-catch-allow:telemetry-fire-and-forget
+  } catch { // empty-catch-allow:telemetry-fire-and-forget
+  }
 
   // INP / FID via event timing
   try {
     new PerformanceObserver((list) => {
-      for (const entry of list.getEntries() as any[]) {
+      for (const entry of list.getEntries() as EventTimingEntry[]) {
         if (entry.duration > 40) {
           enqueue({ name: "INP", value: entry.duration, rating: entry.duration < 200 ? "good" : entry.duration < 500 ? "needs-improvement" : "poor" });
         }
       }
-    }).observe({ type: "event", buffered: true, durationThreshold: 40 } as any);
-  } catch {} // empty-catch-allow:telemetry-fire-and-forget
+    }).observe({ type: "event", buffered: true, durationThreshold: 40 } as EventTimingObserverInit);
+  } catch { // empty-catch-allow:telemetry-fire-and-forget
+  }
 
   window.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") void flush();

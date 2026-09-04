@@ -22,7 +22,7 @@ const authState = {
 
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ ...authState }) }));
 vi.mock("@/hooks/useBrand", () => ({
-  useBrand: () => ({ legalName: "APEX Financial" }),
+  useBrand: () => ({ legalName: "APEX Financial", shortName: "APEX" }),
 }));
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {

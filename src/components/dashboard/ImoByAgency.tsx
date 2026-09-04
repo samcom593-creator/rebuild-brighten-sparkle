@@ -76,10 +76,10 @@ export function ImoByAgency({
   const invalidateProduction = () => {
     // MP-431: cancelRefetch:false — an in-flight heavy call is reused, never
     // aborted and re-issued while the database still runs the abandoned one.
-    queryClient.invalidateQueries({ queryKey: ["imo-by-agency"], cancelRefetch: false });
-    queryClient.invalidateQueries({ queryKey: ["crm-today-production"], cancelRefetch: false });
-    queryClient.invalidateQueries({ queryKey: ["apex-home-dashboard"], cancelRefetch: false });
-    queryClient.invalidateQueries({ queryKey: ["scoped-production-scoreboard"], cancelRefetch: false });
+    queryClient.invalidateQueries({ queryKey: ["imo-by-agency"] }, { cancelRefetch: false });
+    queryClient.invalidateQueries({ queryKey: ["crm-today-production"] }, { cancelRefetch: false });
+    queryClient.invalidateQueries({ queryKey: ["apex-home-dashboard"] }, { cancelRefetch: false });
+    queryClient.invalidateQueries({ queryKey: ["scoped-production-scoreboard"] }, { cancelRefetch: false });
   };
   // COALESCED (2026-08-31, MP-361). invalidateProduction() refetches four
   // query keys, and this component mounts at three render sites. Undebounced,

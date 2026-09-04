@@ -34,7 +34,7 @@ export function invalidateOperationalTruth(queryClient: QueryClient): void {
   for (const key of OPERATIONAL_TRUTH_QUERY_KEYS) {
     // MP-431: reuse an in-flight fetch instead of aborting it — the database
     // keeps executing an abandoned statement to completion.
-    void queryClient.invalidateQueries({ queryKey: [key], cancelRefetch: false });
+    void queryClient.invalidateQueries({ queryKey: [key] }, { cancelRefetch: false });
   }
 
   // Same-tab mutations do not produce a Postgres realtime packet quickly

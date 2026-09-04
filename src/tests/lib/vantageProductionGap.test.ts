@@ -82,4 +82,17 @@ describe("Vantage external production reconciliation", () => {
     expect(identity).toContain("coalesce(m.canonical_agent_id, u.agent_id) as agent_id");
     expect(identity).toContain("Named Discord rows preserve the source-attested writing-agent name");
   });
+
+  it("settles one Discord message once without replacing its source-resolved writer", () => {
+    const repair = source("supabase/migrations/20260904190000_discord_message_identity_and_writer.sql");
+
+    expect(repair).toContain("retry.external_ref = original.external_ref || ':1'");
+    expect(repair).toContain("deal_ordinal = 0");
+    expect(repair).toContain("production_external_deal_id = pair.original_id");
+    expect(repair).toContain("set status = 'duplicate'");
+    expect(repair).toContain("'duplicate', 'lapsed', 'cancelled'");
+    expect(repair).toContain("v_writer_agent_id, v_canonical_agent_id");
+    expect(repair).toContain("v_agency_name, v_writer_agent_id, btrim(p_agent_name)");
+    expect(repair).not.toContain("v_agency_name, v_canonical_agent_id, btrim(p_agent_name)");
+  });
 });

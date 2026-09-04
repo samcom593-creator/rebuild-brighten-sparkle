@@ -3157,6 +3157,14 @@
         "raw": "p_members jsonb"
       }
     ],
+    "fn_sms_receipt_fix_anchor": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "fn_stamp_agent_licensed_at": [
       {
         "all": [],
@@ -5062,6 +5070,14 @@
       }
     ],
     "schedule_auto_populate_tick": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "scoped_production_projection": [
       {
         "all": [],
         "required": [],

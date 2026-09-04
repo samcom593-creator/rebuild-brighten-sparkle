@@ -8,6 +8,7 @@ import {
   CircleDollarSign,
   Layers,
   RefreshCw,
+  Sparkles,
   TrendingUp,
   Users,
 } from "lucide-react";
@@ -34,6 +35,30 @@ import {
 
 interface Totals { ap: number; policies: number }
 interface TeamTotals extends Totals { agents: number }
+
+interface ProjectionMetric {
+  label: string;
+  mtd_ap: number;
+  policies: number;
+  active_days: number;
+  projected_ap: number;
+  confidence: "low" | "medium" | "high";
+}
+
+interface ProductionProjection {
+  as_of: string;
+  month_start: string;
+  month_end_exclusive: string;
+  elapsed_calendar_days: number;
+  days_in_month: number;
+  has_producer_profile: boolean;
+  scope_label: string;
+  personal: ProjectionMetric;
+  team: ProjectionMetric;
+  imo: ProjectionMetric | null;
+  agencies: Array<ProjectionMetric & { agency: string }>;
+  basis: string;
+}
 
 export interface ScoreboardAgentRow {
   agent_id: string;
@@ -250,6 +275,17 @@ export function ScopedProductionScoreboard() {
     },
   });
 
+  const projection = useQuery({
+    queryKey: ["scoped-production-projection"],
+    staleTime: 120_000,
+    refetchOnWindowFocus: false,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("scoped_production_projection" as never);
+      if (error) throw error;
+      return data as unknown as ProductionProjection;
+    },
+  });
+
   // MP-372: only fetched when the selected window is empty. One cheap scoped
   // read, never polled — it refetches with the board via the same realtime
   // invalidation below.
@@ -291,6 +327,7 @@ export function ScopedProductionScoreboard() {
   // still up to 5 minutes stale after a deal posted.
   const refreshProduction = () => {
     void query.refetch();
+    void projection.refetch();
     void feed.refetch();
     // The freshness line only exists while the window is empty; a posted deal
     // may fill the window (query above) or move "last posted" (this one).
@@ -324,6 +361,7 @@ export function ScopedProductionScoreboard() {
   );
 
   const data = query.data;
+  const projectionData = projection.data;
   // The server returns `imo` only to admins; that is the authority for the
   // admin-only tile, not a client-side role guess.
   const isAdmin = Boolean(data?.imo);
@@ -435,6 +473,59 @@ export function ScopedProductionScoreboard() {
                 />
               )}
             </div>
+
+            {projectionData?.has_producer_profile && (
+              <div className="border-t border-border bg-background/40 p-4">
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      <Sparkles className="h-3.5 w-3.5 text-primary" /> Projected month-end production
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">Live MTD pace · Phoenix time · {projectionData.scope_label}</p>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">Day {projectionData.elapsed_calendar_days} of {projectionData.days_in_month}</p>
+                </div>
+
+                <div className={projectionData.imo ? "mt-3 grid gap-2 sm:grid-cols-3" : "mt-3 grid gap-2 sm:grid-cols-2"}>
+                  {[
+                    { key: "personal", label: "My projected production", metric: projectionData.personal },
+                    { key: "team", label: "My team projected", metric: projectionData.team },
+                    ...(projectionData.imo ? [{ key: "imo", label: "Full IMO projected", metric: projectionData.imo }] : []),
+                  ].map(({ key, label, metric }) => (
+                    <div className="rounded-lg border border-border/70 bg-card p-3" key={key}>
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+                        <Badge variant={metric.confidence === "low" ? "outline" : "secondary"}>{metric.confidence} confidence</Badge>
+                      </div>
+                      <p className="mt-2 text-2xl font-bold tabular-nums text-primary">{money(metric.projected_ap)}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">MTD {money(metric.mtd_ap)} · {policies(metric.policies)} · {metric.active_days} selling days</p>
+                    </div>
+                  ))}
+                </div>
+
+                {projectionData.agencies.length > 0 && (
+                  <div className="mt-3 rounded-lg border border-border/70 bg-card p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Agency projections</p>
+                    <div className="mt-2 divide-y divide-border/70">
+                      {projectionData.agencies.map((agency) => (
+                        <div className="flex items-center justify-between gap-3 py-2 first:pt-0 last:pb-0" key={agency.agency}>
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium text-foreground">{agency.agency}</p>
+                            <p className="text-[11px] text-muted-foreground">MTD {money(agency.mtd_ap)} · {policies(agency.policies)}</p>
+                          </div>
+                          <div className="shrink-0 text-right">
+                            <p className="font-bold tabular-nums text-foreground">{money(agency.projected_ap)}</p>
+                            <p className="text-[10px] uppercase text-muted-foreground">projected · {agency.confidence}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">{projectionData.basis}</p>
+              </div>
+            )}
 
             <div className="grid border-t border-border lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
               <div className="border-b border-border p-4 lg:border-b-0 lg:border-r">

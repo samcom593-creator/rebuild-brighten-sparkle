@@ -99,4 +99,22 @@ describe("scoped production scoreboard", () => {
     expect(dashboard.match(/<ScopedProductionScoreboard \/>/g)).toHaveLength(3);
     expect(source("components/dashboard/AgentCloudHome.tsx")).toContain("<ScopedProductionScoreboard />");
   });
+
+  it("MP-425 projects personal, scoped team, IMO and agency production from the canonical ledger", () => {
+    const component = source("components/dashboard/ScopedProductionScoreboard.tsx");
+    const migration = source("../supabase/migrations/20260904193000_scoped_production_projections.sql");
+
+    expect(component).toContain('supabase.rpc("scoped_production_projection"');
+    expect(component).toContain("My projected production");
+    expect(component).toContain("My team projected");
+    expect(component).toContain("Full IMO projected");
+    expect(component).toContain("Agency projections");
+    expect(component).toContain("void projection.refetch()");
+    expect(migration).toContain("public.v_production_comp_truth");
+    expect(migration).toContain("c.agent_id = any(v_scope_ids)");
+    expect(migration).toContain("public.fn_hierarchy_first_hops(v_personal_ids)");
+    expect(migration).toContain("mtd_ap * 5");
+    expect(migration).toContain("when v_is_admin then (select value -> 'imo'");
+    expect(migration).toContain("grant execute on function public.scoped_production_projection() to authenticated, service_role");
+  });
 });

@@ -274,7 +274,7 @@ export default function Interviews() {
       const { data, error } = await supabase.rpc("admin_enqueue_onboarding_call" as never, { p_agent_id: gap.agent_id } as never);
       if (error) throw error;
       const receipt = data as unknown as { enqueued: boolean; reason: string };
-      if (receipt.enqueued) toast.success(`Booking link queued for ${gap.display_name ?? "agent"} · goes out at the 9:30 AM Central send`);
+      if (receipt.enqueued) toast.success(`Booking link queued for ${gap.display_name ?? "agent"} · goes out at the 10:00 AM Central send`);
       else toast.warning(`Not queued: ${receipt.reason.replace(/_/g, " ")}`);
       await onboarding.refetch();
     } catch (error) {

@@ -86,6 +86,6 @@ export function inviteReceipt(invites: OnboardingInvite[]): { label: string; ton
 export function gapEmailState(gap: OnboardingGap): { label: string; tone: string; canSend: boolean } {
   if (gap.booking_email_sent_at) return { label: `Booking link sent ${formatPhoenix(gap.booking_email_sent_at)}`, tone: "text-success", canSend: false };
   if (gap.queue_id && (gap.booking_email_attempts ?? 0) >= 5) return { label: `Booking link dead · ${gap.booking_email_last_error ?? "5 attempts"}`, tone: "text-destructive", canSend: false };
-  if (gap.queue_id) return { label: "Booking link queued · goes out at 9:30 AM Central", tone: "text-warning", canSend: false };
+  if (gap.queue_id) return { label: "Booking link queued · goes out at 10:00 AM Central", tone: "text-warning", canSend: false };
   return { label: "No booking link sent", tone: "text-muted-foreground", canSend: true };
 }

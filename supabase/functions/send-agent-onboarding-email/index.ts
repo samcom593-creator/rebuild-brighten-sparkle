@@ -1,11 +1,11 @@
 // send-agent-onboarding-email
 //
 // Drains agent_onboarding_queue: sends licensed online-training, primary
-// team-community, and onboarding-call emails at 9:30 AM US/Central.
+// team-community, and onboarding-call emails at 10:00 AM US/Central.
 //
 // Triggered by pg_cron at:
-//   - 14:30 UTC daily (9:30 AM Central during CDT)
-//   - 15:30 UTC daily (9:30 AM Central during CST)
+//   - 15:00 UTC daily (10:00 AM Central during CDT)
+//   - 16:00 UTC daily (10:00 AM Central during CST)
 // Plus on-demand POST during testing.
 //
 // Per APEX Operating Contract: NO fake success. A Resend 200 with non-JSON
@@ -298,7 +298,7 @@ function buildOnboardingCallEmail(name: string, bookingUrl: string): { subject: 
     ``,
     `Pick a time here: ${bookingUrl}`,
     ``,
-    `Come with your NPN and your contracting login. We set up your systems, walk your first-week plan, and get you into the 9:30 AM Central huddle.`,
+    `Come with your NPN and your contracting login. We set up your systems, walk your first-week plan, and get you into the 10:00 AM Central huddle.`,
     ``,
     `— Sam`,
     `APEX Financial`,
@@ -310,7 +310,7 @@ function buildOnboardingCallEmail(name: string, bookingUrl: string): { subject: 
   <p>Hey ${fn},</p>
   <p>You're licensed and you're in. Next step is your <strong>30-minute onboarding call</strong> with Milver, your Onboarding Manager, and me.</p>
   <p><a href="${url}" style="display:inline-block;padding:12px 20px;background:#0a0a0a;color:#EDB81D;text-decoration:none;border-radius:6px;font-weight:600;">Book your onboarding call</a></p>
-  <p>Come with your NPN and your contracting login. We set up your systems, walk your first-week plan, and get you into the 9:30 AM Central huddle.</p>
+  <p>Come with your NPN and your contracting login. We set up your systems, walk your first-week plan, and get you into the 10:00 AM Central huddle.</p>
   <p style="margin-top:24px;">— Sam<br/>APEX Financial</p>
 </body></html>`.trim();
 

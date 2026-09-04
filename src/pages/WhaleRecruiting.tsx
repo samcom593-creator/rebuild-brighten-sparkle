@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
-import { contactLinkProps, phoneHref } from "@/lib/phone";
+import { contactLinkProps, formatPhoneDisplay, nationalDigits, phoneHref } from "@/lib/phone";
 
 interface WhaleRow {
   id: string;
@@ -306,10 +306,19 @@ function inferHeat(w: WhaleRow): Heat {
 
 function WhaleRow({ row, agent }: { row: WhaleRow & { stage: string; heat: Heat }; agent: AgentLite | null }) {
   const name = `${row.first_name ?? ""} ${row.last_name ?? ""}`.trim() || "—";
-  const phone = row.phone?.replace(/\D/g, "");
-  const formattedPhone = phone && phone.length >= 10
-    ? `(${phone.slice(0, 3)}) ${phone.slice(3, 6)}-${phone.slice(6, 10)}`
-    : row.phone;
+  // MP-416: this gated on `>= 10` and then sliced positions 0-10, which is only
+  // correct at exactly 10. 45 of the 50 rows this page loads are stored as
+  // `+1XXXXXXXXXX`, so it rendered `+16184381249` as "(161) 843-8124" — shifted
+  // one place left with the last digit dropped, and still shaped like a valid US
+  // number, so nothing on screen said it was wrong. The href beside it was
+  // correct (normalizePhoneForDial), so clicking worked and only the number a
+  // recruiter reads was wrong. Formatting is single-sourced now.
+  const formattedPhone = formatPhoneDisplay(row.phone) || row.phone;
+  // The skip-trace param is derived from the same normalized national number, so
+  // the 47 NANP rows stop sending an 11-digit string. The 2 non-NANP rows keep
+  // today's raw digits: TruePeopleSearch refuses this client from this IP
+  // (MP-414), so which shape it wants for them is not established and is not guessed.
+  const tpsPhone = nationalDigits(row.phone) ?? row.phone?.replace(/\D/g, "");
 
   return (
     <div className="flex items-start gap-3 p-3 rounded-lg border border-slate-200 dark:border-border hover:bg-slate-50 dark:hover:bg-muted/30">
@@ -352,7 +361,7 @@ function WhaleRow({ row, agent }: { row: WhaleRow & { stage: string; heat: Heat 
       <div className="shrink-0 flex flex-col gap-1">
         {row.phone && (
           <Button asChild size="sm" variant="outline">
-            <a href={`https://www.truepeoplesearch.com/results?phoneno=${phone}`} target="_blank" rel="noopener noreferrer">
+            <a href={`https://www.truepeoplesearch.com/results?phoneno=${tpsPhone}`} target="_blank" rel="noopener noreferrer">
               TPS <ExternalLink className="h-3 w-3 ml-1" />
             </a>
           </Button>

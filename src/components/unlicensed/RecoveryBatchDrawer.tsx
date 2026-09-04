@@ -41,7 +41,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { contactLinkProps, phoneHref } from "@/lib/phone";
+import { contactLinkProps, formatPhoneDisplay as formatPhoneDisplayLib, phoneHref } from "@/lib/phone";
 
 export interface RecoveryBatchRow {
   id: string;
@@ -150,10 +150,7 @@ function recoveryScript(row: RecoveryBatchRow): { title: string; body: string; h
 
 function formatPhoneDisplay(raw: string | null): string {
   if (!raw) return "";
-  const d = raw.replace(/\D/g, "");
-  if (d.length === 11 && d.startsWith("1")) return `(${d.slice(1, 4)}) ${d.slice(4, 7)}-${d.slice(7)}`;
-  if (d.length === 10) return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
-  return raw;
+  return formatPhoneDisplayLib(raw);
 }
 
 function telHref(raw: string | null): string {

@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { XcelIngestDialog } from "@/components/admin/XcelIngestDialog";
-import { contactLinkProps, phoneHref } from "@/lib/phone";
+import { contactLinkProps, formatPhoneDisplay, phoneHref } from "@/lib/phone";
 
 interface Report {
   id: string;
@@ -84,10 +84,7 @@ const HEALTH_META: Record<XcelStudent["health_bucket"], { label: string; color: 
 
 function fmtPhone(p: string | null): string {
   if (!p) return "—";
-  const d = p.replace(/\D/g, "");
-  if (d.length === 11 && d.startsWith("1")) return `(${d.slice(1, 4)}) ${d.slice(4, 7)}-${d.slice(7)}`;
-  if (d.length === 10) return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
-  return p;
+  return formatPhoneDisplay(p) || p;
 }
 
 function fmtHours(min: number | null): string {

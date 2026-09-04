@@ -20,7 +20,7 @@ import { differenceInDays, format } from "date-fns";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
-import { phoneHref, smsHref, contactLinkProps } from "@/lib/phone";
+import { formatPhoneDisplay as formatPhoneDisplayLib, phoneHref, smsHref, contactLinkProps } from "@/lib/phone";
 
 /**
  * Hiring Pipeline — drag-drop kanban + row actions on every card.
@@ -753,9 +753,7 @@ function MetricTile({
 
 function formatPhone(raw: string | null | undefined): string {
   if (!raw) return "";
-  const d = String(raw).replace(/\D/g, "").replace(/^1/, "").slice(0, 10);
-  if (d.length !== 10) return raw;
-  return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
+  return formatPhoneDisplayLib(String(raw));
 }
 
 function ApplicantCard({

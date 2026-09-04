@@ -1,11 +1,8 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
-import { startPhoneCall } from "@/lib/phone";
+import { formatPhoneDisplay as formatPhoneDisplayLib, startPhoneCall } from "@/lib/phone";
 
 function formatPhoneDisplay(phone: string): string {
-  const digits = phone.replace(/\D/g, "");
-  const d = digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
-  if (d.length === 10) return `${d.slice(0,3)}-${d.slice(3,6)}-${d.slice(6)}`;
-  return phone;
+  return formatPhoneDisplayLib(phone, "dashes") || phone;
 }
  import { motion, AnimatePresence } from "framer-motion";
  import {

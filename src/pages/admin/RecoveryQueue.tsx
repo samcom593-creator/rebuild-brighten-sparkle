@@ -26,7 +26,7 @@ import {
 import { ApplicationDetailSheet } from "@/components/dashboard/ApplicationDetailSheet";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { contactLinkProps } from "@/lib/phone";
+import { formatPhoneDisplay as formatPhoneDisplayLib, contactLinkProps } from "@/lib/phone";
 
 // ---------- Types ----------
 interface Row {
@@ -274,14 +274,7 @@ function outcomeToChannel(o: OutcomeKey): "call" | "sms" | "email" | null {
 // ---------- Helpers ----------
 function formatPhone(raw: string | null): string {
   if (!raw) return "";
-  const digits = raw.replace(/\D/g, "");
-  if (digits.length === 11 && digits.startsWith("1")) {
-    return `(${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
-  }
-  if (digits.length === 10) {
-    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
-  }
-  return raw;
+  return formatPhoneDisplayLib(raw);
 }
 function telHref(raw: string | null): string {
   if (!raw) return "#";

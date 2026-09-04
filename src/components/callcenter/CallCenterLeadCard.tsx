@@ -1,10 +1,7 @@
 import { useState } from "react";
 
 function formatPhoneDisplay(phone: string): string {
-  const digits = phone.replace(/\D/g, "");
-  const d = digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
-  if (d.length === 10) return `${d.slice(0,3)}-${d.slice(3,6)}-${d.slice(6)}`;
-  return phone;
+  return formatPhoneDisplayLib(phone, "dashes") || phone;
 }
 import { motion } from "framer-motion";
 import { Phone, Mail, Instagram, Clock, User, Calendar, Sparkles, Building2, FileText, MapPin, Eye, ChevronDown, Copy, Check } from "lucide-react";
@@ -20,7 +17,7 @@ import { LeadReassignButton } from "./LeadReassignButton";
 import { LeadExpiryCountdown } from "./LeadExpiryCountdown";
 import { QuickEmailMenu } from "@/components/dashboard/QuickEmailMenu";
 import { ResendLicensingButton } from "./ResendLicensingButton";
-import { contactLinkProps, smsHref } from "@/lib/phone";
+import { contactLinkProps, formatPhoneDisplay as formatPhoneDisplayLib, smsHref } from "@/lib/phone";
 
 function CopyPhoneButton({ phone }: { phone: string }) {
   const [copied, setCopied] = useState(false);

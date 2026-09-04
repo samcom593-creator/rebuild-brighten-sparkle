@@ -48,6 +48,46 @@ export function normalizePhoneForDial(value: string | null | undefined): string 
   return `+${internationalDigits}`;
 }
 
+/**
+ * The 10-digit NANP national number, or null when the value is not a NANP
+ * number. `+1 618 438 1249`, `16184381249` and `6184381249` all collapse to
+ * `6184381249`; `+44...` / `+234...` return null because they have no national
+ * 10-digit form.
+ */
+export function nationalDigits(value: string | null | undefined): string | null {
+  const normalized = normalizePhoneForDial(value);
+  if (!normalized) return null;
+  const digits = normalized.slice(1);
+  return digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : null;
+}
+
+/**
+ * 2026-09-04 (MP-416): five page-level formatters had independently written
+ * this same logic, and the sixth (WhaleRecruiting) drifted — it gated on
+ * `digits.length >= 10` and then sliced positions 0-10, which is correct only
+ * at exactly 10. Live prod holds 45 of 50 whale rows as `+1XXXXXXXXXX`, so the
+ * page rendered `+16184381249` as "(161) 843-8124": every digit shifted left,
+ * the last one dropped, and the result still LOOKS like a valid US number, so
+ * nothing on screen said it was wrong. The `href` beside it went through
+ * normalizePhoneForDial and was correct, so clicking worked and only the number
+ * a human reads was wrong. Fixed-position slicing now lives here only.
+ *
+ * Anything that is not a NANP number is returned unchanged rather than sliced —
+ * a formatter must never invent digits it cannot place.
+ */
+export function formatPhoneDisplay(
+  value: string | null | undefined,
+  style: "parens" | "dashes" = "parens",
+): string {
+  const raw = value?.trim();
+  if (!raw) return "";
+  const d = nationalDigits(raw);
+  if (!d) return raw;
+  return style === "dashes"
+    ? `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`
+    : `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
+}
+
 export function isDialablePhone(value: string | null | undefined): boolean {
   return normalizePhoneForDial(value) !== null;
 }

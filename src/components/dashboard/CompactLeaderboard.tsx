@@ -162,7 +162,7 @@ function LeaderboardRow({ entry, index, maxALP }: { entry: LeaderboardEntry; ind
       {/* Avatar + Name */}
       <div className="col-span-5 flex items-center gap-2 min-w-0">
         <div className={cn(
-          "h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0",
+          "h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-bold text-foreground shrink-0",
           ` ${getAvatarColor(entry.name)}`
         )}>
           {entry.avatarUrl ? (

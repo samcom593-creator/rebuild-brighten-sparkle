@@ -49,7 +49,7 @@ export function MobileLeaderboardCard({ entry, index, onClick, leaders }: Mobile
     if (entry.rank === 1) {
       return (
         <div className="flex items-center justify-center h-8 w-8 rounded-full bg-white dark:bg-card animate-rank-glow shadow-sm">
-          <Trophy className="h-4 w-4 text-white" />
+          <Trophy className="h-4 w-4 text-foreground" />
         </div>
       );
     }
@@ -63,7 +63,7 @@ export function MobileLeaderboardCard({ entry, index, onClick, leaders }: Mobile
     if (entry.rank === 3) {
       return (
         <div className="flex items-center justify-center h-8 w-8 rounded-full bg-white dark:bg-card shadow">
-          <Award className="h-4 w-4 text-white" />
+          <Award className="h-4 w-4 text-foreground" />
         </div>
       );
     }
@@ -108,7 +108,7 @@ export function MobileLeaderboardCard({ entry, index, onClick, leaders }: Mobile
 
         {/* Avatar */}
         <div className={cn(
-          "h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0  shadow-md",
+          "h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold text-foreground shrink-0  shadow-md",
           entry.avatarUrl ? "" : getAvatarColor(entry.name)
         )}>
           {entry.avatarUrl ? (

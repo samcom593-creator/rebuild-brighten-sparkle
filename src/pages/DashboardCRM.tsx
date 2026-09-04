@@ -1,3 +1,6 @@
+import { JustHiredPanel } from "@/components/dashboard/JustHiredPanel";
+import { OnboardingRollCall } from "@/components/dashboard/OnboardingRollCall";
+import { UnlinkedAgentsPanel } from "@/components/dashboard/UnlinkedAgentsPanel";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { AgentAvatar, getAvatarUrl } from "@/components/ui/AgentAvatar";
 import { useSearchParams, Link } from "react-router-dom";
@@ -8,6 +11,7 @@ import {
   Instagram, X, Send, CheckSquare, EyeOff, Link2, Eye, FileText,
   KeyRound, Copy, StickyNote, ClipboardCheck, Circle, CircleCheck,
   MoreHorizontal, TrendingUp, BadgeCheck, ArrowUpRight, Network, UserCheck, Flame,
+  ChevronDown,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
@@ -2042,7 +2046,27 @@ export default function DashboardCRM() {
                   // before this change: bulkMode true, checkboxes 0.
                   if (next && crmView === "roster") setCrmView("pipeline");
                 }}>
-                  <CheckSquare className="h-4 w-4 shrink-0" /> {bulkMode ? "Exit Bulk" : "Bulk Actions"}
+                  <CheckSquare className="h-4 w-4 shrink-0" />
+
+        {/* MP-430: the roster-health panels moved here from the home page. Sam
+            (2026-09-04): "under agent's production linkage, all those yellow
+            boxes — remove all of them. What am I gonna do with any of those
+            boxes?" They are actions for the person running the roster, which
+            is this page, not the money page. Collapsed so the table stays the
+            first thing on screen; the surfaces are kept, not deleted. */}
+        {(isAdmin || isManager) && (
+          <details className="group rounded-lg border border-border bg-card [&[open]_.chev]:rotate-180">
+            <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground hover:text-foreground">
+              Roster health · just hired, onboarding roll call, unlinked production
+              <ChevronDown className="chev ml-auto h-4 w-4 transition-transform" />
+            </summary>
+            <div className="space-y-4 border-t border-border p-4">
+              <JustHiredPanel />
+              <OnboardingRollCall />
+              <UnlinkedAgentsPanel />
+            </div>
+          </details>
+        )} {bulkMode ? "Exit Bulk" : "Bulk Actions"}
                 </Button>
               )}
               {isAdmin && (

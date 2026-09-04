@@ -94,7 +94,7 @@ export function Target20kPaceWidget() {
             <Badge variant="outline" className="border-rose-600/40 text-rose-300">
               {fmtMoney(apAtRiskTotal)} at risk (no policy #)
             </Badge>
-            <Badge variant="outline" className="border-zinc-600/40 text-zinc-300">
+            <Badge variant="outline" className="border-zinc-600/40 text-muted-foreground">
               {fmtMoney(apMtdTotal)} team MTD
             </Badge>
           </div>

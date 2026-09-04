@@ -114,7 +114,7 @@ export function Plaque({
               <path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10zm0 2c-4 0-8 2-8 5v3h16v-3c0-3-4-5-8-5z"/>
             </svg>
           </div>
-          <div className="leading-tight text-white">
+          <div className="leading-tight text-foreground">
             <div className="text-2xl font-bold">{firstName || agentName}</div>
             {subtitle && <div className="text-sm opacity-80 mt-1">{subtitle}</div>}
             {!subtitle && achievement && <div className="text-sm opacity-80 mt-1">{achievement}</div>}
@@ -156,14 +156,14 @@ export function Plaque({
       {/* 6. Top-right rank or date stamp */}
       {rank && rank <= 3 && (
         <div
-          className="absolute top-6 right-6 px-4 py-2 rounded-full text-white font-bold text-sm"
+          className="absolute top-6 right-6 px-4 py-2 rounded-full text-foreground font-bold text-sm"
           style={{ background: `${accentColor}`, boxShadow: `0 0 20px ${accentColor}` }}
         >
           #{rank} • {achievement}
         </div>
       )}
       {!rank && (
-        <div className="absolute top-6 right-6 text-white/80 text-xs tracking-widest uppercase font-semibold">
+        <div className="absolute top-6 right-6 text-foreground/80 text-xs tracking-widest uppercase font-semibold">
           {date}
         </div>
       )}

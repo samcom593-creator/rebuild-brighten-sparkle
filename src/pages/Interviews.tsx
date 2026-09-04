@@ -563,7 +563,7 @@ export default function Interviews() {
         actions={
           <>
             {shareUrl && <Button size="sm" className="h-10 bg-[#C9A961] font-bold text-black hover:bg-[#C9A961]/90" onClick={async () => { try { await navigator.clipboard.writeText(shareUrl); toast.success("Candidate link copied"); } catch { toast.error("Copy failed"); } }}><Link2 className="h-4 w-4" /> Copy candidate link</Button>}
-            <Button size="sm" variant="outline" className="h-10 border-white/15 bg-white/[0.04] text-white hover:bg-white/10 hover:text-white" onClick={refreshActiveTab} disabled={refreshing}>
+            <Button size="sm" variant="outline" className="h-10 border-border bg-white/[0.04] text-foreground hover:bg-white/10 hover:text-white" onClick={refreshActiveTab} disabled={refreshing}>
               <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} /> Refresh live data
             </Button>
           </>
@@ -624,22 +624,22 @@ export default function Interviews() {
           <div className="p-5">
             <div className="flex items-center justify-between gap-3">
               <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#C9A961]"><Zap className="h-3.5 w-3.5 fill-[#C9A961]" /> Work next</p>
-              {priorityPool.length > 1 && <div className="flex items-center gap-1"><span className="mr-1 text-[10px] text-white/35">{safeFocusIndex + 1}/{priorityPool.length}</span><Button size="icon" variant="ghost" className="h-8 w-8 text-white hover:bg-white/10 hover:text-white" aria-label="Previous priority candidate" onClick={() => setFocusIndex((safeFocusIndex - 1 + priorityPool.length) % priorityPool.length)}><ArrowLeft className="h-4 w-4" /></Button><Button size="icon" variant="ghost" className="h-8 w-8 text-white hover:bg-white/10 hover:text-white" aria-label="Next priority candidate" onClick={() => setFocusIndex((safeFocusIndex + 1) % priorityPool.length)}><ArrowRight className="h-4 w-4" /></Button></div>}
+              {priorityPool.length > 1 && <div className="flex items-center gap-1"><span className="mr-1 text-[10px] text-white/35">{safeFocusIndex + 1}/{priorityPool.length}</span><Button size="icon" variant="ghost" className="h-8 w-8 text-foreground hover:bg-white/10 hover:text-white" aria-label="Previous priority candidate" onClick={() => setFocusIndex((safeFocusIndex - 1 + priorityPool.length) % priorityPool.length)}><ArrowLeft className="h-4 w-4" /></Button><Button size="icon" variant="ghost" className="h-8 w-8 text-foreground hover:bg-white/10 hover:text-white" aria-label="Next priority candidate" onClick={() => setFocusIndex((safeFocusIndex + 1) % priorityPool.length)}><ArrowRight className="h-4 w-4" /></Button></div>}
             </div>
             <div className="mt-4 flex min-w-0 items-center gap-3">
               <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[#C9A961]/30 bg-[#C9A961]/10 text-base font-black text-[#C9A961]">{initials(priorityCandidate.name)}</span>
               <div className="min-w-0"><h2 id="priority-candidate" className="truncate text-lg font-black">{priorityCandidate.name || "Unnamed candidate"}</h2><p className="mt-0.5 truncate text-xs text-white/45">{priorityCandidate.phone || priorityCandidate.email || "Contact details missing"}</p></div>
             </div>
-            <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.04] p-3">
+            <div className="mt-4 rounded-xl border border-border bg-white/[0.04] p-3">
               <p className="text-xs font-bold">{statusOf(priorityCandidate, now).label}</p><p className="mt-0.5 text-[11px] text-white/45">{statusOf(priorityCandidate, now).timing}</p>
               <div className="mt-3 grid grid-cols-4 gap-1" aria-label={`Interview progress: ${INTERVIEW_RAIL[interviewRailStep(priorityCandidate)]}`}>
-                {INTERVIEW_RAIL.map((label, index) => <div key={label}><div className={`h-1 rounded-full ${index <= interviewRailStep(priorityCandidate) ? "bg-[#C9A961]" : "bg-white/10"}`} /><p className={`mt-1 truncate text-[8px] font-bold uppercase ${index <= interviewRailStep(priorityCandidate) ? "text-white/65" : "text-white/20"}`}>{label}</p></div>)}
+                {INTERVIEW_RAIL.map((label, index) => <div key={label}><div className={`h-1 rounded-full ${index <= interviewRailStep(priorityCandidate) ? "bg-[#C9A961]" : "bg-foreground/10"}`} /><p className={`mt-1 truncate text-[8px] font-bold uppercase ${index <= interviewRailStep(priorityCandidate) ? "text-foreground/65" : "text-foreground/20"}`}>{label}</p></div>)}
               </div>
             </div>
             <div className="mt-4 grid grid-cols-2 gap-2">
               {phoneHref(priorityCandidate.phone) && <Button asChild className="h-11 bg-[#C9A961] font-bold text-black hover:bg-[#C9A961]/90"><a href={phoneHref(priorityCandidate.phone)!} {...contactLinkProps(phoneHref(priorityCandidate.phone))}><Phone className="h-4 w-4" /> Call</a></Button>}
-              {smsHref(priorityCandidate.phone) && <Button asChild variant="outline" className="h-11 border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white"><a href={smsHref(priorityCandidate.phone)!} {...contactLinkProps(smsHref(priorityCandidate.phone))}><MessageSquare className="h-4 w-4" /> Text</a></Button>}
-              {availableActions(priorityCandidate, pipeline.data?.role).length > 0 && <Button className="col-span-2 h-11 bg-white font-bold text-black hover:bg-white/90" onClick={() => chooseAction(priorityCandidate, availableActions(priorityCandidate, pipeline.data?.role)[0])}>{ACTION_LABEL[availableActions(priorityCandidate, pipeline.data?.role)[0]]} <ArrowRight className="h-4 w-4" /></Button>}
+              {smsHref(priorityCandidate.phone) && <Button asChild variant="outline" className="h-11 border-border bg-foreground/5 text-foreground hover:bg-white/10 hover:text-white"><a href={smsHref(priorityCandidate.phone)!} {...contactLinkProps(smsHref(priorityCandidate.phone))}><MessageSquare className="h-4 w-4" /> Text</a></Button>}
+              {availableActions(priorityCandidate, pipeline.data?.role).length > 0 && <Button className="col-span-2 h-11 bg-card font-bold text-foreground hover:bg-white/90" onClick={() => chooseAction(priorityCandidate, availableActions(priorityCandidate, pipeline.data?.role)[0])}>{ACTION_LABEL[availableActions(priorityCandidate, pipeline.data?.role)[0]]} <ArrowRight className="h-4 w-4" /></Button>}
             </div>
             <p className="mt-3 text-center text-[9px] uppercase tracking-wide text-white/25">J / K moves through priority candidates</p>
           </div>

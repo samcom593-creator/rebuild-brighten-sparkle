@@ -138,7 +138,7 @@ export default function CommissionRecovery() {
             {loadingAgents ? <Skeleton className="h-64 w-full" /> : (agents ?? []).length === 0 ? (
               <div className="text-sm text-slate-600 dark:text-slate-300">No recovery rows loaded. Source checked: v_commission_recovery_by_agent.</div>
             ) : (agents ?? []).slice(0, visibleCount).map((row) => (
-              <div key={`${row.agent_display}-${row.agent_id ?? "null"}`} className="rounded-md border border-white/10 bg-white/[0.025] p-3">
+              <div key={`${row.agent_display}-${row.agent_id ?? "null"}`} className="rounded-md border border-border bg-white/[0.025] p-3">
                 <div className="flex items-center justify-between gap-3">
                   <div className="font-medium truncate">{row.agent_display}</div>
                   <Badge variant="outline">{asNum(row.total_to_recover)} policies</Badge>
@@ -184,7 +184,7 @@ export default function CommissionRecovery() {
                   </thead>
                   <tbody>
                     {(policies ?? []).map((policy) => (
-                      <tr key={policy.policy_id} className="border-t border-white/5">
+                      <tr key={policy.policy_id} className="border-t border-border">
                         <td className="p-3">{policy.client_name ?? "—"}</td>
                         <td className="p-3">{policy.carrier_name ?? "—"}</td>
                         <td className="p-3">

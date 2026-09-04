@@ -576,7 +576,7 @@ function BoardView({ rows, selectedIds, onToggleSelect, onQuickEdit }: {
                   </Avatar>
                   {r.isPresenting && (
                     <div className="absolute -bottom-0.5 -right-0.5 rounded-full bg-rose-500 h-3.5 w-3.5 ring-2 ring-background flex items-center justify-center">
-                      <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                      <div className="h-1.5 w-1.5 rounded-full bg-card animate-pulse" />
                     </div>
                   )}
                 </div>

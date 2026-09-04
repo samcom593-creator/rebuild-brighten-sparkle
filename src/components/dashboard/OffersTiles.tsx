@@ -67,7 +67,7 @@ export function OffersTiles() {
     <GlassCard className="p-4 md:p-5 space-y-4 border-emerald-500/30">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h3 className="font-bold text-base text-white tracking-wide uppercase">Offers · click → pay</h3>
+          <h3 className="font-bold text-base text-foreground tracking-wide uppercase">Offers · click → pay</h3>
           <p className="text-xs text-muted-foreground">All 7 live SKUs · Stripe acct_1TKTj3C3Khd8IPVm</p>
         </div>
       </div>
@@ -85,10 +85,10 @@ export function OffersTiles() {
                 <sku.Icon className="h-5 w-5 text-emerald-400" />
                 <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{sku.category}</span>
               </div>
-              <div className="font-bold text-sm text-white leading-tight">{sku.name}</div>
+              <div className="font-bold text-sm text-foreground leading-tight">{sku.name}</div>
               <div className="text-[11px] text-muted-foreground leading-snug min-h-[28px]">{sku.blurb}</div>
               <div className="flex items-baseline justify-between pt-1">
-                <span className="font-black text-xl text-white">{fmt$(sku.amount)}</span>
+                <span className="font-black text-xl text-foreground">{fmt$(sku.amount)}</span>
                 <span className="text-[10px] text-muted-foreground uppercase">{sku.cadence}</span>
               </div>
               <div className="text-[10px] text-emerald-300 font-bold uppercase tracking-wider pt-1">

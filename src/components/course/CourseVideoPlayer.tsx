@@ -493,7 +493,7 @@ function YouTubePlayer({
             size="sm"
             variant="secondary"
             onClick={handleMarkWatched}
-            className="gap-1 text-xs bg-white/90 text-black hover:bg-white"
+            className="gap-1 text-xs bg-foreground/90 text-foreground hover:bg-white"
           >
             <Clock className="h-3 w-3" />
             Mark as Watched

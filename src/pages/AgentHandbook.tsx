@@ -176,22 +176,22 @@ export default function AgentHandbook() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
               <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">TOTAL CHAPTERS</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">{totalChapters}</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-foreground">{totalChapters}</p>
               <p className="text-[10px] text-white/40 tabular-nums">cover-to-cover</p>
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">READ TIME</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">{readMinutes}<span className="text-[14px] text-white/50"> min</span></p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-foreground">{readMinutes}<span className="text-[14px] text-white/50"> min</span></p>
               <p className="text-[10px] text-white/40 tabular-nums">est. full read</p>
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">COMPLETED</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">{chaptersCompleted}<span className="text-[14px] text-white/50">/{totalChapters}</span></p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-foreground">{chaptersCompleted}<span className="text-[14px] text-white/50">/{totalChapters}</span></p>
               <p className="text-[10px] text-white/40 tabular-nums">this session</p>
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">LAST OPENED</p>
-              <p className="text-[16px] leading-tight font-black text-white truncate">{lastOpenedTitle}</p>
+              <p className="text-[16px] leading-tight font-black text-foreground truncate">{lastOpenedTitle}</p>
               <p className="text-[10px] text-white/40 tabular-nums">{lastOpened ? "active chapter" : "pick one to start"}</p>
             </div>
           </div>

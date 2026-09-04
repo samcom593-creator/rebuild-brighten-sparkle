@@ -78,7 +78,7 @@ export default function PublicAgentLanding() {
       <div className="min-h-screen bg-card flex items-center justify-center p-6">
         <div className="text-center">
           <Shield className="h-12 w-12 text-amber-400 mx-auto mb-4" />
-          <h1 className="text-22 text-white font-bold mb-2">APEX Financial</h1>
+          <h1 className="text-22 text-foreground font-bold mb-2">APEX Financial</h1>
           <p className="text-13 text-white/70">This producer profile is not available.</p>
           <a href="https://apex-financial.org" className="inline-block mt-4 px-4 py-2 bg-amber-500 text-slate-900 rounded-lg text-13 font-bold">
             Visit Apex Financial →
@@ -92,7 +92,7 @@ export default function PublicAgentLanding() {
   const avatar = profile.avatar_url || profile.photo_url;
 
   return (
-    <div className="min-h-screen bg-card text-white">
+    <div className="min-h-screen bg-card text-foreground">
       {/* Hero */}
       <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-amber-900 px-6 pt-16 pb-12 text-center">
         {avatar ? (
@@ -118,7 +118,7 @@ export default function PublicAgentLanding() {
 
       {/* Bio */}
       {profile.bio && (
-        <div className="max-w-2xl mx-auto px-6 py-8 border-b border-white/10">
+        <div className="max-w-2xl mx-auto px-6 py-8 border-b border-border">
           <p className="text-10 uppercase tracking-[0.25em] text-amber-400 mb-3 text-center">About Me</p>
           <p className="text-14 text-white/85 leading-relaxed whitespace-pre-line text-center">
             {profile.bio}
@@ -146,7 +146,7 @@ export default function PublicAgentLanding() {
             <a
               href={`https://instagram.com/${profile.instagram_handle.replace("@", "")}`}
               target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-3 p-4 rounded-xl bg-white/10 border border-white/20 text-white font-bold text-15 hover:bg-white/20 transition-all"
+              className="flex items-center gap-3 p-4 rounded-xl bg-foreground/10 border border-border text-foreground font-bold text-15 hover:bg-white/20 transition-all"
             >
               <Instagram className="h-5 w-5" />
               <span>{profile.instagram_handle}</span>
@@ -156,9 +156,9 @@ export default function PublicAgentLanding() {
       </div>
 
       {/* Footer */}
-      <div className="border-t border-white/10 px-6 py-8 text-center">
-        <p className="text-11 text-white/40 uppercase tracking-[0.25em]">Hold the Standard · Average is the disease</p>
-        <p className="text-10 text-white/30 mt-2">
+      <div className="border-t border-border px-6 py-8 text-center">
+        <p className="text-11 text-foreground/40 uppercase tracking-[0.25em]">Hold the Standard · Average is the disease</p>
+        <p className="text-10 text-foreground/30 mt-2">
           APEX Financial · <a href="https://apex-financial.org" className="text-amber-400 hover:underline">apex-financial.org</a>
         </p>
       </div>

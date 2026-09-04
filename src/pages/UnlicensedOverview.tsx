@@ -46,7 +46,7 @@ export default function UnlicensedOverview() {
           <h1 className="text-3xl sm:text-5xl font-bold leading-tight">
             From unlicensed to your first commission check.
           </h1>
-          <p className="mt-5 text-base sm:text-lg text-slate-300 leading-relaxed">
+          <p className="mt-5 text-base sm:text-lg text-muted-foreground leading-relaxed">
             Here's exactly how new unlicensed agents go from zero to their first
             paid policy at Apex, and what we cover on a call together.
           </p>
@@ -75,7 +75,7 @@ export default function UnlicensedOverview() {
       </section>
 
       <section className="px-5 pb-16 sm:pb-24 max-w-2xl mx-auto">
-        <h2 className="text-xl sm:text-2xl font-bold mb-6 text-white">
+        <h2 className="text-xl sm:text-2xl font-bold mb-6 text-foreground">
           The 4 steps to your first check
         </h2>
         <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
@@ -96,10 +96,10 @@ export default function UnlicensedOverview() {
                   {s.n}
                 </span>
                 <div>
-                  <h3 className="text-base sm:text-lg font-semibold text-white">
+                  <h3 className="text-base sm:text-lg font-semibold text-foreground">
                     {s.title}
                   </h3>
-                  <p className="mt-1.5 text-sm sm:text-base text-slate-300 leading-relaxed">
+                  <p className="mt-1.5 text-sm sm:text-base text-muted-foreground leading-relaxed">
                     {s.body}
                   </p>
                 </div>
@@ -109,7 +109,7 @@ export default function UnlicensedOverview() {
         </ol>
 
         <div className="mt-10 sm:mt-12 rounded-xl border border-teal-500/20 bg-teal-500/5 p-5 sm:p-6 text-center">
-          <p className="text-sm sm:text-base text-slate-200 leading-relaxed">
+          <p className="text-sm sm:text-base text-foreground leading-relaxed">
             Put the licensing steps in the right order before you spend money,
             schedule an exam, or submit an application.
           </p>

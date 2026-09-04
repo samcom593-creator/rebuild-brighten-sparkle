@@ -74,7 +74,7 @@ const actions: ActionDef[] = [
     label: "No Pickup",
     description: "Didn't answer",
     icon: PhoneMissed,
-    color: "text-slate-200",
+    color: "text-foreground",
     gradient: "from-slate-500/10 to-slate-600/10 hover:from-slate-500/20 hover:to-slate-600/20 border-slate-500/25 hover:border-slate-500/45",
     glowColor: "rgba(148, 163, 184, 0.30)",
     key: "4",
@@ -221,7 +221,7 @@ export function CallCenterActions({
                     exit={{ scale: 1.4, opacity: 0 }}
                     className="absolute inset-0 flex items-center justify-center bg-emerald-500/25 z-20"
                   >
-                    <Check className="h-8 w-8 text-white" />
+                    <Check className="h-8 w-8 text-foreground" />
                   </motion.div>
                 )}
               </AnimatePresence>

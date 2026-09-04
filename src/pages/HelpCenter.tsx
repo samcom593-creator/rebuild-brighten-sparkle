@@ -173,22 +173,22 @@ export default function HelpCenter() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>
               <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">TOTAL FAQ</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">{FAQ.length}</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-foreground">{FAQ.length}</p>
               <p className="text-[10px] text-white/40 tabular-nums">questions answered</p>
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">CATEGORIES</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">{CATEGORIES.length}</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-foreground">{CATEGORIES.length}</p>
               <p className="text-[10px] text-white/40 tabular-nums">topic clusters</p>
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">READ TIME</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">{READ_TIME_MIN}<span className="text-[16px] text-white/60"> min</span></p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-foreground">{READ_TIME_MIN}<span className="text-[16px] text-white/60"> min</span></p>
               <p className="text-[10px] text-white/40 tabular-nums">full library scan</p>
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">LAST UPDATED</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">{LAST_UPDATED}</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-foreground">{LAST_UPDATED}</p>
               <p className="text-[10px] text-white/40 tabular-nums">content date</p>
             </div>
           </div>

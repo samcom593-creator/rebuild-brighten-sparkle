@@ -19,9 +19,9 @@ import { toast } from "sonner";
 
 const TEMPLATES = [
   { key: "classic",  label: "Classic Black",  bg: "bg-card",                 accent: "text-amber-400" },
-  { key: "amber",    label: "APEX Amber",     bg: "bg-gradient-to-br from-amber-500 to-amber-700", accent: "text-white" },
-  { key: "emerald",  label: "Producer Green", bg: "bg-gradient-to-br from-emerald-600 to-emerald-800", accent: "text-white" },
-  { key: "white",    label: "Clean White",    bg: "bg-white text-slate-900 border border-slate-200", accent: "text-amber-600" },
+  { key: "amber",    label: "APEX Amber",     bg: "bg-gradient-to-br from-amber-500 to-amber-700", accent: "text-foreground" },
+  { key: "emerald",  label: "Producer Green", bg: "bg-gradient-to-br from-emerald-600 to-emerald-800", accent: "text-foreground" },
+  { key: "white",    label: "Clean White",    bg: "bg-card text-slate-900 border border-slate-200", accent: "text-amber-600" },
 ] as const;
 
 export default function CallingCards() {
@@ -108,22 +108,22 @@ export default function CallingCards() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
             <div>
               <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">STYLE OPTIONS</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">{styleOptions}</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-foreground">{styleOptions}</p>
               <p className="text-[10px] text-white/40 tabular-nums">templates to pick</p>
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">SHARE URL</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">{shareReady ? "Ready" : "—"}</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-foreground">{shareReady ? "Ready" : "—"}</p>
               <p className="text-[10px] text-white/40 tabular-nums">{shareReady ? "link is live" : "sign in to generate"}</p>
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">QR SCANNABLE</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">{qrScannable ? "Yes" : "—"}</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-foreground">{qrScannable ? "Yes" : "—"}</p>
               <p className="text-[10px] text-white/40 tabular-nums">{qrScannable ? "tap Show QR" : "link required"}</p>
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">PROFILE FILLED</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">{fieldsPct}%</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-foreground">{fieldsPct}%</p>
               <p className="text-[10px] text-white/40 tabular-nums">{filledCount}/{profileFields.length} fields</p>
             </div>
           </div>
@@ -179,24 +179,24 @@ export default function CallingCards() {
                   <div className="flex items-start justify-between">
                     <div>
                       <p className={`text-10 uppercase tracking-[0.2em] font-bold ${t.accent}`}>APEX FINANCIAL</p>
-                      <p className={`text-11 mt-0.5 ${template === "white" ? "text-slate-600" : "text-white/70"}`}>
+                      <p className={`text-11 mt-0.5 ${template === "white" ? "text-slate-600" : "text-foreground/70"}`}>
                         Hold the Standard
                       </p>
                     </div>
                     {avatar ? (
                       <img src={avatar} alt="" className="h-12 w-12 rounded-full object-cover ring-2 ring-white/30" />
                     ) : (
-                      <div className="h-12 w-12 rounded-full bg-white/20 flex items-center justify-center text-13 font-bold text-white">
+                      <div className="h-12 w-12 rounded-full bg-foreground/20 flex items-center justify-center text-13 font-bold text-foreground">
                         {name.split(" ").map((s: string) => s[0]).slice(0, 2).join("")}
                       </div>
                     )}
                   </div>
                   <div>
-                    <p className={`text-18 font-bold ${template === "white" ? "text-slate-900" : "text-white"}`}>{name}</p>
-                    <p className={`text-11 mt-0.5 ${template === "white" ? "text-slate-600" : "text-white/80"}`}>
+                    <p className={`text-18 font-bold ${template === "white" ? "text-slate-900" : "text-foreground"}`}>{name}</p>
+                    <p className={`text-11 mt-0.5 ${template === "white" ? "text-slate-600" : "text-foreground/80"}`}>
                       Licensed Insurance Producer
                     </p>
-                    <div className={`mt-3 grid grid-cols-2 gap-x-3 gap-y-1 text-11 ${template === "white" ? "text-slate-700" : "text-white/90"}`}>
+                    <div className={`mt-3 grid grid-cols-2 gap-x-3 gap-y-1 text-11 ${template === "white" ? "text-slate-700" : "text-foreground/90"}`}>
                       {p?.phone && <p className="flex items-center gap-1.5"><Phone className="h-2.5 w-2.5" /> {p.phone}</p>}
                       {p?.email && <p className="flex items-center gap-1.5 truncate"><Mail className="h-2.5 w-2.5 shrink-0" /> {p.email}</p>}
                       {(p?.city || p?.state) && <p className="flex items-center gap-1.5"><MapPin className="h-2.5 w-2.5" /> {[p?.city, p?.state].filter(Boolean).join(", ")}</p>}

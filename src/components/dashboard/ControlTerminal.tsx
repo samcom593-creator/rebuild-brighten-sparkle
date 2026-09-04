@@ -257,7 +257,7 @@ export function ControlTerminal() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Terminal className="h-5 w-5 text-emerald-400" />
-          <h3 className="text-base font-bold uppercase tracking-wide text-white">Control Terminal</h3>
+          <h3 className="text-base font-bold uppercase tracking-wide text-foreground">Control Terminal</h3>
           <Badge variant="secondary" className="border-emerald-500/20 bg-emerald-500/10 text-emerald-200">Prompt operator</Badge>
         </div>
       </div>

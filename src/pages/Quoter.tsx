@@ -173,22 +173,22 @@ export default function Quoter() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>
               <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">PRODUCTS</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">{PRODUCTS.length}</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-foreground">{PRODUCTS.length}</p>
               <p className="text-[10px] text-white/40 tabular-nums">FE · WL · Term 20</p>
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">HEALTH TIERS</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">{HEALTH_TIERS.length}</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-foreground">{HEALTH_TIERS.length}</p>
               <p className="text-[10px] text-white/40 tabular-nums">Preferred → GI</p>
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">AGE RANGE</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">18–89</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-foreground">18–89</p>
               <p className="text-[10px] text-white/40 tabular-nums">5 bands per product</p>
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">LAST QUOTE TOTAL</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">
+              <p className="text-[28px] leading-none font-black tabular-nums text-foreground">
                 {lastQuoteTotal > 0 ? `$${lastQuoteTotal.toFixed(0)}` : "—"}
               </p>
               <p className="text-[10px] text-white/40 tabular-nums">

@@ -58,7 +58,7 @@ export function RecentActivationsPanel() {
         {isLoading ? (
           <Skeleton className="h-32 w-full" />
         ) : !data || data.length === 0 ? (
-          <p className="text-sm text-muted-foreground italic p-3 border border-dashed border-white/10 rounded-md">
+          <p className="text-sm text-muted-foreground italic p-3 border border-dashed border-border rounded-md">
             No activations in the last two months. New-hire pipeline is dry — first $10K rep is the next move.
           </p>
         ) : (
@@ -68,7 +68,7 @@ export function RecentActivationsPanel() {
                 key={row.agent_id}
                 className={cn(
                   "flex items-center gap-2 border rounded-md p-2 text-sm transition-colors",
-                  i === 0 ? "border-amber-400/40 bg-amber-500/5" : "border-white/5 bg-white/[0.02] hover:border-white/15",
+                  i === 0 ? "border-amber-400/40 bg-amber-500/5" : "border-border bg-white/[0.02] hover:border-white/15",
                 )}
               >
                 <span className={cn(

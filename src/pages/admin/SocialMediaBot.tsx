@@ -106,7 +106,7 @@ const platformColor = (p: string) => {
   if (p === "tiktok") return "text-foreground";
   if (p === "instagram") return "text-foreground";
   if (p === "snapchat") return "text-yellow-300";
-  return "text-zinc-300";
+  return "text-muted-foreground";
 };
 const statusBadge = (s: string) => {
   if (s === "shipped")  return <Badge className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">shipped</Badge>;
@@ -364,7 +364,7 @@ export default function SocialMediaBot() {
                   <div key={g.id} className="space-y-2">
                     <div className="flex items-baseline justify-between gap-2">
                       <span className="font-semibold text-sm md:text-base">{g.goal_label}</span>
-                      <span className="font-mono text-xs text-zinc-300 shrink-0">
+                      <span className="font-mono text-xs text-muted-foreground shrink-0">
                         <span className="text-amber-300 font-semibold">{fmtNum(liveCurrent ?? 0)}{g.unit === "%" ? "%" : ""}</span>
                         <span className="text-muted-foreground"> / {fmtNum(g.target_value)}{g.unit === "%" ? "%" : ""}</span>
                       </span>
@@ -470,7 +470,7 @@ export default function SocialMediaBot() {
                           </div>
                           <div className="mt-1.5 font-medium text-sm md:text-base leading-snug">{d.title}</div>
                           {d.hook && (
-                            <div className="mt-1.5 text-sm text-zinc-300 italic line-clamp-2">"{d.hook}"</div>
+                            <div className="mt-1.5 text-sm text-muted-foreground italic line-clamp-2">"{d.hook}"</div>
                           )}
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
@@ -550,7 +550,7 @@ export default function SocialMediaBot() {
                 {(dogmas ?? []).map((d) => (
                   <li key={d.id} className="flex gap-2.5 border-b border-border pb-2 last:border-b-0">
                     <span className="font-mono text-amber-300/70 shrink-0 w-6">{String(d.number).padStart(2, '0')}</span>
-                    <span className="text-zinc-200">{d.text}</span>
+                    <span className="text-foreground">{d.text}</span>
                   </li>
                 ))}
               </ol>
@@ -883,19 +883,19 @@ export default function SocialMediaBot() {
               {activeDraft.caption && (
                 <div>
                   <div className="text-xs uppercase text-muted-foreground mb-1">Caption</div>
-                  <div className="whitespace-pre-wrap text-zinc-300">{activeDraft.caption}</div>
+                  <div className="whitespace-pre-wrap text-muted-foreground">{activeDraft.caption}</div>
                 </div>
               )}
               {activeDraft.hashtags && (
                 <div>
                   <div className="text-xs uppercase text-muted-foreground mb-1">Hashtags</div>
-                  <div className="text-zinc-300">{activeDraft.hashtags}</div>
+                  <div className="text-muted-foreground">{activeDraft.hashtags}</div>
                 </div>
               )}
               {activeDraft.sound && (
                 <div>
                   <div className="text-xs uppercase text-muted-foreground mb-1">Sound</div>
-                  <div className="text-zinc-300">{activeDraft.sound}</div>
+                  <div className="text-muted-foreground">{activeDraft.sound}</div>
                 </div>
               )}
               {activeDraft.file_path && (

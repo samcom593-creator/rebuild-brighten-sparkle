@@ -247,7 +247,7 @@ export function BuildingLeaderboard({ currentAgentId, period }: BuildingLeaderbo
     if (rank === 1) {
       return (
         <div className="flex items-center justify-center h-6 w-6 rounded-full bg-white dark:bg-card shadow-sm shadow-amber-500/30">
-          <span className="text-xs font-bold text-white">1</span>
+          <span className="text-xs font-bold text-foreground">1</span>
         </div>
       );
     }
@@ -261,7 +261,7 @@ export function BuildingLeaderboard({ currentAgentId, period }: BuildingLeaderbo
     if (rank === 3) {
       return (
         <div className="flex items-center justify-center h-6 w-6 rounded-full bg-white dark:bg-card">
-          <span className="text-xs font-bold text-white">3</span>
+          <span className="text-xs font-bold text-foreground">3</span>
         </div>
       );
     }

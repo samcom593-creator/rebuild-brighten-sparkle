@@ -60,7 +60,10 @@ export function AgentCloudSetupChecklist() {
   // Producers have a receipt-backed launch roadmap on their real landing page.
   // Showing this manual platform checklist beside it creates two competing
   // versions of "what next." Keep this workspace-setup aid for leaders only.
-  if ((!isAdmin && !isManager) || dismissed || completedSet.size === STEPS.length) return null;
+  // MP-430: managers get the checklist; the owner does not. Sam's home is a
+  // money page, and "Set up APEX · 1 of 11 done" floating over it for months
+  // is the kind of clutter he asked to have removed.
+  if (isAdmin || !isManager || dismissed || completedSet.size === STEPS.length) return null;
 
   return (
     <aside className="fixed bottom-24 right-6 z-40 hidden w-80 overflow-hidden rounded-lg border border-border bg-card shadow-lg xl:block" aria-label="Setup checklist">

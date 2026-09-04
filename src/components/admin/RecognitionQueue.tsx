@@ -288,7 +288,7 @@ export function RecognitionQueue() {
               <p className="text-xs uppercase tracking-widest text-muted-foreground">
                 {achievementConfig[previewCandidate.achievement].label}
               </p>
-              <h2 className="text-2xl font-serif font-bold text-white">
+              <h2 className="text-2xl font-serif font-bold text-foreground">
                 {previewCandidate.agentName}
               </h2>
               <div className="text-4xl font-bold text-amber-400">

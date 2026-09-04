@@ -105,7 +105,7 @@ function RecruitingTab() {
                 <th className="text-left p-3">Last contact</th>
               </tr></thead>
               <tbody>{rows.slice(0, 50).map(r => (
-                <tr key={r.id} className="border-t border-white/5">
+                <tr key={r.id} className="border-t border-border">
                   <td className="p-3">{[r.first_name, r.last_name].filter(Boolean).join(" ") || "—"}</td>
                   <td className="p-3">{r.state ?? "—"}</td>
                   <td className="p-3"><Badge variant="secondary">{r.status}</Badge></td>
@@ -255,7 +255,7 @@ function ProductionTab() {
                 <th className="text-left p-3">Created</th>
               </tr></thead>
               <tbody>{(deals ?? []).slice(0, 20).map(d => (
-                <tr key={d.id} className="border-t border-white/5">
+                <tr key={d.id} className="border-t border-border">
                   <td className="p-3">{d.agent_id ? agentMap.get(d.agent_id) ?? "—" : "—"}</td>
                   <td className="p-3">{d.carrier ?? "—"}</td>
                   <td className="p-3 tabular-nums text-emerald-300">${Math.round(Number(d.amount) || 0).toLocaleString()}</td>

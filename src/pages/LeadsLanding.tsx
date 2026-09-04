@@ -38,7 +38,7 @@ export default function LeadsLanding() {
               </div>
             </div>
             
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white leading-tight">
+            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-foreground leading-tight">
               Get <span className="text-primary">Qualified Leads</span> Delivered Daily
             </h1>
             
@@ -83,7 +83,7 @@ export default function LeadsLanding() {
       <section className="py-24 px-4 sm:px-6 lg:px-8 bg-slate-50 dark:bg-muted/50">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-white mb-4">
+            <h2 className="text-4xl font-bold text-foreground mb-4">
               Why APEX Agents Win
             </h2>
             <p className="text-xl text-muted-foreground">Everything you need to succeed in one platform</p>
@@ -97,7 +97,7 @@ export default function LeadsLanding() {
                     <div className="p-3 rounded-lg bg-teal-500/20 text-teal-400">
                       <benefit.icon className="h-6 w-6" />
                     </div>
-                    <CardTitle className="text-xl text-white">{benefit.title}</CardTitle>
+                    <CardTitle className="text-xl text-foreground">{benefit.title}</CardTitle>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -113,7 +113,7 @@ export default function LeadsLanding() {
       <section id="platform-demo" className="py-24 px-4 sm:px-6 lg:px-8">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-white mb-4">
+            <h2 className="text-4xl font-bold text-foreground mb-4">
               Complete Agent Toolkit
             </h2>
           </div>
@@ -125,7 +125,7 @@ export default function LeadsLanding() {
                   <div key={feature.title} className="flex gap-3 items-start">
                     <Check className="h-6 w-6 text-teal-400 flex-shrink-0 mt-1" />
                     <div>
-                      <h3 className="font-semibold text-white">{feature.title}</h3>
+                      <h3 className="font-semibold text-foreground">{feature.title}</h3>
                       <p className="text-muted-foreground text-sm">{feature.desc}</p>
                     </div>
                   </div>
@@ -136,7 +136,7 @@ export default function LeadsLanding() {
                   <div key={feature.title} className="flex gap-3 items-start">
                     <Check className="h-6 w-6 text-info flex-shrink-0 mt-1" />
                     <div>
-                      <h3 className="font-semibold text-white">{feature.title}</h3>
+                      <h3 className="font-semibold text-foreground">{feature.title}</h3>
                       <p className="text-muted-foreground text-sm">{feature.desc}</p>
                     </div>
                   </div>
@@ -151,7 +151,7 @@ export default function LeadsLanding() {
       <section className="py-24 px-4 sm:px-6 lg:px-8 bg-slate-50 dark:bg-muted/50">
         <div className="max-w-3xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-white mb-4">
+            <h2 className="text-4xl font-bold text-foreground mb-4">
               Frequently Asked Questions
             </h2>
           </div>
@@ -160,7 +160,7 @@ export default function LeadsLanding() {
             {faqs.map((faq) => (
               <Card key={faq.q} className="bg-slate-700/50 border-slate-600">
                 <CardHeader>
-                  <CardTitle className="text-lg text-white">{faq.q}</CardTitle>
+                  <CardTitle className="text-lg text-foreground">{faq.q}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-slate-600 dark:text-slate-300">{faq.a}</p>
@@ -174,7 +174,7 @@ export default function LeadsLanding() {
       {/* CTA Section */}
       <section className="py-24 px-4 sm:px-6 lg:px-8 bg-white dark:bg-card">
         <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-4xl font-bold text-white mb-6">
+          <h2 className="text-4xl font-bold text-foreground mb-6">
             Ready to Build Your First $10K Month?
           </h2>
           <p className="text-xl text-slate-600 dark:text-slate-300 mb-8">
@@ -194,11 +194,11 @@ export default function LeadsLanding() {
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div>
-              <h3 className="font-bold text-white mb-4">APEX Financial</h3>
+              <h3 className="font-bold text-foreground mb-4">APEX Financial</h3>
               <p className="text-muted-foreground text-sm">Warm life insurance leads. Built for agents who dial, not browse.</p>
             </div>
             <div>
-              <h4 className="font-semibold text-white mb-4">Product</h4>
+              <h4 className="font-semibold text-foreground mb-4">Product</h4>
               <ul className="space-y-2 text-muted-foreground text-sm">
                 <li><Link to="/leads" className="inline-flex min-h-6 items-center hover:text-teal-400 transition">Leads</Link></li>
                 <li><Link to="/dashboard" className="inline-flex min-h-6 items-center hover:text-teal-400 transition">Dashboard</Link></li>
@@ -206,14 +206,14 @@ export default function LeadsLanding() {
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold text-white mb-4">Company</h4>
+              <h4 className="font-semibold text-foreground mb-4">Company</h4>
               <ul className="space-y-2 text-muted-foreground text-sm">
                 <li><Link to="/" className="inline-flex min-h-6 items-center hover:text-teal-400 transition">About</Link></li>
                 <li><Link to="/contact" className="inline-flex min-h-6 items-center hover:text-teal-400 transition">Contact</Link></li>
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold text-white mb-4">Legal</h4>
+              <h4 className="font-semibold text-foreground mb-4">Legal</h4>
               <ul className="space-y-2 text-muted-foreground text-sm">
                 <li><a href="https://apex-financial.org/privacy" rel="noopener noreferrer" className="inline-flex min-h-6 items-center hover:text-teal-400 transition">Privacy</a></li>
                 <li><a href="https://apex-financial.org/terms" rel="noopener noreferrer" className="inline-flex min-h-6 items-center hover:text-teal-400 transition">Terms</a></li>

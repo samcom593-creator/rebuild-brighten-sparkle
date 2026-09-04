@@ -357,7 +357,7 @@ function ShippedSection() {
           {!hires?.length && <div className="text-xs text-slate-600 dark:text-slate-300">No hires loaded yet</div>}
           <ul className="space-y-1">
             {(hires ?? []).map((h, i) => (
-              <li key={h.id ?? `${h.hired_on ?? i}-${h.display_name ?? h.first_name ?? "unknown"}`} className="flex items-center justify-between border-b border-white/5 py-1">
+              <li key={h.id ?? `${h.hired_on ?? i}-${h.display_name ?? h.first_name ?? "unknown"}`} className="flex items-center justify-between border-b border-border py-1">
                 <span className="min-w-0 truncate">
                   {h.display_name ?? h.first_name ?? "—"}
                   {h.manager_name && (
@@ -446,11 +446,11 @@ function ContentCommandSection() {
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="grid grid-cols-2 gap-2">
-          <div className="rounded-md border border-white/10 bg-white/[0.03] p-3">
+          <div className="rounded-md border border-border bg-white/[0.03] p-3">
             <div className="text-2xl font-bold text-amber-300">{awaiting}</div>
             <div className="text-xs text-muted-foreground">need Sam stamp</div>
           </div>
-          <div className="rounded-md border border-white/10 bg-white/[0.03] p-3">
+          <div className="rounded-md border border-border bg-white/[0.03] p-3">
             <div className="text-2xl font-bold text-emerald-300">{approved}</div>
             <div className="text-xs text-muted-foreground">approved to post</div>
           </div>
@@ -462,7 +462,7 @@ function ContentCommandSection() {
         ) : (
           <ul className="space-y-1.5">
             {(drafts ?? []).slice(0, 3).map((d) => (
-              <li key={d.id} className="rounded-md border border-white/10 bg-white/[0.025] p-2 text-xs">
+              <li key={d.id} className="rounded-md border border-border bg-white/[0.025] p-2 text-xs">
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-medium truncate">{d.title ?? `Draft ${d.id}`}</span>
                   <Badge variant="outline">{d.status}</Badge>
@@ -523,7 +523,7 @@ function NextActionsSection() {
           <Link
             key={action.label}
             to={action.href}
-            className="flex items-center justify-between gap-3 rounded-md border border-white/10 bg-white/[0.03] p-3 text-sm hover:border-amber-400/40 transition-colors"
+            className="flex items-center justify-between gap-3 rounded-md border border-border bg-white/[0.03] p-3 text-sm hover:border-amber-400/40 transition-colors"
           >
             <span><span className={cn("font-mono mr-2", action.tone)}>#{index + 1}</span>{action.label}</span>
             <span className="text-slate-600 dark:text-slate-300">open</span>
@@ -579,7 +579,7 @@ function LeaksSection() {
       <CardContent>
         <div className="grid grid-cols-2 gap-2">
           {tiles.map(t => (
-            <a key={t.label} href={t.href} className="rounded-md border border-white/10 bg-white/[0.02] p-3 hover:border-white/20 transition-colors">
+            <a key={t.label} href={t.href} className="rounded-md border border-border bg-white/[0.02] p-3 hover:border-white/20 transition-colors">
               <div className={cn("text-2xl font-bold tabular-nums", t.color)}>{t.value}</div>
               <div className="text-xs text-muted-foreground mt-1">{t.label}</div>
             </a>
@@ -630,7 +630,7 @@ function BotsSection() {
       </CardHeader>
       <CardContent className="space-y-1.5 text-sm">
         {bots.map(b => (
-          <div key={b.key} className="flex items-center justify-between py-1 border-b border-white/5 last:border-b-0">
+          <div key={b.key} className="flex items-center justify-between py-1 border-b border-border last:border-b-0">
             <div className="flex items-center gap-2">
               <b.icon className="w-3.5 h-3.5 text-muted-foreground" />
               <span className="font-medium">{b.label}</span>

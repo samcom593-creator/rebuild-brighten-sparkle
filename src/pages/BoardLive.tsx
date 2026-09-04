@@ -95,7 +95,7 @@ export default function BoardLive() {
   const pct = leader && milestone ? Math.min(100, (leader.apNum / milestone) * 100) : 0;
 
   return (
-    <div className="min-h-screen bg-background text-slate-100 px-4 py-8 sm:px-8">
+    <div className="min-h-screen bg-background text-foreground px-4 py-8 sm:px-8">
       <div className="mx-auto w-full max-w-5xl">
         {board.isError && (
           <div role="alert" className="mb-4 rounded-lg border border-rose-500/40 bg-rose-500/10 p-4 text-sm font-semibold text-rose-200">
@@ -103,7 +103,7 @@ export default function BoardLive() {
           </div>
         )}
         {/* header */}
-        <div className="flex flex-wrap items-end justify-between gap-4 border-b border-white/10 pb-6">
+        <div className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-6">
           <div>
             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">
               <span className="relative flex h-2 w-2">
@@ -119,7 +119,7 @@ export default function BoardLive() {
           <div className="grid w-full grid-cols-3 gap-3 sm:flex sm:w-auto sm:gap-8">
             <div>
               <div className="text-[9px] uppercase tracking-widest text-muted-foreground sm:text-[11px]">Total AP</div>
-              <div className="text-lg font-black tabular-nums text-white sm:text-3xl">
+              <div className="text-lg font-black tabular-nums text-foreground sm:text-3xl">
                 <AnimatedCounter value={totalAp} prefix="$" />
               </div>
             </div>
@@ -134,7 +134,7 @@ export default function BoardLive() {
             </div>
             <div>
               <div className="text-[9px] uppercase tracking-widest text-muted-foreground sm:text-[11px]">Policies</div>
-              <div className="text-lg font-black tabular-nums text-white sm:text-3xl">
+              <div className="text-lg font-black tabular-nums text-foreground sm:text-3xl">
                 <AnimatedCounter value={totalDeals} />
               </div>
             </div>
@@ -152,7 +152,7 @@ export default function BoardLive() {
                 ${money(Math.max(milestone - leader.apNum, 0))} to go
               </span>
             </div>
-            <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-white/10">
+            <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-foreground/10">
               <div
                 className="h-full rounded-full bg-amber-400 transition-all"
                 style={{ width: `${pct}%` }}
@@ -166,11 +166,11 @@ export default function BoardLive() {
           {board.isLoading ? (
             <div className="space-y-3">
               {[0, 1, 2, 3, 4].map((n) => (
-                <div key={`sk-${n}`} className="h-24 animate-pulse rounded-xl border border-white/5 bg-white/5" />
+                <div key={`sk-${n}`} className="h-24 animate-pulse rounded-xl border border-border bg-foreground/5" />
               ))}
             </div>
           ) : rows.length === 0 ? (
-            <div className="rounded-xl border border-white/10 bg-white/5 p-10 text-center text-muted-foreground">
+            <div className="rounded-xl border border-border bg-foreground/5 p-10 text-center text-muted-foreground">
               No production posted for {bounds.label} yet.
             </div>
           ) : (
@@ -202,13 +202,13 @@ export default function BoardLive() {
                         {hasAgentProfile(r.agent_id) ? (
                           <Link
                             to={`/dashboard/profile?agentId=${encodeURIComponent(r.agent_id)}`}
-                            className="block truncate text-base font-bold leading-tight text-white underline-offset-4 hover:text-amber-300 hover:underline sm:text-xl"
+                            className="block truncate text-base font-bold leading-tight text-foreground underline-offset-4 hover:text-amber-300 hover:underline sm:text-xl"
                             aria-label={`Open profile for ${r.agent_name ?? "agent"}`}
                           >
                             {r.agent_name ?? "Unknown"}
                           </Link>
                         ) : (
-                          <div className="truncate text-base font-bold leading-tight text-white sm:text-xl">
+                          <div className="truncate text-base font-bold leading-tight text-foreground sm:text-xl">
                             {r.agent_name ?? "Unknown"}
                           </div>
                         )}
@@ -224,10 +224,10 @@ export default function BoardLive() {
                     </div>
 
                     {/* stats — even 3-up grid on mobile, right-aligned row on desktop */}
-                    <div className="grid grid-cols-3 gap-2 border-t border-white/5 pt-3 sm:flex sm:shrink-0 sm:items-center sm:gap-8 sm:border-0 sm:pt-0">
+                    <div className="grid grid-cols-3 gap-2 border-t border-border pt-3 sm:flex sm:shrink-0 sm:items-center sm:gap-8 sm:border-0 sm:pt-0">
                       <div className="sm:text-right">
                         <div className="text-[9px] uppercase tracking-widest text-muted-foreground sm:text-[10px]">Production</div>
-                        <div className="text-base font-black tabular-nums text-white sm:text-2xl">
+                        <div className="text-base font-black tabular-nums text-foreground sm:text-2xl">
                           <AnimatedCounter value={r.apNum} prefix="$" />
                         </div>
                       </div>
@@ -239,7 +239,7 @@ export default function BoardLive() {
                       </div>
                       <div className="sm:text-right">
                         <div className="text-[9px] uppercase tracking-widest text-muted-foreground sm:text-[10px]">Lead spend</div>
-                        <div className="text-base font-bold tabular-nums text-slate-300 sm:text-2xl">
+                        <div className="text-base font-bold tabular-nums text-muted-foreground sm:text-2xl">
                           ${money(r.leadNum)}
                         </div>
                       </div>
@@ -251,7 +251,7 @@ export default function BoardLive() {
           )}
         </div>
 
-        <p className="mt-8 border-t border-white/10 pt-4 text-[11px] leading-relaxed text-muted-foreground">
+        <p className="mt-8 border-t border-border pt-4 text-[11px] leading-relaxed text-muted-foreground">
           Production is actual posted annual premium from the carrier book. Est. income is an
           estimate based on each producer&rsquo;s contract levels and is gross of chargebacks,
           advances and overrides — individual results vary.

@@ -28,15 +28,15 @@ export function DemoModeCard() {
   };
 
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+    <div className="rounded-xl border border-border bg-white/[0.03] p-5">
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            {on ? <EyeOff className="h-4 w-4 text-amber-400" /> : <Eye className="h-4 w-4 text-slate-400" />}
+            {on ? <EyeOff className="h-4 w-4 text-amber-400" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
             <h3 className="font-semibold">Demo mode</h3>
             <Badge variant={on ? "default" : "secondary"}>{on ? "ON" : "OFF"}</Badge>
           </div>
-          <p className="mt-2 text-sm text-slate-400">
+          <p className="mt-2 text-sm text-muted-foreground">
             Replaces every number, client name, email and phone on screen with
             consistent fake data, so you can walk someone through the platform
             without showing them the live book. Pages, charts and flows behave

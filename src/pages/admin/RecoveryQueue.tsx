@@ -143,7 +143,7 @@ const COHORT_META: Record<CohortKey, {
     help: "Applied but no course purchased. Sell the value.",
     action: "Sell pre licensing course",
     icon: Ghost,
-    accent: "text-slate-300",
+    accent: "text-muted-foreground",
     bar: "bg-slate-400",
     ring: "ring-slate-400/70",
     weight: 7,
@@ -204,8 +204,8 @@ interface OutcomeMeta {
 const OUTCOMES: OutcomeMeta[] = [
   { key: "contacted",      label: "Contacted",      short: "Contact",    shortcut: "1", icon: CheckCheck,   tone: "border-teal-500/40 bg-teal-500/15 text-teal-200 hover:bg-teal-500/25" },
   { key: "left_vm",        label: "Left VM",        short: "VM",         shortcut: "2", icon: Voicemail,    tone: "border-info/30 bg-info/15 text-info hover:bg-info/25" },
-  { key: "text_sent",      label: "Text sent",      short: "Text",       shortcut: "3", icon: MessageSquare,tone: "border-white/10 bg-white/[0.05] text-slate-200 hover:bg-white/[0.10]" },
-  { key: "email_sent",     label: "Email sent",     short: "Email",      shortcut: "4", icon: Send,         tone: "border-white/10 bg-white/[0.05] text-slate-200 hover:bg-white/[0.10]" },
+  { key: "text_sent",      label: "Text sent",      short: "Text",       shortcut: "3", icon: MessageSquare,tone: "border-border bg-white/[0.05] text-foreground hover:bg-white/[0.10]" },
+  { key: "email_sent",     label: "Email sent",     short: "Email",      shortcut: "4", icon: Send,         tone: "border-border bg-white/[0.05] text-foreground hover:bg-white/[0.10]" },
   { key: "no_answer",      label: "No answer",      short: "No ans",     shortcut: "5", icon: PhoneOff,     tone: "border-slate-500/30 bg-slate-500/10 text-slate-300 hover:bg-slate-500/20" },
   { key: "not_interested", label: "Not interested", short: "Not int.",   shortcut: "6", icon: XCircle,      tone: "border-rose-500/30 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20" },
   { key: "bad_number",     label: "Bad number",     short: "Bad #",      shortcut: "7", icon: PhoneOff,     tone: "border-rose-500/40 bg-rose-500/15 text-rose-200 hover:bg-rose-500/25" },
@@ -451,7 +451,7 @@ function RowActions({ row, onOpen, onMarkContacted, onMarkPhoneBad, onSetStage, 
             type="button"
             aria-label="Mark contacted"
             onClick={onMarkContacted}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08] transition-colors"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-white/[0.04] text-foreground hover:bg-white/[0.08] transition-colors"
           >
             <CheckCheck className="h-4 w-4" />
           </button>
@@ -467,7 +467,7 @@ function RowActions({ row, onOpen, onMarkContacted, onMarkPhoneBad, onSetStage, 
                 type="button"
                 aria-label="Change license stage"
                 onClick={stop}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08] transition-colors"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-white/[0.04] text-foreground hover:bg-white/[0.08] transition-colors"
               >
                 <ChevronDown className="h-4 w-4" />
               </button>
@@ -494,7 +494,7 @@ function RowActions({ row, onOpen, onMarkContacted, onMarkPhoneBad, onSetStage, 
               {s.label}
             </button>
           ))}
-          <div className="mt-1 border-t border-white/10 pt-1">
+          <div className="mt-1 border-t border-border pt-1">
             <button
               type="button"
               onClick={onMarkPhoneBad}
@@ -513,7 +513,7 @@ function RowActions({ row, onOpen, onMarkContacted, onMarkPhoneBad, onSetStage, 
             type="button"
             aria-label="Open details"
             onClick={onOpen}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08] transition-colors"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-white/[0.04] text-foreground hover:bg-white/[0.08] transition-colors"
           >
             <ChevronRight className="h-4 w-4" />
           </button>
@@ -555,7 +555,7 @@ function ManagerAvatar({ profile }: { profile?: Profile }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <div className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] text-[10px] font-semibold text-slate-200">
+        <div className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-border bg-white/[0.06] text-[10px] font-semibold text-foreground">
           {initials || "?"}
         </div>
       </TooltipTrigger>
@@ -1066,7 +1066,7 @@ export default function RecoveryQueue() {
                 <PlayCircle className="h-3.5 w-3.5" />
                 Resume
               </Button>
-              <Button size="sm" variant="outline" onClick={dismissResume} className="h-8 gap-1 border-white/10 bg-white/[0.04] hover:bg-white/[0.08]">
+              <Button size="sm" variant="outline" onClick={dismissResume} className="h-8 gap-1 border-border bg-white/[0.04] hover:bg-white/[0.08]">
                 <X className="h-3.5 w-3.5" />
                 Discard
               </Button>
@@ -1093,7 +1093,7 @@ export default function RecoveryQueue() {
                 variant="outline"
                 size="sm"
                 onClick={() => refetch()}
-                className="h-9 gap-1.5 border-white/10 bg-white/[0.04] hover:bg-white/[0.08]"
+                className="h-9 gap-1.5 border-border bg-white/[0.04] hover:bg-white/[0.08]"
               >
                 <RefreshCw className={cn("h-4 w-4", isFetching && "animate-spin")} />
                 Refresh
@@ -1136,10 +1136,10 @@ export default function RecoveryQueue() {
                   <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{meta.short}</span>
                 </div>
                 <div className="mt-2">
-                  <div className="text-2xl font-semibold text-slate-100">
+                  <div className="text-2xl font-semibold text-foreground">
                     <AnimatedCounter value={count} duration={0.4} />
                   </div>
-                  <div className="mt-0.5 text-[11px] font-medium text-slate-300">{meta.label}</div>
+                  <div className="mt-0.5 text-[11px] font-medium text-muted-foreground">{meta.label}</div>
                   <div className="mt-1 text-[10px] leading-tight text-muted-foreground">{meta.help}</div>
                 </div>
               </button>
@@ -1156,13 +1156,13 @@ export default function RecoveryQueue() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search name, phone, email, state, manager"
-                className="h-9 border-white/10 bg-white/[0.04] pl-9 text-sm text-slate-100 placeholder:text-muted-foreground focus-visible:ring-teal-400/70"
+                className="h-9 border-border bg-white/[0.04] pl-9 text-sm text-foreground placeholder:text-muted-foreground focus-visible:ring-teal-400/70"
               />
             </div>
 
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="h-9 gap-1.5 border-white/10 bg-white/[0.04] hover:bg-white/[0.08]">
+                <Button variant="outline" size="sm" className="h-9 gap-1.5 border-border bg-white/[0.04] hover:bg-white/[0.08]">
                   <Filter className="h-3.5 w-3.5" />
                   Sort
                   <span className="ml-1 text-muted-foreground">
@@ -1255,7 +1255,7 @@ export default function RecoveryQueue() {
                   variant="outline"
                   disabled={bulkRunning}
                   onClick={requestBulkStage}
-                  className="h-8 gap-1 border-white/10 bg-white/[0.04] hover:bg-white/[0.08]"
+                  className="h-8 gap-1 border-border bg-white/[0.04] hover:bg-white/[0.08]"
                 >
                   <ArrowRight className="h-3.5 w-3.5" />
                   Advance stage
@@ -1303,7 +1303,7 @@ export default function RecoveryQueue() {
               ? "No applicants currently in the licensing recovery queue. Ship a win somewhere else."
               : "Adjust filters to see more applicants."}
             actions={rows.length > 0
-              ? <Button onClick={resetFilters} variant="outline" className="border-white/10 bg-white/[0.04] hover:bg-white/[0.08]">Reset filters</Button>
+              ? <Button onClick={resetFilters} variant="outline" className="border-border bg-white/[0.04] hover:bg-white/[0.08]">Reset filters</Button>
               : undefined}
             variant="success"
           />
@@ -1356,7 +1356,7 @@ export default function RecoveryQueue() {
                     {/* Left */}
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <div className="truncate text-sm font-semibold text-slate-100">{r.name}</div>
+                        <div className="truncate text-sm font-semibold text-foreground">{r.name}</div>
                         {r.state && (
                           <span className="inline-flex items-center gap-0.5 text-[11px] text-muted-foreground">
                             <MapPin className="h-3 w-3" />
@@ -1387,7 +1387,7 @@ export default function RecoveryQueue() {
                         <MilestoneChip date={r.exam_passed} label="Passed" done={!!r.exam_passed} />
                         <MilestoneChip date={r.licensed_date} label="Licensed" done={!!r.licensed_date} />
                       </div>
-                      <div className="mt-2 flex items-center gap-1.5 text-xs text-slate-300">
+                      <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
                         <ArrowRight className={cn("h-3 w-3", meta.accent)} />
                         <span>{meta.action}</span>
                         {r.phone && (
@@ -1452,7 +1452,7 @@ export default function RecoveryQueue() {
               className="w-full max-w-sm rounded-2xl border border-white/10 bg-[#0B1118] p-4 shadow-xl"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="mb-2 text-sm font-semibold text-slate-100">
+              <div className="mb-2 text-sm font-semibold text-foreground">
                 Advance {selectedIds.size} record{selectedIds.size === 1 ? "" : "s"} to
               </div>
               <div className="grid grid-cols-1 gap-1">
@@ -1462,7 +1462,7 @@ export default function RecoveryQueue() {
                     type="button"
                     disabled={bulkRunning}
                     onClick={() => runBulkStage(s.key)}
-                    className="flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-slate-200 transition-colors hover:bg-white/[0.06] disabled:opacity-50"
+                    className="flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-white/[0.06] disabled:opacity-50"
                   >
                     <div className="h-1.5 w-1.5 rounded-full bg-slate-600" />
                     {s.label}
@@ -1483,7 +1483,7 @@ export default function RecoveryQueue() {
           {/* palette-allow:apex-panel-dark — alert dialog matches popover surface */}
           <AlertDialogContent className="border-white/10 bg-[#0B1118] text-slate-100">
             <AlertDialogHeader>
-              <AlertDialogTitle className="text-slate-100">
+              <AlertDialogTitle className="text-foreground">
                 Apply to {selectedIds.size} records?
               </AlertDialogTitle>
               <AlertDialogDescription className="text-muted-foreground">
@@ -1491,7 +1491,7 @@ export default function RecoveryQueue() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel className="border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08]">
+              <AlertDialogCancel className="border-border bg-white/[0.04] text-foreground hover:bg-white/[0.08]">
                 Cancel
               </AlertDialogCancel>
               <AlertDialogAction
@@ -1556,9 +1556,9 @@ function PowerHourBar({
                 <Timer className="h-3 w-3" />
                 Power Hour · {Math.min(session.index + 1, session.total)} / {session.total}
                 <span className="text-muted-foreground">·</span>
-                <span className="tabular-nums text-slate-300">{formatElapsed(elapsed)}</span>
+                <span className="tabular-nums text-muted-foreground">{formatElapsed(elapsed)}</span>
               </div>
-              <div className="mt-1 truncate text-sm font-semibold text-slate-100">{currentName}</div>
+              <div className="mt-1 truncate text-sm font-semibold text-foreground">{currentName}</div>
               <div className="mt-1 h-1 w-full max-w-md overflow-hidden rounded-full bg-white/[0.06]">
                 <div
                   className="h-full rounded-full bg-teal-400 transition-[width] duration-300"
@@ -1572,7 +1572,7 @@ function PowerHourBar({
           <div className="flex items-center gap-1.5">
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button size="sm" variant="outline" onClick={onPrev} className="h-8 gap-1 border-white/10 bg-white/[0.04] hover:bg-white/[0.08]">
+                <Button size="sm" variant="outline" onClick={onPrev} className="h-8 gap-1 border-border bg-white/[0.04] hover:bg-white/[0.08]">
                   <ArrowLeft className="h-3.5 w-3.5" />
                   Prev
                 </Button>
@@ -1595,7 +1595,7 @@ function PowerHourBar({
                     asChild
                     size="sm"
                     variant="outline"
-                    className="h-8 gap-1 border-white/10 bg-white/[0.04] hover:bg-white/[0.08]"
+                    className="h-8 gap-1 border-border bg-white/[0.04] hover:bg-white/[0.08]"
                   >
                     <Link to={`/dashboard/applicants?id=${currentId}`} onClick={(e) => e.stopPropagation()}>
                       <ExternalLink className="h-3.5 w-3.5" />
@@ -1693,7 +1693,7 @@ function FilterChip({ active, label, onClick }: { active: boolean; label: string
         "inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
         active
           ? "border-teal-500/50 bg-teal-500/15 text-teal-200"
-          : "border-white/10 bg-white/[0.04] text-slate-300 hover:bg-white/[0.08]"
+          : "border-border bg-white/[0.04] text-muted-foreground hover:bg-white/[0.08]"
       )}
     >
       {label}
@@ -1706,19 +1706,19 @@ function SkeletonList() {
     <div className="space-y-2">
       {Array.from({ length: 8 }).map((_, i) => (
         // stable-key-allow:skeleton-loader-static-length-array
-        <div key={i} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <div key={i} className="rounded-xl border border-border bg-white/[0.03] p-4">
           <div className="flex items-center gap-3">
             <div className="min-w-0 flex-1 space-y-2">
-              <Skeleton className="h-4 w-40 bg-white/10" />
-              <Skeleton className="h-3 w-64 bg-white/10" />
-              <Skeleton className="h-3 w-52 bg-white/10" />
+              <Skeleton className="h-4 w-40 bg-foreground/10" />
+              <Skeleton className="h-3 w-64 bg-foreground/10" />
+              <Skeleton className="h-3 w-52 bg-foreground/10" />
             </div>
             <div className="flex gap-1">
-              <Skeleton className="h-9 w-9 rounded-lg bg-white/10" />
-              <Skeleton className="h-9 w-9 rounded-lg bg-white/10" />
-              <Skeleton className="h-9 w-9 rounded-lg bg-white/10" />
-              <Skeleton className="h-9 w-9 rounded-lg bg-white/10" />
-              <Skeleton className="h-9 w-9 rounded-lg bg-white/10" />
+              <Skeleton className="h-9 w-9 rounded-lg bg-foreground/10" />
+              <Skeleton className="h-9 w-9 rounded-lg bg-foreground/10" />
+              <Skeleton className="h-9 w-9 rounded-lg bg-foreground/10" />
+              <Skeleton className="h-9 w-9 rounded-lg bg-foreground/10" />
+              <Skeleton className="h-9 w-9 rounded-lg bg-foreground/10" />
             </div>
           </div>
         </div>

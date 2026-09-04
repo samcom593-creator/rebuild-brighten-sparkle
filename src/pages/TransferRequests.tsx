@@ -202,32 +202,32 @@ export default function TransferRequests() {
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">PENDING</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">
+              <p className="text-[10px] uppercase tracking-widest text-foreground/40 mb-1">PENDING</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-foreground">
                 {requests.isLoading ? "—" : pending.length}
               </p>
-              <p className="text-[10px] text-white/40 tabular-nums">awaiting decision</p>
+              <p className="text-[10px] text-foreground/40 tabular-nums">awaiting decision</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">APPROVED · MTD</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">
+              <p className="text-[10px] uppercase tracking-widest text-foreground/40 mb-1">APPROVED · MTD</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-foreground">
                 {requests.isLoading ? "—" : approvedThisMonth}
               </p>
-              <p className="text-[10px] text-white/40 tabular-nums">this month</p>
+              <p className="text-[10px] text-foreground/40 tabular-nums">this month</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">DENIED · MTD</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">
+              <p className="text-[10px] uppercase tracking-widest text-foreground/40 mb-1">DENIED · MTD</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-foreground">
                 {requests.isLoading ? "—" : deniedThisMonth}
               </p>
-              <p className="text-[10px] text-white/40 tabular-nums">this month</p>
+              <p className="text-[10px] text-foreground/40 tabular-nums">this month</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">AVG DECISION</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">
+              <p className="text-[10px] uppercase tracking-widest text-foreground/40 mb-1">AVG DECISION</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-foreground">
                 {avgDecisionDays === null ? "—" : avgDecisionDays.toFixed(1)}
               </p>
-              <p className="text-[10px] text-white/40 tabular-nums">days to decide</p>
+              <p className="text-[10px] text-foreground/40 tabular-nums">days to decide</p>
             </div>
           </div>
         </div>

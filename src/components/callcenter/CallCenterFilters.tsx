@@ -465,7 +465,7 @@ export function CallCenterFilters({
 
         <motion.h1
           variants={itemVariants}
-          className="text-2xl font-bold mb-1 text-slate-100"
+          className="text-2xl font-bold mb-1 text-foreground"
         >
           Call Center
         </motion.h1>
@@ -479,7 +479,7 @@ export function CallCenterFilters({
         <GlassCard className="p-5 space-y-5 relative overflow-hidden">
           <motion.div
             variants={itemVariants}
-            className="flex items-center gap-2 text-slate-100 font-semibold"
+            className="flex items-center gap-2 text-foreground font-semibold"
           >
             <Filter className="h-4 w-4 text-teal-300" />
             Configure Filters
@@ -495,7 +495,7 @@ export function CallCenterFilters({
                     {filter.label}
                   </label>
                   <Select value={filter.value} onValueChange={filter.onChange}>
-                    <SelectTrigger className="bg-background/50 border-white/10 hover:border-teal-500/40 transition-colors">
+                    <SelectTrigger className="bg-background/50 border-border hover:border-teal-500/40 transition-colors">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="max-h-[300px]">
@@ -512,9 +512,9 @@ export function CallCenterFilters({
           </div>
 
           {/* Queue Preview Panel */}
-          <motion.div variants={itemVariants} className="border-t border-white/10 pt-4">
+          <motion.div variants={itemVariants} className="border-t border-border pt-4">
             <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2 text-slate-100 font-semibold text-sm">
+              <div className="flex items-center gap-2 text-foreground font-semibold text-sm">
                 <Eye className="h-4 w-4 text-teal-300" />
                 Queue Preview
                 {previewQ.isFetching && (
@@ -628,9 +628,9 @@ export function CallCenterFilters({
 
       {/* Preview Queue Drawer */}
       <Sheet open={previewOpen} onOpenChange={setPreviewOpen}>
-        <SheetContent side="right" className="w-full sm:max-w-md bg-background border-white/10">
+        <SheetContent side="right" className="w-full sm:max-w-md bg-background border-border">
           <SheetHeader>
-            <SheetTitle className="text-slate-100">Queue Preview</SheetTitle>
+            <SheetTitle className="text-foreground">Queue Preview</SheetTitle>
             <SheetDescription className="text-muted-foreground">
               Snapshot of the {stats?.matching ?? 0} leads matching your current filter selection.
             </SheetDescription>
@@ -663,8 +663,8 @@ export function CallCenterFilters({
               <PreviewTile label="No-contact" value={stats?.noContact ?? 0} tone="gold" />
             </div>
 
-            <div className="rounded-md border border-white/10 bg-card/60 p-3 text-xs text-muted-foreground">
-              <div className="font-medium text-slate-200 mb-1">Filter Summary</div>
+            <div className="rounded-md border border-border bg-card/60 p-3 text-xs text-muted-foreground">
+              <div className="font-medium text-foreground mb-1">Filter Summary</div>
               <ul className="space-y-0.5">
                 <li>Source: {sourceFilter.replace("_", " ")}</li>
                 <li>Referrer: {refererFilter.replace("_", " ")}</li>

@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/useAuth";
 import { Link } from "react-router-dom";
 import {
-  AlertTriangle, ArrowRight, CheckCircle2, ChevronDown, LineChart as LineChartIcon,
+  AlertTriangle, ChevronDown, LineChart as LineChartIcon,
   RefreshCw, Shield, TrendingUp, UserPlus, Users,
 } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip as ChartTooltip, XAxis, YAxis } from "recharts";
@@ -20,12 +21,8 @@ import { TrainingNextStep } from "@/components/dashboard/TrainingNextStep";
 import { JoinYourTeam } from "@/components/dashboard/JoinYourTeam";
 import { ProducerPulse } from "@/components/dashboard/ProducerPulse";
 import { RecordsAndBounties } from "@/components/dashboard/RecordsAndBounties";
-import { SubmitDealDialog } from "@/components/deals/SubmitDealDialog";
 import { ScopedProductionScoreboard } from "@/components/dashboard/ScopedProductionScoreboard";
 import { OperationsCommandCenter } from "@/components/dashboard/OperationsCommandCenter";
-import { JustHiredPanel } from "@/components/dashboard/JustHiredPanel";
-import { OnboardingRollCall } from "@/components/dashboard/OnboardingRollCall";
-import { UnlinkedAgentsPanel } from "@/components/dashboard/UnlinkedAgentsPanel";
 import { cn } from "@/lib/utils";
 import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 import { invalidateOperationalTruth } from "@/lib/invalidateOperationalTruth";
@@ -126,6 +123,7 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
 }
 
 export function AgentCloudHome() {
+  const { isAdmin } = useAuth();
   const queryClient = useQueryClient();
   const today = phxToday();
   const [period, setPeriod] = useState<PeriodKey>("this_month");
@@ -220,12 +218,7 @@ export function AgentCloudHome() {
     );
   }
 
-  const { mtd, needs_attention: na, roster, policy_status } = data;
-  const attention = [
-    na.lapse_pending > 0 && { label: `${na.lapse_pending} policies pending lapse`, to: "/dashboard/retention", tone: "text-amber-500" },
-    na.dormant_producers > 0 && { label: `${na.dormant_producers} producers dormant 45+ days`, to: "/dashboard/team", tone: "text-rose-400" },
-    na.in_chargeback_window > 0 && { label: `${na.in_chargeback_window} policies inside the chargeback window`, to: "/dashboard/production", tone: "text-sky-400" },
-  ].filter(Boolean) as Array<{ label: string; to: string; tone: string }>;
+  const { roster, policy_status } = data;
 
   const trend = (data.trend ?? []).map((t) => ({ ...t, name: monthShort(t.m) }));
 
@@ -239,76 +232,26 @@ export function AgentCloudHome() {
           invites were live; they just were not reachable anywhere in the
           product. Self-hides once onboarding completes. */}
       <JoinYourTeam />
-      <TrainingNextStep />
+      {/* MP-430 (Sam, 2026-09-04: "zero clutter"): the owner does not need his
+          own course-progress card above the money. Agents and managers keep
+          training first — that placement is what moved 92 agents into the
+          course. */}
+      {!isAdmin && <TrainingNextStep />}
       <ScopedProductionScoreboard />
-      <OperationsCommandCenter />
-      {/* Recent hires — names + who they're routed to + when, so Sam can follow
-          up directly. Independent of AgentLink/InsuraCloud: reads agents/hires. */}
-      <JustHiredPanel />
-      {/* MP-339: who is new and still not in, with each blocker named. Renders
-          nothing when the viewer has no new hires. */}
-      <OnboardingRollCall />
-      {/* MP-351: who production cannot credit, with hire/fire and AgentLink
-          linking on the row. Renders nothing when nobody is in scope. */}
-      <UnlinkedAgentsPanel />
 
-      {/* WHAT NEEDS YOU TODAY */}
-      <div>
-        <div className="mb-2 flex items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold text-foreground">What needs you today</h2>
-          {PeriodPicker}
-        </div>
-        {attention.length === 0 ? (
-          <Card className="border-emerald-500/30 bg-emerald-500/[0.06]">
-            <CardContent className="flex items-center gap-2.5 p-4">
-              <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-              <p className="text-sm text-foreground">You&rsquo;re clear. Nothing is overdue and nothing is waiting on you.</p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-2 sm:grid-cols-3">
-            {attention.map((a) => (
-              <Link key={a.to + a.label} to={a.to}>
-                <Card className="transition-colors hover:border-primary/40">
-                  <CardContent className="flex items-center gap-2.5 p-4">
-                    <AlertTriangle className={cn("h-4 w-4 shrink-0", a.tone)} />
-                    <p className="text-sm text-foreground">{a.label}</p>
-                    <ArrowRight className="ml-auto h-3.5 w-3.5 text-muted-foreground" />
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* SELECTED PERIOD PRODUCTION + ALP */}
-      <div>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{period === "this_month" ? "Month-to-date ALP" : "ALP · " + win.label}</p>
-            <div className="mt-1 flex flex-wrap items-baseline gap-x-3">
-              <p className="text-4xl font-bold tabular-nums text-primary">{money(mtd.team_ap)}</p>
-              <p className="text-sm font-semibold tabular-nums text-foreground">{mtd.team_policies.toLocaleString()} policies</p>
-            </div>
-            <p className="mt-1.5 text-xs text-muted-foreground">
-              Goal {money(mtd.goal)} · <span className="font-semibold text-foreground">{mtd.pct_to_goal}% there</span>{mtd.days_left > 0 ? ` · ${mtd.days_left} days left` : ""} · all-time {data.lifetime.policies.toLocaleString()} policies
-            </p>
-            <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
-              <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, mtd.pct_to_goal)}%` }} />
-            </div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <SubmitDealDialog trigger={<Button size="sm">Post a Deal</Button>} />
-              <Button asChild size="sm" variant="outline"><Link to="/dashboard/leaderboard">Leaderboard</Link></Button>
-              <Button asChild size="sm" variant="outline"><Link to="/dashboard/production">Production</Link></Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* ROSTER + IMO */}
+      {/* MP-430: straight from the scoreboard to Total IMO by agency. The three
+          amber panels that used to sit here (just-hired, roll call, unlinked
+          agents) now live on /dashboard/team under "Roster health" — Sam: "what
+          am I gonna do with any of those boxes ... just go to total IMO by
+          agency." The "what needs you today" cards and the month-to-date card
+          restated numbers the scoreboard and the ops tiles already carry, so
+          they are gone rather than moved. */}
       <div className="grid gap-3 lg:grid-cols-2">
         <div className="space-y-3">
+          <div className="mb-1 flex items-center justify-between gap-3">
+            <h2 className="text-sm font-semibold text-foreground">Total IMO by agency</h2>
+            {PeriodPicker}
+          </div>
           <div className="grid gap-3 sm:grid-cols-3">
             <Card><CardContent className="p-4">
               <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"><Users className="h-3 w-3" />Roster</p>
@@ -329,29 +272,9 @@ export function AgentCloudHome() {
           <ImoByAgency start={win.start} end={win.end} windowLabel={win.label} />
         </div>
 
-        {/* LEADERBOARD */}
-        <Card>
-          <CardContent className="p-4">
-            <div className="mb-3 flex items-baseline justify-between">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Leaderboard</p>
-              <Link to="/dashboard/leaderboard" className="text-xs text-primary hover:underline">View all</Link>
-            </div>
-            {data.leaderboard.length === 0 ? (
-              <p className="py-10 text-center text-sm text-muted-foreground">No production yet this period.</p>
-            ) : (
-              <div className="space-y-2">
-                {data.leaderboard.slice(0, 8).map((r, i) => (
-                  <div key={r.name} className="flex items-center gap-3 text-sm">
-                    <span className="w-5 shrink-0 text-xs font-bold tabular-nums text-muted-foreground">#{i + 1}</span>
-                    <span className="min-w-0 flex-1 truncate">{r.name}</span>
-                    <span className="shrink-0 text-xs text-muted-foreground">{r.deals}d</span>
-                    <span className="w-20 shrink-0 text-right font-semibold tabular-nums">{money(r.ap)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {/* Operations flow sits beside IMO: recruit → interview → hire → onboard →
+            contract → sell, one truthful queue each. */}
+        <OperationsCommandCenter />
       </div>
 
       <ProducerPulse />

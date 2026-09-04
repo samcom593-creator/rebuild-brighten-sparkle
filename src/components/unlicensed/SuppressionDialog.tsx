@@ -120,7 +120,7 @@ export function SuppressionDialog({ open, onOpenChange, target, onSuppressed }: 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-[#0B1118] text-slate-100 border-white/10 max-w-md">
         <DialogHeader>
-          <DialogTitle className="inline-flex items-center gap-2 text-slate-100">
+          <DialogTitle className="inline-flex items-center gap-2 text-foreground">
             <ShieldOff className="h-4 w-4 text-rose-300" /> Suppress {targetName}
           </DialogTitle>
           <DialogDescription className="text-muted-foreground text-xs">
@@ -135,9 +135,9 @@ export function SuppressionDialog({ open, onOpenChange, target, onSuppressed }: 
                 <RadioGroupItem
                   value={r.key}
                   id={`mp257-suppress-${r.key}`}
-                  className="border-white/30 text-teal-300"
+                  className="border-border text-teal-300"
                 />
-                <Label htmlFor={`mp257-suppress-${r.key}`} className="text-sm text-slate-200 cursor-pointer">
+                <Label htmlFor={`mp257-suppress-${r.key}`} className="text-sm text-foreground cursor-pointer">
                   {r.label}
                 </Label>
               </div>
@@ -154,7 +154,7 @@ export function SuppressionDialog({ open, onOpenChange, target, onSuppressed }: 
                 value={otherText}
                 onChange={(e) => setOtherText(e.target.value)}
                 placeholder="Wrong person — this record was created for a different applicant with same first name."
-                className="mt-1 min-h-[70px] bg-white/[0.03] border-white/10 text-slate-100 placeholder:text-muted-foreground"
+                className="mt-1 min-h-[70px] bg-white/[0.03] border-border text-foreground placeholder:text-muted-foreground"
               />
             </div>
           )}

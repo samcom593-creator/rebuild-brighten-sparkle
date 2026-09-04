@@ -1159,7 +1159,7 @@ export default function DashboardApplicants() {
                 variant="outline"
                 size="sm"
                 aria-pressed={myDirectsOnly}
-                className="h-10 border-white/15 bg-white/[0.04] text-white hover:bg-white/10 hover:text-white"
+                className="h-10 border-border bg-white/[0.04] text-foreground hover:bg-white/10 hover:text-white"
                 onClick={() => setMyDirectsOnly(!myDirectsOnly)}
               >
                 <Users className="h-4 w-4 shrink-0" />

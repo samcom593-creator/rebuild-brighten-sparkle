@@ -91,7 +91,7 @@ export function MyRankingChart({ currentAgentId, entries }: MyRankingChartProps)
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="flex items-center justify-center h-12 w-12 rounded-full bg-white dark:bg-card">
-                    <span className="text-xl font-bold text-white">#{currentRank}</span>
+                    <span className="text-xl font-bold text-foreground">#{currentRank}</span>
                   </div>
                   <div>
                     <p className="font-bold text-lg">{currentUser.name}</p>

@@ -362,7 +362,7 @@ export function RecoveryBatchDrawer({
       >
         <SheetHeader className="text-left">
           <div className="flex items-center justify-between gap-2">
-            <SheetTitle className="text-slate-100 inline-flex items-center gap-2">
+            <SheetTitle className="text-foreground inline-flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-teal-300" />
               VA Recovery Batch
             </SheetTitle>
@@ -376,7 +376,7 @@ export function RecoveryBatchDrawer({
         </SheetHeader>
 
         {!row && (
-          <div className="mt-8 rounded-xl border border-white/10 bg-white/[0.03] p-6 text-center text-sm text-muted-foreground">
+          <div className="mt-8 rounded-xl border border-border bg-white/[0.03] p-6 text-center text-sm text-muted-foreground">
             No records match this batch. Adjust filters or wait for tomorrow's ghost pile.
           </div>
         )}
@@ -384,10 +384,10 @@ export function RecoveryBatchDrawer({
         {row && script && (
           <div className="mt-4 space-y-4">
             {/* Identity */}
-            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+            <div className="rounded-xl border border-border bg-white/[0.03] p-4">
               <div className="flex items-center justify-between gap-2">
                 <div>
-                  <div className="text-lg font-semibold text-slate-100">{displayName(row)}</div>
+                  <div className="text-lg font-semibold text-foreground">{displayName(row)}</div>
                   <div className="mt-0.5 text-xs text-muted-foreground">
                     {row.state && <span>{row.state} · </span>}
                     <span className="uppercase tracking-wide">{(row.license_progress ?? "unlicensed").replaceAll("_", " ")}</span>
@@ -408,7 +408,7 @@ export function RecoveryBatchDrawer({
             {/* Script */}
             <div className="rounded-xl border border-teal-500/25 bg-teal-500/[0.06] p-4">
               <div className="text-[10px] uppercase tracking-widest text-teal-300/80">Recovery script · {script.title}</div>
-              <p className="mt-2 text-sm text-slate-100 leading-relaxed">{script.body}</p>
+              <p className="mt-2 text-sm text-foreground leading-relaxed">{script.body}</p>
               <p className="mt-2 text-[11px] text-muted-foreground italic">Coach: {script.hint}</p>
             </div>
 
@@ -432,7 +432,7 @@ export function RecoveryBatchDrawer({
                 <a
                   href={`mailto:${row.email}`}
                   aria-label={`Email ${row.email}`}
-                  className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.05] hover:bg-white/[0.10] text-slate-200 px-3 py-3 text-sm font-semibold truncate"
+                  className="inline-flex items-center gap-2 rounded-lg border border-border bg-white/[0.05] hover:bg-white/[0.10] text-foreground px-3 py-3 text-sm font-semibold truncate"
                   title={row.email}
                 >
                   <Mail className="h-4 w-4 shrink-0" />
@@ -462,7 +462,7 @@ export function RecoveryBatchDrawer({
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Reached mom. Said Jason is at work — call back after 6pm."
-                className="mt-1 min-h-[80px] bg-white/[0.03] border-white/10 text-slate-100 placeholder:text-muted-foreground"
+                className="mt-1 min-h-[80px] bg-white/[0.03] border-border text-foreground placeholder:text-muted-foreground"
               />
             </div>
 
@@ -497,7 +497,7 @@ export function RecoveryBatchDrawer({
             </div>
 
             {/* Follow-up scheduler */}
-            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+            <div className="rounded-xl border border-border bg-white/[0.03] p-3">
               <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Schedule follow-up</div>
               <div className="flex flex-wrap items-center gap-2">
                 <Popover>
@@ -505,7 +505,7 @@ export function RecoveryBatchDrawer({
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-9 justify-start bg-white/[0.03] border-white/10 text-slate-200"
+                      className="h-9 justify-start bg-white/[0.03] border-border text-foreground"
                       aria-label="Pick follow-up date"
                     >
                       <CalendarClock className="h-3.5 w-3.5 mr-2" />
@@ -535,14 +535,14 @@ export function RecoveryBatchDrawer({
             </div>
 
             {/* Nav footer */}
-            <div className="flex items-center justify-between gap-2 pt-2 border-t border-white/10">
+            <div className="flex items-center justify-between gap-2 pt-2 border-t border-border">
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 onClick={gotoPrev}
                 disabled={index === 0}
-                className="text-slate-300 hover:text-slate-100"
+                className="text-muted-foreground hover:text-slate-100"
                 aria-label="Previous record"
               >
                 <ArrowLeft className="h-3.5 w-3.5 mr-1.5" /> Prev (K)
@@ -561,7 +561,7 @@ export function RecoveryBatchDrawer({
                 type="button"
                 size="sm"
                 onClick={gotoNext}
-                className="bg-white/10 hover:bg-white/20 text-slate-100"
+                className="bg-foreground/10 hover:bg-white/20 text-foreground"
                 aria-label="Next record"
               >
                 Next (J) <ArrowRight className="h-3.5 w-3.5 ml-1.5" />

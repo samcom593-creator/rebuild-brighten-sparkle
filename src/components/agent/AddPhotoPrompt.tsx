@@ -56,7 +56,7 @@ export function AddPhotoPrompt() {
 
       <div className="flex flex-wrap items-center gap-4">
         <div className="h-14 w-14 rounded-full bg-white dark:bg-card flex items-center justify-center shrink-0 shadow-lg shadow-primary/30">
-          <Camera className="h-6 w-6 text-white" />
+          <Camera className="h-6 w-6 text-foreground" />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">

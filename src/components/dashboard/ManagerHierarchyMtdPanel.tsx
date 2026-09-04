@@ -90,7 +90,7 @@ export function ManagerHierarchyMtdPanel() {
             {mgrLoading ? (
               <Skeleton className="h-40 w-full" />
             ) : !managers?.length ? (
-              <div className="text-xs text-muted-foreground italic p-3 border border-dashed border-white/10 rounded-md">
+              <div className="text-xs text-muted-foreground italic p-3 border border-dashed border-border rounded-md">
                 No managers loaded (v_manager_hierarchy_mtd returned 0 rows). Check agents.invited_by_manager_id wiring.
               </div>
             ) : (
@@ -98,7 +98,7 @@ export function ManagerHierarchyMtdPanel() {
                 {managers.map((m) => {
                   const pct = totalAgencyAlp > 0 ? (Number(m.team_alp_mtd) / totalAgencyAlp) * 100 : 0;
                   return (
-                    <li key={m.manager_id} className="border border-white/5 rounded-md bg-white/[0.02] p-2.5 hover:border-white/15 transition-colors">
+                    <li key={m.manager_id} className="border border-border rounded-md bg-white/[0.02] p-2.5 hover:border-white/15 transition-colors">
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-sm font-medium truncate flex-1">{m.manager_name}</span>
                         <span className="text-xs font-mono text-emerald-300 ml-2">{fmtMoney(Number(m.team_alp_mtd))}</span>
@@ -107,7 +107,7 @@ export function ManagerHierarchyMtdPanel() {
                         <span>{m.team_size} team · {m.producing_team_mtd}/{m.team_size} producing · {m.team_deals_mtd} deals</span>
                         <span className="font-mono">{pct.toFixed(1)}%</span>
                       </div>
-                      <div className="mt-1.5 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                      <div className="mt-1.5 h-1.5 bg-foreground/5 rounded-full overflow-hidden">
                         <div
                           className={cn("h-full transition-all", pct > 30 ? "bg-emerald-400" : pct > 10 ? "bg-amber-400" : "bg-slate-400")}
                           style={{ width: `${Math.min(pct, 100)}%` }}
@@ -128,13 +128,13 @@ export function ManagerHierarchyMtdPanel() {
             {prodLoading ? (
               <Skeleton className="h-40 w-full" />
             ) : !producers?.length ? (
-              <div className="text-xs text-muted-foreground italic p-3 border border-dashed border-white/10 rounded-md">
+              <div className="text-xs text-muted-foreground italic p-3 border border-dashed border-border rounded-md">
                 No producers loaded (v_top_producers_mtd returned 0 rows).
               </div>
             ) : (
               <ol className="space-y-1.5">
                 {producers.map((p, i) => (
-                  <li key={p.agent_id} className="flex items-center gap-2 border border-white/5 rounded-md bg-white/[0.02] p-2 text-sm hover:border-white/15 transition-colors">
+                  <li key={p.agent_id} className="flex items-center gap-2 border border-border rounded-md bg-white/[0.02] p-2 text-sm hover:border-white/15 transition-colors">
                     <span className={cn("font-mono text-xs w-5 text-center",
                       i === 0 ? "text-amber-300 font-bold" : i < 3 ? "text-slate-600 dark:text-slate-300" : "text-slate-600 dark:text-slate-300")}>
                       {i + 1}

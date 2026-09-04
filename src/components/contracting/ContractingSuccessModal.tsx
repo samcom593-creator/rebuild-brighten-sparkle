@@ -43,7 +43,7 @@ export function ContractingSuccessModal({ accepted }: { accepted: ContractingAcc
 
   return (
     <section aria-live="polite" aria-labelledby="contracting-result-title">
-      <h1 id="contracting-result-title" className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+      <h1 id="contracting-result-title" className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
         {needsIdentityCorrection
           ? "We need one identity correction"
           : "Contracting Initiated — Fast Track Active"}

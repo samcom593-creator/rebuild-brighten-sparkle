@@ -138,7 +138,7 @@ export function AvatarUpload({ userId, currentAvatarUrl, fullName, onAvatarChang
           disabled={uploading}
           className="absolute inset-0 flex items-center justify-center bg-white dark:bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
         >
-          {uploading ? <Loader2 className="h-6 w-6 text-white animate-spin" /> : <Camera className="h-6 w-6 text-white" />}
+          {uploading ? <Loader2 className="h-6 w-6 text-foreground animate-spin" /> : <Camera className="h-6 w-6 text-foreground" />}
         </button>
       </div>
 

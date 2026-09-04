@@ -96,7 +96,7 @@ export function JustHiredPanel() {
         {isLoading ? (
           <Skeleton className="h-32 w-full" />
         ) : !hires?.length ? (
-          <div className="text-xs text-muted-foreground italic p-3 border border-dashed border-white/10 rounded-md">
+          <div className="text-xs text-muted-foreground italic p-3 border border-dashed border-border rounded-md">
             No hires in last 30 days. Source: agents table where created_at &gt; now() - 30d.
           </div>
         ) : (
@@ -106,7 +106,7 @@ export function JustHiredPanel() {
               return (
                 <li key={h.id} className={cn(
                   "border rounded-md text-sm transition-colors",
-                  isDirect ? "border-amber-500/30 bg-amber-500/[0.04]" : "border-white/5 bg-white/[0.02]"
+                  isDirect ? "border-amber-500/30 bg-amber-500/[0.04]" : "border-border bg-white/[0.02]"
                 )}>
                   <Link
                     to={`/dashboard/profile?agentId=${h.id}`}

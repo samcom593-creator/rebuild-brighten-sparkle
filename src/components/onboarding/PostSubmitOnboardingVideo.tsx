@@ -124,7 +124,7 @@ export const PostSubmitOnboardingVideo = forwardRef<
         ) : null}
       </video>
 
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-white/10">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-foreground/10">
         <div
           className="h-full bg-primary transition-[width] duration-150"
           style={{ width: `${Math.max(0, Math.min(1, progress)) * 100}%` }}
@@ -136,10 +136,10 @@ export const PostSubmitOnboardingVideo = forwardRef<
           <div>
             <Crown className="mx-auto mb-5 h-12 w-12 text-primary" />
             <Loader2 className="mx-auto mb-4 h-7 w-7 animate-spin text-primary" />
-            <p className="text-xl font-semibold text-white">
+            <p className="text-xl font-semibold text-foreground">
               Securing your APEX spot…
             </p>
-            <p className="mt-2 text-sm text-white/60">
+            <p className="mt-2 text-sm text-foreground/60">
               Your onboarding starts automatically when submission is confirmed.
             </p>
           </div>
@@ -156,7 +156,7 @@ export const PostSubmitOnboardingVideo = forwardRef<
             <Volume2 className="h-7 w-7" />
           </span>
           <span className="text-xl font-semibold">Tap to start onboarding</span>
-          <span className="text-sm text-white/60">
+          <span className="text-sm text-foreground/60">
             Your browser needs one more tap to enable sound.
           </span>
         </button>

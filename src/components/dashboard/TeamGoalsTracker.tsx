@@ -209,7 +209,7 @@ export function TeamGoalsTracker({ className }: TeamGoalsTrackerProps) {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div
-                      className={`h-7 w-7 rounded-lg  ${goal.color} flex items-center justify-center text-white`}
+                      className={`h-7 w-7 rounded-lg  ${goal.color} flex items-center justify-center text-foreground`}
                     >
                       {isComplete ? <CheckCircle2 className="h-4 w-4" /> : goal.icon}
                     </div>
@@ -248,7 +248,7 @@ export function TeamGoalsTracker({ className }: TeamGoalsTrackerProps) {
                       className={`h-full  ${goal.color} relative`}
                     >
                       {percentage > 10 && (
-                        <div className="absolute inset-0 bg-white/20 animate-pulse" />
+                        <div className="absolute inset-0 bg-foreground/20 animate-pulse" />
                       )}
                     </motion.div>
                   </div>

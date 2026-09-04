@@ -554,7 +554,7 @@ export function ScopedProductionScoreboard() {
                   )}
                 </dl>
                 {unknownLevels > 0 && (
-                  <p className="mt-3 rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-xs text-amber-700 dark:text-amber-300">
+                  <p className="mt-3 text-xs text-muted-foreground">
                     Partial estimate: {unknownLevels} comp {unknownLevels === 1 ? "level" : "levels"} unknown, assumed {pct(data.comp.fallback_pct)}.
                   </p>
                 )}
@@ -597,13 +597,13 @@ export function ScopedProductionScoreboard() {
 
             <div className="border-t border-border">
               {feed.isError ? (
-                <div className="mx-4 mt-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+                <div className="mx-4 mt-3 text-xs text-muted-foreground">
                   Deal-feed health could not be checked. Production posted only in Discord may be missing from this board.
                 </div>
               ) : blockedFeeds.length > 0 && (
-                <div className="mx-4 mt-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+                <div className="mx-4 mt-3 text-xs text-muted-foreground">
                   <p>
-                    <span className="font-semibold">
+                    <span className="font-medium text-foreground">
                       {blockedFeeds.length === 1
                         ? `${blockedFeedAgencies} Discord deal import needs attention.`
                         : `${blockedFeeds.length} Discord deal imports need attention: ${blockedFeedAgencies}.`}

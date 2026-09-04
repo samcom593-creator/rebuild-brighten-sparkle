@@ -127,24 +127,24 @@ TOTAL COVERAGE NEED: ${fmt(calc.totalNeed)}`;
           </div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">INCOME NEED</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">{fmt(calc.incomeNeed)}</p>
-              <p className="text-[10px] text-white/40 tabular-nums">{fmt(n(inputs.income))} × {inputs.yearsReplacement} yrs</p>
+              <p className="text-[10px] uppercase tracking-widest text-foreground/40 mb-1">INCOME NEED</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-foreground">{fmt(calc.incomeNeed)}</p>
+              <p className="text-[10px] text-foreground/40 tabular-nums">{fmt(n(inputs.income))} × {inputs.yearsReplacement} yrs</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">MORTGAGE</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">{fmt(calc.mortgageNeed)}</p>
-              <p className="text-[10px] text-white/40 tabular-nums">payoff balance</p>
+              <p className="text-[10px] uppercase tracking-widest text-foreground/40 mb-1">MORTGAGE</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-foreground">{fmt(calc.mortgageNeed)}</p>
+              <p className="text-[10px] text-foreground/40 tabular-nums">payoff balance</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">DEBT</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">{fmt(calc.debtNeed)}</p>
-              <p className="text-[10px] text-white/40 tabular-nums">cards · auto · student</p>
+              <p className="text-[10px] uppercase tracking-widest text-foreground/40 mb-1">DEBT</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-foreground">{fmt(calc.debtNeed)}</p>
+              <p className="text-[10px] text-foreground/40 tabular-nums">cards · auto · student</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">TOTAL COVERAGE NEED</p>
+              <p className="text-[10px] uppercase tracking-widest text-foreground/40 mb-1">TOTAL COVERAGE NEED</p>
               <p className="text-[28px] leading-none font-black tabular-nums text-emerald-300">{fmt(calc.totalNeed)}</p>
-              <p className="text-[10px] text-white/40 tabular-nums">gross {fmt(calc.gross)} − {fmt(calc.offset)}</p>
+              <p className="text-[10px] text-foreground/40 tabular-nums">gross {fmt(calc.gross)} − {fmt(calc.offset)}</p>
             </div>
           </div>
         </div>

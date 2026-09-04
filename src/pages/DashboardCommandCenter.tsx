@@ -632,7 +632,7 @@ export default function DashboardCommandCenter() {
                 <Button
                   variant="default"
                   onClick={() => setShowInviteModal(true)}
-                  className="gap-2 bg-white text-slate-950 hover:bg-white/90"
+                  className="gap-2 bg-card text-slate-950 hover:bg-white/90"
                 >
                   <UserPlus className="h-4 w-4" />
                   Invite Team
@@ -640,7 +640,7 @@ export default function DashboardCommandCenter() {
                 <Button
                   variant="outline"
                   onClick={() => setShowDuplicateTool(true)}
-                  className="gap-2 border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+                  className="gap-2 border-border bg-foreground/10 text-foreground hover:bg-white/20 hover:text-white"
                 >
                   <Users className="h-4 w-4" />
                   Find Duplicates
@@ -834,12 +834,12 @@ export default function DashboardCommandCenter() {
                   <div className="flex items-center justify-between gap-3 flex-wrap">
                     <div className="flex items-center gap-3">
                       <CardTitle className="text-lg font-semibold">Leaderboard</CardTitle>
-                      <TabsList className="bg-white/10">
+                      <TabsList className="bg-foreground/10">
                         <TabsTrigger value="live" className="text-xs text-white/75 data-[state=active]:bg-white data-[state=active]:text-slate-950">Commissions (Live)</TabsTrigger>
                         <TabsTrigger value="logged" className="text-xs text-white/75 data-[state=active]:bg-white data-[state=active]:text-slate-950">Logged ALP</TabsTrigger>
                       </TabsList>
                     </div>
-                    <Badge variant="outline" className="border-white/20 bg-white/10 text-xs text-white">
+                    <Badge variant="outline" className="border-border bg-foreground/10 text-xs text-foreground">
                       {filteredAgents.length} agents
                     </Badge>
                   </div>

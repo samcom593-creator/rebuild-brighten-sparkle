@@ -272,7 +272,7 @@ export default function StartContracting() {
     // page". Commit to the brand shell explicitly — this page renders dark
     // regardless of the viewer's theme, matching /apply.
     <div className="dark min-h-screen bg-[#0A0A0A] text-foreground">
-      <header className="border-b border-white/10 px-6 py-4">
+      <header className="border-b border-border px-6 py-4">
         <p className="text-sm font-bold tracking-[0.2em] text-[#C9A961]">APEX FINANCIAL</p>
       </header>
       <div className="mx-auto w-full max-w-lg px-4 py-10 sm:px-6 sm:py-16">
@@ -280,14 +280,14 @@ export default function StartContracting() {
         <ContractingSuccessModal accepted={accepted} />
       ) : (
         <>
-          <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">Start contracting with APEX</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">Start contracting with APEX</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             We'll use the information already on your profile and ask only for anything that's missing. Then you'll prepare EFT and E&amp;O in the secure carrier portals.
           </p>
 
           <form onSubmit={onSubmit} noValidate className="mt-6 space-y-4">
             {prefillLoading && (
-              <div className="flex items-center gap-2 rounded-md border border-white/10 bg-white/5 px-4 py-3 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2 rounded-md border border-border bg-foreground/5 px-4 py-3 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin text-primary" aria-hidden />
                 Checking for saved details…
               </div>
@@ -301,7 +301,7 @@ export default function StartContracting() {
                       <UserRoundCheck className="h-4 w-4" aria-hidden />
                     </span>
                     <div>
-                      <h2 id="saved-contracting-details" className="text-sm font-semibold text-white">
+                      <h2 id="saved-contracting-details" className="text-sm font-semibold text-foreground">
                         {missingFields.length === 0
                           ? "Your details are ready"
                           : `${readySavedFields.length} detail${readySavedFields.length === 1 ? "" : "s"} already filled`}
@@ -331,7 +331,7 @@ export default function StartContracting() {
             )}
 
             {!prefillLoading && missingFields.length > 0 && readySavedFields.length > 0 && !showAllFields && (
-              <div className="flex items-center gap-2 text-sm font-semibold text-white">
+              <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
                 <CheckCircle2 className="h-4 w-4 text-primary" aria-hidden />
                 {missingFields.length === 1 ? "One detail left" : `${missingFields.length} details left`}
               </div>

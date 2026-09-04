@@ -2328,7 +2328,7 @@ function AgencyCommandView() {
           <div className="grid gap-5 grid-cols-2 sm:grid-cols-4 mb-5">
             <div>
               <p className="text-[10px] uppercase tracking-widest text-white/45 mb-1.5">Annual Premium</p>
-              <p className="text-[32px] sm:text-[40px] leading-none font-black tabular-nums text-white">
+              <p className="text-[32px] sm:text-[40px] leading-none font-black tabular-nums text-foreground">
                 {fmtUsd(periodSummary.totalAp, true)}
               </p>
               <p className="text-[10px] text-white/50 mt-1 tabular-nums">{periodBounds.label}</p>
@@ -2351,7 +2351,7 @@ function AgencyCommandView() {
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-widest text-white/45 mb-1.5">Licensed · MTD</p>
-              <p className="text-[32px] sm:text-[40px] leading-none font-black tabular-nums text-white">
+              <p className="text-[32px] sm:text-[40px] leading-none font-black tabular-nums text-foreground">
                 {fmtNum(tight.data?.licensedMtd ?? 0)}
               </p>
               <p className="text-[10px] text-white/50 mt-1 tabular-nums">
@@ -2364,7 +2364,7 @@ function AgencyCommandView() {
           <div className="grid gap-3 grid-cols-2 sm:grid-cols-4 mb-4 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
             <div>
               <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Apps · MTD</p>
-              <p className="text-[22px] leading-none font-bold tabular-nums text-white">{fmtNum(depth?.apps_mtd ?? 0)}</p>
+              <p className="text-[22px] leading-none font-bold tabular-nums text-foreground">{fmtNum(depth?.apps_mtd ?? 0)}</p>
               <p className="text-[10px] text-white/40 tabular-nums">+{fmtNum(depth?.apps_7d ?? 0)} last 7d</p>
             </div>
             <div>
@@ -2522,7 +2522,7 @@ function AgencyCommandView() {
         <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <Layers className="h-4 w-4 text-teal-400" />
-            <h3 className="text-14 font-bold text-slate-100">Pipeline Health · 12-Stage Funnel</h3>
+            <h3 className="text-14 font-bold text-foreground">Pipeline Health · 12-Stage Funnel</h3>
           </div>
           {bottleneckStage && (
             <Badge variant="outline" className="text-11 border-amber-500/50 bg-[rgba(245,158,11,0.08)] text-amber-400">
@@ -2552,7 +2552,7 @@ function AgencyCommandView() {
                   className={`rounded-lg border p-3 transition-colors ${isBottleneck ? "border-amber-500/50 bg-amber-500/10" : "border-border bg-background hover:bg-muted/60"}`}
                 >
                   <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground truncate">{s.display_name}</p>
-                  <p className={`mt-1 text-2xl font-black tabular-nums ${isBottleneck ? "text-amber-400" : "text-slate-100"}`}>{fmtNum(s.in_stage)}</p>
+                  <p className={`mt-1 text-2xl font-black tabular-nums ${isBottleneck ? "text-amber-400" : "text-foreground"}`}>{fmtNum(s.in_stage)}</p>
                   <div className="mt-1 flex items-center gap-1 text-[10px] tabular-nums">
                     {conv !== null && conv !== undefined && (
                       <span className={isBottleneck ? "text-amber-400" : "text-emerald-400"}>{fmtPct(conv)} →</span>
@@ -2600,7 +2600,7 @@ function AgencyCommandView() {
               <div className="group relative p-3 rounded-xl bg-rose-500/[0.08] border border-rose-500/20 hover:border-rose-400/50 transition-all">
                 <div className="flex items-center gap-1.5 mb-1.5">
                   <AlertTriangle className="h-3 w-3 text-rose-400" />
-                  <p className="text-[9px] uppercase tracking-widest text-white/50 font-bold">Ghost AP at risk</p>
+                  <p className="text-[9px] uppercase tracking-widest text-foreground/50 font-bold">Ghost AP at risk</p>
                 </div>
                 <p className="text-[22px] leading-none font-black tabular-nums text-rose-300">{fmtUsd(Number(leak.ghost_ap_at_risk ?? 0), true)}</p>
               </div>
@@ -2609,7 +2609,7 @@ function AgencyCommandView() {
               <div className="group p-3 rounded-xl bg-rose-500/[0.08] border border-rose-500/20 hover:border-rose-400/50 transition-all">
                 <div className="flex items-center gap-1.5 mb-1.5">
                   <TrendingDown className="h-3 w-3 text-rose-400" />
-                  <p className="text-[9px] uppercase tracking-widest text-white/50 font-bold">Walked commission</p>
+                  <p className="text-[9px] uppercase tracking-widest text-foreground/50 font-bold">Walked commission</p>
                 </div>
                 <p className="text-[22px] leading-none font-black tabular-nums text-rose-300">{fmtUsd(Number(leak.lapsed_walked_commission ?? 0), true)}</p>
               </div>
@@ -2617,8 +2617,8 @@ function AgencyCommandView() {
               {/* Sync status */}
               <div className="group p-3 rounded-xl bg-white/[0.04] border border-white/[0.08] hover:border-white/20 transition-all">
                 <div className="flex items-center gap-1.5 mb-1.5">
-                  <Activity className="h-3 w-3 text-white/60" />
-                  <p className="text-[9px] uppercase tracking-widest text-white/50 font-bold">Carrier sync</p>
+                  <Activity className="h-3 w-3 text-foreground/60" />
+                  <p className="text-[9px] uppercase tracking-widest text-foreground/50 font-bold">Carrier sync</p>
                 </div>
                 <div className="space-y-0.5">
                   <p className={`text-[13px] font-bold leading-tight flex items-center gap-1 ${String(leak.insuracloud_sync ?? "").includes("🟢") ? "text-emerald-300" : "text-rose-300"}`}>
@@ -2676,11 +2676,11 @@ function AgencyCommandView() {
               </div>
               <div className="p-3 rounded-xl bg-white/[0.04] border border-white/[0.06]">
                 <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Deals</p>
-                <p className="text-[24px] leading-none font-black tabular-nums text-white">{fmtNum(periodSummary.dealCount)}</p>
+                <p className="text-[24px] leading-none font-black tabular-nums text-foreground">{fmtNum(periodSummary.dealCount)}</p>
               </div>
               <div className="p-3 rounded-xl bg-white/[0.04] border border-white/[0.06]">
                 <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Avg / deal</p>
-                <p className="text-[24px] leading-none font-black tabular-nums text-white">{fmtUsd(periodSummary.dealCount ? periodSummary.totalAp / periodSummary.dealCount : 0, true)}</p>
+                <p className="text-[24px] leading-none font-black tabular-nums text-foreground">{fmtUsd(periodSummary.dealCount ? periodSummary.totalAp / periodSummary.dealCount : 0, true)}</p>
               </div>
               <div className="p-3 rounded-xl bg-amber-500/[0.08] border border-amber-500/20">
                 <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Daily pace</p>
@@ -2778,19 +2778,19 @@ function AgencyCommandView() {
                       i === 0 ? "bg-amber-500/20 text-amber-300 ring-1 ring-amber-400/40" :
                       i === 1 ? "bg-slate-400/15 text-slate-200" :
                       i === 2 ? "bg-amber-700/20 text-amber-400" :
-                      "bg-white/[0.04] text-white/50"
+                      "bg-white/[0.04] text-foreground/50"
                     }`}>
                       {i + 1}
                     </span>
                     {a.avatar_url ? (
                       <img src={a.avatar_url} alt="" className="h-7 w-7 rounded-full object-cover ring-1 ring-white/10" />
                     ) : (
-                      <div className="h-7 w-7 rounded-full bg-white/[0.06] text-white text-[10px] font-bold flex items-center justify-center">
+                      <div className="h-7 w-7 rounded-full bg-white/[0.06] text-foreground text-[10px] font-bold flex items-center justify-center">
                         {(a.display_name ?? "?").split(" ").map(s => s[0]).slice(0, 2).join("")}
                       </div>
                     )}
                     <div className="min-w-0 flex-1">
-                      <p className="text-13 font-semibold truncate text-white">{a.display_name ?? "—"}</p>
+                      <p className="text-13 font-semibold truncate text-foreground">{a.display_name ?? "—"}</p>
                       <p className="text-[10px] text-white/50">{a.agent_code ?? "—"} · {fmtNum(a.deals)} deals</p>
                     </div>
                     <p className="text-14 font-black tabular-nums text-emerald-300 shrink-0">
@@ -2999,7 +2999,7 @@ function AgencyCommandView() {
         <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <TrendingDown className="h-4 w-4 text-rose-500" />
-            <h3 className="text-14 font-bold text-slate-100">Producer Risk Board</h3>
+            <h3 className="text-14 font-bold text-foreground">Producer Risk Board</h3>
             <Badge variant="outline" className="text-11 border-rose-500/50 bg-rose-500/10 text-rose-500">
               {fmtNum(riskRows.filter((r) => r.currently_dropping).length)} dropping
             </Badge>
@@ -3052,7 +3052,7 @@ function AgencyCommandView() {
                   return (
                     <tr key={r.producer_id} className="border-b border-border/40 hover:bg-muted/60">
                       <td className="py-2 px-2">
-                        <p className="font-semibold text-slate-100 truncate max-w-[10rem]">{r.display_name ?? "—"}</p>
+                        <p className="font-semibold text-foreground truncate max-w-[10rem]">{r.display_name ?? "—"}</p>
                       </td>
                       <td className="py-2 px-2 hidden sm:table-cell text-muted-foreground truncate max-w-[8rem]">{r.manager_name}</td>
                       <td className="py-2 px-2">
@@ -3060,7 +3060,7 @@ function AgencyCommandView() {
                           {riskLabel}
                         </span>
                       </td>
-                      <td className="py-2 px-2 text-right font-bold tabular-nums text-slate-100">{fmtUsd(currentAlp, true)}</td>
+                      <td className="py-2 px-2 text-right font-bold tabular-nums text-foreground">{fmtUsd(currentAlp, true)}</td>
                       <td className="py-2 px-2 hidden md:table-cell">
                         <div className="flex items-end justify-end gap-0.5 h-6">
                           {[alp3, alp2, alp1, currentAlp].map((v, i) => (
@@ -3095,7 +3095,7 @@ function AgencyCommandView() {
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Trophy className="h-4 w-4 text-amber-400" />
-            <h3 className="text-14 font-bold text-slate-100">Leaderboard · Top 5 · {periodBounds.label}</h3>
+            <h3 className="text-14 font-bold text-foreground">Leaderboard · Top 5 · {periodBounds.label}</h3>
           </div>
           <Button asChild variant="ghost" size="sm">
             <Link to="/leaderboard" className="text-11">Full leaderboard <ArrowRight className="h-3 w-3 ml-1" /></Link>
@@ -3111,12 +3111,12 @@ function AgencyCommandView() {
                   i === 0 ? "bg-amber-500/20 text-amber-400 border border-amber-500/50"
                     : i === 1 ? "bg-slate-400/20 text-muted-foreground"
                     : i === 2 ? "bg-amber-500/10 text-amber-400"
-                    : "bg-white/5 text-muted-foreground"
+                    : "bg-foreground/5 text-muted-foreground"
                 }`}>
                   {i + 1}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-13 font-semibold text-slate-100 truncate">{a.display_name}</p>
+                  <p className="text-13 font-semibold text-foreground truncate">{a.display_name}</p>
                   <p className="text-[10px] text-muted-foreground">{a.agent_code ?? "—"} · {fmtNum(a.deals)} deals</p>
                 </div>
                 <span className="text-13 font-bold tabular-nums text-emerald-400">{fmtUsd(a.ap, true)}</span>
@@ -3132,7 +3132,7 @@ function AgencyCommandView() {
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4 text-info" />
-            <h3 className="text-14 font-bold text-slate-100">Manager Accountability</h3>
+            <h3 className="text-14 font-bold text-foreground">Manager Accountability</h3>
           </div>
           <Button asChild variant="ghost" size="sm">
             <Link to="/dashboard/managers" className="text-11">Full board <ArrowRight className="h-3 w-3 ml-1" /></Link>
@@ -3167,12 +3167,12 @@ function AgencyCommandView() {
                   const atRiskInTeam = riskRows.filter((r) => r.currently_dropping && r.manager_name === (m.manager_name ?? "")).length;
                   return (
                     <tr key={m.manager_id} className="border-b border-border/40 hover:bg-muted/60">
-                      <td className="py-2 px-2 font-semibold text-slate-100 truncate max-w-[12rem]">{m.manager_name ?? "—"}</td>
+                      <td className="py-2 px-2 font-semibold text-foreground truncate max-w-[12rem]">{m.manager_name ?? "—"}</td>
                       <td className="py-2 px-2 text-right tabular-nums text-muted-foreground">{fmtNum(m.team_size ?? 0)}</td>
                       <td className="py-2 px-2 text-right tabular-nums text-muted-foreground hidden sm:table-cell" title="Requires manager_activity_daily view">—</td>
                       <td className="py-2 px-2 text-right tabular-nums text-muted-foreground hidden sm:table-cell" title="Requires manager_activity_daily view">—</td>
                       <td className="py-2 px-2 text-right tabular-nums text-muted-foreground hidden md:table-cell" title="Requires manager_activity_daily view">—</td>
-                      <td className="py-2 px-2 text-right tabular-nums text-slate-100">{fmtNum(m.producing_team_mtd ?? 0)}</td>
+                      <td className="py-2 px-2 text-right tabular-nums text-foreground">{fmtNum(m.producing_team_mtd ?? 0)}</td>
                       <td className="py-2 px-2 text-right font-bold tabular-nums text-emerald-400">{fmtUsd(teamAlp, true)}</td>
                       <td className="py-2 px-2 text-right tabular-nums hidden lg:table-cell">
                         <span className={atRiskInTeam > 0 ? "text-rose-500 font-bold" : "text-muted-foreground"}>{fmtNum(atRiskInTeam)}</span>
@@ -3211,7 +3211,7 @@ function AgencyCommandView() {
       <Sheet open={dailyReviewOpen} onOpenChange={setDailyReviewOpen}>
         <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto bg-background border-l border-border">
           <SheetHeader>
-            <SheetTitle className="text-slate-100">Daily Review</SheetTitle>
+            <SheetTitle className="text-foreground">Daily Review</SheetTitle>
             <SheetDescription className="text-muted-foreground">
               7-step walkthrough of today's agency priorities. Handle each in order.
             </SheetDescription>
@@ -3276,7 +3276,7 @@ function AgencyCommandView() {
                 <div key={step.title} className="rounded-lg border border-border bg-card p-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="text-13 font-bold text-slate-100">{step.title}</p>
+                      <p className="text-13 font-bold text-foreground">{step.title}</p>
                       <p className="text-11 text-muted-foreground mt-0.5">{step.metric}</p>
                     </div>
                     <Button asChild variant="ghost" size="sm" className="h-7 text-[10px] text-teal-400">
@@ -3290,7 +3290,7 @@ function AgencyCommandView() {
                         <li key={i} className="text-11 text-muted-foreground flex items-start gap-2">
                           <span className="text-teal-400">·</span>
                           <span className="min-w-0">
-                            <span className="font-semibold text-slate-100">{b.label}</span>
+                            <span className="font-semibold text-foreground">{b.label}</span>
                             {b.sub && <span className="text-muted-foreground"> — {b.sub}</span>}
                           </span>
                         </li>
@@ -3354,7 +3354,7 @@ function CarrierMixPanel({ data, loading }: {
         </div>
 
         {loading ? (
-          <Skeleton className="h-40 w-full bg-white/5" />
+          <Skeleton className="h-40 w-full bg-foreground/5" />
         ) : !data || chartData.length === 0 ? (
           <div className="py-6 text-center">
             <p className="text-[26px] font-black text-white/90">First deal opens the board</p>
@@ -3400,7 +3400,7 @@ function CarrierMixPanel({ data, loading }: {
                   </div>
                   <div className="flex items-center gap-3 shrink-0 tabular-nums">
                     <span className="text-white/60">{row.deals}d</span>
-                    <span className="text-white font-semibold">{fmtUsd(row.value, true)}</span>
+                    <span className="text-foreground font-semibold">{fmtUsd(row.value, true)}</span>
                     <span className="text-emerald-300 w-10 text-right">{row.pct.toFixed(0)}%</span>
                   </div>
                 </Link>
@@ -3442,7 +3442,7 @@ function TopMoversPanel({ data, loading }: {
         </div>
 
         {loading ? (
-          <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} /* stable-key-allow:skeleton */ className="h-9 w-full bg-white/5" />)}</div>
+          <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} /* stable-key-allow:skeleton */ className="h-9 w-full bg-foreground/5" />)}</div>
         ) : data.length === 0 ? (
           <div className="py-6 text-center">
             <p className="text-[26px] font-black text-white/90">Momentum starts Monday</p>
@@ -3457,21 +3457,21 @@ function TopMoversPanel({ data, loading }: {
                 : "text-white/60 bg-white/5 border-white/10";
               const pctText = m.pct == null ? "NEW" : `${m.delta >= 0 ? "+" : ""}${m.pct.toFixed(0)}%`;
               return (
-                <li key={m.agentId} className="flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1.5">
+                <li key={m.agentId} className="flex items-center justify-between gap-2 rounded-lg border border-border bg-white/[0.03] px-2.5 py-1.5">
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="text-[10px] w-4 text-white/40 tabular-nums">{i + 1}</span>
                     <span className="h-7 w-7 rounded-full bg-amber-500/20 border border-amber-400/30 grid place-items-center text-[10px] font-bold text-amber-200 shrink-0">
                       {initials || "—"}
                     </span>
                     <div className="min-w-0">
-                      <p className="text-[12px] font-semibold text-white truncate">{m.name}</p>
+                      <p className="text-[12px] font-semibold text-foreground truncate">{m.name}</p>
                       <p className="text-[10px] text-white/45 tabular-nums">
                         {fmtUsd(m.lastWk, true)} → <span className="text-white/85">{fmtUsd(m.thisWk, true)}</span>
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
-                    <span className="text-[11px] font-bold text-white tabular-nums">
+                    <span className="text-[11px] font-bold text-foreground tabular-nums">
                       {m.delta >= 0 ? "+" : ""}{fmtUsd(m.delta, true)}
                     </span>
                     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border tabular-nums ${pctClass}`}>
@@ -3534,7 +3534,7 @@ function ConversionFunnelPanel({ data, loading }: {
         </div>
 
         {loading ? (
-          <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} /* stable-key-allow:skeleton */ className="h-7 w-full bg-white/5" />)}</div>
+          <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} /* stable-key-allow:skeleton */ className="h-7 w-full bg-foreground/5" />)}</div>
         ) : !data || data.created === 0 ? (
           <div className="py-6 text-center">
             <p className="text-[26px] font-black text-white/90">Funnel boots on first application</p>
@@ -3549,7 +3549,7 @@ function ConversionFunnelPanel({ data, loading }: {
                   <div className="flex items-center justify-between text-[11px] mb-1">
                     <span className="text-white/85 font-semibold">{s.label}</span>
                     <span className="tabular-nums text-white/70">
-                      <span className="text-white font-bold">{fmtNum(s.count)}</span>
+                      <span className="text-foreground font-bold">{fmtNum(s.count)}</span>
                       <span className="text-white/40 ml-2">{s.pctOfTop.toFixed(1)}% of top</span>
                       {s.pctOfPrior != null && (
                         <span className={`ml-2 ${dropOff! > 50 ? "text-rose-300" : "text-emerald-300"}`}>
@@ -3558,7 +3558,7 @@ function ConversionFunnelPanel({ data, loading }: {
                       )}
                     </span>
                   </div>
-                  <div className="h-2 rounded-full bg-white/5 overflow-hidden">
+                  <div className="h-2 rounded-full bg-foreground/5 overflow-hidden">
                     <div
                       className="h-full rounded-full bg-emerald-500 transition-all"
                       style={{ width: `${Math.max(2, s.pctOfTop)}%` }}
@@ -3602,7 +3602,7 @@ function ActivityFeedPanel({ data, loading }: {
         </div>
 
         {loading ? (
-          <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} /* stable-key-allow:skeleton */ className="h-9 w-full bg-white/5" />)}</div>
+          <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} /* stable-key-allow:skeleton */ className="h-9 w-full bg-foreground/5" />)}</div>
         ) : data.length === 0 ? (
           <div className="py-6 text-center">
             <p className="text-[26px] font-black text-white/90">Inbox zero. Hold the Standard.</p>
@@ -3616,12 +3616,12 @@ function ActivityFeedPanel({ data, loading }: {
               const when = e.created_at ? formatDistanceToNow(new Date(e.created_at), { addSuffix: true }) : "—";
               const verb = e.event_type === "deal_posted" ? "posted" : (e.event_type ?? "event")?.replaceAll("_", " ");
               return (
-                <li key={e.id} className="flex items-center gap-2.5 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1.5">
+                <li key={e.id} className="flex items-center gap-2.5 rounded-lg border border-border bg-white/[0.03] px-2.5 py-1.5">
                   <span className="h-7 w-7 rounded-full bg-emerald-500/20 border border-emerald-400/30 grid place-items-center text-[10px] font-bold text-emerald-200 shrink-0">
                     {initials || "—"}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[12px] text-white truncate">
+                    <p className="text-[12px] text-foreground truncate">
                       <span className="font-semibold">{e.agent_name}</span>
                       <span className="text-white/55"> {verb} </span>
                       <span className="text-white/85">{e.product_sold ?? "deal"}</span>
@@ -3673,7 +3673,7 @@ function SourceRoiPanel({ data, loading }: {
         </div>
 
         {loading ? (
-          <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} /* stable-key-allow:skeleton */ className="h-7 w-full bg-white/5" />)}</div>
+          <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} /* stable-key-allow:skeleton */ className="h-7 w-full bg-foreground/5" />)}</div>
         ) : data.length === 0 ? (
           <div className="py-6 text-center">
             <p className="text-[26px] font-black text-white/90">Tag your sources, win the funnel</p>
@@ -3687,7 +3687,7 @@ function SourceRoiPanel({ data, loading }: {
               return (
                 <div key={r.source} className="grid grid-cols-12 items-center gap-2 text-[11px]">
                   <div className="col-span-3 truncate text-white/80 font-medium">{TITLE_CASE(r.source)}</div>
-                  <div className="col-span-5 h-2 rounded-full bg-white/5 overflow-hidden">
+                  <div className="col-span-5 h-2 rounded-full bg-foreground/5 overflow-hidden">
                     <div
                       className={`h-full rounded-full ${isWinner ? "bg-emerald-400" : "bg-amber-500/60"}`}
                       style={{ width: `${Math.max(3, widthPct)}%` }}
@@ -3695,7 +3695,7 @@ function SourceRoiPanel({ data, loading }: {
                   </div>
                   <div className="col-span-4 flex items-center justify-end gap-2 tabular-nums">
                     <span className="text-white/60">{r.apps} apps</span>
-                    <span className={`font-bold ${r.coursePct >= 5 ? "text-emerald-300" : "text-white/70"}`}>
+                    <span className={`font-bold ${r.coursePct >= 5 ? "text-emerald-300" : "text-foreground/70"}`}>
                       {r.coursePct.toFixed(1)}%
                     </span>
                   </div>
@@ -3740,7 +3740,7 @@ function MoneyFlowPanel({ data, loading }: {
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-3 gap-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} /* stable-key-allow:skeleton */ className="h-16 bg-white/5" />)}</div>
+          <div className="grid grid-cols-3 gap-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} /* stable-key-allow:skeleton */ className="h-16 bg-foreground/5" />)}</div>
         ) : !data || data.count === 0 ? (
           <div className="py-6 text-center">
             <p className="text-[26px] font-black text-white/90">Wire the ledger, watch it flow</p>
@@ -3771,9 +3771,9 @@ function MoneyFlowPanel({ data, loading }: {
                 <p className="text-[10px] text-white/50 mt-1">Charged back</p>
               </div>
             </div>
-            <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-[11px]">
+            <div className="mt-4 pt-3 border-t border-border flex items-center justify-between text-[11px]">
               <span className="text-white/55">Total written MTD</span>
-              <span className="text-white font-bold tabular-nums">{fmtUsd(data.total)}</span>
+              <span className="text-foreground font-bold tabular-nums">{fmtUsd(data.total)}</span>
             </div>
             {data.count < 20 && (
               <p className="text-[10px] text-amber-300/80 mt-2 flex items-center gap-1">
@@ -3983,7 +3983,7 @@ function PersonalPacePanel() {
               </div>
               <div>
                 <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">LMTD · same period</p>
-                <p className="text-[28px] leading-none font-black tabular-nums text-white">{fmtUsd(p.lmtdSameDayAp, true)}</p>
+                <p className="text-[28px] leading-none font-black tabular-nums text-foreground">{fmtUsd(p.lmtdSameDayAp, true)}</p>
                 <p className="text-[10px] text-white/40 tabular-nums">{p.lmtdSameDayDeals} deals · {dealsDelta >= 0 ? "+" : ""}{dealsDelta} vs now</p>
               </div>
               <div>
@@ -4165,7 +4165,7 @@ function WeekOverWeekPanel() {
           </div>
           <div className="p-3 rounded-xl bg-white/[0.04] border border-white/[0.06]">
             <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">LAST WEEK</p>
-            <p className="text-[24px] leading-none font-black tabular-nums text-white">{fmtUsd(d?.lastWeekTotal ?? 0, true)}</p>
+            <p className="text-[24px] leading-none font-black tabular-nums text-foreground">{fmtUsd(d?.lastWeekTotal ?? 0, true)}</p>
           </div>
         </div>
         {wow.isLoading ? (
@@ -4310,10 +4310,10 @@ function RecruiterContactSlaPanel() {
                   return (
                     <tr key={r.id} className="hover:bg-white/[0.02]">
                       <td className="py-2">
-                        <p className="font-medium truncate text-white">{r.name}</p>
+                        <p className="font-medium truncate text-foreground">{r.name}</p>
                         <p className="text-[10px] text-white/40 tabular-nums">{r.code}</p>
                       </td>
-                      <td className="text-right tabular-nums font-bold text-white">{r.total}</td>
+                      <td className="text-right tabular-nums font-bold text-foreground">{r.total}</td>
                       <td className="text-right tabular-nums font-bold text-amber-300">{r.uncontacted}</td>
                       <td className={`text-right tabular-nums font-bold ${tone}`}>{r.stale48}</td>
                       <td className="text-right tabular-nums">
@@ -4557,7 +4557,7 @@ function TimeOfDayProductionPanel() {
                 })}
               </div>
             ))}
-            <p className="text-[10px] text-white/40 mt-2 tabular-nums">{h.totalDeals} deal posts · derived from snapshot_at hour-of-day</p>
+            <p className="text-[10px] text-foreground/40 mt-2 tabular-nums">{h.totalDeals} deal posts · derived from snapshot_at hour-of-day</p>
           </div>
         )}
       </div>
@@ -4645,19 +4645,19 @@ function CommissionProjectionPanel() {
         {proj.isLoading ? (
           <div className="space-y-2">{Array.from({length:3}).map((_,i)=><Skeleton key={i} /* stable-key-allow:skeleton */ className="h-12 bg-white/[0.04]" />)}</div>
         ) : !p ? (
-          <p className="text-12 text-white/60 italic">Run a deal · the ledger will sing.</p>
+          <p className="text-12 text-foreground/60 italic">Run a deal · the ledger will sing.</p>
         ) : (
           <>
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div className="p-3 rounded-xl bg-emerald-500/[0.08] border border-emerald-500/20">
-                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">MTD PROJECTED</p>
+                <p className="text-[10px] uppercase tracking-widest text-foreground/40 mb-1">MTD PROJECTED</p>
                 <p className="text-[26px] leading-none font-black tabular-nums text-emerald-300">{fmtUsd(p.projectedMtd, true)}</p>
-                <p className="text-[10px] text-white/40 tabular-nums">from {fmtUsd(p.mtdAp, true)} AP</p>
+                <p className="text-[10px] text-foreground/40 tabular-nums">from {fmtUsd(p.mtdAp, true)} AP</p>
               </div>
               <div className="p-3 rounded-xl bg-amber-500/[0.08] border border-amber-500/20">
-                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">EOM PROJECTION</p>
+                <p className="text-[10px] uppercase tracking-widest text-foreground/40 mb-1">EOM PROJECTION</p>
                 <p className="text-[26px] leading-none font-black tabular-nums text-amber-300">{fmtUsd(p.eomProjection, true)}</p>
-                <p className="text-[10px] text-white/40 tabular-nums">
+                <p className="text-[10px] text-foreground/40 tabular-nums">
                   vs LMTD {fmtUsd(p.projectedLmtd, true)} ·
                   <span className={p.variancePct >= 0 ? "text-emerald-300" : "text-rose-300"}>
                     {" "}{p.variancePct >= 0 ? "+" : ""}{p.variancePct.toFixed(0)}%
@@ -4666,13 +4666,13 @@ function CommissionProjectionPanel() {
               </div>
             </div>
             <div className="pt-3 border-t border-white/[0.06] text-[11px] flex items-center justify-between">
-              <span className="text-white/40 uppercase tracking-widest text-[10px]">Ledger actual</span>
+              <span className="text-foreground/40 uppercase tracking-widest text-[10px]">Ledger actual</span>
               <span className="tabular-nums">
                 <span className="text-emerald-300 font-bold">{fmtUsd(p.actualPaid)}</span>
-                <span className="text-white/40 mx-1">paid</span>
-                <span className="mx-2 text-white/20">·</span>
+                <span className="text-foreground/40 mx-1">paid</span>
+                <span className="mx-2 text-foreground/20">·</span>
                 <span className="text-amber-300 font-bold">{fmtUsd(p.actualPending)}</span>
-                <span className="text-white/40 mx-1">pending</span>
+                <span className="text-foreground/40 mx-1">pending</span>
               </span>
             </div>
           </>
@@ -4755,7 +4755,7 @@ function HirePace12WPanel() {
             <div className="grid grid-cols-3 gap-3 mb-3">
               <div>
                 <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">TOTAL · 12W</p>
-                <p className="text-[24px] leading-none font-black tabular-nums text-white">{d.total}</p>
+                <p className="text-[24px] leading-none font-black tabular-nums text-foreground">{d.total}</p>
               </div>
               <div>
                 <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">AVG / WEEK</p>
@@ -4871,7 +4871,7 @@ function AgedLeadsPanel() {
               </div>
               <div className="p-3 rounded-xl bg-white/[0.04] border border-white/[0.06]">
                 <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">DIALED</p>
-                <p className="text-[24px] leading-none font-black tabular-nums text-white">{d.dialed}</p>
+                <p className="text-[24px] leading-none font-black tabular-nums text-foreground">{d.dialed}</p>
                 <p className="text-[10px] text-white/40 tabular-nums">all leads · touched 1+</p>
               </div>
               <div className="p-3 rounded-xl bg-rose-500/[0.06] border border-rose-500/20">
@@ -4918,7 +4918,7 @@ function AgedLeadRowClickable({ l }: { l: AgedLeadRow }) {
   return (
     <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.04] hover:border-emerald-400/40 hover:bg-emerald-500/[0.04] transition-colors group">
       <div className="flex-1 min-w-0">
-        <p className="text-13 font-bold truncate text-white">{name}</p>
+        <p className="text-13 font-bold truncate text-foreground">{name}</p>
         <p className="text-[10px] text-white/40 truncate">
           {l.phone ?? "—"} · {l.lead_source ?? "aged"}{l.license_status ? ` · ${l.license_status}` : ""}
         </p>
@@ -5016,7 +5016,7 @@ function LowProducersPanel() {
         ) : !d || d.total === 0 ? (
           <div className="py-6 text-center">
             <p className="text-15 font-bold text-emerald-300 mb-1">Every producer cleared $5K this week.</p>
-            <p className="text-11 text-white/40">Hold the Standard. Average is the disease.</p>
+            <p className="text-11 text-foreground/40">Hold the Standard. Average is the disease.</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -5026,12 +5026,12 @@ function LowProducersPanel() {
                 <div key={a.uid} className="p-3 rounded-xl bg-rose-500/[0.10] border border-rose-500/30 hover:border-rose-400/50 transition-colors">
                   <div className="flex items-center justify-between mb-2">
                     <div className="min-w-0 flex-1">
-                      <p className="text-13 font-bold truncate text-white">{a.name}</p>
-                      <p className="text-[10px] text-white/40 tabular-nums">{a.code} · {a.deals} deal{a.deals !== 1 ? "s" : ""}</p>
+                      <p className="text-13 font-bold truncate text-foreground">{a.name}</p>
+                      <p className="text-[10px] text-foreground/40 tabular-nums">{a.code} · {a.deals} deal{a.deals !== 1 ? "s" : ""}</p>
                     </div>
                     <div className="text-right shrink-0 tabular-nums">
                       <p className="text-[20px] leading-none font-black text-rose-300">{fmtUsd(a.ap, true)}</p>
-                      <p className="text-[10px] text-white/40">target $5K</p>
+                      <p className="text-[10px] text-foreground/40">target $5K</p>
                     </div>
                   </div>
                   <div className="relative h-1.5 rounded-full bg-white/[0.04] overflow-hidden">

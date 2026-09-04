@@ -299,7 +299,7 @@ export default function ApexControl() {
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {currentSnapshot.map((line) => (
-                <div key={line} className="flex gap-3 rounded-md border border-white/10 bg-white/[0.03] p-3">
+                <div key={line} className="flex gap-3 rounded-md border border-border bg-white/[0.03] p-3">
                   <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-300" />
                   <p className="text-sm text-slate-700 dark:text-slate-200">{line}</p>
                 </div>
@@ -353,7 +353,7 @@ export default function ApexControl() {
             </div>
             <div className="mt-4 space-y-3">
               {nextBuilds.map((item) => (
-                <div key={item} className="flex gap-3 rounded-md border border-white/10 bg-white/[0.03] p-3">
+                <div key={item} className="flex gap-3 rounded-md border border-border bg-white/[0.03] p-3">
                   <ArrowRight className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-300" />
                   <p className="text-sm text-slate-700 dark:text-slate-200">{item}</p>
                 </div>
@@ -373,10 +373,10 @@ export default function ApexControl() {
                 ["iPad / phone", "Review, approve, capture content, handle 2FA."],
                 ["Windows", "Testing, uploads, downloads, separate jobs only."],
               ].map(([name, use]) => (
-                <div key={name} className="rounded-md border border-white/10 bg-white/[0.03] p-3">
+                <div key={name} className="rounded-md border border-border bg-white/[0.03] p-3">
                   <div className="flex items-center gap-2">
                     <Monitor className="h-4 w-4 text-emerald-300" />
-                    <p className="text-sm font-bold text-white">{name}</p>
+                    <p className="text-sm font-bold text-foreground">{name}</p>
                   </div>
                   <p className="mt-2 text-sm text-muted-foreground">{use}</p>
                 </div>

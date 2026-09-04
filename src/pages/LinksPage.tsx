@@ -49,7 +49,7 @@ const offerCards = [
     gradient: "from-amber-500/15 to-orange-500/10",
     border: "border-amber-500/30",
     iconBg: "bg-white dark:bg-card",
-    iconColor: "text-white",
+    iconColor: "text-foreground",
     glow: "hover:",
     accentColor: "text-amber-500",
   },
@@ -61,7 +61,7 @@ const offerCards = [
     gradient: "from-rose-500/15 to-pink-500/10",
     border: "border-rose-500/30",
     iconBg: "bg-white dark:bg-card",
-    iconColor: "text-white",
+    iconColor: "text-foreground",
     glow: "hover:",
     accentColor: "text-rose-500",
   },
@@ -127,7 +127,7 @@ export default function LinksPage() {
               className={`flex items-center gap-4 w-full p-4 rounded-md bg-card border border-border transition-all duration-300  ${link.hoverGlow} group`}
             >
               <div className={`w-10 h-10 rounded-lg  ${link.gradient} flex items-center justify-center flex-shrink-0`}>
-                <link.icon className="h-5 w-5 text-white" />
+                <link.icon className="h-5 w-5 text-foreground" />
               </div>
               <span className="font-semibold text-foreground">{link.label}</span>
               <ArrowRight className="h-4 w-4 ml-auto text-muted-foreground group-hover:text-foreground transition-colors" />

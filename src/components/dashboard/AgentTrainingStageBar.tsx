@@ -170,7 +170,7 @@ export function AgentTrainingStageBar({ agentId, compact = false }: Props) {
               <div
                 className={cn(
                   "relative h-7 w-7 rounded-full border-2 grid place-items-center transition-colors shrink-0",
-                  reached ? cn(M.dot, "border-transparent text-white") : "bg-background border-border text-muted-foreground",
+                  reached ? cn(M.dot, "border-transparent text-foreground") : "bg-background border-border text-muted-foreground",
                   isCurrent && "ring-2 ring-offset-1 ring-offset-background",
                   isCurrent && M.ring,
                 )}

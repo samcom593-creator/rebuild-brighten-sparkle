@@ -334,7 +334,7 @@ export default function HallOfFame() {
                 >
                   {/* Rank badge */}
                   <span className={cn(
-                    "absolute -top-3 left-1/2 -translate-x-1/2 text-white text-[11px] font-bold px-3 py-1 rounded-full shadow-lg",
+                    "absolute -top-3 left-1/2 -translate-x-1/2 text-foreground text-[11px] font-bold px-3 py-1 rounded-full shadow-lg",
                     medal.badge,
                   )}>
                     {medal.label}

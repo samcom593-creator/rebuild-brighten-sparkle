@@ -63,7 +63,7 @@ export default function Storefront() {
               <div className="mx-auto h-16 w-16 rounded-full bg-emerald-500/20 flex items-center justify-center mb-3">
                 <CheckCircle2 className="h-9 w-9 text-emerald-400" />
               </div>
-              <h1 className="text-3xl font-extrabold text-white">Payment received 🎉</h1>
+              <h1 className="text-3xl font-extrabold text-foreground">Payment received 🎉</h1>
             </CardHeader>
             <CardContent className="space-y-5 text-center text-slate-600 dark:text-slate-300">
               <p>
@@ -98,7 +98,7 @@ export default function Storefront() {
               {SKUS.map((s) => (
                 <Card key={s.name} className="border-slate-200 dark:border-border bg-white dark:bg-card/60 hover:border-emerald-500/50 transition-colors">
                   <CardHeader>
-                    <h2 className="text-xl font-bold text-white">{s.name}</h2>
+                    <h2 className="text-xl font-bold text-foreground">{s.name}</h2>
                     <div className="text-2xl font-extrabold text-emerald-400 pt-1">{s.price}</div>
                   </CardHeader>
                   <CardContent>

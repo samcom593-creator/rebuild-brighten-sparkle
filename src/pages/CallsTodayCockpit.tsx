@@ -331,7 +331,7 @@ function CallsTodayHero({ calls, todayCalls }: { calls: ScheduledCall[]; todayCa
               <PhoneCall className="h-3 w-3 text-amber-400" />
               <p className="text-[10px] uppercase tracking-widest text-white/50 font-bold">TODAY</p>
             </div>
-            <p className="text-[32px] sm:text-[40px] leading-none font-black tabular-nums text-white">{stats.total}</p>
+            <p className="text-[32px] sm:text-[40px] leading-none font-black tabular-nums text-foreground">{stats.total}</p>
             <p className="text-[10px] text-white/50 mt-1 tabular-nums">{stats.total === 1 ? "call scheduled" : "calls scheduled"}</p>
           </div>
           <div>
@@ -369,27 +369,27 @@ function CallsTodayHero({ calls, todayCalls }: { calls: ScheduledCall[]; todayCa
         <div className="grid gap-3 grid-cols-2 sm:grid-cols-4 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
           <div>
             <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">QUEUE</p>
-            <p className="text-[22px] leading-none font-bold tabular-nums text-white">{calls.length}</p>
+            <p className="text-[22px] leading-none font-bold tabular-nums text-foreground">{calls.length}</p>
             <p className="text-[10px] text-white/40 tabular-nums">total upcoming</p>
           </div>
           <div>
             <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">REMAINING</p>
-            <p className="text-[22px] leading-none font-bold tabular-nums text-white">{Math.max(0, stats.total - stats.connected)}</p>
+            <p className="text-[22px] leading-none font-bold tabular-nums text-foreground">{Math.max(0, stats.total - stats.connected)}</p>
             <p className="text-[10px] text-white/40 tabular-nums">still to dial</p>
           </div>
           <div>
             <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">CLOSE RATE</p>
-            <p className="text-[22px] leading-none font-bold tabular-nums text-white">
+            <p className="text-[22px] leading-none font-bold tabular-nums text-foreground">
               {stats.connected > 0 ? `${Math.round((stats.booked / stats.connected) * 100)}%` : "—"}
             </p>
-            <p className="text-[10px] text-white/40 tabular-nums">booked / connected</p>
+            <p className="text-[10px] text-foreground/40 tabular-nums">booked / connected</p>
           </div>
           <div>
-            <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">NEXT UP</p>
-            <p className="text-[22px] leading-none font-bold tabular-nums text-white">
+            <p className="text-[10px] uppercase tracking-widest text-foreground/40 mb-1">NEXT UP</p>
+            <p className="text-[22px] leading-none font-bold tabular-nums text-foreground">
               {nextCall ? formatDistanceToNowStrict(new Date(nextCall.start_at)) : "—"}
             </p>
-            <p className="text-[10px] text-white/40 tabular-nums truncate">{nextCall?.prospect_name ?? "no call yet"}</p>
+            <p className="text-[10px] text-foreground/40 tabular-nums truncate">{nextCall?.prospect_name ?? "no call yet"}</p>
           </div>
         </div>
       </div>

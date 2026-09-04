@@ -241,7 +241,7 @@ export default function UnclaimedLeads() {
                     const isKJ = row.assigned_agent_id === kjId;
                     const assigned = row.assigned_agent_id ? (agentMap.get(row.assigned_agent_id) ?? "—") : "(none)";
                     return (
-                      <tr key={row.id} className="border-t border-white/5 hover:bg-white/[0.02]">
+                      <tr key={row.id} className="border-t border-border hover:bg-white/[0.02]">
                         <td className="p-3">
                           <div className="font-medium">{[row.first_name, row.last_name].filter(Boolean).join(" ") || "—"}</div>
                           <div className="text-xs text-slate-600 dark:text-slate-300">{row.email ?? "—"} · {row.phone ?? "—"}</div>

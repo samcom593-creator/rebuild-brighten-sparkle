@@ -131,22 +131,22 @@ export default function Scripts() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>
               <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">TOTAL SCRIPTS</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">{scripts.data?.length ?? 0}</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-foreground">{scripts.data?.length ?? 0}</p>
               <p className="text-[10px] text-white/40 tabular-nums">active in library</p>
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">CATEGORIES</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">{CATEGORIES.length - 1}</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-foreground">{CATEGORIES.length - 1}</p>
               <p className="text-[10px] text-white/40 tabular-nums">inbound · objections · recruiting · brand</p>
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">INBOUND</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">{countByCat("inbound")}</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-foreground">{countByCat("inbound")}</p>
               <p className="text-[10px] text-white/40 tabular-nums">switch center opens</p>
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">OBJECTIONS</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">{countByCat("objections")}</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-foreground">{countByCat("objections")}</p>
               <p className="text-[10px] text-white/40 tabular-nums">rebuttals ready</p>
             </div>
           </div>

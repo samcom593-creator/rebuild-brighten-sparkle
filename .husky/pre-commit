@@ -764,6 +764,8 @@ fi
 if git diff --cached --name-only | grep -qE '^(src/.*\.tsx?|scripts/check-brand-literals\.mjs)$'; then
   echo "[pre-commit] src/ file staged — running check:brand-literals…"
   npm run --silent check:brand-literals || exit 1
+  echo "[pre-commit] src/ file staged — running check:theme-literals…"
+  npm run --silent check:theme-literals || exit 1
 fi
 
 # Icon-only buttons need an accessible name (WCAG 4.1.2). A tooltip is not a name.

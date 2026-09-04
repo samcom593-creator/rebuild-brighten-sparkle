@@ -118,22 +118,22 @@ export default function MyLandingPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
             <div>
               <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">PUBLIC URL</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">{urlStatus}</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-foreground">{urlStatus}</p>
               <p className="text-[10px] text-white/40 tabular-nums">{userId ? "shareable now" : "sign in to publish"}</p>
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">PROFILE COMPLETE</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">{profilePct}%</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-foreground">{profilePct}%</p>
               <p className="text-[10px] text-white/40 tabular-nums">{profileFilled}/{profileFields.length} fields</p>
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">BIO LENGTH</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">{bioLen}</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-foreground">{bioLen}</p>
               <p className="text-[10px] text-white/40 tabular-nums">characters</p>
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">HAS PHOTO</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">{hasPhoto ? "YES" : "NO"}</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-foreground">{hasPhoto ? "YES" : "NO"}</p>
               <p className="text-[10px] text-white/40 tabular-nums">{hasPhoto ? "avatar set" : "add one. 3x more clicks"}</p>
             </div>
           </div>

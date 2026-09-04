@@ -330,11 +330,11 @@ export default function AwardProfilesPanel() {
                           </AvatarFallback>
                         </Avatar>
                         <div className="absolute inset-0 rounded-full bg-white dark:bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 scale-90 group-hover:bg-slate-50 dark:hover:bg-muted/50">
-                          <Camera className="h-5 w-5 text-white" />
+                          <Camera className="h-5 w-5 text-foreground" />
                         </div>
                         {!agent.award_photo_url && (
                           <div className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-amber-500 flex items-center justify-center shadow-sm">
-                            <ImagePlus className="h-2.5 w-2.5 text-white" />
+                            <ImagePlus className="h-2.5 w-2.5 text-foreground" />
                           </div>
                         )}
                         <input

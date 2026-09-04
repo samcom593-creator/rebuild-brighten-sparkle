@@ -3,7 +3,13 @@ import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 
-vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: "samuel" }, isAdmin: true, isManager: false }) }));
+// MP-430: the setup checklist is a MANAGER onboarding surface. The owner's home
+// is a money page; "Set up APEX · 1 of 11 done" floating over it for months was
+// the clutter Sam asked to have removed. The mock is a manager so the checklist
+// assertions keep proving the surface exists; a second test proves the owner
+// no longer sees it.
+const authState = { user: { id: "samuel" }, isAdmin: false, isManager: true };
+vi.mock("@/hooks/useAuth", () => ({ useAuth: () => authState }));
 
 import { AgentCloudSetupChecklist } from "@/components/layout/AgentCloudSetupChecklist";
 
@@ -34,6 +40,18 @@ describe("AgentCloud parity surfaces", () => {
     fireEvent.click(screen.getByRole("button", { name: /Set up APEX/i }));
     expect(screen.getAllByRole("checkbox")).toHaveLength(11);
     expect(screen.getByText("Complete producer profile")).toBeTruthy();
+  });
+
+  it("hides the setup checklist from the owner (admin) — it is manager onboarding, not the money page", () => {
+    const prev = { ...authState };
+    Object.assign(authState, { isAdmin: true, isManager: false });
+    try {
+      const { container } = render(<AgentCloudSetupChecklist />);
+      expect(container.querySelectorAll('[role="checkbox"]')).toHaveLength(0);
+      expect(container.textContent).not.toContain("Set up APEX");
+    } finally {
+      Object.assign(authState, prev);
+    }
   });
 
   it("keeps every settings application distinct", () => {

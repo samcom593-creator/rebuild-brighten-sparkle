@@ -169,7 +169,7 @@ export default function PlaqueShare() {
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4">
         <div className="max-w-md text-center space-y-4">
           <AlertCircle className="h-12 w-12 text-amber-500 mx-auto" />
-          <h1 className="text-2xl font-bold text-white">Plaque not found</h1>
+          <h1 className="text-2xl font-bold text-foreground">Plaque not found</h1>
           <p className="text-muted-foreground">{error || "Something went wrong — refresh to try again"}</p>
           <Button asChild variant="outline">
             <Link to="/">Go to APEX</Link>
@@ -242,7 +242,7 @@ export default function PlaqueShare() {
           </div>
         </div>
 
-        <div className="text-center pt-8 border-t border-white/10">
+        <div className="text-center pt-8 border-t border-border">
           <Link
             to="/"
             className="text-xs text-muted-foreground hover:text-white transition inline-flex items-center gap-1"

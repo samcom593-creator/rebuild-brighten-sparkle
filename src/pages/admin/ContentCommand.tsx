@@ -188,7 +188,7 @@ function CultureFeed({ onApproveDraft }: { onApproveDraft: (id: number) => void 
   const pending = data.filter((e) => e.draft_status === "awaiting_approval");
 
   return (
-    <Card className="border-white/10 bg-white/[0.02]">
+    <Card className="border-border bg-white/[0.02]">
       <CardHeader className="pb-2 pt-4 px-4">
         <CardTitle className="text-sm flex items-center gap-2 text-slate-700 dark:text-slate-200">
           <TrendingUp className="h-4 w-4 text-emerald-400" />
@@ -205,7 +205,7 @@ function CultureFeed({ onApproveDraft }: { onApproveDraft: (id: number) => void 
           {data.map((ev) => (
             <div
               key={ev.id}
-              className="rounded-md border border-white/5 bg-white/[0.02] p-3 flex flex-col gap-1.5"
+              className="rounded-md border border-border bg-white/[0.02] p-3 flex flex-col gap-1.5"
             >
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-medium text-slate-700 dark:text-slate-200 truncate">{ev.agent_name ?? "—"}</span>
@@ -707,7 +707,7 @@ export default function ContentCommand() {
               {(runs ?? []).length === 0 ? (
                 <HonestEmpty title="No run rows loaded" detail="Expected table: public.social_bot_runs." />
               ) : (runs ?? []).map((run) => (
-                <div key={run.id} className="rounded-md border border-white/10 bg-white/[0.03] p-3 text-xs">
+                <div key={run.id} className="rounded-md border border-border bg-white/[0.03] p-3 text-xs">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-medium">{run.mode ?? `run ${run.id}`}</span>
                     <Badge variant="outline">{run.status}</Badge>
@@ -726,7 +726,7 @@ export default function ContentCommand() {
               {(inbound ?? []).length === 0 ? (
                 <HonestEmpty title="No inbound rows loaded" detail="Expected table: public.social_bot_inbound." />
               ) : (inbound ?? []).map((row) => (
-                <div key={row.id} className="rounded-md border border-white/10 bg-white/[0.03] p-3 text-xs">
+                <div key={row.id} className="rounded-md border border-border bg-white/[0.03] p-3 text-xs">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-medium">{row.handle ?? row.platform}</span>
                     <Badge variant="outline">{row.status}</Badge>
@@ -793,7 +793,7 @@ function DraftRow({
   const sourceHref = sourceFileHref(draft.file_path);
 
   return (
-    <div className="rounded-lg border border-white/10 bg-white/[0.025] p-3 hover:border-amber-500/30 transition-colors">
+    <div className="rounded-lg border border-border bg-white/[0.025] p-3 hover:border-amber-500/30 transition-colors">
       <div className="flex flex-col lg:flex-row lg:items-start gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -861,7 +861,7 @@ function HealthLine({ label, ok, detail }: { label: string; ok: boolean; detail:
 
 function HonestEmpty({ title, detail }: { title: string; detail: string }) {
   return (
-    <div className="rounded-lg border border-dashed border-white/15 bg-white/[0.02] p-5 text-sm">
+    <div className="rounded-lg border border-dashed border-border bg-white/[0.02] p-5 text-sm">
       <div className="font-medium text-slate-700 dark:text-slate-200">{title}</div>
       <div className="text-xs text-slate-600 dark:text-slate-300 mt-1">{detail}</div>
     </div>
@@ -917,7 +917,7 @@ function PoolOverview({
   ];
 
   return (
-    <Card className="ops-card-depth border-white/10 bg-white/[0.02]">
+    <Card className="ops-card-depth border-border bg-white/[0.02]">
       <CardContent className="p-3 md:p-4">
         <div className="flex items-center justify-between mb-2">
           <span className="text-[10px] font-mono uppercase tracking-wider text-slate-600 dark:text-slate-300">Full content flow</span>
@@ -925,7 +925,7 @@ function PoolOverview({
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
           {pools.map((p, i) => (
-            <div key={p.label} className="rounded-md border border-white/5 bg-white/[0.02] p-2.5">
+            <div key={p.label} className="rounded-md border border-border bg-white/[0.02] p-2.5">
               <div className="flex items-center gap-1.5 mb-1">
                 <span className={cn("text-[9px] font-mono", p.tone)}>{i + 1}</span>
                 <span className="text-[10px] text-muted-foreground truncate">{p.label}</span>

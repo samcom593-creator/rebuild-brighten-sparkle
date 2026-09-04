@@ -191,7 +191,7 @@ export function WeeklyBadgesCard({ agentId }: { agentId: string | null }) {
       <div className="relative">
         <div className="flex items-center gap-3 mb-4">
           <div className="flex h-10 w-10 items-center justify-center rounded-md bg-white dark:bg-card shadow-sm shadow-primary/20">
-            <Trophy className="h-5 w-5 text-white" />
+            <Trophy className="h-5 w-5 text-foreground" />
           </div>
           <div>
             <h3 className="font-bold text-lg">Weekly Badges</h3>

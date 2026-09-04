@@ -110,16 +110,85 @@ if (!/NO_AUTH_MINT\s*=\s*process\.env\.NO_AUTH_MINT\s*===\s*"1"/.test(codeWithSt
 if (!/appendFileSync\s*\(\s*OUT\s*,[^;]*\bsummary\b/.test(codeWithStrings)) {
   failures.push("no appendFileSync(OUT, ...) for the summary — the artifact would hold broken rows only, so 'clean' and 'never ran' stay indistinguishable");
 }
-// 4. A third-party host that bot-blocks must not be counted as site breakage.
-//    49 of the first authenticated crawl's 50 findings were one such host; if
-//    they feed hardBroken, the audit exits non-zero on a healthy site forever
-//    and becomes a signal nobody reads.
-if (!/hardBroken\s*=[\s\S]{0,400}?classification\s*!==/.test(codeWithStrings)) {
-  failures.push("hardBroken does not exclude classification === \"external-blocked\" — a bot-blocking third-party host would make a healthy site exit non-zero on every run");
+// 4. hardBroken must be an ALLOW-list of decided verdicts, never a deny-list of
+//    excuses. MP-413 wrote it as `!== "external-blocked"` and asserted the host
+//    was refusing automation; MP-414 falsified that (both named hosts serve 200
+//    to a real browser, and the 49-link burst had rate-limited this IP itself).
+//    A deny-list means every new excuse silently widens what cannot fail, which
+//    is how a genuinely dead third-party link became unreportable.
+if (!/hardBroken\s*=[\s\S]{0,600}?classification\s*===\s*"internal-broken"/.test(codeWithStrings)
+    || !/hardBroken\s*=[\s\S]{0,600}?classification\s*===\s*"external-broken"/.test(codeWithStrings)) {
+  failures.push("hardBroken is not an allow-list of decided verdicts (internal-broken, external-broken) — an excuse-shaped deny-list lets a real dead link hide behind a classification nobody re-checks");
 }
 
-for (const key of ["pagesVisited", "linksChecked", "authenticated", "seedScope", "capReached"]) {
-  if (!new RegExp(`\\b${key}\\s*:`).test(code)) {
+// 5. An external refusal must be re-checked in the real browser before the audit
+//    says anything about the host. MEASURED 2026-09-04 against newbridgelife.com:
+//    node fetch is 403 with the audit UA *and* with a Chrome UA, while real
+//    Chrome is 200 — so the discriminator is the CLIENT, not the user-agent
+//    string, and MP-413's two-user-agent curl test could not have shown that.
+//    Without this the audit reports its own client's refusal as the host's policy.
+if (!/verifyInBrowser\s*\(/.test(code) || !/\bgoto\s*\(/.test(codeWithStrings.slice(codeWithStrings.indexOf("verifyInBrowser")))) {
+  failures.push("external refusals are not re-verified in the browser context — a node-fetch 403/429 would again be reported as the host blocking automation");
+}
+
+// 5b. The verifier must not be handed the CRAWL context. The crawl is headless
+//     and headless Chrome is refused by these WAFs exactly like node fetch is
+//     (measured: same host, headless 403 / headed 200). A `verifyContext =
+//     context` assignment makes getVerifyContext() short-circuit on its first
+//     line, so the headed verifier becomes dead code while the file still reads
+//     as fixed -- that shipped once in this very wave and was caught only by
+//     running it, not by reading it.
+if (/verifyContext\s*=\s*context\b/.test(code)) {
+  failures.push("verifyContext is assigned the headless crawl context — the headed verifier is dead code and every external refusal degrades to unverified");
+}
+if (!/headless:\s*false/.test(code)) {
+  failures.push("the verification context is not headed (expected `headless: false`) — a headless browser is refused by the same WAFs as node fetch, so the leg cannot verify the hosts it exists for");
+}
+
+// 6. Outbound footprint must be bounded and throttled. The audit sent 98
+//    requests to truepeoplesearch.com in 10.4s (49 links x HEAD+GET) and got
+//    Sam's office IP rate-limited on a service his recruiters use, then recorded
+//    the 429 it had caused as that host's policy. An auditor that is the largest
+//    source of the traffic it measures is measuring itself.
+// Graded on the ENFORCEMENT, not on the identifiers. A bare presence test for
+// `EXTERNAL_HOST_MAX`/`hostSpend` passed mutation M4, which deleted the const
+// declaration and the Map while leaving every read site intact — the budget was
+// gone (the script would not even run) and the guard said OK. Assert the
+// comparison, the declaration, and the skip that the comparison must produce.
+if (!/const\s+EXTERNAL_HOST_MAX\s*=/.test(code) || !/const\s+hostSpend\s*=\s*new Map\(\)/.test(code)) {
+  failures.push("per-host budget state is not declared (const EXTERNAL_HOST_MAX / const hostSpend = new Map()) — one page of third-party links can burst a single host again");
+}
+if (!/spent\s*>=\s*EXTERNAL_HOST_MAX/.test(code)) {
+  failures.push("the per-host budget is never compared against (expected `spent >= EXTERNAL_HOST_MAX`) — the cap is declared but not enforced");
+}
+if (!/"external-skipped"/.test(codeWithStrings)) {
+  failures.push("exceeding the per-host budget does not produce an `external-skipped` verdict — over-budget links would be silently dropped or silently fetched");
+}
+if (!/EXTERNAL_HOST_MIN_INTERVAL_MS/.test(code) || !/hostGate\s*\(/.test(code)) {
+  failures.push("no per-host throttle (hostGate/EXTERNAL_HOST_MIN_INTERVAL_MS) — requests to one host are unpaced");
+}
+// The gate is only real if EVERY outbound request pays it. Anchored inside
+// fetchWithTimeout, which is the single choke point both HEAD and GET go through.
+if (!/async function fetchWithTimeout\s*\([^)]*\)\s*\{\s*await hostGate\s*\(/.test(code)) {
+  failures.push("hostGate is not awaited at the top of fetchWithTimeout — the HEAD->GET retry pair would bypass the throttle and double the real request rate");
+}
+// A cap that does not say what it skipped reads as full coverage.
+if (!/externalSkipped/.test(code) || !/hostSkipped/.test(code)) {
+  failures.push("skipped external links are not published in the summary — a capped run would be indistinguishable from a complete one");
+}
+
+// Keys are checked INSIDE the summary object literal, and shorthand (`key,`) is
+// accepted as well as `key:`. A bare `\bkey\s*:` scan over the whole file is a
+// proxy for the wrong thing twice: it passes on a local variable declared
+// anywhere, and it fails on a valid shorthand property. It rejected this very
+// file's correct `externalSkipped,` on first run.
+const summaryStart = code.indexOf("const summary = {");
+const summaryBody = summaryStart === -1 ? "" : code.slice(summaryStart, code.indexOf("};", summaryStart));
+if (!summaryBody) {
+  failures.push("cannot locate the `const summary = {` object literal — coverage keys are ungradeable");
+}
+for (const key of ["pagesVisited", "linksChecked", "authenticated", "seedScope", "capReached", "externalSkipped", "externalUnverified"]) {
+  if (!new RegExp(`\\b${key}\\s*[:,]`).test(summaryBody)) {
     failures.push(`the summary record omits \`${key}\` — coverage cannot be read off the artifact`);
   }
 }
@@ -131,4 +200,4 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-console.log(`check:link-audit-coverage OK — link-audit.mjs mints its own session (wired into installAuth), minting is on by default, and every run appends a coverage summary carrying pagesVisited/linksChecked/authenticated/seedScope.`);
+console.log(`check:link-audit-coverage OK — link-audit.mjs mints its own session (wired into installAuth), minting is on by default, every outbound request pays a per-host throttle under a per-host budget, external refusals are re-verified in a real browser before the audit characterises the host, and every run appends a coverage summary carrying pagesVisited/linksChecked/authenticated/seedScope/capReached/externalSkipped/externalUnverified.`);

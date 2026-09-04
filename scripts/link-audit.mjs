@@ -37,6 +37,15 @@ const SUPABASE_URL = process.env.SUPABASE_URL || "https://xrzweoneiieddzxogewk.s
 const ADMIN_EMAIL = process.env.APEX_ADMIN_EMAIL || "sam.com593@gmail.com";
 const CRED_DIR = process.env.APEX_CRED_DIR || path.join(os.homedir(), ".config/apex-creds");
 const MAX_PAGES = Number(process.env.MAX_PAGES || 260);
+// 2026-09-04 (MP-414): the audit fired 98 requests at truepeoplesearch.com in
+// 10.4s (49 distinct /results?phoneno= links on /dashboard/whales, each a HEAD
+// then a GET) and got Sam's office IP rate-limited on a people-search service
+// his recruiters use from that same IP. It then recorded the 429/403 it had
+// just caused as the host's own policy. An auditor must not be the largest
+// source of the traffic it is measuring. Same-origin links are exempt: that is
+// the subject of the audit, and it is Sam's own infrastructure.
+const EXTERNAL_HOST_MAX = Number(process.env.EXTERNAL_HOST_MAX || 5);
+const EXTERNAL_HOST_MIN_INTERVAL_MS = Number(process.env.EXTERNAL_HOST_MIN_INTERVAL_MS || 1000);
 const NAV_TIMEOUT_MS = Number(process.env.NAV_TIMEOUT_MS || 30000);
 const CHECK_TIMEOUT_MS = Number(process.env.CHECK_TIMEOUT_MS || 12000);
 const PAGE_SETTLE_MS = Number(process.env.PAGE_SETTLE_MS || 800);
@@ -47,7 +56,15 @@ const seenPages = new Set();
 const queued = [];
 const checkedLinks = new Map();
 const broken = [];
+// Per external host: how many distinct URLs we have spent, when we last spoke
+// to it, and how many we deliberately did not check. skipped is PUBLISHED in
+// the summary -- a silent cap reads as "everything was checked" when it wasn't.
+const hostSpend = new Map();
+const hostLastAt = new Map();
+const hostSkipped = new Map();
 let authProbeFailed = false;
+let verifyContext = null;
+let verifyContextFailed = null;
 let authSource = "none";
 let authReason = "";
 
@@ -128,7 +145,19 @@ function resultRow({ sourcePage, href, text, method }) {
   };
 }
 
+// Serialise per host with a floor on the gap between requests. Only external
+// hosts are throttled; same-origin is the audit's subject, not a third party.
+async function hostGate(url) {
+  if (url.origin === baseUrl.origin) return;
+  const host = url.host;
+  const last = hostLastAt.get(host) || 0;
+  const wait = last + EXTERNAL_HOST_MIN_INTERVAL_MS - Date.now();
+  if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
+  hostLastAt.set(host, Date.now());
+}
+
 async function fetchWithTimeout(url, method) {
+  await hostGate(url);
   const ctrl = new AbortController();
   const timeout = setTimeout(() => ctrl.abort(), CHECK_TIMEOUT_MS);
   try {
@@ -149,11 +178,91 @@ async function fetchWithTimeout(url, method) {
   }
 }
 
+// Re-checks a URL in the REAL browser this audit already drives. Node's fetch
+// is refused by WAF-fronted hosts on client fingerprint, NOT on user-agent
+// string -- measured 2026-09-04 against newbridgelife.com: node fetch is 403
+// with the audit UA AND with a Chrome UA, while real Chrome is 200. So a node
+// 401/403/429 says nothing about whether a visitor can reach the link, and the
+// audit must ask the client that actually models one before it says anything.
+// The verification context is HEADED and separate from the (headless) crawl.
+// MEASURED 2026-09-04 against newbridgelife.com, same Chrome binary, same host,
+// one variable: headless=true -> 403, headless=false -> 200. A headless browser
+// is refused by these WAFs exactly like node fetch is, so verifying in the
+// crawl's own headless context would have returned "unverified" for every host
+// this leg exists to adjudicate -- a verification step that cannot verify.
+// Created lazily, so a run with no external refusals never opens a window, and
+// reused, so the per-host budget still bounds the footprint. On a machine with
+// no display the launch fails and the verdict degrades to unverified with the
+// reason attached; it never silently becomes a pass or a fail.
+async function getVerifyContext() {
+  if (verifyContext !== null) return verifyContext;
+  if (verifyContextFailed) return null;
+  try {
+    verifyContext = await chromium.launchPersistentContext(`${USER_DATA_DIR}-verify`, {
+      executablePath: CHROME,
+      headless: false,
+      viewport: { width: 1280, height: 900 },
+      args: ["--disable-gpu", "--no-sandbox"],
+    });
+    return verifyContext;
+  } catch (err) {
+    verifyContextFailed = String(err?.message || err).slice(0, 160);
+    return null;
+  }
+}
+
+async function verifyInBrowser(url) {
+  const ctx = await getVerifyContext();
+  if (!ctx) return { ok: null, reason: `no headed browser available (${verifyContextFailed || "unavailable"})` };
+  let verifyPage = null;
+  try {
+    await hostGate(url);
+    verifyPage = await ctx.newPage();
+    const response = await verifyPage.goto(url.href, {
+      waitUntil: "domcontentloaded",
+      timeout: CHECK_TIMEOUT_MS,
+    });
+    const status = response?.status() ?? 0;
+    // 401/403/429 from a REAL browser is still only "this client, from this IP,
+    // was refused" -- it is not evidence about the link. Proven the hard way:
+    // this fix's own first live run classified 5 truepeoplesearch links
+    // external-broken on a browser 403, when the homepage had served 200
+    // minutes earlier and the refusal was the rate-limit THIS AUDIT caused.
+    // Shipping that would have made the audit exit non-zero forever over its
+    // own network position -- the permanently-red guard, rebuilt inside its own
+    // cure. A refusal is UNVERIFIED. A 404/410/5xx or a failed navigation is
+    // evidence about the link itself, and still counts as broken.
+    if ([401, 403, 429].includes(status)) {
+      return { ok: null, status, reason: `browser was refused with ${status} (client/IP refusal, not a verdict on the link)` };
+    }
+    return { ok: status > 0 && status < 400, status, reason: null };
+  } catch (err) {
+    return { ok: null, reason: String(err?.message || err).slice(0, 200) };
+  } finally {
+    if (verifyPage) await verifyPage.close().catch(() => null);
+  }
+}
+
 async function checkHttp(url, sourcePage, text) {
   const requestUrl = new URL(url);
   requestUrl.hash = "";
   const key = requestUrl.href;
   if (checkedLinks.has(key)) return checkedLinks.get(key);
+
+  const isInternal = requestUrl.origin === baseUrl.origin;
+
+  // Per-host budget. Bounds this audit's footprint on somebody else's server.
+  // Recorded under its own name so a capped run cannot be read as a full one.
+  if (!isInternal) {
+    const spent = hostSpend.get(requestUrl.host) || 0;
+    if (spent >= EXTERNAL_HOST_MAX) {
+      hostSkipped.set(requestUrl.host, (hostSkipped.get(requestUrl.host) || 0) + 1);
+      const skippedRow = { ...resultRow({ sourcePage, href: key, text, method: "SKIPPED" }), classification: "external-skipped" };
+      checkedLinks.set(key, skippedRow);
+      return skippedRow;
+    }
+    hostSpend.set(requestUrl.host, spent + 1);
+  }
 
   const result = resultRow({ sourcePage, href: key, text, method: "HEAD" });
   let { response, error } = await fetchWithTimeout(requestUrl, "HEAD");
@@ -170,21 +279,28 @@ async function checkHttp(url, sourcePage, text) {
   if (error) result.error = error;
 
   if (result.error || result.status >= 400 || result.status === 0) {
-    // Three-valued, not pass/fail. The first authenticated crawl (2026-09-04)
-    // returned 50 "broken" links: 49 truepeoplesearch.com + 1 newbridgelife.com,
-    // every one a 403 to an automated request from two third-party hosts that
-    // bot-block. Both 403 to a real browser user-agent too, so this is their
-    // edge refusing automation, not a dead link a visitor would hit. Counting
-    // them as breakage makes the audit exit non-zero on a healthy site forever,
-    // and a signal that is always red is one nobody reads. They are recorded
-    // and counted under their own name instead of being laundered into either
-    // verdict — an internal 403 is still hard breakage.
-    const isInternal = requestUrl.origin === baseUrl.origin;
-    result.classification = isInternal
-      ? "internal-broken"
-      : [401, 403, 429].includes(result.status)
-        ? "external-blocked"
-        : "external-broken";
+    if (isInternal) {
+      result.classification = "internal-broken";
+    } else {
+      // MP-413 bucketed every external 401/403/429 as "external-blocked" and
+      // asserted the host was refusing automation. FALSIFIED 2026-09-04: both
+      // hosts it named on that evidence serve 200 to a real browser, and the
+      // 49-link truepeoplesearch burst had rate-limited this IP itself. The
+      // bucket was unfalsifiable -- a genuinely dead third-party link produced
+      // the identical row and the identical excuse, so a real break could never
+      // surface. The browser is now the authority, and when it cannot answer
+      // the verdict is UNVERIFIED rather than a claim about the host.
+      const verdict = await verifyInBrowser(requestUrl);
+      result.browserStatus = verdict.status ?? null;
+      if (verdict.ok === true) {
+        result.classification = "external-ok-in-browser";
+      } else if (verdict.ok === false) {
+        result.classification = "external-broken";
+      } else {
+        result.classification = "external-unverified";
+        result.browserReason = verdict.reason;
+      }
+    }
     recordBroken(result);
   }
 
@@ -327,10 +443,21 @@ async function main() {
     args: ["--profile-directory=Default", "--disable-gpu", "--no-sandbox"],
   });
 
+  // NOT `verifyContext = context`: the crawl context is headless, and a headless
+  // browser is refused by these WAFs exactly like node fetch is (measured: same
+  // host, headless 403 / headed 200). Assigning it here made getVerifyContext()
+  // short-circuit on its first line, so the headed verifier was dead code and
+  // every external refusal came back "unverified" while the code read as fixed.
   const authInstalled = await installAuth(context);
-  for (const seed of authInstalled
-    ? [...publicSeeds, ...authenticatedSeeds, ...readStaticRoutes()]
-    : publicSeeds) addPage(seed);
+  // SEEDS=/a,/b restricts the crawl to named routes. Lets a fix be re-proven
+  // against the one page that failed without re-crawling 260 and without
+  // re-burdening every third party the full run touches.
+  const seedOverride = (process.env.SEEDS || "").split(",").map((v) => v.trim()).filter(Boolean);
+  for (const seed of seedOverride.length
+    ? seedOverride
+    : authInstalled
+      ? [...publicSeeds, ...authenticatedSeeds, ...readStaticRoutes()]
+      : publicSeeds) addPage(seed);
   context.setDefaultNavigationTimeout(NAV_TIMEOUT_MS);
   context.setDefaultTimeout(10000);
 
@@ -376,11 +503,23 @@ async function main() {
   }
 
   await context.close();
-  if (ownsUserDataDir) fs.rmSync(USER_DATA_DIR, { recursive: true, force: true });
+  if (verifyContext) await verifyContext.close().catch(() => null);
+  if (ownsUserDataDir) {
+    fs.rmSync(USER_DATA_DIR, { recursive: true, force: true });
+    fs.rmSync(`${USER_DATA_DIR}-verify`, { recursive: true, force: true });
+  }
+  // What fails the run: the site's own broken links, plus third-party links a
+  // REAL BROWSER could not load. external-unverified never fails the run (the
+  // audit could not reach a verdict, and an unknown must not masquerade as
+  // either answer) and it is never silent either -- it is counted below.
   const hardBroken = broken.filter(
-    (row) => !(row.method === "BROWSER" && row.text === "auth probe") && row.classification !== "external-blocked",
+    (row) =>
+      !(row.method === "BROWSER" && row.text === "auth probe") &&
+      (row.classification === "internal-broken" || row.classification === "external-broken"),
   );
-  const externalBlocked = broken.filter((row) => row.classification === "external-blocked");
+  const externalOkInBrowser = broken.filter((row) => row.classification === "external-ok-in-browser");
+  const externalUnverified = broken.filter((row) => row.classification === "external-unverified");
+  const externalSkipped = [...hostSkipped.values()].reduce((sum, n) => sum + n, 0);
 
   // The OUT file used to contain broken rows and nothing else, so an empty file
   // meant either "crawled everything, all links fine" or "crawled nothing at
@@ -394,7 +533,16 @@ async function main() {
     linksChecked: checkedLinks.size,
     broken: broken.length,
     hardBroken: hardBroken.length,
-    externalBlocked: externalBlocked.length,
+    // A node-fetch failure that a real browser then loaded fine. These are the
+    // rows MP-413 called "external-blocked" and excused; they are the audit's
+    // own client being refused, not the site's problem and not the host's policy.
+    externalOkInBrowser: externalOkInBrowser.length,
+    externalUnverified: externalUnverified.length,
+    // Never checked at all, because this run had already spent its budget at
+    // that host. Published so a capped run is not read as a complete one.
+    externalSkipped,
+    externalHostMax: EXTERNAL_HOST_MAX,
+    externalHostsThrottled: [...hostSkipped.entries()].map(([host, n]) => `${host}:${n}`).sort(),
     // A crawl that stopped at MAX_PAGES did NOT cover the site. Recorded so a
     // clean result is never read as "the whole surface is clean".
     maxPages: MAX_PAGES,

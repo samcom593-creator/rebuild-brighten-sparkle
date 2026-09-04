@@ -15,6 +15,7 @@
     "check:link-audit-coverage": "node scripts/check-link-audit-coverage.mjs",
     "check:phone-display-format": "node scripts/check-phone-display-format.mjs",
     "check:ilike-user-input": "node scripts/check-ilike-user-input.mjs",
+    "check:deployed-function-source": "node scripts/check-deployed-function-source.mjs",
     "check:metric-truth": "node scripts/check-metric-truth.mjs",
     "check:live-polling": "node scripts/check-live-polling.mjs",
     "check:sync-reliability": "node scripts/check-sync-reliability.mjs",

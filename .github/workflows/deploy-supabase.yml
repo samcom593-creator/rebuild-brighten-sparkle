@@ -64,6 +64,15 @@ jobs:
           fi
           echo "token_ok=true" >> "$GITHUB_OUTPUT"
 
+      # MP-423. This is the ONLY place in the system that can answer "what is
+      # actually deployed?" — both management PATs on Sam's laptop return 401,
+      # so apex-doctor cannot ask. Runs BEFORE the deploy so it reports the
+      # state this run inherited, not the state this run creates.
+      - name: Guard — every deployed function has source in this repo
+        run: |
+          echo "node $(node --version)"
+          node scripts/check-deployed-function-source.mjs
+
       - name: Sync config.toml with functions/ directory
         id: sync
         run: |

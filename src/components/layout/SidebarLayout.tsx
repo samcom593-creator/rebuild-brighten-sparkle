@@ -1,20 +1,17 @@
 import { ReactNode, useState, useEffect, useRef, memo } from "react";
-import { Cloud, HandCoins, HelpCircle, Menu, Search, UserPlus } from "lucide-react";
-import { useUIStore } from "@/shared/store/uiStore";
+import { Cloud, Menu } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { GlobalSidebar } from "./GlobalSidebar";
 import { TopBar } from "./TopBar";
 import { ScrollProgress } from "./ScrollProgress";
 import { PhonePromptBanner } from "@/components/dashboard/PhonePromptBanner";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { useSidebarState } from "@/hooks/useSidebarState";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { useNavigationGuard } from "@/hooks/useNavigationGuard";
 import { cn } from "@/lib/utils";
 import { useBrand } from "@/hooks/useBrand";
-import { useAuth } from "@/hooks/useAuth";
-import { AddAgentModal } from "@/components/dashboard/AddAgentModal";
-import { SubmitDealDialog } from "@/components/deals/SubmitDealDialog";
 import { MobileBottomNav } from "./MobileBottomNav";
 
 interface SidebarLayoutProps {
@@ -26,13 +23,12 @@ interface SidebarLayoutProps {
 const PageContent = memo(({ children, showPhoneBanner }: { children: ReactNode; showPhoneBanner: boolean }) => (
   <>
     {showPhoneBanner && <PhonePromptBanner />}
-    {children}
+    <div className="apex-page-slot min-w-0">{children}</div>
   </>
 ));
 
 export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayoutProps) {
   const brand = useBrand();
-  const { isAdmin, isManager } = useAuth();
   const { isOpen, isFullscreen, toggleSidebar, toggleFullscreen, sidebarWidth } = useSidebarState();
   const location = useLocation();
   const prevPathRef = useRef(location.pathname);
@@ -60,7 +56,7 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
       {/* Mobile Header - only visible on small screens */}
       <header className="fixed left-0 right-0 top-0 z-50 border-b border-border bg-background lg:hidden">
         <div className="flex h-[60px] items-center justify-between px-3 pt-[env(safe-area-inset-top)]">
-          <Link to="/dashboard" className="flex items-center gap-2">
+          <Link to="/dashboard" className="flex min-w-0 items-center gap-2">
             {/* 2026-08-23 light/dark wave: the brand name was text-white on a
                 bg-background header. Light mode's background is cream
                 (`44 27% 92%`), so the agency's own name was invisible on the
@@ -68,40 +64,22 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
                 #C9A961 on #0A0A0A; both are now tokens so the chip tracks the
                 deeper light-mode gold. */}
             <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-primary-foreground"><Cloud className="h-[18px] w-[18px]" /></span>
-            <span className="text-sm font-semibold text-foreground">{brand.legalName}</span>
+            <span className="truncate text-sm font-semibold text-foreground">{brand.legalName}</span>
           </Link>
-          <div className="flex items-center gap-2">
-            <Button asChild variant="ghost" size="icon" aria-label="Open support desk" className="hidden min-[430px]:inline-flex">
-              <Link to="/dashboard/help?tab=desk" aria-label="Open support desk"><HelpCircle className="h-5 w-5" /></Link>
-            </Button>
-            {(isAdmin || isManager) && (
-              <AddAgentModal
-                trigger={(
-                  <Button variant="ghost" size="icon" aria-label="Add agent" className="hidden min-[370px]:inline-flex">
-                    <UserPlus className="h-5 w-5" />
-                  </Button>
-                )}
-              />
-            )}
-            <SubmitDealDialog trigger={<Button variant="ghost" size="icon" aria-label="Post a deal"><HandCoins className="h-5 w-5" /></Button>} />
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Open command palette (⌘K)"
-              className="hidden min-[500px]:inline-flex"
-              onClick={() => useUIStore.getState().setCommandPaletteOpen(true)}
-            >
-              <Search className="h-5 w-5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setMobileOpen(!mobileOpen)}
-              aria-label="Toggle menu"
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
-          </div>
+          {/* One explicit mobile entry replaces the old row of unlabeled icon
+              buttons. The sheet below contains the same role-aware navigation,
+              search, support, and permitted money actions in a focus trap. */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-10 shrink-0 gap-2 px-3"
+            onClick={() => setMobileOpen(true)}
+            aria-expanded={mobileOpen}
+            aria-controls="apex-mobile-actions"
+          >
+            <Menu className="h-4 w-4" />
+            Actions
+          </Button>
         </div>
       </header>
 
@@ -115,33 +93,24 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
         />
       </div>
 
-      {/* Mobile Sidebar Overlay */}
-      <div
-        className={cn(
-          "fixed inset-0 z-30 bg-background/80  lg:hidden",
-          mobileOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
-        )}
-        style={{ transition: "opacity 100ms ease-out" }}
-        onClick={() => setMobileOpen(false)}
-      />
-      
-      {/* Mobile Sidebar Panel */}
-      <div 
-        className={cn(
-          "fixed top-0 left-0 z-40 h-full w-64 lg:hidden pt-[max(1rem,env(safe-area-inset-top))]"
-        )}
-        style={{ 
-          transform: mobileOpen ? "translateX(0) scale(1)" : "translateX(-100%) scale(0.98)",
-          transition: "transform 120ms ease-out"
-        }}
-      >
-        <GlobalSidebar
-          isOpen={true}
-          onToggle={() => setMobileOpen(false)}
-          isFullscreen={false}
-          onFullscreenToggle={() => {}}
-        />
-      </div>
+      {/* Mobile actions + navigation. Radix supplies focus trapping, Escape,
+          scroll locking, and focus restoration to the labeled trigger. */}
+      <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+        <SheetContent
+          id="apex-mobile-actions"
+          side="left"
+          className="w-[min(90vw,320px)] overflow-hidden p-0 sm:max-w-[320px] lg:hidden"
+        >
+          <SheetTitle className="sr-only">Actions and navigation</SheetTitle>
+          <GlobalSidebar
+            mobile
+            isOpen
+            onToggle={() => setMobileOpen(false)}
+            isFullscreen={false}
+            onFullscreenToggle={() => {}}
+          />
+        </SheetContent>
+      </Sheet>
 
       {/* Skip link — keyboard users otherwise have to tab through the entire
           sidebar nav on every single route change before reaching content.
@@ -170,7 +139,7 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
         }}
       >
         <TopBar />
-        <div className="apex-content-frame p-4 lg:p-5">
+        <div className="apex-content-frame px-3 py-3 sm:p-4 lg:p-5">
           <PageContent showPhoneBanner={showPhoneBanner}>
             {children}
           </PageContent>

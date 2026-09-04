@@ -1918,6 +1918,69 @@ button[class*="border-emerald"]:hover {
   max-width: none;
 }
 
+.apex-page-slot {
+  width: 100%;
+  min-width: 0;
+}
+
+/* Page actions are content, not a second navigation bar. On phones the most
+   likely primary action stays visible and everything else expands on demand;
+   at sm+ the same React nodes return to one inline toolbar. */
+.apex-page-actions,
+.apex-page-secondary-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 639px) {
+  .apex-page-header {
+    width: 100%;
+  }
+
+  .apex-page-actions {
+    display: grid;
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+
+  .apex-page-primary-action {
+    min-width: 0;
+  }
+
+  .apex-page-primary-action > :is(button, a) {
+    width: 100%;
+  }
+
+  .apex-page-secondary-actions {
+    grid-column: 1 / -1;
+    width: 100%;
+    padding-top: 0.25rem;
+  }
+
+  .apex-page-secondary-actions > * {
+    min-width: 0;
+  }
+
+  .apex-page-actions-single {
+    display: flex;
+  }
+
+  .apex-page-actions-single > :is(button, a) {
+    max-width: 100%;
+  }
+
+  /* Dialogs and data primitives now contain their own narrow-screen overflow.
+     This shell-level guard catches legacy custom tables/toolbars as well while
+     preserving horizontal access instead of clipping controls. */
+  .apex-page-slot :where([role="tablist"], .overflow-x-auto) {
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
 /* Full-bleed pages (e.g. Applicants feed) opt out of the 1760px content cap so
    wide data tables fill an ultra-wide monitor instead of a centered column with
    dead space on both sides. Scoped via :has() so only pages that render a

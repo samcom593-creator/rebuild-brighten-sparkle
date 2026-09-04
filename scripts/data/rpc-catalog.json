@@ -345,12 +345,34 @@
           "p_end",
           "p_start"
         ],
+        "required": [
+          "p_end",
+          "p_start"
+        ],
+        "unnamed": false,
+        "raw": "p_start date, p_end date"
+      }
+    ],
+    "apex_admin_home_dashboard_uncached": [
+      {
+        "all": [
+          "p_end",
+          "p_start"
+        ],
         "required": [],
         "unnamed": false,
         "raw": "p_start date DEFAULT NULL::date, p_end date DEFAULT NULL::date"
       }
     ],
     "apex_admin_operations_snapshot": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "apex_admin_operations_snapshot_uncached": [
       {
         "all": [],
         "required": [],
@@ -1643,6 +1665,14 @@
       }
     ],
     "discord_deal_feed_health": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "discord_deal_feed_health_uncached": [
       {
         "all": [],
         "required": [],
@@ -3193,6 +3223,22 @@
         "raw": "p_first_name text, p_cohort text"
       }
     ],
+    "fn_rpc_single_flight": [
+      {
+        "all": [
+          "p_key",
+          "p_sql",
+          "p_ttl_seconds"
+        ],
+        "required": [
+          "p_key",
+          "p_sql",
+          "p_ttl_seconds"
+        ],
+        "unnamed": false,
+        "raw": "p_key text, p_ttl_seconds integer, p_sql text"
+      }
+    ],
     "fn_run_applicant_nudges": [
       {
         "all": [],
@@ -3837,6 +3883,20 @@
       }
     ],
     "imo_by_agency_period": [
+      {
+        "all": [
+          "p_end",
+          "p_start"
+        ],
+        "required": [
+          "p_end",
+          "p_start"
+        ],
+        "unnamed": false,
+        "raw": "p_start date, p_end date"
+      }
+    ],
+    "imo_by_agency_period_uncached": [
       {
         "all": [
           "p_end",
@@ -4897,6 +4957,14 @@
         "raw": "p_count integer, p_period text"
       }
     ],
+    "refresh_mat_production_unified_if_needed": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "refresh_production_truth": [
       {
         "all": [
@@ -5167,7 +5235,29 @@
         "raw": ""
       }
     ],
+    "scoped_production_projection_uncached": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "scoped_production_scoreboard": [
+      {
+        "all": [
+          "p_end",
+          "p_start"
+        ],
+        "required": [
+          "p_end",
+          "p_start"
+        ],
+        "unnamed": false,
+        "raw": "p_start date, p_end date"
+      }
+    ],
+    "scoped_production_scoreboard_uncached": [
       {
         "all": [
           "p_end",
@@ -6082,6 +6172,14 @@
         "raw": ""
       }
     ],
+    "trg_fn_suppress_noop_update": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "trg_mark_truth_dirty": [
       {
         "all": [],
@@ -6170,6 +6268,18 @@
         ],
         "unnamed": false,
         "raw": "p_id uuid, p_progress text, p_source text"
+      }
+    ],
+    "upsert_readymode_dialer_calls": [
+      {
+        "all": [
+          "p_rows"
+        ],
+        "required": [
+          "p_rows"
+        ],
+        "unnamed": false,
+        "raw": "p_rows jsonb"
       }
     ],
     "update_my_agent_profile": [

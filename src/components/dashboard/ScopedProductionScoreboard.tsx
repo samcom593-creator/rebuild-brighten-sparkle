@@ -265,6 +265,8 @@ export function ScopedProductionScoreboard() {
     // the realtime channel the moment deals/daily_production/agents change, so
     // it is both fresher and dramatically cheaper.
     refetchOnWindowFocus: false,
+    retry: 1,
+    retryDelay: 4_000,
     queryFn: async () => {
       const { data, error } = await supabase.rpc("scoped_production_scoreboard" as never, {
         p_start: window.start,
@@ -279,6 +281,8 @@ export function ScopedProductionScoreboard() {
     queryKey: ["scoped-production-projection"],
     staleTime: 120_000,
     refetchOnWindowFocus: false,
+    retry: 1,
+    retryDelay: 4_000,
     queryFn: async () => {
       const { data, error } = await supabase.rpc("scoped_production_projection" as never);
       if (error) throw error;
@@ -296,6 +300,8 @@ export function ScopedProductionScoreboard() {
   const feed = useQuery({
     queryKey: ["discord-deal-feed-health"],
     staleTime: 300_000,
+    retry: 1,
+    retryDelay: 4_000,
     queryFn: async () => {
       const { data, error } = await supabase.rpc("discord_deal_feed_health" as never);
       if (error) throw error;
@@ -326,9 +332,11 @@ export function ScopedProductionScoreboard() {
   // refetchInterval above: the poll cost 11.2 hours of database time and was
   // still up to 5 minutes stale after a deal posted.
   const refreshProduction = () => {
-    void query.refetch();
-    void projection.refetch();
-    void feed.refetch();
+    // MP-431: never cancel an in-flight heavy call on a realtime flush — the
+    // database keeps executing the abandoned statement. Dedupe onto it instead.
+    void query.refetch({ cancelRefetch: false });
+    void projection.refetch({ cancelRefetch: false });
+    void feed.refetch({ cancelRefetch: false });
     // The freshness line only exists while the window is empty; a posted deal
     // may fill the window (query above) or move "last posted" (this one).
     if (windowIsEmpty) void freshness.refetch();

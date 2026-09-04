@@ -178,11 +178,18 @@ Deno.serve(async (req) => {
 
     let upserted = 0;
     if (rows.length > 0) {
-      const { error } = await sb
-        .from("readymode_dialer_calls")
-        .upsert(rows, { onConflict: "external_call_id", ignoreDuplicates: false });
+      // A healthy pull returns the same rolling 25-hour window every five
+      // minutes. The direct PostgREST upsert rewrote every matching row even
+      // when no field changed: 398,059 updates / ~596 MB WAL since 2026-08-26.
+      // Let Postgres compare the incoming row with the stored row and write
+      // only genuine inserts or changes. Legitimate late dispositions still
+      // update; exact repeats become zero-WAL no-ops.
+      const { data: changedRows, error } = await sb.rpc(
+        "upsert_readymode_dialer_calls" as never,
+        { p_rows: rows } as never,
+      );
       if (error) throw error;
-      upserted = rows.length;
+      upserted = Number(changedRows ?? 0);
     }
 
     const { data: matchResult } = await sb.rpc("fn_match_readymode_calls" as never);

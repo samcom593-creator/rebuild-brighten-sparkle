@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-rpc-column-vocabulary.sh (bot_sql -> pg_proc + pg_rewrite)",
- "_generated_at": "2026-09-04T20:50:16Z",
+ "_generated_at": "2026-09-04T22:16:34Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "check-enum-filter-literals.mjs grades literals inside supabase.from().eq() chains. This is the other half of the same class: a status word that arrives from an RPC and is compared in JavaScript, where the return type is text and every wrong word type-checks. Per (function, returned column) this records the relation columns of that name reachable from the function body and the literals the function synthesises itself. It deliberately records CANDIDATES rather than one resolved source: provenance from a body regex is a guess, so check-rpc-status-literals.mjs refuses a literal only when NO candidate vocabulary and no body literal accepts it.",
  "_vocabulary_source": "scripts/data/enum-catalog.json (check_vocab + column_enum + enums). Not copied here on purpose, so the two guards read one snapshot and cannot drift.",
@@ -31,7 +31,9 @@
   "alert_on_repeated_automation_failures": "trigger",
   "alert_stuck_xcel_students": "jsonb",
   "apex_admin_home_dashboard": "jsonb",
+  "apex_admin_home_dashboard_uncached": "jsonb",
   "apex_admin_operations_snapshot": "jsonb",
+  "apex_admin_operations_snapshot_uncached": "jsonb",
   "apex_agent_book": "jsonb",
   "apex_agent_onboarding_roadmap": "jsonb",
   "apex_can_read_agent": "boolean",
@@ -270,6 +272,7 @@
   "fn_recover_stale_applicant": "jsonb",
   "fn_reissue_40d_html": "text",
   "fn_reissue_40d_text": "text",
+  "fn_rpc_single_flight": "jsonb",
   "fn_run_applicant_nudges": "jsonb",
   "fn_seminar_registration_ntfy": "trigger",
   "fn_site_page_ladder_anchor": "timestamp with time zone",
@@ -394,6 +397,7 @@
   "record_snap_stats_public": "jsonb",
   "recruiting_income_estimate": "jsonb",
   "recruiting_tier": "jsonb",
+  "refresh_mat_production_unified_if_needed": "jsonb",
   "refresh_production_truth": "jsonb",
   "refresh_sync_health": "void",
   "rescue_stale_applications": "jsonb",
@@ -410,7 +414,9 @@
   "save_partial_application": "void",
   "schedule_auto_populate_tick": "void",
   "scoped_production_projection": "jsonb",
+  "scoped_production_projection_uncached": "jsonb",
   "scoped_production_scoreboard": "jsonb",
+  "scoped_production_scoreboard_uncached": "jsonb",
   "send_completion_contracting_handoff": "jsonb",
   "send_reapply_blast": "jsonb",
   "send_reapply_email_blast": "jsonb",
@@ -496,6 +502,7 @@
   "trg_fn_reward_broadcast": "trigger",
   "trg_fn_siri_notify": "trigger",
   "trg_fn_streak_7day_discord": "trigger",
+  "trg_fn_suppress_noop_update": "trigger",
   "trg_mark_truth_dirty": "trigger",
   "trigger_interview_noshow_recovery": "jsonb",
   "trigger_stripe_sync": "jsonb",
@@ -3627,6 +3634,69 @@
    ]
   },
   "discord_deal_feed_health.agency_name": {
+   "candidates": [],
+   "body_literals": [
+    "anon",
+    "public"
+   ]
+  },
+  "discord_deal_feed_health.detail": {
+   "candidates": [],
+   "body_literals": [
+    "anon",
+    "public"
+   ]
+  },
+  "discord_deal_feed_health.last_heartbeat_at": {
+   "candidates": [],
+   "body_literals": [
+    "anon",
+    "public"
+   ]
+  },
+  "discord_deal_feed_health.last_ingested_at": {
+   "candidates": [],
+   "body_literals": [
+    "anon",
+    "public"
+   ]
+  },
+  "discord_deal_feed_health.last_message_at": {
+   "candidates": [],
+   "body_literals": [
+    "anon",
+    "public"
+   ]
+  },
+  "discord_deal_feed_health.measured_at": {
+   "candidates": [],
+   "body_literals": [
+    "anon",
+    "public"
+   ]
+  },
+  "discord_deal_feed_health.source": {
+   "candidates": [],
+   "body_literals": [
+    "anon",
+    "public"
+   ]
+  },
+  "discord_deal_feed_health.status": {
+   "candidates": [],
+   "body_literals": [
+    "anon",
+    "public"
+   ]
+  },
+  "discord_deal_feed_health.unresolved_24h": {
+   "candidates": [],
+   "body_literals": [
+    "anon",
+    "public"
+   ]
+  },
+  "discord_deal_feed_health_uncached.agency_name": {
    "candidates": [
     "discord_deal_sources.agency_name",
     "v_discord_deal_ingestion_health.agency_name"
@@ -3636,7 +3706,7 @@
     "public"
    ]
   },
-  "discord_deal_feed_health.detail": {
+  "discord_deal_feed_health_uncached.detail": {
    "candidates": [
     "discord_deal_ingestion_health.detail",
     "v_discord_deal_ingestion_health.detail"
@@ -3646,7 +3716,7 @@
     "public"
    ]
   },
-  "discord_deal_feed_health.last_heartbeat_at": {
+  "discord_deal_feed_health_uncached.last_heartbeat_at": {
    "candidates": [
     "discord_deal_ingestion_health.last_heartbeat_at",
     "v_discord_deal_ingestion_health.last_heartbeat_at"
@@ -3656,7 +3726,7 @@
     "public"
    ]
   },
-  "discord_deal_feed_health.last_ingested_at": {
+  "discord_deal_feed_health_uncached.last_ingested_at": {
    "candidates": [
     "discord_deal_ingestion_health.last_ingested_at",
     "v_discord_deal_ingestion_health.last_ingested_at"
@@ -3666,7 +3736,7 @@
     "public"
    ]
   },
-  "discord_deal_feed_health.last_message_at": {
+  "discord_deal_feed_health_uncached.last_message_at": {
    "candidates": [
     "discord_deal_ingestion_health.last_message_at",
     "v_discord_deal_ingestion_health.last_message_at"
@@ -3676,7 +3746,7 @@
     "public"
    ]
   },
-  "discord_deal_feed_health.measured_at": {
+  "discord_deal_feed_health_uncached.measured_at": {
    "candidates": [
     "v_discord_deal_ingestion_health.measured_at"
    ],
@@ -3685,7 +3755,7 @@
     "public"
    ]
   },
-  "discord_deal_feed_health.source": {
+  "discord_deal_feed_health_uncached.source": {
    "candidates": [
     "discord_deal_ingestion_health.source",
     "discord_deal_ingestion_receipts.source",
@@ -3697,7 +3767,7 @@
     "public"
    ]
   },
-  "discord_deal_feed_health.status": {
+  "discord_deal_feed_health_uncached.status": {
    "candidates": [
     "discord_deal_ingestion_health.status",
     "discord_deal_ingestion_receipts.status",
@@ -3708,7 +3778,7 @@
     "public"
    ]
   },
-  "discord_deal_feed_health.unresolved_24h": {
+  "discord_deal_feed_health_uncached.unresolved_24h": {
    "candidates": [
     "v_discord_deal_ingestion_health.unresolved_24h"
    ],
@@ -4756,40 +4826,46 @@
   "imo_by_agency_period.agency": {
    "candidates": [],
    "body_literals": [
-    "APEX Financial",
-    "Vantage Financial",
-    "public",
-    "vantage"
+    "anon",
+    "public"
    ]
   },
   "imo_by_agency_period.alp": {
    "candidates": [],
    "body_literals": [
-    "APEX Financial",
-    "Vantage Financial",
-    "public",
-    "vantage"
+    "anon",
+    "public"
    ]
   },
   "imo_by_agency_period.est_owner_override_alp": {
    "candidates": [],
    "body_literals": [
-    "APEX Financial",
-    "Vantage Financial",
-    "public",
-    "vantage"
+    "anon",
+    "public"
    ]
   },
   "imo_by_agency_period.is_primary": {
    "candidates": [],
    "body_literals": [
-    "APEX Financial",
-    "Vantage Financial",
-    "public",
-    "vantage"
+    "anon",
+    "public"
    ]
   },
   "imo_by_agency_period.owner_override_pct": {
+   "candidates": [],
+   "body_literals": [
+    "anon",
+    "public"
+   ]
+  },
+  "imo_by_agency_period.policies": {
+   "candidates": [],
+   "body_literals": [
+    "anon",
+    "public"
+   ]
+  },
+  "imo_by_agency_period_uncached.agency": {
    "candidates": [],
    "body_literals": [
     "APEX Financial",
@@ -4798,7 +4874,43 @@
     "vantage"
    ]
   },
-  "imo_by_agency_period.policies": {
+  "imo_by_agency_period_uncached.alp": {
+   "candidates": [],
+   "body_literals": [
+    "APEX Financial",
+    "Vantage Financial",
+    "public",
+    "vantage"
+   ]
+  },
+  "imo_by_agency_period_uncached.est_owner_override_alp": {
+   "candidates": [],
+   "body_literals": [
+    "APEX Financial",
+    "Vantage Financial",
+    "public",
+    "vantage"
+   ]
+  },
+  "imo_by_agency_period_uncached.is_primary": {
+   "candidates": [],
+   "body_literals": [
+    "APEX Financial",
+    "Vantage Financial",
+    "public",
+    "vantage"
+   ]
+  },
+  "imo_by_agency_period_uncached.owner_override_pct": {
+   "candidates": [],
+   "body_literals": [
+    "APEX Financial",
+    "Vantage Financial",
+    "public",
+    "vantage"
+   ]
+  },
+  "imo_by_agency_period_uncached.policies": {
    "candidates": [],
    "body_literals": [
     "APEX Financial",

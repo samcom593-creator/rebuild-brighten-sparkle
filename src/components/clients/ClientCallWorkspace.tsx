@@ -21,6 +21,15 @@ type Field = {
   maxLength?: number;
 };
 
+const CALL_OUTCOMES = [
+  { value: "no_answer", label: "No answer", stage: "FOLLOW_UP", reached: false },
+  { value: "reached_followup", label: "Reached · follow up", stage: "FOLLOW_UP", reached: true },
+  { value: "quoted", label: "Quote presented", stage: "PITCHED", reached: true },
+  { value: "appointment_set", label: "Appointment set", stage: "ALMOST_THERE", reached: true },
+] as const;
+
+type CallOutcome = (typeof CALL_OUTCOMES)[number]["value"];
+
 const CORE_FIELDS: Field[] = [
   { key: "first_name", label: "First name" },
   { key: "last_name", label: "Last name" },
@@ -98,6 +107,15 @@ function valueForInput(value: unknown, type?: string): string {
   return String(value);
 }
 
+function futureDateInput(days: number): string {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function rpc<T>(name: string, args: Record<string, unknown>) {
   return (supabase.rpc as unknown as (fn: string, values: Record<string, unknown>) => Promise<{ data: T | null; error: { message?: string } | null }>)(name, args);
 }
@@ -107,6 +125,7 @@ export function ClientCallWorkspace({ clientId, values }: { clientId: string; va
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [schedule, setSchedule] = useState({ callbackDate: "", callbackTime: "", nextAction: "" });
   const [notes, setNotes] = useState({ communication: "", reminder: "", objectives: "", medical: "" });
+  const [outcome, setOutcome] = useState<CallOutcome | "">("");
 
   useEffect(() => {
     const next: Record<string, string> = {};
@@ -128,9 +147,14 @@ export function ClientCallWorkspace({ clientId, values }: { clientId: string; va
 
   const completed = useMemo(() => REQUIRED_KEYS.filter((key) => (draft[key] ?? "").trim() !== "").length, [draft]);
   const completion = Math.round((completed / REQUIRED_KEYS.length) * 100);
+  const today = futureDateInput(0);
+  const followUpProtected = !outcome || [schedule.callbackDate, schedule.nextAction].some((date) => date >= today);
 
   const save = useMutation({
     mutationFn: async () => {
+      if (!followUpProtected) {
+        throw new Error("Choose a callback or next-action date for today or later before closing this call");
+      }
       const patch: Record<string, string> = {};
       for (const field of ALL_FIELDS) {
         const before = valueForInput(values[field.key], field.type);
@@ -155,9 +179,11 @@ export function ClientCallWorkspace({ clientId, values }: { clientId: string; va
         notes.communication.trim() !== valueForInput(values.communication_notes) ||
         notes.reminder.trim() !== valueForInput(values.reminder_notes);
 
-      if (workflowChanged) {
+      const selectedOutcome = CALL_OUTCOMES.find((item) => item.value === outcome);
+      if (workflowChanged || selectedOutcome) {
         const { error } = await rpc("fn_client_pipeline_action", {
           p_client_id: clientId,
+          p_stage: selectedOutcome?.stage ?? null,
           p_callback_date: schedule.callbackDate || null,
           p_callback_time: schedule.callbackTime || null,
           p_next_action_date: schedule.nextAction || null,
@@ -165,8 +191,10 @@ export function ClientCallWorkspace({ clientId, values }: { clientId: string; va
           p_communication_notes: notes.communication.trim(),
           p_reminder_notes: notes.reminder.trim(),
           p_replace_notes: true,
-          p_activity_type: "call_progress_saved",
-          p_activity_body: "Call sheet and next action saved",
+          p_activity_type: selectedOutcome ? (selectedOutcome.reached ? "contact_logged" : "no_answer") : "call_progress_saved",
+          p_activity_body: selectedOutcome
+            ? `Call outcome: ${selectedOutcome.label}${notes.reminder.trim() ? `. Next step: ${notes.reminder.trim()}` : ""}`
+            : "Call sheet and next action saved",
         });
         if (error) throw new Error(error.message || "Call follow-up could not be saved");
         changed += 1;
@@ -179,7 +207,9 @@ export function ClientCallWorkspace({ clientId, values }: { clientId: string; va
         queryClient.invalidateQueries({ queryKey: ["client-detail-override", clientId] }),
         queryClient.invalidateQueries({ queryKey: ["client-pipeline-activity", clientId] }),
         queryClient.invalidateQueries({ queryKey: ["client-pipeline"] }),
+        queryClient.invalidateQueries({ queryKey: ["client-pipeline-overrides"] }),
       ]);
+      setOutcome("");
       toast.success(changed ? "Call progress saved" : "Everything is already saved");
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : "Call progress could not be saved"),
@@ -234,11 +264,15 @@ export function ClientCallWorkspace({ clientId, values }: { clientId: string; va
         <div className="space-y-6 p-4 sm:p-5">
           <section>
             <div className="mb-3 flex items-center gap-2"><span className="grid h-6 w-6 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground">1</span><h3 className="font-semibold">Confirm the client</h3></div>
+            <p className="mb-3 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground"><strong className="text-foreground">Open:</strong> “I want to make sure today is useful. I&apos;ll confirm the basics, understand what you need protected, then we&apos;ll agree on the next step.”</p>
             {renderFields(CORE_FIELDS.slice(0, 6))}
           </section>
 
           <section>
             <div className="mb-3 flex items-center gap-2"><span className="grid h-6 w-6 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground">2</span><h3 className="font-semibold">Qualify and protect the budget</h3></div>
+            <div className="mb-3 grid gap-2 sm:grid-cols-3">
+              {["Who depends on this protection?", "What would be hardest financially if income stopped?", "What monthly amount stays comfortable?"].map((prompt) => <div key={prompt} className="rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium">{prompt}</div>)}
+            </div>
             {renderFields(CORE_FIELDS.slice(6))}
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
@@ -254,11 +288,25 @@ export function ClientCallWorkspace({ clientId, values }: { clientId: string; va
 
           <section>
             <div className="mb-3 flex items-center gap-2"><span className="grid h-6 w-6 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground">3</span><h3 className="font-semibold">Lock the next action</h3></div>
+            <div className="mb-3 space-y-1.5">
+              <Label className="text-xs">Call outcome</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {CALL_OUTCOMES.map((item) => (
+                  <button key={item.value} type="button" aria-pressed={outcome === item.value} onClick={() => setOutcome((current) => current === item.value ? "" : item.value)} className={cn("min-h-11 rounded-lg border px-3 py-2 text-left text-xs font-semibold transition-colors", outcome === item.value ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background hover:border-primary/50")}>
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="space-y-1.5"><Label htmlFor="call-callback-date" className="text-xs">Callback date</Label><Input id="call-callback-date" type="date" value={schedule.callbackDate} onChange={(event) => setSchedule((current) => ({ ...current, callbackDate: event.target.value }))} /></div>
               <div className="space-y-1.5"><Label htmlFor="call-callback-time" className="text-xs">Callback time</Label><Input id="call-callback-time" type="time" value={schedule.callbackTime} onChange={(event) => setSchedule((current) => ({ ...current, callbackTime: event.target.value }))} /></div>
-              <div className="space-y-1.5"><Label htmlFor="call-next-action" className="text-xs">Next action date</Label><Input id="call-next-action" type="date" value={schedule.nextAction} onChange={(event) => setSchedule((current) => ({ ...current, nextAction: event.target.value }))} /></div>
+              <div className="space-y-1.5"><Label htmlFor="call-next-action" className="text-xs">Next action date {outcome && <span className="text-rose-500">*</span>}</Label><Input id="call-next-action" type="date" value={schedule.nextAction} onChange={(event) => setSchedule((current) => ({ ...current, nextAction: event.target.value }))} /></div>
             </div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {([[1, "Tomorrow"], [3, "+3 days"], [7, "Next week"]] as const).map(([days, label]) => <Button key={days} type="button" size="sm" variant="outline" onClick={() => setSchedule((current) => ({ ...current, nextAction: futureDateInput(days) }))}>{label}</Button>)}
+            </div>
+            {!followUpProtected && <p className="mt-2 text-xs font-medium text-rose-600 dark:text-rose-400">Choose today or a future date so this client cannot disappear from the follow-up queue.</p>}
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5"><Label htmlFor="call-notes" className="text-xs">Call notes</Label><Textarea id="call-notes" value={notes.communication} onChange={(event) => setNotes((current) => ({ ...current, communication: event.target.value }))} rows={3} placeholder="Objections, preferences, family context…" /></div>
               <div className="space-y-1.5"><Label htmlFor="call-reminder" className="text-xs">Exact next step</Label><Textarea id="call-reminder" value={notes.reminder} onChange={(event) => setNotes((current) => ({ ...current, reminder: event.target.value }))} rows={3} placeholder="What must happen next?" /></div>
@@ -275,9 +323,9 @@ export function ClientCallWorkspace({ clientId, values }: { clientId: string; va
       </section>
 
       <div className="sticky bottom-3 z-20 rounded-xl border border-border bg-background/95 p-2 shadow-lg backdrop-blur">
-        <Button type="submit" size="lg" className={cn("w-full font-bold", completion === 100 && "bg-emerald-600 hover:bg-emerald-600/90")} disabled={save.isPending}>
+        <Button type="submit" size="lg" className={cn("w-full font-bold", completion === 100 && "bg-emerald-600 hover:bg-emerald-600/90")} disabled={save.isPending || !followUpProtected}>
           {completion === 100 ? <CheckCircle2 className="mr-2 h-5 w-5" /> : <Save className="mr-2 h-5 w-5" />}
-          {save.isPending ? "Saving everything…" : "Save all call progress"}
+          {save.isPending ? "Saving everything…" : outcome ? "Save outcome & next step" : "Save all call progress"}
         </Button>
       </div>
     </form>

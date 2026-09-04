@@ -141,6 +141,11 @@ export function AgentCloudHome() {
     // database time. It refreshes from the realtime channel below instead,
     // which is both cheaper and fresher than waiting up to 5 minutes.
     refetchOnWindowFocus: false,
+    // MP-431: a timed-out call has already burned its 8s of database time; one
+    // retry after the 15s single-flight window has had time to fill, not two
+    // back-to-back.
+    retry: 1,
+    retryDelay: 4_000,
     enabled: period !== "custom" || customIsValid,
     queryFn: async () => {
       const { data, error } = await supabase.rpc("apex_admin_home_dashboard" as never, {
@@ -153,7 +158,10 @@ export function AgentCloudHome() {
   });
 
   // Realtime instead of the 5-minute poll it replaced.
-  useProductionRealtime(() => { void refetch(); }, 800);
+  // MP-431: cancelRefetch defaults to true, which aborted the in-flight call on
+  // every realtime flush and started another while the database kept executing
+  // the abandoned one. Let the in-flight call finish and dedupe onto it.
+  useProductionRealtime(() => { void refetch({ cancelRefetch: false }); }, 800);
 
   useProductionRealtime(() => invalidateOperationalTruth(queryClient), 350);
 

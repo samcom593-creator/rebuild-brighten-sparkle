@@ -59,7 +59,7 @@ import {
   Users, Search, Phone, Mail, CalendarClock, AlertTriangle,
   ChevronRight, TrendingUp, BookMarked, Clock, Home, Building2, HelpCircle,
   Filter, ArrowUpDown, UserPlus, ShieldOff, MailX, RefreshCw, Plus, Upload,
-  MessageSquare,
+  MessageSquare, Play, Target, CheckCircle2,
 } from "lucide-react";
 import { format, formatDistanceToNow, isBefore } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
@@ -84,6 +84,14 @@ import { FunnelConnector } from "@/components/recruiting/FunnelConnector";
 import { BottleneckCallout } from "@/components/recruiting/BottleneckCallout";
 import { toast } from "sonner";
 import { contactLinkProps, formatPhoneDisplay, phoneHref, smsHref } from "@/lib/phone";
+import {
+  compareClientPriority,
+  getClientPriority,
+  isActivePipelineClient,
+  pipelineDateKey,
+  type ClientPriority,
+  type ClientPriorityCode,
+} from "@/lib/clientPipelinePriority";
 
 interface Client {
   id: string;
@@ -105,6 +113,8 @@ interface Client {
   callback_date: string | null;
   callback_time: string | null;
   do_not_call: boolean | null;
+  do_not_email: boolean | null;
+  do_not_text: boolean | null;
   hostile_language_detected: boolean | null;
   client_health_score: number | null;
   pitch_carrier: string | null;
@@ -211,6 +221,9 @@ export default function ClientPipeline() {
   const [housingFilter, setHousingFilter] = useState<HousingSegment | "__all__">("__all__");
   const [bookFilter, setBookFilter] = useState<"all" | "hasnt_bought" | "missing">("all");
   const [sortKey, setSortKey] = useState<"recent" | "name" | "stage_changed" | "callback">("recent");
+  const [cockpitView, setCockpitView] = useState<"priority" | "stages" | "all">("priority");
+  const [priorityFilter, setPriorityFilter] = useState<"work_now" | ClientPriorityCode>("work_now");
+  const [activeLane, setActiveLane] = useState<(typeof WORKSPACE_LANES)[number]["key"]>("new");
   const [createOpen, setCreateOpen] = useState(false);
   // MP-348: the dialog offered 4 fields while agentlink_clients already stored
   // street_address, city, state, zip_code and date_of_birth. Sam, mid-call:
@@ -221,20 +234,31 @@ export default function ClientPipeline() {
   });
 
   const { data: sourceRows = [], isLoading, refetch, isFetching } = useQuery({
-    queryKey: ["client-pipeline", isAdmin],
+    queryKey: ["client-pipeline", user?.id, isAdmin],
     enabled: !!user?.id,
     staleTime: 60_000,
     gcTime: 5 * 60_000,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("agentlink_clients")
-        .select(
-          "id, insuracloud_pipeline_client_id, agent_id, first_name, last_name, phone, email, state, city, pipeline_stage, created_at, updated_at, stage_changed_at, last_contact_date, next_action_date, callback_date, callback_time, do_not_call, hostile_language_detected, policy_number, mortgage_payment, rent_payment"
-        )
-        .order("created_at", { ascending: false })
-        .limit(1_000);
-      if (error) throw error;
-      return (data ?? []) as unknown as Client[];
+      // PostgREST returns at most 1,000 rows per request. The live book is
+      // already larger than that, so a one-shot query silently omitted active
+      // clients from the call queue. Page until the RLS-scoped book is whole.
+      const pageSize = 1_000;
+      const loaded: Client[] = [];
+      for (let from = 0; ; from += pageSize) {
+        const { data, error } = await supabase
+          .from("agentlink_clients")
+          .select(
+            "id, insuracloud_pipeline_client_id, agent_id, first_name, last_name, phone, email, state, city, pipeline_stage, created_at, updated_at, stage_changed_at, last_contact_date, next_action_date, callback_date, callback_time, do_not_call, do_not_email, do_not_text, hostile_language_detected, policy_number, mortgage_payment, rent_payment"
+          )
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: false })
+          .range(from, from + pageSize - 1);
+        if (error) throw error;
+        const page = (data ?? []) as unknown as Client[];
+        loaded.push(...page);
+        if (page.length < pageSize) break;
+      }
+      return loaded;
     },
   });
 
@@ -243,12 +267,20 @@ export default function ClientPipeline() {
     enabled: !!user?.id,
     staleTime: 60_000,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("client_pipeline_overrides" as never)
-        .select("client_id, stage_override, stage_changed_at, last_contact_date, next_action_date, callback_date, callback_time, schedule_overridden, communication_notes, reminder_notes")
-        .limit(2_000);
-      if (error) throw error;
-      return (data ?? []) as unknown as ClientOverride[];
+      const pageSize = 1_000;
+      const loaded: ClientOverride[] = [];
+      for (let from = 0; ; from += pageSize) {
+        const { data, error } = await supabase
+          .from("client_pipeline_overrides" as never)
+          .select("client_id, stage_override, stage_changed_at, last_contact_date, next_action_date, callback_date, callback_time, schedule_overridden, communication_notes, reminder_notes")
+          .order("client_id", { ascending: true })
+          .range(from, from + pageSize - 1);
+        if (error) throw error;
+        const page = (data ?? []) as unknown as ClientOverride[];
+        loaded.push(...page);
+        if (page.length < pageSize) break;
+      }
+      return loaded;
     },
   });
 
@@ -296,11 +328,9 @@ export default function ClientPipeline() {
     onError: (error) => toast.error(error instanceof Error ? error.message : "Client could not be created"),
   });
 
-  // Headline numbers come from a server-side, RLS-scoped aggregate — NOT from
-  // rows.length. PostgREST caps the row fetch above at 1000, so deriving totals
-  // from the fetched array showed "1,000 clients" when the book holds 1,906.
-  // The directory list below still uses `rows` (capped + sliced for render);
-  // only the counts must be exact.
+  // Headline diagnostics prefer the server-side, RLS-scoped aggregate so they
+  // stay exact and cheap as the book grows. The operating queue above still
+  // pages the full client set because an aggregate cannot identify who to call.
   const { data: agg } = useQuery({
     queryKey: ["client-pipeline-stats", isAdmin],
     enabled: !!user?.id,
@@ -353,8 +383,8 @@ export default function ClientPipeline() {
     }).length;
     const missing = neverContacted + coldAfterTouch;
 
-    // Prefer the exact server-side aggregate; fall back to row-derived (capped)
-    // only while the aggregate query is in flight or unavailable.
+    // Prefer the exact server-side aggregate; fall back to the fully paged rows
+    // while the aggregate query is in flight or unavailable.
     return {
       total:            agg?.total            ?? total,
       sold:             agg?.sold             ?? sold,
@@ -536,10 +566,48 @@ export default function ClientPipeline() {
     ].some((value) => String(value ?? "").toLowerCase().includes(q)));
   }, [rows, search]);
 
-  const workspaceLanes = useMemo(() => WORKSPACE_LANES.map((lane) => ({
-    ...lane,
-    clients: workspaceRows.filter((client) => lane.stages.includes((client.pipeline_stage ?? "UNSORTED") as never)),
-  })), [workspaceRows]);
+  const prioritySummary = useMemo(() => {
+    const now = new Date();
+    const active = rows.filter(isActivePipelineClient);
+    const queue = [...active].sort((a, b) => compareClientPriority(a, b, now));
+    const counts: Record<ClientPriorityCode, number> = { overdue: 0, today: 0, new: 0, unplanned: 0, upcoming: 0 };
+    for (const client of queue) {
+      const priority = getClientPriority(client, now);
+      if (priority) counts[priority.code] += 1;
+    }
+    return {
+      active,
+      queue,
+      counts,
+      planned: counts.today + counts.upcoming,
+    };
+  }, [rows]);
+
+  const cockpitRows = useMemo(() => {
+    const now = new Date();
+    const matchingIds = new Set(workspaceRows.map((client) => client.id));
+    if (cockpitView === "priority") {
+      return prioritySummary.queue.filter((client) => {
+        if (!matchingIds.has(client.id)) return false;
+        const code = getClientPriority(client, now)?.code;
+        return priorityFilter === "work_now" ? code !== "upcoming" : code === priorityFilter;
+      });
+    }
+    if (cockpitView === "stages") {
+      const lane = WORKSPACE_LANES.find((item) => item.key === activeLane) ?? WORKSPACE_LANES[0];
+      return workspaceRows
+        .filter((client) => lane.stages.includes((client.pipeline_stage ?? "UNSORTED") as never))
+        .sort((a, b) => compareClientPriority(a, b, now));
+    }
+    return [...workspaceRows].sort((a, b) => compareClientPriority(a, b, now));
+  }, [activeLane, cockpitView, priorityFilter, prioritySummary.queue, workspaceRows]);
+
+  const stageCounts = useMemo(() => Object.fromEntries(WORKSPACE_LANES.map((lane) => [
+    lane.key,
+    rows.filter((client) => lane.stages.includes((client.pipeline_stage ?? "UNSORTED") as never)).length,
+  ])) as Record<(typeof WORKSPACE_LANES)[number]["key"], number>, [rows]);
+
+  const workNext = cockpitRows[0] ?? prioritySummary.queue[0] ?? null;
 
   // Disclosure open state — keeps Recharts / 250-row lists out of first paint.
   const [openFunnel,     setOpenFunnel]     = useState(false);
@@ -555,10 +623,10 @@ export default function ClientPipeline() {
       <PageHeader
         eyebrow="Clients · Pipeline"
         eyebrowIcon={<BookMarked className="h-3 w-3" />}
-        title="Pipeline"
+        title="Client sales cockpit"
         subtitle={
           <>
-            Track every client from first contact to sold across <span className="text-foreground font-medium">{scopeLabel}</span>.
+            Work the right client, run the call, and leave every conversation with a next step across <span className="text-foreground font-medium">{scopeLabel}</span>.
           </>
         }
         actions={
@@ -636,54 +704,113 @@ export default function ClientPipeline() {
         </DialogContent>
       </Dialog>
 
-      <section className="overflow-hidden rounded-lg border border-border bg-card">
-        <div className="flex flex-col gap-3 border-b border-border px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-center gap-2 text-sm">
-            <Badge variant="outline" className="border-primary/40 bg-primary/10 text-primary">{scopeLabel}</Badge>
-            <span className="text-muted-foreground">{workspaceRows.length.toLocaleString()} loaded</span>
+      <section className="overflow-hidden rounded-2xl border border-border bg-card">
+        <div className="border-b border-border bg-primary/[0.04] p-4 sm:p-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <Target className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-bold">Today&apos;s game plan</h2>
+                <Badge variant="outline" className="border-primary/40 bg-primary/10 text-primary">{prioritySummary.active.length.toLocaleString()} active</Badge>
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground">Missed promises first, then today&apos;s callbacks, then untouched clients.</p>
+            </div>
+            <Button
+              size="lg"
+              className="w-full font-bold sm:w-auto"
+              disabled={!workNext}
+              onClick={() => workNext && navigate(`/dashboard/clients/${workNext.id}`)}
+            >
+              <Play className="mr-2 h-4 w-4 fill-current" /> Work next client
+            </Button>
           </div>
-          <div className="relative w-full lg:max-w-md">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input value={search} onChange={(event) => setSearch(event.target.value)} className="pl-9" placeholder="Search clients, phone, policy…" />
+
+          <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
+            <PriorityMetric label="Overdue" value={prioritySummary.counts.overdue} tone="rose" active={cockpitView === "priority" && priorityFilter === "overdue"} onClick={() => { setCockpitView("priority"); setPriorityFilter("overdue"); }} />
+            <PriorityMetric label="Due today" value={prioritySummary.counts.today} tone="amber" active={cockpitView === "priority" && priorityFilter === "today"} onClick={() => { setCockpitView("priority"); setPriorityFilter("today"); }} />
+            <PriorityMetric label="Never touched" value={prioritySummary.counts.new} tone="default" active={cockpitView === "priority" && priorityFilter === "new"} onClick={() => { setCockpitView("priority"); setPriorityFilter("new"); }} />
+            <PriorityMetric label="Contacted · no plan" value={prioritySummary.counts.unplanned} tone="default" active={cockpitView === "priority" && priorityFilter === "unplanned"} onClick={() => { setCockpitView("priority"); setPriorityFilter("unplanned"); }} />
+          </div>
+
+          <div className="mt-4 rounded-xl border border-border/70 bg-background/70 p-3">
+            <div className="flex items-center justify-between gap-3 text-xs">
+              <span className="font-medium">Follow-up coverage</span>
+              <span className="tabular-nums text-muted-foreground">{prioritySummary.planned.toLocaleString()} of {prioritySummary.active.length.toLocaleString()} active clients scheduled</span>
+            </div>
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
+              <div className="h-full rounded-full bg-emerald-500 transition-[width]" style={{ width: `${prioritySummary.active.length ? Math.round((prioritySummary.planned / prioritySummary.active.length) * 100) : 100}%` }} />
+            </div>
           </div>
         </div>
-        <div className="overflow-x-auto">
-          <div className="grid min-w-[940px] grid-cols-4 divide-x divide-border">
-            {workspaceLanes.map((lane) => (
-              <div key={lane.key} className="min-h-[420px] bg-background/30">
-                <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
-                  <span className="text-xs font-semibold uppercase tracking-wide">{lane.label}</span>
-                  <Badge variant="outline" className="h-5 min-w-6 justify-center px-1.5 text-[10px]">{lane.clients.length}</Badge>
-                </div>
-                <div className="space-y-2 p-2.5">
-                  {isLoading ? (
-                    Array.from({ length: 4 }).map((_, index) => <Skeleton key={/* stable-key-allow:skeleton-static-array */ index} className="h-24 w-full" />)
-                  ) : lane.clients.length === 0 ? (
-                    <div className="grid h-40 place-items-center rounded-md border border-dashed border-border px-4 text-center text-xs text-muted-foreground">
-                      No clients in {lane.label.toLowerCase()}.
-                    </div>
-                  ) : lane.clients.slice(0, 15).map((client) => (
-                    <div key={client.id} className="rounded-md border border-border bg-card p-3 hover:border-primary/50">
-                      <button type="button" className="w-full text-left" onClick={() => navigate(`/dashboard/clients/${client.id}`)}>
-                        <p className="truncate text-sm font-semibold">{fullName(client)}</p>
-                        <p className="mt-0.5 truncate text-xs text-muted-foreground">{fmtPhone(client.phone)}{client.state ? ` · ${client.state}` : ""}</p>
-                        <p className="mt-2 text-[10px] uppercase tracking-wide text-muted-foreground">
-                          {client.next_action_date ? `Next ${format(new Date(client.next_action_date), "MMM d")}` : client.callback_date ? `Callback ${format(new Date(client.callback_date), "MMM d")}` : "Open client workspace"}
-                        </p>
-                      </button>
-                      <div className="mt-2 flex items-center gap-1 border-t border-border pt-2">
-                        {client.phone && !client.do_not_call && <Button asChild size="icon" variant="ghost" className="h-7 w-7" aria-label={`Call ${fullName(client)}`}><a href={phoneHref(client.phone) ?? `tel:${client.phone}`} {...contactLinkProps(phoneHref(client.phone))}><Phone className="h-3.5 w-3.5" /></a></Button>}
-                        {client.phone && <Button asChild size="icon" variant="ghost" className="h-7 w-7" aria-label={`Text ${fullName(client)}`}><a href={smsHref(client.phone) ?? `sms:${client.phone}`} {...contactLinkProps(smsHref(client.phone))}><MessageSquare className="h-3.5 w-3.5" /></a></Button>}
-                        {client.email && <Button asChild size="icon" variant="ghost" className="h-7 w-7" aria-label={`Email ${fullName(client)}`}><a href={`mailto:${client.email}`}><Mail className="h-3.5 w-3.5" /></a></Button>}
-                        <Button size="sm" variant="ghost" className="ml-auto h-7 px-2 text-[11px]" onClick={() => navigate(`/dashboard/clients/${client.id}`)}>Open</Button>
-                      </div>
-                    </div>
-                  ))}
-                  {lane.clients.length > 15 && <p className="py-2 text-center text-xs text-muted-foreground">+{lane.clients.length - 15} more · search to narrow</p>}
-                </div>
-              </div>
+
+        <div className="space-y-3 p-3 sm:p-4">
+          <div className="grid grid-cols-3 gap-1 rounded-xl bg-muted p-1">
+            {([
+              ["priority", "Work queue"],
+              ["stages", "By stage"],
+              ["all", "All clients"],
+            ] as const).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={cockpitView === value}
+                onClick={() => setCockpitView(value)}
+                className={`min-h-10 rounded-lg px-2 text-xs font-semibold transition-colors sm:text-sm ${cockpitView === value ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                {label}
+              </button>
             ))}
           </div>
+
+          {cockpitView === "priority" && (
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {([
+                ["work_now", "Work now", prioritySummary.active.length - prioritySummary.counts.upcoming],
+                ["overdue", "Overdue", prioritySummary.counts.overdue],
+                ["today", "Today", prioritySummary.counts.today],
+                ["new", "Untouched", prioritySummary.counts.new],
+                ["unplanned", "No plan", prioritySummary.counts.unplanned],
+                ["upcoming", "Scheduled", prioritySummary.counts.upcoming],
+              ] as const).map(([value, label, count]) => (
+                <button key={value} type="button" aria-pressed={priorityFilter === value} onClick={() => setPriorityFilter(value)} className={`min-h-9 shrink-0 rounded-full border px-3 text-xs font-semibold ${priorityFilter === value ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-muted-foreground"}`}>
+                  {label} · {count.toLocaleString()}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {cockpitView === "stages" && (
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {WORKSPACE_LANES.map((lane) => (
+                <button key={lane.key} type="button" aria-pressed={activeLane === lane.key} onClick={() => setActiveLane(lane.key)} className={`min-h-9 shrink-0 rounded-full border px-3 text-xs font-semibold ${activeLane === lane.key ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-muted-foreground"}`}>
+                  {lane.label} · {stageCounts[lane.key].toLocaleString()}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input value={search} onChange={(event) => setSearch(event.target.value)} className="h-11 pl-9" placeholder="Search name, phone, email, city, policy…" />
+          </div>
+
+          {isLoading ? (
+            <div className="grid gap-2 lg:grid-cols-2">{Array.from({ length: 6 }).map((_, index) => <Skeleton key={/* stable-key-allow:skeleton-static-array */ index} className="h-36 w-full" />)}</div>
+          ) : cockpitRows.length === 0 ? (
+            <EmptyState
+              icon={<CheckCircle2 className="h-6 w-6" />}
+              title={search ? "No clients match this search" : "This queue is clear"}
+              description={search ? "Try a name, phone number, email, city, or policy number." : "Move to another queue or add a client to keep selling."}
+              variant="success"
+            />
+          ) : (
+            <div className="grid gap-2 lg:grid-cols-2">
+              {cockpitRows.slice(0, 40).map((client) => (
+                <CockpitClientCard key={client.id} client={client} priority={getClientPriority(client)} onOpen={() => navigate(`/dashboard/clients/${client.id}`)} />
+              ))}
+            </div>
+          )}
+          {cockpitRows.length > 40 && <p className="py-2 text-center text-xs text-muted-foreground">Showing the next 40 of {cockpitRows.length.toLocaleString()} · work the queue or search to jump to anyone</p>}
         </div>
       </section>
 
@@ -1192,6 +1319,87 @@ export default function ClientPipeline() {
 }
 
 // ── Sub-components ─────────────────────────────────────────────────────────
+
+function displayPipelineDate(value: string | null): string {
+  const key = pipelineDateKey(value);
+  if (!key) return "—";
+  try { return format(new Date(`${key}T12:00:00`), "MMM d"); } catch { return key; }
+}
+
+function priorityReason(priority: ClientPriority): string {
+  return priority.dueDate
+    ? priority.reason.replace(priority.dueDate, displayPipelineDate(priority.dueDate))
+    : priority.reason;
+}
+
+interface PriorityMetricProps {
+  label: string;
+  value: number;
+  tone: "default" | "amber" | "rose";
+  active: boolean;
+  onClick: () => void;
+}
+
+function PriorityMetric({ label, value, tone, active, onClick }: PriorityMetricProps) {
+  const valueTone = tone === "rose"
+    ? "text-rose-600 dark:text-rose-400"
+    : tone === "amber"
+    ? "text-amber-600 dark:text-amber-400"
+    : "text-foreground";
+  return (
+    <button type="button" aria-pressed={active} onClick={onClick} className={`min-h-20 rounded-xl border p-3 text-left transition-colors ${active ? "border-primary bg-primary/10" : "border-border/70 bg-background/70 hover:border-primary/40"}`}>
+      <span className="block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</span>
+      <span className={`mt-1 block text-2xl font-black tabular-nums ${valueTone}`}>{value.toLocaleString()}</span>
+    </button>
+  );
+}
+
+interface CockpitClientCardProps {
+  client: Client;
+  priority: ClientPriority | null;
+  onOpen: () => void;
+}
+
+function CockpitClientCard({ client, priority, onOpen }: CockpitClientCardProps) {
+  const stage = STAGE_META[client.pipeline_stage ?? "UNSORTED"] ?? STAGE_META.UNSORTED;
+  const priorityTone = priority?.code === "overdue"
+    ? TINT.rose
+    : priority?.code === "today"
+    ? TINT.amber
+    : priority?.code === "upcoming"
+    ? TINT.emerald
+    : TINT.slate;
+  return (
+    <article className="rounded-xl border border-border bg-background p-3.5 transition-colors hover:border-primary/40">
+      <button type="button" className="w-full text-left" onClick={onOpen}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="truncate font-semibold">{fullName(client)}</h3>
+            <p className="mt-0.5 truncate text-xs text-muted-foreground">{fmtPhone(client.phone)}{client.state ? ` · ${client.state}` : ""}</p>
+          </div>
+          <div className="flex shrink-0 flex-col items-end gap-1">
+            {priority && <Badge variant="outline" className={`text-[10px] ${priorityTone}`}>{priority.label}</Badge>}
+            <Badge variant="outline" className={`text-[10px] ${stage.tint}`}>{stage.label}</Badge>
+          </div>
+        </div>
+        <div className={`mt-3 rounded-lg px-3 py-2 text-xs ${priority?.code === "overdue" ? "bg-rose-500/10 text-rose-700 dark:text-rose-300" : priority?.code === "today" ? "bg-amber-500/10 text-amber-700 dark:text-amber-300" : "bg-muted text-muted-foreground"}`}>
+          {priority ? priorityReason(priority) : "Closed client · open for service history"}
+        </div>
+      </button>
+      <div className="mt-3 grid grid-cols-[auto_auto_1fr] gap-2 border-t border-border pt-3">
+        {client.phone && !client.do_not_call ? (
+          <Button asChild size="sm" variant="outline" aria-label={`Call ${fullName(client)}`}><a href={phoneHref(client.phone) ?? `tel:${client.phone}`} {...contactLinkProps(phoneHref(client.phone))}><Phone className="mr-1.5 h-4 w-4" /> Call</a></Button>
+        ) : <span />}
+        {client.phone && !client.do_not_text ? (
+          <Button asChild size="icon" variant="outline" aria-label={`Text ${fullName(client)}`}><a href={smsHref(client.phone) ?? `sms:${client.phone}`} {...contactLinkProps(smsHref(client.phone))}><MessageSquare className="h-4 w-4" /></a></Button>
+        ) : client.email && !client.do_not_email ? (
+          <Button asChild size="icon" variant="outline" aria-label={`Email ${fullName(client)}`}><a href={`mailto:${client.email}`}><Mail className="h-4 w-4" /></a></Button>
+        ) : <span />}
+        <Button size="sm" className="justify-self-end" onClick={onOpen}>Open call sheet <ChevronRight className="ml-1 h-4 w-4" /></Button>
+      </div>
+    </article>
+  );
+}
 
 interface PunchTileProps {
   label: string;

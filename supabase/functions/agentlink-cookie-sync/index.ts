@@ -16,6 +16,8 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
+type AdminClient = ReturnType<typeof createClient<any>>;
+
 /**
  * MP-400: unwrap a cookie that a writer JSON-encoded into a TEXT column.
  * A real Cookie header never starts with a double quote, so a leading+trailing
@@ -125,7 +127,7 @@ function upstreamCarrierId(p: any): number | null {
   return Number(raw);
 }
 
-async function resolveBotTokens(sb: ReturnType<typeof createClient>): Promise<string[]> {
+async function resolveBotTokens(sb: AdminClient): Promise<string[]> {
   const tokens: string[] = [];
   if (PERSISTENT_BOT_TOKEN.length > 16) tokens.push(PERSISTENT_BOT_TOKEN);
   const env = Deno.env.get("APEX_BOT_TOKEN");
@@ -136,7 +138,7 @@ async function resolveBotTokens(sb: ReturnType<typeof createClient>): Promise<st
   return tokens;
 }
 
-async function authorize(req: Request, sb: ReturnType<typeof createClient>) {
+async function authorize(req: Request, sb: AdminClient) {
   const authHeader = req.headers.get("Authorization") ?? req.headers.get("authorization") ?? "";
   const presented = authHeader.replace(/^Bearer\s+/i, "").trim();
   if (!presented) return { ok: false, status: 401, error: "Unauthorized" };
@@ -343,6 +345,7 @@ Deno.serve(async (req) => {
       policies_seen: policies.length,
       deals_inserted: 0,
       deals_updated: 0,
+      deals_unchanged: 0,
       deals_skipped: 0,
       unmapped_user_ids: {} as Record<string, number>,
       errors: [] as string[],
@@ -370,12 +373,16 @@ Deno.serve(async (req) => {
     // the composite path still owns rows whose external id is null (AgentLink
     // sends placeholders that are coerced to NULL above).
     const existingByExternal = new Map<string, string>();
+    // MP-431: the status each existing row holds NOW, so status_updated_at is
+    // stamped only on a real transition (it means "when the status changed",
+    // and v_lapses_30d_detail / v_ceo_command_center read it that way).
+    const existingStatus = new Map<string, string | null>();
     {
       const PAGE = 1000;
       for (let from = 0; ; from += PAGE) {
         const { data: page, error: pageErr } = await sb
           .from("deals")
-          .select("id, agent_id, policy_number, external_deal_id")
+          .select("id, agent_id, policy_number, external_deal_id, status")
           // MP-378: .range() without ORDER BY is non-deterministic -- Postgres
           // may return a row on two pages or on NONE, so a paginated prefetch
           // silently drops rows and the map comes back incomplete. Measured:
@@ -395,10 +402,11 @@ Deno.serve(async (req) => {
           });
           return json({ ok: false, error: `deal prefetch failed: ${pageErr.message}` }, 500);
         }
-        const rows = (page ?? []) as { id: string; agent_id: string | null; policy_number: string | null; external_deal_id: string | null }[];
+        const rows = (page ?? []) as { id: string; agent_id: string | null; policy_number: string | null; external_deal_id: string | null; status: string | null }[];
         for (const r of rows) {
           if (r.agent_id && r.policy_number) existingByKey.set(`${r.agent_id}|${r.policy_number}`, r.id);
           if (r.external_deal_id) existingByExternal.set(r.external_deal_id, r.id);
+          existingStatus.set(r.id, r.status);
         }
         if (rows.length < PAGE) break;
       }
@@ -481,10 +489,24 @@ Deno.serve(async (req) => {
         ?? (external ? existingByExternal.get(external) : undefined);
 
       if (existingId) {
-        const { error } = await sb.from("deals").update(row).eq("id", existingId);
+        // MP-431: every run used to rewrite every row with a fresh
+        // status_updated_at, so 1,264 unchanged deals became 1,264 WAL records,
+        // realtime packets and AFTER-trigger fan-outs per sync — the storm that
+        // saturated the 2-vCPU database. Stamp the timestamp only on a real
+        // transition; the zz_suppress_noop_update trigger then turns an
+        // unchanged row into a no-op (0 rows written), and the returned rows say
+        // honestly whether anything changed instead of booking every PATCH as
+        // an update.
+        const patch: Record<string, unknown> = { ...row };
+        if (existingStatus.has(existingId) && existingStatus.get(existingId) === row.status) {
+          delete patch.status_updated_at;
+        }
+        const { data: written, error } = await sb.from("deals").update(patch).eq("id", existingId).select("id");
         if (error) {
           if (error.code === "23505") summary.deals_skipped++;
           else summary.errors.push(`${policyNumber}: update ${error.message}`);
+        } else if ((written ?? []).length === 0) {
+          summary.deals_unchanged++;
         } else {
           summary.deals_updated++;
         }
@@ -517,7 +539,7 @@ Deno.serve(async (req) => {
         snapshot_date: new Date().toISOString().slice(0, 10),
         snapshot_time: new Date().toISOString(),
         source: "agentlink-cookie-sync:/api/deals",
-        raw_payload: { count: policies.length, sample: policies.slice(0, 5) },
+        raw_payload: { count: policies.length, unchanged: summary.deals_unchanged, sample: policies.slice(0, 5) },
       });
     } catch (_snapshotErr) { /* snapshot is audit-only; never block the sync */ }
 
@@ -529,7 +551,7 @@ Deno.serve(async (req) => {
       deals_updated: summary.deals_updated,
       error_message: summary.errors.length
         ? `edge: ${summary.errors.slice(0, 3).join(" | ")}`
-        : `edge: ${summary.deals_inserted} new, ${summary.deals_updated} updated, ${summary.deals_skipped} skipped`,
+        : `edge: ${summary.deals_inserted} new, ${summary.deals_updated} updated, ${summary.deals_unchanged} unchanged, ${summary.deals_skipped} skipped`,
     });
 
     return json(summary, summary.errors.length ? 207 : 200);

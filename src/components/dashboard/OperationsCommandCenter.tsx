@@ -64,6 +64,8 @@ export function OperationsCommandCenter() {
     queryKey: ["admin-operations-command-center"],
     staleTime: 60_000,
     refetchInterval: 180_000,
+    retry: 1,
+    retryDelay: 4_000,
     queryFn: async () => {
       const { data, error } = await supabase.rpc("apex_admin_operations_snapshot" as never);
       if (error) throw error;

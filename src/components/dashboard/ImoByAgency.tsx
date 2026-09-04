@@ -53,6 +53,8 @@ export function ImoByAgency({
     enabled: isAdmin,
     queryKey: ["imo-by-agency", start ?? "summary", end ?? "summary"],
     staleTime: 60_000,
+    retry: 1,
+    retryDelay: 4_000,
     queryFn: async () => {
       if (start && end) {
         const { data, error } = await supabase.rpc("imo_by_agency_period" as never, {
@@ -72,10 +74,12 @@ export function ImoByAgency({
   });
 
   const invalidateProduction = () => {
-    queryClient.invalidateQueries({ queryKey: ["imo-by-agency"] });
-    queryClient.invalidateQueries({ queryKey: ["crm-today-production"] });
-    queryClient.invalidateQueries({ queryKey: ["apex-home-dashboard"] });
-    queryClient.invalidateQueries({ queryKey: ["scoped-production-scoreboard"] });
+    // MP-431: cancelRefetch:false — an in-flight heavy call is reused, never
+    // aborted and re-issued while the database still runs the abandoned one.
+    queryClient.invalidateQueries({ queryKey: ["imo-by-agency"], cancelRefetch: false });
+    queryClient.invalidateQueries({ queryKey: ["crm-today-production"], cancelRefetch: false });
+    queryClient.invalidateQueries({ queryKey: ["apex-home-dashboard"], cancelRefetch: false });
+    queryClient.invalidateQueries({ queryKey: ["scoped-production-scoreboard"], cancelRefetch: false });
   };
   // COALESCED (2026-08-31, MP-361). invalidateProduction() refetches four
   // query keys, and this component mounts at three render sites. Undebounced,

@@ -375,6 +375,7 @@
     "public.referrals",
     "public.resources",
     "public.roster_exclusions",
+    "public.rpc_result_cache",
     "public.sales_scripts",
     "public.sam_daily_tasks",
     "public.sam_todo_dismissed",

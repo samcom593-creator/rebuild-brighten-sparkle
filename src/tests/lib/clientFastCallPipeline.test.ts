@@ -24,6 +24,25 @@ describe("client pipeline fast-call workflow", () => {
     expect(callSheet).toContain("Full financial picture and banking");
   });
 
+  it("loads the entire scoped book and renders a phone-first priority cockpit", () => {
+    const pipeline = source("pages/ClientPipeline.tsx");
+    expect(pipeline).toContain("for (let from = 0; ; from += pageSize)");
+    expect(pipeline).toContain(".range(from, from + pageSize - 1)");
+    expect(pipeline).toContain("Today&apos;s game plan");
+    expect(pipeline).toContain("Work next client");
+    expect(pipeline).toContain("Follow-up coverage");
+    expect(pipeline).not.toContain('min-w-[940px]');
+  });
+
+  it("records structured outcomes and refuses to close the loop without a date", () => {
+    const callSheet = source("components/clients/ClientCallWorkspace.tsx");
+    expect(callSheet).toContain("CALL_OUTCOMES");
+    expect(callSheet).toContain('p_activity_type: selectedOutcome ? (selectedOutcome.reached ? "contact_logged" : "no_answer")');
+    expect(callSheet).toContain("Choose a callback or next-action date for today or later before closing this call");
+    expect(callSheet).toContain("Save outcome & next step");
+    expect(callSheet).toContain('queryKey: ["client-pipeline-overrides"]');
+  });
+
   it("keeps critical application facts writable without storing a full SSN", () => {
     const callSheet = source("components/clients/ClientCallWorkspace.tsx");
     for (const key of ["height", "weight", "is_smoker", "ssn_last4", "social_security_income", "medical_notes", "monthly_surplus", "beneficiary_first_name"]) {

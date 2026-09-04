@@ -49,7 +49,7 @@ describe("scoped production scoreboard", () => {
     expect(component).toContain("Deals posted only in those chats are not on this board yet.");
     expect(component).not.toContain("blockedFeeds.map((f) => (");
     expect(component).toContain("Deal-feed health could not be checked.");
-    expect(component).toContain("void feed.refetch()");
+    expect(component).toContain("void feed.refetch({ cancelRefetch: false })");
     expect(migration).toContain("security definer");
     expect(migration).toContain("public.apex_is_admin() or public.apex_has_any_role(array['manager'])");
     expect(migration).toContain("revoke all on function public.discord_deal_feed_health() from public");
@@ -109,7 +109,7 @@ describe("scoped production scoreboard", () => {
     expect(component).toContain("My team projected");
     expect(component).toContain("Full IMO projected");
     expect(component).toContain("Agency projections");
-    expect(component).toContain("void projection.refetch()");
+    expect(component).toContain("void projection.refetch({ cancelRefetch: false })");
     expect(migration).toContain("public.v_production_comp_truth");
     expect(migration).toContain("c.agent_id = any(v_scope_ids)");
     expect(migration).toContain("public.fn_hierarchy_first_hops(v_personal_ids)");

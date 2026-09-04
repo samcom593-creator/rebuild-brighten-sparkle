@@ -9,12 +9,38 @@ interface VitalEntry {
   rating?: "good" | "needs-improvement" | "poor";
 }
 
-const queue: VitalEntry[] = [];
+// One row per vital per page is enough to diagnose user experience. Event
+// Timing emits one entry for every interaction; pushing every entry produced
+// 28,875 web_vital.INP rows in 24 hours (94% of all analytics writes) from only
+// ~95 browsing sessions. Keep the worst value observed until the batch flushes,
+// then ignore later entries for that vital on this page.
+const pending = new Map<string, VitalEntry>();
+const reported = new Set<string>();
 let flushTimer: number | undefined;
+let initialized = false;
+
+function telemetrySessionId(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const key = "apex.telemetry.session";
+    const existing = window.sessionStorage.getItem(key);
+    if (existing) return existing;
+    const created = crypto.randomUUID();
+    window.sessionStorage.setItem(key, created);
+    return created;
+  } catch { // empty-catch-allow:telemetry-fire-and-forget
+    return null;
+  }
+}
 
 async function flush() {
-  if (queue.length === 0) return;
-  const batch = queue.splice(0);
+  if (flushTimer !== undefined) window.clearTimeout(flushTimer);
+  flushTimer = undefined;
+  if (pending.size === 0) return;
+  const batch = Array.from(pending.values());
+  pending.clear();
+  for (const vital of batch) reported.add(vital.name);
+  const sessionId = telemetrySessionId();
   try {
     const { supabase } = await import("@/integrations/supabase/client");
     await supabase.from("analytics_events").insert(
@@ -24,6 +50,7 @@ async function flush() {
         properties: { value: v.value, rating: v.rating },
         url: typeof window !== "undefined" ? window.location.pathname : null,
         user_agent: typeof navigator !== "undefined" ? navigator.userAgent : null,
+        session_id: sessionId,
       }))
     );
   } catch { // empty-catch-allow:telemetry-fire-and-forget
@@ -32,13 +59,17 @@ async function flush() {
 }
 
 function enqueue(entry: VitalEntry) {
-  queue.push(entry);
-  if (flushTimer) window.clearTimeout(flushTimer);
-  flushTimer = window.setTimeout(() => void flush(), 5000);
+  if (reported.has(entry.name)) return;
+  const existing = pending.get(entry.name);
+  if (!existing || entry.value >= existing.value) pending.set(entry.name, entry);
+  // Fixed window, not a debounce: continuous interaction must not keep an
+  // ever-growing batch alive forever. Map cardinality is capped by vital name.
+  if (flushTimer === undefined) flushTimer = window.setTimeout(() => void flush(), 5000);
 }
 
 export function initWebVitals() {
-  if (typeof window === "undefined" || typeof PerformanceObserver === "undefined") return;
+  if (initialized || typeof window === "undefined" || typeof PerformanceObserver === "undefined") return;
+  initialized = true;
 
   // LCP
   try {

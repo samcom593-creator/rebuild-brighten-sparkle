@@ -97,7 +97,7 @@ jobs:
           response=$(curl -sS -X POST "$BOT_SQL" \
             -H "Authorization: Bearer $BOT_TOKEN" \
             -H "content-type: application/json" \
-            -d '{"query":"SELECT EXTRACT(EPOCH FROM (now()-max(start_time)))::int AS gap FROM cron.job_run_details;"}' || echo '{}')
+            -d '{"query":"SELECT EXTRACT(EPOCH FROM (now()-(SELECT start_time FROM cron.job_run_details ORDER BY runid DESC LIMIT 1)))::int AS gap;"}' || echo '{}')
           gap=$(printf '%s' "$response" | jq -r 'if (.ok == true) and (.rows | length > 0) and (.rows[0].gap | type == "number") then .rows[0].gap else 99999 end' 2>/dev/null || echo 99999)
           # Ensure it's actually an int — defense in depth.
           case "$gap" in

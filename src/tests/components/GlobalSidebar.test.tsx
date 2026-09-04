@@ -40,7 +40,9 @@ vi.mock("@/components/onboarding/QuickAddAgentDialog", () => ({ QuickAddAgentDia
 vi.mock("@/components/dashboard/AddAgentModal", () => ({
   AddAgentModal: ({ trigger }: { trigger?: ReactNode }) => trigger ?? null,
 }));
-vi.mock("@/components/deals/SubmitDealDialog", () => ({ SubmitDealDialog: () => null }));
+vi.mock("@/components/deals/SubmitDealDialog", () => ({
+  SubmitDealDialog: ({ trigger }: { trigger?: ReactNode }) => trigger ?? null,
+}));
 vi.mock("@/stores/agentProfileDrawer", () => ({
   useAgentProfileDrawer: (selector: (s: { openAgent: () => void }) => unknown) =>
     selector({ openAgent: vi.fn() }),
@@ -52,10 +54,10 @@ vi.mock("@/shared/store/uiStore", () => ({
 
 import { GlobalSidebar } from "@/components/layout/GlobalSidebar";
 
-function renderSidebar(pathname = "/dashboard") {
+function renderSidebar(pathname = "/dashboard", mobile = false) {
   return render(
     <MemoryRouter initialEntries={[pathname]}>
-      <GlobalSidebar isOpen onToggle={() => {}} isFullscreen={false} onFullscreenToggle={() => {}} />
+      <GlobalSidebar mobile={mobile} isOpen onToggle={() => {}} isFullscreen={false} onFullscreenToggle={() => {}} />
     </MemoryRouter>,
   );
 }
@@ -190,6 +192,15 @@ describe("GlobalSidebar · AgentCloud application navigation", () => {
     renderSidebar();
     expect(screen.getByRole("button", { name: "Sign out" })).toBeTruthy();
   });
+
+  it("puts permitted quick actions in the mobile navigation sheet", () => {
+    setRoles({ isManager: true });
+    renderSidebar("/dashboard", true);
+    expect(screen.getByRole("button", { name: "Post a Deal" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Add Agent" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Search APEX" })).toBeTruthy();
+    expect(screen.getAllByRole("link", { name: "Support desk" })).toHaveLength(1);
+  });
 });
 
 describe("GlobalSidebar · recruiting active-state behavior", () => {
@@ -234,5 +245,7 @@ describe("SidebarLayout · mobile drawer contract", () => {
     const renders = source.match(/<GlobalSidebar/g) ?? [];
     expect(renders.length).toBe(2);
     expect(source).toMatch(/mobileOpen/);
+    expect(source).toContain("Actions and navigation");
+    expect(source).toContain("<Sheet open={mobileOpen}");
   });
 });

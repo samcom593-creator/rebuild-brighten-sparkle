@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { ChevronDown, ChevronLeft, ChevronRight, Cloud, Loader2, LogOut, Star, UserPlus } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Cloud, HandCoins, Loader2, LogOut, Search, Star, UserPlus } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRolePreview } from "@/hooks/useRolePreview";
 import { useIsTouchDevice } from "@/hooks/useIsTouchDevice";
@@ -19,6 +19,8 @@ import {
 } from "./agentCloudNavigation";
 import { useFavoriteRoutes } from "./favoriteRoutes";
 import { AddAgentModal } from "@/components/dashboard/AddAgentModal";
+import { SubmitDealDialog } from "@/components/deals/SubmitDealDialog";
+import { useUIStore } from "@/shared/store/uiStore";
 import { toast } from "sonner";
 
 interface GlobalSidebarProps {
@@ -26,9 +28,11 @@ interface GlobalSidebarProps {
   onToggle: () => void;
   isFullscreen: boolean;
   onFullscreenToggle: () => void;
+  /** Render inside the focus-trapped mobile Actions sheet, not as a fixed rail. */
+  mobile?: boolean;
 }
 
-export function GlobalSidebar({ isOpen, onToggle, isFullscreen }: GlobalSidebarProps) {
+export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }: GlobalSidebarProps) {
   const brand = useBrand();
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -96,8 +100,10 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen }: GlobalSidebarP
     return withTooltip(item.label, (
       <Link
         to={item.href}
+        onClick={mobile ? onToggle : undefined}
         className={cn(
           "flex min-h-9 items-center rounded-md text-[13px] font-medium transition-colors",
+          mobile && "min-h-11",
           collapsed ? "justify-center px-2" : nested ? "gap-2.5 px-3" : "gap-3 px-3",
           active
             ? "bg-primary/15 text-primary"
@@ -122,6 +128,7 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen }: GlobalSidebarP
         aria-expanded={open}
         className={cn(
           "flex min-h-9 w-full items-center rounded-md text-[13px] font-medium transition-colors",
+          mobile && "min-h-11",
           collapsed ? "justify-center px-2" : "gap-3 px-3",
           active ? "text-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground",
         )}
@@ -156,14 +163,17 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen }: GlobalSidebarP
   return (
     <aside
       className={cn(
-        "fixed inset-y-0 left-0 z-50 overflow-hidden border-r border-border bg-sidebar transition-[width,opacity] duration-150",
-        isFullscreen && "pointer-events-none opacity-0",
+        "overflow-hidden bg-sidebar",
+        mobile
+          ? "relative h-full w-full"
+          : "fixed inset-y-0 left-0 z-50 border-r border-border transition-[width,opacity] duration-150",
+        !mobile && isFullscreen && "pointer-events-none opacity-0",
       )}
-      style={{ width: isFullscreen ? 0 : collapsed ? 72 : 256 }}
+      style={mobile ? undefined : { width: isFullscreen ? 0 : collapsed ? 72 : 256 }}
     >
       <div className="flex h-full flex-col">
-        <div className={cn("flex h-[60px] shrink-0 items-center border-b border-border", collapsed ? "justify-center" : "px-4")}>
-          <Link to="/dashboard" className="flex min-w-0 items-center gap-3">
+        <div className={cn("flex h-[60px] shrink-0 items-center border-b border-border", collapsed ? "justify-center" : "px-4", mobile && "pr-14")}>
+          <Link to="/dashboard" onClick={mobile ? onToggle : undefined} className="flex min-w-0 items-center gap-3">
             <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground">
               <Cloud className="h-[18px] w-[18px]" strokeWidth={2.25} />
             </span>
@@ -200,7 +210,45 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen }: GlobalSidebarP
           <div className="space-y-0.5">{renderEntries(account)}</div>
         </nav>
 
-        {(isAdmin || isManager) && (
+        {mobile && (
+          <div className="shrink-0 space-y-2 border-t border-border p-2">
+            <div className="px-2 pt-1 text-[9px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              Quick actions
+            </div>
+            <SubmitDealDialog
+              trigger={(
+                <Button size="sm" className="h-11 w-full justify-start gap-3 px-3">
+                  <HandCoins className="h-4 w-4" />
+                  Post a Deal
+                </Button>
+              )}
+            />
+            {(isAdmin || isManager) && (
+              <AddAgentModal
+                trigger={(
+                  <Button variant="outline" size="sm" className="h-11 w-full justify-start gap-3 px-3">
+                    <UserPlus className="h-4 w-4" />
+                    Add Agent
+                  </Button>
+                )}
+              />
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-11 w-full justify-start gap-3 px-3"
+              onClick={() => {
+                onToggle();
+                useUIStore.getState().setCommandPaletteOpen(true);
+              }}
+            >
+              <Search className="h-4 w-4" />
+              Search {brand.shortName}
+            </Button>
+          </div>
+        )}
+
+        {!mobile && (isAdmin || isManager) && (
           <div className="shrink-0 border-t border-border p-2">
             <AddAgentModal
               trigger={(
@@ -223,7 +271,7 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen }: GlobalSidebarP
             size="sm"
             onClick={() => void handleSignOut()}
             disabled={signingOut}
-            className={cn("h-9 text-muted-foreground hover:bg-destructive/10 hover:text-destructive", collapsed ? "w-full px-0" : "w-full justify-start gap-3 px-3")}
+            className={cn("h-9 text-muted-foreground hover:bg-destructive/10 hover:text-destructive", mobile && "h-11", collapsed ? "w-full px-0" : "w-full justify-start gap-3 px-3")}
             aria-label="Sign out"
           >
             {signingOut ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
@@ -231,7 +279,7 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen }: GlobalSidebarP
           </Button>
         </div>
 
-        <div className="flex h-12 shrink-0 items-center border-t border-border px-2">
+        {!mobile && <div className="flex h-12 shrink-0 items-center border-t border-border px-2">
           <Button
             variant="ghost"
             size="sm"
@@ -242,7 +290,7 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen }: GlobalSidebarP
             {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
             {!collapsed && <span className="text-xs">Collapse sidebar</span>}
           </Button>
-        </div>
+        </div>}
       </div>
     </aside>
   );

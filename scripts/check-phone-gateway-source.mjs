@@ -95,10 +95,22 @@ const lineOf = (src, idx) => src.slice(0, idx).split("\n").length;
 
 const files = execSync("git ls-files 'supabase/functions/**/*.ts'", { encoding: "utf8" })
   .split("\n").filter(Boolean)
-  // the helper and its test define the contract; they do not consume it, and
+  // The helper and its test define the contract; they do not consume it, and
   // the test deliberately keeps a copy of the broken primitive to prove it
   // still loses the answer.
-  .filter((f) => !f.includes("_shared/nanp-phone"));
+  //
+  // MP-422: that exemption was keyed to ONE path, so when MP-421 added
+  // consume-invite-token/auth-phone.test.ts — which likewise reconstructs the
+  // legacy `+1${digits.slice(-10)}` form purely to assert it still corrupts a
+  // non-NANP number — this guard called it a NEW truncation and CI went red for
+  // 1h20m across three commits. The exemption is now stated as the rule it
+  // always was: a *.test.ts file does not send anything, so it cannot build a
+  // carrier-gateway address. Tests are still executed, by check:deno-tests.
+  //
+  // This is MP-277's footnote bug one guard over: a scanner that reads a file
+  // asserting the bad form as an instance OF the bad form. Same family as the
+  // empty-catch ratchet blocking on a string inside its author's own comment.
+  .filter((f) => !f.includes("_shared/nanp-phone") && !f.endsWith(".test.ts"));
 
 // ---------------------------------------------------------------- leg A
 // `${local}@${domain}` inside a file that knows about carrier gateways.

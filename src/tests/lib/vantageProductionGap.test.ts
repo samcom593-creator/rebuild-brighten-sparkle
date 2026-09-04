@@ -25,6 +25,23 @@ describe("Vantage external production reconciliation", () => {
     expect(repair).not.toContain("production_external_deals");
   });
 
+  it("retires the September estimate after exact named Discord messages settle", () => {
+    const exact = source("supabase/migrations/20260904201000_vantage_september_exact_discord_truth.sql");
+
+    expect(exact).toContain("reported_policies = 0");
+    expect(exact).toContain("reported_alp = 0");
+    expect(exact).toContain("exact named Discord messages settled by MP-426");
+    expect(exact.match(/select public\.ingest_discord_production_deal\(/g)).toHaveLength(3);
+    expect(exact.match(/where exists \(\n  select 1 from public\.agents/g)).toHaveLength(3);
+    expect(exact).toContain("from public.discord_deal_ingestion_receipts r");
+    expect(exact).toContain("r.status in ('ingested', 'duplicate')");
+    expect(exact).toContain(") = 3;");
+    for (const messageId of ["1545052246897725484", "1545083481569235006", "1545502341275586661"]) {
+      expect(exact).toContain(messageId);
+    }
+    expect(exact).not.toContain("delete from public.production_external_daily_snapshots");
+  });
+
   it("contributes only the positive gap so later AgentLink rows cannot double count", () => {
     expect(migration).toContain("public.v_production_canonical");
     expect(migration).toContain("public.v_external_production_gap");
@@ -85,6 +102,7 @@ describe("Vantage external production reconciliation", () => {
 
   it("settles one Discord message once without replacing its source-resolved writer", () => {
     const repair = source("supabase/migrations/20260904190000_discord_message_identity_and_writer.sql");
+    const enumCast = source("supabase/migrations/20260904200000_discord_agent_status_enum_cast.sql");
 
     expect(repair).toContain("retry.external_ref = original.external_ref || ':1'");
     expect(repair).toContain("deal_ordinal = 0");
@@ -94,5 +112,8 @@ describe("Vantage external production reconciliation", () => {
     expect(repair).toContain("v_writer_agent_id, v_canonical_agent_id");
     expect(repair).toContain("v_agency_name, v_writer_agent_id, btrim(p_agent_name)");
     expect(repair).not.toContain("v_agency_name, v_canonical_agent_id, btrim(p_agent_name)");
+    expect(enumCast).toContain("lower(coalesce(a.status::text, ''active''))");
+    expect(enumCast).toContain("pg_get_functiondef(v_signature)");
+    expect(enumCast).toContain("raise exception 'Discord ingestion RPC no longer matches");
   });
 });

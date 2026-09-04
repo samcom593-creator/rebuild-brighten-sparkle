@@ -64,14 +64,6 @@ jobs:
           fi
           echo "token_ok=true" >> "$GITHUB_OUTPUT"
 
-      # MP-423. This is the ONLY place in the system that can answer "what is
-      # actually deployed?" — both management PATs on Sam's laptop return 401,
-      # so apex-doctor cannot ask. Runs BEFORE the deploy so it reports the
-      # state this run inherited, not the state this run creates.
-      - name: Guard — every deployed function has source in this repo
-        run: |
-          echo "node $(node --version)"
-          node scripts/check-deployed-function-source.mjs
 
       - name: Sync config.toml with functions/ directory
         id: sync
@@ -324,3 +316,27 @@ jobs:
           echo "- Project: \`$PROJECT_REF\`" >> $GITHUB_STEP_SUMMARY
           echo "- Trigger: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
           echo "- SHA: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+
+  # ── MP-423 ────────────────────────────────────────────────────────────────
+  # Deliberately its OWN job, not a step in `deploy`.
+  #
+  # This guard REPORTS on prod; it does not produce it. Gating the deploy on it
+  # would mean that a blip reading the management API stops Sam's function code
+  # from shipping — converting a monitoring blind spot into an outage. A
+  # separate job marks the run red honestly and lets the deploy proceed.
+  #
+  # NOT `continue-on-error: true`. This repo has already paid that bill: it
+  # makes GitHub record a FAILED step's conclusion as "success", which is how a
+  # deploy pipeline reported green for 8 days while migrations never applied.
+  deployed-source-audit:
+    name: Audit — every deployed function has source in this repo
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_REF: xrzweoneiieddzxogewk
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compare prod's ACTIVE function list against supabase/functions/
+        run: |
+          echo "node $(node --version)"
+          node scripts/check-deployed-function-source.mjs

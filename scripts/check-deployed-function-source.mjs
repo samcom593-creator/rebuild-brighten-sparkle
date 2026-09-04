@@ -26,10 +26,23 @@
  * The obvious home was apex-doctor. It cannot be: BOTH management PATs on the
  * laptop (~/.config/apex-creds/supabase-pat.token and the .dead.20260805 copy)
  * return 401 Unauthorized as of 2026-09-04, so no daemon on that box can read
- * deployed state at all. The only live management credential is
- * secrets.SUPABASE_ACCESS_TOKEN inside .github/workflows/deploy-supabase.yml,
- * proven alive by the deploys that succeed from it daily. So the guard runs
- * there, before the deploy step.
+ * deployed state at all. So the guard runs in CI, where the deploy credential
+ * lives.
+ *
+ * AND THE FIRST LIVE RUN FALSIFIED THE REST OF THAT SENTENCE. Commit 5723cb8c
+ * claimed secrets.SUPABASE_ACCESS_TOKEN was "proven alive by the deploys that
+ * succeed from it daily". It is not. This guard's first CI run (33901911133,
+ * 17:41:34Z) got HTTP 401 from the management API — and the run BEFORE it
+ * (33896206460, 16:37:59Z, MP-422's commit, no code of mine in it) got
+ * "Unexpected error setting project secrets: Unauthorized" from the supabase
+ * CLI on the same secret. The last deploy that worked was cee438ea at ~16:20Z.
+ * So the credential died in that window, every route to prod's control plane is
+ * now 401, and the Supabase deploy pipeline is DOWN until Sam mints a new token.
+ * A deploy succeeding "daily" was true yesterday and load-bearing nowhere.
+ *
+ * THIS GUARD THEREFORE RUNS IN ITS OWN JOB, not as a step in `deploy`. It
+ * reports on prod; it does not produce it. Gating the deploy on a reporting
+ * credential turns a monitoring blind spot into an outage.
  *
  * "COULD NOT LOOK" IS NOT A PASS
  * MP-399 shipped a check whose filter matched zero rows on every run it ever

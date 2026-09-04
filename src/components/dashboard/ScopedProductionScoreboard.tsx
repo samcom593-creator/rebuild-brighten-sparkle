@@ -270,6 +270,8 @@ export function ScopedProductionScoreboard() {
     },
   });
   const blockedFeeds = (feed.data ?? []).filter((f) => f.status !== "healthy");
+  const blockedFeedAgencies = blockedFeeds.map((f) => f.agency_name).join(", ");
+  const allBlockedFeedsNeverRead = blockedFeeds.every((f) => !f.last_ingested_at);
 
   const freshness = useQuery({
     queryKey: ["production-book-freshness"],
@@ -509,13 +511,17 @@ export function ScopedProductionScoreboard() {
                 </div>
               ) : blockedFeeds.length > 0 && (
                 <div className="mx-4 mt-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
-                  {blockedFeeds.map((f) => (
-                    <p key={f.source}>
-                      <span className="font-semibold">{f.agency_name} Discord deal feed: {f.status.replaceAll("_", " ")}.</span>{" "}
-                      {f.last_ingested_at ? `Last deal read ${shortTime(f.last_ingested_at)}.` : "Has never read a deal."}{" "}
-                      Deals posted only in that chat are not on this board.
-                    </p>
-                  ))}
+                  <p>
+                    <span className="font-semibold">
+                      {blockedFeeds.length === 1
+                        ? `${blockedFeedAgencies} Discord deal import needs attention.`
+                        : `${blockedFeeds.length} Discord deal imports need attention: ${blockedFeedAgencies}.`}
+                    </span>{" "}
+                    {allBlockedFeedsNeverRead
+                      ? "They have not imported a deal yet. "
+                      : "One or more chats may be missing recent deals. "}
+                    Deals posted only in those chats are not on this board yet.
+                  </p>
                 </div>
               )}
               <div className="flex items-center justify-between px-4 pt-3">

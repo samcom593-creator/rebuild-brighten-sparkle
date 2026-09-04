@@ -45,12 +45,23 @@ describe("scoped production scoreboard", () => {
 
     expect(component).toContain('supabase.rpc("discord_deal_feed_health"');
     expect(component).toContain('f.status !== "healthy"');
-    expect(component).toContain("Deals posted only in that chat are not on this board.");
+    expect(component).toContain("Discord deal imports need attention:");
+    expect(component).toContain("Deals posted only in those chats are not on this board yet.");
+    expect(component).not.toContain("blockedFeeds.map((f) => (");
     expect(component).toContain("Deal-feed health could not be checked.");
     expect(component).toContain("void feed.refetch()");
     expect(migration).toContain("security definer");
     expect(migration).toContain("public.apex_is_admin() or public.apex_has_any_role(array['manager'])");
     expect(migration).toContain("revoke all on function public.discord_deal_feed_health() from public");
+  });
+
+  it("MP-415: preserves verified Discord writer names while canonical identity still scopes and prices production", () => {
+    const migration = source("../supabase/migrations/20260904040000_vantage_writer_identity.sql");
+
+    expect(migration).toContain("when u.origin = 'discord_external' then u.agent_name");
+    expect(migration).toContain("coalesce(m.canonical_agent_id, u.agent_id) as agent_id");
+    expect(migration).toContain("coalesce(ca.explicit_comp, cbn.avg_comp_pct, ca.owner_comp, 60)");
+    expect(migration).not.toContain("when u.origin = 'discord_external' then u.agent_id");
   });
 
   it("uses the unified ledger and recursively scopes non-admin hierarchy", () => {

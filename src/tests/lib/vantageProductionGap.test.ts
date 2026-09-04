@@ -74,4 +74,12 @@ describe("Vantage external production reconciliation", () => {
     expect(named).toContain("1094");
     expect(named).toContain("4020");
   });
+
+  it("keeps the source-attested Vantage writer name after canonical reconciliation", () => {
+    const identity = source("supabase/migrations/20260904040000_vantage_writer_identity.sql");
+
+    expect(identity).toContain("when u.origin = 'discord_external' then u.agent_name");
+    expect(identity).toContain("coalesce(m.canonical_agent_id, u.agent_id) as agent_id");
+    expect(identity).toContain("Named Discord rows preserve the source-attested writing-agent name");
+  });
 });

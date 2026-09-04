@@ -25,6 +25,17 @@ const USER_DATA_DIR = process.env.USER_DATA_DIR || path.join(os.tmpdir(), `apex-
 const CHROME = process.env.CHROME || "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const AUTH_TOKEN_FILE = process.env.AUTH_TOKEN_FILE || "";
 const AUTH_STORAGE_KEY = process.env.AUTH_STORAGE_KEY || "sb-xrzweoneiieddzxogewk-auth-token";
+// 2026-09-04 (MP-413): every lifetime run of this audit degraded to public-only
+// and recorded "no logged-in auth state supplied" -- 3/3 runs over 15 days, so
+// the 12 authenticated seeds and every static route in App.tsx had ZERO link
+// coverage. The session-minting mechanism it needed already existed in
+// ~/business-ops/scripts/apex-see-page.mjs. Minting is now in-process and ON by
+// default so the audit cannot quietly become a public-page audit again.
+// NO_AUTH_MINT=1 opts out (offline runs); AUTH_TOKEN_FILE still wins if supplied.
+const NO_AUTH_MINT = process.env.NO_AUTH_MINT === "1";
+const SUPABASE_URL = process.env.SUPABASE_URL || "https://xrzweoneiieddzxogewk.supabase.co";
+const ADMIN_EMAIL = process.env.APEX_ADMIN_EMAIL || "sam.com593@gmail.com";
+const CRED_DIR = process.env.APEX_CRED_DIR || path.join(os.homedir(), ".config/apex-creds");
 const MAX_PAGES = Number(process.env.MAX_PAGES || 260);
 const NAV_TIMEOUT_MS = Number(process.env.NAV_TIMEOUT_MS || 30000);
 const CHECK_TIMEOUT_MS = Number(process.env.CHECK_TIMEOUT_MS || 12000);
@@ -37,6 +48,8 @@ const queued = [];
 const checkedLinks = new Map();
 const broken = [];
 let authProbeFailed = false;
+let authSource = "none";
+let authReason = "";
 
 const publicSeeds = [
   "/",
@@ -157,6 +170,21 @@ async function checkHttp(url, sourcePage, text) {
   if (error) result.error = error;
 
   if (result.error || result.status >= 400 || result.status === 0) {
+    // Three-valued, not pass/fail. The first authenticated crawl (2026-09-04)
+    // returned 50 "broken" links: 49 truepeoplesearch.com + 1 newbridgelife.com,
+    // every one a 403 to an automated request from two third-party hosts that
+    // bot-block. Both 403 to a real browser user-agent too, so this is their
+    // edge refusing automation, not a dead link a visitor would hit. Counting
+    // them as breakage makes the audit exit non-zero on a healthy site forever,
+    // and a signal that is always red is one nobody reads. They are recorded
+    // and counted under their own name instead of being laundered into either
+    // verdict — an internal 403 is still hard breakage.
+    const isInternal = requestUrl.origin === baseUrl.origin;
+    result.classification = isInternal
+      ? "internal-broken"
+      : [401, 403, 429].includes(result.status)
+        ? "external-blocked"
+        : "external-broken";
     recordBroken(result);
   }
 
@@ -164,10 +192,78 @@ async function checkHttp(url, sourcePage, text) {
   return result;
 }
 
+function readCred(name) {
+  const file = path.join(CRED_DIR, name);
+  if (!fs.existsSync(file)) return "";
+  return fs.readFileSync(file, "utf8").trim();
+}
+
+// Mints a real admin session the same way apex-see-page.mjs does (proven path).
+// gotrue stopped honoring email_otp verify for admin-generated magiclinks on
+// 2026-08-22 (403 otp_expired even when fresh); token_hash verify still works,
+// so token_hash is tried first and email_otp is only the fallback.
+async function mintAdminSession() {
+  const serviceKey = readCred("supabase-service.key");
+  const anonKey = readCred("supabase.anon");
+  if (!serviceKey || !anonKey) return { session: null, reason: "supabase service/anon key not present on this machine" };
+  try {
+    const gen = await fetch(`${SUPABASE_URL}/auth/v1/admin/generate_link`, {
+      method: "POST",
+      headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "magiclink", email: ADMIN_EMAIL }),
+    }).then((r) => r.json());
+    const hashed = gen.hashed_token || gen.properties?.hashed_token;
+    const otp = gen.email_otp || gen.properties?.email_otp;
+    let sess = hashed
+      ? await fetch(`${SUPABASE_URL}/auth/v1/verify`, {
+          method: "POST",
+          headers: { apikey: anonKey, "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "magiclink", token_hash: hashed }),
+        }).then((r) => r.json())
+      : {};
+    if (!sess.access_token && otp) {
+      sess = await fetch(`${SUPABASE_URL}/auth/v1/verify`, {
+        method: "POST",
+        headers: { apikey: anonKey, "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "magiclink", email: ADMIN_EMAIL, token: otp }),
+      }).then((r) => r.json());
+    }
+    if (!sess.access_token) return { session: null, reason: `session mint returned no access_token: ${JSON.stringify(sess).slice(0, 160)}` };
+    return {
+      session: {
+        access_token: sess.access_token,
+        refresh_token: sess.refresh_token,
+        expires_at: sess.expires_at,
+        expires_in: sess.expires_in,
+        token_type: "bearer",
+        user: sess.user,
+      },
+      reason: null,
+    };
+  } catch (err) {
+    return { session: null, reason: `session mint threw: ${String(err?.message || err).slice(0, 160)}` };
+  }
+}
+
 async function installAuth(context) {
-  if (!AUTH_TOKEN_FILE || !fs.existsSync(AUTH_TOKEN_FILE)) return false;
-  const authValue = fs.readFileSync(AUTH_TOKEN_FILE, "utf8").trim();
-  if (!authValue) return false;
+  let authValue = "";
+  if (AUTH_TOKEN_FILE && fs.existsSync(AUTH_TOKEN_FILE)) {
+    authValue = fs.readFileSync(AUTH_TOKEN_FILE, "utf8").trim();
+    if (authValue) authSource = "AUTH_TOKEN_FILE";
+  }
+  if (!authValue && !NO_AUTH_MINT) {
+    const { session, reason } = await mintAdminSession();
+    if (session) {
+      authValue = JSON.stringify(session);
+      authSource = `minted:${session.user?.email || ADMIN_EMAIL}`;
+    } else {
+      authReason = reason;
+    }
+  }
+  if (!authValue) {
+    if (!authReason) authReason = NO_AUTH_MINT ? "NO_AUTH_MINT=1 and no AUTH_TOKEN_FILE supplied" : "no auth token available";
+    return false;
+  }
   await context.addInitScript(
     ({ origin, key, value }) => {
       if (location.origin === origin) localStorage.setItem(key, value);
@@ -188,7 +284,7 @@ async function probeAuth(page, authInstalled) {
         text: "auth probe",
         method: "BROWSER",
       }),
-      error: "no logged-in auth state supplied; authenticated routes were not crawled",
+      error: `no logged-in auth state supplied; authenticated routes were not crawled (${authReason || "reason not recorded"})`,
     });
     return;
   }
@@ -281,17 +377,39 @@ async function main() {
 
   await context.close();
   if (ownsUserDataDir) fs.rmSync(USER_DATA_DIR, { recursive: true, force: true });
-  const hardBroken = broken.filter((row) => !(row.method === "BROWSER" && row.text === "auth probe"));
+  const hardBroken = broken.filter(
+    (row) => !(row.method === "BROWSER" && row.text === "auth probe") && row.classification !== "external-blocked",
+  );
+  const externalBlocked = broken.filter((row) => row.classification === "external-blocked");
+
+  // The OUT file used to contain broken rows and nothing else, so an empty file
+  // meant either "crawled everything, all links fine" or "crawled nothing at
+  // all" -- indistinguishable, and the second reads as health. This row is
+  // written on every run, clean or not, so coverage is always on the record.
+  const summary = {
+    ts: new Date().toISOString(),
+    type: "summary",
+    base: BASE,
+    pagesVisited: seenPages.size,
+    linksChecked: checkedLinks.size,
+    broken: broken.length,
+    hardBroken: hardBroken.length,
+    externalBlocked: externalBlocked.length,
+    // A crawl that stopped at MAX_PAGES did NOT cover the site. Recorded so a
+    // clean result is never read as "the whole surface is clean".
+    maxPages: MAX_PAGES,
+    capReached: seenPages.size >= MAX_PAGES,
+    pagesQueuedAtStop: queued.length,
+    authenticated: !authProbeFailed,
+    authSource,
+    authReason: authReason || null,
+    seedScope: authProbeFailed ? "public-only" : "public+authenticated",
+  };
+  fs.appendFileSync(OUT, `${JSON.stringify(summary)}\n`);
+
   console.log(
     JSON.stringify(
-      {
-        out: OUT,
-        pagesVisited: seenPages.size,
-        linksChecked: checkedLinks.size,
-        broken: broken.length,
-        hardBroken: hardBroken.length,
-        authProbeFailed,
-      },
+      { out: OUT, ...summary },
       null,
       2,
     ),

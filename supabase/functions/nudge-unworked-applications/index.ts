@@ -74,6 +74,13 @@ async function sendSMS(app: App): Promise<{ ok: boolean; error?: string }> {
     body: { phone: app.phone, message: body, applicationId: app.id },
   });
   if ((res as any).error) return { ok: false, error: String((res as any).error) };
+  // MP-417: the `error` check above catches a non-2xx, but send-sms-auto-detect
+  // answers HTTP 200 with outcome:"skipped" when no carrier is on file and it
+  // sent NOTHING. `ok: true` makes the caller stamp last_contacted_at — and the
+  // eligible-pool query is `.is("last_contacted_at", null)`, so that stamp does
+  // not delay this applicant, it removes them from every future run.
+  const outcome = ((res as { data?: { outcome?: string } }).data)?.outcome;
+  if (outcome !== "sent") return { ok: false, error: `sms ${outcome ?? "unknown"} — nothing sent` };
   return { ok: true };
 }
 

@@ -355,8 +355,14 @@ const handler = async (req: Request): Promise<Response> => {
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${supabaseServiceKey}` },
           body: JSON.stringify({ phone, message: smsMsg }),
         });
-        channels.sms = smsRes.ok;
-        console.log(`[send-licensing-instructions] SMS: ${smsRes.ok}`);
+        // MP-417: `.ok` is HTTP transport, not delivery. A 200 carrying
+        // outcome:"skipped" means no carrier was on file and nothing was sent —
+        // and `channels` is written into the audit log below, so that recorded a
+        // delivery that never happened.
+        const smsJson = await smsRes.json().catch(() => ({} as Record<string, unknown>));
+        const smsOutcome = (smsJson as { outcome?: string }).outcome;
+        channels.sms = smsRes.ok && smsOutcome === "sent";
+        console.log(`[send-licensing-instructions] SMS: ${channels.sms} (outcome=${smsOutcome ?? `http ${smsRes.status}`})`);
       } catch (e) {
         channels.sms = false;
         console.error("[send-licensing-instructions] SMS failed:", e);

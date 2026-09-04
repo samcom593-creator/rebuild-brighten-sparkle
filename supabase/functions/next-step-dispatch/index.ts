@@ -231,6 +231,21 @@ async function sendSms(to: string, body: string, application_id: string | null):
   if (!r.ok || (j as any).error) {
     throw new Error((j as any).error ?? `send-sms-auto-detect ${r.status}`);
   }
+  // MP-417: HTTP 200 is not delivery. send-sms-auto-detect answers 200 with
+  // `outcome: "skipped"` when no carrier is on file and it sent NOTHING, and
+  // 200 with `outcome: "failed"` when the gateway rejected it. Both used to
+  // return a `gateway:` receipt here, which stamped next_step_messages.sent_at
+  // AND set delivered = true in the caller, so the email fallback below never
+  // ran for the one person the SMS could not reach. 14 receipts were written
+  // that way between 2026-08-12 and 2026-09-03. Only "sent" is a send; every
+  // other outcome throws so the ladder falls through to the next channel.
+  const outcome = (j as any).outcome;
+  if (outcome !== "sent") {
+    throw new Error(
+      `send-sms-auto-detect outcome=${outcome ?? "unknown"}` +
+      (outcome === "skipped" ? " (no carrier on file — nothing was sent)" : ""),
+    );
+  }
   return `gateway:${(j as any).carrierSelected ?? "broadcast"}`;
 }
 

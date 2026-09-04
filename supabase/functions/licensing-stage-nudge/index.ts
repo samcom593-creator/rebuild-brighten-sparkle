@@ -115,20 +115,47 @@ function planFor(app: App): Plan | null {
 
 async function sendSMS(app: App, body: string) {
   if (!app.phone) return { ok: false, error: "no phone" };
-  await supabase.functions.invoke("send-sms-auto-detect", {
+  // MP-417: this used to `await` the invoke and return { ok: true }
+  // unconditionally, so EVERY applicant with a phone was stamped
+  // last_contacted_at by the caller below — including the ones whose SMS was
+  // never sent. Two ways that lied:
+  //   1. supabase.functions.invoke RESOLVES with { error } on a non-2xx
+  //      instead of throwing, so "Phone is marked bad", "SMS consent is not
+  //      recorded" and "Invalid phone number" all read as a send.
+  //   2. send-sms-auto-detect answers HTTP 200 with outcome:"skipped" when no
+  //      carrier is on file and it sent NOTHING (MP-270's contract, stated in
+  //      that function's own comment: callers should branch on this rather
+  //      than treating the person as contacted).
+  // last_contacted_at is also this function's 72h idempotency gate, and the
+  // nudge plans fire on exact stage-age equality (=== 1, 3, 5, 14), so a stamp
+  // for a message that was never sent does not delay that rung — it deletes it.
+  const { data, error } = await supabase.functions.invoke("send-sms-auto-detect", {
     body: { phone: app.phone, message: body, applicationId: app.id },
   });
-  return { ok: true };
+  if (error) return { ok: false, error: error.message ?? String(error) };
+  const outcome = (data as { outcome?: string } | null)?.outcome;
+  if (outcome !== "sent") {
+    return { ok: false, outcome: outcome ?? "unknown", error: `sms ${outcome ?? "unknown"} — nothing sent` };
+  }
+  return { ok: true, outcome };
 }
 
 async function sendEmail(app: App, subject: string, html: string) {
   if (!app.email) return { ok: false, error: "no email" };
   try {
-    await resend.emails.send({
+    // MP-417: resend@2 RESOLVES with { error } on an API rejection instead of
+    // throwing, so the catch below could never see one and every rejected
+    // email returned ok:true and stamped last_contacted_at. The rest of this
+    // repo already destructures { error } (notify-agent-live-field,
+    // send-outreach-email, notify-module-progress); this one caller did not.
+    // A receipt id is required, not merely the absence of a throw.
+    const { data, error } = await resend.emails.send({
       from: "Sam at APEX <sam@apex-financial.org>",
       to: app.email, subject, html,
     });
-    return { ok: true };
+    if (error) return { ok: false, error: (error as { message?: string }).message ?? String(error) };
+    if (!data?.id) return { ok: false, error: "resend returned no message id" };
+    return { ok: true, receipt: data.id };
   } catch (e: any) { return { ok: false, error: e?.message ?? String(e) }; }
 }
 
@@ -180,7 +207,7 @@ Deno.serve(async (req) => {
       if (p.action === "sms") {
         const r = await sendSMS(p.app, p.body);
         if (r.ok) await supabase.from("applications").update({ last_contacted_at: new Date().toISOString() }).eq("id", p.app.id);
-        results.push({ app_id: p.app.id, action: "sms", ok: r.ok, error: r.error });
+        results.push({ app_id: p.app.id, action: "sms", ok: r.ok, outcome: (r as { outcome?: string }).outcome, error: r.error });
       } else if (p.action === "email") {
         const r = await sendEmail(p.app, p.subject, p.html);
         if (r.ok) await supabase.from("applications").update({ last_contacted_at: new Date().toISOString() }).eq("id", p.app.id);

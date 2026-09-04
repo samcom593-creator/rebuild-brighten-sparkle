@@ -264,8 +264,15 @@ serve(async (req: Request) => {
                 message: nudge.smsBody(firstName),
               }),
             });
-            smsSent = smsResponse.ok;
+            // MP-417: `.ok` is HTTP transport, not delivery. send-sms-auto-detect
+            // answers 200 with outcome:"skipped" when no carrier is on file and it
+            // sent NOTHING. That used to set smsSent = true and the nudge below was
+            // logged as delivered, so the applicant was recorded as reached and the
+            // dedup gate stopped anyone trying again.
+            const smsJson = await smsResponse.json().catch(() => ({} as Record<string, unknown>));
+            smsSent = smsResponse.ok && (smsJson as { outcome?: string }).outcome === "sent";
             if (smsSent) console.log(`SMS sent to ${app.phone}: ${nudge.type}`);
+            else console.log(`SMS not sent to ${app.phone}: outcome=${(smsJson as { outcome?: string }).outcome ?? `http ${smsResponse.status}`}`);
           } catch (e) {
             console.error(`SMS failed for ${app.phone}:`, e);
           }

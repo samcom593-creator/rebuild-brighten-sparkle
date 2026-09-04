@@ -350,7 +350,15 @@ jobs:
           # Auto-assign newly-arrived applications
           fire "public.auto_assign_hiring_manager()" "auto-assign-hiring-manager" no 30 || true
           # Refresh canonical sync-health view used by the dashboard banner.
-          fire "public.refresh_sync_health()" "refresh-sync-health" no 10 || true
+          # Timeout was 10s. MEASURED 2026-09-04 against prod, three consecutive
+          # calls: 12.56s, 27.15s, 0.71s — every one of them HTTP 200. The deadline
+          # sat under two of three SUCCESSFUL runs, so curl aborted at 10s, recorded
+          # status=000, and turned this whole tick red. This workflow stacks five
+          # cron entries for ~1-minute cadence, so each false red mailed Sam roughly
+          # every minute; 8,637 of the 16,478 messages in his inbox were GitHub
+          # "Run failed" notifications, and this step was a leading contributor.
+          # 90s is ~3.3x the observed worst case, not a guess at a round number.
+          fire "public.refresh_sync_health()" "refresh-sync-health" no 90 || true
           # 2026-05-16 INCIDENT: agentlink_mark_stale_deals_cancelled() was
           # marking deals 'cancelled', which tripped trg_fn_deal_status_transition
           # and broadcast retention alerts to Discord naming agents whose

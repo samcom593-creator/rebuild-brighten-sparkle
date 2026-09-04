@@ -21,6 +21,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { findAuthUserByEmail, type AuthUserLister } from "../_shared/find-auth-user.ts";
+import { nanpTenDigits, nanpRefusalReason } from "../_shared/nanp-phone.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -385,10 +386,40 @@ serve(async (req) => {
 
   // 3. Create an auth user only when no existing identity can be reused.
   if (!authUserId) {
+    // MP-421: auth.users.phone is written by this function and nothing else --
+    // 9 of 9 rows carrying a phone came from `magic_hire_link`. It used to be
+    // built as `+1${phone_digits.slice(-10)}`, which cannot fail: a Nigerian
+    // hire on +234 806 139 9263 was restamped +1 806 139 9263, area code 806,
+    // Amarillo, Texas, a real number owned by a stranger -- written into a
+    // column carrying a UNIQUE index (auth.users_phone_key), so the stranger's
+    // number is then permanently occupied and a later legitimate signup on it
+    // fails this whole hire closed with auth_create_failed.
+    //
+    // The gate above (`phone_digits.length < 10`) is the same dead shape
+    // MP-420 named on the send side: downstream of nothing, it can only reject
+    // numbers that are too SHORT, never one digit too long.
+    //
+    // nanpTenDigits() REFUSES instead of truncating, and is given the RAW body
+    // value rather than phone_digits so a typed `+` is still readable as a
+    // country code. A refusal omits the phone rather than failing the hire:
+    // auth.users.phone is optional, every other write in this function
+    // (applications, profiles, submit_contracting_intake) already stores the
+    // real digits unmodified, and phone sign-in is disabled on this project
+    // (/auth/v1/settings reports "phone": false), so an absent auth phone
+    // costs the new hire nothing. An invented one costs a stranger.
+    const authPhone = nanpTenDigits(body.phone || "");
+    if (!authPhone) {
+      // Not silent: MP-311/MP-312 -- a refusal that leaves no trace is its own
+      // defect. Edge logs are the trace; there is no durable row for it here.
+      console.warn("auth_phone_refused", {
+        reason: nanpRefusalReason(body.phone || ""),
+        digits: phone_digits.length,
+      });
+    }
     const { data: created, error: createErr } = await admin.auth.admin.createUser({
       email,
       email_confirm: true,
-      phone: `+1${phone_digits.slice(-10)}`,
+      ...(authPhone ? { phone: `+1${authPhone}` } : {}),
       user_metadata: { full_name, source: "magic_hire_link" },
     });
     if (createErr || !created?.user) {

@@ -4,7 +4,6 @@
     "supabase/functions/_shared/ethos.ts::return String(value ?? \"\").replace(/[^0-9]/g, \"\").slice(-10);",
     "supabase/functions/check-email-status/index.ts::const last10 = digitsOnly.slice(-10);",
     "supabase/functions/claim-account/index.ts::return d.length >= 10 ? d.slice(-10) : null;",
-    "supabase/functions/consume-invite-token/index.ts::phone: `+1${phone_digits.slice(-10)}`,",
     "supabase/functions/link-account/index.ts::(a: any) => a.phone?.replace(/\\D/g, \"\").slice(-10) === normalizedPhone",
     "supabase/functions/link-account/index.ts::const normalizedPhone = phone?.replace(/\\D/g, \"\").slice(-10) || null;",
     "supabase/functions/manychat-webhook/index.ts::return digits.length >= 10 ? digits.slice(-10) : value;",

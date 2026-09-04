@@ -70,6 +70,15 @@ jobs:
           node-version: "20"
           cache: "npm"
 
+      # MP-421: verify:core now runs the edge-function Deno tests
+      # (check:deno-tests). That check FAILS rather than skips when deno is
+      # absent -- a test runner that no-ops when its runtime is missing is the
+      # guard-run-by-nothing it was written to end -- so this step is
+      # load-bearing, not convenience.
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
       - name: Install deps
         run: npm ci --no-audit --no-fund
 

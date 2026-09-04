@@ -17,6 +17,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { escapeLikePattern } from "../_shared/like-escape.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -142,8 +143,8 @@ async function loadPerson(application_id: string | null, agent_id: string | null
         const { data: ag } = await supabase
           .from("agentlink_agents")
           .select("email, contact_email, phone_number")
-          .ilike("first_name", fn)
-          .ilike("last_name", ln || "%")
+          .ilike("first_name", escapeLikePattern(fn))
+          .ilike("last_name", ln ? escapeLikePattern(ln) : "%")
           .limit(1)
           .maybeSingle();
         if (ag) {

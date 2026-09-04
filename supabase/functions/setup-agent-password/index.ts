@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { resolveOne, preferLiveAgent, AGENT_RANK_COLUMNS } from "../_shared/resolve-one.ts";
 import { findAuthUserByEmail, type AuthUserLister } from "../_shared/find-auth-user.ts";
+import { emailPattern } from "../_shared/like-escape.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -35,10 +36,17 @@ const handler = async (req: Request): Promise<Response> => {
     console.log(`Setting up password for CRM user: ${normalizedEmail}`);
 
     // 1. Verify email exists in profiles table - use limit(1) to handle duplicates
+    // MP-422: this .ilike() took the caller's raw string as a LIKE pattern on
+    // another verify_jwt = false endpoint. The lookup is the CRM-membership
+    // gate — "your email must already exist in profiles" — and step 3 then
+    // creates an auth account for the address the CALLER supplied, not the
+    // matched profile's. So "%" matched all 628 profiles, satisfied the gate,
+    // and let an arbitrary address that is in no CRM open an account. Escaped
+    // via the MP-277 helper, same as add-agent / claim-account / xcel-import.
     const { data: profiles, error: profileError } = await supabaseAdmin
       .from("profiles")
       .select("id, user_id, full_name")
-      .ilike("email", normalizedEmail)
+      .ilike("email", emailPattern(normalizedEmail))
       .order("created_at", { ascending: false })
       .limit(1);
 

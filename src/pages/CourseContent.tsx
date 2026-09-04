@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { emailPattern } from "@/lib/like-escape";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -50,7 +51,7 @@ export default function CourseContent() {
       try {
         const [agentRes, appRes] = await Promise.all([
           supabase.from("agents").select("license_status").eq("user_id", user.id).maybeSingle(),
-          supabase.from("applications").select("license_status, license_progress").ilike("email", user.email || "__nope__").order("created_at", { ascending: false }).limit(1).maybeSingle(),
+          supabase.from("applications").select("license_status, license_progress").ilike("email", user.email ? emailPattern(user.email) : "\u0000no-such-email").order("created_at", { ascending: false }).limit(1).maybeSingle(),
         ]);
         const agentLicensed = (agentRes.data as { license_status?: string } | null)?.license_status === "licensed";
         const app = appRes.data as { license_status?: string; license_progress?: string } | null;

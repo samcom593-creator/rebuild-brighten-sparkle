@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { emailPattern, escapeLikePattern } from "../_shared/like-escape.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -91,7 +92,7 @@ const handler = async (req: Request): Promise<Response> => {
       const { data, error } = await supabaseAdmin
         .from("applications")
         .select("*")
-        .ilike("email", normalizedEmail)
+        .ilike("email", emailPattern(normalizedEmail))
         .is("terminated_at", null)
         .order("created_at", { ascending: false })
         .limit(1)
@@ -122,7 +123,7 @@ const handler = async (req: Request): Promise<Response> => {
       const { data: profile } = await supabaseAdmin
         .from("profiles")
         .select("id")
-        .ilike("email", application.email)
+        .ilike("email", emailPattern(application.email))
         .order("created_at", { ascending: false });
 
       const profileIds = (profile || []).map((p: any) => p.id);
@@ -138,7 +139,7 @@ const handler = async (req: Request): Promise<Response> => {
       const { data } = await supabaseAdmin
         .from("agents")
         .select("*")
-        .ilike("agent_code", agentCode.trim())
+        .ilike("agent_code", escapeLikePattern(agentCode.trim()))
         .order("created_at", { ascending: false });
       agentRecords = data || [];
     }

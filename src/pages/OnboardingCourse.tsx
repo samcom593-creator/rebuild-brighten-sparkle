@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { emailPattern } from "@/lib/like-escape";
 // intentionally-orphan: legacy single-module player retained as rollback; CourseCatalog is canonical.
 import { motion } from "framer-motion";
 import { BookOpen, PlayCircle, HelpCircle, Award, Camera, Upload, Loader2 } from "lucide-react";
@@ -47,7 +48,7 @@ export default function OnboardingCourse() {
           supabase
             .from("applications")
             .select("license_status, license_progress")
-            .ilike("email", user.email || "__nope__")
+            .ilike("email", user.email ? emailPattern(user.email) : "\u0000no-such-email")
             .order("created_at", { ascending: false })
             .limit(1)
             .maybeSingle(),

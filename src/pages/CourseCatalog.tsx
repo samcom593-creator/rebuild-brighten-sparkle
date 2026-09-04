@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { emailPattern } from "@/lib/like-escape";
 import { motion } from "framer-motion";
 import {
   ArrowLeft,
@@ -129,7 +130,7 @@ export default function CourseCatalog() {
           supabase
             .from("applications")
             .select("license_status, license_progress")
-            .ilike("email", user.email || "__nope__")
+            .ilike("email", user.email ? emailPattern(user.email) : "\u0000no-such-email")
             .order("created_at", { ascending: false })
             .limit(1),
         ]);

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { emailPattern, escapeLikePattern } from "../_shared/like-escape.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -66,7 +67,7 @@ const handler = async (req: Request): Promise<Response> => {
       const { data, error } = await supabaseAdmin
         .from("profiles")
         .select("id, user_id, full_name, email, phone, city, state")
-        .ilike("full_name", normalizedName)
+        .ilike("full_name", escapeLikePattern(normalizedName))
         .order("created_at", { ascending: false })
         .limit(1);
       
@@ -80,7 +81,7 @@ const handler = async (req: Request): Promise<Response> => {
       const { data, error } = await supabaseAdmin
         .from("profiles")
         .select("id, user_id, full_name, email, phone, city, state")
-        .ilike("email", normalizedEmail)
+        .ilike("email", emailPattern(normalizedEmail))
         .order("created_at", { ascending: false })
         .limit(1);
       

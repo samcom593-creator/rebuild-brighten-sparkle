@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { emailPattern } from "../_shared/like-escape.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -74,7 +75,7 @@ const handler = async (req: Request): Promise<Response> => {
           const { data: profileByEmail } = await supabaseAdmin
             .from("profiles")
             .select("id, user_id, full_name, email, phone")
-            .ilike("email", appData[0].email)
+            .ilike("email", emailPattern(appData[0].email))
             .limit(1);
           
           if (profileByEmail?.[0]) {
@@ -83,14 +84,46 @@ const handler = async (req: Request): Promise<Response> => {
         }
       }
     } else {
+      // MP-422: `.ilike("email", normalizedEmail)` fed the caller's raw string
+      // into a LIKE pattern on an endpoint that is verify_jwt = false and, on a
+      // match, returns an email plus a magic-link tokenHash the browser turns
+      // straight into a session. Re-proven read-only against live prod on
+      // 2026-09-04: `email ilike '%'` matched 628 of 628 profiles, `ilike '\%'`
+      // matched 0. So a single "%" as the identifier selected the newest profile
+      // in the table and minted a session as that person, unauthenticated.
+      // emailPattern() escapes all four metacharacters (MP-277: PostgREST
+      // rewrites * to % before SQL, so it is four, not two).
+      //
+      // Escaping cannot lock anyone out: a literal address always matches its
+      // own escaped pattern. It only stops matching OTHER people's — which is
+      // the entire bug. 38 profiles hold an email containing a metacharacter.
       const normalizedEmail = trimmedInput.toLowerCase();
       const { data, error } = await supabaseAdmin
         .from("profiles")
         .select("id, user_id, full_name, email, phone")
-        .ilike("email", normalizedEmail)
+        .ilike("email", emailPattern(normalizedEmail))
         .order("created_at", { ascending: false })
-        .limit(1);
-      
+        .limit(2);
+
+      // `.limit(1)` did not report ambiguity, it silently resolved it: two
+      // people sharing an address became whichever row was created last. On an
+      // endpoint whose only authentication factor is this lookup, choosing an
+      // identity for the caller is not a tiebreak, it is picking who they log in
+      // as. Measured 2026-09-04: 2 addresses / 4 rows in profiles. Refuse.
+      const distinctUsers = new Set(
+        (data || []).map((r: any) => r.user_id).filter(Boolean)
+      );
+      if (!error && distinctUsers.size > 1) {
+        console.error(`[simple-login] AMBIGUOUS identifier - ${distinctUsers.size} accounts share this address; refusing to choose`);
+        return new Response(
+          JSON.stringify({
+            error: "More than one account uses this email. Contact support so they can be merged.",
+            code: "AMBIGUOUS_IDENTIFIER",
+          }),
+          { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       if (!error && data?.[0]) {
         profile = data[0];
       }

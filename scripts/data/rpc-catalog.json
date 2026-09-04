@@ -1792,6 +1792,30 @@
         "raw": "p_agent_id uuid"
       }
     ],
+    "fn_agent_contract_pct_live": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
+      }
+    ],
+    "fn_agent_contracting_matched_by_npn": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
+      }
+    ],
     "fn_agent_deprovision": [
       {
         "all": [],
@@ -1812,12 +1836,36 @@
         "raw": "p_agent_id uuid"
       }
     ],
+    "fn_agent_is_roster_excluded_live": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
+      }
+    ],
     "fn_agent_license_returned_alert": [
       {
         "all": [],
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "fn_agent_licensing_ready": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
       }
     ],
     "fn_agent_onboarding_call_booking": [
@@ -1841,6 +1889,18 @@
       }
     ],
     "fn_agent_subagency": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
+      }
+    ],
+    "fn_agent_subagency_live": [
       {
         "all": [
           "p_agent_id"
@@ -2509,6 +2569,18 @@
       }
     ],
     "fn_hierarchy_first_hops": [
+      {
+        "all": [
+          "p_roots"
+        ],
+        "required": [
+          "p_roots"
+        ],
+        "unnamed": false,
+        "raw": "p_roots uuid[]"
+      }
+    ],
+    "fn_hierarchy_first_hops_live": [
       {
         "all": [
           "p_roots"
@@ -4825,6 +4897,16 @@
         "raw": "p_count integer, p_period text"
       }
     ],
+    "refresh_production_truth": [
+      {
+        "all": [
+          "p_force"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_force boolean DEFAULT false"
+      }
+    ],
     "refresh_sync_health": [
       {
         "all": [],
@@ -5993,6 +6075,14 @@
       }
     ],
     "trg_fn_streak_7day_discord": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "trg_mark_truth_dirty": [
       {
         "all": [],
         "required": [],

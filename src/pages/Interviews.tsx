@@ -620,7 +620,7 @@ export default function Interviews() {
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px] xl:items-start">
       <aside className="order-1 space-y-4 xl:order-2 xl:sticky xl:top-4">
       {priorityCandidate && tab !== "hired" && tab !== "onboarding" && (
-        <section aria-labelledby="priority-candidate" className="overflow-hidden rounded-2xl border border-[#C9A961]/35 bg-[#0A0A0A] text-white shadow-[0_20px_55px_rgba(0,0,0,0.2)]">
+        <section aria-labelledby="priority-candidate" className="overflow-hidden rounded-2xl border border-[#C9A961]/35 bg-card text-foreground dark:bg-[#0A0A0A] dark:text-white shadow-[0_20px_55px_rgba(0,0,0,0.2)]">
           <div className="p-5">
             <div className="flex items-center justify-between gap-3">
               <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#C9A961]"><Zap className="h-3.5 w-3.5 fill-[#C9A961]" /> Work next</p>

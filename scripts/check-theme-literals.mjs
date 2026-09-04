@@ -18,7 +18,12 @@ import path from "node:path";
 
 const ROOT = path.resolve(process.argv[1], "..", "..");
 const SCAN = ["src/pages", "src/components"];
-const SKIP = ["src/components/landing", "src/pages/landing", "src/pages/Landing"];
+// Single-theme surfaces are excluded on purpose: the public landing tree, the
+// public get-licensed and post-submit video pages (a visitor never chose a
+// theme, so their dark design is the design), and the legacy /agent-portal
+// page (not in the sidebar). Rewriting their children to theme tokens put ink
+// text on black in light mode — measured on the recruiting hero 2026-09-04.
+const SKIP = ["src/components/landing", "src/pages/landing", "src/pages/Landing", "src/pages/GetLicensed.tsx", "src/components/onboarding/PostSubmitOnboardingVideo.tsx", "src/pages/AgentCommandDashboard.tsx"];
 const TARGET = /\b(text-white(?:\/\d+)?|text-slate-[1-4]00|text-zinc-[1-3]00|text-black|bg-white(?:\/\d+)?|bg-black|border-white(?:\/\d+)?)\b/;
 const COLORED = /\b(bg-(?!background|card|muted|foreground|popover|accent|border|input|transparent)[a-z]+-\d{2,3}|bg-(primary|secondary|destructive|black|gradient)|bg-\[#|from-|via-|to-|hover:bg-(primary|emerald|red|amber|blue)|bg-primary\/|bg-black\/)/;
 const CLASS = /className=(?:"([^"]*)"|'([^']*)'|\{`([^`]*)`\}|\{"([^"]*)"\})/g;

@@ -48,7 +48,7 @@ export function RecruitingCommandHero({
   updatedLabel,
 }: RecruitingCommandHeroProps) {
   return (
-    <section className="relative overflow-hidden rounded-2xl border border-[#C9A961]/25 bg-[#0A0A0A] text-white shadow-[0_24px_80px_rgba(0,0,0,0.24)]">
+    <section className="relative overflow-hidden rounded-2xl border border-[#C9A961]/25 bg-card text-foreground dark:bg-[#0A0A0A] dark:text-white shadow-[0_24px_80px_rgba(0,0,0,0.24)]">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_0%,rgba(212,175,55,0.18),transparent_36%),radial-gradient(circle_at_90%_105%,rgba(56,189,248,0.10),transparent_32%)]" />
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#C9A961] to-transparent" />
 

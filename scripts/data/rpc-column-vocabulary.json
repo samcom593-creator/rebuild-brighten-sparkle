@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-rpc-column-vocabulary.sh (bot_sql -> pg_proc + pg_rewrite)",
- "_generated_at": "2026-09-04T20:08:23Z",
+ "_generated_at": "2026-09-04T20:50:16Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "check-enum-filter-literals.mjs grades literals inside supabase.from().eq() chains. This is the other half of the same class: a status word that arrives from an RPC and is compared in JavaScript, where the return type is text and every wrong word type-checks. Per (function, returned column) this records the relation columns of that name reachable from the function body and the literals the function synthesises itself. It deliberately records CANDIDATES rather than one resolved source: provenance from a body regex is a guess, so check-rpc-status-literals.mjs refuses a literal only when NO candidate vocabulary and no body literal accepts it.",
  "_vocabulary_source": "scripts/data/enum-catalog.json (check_vocab + column_enum + enums). Not copied here on purpose, so the two guards read one snapshot and cannot drift.",
@@ -148,12 +148,16 @@
   "finances_overview": "jsonb",
   "finances_overview_base": "jsonb",
   "flex_hire": "jsonb",
+  "fn_agent_contracting_matched_by_npn": "boolean",
   "fn_agent_deprovision": "trigger",
   "fn_agent_is_roster_excluded": "boolean",
+  "fn_agent_is_roster_excluded_live": "boolean",
   "fn_agent_license_returned_alert": "trigger",
+  "fn_agent_licensing_ready": "boolean",
   "fn_agent_onboarding_call_booking": "uuid",
   "fn_agent_strikes_updated_at": "trigger",
   "fn_agent_subagency": "text",
+  "fn_agent_subagency_live": "text",
   "fn_agentlink_alert_page": "boolean",
   "fn_agentlink_outbox_uuid": "uuid",
   "fn_agentlink_policy_fingerprint": "text",
@@ -390,6 +394,7 @@
   "record_snap_stats_public": "jsonb",
   "recruiting_income_estimate": "jsonb",
   "recruiting_tier": "jsonb",
+  "refresh_production_truth": "jsonb",
   "refresh_sync_health": "void",
   "rescue_stale_applications": "jsonb",
   "reset_quiz_attempts": "integer",
@@ -491,6 +496,7 @@
   "trg_fn_reward_broadcast": "trigger",
   "trg_fn_siri_notify": "trigger",
   "trg_fn_streak_7day_discord": "trigger",
+  "trg_mark_truth_dirty": "trigger",
   "trigger_interview_noshow_recovery": "jsonb",
   "trigger_stripe_sync": "jsonb",
   "unified_assign_va": "void",
@@ -3762,6 +3768,20 @@
   "fn_agent_contract_pct.pct": {
    "candidates": [],
    "body_literals": [
+    "public",
+    "unknown"
+   ]
+  },
+  "fn_agent_contract_pct.provenance": {
+   "candidates": [],
+   "body_literals": [
+    "public",
+    "unknown"
+   ]
+  },
+  "fn_agent_contract_pct_live.pct": {
+   "candidates": [],
+   "body_literals": [
     "account",
     "carrier_avg",
     "contract_percentage",
@@ -3770,7 +3790,7 @@
     "unknown"
    ]
   },
-  "fn_agent_contract_pct.provenance": {
+  "fn_agent_contract_pct_live.provenance": {
    "candidates": [],
    "body_literals": [
     "account",
@@ -4035,24 +4055,56 @@
    ]
   },
   "fn_hierarchy_first_hops.depth": {
-   "candidates": [],
+   "candidates": [
+    "mv_hierarchy_hops.depth"
+   ],
    "body_literals": [
     "public"
    ]
   },
   "fn_hierarchy_first_hops.first_hop": {
-   "candidates": [],
+   "candidates": [
+    "mv_hierarchy_hops.first_hop"
+   ],
    "body_literals": [
     "public"
    ]
   },
   "fn_hierarchy_first_hops.member": {
-   "candidates": [],
+   "candidates": [
+    "mv_hierarchy_hops.member"
+   ],
    "body_literals": [
     "public"
    ]
   },
   "fn_hierarchy_first_hops.parent_candidates": {
+   "candidates": [
+    "mv_hierarchy_hops.parent_candidates"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "fn_hierarchy_first_hops_live.depth": {
+   "candidates": [],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "fn_hierarchy_first_hops_live.first_hop": {
+   "candidates": [],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "fn_hierarchy_first_hops_live.member": {
+   "candidates": [],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "fn_hierarchy_first_hops_live.parent_candidates": {
    "candidates": [],
    "body_literals": [
     "public"
@@ -4916,7 +4968,6 @@
   },
   "leaderboard_board.agent_name": {
    "candidates": [
-    "agent_comp_levels.agent_name",
     "v_production_canonical.agent_name",
     "v_production_comp_truth.agent_name",
     "v_production_unified.agent_name"

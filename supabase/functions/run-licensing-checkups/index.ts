@@ -24,9 +24,11 @@ const CARRIER_GATEWAYS: Record<string, string> = {
   boost: "sms.myboostmobile.com",
 };
 
-function cleanPhone(phone: string): string {
-  return phone.replace(/\D/g, "").slice(-10);
-}
+// MP-420: a cleanPhone() doing `slice(-10)` sat here, never called, next to the
+// CARRIER_GATEWAYS map above it. Deleted rather than left as the copy the next
+// person wires up. If this function ever sends SMS, import nanpTenDigits from
+// ../_shared/nanp-phone.ts -- it refuses non-NANP numbers instead of addressing
+// a stranger who owns their last ten digits.
 
 interface NudgeScheduleItem {
   day: number;

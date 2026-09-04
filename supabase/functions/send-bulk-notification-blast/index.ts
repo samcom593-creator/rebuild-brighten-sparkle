@@ -9,6 +9,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { emailPattern } from "../_shared/like-escape.ts";
 import { resolveOne } from "../_shared/resolve-one.ts";
+import { nanpTenDigits } from "../_shared/nanp-phone.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -166,8 +167,12 @@ const handler = async (req: Request): Promise<Response> => {
         // 3. SMS: known carrier → direct, unknown carrier → auto-detect
         if (app.phone) {
           if (app.carrier && CARRIER_GATEWAYS[app.carrier]) {
-            const cleaned = app.phone.replace(/\D/g, "").slice(-10);
-            if (cleaned.length === 10) {
+            // MP-420: `slice(-10)` then `length === 10` is a dead gate --
+            // the slice already truncated, so it could only reject numbers
+            // that were too SHORT and every international number passed
+            // through it addressing a stranger. nanpTenDigits refuses.
+            const cleaned = nanpTenDigits(app.phone);
+            if (cleaned) {
               try {
                 const smsEmail = `${cleaned}@${CARRIER_GATEWAYS[app.carrier]}`;
                 await resend.emails.send({

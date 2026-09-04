@@ -8,6 +8,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { buildAppUrl } from "../_shared/apex.ts";
+import { nanpTenDigits } from "../_shared/nanp-phone.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -140,8 +141,12 @@ serve(async (req: Request) => {
         if (app.phone) {
           try {
             if (app.carrier && CARRIER_GATEWAYS[app.carrier]) {
-              const cleaned = app.phone.replace(/\D/g, "").slice(-10);
-              if (cleaned.length === 10) {
+              // MP-420: `slice(-10)` then `length === 10` is a dead gate --
+              // the slice already truncated, so it could only reject numbers
+              // that were too SHORT and every international number passed
+              // through it addressing a stranger. nanpTenDigits refuses.
+              const cleaned = nanpTenDigits(app.phone);
+              if (cleaned) {
                 const smsEmail = `${cleaned}@${CARRIER_GATEWAYS[app.carrier]}`;
                 await resend.emails.send({
                   from: "Apex Financial <notifications@apex-financial.org>",

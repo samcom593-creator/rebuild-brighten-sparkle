@@ -6,6 +6,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 // Measured 2026-08-17: send-notification 903/903 failures in 24h, poke-pusher
 // 164/164, metricool-sync 3/3 — zero 200s. 2.90.1 is the version proven booting.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
+import { nanpTenDigits } from "../_shared/nanp-phone.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -27,10 +28,16 @@ const LICENSE_RANK: Record<string, number> = {
   licensed: 2,
 };
 
+// MP-420: this was `slice(-10)` gated on `length === 10` -- the same dead gate
+// as the SMS senders, with a different consequence. Here the value is a MERGE
+// key, so +234 806 139 9263 and a real Amarillo lead on 806 139 9263 hash to
+// the same bucket and get deduped into one lead. Measured on 2026-09-04 the
+// live collision count is zero (aged_leads holds one non-NANP phone), so this
+// is prevention, not recovered data. nanpTenDigits returns null for anything
+// with no national 10-digit form and the caller already skips a null key,
+// which leaves such leads un-merged rather than wrongly merged.
 function cleanPhone(phone: string | null): string | null {
-  if (!phone) return null;
-  const digits = phone.replace(/\D/g, "").slice(-10);
-  return digits.length === 10 ? digits : null;
+  return nanpTenDigits(phone);
 }
 
 serve(async (req) => {

@@ -7,6 +7,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 // 164/164, metricool-sync 3/3 — zero 200s. 2.90.1 is the version proven booting.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { nanpTenDigits } from "../_shared/nanp-phone.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -176,8 +177,12 @@ serve(async (req: Request) => {
 
       // --- SMS ---
       if (app.phone) {
-        const digits = app.phone.replace(/\D/g, "").slice(-10);
-        if (digits.length === 10) {
+        // MP-420: `slice(-10)` then `length === 10` is a dead gate --
+        // the slice already truncated, so it could only reject numbers
+        // that were too SHORT and every international number passed
+        // through it addressing a stranger. nanpTenDigits refuses.
+        const digits = nanpTenDigits(app.phone);
+        if (digits) {
           const smsText = `${app.first_name}, free seminar Thu 7PM CST! Register: ${APP_URL}/seminar`;
           const carrier = app.carrier || null;
           const gateways = carrier && CARRIER_GATEWAYS[carrier]

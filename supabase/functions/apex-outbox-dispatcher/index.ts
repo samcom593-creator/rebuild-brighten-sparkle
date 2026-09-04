@@ -14,6 +14,7 @@ import {
 import { emailPattern } from "../_shared/like-escape.ts";
 import { resolveOne } from "../_shared/resolve-one.ts";
 import { renderSlackEventText } from "./slack-event-templates.ts";
+import { nanpRefusalReason, nanpTenDigits } from "../_shared/nanp-phone.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -274,9 +275,19 @@ async function deliverContact(
   } else if (action.channel === "sms") {
     const gateway = carrier ? CARRIER_GATEWAYS[carrier] : null;
     if (!gateway) throw new Error("No verified carrier gateway is available");
+    // MP-420: this site is the ONE that never texted a stranger, and it still
+    // needed changing. normalizePhone() above drops a leading 1 but does not
+    // truncate, so +234 806 139 9263 stayed 13 digits and produced
+    // 2348061399263@txt.att.net -- an address that cannot exist. No wrong
+    // person, but a send that fails at the carrier, asynchronously, where this
+    // function never learns about it and books a providerMessageId anyway.
+    // Refusing here turns a silent async bounce into a synchronous, recorded
+    // failure with a reason on it.
+    const smsLocal = nanpTenDigits(recipient);
+    if (!smsLocal) throw new Error(nanpRefusalReason(recipient));
     providerMessageId = await resendEmail({
       from: CONTACT_FROM,
-      to: [`${recipient}@${gateway}`],
+      to: [`${smsLocal}@${gateway}`],
       subject: "",
       text: String(action.message).slice(0, 160),
     }, `apex-contact-${action.id}`);

@@ -21,6 +21,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 // 164/164, metricool-sync 3/3 — zero 200s. 2.90.1 is the version proven booting.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { nanpTenDigits } from "../_shared/nanp-phone.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -48,13 +49,16 @@ const CARRIER_GATEWAYS: Record<string, string[]> = {
 // 5 carriers that cover >90% of US numbers
 const FANOUT = ["verizon", "att", "tmobile", "sprint", "google_fi"];
 
-function cleanPhone(phone: string): string {
-  return phone.replace(/\D/g, "").slice(-10);
-}
-
+// MP-420: cleanPhone was `replace(/\D/g,"").slice(-10)` and the guard below
+// read `ten.length !== 10`. slice(-10) cannot return more than ten characters,
+// so that guard could only ever reject numbers that were too SHORT -- every
+// international number sailed through it truncated, addressing a different,
+// real US number. nanpTenDigits returns null for anything without a national
+// 10-digit form, so the empty-array refusal below is now reachable for the
+// case it was written for.
 function buildGatewayAddresses(phone: string, carrier?: string | null): string[] {
-  const ten = cleanPhone(phone);
-  if (ten.length !== 10) return [];
+  const ten = nanpTenDigits(phone);
+  if (!ten) return [];
   const keys = carrier && CARRIER_GATEWAYS[carrier] ? [carrier] : FANOUT;
   return keys.flatMap(k => CARRIER_GATEWAYS[k].map(domain => `${ten}@${domain}`));
 }
@@ -63,7 +67,7 @@ async function fireOne(phone: string, body: string, carrier?: string | null): Pr
   ok: boolean; sent_to: string[]; error?: string; mode: "targeted" | "fanout";
 }> {
   const addrs = buildGatewayAddresses(phone, carrier);
-  if (addrs.length === 0) return { ok: false, sent_to: [], error: "invalid phone", mode: "targeted" };
+  if (addrs.length === 0) return { ok: false, sent_to: [], error: "phone has no US/Canada 10-digit form — carrier gateways cannot reach it", mode: "targeted" };
   const mode: "targeted" | "fanout" = addrs.length === 1 ? "targeted" : "fanout";
 
   const { error } = await resend.emails.send({

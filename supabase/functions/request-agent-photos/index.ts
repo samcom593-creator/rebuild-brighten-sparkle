@@ -11,6 +11,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { nanpTenDigits } from "../_shared/nanp-phone.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -26,7 +27,6 @@ const CARRIER_GATEWAYS: Record<string, string> = {
   cricket: "sms.cricketwireless.net", metro: "mymetropcs.com", boost: "sms.myboostmobile.com",
 };
 
-function cleanPhone(p: string): string { return p.replace(/\D/g, "").slice(-10); }
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -119,9 +119,13 @@ Deno.serve(async (req) => {
         failed++;
       }
 
-      if (e.phone && e.carrier && CARRIER_GATEWAYS[e.carrier]) {
+      // MP-420: slice(-10) with no length check -- an agent on a non-NANP
+      // number was texted at a stranger who happened to own the last ten
+      // digits. nanpTenDigits refuses instead of redirecting.
+      const photoTen = e.phone ? nanpTenDigits(String(e.phone)) : null;
+      if (photoTen && e.carrier && CARRIER_GATEWAYS[e.carrier]) {
         try {
-          const gateway = `${cleanPhone(e.phone)}@${CARRIER_GATEWAYS[e.carrier]}`;
+          const gateway = `${photoTen}@${CARRIER_GATEWAYS[e.carrier]}`;
           await resend.emails.send({
             from: "Apex <notifications@apex-financial.org>",
             to: [gateway], subject: "",

@@ -9,6 +9,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 // @2 boots clean and is the exact specifier ics-feed uses, which is serving 200s.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { nanpRefusalReason, nanpTenDigits } from "../_shared/nanp-phone.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -32,9 +33,6 @@ const CARRIER_GATEWAYS: Record<string, string> = {
 };
 
 
-function cleanPhone(phone: string): string {
-  return phone.replace(/\D/g, "").slice(-10);
-}
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -173,10 +171,44 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    const cleaned = cleanPhone(String(phone));
-    if (cleaned.length !== 10) {
+    // MP-420: this used to be cleanPhone(phone) -> slice(-10), gated on
+    // `cleaned.length !== 10`. The gate was dead in the only direction that
+    // mattered: the slice had already truncated to ten, so it could never see
+    // an eleventh digit and could only reject numbers that were too SHORT.
+    // +234 806 139 9263 became 8061399263 -- a real Amarillo, Texas number --
+    // and this function mailed the message to whoever owns it, while the log
+    // recorded the applicant's Nigerian number and said "sent". 21 prod rows
+    // carry a non-NANP phone; 205 notification_log rows are booked against
+    // them. nanpTenDigits refuses instead of truncating.
+    // String() because a caller can post a numeric phone; nanpTenDigits takes
+    // a string and would throw on .trim() otherwise.
+    const phoneText = phone == null ? null : String(phone);
+    const cleaned = nanpTenDigits(phoneText);
+    if (!cleaned) {
+      // Refuse LOUDLY on the record, not just in the response. A 400 with no
+      // row is a refusal nothing can audit -- the shape MP-311/312 closed on
+      // the outbox. The caller gets a machine-readable reason so it can route
+      // to a channel that can actually carry an international number.
+      const reason = nanpRefusalReason(phoneText);
+      await logNotification(supabase, {
+        recipient_phone: phone,
+        channel: "sms-auto",
+        title: "SMS Auto-Detect",
+        message: String(message ?? "").substring(0, 160),
+        status: "skipped",
+        error_message: `SMS not attempted, use another channel — ${reason}`,
+        metadata: {
+          trigger: "sms-auto-detect",
+          gatewaysAttempted: 0,
+          carrierResolved: null,
+          refusal: "not_nanp",
+          deliveryConfirmed: false,
+          applicationId: applicationId || null,
+          agedLeadId: agedLeadId || null,
+        },
+      });
       return new Response(
-        JSON.stringify({ error: "Invalid phone number — must be 10 digits" }),
+        JSON.stringify({ success: false, error: reason, reason: "not_nanp" }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }

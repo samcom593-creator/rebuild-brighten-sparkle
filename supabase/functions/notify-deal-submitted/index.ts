@@ -14,6 +14,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { sendEmail, isUnsubscribed } from "../_shared/email.ts";
+import { nanpTenDigits } from "../_shared/nanp-phone.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -27,10 +28,6 @@ const CARRIER_GATEWAYS: Record<string, string> = {
   sprint: "messaging.sprintpcs.com", uscellular: "email.uscc.net",
   cricket: "sms.cricketwireless.net", metro: "mymetropcs.com", boost: "sms.myboostmobile.com",
 };
-
-function cleanPhone(p: string): string {
-  return p.replace(/\D/g, "").slice(-10);
-}
 
 function fmt$(n: number): string {
   return `$${Math.round(n).toLocaleString()}`;
@@ -194,9 +191,14 @@ Deno.serve(async (req) => {
       // Pace between emails to keep Resend from rate-limiting the fan-out
       await sleep(150);
 
-      if (resend && phone && carrier && CARRIER_GATEWAYS[carrier]) {
+      // MP-420: this built the gateway address from slice(-10) with no length
+      // check at all, so an agent stored as +234... was texted at whoever owns
+      // the last ten of those digits in the NANP. nanpTenDigits refuses, and a
+      // refusal skips the send rather than redirecting it.
+      const smsTen = phone ? nanpTenDigits(String(phone)) : null;
+      if (resend && smsTen && carrier && CARRIER_GATEWAYS[carrier]) {
         try {
-          const smsAddr = `${cleanPhone(phone)}@${CARRIER_GATEWAYS[carrier]}`;
+          const smsAddr = `${smsTen}@${CARRIER_GATEWAYS[carrier]}`;
           await resend.emails.send({
             from: "Apex <notifications@apex-financial.org>",
             to: [smsAddr], subject: "",

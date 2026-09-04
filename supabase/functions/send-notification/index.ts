@@ -10,6 +10,7 @@ import { Resend } from "https://esm.sh/resend@2.0.0";
 import { corsHeaders } from "../_shared/cors.ts";
 import { logFunctionError, writeAudit } from "../_shared/audit.ts";
 import { checkRateLimit, RateLimitError } from "../_shared/rateLimit.ts";
+import { nanpTenDigits } from "../_shared/nanp-phone.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -130,8 +131,12 @@ const handler = async (req: Request): Promise<Response> => {
     if (profileData?.phone && profileData?.carrier) {
       const gateway = CARRIER_GATEWAYS[profileData.carrier];
       if (gateway) {
-        const cleanedPhone = profileData.phone.replace(/\D/g, "").slice(-10);
-        if (cleanedPhone.length === 10) {
+        // MP-420: `slice(-10)` then `length === 10` is a dead gate --
+        // the slice already truncated, so it could only reject numbers
+        // that were too SHORT and every international number passed
+        // through it addressing a stranger. nanpTenDigits refuses.
+        const cleanedPhone = nanpTenDigits(profileData.phone);
+        if (cleanedPhone) {
           try {
             const smsEmail = `${cleanedPhone}@${gateway}`;
             await resend.emails.send({

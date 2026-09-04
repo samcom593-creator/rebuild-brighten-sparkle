@@ -13,6 +13,7 @@
     "predev": "bash scripts/sync-functions-config.sh || true",
     "prebuild": "bash scripts/sync-functions-config.sh || true; node scripts/check-live-polling.mjs",
     "check:link-audit-coverage": "node scripts/check-link-audit-coverage.mjs",
+    "check:live-render": "node scripts/live-render-integrity.mjs",
     "check:phone-display-format": "node scripts/check-phone-display-format.mjs",
     "check:ilike-user-input": "node scripts/check-ilike-user-input.mjs",
     "check:deployed-function-source": "node scripts/check-deployed-function-source.mjs",

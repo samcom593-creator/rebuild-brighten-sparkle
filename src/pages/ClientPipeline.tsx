@@ -66,7 +66,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { PageHeader } from "@/components/ui/page-header";
-import { AgentLinkConnectionPrompt } from "@/components/dashboard/AgentLinkConnectionPrompt";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -588,7 +587,7 @@ export default function ClientPipeline() {
                   ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/40"
                   : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/40"}>
                   <span className={`h-1.5 w-1.5 rounded-full mr-1.5 ${fresh ? "bg-emerald-500 animate-pulse" : "bg-amber-500"}`} />
-                  {fresh ? "AgentLink sync live" : days === null ? "AgentLink · no data" : `AgentLink ${days}d stale`}
+                  {fresh ? "Pipeline live" : days === null ? "No client data yet" : `Last client update ${format(new Date(maxTs), "MMM d")}`}
                 </Badge>
               );
             })()}
@@ -597,12 +596,12 @@ export default function ClientPipeline() {
       />
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle>New Client</DialogTitle>
-            <DialogDescription>Add a name and phone to create the card. Complete the remaining details from the client workspace.</DialogDescription>
+            <DialogTitle>Start a client call</DialogTitle>
+            <DialogDescription>Thirty-second setup. Add the basics, open the call sheet, and capture everything else without leaving the screen.</DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="new-client-first">First name</Label>
               <Input id="new-client-first" value={newClient.firstName} onChange={(event) => setNewClient((value) => ({ ...value, firstName: event.target.value }))} autoComplete="given-name" />
@@ -619,43 +618,23 @@ export default function ClientPipeline() {
               <Label htmlFor="new-client-email">Email (optional)</Label>
               <Input id="new-client-email" value={newClient.email} onChange={(event) => setNewClient((value) => ({ ...value, email: event.target.value }))} type="email" autoComplete="email" />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="new-client-dob">Date of birth</Label>
-              <Input id="new-client-dob" value={newClient.dob} onChange={(event) => setNewClient((value) => ({ ...value, dob: event.target.value }))} type="date" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="new-client-street">Street address</Label>
-              <Input id="new-client-street" value={newClient.street} onChange={(event) => setNewClient((value) => ({ ...value, street: event.target.value }))} autoComplete="street-address" placeholder="123 Main St" />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="new-client-city">City</Label>
-                <Input id="new-client-city" value={newClient.city} onChange={(event) => setNewClient((value) => ({ ...value, city: event.target.value }))} autoComplete="address-level2" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="new-client-state">State</Label>
-                  <Input id="new-client-state" value={newClient.state} maxLength={2} onChange={(event) => setNewClient((value) => ({ ...value, state: event.target.value.toUpperCase() }))} autoComplete="address-level1" placeholder="TX" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="new-client-zip">ZIP</Label>
-                  <Input id="new-client-zip" value={newClient.zip} onChange={(event) => setNewClient((value) => ({ ...value, zip: event.target.value }))} autoComplete="postal-code" inputMode="numeric" />
-                </div>
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="new-client-notes">Notes from the call</Label>
-              <Input id="new-client-notes" value={newClient.notes} onChange={(event) => setNewClient((value) => ({ ...value, notes: event.target.value }))} placeholder="Anything worth remembering" />
-            </div>
           </div>
+          <details className="rounded-lg border border-border px-4 py-3">
+            <summary className="cursor-pointer text-sm font-medium">Add DOB or address now <span className="font-normal text-muted-foreground">(optional)</span></summary>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5"><Label htmlFor="new-client-dob">Date of birth</Label><Input id="new-client-dob" value={newClient.dob} onChange={(event) => setNewClient((value) => ({ ...value, dob: event.target.value }))} type="date" /></div>
+              <div className="space-y-1.5"><Label htmlFor="new-client-street">Street address</Label><Input id="new-client-street" value={newClient.street} onChange={(event) => setNewClient((value) => ({ ...value, street: event.target.value }))} autoComplete="street-address" placeholder="123 Main St" /></div>
+              <div className="space-y-1.5"><Label htmlFor="new-client-city">City</Label><Input id="new-client-city" value={newClient.city} onChange={(event) => setNewClient((value) => ({ ...value, city: event.target.value }))} autoComplete="address-level2" /></div>
+              <div className="grid grid-cols-2 gap-3"><div className="space-y-1.5"><Label htmlFor="new-client-state">State</Label><Input id="new-client-state" value={newClient.state} maxLength={2} onChange={(event) => setNewClient((value) => ({ ...value, state: event.target.value.toUpperCase() }))} autoComplete="address-level1" placeholder="TX" /></div><div className="space-y-1.5"><Label htmlFor="new-client-zip">ZIP</Label><Input id="new-client-zip" value={newClient.zip} onChange={(event) => setNewClient((value) => ({ ...value, zip: event.target.value }))} autoComplete="postal-code" inputMode="numeric" /></div></div>
+              <div className="space-y-1.5 sm:col-span-2"><Label htmlFor="new-client-notes">Opening notes</Label><Input id="new-client-notes" value={newClient.notes} onChange={(event) => setNewClient((value) => ({ ...value, notes: event.target.value }))} placeholder="Anything worth remembering" /></div>
+            </div>
+          </details>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
-            <Button onClick={() => createClient.mutate()} disabled={createClient.isPending}>Add Client</Button>
+            <Button onClick={() => createClient.mutate()} disabled={createClient.isPending || !newClient.firstName.trim() || !newClient.lastName.trim() || newClient.phone.replace(/\D/g, "").length < 10}>{createClient.isPending ? "Opening…" : "Create & open call sheet"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <AgentLinkConnectionPrompt />
 
       <section className="overflow-hidden rounded-lg border border-border bg-card">
         <div className="flex flex-col gap-3 border-b border-border px-4 py-3 lg:flex-row lg:items-center lg:justify-between">

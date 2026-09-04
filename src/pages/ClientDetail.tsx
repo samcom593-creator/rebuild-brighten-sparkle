@@ -1,24 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, formatDistanceToNow, isBefore } from "date-fns";
-import {
-  ArrowLeft, BookMarked, CalendarClock, CheckCircle2, Clock, Heart, Mail,
-  MessageSquare, PhoneCall, ReceiptText, Save, ShieldAlert, Sparkles,
-  StickyNote, User, UserPlus, Users, Wallet,
-} from "lucide-react";
+import { ArrowLeft, CheckCircle2, MessageSquare, PhoneCall, ReceiptText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { PageHeader } from "@/components/ui/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { EditableClientSection } from "@/components/clients/EditableClientSection";
+import { ClientCallWorkspace } from "@/components/clients/ClientCallWorkspace";
 import { SubmitDealDialog, type PostedDealReceipt } from "@/components/deals/SubmitDealDialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -43,6 +35,9 @@ interface ClientRow {
   do_not_email: boolean | null;
   do_not_text: boolean | null;
   is_smoker: boolean | null;
+  height: string | null;
+  weight: string | null;
+  born_location: string | null;
   pipeline_stage: string | null;
   stage_changed_at: string | null;
   last_contact_date: string | null;
@@ -76,10 +71,14 @@ interface ClientRow {
   medical_notes: string | null;
   physician_name: string | null;
   physician_phone: string | null;
+  physician_address: string | null;
   employer_occupation: string | null;
   employment_status: string | null;
   qualified_accounts: number | string | null;
   non_qualified_accounts: number | string | null;
+  non_qualified_assets: number | string | null;
+  total_investable: number | string | null;
+  retirement_savings_qualified: number | string | null;
   retirement_age_goal: number | null;
   retirement_year: number | null;
   legacy_estate: number | string | null;
@@ -122,14 +121,6 @@ const STAGES = [
   { value: "SOLD", label: "Sold" },
 ] as const;
 
-const TAB_ITEMS = [
-  ["timeline", "Timeline", Clock], ["contact", "Contact", User],
-  ["needs", "Needs Analysis", Sparkles], ["schedule", "Schedule", CalendarClock],
-  ["beneficiaries", "Beneficiaries", Users], ["referrals", "Referrals", UserPlus],
-  ["financials", "Financials", Wallet], ["policies", "Policies", BookMarked],
-  ["notes", "Notes", StickyNote],
-] as const;
-
 function rpc<T>(name: string, args: Record<string, unknown>) {
   return (supabase.rpc as unknown as (fn: string, values: Record<string, unknown>) => Promise<{ data: T | null; error: { message?: string } | null }>)(name, args);
 }
@@ -166,8 +157,6 @@ export default function ClientDetail() {
   usePageTitle("Client Workspace · APEX");
   const { isAdmin } = useAuth();
   const queryClient = useQueryClient();
-  const [notes, setNotes] = useState({ communication: "", reminder: "" });
-  const [schedule, setSchedule] = useState({ callbackDate: "", callbackTime: "", nextAction: "" });
   const [prepOpen, setPrepOpen] = useState(false);
 
   const client = useQuery<ClientRow | null>({
@@ -227,12 +216,6 @@ export default function ClientDetail() {
       reminder_notes: o?.reminder_notes ?? client.data.reminder_notes,
     };
   }, [client.data, override.data]);
-
-  useEffect(() => {
-    if (!c) return;
-    setNotes({ communication: c.communication_notes ?? "", reminder: c.reminder_notes ?? "" });
-    setSchedule({ callbackDate: dateInput(c.callback_date), callbackTime: c.callback_time ?? "", nextAction: dateInput(c.next_action_date) });
-  }, [c?.id, c?.communication_notes, c?.reminder_notes, c?.callback_date, c?.callback_time, c?.next_action_date]);
 
   const action = useMutation({
     mutationFn: async (args: Record<string, unknown>) => {
@@ -318,84 +301,30 @@ export default function ClientDetail() {
           ))}
         </div>
 
-        <Tabs defaultValue="timeline">
-          <TabsList className="overflow-x-auto px-2">
-            {TAB_ITEMS.map(([value, label, Icon]) => <TabsTrigger key={value} value={value} className="gap-1.5 text-xs"><Icon className="h-3.5 w-3.5" />{label}</TabsTrigger>)}
-          </TabsList>
+        <div className="grid min-h-[520px] gap-3 p-3 lg:grid-cols-[minmax(0,1fr)_300px]">
+          <main className="min-w-0 space-y-3">
+            <ClientCallWorkspace clientId={clientId!} values={c as unknown as Record<string, unknown>} />
 
-          <div className="grid min-h-[520px] gap-3 p-3 lg:grid-cols-[minmax(0,1fr)_300px]">
-            <main className="min-w-0">
-              <TabsContent value="timeline" className="mt-0"><Panel title="Timeline">{activity.isLoading ? <Skeleton className="h-40 w-full" /> : (activity.data?.length ?? 0) === 0 ? <p className="py-12 text-center text-sm text-muted-foreground">No activity yet. Calls, texts, notes, schedules, and stage changes will appear here.</p> : <ol className="space-y-3">{activity.data!.map((item) => <li key={item.id} className="flex gap-3 border-b border-border pb-3 last:border-0"><span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" /><div><p className="text-sm font-medium capitalize">{item.activity_type.replaceAll("_", " ")}</p>{item.body && <p className="text-sm text-muted-foreground">{item.body}</p>}<p className="mt-1 text-[11px] text-muted-foreground">{formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}</p></div></li>)}</ol>}</Panel></TabsContent>
+            <details className="rounded-md border border-border bg-card p-4">
+              <summary className="cursor-pointer text-sm font-semibold">History and imported records</summary>
+              <div className="mt-4 grid gap-3 xl:grid-cols-2">
+                <Panel title="Timeline">{activity.isLoading ? <Skeleton className="h-40 w-full" /> : (activity.data?.length ?? 0) === 0 ? <p className="py-8 text-center text-sm text-muted-foreground">No activity yet.</p> : <ol className="space-y-3">{activity.data!.slice(0, 25).map((item) => <li key={item.id} className="flex gap-3 border-b border-border pb-3 last:border-0"><span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" /><div><p className="text-sm font-medium capitalize">{item.activity_type.replaceAll("_", " ")}</p>{item.body && <p className="text-sm text-muted-foreground">{item.body}</p>}<p className="mt-1 text-[11px] text-muted-foreground">{formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}</p></div></li>)}</ol>}</Panel>
+                <div className="space-y-3">
+                  <Panel title="Lead source"><dl className="grid gap-3 sm:grid-cols-2"><Field label="Referred by" value={[c.referred_from_client_first_name, c.referred_from_client_last_name].filter(Boolean).join(" ") || "Direct lead"} /><Field label="Lead vendor" value={c.lead_vendor_name} /><Field label="Lead product" value={c.lead_product_name} /><Field label="Source" value={c.external_source} /></dl></Panel>
+                  {(beneficiaries.data?.length ?? 0) > 0 && <Panel title="Imported beneficiaries"><div className="space-y-2">{beneficiaries.data!.map((beneficiary) => <div key={beneficiary.id} className="rounded-md border border-border p-3"><p className="text-sm font-semibold">{[beneficiary.first_name, beneficiary.last_name].filter(Boolean).join(" ") || "—"}</p><p className="text-xs text-muted-foreground">{beneficiary.relationship ?? "—"}{beneficiary.percentage ? ` · ${beneficiary.percentage}%` : ""}{beneficiary.date_of_birth ? ` · DOB ${fmtDate(beneficiary.date_of_birth)}` : ""}</p></div>)}</div></Panel>}
+                  {(contracts.data?.length ?? 0) > 0 && <Panel title="Imported policies"><div className="space-y-2">{contracts.data!.map((contract) => <div key={contract.id} className="flex items-center justify-between rounded-md border border-border p-3 text-sm"><div><p className="font-semibold">{contract.carrier_name ?? "—"} · {contract.product_name ?? "—"}</p><p className="text-xs text-muted-foreground">{contract.status ?? "—"} · {fmtDate(contract.effective_date)}</p></div><div className="text-right"><p className="font-semibold">{fmtMoney(contract.face_amount)}</p><p className="text-xs text-muted-foreground">{fmtMoney(contract.monthly_premium)}/mo</p></div></div>)}</div></Panel>}
+                  {isAdmin && c.raw_payload && <details><summary className="cursor-pointer text-xs text-muted-foreground">Raw imported payload (admin)</summary><pre className="mt-2 max-h-64 overflow-auto rounded-md bg-muted p-3 text-[10px]">{JSON.stringify(c.raw_payload, null, 2)}</pre></details>}
+                </div>
+              </div>
+            </details>
+          </main>
 
-              <TabsContent value="contact" className="mt-0"><Panel title="Contact"><EditableClientSection clientId={clientId!} values={c as unknown as Record<string, unknown>} fields={[
-                { key: "first_name", label: "First name" },
-                { key: "last_name", label: "Last name" },
-                { key: "phone", label: "Phone", type: "tel" },
-                { key: "email", label: "Email", type: "email" },
-                { key: "street_address", label: "Street address" },
-                { key: "city", label: "City" },
-                { key: "state", label: "State" },
-                { key: "zip_code", label: "ZIP" },
-                { key: "date_of_birth", label: "Date of birth", type: "date" },
-                { key: "preferred_contact_method", label: "Preferred channel" },
-                { key: "best_time_to_call", label: "Best time to call" },
-                { key: "client_timezone", label: "Timezone" },
-              ]} />{isAdmin && c.raw_payload && <details className="mt-5"><summary className="cursor-pointer text-xs text-muted-foreground">Raw AgentLink payload (admin)</summary><pre className="mt-2 max-h-64 overflow-auto rounded-md bg-muted p-3 text-[10px]">{JSON.stringify(c.raw_payload, null, 2)}</pre></details>}</Panel></TabsContent>
-
-              <TabsContent value="needs" className="mt-0"><Panel title="Needs Analysis"><EditableClientSection clientId={clientId!} values={c as unknown as Record<string, unknown>} fields={[
-                { key: "employer_occupation", label: "Occupation" },
-                { key: "employment_status", label: "Employment status" },
-                { key: "retirement_age_goal", label: "Retirement goal age", type: "number" },
-                { key: "retirement_year", label: "Retirement year", type: "number" },
-                { key: "legacy_estate", label: "Legacy estate goal", type: "number" },
-                { key: "is_smoker", label: "Smoker", hint: "true or false" },
-                { key: "physician_name", label: "Physician" },
-                { key: "physician_phone", label: "Physician phone", type: "tel" },
-                { key: "objectives", label: "Objectives" },
-                { key: "medical_notes", label: "Medical notes" },
-              ]} /></Panel></TabsContent>
-
-              <TabsContent value="schedule" className="mt-0"><Panel title="Schedule"><div className="grid gap-4 sm:grid-cols-3"><div className="space-y-1.5"><Label htmlFor="client-callback-date">Callback date</Label><Input id="client-callback-date" type="date" value={schedule.callbackDate} onChange={(event) => setSchedule((value) => ({ ...value, callbackDate: event.target.value }))} /></div><div className="space-y-1.5"><Label htmlFor="client-callback-time">Callback time</Label><Input id="client-callback-time" type="time" value={schedule.callbackTime} onChange={(event) => setSchedule((value) => ({ ...value, callbackTime: event.target.value }))} /></div><div className="space-y-1.5"><Label htmlFor="client-next-action">Next action date</Label><Input id="client-next-action" type="date" value={schedule.nextAction} onChange={(event) => setSchedule((value) => ({ ...value, nextAction: event.target.value }))} /></div></div><Button className="mt-4" disabled={action.isPending} onClick={() => action.mutate({ p_callback_date: schedule.callbackDate || null, p_callback_time: schedule.callbackTime || null, p_next_action_date: schedule.nextAction || null, p_replace_schedule: true, p_activity_type: "schedule_updated", p_activity_body: "Client follow-up schedule updated" }, { onSuccess: () => toast.success("Schedule saved") })}><Save className="mr-1.5 h-4 w-4" /> Save Schedule</Button></Panel></TabsContent>
-
-              <TabsContent value="beneficiaries" className="mt-0"><Panel title="Beneficiaries">{(beneficiaries.data?.length ?? 0) > 0 ? <div className="space-y-2">{beneficiaries.data!.map((beneficiary) => <div key={beneficiary.id} className="rounded-md border border-border p-3"><p className="text-sm font-semibold">{[beneficiary.first_name, beneficiary.last_name].filter(Boolean).join(" ") || "—"}</p><p className="text-xs text-muted-foreground">{beneficiary.relationship ?? "—"}{beneficiary.percentage ? ` · ${beneficiary.percentage}%` : ""}{beneficiary.date_of_birth ? ` · DOB ${fmtDate(beneficiary.date_of_birth)}` : ""}</p></div>)}</div> : c.beneficiary_first_name || c.beneficiary_last_name ? <p className="text-sm">{[c.beneficiary_first_name, c.beneficiary_last_name].filter(Boolean).join(" ")}</p> : <p className="py-12 text-center text-sm text-muted-foreground">No beneficiaries on file.</p>}</Panel></TabsContent>
-
-              <TabsContent value="referrals" className="mt-0"><Panel title="Referrals"><dl className="grid gap-4 sm:grid-cols-2"><Field label="Referred by" value={[c.referred_from_client_first_name, c.referred_from_client_last_name].filter(Boolean).join(" ") || "Direct lead"} /><Field label="Lead vendor" value={c.lead_vendor_name} /><Field label="Lead product" value={c.lead_product_name} /></dl></Panel></TabsContent>
-
-              <TabsContent value="financials" className="mt-0"><Panel title="Financials"><EditableClientSection clientId={clientId!} values={c as unknown as Record<string, unknown>} fields={[
-                { key: "total_monthly_income", label: "Monthly income", type: "number" },
-                { key: "total_monthly_expenses", label: "Monthly expenses", type: "number" },
-                { key: "monthly_surplus", label: "Monthly surplus", type: "number" },
-                { key: "earned_income", label: "Earned income", type: "number" },
-                { key: "pension_income", label: "Pension", type: "number" },
-                { key: "social_security_income", label: "Social Security", type: "number" },
-                { key: "mortgage_payment", label: "Mortgage payment", type: "number" },
-                { key: "rent_payment", label: "Rent payment", type: "number" },
-                { key: "qualified_accounts", label: "Qualified accounts", type: "number" },
-                { key: "non_qualified_accounts", label: "Non-qualified accounts", type: "number" },
-                { key: "bank_name", label: "Bank" },
-                { key: "bank_account_type", label: "Account type" },
-              ]} /></Panel></TabsContent>
-
-              <TabsContent value="policies" className="mt-0"><Panel title="Policy Information"><EditableClientSection clientId={clientId!} values={c as unknown as Record<string, unknown>} fields={[
-                { key: "pitch_carrier", label: "Carrier" },
-                { key: "product_sold", label: "Product sold" },
-                { key: "policy_number", label: "Policy number" },
-                { key: "face_amount", label: "Face amount", type: "number" },
-                { key: "pitch_price", label: "Monthly premium", type: "number" },
-                { key: "policy_start_date", label: "Effective date", type: "date" },
-                { key: "policy_review_date", label: "Review date", type: "date" },
-              ]} />{(contracts.data?.length ?? 0) > 0 && <div className="mt-5 space-y-2 border-t border-border pt-4">{contracts.data!.map((contract) => <div key={contract.id} className="flex items-center justify-between rounded-md border border-border p-3 text-sm"><div><p className="font-semibold">{contract.carrier_name ?? "—"} · {contract.product_name ?? "—"}</p><p className="text-xs text-muted-foreground">{contract.status ?? "—"} · {fmtDate(contract.effective_date)}</p></div><div className="text-right"><p className="font-semibold">{fmtMoney(contract.face_amount)}</p><p className="text-xs text-muted-foreground">{fmtMoney(contract.monthly_premium)}/mo</p></div></div>)}</div>}<SubmitDealDialog initialClient={{ firstName: c.first_name ?? "", lastName: c.last_name ?? "", phone: c.phone ?? "", dob: dateInput(c.date_of_birth) }} trigger={<Button className="mt-4"><ReceiptText className="mr-1.5 h-4 w-4" /> Post Deal</Button>} /></Panel></TabsContent>
-
-              <TabsContent value="notes" className="mt-0"><Panel title="Notes"><div className="space-y-4"><div className="space-y-1.5"><Label htmlFor="client-communication-notes">Communication notes</Label><Textarea id="client-communication-notes" value={notes.communication} onChange={(event) => setNotes((value) => ({ ...value, communication: event.target.value }))} rows={6} placeholder="Calls, messages, preferences, and context…" /></div><div className="space-y-1.5"><Label htmlFor="client-reminder-notes">Reminder notes</Label><Textarea id="client-reminder-notes" value={notes.reminder} onChange={(event) => setNotes((value) => ({ ...value, reminder: event.target.value }))} rows={4} placeholder="What must happen next…" /></div><Button disabled={action.isPending} onClick={() => action.mutate({ p_communication_notes: notes.communication, p_reminder_notes: notes.reminder, p_replace_notes: true, p_activity_type: "notes_updated", p_activity_body: "Client notes updated" }, { onSuccess: () => toast.success("Notes saved") })}><Save className="mr-1.5 h-4 w-4" /> Save Notes</Button></div></Panel></TabsContent>
-            </main>
-
-            <aside className="space-y-3">
-              <Panel title="AI Coach"><div className="space-y-2">{coach.map((line) => <p key={line} className="rounded-md bg-muted px-3 py-2 text-sm">{line}</p>)}</div></Panel>
-              <Panel title="Review Prep"><p className="text-sm text-muted-foreground">Prepare the annual-income, coverage, and servicing check before speaking with the client.</p><Button className="mt-3 w-full" variant="outline" onClick={() => setPrepOpen((value) => !value)}>{prepOpen ? "Hide checklist" : "Prepare"}</Button>{prepOpen && <ul className="mt-3 space-y-2 text-sm"><li>• Confirm contact information</li><li>• Review current policy and premium</li><li>• Recheck beneficiary details</li><li>• Set the next action before closing</li></ul>}</Panel>
-              <Panel title="Client Status"><dl className="grid gap-3"><Field label="Stage" value={STAGES[activeStage].label} /><Field label="Last contact" value={fmtDate(c.last_contact_date)} /><Field label="Next action" value={fmtDate(c.next_action_date)} /><Field label="Health score" value={c.client_health_score != null ? `${c.client_health_score}/100` : "—"} /></dl></Panel>
-            </aside>
-          </div>
-        </Tabs>
+          <aside className="space-y-3">
+            <Panel title="Next-best action"><div className="space-y-2">{coach.map((line) => <p key={line} className="rounded-md bg-muted px-3 py-2 text-sm">{line}</p>)}</div></Panel>
+            <Panel title="Before you hang up"><p className="text-sm text-muted-foreground">Leave every call with a saved outcome and an exact next action.</p><Button className="mt-3 w-full" variant="outline" onClick={() => setPrepOpen((value) => !value)}>{prepOpen ? "Hide checklist" : "Show checklist"}</Button>{prepOpen && <ul className="mt-3 space-y-2 text-sm"><li>• Contact information confirmed</li><li>• Height, weight, nicotine and health captured</li><li>• Income and comfortable budget captured</li><li>• Beneficiary and next action saved</li></ul>}</Panel>
+            <Panel title="Client status"><dl className="grid gap-3"><Field label="Stage" value={STAGES[activeStage].label} /><Field label="Last contact" value={fmtDate(c.last_contact_date)} /><Field label="Next action" value={fmtDate(c.next_action_date)} /><Field label="Health score" value={c.client_health_score != null ? `${c.client_health_score}/100` : "—"} /></dl></Panel>
+          </aside>
+        </div>
       </section>
     </div>
   );

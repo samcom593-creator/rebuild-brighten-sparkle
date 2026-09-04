@@ -49,6 +49,7 @@ export function SupabaseHealthBanner() {
   const [downSince, setDownSince] = useState<Date | null>(null);
   const [probing, setProbing] = useState(false);
   const probeRef = useRef<() => Promise<void>>(async () => {});
+  const failStreak = useRef(0);
 
   const probe = useCallback(async () => {
     setProbing(true);
@@ -64,18 +65,26 @@ export function SupabaseHealthBanner() {
         .abortSignal(ctrl.signal);
       const ms = performance.now() - t0;
       if (error) {
-        setState("down");
-        setDownSince((prev) => prev ?? new Date());
+        // MP-430: one failed probe on a shared or throttled link is not an
+        // outage. A 6 s abort on Sam's building Wi-Fi was rendering
+        // "Postgres data plane unresponsive" across every page. Two
+        // consecutive failures are the bar; the first reads as slow.
+        failStreak.current += 1;
+        setState(failStreak.current >= 2 ? "down" : "slow");
+        if (failStreak.current >= 2) setDownSince((prev) => prev ?? new Date());
       } else if (ms > 3000) {
+        failStreak.current = 0;
         setState("slow");
       } else {
+        failStreak.current = 0;
         setState("ok");
         setDownSince(null);
         setDismissed(false);
       }
     } catch {
-      setState("down");
-      setDownSince((prev) => prev ?? new Date());
+      failStreak.current += 1;
+      setState(failStreak.current >= 2 ? "down" : "slow");
+      if (failStreak.current >= 2) setDownSince((prev) => prev ?? new Date());
     } finally {
       clearTimeout(timeout);
       setLastChecked(new Date());
@@ -100,7 +109,7 @@ export function SupabaseHealthBanner() {
   if (dismissed || state === "ok") return null;
 
   const message = state === "down"
-    ? "Postgres data plane unresponsive. Dashboards may load forever or show stale data. Platform-side, not your build."
+    ? "The database is not answering. Dashboards may load slowly or show stale numbers until it recovers."
     : "Backend is sluggish. Some queries are taking >3s.";
 
   return (

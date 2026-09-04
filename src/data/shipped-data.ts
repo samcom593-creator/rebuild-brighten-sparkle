@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "Interviews no longer renders every candidate at once — the queue was 53,000 pixels tall in a screenshot, with the overdue group alone scrolling for screens. Each group now shows its first eight and one button says exactly how many are hidden; the counts in the badges are untouched. And the orange banner that shouted \"Supabase down · Postgres data plane unresponsive\" across every page whenever a single 6-second probe timed out on a slow connection now needs two consecutive failures and says what is true: the database is not answering, dashboards may be slow or stale until it recovers.",
+    detail:
+      "The banner fired on Sam's building Wi-Fi during a load spike and read like an outage notice for a build he had just shipped. One failed probe now reads as slow; the 60-second poll is the second opinion. Tests moved to that contract, with a new one asserting a single failure never shows the down banner. Interviews windowing is per group (8, then +12 per click) so nothing is filtered out of the truth, only out of the first paint.",
+    commit: "mp-430-interviews-window-banner-bar",
+  },
+  {
+    ts: "today",
+    label:
       "My Commissions, the Producer Profile book roll-up, the Recruit Pipeline onboarding ladder and the Book of Business chargeback watch had all been failing with a permission error for every signed-in user — including you — since the comp-level lockdown on Aug 27. Four views ran as the caller (correct, that is what keeps them scoped to you) but read columns that lockdown had revoked from everyone, so the database refused the whole read. My Commissions rendered \"no deals visible for this account\" while the deals existed. Each view now gets the one fact it needed through a locked-down function that never returns the protected value itself, and the client error log, which had no write permission at all and was itself erroring on every page, can finally record what breaks.",
     detail:
       "Proven with your real session against the API, not with a database role switch: the role switch runs as the database owner and passed every one of these reads, which is why it hid the class for a week. Views fixed: v_production_comp_truth (comp level via fn_agent_contract_pct, the same resolver the scoreboard uses, so the two now agree), v_chargeback_watch (same), v_onboarding_sequence (licensing-ready and NPN-matched-contracting are booleans from two new definer helpers; the NPN, comp and next-action note left the view — neither consumer read them). function_errors gained an insert policy for signed-in users, stamping user_id from the session so a row can never claim to be someone else's. Recruiting and Interviews hero panels now follow the theme instead of staying black in light mode, and the light-mode guard excludes the three single-theme surfaces it had wrongly rewritten.",

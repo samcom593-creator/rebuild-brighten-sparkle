@@ -62,6 +62,17 @@ async function runInitialProbe() {
   });
 }
 
+// MP-430: one failed probe is "slow", two consecutive failures are "down" —
+// a single 6 s abort on a throttled link must not shout that the database is
+// gone. The 60 s poll is the second probe.
+async function runSecondProbe() {
+  await act(async () => {
+    vi.advanceTimersByTime(60_001);
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+}
+
 async function settleProbe() {
   await act(async () => {
     await Promise.resolve();
@@ -82,22 +93,33 @@ describe("SupabaseHealthBanner — ok state", () => {
 });
 
 describe("SupabaseHealthBanner — down state", () => {
+  it("does NOT show the down banner after a single failed probe", async () => {
+    vi.mocked(supabase.from).mockReturnValue(
+      buildProbeChainRejected(0) as any
+    );
+    render(<SupabaseHealthBanner />);
+    await runInitialProbe();
+    expect(screen.queryByText(/data connection down/i)).not.toBeInTheDocument();
+  });
+
   it("shows banner when probe rejects", async () => {
     vi.mocked(supabase.from).mockReturnValue(
       buildProbeChainRejected(0) as any
     );
     render(<SupabaseHealthBanner />);
     await runInitialProbe();
-    expect(screen.getByText(/supabase down/i)).toBeInTheDocument();
+    await runSecondProbe();
+    expect(screen.getByText(/data connection down/i)).toBeInTheDocument();
   });
 
-  it("shows 'unresponsive' message", async () => {
+  it("shows the 'not answering' message", async () => {
     vi.mocked(supabase.from).mockReturnValue(
       buildProbeChainRejected(0) as any
     );
     render(<SupabaseHealthBanner />);
     await runInitialProbe();
-    expect(screen.getByText(/postgres data plane unresponsive/i)).toBeInTheDocument();
+    await runSecondProbe();
+    expect(screen.getByText(/database is not answering/i)).toBeInTheDocument();
   });
 
   it("shows banner when probe returns a Supabase error object", async () => {
@@ -106,7 +128,8 @@ describe("SupabaseHealthBanner — down state", () => {
     );
     render(<SupabaseHealthBanner />);
     await runInitialProbe();
-    expect(screen.getByText(/supabase down/i)).toBeInTheDocument();
+    await runSecondProbe();
+    expect(screen.getByText(/data connection down/i)).toBeInTheDocument();
   });
 });
 
@@ -117,8 +140,9 @@ describe("SupabaseHealthBanner — dismiss", () => {
     );
     render(<SupabaseHealthBanner />);
     await runInitialProbe();
+    await runSecondProbe();
     fireEvent.click(screen.getByLabelText(/dismiss/i));
-    expect(screen.queryByText(/supabase down/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/data connection down/i)).not.toBeInTheDocument();
   });
 });
 
@@ -147,6 +171,7 @@ describe("SupabaseHealthBanner — retry button", () => {
     );
     render(<SupabaseHealthBanner />);
     await runInitialProbe();
+    await runSecondProbe();
 
     // Retry with healthy probe
     vi.mocked(supabase.from).mockReturnValue(
@@ -154,7 +179,7 @@ describe("SupabaseHealthBanner — retry button", () => {
     );
     fireEvent.click(screen.getByLabelText(/retry now/i));
     await settleProbe();
-    expect(screen.queryByText(/supabase down/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/data connection down/i)).not.toBeInTheDocument();
   });
 });
 

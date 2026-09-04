@@ -309,6 +309,16 @@ export default function Interviews() {
     { key: "upcoming", title: "Upcoming", sub: "confirmed and scheduled", rows: filtered.filter((row) => row.appointment_at && !isPast(new Date(row.appointment_at)) && OPEN.includes(row.stage)) },
     { key: "other", title: "Needs a decision or time", sub: "interviewed, unscheduled, or closed", rows: filtered.filter((row) => !((row.appointment_at && isPast(new Date(row.appointment_at)) && OPEN.includes(row.stage) && row.stage !== "interview_complete") || (row.appointment_at && !isPast(new Date(row.appointment_at)) && OPEN.includes(row.stage)))) },
   ].filter((group) => group.rows.length > 0), [filtered]);
+
+  // MP-430: the queue rendered every candidate card at once — 304 rows made the
+  // page 53,000 px tall in a screenshot, and the Overdue group alone scrolled
+  // for screens. Each group shows its first page; the rest sit behind one
+  // button that says how many are hidden. Nothing is filtered out, so the
+  // counts in the badges stay the truth.
+  const GROUP_PAGE = 8;
+  const [shownByGroup, setShownByGroup] = useState<Record<string, number>>({});
+  const shownFor = (key: string) => shownByGroup[key] ?? GROUP_PAGE;
+  const showMore = (key: string) => setShownByGroup((prev) => ({ ...prev, [key]: shownFor(key) + 12 }));
   const priorityPool = [
     ...overdue,
     ...applicants.filter((row) => row.stage === "interview_complete"),
@@ -737,7 +747,7 @@ export default function Interviews() {
                 <span className="text-xs text-muted-foreground">{group.sub}</span>
               </div>
               <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                {group.rows.map((row) => {
+                {group.rows.slice(0, shownFor(group.key)).map((row) => {
                   const status = statusOf(row, now);
                   const actions = availableActions(row, pipeline.data?.role);
                   const instagram = instagramProfileLink(row.instagram);
@@ -805,6 +815,13 @@ export default function Interviews() {
                   );
                 })}
               </div>
+              {group.rows.length > shownFor(group.key) && (
+                <div className="mt-3 flex justify-center">
+                  <Button type="button" variant="outline" size="sm" onClick={() => showMore(group.key)}>
+                    Show {Math.min(12, group.rows.length - shownFor(group.key))} more · {group.rows.length - shownFor(group.key)} hidden
+                  </Button>
+                </div>
+              )}
             </section>
           ))}
         </div>

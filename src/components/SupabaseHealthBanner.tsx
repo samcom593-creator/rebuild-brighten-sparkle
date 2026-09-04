@@ -117,7 +117,7 @@ export function SupabaseHealthBanner() {
       <div className="flex items-center gap-2 min-w-0">
         <AlertTriangle className="h-4 w-4 flex-shrink-0" />
         <span className="truncate">
-          <strong>Supabase {state === "down" ? "down" : "slow"}</strong> · {message}
+          <strong>Data connection {state === "down" ? "down" : "slow"}</strong> · {message}
           {state === "down" && downSince && (
             <span className="opacity-70"> (<ElapsedSince since={downSince} />)</span>
           )}

@@ -213,7 +213,7 @@ function BuilderRowItem({ row, muted = false }: { row: BuilderRow; muted?: boole
   const Icon = meta.icon;
   return (
     <Link
-      to={`/admin/agents`}
+      to={`/dashboard/agents/${row.agent_id}`}
       className={cn(
         "flex items-center gap-3 rounded-md border px-3 py-2 hover:bg-white dark:bg-card/60 transition",
         muted ? "border-border/30 opacity-70" : "border-border/40",

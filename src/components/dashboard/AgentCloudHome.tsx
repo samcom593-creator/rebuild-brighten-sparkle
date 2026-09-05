@@ -163,7 +163,14 @@ export function AgentCloudHome() {
   // the abandoned one. Let the in-flight call finish and dedupe onto it.
   useProductionRealtime(() => { void refetch({ cancelRefetch: false }); }, 800);
 
-  useProductionRealtime(() => invalidateOperationalTruth(queryClient), 350);
+  // MP-436: broadcast:false is LOAD-BEARING. This callback runs FROM the
+  // "production-realtime-update" event; re-emitting it here closed a ring that
+  // re-drove itself every 350ms on zero row changes, calling the platform's
+  // three most expensive RPCs at ~45/min for as long as this page was open.
+  useProductionRealtime(
+    () => invalidateOperationalTruth(queryClient, { broadcast: false }),
+    350,
+  );
 
   const PeriodPicker = (
     <div className="flex flex-wrap items-center justify-end gap-2">

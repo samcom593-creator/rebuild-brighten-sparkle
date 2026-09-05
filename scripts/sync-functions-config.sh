@@ -44,6 +44,29 @@ PUBLIC_ALLOWLIST=(
   "submit-contracting-intake"
   "numbers-reminder"
   "slack-identity-admin"
+  # MP-441 — RECOVERED FROM PROD, not a new decision. These two are ACTIVE in
+  # the project today with verify_jwt=false (read live from the management API
+  # 2026-09-05: billing-portal-redirect v145, daily-brief v138, apex-ai-nudge
+  # v137). They are listed here BEFORE their source is recovered into
+  # supabase/functions/, because the order matters and gets this backwards
+  # exactly once: this script defaults an unlisted directory to
+  # verify_jwt = true, the deploy workflow pushes only the functions a commit
+  # changed, so the very commit that restores billing-portal-redirect's source
+  # would also flip a LIVE public endpoint to JWT-required. That endpoint
+  # generates Stripe billing-portal sessions from ?t=<uuid> rescue links, so
+  # the break would land on customers trying to pay, and nothing in this repo
+  # would say why. daily-brief and apex-ai-nudge already carry an explicit
+  # verify_jwt = false stanza in config.toml so this script skips them; they
+  # are named here so the allowlist is the one place that answers "is this
+  # endpoint public", rather than the answer living in two files that can drift.
+  #
+  # THIS IS A RECORD OF EXPOSURE, NOT AN ENDORSEMENT. daily-brief is proven
+  # readable with no Authorization header at all (see the ledger for the live
+  # 200). The fix is NOT to delete these lines — both crons authenticate with
+  # apex_bot_token, which is not a JWT, so verify_jwt = true refuses them and
+  # kills the 7am brief and the applicant nudge cadence. It is an in-code
+  # bearer check, which is what "verify secrets in-code" above already means.
+  "billing-portal-redirect"
 )
 
 is_public() {

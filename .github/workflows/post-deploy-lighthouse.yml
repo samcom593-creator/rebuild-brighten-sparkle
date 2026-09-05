@@ -3,7 +3,8 @@ name: Post-deploy Lighthouse budget
 # Pulls a mobile Lighthouse audit against production after every push to
 # main and asserts the perf budget set in scripts/lighthouse-prod.mjs.
 # A regression (LCP > 7s, Perf < 60, etc.) fails the workflow so we see
-# it before users do.
+# it before users do. The failure summary restates the script's own verdict —
+# it never asserts one, because the script is the only thing here that measured.
 
 on:
   push:
@@ -39,8 +40,38 @@ jobs:
         run: node scripts/lighthouse-prod.mjs
         env:
           URL: https://apex-financial.org/
+          LH_VERDICT_FILE: ${{ runner.temp }}/lh-verdict.txt
 
+      # This step may only RESTATE the verdict scripts/lighthouse-prod.mjs wrote.
+      # It must never assert one of its own. The previous version ran on a bare
+      # `if: failure()` and printed one hardcoded sentence — "Lighthouse perf
+      # budget BUSTED … roll back, or update the budget" — for every possible
+      # failure. It fired twice and was wrong about the metric both times: once
+      # naming Perf when CLS was the real failure and Perf had just been excused
+      # as runner weather, and once asserting a busted budget on a run where
+      # Chrome never launched and nothing was measured at all.
       - name: Post failure summary
         if: failure()
         run: |
-          echo "::warning::Lighthouse perf budget BUSTED on ${{ github.sha }}. See the audit output above. Either roll back, or update the budget in scripts/lighthouse-prod.mjs if the regression is intentional."
+          VERDICT_FILE="${{ runner.temp }}/lh-verdict.txt"
+          if [ ! -s "$VERDICT_FILE" ]; then
+            # No verdict written means the failure happened before or outside the
+            # audit (checkout, setup-node, a cancelled job, a crash). Say exactly
+            # that; do not manufacture a site verdict out of an absence.
+            echo "::warning::Lighthouse workflow failed on ${{ github.sha }} WITHOUT producing a verdict — the failure was outside the audit itself (checkout, setup, or a crash before the report was written). This is not a statement about the site's performance. See the log above."
+            exit 0
+          fi
+          VERDICT="$(cut -d'|' -f1 "$VERDICT_FILE")"
+          SUMMARY="$(cut -d'|' -f2- "$VERDICT_FILE")"
+          case "$VERDICT" in
+            budget_failed)
+              echo "::error::Lighthouse budget FAILED on ${{ github.sha }}. $SUMMARY"
+              ;;
+            could_not_measure)
+              echo "::warning::Lighthouse COULD NOT MEASURE ${{ github.sha }}. $SUMMARY"
+              ;;
+            *)
+              # An unrecognised token is its own outcome and never silently green.
+              echo "::warning::Lighthouse reported an unrecognised verdict '$VERDICT' on ${{ github.sha }}: $SUMMARY"
+              ;;
+          esac

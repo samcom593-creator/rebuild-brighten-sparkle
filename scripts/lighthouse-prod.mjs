@@ -11,7 +11,7 @@
  * Requires Node 18+ (no extra install — uses npx --yes lighthouse).
  */
 import { execSync } from "node:child_process";
-import { readFileSync, mkdirSync, rmSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -35,14 +35,68 @@ const work = join(tmpdir(), `apex-lh-${Date.now()}`);
 mkdirSync(work, { recursive: true });
 const json = join(work, "audit.json");
 
+// ── Single-sourced verdict (2026-09-05) ──────────────────────────────────────
+// Everything below computes a THREE-VALUED verdict — pass / inconclusive /
+// budget_failed — plus a fourth state, could_not_measure, when Lighthouse never
+// produced a report at all. That reasoning used to die at the workflow boundary:
+// post-deploy-lighthouse.yml ran `if: failure()` and printed one hardcoded
+// sentence, "Lighthouse perf budget BUSTED … roll back, or update the budget".
+//
+// It fired twice in this gate's life and was wrong about the metric both times:
+//   * 0925fc38 — exit 1. The real failure was CLS 0.074 > 0.05. Perf had been
+//     explicitly EXCUSED as inconclusive four lines earlier, and the sentence
+//     named Perf anyway, then prescribed lowering a budget this file's own
+//     header forbids lowering.
+//   * f8f43d2c — exit 2. "Unable to connect to Chrome": NOTHING was measured.
+//     The sentence still asserted the budget was busted, and both prescribed
+//     remedies (roll back / raise the budget) are inert against a runner that
+//     could not launch a browser.
+//
+// So the verdict is written HERE, by the only code that actually measured, and
+// the workflow may only restate it. A consumer that restates a verdict it did
+// not compute is how two projections of one rule drift apart.
+const VERDICT_FILE = process.env.LH_VERDICT_FILE || "";
+const emitVerdict = (verdict, summary) => {
+  const line = `${verdict}|${summary}`;
+  if (VERDICT_FILE) {
+    try { writeFileSync(VERDICT_FILE, line + "\n", "utf-8"); }
+    catch (e) { console.error(`(could not write verdict file: ${e.message})`); }
+  }
+  return line;
+};
+
 console.log(`▸ Running Lighthouse mobile against ${URL_}…`);
-try {
-  execSync(
-    `npx --yes lighthouse ${URL_} --quiet --chrome-flags="--headless=new --no-sandbox" --form-factor=mobile --throttling-method=simulate --output=json --output-path=${json} --only-categories=performance,accessibility,best-practices,seo`,
-    { stdio: "inherit" }
-  );
-} catch (e) {
+// A Chrome launch failure is a runner fault and is transient — observed once in
+// 60 runs. Failing the build red on a one-off flake is the cost this repo has
+// paid before (36 false pages/day); passing green on it is the blank-means-green
+// disease. So: retry once, then be loud and accurate about which it was.
+const LH_CMD = `npx --yes lighthouse ${URL_} --quiet --chrome-flags="--headless=new --no-sandbox" --form-factor=mobile --throttling-method=simulate --output=json --output-path=${json} --only-categories=performance,accessibility,best-practices,seo`;
+let ranOk = false;
+let lastErr = "";
+for (let attempt = 1; attempt <= 2; attempt++) {
+  try {
+    execSync(LH_CMD, { stdio: "inherit" });
+    ranOk = true;
+    break;
+  } catch (e) {
+    // Keep this short: it is restated verbatim in a GitHub annotation, and the
+    // full npx invocation is already echoed above.
+    lastErr = (e?.message ? String(e.message).split("\n")[0] : "unknown error")
+      .replace(/^Command failed: npx .*/, "lighthouse CLI exited non-zero (see log above)")
+      .slice(0, 160);
+    console.error(`Lighthouse attempt ${attempt}/2 failed to run: ${lastErr}`);
+    if (attempt < 2) {
+      console.error("Retrying once — a Chrome launch failure is usually transient…");
+      try { execSync("sleep 10"); } catch {}
+    }
+  }
+}
+if (!ranOk) {
   console.error("Lighthouse failed to run.");
+  emitVerdict(
+    "could_not_measure",
+    `Lighthouse never produced a report — it failed to run twice (last error: ${lastErr}). This is a runner/toolchain fault, NOT a verdict about the site: no metric was measured, so the budget was neither met nor busted. Re-run this workflow; if it repeats, the Lighthouse/Chrome install on the runner is broken.`,
+  );
   process.exit(2);
 }
 
@@ -297,6 +351,12 @@ if (fails.length) {
   if (realFails.length) {
     console.error("❌ Lighthouse budget BUSTED:");
     realFails.forEach((f) => console.error("  • " + f));
+    emitVerdict(
+      "budget_failed",
+      `Budget failed on: ${realFails.join("; ")}. These metrics are NOT CPU-bound, so a slow runner cannot manufacture them — this is a real regression on the deployed site. ${
+        excused.length ? `(Separately excused as runner weather, not part of this verdict: ${excused.join("; ")}.) ` : ""
+      }Fix the site. Do not raise the budget to clear it.`,
+    );
     process.exit(1);
   }
 
@@ -304,6 +364,14 @@ if (fails.length) {
   // Exit 0 so a contended runner cannot manufacture a red — but never silently:
   // the excused failures are printed above with the reason.
   console.log("✓ Lighthouse: no trustworthy budget failure on this runner.");
+  emitVerdict(
+    "inconclusive",
+    `Over budget only on CPU-bound metrics the runner cannot judge (${fails.join("; ")}), benchmarkIndex ${benchmarkIndex}. Not counted as a site regression, and not counted as a clean pass.`,
+  );
   process.exit(0);
 }
 console.log("✅ Lighthouse budgets passed.");
+emitVerdict(
+  "pass",
+  `All budgets met${unmeasured.length ? ` (except ${unmeasured.join(", ")}, which did not evaluate and were not scored either way)` : ""}.`,
+);

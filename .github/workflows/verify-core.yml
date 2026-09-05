@@ -82,6 +82,25 @@ jobs:
       - name: Install deps
         run: npm ci --no-audit --no-fund
 
+      # MP-437: the 999-test vitest suite ran in NO workflow until 2026-09-05.
+      # `npm test` existed and nothing invoked it — not this file, not the
+      # 75-guard verify:core chain (vitest is unreachable by expanding every
+      # `npm run` edge from it). MP-436 had shipped four new tests into that
+      # suite the day before; nothing would ever have run them.
+      #
+      # Deliberately its OWN step, ahead of verify:core: it costs ~45s against
+      # verify:core's multi-minute chain (check:tsc-error-count alone measures
+      # 881s locally), so a broken test reports in under a minute instead of
+      # behind the type-checker, and a failure here is attributable on sight
+      # rather than buried in a 75-check log.
+      #
+      # NOT added to the verify:core npm chain on purpose: that chain is what
+      # .husky/pre-commit runs, and loading another ~45s onto every local
+      # commit is how a gate trains operators to reach for --no-verify. Same
+      # reasoning that moved check:tsc-error-count to CI-only on 2026-08-11.
+      - name: Run unit tests (vitest, 999 tests / 100 files)
+        run: npm test
+
       - name: Run verify:core (5 checks + tsc + build)
         # Mirrors the local pre-commit hook chain so a --no-verify or
         # fresh-clone-without-prepare push still gets caught on origin.

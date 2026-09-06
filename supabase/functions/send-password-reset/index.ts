@@ -35,6 +35,76 @@ const handler = async (req: Request): Promise<Response> => {
 
     const normalizedEmail = email.toLowerCase().trim();
 
+    // ---------------------------------------------------------------------
+    // MP-453. This endpoint is PUBLIC BY DESIGN (Login.tsx forgot-password and
+    // MagicLogin.tsx call it with no session) and must stay that way — gating it
+    // breaks real password resets. What it must NOT do is answer differently
+    // depending on whether the address owns an account.
+    //
+    // It used to. Every not-found path returned {success:true, message:"If an
+    // account exists..."} while the SUCCESS path returned a bare {success:true},
+    // so the PRESENCE OF THE `message` FIELD was an account-enumeration oracle,
+    // readable by anyone, with no credential, one address at a time. Proven on
+    // live prod 2026-09-06: absent address -> message present; and
+    // auth.admin.generateLink answers 200 for a real address and 404
+    // user_not_found for an absent one, which is exactly the branch predicate.
+    // A thrown send was a SECOND oracle: HTTP 500 could only be reached on the
+    // account-exists path, so a failure to mail also confirmed the account.
+    //
+    // Every account-dependent outcome now returns one byte-identical body.
+    // Graded by scripts/check-enumeration-oracle.mjs, which fails any function
+    // using this silent-ok idiom that emits a success body without `message`.
+    // ---------------------------------------------------------------------
+    const uniformOk = () =>
+      new Response(
+        JSON.stringify({
+          success: true,
+          message:
+            type === "magic_link"
+              ? "If an account exists, a link has been sent."
+              : "If an account exists, a reset link has been sent.",
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+
+    // Rate limiting. The RPC is the single source of truth for the rule; it is
+    // called inline rather than through _shared/rateLimit.ts on purpose, because
+    // that module imports supabase-js@2.45.0 and this function imports @2, and a
+    // second SDK copy in one bundle is the MP-273 boot-death class.
+    //
+    // Two buckets, because they bound different damage:
+    //   per-EMAIL  — how much mail one victim's inbox can be made to receive.
+    //   per-IP     — how fast one source can sweep addresses. A speed bump, not
+    //                a wall: an attacker who rotates IPs still gets one probe
+    //                per address per IP. It is not claimed to stop enumeration.
+    // Deliberately loose enough not to break an admin sending several resets in
+    // a row from /dashboard/accounts (measured caller: DashboardAccounts.tsx:525).
+    const clientIp =
+      req.headers.get("cf-connecting-ip") ??
+      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+      "anon";
+    for (const [bucket, max, win] of [
+      [`send-password-reset:email:${normalizedEmail}`, 3, 900],
+      [`send-password-reset:ip:${clientIp}`, 20, 900],
+    ] as [string, number, number][]) {
+      const { data: allowed, error: rlErr } = await supabaseClient.rpc("check_rate_limit", {
+        _bucket_key: bucket,
+        _max_requests: max,
+        _window_seconds: win,
+      });
+      // Fail OPEN on a broken limiter: refusing every reset because the limiter
+      // is down locks real agents out of their own accounts, which is worse than
+      // the unbounded state this replaces. The failure is logged, never silent.
+      if (rlErr) {
+        console.error("[send-password-reset] rate-limit check failed, allowing:", rlErr.message);
+      } else if (allowed === false) {
+        return new Response(
+          JSON.stringify({ error: "Too many requests. Please wait a few minutes and try again." }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     if (type === "magic_link") {
       // profiles.email carries NO unique index, so .maybeSingle() used to return
       // data=null on a DUPLICATE address exactly as it does on an absent one
@@ -55,11 +125,7 @@ const handler = async (req: Request): Promise<Response> => {
         .eq("email", normalizedEmail)
         .limit(10);
 
-      const silentOk = () =>
-        new Response(
-          JSON.stringify({ success: true, message: "If an account exists, a link has been sent." }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+      const silentOk = uniformOk;
 
       if (Array.isArray(profileRows) && profileRows.length > 1) {
         // Record one row per affected account, de-stormed: a person locked out
@@ -109,59 +175,61 @@ const handler = async (req: Request): Promise<Response> => {
         .maybeSingle();
 
       if (!agent) {
-        return new Response(
-          JSON.stringify({ success: true, message: "If an account exists, a link has been sent." }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return silentOk();
       }
 
       // Generate magic token
-      const token = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '');
-      await supabaseClient.from("magic_login_tokens").insert({
-        agent_id: agent.id,
-        email: normalizedEmail,
-        token,
-        destination: "portal",
-        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-      });
+      // A throw anywhere below was the SECOND oracle: the outer catch answers
+      // HTTP 500 with the error text, and this code is only reachable once the
+      // account is known to exist. Failure is logged and answered uniformly.
+      try {
+        const token = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '');
+        await supabaseClient.from("magic_login_tokens").insert({
+          agent_id: agent.id,
+          email: normalizedEmail,
+          token,
+          destination: "portal",
+          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        });
 
-      const magicLink = `${BASE_URL}/magic-login?token=${token}`;
-      const firstName = profile.full_name?.split(" ")[0] || "there";
+        const magicLink = `${BASE_URL}/magic-login?token=${token}`;
+        const firstName = profile.full_name?.split(" ")[0] || "there";
 
-      await resend.emails.send({
-         from: "APEX Financial <notifications@apex-financial.org>",
-        to: [normalizedEmail],
-        subject: "Your New Login Link – APEX",
-        html: `
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 20px;">
-            <div style="text-align: center; margin-bottom: 24px;">
-              <h1 style="font-size: 24px; font-weight: 700; color: #1a1a2e; margin: 0;">APEX Financial</h1>
+        await resend.emails.send({
+           from: "APEX Financial <notifications@apex-financial.org>",
+          to: [normalizedEmail],
+          subject: "Your New Login Link – APEX",
+          html: `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 20px;">
+              <div style="text-align: center; margin-bottom: 24px;">
+                <h1 style="font-size: 24px; font-weight: 700; color: #1a1a2e; margin: 0;">APEX Financial</h1>
+              </div>
+              <p style="font-size: 16px; color: #333; margin-bottom: 16px;">Hey ${firstName},</p>
+              <p style="font-size: 14px; color: #555; margin-bottom: 24px;">Here's your new login link. Click below to access your portal:</p>
+              <div style="text-align: center; margin-bottom: 24px;">
+                <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto;">
+                  <tr>
+                    <td align="center" bgcolor="#7c3aed" style="border-radius:8px;">
+                      <a href="${magicLink}" style="display:inline-block;color:#ffffff;padding:14px 32px;text-decoration:none;font-weight:600;font-size:16px;">
+                        Sign In to Portal
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+              </div>
+              <p style="font-size: 12px; color: #999; text-align: center;">This link expires in 24 hours.</p>
+              <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
+              <p style="font-size: 11px; color: #aaa; text-align: center;">Powered by Apex Financial</p>
             </div>
-            <p style="font-size: 16px; color: #333; margin-bottom: 16px;">Hey ${firstName},</p>
-            <p style="font-size: 14px; color: #555; margin-bottom: 24px;">Here's your new login link. Click below to access your portal:</p>
-            <div style="text-align: center; margin-bottom: 24px;">
-              <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto;">
-                <tr>
-                  <td align="center" bgcolor="#7c3aed" style="border-radius:8px;">
-                    <a href="${magicLink}" style="display:inline-block;color:#ffffff;padding:14px 32px;text-decoration:none;font-weight:600;font-size:16px;">
-                      Sign In to Portal
-                    </a>
-                  </td>
-                </tr>
-              </table>
-            </div>
-            <p style="font-size: 12px; color: #999; text-align: center;">This link expires in 24 hours.</p>
-            <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
-            <p style="font-size: 11px; color: #aaa; text-align: center;">Powered by Apex Financial</p>
-          </div>
-        `,
-      });
+          `,
+        });
+      } catch (sendErr) {
+        console.error("magic_link mint/send failed for", normalizedEmail, sendErr);
+        return silentOk();
+      }
 
       console.log("Magic link email sent to:", normalizedEmail);
-      return new Response(
-        JSON.stringify({ success: true }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return silentOk();
     }
 
     // Default: password reset type
@@ -177,10 +245,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (linkError) {
       console.error("Error generating recovery link:", linkError);
       // Don't reveal if user doesn't exist
-      return new Response(
-        JSON.stringify({ success: true, message: "If an account exists, a reset link has been sent." }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return uniformOk();
     }
 
     // Use the official action_link from Supabase which contains the proper hashed_token
@@ -211,40 +276,44 @@ const handler = async (req: Request): Promise<Response> => {
 
     const firstName = profile?.full_name?.split(" ")[0] || "there";
 
-    await resend.emails.send({
-      from: "APEX Financial <notifications@apex-financial.org>",
-      to: [normalizedEmail],
-      subject: "Reset Your Password – APEX",
-      html: `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 20px;">
-          <div style="text-align: center; margin-bottom: 24px;">
-            <h1 style="font-size: 24px; font-weight: 700; color: #1a1a2e; margin: 0;">APEX Financial</h1>
+    // Same second oracle as the magic_link branch: only reachable once the
+    // account is known to exist, so a send failure must not surface as a 500.
+    try {
+      await resend.emails.send({
+        from: "APEX Financial <notifications@apex-financial.org>",
+        to: [normalizedEmail],
+        subject: "Reset Your Password – APEX",
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 20px;">
+            <div style="text-align: center; margin-bottom: 24px;">
+              <h1 style="font-size: 24px; font-weight: 700; color: #1a1a2e; margin: 0;">APEX Financial</h1>
+            </div>
+            <p style="font-size: 16px; color: #333; margin-bottom: 16px;">Hey ${firstName},</p>
+            <p style="font-size: 14px; color: #555; margin-bottom: 24px;">We received a request to reset your password. Click the button below to set a new password:</p>
+            <div style="text-align: center; margin-bottom: 24px;">
+              <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto;">
+                <tr>
+                  <td align="center" bgcolor="#7c3aed" style="border-radius:8px;">
+                    <a href="${recoveryUrl}" style="display:inline-block;color:#ffffff;padding:14px 32px;text-decoration:none;font-weight:600;font-size:16px;">
+                      Reset Password
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </div>
+            <p style="font-size: 12px; color: #999; text-align: center;">If you didn't request this, you can safely ignore this email.</p>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
+            <p style="font-size: 11px; color: #aaa; text-align: center;">Powered by Apex Financial</p>
           </div>
-          <p style="font-size: 16px; color: #333; margin-bottom: 16px;">Hey ${firstName},</p>
-          <p style="font-size: 14px; color: #555; margin-bottom: 24px;">We received a request to reset your password. Click the button below to set a new password:</p>
-          <div style="text-align: center; margin-bottom: 24px;">
-            <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto;">
-              <tr>
-                <td align="center" bgcolor="#7c3aed" style="border-radius:8px;">
-                  <a href="${recoveryUrl}" style="display:inline-block;color:#ffffff;padding:14px 32px;text-decoration:none;font-weight:600;font-size:16px;">
-                    Reset Password
-                  </a>
-                </td>
-              </tr>
-            </table>
-          </div>
-          <p style="font-size: 12px; color: #999; text-align: center;">If you didn't request this, you can safely ignore this email.</p>
-          <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
-          <p style="font-size: 11px; color: #aaa; text-align: center;">Powered by Apex Financial</p>
-        </div>
-      `,
-    });
+        `,
+      });
+    } catch (sendErr) {
+      console.error("password-reset send failed for", normalizedEmail, sendErr);
+      return uniformOk();
+    }
 
     console.log("Password reset email sent to:", normalizedEmail);
-    return new Response(
-      JSON.stringify({ success: true }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return uniformOk();
   } catch (error: any) {
     console.error("Error in send-password-reset:", error);
     return new Response(

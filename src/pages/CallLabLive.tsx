@@ -70,7 +70,7 @@ function Cockpit({ row, recovered }: { row: SessionRow; recovered: StampedEvent[
           <h1 className="text-lg font-semibold leading-tight">{snap.title}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{snap.persona.name}, {snap.persona.role}. {snap.persona.speakingStyle}</p>
         </div>
-        <div className="rounded-lg border p-3 text-sm"><p className="font-medium">Your goal</p><p className="mt-1 text-muted-foreground">{snap.data.agentGoal}</p></div>
+        <div className="rounded-lg border p-3 text-sm"><p className="font-medium">Your goal</p><p className="mt-1 text-muted-foreground first-letter:uppercase">{snap.data.agentGoal}</p></div>
         <div>
           <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Required objections</p>
           <ul className="space-y-1.5">

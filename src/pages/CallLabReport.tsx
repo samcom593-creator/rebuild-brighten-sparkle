@@ -84,7 +84,7 @@ function Report({ row, sc, events }: { row: SessionRow; sc: Scorecard; events: S
           <div className="grid gap-3 sm:grid-cols-3">
             <Card title="Strongest">{sc.coaching.strongestBehavior}</Card>
             <Card title="Fix first">{sc.coaching.highestLeverageCorrection}</Card>
-            <Card title={`Drill: ${sc.coaching.recommendedDrill.title}`}>{sc.coaching.recommendedDrill.objective}<Button size="sm" className="mt-2" asChild><Link to={drillHref}><Target className="mr-2 h-4 w-4" aria-hidden />Practice this moment</Link></Button></Card>
+            <Card title={`Drill: ${sc.coaching.recommendedDrill.title}`}>{sc.coaching.recommendedDrill.objective}<span className="mt-3 block"><Button size="sm" asChild><Link to={drillHref}><Target className="mr-2 h-4 w-4" aria-hidden />Practice this moment</Link></Button></span></Card>
           </div>
           <p className="text-xs text-muted-foreground">Evidence coverage {Math.round(sc.evidenceCoverage * 100)}% of rubric points. Scored by {sc.evaluator === "demo" ? "the built-in rules evaluator" : sc.evaluator}. Every point below cites a moment in the transcript.</p>
         </div>

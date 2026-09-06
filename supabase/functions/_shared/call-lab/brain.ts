@@ -83,10 +83,11 @@ export function seedFromString(s: string): number {
   return h >>> 0;
 }
 
+const GENERIC_WEAK = ["You didn't answer what I asked.", "You keep moving on. I asked you something.", "I'm going to need more than that before we go any further.", "Hang on. Back up to my question."];
 function pick(list: string[], state: BrainState, key: string): { text: string; state: BrainState } {
   if (list.length === 0) return { text: "", state };
   const cursor = state.variantCursor[key] ?? 0;
-  const text = list[cursor % list.length];
+  const text = key.startsWith("weak:") && cursor >= list.length ? GENERIC_WEAK[(cursor - list.length) % GENERIC_WEAK.length] : list[cursor % list.length];
   return { text, state: { ...state, variantCursor: { ...state.variantCursor, [key]: cursor + 1 } } };
 }
 
@@ -94,6 +95,8 @@ const norm = (t: string) => t.toLowerCase().replace(/[^a-z0-9$%'\s]/g, " ").repl
 const wordCount = (t: string) => norm(t).split(" ").filter(Boolean).length;
 const hasQuestion = (t: string) => /\?/.test(t) || /\b(what|who|why|how|when|which|would|could|can|do you|did you|are you|is that|does that)\b/i.test(t);
 const mentionsAny = (t: string, words: string[]) => { const n = norm(t); return words.some((w) => n.includes(w)); };
+/** True when a question sentence (ends in ? or opens with a question word) itself mentions one of the words. Keeps a passing mention in a statement from triggering a reveal. */
+const asksAbout = (t: string, words: string[]) => t.split(/(?<=[.!?])\s+/).some((sentence) => hasQuestion(sentence) && mentionsAny(sentence, words));
 
 const ACK_WORDS = ["i hear you", "i understand", "understand", "makes sense", "that's fair", "fair enough", "i get that", "totally get", "appreciate", "of course", "absolutely", "i respect that", "no problem", "good question"];
 const CHECKIN = ["does that make sense", "sound fair", "fair enough", "take care of", "does that help", "make sense", "is that fair", "would that work", "how does that sound", "does that answer"];
@@ -318,12 +321,12 @@ function answerInCharacter(scenario: CompiledScenario, st: BrainState, text: str
 
   if (/\b(is that your name|speaking to|am i speaking|this is .* right)\b/.test(n) || (n.includes(first.toLowerCase()) && hasQuestion(text) && st.agentTurns <= 2)) lines.push("Yeah, this is him." + (p.speakingStyle.includes("suspicious") ? " Who's asking?" : ""));
   if (/\b(serve|military|branch|veteran)\b/.test(n) && hasQuestion(text)) lines.push(reveal("service", p.age && p.age > 65 ? "Army. Twenty-two years, retired as a staff sergeant." : "I did, yes.") ?? "Like I said, Army.");
-  if (mentionsAny(text, ["coverage", "burial coverage", "set up", "policy in place", "have any"]) && hasQuestion(text)) lines.push(reveal("coverage", p.currentSolution) ?? "I told you what I have.");
-  if (mentionsAny(text, BENEFICIARY) && hasQuestion(text)) lines.push(reveal("beneficiary", p.hiddenPriorities[0]?.includes("Linda") ? "Linda. My wife. She handles everything anyway." : "My daughter, Maya. She's all I've got.") ?? "Same as I said — my family.");
-  if (mentionsAny(text, WHY) && hasQuestion(text)) lines.push(reveal("why", p.businessPressure) ?? "I already told you why.");
-  if (mentionsAny(text, HEALTH) && hasQuestion(text)) lines.push(reveal("health", p.age && p.age > 65 ? "Blood pressure pills, that's it. No tobacco. Six foot, about 190." : "I'm healthy. No medications, never smoked.") ?? "Nothing's changed since you asked.");
-  if (mentionsAny(text, BUDGET) && hasQuestion(text)) lines.push(reveal("budget", p.hiddenPriorities.find((h) => /\$/.test(h)) ? "If it's under sixty a month I could probably live with it." : "Something I can keep up with for good — not a big number.") ?? "I said what I could do.");
-  if (mentionsAny(text, ["priority", "cover the burial", "leave money", "both"]) && hasQuestion(text)) lines.push(reveal("priority", "Both, I suppose. Mostly I don't want Linda stuck with a bill.") ?? "Both.");
+  if (asksAbout(text, ["coverage", "policy in place", "have any", "anything in place", "insurance"]) && st.agentTurns > 1) lines.push(reveal("coverage", p.currentSolution) ?? "I told you what I have.");
+  if (asksAbout(text, BENEFICIARY)) lines.push(reveal("beneficiary", p.hiddenPriorities[0]?.includes("Linda") ? "Linda. My wife. She handles everything anyway." : "My daughter, Maya. She's all I've got.") ?? "Same as I said — my family.");
+  if (asksAbout(text, WHY)) lines.push(reveal("why", p.businessPressure) ?? "I already told you why.");
+  if (asksAbout(text, HEALTH)) lines.push(reveal("health", p.age && p.age > 65 ? "Blood pressure pills, that's it. No tobacco. Six foot, about 190." : "I'm healthy. No medications, never smoked.") ?? "Nothing's changed since you asked.");
+  if (asksAbout(text, BUDGET)) lines.push(reveal("budget", p.hiddenPriorities.find((h) => /\$/.test(h)) ? "If it's under sixty a month I could probably live with it." : "Something I can keep up with for good — not a big number.") ?? "I said what I could do.");
+  if (asksAbout(text, ["priority", "cover the burial", "leave money", "both"])) lines.push(reveal("priority", "Both, I suppose. Mostly I don't want Linda stuck with a bill.") ?? "Both.");
   if (mentionsAny(text, PRICE) && !hasQuestion(text)) lines.push(st.budgetAsked ? "Okay. And that's the number every month, it doesn't change?" : "How much is that a month, exactly?");
   if (lines.length === 0) {
     if (hasQuestion(text)) lines.push(pickReply(["Go ahead.", "Depends what you mean.", "I suppose so.", "Mm-hm.", "What do you need to know?"], st, "generic-q"));

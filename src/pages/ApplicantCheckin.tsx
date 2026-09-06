@@ -29,7 +29,6 @@ type CheckinLoadResponse = {
     id: string;
     firstName: string;
     lastName: string;
-    state: string | null;
     email: string;
     licenseStatus: string | null;
     licenseProgress: string;

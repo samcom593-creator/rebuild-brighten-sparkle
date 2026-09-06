@@ -62,7 +62,6 @@ serve(async (req: Request) => {
         id,
         first_name,
         last_name,
-        state,
         email,
         license_status,
         license_progress,
@@ -104,7 +103,12 @@ serve(async (req: Request) => {
             id: application.id,
             firstName: application.first_name,
             lastName: application.last_name,
-            state: application.state,
+            // MP-448: `state` removed. applications.state holds a US state (WI,
+            // TX, FL...), this endpoint is verify_jwt=false and reads no
+            // credential, and ApplicantCheckin.tsx declared the field but
+            // rendered only firstName. Same defect as check-email-status: a
+            // person's location handed to an uncredentialed caller with no
+            // product asking for it.
             email: application.email,
             licenseStatus: application.license_status,
             licenseProgress: application.license_progress ?? "unlicensed",

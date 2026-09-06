@@ -31,7 +31,8 @@
  *      (a vacuous green is treated as a failure, never as a pass — MP-399)
  */
 import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -51,33 +52,60 @@ if (!existsSync(path.join(repoRoot, TEST_FILE))) {
   process.exit(1);
 }
 
+const tmp = mkdtempSync(path.join(os.tmpdir(), "bdb-"));
 let failed = 0;
-for (const tz of ZONES) {
-  const run = spawnSync(
-    "npx",
-    ["vitest", "run", "--reporter=basic", TEST_FILE],
-    { cwd: repoRoot, env: { ...process.env, TZ: tz }, encoding: "utf8" },
-  );
-  const out = `${run.stdout ?? ""}${run.stderr ?? ""}`;
+try {
+  for (const tz of ZONES) {
+    const report = path.join(tmp, `${tz.replace(/\//g, "_")}.json`);
 
-  // A run that passed but executed nothing is not evidence. Require a positive
-  // test count before believing exit code 0.
-  const passed = Number(out.match(/Tests\s+(\d+)\s+passed/)?.[1] ?? 0);
+    // Read the verdict from the JSON reporter, not from the human one. Under
+    // CI=true vitest forces ANSI colour on, so the pretty summary reads
+    // "Tests \e[22m \e[1m\e[32m5 passed" — a `Tests\s+(\d+)\s+passed` match
+    // silently found nothing and every zone reported "no test count observed".
+    // Locally, colour was off when piped and the same regex matched, so the
+    // guard was green on this machine and red in CI on the same commit.
+    const run = spawnSync(
+      "npx",
+      ["vitest", "run", "--reporter=json", `--outputFile=${report}`, TEST_FILE],
+      { cwd: repoRoot, env: { ...process.env, TZ: tz }, encoding: "utf8" },
+    );
+    const out = `${run.stdout ?? ""}${run.stderr ?? ""}`;
 
-  if (run.status === 0 && passed > 0) {
-    console.log(`ok    ${tz.padEnd(17)} ${passed} assertions swept 24 hourly instants`);
-    continue;
-  }
+    let summary = null;
+    try {
+      const j = JSON.parse(readFileSync(report, "utf8"));
+      if (typeof j.numTotalTests === "number") summary = j;
+    } catch {
+      summary = null; // absent or unparseable — treated as unproven below
+    }
 
-  failed++;
-  if (run.status === 0) {
-    console.error(`FAIL  ${tz.padEnd(17)} exited 0 but no test count was observed — treating as unproven, not as a pass.`);
-  } else {
-    console.error(`FAIL  ${tz.padEnd(17)} business-day bounds are wrong in this timezone.`);
-    for (const line of out.split("\n").filter((l) => /AssertionError|expected|→|✕/.test(l)).slice(0, 6)) {
-      console.error(`      ${line.trim()}`);
+    if (run.status === 0 && summary && summary.numPassedTests > 0 && summary.numFailedTests === 0) {
+      console.log(`ok    ${tz.padEnd(17)} ${summary.numPassedTests} assertions swept 24 hourly instants`);
+      continue;
+    }
+
+    failed++;
+    if (!summary) {
+      // A run that exits 0 having executed nothing is not evidence (MP-399).
+      console.error(`FAIL  ${tz.padEnd(17)} no machine-readable verdict was produced — unproven, not a pass.`);
+      for (const line of out.split("\n").filter(Boolean).slice(-6)) {
+        console.error(`      | ${line.trim()}`);
+      }
+    } else if (summary.numTotalTests === 0) {
+      console.error(`FAIL  ${tz.padEnd(17)} vitest matched 0 tests — the sweep did not run.`);
+    } else {
+      console.error(`FAIL  ${tz.padEnd(17)} business-day bounds are wrong in this timezone.`);
+      const msgs = (summary.testResults ?? [])
+        .flatMap((f) => f.assertionResults ?? [])
+        .filter((a) => a.status === "failed")
+        .flatMap((a) => [a.fullName, ...(a.failureMessages ?? [])]);
+      for (const line of msgs.join("\n").split("\n").slice(0, 8)) {
+        console.error(`      ${line.trim()}`);
+      }
     }
   }
+} finally {
+  rmSync(tmp, { recursive: true, force: true });
 }
 
 if (failed > 0) {

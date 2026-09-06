@@ -1,0 +1,280 @@
+#!/usr/bin/env node
+// check-credential-minting — MP-450 (2026-09-06)
+//
+// THE BUG THIS EXISTS FOR (MP-447):
+// supabase/functions/applicant-magic-link took an email address off the request
+// body, created the auth user if it did not exist, minted a Supabase NATIVE
+// magic link, and RETURNED that link in its response — under verify_jwt = false
+// and Access-Control-Allow-Origin: *, reading no credential of any kind. A bare
+// POST of {"email":"<any admin>"} came back with a working login URL for that
+// account. Sweeping the class found a second, worse live instance: simple-login
+// returned a magic-link tokenHash for any address, admins included, because its
+// password branches were dead code (password_required was true for 0 of 201
+// agents).
+//
+// That is account takeover, not a data leak. An email address is not a secret —
+// the site publishes staff names, applicants hand theirs over on a public form,
+// and submit-application lets anyone put an admin's address on a row.
+//
+// THE PROPERTY, STATED ONCE:
+//   A function that hands a MINTED AUTH CREDENTIAL back to its caller must not
+//   let an uncredentialed stranger choose whose credential it is.
+//
+// Three ways to satisfy that, any one of which is enough:
+//   CRED     — it reads a credential off the request before minting.
+//   SELECTOR — the account is chosen by an unguessable value the caller had to
+//              already possess, validated against the database (verify-magic-link
+//              looks its body `token` up in magic_login_tokens).
+//   PRIVGATE — it refuses to mint for an account holding admin/manager before
+//              minting (applicant-magic-link + simple-login after MP-447).
+//
+// ORDERING IS PART OF THE CONTRACT. A gate that sits BELOW the mint call reads
+// as present to grep and protects nothing, so every gate must appear at a lower
+// source offset than the mint it guards. MP-307 shipped a page-ordering probe
+// for exactly this reason: a bypassed gate looks intact.
+//
+// THE CONTRACT IS ABSOLUTE, NOT A COUNT:
+// deliberately no numeric baseline. MP-356/357 proved a count-only floor is
+// fungible — a real regression sits red until an unrelated pay-down launders it
+// green, and a brand-new endpoint with no gate at all can pass by allowlisting a
+// bystander. "Zero functions return a minted credential to a caller who proved
+// nothing" is a property, so there is nothing to trade it against.
+//
+// WHAT THIS GUARD DELIBERATELY DOES NOT CLAIM:
+//   - It does not grade functions that MAIL the minted link instead of
+//     returning it. send-password-reset generates a recovery action_link and
+//     puts it in Resend HTML, returning only {success:true}. The attacker never
+//     sees the credential, so it is out of scope, and a guard that flagged it
+//     would be red on correct code from its first run.
+//   - It does not grade account CREATION on its own. add-agent, agent-signup,
+//     manager-signup and the rest call auth.admin.createUser without returning a
+//     credential; unauthenticated account creation is a real and separate
+//     question, and pretending this gate covers it would be worse than leaving
+//     it named and open.
+//   - It is NOT only prevention, and the first cut of this comment said it was.
+//     On its first complete run this guard found a LIVE third instance:
+//     generate-magic-link read no credential, took `agentId` off the body, and
+//     returned a working login URL for that agent — with no privilege refusal at
+//     all, so it was the privileged half too. Closed in the same commit. The
+//     remaining 4 returners are defensible. No dollar figure is claimed: an
+//     account-takeover path that nobody is proven to have walked is a risk, not
+//     a loss, and MP-312 is the standing reminder about sizing an operand you
+//     have not measured.
+
+import { readdirSync, readFileSync, existsSync } from "node:fs";
+import { join } from "node:path";
+
+const ROOT = "supabase/functions";
+
+// Comments only — string bodies are load-bearing. The header name, the table
+// name and the role strings all live inside string literals, and MP-277 shipped
+// a scanner that blanked string bodies and consequently reported every call site
+// as "table name is a variable". Blanking comments alone is also what stops this
+// guard reading the bug out of its own header prose (MP-399).
+function stripComments(src) {
+  let out = "", i = 0;
+  const n = src.length;
+  while (i < n) {
+    const c = src[i];
+    if (c === "/" && src[i + 1] === "/") { while (i < n && src[i] !== "\n") { out += " "; i++; } }
+    else if (c === "/" && src[i + 1] === "*") { i += 2; out += "  "; while (i + 1 < n && !(src[i] === "*" && src[i + 1] === "/")) { out += " "; i++; } i += 2; out += "  "; }
+    else if (c === '"' || c === "'" || c === "`") {
+      const q = c; out += q; i++;
+      while (i < n) {
+        if (src[i] === "\\") { out += src.slice(i, i + 2); i += 2; continue; }
+        if (src[i] === q) break;
+        out += src[i]; i++;
+      }
+      out += q; i++;
+    } else { out += c; i++; }
+  }
+  return out;
+}
+
+// Mints a credential a bearer can log in with, BYPASSING any credential the
+// caller might hold. Only the auth.admin.* surface qualifies.
+//
+// signInWithPassword is deliberately NOT here, and the first cut of this guard
+// that included it went RED on correct code: simple-login's dead password
+// branch (line 191) sits above its privilege refusal (line 231), so the
+// ordering test called a properly gated function a violation. A password
+// sign-in cannot be an unguarded mint — the caller had to present the account's
+// password, which IS the credential. Caught by running the guard rather than
+// trusting the edit; a gate red on working code is a gate everybody learns to
+// skip.
+//
+// The SECOND mint shape was found only because the positive-control floor
+// refused to reconcile: the first cut counted 3 returners where the tree has 4.
+// Apex does not only use Supabase's native links — 12 functions issue their own
+// bearer token into magic_login_tokens, and /magic-login?token=<that> logs the
+// holder in through verify-magic-link. A row in that table IS a credential, so
+// writing one and handing it back is the same act as generateLink.
+const MINTS = [
+  /auth\s*\.\s*admin\s*\.\s*generateLink\s*\(/g,
+  /auth\s*\.\s*admin\s*\.\s*createSession\s*\(/g,
+  /\.from\s*\(\s*["'`]magic_login_tokens["'`]\s*\)[\s\S]{0,200}?\.insert\s*\(/g,
+];
+
+// Identifiers whose presence in a RESPONSE payload means the caller walked away
+// holding the credential itself.
+const CREDENTIAL_KEYS = /\b(action_link|actionLink|hashed_token|hashedToken|tokenHash|token_hash|access_token|accessToken|refresh_token|refreshToken|magicLink|magic_link|magicLinkUrl|loginLink|login_link|loginUrl|login_url|portalLink|portal_link|recoveryUrl|recovery_url)\b/;
+
+const GATES = {
+  CRED: [
+    /requireAuth\s*\(/g,
+    /requireSendAuth\s*\(/g,
+    /headers\s*\.\s*get\s*\(\s*["'`]\s*[Aa]uthorization/g,
+    /auth\s*\.\s*get(User|Claims)\s*\(/g,
+  ],
+  SELECTOR: [
+    /\.eq\s*\(\s*["'`](token|invite_token|inviteToken|invite_code|token_hash|magic_token|hash|code|nonce)["'`]/g,
+  ],
+  PRIVGATE: [
+    /\.from\s*\(\s*["'`]user_roles["'`]/g,
+    /\bis_admin\b/g,
+    /\bhas_role\s*\(/g,
+  ],
+};
+
+// Earliest source offset at which any pattern in the list matches, or Infinity.
+function firstOffset(pats, src) {
+  let best = Infinity;
+  for (const r of pats) {
+    r.lastIndex = 0;
+    const m = r.exec(src);
+    if (m && m.index < best) best = m.index;
+  }
+  return best;
+}
+
+// Every JSON.stringify(...) argument that is actually being RETURNED, extracted
+// by balanced parens so nested object literals and template strings come along
+// whole.
+//
+// The `new Response(` proximity test is load-bearing. Without it,
+// JSON.stringify(sendError) — an error being serialised into a log or a message
+// string — counted as a response payload, and send-agent-portal-login plus
+// send-bulk-portal-logins landed in the "unprovable" bucket. Both actually MAIL
+// the link through Resend and return only {success, error}, so they belong in
+// neither bucket. A notice nobody can act on costs what a false failure costs.
+function responsePayloads(src) {
+  const out = [];
+  const needle = "JSON.stringify(";
+  let at = 0;
+  while ((at = src.indexOf(needle, at)) !== -1) {
+    if (!/new\s+Response\s*\(\s*$/.test(src.slice(Math.max(0, at - 60), at))) { at += needle.length; continue; }
+    let i = at + needle.length, depth = 1;
+    const start = i;
+    while (i < src.length && depth > 0) {
+      const c = src[i];
+      if (c === "(") depth++;
+      else if (c === ")") depth--;
+      else if (c === '"' || c === "'" || c === "`") {
+        const q = c; i++;
+        while (i < src.length) {
+          if (src[i] === "\\") { i += 2; continue; }
+          if (src[i] === q) break;
+          i++;
+        }
+      }
+      i++;
+    }
+    out.push({ text: src.slice(start, i - 1), at });
+    at = i;
+  }
+  return out;
+}
+
+if (!existsSync(ROOT)) {
+  console.error(`check:credential-minting FAILED — ${ROOT} not found; refusing to pass on nothing`);
+  process.exit(1);
+}
+
+const violations = [];
+const unprovable = [];
+const passing = [];
+const weakSelector = [];
+let scanned = 0;
+
+for (const dir of readdirSync(ROOT).sort()) {
+  if (dir.startsWith("_")) continue;
+  const p = join(ROOT, dir, "index.ts");
+  if (!existsSync(p)) continue;
+  scanned++;
+  const code = stripComments(readFileSync(p, "utf8"));
+
+  const mintAt = firstOffset(MINTS, code);
+  if (mintAt === Infinity) continue;
+
+  // Does the credential leave in the response?
+  const payloads = responsePayloads(code);
+  const returnsCred = payloads.some((b) => CREDENTIAL_KEYS.test(b.text));
+
+  if (!returnsCred) {
+    // A Response body that is a bare identifier cannot be read by this scanner.
+    // Reported as its own outcome — never laundered into "passes" (MP-276).
+    const opaque = payloads.some((b) => /^\s*[A-Za-z_$][\w$]*\s*$/.test(b.text));
+    if (opaque && CREDENTIAL_KEYS.test(code)) unprovable.push(dir);
+    continue;
+  }
+
+  const gatesHeld = [];
+  for (const [name, pats] of Object.entries(GATES)) {
+    const gateAt = firstOffset(pats, code);
+    // Ordering is the contract: a gate below the mint guards nothing.
+    if (gateAt < mintAt) gatesHeld.push(name);
+  }
+
+  if (gatesHeld.length === 0) { violations.push(dir); continue; }
+
+  passing.push(`${dir} [${gatesHeld.join("+")}]`);
+
+  // Non-voting: a token lookup with no expiry/single-use check is a weaker
+  // selector than it looks. Printed so it cannot hide behind this green, never
+  // graded here — grading it would make this gate red for a reason it was not
+  // built to judge.
+  if (gatesHeld.length === 1 && gatesHeld[0] === "SELECTOR" && !/used_at|expires_at|expired_at|expiresAt/.test(code)) {
+    weakSelector.push(dir);
+  }
+}
+
+// A scan that silently matched nothing proves nothing (MP-399: a dead status
+// filter printed green for its entire life). Two floors, both hard.
+if (scanned < 100) {
+  console.error(`check:credential-minting FAILED — only ${scanned} functions scanned; expected the full tree. Refusing to vouch.`);
+  process.exit(1);
+}
+const returners = violations.length + passing.length;
+if (returners < 3) {
+  console.error(`check:credential-minting FAILED — the detector found only ${returners} function(s) returning a minted credential.`);
+  console.error("Measured 2026-09-06 there are 5: applicant-magic-link, simple-login, verify-magic-link,");
+  console.error("create-agent-from-leaderboard, generate-magic-link.");
+  console.error("A confident zero here means the DETECTOR broke, not that the codebase got safer. Fix the scanner before trusting a pass.");
+  process.exit(1);
+}
+
+if (violations.length > 0) {
+  console.error(`check:credential-minting FAILED — ${violations.length} function(s) return a minted auth credential to a caller who proved nothing:`);
+  for (const v of violations) console.error(`  supabase/functions/${v}/index.ts`);
+  console.error("");
+  console.error("Satisfy ONE of these, positioned ABOVE the mint call:");
+  console.error("  CRED     — read a credential off the request (requireAuth / Authorization header / auth.getUser).");
+  console.error("  SELECTOR — select the account by an unguessable value validated against the DB (.eq('token', ...)).");
+  console.error("  PRIVGATE — refuse admin/manager accounts before minting (query user_roles; unknown must refuse).");
+  console.error("");
+  console.error("Do NOT 'fix' this by setting verify_jwt = true — the gateway accepts the public anon key, which ships");
+  console.error("inside the browser bundle (MP-443). The gate has to live in the function.");
+  console.error("Mailing the link instead of returning it also satisfies this guard, and is the stronger fix.");
+  process.exit(1);
+}
+
+if (unprovable.length > 0) {
+  console.log(`note credential-minting: ${unprovable.length} function(s) mint and respond with an opaque identifier this scanner cannot read (not passed, not failed):`);
+  for (const u of unprovable) console.log(`  - ${u}`);
+}
+if (weakSelector.length > 0) {
+  console.log(`note credential-minting: ${weakSelector.length} function(s) rest on a DB token lookup with no expiry/single-use check visible:`);
+  for (const w of weakSelector) console.log(`  - ${w}`);
+}
+console.log(`ok credential-minting: ${returners} of ${scanned} edge functions return a minted credential; all ${returners} gate it before the mint`);
+for (const p of passing) console.log(`  - ${p}`);

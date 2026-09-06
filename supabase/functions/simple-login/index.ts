@@ -212,6 +212,40 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // MP-447 — NEVER hand a passwordless session to an account that can
+    // administer the business.
+    //
+    // MEASURED 2026-09-06 against prod: agents.password_required is true for
+    // 0 of 201 rows, so the two password branches above are dead code and this
+    // one is the ONLY live path. The caller supplies `identifier` (an email or
+    // phone) and nothing else, and the lookup runs against `profiles` (613
+    // rows), which includes admins and managers — so before this check, anyone
+    // who knew Sam's address could POST it and receive a session token.
+    //
+    // Ordinary agents keep instant auth exactly as it was; privileged accounts
+    // must use a real credential. This does NOT close the wider hole that any
+    // agent's session can be minted from their email alone — that fix is to
+    // mail the link to the address instead of returning it, which changes the
+    // Install.tsx flow and is Sam's product call.
+    const { data: privRoles, error: privErr } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", profile.user_id);
+    if (privErr) {
+      // Unknown coerces toward refusal — a failed role read must never read as
+      // "not privileged".
+      return new Response(
+        JSON.stringify({ error: "Could not verify account eligibility", code: "ELIGIBILITY_UNVERIFIABLE" }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    if ((privRoles ?? []).some((r: { role: unknown }) => ["admin", "manager"].includes(String(r.role)))) {
+      return new Response(
+        JSON.stringify({ error: "This account requires a password. Use the standard login.", code: "PASSWORD_REQUIRED_FOR_ROLE" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     // SIMPLE LOGIN (no password required) - generate OTP token
     const { data: otpData, error: otpError } = await supabaseAdmin.auth.admin.generateLink({
       type: "magiclink",

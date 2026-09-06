@@ -5,7 +5,6 @@ import {
   format,
   startOfMonth,
   startOfWeek,
-  subDays,
   subMonths,
   subWeeks,
 } from "date-fns";
@@ -21,12 +20,35 @@ function businessDayKey(date: Date = new Date()): string {
   return formatInTimeZone(date, BUSINESS_TIMEZONE, "yyyy-MM-dd");
 }
 
+/**
+ * Shift a business-day key (`yyyy-MM-dd`) by `days` calendar days.
+ *
+ * Works in key space on purpose. `toBusinessTime()` returns a *shifted* Date
+ * whose local fields read as Chicago wall-clock — it is not the instant it
+ * appears to be. Feeding one back into `businessDayKey()` / `formatInTimeZone()`
+ * applies the offset a second time, which silently moved the boundary by
+ * (chicagoOffset − browserOffset) and, on any browser east of Chicago, could
+ * land the "next day" back on today: a zero-width window, so every ALP query
+ * returned $0. Measured before the fix: 1/24 hours broken on Eastern, 5/24 on
+ * UTC (which is what turned CI red), 14/24 on Tokyo, 0/24 on Chicago.
+ *
+ * Anchored at noon so a DST transition (Chicago shifts at 02:00) can never move
+ * the calendar date.
+ */
+function shiftBusinessDayKey(key: string, days: number): string {
+  const anchor = fromZonedTime(`${key}T12:00:00`, BUSINESS_TIMEZONE);
+  return formatInTimeZone(addDays(anchor, days), BUSINESS_TIMEZONE, "yyyy-MM-dd");
+}
+
 function startOfBusinessDay(date: Date = new Date()): Date {
   return fromZonedTime(`${businessDayKey(date)}T00:00:00`, BUSINESS_TIMEZONE);
 }
 
 function endOfBusinessDay(date: Date = new Date()): Date {
-  return fromZonedTime(`${businessDayKey(addDays(toBusinessTime(date), 1))}T00:00:00`, BUSINESS_TIMEZONE);
+  return fromZonedTime(
+    `${shiftBusinessDayKey(businessDayKey(date), 1)}T00:00:00`,
+    BUSINESS_TIMEZONE,
+  );
 }
 
 function businessWeekStartDate(date: Date = new Date()): Date {
@@ -56,7 +78,7 @@ export function getTodayPST(): string {
  * Legacy name kept for compatibility. Returns N days ago in America/Chicago.
  */
 export function getDateDaysAgoPST(daysAgo: number): string {
-  return businessDayKey(subDays(toBusinessTime(), daysAgo));
+  return shiftBusinessDayKey(businessDayKey(), -daysAgo);
 }
 
 /**
@@ -88,7 +110,7 @@ export function formatDateString(date: Date): string {
 }
 
 export function getWeekEndPST(): string {
-  return businessDayKey(addDays(businessWeekStartDate(), 6));
+  return shiftBusinessDayKey(getWeekStartPST(), 6);
 }
 
 export function getMonthEndPST(): string {
@@ -153,8 +175,11 @@ export function getBusinessLastMonthBounds(date: Date = new Date()): { start: Da
 }
 
 export function getBusinessYearBounds(date: Date = new Date()): { start: Date; end: Date; startIso: string; endIso: string } {
-  // Year-to-date: Jan 1 of current year → now
-  const yearStartKey = format(date, "yyyy") + "-01-01";
+  // Year-to-date: Jan 1 of the current *business* year → now. `format(date)`
+  // read the browser's local year, so between 00:00 local and 00:00 Chicago on
+  // New Year's Eve an east-of-Chicago browser rolled YTD over early and showed
+  // an empty year.
+  const yearStartKey = formatInTimeZone(date, BUSINESS_TIMEZONE, "yyyy") + "-01-01";
   const start = fromZonedTime(`${yearStartKey}T00:00:00`, BUSINESS_TIMEZONE);
   const end = endOfBusinessDay(date);
   return {

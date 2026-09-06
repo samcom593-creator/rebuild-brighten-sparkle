@@ -16,7 +16,6 @@ import {
   getBusinessLastMonthBounds,
   getBusinessMonthBounds,
   getBusinessMonthProjectionContext,
-  getBusinessNow,
   getBusinessWeekBounds,
   getBusinessYearBounds,
   getMatchedPriorWeekBounds,
@@ -144,10 +143,17 @@ export { ACTIVE_PRODUCER_AP_THRESHOLD_7D, ACTIVE_PROMOTED_STAGES, ALP_FULL_NAME,
 export { LIVE_AGENT_DEAL_WINDOW_DAYS };
 export { BUSINESS_TIMEZONE };
 
-export function getLiveAgentCutoffIso(now: Date = getBusinessNow()): string {
-  const cutoff = new Date(now);
-  cutoff.setDate(cutoff.getDate() - LIVE_AGENT_DEAL_WINDOW_DAYS);
-  return cutoff.toISOString();
+/**
+ * Rolling cutoff instant for "live agent": now minus LIVE_AGENT_DEAL_WINDOW_DAYS.
+ *
+ * Takes a real instant. The default used to be `getBusinessNow()`, which returns
+ * a Date shifted so its *local* fields read as Chicago wall-clock — calling
+ * `.toISOString()` on it emits an instant off by (chicagoOffset − browserOffset),
+ * so the window boundary drifted by that many hours on every non-Chicago browser
+ * (measured: −1h Eastern, +2h Phoenix, −5h UTC, 0h Chicago).
+ */
+export function getLiveAgentCutoffIso(now: Date = new Date()): string {
+  return new Date(now.getTime() - LIVE_AGENT_DEAL_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
 }
 
 export function getMetricBounds(window: MetricWindow, customRange?: CustomMetricRange): MetricBounds {

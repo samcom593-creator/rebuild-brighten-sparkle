@@ -3,6 +3,7 @@
 // footer) live in the shared helper so every other sender gets them free.
 
 import { sendEmail } from "../_shared/email.ts";
+import { requireSendAuth } from "../_shared/require-send-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,6 +16,15 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "POST only" }), {
       status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  // MP-446: this forwards body.to into Resend on Sam's verified domain, so it
+  // was an open relay to any address on earth. Gate BEFORE reading the body.
+  const auth = await requireSendAuth(req);
+  if (!auth.ok) {
+    return new Response(JSON.stringify({ ok: false, error: auth.error }), {
+      status: auth.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 

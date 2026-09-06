@@ -11,6 +11,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { sendEmail, isUnsubscribed } from "../_shared/email.ts";
+import { requireSendAuth } from "../_shared/require-send-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -33,6 +34,15 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  // MP-446: recipients[] comes straight off the body and every one of them
+  // gets a real Resend send from Sam's verified domain. Gate BEFORE the body.
+  const auth = await requireSendAuth(req);
+  if (!auth.ok) {
+    return new Response(JSON.stringify({ error: auth.error }), {
+      status: auth.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
   try {
     const body = await req.json();

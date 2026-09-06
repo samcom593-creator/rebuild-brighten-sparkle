@@ -20,6 +20,8 @@ type ScenarioRow = { id: string; title: string; version: number; difficulty: num
 type SessionRow = { id: string; scenario_id: string; status: string; mode: string; provider: string; created_at: string; scorecard: { overallScore: number | null; passState: string } | null; scenario_snapshot: { title: string } };
 
 const DIFFICULTY = ["", "Foundation", "Standard", "Hard"];
+/** The scripted demo was written for this scenario (Walter Reyes); it runs the same engine that scores a live call. */
+const DEMO_SCENARIO_ID = "vet-fe-verification";
 
 /** Call Lab home: pick a scenario, check the mic, run the call. Scores land in the report. */
 export default function CallLab() {
@@ -49,7 +51,7 @@ export default function CallLab() {
   return (
     <div className="space-y-6">
       <PageHeader eyebrow="Training" eyebrowIcon={<Mic className="h-4 w-4" aria-hidden />} title="Call Lab" subtitle="A prospect who talks back. Run the call, get scored out of 100 with the exact moments that earned or cost points." actions={<ModeToggle mode={mode} onChange={setMode} />} />
-      <MicCheck />
+      <MicCheck onDemo={() => { const s = scenarios.data?.find((x) => x.id === DEMO_SCENARIO_ID); if (s) void start(s, "demo"); else toast.error("The demo scenario is not loaded yet."); }} demoReady={Boolean(scenarios.data?.some((x) => x.id === DEMO_SCENARIO_ID)) && starting === null} />
       {focus && preselect && <p className="rounded-lg border border-primary/40 bg-primary/5 px-4 py-2 text-sm">Drill loaded: this run opens straight into the objection you missed. Start the matching scenario below.</p>}
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {scenarios.isLoading && [0, 1, 2].map((n) => <Skeleton key={`scenario-skeleton-${n}`} className="h-56 rounded-xl" />)}
@@ -68,7 +70,6 @@ export default function CallLab() {
               </ul>
               <div className="mt-auto flex gap-2 pt-2">
                 <Button className="flex-1" onClick={() => start(s, "composed")} disabled={starting !== null}><Mic className="mr-2 h-4 w-4" aria-hidden />{starting === `${s.id}:composed` ? "Starting…" : "Start call"}</Button>
-                <Button variant="outline" onClick={() => start(s, "demo")} disabled={starting !== null} aria-label={`Watch a demo of ${s.title}`}><Play className="h-4 w-4" aria-hidden /></Button>
               </div>
             </CardContent>
           </Card>); })}
@@ -103,7 +104,7 @@ function ModeToggle({ mode, onChange }: { mode: "practice" | "coach"; onChange: 
 }
 
 /** One-line mic and speaker check. The meter is live analyser data, not an animation. */
-function MicCheck() {
+function MicCheck({ onDemo, demoReady }: { onDemo: () => void; demoReady: boolean }) {
   const [level, setLevel] = useState<number | null>(null);
   const [state, setState] = useState<"idle" | "checking" | "ok" | "denied">("idle");
   const stopRef = useRef<() => void>(() => undefined);
@@ -124,6 +125,7 @@ function MicCheck() {
       <Button size="sm" variant="outline" onClick={check} disabled={state === "checking"}><Mic className="mr-2 h-4 w-4" aria-hidden />{state === "checking" ? "Say something…" : "Check mic"}</Button>
       <div className="h-2 w-32 overflow-hidden rounded-full bg-muted" aria-hidden><div className="h-full bg-primary" style={{ width: `${Math.round((level ?? 0) * 100)}%` }} /></div>
       <Button size="sm" variant="outline" onClick={() => speakWithBrowser("This is the prospect's fallback voice. The live call uses a natural voice when available.", {})}><Volume2 className="mr-2 h-4 w-4" aria-hidden />Test speaker</Button>
+      <Button size="sm" variant="outline" onClick={onDemo} disabled={!demoReady}><Play className="mr-2 h-4 w-4" aria-hidden />Watch a demo</Button>
       <span className="text-muted-foreground">{state === "ok" ? "Microphone works." : state === "denied" ? "Microphone blocked. Allow it in the browser site settings." : speechRecognitionSupported() ? "Chrome or Edge, headphones on, quiet room." : "Live calls need Chrome or Edge. The demo runs anywhere."}</span>
     </div>
   );

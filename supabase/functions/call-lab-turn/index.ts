@@ -11,6 +11,9 @@ import { compileSnapshot, loadOwnedSession } from "../_shared/call-lab/session.t
 
 type Body = { sessionId?: string; turnId?: string; text?: string; elapsedMs?: number };
 
+/** A key that answers 401/403 is skipped for 15 minutes so a dead key cannot add a wasted round trip to every turn. */
+let llmDown: { kind: "anthropic" | "openai"; until: number } | null = null;
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return errorResponse("Method not allowed", 405);
@@ -27,9 +30,10 @@ serve(async (req) => {
     if (!transcript.some((t) => t.turnId === turnId)) transcript.push({ turnId, speaker: "agent", text });
     const state = (s.brain_state as BrainState | null) ?? { ...initialBrainState(seedFromString(s.id)), focus: s.focus_objection_id };
     const brain = await pickBrain();
-    const out = await brain.nextTurn({ scenario: compiled, transcript, latest: { turnId, text }, state, elapsedMs: Number(body.elapsedMs ?? 0) });
+    const out: Awaited<ReturnType<RulesBrain["nextTurn"]>> & { brain?: string } = await brain.nextTurn({ scenario: compiled, transcript, latest: { turnId, text }, state, elapsedMs: Number(body.elapsedMs ?? 0) });
     await auth.serviceClient.from("call_lab_sessions").update({ brain_state: out.state, status: "live", started_at: s.started_at ?? new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", s.id);
-    return jsonResponse({ turnId: `pt_${crypto.randomUUID().slice(0, 8)}`, text: out.text, events: out.events, interrupt: Boolean(out.interrupt), brain: brain.kind });
+    // Report the brain that actually answered: an LLM brain that fell back to rules must say "rules".
+    return jsonResponse({ turnId: `pt_${crypto.randomUUID().slice(0, 8)}`, text: out.text, events: out.events, interrupt: Boolean(out.interrupt), brain: out.brain ?? brain.kind });
   } catch (err) {
     if (err instanceof AuthError) return errorResponse(err.message, err.status, "unauthorized");
     const status = (err as { status?: number }).status ?? 500;
@@ -41,12 +45,13 @@ serve(async (req) => {
 /** LLM brains use the same contract when a working key is present; otherwise the deterministic engine answers. */
 async function pickBrain() {
   const anthropic = Deno.env.get("ANTHROPIC_API_KEY"); const openai = Deno.env.get("OPENAI_API_KEY");
-  if (anthropic && anthropic.length > 20) return { kind: "anthropic", nextTurn: (i: Parameters<RulesBrain["nextTurn"]>[0]) => llmTurn("anthropic", anthropic, i) };
-  if (openai && openai.length > 20) return { kind: "openai", nextTurn: (i: Parameters<RulesBrain["nextTurn"]>[0]) => llmTurn("openai", openai, i) };
+  const down = (k: "anthropic" | "openai") => llmDown?.kind === k && llmDown.until > Date.now();
+  if (anthropic && anthropic.length > 20 && !down("anthropic")) return { kind: "anthropic", nextTurn: (i: Parameters<RulesBrain["nextTurn"]>[0]) => llmTurn("anthropic", anthropic, i) };
+  if (openai && openai.length > 20 && !down("openai")) return { kind: "openai", nextTurn: (i: Parameters<RulesBrain["nextTurn"]>[0]) => llmTurn("openai", openai, i) };
   return new RulesBrain();
 }
 
-async function llmTurn(kind: "anthropic" | "openai", key: string, input: Parameters<RulesBrain["nextTurn"]>[0]) {
+async function llmTurn(kind: "anthropic" | "openai", key: string, input: Parameters<RulesBrain["nextTurn"]>[0]): Promise<Awaited<ReturnType<RulesBrain["nextTurn"]>> & { brain: "anthropic" | "openai" | "rules" }> {
   const system = compileProspectPrompt(input.scenario);
   const msgs = input.transcript.map((t) => ({ role: t.speaker === "agent" ? "user" : "assistant", content: t.text }));
   if (!msgs.length || msgs[0].role !== "user") msgs.unshift({ role: "user", content: "(The trainee has just dialed. Answer the phone in character.)" });
@@ -58,16 +63,18 @@ async function llmTurn(kind: "anthropic" | "openai", key: string, input: Paramet
       const j = await r.json() as { content: { type: string; text?: string; name?: string; input?: Record<string, unknown> }[] };
       const text = j.content.filter((c) => c.type === "text").map((c) => c.text ?? "").join(" ").trim();
       const events = toolEvents(j.content.filter((c) => c.type === "tool_use").map((c) => ({ name: c.name ?? "", input: c.input ?? {} })));
-      return { text: text || "Go on.", events, state: { ...input.state, agentTurns: input.state.agentTurns + 1, phase: events.some((e) => e.tool === "end_scenario") ? "ended" : input.state.phase } };
+      return { text: text || "Go on.", events, brain: "anthropic", state: { ...input.state, agentTurns: input.state.agentTurns + 1, phase: events.some((e) => e.tool === "end_scenario") ? "ended" : input.state.phase } };
     }
     const r = await fetch("https://api.openai.com/v1/responses", { method: "POST", headers: { Authorization: `Bearer ${key}`, "content-type": "application/json" }, body: JSON.stringify({ model: Deno.env.get("OPENAI_PROSPECT_MODEL") ?? "gpt-5.2", instructions: system, input: msgs, tools: PROSPECT_TOOLS.map((t) => ({ type: "function", name: t.name, description: t.description, parameters: t.parameters })), max_output_tokens: 300 }), signal: AbortSignal.timeout(25_000) });
     if (!r.ok) throw new Error(`openai ${r.status}`);
     const j = await r.json() as { output_text?: string; output: { type: string; name?: string; arguments?: string }[] };
     const events = toolEvents(j.output.filter((o) => o.type === "function_call").map((o) => { let input: Record<string, unknown> = {}; try { input = JSON.parse(o.arguments ?? "{}"); } catch { /* empty-catch-allow:malformed-tool-arguments-from-the-model-are (malformed tool arguments from the model are treated as no arguments; the rules brain still runs) */ } return { name: o.name ?? "", input }; }));
-    return { text: (j.output_text ?? "").trim() || "Go on.", events, state: { ...input.state, agentTurns: input.state.agentTurns + 1, phase: events.some((e) => e.tool === "end_scenario") ? "ended" : input.state.phase } };
+    return { text: (j.output_text ?? "").trim() || "Go on.", events, brain: "openai", state: { ...input.state, agentTurns: input.state.agentTurns + 1, phase: events.some((e) => e.tool === "end_scenario") ? "ended" : input.state.phase } };
   } catch (err) {
-    console.warn(JSON.stringify({ fn: "call-lab-turn", brain: kind, fallback: "rules", error: err instanceof Error ? err.message : String(err) }));
-    return fallback.nextTurn(input);
+    const msg = err instanceof Error ? err.message : String(err);
+    if (/\b(401|403)\b/.test(msg)) llmDown = { kind, until: Date.now() + 15 * 60_000 };
+    console.warn(JSON.stringify({ fn: "call-lab-turn", brain: kind, fallback: "rules", error: msg }));
+    return { ...(await fallback.nextTurn(input)), brain: "rules" };
   }
 }
 function merge(msgs: { role: string; content: string }[]) { const out: { role: string; content: string }[] = []; for (const m of msgs) { const l = out[out.length - 1]; if (l && l.role === m.role) l.content += `\n${m.content}`; else out.push({ ...m }); } return out; }

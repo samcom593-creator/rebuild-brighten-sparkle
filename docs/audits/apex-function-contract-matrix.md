@@ -1,11 +1,11 @@
 # APEX Function Contract Matrix
 
-Generated: 2026-09-06T04:14:23.727Z
+Generated: 2026-09-06T20:26:56.770Z
 Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 
 ## Inventory Summary
 
-- Total Local Edge Functions: **256**
+- Total Local Edge Functions: **257**
 - Configured in `config.toml`: **258**
 - Invoked Edge Functions in Source: **102**
 - Invoked RPC Calls in Source: **148**
@@ -71,7 +71,7 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 | `create-agent-from-leaderboard` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `create-lead-checkout` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `create-new-agent-account` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `daily-brief` | NO | Yes | `false` | Authenticated JWT | DEBT: no local source; public but not allowlisted |
+| `daily-brief` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `dedupe-aged-leads` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `detect-dropped-leads` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `detect-duplicates` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |

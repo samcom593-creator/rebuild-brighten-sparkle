@@ -1,7 +1,7 @@
 {
   "_why": "Floor for check-maybesingle-nonunique.mjs, keyed per file+table+filter so a regression in one file cannot be offset by a pay-down in another. No line numbers: they shift under unrelated edits. See MP-356 in the guard header.",
-  "_generated_from_catalog": "2026-08-29T23:04:50Z",
-  "total": 59,
+  "_generated_from_catalog": "2026-09-04T22:13:02Z",
+  "total": 58,
   "sites": {
     "src/components/dashboard/AddAgentModal.tsx::agents(user_id)": 1,
     "src/components/dashboard/AgentLinkConnectionPrompt.tsx::agents(user_id)": 1,
@@ -39,7 +39,6 @@
     "supabase/functions/check-comeback-milestones/index.ts::plaque_awards(agent_id,milestone_type)": 1,
     "supabase/functions/check-daily-awards/index.ts::plaque_awards(agent_id,milestone_type)": 3,
     "supabase/functions/check-daily-awards/index.ts::plaque_awards(milestone_date,milestone_type)": 1,
-    "supabase/functions/check-email-status/index.ts::agents(user_id)": 1,
     "supabase/functions/check-streak-milestones/index.ts::plaque_awards(agent_id,milestone_type)": 1,
     "supabase/functions/check-team-milestones/index.ts::plaque_awards(milestone_date,milestone_type)": 1,
     "supabase/functions/consume-invite-token/index.ts::agents(user_id)": 1,

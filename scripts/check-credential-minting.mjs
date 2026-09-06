@@ -179,6 +179,46 @@ function firstOffset(pats, src) {
 // send-bulk-portal-logins landed in the "unprovable" bucket. Both actually MAIL
 // the link through Resend and return only {success, error}, so they belong in
 // neither bucket. A notice nobody can act on costs what a false failure costs.
+// MP-454: a credential NAME inside a string literal is not a credential.
+// check:credential-minting went red on send-password-reset for
+// `type === "magic_link" ? ... : ...` — a discriminator choosing which uniform
+// message to render, which is MP-453's enumeration-oracle FIX. Nothing is
+// returned; the link is mailed. Same family as MP-277: matching a name-shaped
+// token inside a string literal instead of in value position. The guard shipped
+// 13 minutes before the code that tripped it, and the false red then hid behind
+// an earlier failure in the verify:core && chain for 6 commits.
+//
+// A quoted KEY is still a credential being handed over — { "magic_link": link }
+// must keep firing — so a literal in apparent key position (closing quote
+// followed by `:`) is preserved and every other literal has its body blanked.
+// A ternary branch string is also followed by `:` and is therefore preserved:
+// that errs toward ALARM, which is the direction a security guard should fail
+// when its operand is ambiguous (MP-282).
+function blankStringValues(text) {
+  let out = "", i = 0;
+  const n = text.length;
+  while (i < n) {
+    const c = text[i];
+    if (c === '"' || c === "'" || c === "`") {
+      const q = c;
+      let j = i + 1, body = "";
+      while (j < n) {
+        if (text[j] === "\\") { body += text.slice(j, j + 2); j += 2; continue; }
+        if (text[j] === q) break;
+        body += text[j]; j++;
+      }
+      const rest = text.slice(j + 1);
+      const isKey = /^\s*:/.test(rest);
+      out += q + (isKey ? body : " ".repeat(body.length)) + q;
+      i = j + 1;
+      if (i <= n) i = j + 1;
+      continue;
+    }
+    out += c; i++;
+  }
+  return out;
+}
+
 function responsePayloads(src) {
   const out = [];
   const needle = "JSON.stringify(";
@@ -283,7 +323,7 @@ for (const dir of readdirSync(ROOT).sort()) {
 
   // Does the credential leave in the response?
   const payloads = responsePayloads(code);
-  const returnsCred = payloads.some((b) => CREDENTIAL_KEYS.test(b.text));
+  const returnsCred = payloads.some((b) => CREDENTIAL_KEYS.test(blankStringValues(b.text)));
 
   if (!returnsCred) {
     // A Response body that is a bare identifier cannot be read by this scanner.

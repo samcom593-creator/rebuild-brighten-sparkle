@@ -22,6 +22,11 @@ fi
 # Explicit allowlist of endpoints that are intentionally verify_jwt = false
 # because they verify HMAC signatures/secrets in-code or serve public forms/feeds.
 PUBLIC_ALLOWLIST=(
+  # daily-brief: verifies Bearer apex_bot_token in-code (MP-443). It CANNOT be
+  # verify_jwt=true: its only caller is pg_cron apex-daily-brief-7am-ct sending a
+  # 64-char hex token, not a JWT — and the gateway accepts the public anon key
+  # anyway, so verify_jwt would not be a boundary for a service-role endpoint.
+  "daily-brief"
   "consume-invite-token"
   "ics-feed"
   "submit-application"

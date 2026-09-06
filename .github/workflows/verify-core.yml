@@ -101,10 +101,17 @@ jobs:
       - name: Run unit tests (vitest, 999 tests / 100 files)
         run: npm test
 
-      - name: Run verify:core (5 checks + tsc + build)
+      - name: Run verify:core (full roster, every failure reported)
         # Mirrors the local pre-commit hook chain so a --no-verify or
         # fresh-clone-without-prepare push still gets caught on origin.
-        run: npm run verify:core
+        # MP-456: the non-masking entry. `verify:core` is an && chain, so it
+        # stopped at the FIRST red check and left every later one UNRUN while
+        # the log named a single cause (26 checks masked across 6 commits on
+        # 2026-09-06). verify:core:all runs the SAME roster -- parsed out of
+        # verify:core itself, so it cannot drift -- and reports every failure.
+        # Graded by check:verify-core-nonmasking; do not revert this to the
+        # raw chain, that guard will fail the build if you do.
+        run: npm run verify:core:all
 
       - name: Post failure summary
         if: failure()

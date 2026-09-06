@@ -19,6 +19,53 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    const supabaseClient = createClient(
+      SUPABASE_URL,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
+
+    // Gate BEFORE the body is read and long before a token is minted or mailed.
+    // This endpoint mints a 24h magic_login_tokens row for a CALLER-NAMED agent
+    // and mails it to that agent's manager. Its only precondition, agentId, is
+    // published: resolve-ref-slug is public by design and hands an agent_id to
+    // any unauthenticated caller for any of the 116 active ref_slugs. So until
+    // this gate, the entire internet could mint-and-mail against 78 agents.
+    // Both UI callers (ApplicationDetailSheet.tsx:508, AgentQuickEditDialog.tsx:987)
+    // already render their button only under useAuth().isAdmin, and isAdmin is
+    // hasRole("admin") off public.user_roles -- the same table has_role() reads
+    // -- so admin-only is what the product already enforced client-side and
+    // breaks no caller. There are ZERO server-side invokers. (MP-455)
+    const authHeader = req.headers.get("Authorization") ?? "";
+    if (!authHeader.startsWith("Bearer ")) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const { data: authData, error: authError } = await supabaseClient.auth.getUser(
+      authHeader.slice(7)
+    );
+    if (authError || !authData?.user?.id) {
+      // The anon key that ships in the browser bundle lands here: it is a valid
+      // apikey but carries no user, so getUser returns none and this refuses.
+      return new Response(
+        JSON.stringify({ success: false, error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const { data: callerRoles, error: roleError } = await supabaseClient
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", authData.user.id);
+    // Unknown coerces toward refusal -- a failed role read must never read as
+    // "is an admin" (MP-447).
+    if (roleError || !(callerRoles ?? []).some((r: { role: unknown }) => String(r.role) === "admin")) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Administrator access required" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const { agentId } = await req.json();
 
     if (!agentId) {
@@ -27,11 +74,6 @@ const handler = async (req: Request): Promise<Response> => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    const supabaseClient = createClient(
-      SUPABASE_URL,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-    );
 
     // Get agent details
     const { data: agent, error: agentError } = await supabaseClient

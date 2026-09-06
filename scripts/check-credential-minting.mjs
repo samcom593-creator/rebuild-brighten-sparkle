@@ -303,7 +303,12 @@ const weakSelector = [];
 const MAIL_UNADJUDICATED = new Set([
   "notify-set-goals",
   "send-course-enrollment-email",
-  "send-login-to-manager",
+  // send-login-to-manager was adjudicated and GATED admin-only in MP-455, so it
+  // is removed from this set rather than left to pass on a name. Both UI callers
+  // already required isAdmin client-side and there are zero server-side
+  // invokers, so the gate broke nothing. Removing the name TIGHTENS this guard:
+  // the function must now satisfy CRED/SELECTOR/PRIVGATE above the mint on its
+  // own merits, and a revert goes red (mutation-proven).
   "send-password-reset",
 ]);
 const mailViolations = [];

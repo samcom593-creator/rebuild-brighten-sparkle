@@ -45,6 +45,58 @@ const handler = async (req: Request): Promise<Response> => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
+    // MP-451: ADMIN ONLY, and the gate sits above the body read because the
+    // body is not what makes this dangerous. Two things were reachable with no
+    // credential at all (config.toml sets verify_jwt = false):
+    //   1. dry_run:true returned the ENTIRE active roster — agent_id, full
+    //      name, email and employment status for 103 people — and sends no
+    //      mail, so it left no trace in any mail log. Proven live pre-fix:
+    //      HTTP 200, count 103, from a POST carrying no Authorization header,
+    //      while gated siblings returned 401 to the identical request.
+    //   2. An absent or unparseable body is the documented "send to all
+    //      eligible" form, so one bare POST mails 103 real 24h login links
+    //      from Sam's verified Resend domain and mints 206 magic_login_tokens
+    //      rows. That is the MP-446 cost model (deliverability burn on the
+    //      domain that carries genuine onboarding mail), with a live
+    //      credential store an attacker can inflate at will on top.
+    //
+    // Admin, unlike the single-agent sibling: mailing the whole roster and
+    // reading it back are not manager operations, and the non-CRM home of this
+    // call is AgentManagement.
+    const authHeader = req.headers.get("Authorization") ?? "";
+    if (!authHeader.startsWith("Bearer ")) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(
+      authHeader.slice(7)
+    );
+    if (authError || !authData?.user?.id) {
+      // The anon key that ships in the browser bundle lands here: it is a valid
+      // apikey but carries no user, so getUser returns none and this refuses.
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const { data: callerRoles, error: roleError } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", authData.user.id);
+    // Unknown coerces toward refusal — a failed role read must never read as
+    // "is an admin" (MP-447).
+    if (
+      roleError ||
+      !(callerRoles ?? []).some((r: { role: unknown }) => String(r.role) === "admin")
+    ) {
+      return new Response(
+        JSON.stringify({ error: "Administrator access required" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // 2026-09-02 (MP-390): the body was never read. AgentManagement passed
     // `agent_ids` for a hand-picked selection and this function mailed EVERY
     // non-deactivated agent anyway — "select 3, send" reached ~100 people.

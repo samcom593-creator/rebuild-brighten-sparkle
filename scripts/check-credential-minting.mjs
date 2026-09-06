@@ -119,6 +119,19 @@ const MINTS = [
 // holding the credential itself.
 const CREDENTIAL_KEYS = /\b(action_link|actionLink|hashed_token|hashedToken|tokenHash|token_hash|access_token|accessToken|refresh_token|refreshToken|magicLink|magic_link|magicLinkUrl|loginLink|login_link|loginUrl|login_url|portalLink|portal_link|recoveryUrl|recovery_url)\b/;
 
+// MP-451: a minted credential that is MAILED instead of returned is still a
+// credential minted for a caller-named target. send-agent-portal-login and
+// send-bulk-portal-logins both wrote a magic_login_tokens row and mailed the
+// link while reading no caller credential at all, and BOTH were invisible to
+// the returns-a-credential test above — the guard shipped green over them the
+// day they were found. Weaker than the returner class (the link lands in the
+// agent's own inbox, not the attacker's) so it is graded and reported
+// SEPARATELY, never folded into the returner count.
+const MAILS = [
+  /resend\s*\.\s*emails\s*\.\s*send\s*\(/g,
+  /\bsendEmail\s*\(/g,
+];
+
 const GATES = {
   CRED: [
     /requireAuth\s*\(/g,
@@ -190,10 +203,63 @@ if (!existsSync(ROOT)) {
   process.exit(1);
 }
 
+// The mint is frequently written as a top-level helper (generateMagicToken) and
+// CALLED from inside the handler. A raw first-offset test then measures the
+// helper's DECLARATION, which is hoisted above every gate, and reports correctly
+// gated code as a violation — which is what this extension did on its first run,
+// against the two functions MP-451 had just proven gated 7/7 on live prod. A
+// gate red on working code is a gate everybody learns to skip, so the mint point
+// is the first place the credential can actually be written: a direct mint in
+// the handler, or the first CALL of the helper that performs one.
+function handlerStart(code) {
+  const m = /const\s+handler\s*=|serve\s*\(\s*async|Deno\s*\.\s*serve\s*\(/.exec(code);
+  return m ? m.index : 0;
+}
+function effectiveMintAt(code) {
+  const hs = handlerStart(code);
+  const offs = [];
+  for (const re of MINTS) { re.lastIndex = 0; let m; while ((m = re.exec(code)) !== null) offs.push(m.index); }
+  if (offs.length === 0) return Infinity;
+  let best = Infinity;
+  for (const off of offs) {
+    if (off >= hs) { best = Math.min(best, off); continue; }
+    // Mint sits above the handler => it is inside a helper. Grade its call site.
+    const before = code.slice(0, off);
+    const decl = [...before.matchAll(/function\s+([A-Za-z_$][\w$]*)\s*\(/g)].pop();
+    if (!decl) { best = Math.min(best, off); continue; }
+    const callRe = new RegExp("\\b" + decl[1] + "\\s*\\(", "g");
+    let c, callAt = Infinity;
+    while ((c = callRe.exec(code)) !== null) { if (c.index > off) { callAt = c.index; break; } }
+    best = Math.min(best, callAt === Infinity ? off : callAt);
+  }
+  return best;
+}
+
 const violations = [];
 const unprovable = [];
 const passing = [];
 const weakSelector = [];
+// Found by this extension on its first correct run, and NOT adjudicated by
+// MP-451 — so they are named here rather than blocked or laundered green. Keyed
+// by NAME, never by count: a count is fungible and would let a brand-new
+// ungated endpoint pass by absorbing one of these (MP-357 proved exactly that).
+// Any function not on this list violates immediately.
+//
+// These are not equivalent to each other and must not be cleared as a batch:
+// send-password-reset is plausibly public BY DESIGN (a logged-out user must be
+// able to request a reset), so demanding CRED on it could break real resets --
+// that one likely needs rate-limiting and a target-enumeration check, not a
+// gate. The other three are unexamined. Each needs its callers measured the way
+// MP-451 measured this pair before anything is changed.
+const MAIL_UNADJUDICATED = new Set([
+  "notify-set-goals",
+  "send-course-enrollment-email",
+  "send-login-to-manager",
+  "send-password-reset",
+]);
+const mailViolations = [];
+const mailPassing = [];
+const mailNamed = [];
 let scanned = 0;
 
 for (const dir of readdirSync(ROOT).sort()) {
@@ -203,7 +269,7 @@ for (const dir of readdirSync(ROOT).sort()) {
   scanned++;
   const code = stripComments(readFileSync(p, "utf8"));
 
-  const mintAt = firstOffset(MINTS, code);
+  const mintAt = effectiveMintAt(code);
   if (mintAt === Infinity) continue;
 
   // Does the credential leave in the response?
@@ -215,6 +281,20 @@ for (const dir of readdirSync(ROOT).sort()) {
     // Reported as its own outcome — never laundered into "passes" (MP-276).
     const opaque = payloads.some((b) => /^\s*[A-Za-z_$][\w$]*\s*$/.test(b.text));
     if (opaque && CREDENTIAL_KEYS.test(code)) unprovable.push(dir);
+
+    // Mint-and-mail: same ordering contract, separate ledger.
+    const mailAt = firstOffset(MAILS, code);
+    if (mailAt !== Infinity) {
+      const held = [];
+      for (const [name, pats] of Object.entries(GATES)) {
+        if (firstOffset(pats, code) < mintAt) held.push(name);
+      }
+      if (held.length === 0) {
+        if (MAIL_UNADJUDICATED.has(dir)) mailNamed.push(dir);
+        else mailViolations.push(dir);
+      }
+      else mailPassing.push(`${dir} [${held.join("+")}]`);
+    }
     continue;
   }
 
@@ -253,6 +333,27 @@ if (returners < 3) {
   process.exit(1);
 }
 
+// Same positive-control discipline as the returner floor: a confident zero here
+// means the mail detector broke, not that the codebase got safer.
+const mailers = mailViolations.length + mailPassing.length + mailNamed.length;
+if (mailers < 2) {
+  console.error(`check:credential-minting FAILED — the mint-and-mail detector found only ${mailers} function(s).`);
+  console.error("Measured 2026-09-06 there are at least 2: send-agent-portal-login, send-bulk-portal-logins.");
+  console.error("Fix the scanner before trusting a pass.");
+  process.exit(1);
+}
+
+if (mailViolations.length > 0) {
+  console.error(`check:credential-minting FAILED — ${mailViolations.length} function(s) mint an auth credential and MAIL it for a caller who proved nothing:`);
+  for (const v of mailViolations) console.error(`  supabase/functions/${v}/index.ts`);
+  console.error("");
+  console.error("The link lands in the target's inbox rather than the caller's, so this is not a direct");
+  console.error("takeover — but it is an unauthenticated outbound trigger on Sam's verified sending domain,");
+  console.error("and it writes live credential rows on demand. Same remedy, positioned ABOVE the mint:");
+  console.error("  CRED / SELECTOR / PRIVGATE (see below).");
+  process.exit(1);
+}
+
 if (violations.length > 0) {
   console.error(`check:credential-minting FAILED — ${violations.length} function(s) return a minted auth credential to a caller who proved nothing:`);
   for (const v of violations) console.error(`  supabase/functions/${v}/index.ts`);
@@ -277,4 +378,10 @@ if (weakSelector.length > 0) {
   for (const w of weakSelector) console.log(`  - ${w}`);
 }
 console.log(`ok credential-minting: ${returners} of ${scanned} edge functions return a minted credential; all ${returners} gate it before the mint`);
+console.log(`   plus ${mailers} that mint and MAIL one; all ${mailers} gate it before the mint`);
+for (const m of mailPassing) console.log(`  - ${m} [mailed]`);
+if (mailNamed.length > 0) {
+  console.log(`   ${mailNamed.length} UNADJUDICATED mint-and-mail endpoint(s) — named, not cleared:`);
+  for (const m of mailNamed) console.log(`  ! supabase/functions/${m}/index.ts`);
+}
 for (const p of passing) console.log(`  - ${p}`);

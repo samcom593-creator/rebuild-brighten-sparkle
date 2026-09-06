@@ -43,12 +43,64 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { agentId }: SendLoginRequest = await req.json();
-
     const supabaseClient = createClient(
       SUPABASE_URL,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
+
+    // MP-451: this endpoint mints a 24h magic_login_tokens row for a
+    // caller-named agent and mails it, acting with the service-role key.
+    // config.toml sets verify_jwt = false, so before this gate a bare
+    // unauthenticated POST reached the handler. Proven live pre-fix: an absent
+    // Authorization header with a nonexistent agentId returned this function's
+    // OWN 404 "Agent not found" (its body validation, so the handler ran) while
+    // gated siblings generate-magic-link and create-agent-from-leaderboard
+    // returned 401 to the identical credential-less request.
+    //
+    // STAFF, not admin-only, and that is measured rather than assumed:
+    // /recruit-pipeline and /dashboard/team are ProtectedRoute WITHOUT
+    // requireAdmin and AgentPipeline branches on (isManager || isAdmin), so the
+    // 9 managers legitimately send a recruit their login link. Gating this to
+    // the 2 admins would break real recruiting work. The 509 plain agents are
+    // the population this refuses.
+    const authHeader = req.headers.get("Authorization") ?? "";
+    if (!authHeader.startsWith("Bearer ")) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const { data: authData, error: authError } = await supabaseClient.auth.getUser(
+      authHeader.slice(7)
+    );
+    if (authError || !authData?.user?.id) {
+      // The anon key that ships in the browser bundle lands here: it is a valid
+      // apikey but carries no user, so getUser returns none and this refuses.
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const { data: callerRoles, error: roleError } = await supabaseClient
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", authData.user.id);
+    // Unknown coerces toward refusal — a failed role read must never read as
+    // "is staff" (MP-447).
+    const SEND_LOGIN_STAFF_ROLES = new Set(["admin", "manager"]);
+    if (
+      roleError ||
+      !(callerRoles ?? []).some((r: { role: unknown }) =>
+        SEND_LOGIN_STAFF_ROLES.has(String(r.role))
+      )
+    ) {
+      return new Response(
+        JSON.stringify({ error: "Staff access required" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { agentId }: SendLoginRequest = await req.json();
 
     // Get agent details including manager and license_status.
     // license_status gates the Discord CTA in this email (LICENSED ONLY).

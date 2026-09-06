@@ -135,6 +135,15 @@ const MAILS = [
 const GATES = {
   CRED: [
     /requireAuth\s*\(/g,
+    // MP-452: the four patterns above all match a CALL, and the repo's other
+    // gating convention is not a call — createHandler({ requireAuth: true })
+    // makes the WRAPPER call requireAuth(req) before the handler body ever
+    // runs. 6 functions already gate this way, and to this guard every one of
+    // them read as ungated. That is the failure mode this file's own header
+    // warns about in the other direction: a gate that is red on correct code is
+    // a gate everybody learns to skip. Ordering still holds — the opts object
+    // is necessarily at a lower source offset than the handler that mints.
+    /requireAuth\s*:\s*true/g,
     /requireSendAuth\s*\(/g,
     /headers\s*\.\s*get\s*\(\s*["'`]\s*[Aa]uthorization/g,
     /auth\s*\.\s*get(User|Claims)\s*\(/g,

@@ -7,6 +7,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createHandler } from "../_shared/handler.ts";
+import { requireRole } from "../_shared/auth.ts";
 import { jsonResponse } from "../_shared/cors.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
@@ -19,9 +20,38 @@ Deno.serve(
   createHandler(
     {
       functionName: "notify-set-goals",
+      // MP-452: ADMIN ONLY. config.toml sets verify_jwt = false and this handler
+      // asked for no credential, so a POST carrying NO Authorization header at
+      // all reached the body. The body is not what makes it dangerous: an absent
+      // or unparseable body is caught (`.catch(() => ({}))`) and the run proceeds
+      // regardless, so ONE bare anonymous POST mints a live 24h portal
+      // magic_login_tokens row for every active agent and mails each of them the
+      // link from Sam's verified Resend domain. Measured 2026-09-06: 41 active
+      // agents, 40 with a resolvable email — 40 real login credentials per call.
+      //
+      // NOT probed live, deliberately: firing it to prove reachability would
+      // mail 40 people (hard limit #2). Reachability is proven instead from the
+      // identical config.toml stanza plus three sibling functions carrying the
+      // same `verify_jwt = false` — send-login-to-manager, send-course-enrollment
+      // -email and send-password-reset each answered a no-header POST with their
+      // own 400 input-validation error, which is the handler body replying.
+      //
+      // Admin, matching send-bulk-portal-logins (MP-451): mailing the whole
+      // roster is not a manager operation. Nothing regresses — this endpoint has
+      // ZERO callers in src/, in any other edge function, in any migration, and
+      // no cron.job row invokes it (checked 2026-09-06), so the gate can only
+      // refuse traffic that had no legitimate origin.
+      requireAuth: true,
       rateLimit: { maxRequests: 10, windowSeconds: 60 },
     },
-    async (req) => {
+    async (req, ctx) => {
+      // Above the body read and above the roster query: refusing late would
+      // still let an unprivileged caller enumerate the active roster's size.
+      // requireRole throws AuthError(403) when has_role errors OR returns false,
+      // so an unreadable role coerces toward refusal rather than toward admin
+      // (MP-447).
+      await requireRole(ctx.auth!, "admin");
+
       const supabase = createClient(supabaseUrl, serviceRoleKey, {
         auth: { persistSession: false },
       });

@@ -26153,6 +26153,163 @@ export type Database = {
         }
         Relationships: []
       }
+      call_lab_events: {
+        Row: {
+          at_ms: number
+          created_at: string
+          event_id: string
+          payload: Json
+          session_id: string
+          type: string
+        }
+        Insert: {
+          at_ms: number
+          created_at?: string
+          event_id: string
+          payload: Json
+          session_id: string
+          type: string
+        }
+        Update: {
+          at_ms?: number
+          created_at?: string
+          event_id?: string
+          payload?: Json
+          session_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_lab_events_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "call_lab_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      call_lab_scenarios: {
+        Row: {
+          claims: Json
+          data: Json
+          difficulty: number
+          id: string
+          is_active: boolean
+          objections: Json
+          persona: Json
+          rubric: Json
+          title: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          claims: Json
+          data: Json
+          difficulty?: number
+          id: string
+          is_active?: boolean
+          objections: Json
+          persona: Json
+          rubric: Json
+          title: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          claims?: Json
+          data?: Json
+          difficulty?: number
+          id?: string
+          is_active?: boolean
+          objections?: Json
+          persona?: Json
+          rubric?: Json
+          title?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: []
+      }
+      call_lab_sessions: {
+        Row: {
+          audio: Json | null
+          brain_state: Json | null
+          created_at: string
+          duration_ms: number | null
+          end_reason: string | null
+          ended_at: string | null
+          eval_error: string | null
+          evaluator: string | null
+          focus_objection_id: string | null
+          id: string
+          mode: string
+          provider: string
+          scenario_id: string
+          scenario_snapshot: Json
+          scenario_version: number
+          scorecard: Json | null
+          started_at: string | null
+          status: string
+          tts: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          audio?: Json | null
+          brain_state?: Json | null
+          created_at?: string
+          duration_ms?: number | null
+          end_reason?: string | null
+          ended_at?: string | null
+          eval_error?: string | null
+          evaluator?: string | null
+          focus_objection_id?: string | null
+          id: string
+          mode?: string
+          provider?: string
+          scenario_id: string
+          scenario_snapshot: Json
+          scenario_version: number
+          scorecard?: Json | null
+          started_at?: string | null
+          status?: string
+          tts?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          audio?: Json | null
+          brain_state?: Json | null
+          created_at?: string
+          duration_ms?: number | null
+          end_reason?: string | null
+          ended_at?: string | null
+          eval_error?: string | null
+          evaluator?: string | null
+          focus_objection_id?: string | null
+          id?: string
+          mode?: string
+          provider?: string
+          scenario_id?: string
+          scenario_snapshot?: Json
+          scenario_version?: number
+          scorecard?: Json | null
+          started_at?: string | null
+          status?: string
+          tts?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_lab_sessions_scenario_id_fkey"
+            columns: ["scenario_id"]
+            isOneToOne: false
+            referencedRelation: "call_lab_scenarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       carriers: {
         Row: {
           active: boolean | null

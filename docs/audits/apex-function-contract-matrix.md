@@ -1,13 +1,13 @@
 # APEX Function Contract Matrix
 
-Generated: 2026-09-04T23:24:23.832Z
+Generated: 2026-09-06T04:14:23.727Z
 Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 
 ## Inventory Summary
 
-- Total Local Edge Functions: **253**
-- Configured in `config.toml`: **255**
-- Invoked Edge Functions in Source: **101**
+- Total Local Edge Functions: **256**
+- Configured in `config.toml`: **258**
+- Invoked Edge Functions in Source: **102**
 - Invoked RPC Calls in Source: **148**
 - SQL Functions in Migrations: **508**
 
@@ -46,6 +46,9 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 | `bulk-send-licensing` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `calendly-backfill` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `calendly-webhook` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
+| `call-lab-evaluate` | Yes | Yes | `true` | Authenticated JWT | PASS |
+| `call-lab-tts` | Yes | Yes | `true` | Authenticated JWT | PASS |
+| `call-lab-turn` | Yes | Yes | `true` | Authenticated JWT | PASS |
 | `cfo-notify` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `check-abandoned-applications` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `check-churn-risk` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |

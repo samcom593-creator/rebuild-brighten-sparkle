@@ -779,3 +779,12 @@ verify_jwt = false
 
 [functions.slack-announce]
 verify_jwt = false
+
+[functions.call-lab-turn]
+verify_jwt = true
+
+[functions.call-lab-tts]
+verify_jwt = true
+
+[functions.call-lab-evaluate]
+verify_jwt = true

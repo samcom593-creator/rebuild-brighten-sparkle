@@ -86,7 +86,8 @@
     "https://esm.sh/date-fns@4.1.0": "30d4361e1d5f73511334b17104dcbee040874d16ba41d92d5ff6157040188434",
     "https://esm.sh/resend@2.0.0": "b222433340dc6655ed294a343815916b5a5ceeac999f07f627a5614a87cd9fe4",
     "https://esm.sh/resend@4.0.0": "304b5edd6b05ffb21d29b90b4b3afb4ed6b4ca1df4f7a4c9a177866f429ed88a",
-    "https://esm.sh/stripe@14.25.0?target=deno": "d51f866ea5a2e00948bbd0fbcd10e389f0a74811d5320874d08fde4ff54e6ccc"
+    "https://esm.sh/stripe@14.25.0?target=deno": "d51f866ea5a2e00948bbd0fbcd10e389f0a74811d5320874d08fde4ff54e6ccc",
+    "https://esm.sh/zod@4.5.4": "b05a568776213443d725f847f2ae6e2773330777938de8f75b44191257bc6df2"
   },
   "workspace": {
     "packageJson": {

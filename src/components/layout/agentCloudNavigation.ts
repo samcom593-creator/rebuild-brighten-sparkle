@@ -26,6 +26,7 @@ import {
   UserPlus,
   Users,
   WalletCards,
+  Mic,
 } from "lucide-react";
 
 import type { AccountMode } from "@/hooks/useAuth";
@@ -169,6 +170,7 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
       { label: "Field Course", href: "/dashboard/training/sales-course", icon: GraduationCap },
       { label: "Training Home", href: "/dashboard/training/library", icon: BookOpenCheck },
       { label: "Scripts", href: "/dashboard/scripts", icon: ScrollText },
+      { label: "Call Lab", href: "/dashboard/call-lab", icon: Mic },
     ],
   },
 

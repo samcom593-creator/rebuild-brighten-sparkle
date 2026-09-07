@@ -185,6 +185,7 @@
     "public.comp_rates",
     "public.contact_history",
     "public.content_cards",
+    "public.content_clips",
     "public.content_library",
     "public.contract_sends",
     "public.contract_templates",

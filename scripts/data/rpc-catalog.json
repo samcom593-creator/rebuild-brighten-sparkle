@@ -1314,6 +1314,18 @@
         "raw": ""
       }
     ],
+    "content_clips_upsert": [
+      {
+        "all": [
+          "p_rows"
+        ],
+        "required": [
+          "p_rows"
+        ],
+        "unnamed": false,
+        "raw": "p_rows jsonb"
+      }
+    ],
     "content_library_search_update": [
       {
         "all": [],

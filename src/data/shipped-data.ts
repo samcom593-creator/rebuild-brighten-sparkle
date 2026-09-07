@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "Launch Board v2. Four tabs that answer four questions: Today (what to post now, the Launch 4, what to record next, what still needs a clip), Board, Week, and Library — your whole Dropbox video archive, 4,070 clips, searchable, newest first, one tap to attach to a card or mint a card from a clip. Post opens the caption with a copy button and stamps the date; nothing auto-publishes.",
+    detail:
+      "Library is a metadata index (content_clips: path, name, folder, size, modified) of Dropbox YouTube/ (1,791 horizontal) and Reels/ (2,279 vertical). No bytes are copied and nothing is hydrated; every row links to the clip in your own Dropbox. The index refreshes on the existing 6-hourly mini snapshot job through content_clips_upsert — no new daemon. Attaching a clip marks the clip as on a card and moves an idea to Recorded.",
+    commit: "launch-board-v2",
+  },
+  {
+    ts: "today",
+    label:
       "Agencies under you, with the people inside them. Owner > Agencies lists every agency in the IMO and every producer who wrote business in the window — including the ones who never log in here — with policies, AP, comp, who they report through, and your override. The Leaderboard now names each producer's agency and filters by it.",
     detail:
       "Sub-agency producers sync from AgentLink into the production truth without ever creating a login, so every login-keyed view dropped them and the board never said which agency a row belonged to. New agency_roster_production RPC keys on production, not logins (30 days: the primary agency 10 producers / $95,539; Vantage 4 producers / $26,785 attributed plus $50,049 reported by the agency and not yet attributed — shown as its own labelled line, never mixed into a producer). leaderboard_board gained an agency column; nothing else about it changed. Totals come from the existing v_imo_by_agency.",

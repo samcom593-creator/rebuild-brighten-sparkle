@@ -2462,6 +2462,17 @@
       "title",
       "updated_at"
     ],
+    "content_clips": [
+      "folder",
+      "id",
+      "indexed_at",
+      "kind",
+      "modified_at",
+      "name",
+      "path",
+      "size_bytes",
+      "used_by_card"
+    ],
     "content_library": [
       "ai_analyzed",
       "ai_analyzed_at",

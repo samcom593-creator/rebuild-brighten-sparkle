@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      content_clips: {
+        Row: {
+          folder: string
+          id: string
+          indexed_at: string
+          kind: string
+          modified_at: string | null
+          name: string
+          path: string
+          size_bytes: number
+          used_by_card: string | null
+        }
+        Insert: {
+          folder: string
+          id?: string
+          indexed_at?: string
+          kind?: string
+          modified_at?: string | null
+          name: string
+          path: string
+          size_bytes?: number
+          used_by_card?: string | null
+        }
+        Update: {
+          folder?: string
+          id?: string
+          indexed_at?: string
+          kind?: string
+          modified_at?: string | null
+          name?: string
+          path?: string
+          size_bytes?: number
+          used_by_card?: string | null
+        }
+        Relationships: []
+      }
       account_claims: {
         Row: {
           created_at: string

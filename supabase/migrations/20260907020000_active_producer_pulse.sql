@@ -17,9 +17,9 @@ CREATE OR REPLACE VIEW public.v_producer_pulse AS
                    FROM today))::timestamp with time zone)::date) AS deals_mtd,
             COALESCE(sum(b.annual_premium) FILTER (WHERE b.posted_date >= date_trunc('month'::text, (( SELECT today.d
                    FROM today))::timestamp with time zone)::date), 0::numeric) AS ap_mtd
-           FROM agentlink_book b
+           FROM public.v_production_canonical b
              LEFT JOIN v_agent_canonical_map m ON m.agent_id = b.agent_id
-          WHERE b.is_dead IS NOT TRUE AND NOT fn_agent_is_roster_excluded(b.agent_id)
+          WHERE NOT fn_agent_is_roster_excluded(b.agent_id)
           GROUP BY (COALESCE(m.canonical_agent_id, b.agent_id))
         )
  SELECT r.id AS agent_id,
@@ -60,7 +60,7 @@ CREATE OR REPLACE VIEW public.v_producer_pulse AS
                    FROM generate_series((s.last_sale + 1)::timestamp with time zone, (( SELECT today.d
                            FROM today))::timestamp with time zone, '1 day'::interval) g(day)
                   WHERE EXTRACT(isodow FROM g.day) < 6::numeric)) >= 1 THEN 'quiet'::text
-                ELSE 'sold_today'::text
+                ELSE 'quiet'::text
             END
         END AS pulse
    FROM v_apex_roster r

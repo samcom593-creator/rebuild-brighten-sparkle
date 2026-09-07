@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useRealtimeTable } from "@/shared/realtime/useRealtimeTable";
 import { useAuth } from "@/hooks/useAuth";
+import { summarizeVantageDays, type VantageDay } from "@/lib/vantageProductionApi";
 
 // TOTAL IMO BY AGENCY — Agent Cloud's home-dashboard block. APEX (your direct
 // book) vs each sub-agency (Vantage = KJ Vaughn's team), rolled up from the real
@@ -49,6 +50,24 @@ export function ImoByAgency({
   const { isAdmin } = useAuth();
   const queryClient = useQueryClient();
   const exactWindow = Boolean(start && end);
+  const phoenixToday = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Phoenix", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+  const apiStart = start?.slice(0, 10) ?? `${phoenixToday.slice(0, 7)}-01`;
+  const apiEnd = end?.slice(0, 10) ?? phoenixToday;
+  const { data: vantageDays = [] } = useQuery({
+    enabled: isAdmin,
+    queryKey: ["vantage-api-production", apiStart, apiEnd],
+    staleTime: 60_000,
+    retry: 1,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("production_external_daily_snapshots" as never)
+        .select("business_date, reported_alp, reported_policies, updated_at, metadata")
+        .eq("source", "agentcloud_production_api").eq("agency_name", "Vantage Financial")
+        .gte("business_date", apiStart).lte("business_date", apiEnd);
+      if (error) throw error;
+      return (data ?? []) as unknown as VantageDay[];
+    },
+  });
+  const vantageApi = summarizeVantageDays(vantageDays);
   const { data: imo = [] } = useQuery({
     enabled: isAdmin,
     queryKey: ["imo-by-agency", start ?? "summary", end ?? "summary"],
@@ -74,6 +93,7 @@ export function ImoByAgency({
   });
 
   const invalidateProduction = () => {
+    queryClient.invalidateQueries({ queryKey: ["vantage-api-production"] }, { cancelRefetch: false });
     // MP-431: cancelRefetch:false — an in-flight heavy call is reused, never
     // aborted and re-issued while the database still runs the abandoned one.
     queryClient.invalidateQueries({ queryKey: ["imo-by-agency"] }, { cancelRefetch: false });
@@ -160,6 +180,23 @@ export function ImoByAgency({
                 <p className="mt-0.5 text-[11px] font-medium text-primary">
                   Your override: {a.owner_override_pct}% · {fmt(ovrOf(a))} {exactWindow ? "this window" : "MTD"}
                 </p>
+              )}
+              {a.agency === "Vantage Financial" && vantageDays.length > 0 && (
+                <details className="mt-2 text-xs text-muted-foreground">
+                  <summary className="cursor-pointer rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
+                    Agent Cloud · {fmt(vantageApi.placed)} placed · {vantageApi.producers.length} producers
+                  </summary>
+                  <p className="mt-2">API coverage: {vantageApi.start} – {vantageApi.end}. Verified {new Date(vantageApi.updatedAt).toLocaleString()}.</p>
+                  <p>These production totals are already included above. Placed premium is reported by Agent Cloud; it is not a commission payment.</p>
+                  <ul className="mt-2 space-y-1" aria-label="Vantage producer totals">
+                    {vantageApi.producers.map(producer => (
+                      <li key={producer.name} className="flex flex-wrap justify-between gap-x-3">
+                        <span>{producer.name}</span>
+                        <span>{producer.policies} policies · {fmt(producer.premium)} premium · {fmt(producer.placed)} placed</span>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
               )}
             </div>
           ))}

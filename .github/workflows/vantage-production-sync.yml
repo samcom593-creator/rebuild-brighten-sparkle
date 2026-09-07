@@ -1,0 +1,40 @@
+name: Vantage production sync
+
+on:
+  schedule:
+    - cron: '7,22,37,52 * * * *'
+    - cron: '23 5 * * *'
+  workflow_dispatch:
+    inputs:
+      reconcile:
+        description: 'Reconcile the last 31 days (not before September 2026)'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vantage-production-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.12.0'
+      - name: Fetch and reconcile production
+        env:
+          VANTAGE_PRODUCTION_API_KEY: ${{ secrets.VANTAGE_PRODUCTION_API_KEY }}
+          VANTAGE_SYNC_BOT_TOKEN: ${{ secrets.VANTAGE_SYNC_BOT_TOKEN }}
+          RECONCILE: ${{ github.event_name == 'workflow_dispatch' && inputs.reconcile || github.event.schedule == '23 5 * * *' }}
+        run: |
+          if [ "$RECONCILE" = "true" ]; then
+            node --experimental-strip-types scripts/sync-vantage-production.ts --reconcile
+          else
+            node --experimental-strip-types scripts/sync-vantage-production.ts
+          fi

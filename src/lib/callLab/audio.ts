@@ -94,10 +94,12 @@ export function speakWithBrowser(text: string, opts: { pitchHint?: "low" | "mid"
   const pref = voices.find((v) => /en[-_]US/i.test(v.lang) && /(Alex|Daniel|Samantha|Aaron|Google US English)/i.test(v.name)) ?? voices.find((v) => /en/i.test(v.lang));
   if (pref) u.voice = pref;
   let cancelled = false;
+  let settle: (value: "ended" | "cancelled") => void = () => undefined;
   const done = new Promise<"ended" | "cancelled">((resolve) => {
+    settle = resolve;
     u.onboundary = (e) => { if (text.length) opts.onProgress?.(Math.min(1, e.charIndex / text.length)); };
     u.onend = () => resolve(cancelled ? "cancelled" : "ended"); u.onerror = () => resolve(cancelled ? "cancelled" : "ended");
   });
   speechSynthesis.cancel(); speechSynthesis.speak(u);
-  return { done, cancel: () => { cancelled = true; speechSynthesis.cancel(); } };
+  return { done, cancel: () => { cancelled = true; speechSynthesis.cancel(); settle("cancelled"); } };
 }

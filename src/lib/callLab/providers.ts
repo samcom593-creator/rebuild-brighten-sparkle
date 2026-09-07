@@ -5,14 +5,14 @@ import { StreamPlayer, createMicGraph, speakWithBrowser, type MicGraph } from ".
 import { SpeechToText, speechRecognitionSupported } from "./stt";
 
 export type ConnectOptions = {
-  sessionId: string; mode: "practice" | "coach"; mediaStream: MediaStream | null; audioContext: AudioContext | null;
+  textOnly?: boolean; sessionId: string; mode: "practice" | "coach"; mediaStream: MediaStream | null; audioContext: AudioContext | null;
   onEvent: (ev: CallEvent) => void; startedAt: number; resumeFromTurnCount?: number;
   voice: { voiceId?: string; pitchHint?: "low" | "mid" | "high" }; openingLine: string; objectionIdsByKey: Record<string, string>;
 };
 export interface CallProvider {
   readonly kind: "demo" | "composed";
   connect(o: ConnectOptions): Promise<void>; disconnect(reason: EndReason): Promise<void>;
-  setMuted(m: boolean): void; interrupt(): void;
+  setMuted(m: boolean): void; interrupt(): void; sendText?(text: string): Promise<void>; dispose(): void;
   inputAnalyser: AnalyserNode | null; outputAnalyser: AnalyserNode | null; syntheticLevel: number; browserVoiceActive: boolean;
   simulateDisconnect?(): void; simulateReconnect?(): void;
 }
@@ -69,6 +69,7 @@ export class DemoProvider implements CallProvider {
   }
   private finish(reason: EndReason) { if (this.ended) return; this.ended = true; this.cancelSpeech?.(); this.emit({ type: "session.ended", reason, atMs: this.now() }); }
   async disconnect(reason: EndReason) { if (this.timer) clearTimeout(this.timer); this.finish(reason); }
+  dispose() { this.ended = true; if (this.timer) clearTimeout(this.timer); this.cancelSpeech?.(); }
   setMuted(m: boolean) { this.muted = m; if (m) this.cancelSpeech?.(); }
   interrupt() { if (this.cancelSpeech) { this.cancelSpeech(); this.emit({ type: "overlap.detected", initiator: "agent", startMs: this.now(), durationMs: 400 }); } }
   simulateDisconnect() { this.paused = true; this.cancelSpeech?.(); this.emit({ type: "connection.changed", state: "reconnecting", atMs: this.now(), detail: "Simulated network loss" }); }
@@ -90,27 +91,29 @@ export class ComposedProvider implements CallProvider {
   private ended = false; private muted = false; private seq = 0; private cur: string | null = null; private curStart = 0; private finals: string[] = []; private quiet: number | null = null;
   private prospect: { turnId: string; startMs: number; text: string } | null = null; private cancelSpeech: (() => void) | null = null; private inflight = false; private failures = 0;
   private prewarm: Promise<Response | null> | null = null;
+  private requests = new AbortController();
+  private pending: { turnId: string; text: string }[] = [];
   private emit(ev: CallEvent) { if (!this.ended) this.o?.onEvent(ev); }
   private now() { return Date.now() - (this.o?.startedAt ?? Date.now()); }
   async connect(o: ConnectOptions) {
     this.o = o; this.seq = o.resumeFromTurnCount ?? 0;
     this.emit({ type: "connection.changed", state: "connecting", atMs: this.now() });
-    if (!speechRecognitionSupported()) { this.emit({ type: "session.warning", code: "stt_unsupported", recoverable: false, message: "This browser cannot transcribe speech. Use Chrome or Edge, or run the demo.", atMs: this.now() }); this.emit({ type: "connection.changed", state: "failed", atMs: this.now(), detail: "speech recognition unsupported" }); return; }
-    if (!o.mediaStream || !o.audioContext) { this.emit({ type: "session.warning", code: "mic_missing", recoverable: true, message: "No microphone. Allow access and retry.", atMs: this.now() }); this.emit({ type: "connection.changed", state: "failed", atMs: this.now(), detail: "microphone missing" }); return; }
-    this.graph = createMicGraph(o.mediaStream, o.audioContext); this.inputAnalyser = this.graph.analyser;
-    this.player = new StreamPlayer(o.audioContext); this.outputAnalyser = this.player.analyser;
-    this.prewarm = this.fetchVoice(o.openingLine); // first audio is ready by the time the line is "answered"
+    if (!o.textOnly && !speechRecognitionSupported()) { this.emit({ type: "session.warning", code: "stt_unsupported", recoverable: false, message: "This browser cannot transcribe speech. Use Chrome or Edge, or run the demo.", atMs: this.now() }); this.emit({ type: "connection.changed", state: "failed", atMs: this.now(), detail: "speech recognition unsupported" }); return; }
+    if (!o.textOnly && (!o.mediaStream || !o.audioContext)) { this.emit({ type: "session.warning", code: "mic_missing", recoverable: true, message: "No microphone. Allow access and retry.", atMs: this.now() }); this.emit({ type: "connection.changed", state: "failed", atMs: this.now(), detail: "microphone missing" }); return; }
+    if (o.mediaStream && o.audioContext) { this.graph = createMicGraph(o.mediaStream, o.audioContext); this.inputAnalyser = this.graph.analyser; }
+    if (o.audioContext) { this.player = new StreamPlayer(o.audioContext); this.outputAnalyser = this.player.analyser; }
+    this.prewarm = o.textOnly ? null : this.fetchVoice(o.openingLine); // first audio is ready by the time the line is "answered"
     this.stt = new SpeechToText({
       onPartial: (t) => this.onPartial(t), onFinal: (t) => this.onFinal(t), onSpeechStart: () => this.onSpeechStart(), onSpeechEnd: () => undefined, onListening: () => undefined,
       onError: (code, fatal) => { this.emit({ type: "session.warning", code: `stt_${code}`, recoverable: !fatal, message: fatal ? "Microphone access was lost. Check browser permissions and retry." : `Speech recognition hiccup (${code}); listening again.`, atMs: this.now() }); if (fatal) this.emit({ type: "connection.changed", state: "failed", atMs: this.now(), detail: code }); },
     });
-    this.stt.start();
+    if (!o.textOnly) this.stt.start();
     this.emit({ type: "connection.changed", state: "connected", atMs: this.now(), detail: "Live voice" });
     if (!o.resumeFromTurnCount) await this.speak(o.openingLine, "pt_open", this.prewarm);
   }
   private startAgentTurn() { if (!this.cur) { this.seq += 1; this.cur = `at_${this.seq}`; this.curStart = this.now(); this.emit({ type: "speaker.changed", speaker: "agent", atMs: this.now() }); } }
   private onSpeechStart() { if (this.muted || this.ended) return; if (this.player?.playing || this.cancelSpeech) this.bargeIn(); this.startAgentTurn(); }
-  private onPartial(text: string) { if (this.muted || this.ended) return; if (this.player?.playing || this.cancelSpeech) this.bargeIn(); this.startAgentTurn(); this.emit({ type: "transcript.partial", speaker: "agent", turnId: this.cur!, text: [...this.finals, text].join(" ").trim(), atMs: this.now() }); this.arm(); }
+  private onPartial(text: string) { if (this.muted || this.ended) return; if (this.player?.playing || this.cancelSpeech) this.bargeIn(); this.startAgentTurn(); this.emit({ type: "transcript.partial", speaker: "agent", turnId: this.cur!, text: [...this.finals, text].join(" ").trim(), atMs: this.now() }); if (this.quiet) clearTimeout(this.quiet); }
   private onFinal(text: string) { if (this.muted || this.ended || !text) return; this.startAgentTurn(); this.finals.push(text); this.emit({ type: "transcript.partial", speaker: "agent", turnId: this.cur!, text: this.finals.join(" "), atMs: this.now() }); this.arm(); }
   /** A turn ends after 650ms without new speech results: fast enough to feel like a conversation, long enough not to cut a breath. */
   private arm() { if (this.quiet) clearTimeout(this.quiet); this.quiet = window.setTimeout(() => this.commit(), 650); }
@@ -123,18 +126,20 @@ export class ComposedProvider implements CallProvider {
     await this.ask(turnId, text);
   }
   private async ask(turnId: string, text: string) {
-    if (this.inflight || !this.o) return; this.inflight = true;
+    if (!this.o || this.ended) return;
+    if (this.inflight) { this.pending.push({ turnId, text }); return; }
+    this.inflight = true;
     let res: TurnResponse | null = null;
     for (let attempt = 0; attempt < 3 && !this.ended; attempt++) {
       try {
-        const r = await fetch(`${FUNCTIONS_URL}/call-lab-turn`, { method: "POST", headers: await authHeaders(), body: JSON.stringify({ sessionId: this.o.sessionId, turnId, text, elapsedMs: this.now() }) });
-        if (r.status === 409) { this.inflight = false; return; }
+        const r = await fetch(`${FUNCTIONS_URL}/call-lab-turn`, { method: "POST", headers: await authHeaders(), body: JSON.stringify({ sessionId: this.o.sessionId, turnId, text, elapsedMs: this.now() }), signal: AbortSignal.any([this.requests.signal, AbortSignal.timeout(35_000)]) });
+        if (r.status === 409) { this.inflight = false; this.emit({ type: "connection.changed", state: "failed", atMs: this.now(), detail: "This session is closed. Open its report or start a new practice." }); return; }
         if (!r.ok) throw new Error(`turn ${r.status}`);
         res = (await r.json()) as TurnResponse; break;
       } catch (e) { void e; this.failures += 1; if (attempt === 0) this.emit({ type: "connection.changed", state: "reconnecting", atMs: this.now(), detail: "Prospect unreachable; retrying" }); await new Promise((r) => setTimeout(r, 500 * (attempt + 1))); }
     }
-    this.inflight = false;
-    if (!res) { this.emit({ type: "connection.changed", state: "failed", atMs: this.now(), detail: "The prospect could not answer after three tries" }); return; }
+    if (this.ended) { this.inflight = false; return; }
+    if (!res) { this.inflight = false; this.emit({ type: "connection.changed", state: "failed", atMs: this.now(), detail: "The prospect could not answer after three tries" }); return; }
     if (this.failures) { this.failures = 0; this.emit({ type: "connection.changed", state: "connected", atMs: this.now(), detail: "Reconnected" }); }
     const atMs = this.now();
     for (const ev of res.events) {
@@ -142,29 +147,42 @@ export class ComposedProvider implements CallProvider {
       else if (ev.tool === "resolve_objection") this.emit({ type: "objection.resolved", objectionId: ev.objectionId, turnId, atMs });
       else if (ev.tool === "record_commitment") this.emit({ type: "commitment.recorded", turnId: res.turnId, atMs, summary: ev.summary });
     }
-    await this.speak(res.text, res.turnId, this.fetchVoice(res.text));
+    await this.speak(res.text, res.turnId, this.o?.textOnly ? null : this.fetchVoice(res.text));
     const end = res.events.find((e) => e.tool === "end_scenario");
-    if (end && end.tool === "end_scenario") { await new Promise((r) => setTimeout(r, 300)); this.finish(end.reason); }
+    if (end && end.tool === "end_scenario") { this.finish(end.reason); }
+    this.inflight = false;
+    const next = this.pending.shift();
+    if (next && !this.ended) await this.ask(next.turnId, next.text);
   }
   private async fetchVoice(text: string): Promise<Response | null> {
     if (!this.o) return null;
-    try { const r = await fetch(`${FUNCTIONS_URL}/call-lab-tts`, { method: "POST", headers: await authHeaders(), body: JSON.stringify({ sessionId: this.o.sessionId, text, voiceId: this.o.voice.voiceId }) }); return r.status === 200 ? r : null; } catch (e) { void e; return null; }
+    try { const r = await fetch(`${FUNCTIONS_URL}/call-lab-tts`, { method: "POST", headers: await authHeaders(), body: JSON.stringify({ sessionId: this.o.sessionId, text, voiceId: this.o.voice.voiceId }), signal: AbortSignal.any([this.requests.signal, AbortSignal.timeout(8000)]) }); return r.status === 200 ? r : null; } catch (e) { void e; return null; }
   }
   private async speak(text: string, turnId: string, voice: Promise<Response | null> | null) {
     if (this.ended || !text) return;
     const startMs = this.now(); this.prospect = { turnId, startMs, text };
     this.emit({ type: "speaker.changed", speaker: "prospect", atMs: startMs });
     this.emit({ type: "transcript.partial", speaker: "prospect", turnId, text, atMs: startMs });
+    if (this.o?.textOnly) { this.finalizeProspect(); return; }
     let spoke = false;
     const r = voice ? await voice : null;
-    if (r && this.player && !this.muted && !this.ended) { const out = await this.player.play(r); spoke = out !== "failed"; }
-    if (!spoke && !this.ended && !this.muted) { this.browserVoiceActive = true; const s = speakWithBrowser(text, { pitchHint: this.o?.voice.pitchHint, onProgress: (p) => { this.syntheticLevel = 0.3 + 0.5 * Math.abs(Math.sin(p * Math.PI * 7)); } }); this.cancelSpeech = s.cancel; await s.done; this.cancelSpeech = null; this.browserVoiceActive = false; this.syntheticLevel = 0; }
+    if (this.ended || this.prospect?.turnId !== turnId) return;
+    if (r && this.player && !this.ended) { const out = await this.player.play(r); spoke = out !== "failed"; }
+    if (!spoke && !this.ended) { this.browserVoiceActive = true; const s = speakWithBrowser(text, { pitchHint: this.o?.voice.pitchHint, onProgress: (p) => { this.syntheticLevel = 0.3 + 0.5 * Math.abs(Math.sin(p * Math.PI * 7)); } }); this.cancelSpeech = s.cancel; await s.done; this.cancelSpeech = null; this.browserVoiceActive = false; this.syntheticLevel = 0; }
     if (this.prospect?.turnId === turnId) this.finalizeProspect();
   }
   private finalizeProspect() { const t = this.prospect; if (!t) return; this.prospect = null; const endMs = this.now(); this.emit({ type: "transcript.final", speaker: "prospect", turnId: t.turnId, text: t.text, startMs: t.startMs, endMs }); this.emit({ type: "speaker.changed", speaker: "none", atMs: endMs }); }
-  private bargeIn() { const start = this.now(); this.player?.stop(); this.cancelSpeech?.(); this.cancelSpeech = null; this.browserVoiceActive = false; this.syntheticLevel = 0; this.emit({ type: "overlap.detected", initiator: "agent", startMs: start, durationMs: 300 }); this.finalizeProspect(); }
+  private bargeIn() { if (!this.prospect) return; const start = this.now(); this.player?.stop(); this.cancelSpeech?.(); this.cancelSpeech = null; this.browserVoiceActive = false; this.syntheticLevel = 0; this.emit({ type: "overlap.detected", initiator: "agent", startMs: start, durationMs: 300 }); this.finalizeProspect(); }
   private finish(reason: EndReason) { if (this.ended) return; this.emit({ type: "session.ended", reason, atMs: this.now() }); this.ended = true; this.teardown(); }
-  private teardown() { if (this.quiet) clearTimeout(this.quiet); this.stt?.stop(); this.stt = null; this.player?.stop(); this.cancelSpeech?.(); this.graph?.dispose(); this.graph = null; this.inputAnalyser = null; this.outputAnalyser = null; }
+  dispose() { this.ended = true; this.teardown(); }
+  async sendText(text: string) {
+    if (this.ended || !text.trim()) return;
+    this.bargeIn(); this.seq += 1;
+    const turnId = `at_${this.seq}`; const atMs = this.now();
+    this.emit({ type: "transcript.final", speaker: "agent", turnId, text: text.trim(), startMs: atMs, endMs: atMs });
+    await this.ask(turnId, text.trim());
+  }
+  private teardown() { this.requests.abort(); this.pending = []; if (this.quiet) clearTimeout(this.quiet); this.stt?.stop(); this.stt = null; this.player?.stop(); this.cancelSpeech?.(); this.graph?.dispose(); this.graph = null; this.inputAnalyser = null; this.outputAnalyser = null; }
   async disconnect(reason: EndReason) { this.finish(reason); }
   setMuted(m: boolean) { this.muted = m; for (const t of this.o?.mediaStream?.getAudioTracks() ?? []) t.enabled = !m; if (m) { if (this.quiet) clearTimeout(this.quiet); this.cur = null; this.finals = []; } }
   interrupt() { this.bargeIn(); }

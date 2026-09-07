@@ -46,7 +46,7 @@ describe("scoped production scoreboard", () => {
     expect(component).toContain('supabase.rpc("discord_deal_feed_health"');
     expect(component).toContain('f.status !== "healthy"');
     expect(component).toContain("Discord deal imports need attention:");
-    expect(component).toContain("Deals posted only in those chats are not on this board yet.");
+    expect(component).toContain("Discord-only deals may be missing. Agency totals received through the production API remain included.");
     expect(component).not.toContain("blockedFeeds.map((f) => (");
     expect(component).toContain("Deal-feed health could not be checked.");
     expect(component).toContain("void feed.refetch({ cancelRefetch: false })");

@@ -3,6 +3,7 @@
 // metrics, ask the evaluator for schema-bound evidence, then aggregate gates,
 // critical failures and coaching in code. The scorecard is written once; a
 // retry returns it unchanged.
+import { responseText } from "../_shared/call-lab/response-text.ts";
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { corsHeaders, errorResponse, jsonResponse } from "../_shared/cors.ts";
 import { AuthError, requireAuth } from "../_shared/auth.ts";
@@ -30,7 +31,8 @@ serve(async (req) => {
     const started = s.started_at ? new Date(s.started_at) : new Date(s.created_at);
     await svc.from("call_lab_sessions").update({ status: "evaluating", ended_at: s.ended_at ?? now.toISOString(), end_reason: reason, duration_ms: s.duration_ms ?? Math.max(0, now.getTime() - started.getTime()), updated_at: now.toISOString() }).eq("id", s.id);
 
-    const { data: evs } = await svc.from("call_lab_events").select("type, at_ms, payload").eq("session_id", s.id).order("at_ms", { ascending: true });
+    const { data: evs, error: transcriptError } = await svc.from("call_lab_events").select("type, at_ms, payload").eq("session_id", s.id).order("at_ms", { ascending: true });
+    if (transcriptError) throw new Error("Transcript could not be loaded; scoring paused");
     const events = (evs ?? []) as { type: string; at_ms: number; payload: Record<string, unknown> }[];
     const raw = events.filter((e) => e.type === "transcript.final").map((e, i) => ({ turnId: String(e.payload.turnId), speaker: e.payload.speaker as "agent" | "prospect", text: String(e.payload.text ?? ""), startMs: Number(e.payload.startMs ?? e.at_ms), endMs: Number(e.payload.endMs ?? e.at_ms), isFinal: true, seq: i }));
     const turns = normalizeTranscript(raw);
@@ -84,7 +86,7 @@ async function evaluate(input: EvaluatorInput): Promise<{ result: EvaluationResu
       const r = await fetch("https://api.openai.com/v1/responses", { method: "POST", headers: { Authorization: `Bearer ${openai}`, "content-type": "application/json" }, body: JSON.stringify({ model: Deno.env.get("OPENAI_EVALUATOR_MODEL") ?? "gpt-5.2", instructions: EVALUATOR_SYSTEM_PROMPT, input: user, text: { format: { type: "json_schema", name: "evaluation_result", strict: true, schema: strictify(evaluationJsonSchema()) } } }), signal: AbortSignal.timeout(90_000) });
       if (!r.ok) throw new Error(`openai ${r.status}`);
       const j = await r.json() as { output_text?: string };
-      const parsed = EvaluationResult.safeParse(JSON.parse(j.output_text ?? "{}"));
+      const parsed = EvaluationResult.safeParse(JSON.parse(responseText(j) || "{}"));
       if (parsed.success) return { result: parsed.data, evaluator: "openai" };
       throw new Error("openai result failed schema");
     }

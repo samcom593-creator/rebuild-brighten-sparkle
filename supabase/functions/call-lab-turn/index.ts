@@ -2,6 +2,7 @@
 // sends what the agent said; the server's prospect brain answers in character
 // and returns tool-like hints (objection surfaced/resolved, commitment, end).
 // Brain state and the frozen scenario live on the session row.
+import { responseText } from "../_shared/call-lab/response-text.ts";
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { corsHeaders, errorResponse, jsonResponse } from "../_shared/cors.ts";
 import { AuthError, requireAuth } from "../_shared/auth.ts";
@@ -25,13 +26,15 @@ serve(async (req) => {
     const s = await loadOwnedSession(auth.serviceClient, auth.userId, sessionId);
     if (!["created", "live"].includes(s.status)) return errorResponse("Session is not live", 409, "session_closed");
     const compiled = compileSnapshot(s.id, s.scenario_snapshot);
-    const { data: evs } = await auth.serviceClient.from("call_lab_events").select("payload").eq("session_id", s.id).eq("type", "transcript.final").order("at_ms", { ascending: true });
+    const { data: evs, error: transcriptError } = await auth.serviceClient.from("call_lab_events").select("payload").eq("session_id", s.id).eq("type", "transcript.final").order("at_ms", { ascending: true });
+    if (transcriptError) throw new Error("Transcript could not be loaded");
     const transcript = ((evs ?? []) as { payload: { turnId: string; speaker: "agent" | "prospect"; text: string } }[]).map((e) => ({ turnId: e.payload.turnId, speaker: e.payload.speaker, text: e.payload.text }));
     if (!transcript.some((t) => t.turnId === turnId)) transcript.push({ turnId, speaker: "agent", text });
     const state = (s.brain_state as BrainState | null) ?? { ...initialBrainState(seedFromString(s.id)), focus: s.focus_objection_id };
     const brain = await pickBrain();
     const out: Awaited<ReturnType<RulesBrain["nextTurn"]>> & { brain?: string } = await brain.nextTurn({ scenario: compiled, transcript, latest: { turnId, text }, state, elapsedMs: Number(body.elapsedMs ?? 0) });
-    await auth.serviceClient.from("call_lab_sessions").update({ brain_state: out.state, status: "live", started_at: s.started_at ?? new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", s.id);
+    const { error: stateError } = await auth.serviceClient.from("call_lab_sessions").update({ brain_state: out.state, status: "live", started_at: s.started_at ?? new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", s.id);
+    if (stateError) throw new Error("Conversation state could not be saved");
     // Report the brain that actually answered: an LLM brain that fell back to rules must say "rules".
     return jsonResponse({ turnId: `pt_${crypto.randomUUID().slice(0, 8)}`, text: out.text, events: out.events, interrupt: Boolean(out.interrupt), brain: out.brain ?? brain.kind });
   } catch (err) {
@@ -69,7 +72,7 @@ async function llmTurn(kind: "anthropic" | "openai", key: string, input: Paramet
     if (!r.ok) throw new Error(`openai ${r.status}`);
     const j = await r.json() as { output_text?: string; output: { type: string; name?: string; arguments?: string }[] };
     const events = toolEvents(j.output.filter((o) => o.type === "function_call").map((o) => { let input: Record<string, unknown> = {}; try { input = JSON.parse(o.arguments ?? "{}"); } catch { /* empty-catch-allow:malformed-tool-arguments-from-the-model-are (malformed tool arguments from the model are treated as no arguments; the rules brain still runs) */ } return { name: o.name ?? "", input }; }));
-    return { text: (j.output_text ?? "").trim() || "Go on.", events, brain: "openai", state: { ...input.state, agentTurns: input.state.agentTurns + 1, phase: events.some((e) => e.tool === "end_scenario") ? "ended" : input.state.phase } };
+    return { text: responseText(j) || "Go on.", events, brain: "openai", state: { ...input.state, agentTurns: input.state.agentTurns + 1, phase: events.some((e) => e.tool === "end_scenario") ? "ended" : input.state.phase } };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     if (/\b(401|403)\b/.test(msg)) llmDown = { kind, until: Date.now() + 15 * 60_000 };

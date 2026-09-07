@@ -29,6 +29,7 @@ type SessionRow = { id: string; status: string; scenario_id: string; scenario_sn
 export default function CallLabReport() {
   const { id = "" } = useParams();
   usePageTitle("Call report");
+  const [retryError, setRetryError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
   const q = useQuery({ queryKey: ["call-lab", "report", id], queryFn: async () => {
     const { data, error } = await supabase.from("call_lab_sessions").select("id,status,scenario_id,scenario_snapshot,scorecard,duration_ms,end_reason,eval_error,created_at,provider").eq("id", id).maybeSingle();
@@ -37,13 +38,14 @@ export default function CallLabReport() {
     const events = (ev ?? []).map((e, i) => ({ eventId: e.event_id, seq: i, ...(e.payload as object), type: e.type } as StampedEvent));
     return { row: data as unknown as SessionRow, events };
   } });
-  const retry = async () => { setRetrying(true); await supabase.functions.invoke("call-lab-evaluate", { body: { sessionId: id, reason: q.data?.row.end_reason ?? "agent_ended" } }); await q.refetch(); setRetrying(false); };
+  const retry = async () => { setRetrying(true); setRetryError(null); try { const { error } = await supabase.functions.invoke("call-lab-evaluate", { body: { sessionId: id, reason: q.data?.row.end_reason ?? "agent_ended" } }); if (error) throw error; await q.refetch(); } catch { setRetryError("Scoring is unavailable right now. Your saved transcript is still available; try again shortly."); } finally { setRetrying(false); } };
   if (q.isLoading) return <Skeleton className="h-[60vh] rounded-xl" />;
   if (q.isError || !q.data) return <p className="text-sm text-destructive">{q.error instanceof Error ? q.error.message : "Could not load the report."}</p>;
   const { row, events } = q.data; const sc = row.scorecard;
   if (!sc) return (
     <div className="mx-auto max-w-lg space-y-4 py-12 text-center">
       <h1 className="text-xl font-semibold">Not scored yet</h1>
+      {retryError && <p role="alert" className="text-sm text-destructive">{retryError}</p>}
       <p className="text-sm text-muted-foreground">{row.status === "live" || row.status === "created" ? "This call is still open." : row.eval_error ? `Scoring failed: ${row.eval_error}` : "The transcript is saved. Scoring did not finish."}</p>
       <div className="flex justify-center gap-2">
         {(row.status === "live" || row.status === "created") ? <Button asChild><Link to={`/dashboard/call-lab/live/${row.id}`}>Open the call</Link></Button> : <Button onClick={retry} disabled={retrying}><RefreshCw className={cn("mr-2 h-4 w-4", retrying && "animate-spin")} aria-hidden />Score this call</Button>}

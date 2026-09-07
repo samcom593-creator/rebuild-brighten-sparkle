@@ -17,7 +17,7 @@ import {
   SKEW_TOLERANCE_SECONDS, STORM_THRESHOLD,
   __resetSessionClock, describeSessionFault, describeSkew, isClockSkewed,
   isRefreshStorm, measuredSkewSeconds, readIssuedAt, recordIssuedToken,
-  recordTokenRefresh, secondsUntilExpiry,
+  recordTokenRefresh, recordSessionAuthEvent, secondsUntilExpiry,
 } from "@/lib/sessionClock";
 
 /** A JWT with only the claim under test. Signature is never checked. */
@@ -171,5 +171,21 @@ describe("describeSkew", () => {
     expect(describeSkew(45)).toBe("45 seconds ahead of real time");
     expect(describeSkew(-2_820)).toBe("47 minutes behind real time");
     expect(describeSkew(HOUR * 3)).toBe("3 hours ahead of real time");
+  });
+});
+
+describe("auth event freshness", () => {
+  it("ignores a 26-minute-old session replayed on tab focus", () => {
+    const now = (IAT + 26 * 60) * 1000;
+    recordSessionAuthEvent("SIGNED_IN", tokenIssuedAt(IAT), now);
+    expect(measuredSkewSeconds()).toBeNull();
+    expect(describeSessionFault(now)).toBeNull();
+    expect(secondsUntilExpiry(IAT + HOUR, now)).toBe(34 * 60);
+  });
+  it("measures a refresh and preserves that measurement across session replay", () => {
+    recordSessionAuthEvent("TOKEN_REFRESHED", tokenIssuedAt(IAT), IAT * 1000);
+    recordSessionAuthEvent("SIGNED_IN", tokenIssuedAt(IAT), (IAT + 1800) * 1000);
+    expect(measuredSkewSeconds()).toBe(0);
+    expect(secondsUntilExpiry(IAT + HOUR, (IAT + 1800) * 1000)).toBe(1800);
   });
 });

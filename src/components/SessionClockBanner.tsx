@@ -4,7 +4,7 @@ import { AlertTriangle, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
-  describeSessionFault, describeSkew, recordIssuedToken, recordTokenRefresh,
+  describeSessionFault, describeSkew, recordSessionAuthEvent,
   type SessionFault,
 } from "@/lib/sessionClock";
 
@@ -34,21 +34,11 @@ export function SessionClockBanner() {
   useEffect(() => {
     let cancelled = false;
 
-    // NOT seeded from getSession(): a stored token is of unknown age, and
-    // measuring skew against one reads that age as clock error. Only an event
-    // that DELIVERS a token can date it, so this stays silent until the first
-    // sign-in or refresh of the tab rather than guessing early.
+    // SIGNED_IN can replay a stored session when a tab regains focus. Only a
+    // completed token refresh proves the issue time is recent.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (cancelled) return;
-      // Every refresh is counted here rather than inside the refresh caller,
-      // because the storm we are trying to notice is made of refreshes from
-      // several places at once — supabase-js's own auto-refresh, the shell's
-      // near-expiry top-up, and the two explicit ones on the applicants page.
-      // Counting the event catches all of them; counting call sites would not.
-      if (event === "TOKEN_REFRESHED" || event === "SIGNED_IN") {
-        recordIssuedToken(session?.access_token, Date.now());
-      }
-      if (event === "TOKEN_REFRESHED") recordTokenRefresh(Date.now());
+      recordSessionAuthEvent(event, session?.access_token, Date.now());
       setFault(describeSessionFault(Date.now()));
     });
 
@@ -59,7 +49,7 @@ export function SessionClockBanner() {
 
   const resetSession = async () => {
     try {
-      await supabase.auth.signOut();
+      await supabase.auth.signOut({ scope: "local" });
     } finally {
       // Reload regardless: the point of the button is to leave this tab in a
       // known state, and a failed network sign-out must not strand the person
@@ -80,9 +70,8 @@ export function SessionClockBanner() {
         {fault.kind === "clock" ? (
           <>
             <span className="font-semibold">This device's clock is {describeSkew(fault.skewSeconds)}.</span>{" "}
-            That is what keeps signing you out — your sign-in looks expired to this
-            browser the moment it is issued. On a Mac, open System Settings → General
-            → Date &amp; Time and turn on “Set time and date automatically”, then reload.
+            This can disrupt your session. Enable automatic date and time in
+            your device settings, then reload.
           </>
         ) : (
           <>

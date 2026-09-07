@@ -5,8 +5,6 @@ import {
   PhoneCall, RefreshCw, UserCheck2, UserRoundSearch, UsersRound,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { AddAgentModal } from "@/components/dashboard/AddAgentModal";
-import { SubmitDealDialog } from "@/components/deals/SubmitDealDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -62,6 +60,7 @@ export function OperationsCommandCenter() {
   const { isAdmin } = useAuth();
   const query = useQuery({
     queryKey: ["admin-operations-command-center"],
+    enabled: isAdmin,
     staleTime: 60_000,
     refetchInterval: 180_000,
     retry: 1,
@@ -72,6 +71,8 @@ export function OperationsCommandCenter() {
       return data as unknown as OperationsData;
     },
   });
+
+  if (!isAdmin) return null;
 
   if (query.isLoading) {
     return <Skeleton className="h-[360px] rounded-lg" />;
@@ -100,13 +101,11 @@ export function OperationsCommandCenter() {
           <p className="mt-0.5 text-xs text-muted-foreground">Recruit, onboard, contract, sell, and fix problems from one truthful queue.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <AddAgentModal trigger={<Button size="sm" variant="outline">Add licensed / unlicensed</Button>} />
-          <SubmitDealDialog trigger={<Button size="sm">Post a deal</Button>} />
           <Button asChild size="sm" variant="outline"><Link to="/dashboard/help?tab=desk"><HelpCircle className="mr-1.5 h-3.5 w-3.5" />Ask a question</Link></Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-8">
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
         <MetricLink to="/dashboard/recruiting" icon={UserRoundSearch} label="New recruits" value={d.recruiting.new} detail={`${d.recruiting.uncontacted} need a call`} danger={d.recruiting.uncontacted_48h > 0} />
         <MetricLink to="/dashboard/interviews" icon={CalendarCheck2} label="Interviews" value={d.recruiting.interview} detail="live hiring pipeline" />
         <MetricLink to="/dashboard/team" icon={UserCheck2} label="Hired" value={d.recruiting.hired} detail={`${d.recruiting.contracting} at contracting`} />

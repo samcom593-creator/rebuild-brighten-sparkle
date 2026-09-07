@@ -72,8 +72,8 @@ let measuredSkew: number | null = null;
 /**
  * Record the device's clock error from a token that has JUST been issued.
  *
- * ONLY call this from an auth event that delivers a fresh token (SIGNED_IN,
- * TOKEN_REFRESHED). Called against a stored session of unknown age it would
+ * ONLY call this for TOKEN_REFRESHED. SIGNED_IN may replay an old session
+ * on tab focus and does not prove token freshness. Called against a stored session of unknown age it would
  * report that age as clock error — the mistake described in the header.
  *
  * Positive means the device runs ahead, which is the direction that makes a
@@ -173,4 +173,11 @@ export function describeSkew(skewSeconds: number): string {
   if (minutes < 90) return `${minutes} minutes ${direction} real time`;
   const hours = Math.round(magnitude / 360) / 10;
   return `${hours} hours ${direction} real time`;
+}
+
+/** Recovered SIGNED_IN sessions must never be mistaken for newly issued tokens. */
+export function recordSessionAuthEvent(event: string, accessToken: string | null | undefined, nowMs: number): void {
+  if (event !== "TOKEN_REFRESHED") return;
+  recordIssuedToken(accessToken, nowMs);
+  recordTokenRefresh(nowMs);
 }

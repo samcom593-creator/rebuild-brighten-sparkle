@@ -1202,11 +1202,27 @@ async function handleQuickQualify(data: QuickQualifyRequest, clientIP: string): 
   // Fix: pull the EXISTING attribution columns first, then only fill in
   // attribution fields that are NULL. First-write-wins — original
   // recruiter is protected forever.
+  // Only a LIVE, RECENT match may short-circuit. Found by the 2026-09-06
+  // end-to-end test: this lookup excluded only terminated_at, so a submit
+  // whose phone matched a 6-month-old DISQUALIFIED record returned that stale
+  // id with NO insert — the applicant saw "Application received", the
+  // confirmation went to the OLD record's email, and every AFTER INSERT
+  // recruiting trigger (Discord/Slack/manager/seminar/follow-up) never fired.
+  // Measured blast radius: 380 stale "new" + 54 reviewing + 15 no_pickup +
+  // 11 rejected + 8 disqualified rows could each swallow a re-applicant.
+  // Dead, closed, or >90-day matches now fall through to the normal INSERT
+  // below; trg_applications_flag_duplicates still links email re-applies via
+  // duplicate_of, so lineage is kept. Live recent matches keep the
+  // first-write-wins attribution protection.
+  const staleFloor = new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString();
   const { data: existingApp } = await supabaseAdmin
     .from("applications")
     .select("id, status, recruiter_id, assigned_agent_id, referral_manager_id, referral_recruiter_id")
     .or(`email.ilike.${normalizedEmail},phone.eq.${normalizedPhone}`)
     .is("terminated_at", null)
+    .is("closed_at", null)
+    .not("status", "in", "(rejected,disqualified,no_pickup)")
+    .gte("created_at", staleFloor)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();

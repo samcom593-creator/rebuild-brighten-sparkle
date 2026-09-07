@@ -193,6 +193,7 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
     icon: Building2,
     kicker: "ADMIN",
     items: [
+      { label: "Agencies", href: "/dashboard/agencies", icon: Building2, adminOnly: true },
       { label: "Launch Board", href: "/dashboard/launch-board", icon: Megaphone, adminOnly: true },
       { label: "Reports", href: "/dashboard/analytics", icon: BarChart3, adminOnly: true },
       { label: "Finances", href: "/dashboard/finances", icon: WalletCards, adminOnly: true },

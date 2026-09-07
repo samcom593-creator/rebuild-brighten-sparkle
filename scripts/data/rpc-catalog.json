@@ -118,6 +118,20 @@
         "raw": "p_referral_id uuid, p_new_status referral_status, p_note text DEFAULT NULL::text"
       }
     ],
+    "agency_roster_production": [
+      {
+        "all": [
+          "p_end",
+          "p_start"
+        ],
+        "required": [
+          "p_end",
+          "p_start"
+        ],
+        "unnamed": false,
+        "raw": "p_start date, p_end date"
+      }
+    ],
     "agent_call_activity": [
       {
         "all": [
@@ -1292,6 +1306,14 @@
         "raw": ""
       }
     ],
+    "content_cards_touch_updated_at": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "content_library_search_update": [
       {
         "all": [],
@@ -2004,6 +2026,14 @@
       }
     ],
     "fn_agentlink_reap_stuck": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_agents_manager_no_cycle": [
       {
         "all": [],
         "required": [],
@@ -5092,6 +5122,14 @@
         "raw": ""
       }
     ],
+    "run_apex_outbox_dispatch_if_pending": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "run_automation_job": [
       {
         "all": [
@@ -5108,6 +5146,14 @@
       }
     ],
     "run_policy_quality_check": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "run_readymode_sync_if_due": [
       {
         "all": [],
         "required": [],
@@ -5733,6 +5779,14 @@
         "raw": ""
       }
     ],
+    "supabase_usage_drain_health": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "svg_url_encode": [
       {
         "all": [
@@ -6270,18 +6324,6 @@
         "raw": "p_id uuid, p_progress text, p_source text"
       }
     ],
-    "upsert_readymode_dialer_calls": [
-      {
-        "all": [
-          "p_rows"
-        ],
-        "required": [
-          "p_rows"
-        ],
-        "unnamed": false,
-        "raw": "p_rows jsonb"
-      }
-    ],
     "update_my_agent_profile": [
       {
         "all": [
@@ -6309,6 +6351,18 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "upsert_readymode_dialer_calls": [
+      {
+        "all": [
+          "p_rows"
+        ],
+        "required": [
+          "p_rows"
+        ],
+        "unnamed": false,
+        "raw": "p_rows jsonb"
       }
     ],
     "uuid_from_text": [

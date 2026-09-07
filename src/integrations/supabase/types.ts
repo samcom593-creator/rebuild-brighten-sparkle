@@ -130816,6 +130816,22 @@ export type Database = {
       schedule_auto_populate_tick: { Args: never; Returns: undefined }
       scoped_production_projection: { Args: never; Returns: Json }
       scoped_production_projection_uncached: { Args: never; Returns: Json }
+      agency_roster_production: {
+        Args: { p_end: string; p_start: string }
+        Returns: {
+          agency: string
+          is_gap: boolean
+          agent_id: string | null
+          agent_name: string | null
+          policies: number
+          ap: number
+          last_sale: string | null
+          contract_pct: number | null
+          contract_provenance: string | null
+          has_login: boolean
+          first_hop_name: string | null
+        }[]
+      }
       scoped_production_scoreboard: {
         Args: { p_end: string; p_start: string }
         Returns: Json

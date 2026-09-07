@@ -45,6 +45,8 @@ type Row = {
   tenure_label?: string | null;
   // top_legs mode only — number of agents inside the leg
   leg_size?: number;
+  // Which agency in the IMO this producer's production sits in (leaderboard_board).
+  agency?: string | null;
 };
 
 // Podium tints are theme-paired: the bare -400/-500 weights washed out on the
@@ -115,6 +117,15 @@ export default function Leaderboard() {
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
   const [rows, setRows] = useState<Row[]>([]);
+  // Sam 2026-09-07: sub-agency producers were on the board with no agency named. Filter + chip.
+  const [agencyFilter, setAgencyFilter] = useState<string | null>(null);
+  const agencyNames = useMemo(() => Array.from(new Set(rows.map((r) => r.agency).filter((a): a is string => !!a))).sort(), [rows]);
+  const primaryAgency = useMemo(() => {
+    const counts = new Map<string, number>();
+    rows.forEach((r) => { if (r.agency) counts.set(r.agency, (counts.get(r.agency) ?? 0) + 1); });
+    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+  }, [rows]);
+  const visibleRows = useMemo(() => (agencyFilter ? rows.filter((r) => r.agency === agencyFilter) : rows), [rows, agencyFilter]);
   const [loading, setLoading] = useState(true);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
   const [selectedProductionRow, setSelectedProductionRow] = useState<Row | null>(null);
@@ -342,6 +353,7 @@ export default function Leaderboard() {
           est_earnings: number | string;
           lead_cost: number | string;
           tenure_label: string | null;
+          agency?: string | null;
         }>).map((r, index) => ({
           rank: index + 1,
           agent_key: r.agent_key,
@@ -354,6 +366,7 @@ export default function Leaderboard() {
           est_earnings: Number(r.est_earnings ?? 0),
           lead_cost: Number(r.lead_cost ?? 0),
           tenure_label: r.tenure_label,
+          agency: r.agency ?? null,
         }));
         setRows(built);
         setLastUpdatedAt(new Date().toISOString());
@@ -847,8 +860,22 @@ export default function Leaderboard() {
               </div>
             ) : (
               <GlassCard className="p-4">
+                {agencyNames.length > 1 && (
+                  <div className="mb-3 flex flex-wrap items-center gap-1.5">
+                    <button type="button" onClick={() => setAgencyFilter(null)}
+                      className={cn("rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors", agencyFilter === null ? "border-primary/40 bg-primary/15 text-primary" : "border-border text-muted-foreground hover:text-foreground")}>
+                      All agencies
+                    </button>
+                    {agencyNames.map((name) => (
+                      <button key={name} type="button" onClick={() => setAgencyFilter(name)}
+                        className={cn("rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors", agencyFilter === name ? "border-primary/40 bg-primary/15 text-primary" : "border-border text-muted-foreground hover:text-foreground")}>
+                        {name}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <ul className="space-y-2">
-                  {rows.map((row) => {
+                  {visibleRows.map((row) => {
                     const RankIcon = RANK_ICONS[row.rank]?.icon ?? TrendingUp;
                     const rankColor = RANK_ICONS[row.rank]?.color ?? "text-muted-foreground";
                     const highlight = row.rank <= 3;
@@ -899,6 +926,9 @@ export default function Leaderboard() {
                               </Link>
                             ) : (
                               <div className="truncate text-sm font-medium text-foreground">{row.agent_name ?? "—"}</div>
+                            )}
+                            {row.agency && agencyNames.length > 1 && row.agency !== primaryAgency && (
+                              <span className="mt-0.5 inline-block rounded-full border border-border bg-muted/40 px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wide text-muted-foreground">{row.agency}</span>
                             )}
                             <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
                               {subValue(row)}

@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "Agencies under you, with the people inside them. Owner > Agencies lists every agency in the IMO and every producer who wrote business in the window — including the ones who never log in here — with policies, AP, comp, who they report through, and your override. The Leaderboard now names each producer's agency and filters by it.",
+    detail:
+      "Sub-agency producers sync from AgentLink into the production truth without ever creating a login, so every login-keyed view dropped them and the board never said which agency a row belonged to. New agency_roster_production RPC keys on production, not logins (30 days: the primary agency 10 producers / $95,539; Vantage 4 producers / $26,785 attributed plus $50,049 reported by the agency and not yet attributed — shown as its own labelled line, never mixed into a producer). leaderboard_board gained an agency column; nothing else about it changed. Totals come from the existing v_imo_by_agency.",
+    commit: "agency-roster-production",
+  },
+  {
+    ts: "today",
+    label:
       "Applicants can get in. Applying mints a login and signs you straight into the producer dashboard, which needs an agent record an applicant doesn't have, so 399 people saw 'We're finishing your profile — Email Sam' and read it as 'I can't log in'. That login now lands on your own page: status, and the exact next steps in order.",
     detail:
       "ApplicantHome renders for any role-agent login with no agents row (2 hit the dead end today alone, 9 in 14 days). Unlicensed: start the pre-licensing course, watch the six-minute walkthrough, join the team Slack and Discord, book your call, track your status. Licensed: start contracting, join Slack, book the onboarding call, open training. No application on file: apply with this email or call/text Sam — no mailto dead end anywhere. The sidebar drops the producer groups (Sell, Grow, My Business) for applicants and shows four links that are real next steps. Reads the application through the existing 'applicants can view own application by email' policy; no schema change.",

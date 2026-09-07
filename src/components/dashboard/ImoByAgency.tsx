@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -150,6 +151,7 @@ export function ImoByAgency({
         <p className="text-xs text-muted-foreground">
           {periodLabel} · {fmt(periodTotal)} ALP
           {overrideTotal > 0 && <span className="ml-1 text-primary">· {fmt(overrideTotal)} your override</span>}
+          <Link to="/dashboard/agencies" className="ml-2 font-semibold text-primary underline-offset-2 hover:underline">View agencies →</Link>
         </p>
       </div>
       <Card>

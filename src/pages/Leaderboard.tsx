@@ -190,25 +190,40 @@ export default function Leaderboard() {
     queryFn: async () => {
       const { data } = await supabase
         .from("v_agentlink_book_freshness" as any)
-        .select("latest_posted, days_since_last_posted, deals, last_import")
+        .select("latest_posted, days_since_last_posted, deals, last_import, last_successful_refresh")
         .maybeSingle();
       return (data ?? null) as {
         latest_posted: string | null;
         days_since_last_posted: number | string | null;
         deals: number | string | null;
         last_import: string | null;
+        last_successful_refresh: string | null;
       } | null;
     },
   });
   const staleDays = bookFreshness.data?.days_since_last_posted != null
     ? Number(bookFreshness.data.days_since_last_posted)
     : null;
-  // Hours since the book was last IMPORTED, which is the pipeline question.
-  // days_since_last_posted answers a business question instead: how long since
-  // anybody wrote a deal into AgentLink.
-  const importHours = bookFreshness.data?.last_import
-    ? Math.floor((Date.now() - new Date(bookFreshness.data.last_import).getTime()) / 3_600_000)
-    : null;
+  // MP-462: this used to read last_import and call it "the pipeline question".
+  // It is not. MP-431 put trg_fn_suppress_noop_update('imported_at') on
+  // agentlink_book, so a rebuild that finds no content change writes nothing
+  // and last_import does not move -- by design. MP-435 added
+  // last_successful_refresh as the honest operand and said so in the view's own
+  // comment, then left this page (and the ntfy pager) on the old column. On
+  // 2026-09-07 that rendered a destructive "Book not imported in 2d" badge
+  // while the book had been rebuilt 45 minutes earlier and 125 of the previous
+  // 126 rebuilds had succeeded.
+  //
+  // greatest(refresh marker, content change) mirrors what the DB already does
+  // at migration 20260904224500:390: a NULL marker degrades to real evidence of
+  // a write rather than reading as "never synced".
+  const refreshHours = (() => {
+    const cands = [bookFreshness.data?.last_successful_refresh, bookFreshness.data?.last_import]
+      .map((v) => (v ? new Date(v).getTime() : NaN))
+      .filter((t) => Number.isFinite(t));
+    if (cands.length === 0) return null;
+    return Math.floor((Date.now() - Math.max(...cands)) / 3_600_000);
+  })();
 
   const buildRows = useCallback(async (ids: string[], grouped: Map<string, { primary: number; secondary: number; tertiary: number }>) => {
     if (ids.length === 0) return [];
@@ -511,17 +526,17 @@ export default function Leaderboard() {
                 a red alarm and teaches Sam to ignore the one badge here. */}
             {board === "production" && staleDays !== null && staleDays > 3 && (
               <Badge
-                variant={importHours !== null && importHours > 48 ? "destructive" : "outline"}
+                variant={refreshHours !== null && refreshHours > 24 ? "destructive" : "outline"}
                 className="gap-1.5"
                 title={
-                  importHours !== null
-                    ? `Newest AgentLink-posted deal is ${staleDays}d old. The book itself was last imported ${importHours}h ago.`
-                    : `Newest AgentLink-posted deal is ${staleDays}d old. The last import time is unknown.`
+                  refreshHours !== null
+                    ? `Newest AgentLink-posted deal is ${staleDays}d old. The book itself was last refreshed ${refreshHours}h ago.`
+                    : `Newest AgentLink-posted deal is ${staleDays}d old. The last refresh time is unknown.`
                 }
               >
                 <Clock3 className="h-3 w-3" />
-                {importHours !== null && importHours > 48
-                  ? `Book not imported in ${Math.floor(importHours / 24)}d`
+                {refreshHours !== null && refreshHours > 24
+                  ? `Book not refreshed in ${refreshHours}h`
                   : `No AgentLink deal posted in ${staleDays}d`}
               </Badge>
             )}

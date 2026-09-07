@@ -773,3 +773,13 @@ if git diff --cached --name-only | grep -qE '^src/.*\.tsx$'; then
   echo "[pre-commit] tsx staged — running check:icon-button-labels…"
   npm run --silent check:icon-button-labels || exit 1
 fi
+
+# ---------- check-book-freshness-operand (MP-462, 2026-09-07) ----------
+# Trigger: anything that reads v_agentlink_book_freshness, plus the guard.
+# Cheap (filesystem only, no compiler). Catches at commit time what verify:core
+# would otherwise only catch in CI — the window MP-462's defect lived in for
+# two days while it rendered a false "Book not imported in 2d" badge.
+if match '^(src/.*\.(tsx?|jsx?)$|supabase/functions/|scripts/check-book-freshness-operand\.mjs$)'; then
+  echo "[pre-commit] book-freshness reader staged — running check:book-freshness-operand…"
+  node scripts/check-book-freshness-operand.mjs
+fi

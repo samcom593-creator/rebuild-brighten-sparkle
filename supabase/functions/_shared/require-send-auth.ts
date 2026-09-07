@@ -32,6 +32,29 @@ const ANON_KEY     = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 
 const SENDER_ROLES = new Set(["admin", "manager"]);
 
+// MP-457. The admin/manager floor above is right for the send-* wrappers, which
+// mail a recipient the CALLER names. It is wrong for a wrapper whose recipient
+// is derived from a row and can only ever be that row's owner: there the floor
+// has to be the union of roles that legitimately reach the button, and when
+// that union is "every signed-in user" a role check buys nothing over
+// authentication while locking real people out. Measured for
+// send-course-enrollment-email: its UI callers sit on CourseProgress
+// (App.tsx:480,494 -> admin + managers + va_manager/va/recruiter) and on
+// CallCenter (App.tsx:641 -> a bare ProtectedRoute, any signed-in user).
+// Applying SENDER_ROLES there would have been a silent disable dressed as a
+// fix. So the floor is a PARAMETER and the caller states which one it wants;
+// the default is unchanged, so send-email and send-bulk-email -- the only two
+// importers, both calling requireSendAuth(req) with one argument -- keep the
+// exact behaviour they were proven with. (applicant-magic-link only CITES this
+// file in a comment; it does not import it. Checked rather than assumed off a
+// grep for the filename.)
+export type SenderFloor = "admin_or_manager" | "any_authenticated";
+
+export interface SendAuthOptions {
+  /** Defaults to "admin_or_manager" — the pre-MP-457 behaviour. */
+  floor?: SenderFloor;
+}
+
 export interface SendAuthResult {
   ok: boolean;
   status: number;
@@ -40,7 +63,11 @@ export interface SendAuthResult {
   caller?: string;
 }
 
-export async function requireSendAuth(req: Request): Promise<SendAuthResult> {
+export async function requireSendAuth(
+  req: Request,
+  opts: SendAuthOptions = {},
+): Promise<SendAuthResult> {
+  const floor: SenderFloor = opts.floor ?? "admin_or_manager";
   const raw = req.headers.get("authorization") ?? "";
   const token = raw.replace(/^Bearer\s+/i, "").trim();
 
@@ -71,6 +98,14 @@ export async function requireSendAuth(req: Request): Promise<SendAuthResult> {
   const { data, error } = await sb.auth.getUser(token);
   if (error || !data?.user?.id) {
     return { ok: false, status: 401, error: "unauthorized" };
+  }
+
+  // A valid user token has already been proven above. Under "any_authenticated"
+  // that IS the floor, and the role read is skipped rather than run and
+  // ignored — a query whose result cannot change the verdict is a query that
+  // will one day be believed.
+  if (floor === "any_authenticated") {
+    return { ok: true, status: 200, caller: `user:${data.user.id}` };
   }
 
   const { data: roles } = await sb

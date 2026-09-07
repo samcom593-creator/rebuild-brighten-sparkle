@@ -302,7 +302,13 @@ const weakSelector = [];
 // MP-451 measured this pair before anything is changed.
 const MAIL_UNADJUDICATED = new Set([
   "notify-set-goals",
-  "send-course-enrollment-email",
+  // send-course-enrollment-email was adjudicated and GATED in MP-457, so its
+  // name is removed rather than left to pass on one. Same tightening as
+  // send-login-to-manager below: the function must now satisfy CRED above the
+  // mint on its own merits and a revert goes red (mutation-proven). Its floor
+  // is "any_authenticated" rather than admin/manager because its UI callers
+  // sit on routes open to va_manager/va/recruiter and to any signed-in user --
+  // measured, not assumed, because an admin floor there is a silent disable.
   // send-login-to-manager was adjudicated and GATED admin-only in MP-455, so it
   // is removed from this set rather than left to pass on a name. Both UI callers
   // already required isAdmin client-side and there are zero server-side

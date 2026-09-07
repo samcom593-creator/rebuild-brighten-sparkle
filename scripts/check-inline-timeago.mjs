@@ -23,6 +23,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { splitUncommittable, noticeBanner } from "./lib/committable.mjs";
 
 const BASELINE = 5; // 2026-07-21: SmbBridgeCard + 2 landing tickers (bot-stranded) + RecoveryQueue + Setup — all past-dated data values. Pay down as they free up.
 
@@ -72,15 +73,25 @@ for (const file of files) {
   }
 }
 
-const count = violations.length;
+// MP-457. Same rule as check-supabase-relation-types, from the same helper:
+// this walks the whole working tree, and a file that is untracked AND unstaged
+// belongs to another worker's in-flight wave, not to this commit. Baselines are
+// counts, and a count that includes work nobody is committing is a count that
+// blocks every other worker. Notices are printed, never dropped.
+const [graded, notices] = splitUncommittable(violations, (v) => v.split(":")[0]);
+const count = graded.length;
 if (count > BASELINE) {
   console.error(
     `✗ check:inline-timeago — ${count} unguarded relative-time formatters exceeds baseline ${BASELINE} (Δ +${count - BASELINE})`,
   );
   console.error("Route it through formatTimeAgo() from @/lib/dateUtils, or clamp the delta with Math.max(0, …).");
-  for (const v of violations) console.error("  " + v);
+  for (const v of graded) console.error("  " + v);
   process.exit(1);
 }
 console.log(`✓ check:inline-timeago — ${count} unguarded formatter(s) (== baseline ${BASELINE})`);
-if (process.env.TIMEAGO_LIST) for (const v of violations) console.log("  " + v);
+if (notices.length) {
+  console.log(noticeBanner(notices.length));
+  for (const v of notices) console.log("    " + v);
+}
+if (process.env.TIMEAGO_LIST) for (const v of graded) console.log("  " + v);
 process.exit(0);

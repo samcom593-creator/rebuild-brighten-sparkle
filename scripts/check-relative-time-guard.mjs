@@ -31,6 +31,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { splitUncommittable, noticeBanner } from "./lib/committable.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 const srcRoot = path.join(repoRoot, "src");
@@ -106,7 +107,18 @@ for (const file of files) {
   }
 }
 
-const count = violations.length;
+// MP-457, same rule and same helper as check-supabase-relation-types and
+// check-inline-timeago: a file that is untracked AND unstaged is another
+// worker's in-flight wave and is in no commit, so grading it here blocks every
+// other worker. Staged and tracked files are graded exactly as before.
+const [graded, notices] = splitUncommittable(violations, (v) => v.split(":")[0]);
+const count = graded.length;
+// Printed on EVERY path, not just the failing one. A notice that only appears
+// when the guard is already red is a notice nobody ever reads.
+if (notices.length) {
+  console.log(noticeBanner(notices.length));
+  for (const v of notices) console.log(`    ${v}`);
+}
 
 if (count > BASELINE) {
   console.error(
@@ -116,7 +128,7 @@ if (count > BASELINE) {
     "Clamp with Math.max(0, …), route through formatTimeAgo() from @/lib/dateUtils,\n" +
     "or annotate a comparison-only site with `relative-time-guard-allow:<reason>`.",
   );
-  for (const v of violations) console.error(`  ${v}`);
+  for (const v of graded) console.error(`  ${v}`);
   process.exit(1);
 }
 

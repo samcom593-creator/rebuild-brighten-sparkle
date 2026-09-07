@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { APP_BASE_URL } from "../_shared/apex.ts";
+import { requireSendAuth } from "../_shared/require-send-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -38,6 +39,31 @@ async function generateMagicToken(
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // MP-457. Until now this read no credential at all: a bare POST with no
+  // Authorization header reached the handler and got its own 404 from the
+  // agents lookup (proven live on prod, with a nonexistent id so nothing was
+  // minted and nothing was mailed). One call mints a 24h magic_login_tokens
+  // row and mails a one-tap login link from Sam's verified domain to the
+  // agent's inbox, CC info@kingofsales.net and the manager. The precondition
+  // is not a secret: resolve-ref-slug is public BY DESIGN so /apply can credit
+  // a recruiter, and it hands a real agent_id to an unauthenticated caller.
+  //
+  // The floor is "any_authenticated", not the send-* default of admin/manager:
+  // the UI callers sit on CourseProgress (admin + managers + va_manager/va/
+  // recruiter) and on CallCenter (any signed-in user), so an admin floor would
+  // have locked out the people who actually press the button. The 4 server
+  // callers (add-agent, bulk-resend-course-emails, self-enroll-course,
+  // submit-contracting-intake) all send the service role key and take the
+  // service branch. Gate sits ABOVE the agents lookup, so the 404 stops being
+  // an existence oracle for strangers too.
+  const auth = await requireSendAuth(req, { floor: "any_authenticated" });
+  if (!auth.ok) {
+    return new Response(
+      JSON.stringify({ success: false, error: auth.error ?? "unauthorized" }),
+      { status: auth.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 
   try {

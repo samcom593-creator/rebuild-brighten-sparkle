@@ -59,6 +59,7 @@
 //   are reported as `unprovable` and are NEVER laundered into pass or fail.
 // ---------------------------------------------------------------------------
 import { readFileSync, readdirSync, statSync } from "node:fs";
+import { splitUncommittable, noticeBanner } from "./lib/committable.mjs";
 import { join, relative } from "node:path";
 
 const repoRoot = process.cwd();
@@ -127,7 +128,7 @@ function walk(dir, acc = []) {
 const { tables, views } = relationsFromTypes();
 const known = new Set([...tables, ...views]);
 
-const missing = [];
+let missing = [];
 const unprovable = [];
 let checked = 0;
 
@@ -161,6 +162,24 @@ for (const file of walk(join(repoRoot, "src"))) {
   }
 }
 
+// MP-457. This box runs several workers against ONE checkout, and this guard
+// walks the whole working tree. A file that is untracked AND unstaged is in
+// nobody's commit -- it is another worker mid-wave -- so grading it means every
+// worker's in-flight page blocks every other worker's commit, and the two
+// escapes are `git add -A` (absorption: the documented failure of this
+// environment) and --no-verify (skipping a security gate to ship a security
+// fix). MP-403 already moved a guard's verdict off the working tree and onto
+// the index for exactly this reason.
+//
+// This does NOT narrow coverage of anything committable: a NEW file is graded
+// the moment it is staged, and every tracked file is graded always. It only
+// stops the guard answering for work that is not being committed. Findings in
+// those files are still PRINTED, as a non-voting notice -- silently dropping
+// another worker's real defect would be the fake-success disease wearing a
+// politeness costume.
+const [graded_, notices] = splitUncommittable(missing, (m) => m.split(":")[0]);
+missing = graded_;
+
 console.log(`supabase relation types: ${tables.size} tables + ${views.size} views declared`);
 console.log(`  literal .from() sites resolved : ${checked}`);
 console.log(`  unprovable (variable/template) : ${unprovable.length}  (never pass, never fail)`);
@@ -169,6 +188,11 @@ if (missing.length) {
   console.log("");
   for (const s of missing.slice(0, 40)) console.log(`    ${s}`);
   if (missing.length > 40) console.log(`    ... and ${missing.length - 40} more`);
+}
+if (notices.length) {
+  console.log(noticeBanner(notices.length));
+  for (const s2 of notices.slice(0, 20)) console.log(`    ${s2}`);
+  if (notices.length > 20) console.log(`    ... and ${notices.length - 20} more`);
 }
 if (missing.length > BASELINE) {
   console.error(`\nFAIL: ${missing.length} > baseline ${BASELINE}.`);

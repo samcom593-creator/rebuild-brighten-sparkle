@@ -27,7 +27,7 @@ const CARRIER_GATEWAYS: Record<string, string> = {
 
 const APP_URL = "https://apex-financial.org";
 
-function buildSeminarEmail(firstName: string, registrationUrl: string, whatsappLink: string): string {
+function buildSeminarEmail(firstName: string, registrationUrl: string, slackLink: string): string {
   return `
 <!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -84,24 +84,22 @@ function buildSeminarEmail(firstName: string, registrationUrl: string, whatsappL
      📍 Every Thursday • 7:00 PM CST • Virtual (link provided after registration)
    </p>
 
-   ${whatsappLink ? `
-   <!-- WhatsApp CTA -->
+   ${slackLink ? `
+   <!-- Slack CTA (team moved off WhatsApp 2026-07; Slack + Discord only) -->
    <table width="100%" cellpadding="0" cellspacing="0" style="margin:24px 0;">
    <tr><td align="center">
      <table role="presentation" cellspacing="0" cellpadding="0">
        <tr>
-         <td bgcolor="#25D366" style="border-radius:12px;">
-           <a href="${whatsappLink}" style="display:inline-block;color:#ffffff;text-decoration:none;padding:14px 36px;font-size:16px;font-weight:700;">
-             💬 Join Our WhatsApp Group →
+         <td bgcolor="#4A154B" style="border-radius:12px;">
+           <a href="${slackLink}" style="display:inline-block;color:#ffffff;text-decoration:none;padding:14px 36px;font-size:16px;font-weight:700;">
+             💬 Join the Team Slack →
            </a>
          </td>
        </tr>
      </table>
    </td></tr>
-   <tr><td align="center" style="padding-top:8px;">
-     <p style="color:#94a3b8;font-size:13px;margin:0;">Connect with the team, get daily updates & support</p>
-   </td></tr>
-   </table>` : ""}
+   </table>
+   ` : ""}
 </td></tr>
 
 <!-- Footer -->
@@ -123,7 +121,7 @@ serve(async (req: Request) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const resendKey = Deno.env.get("RESEND_API_KEY")!;
-    const whatsappLink = Deno.env.get("WHATSAPP_GROUP_LINK") || "";
+    const slackLink = "https://join.slack.com/t/apex-financial-co/shared_invite/zt-47rdeq1fr-ETmj8yGBgRcoYVkwfc3DBQ";
 
     const sb = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
     const resend = new Resend(resendKey);
@@ -153,7 +151,7 @@ serve(async (req: Request) => {
            from: "APEX Financial Empire <notifications@apex-financial.org>",
           to: [app.email],
           subject: "📅 You're Invited: Weekly Career Seminar — This Thursday!",
-          html: buildSeminarEmail(app.first_name, regUrl, whatsappLink),
+          html: buildSeminarEmail(app.first_name, regUrl, slackLink),
         });
         emailsSent++;
         await sb.from("notification_log").insert({

@@ -360,7 +360,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { data: unlicensedApps, error: unlicensedError } = await supabaseAdmin
       .from("applications")
       .select("id, first_name, email")
-      .eq("license_status", "unlicensed")
+      .in("license_status", ["unlicensed", "pending"])
       .is("followup_sent_at", null)
       .is("closed_at", null)
       .is("terminated_at", null)
@@ -375,7 +375,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { data: unlicensedApps2, error: unlicensedError2 } = await supabaseAdmin
       .from("applications")
       .select("id, first_name, email")
-      .eq("license_status", "unlicensed")
+      .in("license_status", ["unlicensed", "pending"])
       .not("followup_sent_at", "is", null) // Must have received first followup
       .is("followup_unlicensed_2_sent_at", null)
       .is("closed_at", null)

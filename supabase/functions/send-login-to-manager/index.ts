@@ -256,7 +256,7 @@ const handler = async (req: Request): Promise<Response> => {
               <div style="background: rgba(148, 163, 184, 0.1); border-radius: 8px; padding: 16px; margin: 24px 0;">
                 <p style="color: #94a3b8; font-size: 13px; margin: 0;">
                   <strong style="color: #e2e8f0;">How to share:</strong><br>
-                  Copy this link and send it via text, WhatsApp, DM, or in person:<br>
+                  Copy this link and send it via text, Slack, DM, or in person:<br>
                   <span style="color: #14b8a6; word-break: break-all; font-size: 12px;">${portalMagicLink}</span>
                 </p>
               </div>

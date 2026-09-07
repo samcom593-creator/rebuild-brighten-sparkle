@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "WhatsApp is gone from the product, and four onboarding dead ends are closed. The seminar email's WhatsApp button is now the team Slack; the manager login email says Slack; the alert dispatcher no longer carries a WhatsApp channel; the dead send-whatsapp function and the orphaned second welcome email (which told applicants to call a cell number and join Discord) are deleted. Re-applicants now get the welcome email and next steps instead of silence; pending-license applicants get the follow-up drip; 'Book Your Onboarding Call' books the onboarding call; the contracting 'needs review' screen has a real contact button.",
+    detail:
+      "Sam: 'we're still saying WhatsApp. We don't even use WhatsApp. Remove all that.' Inventory found one live UI string, one live email CTA, one email wording, a dispatcher channel nothing ever seeded, a zero-caller edge function, and two orphan settings rows; all removed, settings deleted live, function-contracts baseline rewritten. Four SQL trigger functions still contain a WhatsApp line that cannot render because its settings key was deleted in July; left alone on purpose and documented in the migration. Onboarding: send-followup-emails filtered license_status = unlicensed so 'pending' fell out of every drip; the duplicate branch of submit-application returned isDuplicate with no side effects; GetLicensed's onboarding button pointed at the prospect 1-on-1; ContractingSuccessModal's needs_review branch had no contact at all.",
+    commit: "whatsapp-scrub-onboarding-gaps",
+  },
+  {
+    ts: "today",
+    label:
       "Launch Board v2. Four tabs that answer four questions: Today (what to post now, the Launch 4, what to record next, what still needs a clip), Board, Week, and Library — your whole Dropbox video archive, 4,070 clips, searchable, newest first, one tap to attach to a card or mint a card from a clip. Post opens the caption with a copy button and stamps the date; nothing auto-publishes.",
     detail:
       "Library is a metadata index (content_clips: path, name, folder, size, modified) of Dropbox YouTube/ (1,791 horizontal) and Reels/ (2,279 vertical). No bytes are copied and nothing is hydrated; every row links to the clip in your own Dropbox. The index refreshes on the existing 6-hourly mini snapshot job through content_clips_upsert — no new daemon. Attaching a clip marks the clip as on a card and moves an idea to Recorded.",

@@ -219,7 +219,10 @@ export default function GetLicensed() {
     ? `${XCEL_COURSE_URL_FALLBACK}?email=${encodeURIComponent(email)}`
     : XCEL_COURSE_URL_FALLBACK;
 
-  const onboardingCallUrl = SCHEDULING_LINKS.licensed;
+  // "Book Your Onboarding Call" must book the onboarding call (Milver), not the
+  // 1-on-1 prospect call it pointed at until 2026-09-07 — the config names
+  // SCHEDULING_LINKS.onboarding as the canonical post-hire call.
+  const onboardingCallUrl = SCHEDULING_LINKS.onboarding;
   const firstName = progress?.first_name?.trim();
 
   const startOnboardingVideo = () => {

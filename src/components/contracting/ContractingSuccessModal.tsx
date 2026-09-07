@@ -71,8 +71,19 @@ export function ContractingSuccessModal({ accepted }: { accepted: ContractingAcc
         {needsIdentityCorrection ? (
           <div className="mt-4 rounded-lg border border-amber-500/35 bg-amber-500/5 p-3">
             <p className="text-xs">
-              That email address is already on file under a different NPN. Contact support with the reference above so the identity can be corrected safely.
+              That email address is already on file under a different NPN. Send the reference above and we'll correct the identity safely — usually same day.
             </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <a
+                href={`mailto:info@kingofsales.net?subject=${encodeURIComponent(`Contracting review ${accepted.intake_id ?? ""}`.trim())}`}
+                className="rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+              >
+                Email the contracting desk
+              </a>
+              <a href="sms:+14697676068" className="rounded-md border border-border px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted">
+                Text Sam (469) 767-6068
+              </a>
+            </div>
           </div>
         ) : (
           <div className="mt-5 border-t border-border pt-5">

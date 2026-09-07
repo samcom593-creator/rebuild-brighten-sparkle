@@ -3,7 +3,7 @@
 // Reads token from META_INSTAGRAM_TOKEN env (preferred) or
 // system_settings.meta_instagram_token (fallback so Sam can paste the
 // value via bot-sql without dashboard access). Same dual-source pattern
-// as send-whatsapp.
+// (the retired send-whatsapp used the same shape).
 //
 // Required: META_INSTAGRAM_PAGE_ID (the IG-connected Facebook Page ID)
 //   plus token with `instagram_manage_messages` permission.

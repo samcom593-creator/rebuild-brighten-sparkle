@@ -1692,6 +1692,15 @@ const handler = async (req: Request): Promise<Response> => {
         } catch (e) { console.error("Duplicate notification failed:", e); }
       }
 
+      // 2026-09-07: a re-applicant used to get NOTHING — the success page said
+      // "submitted", the team got the duplicate email, and the applicant got
+      // no welcome, no next steps, no SMS (the sibling of the stale-match bug
+      // fixed 2026-09-06). Send the same welcome a first-timer gets, against
+      // the existing application id so every link resolves.
+      try {
+        await sendEmailNotifications(data, existingApp.id);
+      } catch (e) { console.error("Duplicate welcome failed:", e); }
+
       return new Response(
         JSON.stringify({ applicationId: existingApp.id, isDuplicate: true, referrerAdopted }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }

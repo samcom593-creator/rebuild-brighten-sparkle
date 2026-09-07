@@ -496,7 +496,7 @@ export default function InboxPage() {
               </Select>
               <p className="text-[11px] text-muted-foreground">
                 {blastCampaign === "reapply" && "Pulls applications status=new/no_pickup/reviewing/interview from the last 30d. Two copy variants (licensed/unlicensed). Email + SMS where available."}
-                {blastCampaign === "seminar" && "Pulls seminar_registrations from the last 14d. Re-sends the seminar invite + link + WhatsApp join code via carrier-gateway SMS where supported."}
+                {blastCampaign === "seminar" && "Pulls seminar_registrations from the last 14d. Re-sends the seminar invite + link via carrier-gateway SMS where supported."}
                 {blastCampaign === "unlicensed_outreach" && "Pulls every unlicensed applicant not terminated. Wakes up dormant signups + nudges them onto the licensing path."}
               </p>
             </div>

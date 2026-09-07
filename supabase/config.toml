@@ -18,9 +18,6 @@ verify_jwt = false
 [functions.import-production-data]
 verify_jwt = false
 
-[functions.send-application-notification]
-verify_jwt = false
-
 [functions.manager-signup]
 enabled = true
 verify_jwt = false
@@ -580,9 +577,6 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.send-whatsapp-onboarding-blast]
-verify_jwt = false
-
-[functions.send-whatsapp]
 verify_jwt = false
 
 [functions.send-winback-campaign]

@@ -87,44 +87,7 @@ async function postDiscord(alert: any): Promise<boolean> {
   }
 }
 
-async function postWhatsapp(alert: any): Promise<boolean> {
-  // Meta WhatsApp Cloud API. Requires meta_whatsapp_token + meta_whatsapp_phone_id
-  // in system_settings. Sends a free-form text to Sam's number when allowed by
-  // the 24h customer-service window, otherwise no-op.
-  const { data: settings } = await supabase
-    .from("system_settings")
-    .select("key,value")
-    .in("key", ["meta_whatsapp_token", "meta_whatsapp_phone_id", "sam_whatsapp_number"]);
-  const map: Record<string, string> = {};
-  for (const s of settings ?? []) map[(s as any).key] = (s as any).value || "";
-  if (!map.meta_whatsapp_token || !map.meta_whatsapp_phone_id) return false;
-  const to = (map.sam_whatsapp_number || SAM_PHONE).replace(/\D/g, "");
-  if (!to) return false;
-  const text = `*${alert.subject}*\n${String(alert.sms_body || alert.body).replace(/<[^>]+>/g, "").slice(0, 1000)}`;
-  try {
-    const r = await fetch(`https://graph.facebook.com/v20.0/${map.meta_whatsapp_phone_id}/messages`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${map.meta_whatsapp_token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        messaging_product: "whatsapp",
-        to,
-        type: "text",
-        text: { body: text },
-      }),
-    });
-    return r.ok;
-  } catch {
-    return false;
-  }
-}
-
-export const NTFY_DEFAULT_TOPIC = "https://ntfy.sh/sams-agent-yrkv9kbqp9e987nb";
-
-// Returns a RECEIPT, not a bare boolean: a false with no reason is what let this
-// bug sit undetected. "ok" | "http:<status>" | "error:<message>".
+// WhatsApp channel removed 2026-09-07 (team is Slack + Discord only; no bot_alerts row ever seeded 'whatsapp').
 async function postNtfy(alert: any, topicOverride?: string): Promise<{ ok: boolean; receipt: string }> {
   // ntfy.sh — Sam's primary mobile push. Always available, no creds needed.
   let url = topicOverride ?? "";
@@ -154,17 +117,16 @@ async function postNtfy(alert: any, topicOverride?: string): Promise<{ ok: boole
   }
 }
 
-async function send(alert: any): Promise<{ email_id: string | null; sent_sms: boolean; sms_receipt: string | null; sent_discord: boolean; sent_whatsapp: boolean; sent_ntfy: boolean; error: string | null }> {
+async function send(alert: any): Promise<{ email_id: string | null; sent_sms: boolean; sms_receipt: string | null; sent_discord: boolean; sent_ntfy: boolean; error: string | null }> {
   // Default channel set: every standalone alert fans out to ALL channels Sam
   // owns so no notification path silently skips. Discord + ntfy always go;
-  // email + sms + whatsapp also when configured.
+  // email + sms also when configured.
   const requested: string[] = alert.channels ?? ["email", "sms", "discord", "ntfy"];
   const channels = new Set([...requested, "discord", "ntfy"]); // always include
   let email_id: string | null = null;
   let sent_sms = false;
   let sms_receipt: string | null = null;
   let sent_discord = false;
-  let sent_whatsapp = false;
   let sent_ntfy = false;
   const errs: string[] = [];
 
@@ -221,13 +183,7 @@ async function send(alert: any): Promise<{ email_id: string | null; sent_sms: bo
       errs.push(`discord: ${e?.message ?? String(e)}`);
     }
   }
-  if (channels.has("whatsapp")) {
-    try {
-      sent_whatsapp = await postWhatsapp(alert);
-    } catch (e: any) {
-      errs.push(`whatsapp: ${e?.message ?? String(e)}`);
-    }
-  }
+
   if (channels.has("ntfy")) {
     try {
       const n = await postNtfy(alert);
@@ -238,7 +194,7 @@ async function send(alert: any): Promise<{ email_id: string | null; sent_sms: bo
       errs.push(`ntfy: ${e?.message ?? String(e)}`);
     }
   }
-  return { email_id, sent_sms, sms_receipt, sent_discord, sent_whatsapp, sent_ntfy, error: errs.length ? errs.join("; ") : null };
+  return { email_id, sent_sms, sms_receipt, sent_discord, sent_ntfy, error: errs.length ? errs.join("; ") : null };
 }
 
 async function flush(): Promise<{ scanned: number; sent: number; held: number; expired: number }> {
@@ -282,7 +238,7 @@ async function flush(): Promise<{ scanned: number; sent: number; held: number; e
     const r = await send(alert);
     // Mark as sent if ANY channel landed — Discord/ntfy don't have IDs but
     // returned booleans, so a successful Discord-only post still counts.
-    const anyLanded = !!(r.email_id || r.sent_sms || r.sent_discord || r.sent_whatsapp || r.sent_ntfy);
+    const anyLanded = !!(r.email_id || r.sent_sms || r.sent_discord || r.sent_ntfy);
     if (anyLanded) {
       await supabase.from("bot_alerts").update({
         sent_at: new Date().toISOString(),
@@ -353,7 +309,7 @@ Deno.serve(async (req) => {
       // Same "any channel landed" test flush() uses. This path used to count only
       // email+sms, so a Discord/ntfy-only delivery stayed sent_at NULL forever and
       // got re-dispatched by the next flush.
-      if (r.email_id || r.sent_sms || r.sent_discord || r.sent_whatsapp || r.sent_ntfy) {
+      if (r.email_id || r.sent_sms || r.sent_discord || r.sent_ntfy) {
         await supabase.from("bot_alerts").update({
           sent_at: new Date().toISOString(),
           sent_email_id: r.email_id,

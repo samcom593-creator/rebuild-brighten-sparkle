@@ -120,7 +120,12 @@ export const ONBOARDING_CONTACT = {
 export const TEAM_COMMUNITY_LINKS = {
   slack: "https://join.slack.com/t/apex-financial-co/shared_invite/zt-47rdeq1fr-ETmj8yGBgRcoYVkwfc3DBQ",
   discord: "https://discord.gg/JpUWA73UZX",
+  /** #unlicensed — where every unlicensed applicant lives until they're licensed (Sam, 2026-09-07). */
+  slackUnlicensedChannel: "https://apex-financial-co.slack.com/archives/C0BUTAKNB38",
 } as const;
+
+/** XCEL pre-licensing course — the same link the unlicensed roadmap email sends. */
+export const LICENSING_COURSE_URL = "https://partners.xcelsolutions.com/afe";
 
 const CALENDLY_HOST_NAMES: Record<string, string> = {
   samueljameshq: "Samuel James — King of Sales",

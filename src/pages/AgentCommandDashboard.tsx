@@ -46,6 +46,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { getNextBestAction } from "@/lib/nextBestAction";
 import { priorityBadgeClasses } from "@/lib/priority";
 import { NextStepCard } from "@/components/dashboard/NextStepCard";
+import { ApplicantHome } from "@/components/onboarding/ApplicantHome";
 import { RegionPeerCard, UpcomingChargebackCard } from "@/components/dashboard/AgentPeerAndChargebackCards";
 import { LapsesDrilldownModal } from "@/components/dashboard/LapsesDrilldownModal";
 import { RecentActivationsPanel } from "@/components/dashboard/RecentActivationsPanel";
@@ -321,27 +322,12 @@ export default function AgentCommandDashboard() {
 
   if (!user) return null;
 
+  // No agents row = an applicant, not a broken producer. Applying mints the
+  // login and signs them straight in here; until 2026-09-07 this branch was a
+  // "We're finishing your profile — Email Sam" dead end (399 logins, 2 that
+  // day). ApplicantHome shows their status and the exact next steps instead.
   if (!meAgent && !cc.isLoading) {
-    return (
-      <div className="page-enter px-4 sm:px-6 pb-24">
-        <PageHeader
-          eyebrow="Command Center" eyebrowIcon={<Crown className="h-3 w-3" />}
-          title="We’re finishing your profile"
-          subtitle="Your login is secure, but we could not find one unambiguous licensed producer record to connect automatically."
-          accent="amber"
-        />
-        <EmptyState
-          icon={<Users className="h-7 w-7" />}
-          title="Profile connection needs review"
-          description={`We tried the automatic repair. Contact the ${APEX_BRAND.shortName} team so we can verify the correct producer record and connect it safely.`}
-          actions={
-            <Button asChild variant="outline">
-              <a href="mailto:sam.com593@gmail.com?subject=Agent%20profile%20not%20linked">Email Sam</a>
-            </Button>
-          }
-        />
-      </div>
-    );
+    return <ApplicantHome />;
   }
 
   const displayName = stats?.display_name ?? stats?.full_name ?? user.email ?? "Agent";

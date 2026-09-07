@@ -123,6 +123,7 @@
       "text"
     ],
     "agent_access_suspensions": [
+      "lifted_at",
       "reason",
       "suspended_at",
       "suspended_by",
@@ -5288,6 +5289,12 @@
       "joined_at",
       "source"
     ],
+    "slack_channel_welcomes": [
+      "channel_id",
+      "message_ts",
+      "slack_user_id",
+      "welcomed_at"
+    ],
     "sms_fallback_queue": [
       "body",
       "carrier_hint",
@@ -7469,6 +7476,14 @@
       "name",
       "phone",
       "updated_at"
+    ],
+    "v_hierarchy_unreachable": [
+      "agent_id",
+      "ap_30d",
+      "display_name",
+      "manager_id",
+      "reason",
+      "status"
     ],
     "v_hire_activity": [
       "activity_state",

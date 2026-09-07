@@ -17,7 +17,11 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const releaseVideoUrl = "https://youtu.be/fZSm3T1jBJ8";
+// 2026-09-07: the old YouTube id (fZSm3T1jBJ8) resolves to nothing — private or
+// removed — so the top CTA of the "you're live" email was a dead link. The
+// Release Course (5 lessons, 41 min) lives in the training hub; this is its
+// in-app page, behind the agent's own login.
+const releaseVideoUrl = "https://apex-financial.org/dashboard/training/library/course/r-mqv77rk9";
 const portalLink = "https://apex-financial.org/agent-portal";
 const discordLink = "https://discord.gg/JpUWA73UZX";
 

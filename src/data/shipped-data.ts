@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "Applicants can get in. Applying mints a login and signs you straight into the producer dashboard, which needs an agent record an applicant doesn't have, so 399 people saw 'We're finishing your profile — Email Sam' and read it as 'I can't log in'. That login now lands on your own page: status, and the exact next steps in order.",
+    detail:
+      "ApplicantHome renders for any role-agent login with no agents row (2 hit the dead end today alone, 9 in 14 days). Unlicensed: start the pre-licensing course, watch the six-minute walkthrough, join the team Slack and Discord, book your call, track your status. Licensed: start contracting, join Slack, book the onboarding call, open training. No application on file: apply with this email or call/text Sam — no mailto dead end anywhere. The sidebar drops the producer groups (Sell, Grow, My Business) for applicants and shows four links that are real next steps. Reads the application through the existing 'applicants can view own application by email' policy; no schema change.",
+    commit: "applicant-home",
+  },
+  {
+    ts: "today",
+    label:
       "Sam's estimated earnings read $1,190 on $19,572 of team production because one agent's manager pointed at his own row. The layered override model was right; the hierarchy data had a loop, and the page said nothing. Repaired, guarded, and the scoreboard now names any producer with no path to you instead of silently paying 0%.",
     detail:
       "Chudi Ifediora's manager_id was his own id, so the hierarchy walker never reached him or the 9 agents under him (Edwin Ac-lumor's $11,636 today, $43k of branch production in 30 days) and Sam's override on all of it was 0. Repair: Chudi reports to Sam; today's estimate went to $5,263 (35% on Edwin via Chudi at 85 + 15% on the Vantage gap), last 30 days to $52,808 (+$40,650 of override that was missing). Guards: a trigger refuses a self-loop or cycle on agents.manager_id (proven both directions and rolled back), v_hierarchy_unreachable lists every roster agent whose chain never reaches an admin root with the reason, and the scoreboard's reconciliation carries unlinked_producers + unlinked_ap with a red line on the earnings card. The repair was gated on reading which agents UPDATE triggers touch manager_id (only status/contracted_at-scoped ones do) so no Discord or hire notification fired.",

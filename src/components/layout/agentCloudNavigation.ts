@@ -203,6 +203,20 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
   },
 ];
 
+/**
+ * Applicant nav (2026-09-07). A login with role agent and NO agents row is an
+ * applicant, not a producer: applying mints the login and the confirmation
+ * page signs them in. They were getting Sell / Grow / My Business and a
+ * dead-end "finishing your profile" page — 399 such logins, 2 that day.
+ * Four links, each a real next step; the home page carries the rest.
+ */
+export const APPLICANT_NAV: AgentCloudNavEntry[] = [
+  { label: "Home", href: "/dashboard", icon: LayoutGrid },
+  { label: "Get licensed", href: "/get-licensed", icon: GraduationCap },
+  { label: "Training", href: "/dashboard/training/library", icon: BookOpenCheck },
+  { label: "Support desk", href: "/dashboard/help?tab=desk", icon: HelpCircle },
+];
+
 export const AGENT_CLOUD_ACCOUNT_NAV: AgentCloudNavEntry[] = [
   {
     label: "Settings",

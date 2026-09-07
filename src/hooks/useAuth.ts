@@ -79,6 +79,8 @@ interface AuthContextValue {
   isRecruiter: boolean;
   /** Raw agents.account_mode for this login (null when no agents row, e.g. VA staff). */
   accountMode: string | null;
+  /** True when an agents row is linked to this login. A role-agent login without one is an applicant. */
+  hasAgentRecord: boolean;
   /** The mode that decides home screen + nav. Admin always wins; otherwise account_mode, falling back to roles. */
   effectiveMode: AccountMode;
   hasRole: (role: AppRole) => boolean;
@@ -96,6 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [roles, setRoles] = useState<UserRole[]>([]);
   const [accountMode, setAccountMode] = useState<string | null>(null);
+  const [hasAgentRecord, setHasAgentRecord] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [rolesLoading, setRolesLoading] = useState(true);
 
@@ -157,6 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .limit(1)
       .maybeSingle();
     setAccountMode((data as { account_mode?: string } | null)?.account_mode ?? null);
+    setHasAgentRecord(data !== null && data !== undefined);
   }, []);
 
   // Consolidated handler: fetches profile+roles only if userId changed
@@ -197,6 +201,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfile(null);
       setRoles([]);
       setAccountMode(null);
+      setHasAgentRecord(false);
       setRolesLoading(false);
       setIsLoading(false);
     }
@@ -422,6 +427,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isVa,
     isRecruiter,
     accountMode,
+    hasAgentRecord,
     effectiveMode,
     hasRole,
     signUp,
@@ -429,7 +435,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signOut,
     refreshProfile: () => user && fetchProfile(user.id),
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [user, session, profile, roles, isFullyLoaded, isAdmin, isManager, isAgent, isVaManager, isVa, isRecruiter, accountMode, effectiveMode, signUp, signIn, signOut]);
+  }), [user, session, profile, roles, isFullyLoaded, isAdmin, isManager, isAgent, isVaManager, isVa, isRecruiter, accountMode, hasAgentRecord, effectiveMode, signUp, signIn, signOut]);
 
   return React.createElement(
     AuthContext.Provider,

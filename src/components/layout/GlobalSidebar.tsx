@@ -11,6 +11,7 @@ import { useBrand } from "@/hooks/useBrand";
 import {
   AGENT_CLOUD_ACCOUNT_NAV,
   AGENT_CLOUD_PRIMARY_NAV,
+  APPLICANT_NAV,
   agentCloudPathIsActive,
   isAgentCloudGroup,
   type AgentCloudNavEntry,
@@ -36,7 +37,7 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
   const brand = useBrand();
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const { isAdmin, isManager, effectiveMode, signOut } = useAuth();
+  const { isAdmin, isManager, isAgent, hasAgentRecord, isLoading: authLoading, effectiveMode, signOut } = useAuth();
   // MP-332: when Sam previews a role, the nav follows the preview too —
   // otherwise "Recruiter View" showed the recruiter home under the full admin
   // sidebar and told him nothing about what a recruiter actually sees.
@@ -81,7 +82,12 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
       : entry)
     .filter((entry) => !isAgentCloudGroup(entry) || entry.items.length > 0);
 
-  const primary = filterEntries(AGENT_CLOUD_PRIMARY_NAV);
+  // An applicant is a role-agent login with no agents row (applying mints the
+  // login). They get four real next steps, not the producer's Sell/Grow/Book
+  // groups. Gated on auth having finished loading so a real producer never
+  // flashes the applicant rail while their agents row is still in flight.
+  const isApplicant = !authLoading && !isAdmin && !isManager && isAgent && !hasAgentRecord && !isPreviewing;
+  const primary = isApplicant ? APPLICANT_NAV : filterEntries(AGENT_CLOUD_PRIMARY_NAV);
   const account = filterEntries(AGENT_CLOUD_ACCOUNT_NAV);
 
   const withTooltip = (label: string, child: ReactNode) => {

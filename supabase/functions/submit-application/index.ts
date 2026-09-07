@@ -763,7 +763,10 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
     
     // Licensed applicants get call scheduling, unlicensed get licensing resources
     const licensedCalendlyUrl = 'https://calendly.com/apexfinancialempire/1on1-call-clone';
-    const testimonialsVideoUrl = 'https://youtu.be/YmlLSIwfGdE';
+    // 2026-09-07: was youtu.be/YmlLSIwfGdE, an unlisted clip literally titled
+    // "VSL   Test" that the landing page had already dropped as a placeholder.
+    // /vsl is the real 5:46 self-hosted video with a poster.
+    const testimonialsVideoUrl = 'https://apex-financial.org/vsl';
     const unlicensedVideoUrl = 'https://apex-financial.org/get-licensed#licensing-video';
     const licensingDocUrl = 'https://docs.google.com/document/d/1WBN_bh7Tl6IkhdXwQvrUa6Q58xmV9As_q048aKAeyNg/edit?usp=sharing';
     const preLicensingCourseUrl = 'https://partners.xcelsolutions.com/afe';
@@ -829,17 +832,17 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
 
             ${recruiterContactSection}
 
-            <h3 style="color: #111827; margin-bottom: 15px;">Hear From Our Agents</h3>
+            <h3 style="color: #111827; margin-bottom: 15px;">Why Producers Build With APEX</h3>
             <p style="color: #4b5563; line-height: 1.6; margin-bottom: 20px;">
-              Watch what our top agents have to say about working with APEX:
+              Six minutes on how the agency works, what you get, and what your first 30 days look like:
             </p>
-            
+
             <div style="text-align: center; margin-bottom: 30px;">
-              <a href="${testimonialsVideoUrl}" 
-                 style="display: inline-block; background: #111827; color: white; 
+              <a href="${testimonialsVideoUrl}"
+                 style="display: inline-block; background: #111827; color: white;
                         padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px;
                         box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);">
-                ▶ Watch Agent Testimonials
+                ▶ Watch the video
               </a>
             </div>
 
@@ -970,13 +973,16 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
             </p>
 
             <div style="background: #f3e8ff; border: 1px solid #d8b4fe; padding: 20px; border-radius: 8px; margin: 25px 0; text-align: center;">
-              <h3 style="color: #4A154B; margin-top: 0; margin-bottom: 10px; font-size: 16px;">📱 Join the APEX Slack</h3>
-              <p style="color: #6b216f; font-size: 13px; margin-bottom: 15px;">Use the primary team workspace for licensing support, training questions, and progress updates.</p>
+              <h3 style="color: #4A154B; margin-top: 0; margin-bottom: 10px; font-size: 16px;">📱 Join the APEX Slack, then open #unlicensed</h3>
+              <p style="color: #6b216f; font-size: 13px; margin-bottom: 15px;">#unlicensed is your room until you're licensed. Once you've purchased the pre-licensing course, post a screenshot of the purchase confirmation there — that's how we verify it and move you to the next step.</p>
               <a href="${SLACK_LINK}"
                  style="display: inline-block; background: #4A154B; color: white;
                         padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px;">
                 Join Team Slack
               </a>
+              <p style="margin: 12px 0 0; font-size: 12px;">
+                <a href="https://apex-financial-co.slack.com/archives/C0BUTAKNB38" style="color: #4A154B; font-weight: bold;">Already in Slack? Open #unlicensed →</a>
+              </p>
             </div>
 
             <div style="background: #eff6ff; border: 1px solid #bfdbfe; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">

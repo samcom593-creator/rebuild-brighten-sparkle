@@ -100,10 +100,17 @@ function resolveRedirectUrl(rawPath: unknown): string {
   if (!rawPath.startsWith("/") || rawPath.startsWith("//")) {
     return `${BASE_URL}${DEFAULT_REDIRECT_PATH}`;
   }
-  if (!ALLOWED_REDIRECT_PATHS.has(rawPath)) {
+  // The confirmation page sends "/get-licensed#licensing-video" so the unlicensed
+  // applicant lands ON the video the button promised. Until 2026-09-07 the hash
+  // made the whole path fail the allowlist and every unlicensed applicant was
+  // silently sent to /dashboard instead. Grade the path, carry the fragment.
+  const hashIndex = rawPath.indexOf("#");
+  const pathOnly = hashIndex === -1 ? rawPath : rawPath.slice(0, hashIndex);
+  const fragment = hashIndex === -1 ? "" : rawPath.slice(hashIndex);
+  if (!ALLOWED_REDIRECT_PATHS.has(pathOnly) || !/^#?[A-Za-z0-9_-]*$/.test(fragment)) {
     return `${BASE_URL}${DEFAULT_REDIRECT_PATH}`;
   }
-  return `${BASE_URL}${rawPath}`;
+  return `${BASE_URL}${pathOnly}${fragment}`;
 }
 
 Deno.serve(async (req) => {

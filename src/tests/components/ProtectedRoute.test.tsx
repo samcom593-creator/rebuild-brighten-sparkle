@@ -72,6 +72,7 @@ beforeEach(() => {
     isVa: false,
     isRecruiter: false,
     accountMode: null,
+    hasAgentRecord: false,
     effectiveMode: "agent" as const,
     hasRole: vi.fn(),
     signIn: vi.fn(),

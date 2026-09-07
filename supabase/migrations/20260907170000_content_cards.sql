@@ -26,6 +26,12 @@ create table if not exists public.content_cards (
 
 alter table public.content_cards enable row level security;
 
+-- Supabase table grants: authenticated reaches the table (then RLS restricts to
+-- admin/manager); service_role bypasses RLS; anon gets nothing. Without these a
+-- new table denies even authenticated users before any policy runs.
+grant select, insert, update, delete on public.content_cards to authenticated;
+grant all on public.content_cards to service_role;
+
 drop policy if exists content_cards_admin_all on public.content_cards;
 create policy content_cards_admin_all on public.content_cards
   for all to authenticated

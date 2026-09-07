@@ -294,7 +294,8 @@ export function ScopedProductionScoreboard() {
   // read, never polled — it refetches with the board via the same realtime
   // invalidation below.
   const windowIsEmpty = Boolean(query.data && query.data.by_agent.length === 0);
-  // MP-394. Vantage's production reaches Apex only through their Discord chat,
+  // Discord ingestion health is separate from the Vantage production API.
+  // MP-394. The legacy reader of the Discord chat was credential-blocked;
   // and the reader of that chat had no credential from 2026-07-29 with nothing
   // on any surface saying so. This is the RPC's verdict, never a client guess.
   const feed = useQuery({
@@ -313,7 +314,7 @@ export function ScopedProductionScoreboard() {
   });
   const blockedFeeds = (feed.data ?? []).filter((f) => f.status !== "healthy");
   const blockedFeedAgencies = blockedFeeds.map((f) => f.agency_name).join(", ");
-  const allBlockedFeedsNeverRead = blockedFeeds.every((f) => !f.last_ingested_at);
+  const blockedFeedsMissingIngestTimestamp = blockedFeeds.every((f) => !f.last_ingested_at);
 
   const freshness = useQuery({
     queryKey: ["production-book-freshness"],
@@ -617,10 +618,10 @@ export function ScopedProductionScoreboard() {
                         ? `${blockedFeedAgencies} Discord deal import needs attention.`
                         : `${blockedFeeds.length} Discord deal imports need attention: ${blockedFeedAgencies}.`}
                     </span>{" "}
-                    {allBlockedFeedsNeverRead
-                      ? "They have not imported a deal yet. "
+                    {blockedFeedsMissingIngestTimestamp
+                      ? "These feeds have no verified import timestamp. "
                       : "One or more chats may be missing recent deals. "}
-                    Deals posted only in those chats are not on this board yet.
+                    Discord-only deals may be missing. Agency totals received through the production API remain included.
                   </p>
                 </div>
               )}

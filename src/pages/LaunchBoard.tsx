@@ -23,7 +23,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  ArrowRight, Check, Clapperboard, Copy, Crown, ExternalLink, Film, Loader2, Paperclip, Pencil, Plus, Search, Trash2, Undo2,
+  ArrowRight, Check, Clapperboard, Copy, Crown, Download, ExternalLink, Film, Loader2, Paperclip, Pencil, Plus, Search, Trash2, Undo2,
 } from "lucide-react";
 
 type Status = "idea" | "recorded" | "ready" | "posted";
@@ -37,6 +37,7 @@ interface Card {
 interface Clip {
   id: string; path: string; name: string; folder: string; kind: string; size_bytes: number; modified_at: string | null; used_by_card: string | null;
   thumb_url?: string | null; preview_url?: string | null; duration_s?: number | null; title?: string | null; description?: string | null; tags?: string[];
+  download_url?: string | null; download_expires_at?: string | null;
 }
 
 const STATUSES: Status[] = ["idea", "recorded", "ready", "posted"];
@@ -60,6 +61,9 @@ const brandClass = (b: string) => (b === "IMS" ? "text-sky-300 border-sky-400/30
 const cleanName = (n: string) => n.replace(/\.[a-z0-9]+$/i, "").replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
 const fmtSize = (b: number) => (b >= 1e9 ? `${(b / 1e9).toFixed(1)} GB` : `${Math.max(1, Math.round(b / 1e6))} MB`);
 const fmtDate = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—");
+// Direct CDN link to the original file, minted on the mini every 3h (4h validity). Falls back to the Dropbox page.
+const directUrl = (k: { download_url?: string | null; download_expires_at?: string | null; path: string }) =>
+  k.download_url && k.download_expires_at && new Date(k.download_expires_at).getTime() > Date.now() + 60_000 ? k.download_url : null;
 const dropboxUrl = (path: string) => {
   const parts = path.split("/"); const name = parts.pop() ?? "";
   return `https://www.dropbox.com/home/${parts.map(encodeURIComponent).join("/")}?preview=${encodeURIComponent(name)}`;
@@ -108,7 +112,7 @@ export default function LaunchBoard() {
       const all: Clip[] = [];
       for (let from = 0; from < 20000; from += 1000) {
         const k = await supabase.from("content_clips")
-          .select("id, path, name, folder, kind, size_bytes, modified_at, used_by_card, thumb_url, preview_url, duration_s, title, description, tags")
+          .select("id, path, name, folder, kind, size_bytes, modified_at, used_by_card, thumb_url, preview_url, duration_s, title, description, tags, download_url, download_expires_at")
           .order("modified_at", { ascending: false, nullsFirst: false })
           .range(from, from + 999);
         if (k.error) throw k.error;
@@ -422,7 +426,10 @@ export default function LaunchBoard() {
                     {attachTarget
                       ? <Button size="sm" onClick={() => attachClip(k, attachTarget)} className="h-7 flex-1 bg-primary px-2.5 text-[11.5px] text-primary-foreground hover:bg-primary/90"><Paperclip className="mr-1 h-3 w-3" />Attach</Button>
                       : <Button size="sm" variant="outline" onClick={() => cardFromClip(k)} className="h-7 flex-1 px-2.5 text-[11.5px]"><Plus className="mr-1 h-3 w-3" />New card</Button>}
-                    <Button asChild size="sm" variant="ghost" className="h-7 px-2 text-muted-foreground"><a href={dropboxUrl(k.path)} target="_blank" rel="noopener noreferrer" title="Open in Dropbox"><ExternalLink className="h-3.5 w-3.5" /></a></Button>
+                    {directUrl(k)
+                      ? <Button asChild size="sm" className="h-7 bg-emerald-500/15 px-2.5 text-[11.5px] font-semibold text-emerald-400 hover:bg-emerald-500/25"><a href={directUrl(k) ?? undefined} download={k.name} title="Download the original — one click"><Download className="mr-1 h-3.5 w-3.5" />Download</a></Button>
+                      : <Button asChild size="sm" variant="ghost" className="h-7 px-2 text-muted-foreground"><a href={dropboxUrl(k.path)} target="_blank" rel="noopener noreferrer" title="Open in Dropbox"><ExternalLink className="h-3.5 w-3.5" /></a></Button>}
+                    <Button size="sm" variant="ghost" onClick={() => { void navigator.clipboard?.writeText(k.path).then(() => toast.success("Path copied")).catch(() => toast.error("Clipboard blocked")); }} className="h-7 px-2 text-muted-foreground" title="Copy Dropbox path (for getclips / editors)"><Copy className="h-3.5 w-3.5" /></Button>
                   </div>
                 </div>
               </div>
@@ -448,7 +455,9 @@ export default function LaunchBoard() {
               <Textarea readOnly rows={6} value={postTarget.caption || "(no caption yet — edit the card to add one)"} className="text-sm" />
               <div className="flex flex-wrap gap-2">
                 <Button variant="outline" onClick={() => copyCaption(postTarget.caption)} disabled={!postTarget.caption}><Copy className="mr-1.5 h-4 w-4" />Copy caption</Button>
-                {postTarget.clip && <Button asChild variant="outline"><a href={dropboxUrl(postTarget.clip)} target="_blank" rel="noopener noreferrer"><ExternalLink className="mr-1.5 h-4 w-4" />Open clip in Dropbox</a></Button>}
+                {postTarget.clip && (() => { const k = clips.find((x) => x.path === postTarget.clip); const d = k ? directUrl(k) : null; return d
+                  ? <Button asChild variant="outline"><a href={d} download={k?.name}><Download className="mr-1.5 h-4 w-4" />Download the clip</a></Button>
+                  : <Button asChild variant="outline"><a href={dropboxUrl(postTarget.clip)} target="_blank" rel="noopener noreferrer"><ExternalLink className="mr-1.5 h-4 w-4" />Open clip in Dropbox</a></Button>; })()}
               </div>
             </div>
           )}

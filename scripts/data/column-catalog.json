@@ -2465,6 +2465,8 @@
     "content_clips": [
       "captioned_at",
       "description",
+      "download_expires_at",
+      "download_url",
       "duration_s",
       "folder",
       "height",

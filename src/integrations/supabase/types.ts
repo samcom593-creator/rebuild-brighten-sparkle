@@ -16,6 +16,8 @@ export type Database = {
     Tables: {
       content_clips: {
         Row: {
+          download_expires_at: string | null
+          download_url: string | null
           captioned_at: string | null
           description: string | null
           duration_s: number | null
@@ -37,6 +39,8 @@ export type Database = {
           used_by_card: string | null
         }
         Insert: {
+          download_expires_at?: string | null
+          download_url?: string | null
           captioned_at?: string | null
           description?: string | null
           duration_s?: number | null
@@ -58,6 +62,8 @@ export type Database = {
           used_by_card?: string | null
         }
         Update: {
+          download_expires_at?: string | null
+          download_url?: string | null
           captioned_at?: string | null
           description?: string | null
           duration_s?: number | null

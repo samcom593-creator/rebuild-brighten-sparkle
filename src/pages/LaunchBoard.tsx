@@ -90,6 +90,8 @@ export default function LaunchBoard() {
   const [query, setQuery] = useState("");
   const [folder, setFolder] = useState<"all" | "YouTube" | "Reels">("all");
   const [length, setLength] = useState<"all" | "short" | "mid" | "long">("all");
+  const [shown, setShown] = useState(96);
+  useEffect(() => { setShown(96); }, [query, folder, length]);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<Card | null>(null);
   const [draft, setDraft] = useState<Record<string, unknown>>(emptyDraft);
@@ -99,32 +101,28 @@ export default function LaunchBoard() {
 
   const load = useCallback(async () => {
     try {
-      const [c, k] = await Promise.all([
-        supabase.from("content_cards").select("*").order("day", { ascending: true }).order("sort", { ascending: true }),
-        supabase.from("content_clips").select("id, path, name, folder, kind, size_bytes, modified_at, used_by_card, thumb_url, preview_url, duration_s, title, description, tags").order("modified_at", { ascending: false, nullsFirst: false }).limit(400),
-      ]);
+      const c = await supabase.from("content_cards").select("*").order("day", { ascending: true }).order("sort", { ascending: true });
       if (c.error) throw c.error;
-      if (k.error) throw k.error;
       setCards((c.data as Card[]) ?? []);
-      setClips((k.data as Clip[]) ?? []);
+      // The whole library, paged: PostgREST returns at most 1,000 rows per request.
+      const all: Clip[] = [];
+      for (let from = 0; from < 20000; from += 1000) {
+        const k = await supabase.from("content_clips")
+          .select("id, path, name, folder, kind, size_bytes, modified_at, used_by_card, thumb_url, preview_url, duration_s, title, description, tags")
+          .order("modified_at", { ascending: false, nullsFirst: false })
+          .range(from, from + 999);
+        if (k.error) throw k.error;
+        const page = (k.data as Clip[]) ?? [];
+        all.push(...page);
+        setClips([...all]);
+        if (page.length < 1000) break;
+      }
     } catch (e: unknown) {
       toast.error(`Couldn't load the board: ${(e instanceof Error ? e.message : "unknown error").slice(0, 120)}`);
     } finally { setLoading(false); }
   }, []);
   useEffect(() => { void load(); }, [load]);
 
-  // Library search beyond the newest 400: hit the index when the query is real.
-  useEffect(() => {
-    const q = query.trim();
-    if (q.length < 2) return;
-    const t = setTimeout(async () => {
-      // Full-library search: words hit the caption title/description/name, tags match exactly.
-      const { data, error } = await supabase.rpc("content_clips_search", { p_q: q, p_folder: null, p_limit: 300 });
-      if (error) { toast.error(`Search failed: ${error.message.slice(0, 100)}`); return; }
-      setClips((prev) => { const seen = new Set(prev.map((c) => c.id)); return [...prev, ...((data as Clip[]) ?? []).filter((c) => !seen.has(c.id))]; });
-    }, 350);
-    return () => clearTimeout(t);
-  }, [query]);
 
   const patch = useCallback(async (id: string, changes: Partial<Card>) => {
     const prev = cards;
@@ -265,7 +263,7 @@ export default function LaunchBoard() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2.5">
-          {[{ n: counts.total, l: "Cards", c: "text-foreground" }, { n: counts.ready, l: "Ready", c: "text-gold" }, { n: counts.posted, l: "Posted", c: "text-emerald-400" }, { n: clips.length >= 400 ? "4,070" : clips.length.toLocaleString(), l: "Clips indexed", c: "text-foreground" }].map((s) => (
+          {[{ n: counts.total, l: "Cards", c: "text-foreground" }, { n: counts.ready, l: "Ready", c: "text-gold" }, { n: counts.posted, l: "Posted", c: "text-emerald-400" }, { n: clips.length.toLocaleString(), l: "Clips indexed", c: "text-foreground" }].map((s) => (
             <div key={s.l} className="min-w-[76px] rounded-xl border border-border bg-card px-3.5 py-2.5">
               <div className={`text-xl font-extrabold tabular-nums ${s.c}`}>{s.n}</div>
               <div className="mt-0.5 text-[10.5px] uppercase tracking-[0.09em] text-muted-foreground">{s.l}</div>
@@ -395,12 +393,12 @@ export default function LaunchBoard() {
                 {l === "all" ? "Any length" : l === "short" ? "≤ 1 min" : l === "mid" ? "1–5 min" : "5 min +"}
               </button>
             ))}
-            <span className="text-xs text-muted-foreground">{visibleClips.length} shown · newest first · nothing is downloaded</span>
+            <span className="text-xs text-muted-foreground">{visibleClips.length.toLocaleString()} match · {clips.filter((k) => k.thumb_url).length.toLocaleString()} with previews · newest first</span>
           </div>
           {attachTarget && <div className="rounded-xl border border-gold/40 bg-gold/10 px-3 py-2 text-sm text-foreground">Pick the clip for <b>{attachTarget.title}</b> — tap <b>Attach</b> on a row.</div>}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {visibleClips.length === 0 && <p className="col-span-full p-4 text-sm text-muted-foreground">No clips match. Previews and titles fill in as the mini indexes your Dropbox (newest first).</p>}
-            {visibleClips.map((k) => (
+            {visibleClips.slice(0, shown).map((k) => (
               <div key={k.id} className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card">
                 <a href={dropboxUrl(k.path)} target="_blank" rel="noopener noreferrer" className={`relative block bg-muted/40 ${k.kind === "vertical" ? "aspect-[9/16] max-h-64" : "aspect-video"}`} title="Open in Dropbox">
                   {k.thumb_url ? (
@@ -430,6 +428,11 @@ export default function LaunchBoard() {
               </div>
             ))}
           </div>
+          {visibleClips.length > shown && (
+            <div className="flex justify-center pt-2">
+              <Button variant="outline" onClick={() => setShown((n) => n + 96)}>Load more · {visibleClips.length - shown} left</Button>
+            </div>
+          )}
         </div>
       )}
 

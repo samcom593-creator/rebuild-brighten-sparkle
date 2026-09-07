@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      content_cards: {
+        Row: {
+          brand: string
+          caption: string
+          clip: string
+          content_type: string
+          created_at: string
+          created_by: string | null
+          day: number
+          hook: string
+          id: string
+          job: string
+          posted_at: string | null
+          sort: number
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          brand?: string
+          caption?: string
+          clip?: string
+          content_type?: string
+          created_at?: string
+          created_by?: string | null
+          day?: number
+          hook?: string
+          id?: string
+          job?: string
+          posted_at?: string | null
+          sort?: number
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          brand?: string
+          caption?: string
+          clip?: string
+          content_type?: string
+          created_at?: string
+          created_by?: string | null
+          day?: number
+          hook?: string
+          id?: string
+          job?: string
+          posted_at?: string | null
+          sort?: number
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       account_claims: {
         Row: {
           created_at: string

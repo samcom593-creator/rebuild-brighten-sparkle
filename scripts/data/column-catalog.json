@@ -2444,6 +2444,23 @@
       "notes",
       "subject"
     ],
+    "content_cards": [
+      "brand",
+      "caption",
+      "clip",
+      "content_type",
+      "created_at",
+      "created_by",
+      "day",
+      "hook",
+      "id",
+      "job",
+      "posted_at",
+      "sort",
+      "status",
+      "title",
+      "updated_at"
+    ],
     "content_library": [
       "ai_analyzed",
       "ai_analyzed_at",

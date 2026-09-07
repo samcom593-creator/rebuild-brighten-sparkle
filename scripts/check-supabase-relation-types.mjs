@@ -24,6 +24,21 @@
 //   relation prod does not have. There is no tolerated backlog left to hide a
 //   new one in.
 //
+//   THAT SENTENCE IS CONDITIONAL, AND NOTHING ENFORCES THE CONDITION (MP-464).
+//   It is only true while types.ts is actually current. On 2026-09-07 types.ts
+//   was 48 relations, 9 columns and 67 RPC functions behind prod, so "absent
+//   from types.ts" had quietly come to mean "absent from types.ts" and nothing
+//   more. In that state this guard's failure message is a false accusation: it
+//   tells you prod does not have a table that prod does have, and the cheapest
+//   way out is an `as any` — which is how the contract erodes.
+//
+//   The drift was entirely one-directional (0 phantoms), so the guard never
+//   PASSED a bad query; it was set up to BLOCK a good one. Latent, not leaking:
+//   0 of the 48 were named in any .from() in src/ at the time.
+//
+//   Refresh with scripts/refresh-supabase-types.sh before trusting a failure
+//   here. Relation-grain completeness of types.ts is still graded by nothing.
+//
 //   It was 4 when this check shipped (MP-329) -- all four writes to
 //   public.agent_onboarding, a table dropped from the database. MP-330 removed
 //   them, so the ratchet now starts clean:

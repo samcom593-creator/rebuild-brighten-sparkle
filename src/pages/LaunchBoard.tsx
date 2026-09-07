@@ -406,7 +406,9 @@ export default function LaunchBoard() {
                   {k.thumb_url ? (
                     <>
                       <img src={k.thumb_url} alt="" loading="lazy" className="h-full w-full object-cover" />
-                      {k.preview_url && <img src={k.preview_url} alt="" loading="lazy" className="absolute inset-0 hidden h-full w-full object-cover group-hover:block" />}
+                      {k.preview_url && (
+                        <video src={k.preview_url} muted loop playsInline preload="none" onMouseEnter={(e) => { void e.currentTarget.play(); }} onMouseLeave={(e) => { e.currentTarget.pause(); e.currentTarget.currentTime = 0; }} className="absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity group-hover:opacity-100" />
+                      )}
                     </>
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-muted-foreground"><Film className="h-6 w-6" /></div>

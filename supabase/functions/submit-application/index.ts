@@ -1544,11 +1544,22 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     if (!existingApp) {
+      // Same rule as the quick-qualify lookup above, on the FULL-FORM path
+      // (this is the branch the 4-step /apply form actually hits — the
+      // 2026-09-06 test proved it: a submit on a phone shared with a 6-month-
+      // old DISQUALIFIED row returned that stale id here with isDuplicate:true
+      // and NO insert, so no recruiting trigger fired). Only a live, recent
+      // match may short-circuit; dead/closed/>90-day matches fall through to
+      // the INSERT and the email-dup trigger keeps duplicate_of lineage.
+      const fullFormStaleFloor = new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString();
       const { data: matchedExistingApp } = await supabaseAdmin
         .from("applications")
         .select("id, created_at, license_progress, status")
         .or(`email.ilike.${normalizedEmail},phone.eq.${normalizedPhone}`)
         .is("terminated_at", null)
+        .is("closed_at", null)
+        .not("status", "in", "(rejected,disqualified,no_pickup)")
+        .gte("created_at", fullFormStaleFloor)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();

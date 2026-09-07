@@ -589,9 +589,9 @@ export function ScopedProductionScoreboard() {
                   </div>
                   {external && external.policies > 0 && (
                     <div className="flex items-center justify-between gap-3 border-t border-border pt-1.5">
-                      <dt className="text-amber-700 dark:text-amber-300">External unattributed</dt>
+                      <dt className="text-amber-700 dark:text-amber-300">Agency-reported production</dt>
                       <dd className="tabular-nums text-foreground">
-                        {money(external.ap)} <span className="text-xs text-muted-foreground">· {policies(external.policies)} pending sync</span>
+                        {money(external.ap)} <span className="text-xs text-muted-foreground">· {policies(external.policies)} included in totals</span>
                       </dd>
                     </div>
                   )}
@@ -625,8 +625,8 @@ export function ScopedProductionScoreboard() {
                 </div>
               )}
               <div className="flex items-center justify-between px-4 pt-3">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Who sold</p>
-                <p className="text-xs text-muted-foreground">{data.by_agent.length} of {data.all_members_count.toLocaleString()} in scope produced</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Who sold · policy records</p>
+                <p className="text-xs text-muted-foreground">{data.by_agent.length} producers with individual policy records</p>
               </div>
               {data.by_agent.length === 0 ? (
                 <div className="px-4 pb-4 pt-2">

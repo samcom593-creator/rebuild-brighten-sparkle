@@ -126,6 +126,9 @@ export interface ScoreboardData {
     external_unattributed: Totals;
     duplicate_candidate_groups: number;
     hierarchy_ambiguities: number;
+    /** Producers with no hierarchy path to the viewer — override is 0 by construction. */
+    unlinked_producers?: number;
+    unlinked_ap?: number;
   };
   last_synced_at: string | null;
   source: string;
@@ -566,6 +569,12 @@ export function ScopedProductionScoreboard() {
                 {unknownLevels > 0 && (
                   <p className="mt-3 text-xs text-muted-foreground">
                     Partial estimate: {unknownLevels} comp {unknownLevels === 1 ? "level" : "levels"} unknown, assumed {pct(data.comp.fallback_pct)}.
+                  </p>
+                )}
+                {(data.reconciliation.unlinked_producers ?? 0) > 0 && (
+                  <p className="mt-3 rounded-md border border-destructive/40 bg-destructive/10 px-2.5 py-2 text-xs text-foreground">
+                    {data.reconciliation.unlinked_producers} producing {data.reconciliation.unlinked_producers === 1 ? "agent has" : "agents have"} no manager path to you —{" "}
+                    {money(data.reconciliation.unlinked_ap ?? 0)} of production is earning you 0% override. Set their manager in the roster.
                   </p>
                 )}
                 <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">{data.earnings.basis}</p>

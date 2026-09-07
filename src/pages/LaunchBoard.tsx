@@ -34,7 +34,10 @@ interface Card {
   id: string; title: string; brand: string; content_type: string; job: string; hook: string; caption: string;
   status: string; day: number; clip: string; sort: number; posted_at: string | null;
 }
-interface Clip { id: string; path: string; name: string; folder: string; kind: string; size_bytes: number; modified_at: string | null; used_by_card: string | null }
+interface Clip {
+  id: string; path: string; name: string; folder: string; kind: string; size_bytes: number; modified_at: string | null; used_by_card: string | null;
+  thumb_url?: string | null; preview_url?: string | null; duration_s?: number | null; title?: string | null; description?: string | null; tags?: string[];
+}
 
 const STATUSES: Status[] = ["idea", "recorded", "ready", "posted"];
 const STATUS_LABEL: Record<Status, string> = { idea: "Ideas", recorded: "Recorded", ready: "Ready", posted: "Posted" };
@@ -86,6 +89,7 @@ export default function LaunchBoard() {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [folder, setFolder] = useState<"all" | "YouTube" | "Reels">("all");
+  const [length, setLength] = useState<"all" | "short" | "mid" | "long">("all");
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<Card | null>(null);
   const [draft, setDraft] = useState<Record<string, unknown>>(emptyDraft);
@@ -97,7 +101,7 @@ export default function LaunchBoard() {
     try {
       const [c, k] = await Promise.all([
         supabase.from("content_cards").select("*").order("day", { ascending: true }).order("sort", { ascending: true }),
-        supabase.from("content_clips").select("id, path, name, folder, kind, size_bytes, modified_at, used_by_card").order("modified_at", { ascending: false, nullsFirst: false }).limit(400),
+        supabase.from("content_clips").select("id, path, name, folder, kind, size_bytes, modified_at, used_by_card, thumb_url, preview_url, duration_s, title, description, tags").order("modified_at", { ascending: false, nullsFirst: false }).limit(400),
       ]);
       if (c.error) throw c.error;
       if (k.error) throw k.error;
@@ -114,9 +118,8 @@ export default function LaunchBoard() {
     const q = query.trim();
     if (q.length < 2) return;
     const t = setTimeout(async () => {
-      const { data, error } = await supabase.from("content_clips")
-        .select("id, path, name, folder, kind, size_bytes, modified_at, used_by_card")
-        .ilike("name", `%${q.replace(/[%_]/g, "")}%`).order("modified_at", { ascending: false, nullsFirst: false }).limit(200);
+      // Full-library search: words hit the caption title/description/name, tags match exactly.
+      const { data, error } = await supabase.rpc("content_clips_search", { p_q: q, p_folder: null, p_limit: 300 });
       if (error) { toast.error(`Search failed: ${error.message.slice(0, 100)}`); return; }
       setClips((prev) => { const seen = new Set(prev.map((c) => c.id)); return [...prev, ...((data as Clip[]) ?? []).filter((c) => !seen.has(c.id))]; });
     }, 350);
@@ -204,9 +207,16 @@ export default function LaunchBoard() {
   const needsClip = useMemo(() => cards.filter((c) => c.status !== "posted" && !c.clip), [cards]);
   const visibleClips = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return clips.filter((k) => (folder === "all" || k.folder === folder) && (!q || k.name.toLowerCase().includes(q)))
+    const words = q.split(/\s+/).filter(Boolean);
+    const hay = (k: Clip) => `${k.title ?? ""} ${k.description ?? ""} ${(k.tags ?? []).join(" ")} ${k.name}`.toLowerCase();
+    const lenOk = (k: Clip) => {
+      const d = Number(k.duration_s ?? 0);
+      return length === "all" || (length === "short" ? d > 0 && d <= 60 : length === "mid" ? d > 60 && d <= 300 : d > 300);
+    };
+    return clips.filter((k) => (folder === "all" || k.folder === folder) && lenOk(k) && (!words.length || words.every((w) => hay(k).includes(w))))
       .sort((a, b) => (b.modified_at ?? "").localeCompare(a.modified_at ?? ""));
-  }, [clips, query, folder]);
+  }, [clips, query, folder, length]);
+  const fmtDur = (s?: number | null) => (s ? `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}` : "");
   const counts = useMemo(() => ({ total: cards.length, ready: ready.length, posted: cards.filter((c) => c.status === "posted").length }), [cards, ready]);
 
   if (loading) return <div className="flex min-h-[60vh] items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading your board…</div>;
@@ -373,36 +383,51 @@ export default function LaunchBoard() {
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative min-w-[240px] flex-1">
               <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search your Dropbox clips by name…" className="pl-8" />
+              <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search by what\u2019s in the clip — desk, drone, gym, car, event…" className="pl-8" />
             </div>
             {(["all", "YouTube", "Reels"] as const).map((f) => (
               <button key={f} onClick={() => setFolder(f)} className={`rounded-full border px-3 py-1 text-xs font-semibold ${folder === f ? "border-primary/40 bg-primary/15 text-primary" : "border-border text-muted-foreground hover:text-foreground"}`}>
                 {f === "all" ? "All" : f === "YouTube" ? "YouTube · horizontal" : "Reels · vertical"}
               </button>
             ))}
+            {(["all", "short", "mid", "long"] as const).map((l) => (
+              <button key={l} onClick={() => setLength(l)} className={`rounded-full border px-3 py-1 text-xs font-semibold ${length === l ? "border-primary/40 bg-primary/15 text-primary" : "border-border text-muted-foreground hover:text-foreground"}`}>
+                {l === "all" ? "Any length" : l === "short" ? "≤ 1 min" : l === "mid" ? "1–5 min" : "5 min +"}
+              </button>
+            ))}
             <span className="text-xs text-muted-foreground">{visibleClips.length} shown · newest first · nothing is downloaded</span>
           </div>
           {attachTarget && <div className="rounded-xl border border-gold/40 bg-gold/10 px-3 py-2 text-sm text-foreground">Pick the clip for <b>{attachTarget.title}</b> — tap <b>Attach</b> on a row.</div>}
-          <ul className="divide-y divide-border rounded-2xl border border-border bg-card">
-            {visibleClips.length === 0 && <li className="p-4 text-sm text-muted-foreground">No clips match. The index refreshes every 6 hours from Dropbox.</li>}
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {visibleClips.length === 0 && <p className="col-span-full p-4 text-sm text-muted-foreground">No clips match. Previews and titles fill in as the mini indexes your Dropbox (newest first).</p>}
             {visibleClips.map((k) => (
-              <li key={k.id} className="flex flex-wrap items-center gap-3 px-3 py-2.5">
-                <Film className={`h-4 w-4 shrink-0 ${k.kind === "vertical" ? "text-sky-400" : "text-amber-400"}`} />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-semibold text-foreground">{cleanName(k.name)}</div>
-                  <div className="truncate text-[11px] text-muted-foreground">{k.path}</div>
+              <div key={k.id} className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card">
+                <a href={dropboxUrl(k.path)} target="_blank" rel="noopener noreferrer" className={`relative block bg-muted/40 ${k.kind === "vertical" ? "aspect-[9/16] max-h-64" : "aspect-video"}`} title="Open in Dropbox">
+                  {k.thumb_url ? (
+                    <>
+                      <img src={k.thumb_url} alt="" loading="lazy" className="h-full w-full object-cover" />
+                      {k.preview_url && <img src={k.preview_url} alt="" loading="lazy" className="absolute inset-0 hidden h-full w-full object-cover group-hover:block" />}
+                    </>
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-muted-foreground"><Film className="h-6 w-6" /></div>
+                  )}
+                  {k.duration_s ? <span className="absolute bottom-1.5 right-1.5 rounded bg-background/80 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-foreground">{fmtDur(k.duration_s)}</span> : null}
+                  {k.used_by_card && <span className="absolute left-1.5 top-1.5 rounded bg-emerald-500/90 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-950">on a card</span>}
+                </a>
+                <div className="flex flex-1 flex-col gap-1.5 p-3">
+                  <div className="line-clamp-2 text-sm font-semibold leading-snug text-foreground">{k.title || cleanName(k.name)}</div>
+                  {k.tags && k.tags.length > 0 && <div className="flex flex-wrap gap-1">{k.tags.slice(0, 4).map((tg) => <button key={tg} onClick={() => setQuery(tg)} className="rounded-full border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground hover:text-foreground">{tg}</button>)}</div>}
+                  <div className="mt-auto text-[11px] text-muted-foreground">{k.folder} · {fmtDate(k.modified_at)} · {fmtSize(k.size_bytes)}</div>
+                  <div className="flex gap-1.5">
+                    {attachTarget
+                      ? <Button size="sm" onClick={() => attachClip(k, attachTarget)} className="h-7 flex-1 bg-primary px-2.5 text-[11.5px] text-primary-foreground hover:bg-primary/90"><Paperclip className="mr-1 h-3 w-3" />Attach</Button>
+                      : <Button size="sm" variant="outline" onClick={() => cardFromClip(k)} className="h-7 flex-1 px-2.5 text-[11.5px]"><Plus className="mr-1 h-3 w-3" />New card</Button>}
+                    <Button asChild size="sm" variant="ghost" className="h-7 px-2 text-muted-foreground"><a href={dropboxUrl(k.path)} target="_blank" rel="noopener noreferrer" title="Open in Dropbox"><ExternalLink className="h-3.5 w-3.5" /></a></Button>
+                  </div>
                 </div>
-                <Chip className={k.kind === "vertical" ? "border-sky-400/30 text-sky-300" : "border-amber-400/30 text-amber-300"}>{k.folder}</Chip>
-                <span className="w-16 text-right text-[11px] tabular-nums text-muted-foreground">{fmtDate(k.modified_at)}</span>
-                <span className="w-14 text-right text-[11px] tabular-nums text-muted-foreground">{fmtSize(k.size_bytes)}</span>
-                {k.used_by_card && <Chip className="border-emerald-400/30 text-emerald-300">on a card</Chip>}
-                <a href={dropboxUrl(k.path)} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground" title="Open in Dropbox"><ExternalLink className="h-4 w-4" /></a>
-                {attachTarget
-                  ? <Button size="sm" onClick={() => attachClip(k, attachTarget)} className="h-7 bg-primary px-2.5 text-[11.5px] text-primary-foreground hover:bg-primary/90"><Paperclip className="mr-1 h-3 w-3" />Attach</Button>
-                  : <Button size="sm" variant="outline" onClick={() => cardFromClip(k)} className="h-7 px-2.5 text-[11.5px]"><Plus className="mr-1 h-3 w-3" />New card</Button>}
-              </li>
+              </div>
             ))}
-          </ul>
+          </div>
         </div>
       )}
 

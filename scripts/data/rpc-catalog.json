@@ -1314,6 +1314,20 @@
         "raw": ""
       }
     ],
+    "content_clips_search": [
+      {
+        "all": [
+          "p_folder",
+          "p_limit",
+          "p_q"
+        ],
+        "required": [
+          "p_q"
+        ],
+        "unnamed": false,
+        "raw": "p_q text, p_folder text DEFAULT NULL::text, p_limit integer DEFAULT 200"
+      }
+    ],
     "content_clips_upsert": [
       {
         "all": [

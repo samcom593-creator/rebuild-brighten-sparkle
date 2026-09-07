@@ -16,6 +16,16 @@ export type Database = {
     Tables: {
       content_clips: {
         Row: {
+          captioned_at: string | null
+          description: string | null
+          duration_s: number | null
+          height: number | null
+          preview_url: string | null
+          tags: string[]
+          thumb_url: string | null
+          thumbed_at: string | null
+          title: string | null
+          width: number | null
           folder: string
           id: string
           indexed_at: string
@@ -27,6 +37,16 @@ export type Database = {
           used_by_card: string | null
         }
         Insert: {
+          captioned_at?: string | null
+          description?: string | null
+          duration_s?: number | null
+          height?: number | null
+          preview_url?: string | null
+          tags?: string[]
+          thumb_url?: string | null
+          thumbed_at?: string | null
+          title?: string | null
+          width?: number | null
           folder: string
           id?: string
           indexed_at?: string
@@ -38,6 +58,16 @@ export type Database = {
           used_by_card?: string | null
         }
         Update: {
+          captioned_at?: string | null
+          description?: string | null
+          duration_s?: number | null
+          height?: number | null
+          preview_url?: string | null
+          tags?: string[]
+          thumb_url?: string | null
+          thumbed_at?: string | null
+          title?: string | null
+          width?: number | null
           folder?: string
           id?: string
           indexed_at?: string
@@ -130852,6 +130882,10 @@ export type Database = {
       schedule_auto_populate_tick: { Args: never; Returns: undefined }
       scoped_production_projection: { Args: never; Returns: Json }
       scoped_production_projection_uncached: { Args: never; Returns: Json }
+      content_clips_search: {
+        Args: { p_q: string; p_folder?: string | null; p_limit?: number }
+        Returns: Database["public"]["Tables"]["content_clips"]["Row"][]
+      }
       agency_roster_production: {
         Args: { p_end: string; p_start: string }
         Returns: {

@@ -2463,15 +2463,25 @@
       "updated_at"
     ],
     "content_clips": [
+      "captioned_at",
+      "description",
+      "duration_s",
       "folder",
+      "height",
       "id",
       "indexed_at",
       "kind",
       "modified_at",
       "name",
       "path",
+      "preview_url",
       "size_bytes",
-      "used_by_card"
+      "tags",
+      "thumb_url",
+      "thumbed_at",
+      "title",
+      "used_by_card",
+      "width"
     ],
     "content_library": [
       "ai_analyzed",
@@ -9157,6 +9167,19 @@
       "seconds_apart",
       "subscription_id"
     ],
+    "v_policy_number_vocabulary_drift": [
+      "annual_premium",
+      "client_first_name",
+      "client_last_name",
+      "created_at",
+      "doctor_flags_placeholder",
+      "drift_class",
+      "id",
+      "policy_number",
+      "push_verdict",
+      "source",
+      "status"
+    ],
     "v_pre_licensing_tracker": [
       "app_status",
       "application_id",
@@ -9282,9 +9305,13 @@
       "measured_at",
       "native_source_apex_outside_unified",
       "placeholder_alp_all_time",
+      "placeholder_chaseable_origins",
       "placeholder_rows_all_time",
+      "placeholder_rows_chaseable_mtd",
+      "placeholder_rows_chaseable_since_anchor",
       "placeholder_rows_mtd",
-      "placeholder_rows_since_anchor"
+      "placeholder_rows_since_anchor",
+      "placeholder_rows_structural_since_anchor"
     ],
     "v_production_truth_freshness": [
       "age_seconds",

@@ -92,6 +92,20 @@ if match '^(src/.*\.(tsx?|jsx?)$|src/integrations/supabase/types\.ts$|scripts/ch
   node scripts/check-supabase-relation-types.mjs
 fi
 
+# ---------- check-types-column-drift (MP-463) ----------
+# Trigger: the generated types artifact, the live column snapshot, or the script.
+# Sibling of the check above, one grain finer: that one grades relation NAMES,
+# this one grades the COLUMNS inside them. MP-430f dropped next_action_text from
+# v_onboarding_sequence on 2026-09-04 and types.ts kept declaring it. Proven on
+# live prod: selecting a column prod HAS returns 401/42501, selecting a phantom
+# returns 400/42703 -- raised at parse time, rejecting the WHOLE query. So a
+# phantom column is a dead surface tsc calls green. Only that direction votes;
+# columns prod has that types.ts lacks are printed and never fail the commit.
+if match '^(src/integrations/supabase/types\.ts$|scripts/data/column-catalog\.json$|scripts/check-types-column-drift\.mjs$)'; then
+  echo "[pre-commit] types.ts / column catalog staged — running check:types-column-drift…"
+  node scripts/check-types-column-drift.mjs
+fi
+
 # ---------- check-forbidden-language (wave-29) ----------
 # Trigger: any user-facing text file. Script walks whole repo, so any new copy
 # anywhere should be scanned. ~1s when fired.

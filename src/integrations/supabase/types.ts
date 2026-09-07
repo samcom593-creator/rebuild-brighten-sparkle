@@ -98749,7 +98749,6 @@ export type Database = {
           license_status: string | null
           manager: string | null
           next_action_due_at: string | null
-          next_action_text: string | null
           next_missing_step: string | null
           onboarding_completed_at: string | null
           onboarding_stage: string | null

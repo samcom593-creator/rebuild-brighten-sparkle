@@ -717,6 +717,22 @@ if match '^(src/.*\.(tsx|jsx|ts)$|supabase/functions/.*\.ts$|scripts/check-rpc-a
   npm run --silent check:rpc-args || exit 1
 fi
 
+# ---------- check-rpc-status-literals (MP-471) ----------
+# The other half of check-enum-filter-literals: a status word that arrives FROM an
+# RPC and is compared in JavaScript, where the return type is text and every wrong
+# word type-checks (MP-409's `f.status !== "ok"` against a CHECK that cannot store
+# "ok"). Its three sibling catalogs — enum-catalog.json, relation-catalog.json,
+# rpc-catalog.json — each gate at commit time above; this one gated ONLY at
+# verify:core. So when agency_roster_production shipped in 45566ede with a call site
+# in Agencies.tsx and no catalog entry, the guard went red in CI and stayed red for
+# 10 hours across every subsequent push, because CI is read after the fact and this
+# hook is read before it. Same window this file's own header was written to close.
+# 1.07s measured over 3 runs — static, no database.
+if match '^(src/.*\.(tsx|jsx|ts)$|scripts/check-rpc-status-literals\.mjs$|scripts/data/rpc-column-vocabulary\.json$)'; then
+  echo "[pre-commit] rpc status-literal input staged — running check:rpc-status-literals…"
+  npm run --silent check:rpc-status-literals || exit 1
+fi
+
 # ---------- check-contact-actions (MP-351) ----------
 # 24 backend/UI/security contracts behind the Licensed Inbox contact actions:
 # the JWT gates on the SMS/email/dispatcher functions, the SMS-consent and

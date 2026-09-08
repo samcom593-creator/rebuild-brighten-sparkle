@@ -1,23 +1,24 @@
 {
   "_comment": [
-    "MP-423 \u2014 edge functions that are ACTIVE in prod with NO source in this repo.",
+    "MP-423 — edge functions that are ACTIVE in prod with NO source in this repo.",
     "",
     "These are NOT tolerated defects that got baselined for convenience. Each one",
     "is source code that exists in exactly one place on earth: the Supabase edge",
     "runtime. If prod loses it, it is gone. And because every repo guard walks",
-    "supabase/functions, NONE of them has ever graded these files \u2014",
+    "supabase/functions, NONE of them has ever graded these files —",
     "check-ilike-user-input (the MP-422 wildcard that minted a session on a",
     "verify_jwt=false endpoint), check-phone-gateway-source, check-empty-catch,",
     "the enum/CHECK vocabulary guards, check-relation-exists. All blind, all six.",
     "",
     "The baseline is a NAMED SET, not a count (MP-356/MP-357: a count-only floor",
-    "is fungible \u2014 a real regression can sit red until an unrelated pay-down",
+    "is fungible — a real regression can sit red until an unrelated pay-down",
     "absorbs it, and a brand-new ungoverned endpoint passes green so long as the",
     "total does not rise). A slug not listed here fails the next deploy.",
     "",
     "This file shrinks by RECOVERING source, never by adding slugs.",
     "",
-    "MP-476 (2026-09-08): daily-brief PAID DOWN \u2014 supabase/functions/daily-brief/ now exists, so the guard sees repo source for it. Removed here per the rule above: this file shrinks by recovering source. Separately, ACTIVE count fell 259 -> 232 and the novel orphan mp457-service-branch-probe was DELETED from prod rather than baselined \u2014 it was MP-457's own throwaway probe, whose source said 'inert; delete when a working Supabase PAT exists'. Backup of its body: ~/business-ops/website-integrity-bot/retired-function-backups/."
+    "MP-476 (2026-09-08): daily-brief PAID DOWN — supabase/functions/daily-brief/ now exists, so the guard sees repo source for it. Removed here per the rule above: this file shrinks by recovering source. Separately, ACTIVE count fell 259 -> 232 and the novel orphan mp457-service-branch-probe was DELETED from prod rather than baselined — it was MP-457's own throwaway probe, whose source said 'inert; delete when a working Supabase PAT exists'. Backup of its body: ~/business-ops/website-integrity-bot/retired-function-backups/.",
+    "MP-478 (2026-09-08): SOURCE RECOVERED for all 5, via scripts/recover-edge-function-source.py using the scoped Management credential MP-476 put on the machine. The mirrors are at supabase/_recovered-orphans/<slug>/index.ts and every slug STAYS LISTED HERE -- recovery is not payment. What the runtime returns is the TRANSPILED module (comments and logic intact, TypeScript types erased, formatting normalised), measured against check-stale-onboarding whose real source is in the repo. A mirror is paid down only when a human restores the types and moves it to supabase/functions/<slug>/. The mirrors are deliberately OUTSIDE supabase/functions/ because deploy-supabase.yml deploys every directory under it on BOTH the deploy-all and deploy-changed paths -- committing them there would push a machine-recovered transpilation over live prod the moment a working Management PAT exists. Consequence of that still being true: the six repo guards named above remain blind to these five, which is the next wave, not this one."
   ],
   "recorded_at": "2026-09-04",
   "project_ref": "xrzweoneiieddzxogewk",
@@ -26,31 +27,81 @@
       "slug": "create-va-account",
       "verify_jwt": true,
       "version": 135,
-      "why": "Live caller: src/pages/VaManagerPortal.tsx:78. The repo's own changelog admits the gap \u2014 src/data/shipped-data.ts:904 says 'local edge-fn source for create-va-account/set-va-account is deployed via MCP; repo copies to be backfilled'. The backfill never happened."
+      "why": "Live caller: src/pages/VaManagerPortal.tsx:78. The repo's own changelog admits the gap — src/data/shipped-data.ts:904 says 'local edge-fn source for create-va-account/set-va-account is deployed via MCP; repo copies to be backfilled'. The backfill never happened.",
+      "prod_version_at_recovery": 137,
+      "recovered_mirror": {
+        "path": "supabase/_recovered-orphans/create-va-account/index.ts",
+        "recovered_at": "2026-09-08",
+        "sha256": "7211b75c0db91d5e9234b0a96b06748d59692d2a70f551983aef3fbe9f865270",
+        "source_bytes": 3164,
+        "runtime_entrypoint": "source/index.ts",
+        "lossy": "transpiled: comments+logic preserved, TypeScript types erased, formatting normalised",
+        "graded_by_repo_guards": false
+      }
     },
     {
       "slug": "set-va-account",
       "verify_jwt": true,
       "version": 135,
-      "why": "Live caller: src/pages/VaManagerPortal.tsx:114. Same unkept backfill promise as create-va-account. Performs a real auth-level ban/unban, so it is the destructive half of the VA portal."
+      "why": "Live caller: src/pages/VaManagerPortal.tsx:114. Same unkept backfill promise as create-va-account. Performs a real auth-level ban/unban, so it is the destructive half of the VA portal.",
+      "prod_version_at_recovery": 137,
+      "recovered_mirror": {
+        "path": "supabase/_recovered-orphans/set-va-account/index.ts",
+        "recovered_at": "2026-09-08",
+        "sha256": "4b8ad1ad7746409695dfdc89c89a41915aba9a232f9cd22281192a5218996cfb",
+        "source_bytes": 2291,
+        "runtime_entrypoint": "source/index.ts",
+        "lossy": "transpiled: comments+logic preserved, TypeScript types erased, formatting normalised",
+        "graded_by_repo_guards": false
+      }
     },
     {
       "slug": "apex-ai-nudge",
       "verify_jwt": false,
       "version": 135,
-      "why": "PUBLIC (no JWT). Declared in supabase/config.toml but has no source directory."
+      "why": "PUBLIC (no JWT). Declared in supabase/config.toml but has no source directory.",
+      "prod_version_at_recovery": 137,
+      "recovered_mirror": {
+        "path": "supabase/_recovered-orphans/apex-ai-nudge/index.ts",
+        "recovered_at": "2026-09-08",
+        "sha256": "646f0eb1cd4d2a506ae02a5f6d04808ecb1e5ca0ab51111bdf15dbc8f4166614",
+        "source_bytes": 8448,
+        "runtime_entrypoint": "apex-ai-nudge/index.ts",
+        "lossy": "transpiled: comments+logic preserved, TypeScript types erased, formatting normalised",
+        "graded_by_repo_guards": false
+      }
     },
     {
       "slug": "billing-portal-redirect",
       "verify_jwt": false,
       "version": 143,
-      "why": "PUBLIC (no JWT). ZERO references anywhere in the repo \u2014 not in config.toml, not in src/, not in a workflow. Nothing in this codebase records that it exists."
+      "why": "PUBLIC (no JWT). ZERO references anywhere in the repo — not in config.toml, not in src/, not in a workflow. Nothing in this codebase records that it exists.",
+      "prod_version_at_recovery": 145,
+      "recovered_mirror": {
+        "path": "supabase/_recovered-orphans/billing-portal-redirect/index.ts",
+        "recovered_at": "2026-09-08",
+        "sha256": "b5b35191f7b716563232459400ae773c986f736e920c4d42d115fac8b20ad57e",
+        "source_bytes": 3507,
+        "runtime_entrypoint": "source/index.ts",
+        "lossy": "transpiled: comments+logic preserved, TypeScript types erased, formatting normalised",
+        "graded_by_repo_guards": false
+      }
     },
     {
       "slug": "inbound-transcript-parse",
       "verify_jwt": true,
       "version": 137,
-      "why": "ZERO references anywhere in the repo \u2014 not in config.toml, not in src/, not in a workflow. Nothing in this codebase records that it exists."
+      "why": "ZERO references anywhere in the repo — not in config.toml, not in src/, not in a workflow. Nothing in this codebase records that it exists.",
+      "prod_version_at_recovery": 139,
+      "recovered_mirror": {
+        "path": "supabase/_recovered-orphans/inbound-transcript-parse/index.ts",
+        "recovered_at": "2026-09-08",
+        "sha256": "4638b775f7c32f156776d0bf3f564af9fe566f638105135399a9f2fcb992e518",
+        "source_bytes": 4283,
+        "runtime_entrypoint": "inbound-transcript-parse/index.ts",
+        "lossy": "transpiled: comments+logic preserved, TypeScript types erased, formatting normalised",
+        "graded_by_repo_guards": false
+      }
     }
   ]
 }

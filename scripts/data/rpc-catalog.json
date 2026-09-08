@@ -1314,6 +1314,24 @@
         "raw": ""
       }
     ],
+    "content_clips_canon_tags": [
+      {
+        "all": [
+          "p_desc",
+          "p_kind",
+          "p_name",
+          "p_tags"
+        ],
+        "required": [
+          "p_desc",
+          "p_kind",
+          "p_name",
+          "p_tags"
+        ],
+        "unnamed": false,
+        "raw": "p_tags text[], p_name text, p_kind text, p_desc text"
+      }
+    ],
     "content_clips_search": [
       {
         "all": [

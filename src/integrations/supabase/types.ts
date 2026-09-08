@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      content_shares: {
+        Row: {
+          clip_ids: string[]
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          label: string
+          last_viewed_at: string | null
+          token: string
+          view_count: number
+        }
+        Insert: {
+          clip_ids?: string[]
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          label?: string
+          last_viewed_at?: string | null
+          token: string
+          view_count?: number
+        }
+        Update: {
+          clip_ids?: string[]
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          label?: string
+          last_viewed_at?: string | null
+          token?: string
+          view_count?: number
+        }
+        Relationships: []
+      }
       content_clips: {
         Row: {
           download_expires_at: string | null

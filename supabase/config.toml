@@ -692,3 +692,9 @@ verify_jwt = true
 
 [functions.slack-unlicensed-welcome]
 verify_jwt = true
+
+[functions.content-library]
+verify_jwt = true
+
+[functions.content-share]
+verify_jwt = true

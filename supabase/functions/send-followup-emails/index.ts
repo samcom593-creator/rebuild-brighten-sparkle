@@ -364,7 +364,8 @@ const handler = async (req: Request): Promise<Response> => {
       .is("followup_sent_at", null)
       .is("closed_at", null)
       .is("terminated_at", null)
-      .gte("created_at", threeDaysAgoStart.toISOString())
+      // 2026-09-07: day 3-4 window (was exact-day) so one missed run cannot skip a cohort; followup_sent_at keeps it idempotent.
+      .gte("created_at", fourDaysAgoStart.toISOString())
       .lte("created_at", threeDaysAgoEnd.toISOString());
 
     if (unlicensedError) {
@@ -380,7 +381,7 @@ const handler = async (req: Request): Promise<Response> => {
       .is("followup_unlicensed_2_sent_at", null)
       .is("closed_at", null)
       .is("terminated_at", null)
-      .gte("created_at", sevenDaysAgoStart.toISOString())
+      .gte("created_at", new Date(sevenDaysAgoStart.getTime() - 86_400_000).toISOString()) // day 7-8 window, same reason
       .lte("created_at", sevenDaysAgoEnd.toISOString());
 
     if (unlicensedError2) {

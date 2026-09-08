@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,25 +39,25 @@ const STAGE_META: Record<Stage, { label: string; color: string; order: number }>
 };
 
 const CHECKLIST_STEPS = [
-  { key: "watched_welcome_video", label: "Watched welcome video", stage: "signed_up" },
-  { key: "completed_profile", label: "Completed profile", stage: "signed_up" },
+  { key: "watched_welcome_video", label: "Watched welcome video", stage: "signed_up", href: "/vsl" },
+  { key: "completed_profile", label: "Completed profile", stage: "signed_up", href: "/dashboard/profile" },
   // MP-342: this task named itself and offered no way to do it. New hires
   // reported they could not find the Discord; the invites were live the whole
   // time but existed only inside one email. settingKey resolves the real URL
   // at render so the link can never drift from what the onboarding email sends.
   { key: "joined_discord", label: "Joined team Slack + Discord", stage: "onboarding", settingKey: "community" },
-  { key: "added_phone_number", label: "Added phone number", stage: "onboarding" },
-  { key: "uploaded_id", label: "Uploaded ID", stage: "onboarding" },
-  { key: "signed_ica", label: "Signed contract", stage: "onboarding" },
-  { key: "scheduled_license_test", label: "Scheduled license test", stage: "licensing" },
-  { key: "submitted_fingerprints", label: "Submitted fingerprints", stage: "licensing" },
-  { key: "passed_license_test", label: "Passed license test", stage: "licensing" },
-  { key: "received_license", label: "Received state license", stage: "licensing" },
-  { key: "contracted_with_carriers", label: "Contracted with carriers", stage: "contracting" },
-  { key: "completed_first_training", label: "Completed first training", stage: "field_training" },
-  { key: "made_first_prospect_call", label: "Made first prospect call", stage: "field_training" },
-  { key: "ran_first_appointment", label: "Ran first appointment", stage: "field_training" },
-  { key: "closed_first_deal", label: "Closed first deal", stage: "producing" },
+  { key: "added_phone_number", label: "Added phone number", stage: "onboarding", href: "/dashboard/profile" },
+  { key: "uploaded_id", label: "Uploaded ID", stage: "onboarding", href: "/dashboard/profile" },
+  { key: "signed_ica", label: "Signed contract", stage: "onboarding", href: "/start-contracting" },
+  { key: "scheduled_license_test", label: "Scheduled license test", stage: "licensing", href: "/get-licensed#licensing-actions" },
+  { key: "submitted_fingerprints", label: "Submitted fingerprints", stage: "licensing", href: "/get-licensed#licensing-actions" },
+  { key: "passed_license_test", label: "Passed license test", stage: "licensing", href: "/get-licensed#licensing-actions" },
+  { key: "received_license", label: "Received state license", stage: "licensing", href: "/get-licensed#licensing-actions" },
+  { key: "contracted_with_carriers", label: "Contracted with carriers", stage: "contracting", href: "/start-contracting" },
+  { key: "completed_first_training", label: "Completed first training", stage: "field_training", href: "/dashboard/training/sales-course" },
+  { key: "made_first_prospect_call", label: "Made first prospect call", stage: "field_training", href: "/dashboard/call-center" },
+  { key: "ran_first_appointment", label: "Ran first appointment", stage: "field_training", href: "/dashboard/scripts" },
+  { key: "closed_first_deal", label: "Closed first deal", stage: "producing", href: "/dashboard/agent-pipeline" },
 ] as const;
 
 interface ProgressRow {
@@ -269,6 +270,9 @@ export default function GettingStarted() {
                   <p className={`text-sm ${p[step.key] ? "text-muted-foreground line-through" : ""}`}>
                     {step.label}
                   </p>
+                  {"href" in step && !p[step.key] && (
+                    <Link to={step.href} className="text-[11px] font-medium text-primary underline-offset-2 hover:underline">Do it →</Link>
+                  )}
                   {"settingKey" in step && !p[step.key] && (
                     <div className="mt-1 flex flex-wrap gap-3">
                       {communityLinks.slack && (

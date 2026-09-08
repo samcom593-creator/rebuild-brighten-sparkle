@@ -95,6 +95,18 @@ export default function LaunchBoard() {
   const [folder, setFolder] = useState<"all" | "YouTube" | "Reels">("all");
   const [length, setLength] = useState<"all" | "short" | "mid" | "long">("all");
   const [shown, setShown] = useState(96);
+  const [picked, setPicked] = useState<Set<string>>(new Set());   // Library multi-select for sharing
+  const togglePick = (id: string) => setPicked((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const shareSelected = async () => {
+    if (picked.size === 0) return;
+    const token = Array.from(crypto.getRandomValues(new Uint8Array(18))).map((b) => "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"[b % 62]).join("");
+    const { error } = await supabase.from("content_shares").insert({ token, clip_ids: Array.from(picked), label: `${picked.size} clip${picked.size === 1 ? "" : "s"} from the Launch Board` });
+    if (error) { toast.error(`Couldn't create the share: ${error.message.slice(0, 100)}`); return; }
+    const url = `${window.location.origin}/share/${token}`;
+    try { await navigator.clipboard.writeText(url); toast.success("Share link copied — paste it anywhere"); }
+    catch { toast.success(`Share link: ${url}`); }
+    setPicked(new Set());
+  };
   useEffect(() => { setShown(96); }, [query, folder, length]);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<Card | null>(null);
@@ -209,7 +221,8 @@ export default function LaunchBoard() {
   const needsClip = useMemo(() => cards.filter((c) => c.status !== "posted" && !c.clip), [cards]);
   const visibleClips = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const words = q.split(/\s+/).filter(Boolean);
+    const SYN: Record<string, string> = { gym: "workout", exercise: "workout", weights: "workout", lifting: "workout", fitness: "workout", cars: "car", vehicle: "car", corvette: "car", driving: "car", aerial: "drone", dji: "drone", desk: "office", computer: "office", laptop: "office", talking: "talking-head", speaking: "talking-head", podcast: "talking-head", vlog: "talking-head", outside: "outdoors", street: "outdoors", sunset: "outdoors", crowd: "event", seminar: "event", conference: "event", tiktok: "vertical", reel: "vertical", reels: "vertical", youtube: "horizontal" };
+    const words = q.split(/\s+/).filter(Boolean).map((w) => SYN[w] ?? w);
     const hay = (k: Clip) => `${k.title ?? ""} ${k.description ?? ""} ${(k.tags ?? []).join(" ")} ${k.name}`.toLowerCase();
     const lenOk = (k: Clip) => {
       const d = Number(k.duration_s ?? 0);
@@ -400,10 +413,21 @@ export default function LaunchBoard() {
             <span className="text-xs text-muted-foreground">{visibleClips.length.toLocaleString()} match · {clips.filter((k) => k.thumb_url).length.toLocaleString()} with previews · newest first</span>
           </div>
           {attachTarget && <div className="rounded-xl border border-gold/40 bg-gold/10 px-3 py-2 text-sm text-foreground">Pick the clip for <b>{attachTarget.title}</b> — tap <b>Attach</b> on a row.</div>}
+          {picked.size > 0 && (
+            <div className="sticky top-14 z-10 flex flex-wrap items-center gap-2 rounded-xl border border-primary/40 bg-background/95 px-3 py-2 text-sm backdrop-blur">
+              <span className="font-semibold text-foreground">{picked.size} selected</span>
+              <Button size="sm" onClick={shareSelected} className="h-8 bg-primary text-primary-foreground hover:bg-primary/90"><Copy className="mr-1.5 h-3.5 w-3.5" />Copy share link</Button>
+              <Button size="sm" variant="ghost" onClick={() => setPicked(new Set())} className="h-8 text-muted-foreground">Clear</Button>
+              <span className="text-xs text-muted-foreground">Anyone with the link can preview and download these originals — no login.</span>
+            </div>
+          )}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {visibleClips.length === 0 && <p className="col-span-full p-4 text-sm text-muted-foreground">No clips match. Previews and titles fill in as the mini indexes your Dropbox (newest first).</p>}
             {visibleClips.slice(0, shown).map((k) => (
-              <div key={k.id} className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card">
+              <div key={k.id} className={`group relative flex flex-col overflow-hidden rounded-2xl border bg-card ${picked.has(k.id) ? "border-primary ring-1 ring-primary/50" : "border-border"}`}>
+                <label className="absolute left-2 top-2 z-10 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border border-border bg-background/85 text-primary" title="Select to share">
+                  <input type="checkbox" checked={picked.has(k.id)} onChange={() => togglePick(k.id)} className="h-3.5 w-3.5 accent-[hsl(var(--primary))]" />
+                </label>
                 <a href={dropboxUrl(k.path)} target="_blank" rel="noopener noreferrer" className={`relative block bg-muted/40 ${k.kind === "vertical" ? "aspect-[9/16] max-h-64" : "aspect-video"}`} title="Open in Dropbox">
                   {k.thumb_url ? (
                     <>

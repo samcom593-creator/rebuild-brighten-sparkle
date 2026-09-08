@@ -103,6 +103,7 @@ const VaManagerPortal = lazy(() => import("./pages/VaManagerPortal"));
 const ApexControl = lazy(() => import("./pages/ApexControl"));
 const LaunchBoard = lazy(() => import("./pages/LaunchBoard"));
 const Agencies = lazy(() => import("./pages/Agencies"));
+const SharePage = lazy(() => import("./pages/SharePage"));
 const BuildersDashboard = lazy(() => import("./pages/BuildersDashboard"));
 const DashboardApplicants = lazy(() => import("./pages/DashboardApplicants"));
 const DashboardAccounts = lazy(() => import("./pages/DashboardAccounts"));
@@ -387,6 +388,7 @@ const App = () => (
                 <Route element={<QueryShell />}>
                 <Route path="/careers/:state" element={<StateCareerLanding />} />
                   <Route path="/apply" element={<Apply />} />
+                  <Route path="/share/:token" element={<SharePage />} />
                   {/* Public, shareable contracting intake. Unauthenticated on purpose:
                       producers who have no APEX login use this link. */}
                   <Route path="/start-contracting" element={<StartContracting />} />

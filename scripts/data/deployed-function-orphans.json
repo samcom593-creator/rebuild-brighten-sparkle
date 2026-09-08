@@ -1,21 +1,23 @@
 {
   "_comment": [
-    "MP-423 — edge functions that are ACTIVE in prod with NO source in this repo.",
+    "MP-423 \u2014 edge functions that are ACTIVE in prod with NO source in this repo.",
     "",
     "These are NOT tolerated defects that got baselined for convenience. Each one",
     "is source code that exists in exactly one place on earth: the Supabase edge",
     "runtime. If prod loses it, it is gone. And because every repo guard walks",
-    "supabase/functions, NONE of them has ever graded these files —",
+    "supabase/functions, NONE of them has ever graded these files \u2014",
     "check-ilike-user-input (the MP-422 wildcard that minted a session on a",
     "verify_jwt=false endpoint), check-phone-gateway-source, check-empty-catch,",
     "the enum/CHECK vocabulary guards, check-relation-exists. All blind, all six.",
     "",
     "The baseline is a NAMED SET, not a count (MP-356/MP-357: a count-only floor",
-    "is fungible — a real regression can sit red until an unrelated pay-down",
+    "is fungible \u2014 a real regression can sit red until an unrelated pay-down",
     "absorbs it, and a brand-new ungoverned endpoint passes green so long as the",
     "total does not rise). A slug not listed here fails the next deploy.",
     "",
-    "This file shrinks by RECOVERING source, never by adding slugs."
+    "This file shrinks by RECOVERING source, never by adding slugs.",
+    "",
+    "MP-476 (2026-09-08): daily-brief PAID DOWN \u2014 supabase/functions/daily-brief/ now exists, so the guard sees repo source for it. Removed here per the rule above: this file shrinks by recovering source. Separately, ACTIVE count fell 259 -> 232 and the novel orphan mp457-service-branch-probe was DELETED from prod rather than baselined \u2014 it was MP-457's own throwaway probe, whose source said 'inert; delete when a working Supabase PAT exists'. Backup of its body: ~/business-ops/website-integrity-bot/retired-function-backups/."
   ],
   "recorded_at": "2026-09-04",
   "project_ref": "xrzweoneiieddzxogewk",
@@ -24,19 +26,13 @@
       "slug": "create-va-account",
       "verify_jwt": true,
       "version": 135,
-      "why": "Live caller: src/pages/VaManagerPortal.tsx:78. The repo's own changelog admits the gap — src/data/shipped-data.ts:904 says 'local edge-fn source for create-va-account/set-va-account is deployed via MCP; repo copies to be backfilled'. The backfill never happened."
+      "why": "Live caller: src/pages/VaManagerPortal.tsx:78. The repo's own changelog admits the gap \u2014 src/data/shipped-data.ts:904 says 'local edge-fn source for create-va-account/set-va-account is deployed via MCP; repo copies to be backfilled'. The backfill never happened."
     },
     {
       "slug": "set-va-account",
       "verify_jwt": true,
       "version": 135,
       "why": "Live caller: src/pages/VaManagerPortal.tsx:114. Same unkept backfill promise as create-va-account. Performs a real auth-level ban/unban, so it is the destructive half of the VA portal."
-    },
-    {
-      "slug": "daily-brief",
-      "verify_jwt": false,
-      "version": 136,
-      "why": "PUBLIC (no JWT), holds SUPABASE_SERVICE_ROLE_KEY, and takes owner_agent_id from the query string or body. Declared in supabase/config.toml but has no source directory."
     },
     {
       "slug": "apex-ai-nudge",
@@ -48,13 +44,13 @@
       "slug": "billing-portal-redirect",
       "verify_jwt": false,
       "version": 143,
-      "why": "PUBLIC (no JWT). ZERO references anywhere in the repo — not in config.toml, not in src/, not in a workflow. Nothing in this codebase records that it exists."
+      "why": "PUBLIC (no JWT). ZERO references anywhere in the repo \u2014 not in config.toml, not in src/, not in a workflow. Nothing in this codebase records that it exists."
     },
     {
       "slug": "inbound-transcript-parse",
       "verify_jwt": true,
       "version": 137,
-      "why": "ZERO references anywhere in the repo — not in config.toml, not in src/, not in a workflow. Nothing in this codebase records that it exists."
+      "why": "ZERO references anywhere in the repo \u2014 not in config.toml, not in src/, not in a workflow. Nothing in this codebase records that it exists."
     }
   ]
 }

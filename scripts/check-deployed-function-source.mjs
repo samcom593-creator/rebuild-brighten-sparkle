@@ -23,11 +23,23 @@
  * the missing directory is not in the repo to be swept.
  *
  * WHERE THE CREDENTIAL LIVES, AND WHY THE CHECK LIVES THERE TOO
- * The obvious home was apex-doctor. It cannot be: BOTH management PATs on the
- * laptop (~/.config/apex-creds/supabase-pat.token and the .dead.20260805 copy)
- * return 401 Unauthorized as of 2026-09-04, so no daemon on that box can read
- * deployed state at all. So the guard runs in CI, where the deploy credential
- * lives.
+ * The obvious home was apex-doctor. The original reason given was that BOTH
+ * management PATs on the laptop (~/.config/apex-creds/supabase-pat.token and
+ * the .dead.20260805 copy) return 401 as of 2026-09-04, so "no daemon on that
+ * box can read deployed state at all".
+ *
+ * MP-476 FALSIFIED THE SECOND HALF by doing the search instead of repeating the
+ * sentence. Both named PATs are indeed 401 — re-verified. But a THIRD
+ * credential sits on the same laptop, ~/.config/apex-creds/call-lab-deploy.token,
+ * and it answers this guard's one endpoint with HTTP 200. It is scoped, not
+ * full: 200 on GET (and DELETE) /v1/projects/<ref>/functions, 403 on /secrets,
+ * /api-keys, /organizations and on listing projects. "Both of the two I knew
+ * about are dead" is not "there is no credential"; six consecutive waves
+ * carried the stronger claim forward without testing it.
+ *
+ * The guard still runs in CI, because that is where it gates. But the endpoint
+ * it needs is now reachable from the laptop too, so a local run CAN answer the
+ * question and apex-doctor is no longer structurally excluded.
  *
  * AND THE FIRST LIVE RUN FALSIFIED THE REST OF THAT SENTENCE. Commit 5723cb8c
  * claimed secrets.SUPABASE_ACCESS_TOKEN was "proven alive by the deploys that
@@ -36,8 +48,18 @@
  * (33896206460, 16:37:59Z, MP-422's commit, no code of mine in it) got
  * "Unexpected error setting project secrets: Unauthorized" from the supabase
  * CLI on the same secret. The last deploy that worked was cee438ea at ~16:20Z.
- * So the credential died in that window, every route to prod's control plane is
- * now 401, and the Supabase deploy pipeline is DOWN until Sam mints a new token.
+ * So the credential died in that window. MP-476 re-measured the two claims that
+ * followed and split them: "every route to prod's control plane is now 401" is
+ * FALSE (see the scoped token above). "The Supabase deploy pipeline is DOWN" is
+ * HALF true, and the half matters — the `deploy` job has been GREEN throughout,
+ * because migrations reach the pooler with SUPABASE_DB_PASSWORD and never touch
+ * the management API. Six waves recorded "every migration since is hand-applied"
+ * as a consequence of this 401; the job logs show `Apply migrations` succeeding
+ * on every run. What IS down is edge-function shipping: `functions deploy` and
+ * `secrets set` both authenticate with the dead PAT, and both steps have merely
+ * been SKIPPED since 2026-09-04 because no commit changed a function. The first
+ * one that does would have discovered it the hard way, so deploy-supabase.yml
+ * now probes the credential's liveness on exactly those runs.
  * A deploy succeeding "daily" was true yesterday and load-bearing nowhere.
  *
  * THIS GUARD THEREFORE RUNS IN ITS OWN JOB, not as a step in `deploy`. It
@@ -125,9 +147,11 @@ if (!TOKEN) {
   }
   console.log(
     "○ check:deployed-function-source — SKIPPED (no SUPABASE_ACCESS_TOKEN, not CI).\n" +
-    "  This guard is authoritative only where a live management credential exists,\n" +
-    "  which is .github/workflows/deploy-supabase.yml. Both PATs on Sam's laptop\n" +
-    "  return 401 as of 2026-09-04, so a local run cannot answer the question.",
+    "  Pass a credential to answer the question locally — MP-476 verified that\n" +
+    "  ~/.config/apex-creds/call-lab-deploy.token returns 200 on this guard's one\n" +
+    "  endpoint, while supabase-pat.token and its .dead.20260805 sibling are 401:\n" +
+    "    SUPABASE_ACCESS_TOKEN=$(tr -d '[:space:]' < ~/.config/apex-creds/call-lab-deploy.token) \\\n" +
+    "      node scripts/check-deployed-function-source.mjs",
   );
   process.exit(0);
 }

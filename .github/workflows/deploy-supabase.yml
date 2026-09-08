@@ -164,6 +164,50 @@ jobs:
           echo "deploy_needed=$deploy_needed" >> "$GITHUB_OUTPUT"
           echo "Functions: ${changed_functions:-none}; all=$deploy_all; migrations=$migrations_changed"
 
+      # MP-476. The Preflight step above proves the secret is NON-EMPTY. That is
+      # not the same question as whether it works, and this repo has already paid
+      # that bill twice: a heartbeat written before the work it reported on, and
+      # a token "proven alive by the deploys that succeed from it daily" that had
+      # been 401 for an hour when the sentence was written.
+      #
+      # SCOPED TO functions_changed ON PURPOSE. Migrations do not touch the
+      # management API — `db push` connects to the pooler with
+      # SUPABASE_DB_PASSWORD — and migration-only runs have been applying
+      # correctly all along with this PAT dead. Failing them here would convert
+      # a credential problem into an outage, which is the mistake the audit
+      # job's own comment block warns about. So this gate fires only on the runs
+      # that genuinely cannot succeed without the PAT.
+      - name: Deploy credential ALIVE? (present != working)
+        if: steps.scope.outputs.functions_changed == 'true'
+        run: |
+          set -uo pipefail
+          code=""
+          for attempt in 1 2 3; do
+            code=$(curl -s -o /tmp/pat-probe.txt -w '%{http_code}' \
+              -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+              "https://api.supabase.com/v1/projects/$PROJECT_REF/functions" || echo "000")
+            case "$code" in
+              200) echo "✓ SUPABASE_ACCESS_TOKEN answers the management API (HTTP 200)"; exit 0 ;;
+              401|403) break ;;  # will not improve on retry
+            esac
+            [ "$attempt" -lt 3 ] && sleep $((attempt*5))
+          done
+          echo "::error::SUPABASE_ACCESS_TOKEN is present but DEAD — HTTP $code from the management API."
+          echo "::error::This run changes edge function source, and both 'supabase functions deploy'"
+          echo "::error::and 'supabase secrets set' authenticate with this token, so they cannot succeed."
+          echo "::error::Mint a replacement at https://supabase.com/dashboard/account/tokens and set it:"
+          echo "::error::  gh secret set SUPABASE_ACCESS_TOKEN --repo ${{ github.repository }}"
+          {
+            echo "### Deploy credential: DEAD (HTTP $code)"
+            echo "Function deploys cannot run. Migrations are unaffected and still apply."
+            echo ""
+            echo "\`\`\`"
+            head -c 300 /tmp/pat-probe.txt
+            echo ""
+            echo "\`\`\`"
+          } >> $GITHUB_STEP_SUMMARY
+          exit 1
+
       - uses: supabase/setup-cli@v1
         if: steps.scope.outputs.deploy_needed == 'true'
         with:
@@ -332,7 +376,22 @@ jobs:
     name: Audit — every deployed function has source in this repo
     runs-on: ubuntu-latest
     env:
-      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      # MP-476. Two credentials, two scopes — named apart because conflating
+      # them is what left this job blind for 4 days.
+      #   SUPABASE_ACCESS_TOKEN    full PAT: deploy + secrets. 401 since
+      #                            2026-09-04 (secret rotated that day to a
+      #                            value the API rejects). Still the ONLY
+      #                            credential the deploy job uses.
+      #   SUPABASE_FUNCTIONS_TOKEN functions-scoped PAT. PROVEN 200 on
+      #                            GET /v1/projects/<ref>/functions and 200 on
+      #                            DELETE; 403 on /secrets, /api-keys,
+      #                            /organizations and on listing projects.
+      # This guard needs exactly the one endpoint the scoped token answers, so
+      # it reads that first. The fallback keeps the job honest if the scoped
+      # secret is ever removed: it goes back to the dead PAT and fails loudly
+      # rather than skipping, because the script treats an absent token in CI
+      # as exit 1.
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_FUNCTIONS_TOKEN || secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_PROJECT_REF: xrzweoneiieddzxogewk
     steps:
       - uses: actions/checkout@v4

@@ -3,6 +3,7 @@
   "_generated_from": "supabase/config.toml + supabase/functions + src invocation scan",
   "buckets": {
     "missing_config_block": [
+      "content-library",
       "create-va-account",
       "set-va-account"
     ],

@@ -111,7 +111,7 @@ import { orphanMirrorRoots } from "./lib/orphan-mirrors.mjs";
 // land in the same commit. NEVER raise one.
 const ROOTS = [
   { dir: "src", baseline: 0 },
-  { dir: "supabase/functions", baseline: 54 },
+  { dir: "supabase/functions", baseline: 51 },
   // MP-479: the recovered orphan mirrors (live prod functions whose source
   // exists nowhere else) get their OWN budget rather than being folded into
   // the supabase/functions figure. Merging them would let a mirror regression

@@ -34,6 +34,36 @@ const CASES = [
   // ...and must not damage the chain around them.
   ["mid-chain-keeps-limit",       "SURVIVED",
     `const { data } = await sb.from("t")\n  // prose\n  .limit(1) // MARK is not here\n`.replace("MARK is not here", "x").replace(".limit(1)", ".limit(1); const q = MARK;")],
+
+  // MP-482: a regex literal is code and its body may hold a quote or a `//`.
+  // Without a regex rule the quote opened a phantom string and every comment
+  // downstream survived -- the apostrophe bug through a different door. Measured
+  // at 56 files / 689 real comment lines before the fix.
+  ["regex-dquote-then-comment",   "STRIPPED", `const e = s.replace(/"/g, "&quot;");\n// MARK\n`],
+  ["regex-squote-then-comment",   "STRIPPED", `const e = s.replace(/'/g, "&#39;");\n// MARK\n`],
+  ["regex-backtick-then-comment", "STRIPPED", 'const e = s.replace(/[`>#]/g, "x");\n// MARK\n'],
+  ["regex-quote-keeps-template",  "STRIPPED", 'const e = s.replace(/"/g, "&q;");\nconst h = `<p>hi</p>`;\n// MARK\n'],
+  // DANGEROUS direction. `/^https:\\/\\//i` carries a literal `//`; reading that as
+  // a line comment blanked 105 chars of real code (contracting-delivery.ts:88).
+  // This is why the regex rule may NOT be narrowed to bodies containing a quote.
+  ["regex-with-escaped-slashes",  "SURVIVED", `const ok = /^https:\\/\\//i.test(u); const b = MARK;\n`],
+  // DANGEROUS direction, and the exact regression this fix caused in its own first
+  // cut. Verbatim from InsuraCloudHealthAlert.tsx:97-101. JSX prose sits in CODE
+  // state, so the `<` of every closing tag (`</code>`) preceded a `/` and made it
+  // look like a regex start; the mis-scan desynchronised the lexer and ate
+  // `//replit.com/~" title="..."` out of a real href. Bisected to `<` specifically:
+  // `~`, `>`, `?`, `{`, `}`, `+`, `-`, `*`, `%` and `^` were each re-added alone and
+  // NONE reproduce it. A shorter hand-written fixture does not reproduce either --
+  // the desync needs this much accumulated state, which is why it is quoted whole.
+  ["jsx-close-tag-eats-href",     "SURVIVED", `            Single action to fix: drop the real <code className="px-1 py-0.5 rounded bg-card/60 text-amber-300 text-[10px]">SAMUEL_JAMES_API_TOKEN</code> at <code className="px-1 py-0.5 rounded bg-card/60 text-amber-300 text-[10px]">~/.config/apex-creds/insuracloud.token</code>. Edge fn now writes <code className="px-1 py-0.5 rounded bg-card/60 text-amber-300 text-[10px]">auth_failed</code> instead of fake success — once the token is real, sync_log starts logging the truth.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <a
+              href="https://replit.com/~" title="MARK"
+`],
+  // Division is not a regex, and must not be consumed as one.
+  ["division-not-regex",          "SURVIVED", `const r = total / count / 2;\nconst b = MARK;\n`],
+  ["division-then-comment",       "STRIPPED", `const r = total / count;\n// MARK\n`],
 ];
 
 let pass = 0;

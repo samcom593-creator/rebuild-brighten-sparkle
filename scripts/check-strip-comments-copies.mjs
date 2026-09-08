@@ -22,7 +22,6 @@ import { stripComments } from "./lib/strip-comments.mjs";
 // Each entry needs a reason. Removing one is a win; adding one needs a wave.
 const ALLOWED = new Map([
   ["scripts/lib/strip-comments.mjs", "the shared implementation itself"],
-  ["scripts/lib/scan-utils.mjs", "conservative whole-line-only variant with its own consumers; MP-474 measured it but did not convert it"],
 ]);
 
 function walk(dir, acc = []) {

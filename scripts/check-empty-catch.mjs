@@ -105,12 +105,19 @@ import fs from "node:fs";
 import path from "node:path";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
+import { orphanMirrorRoots } from "./lib/orphan-mirrors.mjs";
 
 // Scanned roots, each with its OWN baseline. Lower a baseline when fixes
 // land in the same commit. NEVER raise one.
 const ROOTS = [
   { dir: "src", baseline: 0 },
   { dir: "supabase/functions", baseline: 54 },
+  // MP-479: the recovered orphan mirrors (live prod functions whose source
+  // exists nowhere else) get their OWN budget rather than being folded into
+  // the supabase/functions figure. Merging them would let a mirror regression
+  // be absorbed by an unrelated pay-down in a different directory — the
+  // fungible-floor disease MP-356 shipped a fix for.
+  ...orphanMirrorRoots().map((dir) => ({ dir, baseline: 0 })),
 ];
 
 const roots = ROOTS.map((r) => ({ ...r, abs: path.join(repoRoot, r.dir) })).filter((r) => {

@@ -72,7 +72,12 @@ const HELPER = "nanpTenDigits";
 
 const lineOf = (src, idx) => src.slice(0, idx).split("\n").length;
 
-const files = execSync("git ls-files 'supabase/functions/**/*.ts'", { encoding: "utf8" })
+// MP-479: the recovered orphan mirrors are tracked files too, and a carrier
+// gateway address hardcoded in one of them is hardcoded in live production.
+const files = execSync(
+  "git ls-files 'supabase/functions/**/*.ts' 'supabase/_recovered-orphans/**/*.ts'",
+  { encoding: "utf8" },
+)
   .split("\n").filter(Boolean)
   // The helper and its test define the contract; they do not consume it, and
   // the test deliberately keeps a copy of the broken primitive to prove it

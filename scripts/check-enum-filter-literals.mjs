@@ -70,6 +70,7 @@ import path from "node:path";
 import { stripComments, walk } from "./lib/scan-utils.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
+import { orphanMirrorRoots } from "./lib/orphan-mirrors.mjs";
 
 const CATALOG_PATH = path.join(repoRoot, "scripts", "data", "enum-catalog.json");
 // A missing or shape-broken catalog must stop the run. Falling back to an empty
@@ -382,7 +383,10 @@ function check(file, text, table, segment, offset) {
 // telegram_groups on every bot-add, which the CHECK has never accepted — and a
 // guard that cannot see its own motivating bug is the inline-only mistake MP-341
 // already made once.
-const SCAN_ROOTS = ["src", path.join("supabase", "functions")];
+// MP-479: the recovered orphan mirrors are scanned too. They are transpiled
+// copies of live prod, and an enum/CHECK literal survives transpilation intact
+// (it is a string), so a violation found here is TRUE of production.
+const SCAN_ROOTS = ["src", path.join("supabase", "functions"), ...orphanMirrorRoots()];
 for (const file of SCAN_ROOTS.flatMap((r) => walk(path.join(repoRoot, r)))) {
   const raw = fs.readFileSync(file, "utf8");
   if (ALLOW_RX.test(raw)) continue;

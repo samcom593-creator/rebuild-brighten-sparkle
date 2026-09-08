@@ -38,7 +38,13 @@ import { stripComments } from "./lib/strip-comments.mjs";
 import { readFileSync, writeFileSync, existsSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 
-const ROOTS = ["supabase/functions", "src"];
+import { orphanMirrorRoots } from "./lib/orphan-mirrors.mjs";
+
+// The recovered orphan mirrors are real, live, PRODUCTION edge functions whose
+// source exists nowhere else. Two of the five are verify_jwt=false. This guard
+// exists because MP-422 found an .ilike() wildcard that minted a session on a
+// public endpoint — and it had never once read these five files (MP-479).
+const ROOTS = ["supabase/functions", "src", ...orphanMirrorRoots()];
 const BASELINE = "scripts/data/ilike-user-input-baseline.json";
 const SAFE_WRAPPERS = ["emailPattern", "escapeLikePattern", "likeLiteral"];
 

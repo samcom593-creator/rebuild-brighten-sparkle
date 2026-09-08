@@ -31,6 +31,7 @@ import { fileURLToPath } from "node:url";
 import { stripComments, walk } from "./lib/scan-utils.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+import { orphanMirrorRoots } from "./lib/orphan-mirrors.mjs";
 const CATALOG = path.join(repoRoot, "scripts", "data", "relation-catalog.json");
 
 // KNOWN-DEAD, deliberately not fixed. An entry that stops matching is an ERROR,
@@ -88,7 +89,11 @@ const SCHEMA_CALL = /\.\s*schema\s*\(/;
 // MP-323 and MP-288 both shipped fixes for. This guard owns the directory that
 // one cannot see: supabase/functions/, which tsc never type-checks and where the
 // fifth dead `agent_onboarding` writer survived MP-330's src/-only sweep.
-const SCAN_ROOTS = [path.join("supabase", "functions")];
+// MP-479: plus the recovered orphan mirrors — live prod functions outside
+// supabase/functions/ (they stay outside so they cannot be deployed; see
+// scripts/lib/orphan-mirrors.mjs). A dead relation in one of them is a dead
+// write in production that no guard has ever been able to see.
+const SCAN_ROOTS = [path.join("supabase", "functions"), ...orphanMirrorRoots()];
 const violations = [];
 const unprovable = [];
 const seenBaseline = new Set();

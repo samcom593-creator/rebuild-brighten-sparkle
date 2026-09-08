@@ -59,6 +59,17 @@ if match '^(\.github/workflows/external-cron-backup\.yml$|scripts/check-cron-ver
   node scripts/check-cron-verdict-states.mjs
 fi
 
+# ---------- check-orphan-mirror-containment (MP-479) ----------
+# The five recovered mirrors are the ONLY copy of five live production edge
+# functions, and they are un-deployable purely because they sit outside
+# supabase/functions/. Catch a move, a manifest repoint, or an edit to the
+# recovered evidence at commit time rather than in CI — by the time CI runs, a
+# mirror moved into the deploy path is already one merge from overwriting prod.
+if match '^(supabase/_recovered-orphans/|scripts/data/deployed-function-orphans\.json$|scripts/lib/orphan-mirrors\.mjs$|scripts/check-orphan-mirror-containment\.mjs$)'; then
+  echo "→ orphan mirror containment"
+  node scripts/check-orphan-mirror-containment.mjs
+fi
+
 # ---------- check-unsafe-supabase-catch (wave-29) ----------
 # Trigger: any edge function ts/tsx or the script itself.
 if match '^(supabase/functions/.*\.(ts|tsx)$|scripts/check-unsafe-supabase-catch\.mjs$)'; then

@@ -1,7 +1,7 @@
 {
   "_why": "Floor for check-maybesingle-nonunique.mjs, keyed per file+table+filter so a regression in one file cannot be offset by a pay-down in another. No line numbers: they shift under unrelated edits. See MP-356 in the guard header.",
-  "_generated_from_catalog": "2026-09-04T22:13:02Z",
-  "total": 58,
+  "_generated_from_catalog": "2026-09-08T04:39:25Z",
+  "total": 57,
   "sites": {
     "src/components/dashboard/AddAgentModal.tsx::agents(user_id)": 1,
     "src/components/dashboard/AgentLinkConnectionPrompt.tsx::agents(user_id)": 1,
@@ -52,7 +52,6 @@
     "supabase/functions/seminar-confirmation/index.ts::seminar_registrations(email,seminar_date)": 1,
     "supabase/functions/seminar-reminder-tick/index.ts::telegram_users(email,opt_out_all,opt_out_nudges)": 1,
     "supabase/functions/send-daily-checkin-prompt/index.ts::profiles(email)": 1,
-    "supabase/functions/send-password-reset/index.ts::agents(user_id)": 1,
     "supabase/functions/send-password-reset/index.ts::profiles(email)": 1,
     "supabase/functions/send-seminar-invite-blast/index.ts::profiles(email)": 1,
     "supabase/functions/simple-login/index.ts::agents(user_id)": 1

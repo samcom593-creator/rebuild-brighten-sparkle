@@ -92,6 +92,15 @@ if match '^(src/.*\.(tsx?|jsx?)$|src/integrations/supabase/types\.ts$|scripts/ch
   node scripts/check-supabase-relation-types.mjs
 fi
 
+# ---------- check-types-relation-completeness (MP-465) ----------
+# Fires on either projection of the database, because a change to ONE of them is
+# exactly what opens the gap. check-supabase-relation-types depends on types.ts
+# being complete and cannot verify it; this is what verifies it.
+if match '^(src/integrations/supabase/types\.ts$|scripts/data/relation-catalog\.json$|scripts/check-types-relation-completeness\.mjs$)'; then
+  echo "[pre-commit] types.ts / relation catalog staged — running check:types-relation-completeness…"
+  node scripts/check-types-relation-completeness.mjs
+fi
+
 # ---------- check-types-column-drift (MP-463) ----------
 # Trigger: the generated types artifact, the live column snapshot, or the script.
 # Sibling of the check above, one grain finer: that one grades relation NAMES,

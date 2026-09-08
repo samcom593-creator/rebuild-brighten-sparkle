@@ -1,7 +1,15 @@
 {
-  "_source": "information_schema.tables via bot-sql, all non-system schemas",
+  "_source": "pg_class (relkind r,p,v,m,f) via bot-sql, all non-system schemas",
   "_generated_by": "scripts/refresh-relation-catalog.sh",
   "_note": "Qualified names. `public.x` is what an unqualified .from('x') resolves to.",
+  "_relkinds": [
+    "r",
+    "p",
+    "v",
+    "m",
+    "f"
+  ],
+  "_relkinds_why": "r=table p=partitioned v=view m=MATERIALIZED view f=foreign. information_schema.tables omits m entirely (MP-465).",
   "_excluded_pattern": "^realtime\\.messages_\\d{4}_\\d{2}_\\d{2}$",
   "_excluded_why": "daily-rotating realtime partitions; snapshotting them made the drift check fire on the calendar, not on a defect",
   "relations": [
@@ -313,6 +321,7 @@
     "public.manager_social_posts",
     "public.manager_touches",
     "public.manual_interview_entries",
+    "public.mat_production_unified",
     "public.mat_refresh_heartbeat",
     "public.mentorship_leads",
     "public.mercury_subscriptions",
@@ -323,6 +332,9 @@
     "public.messaging_route_rules",
     "public.messaging_workspace_installations",
     "public.metric_definitions",
+    "public.mv_agent_truth",
+    "public.mv_hierarchy_hops",
+    "public.mv_production_comp_truth",
     "public.next_step_events",
     "public.next_step_messages",
     "public.next_step_progress",

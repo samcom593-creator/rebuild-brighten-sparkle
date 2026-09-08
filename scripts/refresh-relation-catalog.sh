@@ -15,14 +15,38 @@
 # runtime. A hand sweep finds the instance; only a guard finds the class.
 #
 # Run:  bash scripts/refresh-relation-catalog.sh
-# apex-doctor Check #30 re-queries the live catalog weekly and goes red on drift.
+# apex-doctor Check #39 re-queries the live catalog weekly and goes red on drift.
+# (This said Check #30 until MP-465. #30 is the agent-roster fixture check and has
+# never read this file -- a stale pointer sends the next reader to the wrong check.)
 set -euo pipefail
 
 TOKEN_FILE="${HOME}/.config/apex-creds/bot-sql.token"
 [ -r "$TOKEN_FILE" ] || { echo "no bot-sql token at $TOKEN_FILE" >&2; exit 1; }
 OUT="$(dirname "$0")/data/relation-catalog.json"
 
-Q="select table_schema, table_name, table_type from information_schema.tables where table_schema not in ('pg_catalog','information_schema') order by 1,2"
+# SOURCE IS pg_class, NOT information_schema.tables (MP-465).
+# information_schema.tables is STRUCTURALLY BLIND to materialized views -- the
+# SQL standard has no such object, so Postgres omits all of them. Measured live
+# 2026-09-07: 4 matviews in public (mat_production_unified, mv_agent_truth,
+# mv_hierarchy_hops, mv_production_comp_truth), seen by information_schema 0/4.
+#
+# That made this catalog assert a matview does not exist. check-relation-exists
+# grades every edge-function .from() against it, so the first
+# .from("mv_agent_truth") would have been blocked as a dead relation -- and the
+# failure message's own remedy ("run refresh-relation-catalog.sh") regenerates
+# the same blindness, leaving only the BASELINE array, i.e. recording a LIVE
+# matview as permanently known-dead. Latent when found: 0 of the 4 were named
+# anywhere in src/ or supabase/functions/.
+#
+# The swap is fully characterised, which is why it is safe. pg_class also drops
+# information_schema's privilege filter, so it was measured across ALL schemas
+# before being trusted: the entire delta is those same 4 matviews and nothing
+# else. relkinds: r=table, p=partitioned, v=view, m=matview, f=foreign.
+Q="select n.nspname as table_schema, c.relname as table_name, c.relkind
+   from pg_class c join pg_namespace n on n.oid = c.relnamespace
+   where n.nspname not in ('pg_catalog','information_schema','pg_toast')
+     and c.relkind in ('r','p','v','m','f')
+   order by 1,2"
 BODY=$(python3 -c 'import json,sys; print(json.dumps({"query": sys.stdin.read()}))' <<< "$Q")
 RESP=$(curl -s --max-time 60 -X POST \
   "https://xrzweoneiieddzxogewk.supabase.co/functions/v1/bot-sql" \
@@ -55,9 +79,16 @@ EXCLUDE = r"^realtime\.messages_\d{4}_\d{2}_\d{2}$"
 keep = [n for n in ("%s.%s" % (r["table_schema"], r["table_name"]) for r in rows)
         if not re.match(EXCLUDE, n)]
 cat = {
-    "_source": "information_schema.tables via bot-sql, all non-system schemas",
+    "_source": "pg_class (relkind r,p,v,m,f) via bot-sql, all non-system schemas",
     "_generated_by": "scripts/refresh-relation-catalog.sh",
     "_note": "Qualified names. `public.x` is what an unqualified .from('x') resolves to.",
+    # Read by apex-doctor Check #39 to build its LIVE query, so the doctor and
+    # this script cannot disagree about which relkinds are in scope. Retyping the
+    # predicate in the doctor is what would let one side start counting matviews
+    # while the other does not -- the curl --max-time vs fn_agentlink_reap_stuck
+    # drift, one artifact over.
+    "_relkinds": ["r", "p", "v", "m", "f"],
+    "_relkinds_why": "r=table p=partitioned v=view m=MATERIALIZED view f=foreign. information_schema.tables omits m entirely (MP-465).",
     "_excluded_pattern": EXCLUDE,
     "_excluded_why": "daily-rotating realtime partitions; snapshotting them made the drift check fire on the calendar, not on a defect",
     "relations": sorted(keep),

@@ -14,111 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      content_shares: {
-        Row: {
-          clip_ids: string[]
-          created_at: string
-          created_by: string | null
-          expires_at: string | null
-          label: string
-          last_viewed_at: string | null
-          token: string
-          view_count: number
-        }
-        Insert: {
-          clip_ids?: string[]
-          created_at?: string
-          created_by?: string | null
-          expires_at?: string | null
-          label?: string
-          last_viewed_at?: string | null
-          token: string
-          view_count?: number
-        }
-        Update: {
-          clip_ids?: string[]
-          created_at?: string
-          created_by?: string | null
-          expires_at?: string | null
-          label?: string
-          last_viewed_at?: string | null
-          token?: string
-          view_count?: number
-        }
-        Relationships: []
-      }
-      content_clips: {
-        Row: {
-          download_expires_at: string | null
-          download_url: string | null
-          captioned_at: string | null
-          description: string | null
-          duration_s: number | null
-          height: number | null
-          preview_url: string | null
-          tags: string[]
-          thumb_url: string | null
-          thumbed_at: string | null
-          title: string | null
-          width: number | null
-          folder: string
-          id: string
-          indexed_at: string
-          kind: string
-          modified_at: string | null
-          name: string
-          path: string
-          size_bytes: number
-          used_by_card: string | null
-        }
-        Insert: {
-          download_expires_at?: string | null
-          download_url?: string | null
-          captioned_at?: string | null
-          description?: string | null
-          duration_s?: number | null
-          height?: number | null
-          preview_url?: string | null
-          tags?: string[]
-          thumb_url?: string | null
-          thumbed_at?: string | null
-          title?: string | null
-          width?: number | null
-          folder: string
-          id?: string
-          indexed_at?: string
-          kind?: string
-          modified_at?: string | null
-          name: string
-          path: string
-          size_bytes?: number
-          used_by_card?: string | null
-        }
-        Update: {
-          download_expires_at?: string | null
-          download_url?: string | null
-          captioned_at?: string | null
-          description?: string | null
-          duration_s?: number | null
-          height?: number | null
-          preview_url?: string | null
-          tags?: string[]
-          thumb_url?: string | null
-          thumbed_at?: string | null
-          title?: string | null
-          width?: number | null
-          folder?: string
-          id?: string
-          indexed_at?: string
-          kind?: string
-          modified_at?: string | null
-          name?: string
-          path?: string
-          size_bytes?: number
-          used_by_card?: string | null
-        }
-        Relationships: []
-      }
       account_claims: {
         Row: {
           created_at: string
@@ -384,6 +279,13 @@ export type Database = {
             columns: ["matched_agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "account_claims_matched_agent_id_fkey"
+            columns: ["matched_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -1191,6 +1093,13 @@ export type Database = {
             foreignKeyName: "aged_leads_assigned_agent_id_fkey"
             columns: ["assigned_agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "aged_leads_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -1626,6 +1535,13 @@ export type Database = {
             columns: ["assigned_manager_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "aged_leads_assigned_manager_id_fkey"
+            columns: ["assigned_manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -1990,18 +1906,21 @@ export type Database = {
       }
       agent_access_suspensions: {
         Row: {
+          lifted_at: string | null
           reason: string
           suspended_at: string
           suspended_by: string | null
           user_id: string
         }
         Insert: {
+          lifted_at?: string | null
           reason: string
           suspended_at?: string
           suspended_by?: string | null
           user_id: string
         }
         Update: {
+          lifted_at?: string | null
           reason?: string
           suspended_at?: string
           suspended_by?: string | null
@@ -2251,6 +2170,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_achievements_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -2726,6 +2652,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_attendance_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -3231,6 +3164,13 @@ export type Database = {
             foreignKeyName: "agent_award_profiles_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: true
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_award_profiles_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -3721,6 +3661,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_carrier_comp_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -4247,6 +4194,13 @@ export type Database = {
             foreignKeyName: "agent_contract_levels_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: true
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_contract_levels_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -4719,6 +4673,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_contract_status_history_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -5224,6 +5185,13 @@ export type Database = {
             foreignKeyName: "agent_credentials_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_credentials_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -5721,6 +5689,13 @@ export type Database = {
             foreignKeyName: "agent_documents_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_documents_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -6187,6 +6162,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -6739,6 +6721,13 @@ export type Database = {
             foreignKeyName: "agent_lead_stats_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_lead_stats_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -7220,6 +7209,13 @@ export type Database = {
             foreignKeyName: "agent_license_alerts_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_license_alerts_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -7683,6 +7679,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_manager_reparent_log_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -8173,6 +8176,13 @@ export type Database = {
             foreignKeyName: "agent_metrics_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_metrics_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -8633,6 +8643,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_notes_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -9120,6 +9137,13 @@ export type Database = {
             foreignKeyName: "agent_onboarding_queue_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_onboarding_queue_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -9583,6 +9607,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_ratings_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -10058,6 +10089,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_removal_requests_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -10542,6 +10580,13 @@ export type Database = {
             foreignKeyName: "agent_stage_moves_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_stage_moves_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -11008,6 +11053,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_status_changes_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -11513,6 +11565,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_strikes_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -12239,6 +12298,13 @@ export type Database = {
             foreignKeyName: "agent_touches_manager_id_fkey"
             columns: ["manager_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_touches_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -12674,6 +12740,13 @@ export type Database = {
             columns: ["subject_agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_touches_subject_agent_id_fkey"
+            columns: ["subject_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -13455,6 +13528,13 @@ export type Database = {
             foreignKeyName: "agentlink_agents_local_agent_id_fkey"
             columns: ["local_agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agentlink_agents_local_agent_id_fkey"
+            columns: ["local_agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -13981,6 +14061,13 @@ export type Database = {
             foreignKeyName: "agentlink_appointments_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agentlink_appointments_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -14321,6 +14408,13 @@ export type Database = {
             referencedRelation: "v_lapses_30d_detail"
             referencedColumns: ["deal_id"]
           },
+          {
+            foreignKeyName: "agentlink_beneficiaries_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_policy_number_vocabulary_drift"
+            referencedColumns: ["id"]
+          },
         ]
       }
       agentlink_binary_docs: {
@@ -14579,6 +14673,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agentlink_binary_docs_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -15096,6 +15197,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agentlink_book_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -15628,6 +15736,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agentlink_book_of_business_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -16462,6 +16577,13 @@ export type Database = {
             foreignKeyName: "agentlink_clients_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agentlink_clients_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -16985,6 +17107,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agentlink_commissions_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -17519,6 +17648,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agentlink_contracts_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -18146,6 +18282,13 @@ export type Database = {
             foreignKeyName: "agentlink_leads_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agentlink_leads_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -18666,6 +18809,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agentlink_rewards_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -19471,6 +19621,13 @@ export type Database = {
             foreignKeyName: "agents_canonical_agent_id_fkey"
             columns: ["canonical_agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_canonical_agent_id_fkey"
+            columns: ["canonical_agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -19919,6 +20076,13 @@ export type Database = {
             foreignKeyName: "agents_invited_by_manager_id_fkey"
             columns: ["invited_by_manager_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_invited_by_manager_id_fkey"
+            columns: ["invited_by_manager_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -20354,6 +20518,13 @@ export type Database = {
             columns: ["manager_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -20969,6 +21140,13 @@ export type Database = {
             foreignKeyName: "agents_switched_to_manager_id_fkey"
             columns: ["switched_to_manager_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_switched_to_manager_id_fkey"
+            columns: ["switched_to_manager_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -21404,6 +21582,13 @@ export type Database = {
             columns: ["training_stage_override_by"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_training_stage_override_by_fkey"
+            columns: ["training_stage_override_by"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -23016,6 +23201,13 @@ export type Database = {
             foreignKeyName: "apex_carrier_contracts_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "apex_carrier_contracts_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -23525,6 +23717,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "apex_challenge_unlocks_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -25981,6 +26180,13 @@ export type Database = {
             foreignKeyName: "applications_assigned_agent_id_fkey"
             columns: ["assigned_agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -26436,6 +26642,13 @@ export type Database = {
             foreignKeyName: "applications_referral_manager_id_fkey"
             columns: ["referral_manager_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_referral_manager_id_fkey"
+            columns: ["referral_manager_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -26877,6 +27090,13 @@ export type Database = {
             foreignKeyName: "applications_referral_recruiter_id_fkey"
             columns: ["referral_recruiter_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_referral_recruiter_id_fkey"
+            columns: ["referral_recruiter_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -27312,6 +27532,13 @@ export type Database = {
             columns: ["referrer_agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_referrer_agent_id_fkey"
+            columns: ["referrer_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -28646,6 +28873,13 @@ export type Database = {
             foreignKeyName: "award_batches_winner_agent_id_fkey"
             columns: ["winner_agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "award_batches_winner_agent_id_fkey"
+            columns: ["winner_agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -29429,6 +29663,13 @@ export type Database = {
             foreignKeyName: "call_activity_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "call_activity_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -30110,6 +30351,13 @@ export type Database = {
             foreignKeyName: "call_recordings_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "call_recordings_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -30665,6 +30913,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "call_transcripts_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -31290,6 +31545,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "candidate_notes_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -31934,6 +32196,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "candidate_smart_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -32640,6 +32909,13 @@ export type Database = {
             foreignKeyName: "carrier_policies_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_policies_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -32922,6 +33198,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_lapses_30d_detail"
             referencedColumns: ["deal_id"]
+          },
+          {
+            foreignKeyName: "carrier_policies_matched_deal_id_fkey"
+            columns: ["matched_deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_policy_number_vocabulary_drift"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -33343,6 +33626,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "channel_deprovision_queue_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -33907,6 +34197,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "churn_risk_alerts_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -34937,6 +35234,13 @@ export type Database = {
             foreignKeyName: "commission_audit_log_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "commission_audit_log_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -35233,6 +35537,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_lapses_30d_detail"
             referencedColumns: ["deal_id"]
+          },
+          {
+            foreignKeyName: "commission_audit_log_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_policy_number_vocabulary_drift"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -35507,6 +35818,13 @@ export type Database = {
             foreignKeyName: "commission_ledger_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "commission_ledger_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -35804,6 +36122,13 @@ export type Database = {
             referencedRelation: "v_lapses_30d_detail"
             referencedColumns: ["deal_id"]
           },
+          {
+            foreignKeyName: "commission_ledger_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: true
+            referencedRelation: "v_policy_number_vocabulary_drift"
+            referencedColumns: ["id"]
+          },
         ]
       }
       commission_recovery_attempts: {
@@ -36062,6 +36387,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "commission_recovery_attempts_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -36682,6 +37014,13 @@ export type Database = {
             foreignKeyName: "comp_rates_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "comp_rates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -37178,6 +37517,13 @@ export type Database = {
             foreignKeyName: "contact_history_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contact_history_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -37601,6 +37947,86 @@ export type Database = {
         }
         Relationships: []
       }
+      content_clips: {
+        Row: {
+          captioned_at: string | null
+          description: string | null
+          download_expires_at: string | null
+          download_url: string | null
+          duration_s: number | null
+          folder: string
+          height: number | null
+          id: string
+          indexed_at: string
+          kind: string
+          modified_at: string | null
+          name: string
+          path: string
+          preview_url: string | null
+          size_bytes: number
+          tags: string[]
+          thumb_url: string | null
+          thumbed_at: string | null
+          title: string | null
+          used_by_card: string | null
+          width: number | null
+        }
+        Insert: {
+          captioned_at?: string | null
+          description?: string | null
+          download_expires_at?: string | null
+          download_url?: string | null
+          duration_s?: number | null
+          folder: string
+          height?: number | null
+          id?: string
+          indexed_at?: string
+          kind?: string
+          modified_at?: string | null
+          name: string
+          path: string
+          preview_url?: string | null
+          size_bytes?: number
+          tags?: string[]
+          thumb_url?: string | null
+          thumbed_at?: string | null
+          title?: string | null
+          used_by_card?: string | null
+          width?: number | null
+        }
+        Update: {
+          captioned_at?: string | null
+          description?: string | null
+          download_expires_at?: string | null
+          download_url?: string | null
+          duration_s?: number | null
+          folder?: string
+          height?: number | null
+          id?: string
+          indexed_at?: string
+          kind?: string
+          modified_at?: string | null
+          name?: string
+          path?: string
+          preview_url?: string | null
+          size_bytes?: number
+          tags?: string[]
+          thumb_url?: string | null
+          thumbed_at?: string | null
+          title?: string | null
+          used_by_card?: string | null
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_clips_used_by_card_fkey"
+            columns: ["used_by_card"]
+            isOneToOne: false
+            referencedRelation: "content_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       content_library: {
         Row: {
           ai_analyzed: boolean | null
@@ -37708,6 +38134,39 @@ export type Database = {
             referencedColumns: ["user_id"]
           },
         ]
+      }
+      content_shares: {
+        Row: {
+          clip_ids: string[]
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          label: string
+          last_viewed_at: string | null
+          token: string
+          view_count: number
+        }
+        Insert: {
+          clip_ids?: string[]
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          label?: string
+          last_viewed_at?: string | null
+          token: string
+          view_count?: number
+        }
+        Update: {
+          clip_ids?: string[]
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          label?: string
+          last_viewed_at?: string | null
+          token?: string
+          view_count?: number
+        }
+        Relationships: []
       }
       contract_sends: {
         Row: {
@@ -38156,6 +38615,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -38629,6 +39095,13 @@ export type Database = {
             columns: ["manager_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_links_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -39176,6 +39649,13 @@ export type Database = {
             foreignKeyName: "culture_events_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "culture_events_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -39460,6 +39940,13 @@ export type Database = {
             referencedColumns: ["deal_id"]
           },
           {
+            foreignKeyName: "culture_events_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: true
+            referencedRelation: "v_policy_number_vocabulary_drift"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "culture_events_draft_id_fkey"
             columns: ["draft_id"]
             isOneToOne: false
@@ -39688,6 +40175,13 @@ export type Database = {
             columns: ["manager_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "culture_events_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -40163,6 +40657,13 @@ export type Database = {
             foreignKeyName: "culture_manager_credits_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "culture_manager_credits_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -40612,6 +41113,13 @@ export type Database = {
             columns: ["manager_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "culture_manager_credits_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -41983,6 +42491,13 @@ export type Database = {
             foreignKeyName: "daily_brief_log_recipient_agent_id_fkey"
             columns: ["recipient_agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "daily_brief_log_recipient_agent_id_fkey"
+            columns: ["recipient_agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -42476,6 +42991,13 @@ export type Database = {
             foreignKeyName: "daily_production_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "daily_production_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -42891,6 +43413,13 @@ export type Database = {
             referencedColumns: ["deal_id"]
           },
           {
+            foreignKeyName: "deal_attachments_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_policy_number_vocabulary_drift"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "deal_attachments_draft_id_fkey"
             columns: ["draft_id"]
             isOneToOne: false
@@ -43001,6 +43530,13 @@ export type Database = {
             referencedRelation: "v_lapses_30d_detail"
             referencedColumns: ["deal_id"]
           },
+          {
+            foreignKeyName: "deal_beneficiaries_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_policy_number_vocabulary_drift"
+            referencedColumns: ["id"]
+          },
         ]
       }
       deal_drafts: {
@@ -43100,6 +43636,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_lapses_30d_detail"
             referencedColumns: ["deal_id"]
+          },
+          {
+            foreignKeyName: "deal_drafts_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_policy_number_vocabulary_drift"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "deal_drafts_owner_user_id_fkey"
@@ -43220,6 +43763,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_lapses_30d_detail"
             referencedColumns: ["deal_id"]
+          },
+          {
+            foreignKeyName: "deal_status_history_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_policy_number_vocabulary_drift"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -43353,6 +43903,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_lapses_30d_detail"
             referencedColumns: ["deal_id"]
+          },
+          {
+            foreignKeyName: "deal_sync_queue_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_policy_number_vocabulary_drift"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -43738,6 +44295,13 @@ export type Database = {
             foreignKeyName: "deals_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "deals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -44036,6 +44600,13 @@ export type Database = {
             referencedColumns: ["deal_id"]
           },
           {
+            foreignKeyName: "deals_duplicate_of_deal_id_fkey"
+            columns: ["duplicate_of_deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_policy_number_vocabulary_drift"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "deals_manager_id_fkey"
             columns: ["manager_id"]
             isOneToOne: false
@@ -44250,6 +44821,13 @@ export type Database = {
             columns: ["manager_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "deals_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -44869,6 +45447,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "dialer_weekly_payments_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -45729,6 +46314,13 @@ export type Database = {
             foreignKeyName: "email_delivery_log_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "email_delivery_log_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -46201,6 +46793,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "email_tracking_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -46781,6 +47380,13 @@ export type Database = {
             foreignKeyName: "ethos_book_policies_owner_agent_id_fkey"
             columns: ["owner_agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "ethos_book_policies_owner_agent_id_fkey"
+            columns: ["owner_agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -47315,6 +47921,13 @@ export type Database = {
             foreignKeyName: "field_checkins_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "field_checkins_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -47784,6 +48397,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "free_leads_weekly_delivery_log_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -48343,6 +48963,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: true
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "getting_started_progress_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -49440,6 +50067,13 @@ export type Database = {
             foreignKeyName: "inactive_agent_queue_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "inactive_agent_queue_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -49977,6 +50611,13 @@ export type Database = {
             columns: ["owner_agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "inbound_leads_owner_agent_id_fkey"
+            columns: ["owner_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -50823,6 +51464,13 @@ export type Database = {
             foreignKeyName: "instagram_subscriptions_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: true
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "instagram_subscriptions_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -51340,6 +51988,13 @@ export type Database = {
             foreignKeyName: "insuracloud_downline_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "insuracloud_downline_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -51809,6 +52464,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "insuracloud_payouts_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -52311,6 +52973,13 @@ export type Database = {
             foreignKeyName: "insuracloud_policies_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "insuracloud_policies_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -52801,6 +53470,13 @@ export type Database = {
             foreignKeyName: "insuracloud_snapshots_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "insuracloud_snapshots_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -53273,6 +53949,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "insuracloud_sync_log_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -53962,6 +54645,13 @@ export type Database = {
             foreignKeyName: "interview_events_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "interview_events_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -54597,6 +55287,13 @@ export type Database = {
             foreignKeyName: "interview_recordings_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "interview_recordings_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -55207,6 +55904,13 @@ export type Database = {
             foreignKeyName: "invitation_seen_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "invitation_seen_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -55709,6 +56413,13 @@ export type Database = {
             foreignKeyName: "invite_tokens_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "invite_tokens_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -56157,6 +56868,13 @@ export type Database = {
             foreignKeyName: "invite_tokens_revoked_by_fkey"
             columns: ["revoked_by"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "invite_tokens_revoked_by_fkey"
+            columns: ["revoked_by"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -56598,6 +57316,13 @@ export type Database = {
             foreignKeyName: "invite_tokens_target_manager_id_fkey"
             columns: ["target_manager_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "invite_tokens_target_manager_id_fkey"
+            columns: ["target_manager_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -57033,6 +57758,13 @@ export type Database = {
             columns: ["used_by_agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "invite_tokens_used_by_agent_id_fkey"
+            columns: ["used_by_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -57893,6 +58625,13 @@ export type Database = {
             foreignKeyName: "lead_payment_tracking_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "lead_payment_tracking_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -58371,6 +59110,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "lead_purchase_requests_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -58903,6 +59649,13 @@ export type Database = {
             foreignKeyName: "lead_purchases_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "lead_purchases_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -59402,6 +60155,13 @@ export type Database = {
             foreignKeyName: "leaderboard_snapshots_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "leaderboard_snapshots_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -59865,6 +60625,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "license_inference_log_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -60554,6 +61321,13 @@ export type Database = {
             foreignKeyName: "license_renewal_alerts_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "license_renewal_alerts_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -61233,6 +62007,13 @@ export type Database = {
             foreignKeyName: "licensing_delegates_delegate_agent_id_fkey"
             columns: ["delegate_agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "licensing_delegates_delegate_agent_id_fkey"
+            columns: ["delegate_agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -61668,6 +62449,13 @@ export type Database = {
             columns: ["manager_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "licensing_delegates_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -62146,6 +62934,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "licensing_milestone_events_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -63050,6 +63845,13 @@ export type Database = {
             foreignKeyName: "magic_login_tokens_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "magic_login_tokens_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -63742,6 +64544,13 @@ export type Database = {
             foreignKeyName: "manager_growth_stats_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "manager_growth_stats_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -64256,6 +65065,13 @@ export type Database = {
             foreignKeyName: "manager_invite_links_manager_agent_id_fkey"
             columns: ["manager_agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "manager_invite_links_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -64755,6 +65571,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "manager_social_posts_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -65680,6 +66503,13 @@ export type Database = {
             foreignKeyName: "messaging_audience_exclusions_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "messaging_audience_exclusions_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -66295,6 +67125,13 @@ export type Database = {
             foreignKeyName: "messaging_destinations_manager_agent_id_fkey"
             columns: ["manager_agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "messaging_destinations_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -66786,6 +67623,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "messaging_identity_links_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -67523,6 +68367,13 @@ export type Database = {
             foreignKeyName: "next_step_events_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "next_step_events_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -68183,6 +69034,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "next_step_messages_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -68852,6 +69710,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "next_step_progress_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -69598,6 +70463,13 @@ export type Database = {
             foreignKeyName: "notification_log_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "notification_log_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -70167,6 +71039,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "numbers_reminder_delivery_log_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -71193,6 +72072,13 @@ export type Database = {
             foreignKeyName: "personal_records_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "personal_records_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -71949,6 +72835,13 @@ export type Database = {
             foreignKeyName: "plaque_awards_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "plaque_awards_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -72595,6 +73488,13 @@ export type Database = {
             foreignKeyName: "production_external_deals_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "production_external_deals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -73088,6 +73988,13 @@ export type Database = {
             foreignKeyName: "production_ledger_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "production_ledger_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -73378,6 +74285,13 @@ export type Database = {
             referencedRelation: "v_lapses_30d_detail"
             referencedColumns: ["deal_id"]
           },
+          {
+            foreignKeyName: "production_ledger_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_policy_number_vocabulary_drift"
+            referencedColumns: ["id"]
+          },
         ]
       }
       production_submission_notifications: {
@@ -73624,6 +74538,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "production_submission_notifications_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -75275,6 +76196,13 @@ export type Database = {
             foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -76060,6 +76988,13 @@ export type Database = {
             foreignKeyName: "recruiter_bounties_recruited_agent_id_fkey"
             columns: ["recruited_agent_id"]
             isOneToOne: true
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "recruiter_bounties_recruited_agent_id_fkey"
+            columns: ["recruited_agent_id"]
+            isOneToOne: true
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -76495,6 +77430,13 @@ export type Database = {
             columns: ["recruiter_agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "recruiter_bounties_recruiter_agent_id_fkey"
+            columns: ["recruiter_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -77096,6 +78038,13 @@ export type Database = {
             referencedColumns: ["deal_id"]
           },
           {
+            foreignKeyName: "referrals_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_policy_number_vocabulary_drift"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "referrals_duplicate_of_fkey"
             columns: ["duplicate_of"]
             isOneToOne: false
@@ -77331,6 +78280,13 @@ export type Database = {
             columns: ["referrer_agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "referrals_referrer_agent_id_fkey"
+            columns: ["referrer_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -77779,6 +78735,13 @@ export type Database = {
             columns: ["resulting_agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "referrals_resulting_agent_id_fkey"
+            columns: ["resulting_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -78287,6 +79250,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: true
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "roster_exclusions_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -79309,6 +80279,27 @@ export type Database = {
         }
         Relationships: []
       }
+      slack_channel_welcomes: {
+        Row: {
+          channel_id: string
+          message_ts: string | null
+          slack_user_id: string
+          welcomed_at: string
+        }
+        Insert: {
+          channel_id: string
+          message_ts?: string | null
+          slack_user_id: string
+          welcomed_at?: string
+        }
+        Update: {
+          channel_id?: string
+          message_ts?: string | null
+          slack_user_id?: string
+          welcomed_at?: string
+        }
+        Relationships: []
+      }
       sms_fallback_queue: {
         Row: {
           body: string
@@ -80310,6 +81301,13 @@ export type Database = {
             foreignKeyName: "support_requests_requester_agent_id_fkey"
             columns: ["requester_agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "support_requests_requester_agent_id_fkey"
+            columns: ["requester_agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -80929,6 +81927,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: true
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_memberships_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -81751,6 +82756,13 @@ export type Database = {
             foreignKeyName: "telegram_users_agent_fk"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "telegram_users_agent_fk"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -82385,6 +83397,13 @@ export type Database = {
             foreignKeyName: "today_tasks_owner_agent_id_fkey"
             columns: ["owner_agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "today_tasks_owner_agent_id_fkey"
+            columns: ["owner_agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -82866,6 +83885,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "transfer_requests_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -84179,6 +85205,13 @@ export type Database = {
             foreignKeyName: "applications_assigned_agent_id_fkey"
             columns: ["assigned_agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -84687,6 +85720,13 @@ export type Database = {
             foreignKeyName: "agentlink_book_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agentlink_book_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -85181,6 +86221,13 @@ export type Database = {
             columns: ["manager_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -85685,6 +86732,13 @@ export type Database = {
             foreignKeyName: "agentlink_book_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agentlink_book_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -86145,6 +87199,13 @@ export type Database = {
             columns: ["canonical_agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_canonical_agent_id_fkey"
+            columns: ["canonical_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -86625,6 +87686,13 @@ export type Database = {
             foreignKeyName: "agent_license_alerts_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_license_alerts_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -87080,6 +88148,13 @@ export type Database = {
             foreignKeyName: "agents_invited_by_manager_id_fkey"
             columns: ["invited_by_manager_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_invited_by_manager_id_fkey"
+            columns: ["invited_by_manager_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -87515,6 +88590,13 @@ export type Database = {
             columns: ["manager_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -88074,6 +89156,13 @@ export type Database = {
             foreignKeyName: "referrals_referrer_agent_id_fkey"
             columns: ["referrer_agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "referrals_referrer_agent_id_fkey"
+            columns: ["referrer_agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -88565,6 +89654,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_strikes_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -89238,6 +90334,13 @@ export type Database = {
             foreignKeyName: "agents_training_stage_override_by_fkey"
             columns: ["training_stage_override_by"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_training_stage_override_by_fkey"
+            columns: ["training_stage_override_by"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -89709,6 +90812,13 @@ export type Database = {
             foreignKeyName: "agents_invited_by_manager_id_fkey"
             columns: ["invited_by_manager_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_invited_by_manager_id_fkey"
+            columns: ["invited_by_manager_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -90144,6 +91254,13 @@ export type Database = {
             columns: ["manager_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -90639,6 +91756,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agentlink_book_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -91441,6 +92565,13 @@ export type Database = {
             foreignKeyName: "agents_canonical_agent_id_fkey"
             columns: ["canonical_agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_canonical_agent_id_fkey"
+            columns: ["canonical_agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -91889,6 +93020,13 @@ export type Database = {
             foreignKeyName: "agents_invited_by_manager_id_fkey"
             columns: ["invited_by_manager_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_invited_by_manager_id_fkey"
+            columns: ["invited_by_manager_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -92324,6 +93462,13 @@ export type Database = {
             columns: ["manager_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -92939,6 +94084,13 @@ export type Database = {
             foreignKeyName: "agents_switched_to_manager_id_fkey"
             columns: ["switched_to_manager_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_switched_to_manager_id_fkey"
+            columns: ["switched_to_manager_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -93374,6 +94526,13 @@ export type Database = {
             columns: ["training_stage_override_by"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_training_stage_override_by_fkey"
+            columns: ["training_stage_override_by"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -93997,6 +95156,13 @@ export type Database = {
             columns: ["manager_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -94878,6 +96044,13 @@ export type Database = {
             foreignKeyName: "applications_assigned_agent_id_fkey"
             columns: ["assigned_agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -95333,6 +96506,13 @@ export type Database = {
             foreignKeyName: "applications_referral_manager_id_fkey"
             columns: ["referral_manager_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_referral_manager_id_fkey"
+            columns: ["referral_manager_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -95774,6 +96954,13 @@ export type Database = {
             foreignKeyName: "applications_referral_recruiter_id_fkey"
             columns: ["referral_recruiter_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_referral_recruiter_id_fkey"
+            columns: ["referral_recruiter_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -96209,6 +97396,13 @@ export type Database = {
             columns: ["referrer_agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_referrer_agent_id_fkey"
+            columns: ["referrer_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -96873,6 +98067,13 @@ export type Database = {
             foreignKeyName: "agents_invited_by_manager_id_fkey"
             columns: ["invited_by_manager_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_invited_by_manager_id_fkey"
+            columns: ["invited_by_manager_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -97308,6 +98509,13 @@ export type Database = {
             columns: ["manager_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -97841,6 +99049,13 @@ export type Database = {
             foreignKeyName: "call_recordings_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "call_recordings_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -98318,6 +99533,13 @@ export type Database = {
             foreignKeyName: "carrier_policies_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_policies_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -98601,6 +99823,13 @@ export type Database = {
             referencedRelation: "v_lapses_30d_detail"
             referencedColumns: ["deal_id"]
           },
+          {
+            foreignKeyName: "carrier_policies_matched_deal_id_fkey"
+            columns: ["matched_deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_policy_number_vocabulary_drift"
+            referencedColumns: ["id"]
+          },
         ]
       }
       v_carrier_book_summary: {
@@ -98861,6 +100090,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_policies_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -99534,6 +100770,13 @@ export type Database = {
             foreignKeyName: "lead_purchases_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "lead_purchases_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -100018,6 +101261,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agentlink_book_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -100587,6 +101837,13 @@ export type Database = {
             foreignKeyName: "carrier_policies_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_policies_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -100997,6 +102254,13 @@ export type Database = {
             referencedRelation: "v_lapses_30d_detail"
             referencedColumns: ["deal_id"]
           },
+          {
+            foreignKeyName: "culture_events_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: true
+            referencedRelation: "v_policy_number_vocabulary_drift"
+            referencedColumns: ["id"]
+          },
         ]
       }
       v_cw_active_challenge: {
@@ -101354,6 +102618,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "deals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -101832,6 +103103,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "deals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -102450,6 +103728,13 @@ export type Database = {
             foreignKeyName: "carrier_policies_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_policies_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -102927,6 +104212,13 @@ export type Database = {
             foreignKeyName: "deals_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "deals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -103192,6 +104484,466 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      v_hierarchy_unreachable: {
+        Row: {
+          agent_id: string | null
+          ap_30d: number | null
+          display_name: string | null
+          manager_id: string | null
+          reason: string | null
+          status: Database["public"]["Enums"]["agent_status"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "mv_agent_truth"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_admin_applicant_overview"
+            referencedColumns: ["became_agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_20k_target_leaderboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_account_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_canonical_map"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_command_center"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_crm_active"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicate_candidates"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicates"
+            referencedColumns: ["canonical_agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicates"
+            referencedColumns: ["dup_agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_manager_conflicts"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_monthly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_owner_truth"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_quality_score"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_skool_membership"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_status_contradictions"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_training_stage"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_with_downline_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_full"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_al_link"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_al_user_id"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_numbers_today"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_needs_attention"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_onboarding_status"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_apex_roster"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_builder_operating_dashboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_channel_deprovision_needed"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_activity"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_launch_board"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_notification_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_hired_licensed_missing_course"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_kj_seminar_control"
+            referencedColumns: ["converted_agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_command_center"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_command_center"
+            referencedColumns: ["manager_agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_departure_orphan_risk"
+            referencedColumns: ["manager_agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_new_hire_showup"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_new_hires_activation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_offboarding_preservation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_call_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_integrity"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_sequence"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_paid_applicants"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_pulse"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_reactivation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_trend_alert"
+            referencedColumns: ["producer_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_producers_missing_license"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_active_no_first_sale"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_hired_no_onboarding"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_licensed_inactive"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_activations_alp"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_hires"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_reclaimable_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_recruiter_bounty_candidates"
+            referencedColumns: ["recruited_agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_recruiter_pipeline"
+            referencedColumns: ["recruiter_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_sam_builders_dashboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_slack_invite_eligibility"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_strike_summary"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_top_legs_excl_sam"
+            referencedColumns: ["manager_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_unsendable_contacts"
+            referencedColumns: ["agent_id"]
+          },
+        ]
       }
       v_hire_activity: {
         Row: {
@@ -103463,6 +105215,13 @@ export type Database = {
             columns: ["invited_by_manager_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_invited_by_manager_id_fkey"
+            columns: ["invited_by_manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -104117,6 +105876,13 @@ export type Database = {
             foreignKeyName: "applications_assigned_agent_id_fkey"
             columns: ["assigned_agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -104736,6 +106502,13 @@ export type Database = {
             foreignKeyName: "deals_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "deals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -105280,6 +107053,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "deals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -105847,6 +107627,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "deals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -106462,6 +108249,13 @@ export type Database = {
             foreignKeyName: "deals_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "deals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -106911,6 +108705,13 @@ export type Database = {
             columns: ["manager_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "deals_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -107526,6 +109327,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "interview_events_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -108363,6 +110171,13 @@ export type Database = {
             foreignKeyName: "carrier_policies_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_policies_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -108819,6 +110634,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "deals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -109314,6 +111136,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "lead_purchases_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -110610,6 +112439,13 @@ export type Database = {
             foreignKeyName: "culture_manager_credits_manager_id_fkey"
             columns: ["manager_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "culture_manager_credits_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -111101,6 +112937,13 @@ export type Database = {
             columns: ["manager_agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -111932,6 +113775,13 @@ export type Database = {
             foreignKeyName: "applications_assigned_agent_id_fkey"
             columns: ["assigned_agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -112373,6 +114223,13 @@ export type Database = {
             foreignKeyName: "applications_referral_manager_id_fkey"
             columns: ["referral_manager_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_referral_manager_id_fkey"
+            columns: ["referral_manager_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -112808,6 +114665,13 @@ export type Database = {
             columns: ["referrer_agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_referrer_agent_id_fkey"
+            columns: ["referrer_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -113271,6 +115135,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "apex_carrier_contracts_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -113745,6 +115616,13 @@ export type Database = {
             columns: ["manager_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -114343,6 +116221,13 @@ export type Database = {
             foreignKeyName: "notification_log_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "notification_log_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -114935,6 +116820,13 @@ export type Database = {
             foreignKeyName: "applications_assigned_agent_id_fkey"
             columns: ["assigned_agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -115383,6 +117275,13 @@ export type Database = {
             foreignKeyName: "applications_referral_manager_id_fkey"
             columns: ["referral_manager_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_referral_manager_id_fkey"
+            columns: ["referral_manager_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -115818,6 +117717,13 @@ export type Database = {
             columns: ["referrer_agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_referrer_agent_id_fkey"
+            columns: ["referrer_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -116387,6 +118293,13 @@ export type Database = {
             foreignKeyName: "applications_assigned_agent_id_fkey"
             columns: ["assigned_agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -116835,6 +118748,13 @@ export type Database = {
             foreignKeyName: "applications_referral_manager_id_fkey"
             columns: ["referral_manager_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_referral_manager_id_fkey"
+            columns: ["referral_manager_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -117270,6 +119190,13 @@ export type Database = {
             columns: ["referrer_agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_referrer_agent_id_fkey"
+            columns: ["referrer_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -117775,6 +119702,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "interview_events_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -118355,6 +120289,22 @@ export type Database = {
         }
         Relationships: []
       }
+      v_policy_number_vocabulary_drift: {
+        Row: {
+          annual_premium: number | null
+          client_first_name: string | null
+          client_last_name: string | null
+          created_at: string | null
+          doctor_flags_placeholder: boolean | null
+          drift_class: string | null
+          id: string | null
+          policy_number: string | null
+          push_verdict: string | null
+          source: string | null
+          status: string | null
+        }
+        Relationships: []
+      }
       v_pre_licensing_tracker: {
         Row: {
           app_status: string | null
@@ -118768,6 +120718,13 @@ export type Database = {
             foreignKeyName: "agents_manager_id_fkey"
             columns: ["manager_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -119092,9 +121049,13 @@ export type Database = {
           measured_at: string | null
           native_source_apex_outside_unified: number | null
           placeholder_alp_all_time: number | null
+          placeholder_chaseable_origins: string | null
           placeholder_rows_all_time: number | null
+          placeholder_rows_chaseable_mtd: number | null
+          placeholder_rows_chaseable_since_anchor: number | null
           placeholder_rows_mtd: number | null
           placeholder_rows_since_anchor: number | null
+          placeholder_rows_structural_since_anchor: number | null
         }
         Relationships: []
       }
@@ -119645,6 +121606,13 @@ export type Database = {
             foreignKeyName: "applications_assigned_agent_id_fkey"
             columns: ["assigned_agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -120107,6 +122075,13 @@ export type Database = {
             foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -120559,6 +122534,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -121080,6 +123062,13 @@ export type Database = {
             foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -121551,6 +123540,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -122160,6 +124156,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -122776,6 +124779,13 @@ export type Database = {
             foreignKeyName: "referrals_referrer_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "referrals_referrer_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -123251,6 +125261,13 @@ export type Database = {
             referencedColumns: ["deal_id"]
           },
           {
+            foreignKeyName: "referrals_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_policy_number_vocabulary_drift"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "referrals_duplicate_of_fkey"
             columns: ["duplicate_of"]
             isOneToOne: false
@@ -123486,6 +125503,13 @@ export type Database = {
             columns: ["referrer_agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "referrals_referrer_agent_id_fkey"
+            columns: ["referrer_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -123927,6 +125951,13 @@ export type Database = {
             columns: ["resulting_agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "referrals_resulting_agent_id_fkey"
+            columns: ["resulting_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -124687,6 +126718,13 @@ export type Database = {
             foreignKeyName: "applications_assigned_agent_id_fkey"
             columns: ["assigned_agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -125272,6 +127310,13 @@ export type Database = {
             columns: ["assigned_agent_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -126039,6 +128084,13 @@ export type Database = {
             foreignKeyName: "telegram_users_agent_fk"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "telegram_users_agent_fk"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -126691,6 +128743,13 @@ export type Database = {
             foreignKeyName: "transfer_requests_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "transfer_requests_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -127194,6 +129253,13 @@ export type Database = {
             foreignKeyName: "applications_assigned_agent_id_fkey"
             columns: ["assigned_agent_id"]
             isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
             referencedRelation: "v_hire_activity"
             referencedColumns: ["agent_id"]
           },
@@ -127629,6 +129695,13 @@ export type Database = {
             columns: ["referral_manager_id"]
             isOneToOne: false
             referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_referral_manager_id_fkey"
+            columns: ["referral_manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
             referencedColumns: ["agent_id"]
           },
           {
@@ -128464,6 +130537,22 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      agency_roster_production: {
+        Args: { p_end: string; p_start: string }
+        Returns: {
+          agency: string
+          agent_id: string
+          agent_name: string
+          ap: number
+          contract_pct: number
+          contract_provenance: string
+          first_hop_name: string
+          has_login: boolean
+          is_gap: boolean
+          last_sale: string
+          policies: number
+        }[]
+      }
       agent_call_activity: {
         Args: { p_agent_id: string }
         Returns: {
@@ -129274,6 +131363,48 @@ export type Database = {
       cleanup_expired_idempotency_keys: { Args: never; Returns: undefined }
       client_birthday_wisher: { Args: never; Returns: Json }
       commission_ledger_reconcile: { Args: never; Returns: Json }
+      content_clips_canon_tags: {
+        Args: {
+          p_desc: string
+          p_kind: string
+          p_name: string
+          p_tags: string[]
+        }
+        Returns: string[]
+      }
+      content_clips_search: {
+        Args: { p_folder?: string; p_limit?: number; p_q: string }
+        Returns: {
+          captioned_at: string | null
+          description: string | null
+          download_expires_at: string | null
+          download_url: string | null
+          duration_s: number | null
+          folder: string
+          height: number | null
+          id: string
+          indexed_at: string
+          kind: string
+          modified_at: string | null
+          name: string
+          path: string
+          preview_url: string | null
+          size_bytes: number
+          tags: string[]
+          thumb_url: string | null
+          thumbed_at: string | null
+          title: string | null
+          used_by_card: string | null
+          width: number | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "content_clips"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      content_clips_upsert: { Args: { p_rows: Json }; Returns: Json }
       count_unscheduled_agents: {
         Args: never
         Returns: {
@@ -130265,6 +132396,7 @@ export type Database = {
       leaderboard_board: {
         Args: { p_end: string; p_start: string }
         Returns: {
+          agency: string
           agent_id: string
           agent_key: string
           agent_name: string
@@ -130921,26 +133053,6 @@ export type Database = {
       schedule_auto_populate_tick: { Args: never; Returns: undefined }
       scoped_production_projection: { Args: never; Returns: Json }
       scoped_production_projection_uncached: { Args: never; Returns: Json }
-      content_clips_search: {
-        Args: { p_q: string; p_folder?: string | null; p_limit?: number }
-        Returns: Database["public"]["Tables"]["content_clips"]["Row"][]
-      }
-      agency_roster_production: {
-        Args: { p_end: string; p_start: string }
-        Returns: {
-          agency: string
-          is_gap: boolean
-          agent_id: string | null
-          agent_name: string | null
-          policies: number
-          ap: number
-          last_sale: string | null
-          contract_pct: number | null
-          contract_provenance: string | null
-          has_login: boolean
-          first_hop_name: string | null
-        }[]
-      }
       scoped_production_scoreboard: {
         Args: { p_end: string; p_start: string }
         Returns: Json

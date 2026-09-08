@@ -651,7 +651,24 @@ serve(async (req: Request): Promise<Response> => {
 
   const presented = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
   const botToken = (Deno.env.get("APEX_BOT_TOKEN") ?? "").trim();
-  const authorized = tokenMatches(presented, SERVICE_ROLE) || tokenMatches(presented, botToken);
+  let authorized = tokenMatches(presented, SERVICE_ROLE) || tokenMatches(presented, botToken);
+  if (!authorized && presented) {
+    // 2026-09-07: the four dashboard "resend onboarding email" buttons invoke this
+    // with the operator's session JWT and always got 401 — the queue row was
+    // upserted, the email went out on the next cron, and the operator was told
+    // it failed and pressed again. Accept an admin/manager session as a caller.
+    try {
+      const asUser = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY") ?? "", { global: { headers: { Authorization: `Bearer ${presented}` } } });
+      const { data: who } = await asUser.auth.getUser(presented);
+      if (who?.user?.id) {
+        const svc = createClient(SUPABASE_URL, SERVICE_ROLE);
+        const { data: roles } = await svc.from("user_roles").select("role").eq("user_id", who.user.id).in("role", ["admin", "manager"]);
+        authorized = Array.isArray(roles) && roles.length > 0;
+      }
+    } catch (e) {
+      console.warn("session auth check failed, falling through to 401:", (e as Error)?.message);
+    }
+  }
   if (!authorized) {
     return new Response(JSON.stringify({ ok: false, error: "Unauthorized" }), {
       status: 401,

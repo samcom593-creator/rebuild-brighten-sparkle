@@ -168,11 +168,18 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       // Find agent record
-      const { data: agent } = await supabaseClient
+      // MP-275 class, on the login path: .maybeSingle() returns null when a person
+      // has TWO agent rows, so a duplicated agent silently received no link while
+      // being told one was sent. Ambiguity is not absence — prefer the live row.
+      const { data: agentRows } = await supabaseClient
         .from("agents")
-        .select("id")
+        .select("id, is_deactivated, is_inactive, created_at")
         .eq("user_id", profile.user_id)
-        .maybeSingle();
+        .order("created_at", { ascending: false });
+
+      const rows = Array.isArray(agentRows) ? agentRows : [];
+      const agent =
+        rows.find((r) => r.is_deactivated !== true && r.is_inactive !== true) ?? rows[0] ?? null;
 
       if (!agent) {
         return silentOk();

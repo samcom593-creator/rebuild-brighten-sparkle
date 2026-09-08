@@ -9,11 +9,11 @@
  *   ✅ extendSession clears warning and reschedules timers
  *   ✅ enabled=false prevents timers from starting
  *   ✅ Disabling mid-session clears warning state
- *   ✅ Activity during warning does NOT extend session (user must click)
+ *   ✅ Activity during warning DOES dismiss it (present user is never signed out)
  *
  * Missing / not yet tested:
- *   ❌ Tab visibility change (blur/focus) should not auto-extend — currently
- *      the hook uses DOM events, and document.hidden is not factored in.
+ *   ✅ Hidden tab never fires onTimeout (deferred until the user can answer)
+ *   ✅ Returning after the window shows the warning rather than logging out
  *   ❌ Multiple rapid activity events don't fire multiple timeouts (timer
  *      dedup via clearAllTimers).
  */
@@ -118,16 +118,58 @@ describe("useIdleSession", () => {
     expect(result.current.showWarning).toBe(false);
   });
 
-  it("activity during warning does NOT dismiss it (user must click extend)", () => {
+  it("activity during warning DISMISSES it (a present user is never signed out)", () => {
     const onTimeout = vi.fn();
     const { result } = renderHook(() =>
       useIdleSession({ idleTimeoutMs: 5000, warningMs: 1000, enabled: true, onTimeout })
     );
     act(() => { vi.advanceTimersByTime(4500); }); // into warning
-    // Simulate user activity
-    act(() => {
-      window.dispatchEvent(new Event("mousemove"));
-    });
-    expect(result.current.showWarning).toBe(true); // still showing
+    act(() => { window.dispatchEvent(new Event("mousemove")); });
+    expect(result.current.showWarning).toBe(false);
+    act(() => { vi.advanceTimersByTime(1000); }); // past where the old logout would have fired
+    expect(onTimeout).not.toHaveBeenCalled();
+  });
+
+  it("NEVER signs out while the tab is hidden — it defers the decision", () => {
+    const onTimeout = vi.fn();
+    const spy = vi.spyOn(document, "hidden", "get").mockReturnValue(true);
+    renderHook(() =>
+      useIdleSession({ idleTimeoutMs: 5000, warningMs: 1000, enabled: true, onTimeout })
+    );
+    act(() => { vi.advanceTimersByTime(60_000); }); // twelve idle windows off-screen
+    expect(onTimeout).not.toHaveBeenCalled(); // agent was on the dialer, not gone
+    spy.mockRestore();
+  });
+
+  it("does not sign out when the user switches tabs DURING the warning", () => {
+    const onTimeout = vi.fn();
+    const spy = vi.spyOn(document, "hidden", "get").mockReturnValue(false);
+    const { result } = renderHook(() =>
+      useIdleSession({ idleTimeoutMs: 5000, warningMs: 1000, enabled: true, onTimeout })
+    );
+    act(() => { vi.advanceTimersByTime(4001); }); // warning appears while visible
+    expect(result.current.showWarning).toBe(true);
+    spy.mockReturnValue(true); // agent flips to the dialer mid-warning
+    act(() => { vi.advanceTimersByTime(5000); }); // well past the logout point
+    expect(onTimeout).not.toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
+  it("returning to the tab after the window shows the warning, not an instant logout", () => {
+    const onTimeout = vi.fn();
+    const spy = vi.spyOn(document, "hidden", "get").mockReturnValue(true);
+    const { result } = renderHook(() =>
+      useIdleSession({ idleTimeoutMs: 5000, warningMs: 1000, enabled: true, onTimeout })
+    );
+    act(() => { vi.advanceTimersByTime(10_000); }); // elapsed while hidden
+    expect(onTimeout).not.toHaveBeenCalled();
+    spy.mockReturnValue(false);
+    act(() => { document.dispatchEvent(new Event("visibilitychange")); });
+    expect(result.current.showWarning).toBe(true); // asked, not executed
+    expect(onTimeout).not.toHaveBeenCalled();
+    act(() => { result.current.extendSession(); });
+    expect(result.current.showWarning).toBe(false);
+    expect(onTimeout).not.toHaveBeenCalled();
+    spy.mockRestore();
   });
 });

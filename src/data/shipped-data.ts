@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "Agents stopped getting kicked out, and signing in no longer needs a password. The session timer treated 'working in another tab' as being idle, so an agent on the dialer, Discord or a carrier portal was signed out after an hour and shown a 60-second warning on a tab they were not looking at. It now never signs anyone out while the tab is hidden: it waits, and when you come back it asks, so one click keeps you in. Any movement dismisses the warning, activity in one dashboard tab keeps every other tab alive, and the window is a full workday instead of an hour. The login page also has a new 'Email me a sign-in link' button, so nobody is locked out by a forgotten password.",
+    detail:
+      "Two silent lockouts fixed underneath. The magic-link sender looked up the agent with .maybeSingle(), which returns nothing when a person has two agent rows, so a duplicated agent was told 'link sent' and no link was ever sent; ambiguity now resolves to the live row instead of reading as 'no such agent'. And two agents were signing in to a deactivated duplicate record while their real licensed record sat on an account nobody had ever used: Kevin Phu's live row had no login attached at all, so his working account and profile were moved onto it (pre-image saved, reversible). The hidden-tab guarantee is mutation-proven: removing the guard turns the new test red.",
+    commit: "mp-443-agent-login-and-session",
+  },
+  {
+    ts: "today",
+    label:
       "Three fixes Sam called in: the shirtless founder photo is off the public site (Apply page + landing hero, replaced with a monogram); VAs see the FULL recruit pipeline (their landing now leads with every applicant, and the pipeline can never scope or error a VA/recruiter); and Vantage is back on the leaderboard.",
     detail:
       "Photo: the same open-shirt shot was the avatar on /apply and the hero on the landing page — both removed. VA pipeline: Milver reads all 781 applications under RLS with no restrictive policy, so the data was never the problem — the VA landing led with the licensed-only 'Licensed Inbox'. The full Recruit Pipeline is now the first VA card, and DashboardApplicants treats admin/manager/va/va_manager/recruiter as full-pipeline viewers (only a plain producing agent is scoped, and a mis-roled user shows empty instead of throwing a page-blanking error). Vantage: its September production ($38,439) arrives as an unattributed agency daily-gap that leaderboard_board excluded; the board now adds one clearly-labelled agency-total row per agency with gap production, so Vantage ranks alongside producers instead of vanishing.",

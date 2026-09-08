@@ -43,6 +43,7 @@ export default function Login() {
   });
   const watchedEmail = watch("email");
   const [resetLoading, setResetLoading] = useState(false);
+  const [linkLoading, setLinkLoading] = useState(false);
 
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
@@ -195,6 +196,33 @@ export default function Login() {
   // (custom Resend path), falls back to native Supabase resetPasswordForEmail() if
   // the edge fn is unreachable. Uses react-hook-form watch() for the email value
   // instead of brittle document.getElementById which races with re-renders.
+  // Passwordless sign-in. Agents forget passwords and then stop trying to get on
+  // the platform at all, so a link in their inbox is the shortest path in. Uses the
+  // branded Resend sender (send-password-reset type magic_link) rather than
+  // Supabase's built-in auth email, which is rate-limited well below a full team
+  // signing in on the same morning.
+  const handleEmailSignInLink = async () => {
+    const email = (watchedEmail || "").trim();
+    if (!email || !email.includes("@")) {
+      toast.error("Type your email in the box above first, then tap this.");
+      return;
+    }
+    setLinkLoading(true);
+    try {
+      const { error } = await supabase.functions.invoke("send-password-reset", {
+        body: { email, type: "magic_link" },
+      });
+      if (error) throw error;
+      toast.success(`Sign-in link sent to ${email}. Check your inbox and spam — it works for 24 hours.`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Could not send the sign-in link.";
+      console.error("magic-link send failed:", err);
+      toast.error(msg);
+    } finally {
+      setLinkLoading(false);
+    }
+  };
+
   const handleForgotPassword = async () => {
     const email = (watchedEmail || "").trim();
     if (!email) {
@@ -406,6 +434,39 @@ export default function Login() {
                   )}
                 </GradientButton>
               </form>
+
+              <div className="mt-4">
+                <div className="relative mb-3">
+                  <div className="absolute inset-0 flex items-center" aria-hidden>
+                    <span className="w-full border-t border-border" />
+                  </div>
+                  <div className="relative flex justify-center">
+                    <span className="bg-card px-2 text-xs text-muted-foreground">or</span>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleEmailSignInLink}
+                  disabled={linkLoading}
+                >
+                  {linkLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Sending link…
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="h-4 w-4 mr-2" />
+                      Email me a sign-in link
+                    </>
+                  )}
+                </Button>
+                <p className="mt-2 text-center text-xs text-muted-foreground">
+                  No password needed. The link signs you straight in.
+                </p>
+              </div>
 
               <div className="flex items-center justify-center mt-4">
                 <Button

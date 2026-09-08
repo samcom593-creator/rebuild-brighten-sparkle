@@ -26,6 +26,13 @@
  *    real literal — the guard would report zero violations on a codebase full
  *    of them. String contents are exactly what this guard exists to count.
  *
+ * 3. It uses the SHARED lexer, not a private copy. Points 1 and 2 above were
+ *    both written here while this file still carried its own stripper -- and
+ *    that stripper was committing the exact bug point 1 describes. It treated
+ *    the apostrophe in `Log today's numbers` as an opening quote, so a JSX
+ *    comment 1,766 lines later was counted as a brand literal. A guard that
+ *    documents a failure mode is not thereby immune to it.
+ *
  * src/config/brand.ts is exempt: it is the one file that SHOULD hold these
  * values. Exempting it is the point of the module, not a loophole.
  *
@@ -46,56 +53,25 @@
 import { readFileSync, existsSync } from "node:fs";
 import { join, relative } from "node:path";
 import { execFileSync } from "node:child_process";
+import { stripComments } from "./lib/strip-comments.mjs";
 
 const ROOT = new URL("..", import.meta.url).pathname;
 const SRC = join(ROOT, "src");
-const BASELINE = 510;
+// 509, not 510, and the missing 1 is NOT a pay-down. Until MP-481 this guard
+// carried a private comment-stripper that mis-lexed an apostrophe welded into a
+// word: `Log today's numbers` (AgentCommandDashboard.tsx:473) opened a phantom
+// string that ran 346 lines and inverted quote parity for the rest of the file,
+// so the JSX comment at :2239 -- `{/* ... (APEX vs Vantage). */}` -- was read as
+// code and counted as a brand literal. Adopting the shared lexer removed that
+// phantom. No literal left any component; the measurement got honest by one.
+// Do not read this move as a wave landing. 93 of 648 tracked non-test files
+// (14.4%) were lexed with inverted parity; the count differed on exactly one
+// because that is where an Apex-bearing comment happened to fall.
+const BASELINE = 509;
 const EXEMPT = new Set(["src/config/brand.ts"]);
 /** Test files never ship to a user, so brand literals in them block nothing. */
 const IS_TEST = /(\.test\.tsx?$|\.spec\.tsx?$|__tests__\/|^src\/tests\/)/;
 const PATTERN = /\bAPEX\b|\bApex\b/g;
-
-/**
- * Remove // and comments while preserving string and template literal
- * bodies. Character-scanned rather than regex-replaced, because a regex cannot
- * tell a "//" inside a URL string from the start of a comment.
- */
-function stripComments(src) {
-  let out = "";
-  let i = 0;
-  const n = src.length;
-  while (i < n) {
-    const c = src[i];
-    const d = src[i + 1];
-    if (c === "/" && d === "/") {
-      while (i < n && src[i] !== "\n") i++;
-      continue;
-    }
-    if (c === "/" && d === "*") {
-      i += 2;
-      while (i < n && !(src[i] === "*" && src[i + 1] === "/")) i++;
-      i += 2;
-      continue;
-    }
-    if (c === '"' || c === "'" || c === "`") {
-      const quote = c;
-      out += c;
-      i++;
-      while (i < n) {
-        if (src[i] === "\\") { out += src[i] + (src[i + 1] ?? ""); i += 2; continue; }
-        if (src[i] === quote) break;
-        out += src[i];
-        i++;
-      }
-      out += quote;
-      i++;
-      continue;
-    }
-    out += c;
-    i++;
-  }
-  return out;
-}
 
 /** Tracked + staged .ts/.tsx under src/. Excludes other workers' untracked files. */
 function trackedSourceFiles() {
@@ -126,7 +102,12 @@ if (total > BASELINE) {
 }
 if (total < BASELINE) {
   console.log(`${label} OK — ${total} literals across ${perFile.length} files, DOWN from baseline ${BASELINE}.`);
-  console.log(`${label} Lower BASELINE to ${total} in scripts/check-brand-literals.mjs to lock in the win.`);
+  // MP-356/357: a count is fungible, and this guard cannot tell a literal
+  // REMOVED from a component (a real win, bank it) from a scanner that got more
+  // accurate (a measurement change, bank it but never call it progress). The
+  // 510 -> 509 move above was the second kind. Name which one before editing.
+  console.log(`${label} Lower BASELINE to ${total} to lock this in -- but first say WHY it moved:`);
+  console.log(`${label}   a literal left a component (a win), or the scanner changed (not a win).`);
   process.exit(0);
 }
 console.log(`${label} OK — ${total} literals across ${perFile.length} files (== baseline ${BASELINE}).`);

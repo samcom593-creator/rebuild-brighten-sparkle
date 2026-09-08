@@ -23,7 +23,6 @@ import { stripComments } from "./lib/strip-comments.mjs";
 const ALLOWED = new Map([
   ["scripts/lib/strip-comments.mjs", "the shared implementation itself"],
   ["scripts/lib/scan-utils.mjs", "conservative whole-line-only variant with its own consumers; MP-474 measured it but did not convert it"],
-  ["scripts/check-brand-literals.mjs", "MP-474: converting moves its count 510->509 (a real over-count inside a comment); baseline move needs its own adjudication"],
 ]);
 
 function walk(dir, acc = []) {

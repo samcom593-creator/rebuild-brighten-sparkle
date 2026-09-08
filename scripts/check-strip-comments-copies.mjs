@@ -24,7 +24,6 @@ const ALLOWED = new Map([
   ["scripts/lib/strip-comments.mjs", "the shared implementation itself"],
   ["scripts/lib/scan-utils.mjs", "conservative whole-line-only variant with its own consumers; MP-474 measured it but did not convert it"],
   ["scripts/check-brand-literals.mjs", "MP-474: converting moves its count 510->509 (a real over-count inside a comment); baseline move needs its own adjudication"],
-  ["scripts/check-empty-catch.mjs", "MP-474: converting moves its supabase/functions count 51->22; the 29-site swing is NOT individually verified, so it was not laundered into a baseline"],
 ]);
 
 function walk(dir, acc = []) {

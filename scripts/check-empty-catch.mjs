@@ -106,6 +106,7 @@ import path from "node:path";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 import { orphanMirrorRoots } from "./lib/orphan-mirrors.mjs";
+import { normalizeBody, isEmptyCatchExpression } from "./lib/empty-body.mjs";
 
 // Scanned roots, each with its OWN baseline. Lower a baseline when fixes
 // land in the same commit. NEVER raise one.
@@ -143,13 +144,14 @@ function walk(dir, files = []) {
   return files;
 }
 
-// Strip comments from a body chunk to decide if it is effectively empty.
-function stripComments(s) {
-  return s
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .replace(/\/\/[^\n]*/g, "")
-    .trim();
-}
+// MP-480: the private stripper that used to live here deleted comment spans and
+// trimmed. It carried the naive `//` bug (a `//` inside a string blanked the rest
+// of the line, deleting real code) that scripts/lib/strip-comments.mjs exists to
+// end. Converting is NOT a straight swap: the shared stripper BLANKS in place, so
+// the .trim() inside normalizeBody() is what keeps a comment-only handler reading
+// as empty. Drop it and this guard's supabase/functions count falls 51 -> 22 while
+// exiting 0. Proven identical to the old stripper on this corpus: the same 51
+// sites, byte for byte. See scripts/lib/empty-body.mjs and its positive control.
 
 // MP-307: the scanner reads RAW SOURCE for `.catch(` and `try {`, so a call
 // site quoted inside a COMMENT counted as a real violation -- this file blocked
@@ -312,13 +314,8 @@ function scanFile(file, violations) {
       body = src.slice(i, j);
       bodyEndIdx = j;
     }
-    const stripped = stripComments(body);
-    const isEmpty = stripped === "" ||
-      stripped === "null" ||
-      stripped === "undefined" ||
-      /^void\s+[A-Za-z0-9_$]+$/.test(stripped) ||
-      /^void\s+0$/.test(stripped);
-    if (!isEmpty) continue;
+    const stripped = normalizeBody(body);
+    if (!isEmptyCatchExpression(stripped)) continue;
 
     const lineIdx = lineOf(src, m.index) - 1;
     const opt = optOutHit(lines, lineIdx);
@@ -338,7 +335,7 @@ function scanFile(file, violations) {
     const close = matchBraceBody(src, openIdx);
     if (close < 0) continue;
     const body = src.slice(openIdx + 1, close);
-    const stripped = stripComments(body);
+    const stripped = normalizeBody(body);
     if (stripped !== "") continue;
     const lineIdx = lineOf(src, m.index) - 1;
     const opt = optOutHit(lines, lineIdx);

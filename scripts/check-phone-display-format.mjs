@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { stripComments } from "./lib/strip-comments.mjs";
 /**
  * MP-416 — fixed-position phone formatting must live in src/lib/phone.ts.
  *
@@ -40,11 +41,6 @@ const files = execSync("git ls-files 'src/**/*.ts' 'src/**/*.tsx'", { encoding: 
 
 // Strip line comments and block comments so prose describing this bug is never
 // matched as code (MP-277: a guard that scans raw source counts its own footnotes).
-function stripComments(src) {
-  return src
-    .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "))
-    .replace(/\/\/[^\n]*/g, (m) => m.replace(/[^\n]/g, " "));
-}
 
 const SLICE_TRIPLE = /\.slice\(\s*0\s*,\s*3\s*\)[\s\S]{0,120}?\.slice\(\s*3\s*,\s*6\s*\)[\s\S]{0,120}?\.slice\(\s*6/;
 const GE_GATE = /\.length\s*(?:>=\s*10|>\s*9)\b/;

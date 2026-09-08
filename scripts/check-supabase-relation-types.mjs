@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { stripComments } from "./lib/strip-comments.mjs";
 // ---------------------------------------------------------------------------
 // check-supabase-relation-types.mjs
 //
@@ -93,28 +94,6 @@ const NOT_SUPABASE = new Set([
 // Strip comments WITHOUT blanking string bodies. A previous wave's stripper
 // blanked strings too, which would have turned every call site into
 // "table name is a variable" and silently proved nothing.
-function stripComments(src) {
-  let out = "";
-  let i = 0;
-  const n = src.length;
-  while (i < n) {
-    const c = src[i], d = src[i + 1];
-    if (c === "/" && d === "/") { while (i < n && src[i] !== "\n") i++; continue; }
-    if (c === "/" && d === "*") { i += 2; while (i < n && !(src[i] === "*" && src[i + 1] === "/")) i++; i += 2; continue; }
-    if (c === '"' || c === "'" || c === "`") {
-      const q = c; out += c; i++;
-      while (i < n) {
-        if (src[i] === "\\") { out += src[i] + (src[i + 1] ?? ""); i += 2; continue; }
-        out += src[i];
-        if (src[i] === q) { i++; break; }
-        i++;
-      }
-      continue;
-    }
-    out += c; i++;
-  }
-  return out;
-}
 
 function relationsFromTypes() {
   const s = readFileSync(join(repoRoot, TYPES), "utf8");

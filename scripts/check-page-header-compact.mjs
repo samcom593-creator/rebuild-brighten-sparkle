@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { stripComments } from "./lib/strip-comments.mjs";
 /**
  * check:page-header-compact — keeps the operating-route header band compact.
  *
@@ -35,13 +36,6 @@ const CSS = "src/index.css";
 // docstring — the v5 comment explains that the scan rail was removed, and a raw
 // substring search reads that explanation as the rail being present. Blanking
 // rather than deleting preserves byte offsets.
-function stripComments(text) {
-  return text
-    .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "))
-    .split("\n")
-    .map((line) => (/^\s*\/\//.test(line) ? " ".repeat(line.length) : line))
-    .join("\n");
-}
 
 const headerSrc = stripComments(
   fs.readFileSync(path.join(repoRoot, HEADER), "utf8"),

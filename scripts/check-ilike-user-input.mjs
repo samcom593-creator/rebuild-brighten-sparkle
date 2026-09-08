@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { stripComments } from "./lib/strip-comments.mjs";
 /**
  * check-ilike-user-input.mjs — MP-422
  *
@@ -59,11 +60,6 @@ function walk(dir, out = []) {
  * real violation for a phantom and hold the number flat. String bodies are NOT
  * blanked — the argument text is exactly what this guard has to read.
  */
-function stripComments(src) {
-  return src
-    .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "))
-    .replace(/(^|[^:])\/\/[^\n]*/g, (m, p1) => p1 + " ".repeat(m.length - p1.length));
-}
 
 /**
  * Blank the BODY of every string literal, keeping quotes and offsets.

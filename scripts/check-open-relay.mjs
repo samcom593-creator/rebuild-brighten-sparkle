@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { stripComments } from "./lib/strip-comments.mjs";
 // check-open-relay — MP-446 (2026-09-06)
 //
 // THE BUG THIS EXISTS FOR:
@@ -39,25 +40,6 @@ const ROOT = "supabase/functions";
 // Comments only. String bodies are load-bearing: both the env var name and the
 // header name live inside string literals. An earlier cut of this scan blanked
 // string bodies and reported 16 service-role functions where there are 192.
-function stripComments(src) {
-  let out = "", i = 0;
-  const n = src.length;
-  while (i < n) {
-    const c = src[i];
-    if (c === "/" && src[i + 1] === "/") { while (i < n && src[i] !== "\n") i++; }
-    else if (c === "/" && src[i + 1] === "*") { i += 2; while (i + 1 < n && !(src[i] === "*" && src[i + 1] === "/")) i++; i += 2; }
-    else if (c === '"' || c === "'" || c === "`") {
-      const q = c; out += q; i++;
-      while (i < n) {
-        if (src[i] === "\\") { out += src.slice(i, i + 2); i += 2; continue; }
-        if (src[i] === q) break;
-        out += src[i]; i++;
-      }
-      out += q; i++;
-    } else { out += c; i++; }
-  }
-  return out;
-}
 
 // Sends outbound to a recipient it was handed.
 const SENDS = [

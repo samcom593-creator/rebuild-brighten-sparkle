@@ -1,3 +1,4 @@
+import { stripComments } from "./lib/strip-comments.mjs";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -107,43 +108,6 @@ const NO_RECIPIENT_SCHEME = [
 ];
 
 /** Remove comments, preserving line structure and string/template bodies. */
-function stripComments(text) {
-  let out = "";
-  let i = 0;
-  while (i < text.length) {
-    const ch = text[i];
-    if (ch === '"' || ch === "'" || ch === "`") {
-      const quote = ch;
-      out += ch;
-      i += 1;
-      while (i < text.length) {
-        if (text[i] === "\\") {
-          out += text[i] + (text[i + 1] ?? "");
-          i += 2;
-          continue;
-        }
-        out += text[i];
-        if (text[i] === quote) { i += 1; break; }
-        i += 1;
-      }
-      continue;
-    }
-    if (text.startsWith("/*", i)) {
-      const end = text.indexOf("*/", i + 2);
-      const stop = end === -1 ? text.length : end + 2;
-      for (let j = i; j < stop; j += 1) out += text[j] === "\n" ? "\n" : " ";
-      i = stop;
-      continue;
-    }
-    if (text.startsWith("//", i)) {
-      while (i < text.length && text[i] !== "\n") i += 1;
-      continue;
-    }
-    out += ch;
-    i += 1;
-  }
-  return out;
-}
 
 const lineOf = (text, index) => text.slice(0, index).split("\n").length;
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { stripComments } from "./lib/strip-comments.mjs";
 /**
  * check-book-freshness-operand.mjs — MP-462 (2026-09-07)
  *
@@ -75,20 +76,6 @@ function walk(dir, out = []) {
 // counts its own footnotes -- that bug has been recorded against this repo's
 // guards more than once, including in this file's own header, which names
 // last_import several times in prose.
-function stripComments(src) {
-  let out = "", i = 0, n = src.length;
-  while (i < n) {
-    const c = src[i], d = src[i + 1];
-    if (c === "/" && d === "/") { while (i < n && src[i] !== "\n") i++; continue; }
-    if (c === "/" && d === "*") { i += 2; while (i < n && !(src[i] === "*" && src[i + 1] === "/")) i++; i += 2; continue; }
-    // Keep string/template bodies as spaces: they are not comments, but a SQL
-    // string is exactly where a real violation lives, so blanking them would
-    // blind the guard. Only skip past the quote so an apostrophe inside a
-    // comment can never desynchronise the scan.
-    out += c; i++;
-  }
-  return out;
-}
 
 const offenders = [];
 let scanned = 0, sites = 0;

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { stripComments } from "./lib/strip-comments.mjs";
 /**
  * check:discord-pii — client identity must never reach an outbound webhook.
  *
@@ -68,13 +69,6 @@ const PII_FIELDS = [
 const WEBHOOK_HINT =
   /webhook|discord\.com\/api|hooks\.slack\.com|chat\.googleapis\.com/i;
 
-function stripComments(text) {
-  return text
-    .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "))
-    .split("\n")
-    .map((line) => (/^\s*\/\//.test(line) ? " ".repeat(line.length) : line))
-    .join("\n");
-}
 
 function walk(dir, acc = []) {
   if (!fs.existsSync(dir)) return acc;

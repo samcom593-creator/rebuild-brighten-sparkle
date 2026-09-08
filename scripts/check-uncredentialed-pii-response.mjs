@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { stripComments } from "./lib/strip-comments.mjs";
 // check-uncredentialed-pii-response — MP-448 (2026-09-06)
 //
 // THE BUG THIS EXISTS FOR:
@@ -70,35 +71,6 @@ const ROOT = "supabase/functions";
 // Comments only. String bodies are load-bearing here: header names and column
 // lists both live inside string literals, and MP-277 lost a wave to a stripper
 // that blanked strings too.
-export function stripComments(src) {
-  let out = "", i = 0;
-  const n = src.length;
-  let inStr = null, inTpl = false;
-  while (i < n) {
-    const c = src[i], d = src[i + 1];
-    if (inStr) {
-      if (c === "\\") { out += "  "; i += 2; continue; }
-      if (c === inStr) inStr = null;
-      out += c; i++; continue;
-    }
-    if (inTpl) {
-      if (c === "\\") { out += "  "; i += 2; continue; }
-      if (c === "`") inTpl = false;
-      out += c; i++; continue;
-    }
-    if (c === "/" && d === "/") { while (i < n && src[i] !== "\n") { out += " "; i++; } continue; }
-    if (c === "/" && d === "*") {
-      i += 2; out += "  ";
-      while (i < n && !(src[i] === "*" && src[i + 1] === "/")) { out += src[i] === "\n" ? "\n" : " "; i++; }
-      i += 2; out += "  "; continue;
-    }
-    if (c === '"' || c === "'") { inStr = c; out += c; i++; continue; }
-    if (c === "`") { inTpl = true; out += c; i++; continue; }
-    out += c; i++;
-  }
-  return out;
-}
-
 const CREDENTIAL_READS = [
   /headers\.get\(\s*["'`][Aa]uthorization/,
   /headers\.get\(\s*["'`]apikey/i,

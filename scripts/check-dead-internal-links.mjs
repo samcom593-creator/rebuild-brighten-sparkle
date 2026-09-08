@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { stripComments } from "./lib/strip-comments.mjs";
 /**
  * check-dead-internal-links.mjs — every in-app link must point at a declared route.
  *
@@ -30,37 +31,6 @@ const SRC = "src";
 /** Strip // and /* *\/ comments, PRESERVING line count — a link inside a
  *  comment must not count (MP-277's footnote bug), but a collapsed block
  *  comment shifts every line number after it and makes the report lie. */
-export function stripComments(src) {
-  let out = "", i = 0;
-  const n = src.length;
-  let inStr = null, tpl = 0;
-  while (i < n) {
-    const c = src[i], d = src[i + 1];
-    if (inStr) {
-      out += c;
-      if (c === "\\") { out += d ?? ""; i += 2; continue; }
-      if (c === inStr) inStr = null;
-      i++; continue;
-    }
-    if (tpl) {
-      out += c;
-      if (c === "\\") { out += d ?? ""; i += 2; continue; }
-      if (c === "`") tpl--;
-      i++; continue;
-    }
-    if (c === '"' || c === "'") { inStr = c; out += c; i++; continue; }
-    if (c === "`") { tpl++; out += c; i++; continue; }
-    if (c === "/" && d === "/") { while (i < n && src[i] !== "\n") i++; continue; }
-    if (c === "/" && d === "*") {
-      i += 2;
-      while (i < n && !(src[i] === "*" && src[i + 1] === "/")) { if (src[i] === "\n") out += "\n"; i++; }
-      i += 2; continue;
-    }
-    out += c; i++;
-  }
-  return out;
-}
-
 export function parseRoutes(routerSrc) {
   return [...stripComments(routerSrc).matchAll(/path="([^"]+)"/g)].map((m) => m[1]);
 }

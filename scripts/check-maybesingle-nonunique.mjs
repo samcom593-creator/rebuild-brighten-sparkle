@@ -1,3 +1,4 @@
+import { stripComments } from "./lib/strip-comments.mjs";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -132,40 +133,6 @@ const EXEMPT = new Set([
 // entries were prose. Every future wave documents its conversions, so this
 // would have inflated a little more each time and quietly stopped measuring.
 // A guard that counts its own footnotes is not counting the codebase.
-function stripComments(src) {
-  const out = src.split("");
-  let i = 0;
-  const blank = (from, to) => {
-    for (let k = from; k < to && k < out.length; k++) if (out[k] !== "\n") out[k] = " ";
-  };
-  while (i < src.length) {
-    const two = src.slice(i, i + 2);
-    if (two === "//") {
-      let j = src.indexOf("\n", i);
-      if (j === -1) j = src.length;
-      blank(i, j);
-      i = j;
-    } else if (two === "/*") {
-      let j = src.indexOf("*/", i + 2);
-      j = j === -1 ? src.length : j + 2;
-      blank(i, j);
-      i = j;
-    } else if (src[i] === '"' || src[i] === "'" || src[i] === "`") {
-      // Skip the literal without altering it.
-      const quote = src[i];
-      let j = i + 1;
-      while (j < src.length) {
-        if (src[j] === "\\") j += 2;
-        else if (src[j] === quote) break;
-        else j++;
-      }
-      i = Math.min(j + 1, src.length);
-    } else {
-      i++;
-    }
-  }
-  return out.join("");
-}
 
 function walk(dir, out = []) {
   if (!fs.existsSync(dir)) return out;

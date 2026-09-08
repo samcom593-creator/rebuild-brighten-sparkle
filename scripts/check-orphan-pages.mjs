@@ -1,3 +1,4 @@
+import { stripComments } from "./lib/strip-comments.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import { splitUncommittable, noticeBanner } from "./lib/committable.mjs";
@@ -60,64 +61,6 @@ const IMPORT_PATTERNS = [
 // ManagerCommandView's lazy() entry was retired` doesn't count as an
 // import. Preserves offsets — replaces comment bodies with spaces so
 // downstream regex remains simple.
-function stripComments(src) {
-  let out = "";
-  let i = 0;
-  const n = src.length;
-  while (i < n) {
-    const c = src[i];
-    const next = src[i + 1];
-    // Line comment
-    if (c === "/" && next === "/") {
-      while (i < n && src[i] !== "\n") {
-        out += " ";
-        i++;
-      }
-      continue;
-    }
-    // Block comment
-    if (c === "/" && next === "*") {
-      out += "  ";
-      i += 2;
-      while (i < n && !(src[i] === "*" && src[i + 1] === "/")) {
-        out += src[i] === "\n" ? "\n" : " ";
-        i++;
-      }
-      if (i < n) {
-        out += "  ";
-        i += 2;
-      }
-      continue;
-    }
-    // String literal — copy through, respecting escapes so a `//` inside
-    // a string doesn't get mis-eaten.
-    if (c === '"' || c === "'" || c === "`") {
-      const quote = c;
-      out += c;
-      i++;
-      while (i < n && src[i] !== quote) {
-        if (src[i] === "\\") {
-          out += src[i];
-          if (i + 1 < n) {
-            out += src[i + 1];
-            i += 2;
-            continue;
-          }
-        }
-        out += src[i];
-        i++;
-      }
-      if (i < n) {
-        out += src[i];
-        i++;
-      }
-      continue;
-    }
-    out += c;
-    i++;
-  }
-  return out;
-}
 
 function normalizeSpec(spec, fromAbs) {
   let bare;

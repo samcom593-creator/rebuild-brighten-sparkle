@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { stripComments } from "./lib/strip-comments.mjs";
 // check-enumeration-oracle — MP-453 (2026-09-06)
 //
 // THE BUG THIS EXISTS FOR:
@@ -54,29 +55,6 @@ const IDIOM = "If an account exists";
 // counted a call named inside a CODE COMMENT, and its first fix also blanked
 // string literals, which would have made every site unreadable. Both directions
 // are wrong, so this walks the source once and tracks which it is inside.
-function stripComments(src) {
-  let out = "";
-  let i = 0;
-  const n = src.length;
-  let quote = null;      // ' " or ` when inside a string
-  let depth = 0;         // ${ } nesting inside a template literal
-  while (i < n) {
-    const c = src[i];
-    const c2 = src[i + 1];
-    if (quote) {
-      if (c === "\\") { out += c + (c2 ?? ""); i += 2; continue; }
-      if (quote === "`" && c === "$" && c2 === "{") { depth++; out += "${"; i += 2; continue; }
-      if (quote === "`" && c === "}" && depth > 0) { depth--; out += c; i++; continue; }
-      if (c === quote && depth === 0) { quote = null; out += c; i++; continue; }
-      out += c; i++; continue;
-    }
-    if (c === "/" && c2 === "/") { while (i < n && src[i] !== "\n") i++; continue; }
-    if (c === "/" && c2 === "*") { i += 2; while (i < n && !(src[i] === "*" && src[i + 1] === "/")) i++; i += 2; continue; }
-    if (c === "'" || c === '"' || c === "`") { quote = c; out += c; i++; continue; }
-    out += c; i++;
-  }
-  return out;
-}
 
 // Extract the balanced object literal that starts at the '{' at or after `from`.
 function objectAt(src, from) {

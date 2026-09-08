@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { stripComments } from "./lib/strip-comments.mjs";
 /**
  * MP-327 ratchet: an agent's name must never fall back to a placeholder WORD.
  *
@@ -87,40 +88,6 @@ function walk(dir, out = []) {
  * that documents the violation, so a wave that documents a site it fixed trades
  * a real violation for a phantom and the count stops meaning anything.
  */
-function stripComments(src) {
-  let out = "";
-  let i = 0;
-  let state = "code";
-  while (i < src.length) {
-    const two = src.slice(i, i + 2);
-    if (state === "code") {
-      if (two === "//") { state = "line"; i += 2; continue; }
-      if (two === "/*") { state = "block"; i += 2; continue; }
-      // Preserve string bodies verbatim: blanking them would make every
-      // fallback literal vanish and the guard would pass by measuring nothing.
-      if (src[i] === '"' || src[i] === "'" || src[i] === "`") {
-        const q = src[i];
-        out += src[i++];
-        while (i < src.length) {
-          if (src[i] === "\\") { out += src.slice(i, i + 2); i += 2; continue; }
-          out += src[i];
-          if (src[i] === q) { i++; break; }
-          i++;
-        }
-        continue;
-      }
-      out += src[i++];
-    } else if (state === "line") {
-      if (src[i] === "\n") { state = "code"; out += "\n"; }
-      i++;
-    } else {
-      if (two === "*/") { state = "code"; i += 2; continue; }
-      if (src[i] === "\n") out += "\n";
-      i++;
-    }
-  }
-  return out;
-}
 
 const violations = [];
 for (const file of walk(SRC)) {

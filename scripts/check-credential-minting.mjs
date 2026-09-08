@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { stripComments } from "./lib/strip-comments.mjs";
 // check-credential-minting — MP-450 (2026-09-06)
 //
 // THE BUG THIS EXISTS FOR (MP-447):
@@ -71,25 +72,6 @@ const ROOT = "supabase/functions";
 // a scanner that blanked string bodies and consequently reported every call site
 // as "table name is a variable". Blanking comments alone is also what stops this
 // guard reading the bug out of its own header prose (MP-399).
-function stripComments(src) {
-  let out = "", i = 0;
-  const n = src.length;
-  while (i < n) {
-    const c = src[i];
-    if (c === "/" && src[i + 1] === "/") { while (i < n && src[i] !== "\n") { out += " "; i++; } }
-    else if (c === "/" && src[i + 1] === "*") { i += 2; out += "  "; while (i + 1 < n && !(src[i] === "*" && src[i + 1] === "/")) { out += " "; i++; } i += 2; out += "  "; }
-    else if (c === '"' || c === "'" || c === "`") {
-      const q = c; out += q; i++;
-      while (i < n) {
-        if (src[i] === "\\") { out += src.slice(i, i + 2); i += 2; continue; }
-        if (src[i] === q) break;
-        out += src[i]; i++;
-      }
-      out += q; i++;
-    } else { out += c; i++; }
-  }
-  return out;
-}
 
 // Mints a credential a bearer can log in with, BYPASSING any credential the
 // caller might hold. Only the auth.admin.* surface qualifies.

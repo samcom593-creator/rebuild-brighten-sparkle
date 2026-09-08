@@ -1,3 +1,4 @@
+import { stripComments } from "./lib/strip-comments.mjs";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -156,31 +157,6 @@ const UNBOUND_KEYS = Object.keys(CEILINGS).filter(
  * fabricated number can live in a string, and blanking those would blind the
  * guard to the very thing it hunts.
  */
-function stripComments(src) {
-  let out = "", i = 0, mode = "code", quote = "";
-  while (i < src.length) {
-    const c = src[i], n = src[i + 1];
-    if (mode === "code") {
-      if (c === "/" && n === "/") { mode = "line"; out += "  "; i += 2; continue; }
-      if (c === "/" && n === "*") { mode = "block"; out += "  "; i += 2; continue; }
-      if (c === '"' || c === "'" || c === "`") { mode = "str"; quote = c; out += c; i += 1; continue; }
-      out += c; i += 1; continue;
-    }
-    if (mode === "str") {
-      if (c === "\\") { out += src.slice(i, i + 2); i += 2; continue; }
-      if (c === quote) mode = "code";
-      out += c; i += 1; continue;
-    }
-    if (mode === "line") {
-      if (c === "\n") { mode = "code"; out += c; } else out += " ";
-      i += 1; continue;
-    }
-    // block
-    if (c === "*" && n === "/") { mode = "code"; out += "  "; i += 2; continue; }
-    out += c === "\n" ? c : " "; i += 1;
-  }
-  return out;
-}
 
 const violations = [];
 

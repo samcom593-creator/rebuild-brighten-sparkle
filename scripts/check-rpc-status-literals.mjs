@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { stripComments } from "./lib/strip-comments.mjs";
 // Guards the half of the enum/CHECK-vocabulary class that check-enum-filter-literals.mjs
 // cannot see: a value that arrives from an RPC and is compared in JavaScript.
 //
@@ -82,30 +83,6 @@ function vocabularyOf(candidate) {
 // Comments are stripped, string bodies are NOT. A regex is a string literal and a
 // literal inside a comment is not code: MP-277 counted its own footnotes, and MP-408
 // matched a column name inside the comment that said the column was never written.
-function stripComments(src) {
-  let out = "";
-  let i = 0;
-  const n = src.length;
-  while (i < n) {
-    const c = src[i];
-    const d = src[i + 1];
-    if (c === "/" && d === "/") {
-      while (i < n && src[i] !== "\n") { out += " "; i++; }
-    } else if (c === "/" && d === "*") {
-      while (i < n && !(src[i] === "*" && src[i + 1] === "/")) { out += src[i] === "\n" ? "\n" : " "; i++; }
-      out += "  "; i += 2;
-    } else if (c === '"' || c === "'" || c === "`") {
-      const quote = c; out += c; i++;
-      while (i < n) {
-        if (src[i] === "\\") { out += src[i] + (src[i + 1] ?? ""); i += 2; continue; }
-        out += src[i];
-        if (src[i] === quote) { i++; break; }
-        i++;
-      }
-    } else { out += c; i++; }
-  }
-  return out;
-}
 
 function walk(dir, acc = []) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { stripComments } from "./lib/strip-comments.mjs";
 /**
  * MP-417 — a caller that BINDS send-sms-auto-detect's response must read
  * `outcome` before it treats the person as contacted.
@@ -63,33 +64,6 @@ const files = execSync(`git ls-files 'supabase/functions/**/*.ts'`, { encoding: 
 // Strip comments so the prose above — and every caller's own notes about this
 // bug — is never matched as code (MP-277: a guard that scans raw source counts
 // its own footnotes). String bodies are preserved: the call site IS a string.
-function stripComments(src) {
-  let out = "";
-  let i = 0;
-  let mode = "code";
-  let quote = "";
-  while (i < src.length) {
-    const c = src[i];
-    const n = src[i + 1];
-    if (mode === "code") {
-      if (c === "/" && n === "*") { mode = "block"; out += "  "; i += 2; continue; }
-      if (c === "/" && n === "/") { mode = "line"; out += "  "; i += 2; continue; }
-      if (c === '"' || c === "'" || c === "`") { mode = "str"; quote = c; out += c; i++; continue; }
-      out += c; i++; continue;
-    }
-    if (mode === "str") {
-      if (c === "\\") { out += src.slice(i, i + 2); i += 2; continue; }
-      if (c === quote) { mode = "code"; }
-      out += c; i++; continue;
-    }
-    // inside a comment: keep newlines so line numbers survive
-    if (mode === "block" && c === "*" && n === "/") { mode = "code"; out += "  "; i += 2; continue; }
-    if (mode === "line" && c === "\n") { mode = "code"; out += "\n"; i++; continue; }
-    out += c === "\n" ? "\n" : " ";
-    i++;
-  }
-  return out;
-}
 
 // A bound call: the invocation is the right-hand side of an assignment or a
 // destructure. `const x = await fetch(...)`, `const { data } = await invoke(...)`,

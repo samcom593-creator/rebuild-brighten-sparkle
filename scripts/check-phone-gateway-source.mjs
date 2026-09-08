@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { stripComments } from "./lib/strip-comments.mjs";
 /**
  * MP-420 — the local part of a carrier SMS gateway address must come from
  * nanpTenDigits(), which REFUSES a non-NANP number instead of truncating it.
@@ -68,28 +69,6 @@ const HELPER = "nanpTenDigits";
 // source counts its own footnotes — that one held a baseline flat while the
 // code improved, and it stopped measuring without going red. String bodies are
 // preserved, because the gateway address IS a template string.
-function stripComments(src) {
-  let out = "", i = 0, mode = "code", quote = "";
-  while (i < src.length) {
-    const c = src[i], n = src[i + 1];
-    if (mode === "code") {
-      if (c === "/" && n === "*") { mode = "block"; out += "  "; i += 2; continue; }
-      if (c === "/" && n === "/") { mode = "line"; out += "  "; i += 2; continue; }
-      if (c === '"' || c === "'" || c === "`") { mode = "str"; quote = c; out += c; i++; continue; }
-      out += c; i++; continue;
-    }
-    if (mode === "str") {
-      if (c === "\\") { out += src.slice(i, i + 2); i += 2; continue; }
-      if (c === quote) mode = "code";
-      out += c; i++; continue;
-    }
-    if (mode === "block" && c === "*" && n === "/") { mode = "code"; out += "  "; i += 2; continue; }
-    if (mode === "line" && c === "\n") { mode = "code"; out += "\n"; i++; continue; }
-    out += c === "\n" ? "\n" : " ";
-    i++;
-  }
-  return out;
-}
 
 const lineOf = (src, idx) => src.slice(0, idx).split("\n").length;
 

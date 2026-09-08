@@ -1,3 +1,4 @@
+import { stripComments } from "./lib/strip-comments.mjs";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -37,51 +38,6 @@ const read = (path) => readFileSync(resolve(root, path), "utf8");
  * Remove comments while preserving line structure and string contents.
  * `kind` is one of "ts" | "sql" | "toml".
  */
-function stripComments(text, kind) {
-  const lineCmt = kind === "toml" ? "#" : kind === "sql" ? "--" : "//";
-  const blockOk = kind === "ts" || kind === "sql";
-  let out = "";
-  let i = 0;
-  while (i < text.length) {
-    const ch = text[i];
-    // string / template literal — copy verbatim, honouring escapes
-    if (ch === '"' || ch === "'" || (kind === "ts" && ch === "`")) {
-      const quote = ch;
-      out += ch;
-      i += 1;
-      while (i < text.length) {
-        if (text[i] === "\\") {
-          out += text[i] + (text[i + 1] ?? "");
-          i += 2;
-          continue;
-        }
-        out += text[i];
-        if (text[i] === quote) {
-          i += 1;
-          break;
-        }
-        i += 1;
-      }
-      continue;
-    }
-    // block comment — replace with blanks, keep newlines so line structure holds
-    if (blockOk && text.startsWith("/*", i)) {
-      const end = text.indexOf("*/", i + 2);
-      const stop = end === -1 ? text.length : end + 2;
-      for (let j = i; j < stop; j += 1) out += text[j] === "\n" ? "\n" : " ";
-      i = stop;
-      continue;
-    }
-    // line comment — drop to end of line, keep the newline itself
-    if (text.startsWith(lineCmt, i)) {
-      while (i < text.length && text[i] !== "\n") i += 1;
-      continue;
-    }
-    out += ch;
-    i += 1;
-  }
-  return out;
-}
 
 const sources = {
   migration: ["supabase/migrations/20260811222000_apex_contact_actions.sql", "sql"],

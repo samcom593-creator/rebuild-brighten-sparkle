@@ -80,6 +80,7 @@ export function ContractingSuccessModal({ accepted }: { accepted: ContractingAcc
               >
                 Email the contracting desk
               </a>
+              {/* contact-scheme-allow: inbound control on a non-operator surface. The number belongs to the agency and the clicker is the newly contracted agent, not a VA, so smsHref() would route them to the Google account chooser to provision a Voice line of their own. Footer, Contact and Storefront link this same number raw. */}
               <a href="sms:+14697676068" className="rounded-md border border-border px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted">
                 Text Sam (469) 767-6068
               </a>

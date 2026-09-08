@@ -746,6 +746,17 @@ if match '^(supabase/(config\.toml|migrations/20260811222000_apex_contact_action
   npm run --silent check:contact-actions || exit 1
 fi
 
+# ---------- check-recruiting-contact-actions (MP-472) ----------
+# Ran ONLY in verify:core (CI). On 2026-09-07 the onboarding wave shipped three
+# raw tel:/sms: sites into a guarded surface; the guard caught them, in CI, ~19h
+# after the push, where a red link sits until someone reads it. Its three sibling
+# catalog guards already gate here — this one grades every .tsx under src/, so
+# any staged .tsx (plus the helper and the guard itself) fires it. ~2.2s.
+if match '^(src/.*\.tsx|src/lib/phone\.ts|scripts/check-recruiting-contact-actions\.mjs)$'; then
+  echo "[pre-commit] contact-scheme surface staged — running check:recruiting-contact-actions…"
+  npm run --silent check:recruiting-contact-actions || exit 1
+fi
+
 # ---------- check-guard-wiring (MP-351) ----------
 # A guard that nothing RUNS cannot fail, so it reports protection the repo does
 # not have. Fires whenever a guard file or its wiring is staged.

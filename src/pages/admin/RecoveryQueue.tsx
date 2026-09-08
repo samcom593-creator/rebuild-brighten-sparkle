@@ -26,7 +26,7 @@ import {
 import { ApplicationDetailSheet } from "@/components/dashboard/ApplicationDetailSheet";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { formatPhoneDisplay as formatPhoneDisplayLib, contactLinkProps } from "@/lib/phone";
+import { formatPhoneDisplay as formatPhoneDisplayLib, contactLinkProps, phoneHref, smsHref } from "@/lib/phone";
 
 // ---------- Types ----------
 interface Row {
@@ -276,15 +276,20 @@ function formatPhone(raw: string | null): string {
   if (!raw) return "";
   return formatPhoneDisplayLib(raw);
 }
-function telHref(raw: string | null): string {
+// These shadowed the @/lib/phone helper NAMES while returning a raw scheme, so
+// check:recruiting-contact-actions — whose needle is `phoneHref(|smsHref(` —
+// read every call site here as guarded and this VA dialing surface kept two
+// dead desktop controls through MP-404, MP-405 and MP-433. Delegate, and keep
+// the raw scheme only as the un-normalisable fallback, as every other converted
+// surface does. "#" is preserved for the no-phone case: the anchors render
+// disabled and preventDefault() on click.
+function rowTelHref(raw: string | null): string {
   if (!raw) return "#";
-  const digits = raw.replace(/\D/g, "");
-  return `tel:${digits.startsWith("1") ? "+" : "+1"}${digits}`;
+  return phoneHref(raw) ?? `tel:${raw.replace(/\D/g, "")}`;
 }
-function smsHref(raw: string | null): string {
+function rowSmsHref(raw: string | null): string {
   if (!raw) return "#";
-  const digits = raw.replace(/\D/g, "");
-  return `sms:${digits.startsWith("1") ? "+" : "+1"}${digits}`;
+  return smsHref(raw) ?? `sms:${raw.replace(/\D/g, "")}`;
 }
 function daysUntil(iso: string | null): number | null {
   if (!iso) return null;
@@ -397,7 +402,7 @@ function RowActions({ row, onOpen, onMarkContacted, onMarkPhoneBad, onSetStage, 
       <Tooltip>
         <TooltipTrigger asChild>
           <a
-            href={telHref(row.phone)} {...contactLinkProps(telHref(row.phone))}
+            href={rowTelHref(row.phone)} {...contactLinkProps(rowTelHref(row.phone))}
             aria-label={row.phone ? `Call ${row.name}` : "No phone on file"}
             onClick={row.phone ? onLogTel : (e) => e.preventDefault()}
             className={cn(
@@ -414,7 +419,7 @@ function RowActions({ row, onOpen, onMarkContacted, onMarkPhoneBad, onSetStage, 
       <Tooltip>
         <TooltipTrigger asChild>
           <a
-            href={smsHref(row.phone)} {...contactLinkProps(smsHref(row.phone))}
+            href={rowSmsHref(row.phone)} {...contactLinkProps(rowSmsHref(row.phone))}
             aria-label={row.phone ? `Text ${row.name}` : "No phone on file"}
             onClick={row.phone ? onLogSms : (e) => e.preventDefault()}
             className={cn(

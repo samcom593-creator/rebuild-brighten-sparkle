@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/hooks/useConfirm";
 import { cn } from "@/lib/utils";
 import { HIRE_RUNGS, stageForRank, stageLabel, stageRank } from "@/lib/hireLadder";
+import { contactLinkProps, phoneHref, smsHref } from "@/lib/phone";
 
 export type HireRow = {
   agent_id: string;
@@ -58,16 +59,6 @@ function initials(name: string) {
 
 function money(value: number) {
   return `$${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
-}
-
-function phoneHref(phone: string | null) {
-  const digits = (phone ?? "").replace(/\D/g, "");
-  return digits.length >= 10 ? `tel:${digits}` : null;
-}
-
-function smsHref(phone: string | null) {
-  const digits = (phone ?? "").replace(/\D/g, "");
-  return digits.length >= 10 ? `sms:${digits}` : null;
 }
 
 export function HireLaunchBoard({ searchTerm }: { searchTerm: string }) {
@@ -430,8 +421,8 @@ function HireCard({
           </div>
           <div className="flex shrink-0 flex-wrap gap-2">
             {busy && <span className="inline-flex items-center px-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /></span>}
-            {callHref && <Button asChild size="icon" aria-label={`Call ${row.display_name}`} className="h-10 w-10"><a href={callHref}><Phone className="h-4 w-4" /></a></Button>}
-            {textHref && <Button asChild size="icon" variant="outline" aria-label={`Text ${row.display_name}`} className="h-10 w-10"><a href={textHref}><MessageSquare className="h-4 w-4" /></a></Button>}
+            {callHref && <Button asChild size="icon" aria-label={`Call ${row.display_name}`} className="h-10 w-10"><a href={callHref} {...contactLinkProps(callHref)}><Phone className="h-4 w-4" /></a></Button>}
+            {textHref && <Button asChild size="icon" variant="outline" aria-label={`Text ${row.display_name}`} className="h-10 w-10"><a href={textHref} {...contactLinkProps(textHref)}><MessageSquare className="h-4 w-4" /></a></Button>}
             {!row.email_missing && row.email && <Button asChild size="icon" variant="outline" aria-label={`Email ${row.display_name}`} className="h-10 w-10"><a href={`mailto:${row.email}`}><Mail className="h-4 w-4" /></a></Button>}
             {!offLadder && (rank ?? 0) < 4 && (
               <Button

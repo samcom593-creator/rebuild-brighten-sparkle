@@ -58,6 +58,13 @@ const LICENSE_LABEL: Record<string, string> = {
   licensed: "Licensed",
 };
 
+// ApplicantHome renders for a logged-in user with NO agents row — an applicant,
+// never a VA — and this is APEX's own number. phoneHref/smsHref exist so an
+// operator's dialer-less desktop can dial OUT through Sam's Google Voice; pointed
+// inbound they would ask the applicant to sign into Google and provision their own
+// Voice line just to reach us. Every other site linking this number (Footer,
+// CalendlyEmbed, Contact, Storefront) links it raw for the same reason.
+// contact-scheme-allow: inbound control on a non-operator surface — applicant reaching APEX's own number, native handoff is correct here
 const SAM_PHONE = { display: "(469) 767-6068", tel: "tel:+14697676068", sms: "sms:+14697676068" };
 
 function prettify(value: string | null | undefined, map: Record<string, string>): string | null {
@@ -217,7 +224,7 @@ export function ApplicantHome() {
             <p className="mt-2 text-sm text-muted-foreground">Direct line, no funnel. Say the email you applied with and we'll connect it.</p>
             <div className="mt-4 flex flex-wrap gap-2">
               <ActionLink href={SAM_PHONE.tel} external>Call {SAM_PHONE.display}</ActionLink>
-              <ActionLink href={SAM_PHONE.sms} external variant="outline">Text Sam</ActionLink>
+              <ActionLink href={SAM_PHONE.sms} external variant="outline">Text {SAM_PHONE.display}</ActionLink>
             </div>
           </div>
         </div>

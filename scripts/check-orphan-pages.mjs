@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { splitUncommittable, noticeBanner } from "./lib/committable.mjs";
 
 // Persistence-mandate guard — orphan-page (dead route) detector.
 //
@@ -172,11 +173,31 @@ for (const rel of pageFiles) {
   orphans.push(rel);
 }
 
-if (orphans.length > 0) {
+// MP-472. This box runs several workers against ONE checkout and this guard
+// walks the working tree, so an untracked, unstaged page — another worker
+// mid-wave — was blocking every other worker's commit. It blocked this wave's
+// own commit over src/pages/RecoveryCommand.tsx, a file this wave never staged.
+// Its sibling check:supabase-relation-types already splits exactly this way
+// (MP-457), and MP-403 moved a guard's verdict off the working tree onto the
+// index for the same reason; the two escapes otherwise are `git add -A`
+// (absorption, this environment's documented failure) and --no-verify.
+//
+// Coverage is not narrowed: a new page is graded the moment it is staged, and
+// tracked pages are graded always. Findings in uncommittable files are still
+// PRINTED as a non-voting notice — dropping another worker's real orphan
+// silently would be the fake-success disease in a politeness costume.
+const [gradedOrphans, orphanNotices] = splitUncommittable(orphans, (rel) => rel);
+
+if (orphanNotices.length > 0) {
+  console.log(noticeBanner(orphanNotices.length));
+  for (const rel of orphanNotices) console.log("    " + rel);
+}
+
+if (gradedOrphans.length > 0) {
   console.error(
     "check:orphan-pages — page files with no importer anywhere in src/ and no orphan marker:",
   );
-  for (const rel of orphans) console.error("  " + rel);
+  for (const rel of gradedOrphans) console.error("  " + rel);
   console.error("");
   console.error(
     "Why this exists: an orphan page rots — it stays in git, but has zero",

@@ -67,10 +67,27 @@ const WATCHED = [
   "src/pages/StaleRecovery.tsx",
 ];
 
-// Public/marketing surfaces where a raw tel: is the CORRECT behaviour: a cold
-// prospect on a phone must reach the native dialer, not Sam's Google Voice
-// account chooser. Exempt with a reason, never silently skipped.
-const PUBLIC_RAW_TEL_OK = [
+// Surfaces where a raw tel:/sms: is the CORRECT behaviour. Exempt with a reason,
+// never silently skipped.
+//
+// THE CRITERION IS WHO HOLDS THE MOUSE, NOT WHETHER THE ROUTE IS PUBLIC. This
+// list was named PUBLIC_RAW_TEL_OK and described as "public/marketing surfaces"
+// until 2026-09-08, and that wording is what let two surfaces through: the
+// 2026-09-07 onboarding wave shipped ApplicantHome and ContractingSuccessModal
+// with raw `tel:`/`sms:` to APEX's own number, both AUTHENTICATED and neither
+// marketing, so the walk graded them and demanded a conversion that is wrong for
+// them. They are now allowed at the site with written reasons.
+//
+// phoneHref/smsHref exist for ONE direction: an APEX operator (VA, recruiter,
+// admin) dialing OUT to someone else's number from a desktop with no dialer, who
+// therefore needs Sam's Google Voice. Point them inbound — at APEX's own number,
+// clicked by a visitor, applicant or newly contracted agent — and they ask that
+// person to sign into Google and provision their own Voice line to reach us. All
+// 49 phoneHref/smsHref call sites in src/ are outbound; all 7 sites linking Sam's
+// own number are raw. The split is direction, and it is NOT a literal-vs-dynamic
+// test either: PublicAgentLanding and MyLandingPage below use `tel:${...}` on an
+// AGENT's number and are still inbound, because a prospect does the clicking.
+const NON_OPERATOR_SURFACE_RAW_OK = [
   "src/components/landing/Footer.tsx",
   "src/components/landing/CalendlyEmbed.tsx",
   "src/pages/Contact.tsx",
@@ -131,14 +148,43 @@ function stripComments(text) {
 const lineOf = (text, index) => text.slice(0, index).split("\n").length;
 
 /**
- * Bounds of the JSX tag enclosing `index`: back to the nearest '<', forward to
- * the first '>' at brace depth 0 so a '>' inside an expression does not end it.
+ * The scope a guard needle must appear in for THIS site to count as guarded:
+ * the enclosing JSX tag when the match really is inside one, otherwise the
+ * match's own line.
+ *
+ * 2026-09-08 (MP-472): the first cut walked back to the nearest '<' and forward
+ * to the first '>' at brace depth 0, and trusted whatever came back. Neither end
+ * was anchored to an actual tag, so on a helper that returns an href — the very
+ * shape the header above says this guard was widened to catch — it produced a
+ * 39,925-character slab spanning the whole component, swept up the file's three
+ * legitimate phoneHref() calls, and reported the raw site as GUARDED. Proximity
+ * is not scope. Two ways it went wrong, both live in src/ when this was written:
+ *
+ *   - The '<' it walked back to was a COMPARISON (`if (untilExam <= 2)`) or a
+ *     TYPE PARAMETER (`<{ className?: string }>`), not a tag opening.
+ *   - Even when it found a real tag, it never checked that `index` was INSIDE
+ *     that tag. `<ShieldOff className="h-3 w-3" />` closes long before a
+ *     `return phoneHref(x) ?? \`tel:${x}\`` fifty lines later.
+ *
+ * A raw scheme laundered by an unrelated phoneHref elsewhere in the file is the
+ * worst direction this guard has: a partially-converted file reads clean, which
+ * is how admin/RecoveryQueue.tsx kept two dead VA dial controls through MP-404,
+ * MP-405 and MP-433. Falling back to the LINE is what makes the `??` fallback
+ * (`phoneHref(x) ?? \`tel:${x}\``) still read as guarded, because that idiom
+ * always puts the helper and the raw scheme on one line.
  */
 function enclosingTag(text, index) {
+  const lineStart = text.lastIndexOf("\n", index) + 1;
+  const lineEndRaw = text.indexOf("\n", index);
+  const line = text.slice(lineStart, lineEndRaw === -1 ? text.length : lineEndRaw);
+
   let start = index;
   while (start > 0 && text[start] !== "<") start -= 1;
+  // A tag opens with `<` + name, `</`, or `<>`. `<=`, `< ` and `<{` do not.
+  if (text[start] !== "<" || !/^<[A-Za-z/>]/.test(text.slice(start, start + 2))) return line;
+
   let depth = 0;
-  let end = index;
+  let end = start;
   while (end < text.length) {
     const c = text[end];
     if (c === "{") depth += 1;
@@ -146,6 +192,9 @@ function enclosingTag(text, index) {
     else if (c === ">" && depth <= 0) break;
     end += 1;
   }
+  // The match must actually fall inside the tag; past its '>' we are in the
+  // element's CHILDREN, which the tag's attributes cannot vouch for.
+  if (end < index) return line;
   return text.slice(start, Math.min(end + 1, text.length));
 }
 
@@ -242,7 +291,7 @@ for (const path of WATCHED) {
 // API -- see the note on its definition.
 let graded_walk = 0;
 for (const path of walkTsx("src")) {
-  if (sources[path] || PUBLIC_RAW_TEL_OK.includes(path) || NO_RECIPIENT_SCHEME.includes(path)) continue;
+  if (sources[path] || NON_OPERATOR_SURFACE_RAW_OK.includes(path) || NO_RECIPIENT_SCHEME.includes(path)) continue;
   if (isTestPath(path)) continue;
   let text;
   try { text = read(path); } catch { continue; }
@@ -255,16 +304,41 @@ for (const path of walkTsx("src")) {
 // The raw scheme is permitted ONLY as the `??` fallback of a phoneHref/smsHref
 // call, which is how an un-normalizable number keeps the control it has today
 // instead of losing it.
+/**
+ * The needle `phoneHref(`/`smsHref(` only means the REAL helper when the file
+ * actually imports it. HireLaunchBoard.tsx declared its own phoneHref/smsHref
+ * returning a bare `tel:`/`sms:` (no device branch, no Google Voice, not even a
+ * +1) and admin/RecoveryQueue.tsx did the same under `telHref`/`smsHref` — so a
+ * name-keyed test read both as guarded and two VA dialing surfaces kept dead
+ * desktop controls through MP-404, MP-405 and MP-433. Matching a needle's SHAPE
+ * in a context that is not the thing is this repo's recurring bill (MP-277,
+ * MP-399); measured 2026-09-08, 39 of the 40 files using the needle import the
+ * helper, and the one that does not is exempt at the site with a written reason.
+ *
+ * A file cannot both import `phoneHref` and declare one — TypeScript rejects the
+ * redeclaration — so this test and a local shadow are mutually exclusive.
+ */
+const IMPORTS_REAL_HELPER =
+  /import\s*\{[^}]*\b(?:phoneHref|smsHref)\b[^}]*\}\s*from\s*["'\u0060]@\/lib\/phone["'\u0060]/;
+
 for (const [path, code] of Object.entries(sources)) {
+  const realHelper = IMPORTS_REAL_HELPER.test(rawSources[path] ?? "");
   for (const m of code.matchAll(SCHEME_IN_LINK_POSITION)) {
     const tag = enclosingTag(code, m.index);
-    const guarded = /phoneHref\(|smsHref\(/.test(tag);
+    const guarded = realHelper && /phoneHref\(|smsHref\(/.test(tag);
     const line = lineOf(code, m.index);
     if (!guarded && isAllowed(path, line)) { allowedSites += 1; continue; }
     if (!guarded) {
       failures.push(
         `${path}:${lineOf(code, m.index)} — raw \`${m[1]}:\` href with no phoneHref()/smsHref() guard.\n` +
-        `    Dead click on desktop (no native dialer). Route it through @/lib/phone.`,
+        `    On a desktop with no phone/SMS app this click does nothing. THE REMEDY DEPENDS ON\n` +
+        `    WHO CLICKS IT, and this check cannot tell — decide before converting:\n` +
+        `      - an APEX operator dialing OUT to someone else's number -> route it through\n` +
+        `        @/lib/phone (phoneHref/smsHref + contactLinkProps). This is the common case.\n` +
+        `      - a visitor, applicant or agent reaching APEX's OWN number -> leave the raw\n` +
+        `        scheme and add \`contact-scheme-allow: <reason>\` on this line or the one above.\n` +
+        `        Converting sends them to Google's account chooser to provision their own Voice\n` +
+        `        line, which does not reach us; every other site linking Sam's number is raw.`,
       );
     }
   }
@@ -358,7 +432,7 @@ function walkTsx(dir, acc = []) {
 let exemptSites = null;
 try {
   exemptSites = 0;
-  for (const p of [...PUBLIC_RAW_TEL_OK, ...NO_RECIPIENT_SCHEME]) {
+  for (const p of [...NON_OPERATOR_SURFACE_RAW_OK, ...NO_RECIPIENT_SCHEME]) {
     let code;
     try { code = stripComments(read(p)); } catch { continue; }
     for (const m of code.matchAll(SCHEME_IN_LINK_POSITION)) {
@@ -381,7 +455,8 @@ if (exemptSites !== null) {
   );
   console.log(
     `  exempt (not graded, by name): ${exemptSites} raw site(s) across ` +
-    `${PUBLIC_RAW_TEL_OK.length} public page(s) where a prospect must reach the native dialer, ` +
+    `${NON_OPERATOR_SURFACE_RAW_OK.length} non-operator surface(s) where the clicker is a prospect ` +
+    `or applicant reaching an APEX number and must get the native handoff, ` +
     `and ${NO_RECIPIENT_SCHEME.length} file(s) using a recipient-less \`sms:?&body=\` share the ` +
     `helper cannot express — the latter IS still a desktop dead click, with no remedy in @/lib/phone.`,
   );

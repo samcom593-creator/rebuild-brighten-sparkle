@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "Three fixes Sam called in: the shirtless founder photo is off the public site (Apply page + landing hero, replaced with a monogram); VAs see the FULL recruit pipeline (their landing now leads with every applicant, and the pipeline can never scope or error a VA/recruiter); and Vantage is back on the leaderboard.",
+    detail:
+      "Photo: the same open-shirt shot was the avatar on /apply and the hero on the landing page — both removed. VA pipeline: Milver reads all 781 applications under RLS with no restrictive policy, so the data was never the problem — the VA landing led with the licensed-only 'Licensed Inbox'. The full Recruit Pipeline is now the first VA card, and DashboardApplicants treats admin/manager/va/va_manager/recruiter as full-pipeline viewers (only a plain producing agent is scoped, and a mis-roled user shows empty instead of throwing a page-blanking error). Vantage: its September production ($38,439) arrives as an unattributed agency daily-gap that leaderboard_board excluded; the board now adds one clearly-labelled agency-total row per agency with gap production, so Vantage ranks alongside producers instead of vanishing.",
+    commit: "va-pipeline-vantage-board-photo",
+  },
+  {
+    ts: "today",
+    label:
       "WhatsApp is gone from the product, and four onboarding dead ends are closed. The seminar email's WhatsApp button is now the team Slack; the manager login email says Slack; the alert dispatcher no longer carries a WhatsApp channel; the dead send-whatsapp function and the orphaned second welcome email (which told applicants to call a cell number and join Discord) are deleted. Re-applicants now get the welcome email and next steps instead of silence; pending-license applicants get the follow-up drip; 'Book Your Onboarding Call' books the onboarding call; the contracting 'needs review' screen has a real contact button.",
     detail:
       "Sam: 'we're still saying WhatsApp. We don't even use WhatsApp. Remove all that.' Inventory found one live UI string, one live email CTA, one email wording, a dispatcher channel nothing ever seeded, a zero-caller edge function, and two orphan settings rows; all removed, settings deleted live, function-contracts baseline rewritten. Four SQL trigger functions still contain a WhatsApp line that cannot render because its settings key was deleted in July; left alone on purpose and documented in the migration. Onboarding: send-followup-emails filtered license_status = unlicensed so 'pending' fell out of every drip; the duplicate branch of submit-application returned isDuplicate with no side effects; GetLicensed's onboarding button pointed at the prospect 1-on-1; ContractingSuccessModal's needs_review branch had no contact at all.",

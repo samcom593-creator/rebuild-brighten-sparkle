@@ -94,6 +94,23 @@ export default function VaOpsCommandCenter() {
 
   const cards: QueueCard[] = [
     {
+      // 2026-09-08 (Sam): "Milton and all the VAs need to see the FULL pipeline."
+      // The full applicant pipeline leads the VA landing so nobody mistakes the
+      // licensed-only inbox below for "the pipeline". VAs have full read access.
+      key: "applications",
+      label: "Full Recruit Pipeline",
+      desc: "Every applicant — all licenses, all stages",
+      href: "/dashboard/recruiting",
+      icon: Briefcase,
+      count: () =>
+        countOf(
+          supabase
+            .from("applications")
+            .select("*", { count: "exact", head: true }).eq("record_type", APPLICATION_RECORD_TYPE)
+            .is("terminated_at", null),
+        ),
+    },
+    {
       key: "interviews",
       label: "Interview Queue",
       desc: "Booked interviews to run and dispose",
@@ -140,20 +157,6 @@ export default function VaOpsCommandCenter() {
       href: "/admin/recovery-queue",
       icon: Flame,
       count: viewCount("v_hot_licensing_prospects"),
-    },
-    {
-      key: "applications",
-      label: "Applications",
-      desc: "Full applicant pipeline",
-      href: "/dashboard/applicants",
-      icon: Briefcase,
-      count: () =>
-        countOf(
-          supabase
-            .from("applications")
-            .select("*", { count: "exact", head: true }).eq("record_type", APPLICATION_RECORD_TYPE)
-            .is("terminated_at", null),
-        ),
     },
   ];
 

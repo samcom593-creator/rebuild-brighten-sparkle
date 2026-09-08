@@ -255,7 +255,7 @@ function licenseTrust(app: Application): LicenseTrust {
 }
 
 export default function DashboardApplicants() {
-  const { user, isAdmin, isManager, isVaManager, isVa } = useAuth();
+  const { user, isAdmin, isManager, isVaManager, isVa, isRecruiter } = useAuth();
   // VA ops staff (2026-07-27): backed by applications_va_read/_va_update RLS.
   // They see the full queue like admins — they have no agents row to scope by.
   const isVaStaff = isVaManager || isVa;
@@ -375,17 +375,17 @@ export default function DashboardApplicants() {
         ? query.not("terminated_at", "is", null)
         : query.is("terminated_at", null);
 
+      // Full-pipeline viewers: admin, manager, and ALL recruiting staff
+      // (va, va_manager, recruiter) — RLS already grants them every applicant,
+      // and Sam's rule (2026-09-08) is "Milton and all the VAs see the full
+      // pipeline." Only a plain producing agent is scoped to their own leads.
+      const fullPipeline = isAdmin || isManager || isVaStaff || isRecruiter;
       if (managerFilter && (isAdmin || isManager)) {
         query = query.or(orForAgentId(managerFilter));
-      } else if (!isAdmin && !isManager && !isVaStaff) {
-        if (!agentData) {
-          throw new Error(
-            "Agent lookup returned no row · cannot scope applications. " +
-            "Either the user has no `agents` row OR the lookup failed. " +
-            "Check console for [DashboardApplicants] agent lookup error."
-          );
-        }
-        query = query.or(orForAgentId(agentData.id));
+      } else if (!fullPipeline) {
+        // A plain agent with no agent row can't be scoped — show nothing rather
+        // than throw (a throw blanked the whole page for anyone mis-roled).
+        query = agentData ? query.or(orForAgentId(agentData.id)) : query.eq("id", "00000000-0000-0000-0000-000000000000");
       }
 
       const { data, error, count } = await query.order("created_at", { ascending: false });

@@ -839,12 +839,15 @@ export default function Apply() {
           {/* Founder credit — Brand Bible: "the face IS the brand". Trust signal
               on the conversion page, just under the page header. */}
           <div className="flex items-start sm:items-center justify-start sm:justify-center gap-3 mb-10 max-w-full">
-            <img
-              src="https://xrzweoneiieddzxogewk.supabase.co/storage/v1/object/public/avatars/4491dc82-a056-4fb3-ab38-b132afffb700/avatar-1777285677901.jpg"
-              alt="Samuel James, Founder of APEX Financial"
-              loading="lazy"
-              className="h-12 w-12 shrink-0 rounded-full ring-2 ring-primary/40 object-cover "
-            />
+            {/* 2026-09-08 (Sam): the founder avatar here was a shirtless photo —
+                pulled from the public conversion page. Monogram until a
+                professional headshot is provided. */}
+            <div
+              aria-label="Samuel James, Founder of APEX Financial"
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/15 ring-2 ring-primary/40 text-sm font-bold text-primary"
+            >
+              SJ
+            </div>
             <div className="text-left min-w-0">
               <p className="text-sm font-bold leading-tight">You're applying directly to Samuel James</p>
               <p className="text-[11px] text-muted-foreground uppercase tracking-[0.08em] sm:tracking-wider leading-snug">

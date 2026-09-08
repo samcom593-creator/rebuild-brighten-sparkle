@@ -276,25 +276,15 @@ export function HeroSection() {
               source + jpg fallback. width/height set explicitly so the
               landing-fade-up animation can't induce CLS. */}
           <div className="landing-fade-up landing-delay-400 flex items-center justify-center gap-3 mb-10">
-            <picture>
-              <source
-                type="image/webp"
-                srcSet="/img/founder-headshot-88.webp 1x, /img/founder-headshot-132.webp 1.5x"
-              />
-              <img
-                src="/img/founder-headshot-88.jpg"
-                alt="Samuel James, Founder of APEX Financial"
-                width={44}
-                height={44}
-                loading="lazy"
-                decoding="async"
-                // ts-ignore-allow:fetchpriority-html-attr-react-types-lag
-                // @ts-expect-error — use the standards-cased attribute to avoid
-                // React 18 forwarding warnings while retaining the low-priority hint.
-                fetchpriority="low"
-                className="h-11 w-11 rounded-full ring-2 ring-primary/40 object-cover "
-              />
-            </picture>
+            {/* 2026-09-08 (Sam): the founder headshot here was a shirtless photo —
+                removed from the public landing hero. Monogram until a
+                professional headshot is provided. */}
+            <div
+              aria-label="Samuel James, Founder of APEX Financial"
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/15 ring-2 ring-primary/40 text-sm font-bold text-primary"
+            >
+              SJ
+            </div>
             <div className="text-left">
               <p className="text-sm font-bold leading-tight">Samuel James</p>
               <p className="text-[11px] text-muted-foreground uppercase tracking-wider">

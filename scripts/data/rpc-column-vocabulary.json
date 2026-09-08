@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-rpc-column-vocabulary.sh (bot_sql -> pg_proc + pg_rewrite)",
- "_generated_at": "2026-09-04T22:16:34Z",
+ "_generated_at": "2026-09-08T09:24:54Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "check-enum-filter-literals.mjs grades literals inside supabase.from().eq() chains. This is the other half of the same class: a status word that arrives from an RPC and is compared in JavaScript, where the return type is text and every wrong word type-checks. Per (function, returned column) this records the relation columns of that name reachable from the function body and the literals the function synthesises itself. It deliberately records CANDIDATES rather than one resolved source: provenance from a body regex is a guess, so check-rpc-status-literals.mjs refuses a literal only when NO candidate vocabulary and no body literal accepts it.",
  "_vocabulary_source": "scripts/data/enum-catalog.json (check_vocab + column_enum + enums). Not copied here on purpose, so the two guards read one snapshot and cannot drift.",
@@ -109,6 +109,10 @@
   "cleanup_expired_idempotency_keys": "void",
   "client_birthday_wisher": "jsonb",
   "commission_ledger_reconcile": "jsonb",
+  "content_cards_touch_updated_at": "trigger",
+  "content_clips_canon_tags": "text[]",
+  "content_clips_search": "SETOF content_clips",
+  "content_clips_upsert": "jsonb",
   "content_library_search_update": "trigger",
   "course_max_attempts": "integer",
   "create_apex_toolkit_agent": "jsonb",
@@ -164,6 +168,7 @@
   "fn_agentlink_outbox_uuid": "uuid",
   "fn_agentlink_policy_fingerprint": "text",
   "fn_agentlink_policy_outbox_uuid": "uuid",
+  "fn_agents_manager_no_cycle": "trigger",
   "fn_alert_blacklisted_carrier_deal": "trigger",
   "fn_alert_licensed_applicant": "trigger",
   "fn_alert_sms_fix_anchor": "timestamp with time zone",
@@ -405,7 +410,9 @@
   "resolve_hiring_manager_for_scope": "uuid",
   "resolve_strike": "agent_strikes",
   "revive_dead_leads": "jsonb",
+  "run_apex_outbox_dispatch_if_pending": "uuid",
   "run_automation_job": "uuid",
+  "run_readymode_sync_if_due": "bigint",
   "sam_agent_ids_to_exclude": "SETOF uuid",
   "sam_todo_dismiss": "void",
   "sam_todo_snooze": "void",
@@ -453,6 +460,7 @@
   "submit_apex_deal": "jsonb",
   "submit_apex_deal_ledger_impl": "jsonb",
   "submit_contracting_intake": "jsonb",
+  "supabase_usage_drain_health": "jsonb",
   "svg_url_encode": "text",
   "sync_automation_status": "jsonb",
   "sync_health_summary": "jsonb",
@@ -513,6 +521,7 @@
   "update_my_agent_profile": "jsonb",
   "update_scheduled_interviews_updated_at": "trigger",
   "update_updated_at_column": "trigger",
+  "upsert_readymode_dialer_calls": "integer",
   "uuid_from_text": "uuid",
   "void_strike": "agent_strikes",
   "webhook_health_check": "jsonb",
@@ -580,6 +589,110 @@
    "body_literals": [
     "active",
     "agent",
+    "public"
+   ]
+  },
+  "agency_roster_production.agency": {
+   "candidates": [
+    "mv_production_comp_truth.agency"
+   ],
+   "body_literals": [
+    "Reported by ",
+    "external_daily_gap",
+    "public"
+   ]
+  },
+  "agency_roster_production.agent_id": {
+   "candidates": [
+    "mv_agent_truth.agent_id",
+    "mv_production_comp_truth.agent_id",
+    "v_agent_canonical_map.agent_id",
+    "v_production_comp_truth.agent_id",
+    "v_production_unified.agent_id"
+   ],
+   "body_literals": [
+    "Reported by ",
+    "external_daily_gap",
+    "public"
+   ]
+  },
+  "agency_roster_production.agent_name": {
+   "candidates": [
+    "mv_production_comp_truth.agent_name",
+    "v_production_comp_truth.agent_name",
+    "v_production_unified.agent_name"
+   ],
+   "body_literals": [
+    "Reported by ",
+    "external_daily_gap",
+    "public"
+   ]
+  },
+  "agency_roster_production.ap": {
+   "candidates": [],
+   "body_literals": [
+    "Reported by ",
+    "external_daily_gap",
+    "public"
+   ]
+  },
+  "agency_roster_production.contract_pct": {
+   "candidates": [
+    "mv_agent_truth.contract_pct"
+   ],
+   "body_literals": [
+    "Reported by ",
+    "external_daily_gap",
+    "public"
+   ]
+  },
+  "agency_roster_production.contract_provenance": {
+   "candidates": [
+    "mv_agent_truth.contract_provenance"
+   ],
+   "body_literals": [
+    "Reported by ",
+    "external_daily_gap",
+    "public"
+   ]
+  },
+  "agency_roster_production.first_hop_name": {
+   "candidates": [],
+   "body_literals": [
+    "Reported by ",
+    "external_daily_gap",
+    "public"
+   ]
+  },
+  "agency_roster_production.has_login": {
+   "candidates": [],
+   "body_literals": [
+    "Reported by ",
+    "external_daily_gap",
+    "public"
+   ]
+  },
+  "agency_roster_production.is_gap": {
+   "candidates": [],
+   "body_literals": [
+    "Reported by ",
+    "external_daily_gap",
+    "public"
+   ]
+  },
+  "agency_roster_production.last_sale": {
+   "candidates": [],
+   "body_literals": [
+    "Reported by ",
+    "external_daily_gap",
+    "public"
+   ]
+  },
+  "agency_roster_production.policies": {
+   "candidates": [],
+   "body_literals": [
+    "Reported by ",
+    "external_daily_gap",
     "public"
    ]
   },
@@ -2143,6 +2256,7 @@
     "agentlink_contracts.created_at",
     "agents.created_at",
     "applications.created_at",
+    "production_external_daily_snapshots.created_at",
     "profiles.created_at"
    ],
    "body_literals": [
@@ -2763,6 +2877,7 @@
     "agentlink_contracts.created_at",
     "agents.created_at",
     "applications.created_at",
+    "production_external_daily_snapshots.created_at",
     "profiles.created_at"
    ],
    "body_literals": [
@@ -3483,6 +3598,7 @@
   },
   "crm_today_production.business_date": {
    "candidates": [
+    "production_external_daily_snapshots.business_date",
     "v_external_production_gap.business_date"
    ],
    "body_literals": [
@@ -5057,8 +5173,20 @@
     "public"
    ]
   },
+  "leaderboard_board.agency": {
+   "candidates": [
+    "mv_production_comp_truth.agency"
+   ],
+   "body_literals": [
+    "New",
+    "external_daily_gap",
+    "public"
+   ]
+  },
   "leaderboard_board.agent_id": {
    "candidates": [
+    "mv_agent_truth.agent_id",
+    "mv_production_comp_truth.agent_id",
     "v_agent_canonical_map.agent_id",
     "v_production_canonical.agent_id",
     "v_production_comp_truth.agent_id",
@@ -5080,6 +5208,7 @@
   },
   "leaderboard_board.agent_name": {
    "candidates": [
+    "mv_production_comp_truth.agent_name",
     "v_production_canonical.agent_name",
     "v_production_comp_truth.agent_name",
     "v_production_unified.agent_name"
@@ -6427,6 +6556,7 @@
   "production_book_freshness.last_posted_ap": {
    "candidates": [],
    "body_literals": [
+    "agentlink_book_last_refreshed_at",
     "external_daily_gap",
     "public"
    ]
@@ -6434,6 +6564,7 @@
   "production_book_freshness.last_posted_count": {
    "candidates": [],
    "body_literals": [
+    "agentlink_book_last_refreshed_at",
     "external_daily_gap",
     "public"
    ]
@@ -6441,6 +6572,7 @@
   "production_book_freshness.last_posted_date": {
    "candidates": [],
    "body_literals": [
+    "agentlink_book_last_refreshed_at",
     "external_daily_gap",
     "public"
    ]
@@ -6448,6 +6580,7 @@
   "production_book_freshness.last_synced_at": {
    "candidates": [],
    "body_literals": [
+    "agentlink_book_last_refreshed_at",
     "external_daily_gap",
     "public"
    ]
@@ -6455,6 +6588,7 @@
   "production_book_freshness.live_policies": {
    "candidates": [],
    "body_literals": [
+    "agentlink_book_last_refreshed_at",
     "external_daily_gap",
     "public"
    ]

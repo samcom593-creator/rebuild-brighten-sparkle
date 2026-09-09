@@ -1,0 +1,21 @@
+{
+  "generated_by": "scripts/check-db-href-launder.mjs (MP-497)",
+  "note": "Identity-keyed, not a count: fixing one site must never buy the right to add another (MP-356/357). Every column feeding these measured 0 scheme-less values in prod on 2026-09-09 — this is prevention, not a live leak.",
+  "sites": [
+    "src/components/admin/CourseContentViewer.tsx::module.video_url",
+    "src/components/contentwheel/DashboardModule.tsx::o.post_url",
+    "src/components/dashboard/AgentOnboardingStepper.tsx::nextStep.action_url",
+    "src/components/dashboard/AgentOnboardingStepper.tsx::step.action_url",
+    "src/components/next-step/NextStepCandidateCard.tsx::data.next_action_url",
+    "src/components/next-step/NextStepCandidateCard.tsx::data.next_action_url",
+    "src/components/next-step/NextStepStuckPool.tsx::row.next_action_url",
+    "src/pages/AssistantInterviewForm.tsx::r.calendar_template_url",
+    "src/pages/CourseContent.tsx::module.video_url",
+    "src/pages/CourseContent.tsx::module.video_url",
+    "src/pages/InterviewRecovery.tsx::current.reschedule_url",
+    "src/pages/Interviews.tsx::row.reschedule_url",
+    "src/pages/Interviews.tsx::truth.scheduling_url",
+    "src/pages/ReadyModeIntegration.tsx::c.recording_url",
+    "src/pages/SharePage.tsx::k.download_url"
+  ]
+}

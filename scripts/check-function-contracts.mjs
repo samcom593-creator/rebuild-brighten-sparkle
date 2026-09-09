@@ -154,6 +154,27 @@ const undefinedRpcs = Array.from(allRpcCalls)
 
 // Allowed public functions (must have explicit rationale)
 const PUBLIC_ALLOWLIST = new Set([
+  // MP-491 — three functions that authenticate a caller-presented bot token
+  // in-handler, so verify_jwt = true could never be their boundary: the gateway
+  // refuses `Bearer <apex_bot_token>` (64-char hex, not a JWT) with
+  // UNAUTHORIZED_INVALID_JWT_FORMAT before the handler runs, while verify_jwt
+  // itself accepts the public anon key shipped in the site bundle and is
+  // therefore the WEAKER of the two checks. Each gates in-handler on the bot
+  // token or the service role; agentlink-clients-sync additionally accepts a
+  // user JWT that passes has_role(admin). Probed live 2026-09-09: anonymous and
+  // garbage-bearer requests get the handler's own {"ok":false,
+  // "error":"unauthorized"}, never the gateway's.
+  //
+  // agentlink-clients-sync was NOT a hypothetical. It was defaulted to
+  // verify_jwt = true on 2026-08-20, deployed, and its 30-minute pg_cron caller
+  // 401ed for sixteen days — agentlink_clients_sync_log stopped at
+  // 2026-08-24T12:30:03Z while cron.job_run_details recorded 333 "succeeded",
+  // because that column reports whether net.http_post enqueued, not whether
+  // anything answered. Listed with rationale rather than raising the floor,
+  // because a count-only ratchet is fungible (MP-356).
+  "agentlink-clients-sync",
+  "content-library",
+  "slack-unlicensed-welcome",
   // content-share (MP-483): the /share/:token page is an unauthenticated route
   // (App.tsx, in the public block beside /apply) and SharePage.tsx fetches this
   // function with no Authorization and no apikey, because the share token in the

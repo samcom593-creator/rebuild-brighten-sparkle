@@ -192,6 +192,7 @@
     "public.comp_rate_imports",
     "public.comp_rates",
     "public.contact_history",
+    "public.content_access",
     "public.content_cards",
     "public.content_clips",
     "public.content_library",

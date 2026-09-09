@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      content_access: {
+        Row: {
+          added_by: string | null
+          created_at: string
+          email: string
+          id: string
+          label: string | null
+          revoked_at: string | null
+        }
+        Insert: {
+          added_by?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          label?: string | null
+          revoked_at?: string | null
+        }
+        Update: {
+          added_by?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          label?: string | null
+          revoked_at?: string | null
+        }
+        Relationships: []
+      }
       content_queue: {
         Row: {
           approved_by: string | null
@@ -130965,6 +130992,7 @@ export type Database = {
         Returns: Json
       }
       apex_is_admin: { Args: never; Returns: boolean }
+      content_can_access: { Args: never; Returns: boolean }
       apex_provision_licensed_applicant: {
         Args: { p_application_id: string }
         Returns: Json

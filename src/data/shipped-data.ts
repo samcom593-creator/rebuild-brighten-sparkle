@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "The Content page is now invite-only and Sam controls the list from the page itself: add a person by email, copy the invite, remove them in one tap. Anyone not on the list sees a locked screen, and the database refuses them rows and clips even if they keep the link.",
+    detail:
+      "New content_access table plus a content_can_access() predicate shared by the route gate, the content_queue row-level security, the private clip bucket policy and the update trigger, so the screen and the lock cannot disagree. Admins always pass; everyone else passes only while their sign-in email is listed and un-revoked. Invited people sign in with the email link, no password. MP-CONTENT-2.",
+    commit: "mp-content-2-invite-only-access",
+  },
+  {
+    ts: "today",
+    label:
       "Sam can now run the content pipeline from his phone. A new admin-only Content page shows today's five-slot slate with yesterday's score, the whole clip queue with contact sheets, and plays the clip right on the page, with Approve, Needs work, Edit and a compliance Reviewed step that cannot be skipped.",
     detail:
       "The Mac tool (content-ops) hashes every clip in Dropbox, cuts a 9:16 captioned copy, and mirrors its CSV queue into a new content_queue table with the playable copy in a private bucket; edits made here stamp edited_at and flow back to the CSV on the next sync. Row-level security admits admins only and a trigger refuses any status other than APPROVED or REWORK from the page, so publishing is still only recorded by the archive command with a real post URL. MP-CONTENT-1.",

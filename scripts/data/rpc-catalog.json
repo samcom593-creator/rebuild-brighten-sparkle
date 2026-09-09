@@ -1306,6 +1306,14 @@
         "raw": ""
       }
     ],
+    "content_can_access": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "content_cards_touch_updated_at": [
       {
         "all": [],
@@ -1359,6 +1367,14 @@
       }
     ],
     "content_library_search_update": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "content_queue_guard_update": [
       {
         "all": [],
         "required": [],

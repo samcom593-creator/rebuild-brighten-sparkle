@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Clapperboard, Pencil, Play, RotateCcw, ShieldAlert } from "lucide-react";
+import { Check, Clapperboard, Copy, Pencil, Play, RotateCcw, ShieldAlert, UserMinus, UserPlus, Users } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -36,6 +36,8 @@ const SLOTS: { slot: string; pillars: string[]; brand: string; job: string }[] =
 const DAILY_TARGET = 5;
 const OPEN_STATUSES = ["INBOX", "EDITING", "NEEDS_REVIEW", "APPROVED", "READY"];
 const MEDIA_BUCKET = "content-media";
+const CONTENT_URL = "https://apex-financial.org/dashboard/content";
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 interface QueueRow {
   content_id: string;
@@ -61,6 +63,17 @@ interface QueueRow {
 
 type Patch = Partial<Pick<QueueRow, "status" | "hook" | "caption" | "cta" | "approved_by" | "privacy_risk" | "earnings_claim_risk">>;
 
+interface AccessRow {
+  id: string;
+  email: string;
+  label: string | null;
+  added_by: string | null;
+  created_at: string;
+  revoked_at: string | null;
+}
+
+type AccessOp = { kind: "add"; email: string; label: string } | { kind: "set"; id: string; revoked: boolean };
+
 const contentQueue = () => supabase.from("content_queue");
 
 function phoenixDate(offsetDays = 0): string {
@@ -81,7 +94,7 @@ function statusTone(s: string | null): "default" | "secondary" | "outline" | "de
 
 export default function ContentQueue() {
   usePageTitle("Content");
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const qc = useQueryClient();
   const approver = (user?.user_metadata?.display_name as string | undefined) || user?.email || "admin";
   const [search, setSearch] = useState("");
@@ -168,6 +181,52 @@ export default function ContentQueue() {
       return;
     }
     setPlaying({ id: r.content_id, url: data.signedUrl });
+  };
+
+  // ---- invite-only access (admin manages; RLS + content_can_access enforce it server-side)
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteLabel, setInviteLabel] = useState("");
+  const accessQuery = useQuery({
+    queryKey: ["content_access"],
+    enabled: isAdmin,
+    queryFn: async (): Promise<AccessRow[]> => {
+      const { data, error } = await supabase.from("content_access").select("*").order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as AccessRow[];
+    },
+  });
+  const accessMutation = useMutation({
+    mutationFn: async (op: AccessOp) => {
+      if (op.kind === "add") {
+        const email = op.email.trim().toLowerCase();
+        if (!EMAIL_RE.test(email)) throw new Error("Enter a valid email address");
+        const { error } = await supabase.from("content_access").insert({ email, label: op.label.trim() || null, added_by: approver });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("content_access").update({ revoked_at: op.revoked ? new Date().toISOString() : null }).eq("id", op.id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: (_d, op) => {
+      void qc.invalidateQueries({ queryKey: ["content_access"] });
+      if (op.kind === "add") {
+        setInviteEmail("");
+        setInviteLabel("");
+        toast.success("Access granted. Copy the invite and send it.");
+      } else {
+        toast.success(op.revoked ? "Access removed" : "Access restored");
+      }
+    },
+    onError: (e: Error) => toast.error(/duplicate|unique/i.test(e.message) ? "That email is already on the list" : e.message || "Could not update access"),
+  });
+  const copyInvite = async (email: string) => {
+    const text = `You have access to Sam's Content page: ${CONTENT_URL}\nSign in with ${email}. On the login page choose "email me a link" — no password needed.`;
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success("Invite copied — paste it to them");
+    } catch {
+      toast.error(`Could not copy. Send them this link by hand: ${CONTENT_URL}`);
+    }
   };
 
   const renderControls = (r: QueueRow) => {
@@ -282,6 +341,60 @@ export default function ContentQueue() {
           queue.map(renderRow)
         )}
       </section>
+
+      {isAdmin ? (
+        <section className="space-y-3">
+          <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            <Users className="h-4 w-4" aria-hidden /> Access · who else can open this page
+          </h2>
+          <Card>
+            <CardContent className="space-y-3 p-4">
+              <p className="text-xs text-muted-foreground">
+                Add a person by the email they will sign in with, then send them the invite. They see and can work this page only while listed here. Remove them in one tap; the database refuses them the same second.
+              </p>
+              <form
+                className="flex flex-col gap-2 sm:flex-row"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  accessMutation.mutate({ kind: "add", email: inviteEmail, label: inviteLabel });
+                }}
+              >
+                <Input type="email" inputMode="email" autoComplete="off" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="their@email.com" required />
+                <Input value={inviteLabel} onChange={(e) => setInviteLabel(e.target.value)} placeholder="Name / role (optional)" />
+                <Button type="submit" disabled={accessMutation.isPending || !inviteEmail.trim()}>
+                  <UserPlus className="mr-1 h-4 w-4" aria-hidden /> Add
+                </Button>
+              </form>
+              {accessQuery.isLoading ? (
+                <Skeleton className="h-10 w-full" />
+              ) : (accessQuery.data ?? []).length === 0 ? (
+                <p className="text-sm text-muted-foreground">Only you, for now.</p>
+              ) : (
+                <ul className="divide-y">
+                  {(accessQuery.data ?? []).map((a) => (
+                    <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                      <div className="min-w-0">
+                        <p className={`truncate text-sm font-medium ${a.revoked_at ? "text-muted-foreground line-through" : ""}`}>{a.email}</p>
+                        <p className="text-xs text-muted-foreground">{[a.label, a.revoked_at ? "removed" : "active", a.added_by ? `added by ${a.added_by}` : null].filter(Boolean).join(" · ")}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        {!a.revoked_at ? (
+                          <Button size="sm" variant="secondary" onClick={() => void copyInvite(a.email)}>
+                            <Copy className="mr-1 h-4 w-4" aria-hidden /> Copy invite
+                          </Button>
+                        ) : null}
+                        <Button size="sm" variant={a.revoked_at ? "outline" : "destructive"} disabled={accessMutation.isPending} onClick={() => accessMutation.mutate({ kind: "set", id: a.id, revoked: !a.revoked_at })}>
+                          <UserMinus className="mr-1 h-4 w-4" aria-hidden /> {a.revoked_at ? "Restore" : "Remove"}
+                        </Button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+        </section>
+      ) : null}
     </div>
   );
 }

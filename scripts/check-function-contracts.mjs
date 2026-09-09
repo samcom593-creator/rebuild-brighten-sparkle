@@ -154,6 +154,17 @@ const undefinedRpcs = Array.from(allRpcCalls)
 
 // Allowed public functions (must have explicit rationale)
 const PUBLIC_ALLOWLIST = new Set([
+  // content-share (MP-483): the /share/:token page is an unauthenticated route
+  // (App.tsx, in the public block beside /apply) and SharePage.tsx fetches this
+  // function with no Authorization and no apikey, because the share token in the
+  // URL IS the credential — validated by a ^[A-Za-z0-9_-]{16,64}$ shape check and
+  // then by lookup, with expiry enforced. The function reads with the service role
+  // and returns only the clips that token names; it writes nothing on the caller's
+  // behalf beyond its own view counter, and content_shares is never read from the
+  // client. verify_jwt=false is intentional and matches how it is ALREADY deployed
+  // — the config said true, so the next deploy would have 401ed every share link
+  // at the gateway before the function ran. Allowlisted 2026-09-09 with that fix.
+  "content-share",
   // site-shell-watch (MP-304): cron-invoked production-shell watcher — the
   // inbound call comes from pg_cron/GitHub schedule with the anon key, like
   // poke-webhook and calendly-webhook below; it authenticates its own OUTBOUND

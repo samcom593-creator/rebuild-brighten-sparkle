@@ -697,4 +697,8 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.content-share]
-verify_jwt = true
+# Public by design: /share/:token is an unauthenticated route (App.tsx) and the
+# share token in the URL is the only credential, validated by regex + lookup in
+# the function. It is already deployed with verification off; this line stops the
+# next `supabase functions deploy` from turning it on and 401ing every link. MP-483.
+verify_jwt = false

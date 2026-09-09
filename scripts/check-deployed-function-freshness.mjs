@@ -90,11 +90,18 @@ const STRICT = argv.has("--strict");
 /**
  * SELF-RETIRING ALLOWLIST.
  *
- * These two are stale for a reason a redeploy would make WORSE: config.toml
- * declares `verify_jwt = true` while prod serves them with verify_jwt = false,
- * so shipping today's source would flip a live surface's auth posture as a side
- * effect of a freshness fix. MP-483 was an entire wave on prod and the repo
- * disagreeing about exactly this on the content-* pair.
+ * EMPTY, AND THAT IS THE POINT. It held content-library and slack-unlicensed-
+ * welcome, exempted because config.toml declared `verify_jwt = true` while prod
+ * served false, so shipping today's source would have flipped a live surface's
+ * auth posture as a side effect of a freshness fix.
+ *
+ * MP-491 removed the reason instead of the symptom. Both handlers authenticate
+ * `Bearer <apex_bot_token>`, which is not a JWT, so `verify_jwt = true` could
+ * never have been the boundary — it would only have refused their own callers.
+ * config.toml now declares false for both, matching prod, and the mechanism
+ * below did its job unprompted: the first CI run after that change FAILED with
+ * "ALLOWLIST NO LONGER JUSTIFIED" on both entries. This deletion is that failure
+ * being answered, not silenced.
  *
  * An allowlist is how a gate becomes fungible (MP-357: a security floor graded
  * on a count let a brand-new endpoint with no auth pass green). So each entry
@@ -103,10 +110,7 @@ const STRICT = argv.has("--strict");
  * longer justified and the run FAILS until the entry is deleted. An exemption
  * that outlives its reason is the thing being prevented.
  */
-const ALLOWLIST = new Map([
-  ["content-library", "config.toml verify_jwt=true vs prod false — redeploy would gate a live surface"],
-  ["slack-unlicensed-welcome", "config.toml verify_jwt=true vs prod false — redeploy would gate a live surface"],
-]);
+const ALLOWLIST = new Map([]);
 
 /** Declared verify_jwt per slug, from config.toml. `undefined` = no section (CLI default is true). */
 function declaredVerifyJwt() {

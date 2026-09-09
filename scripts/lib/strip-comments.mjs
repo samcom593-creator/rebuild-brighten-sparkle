@@ -53,6 +53,23 @@ const isWordChar = (c) => c !== undefined && /[A-Za-z0-9_$]/.test(c);
 const RE_ALLOWED_BEFORE = new Set(["(", ",", "=", ":", "[", "!", "&", "|", ";"]);
 const RE_KEYWORD_BEFORE = /\b(return|typeof|instanceof|in|of|new|delete|void|throw|case|do|else|yield|await)$/;
 
+// MP-487: `=>` is the single most common place a regex literal starts, and the
+// bisect above excluded it. That bisect was sound and its conclusion was drawn one
+// character too wide: it proved "<" reproduces the JSX-closing-tag damage, then
+// dropped the whole candidate block including ">". A bare ">" must stay out -- it
+// is the closing bracket of a JSX opening tag -- but the two-character sequence
+// "=>" cannot be: JSX would need an unquoted attribute ending in "=" directly
+// before the bracket, which does not parse. Measured inside the lexer's own state
+// machine, not by text scan: 47 sites in src/, supabase/functions/ and scripts/
+// where today's rule declines a regex that is unambiguously a regex, among them
+// `(x) => /^["'`][^"'`$]*["'`]$/.test(x)` at check-enum-filter-literals.mjs:296,
+// whose character class then opened a phantom string that ran 40 lines.
+const arrowPrecedes = (text, p) => text[p] === ">" && text[p - 1] === "=";
+
+// A closed set of URL schemes immediately left of `//`, anchored so only the
+// characters touching the slashes can match. See the use site for why it is closed.
+const URL_SCHEME_BEFORE = /(^|[^A-Za-z0-9_$])(https?|wss?|ftp|file):$/;
+
 // End index (exclusive, flags included) of a regex literal starting at `i`, or -1.
 function scanRegexLiteral(text, i, n) {
   let j = i + 1;
@@ -79,7 +96,36 @@ function regexCanStartAt(text, i) {
   while (p >= 0 && /\s/.test(text[p])) p--;
   if (p < 0) return true;
   if (RE_ALLOWED_BEFORE.has(text[p])) return true;
+  if (arrowPrecedes(text, p)) return true;
   return RE_KEYWORD_BEFORE.test(text.slice(Math.max(0, p - 11), p + 1));
+}
+
+// True when a `'` in CODE state is prose, not a string delimiter.
+//
+// MP-474's rule -- word char on BOTH sides -- catches "We'll" and "don't" and
+// declines every other prose apostrophe. Two shapes it lets through, both JSX text:
+// a plural possessive (`other agents' rows`) where the right neighbour is a space,
+// and a possessive after a JSX expression (`{manager.name}'s Team`) where the left
+// neighbour is `}`. Each opened a phantom string that ran to the next apostrophe.
+//
+// Safe because neither shape can be an OPENING delimiter: valid JS has no value
+// immediately left of a string literal, so `x'a'` does not parse. The closing quote
+// of a real string has the same neighbours -- `'div',` -- but is consumed in QUOTE
+// state and never reaches this function. A naive text scan conflates the two and
+// reports 2,583 sites; inside the lexer the true counts are 2 and 1.
+//
+// The keyword guard is the one real hazard: `return'x'` and `case'a':` ARE valid JS
+// with no space, and there the left neighbour is a word char while a string really
+// does open. No such site exists in the repo today -- this holds the rule for code
+// written tomorrow. Same list as RE_KEYWORD_BEFORE, so the two cannot drift.
+function apostropheIsProse(text, i) {
+  const prev = text[i - 1];
+  const next = text[i + 1];
+  if (isWordChar(prev)) {
+    if (RE_KEYWORD_BEFORE.test(text.slice(Math.max(0, i - 12), i))) return false;
+    return true;                       // We'll / don't / agents'
+  }
+  return prev === "}" && isWordChar(next);   // {manager.name}'s
 }
 
 export function stripComments(text) {
@@ -107,6 +153,23 @@ export function stripComments(text) {
     }
 
     // Comments -- only ever recognised in code state, never inside a string.
+    // ...except that JSX TEXT is code state to this lexer, and a bare URL in JSX
+    // text carries a `//` that is not a comment. MP-487 found this with an oracle
+    // pass asserting every blanked character sits inside a real comment: 191
+    // characters across BotToken.tsx:160 and ReadyModeIntegration.tsx:527 were
+    // being blanked to end of line. It is the DANGEROUS direction -- a guard reads
+    // the rest of that line as absent, so a violation there is not reported. It
+    // predates MP-487 (identical 191 under HEAD's lexer) and no wave had measured
+    // it, because a blind spot produces no output to investigate, unlike the false
+    // positives the phantom-string bugs produced.
+    //
+    // The scheme list is closed on purpose. Matching any `[a-z]+://` would let an
+    // object key swallow a real comment (`{ key://note` has no space in it), and a
+    // key literally named `https` before a comment is not a thing that happens.
+    if (c === "/" && c2 === "/" && URL_SCHEME_BEFORE.test(text.slice(Math.max(0, i - 6), i))) {
+      i += 2;
+      continue;
+    }
     if (c === "/" && c2 === "/") {
       let j = i;
       while (j < n && text[j] !== "\n") j++;
@@ -137,11 +200,10 @@ export function stripComments(text) {
     }
 
     if (c === "'" || c === '"' || c === "`") {
-      // An apostrophe welded into a word ("We'll", "don't") is JSX/prose text,
-      // not a string delimiter. Treating it as one is the single most common
-      // defect in the copies this file replaces. `a'b'` is not valid JS, so a
-      // real opening quote is never both preceded and followed by a word char.
-      if (c === "'" && isWordChar(text[i - 1]) && isWordChar(c2)) { i++; continue; }
+      // An apostrophe in prose ("We'll", "don't", "agents'", "{x.name}'s") is JSX
+      // text, not a string delimiter. Treating it as one is the single most common
+      // defect in the copies this file replaces. See apostropheIsProse.
+      if (c === "'" && apostropheIsProse(text, i)) { i++; continue; }
       quote = c;
       i++;
       continue;

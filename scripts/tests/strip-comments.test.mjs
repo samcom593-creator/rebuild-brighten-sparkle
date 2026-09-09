@@ -64,6 +64,43 @@ const CASES = [
   // Division is not a regex, and must not be consumed as one.
   ["division-not-regex",          "SURVIVED", `const r = total / count / 2;\nconst b = MARK;\n`],
   ["division-then-comment",       "STRIPPED", `const r = total / count;\n// MARK\n`],
+
+  // MP-487: `=>` is where regex literals most often start, and the MP-482 bisect
+  // excluded it along with the bare `>` it had actually convicted. 47 sites in the
+  // repo declined a regex that is unambiguously one; the character class in
+  // check-enum-filter-literals.mjs:296 then opened a phantom string for 40 lines.
+  ["regex-after-arrow",           "STRIPPED", `const f = parts.every((x) => /^["'\`]/.test(x));\n// MARK\n`],
+  ["regex-after-arrow-charclass", "STRIPPED", `const f = (x) => /^["'\`][^"'\`$]*["'\`]$/.test(x);\n// MARK\n`],
+  // ...and the bare `>` of a JSX opening tag still must NOT start one, or the
+  // closing tag that follows is scanned as a regex body. This is the MP-482
+  // regression, re-pinned because MP-487 widens the neighbouring rule.
+  ["jsx-gt-still-not-regex",      "SURVIVED", `<div>\n  </div>; const b = MARK;\n`],
+
+  // MP-487: possessive apostrophes in JSX prose. MP-474's rule needed a word char
+  // on BOTH sides, so a plural possessive (right neighbour is a space) and a
+  // possessive after a JSX expression (left neighbour is `}`) each opened a
+  // phantom string. Live at Leaderboard.tsx:855 and TeamHierarchyManager.tsx:651.
+  ["jsx-plural-possessive",       "STRIPPED", `<p>can't see other agents' rows</p>\n// MARK\n`],
+  ["jsx-expression-possessive",   "STRIPPED", `<span>{manager.name}'s Team</span>\n// MARK\n`],
+  // DANGEROUS direction for that same widening: `typeof'x'` and `return'x'` are
+  // valid JS with no space, so there a word char really does precede an OPENING
+  // quote. No such site exists in the repo today; this holds the rule for code
+  // written tomorrow. If the keyword guard is dropped, the string is never entered
+  // and its `//` blanks the rest of the line, taking MARK with it.
+  ["keyword-hugging-quote",       "SURVIVED", `const t = typeof'a//b'; const b = MARK;\n`],
+  ["return-hugging-quote",        "SURVIVED", `function f() { return'a//b'; } const b = MARK;\n`],
+
+  // MP-487: JSX TEXT is code state to this lexer, so a bare URL's `//` read as a
+  // line comment and blanked the rest of the line -- the direction that HIDES a
+  // violation. 191 chars across BotToken.tsx:160 and ReadyModeIntegration.tsx:527,
+  // predating MP-487 and never measured, because a blind spot emits nothing to
+  // investigate. Found only by asserting every blanked char sits in a real comment.
+  ["url-in-jsx-text",             "SURVIVED", `<code>https://x.co/functions/v1/bot-sql</code> {MARK}\n`],
+  ["url-in-jsx-attr-text",        "SURVIVED", `<span>base_url=https://apex.readymode.com</span> {MARK}\n`],
+  // ...and a real comment after a URL must still strip, or the scheme rule has
+  // simply traded one blind spot for another.
+  ["comment-after-url-text",      "STRIPPED", `<code>https://x.co/a</code>\n// MARK\n`],
+  ["comment-after-url-string",    "STRIPPED", `const u = "https://x.co/a"; // MARK\n`],
 ];
 
 let pass = 0;

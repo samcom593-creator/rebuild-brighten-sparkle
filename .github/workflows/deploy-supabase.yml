@@ -465,8 +465,23 @@ jobs:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_FUNCTIONS_TOKEN || secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_PROJECT_REF: xrzweoneiieddzxogewk
     steps:
+      # fetch-depth: 0 is load-bearing for the freshness check below — it reads
+      # `git log -1 -- supabase/functions/<slug>` to learn when each function
+      # last changed, and a shallow clone answers that with nothing for every
+      # function this commit did not touch. The check refuses to grade a shallow
+      # tree rather than printing a green it did not earn.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Compare prod's ACTIVE function list against supabase/functions/
         run: |
           echo "node $(node --version)"
           node scripts/check-deployed-function-source.mjs
+      # The other direction: prod has a source dir, but is it running THIS code?
+      # deploy-supabase.yml ships only the functions a commit changed, so a
+      # deploy that was skipped or failed is never retried by any later commit.
+      # Measured 2026-09-09: 16 functions were serving stale code, including the
+      # whole magic-link/portal-login cluster MP-443 shipped to fix "we can't
+      # log in", one of them 33 days behind its own source.
+      - name: Verify prod is running the code this repo committed
+        run: node scripts/check-deployed-function-freshness.mjs

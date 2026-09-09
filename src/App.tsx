@@ -112,6 +112,7 @@ const Storefront = lazy(() => import("./pages/Storefront"));
 const XcelPipeline = lazy(() => import("./pages/XcelPipeline"));
 const DashboardCRM = lazy(() => import("./pages/DashboardCRM"));
 const RecruitingLinks = lazy(() => import("./pages/RecruitingLinks"));
+const ContentQueue = lazy(() => import("./pages/ContentQueue"));
 const CallLab = lazy(() => import("./pages/CallLab"));
 const CallLabLive = lazy(() => import("./pages/CallLabLive"));
 const CallLabReport = lazy(() => import("./pages/CallLabReport"));
@@ -502,6 +503,7 @@ const App = () => (
                         agency-wide operating view. */}
                     <Route path="/dashboard/team" element={<ProtectedRoute><DashboardCRM /></ProtectedRoute>} />
                   <Route path="/dashboard/recruiting-links" element={<ProtectedRoute requireAdmin><RecruitingLinks /></ProtectedRoute>} />
+                  <Route path="/dashboard/content" element={<ProtectedRoute requireAdmin><ContentQueue /></ProtectedRoute>} />
                     <Route path="/dashboard/call-lab" element={<ProtectedRoute><CallLab /></ProtectedRoute>} />
                     <Route path="/dashboard/call-lab/live/:id" element={<ProtectedRoute><CallLabLive /></ProtectedRoute>} />
                     <Route path="/dashboard/call-lab/report/:id" element={<ProtectedRoute><CallLabReport /></ProtectedRoute>} />

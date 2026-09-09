@@ -14,6 +14,120 @@ export type Database = {
   }
   public: {
     Tables: {
+      content_queue: {
+        Row: {
+          approved_by: string | null
+          brand: string | null
+          caption: string | null
+          content_id: string
+          created_at: string | null
+          cta: string | null
+          current_filename: string | null
+          duration_seconds: string | null
+          earnings_claim_risk: string | null
+          edited_at: string | null
+          format: string | null
+          height: string | null
+          hook: string | null
+          media_path: string | null
+          media_type: string | null
+          notes: string | null
+          original_filename: string | null
+          permission_confirmed: string | null
+          pillar: string | null
+          priority: string | null
+          privacy_risk: string | null
+          proof_type: string | null
+          published_urls: string | null
+          scheduled_at: string | null
+          sha256: string | null
+          source: string
+          source_path: string | null
+          status: string | null
+          target_instagram: string | null
+          target_snapchat: string | null
+          target_tiktok: string | null
+          target_youtube: string | null
+          thumbnail_url: string | null
+          updated_at: string
+          width: string | null
+        }
+        Insert: {
+          approved_by?: string | null
+          brand?: string | null
+          caption?: string | null
+          content_id: string
+          created_at?: string | null
+          cta?: string | null
+          current_filename?: string | null
+          duration_seconds?: string | null
+          earnings_claim_risk?: string | null
+          edited_at?: string | null
+          format?: string | null
+          height?: string | null
+          hook?: string | null
+          media_path?: string | null
+          media_type?: string | null
+          notes?: string | null
+          original_filename?: string | null
+          permission_confirmed?: string | null
+          pillar?: string | null
+          priority?: string | null
+          privacy_risk?: string | null
+          proof_type?: string | null
+          published_urls?: string | null
+          scheduled_at?: string | null
+          sha256?: string | null
+          source?: string
+          source_path?: string | null
+          status?: string | null
+          target_instagram?: string | null
+          target_snapchat?: string | null
+          target_tiktok?: string | null
+          target_youtube?: string | null
+          thumbnail_url?: string | null
+          updated_at?: string
+          width?: string | null
+        }
+        Update: {
+          approved_by?: string | null
+          brand?: string | null
+          caption?: string | null
+          content_id?: string
+          created_at?: string | null
+          cta?: string | null
+          current_filename?: string | null
+          duration_seconds?: string | null
+          earnings_claim_risk?: string | null
+          edited_at?: string | null
+          format?: string | null
+          height?: string | null
+          hook?: string | null
+          media_path?: string | null
+          media_type?: string | null
+          notes?: string | null
+          original_filename?: string | null
+          permission_confirmed?: string | null
+          pillar?: string | null
+          priority?: string | null
+          privacy_risk?: string | null
+          proof_type?: string | null
+          published_urls?: string | null
+          scheduled_at?: string | null
+          sha256?: string | null
+          source?: string
+          source_path?: string | null
+          status?: string | null
+          target_instagram?: string | null
+          target_snapchat?: string | null
+          target_tiktok?: string | null
+          target_youtube?: string | null
+          thumbnail_url?: string | null
+          updated_at?: string
+          width?: string | null
+        }
+        Relationships: []
+      }
       account_claims: {
         Row: {
           created_at: string

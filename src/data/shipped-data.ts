@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "Sam can now run the content pipeline from his phone. A new admin-only Content page shows today's five-slot slate with yesterday's score, the whole clip queue with contact sheets, and plays the clip right on the page, with Approve, Needs work, Edit and a compliance Reviewed step that cannot be skipped.",
+    detail:
+      "The Mac tool (content-ops) hashes every clip in Dropbox, cuts a 9:16 captioned copy, and mirrors its CSV queue into a new content_queue table with the playable copy in a private bucket; edits made here stamp edited_at and flow back to the CSV on the next sync. Row-level security admits admins only and a trigger refuses any status other than APPROVED or REWORK from the page, so publishing is still only recorded by the archive command with a real post URL. MP-CONTENT-1.",
+    commit: "mp-content-1-phone-content-queue",
+  },
+  {
+    ts: "today",
+    label:
       "The check that is supposed to stop broken code from reaching the site was handing broken code a passing grade. Yesterday a file was saved in a state the site cannot be built from, and the check called it an improvement over a healthy site \u2014 it even offered to lock in the new, worse score. It now refuses to grade a site it cannot read, and a 2-second version runs before every save so this kind of break is caught up front instead of ten minutes later.",
     detail:
       "The check counts type errors and passes when the count does not go up. A file the compiler cannot read produces no type errors at all, so one broken file dropped the count from 85 to 6 and the check reported a pass plus 'lower the baseline to 6' \u2014 on a site that could not be built. The worse the code got, the better it scored. A second fault in the same place: when the checker itself failed to start, it recorded 0 errors and passed, which in the automated pipeline meant a green type-check over nothing being checked at all. Both were reproduced deliberately before being fixed, and both were re-broken afterwards to confirm the fix is what stops them. Reading the file is now the first question asked, an unreadable file stops the check outright, and a checker that could not run is now a failure rather than a perfect score.",

@@ -85,6 +85,39 @@ PUBLIC_ALLOWLIST=(
   "agentlink-clients-sync"
   "slack-unlicensed-welcome"
   "content-library"
+  # MP-492 — NOT new decisions. Each of these eight is already
+  # verify_jwt = false in config.toml AND already carries a written, gate-READ
+  # rationale in check-function-contracts.mjs's PUBLIC_ALLOWLIST. They were
+  # missing HERE, which is the direction that fails silently.
+  #
+  # This script only writes a stanza when one is ABSENT. So the hazard is not
+  # today's tree (every function directory has a stanza; measured 227/227). It
+  # is the commit that removes a stanza while its directory survives — then
+  # this script supplies the default, and for these eight the default was
+  # `true`. verify_jwt = true refuses `Bearer <apex_bot_token>` at the gateway
+  # with UNAUTHORIZED_INVALID_JWT_FORMAT, so the caller dies before the handler
+  # runs and pg_cron still records "succeeded". That is MP-491 exactly, which
+  # cost agentlink-clients-sync sixteen silent days.
+  #
+  # LATENT, and measured as such: across 144 commits touching config.toml, 34
+  # stanzas have been removed and 0 of them left a surviving directory — every
+  # removal so far retired the function alongside it. This closes the direction
+  # before it is exercised, and adds nothing to today's output (proven: running
+  # this script leaves config.toml byte-identical).
+  #
+  # The reverse containment is deliberately NOT asserted. This list may name a
+  # function the security allowlist does not: billing-portal-redirect is
+  # pre-registered before its source is recovered, and daily-brief is a RECORD
+  # OF EXPOSURE (readable with no Authorization header at all), which must not
+  # be promoted into an allowlist whose entries mean "reviewed and gated".
+  "content-share"
+  "discord-webhook-notify"
+  "free-leads-weekly-alerts"
+  "license-milestone-sms-drain"
+  "onboarding-call-invites"
+  "provision-agent-accounts"
+  "site-shell-watch"
+  "slack-announce"
 )
 
 is_public() {

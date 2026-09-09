@@ -1,15 +1,15 @@
 # APEX Function Contract Matrix
 
-Generated: 2026-09-06T20:26:56.770Z
+Generated: 2026-09-09T14:25:27.286Z
 Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 
 ## Inventory Summary
 
-- Total Local Edge Functions: **257**
-- Configured in `config.toml`: **258**
+- Total Local Edge Functions: **227**
+- Configured in `config.toml`: **228**
 - Invoked Edge Functions in Source: **102**
-- Invoked RPC Calls in Source: **148**
-- SQL Functions in Migrations: **508**
+- Invoked RPC Calls in Source: **149**
+- SQL Functions in Migrations: **519**
 
 ## Edge Function Auth & Verification Contracts
 
@@ -18,7 +18,7 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 | `add-agent` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `admin-sql` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `agent-signup` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `agentlink-clients-sync` | Yes | Yes | `true` | Authenticated JWT | PASS |
+| `agentlink-clients-sync` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `agentlink-cookie-sync` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `agentlink-import` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `ai-assistant` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -68,6 +68,8 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 | `claim-account` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `confirm-agent-removal` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `consume-invite-token` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
+| `content-library` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
+| `content-share` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `create-agent-from-leaderboard` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `create-lead-checkout` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `create-new-agent-account` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -85,14 +87,11 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 | `generate-award-graphics` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `generate-magic-link` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `generate-monthly-awards` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `generate-quiz-questions` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `get-active-managers` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `get-public-recruiters` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `get-vapid-public-key` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `ics-feed` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `ig-voice-broadcast` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `import-production-data` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `increment-lead-counter` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `instagram-auth` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `instagram-webhook` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `insuracloud-outbox` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -111,34 +110,23 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 | `mirror-agents-backfill` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `morning-brief` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `next-step-dispatch` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `notify-admin-daily-summary` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `notify-admin-earnings` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `notify-agent-contracted` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `notify-agent-live-field` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `notify-agent-login` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `notify-all-managers-leaderboard` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `notify-attendance-missing` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `notify-attendance-reminder` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `notify-comeback-alert` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `notify-course-complete` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `notify-course-started` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `notify-daily-summary` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `notify-deal-alert` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `notify-deal-submitted` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `notify-evaluation-due` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `notify-evaluation-result` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `notify-fill-numbers` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `notify-hire-announcement` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `notify-lead-assigned` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `notify-lead-closed` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `notify-lead-purchase` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `notify-low-close-rate` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `notify-manager-downline-production` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `notify-manager-referral` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `notify-milestone-congrats` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `notify-missed-dialer` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `notify-module-progress` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `notify-monthly-leaderboard` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `notify-no-deal-today` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `notify-notes-added` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `notify-production-submitted` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -150,9 +138,7 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 | `notify-test-reminder` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `notify-test-scheduled` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `notify-top-performer` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `notify-top-performers-morning` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `notify-training-reminder` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `notify-weekly-champion` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `notion-sync` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `nudge-unworked-applications` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `numbers-reminder` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
@@ -166,7 +152,6 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 | `post-deal` | Yes | Yes | `true` | Authenticated JWT | PASS |
 | `post-plaque-to-instagram` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `postmark-approval-monitor` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `process-scheduled-tasks` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `provision-agent-accounts` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `readymode-ingest` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `readymode-sync` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -174,12 +159,8 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 | `render-all-plaques` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `request-agent-photos` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `reset-agent-password` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `reset-monthly-goals` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `resolve-ref-slug` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `run-licensing-checkups` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `run-licensing-fasttrack` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `sam-ai-chat` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `sam-email` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `schedule-auto-populate` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `schedule-interview` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `score-applicant` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -193,10 +174,8 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 | `send-agent-nudge` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-agent-onboarding-email` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-agent-portal-login` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `send-application-notification` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-batch-blast` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-bulk-email` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `send-bulk-notification-blast` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-bulk-portal-logins` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-bulk-unlicensed-outreach` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-calendly-invite` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -206,9 +185,7 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 | `send-course-hurry-emails` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-course-reminder` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-daily-checkin-prompt` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `send-daily-leaderboard-summary` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-daily-producer-spotlight` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `send-daily-sales-leaderboard` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-email` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-followup-emails` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-instagram-dm` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -216,9 +193,6 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 | `send-licensing-instructions` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-licensing-sequence` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-login-to-manager` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `send-manual-followup` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `send-milestone-reward` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `send-monthly-motivation` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-notification` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-numbers-reminder` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-outreach-email` | Yes | Yes | `true` | Authenticated JWT | PASS |
@@ -235,13 +209,9 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 | `send-seminar-invite-blast` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-sms-auto-detect` | Yes | Yes | `true` | Authenticated JWT | PASS |
 | `send-sms-via-email` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `send-top5-four-week-email` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-unlicensed-process-update` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-weekly-analytics` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `send-weekly-team-summary` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `send-whatsapp` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-whatsapp-onboarding-blast` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `send-winback-campaign` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `setup-agent-password` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `simple-login` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `siri-command` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -249,6 +219,7 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 | `slack-announce` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `slack-identity-admin` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `slack-integration-health` | Yes | Yes | `true` | Authenticated JWT | PASS |
+| `slack-unlicensed-welcome` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `stripe-sync` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `stripe-webhook-lead-purchase` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `submit-application` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
@@ -258,7 +229,6 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 | `telegram-drain` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `telegram-webhook` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `test-email-flows` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `tiktok-dm-drafter` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `track-email-click` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `track-email-open` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `transcribe-call` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -281,6 +251,6 @@ applied by hand through bot-sql and never round-tripped into
 `supabase/migrations`, so this directory does not model the deployed database.
 `apex-doctor` queries `pg_proc` and is the authority on deployed state.
 
-- Invoked RPCs: **148**
-- Also declared in this commit's migrations: **139**
+- Invoked RPCs: **149**
+- Also declared in this commit's migrations: **140**
 - Declared only in the database: **9**

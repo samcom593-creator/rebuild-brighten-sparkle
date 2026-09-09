@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "The check that is supposed to stop broken code from reaching the site was handing broken code a passing grade. Yesterday a file was saved in a state the site cannot be built from, and the check called it an improvement over a healthy site \u2014 it even offered to lock in the new, worse score. It now refuses to grade a site it cannot read, and a 2-second version runs before every save so this kind of break is caught up front instead of ten minutes later.",
+    detail:
+      "The check counts type errors and passes when the count does not go up. A file the compiler cannot read produces no type errors at all, so one broken file dropped the count from 85 to 6 and the check reported a pass plus 'lower the baseline to 6' \u2014 on a site that could not be built. The worse the code got, the better it scored. A second fault in the same place: when the checker itself failed to start, it recorded 0 errors and passed, which in the automated pipeline meant a green type-check over nothing being checked at all. Both were reproduced deliberately before being fixed, and both were re-broken afterwards to confirm the fix is what stops them. Reading the file is now the first question asked, an unreadable file stops the check outright, and a checker that could not run is now a failure rather than a perfect score.",
+    commit: "mp-496-typecheck-gate-honesty",
+  },
+  {
+    ts: "today",
+    label:
       "Three carriers had a 'Website' button that went nowhere. On the contracting page, Aflac, GTL and Instabrain were stored without the https:// in front, so the button did not open the carrier's site \u2014 it opened a page on this site that does not exist, and showed the 'that path doesn't exist' screen. All 16 carrier links now open the real site, and a carrier saved without the https:// can never break the button again.",
     detail:
       "Found by the link crawler, then confirmed against the database: 3 of the 16 carriers with a website on file had no scheme, so the browser read the value as a page inside apex-financial.org. Nothing could catch it \u2014 Vercel answers 200 for every URL, so uptime monitoring saw a healthy page, and the link is built from a database value rather than typed into the code, so the dead-link checker never saw it either. Fixed in the code rather than by editing the three rows, so the next carrier added without a scheme is also safe; a value that is not a real web address now shows 'No URL on file' instead of a broken button, and a javascript: value can no longer reach the link at all.",

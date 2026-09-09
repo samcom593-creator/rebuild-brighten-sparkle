@@ -101,6 +101,7 @@
 
 import { execSync } from "node:child_process";
 import path from "node:path";
+import { scanParseHealth } from "./lib/parse-health.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 
@@ -215,6 +216,54 @@ const BASELINE = 85; // 2026-08-27 (MP-330): 91 -> 86, removing 4 dead
 
 const startedAt = Date.now();
 
+// ---------------------------------------------------------------------------
+// MP-496: REFUSE TO GRADE A COUNT THAT IS NOT A MEASUREMENT.
+//
+// `count <= BASELINE` is only meaningful while the count measures the same
+// thing the baseline measured. A file that does not parse voids that:
+// TypeScript skips semantic analysis for it, so this repo's 85 semantic errors
+// collapsed to 6 and the gate printed "✓ 6/85 ... Ratchet drop available:
+// lower BASELINE from 85 to 6" on a tree where `npm run build` exits 1.
+// The gate saw the syntax error and scored it as a 79-error improvement.
+//
+// So the parse question is answered FIRST, and a failure here is fatal rather
+// than counted. It also costs ~2s against the type-check's ~120s, so a broken
+// tree now fails in seconds instead of after a full rebuild.
+// See scripts/lib/parse-health.mjs for why matching TS1xxx is NOT the fix.
+// ---------------------------------------------------------------------------
+{
+  let parse;
+  try {
+    parse = scanParseHealth(
+      ["src", "vite.config.ts"].map((r) => path.join(repoRoot, r)),
+      repoRoot,
+    );
+  } catch (err) {
+    console.error(`\n✗ check:tsc-error-count — ${err.message}\n`);
+    process.exit(1);
+  }
+  if (parse.unparseable.length > 0) {
+    console.error(
+      `\n✗ check:tsc-error-count — ${parse.unparseable.length} file(s) cannot be parsed; ` +
+        "the error count on this tree is NOT a measurement.\n",
+    );
+    for (const u of parse.unparseable) {
+      console.error(`  ${u.file}(${u.line},${u.column}): ${u.message}`);
+    }
+    console.error(
+      "\nTypeScript skips semantic analysis for a file it cannot parse, so the",
+    );
+    console.error(
+      "count DROPS on a broken tree and would read as a ratchet win. Baseline",
+    );
+    console.error(
+      `comparison is refused until this parses. Baseline remains ${BASELINE}.`,
+    );
+    console.error("\n  npm run check:parse-health   (same check, ~2s)");
+    process.exit(1);
+  }
+}
+
 // Announce BEFORE blocking. ~15 minutes of total silence is indistinguishable
 // from a hung process, and an operator who believes it hung kills it and walks
 // away from a half-finished commit — see the COST note at the top of this file
@@ -229,6 +278,9 @@ console.log("  This is NOT hung. Expect no further output until it finishes.");
 
 let stdout = "";
 let stderr = "";
+let childStatus = 0;
+let childSignal = null;
+let spawnFailed = false;
 try {
   // tsc -b returns non-zero on errors but we still get its stdout/stderr.
   // We want to read the output regardless of exit code.
@@ -239,15 +291,74 @@ try {
     maxBuffer: 50 * 1024 * 1024,
   });
 } catch (err) {
-  // Expected path when errors exist.
+  // Expected path when errors exist — but ALSO the path taken when the
+  // compiler never ran at all. Those two must not look alike. See below.
   stdout = err.stdout?.toString() ?? "";
   stderr = err.stderr?.toString() ?? "";
+  childStatus = typeof err.status === "number" ? err.status : null;
+  childSignal = err.signal ?? null;
+  spawnFailed = childStatus === null && !childSignal;
 }
 
 const combined = `${stdout}\n${stderr}`;
 const errorLines = combined.split("\n").filter((l) => /error TS\d+/.test(l));
 const count = errorLines.length;
 const elapsedSeconds = (Date.now() - startedAt) / 1000;
+
+// ---------------------------------------------------------------------------
+// MP-496: A COMPILER THAT NEVER RAN SCORES ZERO, AND ZERO PASSES.
+//
+// execSync throws on ANY non-zero exit, and the catch read `err.stdout ?? ""`.
+// tsc exiting 1 with 85 diagnostics and `npx` exiting 127 because the toolchain
+// is missing both landed in that same branch, and the second one produced:
+//
+//   ✓ check:tsc-error-count — 0/85 TypeScript errors in 0s
+//     Ratchet drop available: lower BASELINE from 85 to 0
+//
+// Proven against this script on 2026-09-09 by putting a stub `npx` on PATH.
+// Exit 0. In CI — which this file's own header names as THE AUTHORITY — that
+// is a green type-check over zero type-checking, the disease this gate was
+// written to cure, inside the gate itself.
+//
+// So the child's exit is now classified. A count is only believed when the
+// compiler demonstrably ran: clean (status 0), or reported diagnostics we can
+// actually see. Anything else is unmeasurable, and unmeasurable is never a pass.
+// ---------------------------------------------------------------------------
+const compilerReported = childStatus === 1 || childStatus === 2;
+const unmeasurable =
+  spawnFailed ||
+  childSignal !== null ||
+  (childStatus !== 0 && !compilerReported) ||
+  (compilerReported && count === 0);
+
+if (unmeasurable) {
+  const why = spawnFailed
+    ? "the compiler could not be spawned at all"
+    : childSignal !== null
+      ? `the compiler was killed by signal ${childSignal} (OOM is the usual cause)`
+      : compilerReported
+        ? `the compiler exited ${childStatus} but emitted no recognisable ` +
+          "`error TS####` line, so there is nothing to count"
+        : `the compiler exited ${childStatus}, which is not a status tsc uses ` +
+          "to report diagnostics (0 = clean, 1/2 = errors reported)";
+  console.error(
+    `\n✗ check:tsc-error-count — UNMEASURABLE after ${elapsedSeconds.toFixed(0)}s: ${why}.\n`,
+  );
+  console.error(
+    "Refusing to report a count. A count of 0 from a compiler that never ran",
+  );
+  console.error(
+    `is indistinguishable from a clean tree, and 0 <= ${BASELINE} would have passed.`,
+  );
+  const tail = `${stdout}\n${stderr}`.trim().split("\n").slice(-15);
+  if (tail.length && tail[0]) {
+    console.error("\nLast lines of compiler output:");
+    for (const l of tail) console.error(`  ${l}`);
+  } else {
+    console.error("\nThe compiler produced no output at all.");
+  }
+  process.exit(1);
+}
 
 // Diagnostic: top 5 files contributing to the count, so a CI failure
 // surfaces the worst offenders without dumping all 266 lines.

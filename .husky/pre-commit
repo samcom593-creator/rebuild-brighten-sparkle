@@ -844,3 +844,17 @@ if match '^(src/.*\.(tsx?|jsx?)$|supabase/functions/|scripts/check-book-freshnes
   echo "[pre-commit] book-freshness reader staged — running check:book-freshness-operand…"
   node scripts/check-book-freshness-operand.mjs
 fi
+
+# ---------- check-parse-health (MP-496, 2026-09-09) ----------
+# Trigger: any file in the type-check graph, plus the guard + its oracle.
+# WHY THIS ONE IS ALLOWED ON THE COMMIT PATH when check:tsc-error-count is not:
+# the count gate is measured at ~120s-881s and was deliberately moved off this
+# path. The PARSE question costs 1.84s for 766 files, and it is the question
+# whose wrong answer actually broke a build — 6eab02e4 committed and pushed an
+# import nested inside an open `import {` block, passed every local guard, was
+# PRAISED by the count gate ("✓ 6/85 ... Ratchet drop available"), and died in
+# CI on `build` ~10 min later, costing a repair commit.
+if match '^(src/.*\.(tsx?)$|vite\.config\.ts$|scripts/check-parse-health\.mjs$|scripts/lib/parse-health\.mjs$)'; then
+  echo "[pre-commit] type-check-graph file staged — running check:parse-health…"
+  node scripts/check-parse-health.mjs || exit 1
+fi

@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { ContractingIntakeAdmin } from "@/components/contracting/ContractingIntakeAdmin";
 import {
+import { externalHref } from "@/lib/externalHref";
   ContractsBoard, useContractSummary, useContractRows,
 } from "@/components/contracting/ContractsBoard";
 
@@ -195,7 +196,9 @@ function CarrierDirectory({ carriersQ }: {
       ) : (
         <ul>
           {rows.map((carrier) => {
-            const href = carrier.website;
+            // Raw DB text in an href is not a link to that site: a scheme-less
+            // value resolves relative to this page and lands in the catch-all (MP-495).
+            const href = externalHref(carrier.website);
             return (
               <li key={carrier.id} className="grid grid-cols-2 items-center gap-2 border-b border-border/70 px-4 py-3 text-sm last:border-0 sm:grid-cols-[minmax(0,1fr)_140px_120px]">
                 <span className="truncate font-medium">{carrier.name ?? `Carrier ${carrier.id}`}</span>

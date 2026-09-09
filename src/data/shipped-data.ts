@@ -14,6 +14,22 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "Three carriers had a 'Website' button that went nowhere. On the contracting page, Aflac, GTL and Instabrain were stored without the https:// in front, so the button did not open the carrier's site \u2014 it opened a page on this site that does not exist, and showed the 'that path doesn't exist' screen. All 16 carrier links now open the real site, and a carrier saved without the https:// can never break the button again.",
+    detail:
+      "Found by the link crawler, then confirmed against the database: 3 of the 16 carriers with a website on file had no scheme, so the browser read the value as a page inside apex-financial.org. Nothing could catch it \u2014 Vercel answers 200 for every URL, so uptime monitoring saw a healthy page, and the link is built from a database value rather than typed into the code, so the dead-link checker never saw it either. Fixed in the code rather than by editing the three rows, so the next carrier added without a scheme is also safe; a value that is not a real web address now shows 'No URL on file' instead of a broken button, and a javascript: value can no longer reach the link at all.",
+    commit: "mp-495-carrier-website-href",
+  },
+  {
+    ts: "today",
+    label:
+      "The link checker said 50 links on the site were broken. Re-run properly, the real number is zero.",
+    detail:
+      "The audit had been fixed on 2026-09-03 but never run once since, so its last word was the bad run that prompted the fix: 49 of the 50 were one people-search site that had rate-limited this machine because the audit itself hammered it, and the 50th refuses automated visitors but loads fine in a real browser. This run checked 1,679 links across 260 pages while signed in and found zero broken. It also now reports what it did NOT reach: the crawl stops at 260 pages, and instead of a bare count of what was skipped it names the shape \u2014 which showed most of the backlog was repeat views of two pages Sam had already opened, plus a handful of agent profiles nobody had checked, plus the carrier links above.",
+    commit: "mp-495-link-audit-shape",
+  },
+  {
+    ts: "today",
+    label:
       "Agents stopped getting kicked out, and signing in no longer needs a password. The session timer treated 'working in another tab' as being idle, so an agent on the dialer, Discord or a carrier portal was signed out after an hour and shown a 60-second warning on a tab they were not looking at. It now never signs anyone out while the tab is hidden: it waits, and when you come back it asks, so one click keeps you in. Any movement dismisses the warning, activity in one dashboard tab keeps every other tab alive, and the window is a full workday instead of an hour. The login page also has a new 'Email me a sign-in link' button, so nobody is locked out by a forgotten password.",
     detail:
       "Two silent lockouts fixed underneath. The magic-link sender looked up the agent with .maybeSingle(), which returns nothing when a person has two agent rows, so a duplicated agent was told 'link sent' and no link was ever sent; ambiguity now resolves to the live row instead of reading as 'no such agent'. And two agents were signing in to a deactivated duplicate record while their real licensed record sat on an account nobody had ever used: Kevin Phu's live row had no login attached at all, so his working account and profile were moved onto it (pre-image saved, reversible). The hidden-tab guarantee is mutation-proven: removing the guard turns the new test red.",

@@ -22,6 +22,8 @@ const OUT =
   `/Users/samjames/business-ops/website-integrity-bot/ledger/link-audit-${new Date().toISOString().slice(0, 10)}.jsonl`;
 const ownsUserDataDir = !process.env.USER_DATA_DIR;
 const USER_DATA_DIR = process.env.USER_DATA_DIR || path.join(os.tmpdir(), `apex-link-audit-chrome-${process.pid}`);
+import { readRoutePatterns, buildShapeMatcher } from "./lib/route-shape.mjs";
+
 const CHROME = process.env.CHROME || "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const AUTH_TOKEN_FILE = process.env.AUTH_TOKEN_FILE || "";
 const AUTH_STORAGE_KEY = process.env.AUTH_STORAGE_KEY || "sb-xrzweoneiieddzxogewk-auth-token";
@@ -521,6 +523,36 @@ async function main() {
   const externalUnverified = broken.filter((row) => row.classification === "external-unverified");
   const externalSkipped = [...hostSkipped.values()].reduce((sum, n) => sum + n, 0);
 
+  // Give the tail a direction. seenPages/queued hold "pathname + search"; the
+  // router matches on pathname alone, so the query string is dropped before
+  // matching and not before counting.
+  const toShape = buildShapeMatcher(readRoutePatterns(repoRoot));
+  const pathOnly = (key) => key.split("?")[0];
+  const visitedShapes = new Set();
+  for (const key of seenPages) {
+    const shape = toShape(pathOnly(key));
+    if (shape) visitedShapes.add(shape);
+  }
+  const queuedShapeCounts = new Map();
+  const queuedUnmatched = new Set();
+  let queuedUnmatchedRoute = 0;
+  for (const key of queued) {
+    const shape = toShape(pathOnly(key));
+    if (!shape) {
+      queuedUnmatchedRoute += 1;
+      queuedUnmatched.add(pathOnly(key));
+      continue;
+    }
+    queuedShapeCounts.set(shape, (queuedShapeCounts.get(shape) || 0) + 1);
+  }
+  const queuedShapes = [...queuedShapeCounts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([shape, n]) => `${shape}:${n}`);
+  const shapesNeverVisited = [...queuedShapeCounts.entries()]
+    .filter(([shape]) => !visitedShapes.has(shape))
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([shape, n]) => `${shape}:${n}`);
+
   // The OUT file used to contain broken rows and nothing else, so an empty file
   // meant either "crawled everything, all links fine" or "crawled nothing at
   // all" -- indistinguishable, and the second reads as health. This row is
@@ -548,6 +580,29 @@ async function main() {
     maxPages: MAX_PAGES,
     capReached: seenPages.size >= MAX_PAGES,
     pagesQueuedAtStop: queued.length,
+    // The untraversed tail, named rather than counted. A shape here that is
+    // absent from every visited page is a part of the site this audit has
+    // never opened; a shape that is also in visitedShapes was sampled and the
+    // cap merely stopped it repeating. PUBLISHED, NEVER GRADED -- a page cap is
+    // a budget decision, and grading a budget builds the permanently-yellow
+    // guard apex-doctor's own Check #19 header warns about (MP-303 precedent).
+    queuedShapes,
+    shapesNeverVisited,
+    // Same-origin links whose path matches NO declared route. These render the
+    // "*" catch-all, and vercel.json serves them 200 (MP-295), so neither an
+    // HTTP status nor this crawl can see that they are dead. Published because
+    // the operand has never been measured; grading an unmeasured operand is how
+    // a guard ships permanently red.
+    queuedUnmatchedRoute,
+    // NAMED, not just counted. A bare count here reads as "156 dead links" and
+    // that reading is the one most likely to be wrong: a path matches no
+    // <Route> if it is genuinely dead, but equally if it is served outside
+    // react-router (an asset, a redirect, a file Vercel owns). The count alone
+    // cannot separate those, and shipping it alone would put a loud wrong
+    // number in front of Sam. Distinct paths, capped so the summary stays one
+    // readable line per run.
+    queuedUnmatchedSample: [...queuedUnmatched].sort().slice(0, 40),
+    queuedUnmatchedDistinct: queuedUnmatched.size,
     authenticated: !authProbeFailed,
     authSource,
     authReason: authReason || null,

@@ -661,7 +661,18 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.agentlink-clients-sync]
-verify_jwt = true
+# PROVEN DEAD BY THIS LINE: pg_cron apex-agentlink-clients-sync-30m fired every
+# 30 min with the bot token and got 401 UNAUTHORIZED_INVALID_JWT_FORMAT from the
+# gateway; agentlink_clients_sync_log's last row is 2026-08-24T12:30:03Z, 16 days
+# before this change, while cron.job_run_details recorded 333 'succeeded'.
+# in-code bearer check, not a public endpoint. The handler requires
+# Bearer <apex_bot_token> (a 64-char hex string) or an admin user JWT. The
+# gateway's verify_jwt accepts ANY valid JWT including the public anon key in
+# the site bundle, so it is the WEAKER of the two checks -- and because the
+# bot token is not a JWT, turning it on refuses the only authorized caller
+# before the handler ever runs. Same rule as daily-brief and billing-portal-
+# redirect in scripts/sync-functions-config.sh. MP-491.
+verify_jwt = false
 
 [functions.slack-integration-health]
 verify_jwt = true
@@ -691,10 +702,29 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.slack-unlicensed-welcome]
-verify_jwt = true
+# Prod serves this verify_jwt=false and the 5-minute pg_cron greeter works
+# (probed live: 200, members 5). This line was the landmine: the next deploy
+# would have gated it and silently killed the #unlicensed welcome sweep.
+# in-code bearer check, not a public endpoint. The handler requires
+# Bearer <apex_bot_token> (a 64-char hex string) or an admin user JWT. The
+# gateway's verify_jwt accepts ANY valid JWT including the public anon key in
+# the site bundle, so it is the WEAKER of the two checks -- and because the
+# bot token is not a JWT, turning it on refuses the only authorized caller
+# before the handler ever runs. Same rule as daily-brief and billing-portal-
+# redirect in scripts/sync-functions-config.sh. MP-491.
+verify_jwt = false
 
 [functions.content-library]
-verify_jwt = true
+# Prod serves this verify_jwt=false. Callers are Codex/Claude/Borumi sending
+# Bearer <apex_bot_token>; gating it at the gateway refuses all of them.
+# in-code bearer check, not a public endpoint. The handler requires
+# Bearer <apex_bot_token> (a 64-char hex string) or an admin user JWT. The
+# gateway's verify_jwt accepts ANY valid JWT including the public anon key in
+# the site bundle, so it is the WEAKER of the two checks -- and because the
+# bot token is not a JWT, turning it on refuses the only authorized caller
+# before the handler ever runs. Same rule as daily-brief and billing-portal-
+# redirect in scripts/sync-functions-config.sh. MP-491.
+verify_jwt = false
 
 [functions.content-share]
 # Public by design: /share/:token is an unauthenticated route (App.tsx) and the

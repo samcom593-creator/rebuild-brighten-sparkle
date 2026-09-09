@@ -72,6 +72,19 @@ PUBLIC_ALLOWLIST=(
   # kills the 7am brief and the applicant nudge cadence. It is an in-code
   # bearer check, which is what "verify secrets in-code" above already means.
   "billing-portal-redirect"
+  # MP-491 — the same rule, found by sweeping for it instead of waiting to be
+  # told. These three authenticate Bearer <apex_bot_token> in-handler exactly as
+  # daily-brief does. agentlink-clients-sync was not latent: it was defaulted to
+  # verify_jwt = true here on 2026-08-20, deployed, and its pg_cron caller has
+  # been getting 401 UNAUTHORIZED_INVALID_JWT_FORMAT ever since —
+  # agentlink_clients_sync_log stopped 2026-08-24T12:30:03Z while
+  # cron.job_run_details went on recording "succeeded" 333 times, because that
+  # column reports whether net.http_post enqueued, not whether anything answered.
+  # The other two were still verify_jwt=false in prod and would have died on
+  # their next deploy. Removing these lines re-arms all three.
+  "agentlink-clients-sync"
+  "slack-unlicensed-welcome"
+  "content-library"
 )
 
 is_public() {

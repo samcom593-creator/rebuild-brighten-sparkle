@@ -347,6 +347,10 @@ Deno.serve(async (req) => {
       deals_updated: 0,
       deals_unchanged: 0,
       deals_skipped: 0,
+      // MP-489: a write the database REFUSED and a row there was nothing to do
+      // for are different outcomes; deals_skipped counted both under one word,
+      // and that word is the only trace a frozen shadow row ever left.
+      deals_refused: 0,
       unmapped_user_ids: {} as Record<string, number>,
       errors: [] as string[],
       dry_run: dryRun,
@@ -482,11 +486,23 @@ Deno.serve(async (req) => {
       }
 
       const dealKey = `${row.agent_id}|${row.policy_number}`;
-      // Composite key first (it owns external-id-less rows); fall back to the
-      // stable upstream id so a corrected policy_number/agent UPDATES the deal
-      // it belongs to instead of colliding on the unique index.
-      const existingId = existingByKey.get(dealKey)
-        ?? (external ? existingByExternal.get(external) : undefined);
+      // MP-489: `agent_id|policy_number` is NOT unique -- 150 live groups over
+      // 412 rows share one composite key (policy '1234' alone: 42 rows, 24
+      // distinct clients), because agents type junk policy numbers upstream.
+      // Composite-first therefore resolved every member of a group to ONE row
+      // (the highest id), and each of the others patched that winner with its
+      // own external_deal_id -- which the unique index on external_deal_id
+      // REFUSED with 23505. Proven on live data in a rolled-back transaction:
+      // policy 135-0001-207173, winner ext=77, shadow ext=76 -> 23505. So the
+      // book was never scrambled; the shadow rows were simply never updated
+      // from their own upstream row, and the refusal was booked as "skipped".
+      // external_deal_id IS globally unique (1,668 rows / 1,668 distinct, 2
+      // indexes), so trying it FIRST cannot introduce a new collision. The
+      // composite key is kept as the fallback because it still owns the 92
+      // legacy rows that carry no external id -- the case the old comment here
+      // was written for.
+      const existingId = (external ? existingByExternal.get(external) : undefined)
+        ?? existingByKey.get(dealKey);
 
       if (existingId) {
         // MP-431: every run used to rewrite every row with a fresh
@@ -503,7 +519,7 @@ Deno.serve(async (req) => {
         }
         const { data: written, error } = await sb.from("deals").update(patch).eq("id", existingId).select("id");
         if (error) {
-          if (error.code === "23505") summary.deals_skipped++;
+          if (error.code === "23505") summary.deals_refused++;
           else summary.errors.push(`${policyNumber}: update ${error.message}`);
         } else if ((written ?? []).length === 0) {
           summary.deals_unchanged++;
@@ -519,7 +535,7 @@ Deno.serve(async (req) => {
         .select("id")
         .maybeSingle();
       if (error) {
-        if (error.code === "23505") summary.deals_skipped++;
+        if (error.code === "23505") summary.deals_refused++;
         else summary.errors.push(`${policyNumber}: insert ${error.message}`);
       } else {
         summary.deals_inserted++;
@@ -551,7 +567,7 @@ Deno.serve(async (req) => {
       deals_updated: summary.deals_updated,
       error_message: summary.errors.length
         ? `edge: ${summary.errors.slice(0, 3).join(" | ")}`
-        : `edge: ${summary.deals_inserted} new, ${summary.deals_updated} updated, ${summary.deals_unchanged} unchanged, ${summary.deals_skipped} skipped`,
+        : `edge: ${summary.deals_inserted} new, ${summary.deals_updated} updated, ${summary.deals_unchanged} unchanged, ${summary.deals_skipped} skipped, ${summary.deals_refused} refused`,
     });
 
     return json(summary, summary.errors.length ? 207 : 200);

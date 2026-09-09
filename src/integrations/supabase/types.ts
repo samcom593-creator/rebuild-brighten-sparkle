@@ -41353,7 +41353,7 @@ export type Database = {
           created_at: string
           customer_email: string | null
           customer_id: string
-          expires_at: string | null
+          expires_at: string
           last_used_at: string | null
           revoked: boolean
           source: string | null
@@ -41364,7 +41364,7 @@ export type Database = {
           created_at?: string
           customer_email?: string | null
           customer_id: string
-          expires_at?: string | null
+          expires_at?: string
           last_used_at?: string | null
           revoked?: boolean
           source?: string | null
@@ -41375,7 +41375,7 @@ export type Database = {
           created_at?: string
           customer_email?: string | null
           customer_id?: string
-          expires_at?: string | null
+          expires_at?: string
           last_used_at?: string | null
           revoked?: boolean
           source?: string | null
@@ -120289,6 +120289,20 @@ export type Database = {
         }
         Relationships: []
       }
+      v_policy_number_predicate_coverage: {
+        Row: {
+          danger_bucket: number | null
+          danger_visible_to_report: number | null
+          measured_at: string | null
+          push_population: number | null
+          refuse_bucket: number | null
+          refuse_visible_to_report: number | null
+          report_only_sim: number | null
+          report_population: number | null
+          writepath_only_sim: number | null
+        }
+        Relationships: []
+      }
       v_policy_number_vocabulary_drift: {
         Row: {
           annual_premium: number | null
@@ -132016,6 +132030,10 @@ export type Database = {
       }
       fn_normalize_policy_number: { Args: { p_raw: string }; Returns: string }
       fn_onboarding_email_backfill_sweep: { Args: never; Returns: Json }
+      fn_policy_number_report_placeholder: {
+        Args: { p: string }
+        Returns: boolean
+      }
       fn_post_deal_celebration: {
         Args: {
           p_agent_id: string

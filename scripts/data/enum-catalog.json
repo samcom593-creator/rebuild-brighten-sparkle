@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-enum-catalog.sh (bot_sql -> pg_enum + pg_attribute.atttypid)",
- "_generated_at": "2026-09-03T20:50:47Z",
+ "_generated_at": "2026-09-09T17:18:17Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "A repo guard cannot query prod. This is a snapshot of every enum-typed column in the public schema and the exact member list Postgres will accept for it, so scripts/check-enum-filter-literals.mjs can decide whether a filter or write literal will survive PostgREST's coercion. Enum types are SCHEMA-QUALIFIED because this database has more than one type sharing a bare name. Views are included: a bad literal in a filter against a view column raises the same 22P02 as one against a table. apex-doctor Check #29 re-queries pg_enum weekly and goes red when this snapshot drifts from the live catalog.",
  "_ambiguous_bare_names": {
@@ -54,6 +54,7 @@
   "v_channel_deprovision_needed": "v",
   "v_cw_active_outliers": "v",
   "v_dormant_dialer_seats": "v",
+  "v_hierarchy_unreachable": "v",
   "v_hired_licensed_missing_course": "v",
   "v_hot_licensing_prospects": "v",
   "v_interview_pipeline": "v",
@@ -537,6 +538,7 @@
   "v_channel_deprovision_needed.status": "public.agent_status",
   "v_cw_active_outliers.platform": "public.cw_platform",
   "v_dormant_dialer_seats.status": "public.agent_status",
+  "v_hierarchy_unreachable.status": "public.agent_status",
   "v_hired_licensed_missing_course.license_status": "public.license_status",
   "v_hired_licensed_missing_course.onboarding_stage": "public.onboarding_stage",
   "v_hired_licensed_missing_course.status": "public.agent_status",
@@ -1017,6 +1019,38 @@
    ],
    "constraint": "call_activity_direction_check"
   },
+  "call_lab_sessions.mode": {
+   "members": [
+    "practice",
+    "coach"
+   ],
+   "constraint": "call_lab_sessions_mode_check"
+  },
+  "call_lab_sessions.provider": {
+   "members": [
+    "demo",
+    "composed"
+   ],
+   "constraint": "call_lab_sessions_provider_check"
+  },
+  "call_lab_sessions.status": {
+   "members": [
+    "created",
+    "live",
+    "ending",
+    "evaluating",
+    "complete",
+    "failed"
+   ],
+   "constraint": "call_lab_sessions_status_check"
+  },
+  "call_lab_sessions.tts": {
+   "members": [
+    "browser",
+    "elevenlabs"
+   ],
+   "constraint": "call_lab_sessions_tts_check"
+  },
   "call_recordings.recording_status": {
    "members": [
     "pending",
@@ -1121,6 +1155,38 @@
     "cold_outreach"
    ],
    "constraint": "contact_history_contact_type_check"
+  },
+  "content_cards.brand": {
+   "members": [
+    "SFD",
+    "IMS"
+   ],
+   "constraint": "content_cards_brand_check"
+  },
+  "content_cards.job": {
+   "members": [
+    "REACH",
+    "AUTHORITY",
+    "PROOF",
+    "CONVERT"
+   ],
+   "constraint": "content_cards_job_check"
+  },
+  "content_cards.status": {
+   "members": [
+    "idea",
+    "recorded",
+    "ready",
+    "posted"
+   ],
+   "constraint": "content_cards_status_check"
+  },
+  "content_clips.kind": {
+   "members": [
+    "horizontal",
+    "vertical"
+   ],
+   "constraint": "content_clips_kind_check"
   },
   "contract_sends.status": {
    "members": [

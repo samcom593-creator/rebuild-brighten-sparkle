@@ -3069,6 +3069,18 @@
         "raw": ""
       }
     ],
+    "fn_policy_number_report_placeholder": [
+      {
+        "all": [
+          "p"
+        ],
+        "required": [
+          "p"
+        ],
+        "unnamed": false,
+        "raw": "p text"
+      }
+    ],
     "fn_post_deal_celebration": [
       {
         "all": [

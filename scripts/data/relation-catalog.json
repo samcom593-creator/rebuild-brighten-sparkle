@@ -652,6 +652,7 @@
     "public.v_partial_recovery_truth",
     "public.v_partition_coverage",
     "public.v_phantom_lead_purchases",
+    "public.v_policy_number_predicate_coverage",
     "public.v_policy_number_vocabulary_drift",
     "public.v_pre_licensing_tracker",
     "public.v_producer_pulse",

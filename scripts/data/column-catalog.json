@@ -9179,6 +9179,17 @@
       "seconds_apart",
       "subscription_id"
     ],
+    "v_policy_number_predicate_coverage": [
+      "danger_bucket",
+      "danger_visible_to_report",
+      "measured_at",
+      "push_population",
+      "refuse_bucket",
+      "refuse_visible_to_report",
+      "report_only_sim",
+      "report_population",
+      "writepath_only_sim"
+    ],
     "v_policy_number_vocabulary_drift": [
       "annual_premium",
       "client_first_name",

@@ -19,9 +19,9 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { ContractingIntakeAdmin } from "@/components/contracting/ContractingIntakeAdmin";
 import {
-import { externalHref } from "@/lib/externalHref";
   ContractsBoard, useContractSummary, useContractRows,
 } from "@/components/contracting/ContractsBoard";
+import { externalHref } from "@/lib/externalHref";
 
 /**
  * Contracting — carrier appointments, commission levels, writing numbers.

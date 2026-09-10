@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "Vantage's deals now show under the agents who wrote them. Marquay Vaughns, Kaeden Vaughns, Pranav Kodali, Jaden Selvaraj and David Ladd appear by name on the scoreboard with their own policies and premium, in every window including Day, instead of one anonymous 'unattributed' bucket.",
+    detail:
+      "The Agent Cloud production feed had been delivering per-producer numbers every 15 minutes all along; the unified production view collapsed each day into aggregate rows on a placeholder agent. Producers are now mapped to agent rows by exact name inside the Vantage subagency (vantage_producer_map, admin-editable), attributed rows carry origin agentcloud_producer so they flow into lifetime and period totals and layered override, and any producer without a match stays in the aggregate row so nothing is invented. Verified as Sam: list equals tile, today $15,325.20 and month-to-date $87,233.76, unchanged totals, names restored. MP-CONTENT-4.",
+    commit: "mp-content-4-vantage-producers-attributed",
+  },
+  {
+    ts: "today",
+    label:
       "The production list under the scoreboard tiles now adds up to the tiles. Vantage's reported production was counted in the totals but had no row in the list, so on any window (Day especially) the list read thousands short of the tile above it and Vantage looked missing. It now shows as one labeled row: Vantage Financial (reported, sellers unattributed).",
     detail:
       "Measured before the fix: today the tile said $15,325.20 and the rows summed to $7,407.00; month-to-date $87,233.76 vs $38,635.80, with 26 Vantage policies invisible. The RPC appends the external row only when the gap is visible to the viewer, keeps every comp field null so no contract level is invented, and the comp editor is hidden on that row. Patched in place on the live function with the anchor asserted unique. MP-CONTENT-3.",

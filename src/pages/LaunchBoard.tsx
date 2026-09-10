@@ -39,7 +39,7 @@ interface Clip {
   id: string; path: string; name: string; folder: string; kind: string; size_bytes: number; modified_at: string | null; used_by_card: string | null;
   thumb_url?: string | null; preview_url?: string | null; duration_s?: number | null; title?: string | null; description?: string | null; tags?: string[];
   download_url?: string | null; download_expires_at?: string | null;
-  hook_title?: string | null; banger_score?: number | null; banger_reason?: string | null;
+  hook_title?: string | null; banger_score?: number | null; banger_reason?: string | null; find_label?: string | null;
 }
 
 const STATUSES: Status[] = ["idea", "recorded", "ready", "posted"];
@@ -141,7 +141,7 @@ export default function LaunchBoard() {
       const all: Clip[] = [];
       for (let from = 0; from < 20000; from += 1000) {
         const k = await supabase.from("content_clips")
-          .select("id, path, name, folder, kind, size_bytes, modified_at, used_by_card, thumb_url, preview_url, duration_s, title, description, tags, download_url, download_expires_at, hook_title, banger_score, banger_reason").order("modified_at", { ascending: false, nullsFirst: false }).range(from, from + 999);
+          .select("id, path, name, folder, kind, size_bytes, modified_at, used_by_card, thumb_url, preview_url, duration_s, title, description, find_label, tags, download_url, download_expires_at, hook_title, banger_score, banger_reason").order("modified_at", { ascending: false, nullsFirst: false }).range(from, from + 999);
         if (k.error) throw k.error;
         const page = (k.data as Clip[]) ?? [];
         all.push(...page);
@@ -248,7 +248,7 @@ export default function LaunchBoard() {
     const q = query.trim().toLowerCase();
     const SYN: Record<string, string> = { gym: "workout", exercise: "workout", weights: "workout", lifting: "workout", fitness: "workout", cars: "car", vehicle: "car", corvette: "car", driving: "car", aerial: "drone", dji: "drone", desk: "office", computer: "office", laptop: "office", talking: "talking-head", speaking: "talking-head", podcast: "talking-head", vlog: "talking-head", outside: "outdoors", street: "outdoors", sunset: "outdoors", crowd: "event", seminar: "event", conference: "event", tiktok: "vertical", reel: "vertical", reels: "vertical", youtube: "horizontal" };
     const words = q.split(/\s+/).filter(Boolean).map((w) => SYN[w] ?? w);
-    const hay = (k: Clip) => `${k.title ?? ""} ${k.description ?? ""} ${(k.tags ?? []).join(" ")} ${k.name}`.toLowerCase();
+    const hay = (k: Clip) => `${k.find_label ?? ""} ${k.title ?? ""} ${k.description ?? ""} ${(k.tags ?? []).join(" ")} ${k.name}`.toLowerCase();
     const lenOk = (k: Clip) => {
       const d = Number(k.duration_s ?? 0);
       return length === "all" || (length === "short" ? d > 0 && d <= 60 : length === "mid" ? d > 60 && d <= 300 : d > 300);
@@ -491,7 +491,8 @@ export default function LaunchBoard() {
                   )}
                 </a>
                 <div className="flex flex-1 flex-col gap-1.5 p-3">
-                  <div className="line-clamp-2 text-sm font-bold leading-snug text-foreground">{k.hook_title || k.title || cleanName(k.name)}</div>
+                  <div className="line-clamp-2 text-sm font-bold leading-snug text-foreground">{k.find_label || k.title || cleanName(k.name)}</div>
+                  {k.hook_title && <div className="line-clamp-1 text-[11px] italic text-muted-foreground">🎬 {k.hook_title}</div>}
                   {k.banger_score != null && (
                     <div className="flex items-center gap-2">
                       <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted"><div className={`h-full ${bangerColor(k.banger_score)}`} style={{ width: `${k.banger_score}%` }} /></div>

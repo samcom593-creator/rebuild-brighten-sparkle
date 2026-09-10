@@ -37976,6 +37976,7 @@ export type Database = {
       }
       content_clips: {
         Row: {
+          find_label: string | null
           banger_reason: string | null
           banger_score: number | null
           bangered_at: string | null
@@ -38003,6 +38004,7 @@ export type Database = {
           width: number | null
         }
         Insert: {
+          find_label?: string | null
           banger_reason?: string | null
           banger_score?: number | null
           bangered_at?: string | null
@@ -38030,6 +38032,7 @@ export type Database = {
           width?: number | null
         }
         Update: {
+          find_label?: string | null
           banger_reason?: string | null
           banger_score?: number | null
           bangered_at?: string | null

@@ -2479,6 +2479,7 @@
       "download_expires_at",
       "download_url",
       "duration_s",
+      "find_label",
       "folder",
       "height",
       "hook_title",
@@ -7650,7 +7651,10 @@
     "v_hire_notification_gaps": [
       "agent_id",
       "created_at",
-      "display_name"
+      "display_name",
+      "gap_class",
+      "operator_notes",
+      "stub_evidence"
     ],
     "v_hired_licensed_missing_course": [
       "contracted_at",

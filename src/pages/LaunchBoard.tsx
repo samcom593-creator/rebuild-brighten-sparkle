@@ -39,6 +39,7 @@ interface Clip {
   id: string; path: string; name: string; folder: string; kind: string; size_bytes: number; modified_at: string | null; used_by_card: string | null;
   thumb_url?: string | null; preview_url?: string | null; duration_s?: number | null; title?: string | null; description?: string | null; tags?: string[];
   download_url?: string | null; download_expires_at?: string | null;
+  hook_title?: string | null; banger_score?: number | null; banger_reason?: string | null;
 }
 
 const STATUSES: Status[] = ["idea", "recorded", "ready", "posted"];
@@ -109,6 +110,7 @@ export default function LaunchBoard() {
   const [pillar, setPillar] = useState<"all" | PillarKey>("all");
   const [folder, setFolder] = useState<"all" | "YouTube" | "Reels">("all");
   const [length, setLength] = useState<"all" | "short" | "mid" | "long">("all");
+  const [sortBy, setSortBy] = useState<"banger" | "newest">("banger");
   const [shown, setShown] = useState(96);
   const [picked, setPicked] = useState<Set<string>>(new Set());   // Library multi-select for sharing
   const togglePick = (id: string) => setPicked((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -139,9 +141,7 @@ export default function LaunchBoard() {
       const all: Clip[] = [];
       for (let from = 0; from < 20000; from += 1000) {
         const k = await supabase.from("content_clips")
-          .select("id, path, name, folder, kind, size_bytes, modified_at, used_by_card, thumb_url, preview_url, duration_s, title, description, tags, download_url, download_expires_at")
-          .order("modified_at", { ascending: false, nullsFirst: false })
-          .range(from, from + 999);
+          .select("id, path, name, folder, kind, size_bytes, modified_at, used_by_card, thumb_url, preview_url, duration_s, title, description, tags, download_url, download_expires_at, hook_title, banger_score, banger_reason").order("modified_at", { ascending: false, nullsFirst: false }).range(from, from + 999);
         if (k.error) throw k.error;
         const page = (k.data as Clip[]) ?? [];
         all.push(...page);
@@ -253,9 +253,12 @@ export default function LaunchBoard() {
       const d = Number(k.duration_s ?? 0);
       return length === "all" || (length === "short" ? d > 0 && d <= 60 : length === "mid" ? d > 60 && d <= 300 : d > 300);
     };
-    return clips.filter((k) => (folder === "all" || k.folder === folder) && lenOk(k) && (pillar === "all" || pillarsOf(k).includes(pillar)) && (!words.length || words.every((w) => hay(k).includes(w))))
-      .sort((a, b) => (b.modified_at ?? "").localeCompare(a.modified_at ?? ""));
-  }, [clips, query, folder, length, pillar]);
+    const out = clips.filter((k) => (folder === "all" || k.folder === folder) && lenOk(k) && (pillar === "all" || pillarsOf(k).includes(pillar)) && (!words.length || words.every((w) => hay(k).includes(w))));
+    if (sortBy === "banger") out.sort((a, b) => (b.banger_score ?? -1) - (a.banger_score ?? -1) || (b.modified_at ?? "").localeCompare(a.modified_at ?? ""));
+    else out.sort((a, b) => (b.modified_at ?? "").localeCompare(a.modified_at ?? ""));
+    return out;
+  }, [clips, query, folder, length, pillar, sortBy]);
+  const bangerColor = (s?: number | null) => (s == null ? "bg-zinc-600" : s >= 70 ? "bg-emerald-400" : s >= 45 ? "bg-gold" : "bg-zinc-500");
   const fmtDur = (s?: number | null) => (s ? `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}` : "");
   const counts = useMemo(() => ({ total: cards.length, ready: ready.length, posted: cards.filter((c) => c.status === "posted").length }), [cards, ready]);
 
@@ -445,7 +448,14 @@ export default function LaunchBoard() {
                 </button>
               );
             })}
-            <span className="text-xs text-muted-foreground">{visibleClips.length.toLocaleString()} match · {clips.filter((k) => k.thumb_url).length.toLocaleString()} with previews · newest first</span>
+            <div className="ml-auto flex items-center gap-1.5">
+              {(["banger", "newest"] as const).map((s) => (
+                <button key={s} onClick={() => setSortBy(s)} className={`rounded-full border px-3 py-1 text-xs font-semibold ${sortBy === s ? "border-primary/40 bg-primary/15 text-primary" : "border-border text-muted-foreground hover:text-foreground"}`}>
+                  {s === "banger" ? "🔥 Bangers first" : "Newest"}
+                </button>
+              ))}
+            </div>
+            <span className="w-full text-xs text-muted-foreground">{visibleClips.length.toLocaleString()} match · {clips.filter((k) => k.thumb_url).length.toLocaleString()} with previews</span>
           </div>
           {attachTarget && <div className="rounded-xl border border-gold/40 bg-gold/10 px-3 py-2 text-sm text-foreground">Pick the clip for <b>{attachTarget.title}</b> — tap <b>Attach</b> on a row.</div>}
           {picked.size > 0 && (
@@ -476,9 +486,19 @@ export default function LaunchBoard() {
                   )}
                   {k.duration_s ? <span className="absolute bottom-1.5 right-1.5 rounded bg-background/80 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-foreground">{fmtDur(k.duration_s)}</span> : null}
                   {k.used_by_card && <span className="absolute left-1.5 top-1.5 rounded bg-emerald-500/90 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-950">on a card</span>}
+                  {k.banger_score != null && (
+                    <span className={`absolute right-1.5 top-1.5 flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-extrabold tabular-nums text-zinc-950 ${bangerColor(k.banger_score)}`} title={k.banger_reason ?? "traction potential"}>🔥 {k.banger_score}</span>
+                  )}
                 </a>
                 <div className="flex flex-1 flex-col gap-1.5 p-3">
-                  <div className="line-clamp-2 text-sm font-semibold leading-snug text-foreground">{k.title || cleanName(k.name)}</div>
+                  <div className="line-clamp-2 text-sm font-bold leading-snug text-foreground">{k.hook_title || k.title || cleanName(k.name)}</div>
+                  {k.banger_score != null && (
+                    <div className="flex items-center gap-2">
+                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted"><div className={`h-full ${bangerColor(k.banger_score)}`} style={{ width: `${k.banger_score}%` }} /></div>
+                      <span className="text-[10px] font-semibold tabular-nums text-muted-foreground">{k.banger_score}</span>
+                    </div>
+                  )}
+                  {k.hook_title && <button onClick={() => { void navigator.clipboard?.writeText(k.hook_title ?? "").then(() => toast.success("Hook copied")).catch(() => toast.error("Clipboard blocked")); }} className="self-start text-[10px] text-muted-foreground underline-offset-2 hover:text-primary hover:underline">copy hook</button>}
                   <div className="flex flex-wrap gap-1">
                     {PILLARS.map((p) => {
                       const on = pillarsOf(k).includes(p.k);

@@ -37976,6 +37976,10 @@ export type Database = {
       }
       content_clips: {
         Row: {
+          banger_reason: string | null
+          banger_score: number | null
+          bangered_at: string | null
+          hook_title: string | null
           captioned_at: string | null
           description: string | null
           download_expires_at: string | null
@@ -37999,6 +38003,10 @@ export type Database = {
           width: number | null
         }
         Insert: {
+          banger_reason?: string | null
+          banger_score?: number | null
+          bangered_at?: string | null
+          hook_title?: string | null
           captioned_at?: string | null
           description?: string | null
           download_expires_at?: string | null
@@ -38022,6 +38030,10 @@ export type Database = {
           width?: number | null
         }
         Update: {
+          banger_reason?: string | null
+          banger_score?: number | null
+          bangered_at?: string | null
+          hook_title?: string | null
           captioned_at?: string | null
           description?: string | null
           download_expires_at?: string | null

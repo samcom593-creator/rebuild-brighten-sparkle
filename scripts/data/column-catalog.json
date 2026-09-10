@@ -2471,6 +2471,9 @@
       "updated_at"
     ],
     "content_clips": [
+      "banger_reason",
+      "banger_score",
+      "bangered_at",
       "captioned_at",
       "description",
       "download_expires_at",
@@ -2478,6 +2481,7 @@
       "duration_s",
       "folder",
       "height",
+      "hook_title",
       "id",
       "indexed_at",
       "kind",
@@ -6494,6 +6498,20 @@
       "status",
       "user_id"
     ],
+    "v_applicant_funnel_health": [
+      "apps_prior_4w",
+      "apps_window",
+      "completed",
+      "completion_pct",
+      "crit_rate_pct",
+      "mature_hours",
+      "min_starts",
+      "newest_app_hours_ago",
+      "starts",
+      "test_rows_excluded",
+      "verdict",
+      "window_days"
+    ],
     "v_application_conversion_funnel": [
       "approved_count",
       "contacted_count",
@@ -6647,6 +6665,22 @@
       "id",
       "record_type",
       "source"
+    ],
+    "v_attribution_capture_health": [
+      "capture_pct",
+      "captured",
+      "channel_flipped",
+      "channels",
+      "crit_pct",
+      "imports_excluded",
+      "min_rows",
+      "prior_top_channel",
+      "top_channel",
+      "top_channel_rows",
+      "utm_tagged",
+      "verdict",
+      "web_rows",
+      "window_days"
     ],
     "v_blacklisted_carrier_deals": [
       "al_user_id",

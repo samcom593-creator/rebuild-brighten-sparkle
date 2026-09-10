@@ -3463,7 +3463,23 @@
         "raw": ""
       }
     ],
+    "fn_system_settings_reject_json_quoted": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "fn_telegram_queue_inactivity_nudges": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_text_json_quoted_sweep": [
       {
         "all": [],
         "required": [],

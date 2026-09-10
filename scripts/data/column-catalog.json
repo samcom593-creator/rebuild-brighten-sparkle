@@ -2445,6 +2445,14 @@
       "notes",
       "subject"
     ],
+    "content_access": [
+      "added_by",
+      "created_at",
+      "email",
+      "id",
+      "label",
+      "revoked_at"
+    ],
     "content_cards": [
       "brand",
       "caption",
@@ -2513,6 +2521,43 @@
       "title",
       "updated_at",
       "uploaded_by",
+      "width"
+    ],
+    "content_queue": [
+      "approved_by",
+      "brand",
+      "caption",
+      "content_id",
+      "created_at",
+      "cta",
+      "current_filename",
+      "duration_seconds",
+      "earnings_claim_risk",
+      "edited_at",
+      "format",
+      "height",
+      "hook",
+      "media_path",
+      "media_type",
+      "notes",
+      "original_filename",
+      "permission_confirmed",
+      "pillar",
+      "priority",
+      "privacy_risk",
+      "proof_type",
+      "published_urls",
+      "scheduled_at",
+      "sha256",
+      "source",
+      "source_path",
+      "status",
+      "target_instagram",
+      "target_snapchat",
+      "target_tiktok",
+      "target_youtube",
+      "thumbnail_url",
+      "updated_at",
       "width"
     ],
     "content_shares": [
@@ -10129,6 +10174,13 @@
       "status",
       "total_rows"
     ],
+    "v_system_settings_quote_guard": [
+      "frozen_expected",
+      "novel_keys",
+      "quoted_now",
+      "repaired_keys",
+      "trigger_state"
+    ],
     "v_team_analytics_producers": [
       "agent_code",
       "agent_name",
@@ -10214,6 +10266,14 @@
       "last_active_at",
       "stage",
       "username"
+    ],
+    "v_text_json_quoted_verdict": [
+      "frozen_still_quoted",
+      "novel_column_count",
+      "novel_columns",
+      "novel_key_count",
+      "novel_keys",
+      "verdict"
     ],
     "v_today_dashboard": [
       "active_agents",
@@ -10413,6 +10473,14 @@
       "last_name",
       "national_producer_number",
       "overall_pct_max"
+    ],
+    "vantage_producer_map": [
+      "agentcloud_agent_id",
+      "apex_agent_id",
+      "created_at",
+      "matched_by",
+      "producer_name",
+      "updated_at"
     ],
     "xcel_events": [
       "address_1",

@@ -14,147 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      content_access: {
-        Row: {
-          added_by: string | null
-          created_at: string
-          email: string
-          id: string
-          label: string | null
-          revoked_at: string | null
-        }
-        Insert: {
-          added_by?: string | null
-          created_at?: string
-          email: string
-          id?: string
-          label?: string | null
-          revoked_at?: string | null
-        }
-        Update: {
-          added_by?: string | null
-          created_at?: string
-          email?: string
-          id?: string
-          label?: string | null
-          revoked_at?: string | null
-        }
-        Relationships: []
-      }
-      content_queue: {
-        Row: {
-          approved_by: string | null
-          brand: string | null
-          caption: string | null
-          content_id: string
-          created_at: string | null
-          cta: string | null
-          current_filename: string | null
-          duration_seconds: string | null
-          earnings_claim_risk: string | null
-          edited_at: string | null
-          format: string | null
-          height: string | null
-          hook: string | null
-          media_path: string | null
-          media_type: string | null
-          notes: string | null
-          original_filename: string | null
-          permission_confirmed: string | null
-          pillar: string | null
-          priority: string | null
-          privacy_risk: string | null
-          proof_type: string | null
-          published_urls: string | null
-          scheduled_at: string | null
-          sha256: string | null
-          source: string
-          source_path: string | null
-          status: string | null
-          target_instagram: string | null
-          target_snapchat: string | null
-          target_tiktok: string | null
-          target_youtube: string | null
-          thumbnail_url: string | null
-          updated_at: string
-          width: string | null
-        }
-        Insert: {
-          approved_by?: string | null
-          brand?: string | null
-          caption?: string | null
-          content_id: string
-          created_at?: string | null
-          cta?: string | null
-          current_filename?: string | null
-          duration_seconds?: string | null
-          earnings_claim_risk?: string | null
-          edited_at?: string | null
-          format?: string | null
-          height?: string | null
-          hook?: string | null
-          media_path?: string | null
-          media_type?: string | null
-          notes?: string | null
-          original_filename?: string | null
-          permission_confirmed?: string | null
-          pillar?: string | null
-          priority?: string | null
-          privacy_risk?: string | null
-          proof_type?: string | null
-          published_urls?: string | null
-          scheduled_at?: string | null
-          sha256?: string | null
-          source?: string
-          source_path?: string | null
-          status?: string | null
-          target_instagram?: string | null
-          target_snapchat?: string | null
-          target_tiktok?: string | null
-          target_youtube?: string | null
-          thumbnail_url?: string | null
-          updated_at?: string
-          width?: string | null
-        }
-        Update: {
-          approved_by?: string | null
-          brand?: string | null
-          caption?: string | null
-          content_id?: string
-          created_at?: string | null
-          cta?: string | null
-          current_filename?: string | null
-          duration_seconds?: string | null
-          earnings_claim_risk?: string | null
-          edited_at?: string | null
-          format?: string | null
-          height?: string | null
-          hook?: string | null
-          media_path?: string | null
-          media_type?: string | null
-          notes?: string | null
-          original_filename?: string | null
-          permission_confirmed?: string | null
-          pillar?: string | null
-          priority?: string | null
-          privacy_risk?: string | null
-          proof_type?: string | null
-          published_urls?: string | null
-          scheduled_at?: string | null
-          sha256?: string | null
-          source?: string
-          source_path?: string | null
-          status?: string | null
-          target_instagram?: string | null
-          target_snapchat?: string | null
-          target_tiktok?: string | null
-          target_youtube?: string | null
-          thumbnail_url?: string | null
-          updated_at?: string
-          width?: string | null
-        }
-        Relationships: []
-      }
       account_claims: {
         Row: {
           created_at: string
@@ -38034,6 +37893,33 @@ export type Database = {
           },
         ]
       }
+      content_access: {
+        Row: {
+          added_by: string | null
+          created_at: string
+          email: string
+          id: string
+          label: string | null
+          revoked_at: string | null
+        }
+        Insert: {
+          added_by?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          label?: string | null
+          revoked_at?: string | null
+        }
+        Update: {
+          added_by?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          label?: string | null
+          revoked_at?: string | null
+        }
+        Relationships: []
+      }
       content_cards: {
         Row: {
           brand: string
@@ -38275,6 +38161,120 @@ export type Database = {
             referencedColumns: ["user_id"]
           },
         ]
+      }
+      content_queue: {
+        Row: {
+          approved_by: string | null
+          brand: string | null
+          caption: string | null
+          content_id: string
+          created_at: string | null
+          cta: string | null
+          current_filename: string | null
+          duration_seconds: string | null
+          earnings_claim_risk: string | null
+          edited_at: string | null
+          format: string | null
+          height: string | null
+          hook: string | null
+          media_path: string | null
+          media_type: string | null
+          notes: string | null
+          original_filename: string | null
+          permission_confirmed: string | null
+          pillar: string | null
+          priority: string | null
+          privacy_risk: string | null
+          proof_type: string | null
+          published_urls: string | null
+          scheduled_at: string | null
+          sha256: string | null
+          source: string
+          source_path: string | null
+          status: string | null
+          target_instagram: string | null
+          target_snapchat: string | null
+          target_tiktok: string | null
+          target_youtube: string | null
+          thumbnail_url: string | null
+          updated_at: string
+          width: string | null
+        }
+        Insert: {
+          approved_by?: string | null
+          brand?: string | null
+          caption?: string | null
+          content_id: string
+          created_at?: string | null
+          cta?: string | null
+          current_filename?: string | null
+          duration_seconds?: string | null
+          earnings_claim_risk?: string | null
+          edited_at?: string | null
+          format?: string | null
+          height?: string | null
+          hook?: string | null
+          media_path?: string | null
+          media_type?: string | null
+          notes?: string | null
+          original_filename?: string | null
+          permission_confirmed?: string | null
+          pillar?: string | null
+          priority?: string | null
+          privacy_risk?: string | null
+          proof_type?: string | null
+          published_urls?: string | null
+          scheduled_at?: string | null
+          sha256?: string | null
+          source?: string
+          source_path?: string | null
+          status?: string | null
+          target_instagram?: string | null
+          target_snapchat?: string | null
+          target_tiktok?: string | null
+          target_youtube?: string | null
+          thumbnail_url?: string | null
+          updated_at?: string
+          width?: string | null
+        }
+        Update: {
+          approved_by?: string | null
+          brand?: string | null
+          caption?: string | null
+          content_id?: string
+          created_at?: string | null
+          cta?: string | null
+          current_filename?: string | null
+          duration_seconds?: string | null
+          earnings_claim_risk?: string | null
+          edited_at?: string | null
+          format?: string | null
+          height?: string | null
+          hook?: string | null
+          media_path?: string | null
+          media_type?: string | null
+          notes?: string | null
+          original_filename?: string | null
+          permission_confirmed?: string | null
+          pillar?: string | null
+          priority?: string | null
+          privacy_risk?: string | null
+          proof_type?: string | null
+          published_urls?: string | null
+          scheduled_at?: string | null
+          sha256?: string | null
+          source?: string
+          source_path?: string | null
+          status?: string | null
+          target_instagram?: string | null
+          target_snapchat?: string | null
+          target_tiktok?: string | null
+          target_youtube?: string | null
+          thumbnail_url?: string | null
+          updated_at?: string
+          width?: string | null
+        }
+        Relationships: []
       }
       content_shares: {
         Row: {
@@ -84341,6 +84341,482 @@ export type Database = {
         }
         Relationships: []
       }
+      vantage_producer_map: {
+        Row: {
+          agentcloud_agent_id: string
+          apex_agent_id: string | null
+          created_at: string
+          matched_by: string
+          producer_name: string
+          updated_at: string
+        }
+        Insert: {
+          agentcloud_agent_id: string
+          apex_agent_id?: string | null
+          created_at?: string
+          matched_by?: string
+          producer_name: string
+          updated_at?: string
+        }
+        Update: {
+          agentcloud_agent_id?: string
+          apex_agent_id?: string | null
+          created_at?: string
+          matched_by?: string
+          producer_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "mv_agent_truth"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_admin_applicant_overview"
+            referencedColumns: ["became_agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_20k_target_leaderboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_account_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_canonical_map"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_command_center"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_crm_active"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicate_candidates"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicates"
+            referencedColumns: ["canonical_agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicates"
+            referencedColumns: ["dup_agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_manager_conflicts"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_monthly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_owner_truth"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_quality_score"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_skool_membership"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_status_contradictions"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_training_stage"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_with_downline_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_full"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_al_link"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_al_user_id"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_numbers_today"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_needs_attention"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_onboarding_status"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_apex_roster"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_builder_operating_dashboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_channel_deprovision_needed"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_activity"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_launch_board"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_notification_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hired_licensed_missing_course"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_kj_seminar_control"
+            referencedColumns: ["converted_agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_command_center"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_command_center"
+            referencedColumns: ["manager_agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_departure_orphan_risk"
+            referencedColumns: ["manager_agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_new_hire_showup"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_new_hires_activation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_offboarding_preservation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_call_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_integrity"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_sequence"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_paid_applicants"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_pulse"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_reactivation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_trend_alert"
+            referencedColumns: ["producer_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producers_missing_license"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_active_no_first_sale"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_hired_no_onboarding"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_licensed_inactive"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_activations_alp"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_hires"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_reclaimable_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recruiter_bounty_candidates"
+            referencedColumns: ["recruited_agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recruiter_pipeline"
+            referencedColumns: ["recruiter_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_sam_builders_dashboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_slack_invite_eligibility"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_strike_summary"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_top_legs_excl_sam"
+            referencedColumns: ["manager_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_unsendable_contacts"
+            referencedColumns: ["agent_id"]
+          },
+        ]
+      }
       xcel_events: {
         Row: {
           address_1: string | null
@@ -127888,6 +128364,16 @@ export type Database = {
         }
         Relationships: []
       }
+      v_system_settings_quote_guard: {
+        Row: {
+          frozen_expected: number | null
+          novel_keys: string[] | null
+          quoted_now: number | null
+          repaired_keys: string[] | null
+          trigger_state: string | null
+        }
+        Relationships: []
+      }
       v_team_analytics_producers: {
         Row: {
           agent_code: string | null
@@ -128614,6 +129100,17 @@ export type Database = {
             referencedColumns: ["application_id"]
           },
         ]
+      }
+      v_text_json_quoted_verdict: {
+        Row: {
+          frozen_still_quoted: number | null
+          novel_column_count: number | null
+          novel_columns: string | null
+          novel_key_count: number | null
+          novel_keys: string | null
+          verdict: string | null
+        }
+        Relationships: []
       }
       v_today_dashboard: {
         Row: {
@@ -130992,7 +131489,6 @@ export type Database = {
         Returns: Json
       }
       apex_is_admin: { Args: never; Returns: boolean }
-      content_can_access: { Args: never; Returns: boolean }
       apex_provision_licensed_applicant: {
         Args: { p_application_id: string }
         Returns: Json
@@ -131519,6 +132015,7 @@ export type Database = {
       cleanup_expired_idempotency_keys: { Args: never; Returns: undefined }
       client_birthday_wisher: { Args: never; Returns: Json }
       commission_ledger_reconcile: { Args: never; Returns: Json }
+      content_can_access: { Args: never; Returns: boolean }
       content_clips_canon_tags: {
         Args: {
           p_desc: string
@@ -132255,6 +132752,14 @@ export type Database = {
         Returns: number
       }
       fn_telegram_queue_inactivity_nudges: { Args: never; Returns: number }
+      fn_text_json_quoted_sweep: {
+        Args: never
+        Returns: {
+          col: string
+          hits: number
+          rel: string
+        }[]
+      }
       fn_unlicensed_digest_health: {
         Args: never
         Returns: {

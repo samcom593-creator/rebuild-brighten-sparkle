@@ -41,7 +41,7 @@ serve(async (req) => {
 
     let sentCount = 0;
     let failedCount = 0;
-    const scheduleUrl = "https://apex-financial.org/schedule";
+    const scheduleUrl = "https://apex-financial.org/schedule-call";
     const licensingGuideUrl = "https://docs.google.com/document/d/1WBN_bh7Tl6IkhdXwQvrUa6Q58xmV9As_q048aKAeyNg/edit";
     const preLicensingUrl = "https://partners.xcelsolutions.com/afe";
     const licensingVideoUrl = "https://apex-financial.org/get-licensed#licensing-video";

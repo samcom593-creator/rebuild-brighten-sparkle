@@ -25,7 +25,7 @@ const ANTHROPIC_KEY = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
 const ANTHROPIC_MODEL = Deno.env.get("ANTHROPIC_MODEL") ?? "claude-haiku-4-5-20251001";
 
 const APPLY_URL = "https://apex-financial.org/apply?utm_source=telegram&utm_medium=bot";
-const ICA_URL = "https://apex-financial.org/pay-ica";
+const ICA_URL = "https://apex-financial.org/start-contracting";
 const LICENSE_URL = "https://apex-financial.org/get-licensed";
 const LICENSED_CALL_URL = "https://calendly.com/apexfinancialempire/1on1-call-clone";
 
@@ -500,7 +500,7 @@ async function matchByContact(chat_id: number, phone?: string, email?: string, f
     await sendTemplate(chat_id, "welcome.matched_unpaid", {
       first_name: firstName ?? "Friend",
       ica_amount: "$125",
-      ica_link: "https://apex-financial.org/pay-ica",
+      ica_link: "https://apex-financial.org/start-contracting",
     });
   }
   await sb.from("telegram_users").update({ flow_state: {} }).eq("chat_id", chat_id);
@@ -657,7 +657,7 @@ async function handleCommand(chat_id: number, fromUser: any, command: string, ar
           const licenseStatus = ((ag as any)?.license_status ?? "").toString().toLowerCase();
           isLicensed = licenseStatus === "licensed";
         }
-        const base = `Training hub:\n\n• Onboarding videos: https://apex-financial.org/training\n• Script library: https://apex-financial.org/training/scripts`;
+        const base = `Training hub:\n\n• Onboarding videos: https://apex-financial.org/training\n• Script library: https://apex-financial.org/dashboard/scripts`;
         const text = isLicensed
           ? `${base}\n• Live floor (Discord): https://discord.gg/apex`
           : base;

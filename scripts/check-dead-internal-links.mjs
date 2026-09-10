@@ -21,12 +21,58 @@ import { stripComments } from "./lib/strip-comments.mjs";
  *
  * Could-not-look is never a pass: if the router cannot be read or parses to
  * zero routes, this exits 1 rather than reporting a clean tree (MP-399).
+ *
+ * MP-501 widened the scan to supabase/functions. MP-433 fixed
+ * /dashboard/recruiting/pipeline at two src/ call sites and the identical string
+ * survived one directory over, in the Slack template an applicant's submission
+ * fires — the sweep stopped at the instance, not the class (MP-345). Edge
+ * functions address the app by ABSOLUTE URL because their output lands in an
+ * inbox or a Slack channel, where a relative path has no base to resolve
+ * against, so the four link-attribute patterns above (all anchored on a leading
+ * "/") matched zero of them. ORIGIN_PATTERN grades that form, in both roots.
+ *
+ * The loose ||/?? fallback pattern is src-only, deliberately. In an edge
+ * function a bare "/..." string is usually a filesystem or API path, not a
+ * destination: applied to supabase/functions it produced exactly one hit,
+ * apex-mcp's `args.cwd ?? "/Users/samjames/projects/..."`, which is not a link.
+ * Narrowing where a pattern is TRUSTED beats allowlisting what it gets wrong.
  */
 import fs from "node:fs";
 import path from "node:path";
 
 const ROUTER = "src/App.tsx";
-const SRC = "src";
+
+/** Roots, and which pattern set each one earns. `loose` enables the ||/?? 
+ *  fallback pattern, which is only trustworthy where paths mean routes. */
+const SCAN_ROOTS = [
+  { dir: "src", loose: true },
+  { dir: "supabase/functions", loose: false },
+];
+
+/** The app's own origin. An edge function writes these into email and Slack,
+ *  so a dead one is a dead link in someone's inbox — invisible to the crawler
+ *  (it never authenticates as that recipient) and to HTTP monitoring, which
+ *  gets vercel.json's 200 for every URL (MP-295). */
+// `|` and `>` terminate the path: Slack renders links as <url|label>, and a
+// bare origin in prose is often followed by punctuation, so trailing .,;: are
+// trimmed too. Without this a test fixture's "<...follow-ups|Open ...>" parsed
+// as a route named "follow-ups|Open" and the guard reported a bug that was a
+// mis-parse of its own making.
+const ORIGIN_PATTERN = /https:\/\/apex-financial\.org(\/[^"'`\s\\)|>]*)?/g;
+
+/** A last segment with a file extension is a file in public/, not a route.
+ *  Resolved against the filesystem rather than skipped: MP-501 found
+ *  index.html's Organization JSON-LD pointing at /apex-logo.png and
+ *  StateCareerLanding's JobPosting at /og-image.jpg, NEITHER of which exists.
+ *  vercel.json 200s every URL (MP-295), so both returned the SPA shell —
+ *  byte-identical to a path that certainly does not exist — and every crawler
+ *  fetching Apex's logo got an HTML document with a 200 and no way to tell. */
+const PUBLIC_DIR = "public";
+function assetVerdict(target) {
+  const last = target.split("/").pop() ?? "";
+  if (!/\.[a-z0-9]{2,12}$/i.test(last)) return null; // not an asset reference
+  return fs.existsSync(path.join(PUBLIC_DIR, target.replace(/^\//, ""))) ? "ok" : "missing";
+}
 
 /** Strip // and /* *\/ comments, PRESERVING line count — a link inside a
  *  comment must not count (MP-277's footnote bug), but a collapsed block
@@ -72,22 +118,26 @@ const LINK_PATTERNS = [
   /(?:\|\||\?\?)\s*["'`](\/[^"'`\s]*)["'`]/g,
 ];
 
-export function scanFile(file, src, routes) {
+export function scanFile(file, src, routes, { loose = true } = {}) {
   const dead = [], unprovable = [];
   const lines = stripComments(src).split("\n");
   const seen = new Set();
   lines.forEach((line, idx) => {
-    for (const re of LINK_PATTERNS) {
+    const active = loose ? LINK_PATTERNS : LINK_PATTERNS.slice(0, -1);
+    for (const re of [...active, ORIGIN_PATTERN]) {
       for (const m of line.matchAll(new RegExp(re.source, re.flags))) {
-        const raw = m[1];
+        const raw = m[1] ?? "/"; // ORIGIN_PATTERN's group is optional: bare origin = "/"
         if (raw.startsWith("//")) continue; // protocol-relative = external
         const key = `${idx}:${raw}`;
         if (seen.has(key)) continue;
         seen.add(key);
         const interpolated = raw.includes("${");
         let t = raw.split("?")[0].split("#")[0].replace(/\$\{[^}]*\}/g, "X");
-        if (t !== "/") t = t.replace(/\/$/, "");
+        if (t !== "/") t = t.replace(/[.,;:]+$/, "").replace(/\/$/, "");
+        const asset = interpolated ? null : assetVerdict(t);
+        if (asset === "ok") continue;
         if (isDeclared(t, routes)) continue;
+        if (asset === "missing") { dead.push({ file, line: idx + 1, raw, why: `no such file in ${PUBLIC_DIR}/` }); continue; }
         (interpolated ? unprovable : dead).push({ file, line: idx + 1, raw });
       }
     }
@@ -115,14 +165,32 @@ function main() {
     process.exit(1);
   }
   let dead = [], unprovable = [], scanned = 0;
-  for (const f of walk(SRC)) {
-    if (path.normalize(f) === path.normalize(ROUTER)) continue;
+  // index.html carries the site-wide Organization JSON-LD and is not a .ts file,
+  // so the walker below would never see it. Its logo URL was one of the two
+  // dead assets this guard was widened to catch — excluding it would have left
+  // the guard blind to the very bug that motivated it.
+  if (fs.existsSync("index.html")) {
     scanned++;
-    const r = scanFile(f, fs.readFileSync(f, "utf8"), routes);
+    const r = scanFile("index.html", fs.readFileSync("index.html", "utf8"), routes, { loose: false });
     dead.push(...r.dead);
     unprovable.push(...r.unprovable);
   }
-  console.log(`dead-internal-links: ${routes.length} declared routes, ${scanned} files scanned`);
+  for (const root of SCAN_ROOTS) {
+    // A configured root that has vanished is a silent loss of coverage, not a
+    // pass — the guard would keep printing green over an unscanned tree.
+    if (!fs.existsSync(root.dir)) {
+      console.error(`❌ scan root ${root.dir} does not exist — refusing to report a clean tree.`);
+      process.exit(1);
+    }
+    for (const f of walk(root.dir)) {
+      if (path.normalize(f) === path.normalize(ROUTER)) continue;
+      scanned++;
+      const r = scanFile(f, fs.readFileSync(f, "utf8"), routes, { loose: root.loose });
+      dead.push(...r.dead);
+      unprovable.push(...r.unprovable);
+    }
+  }
+  console.log(`dead-internal-links: ${routes.length} declared routes, ${scanned} files scanned across ${SCAN_ROOTS.map((r) => r.dir).join(" + ")}`);
   if (unprovable.length) {
     // Reported as its own outcome, never laundered into pass or fail.
     console.log(`  ${unprovable.length} interpolated target(s) unprovable (target is built at runtime):`);
@@ -132,7 +200,7 @@ function main() {
     console.error(`\n❌ ${dead.length} internal link(s) point at a path the router does not declare.`);
     console.error(`   A user clicking these gets the 404 page. Nothing else in this repo can see it:`);
     console.error(`   vercel.json 200s every URL, route-smoke walks a fixed list, and tsc sees only a string.\n`);
-    for (const d of dead) console.error(`    ${d.file}:${d.line}  ->  ${d.raw}`);
+    for (const d of dead) console.error(`    ${d.file}:${d.line}  ->  ${d.raw}${d.why ? `   (${d.why})` : ""}`);
     console.error(`\n   Fix the target, or add the route to ${ROUTER}.`);
     process.exit(1);
   }

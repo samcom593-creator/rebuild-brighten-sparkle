@@ -44,7 +44,7 @@ export const SLACK_EDGE_EMITTERS: Readonly<Record<string, string>> = {
 };
 
 export const SLACK_DEFAULT_URLS = {
-  recruitingPipeline: "https://apex-financial.org/dashboard/recruiting/pipeline",
+  recruitingPipeline: "https://apex-financial.org/dashboard/recruiting",
   interviewRecovery: "https://apex-financial.org/dashboard/recruiting/follow-ups",
   contractingOps: "https://apex-financial.org/dashboard/contracting/ops",
   productionDashboard: "https://apex-financial.org/dashboard",

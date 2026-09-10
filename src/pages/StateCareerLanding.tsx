@@ -138,7 +138,7 @@ export default function StateCareerLanding() {
       "@type": "Organization",
       name: "Apex Financial",
       sameAs: "https://apex-financial.org",
-      logo: "https://apex-financial.org/og-image.jpg",
+      logo: "https://apex-financial.org/pwa-512x512.png",
     },
     jobLocation: {
       "@type": "Place",

@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "The Launch Board library now filters by Sam's three brand pillars — Cars, Fitness, Entrepreneurship — plus Sales & insurance and CTA, with counts, so a car clip is one tap away instead of a search. Any clip can be pinned to a pillar with one tap, and the Launch Board and the Content approval queue now link to each other.",
+    detail:
+      "Pillars are read off the visual tags, titles and descriptions the library already carries for 3,576 of 4,070 clips (car x840, workout x240, office x297), so nothing needed re-tagging; tapping a pillar on a clip writes the pillar word into its tags so it stays. The daily slate on the Content page and in the Mac tool now runs CARS, FITNESS, ENTREPRENEURSHIP, AUTHORITY, CTA. MP-CONTENT-5.",
+    commit: "mp-content-5-launch-board-pillars",
+  },
+  {
+    ts: "today",
+    label:
       "Vantage's deals now show under the agents who wrote them. Marquay Vaughns, Kaeden Vaughns, Pranav Kodali, Jaden Selvaraj and David Ladd appear by name on the scoreboard with their own policies and premium, in every window including Day, instead of one anonymous 'unattributed' bucket.",
     detail:
       "The Agent Cloud production feed had been delivering per-producer numbers every 15 minutes all along; the unified production view collapsed each day into aggregate rows on a placeholder agent. Producers are now mapped to agent rows by exact name inside the Vantage subagency (vantage_producer_map, admin-editable), attributed rows carry origin agentcloud_producer so they flow into lifetime and period totals and layered override, and any producer without a match stays in the aggregate row so nothing is invented. Verified as Sam: list equals tile, today $15,325.20 and month-to-date $87,233.76, unchanged totals, names restored. MP-CONTENT-4.",
@@ -50,6 +58,14 @@ export const SHIPPED: ShippedItem[] = [
     detail:
       "The check counts type errors and passes when the count does not go up. A file the compiler cannot read produces no type errors at all, so one broken file dropped the count from 85 to 6 and the check reported a pass plus 'lower the baseline to 6' \u2014 on a site that could not be built. The worse the code got, the better it scored. A second fault in the same place: when the checker itself failed to start, it recorded 0 errors and passed, which in the automated pipeline meant a green type-check over nothing being checked at all. Both were reproduced deliberately before being fixed, and both were re-broken afterwards to confirm the fix is what stops them. Reading the file is now the first question asked, an unreadable file stops the check outright, and a checker that could not run is now a failure rather than a perfect score.",
     commit: "mp-496-typecheck-gate-honesty",
+  },
+  {
+    ts: "today",
+    label:
+      "Every new application posted a Slack alert with an 'Open recruiting pipeline' link that went to the 'that path doesn't exist' screen. Forty of those had already been sent. Five more dead links were found alongside it \u2014 in the applicant Telegram bot, the manager digest, the course reminder email and the unlicensed outreach email \u2014 plus two broken logo images that Google and LinkedIn were reading off the public site.",
+    detail:
+      "The link was written by the database itself, not by any file in the codebase, which is why the repo's dead-link checker had been reporting green throughout: the same wrong address was fixed in two places on the site five days ago and the copy that reaches the team survived, because it lives in a database function that was applied by hand. Measured before touching anything: 40 notifications carried it, 13 from new applications and 27 from licensing milestones. Those 40 are deliberately left as they are \u2014 they really were sent that way, and editing them would make the record claim something that did not happen. Separately, the site-wide logo address in the page header and the logo in the job-posting data for every state careers page both pointed at image files that do not exist; because the site answers 200 for any address, every crawler fetching the company logo received a web page instead of an image and had no way to tell. Both now point at the real 512px logo. The checker was widened to read the email and Slack code as well as the site, to resolve image addresses against the files that actually exist, and a weekly check now reads the live database directly \u2014 the one place the repo checker structurally cannot see.",
+    commit: "mp-501-dead-routes-in-outbound",
   },
   {
     ts: "today",

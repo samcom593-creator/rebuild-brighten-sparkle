@@ -16,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useConfirm } from "@/hooks/useConfirm";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { toast } from "sonner";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -56,6 +57,19 @@ const TABS: { k: Tab; label: string }[] = [
   { k: "today", label: "Today" }, { k: "board", label: "Board" }, { k: "week", label: "Week" }, { k: "library", label: "Library" },
 ];
 
+// Sam's three brand pillars (2026-09-10): cars, fitness, entrepreneurship — plus the two jobs that pay: sales/insurance and the APEX ask.
+// A clip's pillar is read off its existing AI tags/title/description, so nothing needs re-tagging; a tap on a chip pins it by writing the pillar word into tags.
+type PillarKey = "cars" | "fitness" | "entrepreneurship" | "sales" | "cta";
+const PILLARS: { k: PillarKey; label: string; re: RegExp }[] = [
+  { k: "cars", label: "Cars", re: /\b(cars?|corvette|vette|lambo|lamborghini|porsche|mercedes|benz|bmw|tesla|exotic|fleet|rental|turo|driving|wheels|garage)\b/i },
+  { k: "fitness", label: "Fitness", re: /\b(gym|workout|lift(?:ing)?|physique|training|fitness|bench|squat|deadlift|cardio|abs|muscle|shirtless|run(?:ning)?)\b/i },
+  { k: "entrepreneurship", label: "Entrepreneurship", re: /\b(office|desk|meeting|business|laptop|entrepreneur(?:ship)?|money|team|talking-head|whiteboard|podcast|mic|apex)\b/i },
+  { k: "sales", label: "Sales & insurance", re: /\b(sales?|insurance|agents?|closing|calls?|dialer|policy|policies|pitch|objection)\b/i },
+  { k: "cta", label: "CTA / recruiting", re: /\b(cta|recruit(?:ing)?|apply|application|hiring|join)\b/i },
+];
+const clipHay = (k: Clip) => `${k.title ?? ""} ${k.description ?? ""} ${(k.tags ?? []).join(" ")} ${k.name}`;
+const pillarsOf = (k: Clip): PillarKey[] => PILLARS.filter((p) => p.re.test(clipHay(k))).map((p) => p.k);
+
 const brandHandle = (b: string) => (b === "IMS" ? "@imakesystems" : "@sellfordaddy");
 const brandClass = (b: string) => (b === "IMS" ? "text-sky-300 border-sky-400/30 bg-sky-400/10" : "text-amber-300 border-amber-400/30 bg-amber-400/10");
 const cleanName = (n: string) => n.replace(/\.[a-z0-9]+$/i, "").replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
@@ -92,6 +106,7 @@ export default function LaunchBoard() {
   const [clips, setClips] = useState<Clip[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
+  const [pillar, setPillar] = useState<"all" | PillarKey>("all");
   const [folder, setFolder] = useState<"all" | "YouTube" | "Reels">("all");
   const [length, setLength] = useState<"all" | "short" | "mid" | "long">("all");
   const [shown, setShown] = useState(96);
@@ -107,7 +122,7 @@ export default function LaunchBoard() {
     catch { toast.success(`Share link: ${url}`); }
     setPicked(new Set());
   };
-  useEffect(() => { setShown(96); }, [query, folder, length]);
+  useEffect(() => { setShown(96); }, [query, folder, length, pillar]);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<Card | null>(null);
   const [draft, setDraft] = useState<Record<string, unknown>>(emptyDraft);
@@ -158,6 +173,16 @@ export default function LaunchBoard() {
     try { await navigator.clipboard.writeText(text); toast.success("Caption copied"); }
     catch { toast.error("Clipboard blocked — select the text and copy it"); }
   };
+  const togglePillar = async (k: Clip, p: PillarKey) => {
+    const cur = k.tags ?? [];
+    const on = cur.some((t) => t.toLowerCase() === p);
+    const next = on ? cur.filter((t) => t.toLowerCase() !== p) : [...cur, p];
+    const { error } = await supabase.from("content_clips").update({ tags: next }).eq("id", k.id);
+    if (error) { toast.error(error.message); return; }
+    setClips((prev) => prev.map((c) => (c.id === k.id ? { ...c, tags: next } : c)));
+    toast.success(on ? `Removed ${p}` : `Tagged ${p}`);
+  };
+
   const remove = async (c: Card) => {
     const ok = await askConfirm({ title: "Delete this card?", description: c.title, confirmText: "Delete", tone: "danger" });
     if (!ok) return;
@@ -228,9 +253,9 @@ export default function LaunchBoard() {
       const d = Number(k.duration_s ?? 0);
       return length === "all" || (length === "short" ? d > 0 && d <= 60 : length === "mid" ? d > 60 && d <= 300 : d > 300);
     };
-    return clips.filter((k) => (folder === "all" || k.folder === folder) && lenOk(k) && (!words.length || words.every((w) => hay(k).includes(w))))
+    return clips.filter((k) => (folder === "all" || k.folder === folder) && lenOk(k) && (pillar === "all" || pillarsOf(k).includes(pillar)) && (!words.length || words.every((w) => hay(k).includes(w))))
       .sort((a, b) => (b.modified_at ?? "").localeCompare(a.modified_at ?? ""));
-  }, [clips, query, folder, length]);
+  }, [clips, query, folder, length, pillar]);
   const fmtDur = (s?: number | null) => (s ? `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}` : "");
   const counts = useMemo(() => ({ total: cards.length, ready: ready.length, posted: cards.filter((c) => c.status === "posted").length }), [cards, ready]);
 
@@ -294,6 +319,7 @@ export default function LaunchBoard() {
           <button key={t.k} onClick={() => setTab(t.k)} className={`rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors ${tab === t.k ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>{t.label}</button>
         ))}
         <span className="ml-auto self-center text-xs text-muted-foreground">{attachTarget ? <>Attaching to <b className="text-foreground">{attachTarget.title}</b> · <button className="underline" onClick={() => setAttachTarget(null)}>cancel</button></> : null}</span>
+        <Button asChild size="sm" variant="outline" className="ml-2 h-8"><Link to="/dashboard/content">Queue &amp; approvals</Link></Button>
         <Button size="sm" onClick={openNew} className="ml-2 h-8 bg-primary text-primary-foreground hover:bg-primary/90"><Plus className="mr-1 h-3.5 w-3.5" />New idea</Button>
       </nav>
 
@@ -410,6 +436,15 @@ export default function LaunchBoard() {
                 {l === "all" ? "Any length" : l === "short" ? "≤ 1 min" : l === "mid" ? "1–5 min" : "5 min +"}
               </button>
             ))}
+            <span className="mx-1 hidden h-5 w-px bg-border sm:block" aria-hidden />
+            {([{ k: "all" as const, label: "All pillars" }, ...PILLARS] as { k: "all" | PillarKey; label: string }[]).map((p) => {
+              const n = p.k === "all" ? clips.length : clips.filter((k) => pillarsOf(k).includes(p.k as PillarKey)).length;
+              return (
+                <button key={p.k} onClick={() => setPillar(p.k)} className={`rounded-full border px-3 py-1 text-xs font-semibold ${pillar === p.k ? "border-primary/40 bg-primary/15 text-primary" : "border-border text-muted-foreground hover:text-foreground"}`}>
+                  {p.label} <span className="opacity-60">{n}</span>
+                </button>
+              );
+            })}
             <span className="text-xs text-muted-foreground">{visibleClips.length.toLocaleString()} match · {clips.filter((k) => k.thumb_url).length.toLocaleString()} with previews · newest first</span>
           </div>
           {attachTarget && <div className="rounded-xl border border-gold/40 bg-gold/10 px-3 py-2 text-sm text-foreground">Pick the clip for <b>{attachTarget.title}</b> — tap <b>Attach</b> on a row.</div>}
@@ -444,6 +479,17 @@ export default function LaunchBoard() {
                 </a>
                 <div className="flex flex-1 flex-col gap-1.5 p-3">
                   <div className="line-clamp-2 text-sm font-semibold leading-snug text-foreground">{k.title || cleanName(k.name)}</div>
+                  <div className="flex flex-wrap gap-1">
+                    {PILLARS.map((p) => {
+                      const on = pillarsOf(k).includes(p.k);
+                      return (
+                        <button key={p.k} title={on ? `Tagged ${p.label}` : `Tag as ${p.label}`} onClick={() => void togglePillar(k, p.k)}
+                          className={`rounded border px-1.5 py-0.5 text-[10px] font-semibold ${on ? "border-primary/40 bg-primary/15 text-primary" : "border-border text-muted-foreground hover:text-foreground"}`}>
+                          {p.label.split(" ")[0]}
+                        </button>
+                      );
+                    })}
+                  </div>
                   {k.tags && k.tags.length > 0 && <div className="flex flex-wrap gap-1">{k.tags.slice(0, 4).map((tg) => <button key={tg} onClick={() => setQuery(tg)} className="rounded-full border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground hover:text-foreground">{tg}</button>)}</div>}
                   <div className="mt-auto text-[11px] text-muted-foreground">{k.folder} · {fmtDate(k.modified_at)} · {fmtSize(k.size_bytes)}</div>
                   <div className="flex gap-1.5">

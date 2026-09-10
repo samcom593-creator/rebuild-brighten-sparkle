@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Clapperboard, Copy, Pencil, Play, RotateCcw, ShieldAlert, UserMinus, UserPlus, Users } from "lucide-react";
 import { toast } from "sonner";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -26,10 +27,11 @@ import { Skeleton } from "@/components/ui/skeleton";
  * edited_at so the next `cops sync --pull` carries them back to the CSV.
  */
 
+// Sam's three brand pillars (2026-09-10): cars, fitness, entrepreneurship — then the two jobs that pay.
 const SLOTS: { slot: string; pillars: string[]; brand: string; job: string }[] = [
-  { slot: "LIFESTYLE", pillars: ["LIFESTYLE", "CARS"], brand: "SFD", job: "reach" },
-  { slot: "MINDSET", pillars: ["PERSONALITY", "LEADERSHIP"], brand: "SFD", job: "reach" },
+  { slot: "CARS", pillars: ["CARS", "LIFESTYLE"], brand: "SFD", job: "reach" },
   { slot: "FITNESS", pillars: ["FITNESS"], brand: "SFD", job: "reach" },
+  { slot: "ENTREPRENEURSHIP", pillars: ["PERSONALITY", "LEADERSHIP", "LIFESTYLE"], brand: "SFD", job: "reach" },
   { slot: "AUTHORITY", pillars: ["INSURANCE", "SALES", "SYSTEMS"], brand: "IMS", job: "authority" },
   { slot: "CTA", pillars: ["RECRUITING", "TESTIMONIAL"], brand: "SFD", job: "conversion" },
 ];
@@ -304,6 +306,10 @@ export default function ContentQueue() {
         title="Content Queue"
         subtitle={`Yesterday ${score.yesterday}/${DAILY_TARGET} posted · streak ${score.streak} · last 7 days ${score.week}/${7 * DAILY_TARGET}. Only clips archived with a post URL count.`}
       />
+
+      <p className="text-xs text-muted-foreground">
+        Clips, ideas and the week live on the <Link to="/dashboard/launch-board" className="font-semibold text-primary hover:underline">Launch Board</Link>; this page is the approval queue the Mac tool syncs to.
+      </p>
 
       {rowsQuery.isError ? (
         <Card><CardContent className="p-4 text-sm text-destructive">Could not load the queue: {(rowsQuery.error as Error).message}</CardContent></Card>

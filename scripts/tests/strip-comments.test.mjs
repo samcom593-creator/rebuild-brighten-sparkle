@@ -101,6 +101,39 @@ const CASES = [
   // simply traded one blind spot for another.
   ["comment-after-url-text",      "STRIPPED", `<code>https://x.co/a</code>\n// MARK\n`],
   ["comment-after-url-string",    "STRIPPED", `const u = "https://x.co/a"; // MARK\n`],
+
+  // MP-503: a regex literal whose LEFT NEIGHBOUR IS A COMMENT. regexCanStartAt
+  // walked back over whitespace in the raw source, so it landed on the comment's
+  // last prose character -- `e` of "// note" -- read that as an identifier ending
+  // a value, and called the `/` a division. The quote in the regex body then
+  // opened a phantom string and every comment downstream survived. Latent from
+  // the day the regex rule shipped; it went live when check-dead-internal-links
+  // gained the repo's first regex-after-a-comment carrying a quote, and main was
+  // red for 7 consecutive runs. The lookback now reads the code-only view.
+  ["regex-after-line-comment",    "STRIPPED", `const A = [\n  // note\n  /["]/g,\n];\n// MARK\n`],
+  ["regex-after-block-comment",   "STRIPPED", `const A = [\n  /* note */\n  /["]/g,\n];\n// MARK\n`],
+  ["regex-after-cmt-apostrophe",  "STRIPPED", `const A = [\n  // note\n  /[']/g,\n];\n// MARK\n`],
+  ["regex-after-cmt-backtick",    "STRIPPED", 'const A = [\n  // note\n  /[`]/g,\n];\n// MARK\n'],
+  // The live shape, verbatim from check-dead-internal-links.mjs:117-118.
+  ["regex-after-cmt-live-shape",  "STRIPPED", `const A = [\n  // Narrow on purpose.\n  /(?:\\|\\||\\?\\?)\\s*["'\`](\\/[^"'\`\\s]*)["'\`]/g,\n];\n// MARK\n`],
+
+  // ...and the opposite direction. MP-503's first cut pinned it with two
+  // divide-after-a-comment cases and they were DECORATION: both wrote `/ 2` with
+  // a space, and the call site requires a non-space after the slash, so neither
+  // could ever reach the regex branch they claimed to guard. The over-widening
+  // mutation scored 43/43 against them. Replaced with the shape that actually
+  // flips, found by running the mutation rather than reasoning about it: widen
+  // the rule and the `/` of a JSX CLOSING TAG starts a regex that swallows to the
+  // `/` of the very next `{/*`, so the comment after it is never stripped. This
+  // is MP-482's documented deletes-real-code direction, and it is the reason
+  // RE_ALLOWED_BEFORE is a closed set rather than a default-yes.
+  ["jsx-close-then-inline-cmt",   "STRIPPED", `<a href="/x">t</a> {/* MARK */}\n`],
+  // Semantic pins for division, kept deliberately: neither flips under the
+  // over-widening mutation above (a `/ ` with a space never reaches the regex
+  // branch), so they pin meaning, not that mutation. The repo-wide parity check
+  // owns the over-widening direction across all 1,151 files.
+  ["divide-after-line-comment",   "SURVIVED", `const y = count // note\n  / 2; const b = MARK;\n`],
+  ["divide-after-block-comment",  "SURVIVED", `const y = total /* note */ / count; const b = MARK;\n`],
 ];
 
 let pass = 0;

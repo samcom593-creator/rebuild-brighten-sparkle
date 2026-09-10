@@ -91,13 +91,31 @@ function scanRegexLiteral(text, i, n) {
 }
 
 // True when a `/` at index i can only be starting a regex, never a division.
-function regexCanStartAt(text, i) {
+//
+// MP-503: the lookback must run over the CODE-ONLY view, never the raw source.
+// This walked back over whitespace in `text`, so a regex literal preceded by a
+// comment landed on the comment's last PROSE character -- `e` of "// note" reads
+// as an identifier, an identifier can end a value, so the `/` was called a
+// division and a quote in the regex body opened a phantom string. Same failure
+// family as MP-482 and MP-487, entered through the one door nobody had tried:
+// a comment. It was latent from the day the regex rule shipped and cost nothing
+// until check-dead-internal-links.mjs:118 became the repo's first regex-after-a-
+// comment whose body carries a quote; main was then red for 7 consecutive runs.
+//
+// `out` has every comment already blanked to spaces and the lexer is single-pass,
+// so every index below `i` is final. Reading it instead of `text` means the walk
+// skips comments for free and lands on the real previous token. Strings are NOT
+// blanked, which is correct: a string is a value, so `/` after one is division.
+// A genuine divide keeps its answer -- `a /* n */ / b` still lands on `a`.
+function regexCanStartAt(code, i) {
   let p = i - 1;
-  while (p >= 0 && /\s/.test(text[p])) p--;
+  while (p >= 0 && /\s/.test(code[p])) p--;
   if (p < 0) return true;
-  if (RE_ALLOWED_BEFORE.has(text[p])) return true;
-  if (arrowPrecedes(text, p)) return true;
-  return RE_KEYWORD_BEFORE.test(text.slice(Math.max(0, p - 11), p + 1));
+  if (RE_ALLOWED_BEFORE.has(code[p])) return true;
+  if (arrowPrecedes(code, p)) return true;
+  let tail = "";
+  for (let k = Math.max(0, p - 11); k <= p; k++) tail += code[k];
+  return RE_KEYWORD_BEFORE.test(tail);
 }
 
 // True when a `'` in CODE state is prose, not a string delimiter.
@@ -188,7 +206,7 @@ export function stripComments(text) {
 
     // A regex literal is code: skip it whole so a quote in its body cannot open a
     // phantom string. Checked AFTER the comment rules, so `//` and `/*` still win.
-    if (c === "/" && c2 !== undefined && !/\s/.test(c2) && regexCanStartAt(text, i)) {
+    if (c === "/" && c2 !== undefined && !/\s/.test(c2) && regexCanStartAt(out, i)) {
       const end = scanRegexLiteral(text, i, n);
       // Every recognised regex is skipped, with no filter on its body. The first
       // cut only intervened when the body held a quote, on the theory that a quote

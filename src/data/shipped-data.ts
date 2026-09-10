@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "The production list under the scoreboard tiles now adds up to the tiles. Vantage's reported production was counted in the totals but had no row in the list, so on any window (Day especially) the list read thousands short of the tile above it and Vantage looked missing. It now shows as one labeled row: Vantage Financial (reported, sellers unattributed).",
+    detail:
+      "Measured before the fix: today the tile said $15,325.20 and the rows summed to $7,407.00; month-to-date $87,233.76 vs $38,635.80, with 26 Vantage policies invisible. The RPC appends the external row only when the gap is visible to the viewer, keeps every comp field null so no contract level is invented, and the comp editor is hidden on that row. Patched in place on the live function with the anchor asserted unique. MP-CONTENT-3.",
+    commit: "mp-content-3-scoreboard-list-reconciles",
+  },
+  {
+    ts: "today",
+    label:
       "The Content page is now invite-only and Sam controls the list from the page itself: add a person by email, copy the invite, remove them in one tap. Anyone not on the list sees a locked screen, and the database refuses them rows and clips even if they keep the link.",
     detail:
       "New content_access table plus a content_can_access() predicate shared by the route gate, the content_queue row-level security, the private clip bucket policy and the update trigger, so the screen and the lock cannot disagree. Admins always pass; everyone else passes only while their sign-in email is listed and un-revoked. Invited people sign in with the email link, no password. MP-CONTENT-2.",

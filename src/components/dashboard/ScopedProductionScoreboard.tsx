@@ -61,6 +61,8 @@ interface ProductionProjection {
 }
 
 export interface ScoreboardAgentRow {
+  /** Vantage's owner-reported production: no attributed seller, so comp fields are null. Never editable. */
+  external?: boolean;
   agent_id: string;
   name: string;
   agency: string;
@@ -687,7 +689,10 @@ export function ScopedProductionScoreboard() {
                             <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
                               <span className="tabular-nums">{pct(row.seller_pct)}</span>
                               <ProvenanceChip value={row.seller_pct_provenance} />
-                              {canEditComp && !(isManager && !isAdmin && row.is_self) && (
+                              {row.external ? (
+                                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">reported</span>
+                              ) : null}
+                              {canEditComp && !row.external && !(isManager && !isAdmin && row.is_self) && (
                                 <CompLevelEditor
                                   agentId={row.agent_id}
                                   agentName={row.name}

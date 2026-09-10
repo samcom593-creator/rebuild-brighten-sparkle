@@ -427,7 +427,7 @@ export default function LaunchBoard() {
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative min-w-[240px] flex-1">
               <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search by what\u2019s in the clip — desk, drone, gym, car, event…" className="pl-8" />
+              <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search by what's in the clip — car, gym, drone, office…" className="pl-8" />
             </div>
             {(["all", "YouTube", "Reels"] as const).map((f) => (
               <button key={f} onClick={() => setFolder(f)} className={`rounded-full border px-3 py-1 text-xs font-semibold ${folder === f ? "border-primary/40 bg-primary/15 text-primary" : "border-border text-muted-foreground hover:text-foreground"}`}>
@@ -495,7 +495,6 @@ export default function LaunchBoard() {
                   {k.banger_score != null && (
                     <div className="flex items-center gap-2">
                       <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted"><div className={`h-full ${bangerColor(k.banger_score)}`} style={{ width: `${k.banger_score}%` }} /></div>
-                      <span className="text-[10px] font-semibold tabular-nums text-muted-foreground">{k.banger_score}</span>
                     </div>
                   )}
                   {k.hook_title && <button onClick={() => { void navigator.clipboard?.writeText(k.hook_title ?? "").then(() => toast.success("Hook copied")).catch(() => toast.error("Clipboard blocked")); }} className="self-start text-[10px] text-muted-foreground underline-offset-2 hover:text-primary hover:underline">copy hook</button>}

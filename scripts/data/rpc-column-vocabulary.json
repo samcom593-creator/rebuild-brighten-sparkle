@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-rpc-column-vocabulary.sh (bot_sql -> pg_proc + pg_rewrite)",
- "_generated_at": "2026-09-10T00:04:55Z",
+ "_generated_at": "2026-09-10T22:57:07Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "check-enum-filter-literals.mjs grades literals inside supabase.from().eq() chains. This is the other half of the same class: a status word that arrives from an RPC and is compared in JavaScript, where the return type is text and every wrong word type-checks. Per (function, returned column) this records the relation columns of that name reachable from the function body and the literals the function synthesises itself. It deliberately records CANDIDATES rather than one resolved source: provenance from a body regex is a guess, so check-rpc-status-literals.mjs refuses a literal only when NO candidate vocabulary and no body literal accepts it.",
  "_vocabulary_source": "scripts/data/enum-catalog.json (check_vocab + column_enum + enums). Not copied here on purpose, so the two guards read one snapshot and cannot drift.",
@@ -112,6 +112,7 @@
   "content_can_access": "boolean",
   "content_cards_touch_updated_at": "trigger",
   "content_clips_canon_tags": "text[]",
+  "content_clips_find_label": "text",
   "content_clips_search": "SETOF content_clips",
   "content_clips_upsert": "jsonb",
   "content_library_search_update": "trigger",
@@ -217,6 +218,7 @@
   "fn_enqueue_calendly_for_unlicensed": "trigger",
   "fn_enqueue_hired_licensed_onboarding": "trigger",
   "fn_enqueue_onboarding_call_booking": "jsonb",
+  "fn_enqueue_unlicensed_activation": "trigger",
   "fn_enrich_contracting_intake": "trigger",
   "fn_evaluate_personal_records": "integer",
   "fn_evaluate_recruiter_bounties": "integer",
@@ -294,6 +296,7 @@
   "fn_sweep_onboarding_call_gaps": "integer",
   "fn_sweep_recruiting_milestones": "integer",
   "fn_sync_is_manager": "trigger",
+  "fn_system_settings_reject_json_quoted": "trigger",
   "fn_telegram_queue_inactivity_nudges": "integer",
   "fn_today_tasks_touch_updated_at": "trigger",
   "fn_touch_agent_credentials_updated_at": "trigger",
@@ -2260,7 +2263,8 @@
     "agents.created_at",
     "applications.created_at",
     "production_external_daily_snapshots.created_at",
-    "profiles.created_at"
+    "profiles.created_at",
+    "vantage_producer_map.created_at"
    ],
    "body_literals": [
     "active",
@@ -2881,7 +2885,8 @@
     "agents.created_at",
     "applications.created_at",
     "production_external_daily_snapshots.created_at",
-    "profiles.created_at"
+    "profiles.created_at",
+    "vantage_producer_map.created_at"
    ],
    "body_literals": [
     "active",
@@ -4551,6 +4556,33 @@
     "interview_upcoming_t30",
     "public",
     "scheduled"
+   ]
+  },
+  "fn_text_json_quoted_sweep.col": {
+   "candidates": [],
+   "body_literals": [
+    "character varying",
+    "public",
+    "r",
+    "text"
+   ]
+  },
+  "fn_text_json_quoted_sweep.hits": {
+   "candidates": [],
+   "body_literals": [
+    "character varying",
+    "public",
+    "r",
+    "text"
+   ]
+  },
+  "fn_text_json_quoted_sweep.rel": {
+   "candidates": [],
+   "body_literals": [
+    "character varying",
+    "public",
+    "r",
+    "text"
    ]
   },
   "fn_unlicensed_digest_health.detail": {

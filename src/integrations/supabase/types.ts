@@ -85455,6 +85455,42 @@ export type Database = {
       }
     }
     Views: {
+      v_applicant_funnel_health: {
+        Row: {
+          apps_prior_4w: number | null
+          apps_window: number | null
+          completed: number | null
+          completion_pct: number | null
+          crit_rate_pct: number | null
+          mature_hours: number | null
+          min_starts: number | null
+          newest_app_hours_ago: number | null
+          starts: number | null
+          test_rows_excluded: number | null
+          verdict: string | null
+          window_days: number | null
+        }
+        Relationships: []
+      }
+      v_attribution_capture_health: {
+        Row: {
+          capture_pct: number | null
+          captured: number | null
+          channel_flipped: boolean | null
+          channels: number | null
+          crit_pct: number | null
+          imports_excluded: number | null
+          min_rows: number | null
+          prior_top_channel: string | null
+          top_channel: string | null
+          top_channel_rows: number | null
+          utm_tagged: number | null
+          verdict: string | null
+          web_rows: number | null
+          window_days: number | null
+        }
+        Relationships: []
+      }
       agent_lifetime_production: {
         Row: {
           agent_id: string | null

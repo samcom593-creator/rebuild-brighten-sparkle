@@ -1340,6 +1340,38 @@
         "raw": "p_tags text[], p_name text, p_kind text, p_desc text"
       }
     ],
+    "content_clips_find_label": [
+      {
+        "all": [
+          "p_modified",
+          "p_name",
+          "p_tags"
+        ],
+        "required": [
+          "p_modified",
+          "p_name",
+          "p_tags"
+        ],
+        "unnamed": false,
+        "raw": "p_name text, p_modified timestamp with time zone, p_tags text[]"
+      },
+      {
+        "all": [
+          "p_id",
+          "p_modified",
+          "p_name",
+          "p_tags"
+        ],
+        "required": [
+          "p_id",
+          "p_modified",
+          "p_name",
+          "p_tags"
+        ],
+        "unnamed": false,
+        "raw": "p_name text, p_modified timestamp with time zone, p_tags text[], p_id uuid"
+      }
+    ],
     "content_clips_search": [
       {
         "all": [
@@ -2651,6 +2683,14 @@
         ],
         "unnamed": false,
         "raw": "p_agent_id uuid, p_source text DEFAULT 'trigger'::text"
+      }
+    ],
+    "fn_enqueue_unlicensed_activation": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
       }
     ],
     "fn_enrich_contracting_intake": [

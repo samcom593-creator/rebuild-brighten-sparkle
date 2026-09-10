@@ -1,5 +1,5 @@
 {
-  "generated_by": "scripts/check-db-href-launder.mjs (MP-497)",
+  "_generated_by": "scripts/check-db-href-launder.mjs (MP-497)",
   "note": "Identity-keyed, not a count: fixing one site must never buy the right to add another (MP-356/357). Every column feeding these measured 0 scheme-less values in prod on 2026-09-09 — this is prevention, not a live leak.",
   "sites": [
     "src/components/admin/CourseContentViewer.tsx::module.video_url",

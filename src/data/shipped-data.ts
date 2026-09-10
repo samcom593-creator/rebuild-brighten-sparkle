@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "The daily content plan is now the real quota: 3 YouTube (mindset, vlog, authority) plus five short-form lanes each with an on-brand and a top-of-funnel post — cars, fitness, sales, systems, and Samuel James — 13 pieces a day, with Snapchat mirroring three to four through Repurpose. The 6 AM phone push and the approval cards both run this exact grid.",
+    detail:
+      "Slate slots and script-bank hooks in the Mac tool and the SLOTS on the Content page were rewritten to match and now share slot names, so the push and the approval queue cannot drift. Daily target moved from 5 to 13. Cars route to the exotics rental account, sales to the recruiting destination, systems to I Make Systems; Samuel James carries mindset and the formal flagship. MP-CONTENT-7.",
+    commit: "mp-content-7-daily-quota-grid",
+  },
+  {
+    ts: "today",
+    label:
       "One invite now opens the whole Launch Board — every clip, the board, the week — plus the Content queue. Sam adds a person by email on the Content page, copies the invite, sends it; they sign in with an email link and see all the videos. Remove them in one tap and the database refuses them the same second.",
     detail:
       "The Launch Board route moved from admin-only to the invite gate, and the row-level security on content_clips, content_cards and content_shares now admits the same content_can_access() predicate the queue uses, so the screen and the lock cannot disagree. Proven with a fixture email: listed sees 4,070 clips and 14 cards, revoked sees zero. The invite text leads with the Launch Board link. A no-login link was deliberately not built: it would hand the entire raw library to anyone it gets forwarded to. MP-CONTENT-6.",

@@ -27,15 +27,24 @@ import { Skeleton } from "@/components/ui/skeleton";
  * edited_at so the next `cops sync --pull` carries them back to the CSV.
  */
 
-// Sam's three brand pillars (2026-09-10): cars, fitness, entrepreneurship — then the two jobs that pay.
+// Sam's daily quota (2026-09-10): 3 YouTube + 5 short-form lanes x (on-brand + top-of-funnel).
+// Matches SLATE_SLOTS in content-ops so the 6 AM push and these approval cards agree.
 const SLOTS: { slot: string; pillars: string[]; brand: string; job: string }[] = [
-  { slot: "CARS", pillars: ["CARS", "LIFESTYLE"], brand: "SFD", job: "reach" },
-  { slot: "FITNESS", pillars: ["FITNESS"], brand: "SFD", job: "reach" },
-  { slot: "ENTREPRENEURSHIP", pillars: ["PERSONALITY", "LEADERSHIP", "LIFESTYLE"], brand: "SFD", job: "reach" },
-  { slot: "AUTHORITY", pillars: ["INSURANCE", "SALES", "SYSTEMS"], brand: "IMS", job: "authority" },
-  { slot: "CTA", pillars: ["RECRUITING", "TESTIMONIAL"], brand: "SFD", job: "conversion" },
+  { slot: "YT Mindset", pillars: ["PERSONALITY", "LEADERSHIP"], brand: "SJ", job: "youtube" },
+  { slot: "YT Vlog", pillars: ["LIFESTYLE", "CARS"], brand: "SFD", job: "youtube" },
+  { slot: "YT Authority", pillars: ["SYSTEMS", "SALES", "INSURANCE"], brand: "IMS", job: "youtube" },
+  { slot: "Cars brand", pillars: ["CARS"], brand: "EXOTICS", job: "on-brand" },
+  { slot: "Cars TOF", pillars: ["CARS", "LIFESTYLE"], brand: "SFD", job: "reach" },
+  { slot: "Fitness brand", pillars: ["FITNESS"], brand: "SFD", job: "on-brand" },
+  { slot: "Fitness TOF", pillars: ["FITNESS", "LIFESTYLE"], brand: "SFD", job: "reach" },
+  { slot: "Sales brand", pillars: ["INSURANCE", "SALES", "RECRUITING"], brand: "APEXFIN", job: "on-brand" },
+  { slot: "Sales TOF", pillars: ["SALES", "PERSONALITY"], brand: "SFD", job: "reach" },
+  { slot: "Systems brand", pillars: ["SYSTEMS"], brand: "IMS", job: "on-brand" },
+  { slot: "Systems TOF", pillars: ["SYSTEMS", "LEADERSHIP"], brand: "SFD", job: "reach" },
+  { slot: "Samuel James brand", pillars: ["LEADERSHIP", "PERSONALITY", "TESTIMONIAL"], brand: "SJ", job: "on-brand" },
+  { slot: "Samuel James TOF", pillars: ["PERSONALITY", "LIFESTYLE"], brand: "SJ", job: "reach" },
 ];
-const DAILY_TARGET = 5;
+const DAILY_TARGET = 13;
 const OPEN_STATUSES = ["INBOX", "EDITING", "NEEDS_REVIEW", "APPROVED", "READY"];
 const MEDIA_BUCKET = "content-media";
 const CONTENT_URL = "https://apex-financial.org/dashboard/content";

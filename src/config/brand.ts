@@ -136,3 +136,7 @@ export function resolveBrand(tenant?: TenantBrandSource | null): Brand {
 export function showsPoweredBy(brand: Brand, location: PoweredByLocation): boolean {
   return brand.brandingMode === "powered_by" && brand.poweredByLocations.includes(location);
 }
+
+/** Content-account display names. Kept here (the brand-config file) so the brand-literals ratchet
+ * has one source of truth for these strings instead of them being scattered through components. */
+export const CONTENT_ACCOUNTS = { exotics: "Apex Exotics", financial: "Apex Financial" } as const;

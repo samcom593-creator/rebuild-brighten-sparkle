@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "The daily plan and the first-time setup now live on the Content page itself, not only in Notes. A Daily plan and setup panel shows the 13-a-day grid and the exact step-by-step to connect the scheduling tools and post, so the crew always has it in the app.",
+    detail:
+      "Collapsible panel on /dashboard/content: the three YouTube slots, the five short-form lanes with their on-brand and top-of-funnel splits, the Snapchat mirror, then numbered setup steps for the scheduler, the mirror tool and the daily post loop. MP-CONTENT-8.",
+    commit: "mp-content-8-onsite-playbook",
+  },
+  {
+    ts: "today",
+    label:
       "The daily content plan is now the real quota: 3 YouTube (mindset, vlog, authority) plus five short-form lanes each with an on-brand and a top-of-funnel post — cars, fitness, sales, systems, and Samuel James — 13 pieces a day, with Snapchat mirroring three to four through Repurpose. The 6 AM phone push and the approval cards both run this exact grid.",
     detail:
       "Slate slots and script-bank hooks in the Mac tool and the SLOTS on the Content page were rewritten to match and now share slot names, so the push and the approval queue cannot drift. Daily target moved from 5 to 13. Cars route to the exotics rental account, sales to the recruiting destination, systems to I Make Systems; Samuel James carries mindset and the formal flagship. MP-CONTENT-7.",

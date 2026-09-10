@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Clapperboard, Copy, Pencil, Play, RotateCcw, ShieldAlert, UserMinus, UserPlus, Users } from "lucide-react";
+import { BookOpen, Check, Clapperboard, Copy, Pencil, Play, RotateCcw, ShieldAlert, UserMinus, UserPlus, Users } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { CONTENT_ACCOUNTS } from "@/config/brand";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { PageHeader } from "@/components/ui/page-header";
@@ -49,6 +50,41 @@ const OPEN_STATUSES = ["INBOX", "EDITING", "NEEDS_REVIEW", "APPROVED", "READY"];
 const MEDIA_BUCKET = "content-media";
 const CONTENT_URL = "https://apex-financial.org/dashboard/content";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// The daily plan + first-time setup, lived on the site (not just Notes) so the crew always has it.
+const DAILY_PLAN: { group: string; lines: string[] }[] = [
+  { group: "3 YouTube a day", lines: [
+    "Mindset -> Samuel James",
+    "Vlog (fleet, gym, 10 AM meeting, Corvette) -> Sell for Daddy",
+    "Authority (sales, systems, the 10 AM meeting) -> I Make Systems",
+  ] },
+  { group: "10 short-form a day (5 lanes x on-brand + top-of-funnel)", lines: [
+    "Cars: book-this-car (Exotics) + flex/POV (Sell for Daddy)",
+    "Fitness: physique tips + gym viral (Sell for Daddy)",
+    `Sales: we-hire/apply (${CONTENT_ACCOUNTS.financial}) + rookie-objection (Sell for Daddy)`,
+    "Systems: the AI system + stop-doing-this-manually (I Make Systems)",
+    "Samuel James: vision/standard + honest takes (Samuel James)",
+  ] },
+  { group: "3-4 Snapchat a day", lines: ["Repurpose mirrors the strongest verticals automatically — never post by hand."] },
+];
+const SETUP_STEPS: { title: string; steps: string[] }[] = [
+  { title: "1. Metricool (once)", steps: [
+    "Chrome -> app.metricool.com -> log in.",
+    `Connect a brand per account: Sell for Daddy (IG + TikTok), Samuel James (IG), I Make Systems (IG + TikTok), ${CONTENT_ACCOUNTS.financial} (IG), ${CONTENT_ACCOUNTS.exotics} (IG). Each is one OAuth popup.`,
+    "Add YouTube on the three accounts that post long-form.",
+  ] },
+  { title: "2. Repurpose (once)", steps: [
+    "repurpose.io -> log in.",
+    "One workflow per account: source = that account's READY folder, destination = Snapchat Spotlight (optional TikTok/Reels mirror).",
+    "It watches the folder and pushes on its own.",
+  ] },
+  { title: "3. Post (daily)", steps: [
+    "Launch Board -> Library -> tap a pillar -> pick clips -> download.",
+    "Drop each on the Metricool calendar, one-line caption, set as Draft.",
+    "Approve here on this page (or on the slate below).",
+    "After it goes live, record the post URL so it counts on the score.",
+  ] },
+];
 
 interface QueueRow {
   content_id: string;
@@ -113,6 +149,7 @@ export default function ContentQueue() {
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState<{ hook: string; caption: string; cta: string }>({ hook: "", caption: "", cta: "" });
   const [playing, setPlaying] = useState<{ id: string; url: string } | null>(null);
+  const [showPlaybook, setShowPlaybook] = useState(false);
 
   const rowsQuery = useQuery({
     queryKey: ["content_queue"],
@@ -319,6 +356,37 @@ export default function ContentQueue() {
       <p className="text-xs text-muted-foreground">
         Clips, ideas and the week live on the <Link to="/dashboard/launch-board" className="font-semibold text-primary hover:underline">Launch Board</Link>; this page is the approval queue the Mac tool syncs to.
       </p>
+
+      <Card>
+        <CardContent className="p-4">
+          <button className="flex w-full items-center justify-between gap-2 text-left" onClick={() => setShowPlaybook((v) => !v)}>
+            <span className="flex items-center gap-2 text-sm font-semibold"><BookOpen className="h-4 w-4 text-primary" aria-hidden /> Daily plan &amp; setup</span>
+            <span className="text-xs text-muted-foreground">{showPlaybook ? "hide" : "show"}</span>
+          </button>
+          {showPlaybook ? (
+            <div className="mt-3 space-y-4">
+              <div className="space-y-3">
+                {DAILY_PLAN.map((b) => (
+                  <div key={b.group}>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{b.group}</p>
+                    <ul className="mt-1 space-y-0.5 text-sm">{b.lines.map((l) => <li key={l}>{l}</li>)}</ul>
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-3 border-t border-border pt-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">First-time setup</p>
+                {SETUP_STEPS.map((s) => (
+                  <div key={s.title}>
+                    <p className="text-sm font-semibold">{s.title}</p>
+                    <ol className="mt-1 list-decimal space-y-0.5 pl-5 text-sm text-muted-foreground">{s.steps.map((x) => <li key={x}>{x}</li>)}</ol>
+                  </div>
+                ))}
+                <p className="text-xs text-muted-foreground">One login to Metricool and Repurpose unlocks the automated half. Everything else is live.</p>
+              </div>
+            </div>
+          ) : null}
+        </CardContent>
+      </Card>
 
       {rowsQuery.isError ? (
         <Card><CardContent className="p-4 text-sm text-destructive">Could not load the queue: {(rowsQuery.error as Error).message}</CardContent></Card>

@@ -132946,6 +132946,13 @@ export type Database = {
         Args: { p_application_id: string; p_manager_id?: string }
         Returns: string
       }
+      public_seminar_meeting: {
+        Args: never
+        Returns: {
+          label: string
+          url: string
+        }[]
+      }
       queue_active_hired_slack_invites: {
         Args: never
         Returns: {

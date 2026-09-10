@@ -22,6 +22,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+// Last-resort CTA target if the RPC is unreachable. ABSOLUTE by contract: an
+// internal path here renders a button that lands the visitor on <NotFound/>
+// with no HTTP error anywhere (MP-498).
+const SEMINAR_BOOKING_FALLBACK = "https://calendly.com/apexfinancialempire/interview";
+
 const schema = z.object({
   firstName: z.string().min(2, "First name is required").max(50),
   lastName: z.string().min(2, "Last name is required").max(50),
@@ -72,21 +77,28 @@ export default function SeminarPage() {
 
   const slots = useMemo(() => nextSeminarSlots(), []);
 
-  // Real meeting URL comes from system_settings so Sam can rotate it
-  // (Zoom/Meet link) without a redeploy. Falls back to a /seminar/join
-  // route for the rare case the row is missing.
+  // Real meeting URL comes from system_settings so Sam can rotate it without a
+  // redeploy — but this page is PUBLIC and system_settings has exactly one
+  // SELECT policy, TO authenticated. Reading the table directly returned zero
+  // rows for every anonymous visitor, so the fallback below was the live path
+  // (MP-498). It is read through public_seminar_meeting(), a security-definer
+  // RPC that exposes these two keys only and btrims the value, because
+  // system_settings.value is text and has been written to_jsonb'd before
+  // (MP-400 — a stored `"https://..."` fails this page's own startsWith("http")
+  // test and navigates in-app).
+  //
+  // The fallback is ABSOLUTE on purpose. An internal path here is a dead link:
+  // vercel.json 200s every URL (MP-295) and react-router serves path="*", so it
+  // fails silently. check:dead-internal-links now grades this shape.
   const meetingCfg = useQuery({
     queryKey: ["seminar-meeting-url"],
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
-      const { data } = await supabase
-        .from("system_settings")
-        .select("key, value")
-        .in("key", ["seminar_meeting_url", "seminar_meeting_url_label"]);
-      const map = new Map((data ?? []).map((r: any) => [r.key, r.value as string]));
+      const { data } = await supabase.rpc("public_seminar_meeting");
+      const row = Array.isArray(data) ? data[0] : data;
       return {
-        url: map.get("seminar_meeting_url") || "/seminar/join",
-        label: map.get("seminar_meeting_url_label") || "Join the seminar",
+        url: (row?.url as string) || SEMINAR_BOOKING_FALLBACK,
+        label: (row?.label as string) || "Book your seat",
       };
     },
   });

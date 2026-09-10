@@ -59,6 +59,17 @@ const LINK_PATTERNS = [
   /\bhref="(\/[^"]*)"/g,
   /\bnavigate\(\s*["'`](\/[^"'`]*)["'`]/g,
   /\bto=\{\s*[`"'](\/[^`"']*)[`"']\s*\}/g,
+  // MP-498: a path does not have to sit next to `href=` to become one. The four
+  // patterns above only see a literal LEXICALLY ADJACENT to a link attribute, so
+  // a path that reaches an href through a variable was ungraded — and a
+  // FALLBACK is exactly that shape. SeminarPage.tsx held
+  //   url: map.get("seminar_meeting_url") || "/seminar/join"
+  // which fed href={meetingCfg.data.url} on the public /seminar CTA. That route
+  // does not exist, so every anonymous visitor (system_settings is readable
+  // TO authenticated only, so the fallback was the LIVE path, not the rare one)
+  // landed on <NotFound/>. Measured across all of src/: 4 literals match this
+  // shape, 3 were already declared routes, 1 was the bug. Narrow on purpose.
+  /(?:\|\||\?\?)\s*["'`](\/[^"'`\s]*)["'`]/g,
 ];
 
 export function scanFile(file, src, routes) {

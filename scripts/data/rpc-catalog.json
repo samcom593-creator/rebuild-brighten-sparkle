@@ -4838,6 +4838,14 @@
         "raw": "p_application_id uuid, p_manager_id uuid DEFAULT NULL::uuid"
       }
     ],
+    "public_seminar_meeting": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "queue_active_hired_slack_invites": [
       {
         "all": [],

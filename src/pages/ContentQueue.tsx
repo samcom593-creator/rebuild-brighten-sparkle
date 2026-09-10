@@ -222,7 +222,7 @@ export default function ContentQueue() {
     onError: (e: Error) => toast.error(/duplicate|unique/i.test(e.message) ? "That email is already on the list" : e.message || "Could not update access"),
   });
   const copyInvite = async (email: string) => {
-    const text = `You have access to Sam's Content page: ${CONTENT_URL}\nSign in with ${email}. On the login page choose "email me a link" — no password needed.`;
+    const text = `You have access to Sam's Launch Board (every clip, the board, the week) and the Content queue.\nOpen: https://apex-financial.org/dashboard/launch-board\nSign in with ${email} — on the login page choose "email me a link", no password needed.\nApprovals live at ${CONTENT_URL}`;
     try {
       await navigator.clipboard.writeText(text);
       toast.success("Invite copied — paste it to them");
@@ -356,7 +356,7 @@ export default function ContentQueue() {
           <Card>
             <CardContent className="space-y-3 p-4">
               <p className="text-xs text-muted-foreground">
-                Add a person by the email they will sign in with, then send them the invite. They see and can work this page only while listed here. Remove them in one tap; the database refuses them the same second.
+                Add a person by the email they will sign in with, then send them the invite. One invite opens the whole Launch Board (every clip, the board, the week) and this queue, only while they are listed here. Remove them in one tap; the database refuses them the same second.
               </p>
               <form
                 className="flex flex-col gap-2 sm:flex-row"

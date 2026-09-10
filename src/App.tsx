@@ -531,7 +531,7 @@ const App = () => (
                         accounts. Admins + va_manager role only. */}
                     <Route path="/va-team" element={<ProtectedRoute requireAdmin allowRoles={["va_manager"]}><VaManagerPortal /></ProtectedRoute>} />
                     <Route path="/dashboard/apex-control" element={<ProtectedRoute requireAdmin><ApexControl /></ProtectedRoute>} />
-                    <Route path="/dashboard/launch-board" element={<ProtectedRoute requireAdmin><LaunchBoard /></ProtectedRoute>} />
+                    <Route path="/dashboard/launch-board" element={<ProtectedRoute><ContentAccessGate><LaunchBoard /></ContentAccessGate></ProtectedRoute>} />
                     <Route path="/dashboard/agencies" element={<ProtectedRoute requireAdmin><Agencies /></ProtectedRoute>} />
                     <Route path="/dashboard/builders" element={<ProtectedRoute requireAdmin><BuildersDashboard mode="builders" /></ProtectedRoute>} />
                     <Route path="/dashboard/builders/:builderId" element={<ProtectedRoute requireAdmin><BuildersDashboard mode="builders" /></ProtectedRoute>} />

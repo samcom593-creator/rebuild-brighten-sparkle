@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "One invite now opens the whole Launch Board — every clip, the board, the week — plus the Content queue. Sam adds a person by email on the Content page, copies the invite, sends it; they sign in with an email link and see all the videos. Remove them in one tap and the database refuses them the same second.",
+    detail:
+      "The Launch Board route moved from admin-only to the invite gate, and the row-level security on content_clips, content_cards and content_shares now admits the same content_can_access() predicate the queue uses, so the screen and the lock cannot disagree. Proven with a fixture email: listed sees 4,070 clips and 14 cards, revoked sees zero. The invite text leads with the Launch Board link. A no-login link was deliberately not built: it would hand the entire raw library to anyone it gets forwarded to. MP-CONTENT-6.",
+    commit: "mp-content-6-launch-board-invite",
+  },
+  {
+    ts: "today",
+    label:
       "The Launch Board library now filters by Sam's three brand pillars — Cars, Fitness, Entrepreneurship — plus Sales & insurance and CTA, with counts, so a car clip is one tap away instead of a search. Any clip can be pinned to a pillar with one tap, and the Launch Board and the Content approval queue now link to each other.",
     detail:
       "Pillars are read off the visual tags, titles and descriptions the library already carries for 3,576 of 4,070 clips (car x840, workout x240, office x297), so nothing needed re-tagging; tapping a pillar on a clip writes the pillar word into its tags so it stays. The daily slate on the Content page and in the Mac tool now runs CARS, FITNESS, ENTREPRENEURSHIP, AUTHORITY, CTA. MP-CONTENT-5.",

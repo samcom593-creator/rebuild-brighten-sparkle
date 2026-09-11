@@ -57,7 +57,7 @@ async function flush() {
         event_name: evt.event_name,
         event_category: evt.event_category,
         properties: (evt.properties ?? {}) as any,
-        url: evt.url ?? (typeof window !== "undefined" ? window.location.pathname : null),
+        url: evt.url ?? null,
         user_id: evt.user_id ?? currentUserId,
         session_id: sessionId,
         user_agent: userAgent,
@@ -80,7 +80,18 @@ export function track(
   properties?: Record<string, unknown>
 ) {
   if (typeof window === "undefined") return;
-  queue.push({ event_name: eventName, event_category: category, properties });
+  // MP-513: the page is captured HERE, when the event happens -- not in flush().
+  // flush() is debounced (scheduleFlush clears and restarts the 5s timer on every
+  // event) and drains after navigation, so reading window.location at drain time
+  // stamped each row with wherever the user had got to by then. Measured on the
+  // one event class that records its own path: 9,532 of 36,048 page_views (26.44%)
+  // carried a url contradicting their own properties.path.
+  queue.push({
+    event_name: eventName,
+    event_category: category,
+    properties,
+    url: window.location.pathname,
+  });
   if (queue.length >= MAX_BATCH) {
     void flush();
   } else {

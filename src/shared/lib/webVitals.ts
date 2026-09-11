@@ -7,6 +7,13 @@ interface VitalEntry {
   name: string;
   value: number;
   rating?: "good" | "needs-improvement" | "poor";
+  /**
+   * MP-513: the page this vital was OBSERVED on, captured in enqueue(). A web
+   * vital is a per-page measurement, so the page must be read when the entry is
+   * made, not when the batch drains up to 5s later -- by then the user may be on
+   * another route and the metric is filed against a page that never produced it.
+   */
+  url: string | null;
 }
 
 interface LayoutShiftEntry extends PerformanceEntry {
@@ -61,7 +68,7 @@ async function flush() {
         event_name: `web_vital.${v.name}`,
         event_category: "performance",
         properties: { value: v.value, rating: v.rating },
-        url: typeof window !== "undefined" ? window.location.pathname : null,
+        url: v.url,
         user_agent: typeof navigator !== "undefined" ? navigator.userAgent : null,
         session_id: sessionId,
       }))
@@ -71,10 +78,14 @@ async function flush() {
   }
 }
 
-function enqueue(entry: VitalEntry) {
+function enqueue(entry: Omit<VitalEntry, "url">) {
   if (reported.has(entry.name)) return;
-  const existing = pending.get(entry.name);
-  if (!existing || entry.value >= existing.value) pending.set(entry.name, entry);
+  const stamped: VitalEntry = {
+    ...entry,
+    url: typeof window !== "undefined" ? window.location.pathname : null,
+  };
+  const existing = pending.get(stamped.name);
+  if (!existing || stamped.value >= existing.value) pending.set(stamped.name, stamped);
   // Fixed window, not a debounce: continuous interaction must not keep an
   // ever-growing batch alive forever. Map cardinality is capped by vital name.
   if (flushTimer === undefined) flushTimer = window.setTimeout(() => void flush(), 5000);

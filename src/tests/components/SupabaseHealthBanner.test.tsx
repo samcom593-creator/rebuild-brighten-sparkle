@@ -20,6 +20,14 @@ import { render, screen, act, fireEvent } from "@testing-library/react";
 import { supabase } from "@/integrations/supabase/client";
 import { SupabaseHealthBanner } from "@/components/SupabaseHealthBanner";
 
+// MP-515: the banner is an ops instrument and now arms only for a signed-in
+// session, so every test below has to say which session it is running as.
+// Mocked rather than wrapped in a real <AuthProvider> because AuthContext is
+// not exported and the provider would drag real auth bootstrapping into a unit
+// test whose subject is the probe, not the session.
+const auth = vi.hoisted(() => ({ user: { id: "test-user" } as { id: string } | null }));
+vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: auth.user }) }));
+
 // The component calls: supabase.from("system_settings").select("key").limit(1).abortSignal(ctrl.signal)
 // abortSignal returns a Promise<{ error }>.
 
@@ -79,6 +87,47 @@ async function settleProbe() {
     await Promise.resolve();
   });
 }
+
+describe("SupabaseHealthBanner — signed-out visitor", () => {
+  // The contract this wave shipped, and the regression guard for it. On the
+  // public landing page this banner used to mount ~36s in and displace the
+  // whole page 61px (CLS 0.0741 against a 0.05 budget). A signed-out visitor
+  // cannot act on "the database is slow", so the probe must never arm and the
+  // banner must never appear — INCLUDING on a probe that would have failed,
+  // which is the only case that could ever have rendered it.
+  it("never probes and never renders, even when the probe would fail", async () => {
+    auth.user = null;
+    vi.mocked(supabase.from).mockReturnValue(buildProbeChainRejected(0) as any);
+    const { container } = render(<SupabaseHealthBanner />);
+    await runInitialProbe();
+    await runSecondProbe();
+    expect(vi.mocked(supabase.from).mock.calls.length).toBe(0);
+    expect(container.firstChild).toBeNull();
+    expect(screen.queryByText(/Data connection/i)).toBeNull();
+    auth.user = { id: "test-user" };
+  });
+
+  // M2 of this wave's mutation proof passed without this case, which means the
+  // render guard was redundant-but-untested: with the probe gated, state never
+  // leaves "ok", so `!user` in the return condition was never observable. It IS
+  // observable on the real transition — an agent signed in while the backend is
+  // degraded, then signs out. The banner must go with the session, or a
+  // signed-out visitor keeps the outage bar (and its 61px of layout shift).
+  it("clears the banner when the session ends mid-outage", async () => {
+    auth.user = { id: "test-user" };
+    vi.mocked(supabase.from).mockReturnValue(buildProbeChainRejected(0) as any);
+    const { container, rerender } = render(<SupabaseHealthBanner />);
+    await runInitialProbe();
+    await runSecondProbe();
+    expect(screen.queryByText(/Data connection/i)).not.toBeNull();
+
+    auth.user = null;
+    rerender(<SupabaseHealthBanner />);
+    expect(container.firstChild).toBeNull();
+    expect(screen.queryByText(/Data connection/i)).toBeNull();
+    auth.user = { id: "test-user" };
+  });
+});
 
 describe("SupabaseHealthBanner — ok state", () => {
   it("renders nothing when probe succeeds immediately", async () => {

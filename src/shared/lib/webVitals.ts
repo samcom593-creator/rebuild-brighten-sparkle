@@ -3,6 +3,8 @@
 // loading the supabase chunk inside flush() removes this edge from the eager
 // landing graph.
 
+import { beaconAnalyticsRows } from "@/shared/telemetry/beacon";
+
 interface VitalEntry {
   name: string;
   value: number;
@@ -53,6 +55,18 @@ function telemetrySessionId(): string | null {
   }
 }
 
+function buildRows(batch: VitalEntry[]) {
+  const sessionId = telemetrySessionId();
+  return batch.map((v) => ({
+    event_name: `web_vital.${v.name}`,
+    event_category: "performance",
+    properties: { value: v.value, rating: v.rating },
+    url: v.url,
+    user_agent: typeof navigator !== "undefined" ? navigator.userAgent : null,
+    session_id: sessionId,
+  }));
+}
+
 async function flush() {
   if (flushTimer !== undefined) window.clearTimeout(flushTimer);
   flushTimer = undefined;
@@ -60,22 +74,35 @@ async function flush() {
   const batch = Array.from(pending.values());
   pending.clear();
   for (const vital of batch) reported.add(vital.name);
-  const sessionId = telemetrySessionId();
   try {
     const { supabase } = await import("@/integrations/supabase/client");
-    await supabase.from("analytics_events").insert(
-      batch.map((v) => ({
-        event_name: `web_vital.${v.name}`,
-        event_category: "performance",
-        properties: { value: v.value, rating: v.rating },
-        url: v.url,
-        user_agent: typeof navigator !== "undefined" ? navigator.userAgent : null,
-        session_id: sessionId,
-      }))
-    );
+    await supabase.from("analytics_events").insert(buildRows(batch));
   } catch { // empty-catch-allow:telemetry-fire-and-forget
     // swallow — vitals telemetry must not break the app
   }
+}
+
+/**
+ * MP-514: the flush used when the document is going away. See beacon.ts — a
+ * network call placed after `await` in a pagehide handler is never issued at
+ * all, so every terminal vitals batch was lost. LCP in particular is usually
+ * still in `pending` when a bounce visitor leaves, which is exactly the
+ * session whose load performance is worth knowing about.
+ *
+ * `pending` is only cleared once the request is issued; otherwise the entries
+ * are handed back to flush(), which still works on a tab-switch hide.
+ */
+function flushTerminal() {
+  if (pending.size === 0) return;
+  const batch = Array.from(pending.values());
+  if (beaconAnalyticsRows(buildRows(batch))) {
+    pending.clear();
+    for (const vital of batch) reported.add(vital.name);
+    if (flushTimer !== undefined) window.clearTimeout(flushTimer);
+    flushTimer = undefined;
+    return;
+  }
+  void flush();
 }
 
 function enqueue(entry: Omit<VitalEntry, "url">) {
@@ -130,7 +157,7 @@ export function initWebVitals() {
   }
 
   window.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") void flush();
+    if (document.visibilityState === "hidden") flushTerminal();
   });
-  window.addEventListener("pagehide", () => void flush());
+  window.addEventListener("pagehide", () => flushTerminal());
 }

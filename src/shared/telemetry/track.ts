@@ -11,6 +11,8 @@
  * - Failures are swallowed; telemetry must never break product flows.
  */
 
+import { beaconAnalyticsRows } from "./beacon";
+
 type EventCategory = "navigation" | "auth" | "interaction" | "performance" | "error" | "system";
 
 interface QueuedEvent {
@@ -44,28 +46,54 @@ function scheduleFlush() {
   flushTimer = window.setTimeout(flush, FLUSH_INTERVAL_MS);
 }
 
+function buildRows(batch: QueuedEvent[]) {
+  const sessionId = getSessionId();
+  const userAgent = typeof navigator !== "undefined" ? navigator.userAgent : null;
+  return batch.map((evt) => ({
+    event_name: evt.event_name,
+    event_category: evt.event_category,
+    properties: (evt.properties ?? {}) as any,
+    url: evt.url ?? null,
+    user_id: evt.user_id ?? currentUserId,
+    session_id: sessionId,
+    user_agent: userAgent,
+  }));
+}
+
 async function flush() {
   if (queue.length === 0) return;
   const batch = queue.splice(0);
-  const sessionId = getSessionId();
-  const userAgent = typeof navigator !== "undefined" ? navigator.userAgent : null;
 
   try {
     const { supabase } = await import("@/integrations/supabase/client");
-    await supabase.from("analytics_events").insert(
-      batch.map((evt) => ({
-        event_name: evt.event_name,
-        event_category: evt.event_category,
-        properties: (evt.properties ?? {}) as any,
-        url: evt.url ?? null,
-        user_id: evt.user_id ?? currentUserId,
-        session_id: sessionId,
-        user_agent: userAgent,
-      }))
-    );
+    await supabase.from("analytics_events").insert(buildRows(batch));
   } catch { // empty-catch-allow:telemetry-fire-and-forget
     // swallow — telemetry must not throw
   }
+}
+
+/**
+ * MP-514: the flush used when the document is going away.
+ *
+ * flush() above is unusable here. It awaits a dynamic import before it touches
+ * the network, and a continuation scheduled after the document is discarded
+ * never runs — measured in Chromium across two exit fixtures, warm chunk and
+ * cold chunk alike (see beacon.ts). Every terminal batch was lost in full.
+ *
+ * The queue is only emptied once the request is actually issued. If the beacon
+ * cannot be sent we hand the events back to flush() rather than dropping them:
+ * on a tab-switch hide the page survives and the async path still works, and a
+ * queue silently discarded is a worse failure than a queue written late.
+ */
+function flushTerminal() {
+  if (queue.length === 0) return;
+  if (beaconAnalyticsRows(buildRows(queue))) {
+    queue.splice(0);
+    if (flushTimer) window.clearTimeout(flushTimer);
+    flushTimer = undefined;
+    return;
+  }
+  void flush();
 }
 
 /** Update the active user id (called by AuthProvider on session changes). */
@@ -103,7 +131,7 @@ export function track(
 export function initTelemetry() {
   if (typeof window === "undefined") return;
   window.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") void flush();
+    if (document.visibilityState === "hidden") flushTerminal();
   });
-  window.addEventListener("pagehide", () => void flush());
+  window.addEventListener("pagehide", () => flushTerminal());
 }

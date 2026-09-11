@@ -53,6 +53,33 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const WRITERS = ["src/shared/telemetry/track.ts", "src/shared/lib/webVitals.ts"];
 const TABLE = "analytics_events";
 
+/**
+ * MP-514 widened this: the payload may now be built by a named row-builder and
+ * passed as `.insert(buildRows(batch))`, because the terminal (unload) writer
+ * has to construct its rows SYNCHRONOUSLY and therefore cannot inline them
+ * inside the async flush. When the .insert( argument is a bare call, resolve
+ * that function in the same file and scan ITS body instead.
+ *
+ * This is a widening, not a weakening: the resolved body is checked against the
+ * identical contract, and an argument that looks like delegation but cannot be
+ * resolved is a FAILURE, not a pass. MP-513's own "matched nothing must not
+ * report a pass" rule is what caught this refactor in the first place.
+ */
+function resolveDelegatedPayload(src, argBody) {
+  const call = argBody.match(/^\.insert\(\s*([A-Za-z_$][\w$]*)\s*\(/);
+  if (!call) return null;
+  const name = call[1];
+  const at = src.search(new RegExp(`function\\s+${name}\\s*\\(`));
+  if (at === -1) return { name, body: null };
+  let depth = 0, start = -1, end = -1;
+  for (let i = at; i < src.length; i++) {
+    if (src[i] === "{") { if (depth === 0) start = i; depth++; }
+    else if (src[i] === "}") { depth--; if (depth === 0) { end = i; break; } }
+  }
+  if (start === -1 || end === -1) return { name, body: null };
+  return { name, body: src.slice(start, end + 1) };
+}
+
 /** Return the source slice of each `.insert(` argument list, paren-matched. */
 function insertPayloads(src) {
   const out = [];
@@ -97,7 +124,17 @@ for (const rel of WRITERS) {
   }
 
   // CONTRACT A
-  for (const payload of insertPayloads(src)) {
+  for (let payload of insertPayloads(src)) {
+    // MP-514: follow one level of delegation before deciding this payload is
+    // uninteresting, or `.insert(buildRows(batch))` silently scans nothing.
+    const delegated = resolveDelegatedPayload(src, payload.body);
+    if (delegated) {
+      if (delegated.body === null) {
+        failures.push(`${rel}: .insert() delegates to ${delegated.name}(), which this guard could not resolve in the same file. Refusing to report a pass on a payload it could not read.`);
+        continue;
+      }
+      payload = { ...payload, body: delegated.body };
+    }
     if (!payload.body.includes("url")) continue;
     checkedPayloads++;
     if (payload.unterminated) {

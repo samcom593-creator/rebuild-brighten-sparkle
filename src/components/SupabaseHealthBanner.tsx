@@ -48,6 +48,18 @@ function SecondsSince({ since }: { since: Date }) {
   return <>{Math.max(1, Math.floor((Date.now() - since.getTime()) / 1000))}s ago</>;
 }
 
+// MP-517: signed-out visitors are disarmed on the landing page (the CLS reason
+// documented in the effect below), but a locked-out person on the LOGIN page is
+// exactly who needs to be told the backend is down instead of shown a bare
+// "invalid login" toast. Auth routes have no landing-page CLS budget to protect,
+// so arm there too. Read from window.location because this banner mounts ABOVE
+// <BrowserRouter> (App.tsx), so a router hook here would throw.
+function onAuthRoute(): boolean {
+  if (typeof window === "undefined") return false;
+  const p = window.location.pathname;
+  return p === "/login" || p.startsWith("/login") || p.startsWith("/agent-login") || p.startsWith("/magic-login");
+}
+
 export function SupabaseHealthBanner() {
   const { user } = useAuth();
   const [state, setState] = useState<"ok" | "slow" | "down">("ok");
@@ -120,27 +132,39 @@ export function SupabaseHealthBanner() {
     // on "Postgres data plane unresponsive" — it costs them a layout shift and
     // an amber outage bar over Sam's landing page to tell them something only
     // Sam and his agents can do anything about.
-    if (!user) return;
-    const initial = setTimeout(() => probeRef.current(), 30_000);
-    const id = setInterval(() => probeRef.current(), 60_000);
+    // MP-517: arm for a signed-in session anywhere, OR any signed-out visitor
+    // sitting on an auth route. The signed-out login visitor gets a fast first
+    // probe (no landing-page CLS budget here) so a real outage surfaces in
+    // seconds rather than 30s, plus a tighter poll so recovery clears the
+    // notice quickly and signs them straight in.
+    const onAuth = onAuthRoute();
+    if (!user && !onAuth) return;
+    const firstDelay = user ? 30_000 : 3_000;
+    const pollMs = user ? 60_000 : 12_000;
+    const initial = setTimeout(() => probeRef.current(), firstDelay);
+    const id = setInterval(() => probeRef.current(), pollMs);
     return () => {
       clearTimeout(initial);
       clearInterval(id);
     };
   }, [user]);
 
-  if (!user || dismissed || state === "ok") return null;
+  if ((!user && !onAuthRoute()) || dismissed || state === "ok") return null;
 
-  const message = state === "down"
-    ? "The database is not answering. Dashboards may load slowly or show stale numbers until it recovers."
-    : "Backend is sluggish. Some queries are taking >3s.";
+  const message = !user
+    ? (state === "down"
+        ? "We can't reach our servers right now. This is a temporary issue on our side, not your email or password. This page will sign you in automatically the moment it recovers."
+        : "Servers are responding slowly. Sign-in may take a few seconds.")
+    : (state === "down"
+        ? "The database is not answering. Dashboards may load slowly or show stale numbers until it recovers."
+        : "Backend is sluggish. Some queries are taking >3s.");
 
   return (
-    <div className="sticky top-0 z-50 lg:ml-[240px] bg-amber-500/95 text-amber-950 border-b border-amber-700 px-4 py-2 flex items-center justify-between gap-3 text-sm">
+    <div className={`sticky top-0 z-50 ${user ? "lg:ml-[240px] " : ""}bg-amber-500/95 text-amber-950 border-b border-amber-700 px-4 py-2 flex items-center justify-between gap-3 text-sm`}>
       <div className="flex items-center gap-2 min-w-0">
         <AlertTriangle className="h-4 w-4 flex-shrink-0" />
         <span className="truncate">
-          <strong>Data connection {state === "down" ? "down" : "slow"}</strong> · {message}
+          <strong>{!user ? (state === "down" ? "Temporarily unavailable" : "Slow connection") : `Data connection ${state === "down" ? "down" : "slow"}`}</strong> · {message}
           {state === "down" && downSince && (
             <span className="opacity-70"> (<ElapsedSince since={downSince} />)</span>
           )}

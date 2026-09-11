@@ -250,3 +250,66 @@ describe("SupabaseHealthBanner — polling interval", () => {
     expect(vi.mocked(supabase.from).mock.calls.length).toBeGreaterThan(callsAfterMount);
   });
 });
+
+// MP-517: the login-route gap. MP-515 correctly disarmed the banner for
+// signed-out visitors on the landing page (its layout-shift budget). But the
+// people who "cannot get in" during a backend outage are signed-out visitors
+// on /login, and they were shown only a bare auth-error toast. The banner now
+// arms on auth routes for signed-out visitors too, with a fast first probe.
+describe("SupabaseHealthBanner — signed-out visitor on the login route", () => {
+  const realLocation = window.location;
+  beforeEach(() => {
+    auth.user = null;
+    window.history.pushState({}, "", "/login");
+  });
+  afterEach(() => {
+    window.history.pushState({}, "", "/");
+    auth.user = { id: "test-user" };
+  });
+
+  async function runLoginProbes() {
+    // signed-out firstDelay = 3s (slow), pollMs = 12s -> second probe = down
+    await act(async () => {
+      vi.advanceTimersByTime(3_001);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(12_001);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+  }
+
+  it("arms the probe and shows the login-safe outage message when the backend is down", async () => {
+    vi.mocked(supabase.from).mockReturnValue(buildProbeChainRejected(0) as any);
+    render(<SupabaseHealthBanner />);
+    await runLoginProbes();
+    expect(vi.mocked(supabase.from).mock.calls.length).toBeGreaterThan(0);
+    expect(screen.queryByText(/not your email or password/i)).not.toBeNull();
+  });
+
+  it("clears itself the moment the backend recovers", async () => {
+    vi.mocked(supabase.from).mockReturnValue(buildProbeChainRejected(0) as any);
+    const { container } = render(<SupabaseHealthBanner />);
+    await runLoginProbes();
+    expect(screen.queryByText(/not your email or password/i)).not.toBeNull();
+    // backend comes back; next probe succeeds -> banner clears. The async
+    // timer variant flushes the probe's dynamic-import + resolved-value
+    // microtask chain, which the sync variant + manual resolves does not.
+    vi.mocked(supabase.from).mockReturnValue(buildProbeChain({ error: null }, 0) as any);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(12_001);
+    });
+    expect(container.firstChild).toBeNull();
+  });
+
+  it("still never renders for a signed-out visitor on the landing page", async () => {
+    window.history.pushState({}, "", "/");
+    vi.mocked(supabase.from).mockReturnValue(buildProbeChainRejected(0) as any);
+    const { container } = render(<SupabaseHealthBanner />);
+    await runLoginProbes();
+    expect(vi.mocked(supabase.from).mock.calls.length).toBe(0);
+    expect(container.firstChild).toBeNull();
+  });
+});

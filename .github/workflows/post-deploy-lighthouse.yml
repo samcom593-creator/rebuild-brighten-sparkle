@@ -25,10 +25,57 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Wait for Vercel promote
-        # 90s buffer so the new deploy has time to flip into production
-        # before we measure against it.
-        run: sleep 90
+      # MP-515: wait for THIS COMMIT to be the thing production serves, and prove
+      # it, instead of sleeping a fixed 90s and hoping.
+      #
+      # The 90s sleep was not wrong. Measured over the 20 most recent deploys —
+      # push time from the workflow run, ready time from the GitHub deployment
+      # record Vercel writes at its ready instant — the deploy lag is min 17s /
+      # p50 20s / max 21s, so 0 of 20 runs could have measured the previous
+      # deploy and the worst observed case still had 69s of headroom.
+      #
+      # What it could not do is SAY so. On 2026-09-11 a correct CLS 0.074 budget
+      # failure was dismissed as "the gate is one deploy behind by construction",
+      # on the strength of a LOCAL build's entry hash not matching production's.
+      # A local hash is not a valid operand for what Vercel builds, and an entry
+      # hash is not a commit identifier at all — a change confined to a lazily
+      # chunked module leaves it untouched. The real defect was reported correctly
+      # and thrown away, and the layout shift stayed on the public landing page.
+      #
+      # /version.json is the exact operand and has been served the whole time:
+      # vite.config.ts writes {"id": VERCEL_GIT_COMMIT_SHA[0:8]} at build. Poll it
+      # until it equals this run's SHA, then the audit is ON THE RECORD about what
+      # it measured. Ceiling is 240s — ~11x the worst observed lag, wide enough
+      # that it is not a second hidden assumption about build time.
+      #
+      # If the match never arrives, this does NOT go red. Either the deploy failed
+      # or a newer commit promoted ahead of this run, and in both cases the gate
+      # has nothing to say about the site. Failing here would be a verdict about a
+      # page that was never measured — the exact thing this file's summary step
+      # below exists to prevent.
+      - name: Wait for production to serve this commit
+        id: promote
+        run: |
+          SHORT="$(echo "${{ github.sha }}" | cut -c1-8)"
+          DEADLINE=$(( SECONDS + 240 ))
+          SERVED=""
+          echo "waiting for apex-financial.org to serve ${SHORT}"
+          while [ "$SECONDS" -lt "$DEADLINE" ]; do
+            # cache-buster: version.json is max-age=0 must-revalidate, but it is
+            # still an edge-cached object and a stale read here is a wrong answer.
+            SERVED="$(curl -fsS "https://apex-financial.org/version.json?ci=${GITHUB_RUN_ID}&t=${SECONDS}" \
+                      | sed -n 's/.*"id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
+            if [ "$SERVED" = "$SHORT" ]; then
+              echo "matched=true"  >> "$GITHUB_OUTPUT"
+              echo "build=$SERVED" >> "$GITHUB_OUTPUT"
+              echo "::notice::Lighthouse is measuring build ${SERVED} (= ${{ github.sha }}), live after ${SECONDS}s."
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "matched=false" >> "$GITHUB_OUTPUT"
+          echo "build=${SERVED:-unreadable}" >> "$GITHUB_OUTPUT"
+          echo "::warning::Lighthouse did NOT run: production never served ${SHORT} within 240s (last seen '${SERVED:-unreadable}'). Either the deploy did not promote, or a newer commit promoted ahead of this run. This is not a statement about the site's performance."
 
       - name: Install Chromium for Lighthouse
         # lighthouse pulls headless Chrome via Puppeteer. On ubuntu-latest
@@ -37,6 +84,10 @@ jobs:
         run: echo "Using GitHub runner Chrome"
 
       - name: Run Lighthouse against production
+        # Only runs once the previous step PROVED prod is serving this commit, so
+        # every verdict below is attributable to ${{ github.sha }} by measurement
+        # rather than by assumption.
+        if: steps.promote.outputs.matched == 'true'
         run: node scripts/lighthouse-prod.mjs
         env:
           URL: https://apex-financial.org/
@@ -65,7 +116,7 @@ jobs:
           SUMMARY="$(cut -d'|' -f2- "$VERDICT_FILE")"
           case "$VERDICT" in
             budget_failed)
-              echo "::error::Lighthouse budget FAILED on ${{ github.sha }}. $SUMMARY"
+              echo "::error::Lighthouse budget FAILED on ${{ github.sha }} (measured build ${{ steps.promote.outputs.build }}, confirmed live before the audit started). $SUMMARY"
               ;;
             could_not_measure)
               echo "::warning::Lighthouse COULD NOT MEASURE ${{ github.sha }}. $SUMMARY"

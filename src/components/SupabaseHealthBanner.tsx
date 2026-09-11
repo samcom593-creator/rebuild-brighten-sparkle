@@ -1,12 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
 import { AlertTriangle, RefreshCw, X } from "lucide-react";
 // wave-42 (2026-06-08): supabase dynamic-imported inside probe(). This banner is mounted
 // eagerly via App.tsx's <Suspense fallback={null}><SupabaseHealthBanner /></Suspense> so
 // the lazy chunk fetches during cold landing — top-level static import dragged
 // vendor-supabase (45 KB gz) onto cold-landing transfers via this chunk's static graph.
 // Pushing into probe() means the banner chunk has zero static supabase edge; vendor-
-// supabase only loads when the first probe actually fires (delayed below to 30s post-
-// mount so Lighthouse never simulates long enough to trigger it).
+// supabase only loads when the first probe actually fires.
+//
+// MP-515 correction: the rest of that sentence used to read "delayed below to 30s
+// post-mount so Lighthouse never simulates long enough to trigger it". It does not.
+// The delay is real wall-clock time and a mobile audit of this site runs 46.9s of it,
+// so the probe fired on every audit. The probe is now armed only for a signed-in
+// session, which is also the only session that can act on the answer.
 
 /**
  * SupabaseHealthBanner — pings PostgREST every 60s with a 6s timeout.
@@ -43,6 +49,7 @@ function SecondsSince({ since }: { since: Date }) {
 }
 
 export function SupabaseHealthBanner() {
+  const { user } = useAuth();
   const [state, setState] = useState<"ok" | "slow" | "down">("ok");
   const [dismissed, setDismissed] = useState(false);
   const [lastChecked, setLastChecked] = useState<Date | null>(null);
@@ -95,18 +102,34 @@ export function SupabaseHealthBanner() {
   probeRef.current = probe;
 
   useEffect(() => {
-    // wave-42: delay first probe by 30s so Lighthouse audits (typically 6-10s of
-    // simulated load) never trigger the dynamic-import of vendor-supabase. Real users
-    // care about outage detection over minutes, not seconds — 30s lag is invisible.
+    // MP-515: signed-out visitors never arm the probe at all.
+    //
+    // wave-42 delayed the first probe by 30s "so Lighthouse audits (typically
+    // 6-10s of simulated load) never trigger the dynamic-import of vendor-
+    // supabase". That mitigation was calibrated against the WRONG CLOCK. 6-10s
+    // is Lighthouse's SIMULATED metric time; the timer here is real wall clock,
+    // and a mobile audit of this site runs 46.9s of it. So the probe fired at
+    // +30s of every audit, failed, and mounted this banner at ~+36.5s — which
+    // displaced the entire page 61px and put CLS at 0.0741 against a 0.05
+    // budget. Measured, not inferred: same single shift, same [0,0,412,823] ->
+    // [0,61,412,762] rects, on a GitHub runner and on a laptop, 4 runs.
+    //
+    // Gating on the session is the honest fix rather than a longer delay: a
+    // longer timer only moves the failure to a slower audit, and this is an ops
+    // instrument. A signed-out visitor on the public recruiting page cannot act
+    // on "Postgres data plane unresponsive" — it costs them a layout shift and
+    // an amber outage bar over Sam's landing page to tell them something only
+    // Sam and his agents can do anything about.
+    if (!user) return;
     const initial = setTimeout(() => probeRef.current(), 30_000);
     const id = setInterval(() => probeRef.current(), 60_000);
     return () => {
       clearTimeout(initial);
       clearInterval(id);
     };
-  }, []);
+  }, [user]);
 
-  if (dismissed || state === "ok") return null;
+  if (!user || dismissed || state === "ok") return null;
 
   const message = state === "down"
     ? "The database is not answering. Dashboards may load slowly or show stale numbers until it recovers."

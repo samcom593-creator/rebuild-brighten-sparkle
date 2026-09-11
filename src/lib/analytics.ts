@@ -16,6 +16,8 @@
  * If none are set, analytics is dark — every call still returns cleanly.
  */
 
+import { track as trackFirstParty } from "@/shared/telemetry/track";
+
 declare global {
   interface Window {
     gtag?: (...args: unknown[]) => void;
@@ -41,6 +43,25 @@ const META_EVENT_MAP: Record<string, string> = {
 
 export function track(event: string, props: Record<string, unknown> = {}): void {
   if (typeof window === "undefined") return;
+  // FIRST-PARTY SINK — MP-512. This is the only leg that is actually recording.
+  // Every vendor leg below is gated on a VITE_* key, and the production bundle
+  // carries none of them (measured MP-511: the inlined import.meta.env object
+  // has 27 keys, none of them GA4/PostHog/Meta), so for the whole life of this
+  // module every call here was a no-op that returned cleanly. Four product
+  // files import THIS track() — HeroSection, StickyMobileCTA, RecruitFAQ,
+  // Apply — and one imports the emitter that works, which is why
+  // event_category='interaction' had 0 rows of 2,070,597 while
+  // 'navigation' had 36,010.
+  //
+  // Forwarding here rather than repointing those four imports is deliberate:
+  // a repoint fixes the call sites that exist today and leaves the dark
+  // module in place as a trap for the next one written. The forward makes the
+  // familiar import correct.
+  //
+  // Cannot double-count Check #75's operand: that view counts
+  // navigation.page_view, emitted only by useRouteTelemetry, and pageView()
+  // below has no product call site (verified MP-512).
+  try { trackFirstParty(event, "interaction", props); } catch { /* swallow */ } // empty-catch-allow:telemetry-fire-and-forget
   // GA4 — gtag is loaded from index.html if VITE_GA4_MEASUREMENT_ID is set
   try { window.gtag?.("event", event, props); } catch { /* swallow */ } // empty-catch-allow:telemetry-fire-and-forget
   // PostHog — loaded from main.tsx if VITE_POSTHOG_KEY is set

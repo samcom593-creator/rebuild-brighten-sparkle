@@ -255,6 +255,23 @@ export default function Apply() {
     return () => subscription.unsubscribe();
   }, [watch]);
 
+  // MP-512: apply_start. The funnel's entry event did not exist — it was
+  // declared in META_EVENT_MAP and asserted by 7 test cases while no product
+  // file ever called it, so /apply sessions could be counted from
+  // navigation.page_view but nothing marked the form itself as reached.
+  const applyStartedRef = useRef(false);
+  useEffect(() => {
+    if (applyStartedRef.current) return;
+    applyStartedRef.current = true;
+    track("apply_start", {
+      quick_qualify: isQuickQualifyTraffic,
+      resumed_at_step: currentStep > 1 ? currentStep : undefined,
+      total_steps: activeSteps.length,
+    });
+    // Fires once per mount; currentStep is read for the resume case only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Persist currentStep
   useEffect(() => {
     if (!isSubmittedRef.current && currentStep <= activeSteps.length) {
@@ -640,6 +657,14 @@ export default function Apply() {
     const formStep = isQuickQualifyTraffic ? currentStep - 1 : currentStep;
     const isValid = await validateStep(formStep);
     if (!isValid) {
+      // MP-512: field NAMES only, never values — this lands in a table the
+      // anon role can insert into. Names localise the block; values would
+      // publish the applicant.
+      track("apply_step_blocked", {
+        step: currentStep,
+        form_step: formStep,
+        invalid_fields: Object.keys(errors),
+      });
       toast.error("Please fill in all required fields before continuing");
       return;
     }
@@ -650,6 +675,11 @@ export default function Apply() {
     }
     
     if (currentStep < activeSteps.length) {
+      track("apply_step_advance", {
+        from_step: currentStep,
+        to_step: currentStep + 1,
+        total_steps: activeSteps.length,
+      });
       setCurrentStep(currentStep + 1);
     }
   };
@@ -662,6 +692,11 @@ export default function Apply() {
 
   const onSubmit = async (data: ApplicationFormData) => {
     setIsSubmitting(true);
+    // MP-512: attempt and outcome are separate events on purpose. An attempt
+    // with no matching apply_submitted is the shape a silent write failure
+    // makes, and this repo has shipped two of those (MP-354's anon UPDATE
+    // matching 0 rows, MP-330's dead-relation write).
+    track("apply_submit_attempt", { step: currentStep, total_steps: activeSteps.length });
     
     try {
       // Clean Instagram handle
@@ -753,6 +788,10 @@ export default function Apply() {
       // Email notifications are now handled by submit-application function
       // No need to call send-application-notification separately
 
+      track("apply_submitted", {
+        license_status: data.licenseStatus,
+        total_steps: activeSteps.length,
+      });
       toast.success("Application submitted. Routing you to your next step...");
 
       // Referral credit is captured before submit, so there is no second
@@ -765,6 +804,12 @@ export default function Apply() {
       }
     } catch (error: any) {
       console.error("Error submitting application:", error);
+      // Coarse class only — no message body, which can carry echoed field values.
+      track("apply_submit_error", {
+        step: currentStep,
+        status: typeof error?.context?.status === "number" ? error.context.status : undefined,
+        kind: /network|fetch/i.test(String(error?.message || "")) ? "network" : "other",
+      });
       
       // Handle FunctionsHttpError: error.context is a Response object
       if (error?.context && typeof error.context.json === 'function' && typeof error.context.status === 'number') {

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useLocation } from "react-router-dom";
 import { AlertTriangle, RefreshCw, X } from "lucide-react";
 // wave-42 (2026-06-08): supabase dynamic-imported inside probe(). This banner is mounted
 // eagerly via App.tsx's <Suspense fallback={null}><SupabaseHealthBanner /></Suspense> so
@@ -52,16 +53,31 @@ function SecondsSince({ since }: { since: Date }) {
 // documented in the effect below), but a locked-out person on the LOGIN page is
 // exactly who needs to be told the backend is down instead of shown a bare
 // "invalid login" toast. Auth routes have no landing-page CLS budget to protect,
-// so arm there too. Read from window.location because this banner mounts ABOVE
-// <BrowserRouter> (App.tsx), so a router hook here would throw.
-function onAuthRoute(): boolean {
-  if (typeof window === "undefined") return false;
-  const p = window.location.pathname;
-  return p === "/login" || p.startsWith("/login") || p.startsWith("/agent-login") || p.startsWith("/magic-login");
+// so arm there too.
+//
+// MP-519: this used to read window.location.pathname during render, with
+// nothing subscribed to it, because the banner was mounted ABOVE <BrowserRouter>
+// in App.tsx. A client-side <Link> click changes the URL without re-rendering
+// anything outside the router, and the arming effect below keyed on [user]
+// alone -- so every visitor who reached /login by clicking "Agent Login"
+// (10 in-app link sites, the landing navbar among them) got a disarmed probe
+// and the bare auth toast MP-517 set out to replace. The banner now mounts
+// INSIDE the router and reads useLocation(), which is reactive. Being inside
+// the router is load-bearing, not incidental: if it is ever hoisted back out,
+// useLocation() throws immediately instead of silently reverting to a route
+// value that never updates.
+export function isAuthPath(pathname: string): boolean {
+  return pathname.startsWith("/login") || pathname.startsWith("/agent-login") || pathname.startsWith("/magic-login");
 }
 
 export function SupabaseHealthBanner() {
   const { user } = useAuth();
+  const { pathname } = useLocation();
+  const onAuth = isAuthPath(pathname);
+  // MP-519: a boolean, not the user object. The effect below must NOT re-arm
+  // (and reset the 30s first-probe delay) every time the auth provider hands
+  // back a new object identity on a token refresh.
+  const signedIn = !!user;
   const [state, setState] = useState<"ok" | "slow" | "down">("ok");
   const [dismissed, setDismissed] = useState(false);
   const [lastChecked, setLastChecked] = useState<Date | null>(null);
@@ -137,21 +153,20 @@ export function SupabaseHealthBanner() {
     // probe (no landing-page CLS budget here) so a real outage surfaces in
     // seconds rather than 30s, plus a tighter poll so recovery clears the
     // notice quickly and signs them straight in.
-    const onAuth = onAuthRoute();
-    if (!user && !onAuth) return;
-    const firstDelay = user ? 30_000 : 3_000;
-    const pollMs = user ? 60_000 : 12_000;
+    if (!signedIn && !onAuth) return;
+    const firstDelay = signedIn ? 30_000 : 3_000;
+    const pollMs = signedIn ? 60_000 : 12_000;
     const initial = setTimeout(() => probeRef.current(), firstDelay);
     const id = setInterval(() => probeRef.current(), pollMs);
     return () => {
       clearTimeout(initial);
       clearInterval(id);
     };
-  }, [user]);
+  }, [signedIn, onAuth]);
 
-  if ((!user && !onAuthRoute()) || dismissed || state === "ok") return null;
+  if ((!signedIn && !onAuth) || dismissed || state === "ok") return null;
 
-  const message = !user
+  const message = !signedIn
     ? (state === "down"
         ? "We can't reach our servers right now. This is a temporary issue on our side, not your email or password. This page will sign you in automatically the moment it recovers."
         : "Servers are responding slowly. Sign-in may take a few seconds.")
@@ -160,11 +175,11 @@ export function SupabaseHealthBanner() {
         : "Backend is sluggish. Some queries are taking >3s.");
 
   return (
-    <div className={`sticky top-0 z-50 ${user ? "lg:ml-[240px] " : ""}bg-amber-500/95 text-amber-950 border-b border-amber-700 px-4 py-2 flex items-center justify-between gap-3 text-sm`}>
+    <div className={`sticky top-0 z-50 ${signedIn ? "lg:ml-[240px] " : ""}bg-amber-500/95 text-amber-950 border-b border-amber-700 px-4 py-2 flex items-center justify-between gap-3 text-sm`}>
       <div className="flex items-center gap-2 min-w-0">
         <AlertTriangle className="h-4 w-4 flex-shrink-0" />
         <span className="truncate">
-          <strong>{!user ? (state === "down" ? "Temporarily unavailable" : "Slow connection") : `Data connection ${state === "down" ? "down" : "slow"}`}</strong> · {message}
+          <strong>{!signedIn ? (state === "down" ? "Temporarily unavailable" : "Slow connection") : `Data connection ${state === "down" ? "down" : "slow"}`}</strong> · {message}
           {state === "down" && downSince && (
             <span className="opacity-70"> (<ElapsedSince since={downSince} />)</span>
           )}

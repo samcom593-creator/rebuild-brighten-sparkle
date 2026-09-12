@@ -368,12 +368,22 @@ const App = () => (
       <SidebarProvider>
         <DeferredToasters />
           <DemoModeBanner />
-          <Suspense fallback={null}>
-            <SupabaseHealthBanner />
-          </Suspense>
           <AuroraBackground />
           <ConfirmProvider>
           <BrowserRouter>
+            {/* MP-519: INSIDE the router on purpose. This banner decides whether
+                to arm from the current path, and outside <BrowserRouter> a
+                client-side <Link> click changes the URL without re-rendering it
+                -- so the login-route arm MP-517 added only ever fired on a cold
+                load. Being here is load-bearing: hoist it back out and
+                useLocation() throws on mount rather than silently freezing the
+                route it reads. In-flow DOM order is unchanged (AuroraBackground
+                is fixed / -z-10 / pointer-events-none, and Suspense,
+                ConfirmProvider and BrowserRouter each render no DOM node), so
+                the sticky banner still sits directly under DemoModeBanner. */}
+            <Suspense fallback={null}>
+              <SupabaseHealthBanner />
+            </Suspense>
             <ScrollToTop />
             <RouteTelemetry />
             <Suspense fallback={<PageLoader />}>

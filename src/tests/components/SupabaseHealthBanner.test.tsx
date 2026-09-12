@@ -19,6 +19,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, act, fireEvent } from "@testing-library/react";
 import { supabase } from "@/integrations/supabase/client";
 import { SupabaseHealthBanner } from "@/components/SupabaseHealthBanner";
+import { BrowserRouter, Link } from "react-router-dom";
 
 // MP-515: the banner is an ops instrument and now arms only for a signed-in
 // session, so every test below has to say which session it is running as.
@@ -53,6 +54,18 @@ function buildProbeChainRejected(delayMs = 0) {
   };
 }
 
+
+// MP-519: the banner now lives inside <BrowserRouter> and reads useLocation(),
+// so every render here needs a router. BrowserRouter reads window.location at
+// mount, which is exactly how the cold-load cases below already set the route.
+function renderBanner() {
+  return render(
+    <BrowserRouter>
+      <SupabaseHealthBanner />
+    </BrowserRouter>
+  );
+}
+
 beforeEach(() => {
   vi.useFakeTimers();
   vi.clearAllMocks();
@@ -60,6 +73,11 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
+  // MP-519: restore the default session here, not at the end of each test
+  // body. A test that throws mid-body skips its own trailing restore and
+  // leaves every later test running signed-out -- which is how one broken
+  // line in this file reported 7 unrelated failures.
+  auth.user = { id: "test-user" };
 });
 
 async function runInitialProbe() {
@@ -98,7 +116,7 @@ describe("SupabaseHealthBanner — signed-out visitor", () => {
   it("never probes and never renders, even when the probe would fail", async () => {
     auth.user = null;
     vi.mocked(supabase.from).mockReturnValue(buildProbeChainRejected(0) as any);
-    const { container } = render(<SupabaseHealthBanner />);
+    const { container } = renderBanner();
     await runInitialProbe();
     await runSecondProbe();
     expect(vi.mocked(supabase.from).mock.calls.length).toBe(0);
@@ -116,13 +134,17 @@ describe("SupabaseHealthBanner — signed-out visitor", () => {
   it("clears the banner when the session ends mid-outage", async () => {
     auth.user = { id: "test-user" };
     vi.mocked(supabase.from).mockReturnValue(buildProbeChainRejected(0) as any);
-    const { container, rerender } = render(<SupabaseHealthBanner />);
+    const { container, rerender } = renderBanner();
     await runInitialProbe();
     await runSecondProbe();
     expect(screen.queryByText(/Data connection/i)).not.toBeNull();
 
     auth.user = null;
-    rerender(<SupabaseHealthBanner />);
+    rerender(
+      <BrowserRouter>
+        <SupabaseHealthBanner />
+      </BrowserRouter>
+    );
     expect(container.firstChild).toBeNull();
     expect(screen.queryByText(/Data connection/i)).toBeNull();
     auth.user = { id: "test-user" };
@@ -134,7 +156,7 @@ describe("SupabaseHealthBanner — ok state", () => {
     vi.mocked(supabase.from).mockReturnValue(
       buildProbeChain({ error: null }, 0) as any
     );
-    const { container } = render(<SupabaseHealthBanner />);
+    const { container } = renderBanner();
     // Let probe resolve
     await runInitialProbe();
     expect(container.firstChild).toBeNull();
@@ -146,7 +168,7 @@ describe("SupabaseHealthBanner — down state", () => {
     vi.mocked(supabase.from).mockReturnValue(
       buildProbeChainRejected(0) as any
     );
-    render(<SupabaseHealthBanner />);
+    renderBanner();
     await runInitialProbe();
     expect(screen.queryByText(/data connection down/i)).not.toBeInTheDocument();
   });
@@ -155,7 +177,7 @@ describe("SupabaseHealthBanner — down state", () => {
     vi.mocked(supabase.from).mockReturnValue(
       buildProbeChainRejected(0) as any
     );
-    render(<SupabaseHealthBanner />);
+    renderBanner();
     await runInitialProbe();
     await runSecondProbe();
     expect(screen.getByText(/data connection down/i)).toBeInTheDocument();
@@ -165,7 +187,7 @@ describe("SupabaseHealthBanner — down state", () => {
     vi.mocked(supabase.from).mockReturnValue(
       buildProbeChainRejected(0) as any
     );
-    render(<SupabaseHealthBanner />);
+    renderBanner();
     await runInitialProbe();
     await runSecondProbe();
     expect(screen.getByText(/database is not answering/i)).toBeInTheDocument();
@@ -175,7 +197,7 @@ describe("SupabaseHealthBanner — down state", () => {
     vi.mocked(supabase.from).mockReturnValue(
       buildProbeChain({ error: { message: "connection refused" } }, 0) as any
     );
-    render(<SupabaseHealthBanner />);
+    renderBanner();
     await runInitialProbe();
     await runSecondProbe();
     expect(screen.getByText(/data connection down/i)).toBeInTheDocument();
@@ -187,7 +209,7 @@ describe("SupabaseHealthBanner — dismiss", () => {
     vi.mocked(supabase.from).mockReturnValue(
       buildProbeChainRejected(0) as any
     );
-    render(<SupabaseHealthBanner />);
+    renderBanner();
     await runInitialProbe();
     await runSecondProbe();
     fireEvent.click(screen.getByLabelText(/dismiss/i));
@@ -200,7 +222,7 @@ describe("SupabaseHealthBanner — retry button", () => {
     vi.mocked(supabase.from).mockReturnValue(
       buildProbeChainRejected(0) as any
     );
-    render(<SupabaseHealthBanner />);
+    renderBanner();
     await runInitialProbe();
 
     const callsBefore = vi.mocked(supabase.from).mock.calls.length;
@@ -218,7 +240,7 @@ describe("SupabaseHealthBanner — retry button", () => {
     vi.mocked(supabase.from).mockReturnValue(
       buildProbeChainRejected(0) as any
     );
-    render(<SupabaseHealthBanner />);
+    renderBanner();
     await runInitialProbe();
     await runSecondProbe();
 
@@ -237,7 +259,7 @@ describe("SupabaseHealthBanner — polling interval", () => {
     vi.mocked(supabase.from).mockReturnValue(
       buildProbeChainRejected(0) as any
     );
-    render(<SupabaseHealthBanner />);
+    renderBanner();
     // Initial probe
     await runInitialProbe();
     const callsAfterMount = vi.mocked(supabase.from).mock.calls.length;
@@ -283,7 +305,7 @@ describe("SupabaseHealthBanner — signed-out visitor on the login route", () =>
 
   it("arms the probe and shows the login-safe outage message when the backend is down", async () => {
     vi.mocked(supabase.from).mockReturnValue(buildProbeChainRejected(0) as any);
-    render(<SupabaseHealthBanner />);
+    renderBanner();
     await runLoginProbes();
     expect(vi.mocked(supabase.from).mock.calls.length).toBeGreaterThan(0);
     expect(screen.queryByText(/not your email or password/i)).not.toBeNull();
@@ -291,7 +313,7 @@ describe("SupabaseHealthBanner — signed-out visitor on the login route", () =>
 
   it("clears itself the moment the backend recovers", async () => {
     vi.mocked(supabase.from).mockReturnValue(buildProbeChainRejected(0) as any);
-    const { container } = render(<SupabaseHealthBanner />);
+    const { container } = renderBanner();
     await runLoginProbes();
     expect(screen.queryByText(/not your email or password/i)).not.toBeNull();
     // backend comes back; next probe succeeds -> banner clears. The async
@@ -307,9 +329,126 @@ describe("SupabaseHealthBanner — signed-out visitor on the login route", () =>
   it("still never renders for a signed-out visitor on the landing page", async () => {
     window.history.pushState({}, "", "/");
     vi.mocked(supabase.from).mockReturnValue(buildProbeChainRejected(0) as any);
-    const { container } = render(<SupabaseHealthBanner />);
+    const { container } = renderBanner();
     await runLoginProbes();
     expect(vi.mocked(supabase.from).mock.calls.length).toBe(0);
     expect(container.firstChild).toBeNull();
+  });
+});
+
+// MP-519: MP-517 armed the banner for signed-out visitors on /login, and every
+// test above proves it by pushing "/login" into history BEFORE render — a cold
+// load. That is not how most people reach that page. There are 10 in-app
+// <Link to="/login"> sites, including the landing navbar (both the desktop and
+// the mobile menu), and a <Link> navigates client-side: it calls
+// history.pushState and re-renders the ROUTER's subtree. This banner is mounted
+// outside <BrowserRouter> (App.tsx), read its route from window.location during
+// render with nothing subscribed to it, and keyed its arming effect on [user]
+// alone. So the visitor who clicks "Agent Login" during an outage got the
+// disarmed banner and the bare "invalid login" toast MP-517 set out to replace.
+//
+// This test navigates the way the navbar does — a real <Link> click — rather
+// than calling pushState directly, because pushState alone would also model a
+// fix that only listens for popstate and would still miss every Link click.
+describe("SupabaseHealthBanner — signed-out visitor who NAVIGATES to login", () => {
+  beforeEach(() => {
+    auth.user = null;
+    window.history.pushState({}, "", "/");
+  });
+  afterEach(() => {
+    window.history.pushState({}, "", "/");
+    auth.user = { id: "test-user" };
+  });
+
+  it("arms the probe after an in-app Link click, not only on a cold load", async () => {
+    vi.mocked(supabase.from).mockReturnValue(buildProbeChainRejected(0) as any);
+    render(
+      <BrowserRouter>
+        <Link to="/login">Agent Login</Link>
+        <SupabaseHealthBanner />
+      </BrowserRouter>
+    );
+
+    // On the landing page, still correctly silent (MP-515 holds).
+    await act(async () => {
+      vi.advanceTimersByTime(3_001);
+      await Promise.resolve();
+    });
+    expect(vi.mocked(supabase.from).mock.calls.length).toBe(0);
+
+    // Click "Agent Login" exactly as the navbar does.
+    await act(async () => {
+      fireEvent.click(screen.getByText("Agent Login"), { button: 0 });
+    });
+    expect(window.location.pathname).toBe("/login");
+
+    // The signed-out arm is firstDelay 3s then a 12s poll; two failures = down.
+    await act(async () => {
+      vi.advanceTimersByTime(3_001);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(12_001);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(vi.mocked(supabase.from).mock.calls.length).toBeGreaterThan(0);
+    expect(screen.queryByText(/not your email or password/i)).not.toBeNull();
+  });
+
+  it("stops probing once the visitor navigates back off the auth route", async () => {
+    vi.mocked(supabase.from).mockReturnValue(buildProbeChain({ error: null }, 0) as any);
+    window.history.pushState({}, "", "/login");
+    render(
+      <BrowserRouter>
+        <Link to="/">Home</Link>
+        <SupabaseHealthBanner />
+      </BrowserRouter>
+    );
+    await act(async () => {
+      vi.advanceTimersByTime(3_001);
+      await Promise.resolve();
+    });
+    const armedCalls = vi.mocked(supabase.from).mock.calls.length;
+    expect(armedCalls).toBeGreaterThan(0);
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("Home"), { button: 0 });
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(60_000);
+      await Promise.resolve();
+    });
+    // No further probes: a signed-out visitor off the auth route is disarmed.
+    expect(vi.mocked(supabase.from).mock.calls.length).toBe(armedCalls);
+  });
+});
+
+// MP-519: the runtime failure mode of hoisting this banner back out of the
+// router is loud (useLocation() throws on mount), but nothing in CI watches
+// where it is mounted, and App.tsx is edited far more often than this file.
+// This asserts the mount position directly. It reads the source rather than
+// rendering <App />, because rendering App drags the whole route table, the
+// auth bootstrap and every lazy chunk into a unit test whose subject is one
+// line of JSX ordering.
+describe("SupabaseHealthBanner — mount position in App.tsx", () => {
+  it("is mounted inside <BrowserRouter>, which is what makes it route-aware", async () => {
+    const fs = await import("node:fs");
+    const src = fs.readFileSync("src/App.tsx", "utf8");
+
+    const routerAt = src.indexOf("<BrowserRouter>");
+    const bannerAt = src.indexOf("<SupabaseHealthBanner />");
+    const routerCloseAt = src.indexOf("</BrowserRouter>");
+
+    // Guard the guard: if any anchor stops existing this test must fail loudly
+    // rather than pass on three -1s comparing equal.
+    expect(routerAt).toBeGreaterThan(-1);
+    expect(bannerAt).toBeGreaterThan(-1);
+    expect(routerCloseAt).toBeGreaterThan(-1);
+
+    expect(bannerAt).toBeGreaterThan(routerAt);
+    expect(bannerAt).toBeLessThan(routerCloseAt);
   });
 });

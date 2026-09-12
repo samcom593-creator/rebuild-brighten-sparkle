@@ -732,3 +732,9 @@ verify_jwt = false
 # the function. It is already deployed with verification off; this line stops the
 # next `supabase functions deploy` from turning it on and 401ing every link. MP-483.
 verify_jwt = false
+
+[functions.content-thumb]
+# In-code bearer check (APEX_BOT_TOKEN), same shape as content-library: the
+# caller is the MacBook testimonial classifier storing screenshot thumbnails,
+# which holds no Supabase JWT. Gating at the gateway would refuse it.
+verify_jwt = false

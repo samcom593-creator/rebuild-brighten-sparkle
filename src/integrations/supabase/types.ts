@@ -37981,6 +37981,14 @@ export type Database = {
           banger_score: number | null
           bangered_at: string | null
           hook_title: string | null
+          media: string
+          missing_at: string | null
+          testimonial: boolean | null
+          testimonial_at: string | null
+          testimonial_kind: string | null
+          testimonial_reason: string | null
+          testimonial_source: string | null
+          transcript: string | null
           captioned_at: string | null
           description: string | null
           download_expires_at: string | null
@@ -38009,6 +38017,14 @@ export type Database = {
           banger_score?: number | null
           bangered_at?: string | null
           hook_title?: string | null
+          media?: string
+          missing_at?: string | null
+          testimonial?: boolean | null
+          testimonial_at?: string | null
+          testimonial_kind?: string | null
+          testimonial_reason?: string | null
+          testimonial_source?: string | null
+          transcript?: string | null
           captioned_at?: string | null
           description?: string | null
           download_expires_at?: string | null
@@ -38037,6 +38053,14 @@ export type Database = {
           banger_score?: number | null
           bangered_at?: string | null
           hook_title?: string | null
+          media?: string
+          missing_at?: string | null
+          testimonial?: boolean | null
+          testimonial_at?: string | null
+          testimonial_kind?: string | null
+          testimonial_reason?: string | null
+          testimonial_source?: string | null
+          transcript?: string | null
           captioned_at?: string | null
           description?: string | null
           download_expires_at?: string | null
@@ -85455,6 +85479,34 @@ export type Database = {
       }
     }
     Views: {
+      v_apply_funnel_conversion: {
+        Row: {
+          base_apps: number | null
+          base_conv_pct: number | null
+          base_sessions: number | null
+          expected_apps_at_baseline: number | null
+          ratio_vs_baseline: number | null
+          recent_apps: number | null
+          recent_conv_pct: number | null
+          recent_sessions: number | null
+          verdict: string | null
+        }
+        Relationships: []
+      }
+      v_testimonial_classifier_health: {
+        Row: {
+          judged: number | null
+          last_judged_at: string | null
+          missing: number | null
+          rows_live: number | null
+          stale_links: number | null
+          testimonial_images: number | null
+          testimonial_videos: number | null
+          testimonials: number | null
+          waiting: number | null
+        }
+        Relationships: []
+      }
       v_applicant_funnel_health: {
         Row: {
           apps_prior_4w: number | null

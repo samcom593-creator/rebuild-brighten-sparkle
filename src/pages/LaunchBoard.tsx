@@ -16,7 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useConfirm } from "@/hooks/useConfirm";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { toast } from "sonner";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -24,7 +24,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  ArrowRight, Check, Clapperboard, Copy, Crown, Download, ExternalLink, Film, Loader2, Paperclip, Pencil, Plus, Search, Trash2, Undo2,
+  ArrowRight, Check, Clapperboard, Copy, Crown, Download, ExternalLink, Film, Image as ImageIcon, Loader2, MessageSquareQuote, Paperclip, Pencil, Plus, Search, ThumbsDown, ThumbsUp, Trash2, Undo2,
 } from "lucide-react";
 
 type Status = "idea" | "recorded" | "ready" | "posted";
@@ -40,7 +40,14 @@ interface Clip {
   thumb_url?: string | null; preview_url?: string | null; duration_s?: number | null; title?: string | null; description?: string | null; tags?: string[];
   download_url?: string | null; download_expires_at?: string | null;
   hook_title?: string | null; banger_score?: number | null; banger_reason?: string | null; find_label?: string | null;
+  // Testimonial layer (2026-09-12): media 'video' | 'image' (screenshots indexed from Dropbox), what the clip SAYS
+  // (whisper / OCR), and the verdict. testimonial null = the classifier hasn't reached this row yet.
+  media?: string | null; transcript?: string | null; testimonial?: boolean | null; testimonial_kind?: string | null;
+  testimonial_reason?: string | null; testimonial_source?: string | null; width?: number | null; height?: number | null;
 }
+type ProofKind = "all" | "video" | "image";
+const isTestimonial = (k: Clip) => k.testimonial === true || (k.tags ?? []).includes("testimonial");
+const proofKindOf = (k: Clip): Exclude<ProofKind, "all"> => (k.media === "image" ? "image" : "video");
 
 const STATUSES: Status[] = ["idea", "recorded", "ready", "posted"];
 const STATUS_LABEL: Record<Status, string> = { idea: "Ideas", recorded: "Recorded", ready: "Ready", posted: "Posted" };
@@ -108,12 +115,53 @@ export default function LaunchBoard() {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [pillar, setPillar] = useState<"all" | PillarKey>("all");
-  const [folder, setFolder] = useState<"all" | "YouTube" | "Reels">("all");
+  const [folder, setFolder] = useState<"all" | "YouTube" | "Reels" | "Screenshots">("all");
+  // Testimonials filter. Deep link: /dashboard/launch-board?tab=library&filter=testimonials
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [proof, setProof] = useState<"all" | "testimonials">(searchParams.get("filter") === "testimonials" ? "testimonials" : "all");
+  const [proofKind, setProofKind] = useState<ProofKind>("all");
+  const [health, setHealth] = useState<{ judged: number; waiting: number; testimonials: number; last_judged_at: string | null } | null>(null);
+  const [downloadingAll, setDownloadingAll] = useState(false);
+  useEffect(() => {
+    if (searchParams.get("tab") === "library") setTab("library");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const chooseProof = (p: "all" | "testimonials") => {
+    setProof(p);
+    if (p === "all") setProofKind("all");
+    const next = new URLSearchParams(searchParams);
+    if (p === "testimonials") { next.set("tab", "library"); next.set("filter", "testimonials"); } else { next.delete("filter"); }
+    setSearchParams(next, { replace: true });
+  };
+  // Sam's tap beats the classifier: source='manual' is never overwritten by the daemon.
+  const setVerdict = async (k: Clip, value: boolean) => {
+    const prev = { testimonial: k.testimonial, testimonial_source: k.testimonial_source, testimonial_reason: k.testimonial_reason };
+    setClips((cs) => cs.map((c) => (c.id === k.id ? { ...c, testimonial: value, testimonial_source: "manual", testimonial_reason: value ? "marked by Sam" : "not a testimonial (Sam)" } : c)));
+    const { error } = await supabase.from("content_clips")
+      .update({ testimonial: value, testimonial_source: "manual", testimonial_reason: value ? "marked by Sam" : "not a testimonial (Sam)", testimonial_at: new Date().toISOString(), testimonial_kind: value ? (k.testimonial_kind && k.testimonial_kind !== "not_testimonial" ? k.testimonial_kind : k.media === "image" ? "text_message" : "video_call") : "not_testimonial" })
+      .eq("id", k.id);
+    if (error) { setClips((cs) => cs.map((c) => (c.id === k.id ? { ...c, ...prev } : c))); toast.error(`Couldn't save: ${error.message.slice(0, 100)}`); }
+    else toast.success(value ? "Marked as a testimonial" : "Removed from testimonials");
+  };
+  // One tap for the whole filtered set: fires each fresh direct link in turn. Chrome asks once to allow
+  // multiple downloads; rows without a fresh link are counted and named, never silently skipped.
+  const downloadAll = async (rows: Clip[]) => {
+    const ready = rows.filter((k) => directUrl(k));
+    const stale = rows.length - ready.length;
+    if (ready.length === 0) { toast.error("No fresh download links yet — the classifier re-mints them every 20 min."); return; }
+    setDownloadingAll(true);
+    for (const k of ready) {
+      const a = document.createElement("a"); a.href = directUrl(k) as string; a.download = k.name; a.rel = "noopener"; document.body.appendChild(a); a.click(); a.remove();
+      await new Promise((r) => setTimeout(r, 450));
+    }
+    setDownloadingAll(false);
+    toast.success(`${ready.length} download${ready.length === 1 ? "" : "s"} started${stale ? ` · ${stale} waiting on a fresh link` : ""}`);
+  };
   const [length, setLength] = useState<"all" | "short" | "mid" | "long">("all");
   const [sortBy, setSortBy] = useState<"banger" | "newest">("banger");
   const [shown, setShown] = useState(96);
   const [picked, setPicked] = useState<Set<string>>(new Set());   // Library multi-select for sharing
-  const togglePick = (id: string) => setPicked((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const togglePick = (id: string) => setPicked((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const shareSelected = async () => {
     if (picked.size === 0) return;
     const token = Array.from(crypto.getRandomValues(new Uint8Array(18))).map((b) => "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"[b % 62]).join("");
@@ -124,7 +172,7 @@ export default function LaunchBoard() {
     catch { toast.success(`Share link: ${url}`); }
     setPicked(new Set());
   };
-  useEffect(() => { setShown(96); }, [query, folder, length, pillar]);
+  useEffect(() => { setShown(96); }, [query, folder, length, pillar, proof, proofKind]);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<Card | null>(null);
   const [draft, setDraft] = useState<Record<string, unknown>>(emptyDraft);
@@ -141,13 +189,18 @@ export default function LaunchBoard() {
       const all: Clip[] = [];
       for (let from = 0; from < 20000; from += 1000) {
         const k = await supabase.from("content_clips")
-          .select("id, path, name, folder, kind, size_bytes, modified_at, used_by_card, thumb_url, preview_url, duration_s, title, description, find_label, tags, download_url, download_expires_at, hook_title, banger_score, banger_reason").order("modified_at", { ascending: false, nullsFirst: false }).range(from, from + 999);
+          .select("id, path, name, folder, kind, size_bytes, modified_at, used_by_card, thumb_url, preview_url, duration_s, title, description, find_label, tags, download_url, download_expires_at, hook_title, banger_score, banger_reason, media, transcript, testimonial, testimonial_kind, testimonial_reason, testimonial_source, width, height")
+          .is("missing_at", null)   // Dropbox said path/not_found for these — a dead Download button is worse than no card
+          .order("modified_at", { ascending: false, nullsFirst: false }).range(from, from + 999);
         if (k.error) throw k.error;
         const page = (k.data as Clip[]) ?? [];
         all.push(...page);
         setClips([...all]);
         if (page.length < 1000) break;
       }
+      // Classifier progress, so "N testimonials" never reads as a finished count while thousands are still unjudged.
+      const h = await supabase.from("v_testimonial_classifier_health").select("judged, waiting, testimonials, last_judged_at").maybeSingle();
+      if (!h.error && h.data) setHealth({ judged: h.data.judged ?? 0, waiting: h.data.waiting ?? 0, testimonials: h.data.testimonials ?? 0, last_judged_at: h.data.last_judged_at });
     } catch (e: unknown) {
       toast.error(`Couldn't load the board: ${(e instanceof Error ? e.message : "unknown error").slice(0, 120)}`);
     } finally { setLoading(false); }
@@ -248,16 +301,19 @@ export default function LaunchBoard() {
     const q = query.trim().toLowerCase();
     const SYN: Record<string, string> = { gym: "workout", exercise: "workout", weights: "workout", lifting: "workout", fitness: "workout", cars: "car", vehicle: "car", corvette: "car", driving: "car", aerial: "drone", dji: "drone", desk: "office", computer: "office", laptop: "office", talking: "talking-head", speaking: "talking-head", podcast: "talking-head", vlog: "talking-head", outside: "outdoors", street: "outdoors", sunset: "outdoors", crowd: "event", seminar: "event", conference: "event", tiktok: "vertical", reel: "vertical", reels: "vertical", youtube: "horizontal" };
     const words = q.split(/\s+/).filter(Boolean).map((w) => SYN[w] ?? w);
-    const hay = (k: Clip) => `${k.find_label ?? ""} ${k.title ?? ""} ${k.description ?? ""} ${(k.tags ?? []).join(" ")} ${k.name}`.toLowerCase();
+    // What the clip SAYS (whisper transcript / screenshot OCR) is searchable too — "first deal", "license", a person's name.
+    const hay = (k: Clip) => `${k.find_label ?? ""} ${k.title ?? ""} ${k.description ?? ""} ${(k.tags ?? []).join(" ")} ${k.name} ${k.transcript ?? ""} ${k.testimonial_reason ?? ""}`.toLowerCase();
     const lenOk = (k: Clip) => {
       const d = Number(k.duration_s ?? 0);
-      return length === "all" || (length === "short" ? d > 0 && d <= 60 : length === "mid" ? d > 60 && d <= 300 : d > 300);
+      return length === "all" || k.media === "image" || (length === "short" ? d > 0 && d <= 60 : length === "mid" ? d > 60 && d <= 300 : d > 300);
     };
-    const out = clips.filter((k) => (folder === "all" || k.folder === folder) && lenOk(k) && (pillar === "all" || pillarsOf(k).includes(pillar)) && (!words.length || words.every((w) => hay(k).includes(w))));
+    const proofOk = (k: Clip) => proof === "all" || (isTestimonial(k) && (proofKind === "all" || proofKindOf(k) === proofKind));
+    const out = clips.filter((k) => proofOk(k) && (folder === "all" || k.folder === folder) && lenOk(k) && (pillar === "all" || pillarsOf(k).includes(pillar)) && (!words.length || words.every((w) => hay(k).includes(w))));
     if (sortBy === "banger") out.sort((a, b) => (b.banger_score ?? -1) - (a.banger_score ?? -1) || (b.modified_at ?? "").localeCompare(a.modified_at ?? ""));
     else out.sort((a, b) => (b.modified_at ?? "").localeCompare(a.modified_at ?? ""));
     return out;
-  }, [clips, query, folder, length, pillar, sortBy]);
+  }, [clips, query, folder, length, pillar, sortBy, proof, proofKind]);
+  const testimonialClips = useMemo(() => clips.filter(isTestimonial), [clips]);
   const bangerColor = (s?: number | null) => (s == null ? "bg-zinc-600" : s >= 70 ? "bg-emerald-400" : s >= 45 ? "bg-gold" : "bg-zinc-500");
   const fmtDur = (s?: number | null) => (s ? `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}` : "");
   const counts = useMemo(() => ({ total: cards.length, ready: ready.length, posted: cards.filter((c) => c.status === "posted").length }), [cards, ready]);
@@ -314,6 +370,10 @@ export default function LaunchBoard() {
               <div className="mt-0.5 text-[10.5px] uppercase tracking-[0.09em] text-muted-foreground">{s.l}</div>
             </div>
           ))}
+          <button onClick={() => { chooseProof("testimonials"); setTab("library"); }} className="min-w-[76px] rounded-xl border border-gold/50 bg-gold/10 px-3.5 py-2.5 text-left hover:bg-gold/15" title="Every testimonial — calls, videos, screenshots, texts — one tap from download">
+            <div className="text-xl font-extrabold tabular-nums text-gold">{testimonialClips.length.toLocaleString()}</div>
+            <div className="mt-0.5 text-[10.5px] uppercase tracking-[0.09em] text-gold/80">Testimonials</div>
+          </button>
         </div>
       </header>
 
@@ -328,6 +388,15 @@ export default function LaunchBoard() {
 
       {tab === "today" && (
         <div className="space-y-8">
+          {/* Sam, 2026-09-12: "it's time for me to build collage testimonials" — the pack is one tap from Today. */}
+          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-gold/40 bg-gold/10 px-4 py-3">
+            <MessageSquareQuote className="h-5 w-5 text-gold" />
+            <div className="flex-1 text-sm">
+              <b className="text-foreground">{testimonialClips.length.toLocaleString()} testimonials ready</b>
+              <span className="text-muted-foreground"> · {testimonialClips.filter((k) => k.media !== "image").length} calls &amp; videos · {testimonialClips.filter((k) => k.media === "image").length} screenshots &amp; texts{health && health.waiting > 0 ? ` · ${health.waiting.toLocaleString()} clips still being judged` : ""}</span>
+            </div>
+            <Button size="sm" onClick={() => { chooseProof("testimonials"); setTab("library"); }} className="h-8 bg-gold text-zinc-950 hover:bg-gold/90"><Download className="mr-1.5 h-3.5 w-3.5" />Open the pack</Button>
+          </div>
           <section>
             <Head title="Post today" hint={ready.length ? `${ready.length} ready` : "nothing is Ready yet"} />
             {ready.length === 0 ? (
@@ -429,9 +498,29 @@ export default function LaunchBoard() {
               <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search by what's in the clip — car, gym, drone, office…" className="pl-8" />
             </div>
-            {(["all", "YouTube", "Reels"] as const).map((f) => (
+            {/* Testimonials: FaceTime/phone calls where someone praises Sam, plus screenshots and texts saying how good it is.
+                Verdicts come from what the clip SAYS (whisper transcript / OCR), judged by the classifier daemon; Sam's tap wins. */}
+            <button onClick={() => chooseProof(proof === "testimonials" ? "all" : "testimonials")} title="FaceTime calls, videos with someone praising the agency, screenshots and texts"
+              className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold ${proof === "testimonials" ? "border-gold bg-gold/20 text-gold" : "border-gold/40 text-gold/90 hover:bg-gold/10"}`}>
+              <MessageSquareQuote className="h-3.5 w-3.5" /> Testimonials <span className="opacity-70">{testimonialClips.length}</span>
+            </button>
+            {proof === "testimonials" && ([{ k: "all", label: "All" }, { k: "video", label: "Calls & videos" }, { k: "image", label: "Screenshots & texts" }] as { k: ProofKind; label: string }[]).map((p) => {
+              const n = p.k === "all" ? testimonialClips.length : testimonialClips.filter((k) => proofKindOf(k) === p.k).length;
+              return (
+                <button key={p.k} onClick={() => setProofKind(p.k)} className={`rounded-full border px-3 py-1 text-xs font-semibold ${proofKind === p.k ? "border-gold/60 bg-gold/15 text-gold" : "border-border text-muted-foreground hover:text-foreground"}`}>
+                  {p.label} <span className="opacity-60">{n}</span>
+                </button>
+              );
+            })}
+            {proof === "testimonials" && (
+              <Button size="sm" disabled={downloadingAll || visibleClips.length === 0} onClick={() => void downloadAll(visibleClips)} className="h-7 bg-emerald-500/15 px-3 text-xs font-bold text-emerald-400 hover:bg-emerald-500/25" title="Fire every fresh direct link in this set — allow multiple downloads when Chrome asks once">
+                {downloadingAll ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-1 h-3.5 w-3.5" />}Download all {visibleClips.length}
+              </Button>
+            )}
+            <span className="mx-1 hidden h-5 w-px bg-border sm:block" aria-hidden />
+            {(["all", "YouTube", "Reels", "Screenshots"] as const).filter((f) => f !== "Screenshots" || clips.some((k) => k.folder === "Screenshots")).map((f) => (
               <button key={f} onClick={() => setFolder(f)} className={`rounded-full border px-3 py-1 text-xs font-semibold ${folder === f ? "border-primary/40 bg-primary/15 text-primary" : "border-border text-muted-foreground hover:text-foreground"}`}>
-                {f === "all" ? "All" : f === "YouTube" ? "YouTube · horizontal" : "Reels · vertical"}
+                {f === "all" ? "All" : f === "YouTube" ? "YouTube · horizontal" : f === "Reels" ? "Reels · vertical" : "Screenshots"}
               </button>
             ))}
             {(["all", "short", "mid", "long"] as const).map((l) => (
@@ -455,7 +544,12 @@ export default function LaunchBoard() {
                 </button>
               ))}
             </div>
-            <span className="w-full text-xs text-muted-foreground">{visibleClips.length.toLocaleString()} match · {clips.filter((k) => k.thumb_url).length.toLocaleString()} with previews</span>
+            <span className="w-full text-xs text-muted-foreground">
+              {visibleClips.length.toLocaleString()} match · {clips.filter((k) => k.thumb_url).length.toLocaleString()} with previews
+              {health && (proof === "testimonials" || health.waiting > 0) && (
+                <> · classifier: <b className="text-foreground">{health.judged.toLocaleString()}</b> judged, <b className="text-foreground">{health.waiting.toLocaleString()}</b> still waiting{health.last_judged_at ? ` · last ${fmtDate(health.last_judged_at)}` : ""} — the list grows as it works</>
+              )}
+            </span>
           </div>
           {attachTarget && <div className="rounded-xl border border-gold/40 bg-gold/10 px-3 py-2 text-sm text-foreground">Pick the clip for <b>{attachTarget.title}</b> — tap <b>Attach</b> on a row.</div>}
           {picked.size > 0 && (
@@ -473,16 +567,21 @@ export default function LaunchBoard() {
                 <label className="absolute left-2 top-2 z-10 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border border-border bg-background/85 text-primary" title="Select to share">
                   <input type="checkbox" checked={picked.has(k.id)} onChange={() => togglePick(k.id)} className="h-3.5 w-3.5 accent-[hsl(var(--primary))]" />
                 </label>
-                <a href={dropboxUrl(k.path)} target="_blank" rel="noopener noreferrer" className={`relative block bg-muted/40 ${k.kind === "vertical" ? "aspect-[9/16] max-h-64" : "aspect-video"}`} title="Open in Dropbox">
+                <a href={directUrl(k) ?? dropboxUrl(k.path)} target="_blank" rel="noopener noreferrer" className={`relative block bg-muted/40 ${k.kind === "vertical" ? "aspect-[9/16] max-h-64" : "aspect-video"}`} title={k.media === "image" ? "Open the screenshot" : "Open in Dropbox"}>
                   {k.thumb_url ? (
                     <>
-                      <img src={k.thumb_url} alt="" loading="lazy" className="h-full w-full object-cover" />
-                      {k.preview_url && (
+                      <img src={k.thumb_url} alt="" loading="lazy" className={`h-full w-full ${k.media === "image" ? "object-contain bg-black/40" : "object-cover"}`} />
+                      {isTestimonial(k) && (
+                        <span className="absolute bottom-1.5 left-1.5 flex items-center gap-1 rounded-full bg-gold px-1.5 py-0.5 text-[10px] font-extrabold text-zinc-950" title={k.testimonial_reason ?? "testimonial"}>
+                          <MessageSquareQuote className="h-3 w-3" /> {k.media === "image" ? "TEXT" : k.testimonial_kind === "video_call" ? "CALL" : "TESTIMONIAL"}
+                        </span>
+                      )}
+                      {k.preview_url && k.media !== "image" && (
                         <video src={k.preview_url} muted loop playsInline preload="none" onMouseEnter={(e) => { void e.currentTarget.play(); }} onMouseLeave={(e) => { e.currentTarget.pause(); e.currentTarget.currentTime = 0; }} className="absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity group-hover:opacity-100" />
                       )}
                     </>
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center text-muted-foreground"><Film className="h-6 w-6" /></div>
+                    <div className="flex h-full w-full items-center justify-center text-muted-foreground">{k.media === "image" ? <ImageIcon className="h-6 w-6" /> : <Film className="h-6 w-6" />}</div>
                   )}
                   {k.duration_s ? <span className="absolute bottom-1.5 right-1.5 rounded bg-background/80 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-foreground">{fmtDur(k.duration_s)}</span> : null}
                   {k.used_by_card && <span className="absolute left-1.5 top-1.5 rounded bg-emerald-500/90 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-950">on a card</span>}
@@ -493,6 +592,13 @@ export default function LaunchBoard() {
                 <div className="flex flex-1 flex-col gap-1.5 p-3">
                   <div className="line-clamp-2 text-sm font-bold leading-snug text-foreground">{k.find_label || k.title || cleanName(k.name)}</div>
                   {k.hook_title && <div className="line-clamp-1 text-[11px] italic text-muted-foreground">🎬 {k.hook_title}</div>}
+                  {isTestimonial(k) && k.testimonial_reason && <div className="line-clamp-2 text-[11px] text-gold/90" title={k.testimonial_reason}>{k.testimonial_reason}</div>}
+                  {!isTestimonial(k) && k.transcript && proof === "all" && query && <div className="line-clamp-2 text-[10.5px] italic text-muted-foreground" title={k.transcript}>“{k.transcript.slice(0, 140)}”</div>}
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] text-muted-foreground">{k.testimonial == null ? "not judged yet" : isTestimonial(k) ? (k.testimonial_source === "manual" ? "testimonial · you" : "testimonial") : "not a testimonial"}</span>
+                    <button onClick={() => void setVerdict(k, true)} title="Mark as a testimonial" className={`rounded border p-0.5 ${isTestimonial(k) ? "border-gold/60 bg-gold/15 text-gold" : "border-border text-muted-foreground hover:text-gold"}`}><ThumbsUp className="h-3 w-3" /></button>
+                    <button onClick={() => void setVerdict(k, false)} title="Not a testimonial" className={`rounded border p-0.5 ${k.testimonial === false ? "border-border bg-muted text-foreground" : "border-border text-muted-foreground hover:text-foreground"}`}><ThumbsDown className="h-3 w-3" /></button>
+                  </div>
                   {k.banger_score != null && (
                     <div className="flex items-center gap-2">
                       <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted"><div className={`h-full ${bangerColor(k.banger_score)}`} style={{ width: `${k.banger_score}%` }} /></div>
@@ -517,8 +623,8 @@ export default function LaunchBoard() {
                       ? <Button size="sm" onClick={() => attachClip(k, attachTarget)} className="h-7 flex-1 bg-primary px-2.5 text-[11.5px] text-primary-foreground hover:bg-primary/90"><Paperclip className="mr-1 h-3 w-3" />Attach</Button>
                       : <Button size="sm" variant="outline" onClick={() => cardFromClip(k)} className="h-7 flex-1 px-2.5 text-[11.5px]"><Plus className="mr-1 h-3 w-3" />New card</Button>}
                     {directUrl(k)
-                      ? <Button asChild size="sm" className="h-7 bg-emerald-500/15 px-2.5 text-[11.5px] font-semibold text-emerald-400 hover:bg-emerald-500/25"><a href={directUrl(k) ?? undefined} download={k.name} title="Download the original — one click"><Download className="mr-1 h-3.5 w-3.5" />Download</a></Button>
-                      : <Button asChild size="sm" variant="ghost" className="h-7 px-2 text-muted-foreground"><a href={dropboxUrl(k.path)} target="_blank" rel="noopener noreferrer" title="Open in Dropbox"><ExternalLink className="h-3.5 w-3.5" /></a></Button>}
+                      ? <Button asChild size="sm" className="h-7 bg-emerald-500/15 px-2.5 text-[11.5px] font-semibold text-emerald-400 hover:bg-emerald-500/25"><a href={directUrl(k) ?? undefined} download={k.name} title="Download the original — one tap"><Download className="mr-1 h-3.5 w-3.5" />Download</a></Button>
+                      : <Button asChild size="sm" variant="outline" className="h-7 px-2.5 text-[11.5px] text-muted-foreground"><a href={dropboxUrl(k.path)} target="_blank" rel="noopener noreferrer" title="Direct link is being re-minted (every 20 min) — this opens the file in Dropbox, where Download is one tap"><ExternalLink className="mr-1 h-3.5 w-3.5" />Dropbox</a></Button>}
                     <Button size="sm" variant="ghost" onClick={() => { void navigator.clipboard?.writeText(k.path).then(() => toast.success("Path copied")).catch(() => toast.error("Clipboard blocked")); }} className="h-7 px-2 text-muted-foreground" title="Copy Dropbox path (for getclips / editors)"><Copy className="h-3.5 w-3.5" /></Button>
                   </div>
                 </div>

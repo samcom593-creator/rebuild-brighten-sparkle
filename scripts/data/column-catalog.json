@@ -2486,15 +2486,23 @@
       "id",
       "indexed_at",
       "kind",
+      "media",
+      "missing_at",
       "modified_at",
       "name",
       "path",
       "preview_url",
       "size_bytes",
       "tags",
+      "testimonial",
+      "testimonial_at",
+      "testimonial_kind",
+      "testimonial_reason",
+      "testimonial_source",
       "thumb_url",
       "thumbed_at",
       "title",
+      "transcript",
       "used_by_card",
       "width"
     ],
@@ -6667,6 +6675,17 @@
       "record_type",
       "source"
     ],
+    "v_apply_funnel_conversion": [
+      "base_apps",
+      "base_conv_pct",
+      "base_sessions",
+      "expected_apps_at_baseline",
+      "ratio_vs_baseline",
+      "recent_apps",
+      "recent_conv_pct",
+      "recent_sessions",
+      "verdict"
+    ],
     "v_attribution_capture_health": [
       "capture_pct",
       "captured",
@@ -10304,6 +10323,17 @@
       "last_active_at",
       "stage",
       "username"
+    ],
+    "v_testimonial_classifier_health": [
+      "judged",
+      "last_judged_at",
+      "missing",
+      "rows_live",
+      "stale_links",
+      "testimonial_images",
+      "testimonial_videos",
+      "testimonials",
+      "waiting"
     ],
     "v_text_json_quoted_verdict": [
       "frozen_still_quoted",

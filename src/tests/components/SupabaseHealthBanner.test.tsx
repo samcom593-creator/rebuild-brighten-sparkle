@@ -80,11 +80,20 @@ afterEach(() => {
   auth.user = { id: "test-user" };
 });
 
+// MP-521: probe() now awaits the supabase client import BEFORE it arms the
+// database timer, so settling a probe takes more microtask turns than the two
+// hand-written `await Promise.resolve()` calls these helpers used to do. Two was
+// already only just enough; one extra `await` in the component turned 4 of these
+// tests red. Flushing a fixed generous number is the honest fix -- the count is
+// not load-bearing, it just has to exceed the component's await depth.
+async function flushMicrotasks(turns = 8) {
+  for (let i = 0; i < turns; i++) await Promise.resolve();
+}
+
 async function runInitialProbe() {
   await act(async () => {
-    vi.advanceTimersByTime(30_001);
-    await Promise.resolve();
-    await Promise.resolve();
+    await vi.advanceTimersByTimeAsync(30_001);
+    await flushMicrotasks();
   });
 }
 
@@ -93,16 +102,14 @@ async function runInitialProbe() {
 // gone. The 60 s poll is the second probe.
 async function runSecondProbe() {
   await act(async () => {
-    vi.advanceTimersByTime(60_001);
-    await Promise.resolve();
-    await Promise.resolve();
+    await vi.advanceTimersByTimeAsync(60_001);
+    await flushMicrotasks();
   });
 }
 
 async function settleProbe() {
   await act(async () => {
-    await Promise.resolve();
-    await Promise.resolve();
+    await flushMicrotasks();
   });
 }
 
@@ -266,7 +273,7 @@ describe("SupabaseHealthBanner — polling interval", () => {
 
     // Advance 60s for the interval
     await act(async () => {
-      vi.advanceTimersByTime(60001);
+      await vi.advanceTimersByTimeAsync(60001);
       await Promise.resolve();
     });
     expect(vi.mocked(supabase.from).mock.calls.length).toBeGreaterThan(callsAfterMount);
@@ -292,14 +299,12 @@ describe("SupabaseHealthBanner — signed-out visitor on the login route", () =>
   async function runLoginProbes() {
     // signed-out firstDelay = 3s (slow), pollMs = 12s -> second probe = down
     await act(async () => {
-      vi.advanceTimersByTime(3_001);
-      await Promise.resolve();
-      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(3_001);
+      await flushMicrotasks();
     });
     await act(async () => {
-      vi.advanceTimersByTime(12_001);
-      await Promise.resolve();
-      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(12_001);
+      await flushMicrotasks();
     });
   }
 
@@ -371,7 +376,7 @@ describe("SupabaseHealthBanner — signed-out visitor who NAVIGATES to login", (
 
     // On the landing page, still correctly silent (MP-515 holds).
     await act(async () => {
-      vi.advanceTimersByTime(3_001);
+      await vi.advanceTimersByTimeAsync(3_001);
       await Promise.resolve();
     });
     expect(vi.mocked(supabase.from).mock.calls.length).toBe(0);
@@ -384,14 +389,12 @@ describe("SupabaseHealthBanner — signed-out visitor who NAVIGATES to login", (
 
     // The signed-out arm is firstDelay 3s then a 12s poll; two failures = down.
     await act(async () => {
-      vi.advanceTimersByTime(3_001);
-      await Promise.resolve();
-      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(3_001);
+      await flushMicrotasks();
     });
     await act(async () => {
-      vi.advanceTimersByTime(12_001);
-      await Promise.resolve();
-      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(12_001);
+      await flushMicrotasks();
     });
 
     expect(vi.mocked(supabase.from).mock.calls.length).toBeGreaterThan(0);
@@ -408,7 +411,7 @@ describe("SupabaseHealthBanner — signed-out visitor who NAVIGATES to login", (
       </BrowserRouter>
     );
     await act(async () => {
-      vi.advanceTimersByTime(3_001);
+      await vi.advanceTimersByTimeAsync(3_001);
       await Promise.resolve();
     });
     const armedCalls = vi.mocked(supabase.from).mock.calls.length;
@@ -418,7 +421,7 @@ describe("SupabaseHealthBanner — signed-out visitor who NAVIGATES to login", (
       fireEvent.click(screen.getByText("Home"), { button: 0 });
     });
     await act(async () => {
-      vi.advanceTimersByTime(60_000);
+      await vi.advanceTimersByTimeAsync(60_000);
       await Promise.resolve();
     });
     // No further probes: a signed-out visitor off the auth route is disarmed.
@@ -450,5 +453,57 @@ describe("SupabaseHealthBanner — mount position in App.tsx", () => {
 
     expect(bannerAt).toBeGreaterThan(routerAt);
     expect(bannerAt).toBeLessThan(routerCloseAt);
+  });
+});
+
+// MP-521: the probe used to load its own supabase client INSIDE the span it
+// blames on the database — the 6000ms AbortController and the performance.now()
+// sample feeding the `ms > 3000` "slow" bar both started above `await import()`.
+// Measured on the live landing page, where this probe is the first importer of
+// the 44.8KB gz vendor-supabase chunk: at 2G it computed 5361ms of which 5278ms
+// was its own download while the query took 85ms, and on a slower link the import
+// alone blew the 6000ms abort and rendered "The database is not answering".
+//
+// These two cases are the ones that go RED on the old ordering. Every other test
+// in this file passes either way, so they cannot speak for this fix.
+describe("SupabaseHealthBanner — a failure to load our own client is not a database verdict", () => {
+  afterEach(() => {
+    vi.doUnmock("@/integrations/supabase/client");
+    vi.resetModules();
+  });
+
+  it("stays silent when the client chunk cannot be loaded at all", async () => {
+    vi.resetModules();
+    vi.doMock("@/integrations/supabase/client", () => {
+      throw new Error("Failed to fetch dynamically imported module");
+    });
+
+    renderBanner();
+    await runInitialProbe();
+    await runSecondProbe();
+
+    // Old ordering: the import threw inside the timed try, so the outer catch
+    // counted it as a failed probe — two of them reach "down" and assert that
+    // Postgres is gone on the strength of a chunk this app failed to download.
+    expect(screen.queryByText(/data connection down/i)).toBeNull();
+    expect(screen.queryByText(/not answering/i)).toBeNull();
+    expect(screen.queryByText(/data connection slow/i)).toBeNull();
+  });
+
+  it("does not spend a failure strike on an unloadable client", async () => {
+    vi.resetModules();
+    vi.doMock("@/integrations/supabase/client", () => {
+      throw new Error("Failed to fetch dynamically imported module");
+    });
+
+    renderBanner();
+    await runInitialProbe();
+    await runSecondProbe();
+    await runSecondProbe();
+
+    // Three probes that could not look must leave the verdict untouched rather
+    // than escalating. If the strike were spent, the banner would be mounted by
+    // now and the whole point of the split would be lost.
+    expect(document.querySelector(".bg-amber-500\\/95")).toBeNull();
   });
 });

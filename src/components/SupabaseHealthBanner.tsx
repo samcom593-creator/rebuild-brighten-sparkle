@@ -88,11 +88,60 @@ export function SupabaseHealthBanner() {
 
   const probe = useCallback(async () => {
     setProbing(true);
+    // MP-521: load our own client BEFORE arming the database timer.
+    //
+    // This used to sit inside the timed span: the 6000ms AbortController and the
+    // performance.now() sample that feeds the `ms > 3000` "slow" bar were both
+    // started ABOVE `await import(...)`, so the 44.8 KB gz / 170 KB raw
+    // vendor-supabase chunk this probe pulls on its first run was being counted
+    // as database latency. Measured on the live landing page, where this probe
+    // is the first importer of that chunk: at 2G the probe computed 5361ms of
+    // which 5278ms was its own download and the query itself took 85ms, and on a
+    // slower link the import alone blew the 6000ms abort — reporting "The
+    // database is not answering" about a database answering in 85ms.
+    //
+    // MP-430 saw this symptom ("a 6s abort on Sam's building Wi-Fi was rendering
+    // 'Postgres data plane unresponsive' across every page") and debounced it to
+    // two consecutive failures. That helps the "down" verdict, because the second
+    // probe finds the module already resolved and pays no download — but "slow"
+    // arms on the FIRST probe with no debounce, and "slow" renders this banner
+    // just as "down" does. The timer was measuring the wrong interval; the fix is
+    // to stop timing our own code, not to widen the bar.
+    //
+    // A failed import is NOT a database verdict. We could not look, so we say
+    // nothing: state and failStreak are left untouched rather than spending a
+    // strike on a fault that is ours. Bounded so a hung chunk fetch cannot leave
+    // the probe wedged with probing=true forever.
+    //
+    // The loser of this race must be cleaned up. A bare
+    // `Promise.race([import(...), rejectAfter(20s)])` leaves a live 20s timer on
+    // every probe whose rejection lands after the race has already settled --
+    // an unhandled rejection in Sam's console once a minute, and a fake-timer
+    // test that advances 60s to reach the second probe detonates the first
+    // probe's abandoned timer. So: keep the handle, clear it in finally, and
+    // mark the loser handled.
+    let supabase: (typeof import("@/integrations/supabase/client"))["supabase"];
+    let importTimer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const giveUp = new Promise<never>((_, rej) => {
+        importTimer = setTimeout(() => rej(new Error("client chunk load timed out")), 20000);
+      });
+      // Marking the race LOSER handled is the whole point: whichever of the two
+      // settles second must not surface as an unhandled rejection. A real import
+      // failure still reaches the catch below, via Promise.race.
+      giveUp.catch(() => {}); // empty-catch-allow:race-loser-must-not-be-unhandled
+      const mod = await Promise.race([import("@/integrations/supabase/client"), giveUp]);
+      supabase = mod.supabase;
+    } catch {
+      setProbing(false);
+      return;
+    } finally {
+      if (importTimer !== undefined) clearTimeout(importTimer);
+    }
     const ctrl = new AbortController();
     const timeout = setTimeout(() => ctrl.abort(), 6000);
     const t0 = performance.now();
     try {
-      const { supabase } = await import("@/integrations/supabase/client");
       const { error } = await supabase
         .from("system_settings")
         .select("key")

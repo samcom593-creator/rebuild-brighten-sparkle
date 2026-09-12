@@ -32,6 +32,15 @@ if match '^(index\.html|src/components/landing/HeroSection\.tsx|scripts/check-vs
   node scripts/check-vsl-sync.mjs
 fi
 
+# ---------- check-probe-timer-span (MP-521) ----------
+# Trigger: the health banner itself or the guard. probe() must load its own
+# supabase client BEFORE arming the 6s abort and sampling the latency clock, or
+# a slow chunk download is reported as the database being down.
+if match '^(src/components/SupabaseHealthBanner\.tsx|scripts/check-probe-timer-span\.mjs)$'; then
+  echo "[pre-commit] health-banner probe file staged — running check:probe-timer-span…"
+  node scripts/check-probe-timer-span.mjs
+fi
+
 # ---------- check-metric-truth (wave-29) ----------
 # Trigger: any src/ tsx|ts|jsx|js, supabase/functions/ or supabase/migrations/,
 # api/ ts|tsx|js|mjs, or the script itself.

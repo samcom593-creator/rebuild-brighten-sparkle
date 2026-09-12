@@ -174,6 +174,14 @@ const PUBLIC_ALLOWLIST = new Set([
   // because a count-only ratchet is fungible (MP-356).
   "agentlink-clients-sync",
   "content-library",
+  // content-thumb (MP-520): same shape as content-library — the caller is the
+  // MacBook testimonial classifier (apex-testimonial-classifier.py) storing
+  // screenshot thumbnails into clip-thumbs, and it holds no Supabase JWT, only
+  // the APEX bot token, which the handler checks in code before doing anything
+  // (401 / bad uuid / no-such-clip branches proven live on deploy). Gating it
+  // at the gateway would refuse its only caller and the Library would render
+  // every screenshot as a blank tile.
+  "content-thumb",
   "slack-unlicensed-welcome",
   // content-share (MP-483): the /share/:token page is an unauthenticated route
   // (App.tsx, in the public block beside /apply) and SharePage.tsx fetches this

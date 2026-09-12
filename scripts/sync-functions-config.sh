@@ -85,6 +85,7 @@ PUBLIC_ALLOWLIST=(
   "agentlink-clients-sync"
   "slack-unlicensed-welcome"
   "content-library"
+  "content-thumb"
   # MP-492 — NOT new decisions. Each of these eight is already
   # verify_jwt = false in config.toml AND already carries a written, gate-READ
   # rationale in check-function-contracts.mjs's PUBLIC_ALLOWLIST. They were

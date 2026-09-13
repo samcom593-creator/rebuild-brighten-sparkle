@@ -66,6 +66,15 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockFrom.mockReturnValue({ insert: mockInsert } as any);
   sessionStorage.clear();
+  // beacon.ts reads these at module scope, so they must be stubbed before
+  // freshTrack()'s resetModules re-imports it. A test that leaves them to the
+  // ambient environment is grading the environment: locally .env.local supplies
+  // them and the beacon runs; in CI that file is gitignored and absent, the
+  // beacon returns false at its credential check, and every assertion here
+  // quietly changes meaning. That is not hypothetical -- it is how MP-523
+  // first went green on this machine and red on main.
+  vi.stubEnv("VITE_SUPABASE_URL", "https://stub.supabase.co");
+  vi.stubEnv("VITE_SUPABASE_PUBLISHABLE_KEY", "stub-publishable-key");
   fetchSpy = vi
     .spyOn(globalThis, "fetch")
     .mockImplementation(() => Promise.resolve(new Response(null, { status: 201 })));
@@ -73,6 +82,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.unstubAllEnvs();
   fetchSpy.mockRestore();
 });
 
@@ -243,6 +253,27 @@ describe("initTelemetry — flush on page lifecycle", () => {
     const batch = mockInsert.mock.calls[0][0] as any[];
     expect(batch).toHaveLength(1);
     expect(batch[0].event_name).toBe("last_event");
+  });
+
+  it("a build with no supabase credentials degrades to the async path, not to silence", async () => {
+    // The condition CI runs in. beacon.ts returns false when either credential
+    // is missing, so the terminal batch takes the awaited path MP-514 proved
+    // never lands on a real unload -- the rows are not dropped, but on a true
+    // page exit they would not arrive either. Graded here so a credential-less
+    // build is a known, named degradation rather than something a future
+    // author rediscovers from a red pipeline.
+    vi.stubEnv("VITE_SUPABASE_URL", "");
+    vi.stubEnv("VITE_SUPABASE_PUBLISHABLE_KEY", "");
+
+    const { track, initTelemetry } = await freshTrack();
+    initTelemetry();
+    track("last_event", "system");
+
+    window.dispatchEvent(new Event("pagehide"));
+    await flushMicrotasks();
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(mockInsert).toHaveBeenCalledTimes(1);
   });
 
   it("visibilitychange to hidden takes the same terminal path", async () => {

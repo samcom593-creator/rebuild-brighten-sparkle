@@ -90,6 +90,7 @@
     "audit:links": "node scripts/link-audit.mjs",
     "lighthouse:prod": "node scripts/lighthouse-prod.mjs",
     "test": "vitest run",
+    "test:verdict": "node scripts/test-verdict.mjs",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "prepare": "git config core.hooksPath .husky 2>/dev/null || true",

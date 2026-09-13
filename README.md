@@ -32,6 +32,11 @@ npm run verify:core
 npm test
 ```
 
+`npm test` reports a VERDICT, not a count: failures in files that are untracked
+and unstaged (another worker's in-flight tree, absent from CI's checkout) are
+named but not graded, and a run whose result cannot be read refuses to vouch
+instead of reporting zero. `npm run test:raw` is the bare vitest runner.
+
 Useful targeted production checks:
 
 ```sh

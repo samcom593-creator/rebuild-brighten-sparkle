@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { execFileSync } from "node:child_process";
+import { stripComments } from "./lib/strip-comments.mjs";
 
 // check-unit-tests-wired — MP-437 (2026-09-05)
 //
@@ -40,6 +41,23 @@ const root = process.cwd();
 const problems = [];
 const refusals = [];
 
+// Does this shell command RUN vitest, as opposed to merely containing the word?
+// `echo vitest` passed the rule this replaced. Splitting on shell operators and
+// requiring vitest to be the command word — after leading VAR=VAL assignments
+// and the runners that exec their argument — is the difference between call
+// shape and name shape (MP-309: a COLUMN named landing_url satisfied a check
+// written for an RPC call).
+const EXEC_PREFIXES = new Set(["npx", "cross-env", "dotenv", "node_modules/.bin/vitest"]);
+function invokesVitestDirectly(command) {
+  for (const segment of String(command).split(/&&|\|\||[;|]/)) {
+    const tokens = segment.trim().split(/\s+/).filter(Boolean);
+    let i = 0;
+    while (i < tokens.length && (/^[A-Za-z_][A-Za-z0-9_]*=/.test(tokens[i]) || EXEC_PREFIXES.has(tokens[i]))) i += 1;
+    if (i < tokens.length && /(^|\/)vitest$/.test(tokens[i])) return true;
+  }
+  return false;
+}
+
 const read = (p) => {
   const full = resolve(root, p);
   if (!existsSync(full)) {
@@ -54,7 +72,26 @@ const read = (p) => {
   }
 };
 
-// ── 1. The suite command still has to BE the suite ──────────────────────────
+// ── 1. The suite command still has to REACH the suite ───────────────────────
+// MP-527 widened this from name shape to CALL SHAPE. Until today the test was
+// `/\bvitest\b/.test(testScript)` — the literal word in one string. That is the
+// operand error of MP-309 (a COLUMN named `landing_url` satisfying a check for
+// an RPC call) and of MP-277 (".maybeSingle()" inside a COMMENT counted as a
+// call site): it grades what the command is NAMED, never what it RUNS.
+//
+// It was wrong in both directions. `"test": "echo vitest"` passed. And
+// `"test": "node scripts/test-verdict.mjs"` — a wrapper that runs the whole
+// suite through `npx vitest` and adds an honest verdict on top — FAILED, which
+// is how the default local command stayed pointed at the runner whose
+// passed-count two waves already misquoted (MP-524 `fb8bb0ca`, MP-525
+// `c8af1b51`; MP-526 `fbb6d5f8` built the wrapper and could not install it).
+//
+// So the chain is resolved ONE HOP, and every link is asserted rather than
+// assumed. A wrapper vouches only if it EXISTS, is TRACKED (CI checks out HEAD
+// — MP-403's rule, the same reason an untracked workflow is refused below), and
+// itself invokes vitest. Anything else is a problem naming exactly what it saw.
+// One hop, not recursive: a chain this guard cannot see to the end of is a
+// chain it must not vouch for, so hop two is a refusal, never a pass.
 const pkgRaw = read("package.json");
 let testScript = null;
 if (pkgRaw) {
@@ -63,8 +100,49 @@ if (pkgRaw) {
     testScript = scripts.test ?? null;
     if (!testScript) {
       problems.push('package.json has no "test" script — the unit suite has no entry point to wire.');
-    } else if (!/\bvitest\b/.test(testScript)) {
-      problems.push(`package.json "test" = ${JSON.stringify(testScript)} no longer invokes vitest, so wiring it into CI runs something else.`);
+    } else if (invokesVitestDirectly(testScript)) {
+      // Direct invocation: the runner is the command, not one of its arguments.
+    } else {
+      const hop = testScript.match(/(^|[\s&|;])node\s+(?<path>[\w./-]+\.[cm]?js)\b/);
+      if (!hop) {
+        problems.push(
+          `package.json "test" = ${JSON.stringify(testScript)} neither invokes vitest nor runs a node script this guard can follow, ` +
+            "so wiring it into CI runs something else.",
+        );
+      } else {
+        const wrapper = hop.groups.path.replace(/^\.\//, "");
+        const wrapperRaw = read(wrapper);
+        if (wrapperRaw === null) {
+          problems.push(`package.json "test" runs ${wrapper}, which does not exist — the suite has no reachable entry point.`);
+        } else {
+          let wrapperTracked = null;
+          try {
+            wrapperTracked =
+              execFileSync("git", ["ls-files", "--error-unmatch", wrapper], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] })
+                .trim().length > 0;
+          } catch {
+            wrapperTracked = false;
+          }
+          if (!wrapperTracked) {
+            problems.push(
+              `package.json "test" runs ${wrapper}, which is UNTRACKED — CI checks out HEAD, so the suite would have no entry point there ` +
+                "(the same reason an untracked workflow cannot vouch).",
+            );
+          }
+          // Comments stripped FIRST. This very file's header says "vitest" a
+          // dozen times; so does the wrapper's. Scanning raw source would let a
+          // wrapper that only TALKS about vitest vouch for running it — MP-277,
+          // where ".maybeSingle()" in a comment counted as a call site and held
+          // a baseline flat while the code drifted. stripComments is imported,
+          // never re-implemented (check:strip-comments-copies forbids a copy).
+          if (!/(^|[\s&|;"'`[(,])(npx\s+)?vitest\b/.test(stripComments(wrapperRaw))) {
+            problems.push(
+              `package.json "test" runs ${wrapper}, but that file never invokes vitest — the chain from "npm test" to the suite is broken, ` +
+                "so the step would report on something other than the 1081 tests.",
+            );
+          }
+        }
+      }
     }
   } catch (error) {
     refusals.push(`package.json did not parse as JSON (${error.message}).`);

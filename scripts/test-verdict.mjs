@@ -46,9 +46,25 @@
 // with a REFUSAL. A guard that returns a confident wrong zero is worse than no
 // guard, because it is believed.
 //
-// NOT WIRED INTO CI, DELIBERATELY: CI checks out HEAD, where untracked files do
-// not exist, so `npm test` there is already exactly this verdict. This script
-// exists for the laptop, which is the only place the two trees differ.
+// IT IS NOW `npm test` ITSELF (MP-527). MP-526 shipped this script beside the
+// command it was written to replace and left the default pointed at the unsafe
+// one: `npm test` ("vitest run") is what README:32 documents, what
+// verify-core.yml:102 runs, and what check-unit-tests-wired.mjs grades — so
+// reaching the honest verdict required knowing to type a different command.
+// Measured on the same tree the same day, the two disagreed: `npm test` printed
+// "1074 passed" and EXIT=1; `npm run test:verdict` printed SUITE GREEN and
+// EXIT=0. The misleading one was the default, the documented one, and the
+// guarded one.
+//
+// MP-526's stated reason for staying out of CI was correct and is preserved:
+// CI checks out HEAD, so uncommittablePaths() is EMPTY there by construction
+// and this script's verdict is byte-for-byte the bare runner's. It is wired now
+// not to change CI but so that ONE command answers "did the suite pass" in both
+// places — two commands for one question is how curl's --max-time and
+// fn_agentlink_reap_stuck drifted. That the skip is not a blanket exemption is
+// proven, not asserted: MP-526's M2 staged the same failing file and the notice
+// became a RED verdict. `npm run test:raw` is the bare runner, kept for when
+// someone needs vitest's own output; nothing grades on it.
 
 import { execFileSync } from "node:child_process";
 import { readFileSync, existsSync, rmSync, mkdtempSync } from "node:fs";

@@ -17,7 +17,7 @@ import { useConfirm } from "@/hooks/useConfirm";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { toast } from "sonner";
 import { Link, useSearchParams } from "react-router-dom";
-import { canShareFiles, saveMedia } from "@/lib/saveMedia";
+import { canShareFiles, pullFile, saveMedia, shareFiles } from "@/lib/saveMedia";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -45,6 +45,7 @@ interface Clip {
   // (whisper / OCR), and the verdict. testimonial null = the classifier hasn't reached this row yet.
   media?: string | null; transcript?: string | null; testimonial?: boolean | null; testimonial_kind?: string | null;
   testimonial_reason?: string | null; testimonial_source?: string | null; width?: number | null; height?: number | null;
+  phone_url?: string | null; phone_bytes?: number | null;   // 720p H.264 copy in public storage — what a phone pulls instead of the 4K original
 }
 type ProofKind = "all" | "video" | "image";
 const isTestimonial = (k: Clip) => k.testimonial === true || (k.tags ?? []).includes("testimonial");
@@ -144,39 +145,89 @@ export default function LaunchBoard() {
     if (error) { setClips((cs) => cs.map((c) => (c.id === k.id ? { ...c, ...prev } : c))); toast.error(`Couldn't save: ${error.message.slice(0, 100)}`); }
     else toast.success(value ? "Marked as a testimonial" : "Removed from testimonials");
   };
-  // Phone: pull the bytes and open the share sheet (Save Video / Save Image → camera roll). Desktop: plain download.
+  // Phone: two taps, never a spinner that can't end. Tap 1 pulls the PHONE-SIZE copy (720p, ~20 MB/min, made by
+  // the classifier) with a visible percentage and holds it; tap 2 opens the share sheet (Save Video / Save Image
+  // → camera roll). Two taps because iOS only lets share() run inside a fresh user gesture, and a pull that takes
+  // longer than that gesture would throw. Originals over 150 MB are never pulled on a phone — they are the reason
+  // the button spun forever (median testimonial original 283 MB, mean 1.5 GB). Desktop: plain download.
   const mobileSave = canShareFiles();
-  const [pulling, setPulling] = useState<string | null>(null);   // clip id (or "all") currently being pulled for the share sheet
+  const PHONE_MAX_ORIGINAL = 150 * 1024 * 1024;
+  const [pull, setPull] = useState<Record<string, { pct: number | null; loaded: number; file?: File; error?: string }>>({});
+  const pullTarget = (k: Clip): { url: string; name: string; bytes: number; kind: "phone" | "original" } | null => {
+    const url = directUrl(k);
+    // Prefer the smaller of the two: a 10 s phone screen recording is smaller than its 720p copy.
+    if (k.phone_url && !(url && k.size_bytes <= PHONE_MAX_ORIGINAL && k.size_bytes < (k.phone_bytes ?? Infinity))) return { url: k.phone_url, name: k.name.replace(/\.[a-z0-9]+$/i, "") + ".mp4", bytes: k.phone_bytes ?? 0, kind: "phone" };
+    if (!url) return null;
+    if (k.media === "image" || k.size_bytes <= PHONE_MAX_ORIGINAL) return { url, name: k.name, bytes: k.size_bytes, kind: "original" };
+    return null;
+  };
+  const pullOne = async (k: Clip) => {
+    const t = pullTarget(k);
+    if (!t) {
+      toast.error(k.phone_url === null && k.size_bytes > PHONE_MAX_ORIGINAL ? `Original is ${fmtSize(k.size_bytes)} — a phone-size copy is being made by the classifier (small ones first). Try again shortly.` : "No fresh link yet — re-minted every 20 min.");
+      return;
+    }
+    setPull((m) => ({ ...m, [k.id]: { pct: 0, loaded: 0 } }));
+    try {
+      const file = await pullFile(t, (loaded, total) => setPull((m) => ({ ...m, [k.id]: { pct: total ? Math.round((loaded / total) * 100) : null, loaded } })), 240_000);
+      setPull((m) => ({ ...m, [k.id]: { pct: 100, loaded: file.size, file } }));
+      toast.success(`${fmtSize(file.size)} ready — tap Save to open the share sheet`);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message.slice(0, 80) : "unknown";
+      setPull((m) => ({ ...m, [k.id]: { pct: null, loaded: 0, error: msg } }));
+      toast.error(`Couldn't pull it (${msg}). Opening the file directly instead.`);
+      window.open(t.url, "_blank", "noopener");
+    }
+  };
+  const shareOne = async (k: Clip) => {
+    const file = pull[k.id]?.file;
+    if (!file) return;
+    try {
+      const out = await shareFiles([file], k.name);
+      if (out === "shared") toast.success("Sent to the share sheet — tap Save Video / Save Image");
+    } catch (e) {
+      toast.error(`Share sheet refused: ${e instanceof Error ? e.message.slice(0, 80) : "unknown"}`);
+    }
+  };
   const saveOne = async (k: Clip) => {
     const url = directUrl(k);
-    if (!url) { window.open(dropboxUrl(k.path), "_blank", "noopener"); return; }
-    if (!mobileSave) { const a = document.createElement("a"); a.href = url; a.download = k.name; a.rel = "noopener"; document.body.appendChild(a); a.click(); a.remove(); return; }
-    setPulling(k.id);
-    try {
-      const out = await saveMedia([{ url, name: k.name }]);
-      if (out === "shared") toast.success("Sent to the share sheet — tap Save Video / Save Image for the camera roll");
-    } catch (e) {
-      toast.error(`Couldn't pull the clip: ${e instanceof Error ? e.message.slice(0, 80) : "unknown"} — opening Dropbox instead`);
-      window.open(dropboxUrl(k.path), "_blank", "noopener");
-    } finally { setPulling(null); }
+    if (!mobileSave) {
+      if (!url) { window.open(dropboxUrl(k.path), "_blank", "noopener"); return; }
+      const a = document.createElement("a"); a.href = url; a.download = k.name; a.rel = "noopener"; document.body.appendChild(a); a.click(); a.remove();
+      return;
+    }
+    if (pull[k.id]?.file) return void shareOne(k);
+    if (pull[k.id] && pull[k.id].pct !== null && !pull[k.id].error && !pull[k.id].file) return;   // already pulling
+    return void pullOne(k);
   };
-  // One tap for the whole filtered set. Phone: the share sheet takes the whole batch (capped by size so the
-  // pull finishes inside Safari's gesture window). Desktop: fires each fresh direct link; Chrome asks once.
-  // Rows without a fresh link are counted and named, never silently skipped.
+  // One tap for the whole filtered set. Desktop: fires each fresh direct link (Chrome asks once). Phone: pulls the
+  // phone-size copies (up to 250 MB per batch) with a percentage, then a second tap hands the batch to the share sheet.
   const MOBILE_BATCH_BYTES = 250 * 1024 * 1024;
+  const [batch, setBatch] = useState<{ files: File[]; left: number; stale: number } | null>(null);
+  const [pulling, setPulling] = useState<string | null>(null);
   const downloadAll = async (rows: Clip[]) => {
-    const ready = rows.filter((k) => directUrl(k));
+    if (batch?.files.length && mobileSave) {
+      try { const out = await shareFiles(batch.files, `${batch.files.length} clips`); if (out === "shared") { toast.success(`${batch.files.length} in the share sheet — Save to camera roll${batch.left ? ` · ${batch.left} more, run it again` : ""}`); setBatch(null); } }
+      catch (e) { toast.error(`Share sheet refused: ${e instanceof Error ? e.message.slice(0, 80) : "unknown"}`); }
+      return;
+    }
+    const ready = rows.filter((k) => directUrl(k) || k.phone_url);
     const stale = rows.length - ready.length;
     if (ready.length === 0) { toast.error("No fresh download links yet — the classifier re-mints them every 20 min."); return; }
     setDownloadingAll(true);
     try {
       if (mobileSave) {
-        let bytes = 0; const batch: Clip[] = [];
-        for (const k of ready) { if (batch.length && bytes + k.size_bytes > MOBILE_BATCH_BYTES) break; batch.push(k); bytes += k.size_bytes; }
-        setPulling("all");
-        const out = await saveMedia(batch.map((k) => ({ url: directUrl(k) as string, name: k.name })), (done, total) => setPulling(`all ${done + 1}/${total}`));
-        const left = ready.length - batch.length;
-        if (out === "shared") toast.success(`${batch.length} clip${batch.length === 1 ? "" : "s"} in the share sheet — Save to camera roll${left ? ` · ${left} more, run it again` : ""}${stale ? ` · ${stale} waiting on a fresh link` : ""}`);
+        const targets = ready.map((k) => ({ k, t: pullTarget(k) })).filter((x): x is { k: Clip; t: NonNullable<ReturnType<typeof pullTarget>> } => Boolean(x.t));
+        let bytes = 0; const picked: typeof targets = [];
+        for (const x of targets) { if (picked.length && bytes + x.t.bytes > MOBILE_BATCH_BYTES) break; picked.push(x); bytes += x.t.bytes; }
+        if (picked.length === 0) { toast.error("These originals are too big for a phone — phone-size copies are being made. Try again shortly."); return; }
+        const files: File[] = [];
+        for (let i = 0; i < picked.length; i++) {
+          setPulling(`${i + 1}/${picked.length}`);
+          files.push(await pullFile(picked[i].t, (loaded, total) => setPulling(`${i + 1}/${picked.length} ${total ? Math.round((loaded / total) * 100) + "%" : fmtSize(loaded)}`), 240_000));
+        }
+        setBatch({ files, left: ready.length - picked.length, stale });
+        toast.success(`${files.length} clip${files.length === 1 ? "" : "s"} ready (${fmtSize(files.reduce((n, f) => n + f.size, 0))}) — tap Save all again to open the share sheet`);
       } else {
         await saveMedia(ready.map((k) => ({ url: directUrl(k) as string, name: k.name })));
         toast.success(`${ready.length} download${ready.length === 1 ? "" : "s"} started${stale ? ` · ${stale} waiting on a fresh link` : ""}`);
@@ -221,7 +272,7 @@ export default function LaunchBoard() {
       const PAGE = 1000;
       const fetchPage = async (from: number) => {
         const k = await supabase.from("content_clips")
-          .select("id, path, name, folder, kind, size_bytes, modified_at, used_by_card, thumb_url, preview_url, duration_s, title, description, find_label, tags, download_url, download_expires_at, hook_title, banger_score, banger_reason, media, transcript, testimonial, testimonial_kind, testimonial_reason, testimonial_source, width, height")
+          .select("id, path, name, folder, kind, size_bytes, modified_at, used_by_card, thumb_url, preview_url, duration_s, title, description, find_label, tags, download_url, download_expires_at, hook_title, banger_score, banger_reason, media, transcript, testimonial, testimonial_kind, testimonial_reason, testimonial_source, width, height, phone_url, phone_bytes")
           .is("missing_at", null)   // Dropbox said path/not_found for these — a dead Download button is worse than no card
           .order("modified_at", { ascending: false, nullsFirst: false }).order("id", { ascending: true }).range(from, from + PAGE - 1);
         if (k.error) throw k.error;
@@ -550,7 +601,7 @@ export default function LaunchBoard() {
             })}
             {proof === "testimonials" && (
               <Button size="sm" disabled={downloadingAll || visibleClips.length === 0} onClick={() => void downloadAll(visibleClips)} className="h-7 bg-emerald-500/15 px-3 text-xs font-bold text-emerald-400 hover:bg-emerald-500/25" title="Fire every fresh direct link in this set — allow multiple downloads when Chrome asks once">
-                {downloadingAll ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-1 h-3.5 w-3.5" />}{downloadingAll && pulling ? `Pulling ${pulling.replace("all", "").trim() || "…"}` : `${mobileSave ? "Save all" : "Download all"} ${visibleClips.length}`}
+                {downloadingAll ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-1 h-3.5 w-3.5" />}{downloadingAll && pulling ? `Pulling ${pulling}` : batch?.files.length && mobileSave ? `Save ${batch.files.length} to camera roll` : `${mobileSave ? "Get all" : "Download all"} ${visibleClips.length}`}
               </Button>
             )}
             <span className="mx-1 hidden h-5 w-px bg-border sm:block" aria-hidden />
@@ -658,9 +709,12 @@ export default function LaunchBoard() {
                     {attachTarget
                       ? <Button size="sm" onClick={() => attachClip(k, attachTarget)} className="h-7 flex-1 bg-primary px-2.5 text-[11.5px] text-primary-foreground hover:bg-primary/90"><Paperclip className="mr-1 h-3 w-3" />Attach</Button>
                       : <Button size="sm" variant="outline" onClick={() => cardFromClip(k)} className="h-7 flex-1 px-2.5 text-[11.5px]"><Plus className="mr-1 h-3 w-3" />New card</Button>}
-                    {directUrl(k)
-                      ? <Button size="sm" disabled={pulling === k.id} onClick={() => void saveOne(k)} className="h-7 bg-emerald-500/15 px-2.5 text-[11.5px] font-semibold text-emerald-400 hover:bg-emerald-500/25" title={mobileSave ? "Save to camera roll — one tap, then Save Video / Save Image" : "Download the original — one tap"}>
-                          {pulling === k.id ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-1 h-3.5 w-3.5" />}{pulling === k.id ? "Pulling…" : mobileSave ? "Save" : "Download"}
+                    {(directUrl(k) || k.phone_url)
+                      ? <Button size="sm" disabled={mobileSave && !!pull[k.id] && pull[k.id].pct !== null && pull[k.id].pct! < 100 && !pull[k.id].error} onClick={() => void saveOne(k)}
+                          className={`h-7 px-2.5 text-[11.5px] font-semibold ${pull[k.id]?.file ? "bg-gold text-zinc-950 hover:bg-gold/90" : "bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25"}`}
+                          title={mobileSave ? (k.phone_url ? "Phone-size copy — tap to pull, tap again to save to camera roll" : "Tap to pull, tap again to save to camera roll") : "Download the original — one tap"}>
+                          {mobileSave && pull[k.id] && !pull[k.id].file && !pull[k.id].error ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-1 h-3.5 w-3.5" />}
+                          {!mobileSave ? "Download" : pull[k.id]?.file ? "Save to camera roll" : pull[k.id] && !pull[k.id].error ? (pull[k.id].pct !== null ? `${pull[k.id].pct}%` : fmtSize(pull[k.id].loaded)) : k.phone_url ? `Get · ${fmtSize(k.phone_bytes ?? 0)}` : "Get"}
                         </Button>
                       : <Button asChild size="sm" variant="outline" className="h-7 px-2.5 text-[11.5px] text-muted-foreground"><a href={dropboxUrl(k.path)} target="_blank" rel="noopener noreferrer" title="Direct link is being re-minted (every 20 min) — this opens the file in Dropbox, where Download is one tap"><ExternalLink className="mr-1 h-3.5 w-3.5" />Dropbox</a></Button>}
                     <Button size="sm" variant="ghost" onClick={() => { void navigator.clipboard?.writeText(k.path).then(() => toast.success("Path copied")).catch(() => toast.error("Clipboard blocked")); }} className="h-7 px-2 text-muted-foreground" title="Copy Dropbox path (for getclips / editors)"><Copy className="h-3.5 w-3.5" /></Button>

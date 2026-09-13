@@ -7,9 +7,9 @@ import { useParams } from "react-router-dom";
 import { Download, Film, Loader2 } from "lucide-react";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Button } from "@/components/ui/button";
-import { canShareFiles, saveMedia } from "@/lib/saveMedia";
+import { canShareFiles, pullFile, shareFiles } from "@/lib/saveMedia";
 
-interface SharedClip { id: string; name: string; folder: string; kind: string; title: string | null; tags: string[]; duration_s: number | null; size_bytes: number; thumb_url: string | null; preview_url: string | null; download_url: string | null }
+interface SharedClip { id: string; name: string; folder: string; kind: string; title: string | null; tags: string[]; duration_s: number | null; size_bytes: number; thumb_url: string | null; preview_url: string | null; download_url: string | null; phone_url?: string | null; phone_bytes?: number | null }
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const fmtDur = (s?: number | null) => (s ? `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}` : "");
@@ -19,22 +19,39 @@ export default function SharePage() {
   usePageTitle("Shared clips");
   const { token = "" } = useParams();
   const [state, setState] = useState<{ loading: boolean; error: string | null; label: string; clips: SharedClip[] }>({ loading: true, error: null, label: "", clips: [] });
-  // Phone: pull the bytes and hand them to the share sheet so Save Video lands in the camera roll (see src/lib/saveMedia.ts).
+  // Phone: two taps — pull the phone-size copy (or a small original) with a percentage, then hand it to the share
+  // sheet (Save Video / Save Image → camera roll). Two taps because iOS only lets share() run inside a fresh gesture.
   const mobile = canShareFiles();
-  const [saving, setSaving] = useState<string | null>(null);
+  const PHONE_MAX_ORIGINAL = 150 * 1024 * 1024;
+  const [pull, setPull] = useState<Record<string, { pct: number | null; loaded: number; file?: File; error?: string }>>({});
   const [saveNote, setSaveNote] = useState<string | null>(null);
-  const save = async (k: SharedClip) => {
-    if (!k.download_url) return;
-    setSaving(k.id); setSaveNote(null);
-    try {
-      const out = await saveMedia([{ url: k.download_url, name: k.name }]);
-      if (out === "shared") setSaveNote("In the share sheet — tap Save Video / Save Image to keep it in your camera roll.");
-    } catch (e) {
-      setSaveNote(`Couldn't pull the file (${e instanceof Error ? e.message.slice(0, 60) : "unknown"}). Opening it directly instead.`);
-      window.open(k.download_url, "_blank", "noopener");
-    } finally { setSaving(null); }
+  const target = (k: SharedClip) => {
+    if (k.phone_url && !(k.download_url && k.size_bytes <= PHONE_MAX_ORIGINAL && k.size_bytes < (k.phone_bytes ?? Infinity))) return { url: k.phone_url, name: k.name.replace(/\.[a-z0-9]+$/i, "") + ".mp4" };
+    if (k.download_url && (k.size_bytes <= PHONE_MAX_ORIGINAL || /\.(png|jpe?g|heic)$/i.test(k.name))) return { url: k.download_url, name: k.name };
+    return null;
   };
-
+  const save = async (k: SharedClip) => {
+    if (!mobile) { if (k.download_url) { const a = document.createElement("a"); a.href = k.download_url; a.download = k.name; a.rel = "noopener"; document.body.appendChild(a); a.click(); a.remove(); } return; }
+    const got = pull[k.id];
+    if (got?.file) {
+      try { const out = await shareFiles([got.file], k.name); if (out === "shared") setSaveNote("In the share sheet — tap Save Video / Save Image to keep it in your camera roll."); }
+      catch (e) { setSaveNote(`Share sheet refused: ${e instanceof Error ? e.message.slice(0, 60) : "unknown"}`); }
+      return;
+    }
+    if (got && got.pct !== null && !got.error) return;
+    const t = target(k);
+    if (!t) { setSaveNote(`This original is ${fmtSize(k.size_bytes)} — too big to pull on a phone. A phone-size copy is being made; try again shortly, or open it on a computer.`); return; }
+    setPull((m) => ({ ...m, [k.id]: { pct: 0, loaded: 0 } })); setSaveNote(null);
+    try {
+      const file = await pullFile(t, (loaded, total) => setPull((m) => ({ ...m, [k.id]: { pct: total ? Math.round((loaded / total) * 100) : null, loaded } })), 240_000);
+      setPull((m) => ({ ...m, [k.id]: { pct: 100, loaded: file.size, file } }));
+      setSaveNote(`${fmtSize(file.size)} ready — tap Save to camera roll.`);
+    } catch (e) {
+      setPull((m) => ({ ...m, [k.id]: { pct: null, loaded: 0, error: String(e) } }));
+      setSaveNote(`Couldn't pull the file (${e instanceof Error ? e.message.slice(0, 60) : "unknown"}). Opening it directly instead.`);
+      window.open(t.url, "_blank", "noopener");
+    }
+  };
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -73,9 +90,10 @@ export default function SharePage() {
               <div className="line-clamp-2 text-sm font-semibold text-foreground">{k.title || k.name}</div>
               <div className="text-[11px] text-muted-foreground">{k.folder} · {fmtSize(k.size_bytes)}{k.tags?.length ? ` · ${k.tags.slice(0, 3).join(", ")}` : ""}</div>
               <div className="mt-auto pt-1">
-                {k.download_url
-                  ? <Button size="sm" disabled={saving === k.id} onClick={() => void save(k)} className="w-full bg-primary text-primary-foreground hover:bg-primary/90" title={mobile ? "Save to camera roll — tap, then Save Video / Save Image" : "Download the original file"}>
-                      {saving === k.id ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Download className="mr-1.5 h-4 w-4" />}{saving === k.id ? "Pulling…" : mobile ? "Save to camera roll" : "Download original"}
+                {(k.download_url || k.phone_url)
+                  ? <Button size="sm" disabled={mobile && !!pull[k.id] && pull[k.id].pct !== null && pull[k.id].pct! < 100 && !pull[k.id].error} onClick={() => void save(k)} className={`w-full ${pull[k.id]?.file ? "bg-gold text-zinc-950 hover:bg-gold/90" : "bg-primary text-primary-foreground hover:bg-primary/90"}`} title={mobile ? "Tap to pull, tap again to save to camera roll" : "Download the original file"}>
+                      {mobile && pull[k.id] && !pull[k.id].file && !pull[k.id].error ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Download className="mr-1.5 h-4 w-4" />}
+                      {!mobile ? "Download original" : pull[k.id]?.file ? "Save to camera roll" : pull[k.id] && !pull[k.id].error ? (pull[k.id].pct !== null ? `Pulling ${pull[k.id].pct}%` : `Pulling ${fmtSize(pull[k.id].loaded)}`) : k.phone_url ? `Get phone copy · ${fmtSize(k.phone_bytes ?? 0)}` : "Get"}
                     </Button>
                   : <Button size="sm" variant="outline" disabled className="w-full">Link refreshing — try again in a minute</Button>}
               </div>

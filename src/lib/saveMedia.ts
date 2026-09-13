@@ -85,3 +85,42 @@ export async function saveMedia(targets: SaveTarget[], onProgress?: (done: numbe
   }
   return "downloaded";
 }
+
+/** Pull one file with progress and a hard timeout, so a UI can never sit on a spinner forever. */
+export async function pullFile(t: SaveTarget, onProgress?: (loadedBytes: number, totalBytes: number | null) => void, timeoutMs = 240_000): Promise<File> {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), timeoutMs);
+  try {
+    const res = await fetch(t.url, { mode: "cors", signal: ctl.signal });
+    if (!res.ok) throw new Error(`fetch ${res.status}`);
+    const total = Number(res.headers.get("content-length") || 0) || null;
+    if (!res.body) {
+      const blob = await res.blob();
+      return new File([blob], t.name, { type: mimeFor(t.name) });
+    }
+    const reader = res.body.getReader();
+    const chunks: BlobPart[] = [];
+    let loaded = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value) { chunks.push(value); loaded += value.byteLength; onProgress?.(loaded, total); }
+    }
+    return new File(chunks, t.name, { type: mimeFor(t.name) });
+  } catch (e) {
+    if (e instanceof Error && e.name === "AbortError") throw new Error(`timed out after ${Math.round(timeoutMs / 1000)}s`);
+    throw e;
+  } finally { clearTimeout(timer); }
+}
+
+/** Hand already-pulled files to the OS share sheet. Must run inside a fresh user gesture on iOS. */
+export async function shareFiles(files: File[], title: string): Promise<SaveOutcome> {
+  if (!canShareFiles() || !navigator.canShare({ files })) throw new Error("this browser cannot share these files");
+  try {
+    await navigator.share({ files, title });
+    return "shared";
+  } catch (e) {
+    if (e instanceof Error && e.name === "AbortError") return "cancelled";
+    throw e;
+  }
+}

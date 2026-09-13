@@ -12,7 +12,7 @@ Deno.serve(async (req) => {
   const { data: share } = await db.from("content_shares").select("token, label, clip_ids, expires_at, view_count").eq("token", t).maybeSingle();
   if (!share || (share.expires_at && new Date(share.expires_at).getTime() < Date.now())) return new Response(JSON.stringify({ ok: false, error: "not found or expired" }), { status: 404, headers: H });
   const { data: clips } = await db.from("content_clips")
-    .select("id, name, path, folder, kind, title, tags, description, duration_s, width, height, size_bytes, thumb_url, preview_url, download_url, download_expires_at")
+    .select("id, name, path, folder, kind, title, tags, description, duration_s, width, height, size_bytes, thumb_url, preview_url, download_url, download_expires_at, phone_url, phone_bytes")
     .in("id", share.clip_ids as string[]);
   await db.from("content_shares").update({ view_count: (share.view_count ?? 0) + 1, last_viewed_at: new Date().toISOString() }).eq("token", t);
   const now = Date.now() + 60_000;

@@ -37983,6 +37983,9 @@ export type Database = {
           hook_title: string | null
           media: string
           missing_at: string | null
+          phone_at: string | null
+          phone_bytes: number | null
+          phone_url: string | null
           testimonial: boolean | null
           testimonial_at: string | null
           testimonial_kind: string | null
@@ -38019,6 +38022,9 @@ export type Database = {
           hook_title?: string | null
           media?: string
           missing_at?: string | null
+          phone_at?: string | null
+          phone_bytes?: number | null
+          phone_url?: string | null
           testimonial?: boolean | null
           testimonial_at?: string | null
           testimonial_kind?: string | null
@@ -38055,6 +38061,9 @@ export type Database = {
           hook_title?: string | null
           media?: string
           missing_at?: string | null
+          phone_at?: string | null
+          phone_bytes?: number | null
+          phone_url?: string | null
           testimonial?: boolean | null
           testimonial_at?: string | null
           testimonial_kind?: string | null

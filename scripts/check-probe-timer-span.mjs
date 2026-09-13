@@ -30,8 +30,17 @@ const fail = (m) => { console.error(`✗ check:probe-timer-span — ${m}`); proc
 
 const startIdx = src.indexOf("const probe = useCallback(");
 if (startIdx === -1) fail(`could not find probe() in ${FILE}. If it was renamed, update this guard — do not delete it.`);
-const endIdx = src.indexOf("\n  }, []);", startIdx);
-if (endIdx === -1) fail("could not find the end of probe(); refusing to grade a slice I cannot bound.");
+// MP-522: this used to look for the literal "\n  }, []);". probe()'s dependency
+// array is not a constant of nature -- adding one stable callback to it (which
+// MP-522 did) moved the terminator and the guard refused to grade at all. That
+// is the honest failure mode rather than a silent wrong slice, but it means any
+// correct edit to the deps parks this check red. The anchor is now the SHAPE of
+// a useCallback closing at this indentation, with the dep list left free. It is
+// still a bounded match -- two-space indent, no nested "]" inside the deps -- so
+// it cannot run away and swallow the rest of the file.
+const endMatch = /\n {2}\}, \[[^\]]*\]\);/.exec(src.slice(startIdx));
+if (!endMatch) fail("could not find the end of probe(); refusing to grade a slice I cannot bound.");
+const endIdx = startIdx + endMatch.index;
 const body = src.slice(startIdx, endIdx);
 
 // Strip line comments so the prose ABOVE (which necessarily describes the old

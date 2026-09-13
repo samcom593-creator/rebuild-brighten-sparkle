@@ -316,19 +316,100 @@ describe("SupabaseHealthBanner — signed-out visitor on the login route", () =>
     expect(screen.queryByText(/not your email or password/i)).not.toBeNull();
   });
 
-  it("clears itself the moment the backend recovers", async () => {
+  // MP-522: this case used to assert `container.firstChild` was null after
+  // recovery -- it encoded the silent vanish as the contract. The outage copy
+  // told this visitor "This page will sign you in automatically the moment it
+  // recovers", and nothing in the app could do that, so the bar disappearing
+  // with no instruction was the second half of that false promise. The
+  // assertions below are strictly stronger than the one they replace: the
+  // outage message must still be gone AND the visitor must be told what to do.
+  it("replaces the outage notice with an explicit try-again when the backend recovers", async () => {
+    vi.mocked(supabase.from).mockReturnValue(buildProbeChainRejected(0) as any);
+    renderBanner();
+    await runLoginProbes();
+    expect(screen.queryByText(/not your email or password/i)).not.toBeNull();
+    // backend comes back; next probe succeeds. The async timer variant flushes
+    // the probe's dynamic-import + resolved-value microtask chain, which the
+    // sync variant + manual resolves does not.
+    vi.mocked(supabase.from).mockReturnValue(buildProbeChain({ error: null }, 0) as any);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(12_001);
+    });
+    expect(screen.queryByText(/not your email or password/i)).toBeNull();
+    // NOT /Servers are back/i: the OUTAGE copy now ends "...it will tell you the
+    // moment the servers are back", so that regex matches both bars and cannot
+    // tell them apart. The exact-string form matches an element whose whole
+    // normalized text is that phrase, which is only ever the recovery <strong>.
+    expect(screen.queryByText("Servers are back")).not.toBeNull();
+    expect(screen.queryByText(/Try signing in again/i)).not.toBeNull();
+  });
+
+  it("does not promise an automatic sign-in it has no channel to perform", async () => {
+    // Login.tsx has zero useEffect and zero onAuthStateChange subscriptions and
+    // this module exports nothing but isAuthPath, so no recovery can reach the
+    // sign-in form. The copy must not claim otherwise.
+    vi.mocked(supabase.from).mockReturnValue(buildProbeChainRejected(0) as any);
+    renderBanner();
+    await runLoginProbes();
+    expect(screen.queryByText(/not your email or password/i)).not.toBeNull();
+    expect(screen.queryByText(/sign you in automatically/i)).toBeNull();
+  });
+
+  it("stays silent on recovery when the visitor never saw an outage", async () => {
+    // A "we're back" bar on a session that was never shown a problem is noise.
+    vi.mocked(supabase.from).mockReturnValue(buildProbeChain({ error: null }, 0) as any);
+    const { container } = renderBanner();
+    await runLoginProbes();
+    expect(container.firstChild).toBeNull();
+  });
+
+  it("stays silent on recovery when the outage notice was dismissed", async () => {
     vi.mocked(supabase.from).mockReturnValue(buildProbeChainRejected(0) as any);
     const { container } = renderBanner();
     await runLoginProbes();
-    expect(screen.queryByText(/not your email or password/i)).not.toBeNull();
-    // backend comes back; next probe succeeds -> banner clears. The async
-    // timer variant flushes the probe's dynamic-import + resolved-value
-    // microtask chain, which the sync variant + manual resolves does not.
+    fireEvent.click(screen.getByLabelText("Dismiss"));
+    expect(container.firstChild).toBeNull();
     vi.mocked(supabase.from).mockReturnValue(buildProbeChain({ error: null }, 0) as any);
     await act(async () => {
       await vi.advanceTimersByTimeAsync(12_001);
     });
     expect(container.firstChild).toBeNull();
+  });
+
+  it("the recovery notice can be dismissed", async () => {
+    vi.mocked(supabase.from).mockReturnValue(buildProbeChainRejected(0) as any);
+    const { container } = renderBanner();
+    await runLoginProbes();
+    vi.mocked(supabase.from).mockReturnValue(buildProbeChain({ error: null }, 0) as any);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(12_001);
+    });
+    expect(screen.queryByText(/Try signing in again/i)).not.toBeNull();
+    fireEvent.click(screen.getByLabelText("Dismiss"));
+    expect(container.firstChild).toBeNull();
+  });
+
+  it("a NEW outage after a recovery shows the outage notice, not the recovery one", async () => {
+    vi.mocked(supabase.from).mockReturnValue(buildProbeChainRejected(0) as any);
+    renderBanner();
+    await runLoginProbes();
+    vi.mocked(supabase.from).mockReturnValue(buildProbeChain({ error: null }, 0) as any);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(12_001);
+    });
+    expect(screen.queryByText(/Try signing in again/i)).not.toBeNull();
+    // it goes down again: two consecutive failures
+    vi.mocked(supabase.from).mockReturnValue(buildProbeChainRejected(0) as any);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(12_001);
+      await flushMicrotasks();
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(12_001);
+      await flushMicrotasks();
+    });
+    expect(screen.queryByText(/Try signing in again/i)).toBeNull();
+    expect(screen.queryByText(/not your email or password/i)).not.toBeNull();
   });
 
   it("still never renders for a signed-out visitor on the landing page", async () => {

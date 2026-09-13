@@ -86,6 +86,37 @@ export function SupabaseHealthBanner() {
   const probeRef = useRef<() => Promise<void>>(async () => {});
   const failStreak = useRef(0);
 
+  // MP-522: a signed-out visitor on /login was told "This page will sign you in
+  // automatically the moment it recovers." Nothing did. Login.tsx has zero
+  // useEffect and zero onAuthStateChange subscriptions, and this module exports
+  // nothing but isAuthPath -- there is no channel by which a recovery could
+  // reach the sign-in form. The sentence was false the day it shipped, and it
+  // was addressed to the one person who cannot tell: someone already locked
+  // out, who has just been told the failure is not their password.
+  //
+  // Making that promise TRUE would mean holding their password in memory across
+  // an outage and replaying it on recovery -- a worse thing than the bug. So the
+  // promise is narrowed to one this component can keep with what it already
+  // has: it tells them.
+  //
+  // Recovery used to render as the bar silently vanishing. For a signed-in user
+  // that is correct -- their dashboards simply start answering. For someone
+  // sitting on the login page who was asked to wait, the only signal they had
+  // disappearing with no instruction is the same non-event as never having been
+  // told at all.
+  const [recovered, setRecovered] = useState(false);
+  // Only claim a recovery for an outage the visitor actually SAW. A "we're back"
+  // bar on a session that was never shown a problem is noise, and a dismissed
+  // bar was not seen either -- hence the dismissal is read, not assumed.
+  const sawProblem = useRef(false);
+  const dismissedRef = useRef(false);
+  dismissedRef.current = dismissed;
+
+  const markProblem = useCallback(() => {
+    sawProblem.current = true;
+    setRecovered(false);
+  }, []);
+
   const probe = useCallback(async () => {
     setProbing(true);
     // MP-521: load our own client BEFORE arming the database timer.
@@ -156,11 +187,15 @@ export function SupabaseHealthBanner() {
         failStreak.current += 1;
         setState(failStreak.current >= 2 ? "down" : "slow");
         if (failStreak.current >= 2) setDownSince((prev) => prev ?? new Date());
+        markProblem();
       } else if (ms > 3000) {
         failStreak.current = 0;
         setState("slow");
+        markProblem();
       } else {
         failStreak.current = 0;
+        if (sawProblem.current && !dismissedRef.current) setRecovered(true);
+        sawProblem.current = false;
         setState("ok");
         setDownSince(null);
         setDismissed(false);
@@ -169,12 +204,13 @@ export function SupabaseHealthBanner() {
       failStreak.current += 1;
       setState(failStreak.current >= 2 ? "down" : "slow");
       if (failStreak.current >= 2) setDownSince((prev) => prev ?? new Date());
+      markProblem();
     } finally {
       clearTimeout(timeout);
       setLastChecked(new Date());
       setProbing(false);
     }
-  }, []);
+  }, [markProblem]);
 
   probeRef.current = probe;
 
@@ -213,11 +249,37 @@ export function SupabaseHealthBanner() {
     };
   }, [signedIn, onAuth]);
 
-  if ((!signedIn && !onAuth) || dismissed || state === "ok") return null;
+  // MP-522: the recovery notice is scoped to the signed-out auth route on
+  // purpose. It exists because a person there has a blocked action waiting on
+  // the answer. A signed-in user has none -- their next query simply works -- so
+  // their banner still clears silently, and the test asserting that is left
+  // untouched as the proof this stayed in scope.
+  const showRecovered = recovered && !signedIn && onAuth;
+  if (!signedIn && !onAuth) return null;
+  if (showRecovered) {
+    return (
+      <div className="sticky top-0 z-50 bg-emerald-500/95 text-emerald-950 border-b border-emerald-700 px-4 py-2 flex items-center justify-between gap-3 text-sm">
+        <div className="flex items-center gap-2 min-w-0">
+          <RefreshCw className="h-4 w-4 flex-shrink-0" />
+          <span className="truncate">
+            <strong>Servers are back</strong> · Try signing in again.
+          </span>
+        </div>
+        <button
+          onClick={() => setRecovered(false)}
+          className="hover:bg-emerald-600/40 rounded p-1 flex-shrink-0"
+          aria-label="Dismiss"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+    );
+  }
+  if (dismissed || state === "ok") return null;
 
   const message = !signedIn
     ? (state === "down"
-        ? "We can't reach our servers right now. This is a temporary issue on our side, not your email or password. This page will sign you in automatically the moment it recovers."
+        ? "We can't reach our servers right now. This is a temporary issue on our side, not your email or password. Leave this page open. It will tell you the moment the servers are back."
         : "Servers are responding slowly. Sign-in may take a few seconds.")
     : (state === "down"
         ? "The database is not answering. Dashboards may load slowly or show stale numbers until it recovers."

@@ -8,11 +8,26 @@
  *   ✅ setTelemetryUser updates the user attached to queued events
  *   ✅ Flush is swallowed when supabase insert throws (telemetry never throws)
  *   ✅ initTelemetry() registers visibilitychange + pagehide listeners
- *   ✅ pagehide triggers immediate flush
+ *   ✅ pagehide sends the terminal batch through the beacon (MP-514)
+ *   ✅ beacon refusal hands the batch back to the async path without dropping it
  *
  * Missing / not yet tested:
  *   ❌ session_id persistence across track() calls within the same session
  *   ❌ user_agent is attached in browser env (navigator.userAgent mock)
+ *
+ * MP-523: the terminal test used to assert `mockInsert` — the supabase-js sink
+ * MP-514 deliberately REMOVED from the pagehide path. It went red against
+ * correct code, and while red it could not tell a working beacon from a
+ * `flushTerminal` deleted outright: both produce the identical failure line.
+ * A test is graded on the sink the code actually writes to, or it has stopped
+ * measuring. See beacon.ts for why that sink cannot be the awaited import.
+ *
+ * fetch is stubbed for the whole file. The beacon issues a REAL request to
+ * PostgREST, and nothing here mocked it: measured, no row has ever landed
+ * (0 rows named `last_event` against a table taking 493 in 24h), because the
+ * vitest worker exits before a fire-and-forget request completes. That is a
+ * race this suite happens to win, not a property it holds — one `await` added
+ * after the dispatch and the suite starts writing to Sam's analytics table.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { supabase } from "@/integrations/supabase/client";
@@ -43,16 +58,46 @@ async function flushMicrotasks() {
 const mockInsert = vi.fn().mockResolvedValue({ data: null, error: null });
 const mockFrom = vi.mocked(supabase.from);
 
+/** Stands in for the network the beacon writes to. See the file header. */
+let fetchSpy: ReturnType<typeof vi.spyOn>;
+
 beforeEach(() => {
   vi.useFakeTimers();
   vi.clearAllMocks();
   mockFrom.mockReturnValue({ insert: mockInsert } as any);
   sessionStorage.clear();
+  fetchSpy = vi
+    .spyOn(globalThis, "fetch")
+    .mockImplementation(() => Promise.resolve(new Response(null, { status: 201 })));
 });
 
 afterEach(() => {
   vi.useRealTimers();
+  fetchSpy.mockRestore();
 });
+
+/**
+ * Every analytics_events row the beacon handed to PostgREST, across all calls.
+ *
+ * Deliberately NOT `fetchSpy.mock.calls[0]` with an exact-count assertion.
+ * initTelemetry() registers window listeners that vi.resetModules() cannot
+ * take back, so each test leaves a listener behind closed over its own module
+ * queue. A sibling test that ends with an undrained queue then fires on the
+ * next dispatch and inflates the count here -- PROVEN: under the
+ * delete-the-pagehide-listener mutation this test went red in the suite and
+ * green in isolation, and the contract it owns had not changed either time.
+ * Grade what the beacon carried, not how many neighbours also spoke.
+ */
+function beaconRows(): Array<Record<string, unknown>> {
+  return fetchSpy.mock.calls.flatMap((c) =>
+    JSON.parse(String((c[1] as RequestInit | undefined)?.body ?? "[]"))
+  );
+}
+
+/** True when the beacon carried an event by this name. */
+function beaconCarried(eventName: string): boolean {
+  return beaconRows().some((r) => r.event_name === eventName);
+}
 
 describe("track — basic queueing", () => {
   it("does not call supabase before flush interval", async () => {
@@ -148,12 +193,66 @@ describe("initTelemetry — flush on page lifecycle", () => {
     addSpy.mockRestore();
   });
 
-  it("pagehide triggers flush", async () => {
+  it("pagehide sends the terminal batch through the beacon, carrying the event", async () => {
     const { track, initTelemetry } = await freshTrack();
     initTelemetry();
     track("last_event", "system");
+
+    window.dispatchEvent(new Event("pagehide"));
+
+    // No await before the assertion, deliberately. MP-514's whole finding is
+    // that a request placed after an await in a pagehide handler is never
+    // issued at all, so "was it already on the wire when the handler returned"
+    // IS the contract -- not "does it arrive eventually".
+    expect(fetchSpy).toHaveBeenCalled();
+    expect(String(fetchSpy.mock.calls[0][0])).toContain("/rest/v1/analytics_events");
+    expect(beaconCarried("last_event")).toBe(true);
+  });
+
+  it("pagehide does not route the terminal batch through the awaited import", async () => {
+    const { track, initTelemetry } = await freshTrack();
+    initTelemetry();
+    track("last_event", "system");
+
     window.dispatchEvent(new Event("pagehide"));
     await flushMicrotasks();
-    expect(mockInsert).toHaveBeenCalled();
+
+    // The supabase-js path is the FALLBACK now. If it ran here the beacon
+    // did not, which is the bug MP-514 shipped to end.
+    expect(mockInsert).not.toHaveBeenCalled();
+  });
+
+  it("a beacon that cannot be issued hands the batch back instead of dropping it", async () => {
+    // A real refusal, not a stubbed return value: beaconAnalyticsRows catches
+    // a throwing fetch and reports false, which is the branch under test.
+    fetchSpy.mockImplementation(() => {
+      throw new Error("network stack refused the request");
+    });
+
+    const { track, initTelemetry } = await freshTrack();
+    initTelemetry();
+    track("last_event", "system");
+
+    window.dispatchEvent(new Event("pagehide"));
+    await flushMicrotasks();
+
+    // beacon.ts: "a false return means the caller still owns those rows".
+    // On a tab-switch hide the document survives and the async path still
+    // works, so the batch must be written late -- never silently discarded.
+    expect(mockInsert).toHaveBeenCalledTimes(1);
+    const batch = mockInsert.mock.calls[0][0] as any[];
+    expect(batch).toHaveLength(1);
+    expect(batch[0].event_name).toBe("last_event");
+  });
+
+  it("visibilitychange to hidden takes the same terminal path", async () => {
+    const { track, initTelemetry } = await freshTrack();
+    initTelemetry();
+    track("last_event", "system");
+
+    vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
+    window.dispatchEvent(new Event("visibilitychange"));
+
+    expect(beaconCarried("last_event")).toBe(true);
   });
 });

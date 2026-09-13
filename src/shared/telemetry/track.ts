@@ -130,9 +130,13 @@ export function track(
 /** Initialize global flush triggers. Call once at app boot. */
 export function initTelemetry() {
   if (typeof window === "undefined") return;
-  // MP-525: see webVitals.ts -- visibilitychange is dispatched at the Document
-  // and reaches a window listener only by bubbling. document is correct under
-  // both bubbles values; pagehide below is fired at the Window and stays there.
+  // MP-525 moved this from `window` to `document`: visibilitychange is dispatched
+  // AT the Document and reaches a window listener only by BUBBLING. MP-528
+  // MEASURED it in real Chrome 151 with both positive controls green -- bubbles is
+  // TRUE and a window listener DOES receive it, so the old window form was NOT
+  // dropping tab-switch terminal batches. document is kept for correctness under
+  // both values, not because a loss was found. See webVitals.ts for the full note
+  // and scripts/measure-visibilitychange-bubbles.mjs to re-measure.
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") flushTerminal();
   });

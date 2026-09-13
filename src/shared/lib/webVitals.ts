@@ -156,14 +156,17 @@ export function initWebVitals() {
   } catch { // empty-catch-allow:telemetry-fire-and-forget
   }
 
-  // MP-525: visibilitychange is dispatched AT the Document, so it only reaches a
-  // window-scoped listener by BUBBLING. That makes `window.addEventListener`
-  // correct only while the event carries bubbles:true -- measured here, a
-  // bubbles:false dispatch reaches a document listener and never reaches a
-  // window one. A document listener is correct under BOTH, needs no assumption
-  // about a flag this repo cannot observe from its test env, and matches the
-  // six other visibilitychange registrations in src/. pagehide is different and
-  // deliberately left on window: it is fired AT the Window, not at the document.
+  // MP-525 moved this from `window` to `document`: visibilitychange is dispatched
+  // AT the Document and reaches a window-scoped listener only by BUBBLING.
+  // MP-528 MEASURED the flag MP-525 called unobservable from this repo's test env
+  // -- real Chrome 151, page genuinely hidden, both positive controls green:
+  // event.bubbles is TRUE and a window listener DOES receive it. So the pre-MP-525
+  // window form was NOT losing tab-switch terminal batches; nothing was recovered
+  // by the move. The document form is kept because it is correct under BOTH values
+  // of a flag this code should not have to assume, and matches the six other
+  // visibilitychange registrations in src/. Re-measure any time:
+  //   node scripts/measure-visibilitychange-bubbles.mjs   (exit 1 = it stopped bubbling)
+  // pagehide is different and deliberately left on window: it is fired AT the Window.
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") flushTerminal();
   });

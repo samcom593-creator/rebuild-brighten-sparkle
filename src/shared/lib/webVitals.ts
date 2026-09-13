@@ -156,7 +156,15 @@ export function initWebVitals() {
   } catch { // empty-catch-allow:telemetry-fire-and-forget
   }
 
-  window.addEventListener("visibilitychange", () => {
+  // MP-525: visibilitychange is dispatched AT the Document, so it only reaches a
+  // window-scoped listener by BUBBLING. That makes `window.addEventListener`
+  // correct only while the event carries bubbles:true -- measured here, a
+  // bubbles:false dispatch reaches a document listener and never reaches a
+  // window one. A document listener is correct under BOTH, needs no assumption
+  // about a flag this repo cannot observe from its test env, and matches the
+  // six other visibilitychange registrations in src/. pagehide is different and
+  // deliberately left on window: it is fired AT the Window, not at the document.
+  document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") flushTerminal();
   });
   window.addEventListener("pagehide", () => flushTerminal());

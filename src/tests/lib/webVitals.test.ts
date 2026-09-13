@@ -238,7 +238,11 @@ describe("web-vitals terminal flush (MP-514)", () => {
     await initWithLcp(4_567);
 
     vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
-    window.dispatchEvent(new Event("visibilitychange"));
+    // MP-525: dispatch AT the document with bubbles:true, which is what the
+    // browser does. The old window.dispatchEvent reached only a window-scoped
+    // listener, so it pinned the one implementation that depends on bubbling
+    // and went RED against the safer document listener -- proven by mutation.
+    document.dispatchEvent(new Event("visibilitychange", { bubbles: true }));
 
     expect(rowWithValue(beaconRows(), 4_567)).toBeDefined();
   });

@@ -185,13 +185,27 @@ describe("setTelemetryUser", () => {
 });
 
 describe("initTelemetry — flush on page lifecycle", () => {
-  it("registers visibilitychange listener", async () => {
-    const addSpy = vi.spyOn(window, "addEventListener");
+  it("registers visibilitychange on the document, not on the window", async () => {
+    // MP-525: the node is the contract, not an implementation detail. The browser
+    // dispatches visibilitychange AT the Document, so a window-scoped listener
+    // receives it only while the event bubbles -- measured in Chromium, a
+    // bubbles:false dispatch reaches a document listener and never a window one.
+    // Listening on the document is correct under both, so it is pinned here.
+    // Registering on window instead must go red, or the safer form can silently
+    // regress to the one that depends on a flag this repo cannot observe.
+    const winSpy = vi.spyOn(window, "addEventListener");
+    const docSpy = vi.spyOn(document, "addEventListener");
     const { initTelemetry } = await freshTrack();
     initTelemetry();
-    const calls = addSpy.mock.calls.map((c) => c[0]);
-    expect(calls).toContain("visibilitychange");
-    addSpy.mockRestore();
+    const onDoc = docSpy.mock.calls.map((c) => c[0]);
+    const onWin = winSpy.mock.calls.map((c) => c[0]);
+    expect(onDoc).toContain("visibilitychange");
+    expect(onWin).not.toContain("visibilitychange");
+    // pagehide is the opposite case and must stay on the window: it is fired AT
+    // the Window, so a document listener would never see it.
+    expect(onWin).toContain("pagehide");
+    winSpy.mockRestore();
+    docSpy.mockRestore();
   });
 
   it("registers pagehide listener", async () => {
@@ -282,7 +296,11 @@ describe("initTelemetry — flush on page lifecycle", () => {
     track("last_event", "system");
 
     vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
-    window.dispatchEvent(new Event("visibilitychange"));
+    // MP-525: dispatch AT the document with bubbles:true, which is what the
+    // browser does. The old window.dispatchEvent reached only a window-scoped
+    // listener, so it pinned the one implementation that depends on bubbling
+    // and went RED against the safer document listener -- proven by mutation.
+    document.dispatchEvent(new Event("visibilitychange", { bubbles: true }));
 
     expect(beaconCarried("last_event")).toBe(true);
   });

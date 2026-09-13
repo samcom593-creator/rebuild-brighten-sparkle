@@ -130,7 +130,10 @@ export function track(
 /** Initialize global flush triggers. Call once at app boot. */
 export function initTelemetry() {
   if (typeof window === "undefined") return;
-  window.addEventListener("visibilitychange", () => {
+  // MP-525: see webVitals.ts -- visibilitychange is dispatched at the Document
+  // and reaches a window listener only by bubbling. document is correct under
+  // both bubbles values; pagehide below is fired at the Window and stays there.
+  document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") flushTerminal();
   });
   window.addEventListener("pagehide", () => flushTerminal());

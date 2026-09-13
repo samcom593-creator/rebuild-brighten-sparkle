@@ -7,6 +7,7 @@ import { useParams } from "react-router-dom";
 import { Download, Film, Loader2 } from "lucide-react";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Button } from "@/components/ui/button";
+import { canShareFiles, saveMedia } from "@/lib/saveMedia";
 
 interface SharedClip { id: string; name: string; folder: string; kind: string; title: string | null; tags: string[]; duration_s: number | null; size_bytes: number; thumb_url: string | null; preview_url: string | null; download_url: string | null }
 
@@ -18,6 +19,21 @@ export default function SharePage() {
   usePageTitle("Shared clips");
   const { token = "" } = useParams();
   const [state, setState] = useState<{ loading: boolean; error: string | null; label: string; clips: SharedClip[] }>({ loading: true, error: null, label: "", clips: [] });
+  // Phone: pull the bytes and hand them to the share sheet so Save Video lands in the camera roll (see src/lib/saveMedia.ts).
+  const mobile = canShareFiles();
+  const [saving, setSaving] = useState<string | null>(null);
+  const [saveNote, setSaveNote] = useState<string | null>(null);
+  const save = async (k: SharedClip) => {
+    if (!k.download_url) return;
+    setSaving(k.id); setSaveNote(null);
+    try {
+      const out = await saveMedia([{ url: k.download_url, name: k.name }]);
+      if (out === "shared") setSaveNote("In the share sheet — tap Save Video / Save Image to keep it in your camera roll.");
+    } catch (e) {
+      setSaveNote(`Couldn't pull the file (${e instanceof Error ? e.message.slice(0, 60) : "unknown"}). Opening it directly instead.`);
+      window.open(k.download_url, "_blank", "noopener");
+    } finally { setSaving(null); }
+  };
 
   useEffect(() => {
     let alive = true;
@@ -44,6 +60,7 @@ export default function SharePage() {
       </header>
       {state.loading && <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>}
       {state.error && <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-foreground">{state.error}</p>}
+      {saveNote && <p className="mb-3 rounded-md border border-primary/40 bg-primary/10 px-3 py-2 text-sm text-foreground">{saveNote}</p>}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {state.clips.map((k) => (
           <div key={k.id} className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card">
@@ -57,7 +74,9 @@ export default function SharePage() {
               <div className="text-[11px] text-muted-foreground">{k.folder} · {fmtSize(k.size_bytes)}{k.tags?.length ? ` · ${k.tags.slice(0, 3).join(", ")}` : ""}</div>
               <div className="mt-auto pt-1">
                 {k.download_url
-                  ? <Button asChild size="sm" className="w-full bg-primary text-primary-foreground hover:bg-primary/90"><a href={k.download_url} download={k.name}><Download className="mr-1.5 h-4 w-4" />Download original</a></Button>
+                  ? <Button size="sm" disabled={saving === k.id} onClick={() => void save(k)} className="w-full bg-primary text-primary-foreground hover:bg-primary/90" title={mobile ? "Save to camera roll — tap, then Save Video / Save Image" : "Download the original file"}>
+                      {saving === k.id ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Download className="mr-1.5 h-4 w-4" />}{saving === k.id ? "Pulling…" : mobile ? "Save to camera roll" : "Download original"}
+                    </Button>
                   : <Button size="sm" variant="outline" disabled className="w-full">Link refreshing — try again in a minute</Button>}
               </div>
             </div>

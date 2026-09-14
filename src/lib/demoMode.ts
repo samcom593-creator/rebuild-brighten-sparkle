@@ -75,20 +75,48 @@ function fakeLast(seed: string) { return LAST_NAMES[hash(seed + "l") % LAST_NAME
 function fakeFull(seed: string) { return `${fakeFirst(seed)} ${fakeLast(seed)}`; }
 
 /**
- * Columns whose numbers are safe and useful to fake. Matched on the KEY name,
- * not the value, so an `id: 12345` is never mistaken for money.
+ * Numbers are masked by DEFAULT. This was an allowlist of money-ish column
+ * names until MP-531 measured the admin surface: 62 numeric keys arrived under
+ * the "every number on screen is fake" banner that the allowlist did not name,
+ * against 20 it did. An allowlist makes the banner's claim true only for the
+ * spellings someone remembered — every new column ships real and nothing goes
+ * red. Inverted, the banner is true by construction and the only thing that
+ * needs enumerating is what must STAY real, which is a short, stable list.
+ *
+ * These are the numbers the screen reads as structure rather than as business
+ * data — a percent that must stay <=100, a year that must stay 2026, a page
+ * size, a duration. Masking them renders visibly broken instead of plausibly
+ * fake. PROTECTED_KEY (ids, timestamps, enums) applies first and still wins.
  */
-const NUMERIC_KEY = /(premium|alp|aop|amount|revenue|earning|commission|payout|balance|total|volume|face|charge|deal|policy_count|policies|count|deals_closed|presentations|referrals|leads|hires|applications|sales|score|rank|streak|target|goal|quota|pace|value|price|cost|spend|net|gross)/i;
+const STRUCTURAL_NUMBER_KEY = /(^pct|_pct|percent|year|month|week|day|hour|minute|second|epoch|timestamp|index|page|limit|offset|size|width|height|lat|lon|zoom|duration|elapsed|_ms$|age$|order|sort|priority|level|step|threshold)/i;
 
 /** Never touch these, whatever else matches — the app runs on them. */
-const PROTECTED_KEY = /(^id$|_id$|_at$|_date$|uuid|slug|key$|token|url|href|path|status|stage|role|type|kind|code$|is_|has_|enabled|active|passed|percent|order_index|version|sha|hash)/i;
+// `is_`/`has_` are ANCHORED to a word boundary. Unanchored they matched inside
+// any column containing the letters — `owed_this_cycle` was protected by the
+// "is_" in "this", so a money column was silently exempt from masking. Found by
+// the MP-531 test, not by reading the regex.
+const PROTECTED_KEY = /(^id$|_id$|_at$|_date$|uuid|slug|key$|token|url|href|path|status|stage|role|type|kind|code$|(^|_)is_|(^|_)has_|enabled|active|passed|percent|order_index|version|sha|hash)/i;
 
 // `^agent$` is here because landing_deal_highlights returns the producer's real
 // first name under a bare `agent` key (DealsTicker renders it straight to the
 // marquee) — `agent_name` alone did not reach it. Only STRING values are name-
 // masked; an object under an `agent` key (CallLab metrics) recurses as before,
 // and `agent_id` stays protected by PROTECTED_KEY.
-const NAME_KEY = /(first_name|last_name|full_name|display_name|agent_name|client_name|manager_name|producer_name|recruiter_name|^name$|^agent$|title_holder)/i;
+// MP-531 added ^leg$/first_hop_name/agency_head_name/recruit_name: all four
+// carried a real agent's full name on the authenticated admin surface
+// (v_leg_production, apex_admin_operations_snapshot) and matched no rule.
+// Deliberately NOT a blanket /_name$/ — agency_name and carrier_name hold
+// "APEX Financial" and "Mutual of Omaha", and rewriting those to a person's
+// name renders obviously broken rather than plausibly fake.
+const NAME_KEY = /(first_name|last_name|full_name|display_name|agent_name|client_name|manager_name|producer_name|recruiter_name|^name$|^agent$|^leg$|first_hop_name|agency_head_name|recruit_name|title_holder)/i;
+
+// Free text that SPEAKS a name and a dollar figure instead of carrying them in
+// their own columns: "Aisha Kebbeh - $1,284 Deal Win". A key-based mask cannot
+// see inside a sentence, which is why /dashboard/admin/sam rendered all three
+// of its money values unmasked under the banner. Masked by substitution, never
+// by replacement — replacing the whole string with a fake name would destroy
+// the sentence the surface exists to show.
+const PROSE_KEY = /(title|hook|headline|subtitle|message|body|summary|basis|detail|description|caption|blurb|note|reason)/i;
 const EMAIL_KEY = /email/i;
 const PHONE_KEY = /phone|mobile|cell/i;
 
@@ -124,6 +152,60 @@ function maskNumber(value: number, seed: string): number {
   return negative ? -out : out;
 }
 
+/**
+ * Real name -> fake name for the payload currently being masked. Built in a
+ * first pass so prose can be rewritten with the SAME fake identity the row's
+ * own name column got: "Aisha Kebbeh - $1,284 Deal Win" and that row's
+ * agent_name must not disagree, or the demo visibly contradicts itself.
+ */
+let activeNames: Map<string, string> = new Map();
+
+/** Collect every real name a payload carries in a name column, plus its parts. */
+function collectNames(node: unknown, into: Map<string, string>): void {
+  if (node === null || node === undefined) return;
+  if (Array.isArray(node)) { node.forEach((v) => collectNames(v, into)); return; }
+  if (typeof node !== "object") return;
+  for (const [k, v] of Object.entries(node as Record<string, unknown>)) {
+    if (v && typeof v === "object") { collectNames(v, into); continue; }
+    if (typeof v !== "string" || !v.trim()) continue;
+    if (PROTECTED_KEY.test(k) || !NAME_KEY.test(k)) continue;
+    const real = v.trim();
+    if (into.has(real)) continue;
+    const fake = maskString(k, real);
+    if (fake === real) continue;
+    into.set(real, fake);
+    // Map the parts too, so "Obiajulu just locked in" is covered by a row that
+    // only ever spelled the full name. Two chars or fewer is not a name.
+    const rp = real.split(/\s+/), fp = fake.split(/\s+/);
+    if (rp.length === fp.length) {
+      rp.forEach((tok, i) => { if (tok.length > 2 && !into.has(tok)) into.set(tok, fp[i]); });
+    }
+  }
+}
+
+function escapeRe(v: string): string { return v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+
+/**
+ * Rewrite a sentence in place: every real name this payload knows becomes its
+ * fake counterpart, and every $ figure becomes a masked one of the same
+ * magnitude. Longest names first so "Obiajulu Ifediora" is consumed before the
+ * bare "Obiajulu" can half-replace it.
+ */
+function maskProse(value: string): string {
+  let out = value;
+  for (const real of [...activeNames.keys()].sort((a, b) => b.length - a.length)) {
+    out = out.replace(new RegExp(escapeRe(real), "g"), activeNames.get(real) as string);
+  }
+  out = out.replace(/\$\s?([\d,]+(?:\.\d+)?)/g, (whole, digits: string) => {
+    const n = Number(String(digits).replace(/,/g, ""));
+    if (!Number.isFinite(n) || n === 0) return whole;
+    const masked = maskNumber(n, `prose:${digits}`);
+    const grouped = String(digits).includes(",");
+    return `$${grouped ? masked.toLocaleString("en-US") : masked}`;
+  });
+  return out;
+}
+
 function maskString(key: string, value: string): string {
   if (!value) return value;
   if (EMAIL_KEY.test(key)) {
@@ -135,6 +217,7 @@ function maskString(key: string, value: string): string {
     const n = hash(value) % 100;
     return `(555) 010-${String(n).padStart(2, "0")}${String(hash(value + "x") % 10)}`;
   }
+  if (PROSE_KEY.test(key) && !NAME_KEY.test(key)) return maskProse(value);
   if (NAME_KEY.test(key)) {
     const seed = value.toLowerCase().trim();
     if (/first/i.test(key)) return fakeFirst(seed);
@@ -153,13 +236,13 @@ function maskValue(key: string, value: unknown): unknown {
 
   if (PROTECTED_KEY.test(key)) return value;
 
-  if (typeof value === "number" && NUMERIC_KEY.test(key)) {
+  if (typeof value === "number" && !STRUCTURAL_NUMBER_KEY.test(key)) {
     return maskNumber(value, `${key}:${value}`);
   }
 
   if (typeof value === "string") {
     // Numeric-as-string (PostgREST returns numeric/bigint as strings).
-    if (NUMERIC_KEY.test(key) && /^-?\d+(\.\d+)?$/.test(value)) {
+    if (!STRUCTURAL_NUMBER_KEY.test(key) && /^-?\d+(\.\d+)?$/.test(value)) {
       return String(maskNumber(Number(value), `${key}:${value}`));
     }
     return maskString(key, value);
@@ -189,7 +272,21 @@ export function maskIfDemo(payload: unknown): unknown {
 }
 
 export function maskPayload(payload: unknown): unknown {
-  if (Array.isArray(payload)) return payload.map((r) => maskPayload(r));
+  // Two passes: learn the payload's real identities, then mask. Prose needs the
+  // map to exist before the row carrying it is rewritten, and nested calls must
+  // not reset it mid-walk, so only the outermost call owns the map.
+  const outermost = activeNames.size === 0;
+  if (outermost) collectNames(payload, activeNames);
+  try {
+    if (Array.isArray(payload)) return payload.map((r) => maskOne(r));
+    return maskOne(payload);
+  } finally {
+    if (outermost) activeNames = new Map();
+  }
+}
+
+function maskOne(payload: unknown): unknown {
+  if (Array.isArray(payload)) return payload.map((r) => maskOne(r));
   if (payload && typeof payload === "object") return maskRow(payload as Record<string, unknown>);
   return payload;
 }

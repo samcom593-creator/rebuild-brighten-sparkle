@@ -207,3 +207,82 @@ describe("maskIfDemo — the hand-called mask for seam-bypassing fetches", () =>
     expect(maskIfDemo(null)).toBeNull();
   });
 });
+
+// ─── MP-531: the admin surface ───────────────────────────────────────────────
+// Measured on live prod under the "every number and name on screen is fake"
+// banner: 62 numeric keys and 4 person-name keys arrived unmasked, and two
+// prose keys spoke a real agent's name beside a real dollar figure. Each test
+// here is one of those measured shapes, not a hypothetical.
+describe("MP-531 admin surface", () => {
+  it("masks a money column the old allowlist never named", () => {
+    // `owed_this_cycle` matched no spelling in the old NUMERIC_KEY.
+    const out = maskPayload([{ owed_this_cycle: 4820 }]) as Array<Record<string, number>>;
+    expect(out[0].owed_this_cycle).not.toBe(4820);
+    expect(out[0].owed_this_cycle).toBeGreaterThan(0);
+  });
+
+  it("keeps structural numbers real so the screen does not render broken", () => {
+    const out = maskPayload([
+      { owner_override_pct: 15, year: 2026, page_size: 50, id: 8812 },
+    ]) as Array<Record<string, number>>;
+    expect(out[0].owner_override_pct).toBe(15);
+    expect(out[0].year).toBe(2026);
+    expect(out[0].page_size).toBe(50);
+    expect(out[0].id).toBe(8812);
+  });
+
+  it("masks the four person-name keys measured on the wire", () => {
+    const out = maskPayload([{
+      leg: "Obiajulu Ifediora",
+      first_hop_name: "Chudi Ifediora",
+      agency_head_name: "KJ Vaughn",
+      recruit_name: "Jorge Oyervidez",
+    }]) as Array<Record<string, string>>;
+    expect(out[0].leg).not.toContain("Ifediora");
+    expect(out[0].first_hop_name).not.toContain("Ifediora");
+    expect(out[0].agency_head_name).not.toContain("Vaughn");
+    expect(out[0].recruit_name).not.toContain("Oyervidez");
+  });
+
+  it("does NOT turn a company into a person — agency/carrier stay themselves", () => {
+    const out = maskPayload([
+      { agency_name: "APEX Financial", carrier_name: "Mutual of Omaha" },
+    ]) as Array<Record<string, string>>;
+    expect(out[0].agency_name).toBe("APEX Financial");
+    expect(out[0].carrier_name).toBe("Mutual of Omaha");
+  });
+
+  it("rewrites a name and a dollar figure spoken INSIDE a sentence", () => {
+    const out = maskPayload([{
+      agent_name: "Aisha Kebbeh",
+      title: "Aisha Kebbeh · $1,284 Deal Win",
+      hook: "Aisha just locked in a $1,284 deal",
+    }]) as Array<Record<string, string>>;
+    expect(out[0].title).not.toContain("Aisha");
+    expect(out[0].title).not.toContain("$1,284");
+    expect(out[0].hook).not.toContain("Aisha");
+    expect(out[0].hook).not.toContain("$1,284");
+    // the sentence must SURVIVE, not be replaced by a bare name
+    expect(out[0].title).toContain("Deal Win");
+    expect(out[0].hook).toContain("locked in");
+    expect(out[0].title).toMatch(/\$[\d,]+/);
+  });
+
+  it("gives prose the SAME fake identity as the row's own name column", () => {
+    const out = maskPayload([{
+      agent_name: "Aisha Kebbeh",
+      title: "Aisha Kebbeh closed it",
+    }]) as Array<Record<string, string>>;
+    // a demo that contradicts itself on the same row is worse than no mask
+    expect(out[0].title).toContain(out[0].agent_name.split(" ")[0]);
+  });
+
+  it("consumes the full name before the bare first name can half-replace it", () => {
+    const out = maskPayload([{
+      agent_name: "Obiajulu Ifediora",
+      title: "Obiajulu Ifediora and Obiajulu",
+    }]) as Array<Record<string, string>>;
+    expect(out[0].title).not.toContain("Ifediora");
+    expect(out[0].title).not.toContain("Obiajulu");
+  });
+});

@@ -83,7 +83,12 @@ const NUMERIC_KEY = /(premium|alp|aop|amount|revenue|earning|commission|payout|b
 /** Never touch these, whatever else matches — the app runs on them. */
 const PROTECTED_KEY = /(^id$|_id$|_at$|_date$|uuid|slug|key$|token|url|href|path|status|stage|role|type|kind|code$|is_|has_|enabled|active|passed|percent|order_index|version|sha|hash)/i;
 
-const NAME_KEY = /(first_name|last_name|full_name|display_name|agent_name|client_name|manager_name|producer_name|recruiter_name|^name$|title_holder)/i;
+// `^agent$` is here because landing_deal_highlights returns the producer's real
+// first name under a bare `agent` key (DealsTicker renders it straight to the
+// marquee) — `agent_name` alone did not reach it. Only STRING values are name-
+// masked; an object under an `agent` key (CallLab metrics) recurses as before,
+// and `agent_id` stays protected by PROTECTED_KEY.
+const NAME_KEY = /(first_name|last_name|full_name|display_name|agent_name|client_name|manager_name|producer_name|recruiter_name|^name$|^agent$|title_holder)/i;
 const EMAIL_KEY = /email/i;
 const PHONE_KEY = /phone|mobile|cell/i;
 

@@ -37,7 +37,7 @@
 //   node scripts/live-render-integrity.mjs
 //   BASE=https://apex-financial.org node scripts/live-render-integrity.mjs
 
-import { chromium } from "playwright";
+import { chromium, webkit, devices } from "playwright";
 
 const BASE = (process.env.BASE || "https://apex-financial.org").replace(/\/$/, "");
 const CONTROL = "https://www.google.com/generate_204";
@@ -55,10 +55,36 @@ const BAD_TOKENS = [
   [/\$NaN|\$undefined/, "broken money token"],
 ];
 
-const VIEWPORTS = [
-  ["desktop", { width: 1440, height: 900 }, undefined],
-  ["mobile", { width: 390, height: 844 },
-    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"],
+// MP-529: a leg is (engine, viewport), never (viewport, user-agent string).
+//
+// Until this wave the "mobile" leg was a CHROMIUM context handed an iPhone
+// Safari UA string. That is a costume, and it was measured as one on
+// 2026-09-14 against live prod: under the spoof navigator.vendor still read
+// "Google Inc." and two Blink-only APIs (scheduler, requestIdleCallback)
+// were present that real WebKit does not have. So an iOS-Safari-only fault —
+// an unguarded Blink-only API, a WebKit layout or parser difference — renders
+// a white screen on the traffic the charter calls primary ("Sam runs from his
+// phone; broken on iPhone Safari = broken") while this probe reports the
+// mobile leg CLEAN. Check #7 of the bot charter had never once been executed
+// on a Safari engine on this machine: there was no webkit build in
+// ~/Library/Caches/ms-playwright at all.
+//
+// The Blink phone-viewport leg is KEPT — it is still the right instrument for
+// layout overflow and for matching what Chrome-on-Android users see — but it
+// is named for the engine it actually runs, so the report can no longer be
+// read as Safari coverage.
+//
+// engineVendor is the anti-costume assertion: navigator.vendor is NOT
+// rewritten by the userAgent context option (proven — the spoofed leg still
+// reported "Google Inc."), so it is the one field that catches a future
+// Playwright change silently running the wrong engine under the right label.
+const LEGS = [
+  { label: "desktop-blink", type: chromium, engineVendor: "Google Inc.",
+    ctx: { viewport: { width: 1440, height: 900 } } },
+  { label: "mobile-blink", type: chromium, engineVendor: "Google Inc.", mobile: true,
+    ctx: { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 } },
+  { label: "mobile-webkit", type: webkit, engineVendor: "Apple Computer, Inc.", mobile: true,
+    ctx: { ...devices["iPhone 14"] } },
 ];
 
 async function controlReachable() {
@@ -68,8 +94,9 @@ async function controlReachable() {
   } catch { return false; }
 }
 
-async function probe(browser, label, viewport, ua) {
-  const ctx = await browser.newContext({ viewport, userAgent: ua, deviceScaleFactor: 2 });
+async function probe(browser, leg) {
+  const { label } = leg;
+  const ctx = await browser.newContext(leg.ctx);
   const pg = await ctx.newPage();
   const consoleErrs = [];
   pg.on("console", (m) => { if (m.type() === "error") consoleErrs.push(m.text().slice(0, 200)); });
@@ -84,6 +111,12 @@ async function probe(browser, label, viewport, ua) {
   if (navErr) { await ctx.close(); return { label, ok: false, navErr }; }
 
   await pg.waitForTimeout(SETTLE_MS);
+
+  // Anti-costume: prove the engine is the one this leg is named for. A label
+  // that says webkit over a Blink context is exactly the defect MP-529 fixed,
+  // and it would be silent without this read.
+  const vendor = await pg.evaluate(() => navigator.vendor).catch(() => "<unreadable>");
+
   const bodyText = (await pg.innerText("body").catch(() => "")).slice(0, 12000);
   const overflow = await pg.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth
@@ -103,28 +136,48 @@ async function probe(browser, label, viewport, ua) {
   const defects = [];
   if (status && status >= 400) defects.push(`HTTP ${status}`);
   if (is404) defects.push("404 white-screen (SPA rendered page-not-found under a 200)");
-  if (label === "mobile" && overflow > OVERFLOW_TOLERANCE_PX)
+  if (leg.mobile && overflow > OVERFLOW_TOLERANCE_PX)
     defects.push(`mobile horizontal overflow ${overflow}px`);
+  if (vendor !== leg.engineVendor)
+    defects.push(`engine mismatch: leg "${label}" expects navigator.vendor "${leg.engineVendor}" and got "${vendor}" — this leg is not running the engine it is named for`);
   for (const b of badHits) defects.push(`broken token "${b.token}" — ${b.why}`);
   // hard page errors (React crash / unhandled) count; console warnings do not.
   const hardErrs = consoleErrs.filter((e) => /PAGEERROR|Minified React error|is not defined|Cannot read/i.test(e));
   for (const e of hardErrs) defects.push(`page error: ${e}`);
 
-  return { label, ok: defects.length === 0, status, overflowPx: overflow, defects,
-           consoleErrCount: consoleErrs.length, textLen: bodyText.length };
+  return { label, engineVendor: vendor, ok: defects.length === 0, status, overflowPx: overflow,
+           defects, consoleErrCount: consoleErrs.length, textLen: bodyText.length };
 }
 
 (async () => {
-  const browser = await chromium.launch({ headless: true });
   const results = [];
-  for (const [label, vp, ua] of VIEWPORTS) {
-    let r = await probe(browser, label, vp, ua);
-    if (r.navErr) { // one retry on nav failure
-      r = await probe(browser, label, vp, ua);
+  const unavailable = [];
+
+  for (const leg of LEGS) {
+    let browser;
+    try {
+      browser = await leg.type.launch({ headless: true });
+    } catch (e) {
+      // The browser binary is missing (or failed to start). This is an
+      // INSTRUMENT fault, never a site verdict, and it must never be laundered
+      // into the CLEAN line — a leg that could not run has not passed. This is
+      // the state webkit was in on this machine until 2026-09-14: absent, and
+      // therefore silently uncovered.
+      unavailable.push({ label: leg.label, reason: String(e).split("\n")[0].slice(0, 200) });
+      continue;
     }
+    let r = await probe(browser, leg);
+    if (r.navErr) r = await probe(browser, leg); // one retry on nav failure
+    await browser.close();
     results.push(r);
   }
-  await browser.close();
+
+  if (!results.length) {
+    console.error(JSON.stringify({ verdict: "INSTRUMENT_UNAVAILABLE",
+      reason: "no browser engine could be launched — nothing about the site was measured",
+      remedy: "npx playwright install chromium webkit", unavailable }, null, 2));
+    process.exit(4);
+  }
 
   const navFailed = results.filter((r) => r.navErr);
   if (navFailed.length === results.length) {
@@ -138,12 +191,22 @@ async function probe(browser, label, viewport, ua) {
   }
 
   const defective = results.filter((r) => r.ok === false && !r.navErr);
-  const verdict = defective.length ? "DEFECT" : "CLEAN";
-  console.log(JSON.stringify({ verdict, base: BASE, results }, null, 2));
+  const verdict = defective.length ? "DEFECT" : (unavailable.length ? "CLEAN_PARTIAL" : "CLEAN");
+  const ran = results.map((r) => r.label).join(", ");
+  console.log(JSON.stringify({ verdict, base: BASE, legsRun: ran,
+    legsNotRun: unavailable, results }, null, 2));
   if (defective.length) {
     console.error("\nRENDERED INTEGRITY DEFECTS:");
     for (const r of defective) for (const d of r.defects) console.error(`  [${r.label}] ${d}`);
     process.exit(1);
   }
-  console.log(`\n✅ live render integrity CLEAN — ${BASE} desktop + mobile, no broken tokens, no mobile overflow.`);
+  if (unavailable.length) {
+    // Says exactly which engine went unmeasured. "CLEAN" over a leg that never
+    // ran is the same lie as a green build over a suite that never executed.
+    console.error(`\n⚠️  live render integrity CLEAN on ${ran} — but ${unavailable.length} leg(s) never ran: ` +
+      unavailable.map((u) => u.label).join(", ") + `. Those engines were NOT measured.`);
+    console.error(`   remedy: npx playwright install ${unavailable.map((u) => u.label.split("-").pop()).join(" ")}`);
+    process.exit(3);
+  }
+  console.log(`\n✅ live render integrity CLEAN — ${BASE} on ${ran}: no broken tokens, no mobile overflow, every leg on the engine it is named for.`);
 })();

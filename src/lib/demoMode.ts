@@ -188,10 +188,127 @@ let activeNames: Map<string, string> = new Map();
  */
 let proseRules: Array<[RegExp, string]> | null = null;
 
+/**
+ * ─── Roster priming (MP-533) ────────────────────────────────────────────────
+ *
+ * MP-532 made the learned-name map last the whole demo session instead of one
+ * payload, and said in its own header that this REDUCES the hole rather than
+ * closing it: prose can still render before any response has spelled that
+ * person's name in a name column, and no scope fixes ordering.
+ *
+ * Measured on live prod, that is not a theoretical tail. social_bot_drafts
+ * holds 811 rows, every one with a title, and 742 of them read
+ * "<real agent name> · $<real ALP> Deal Win" across 37 distinct people.
+ * /dashboard/admin/sam selects `title, hook` off that table — and the table has
+ * no name column at all, so the row CANNOT teach its own name however wide the
+ * map's scope is. The only name source on that page is v_recent_hires, which is
+ * a different population of people entirely. That surface was never going to
+ * learn those names from its own traffic.
+ *
+ * So the map is seeded up front from the roster instead of waiting to be
+ * taught. 670 of the 742 titles match an agents.display_name exactly; the
+ * remainder are two case variants (handled by the "gi" prose rules above) and
+ * two strings that are not names at all.
+ *
+ * THIS IS AWAITED, NOT FIRED AND FORGOTTEN. A prefetch kicked off when demo
+ * mode turns on is the same race wearing a different hat — the first payload
+ * can still be masked before the roster lands. demoFetch awaits primeNames()
+ * before it masks anything, so no response is rewritten while the map is still
+ * empty. The cost is one round-trip, once per demo session.
+ *
+ * THE OUTCOME IS RECORDED, NEVER ASSUMED. Measured: an anonymous read of
+ * `agents` returns `[]` — not an error — because the RLS gate is doing its job.
+ * A prime that quietly learns nothing is indistinguishable from one that
+ * worked, which is the exact shape this codebase keeps finding. So the state is
+ * published and the banner degrades its own sentence rather than keeping a
+ * claim it can no longer support.
+ */
+export type DemoPrimeState = "unprimed" | "priming" | "primed" | "empty" | "failed";
+
+/** Loads real names to seed the session map. Injected so this module keeps no
+ *  dependency on the Supabase SDK — importing it here would drag boundedFetch
+ *  and 170 kB of client back into the landing chunk that exists to avoid it. */
+export type NameLoader = () => Promise<string[]>;
+
+let priming: Promise<void> | null = null;
+let primeState: DemoPrimeState = "unprimed";
+const primeListeners = new Set<() => void>();
+
+function notifyPrime(): void {
+  primeListeners.forEach((l) => {
+    try {
+      l();
+      // empty-catch-allow:listener-must-not-break-the-mask; a bad subscriber cannot stop masking
+    } catch {
+      /* a subscriber throwing must not take the mask down with it */
+    }
+  });
+}
+
+/** Current priming outcome. `primed` is the only state in which prose names
+ *  the payloads never spell are known to have been covered. */
+export function getDemoPrimeState(): DemoPrimeState {
+  return primeState;
+}
+
+/** Subscribe to priming-state changes. Returns the unsubscribe. */
+export function subscribeDemoPrime(listener: () => void): () => void {
+  primeListeners.add(listener);
+  return () => primeListeners.delete(listener);
+}
+
+/** Teach the map one real name (plus its parts), exactly as a payload would. */
+function learnName(real: string): boolean {
+  const value = real.trim();
+  if (!value || activeNames.has(value)) return false;
+  // Same key the payload path uses, so a name resolves to the SAME fake
+  // identity whether it was primed from the roster or learned from a row.
+  const fake = maskString("display_name", value);
+  if (fake === value) return false;
+  activeNames.set(value, fake);
+  proseRules = null;
+  const rp = value.split(/\s+/), fp = fake.split(/\s+/);
+  if (rp.length === fp.length) {
+    rp.forEach((tok, i) => {
+      if (tok.length > 2 && !activeNames.has(tok)) { activeNames.set(tok, fp[i]); proseRules = null; }
+    });
+  }
+  return true;
+}
+
+/**
+ * Seed the session map from the roster. Idempotent per demo session: the first
+ * caller runs the load, every later caller awaits the same promise, so N
+ * concurrent requests cost one round-trip and never race each other.
+ */
+export function primeNames(loader: NameLoader): Promise<void> {
+  if (priming) return priming;
+  primeState = "priming";
+  notifyPrime();
+  priming = (async () => {
+    try {
+      const names = await loader();
+      let learned = 0;
+      for (const n of names) if (typeof n === "string" && learnName(n)) learned++;
+      // An empty roster is NOT a success. It is what an unauthenticated session
+      // gets from a table it cannot read, and it must not be dressed as one.
+      primeState = learned > 0 ? "primed" : "empty";
+    } catch {
+      // empty-catch-allow:prime-must-never-break-the-page; state records the failure
+      primeState = "failed";
+    }
+    notifyPrime();
+  })();
+  return priming;
+}
+
 /** Drop every learned identity. A demo session is the lifetime of the map. */
 function resetNames(): void {
   activeNames = new Map();
   proseRules = null;
+  priming = null;
+  primeState = "unprimed";
+  notifyPrime();
 }
 
 /** Collect every real name a payload carries in a name column, plus its parts. */
@@ -232,9 +349,14 @@ function maskProse(value: string): string {
   let out = value;
   if (proseRules === null) {
     // Longest first so "Obiajulu Ifediora" is consumed before bare "Obiajulu".
+    // "gi", not "g". MP-533 measured the live draft feed: of the names spoken in
+    // social_bot_drafts prose, "matias touchstone" and "dudley bowman" are
+    // written lower-case while the roster spells them capitalised. An exact
+    // RegExp learns the name and still walks past the sentence carrying it —
+    // the map would be right and the screen would still show the real person.
     proseRules = [...activeNames.keys()]
       .sort((a, b) => b.length - a.length)
-      .map((real) => [new RegExp(escapeRe(real), "g"), activeNames.get(real) as string]);
+      .map((real) => [new RegExp(escapeRe(real), "gi"), activeNames.get(real) as string]);
   }
   for (const [re, fake] of proseRules) out = out.replace(re, fake);
   out = out.replace(/\$\s?([\d,]+(?:\.\d+)?)/g, (whole, digits: string) => {

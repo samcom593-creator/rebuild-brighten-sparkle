@@ -9,7 +9,14 @@
  */
 
 import { describe, it, expect, afterEach } from "vitest";
-import { maskPayload, maskIfDemo, setDemoMode } from "@/lib/demoMode";
+import {
+  maskPayload,
+  maskIfDemo,
+  setDemoMode,
+  primeNames,
+  getDemoPrimeState,
+  subscribeDemoPrime,
+} from "@/lib/demoMode";
 
 const row = () => ({
   id: "9f1c2d3e-4a5b-6c7d-8e9f-0a1b2c3d4e5f",
@@ -380,5 +387,111 @@ describe("MP-532 name map scope", () => {
       Record<string, string>
     >;
     expect(out[0].title).toContain("Obiajulu Ifediora");
+  });
+});
+
+// ─── MP-533: the names no payload on the page ever spells ────────────────────
+// MP-532 closed the cross-RESPONSE case and said in its own header that it was
+// a reduction, not a closure. Measured on live prod, the remainder is not a
+// tail: social_bot_drafts holds 811 rows, all with a title, and 742 read
+// "<real agent> · $<real ALP> Deal Win" across 37 distinct people.
+// /dashboard/admin/sam selects `title, hook` from that table — and the table
+// has NO name column, so no widening of scope lets the row teach its own name.
+// The page's only name source, v_recent_hires, is a different population.
+//
+// So the map is seeded from the roster before any masking happens. These tests
+// grade the three things that decide whether that is a fix or a story: that it
+// is AWAITED (a background prefetch is the same race relocated), that an empty
+// or failed load is recorded as such instead of dressed as success, and that a
+// primed name and a payload-learned name resolve to the SAME fake person.
+describe("MP-533 roster priming", () => {
+  afterEach(() => setDemoMode(false));
+
+  const feed = () =>
+    maskPayload([{ title: "Aisha Kebbeh · $1,284 Deal Win" }]) as Array<Record<string, string>>;
+
+  it("REPRODUCES the bug: prose-only names survive with an unprimed map", () => {
+    // This is the live SamHQ payload. No name column exists to teach the map.
+    expect(feed()[0].title).toContain("Aisha Kebbeh");
+    expect(getDemoPrimeState()).toBe("unprimed");
+  });
+
+  it("rewrites that same prose once the roster has been primed", async () => {
+    await primeNames(async () => ["Aisha Kebbeh", "Obiajulu Ifediora"]);
+    const out = feed();
+    expect(out[0].title).not.toContain("Aisha");
+    expect(out[0].title).not.toContain("Kebbeh");
+    expect(out[0].title).toContain("Deal Win"); // still a sentence
+    expect(getDemoPrimeState()).toBe("primed");
+  });
+
+  it("covers the case variants the roster spells differently from the prose", async () => {
+    // Measured live: the roster holds "Dudley Bowman" and "Matias Touchstone";
+    // the drafts speak "dudley bowman" and "matias touchstone". An exact-match
+    // rule learns the name and walks straight past the sentence carrying it.
+    await primeNames(async () => ["Dudley Bowman", "Matias Touchstone"]);
+    const out = maskPayload([
+      { title: "dudley bowman · $900 Deal Win" },
+      { hook: "matias touchstone just locked in a $700 Life deal." },
+    ]) as Array<Record<string, string>>;
+    expect(out[0].title.toLowerCase()).not.toContain("dudley");
+    expect(out[0].title.toLowerCase()).not.toContain("bowman");
+    expect(out[1].hook.toLowerCase()).not.toContain("matias");
+    expect(out[1].hook.toLowerCase()).not.toContain("touchstone");
+  });
+
+  it("gives a primed name the SAME fake identity a payload column would", async () => {
+    await primeNames(async () => ["Aisha Kebbeh"]);
+    const column = maskPayload([{ display_name: "Aisha Kebbeh" }]) as Array<
+      Record<string, string>
+    >;
+    // Two panels naming one person must not disagree about who that person is,
+    // whichever route taught the map.
+    expect(feed()[0].title).toContain(column[0].display_name);
+  });
+
+  it("loads once per session however many requests race it", async () => {
+    let calls = 0;
+    const loader = async () => { calls++; return ["Aisha Kebbeh"]; };
+    await Promise.all([primeNames(loader), primeNames(loader), primeNames(loader)]);
+    await primeNames(loader);
+    expect(calls).toBe(1);
+  });
+
+  it("records an EMPTY roster as empty, not as primed", async () => {
+    // What an unauthenticated session actually gets back from the RLS gate —
+    // `[]`, with a 200. Measured against live prod, not imagined.
+    await primeNames(async () => []);
+    expect(getDemoPrimeState()).toBe("empty");
+    expect(feed()[0].title).toContain("Aisha Kebbeh"); // and it does not pretend otherwise
+  });
+
+  it("records a FAILED roster read as failed, and still masks the page", async () => {
+    await primeNames(async () => { throw new Error("403"); });
+    expect(getDemoPrimeState()).toBe("failed");
+    // Availability is the safe direction: the rest of the mask keeps working.
+    const out = maskPayload([{ annual_premium: 2400, title: "Aisha Kebbeh · $1,284 Deal Win" }]) as
+      Array<Record<string, unknown>>;
+    expect(out[0].annual_premium).not.toBe(2400);
+    expect(String(out[0].title)).not.toContain("$1,284");
+  });
+
+  it("re-primes on a new demo session instead of carrying the last one's names", async () => {
+    await primeNames(async () => ["Aisha Kebbeh"]);
+    expect(getDemoPrimeState()).toBe("primed");
+    setDemoMode(true);
+    // A stale identity resident across sessions is its own leak; so is a map
+    // that believes it is primed when the new session has loaded nothing.
+    expect(getDemoPrimeState()).toBe("unprimed");
+    expect(feed()[0].title).toContain("Aisha Kebbeh");
+  });
+
+  it("notifies subscribers so the banner can stop claiming what it cannot", async () => {
+    const seen: string[] = [];
+    const off = subscribeDemoPrime(() => seen.push(getDemoPrimeState()));
+    await primeNames(async () => ["Aisha Kebbeh"]);
+    off();
+    expect(seen).toContain("priming");
+    expect(seen).toContain("primed");
   });
 });

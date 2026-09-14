@@ -36,9 +36,13 @@ const json = (body: unknown, status = 200) =>
 /** The live shape MP-530 caught rendering real people under a "this is fake" banner. */
 const highlights = () => [{ agent: "OBIAJULU", amount: 20695 }];
 
-beforeEach(() => {
+beforeEach(async () => {
   demoOn = true;
   bounded.mockReset();
+  // Each test is its own demo session: priming is once-per-session by design,
+  // so a leftover primed map would make a later test pass for the wrong reason.
+  const dm = await vi.importActual<typeof import("@/lib/demoMode")>("@/lib/demoMode");
+  dm.setDemoMode(false);
 });
 afterEach(() => vi.clearAllMocks());
 
@@ -142,4 +146,103 @@ describe("demoMode name coverage — the field the live page actually rendered",
     expect(typeof nested).toBe("object");
     expect(nested.status).toBe("active");
   });
+});
+
+// ─── MP-533: the prime is AWAITED ────────────────────────────────────────────
+// The obvious shape of this fix — kick the roster load off when demo mode turns
+// on — is the ordering race MP-532 could not close, moved one file over: the
+// first payloads are still masked against an empty map. The only version that
+// is a fix is one where no response is rewritten before the roster is resident.
+// So this grades the sequencing, not the mask: a loader that resolves LATE must
+// still have taught the map by the time the body comes back.
+describe("MP-533 roster prime sequencing", () => {
+  const ROSTER = `${REST}/agents`;
+
+  /** The live SamHQ payload: a real name inside prose, no name column anywhere. */
+  const drafts = () => [{ id: 5130, title: "Aisha Kebbeh · $1,284 Deal Win" }];
+
+  function installRoster(names: string[], delayMs: number) {
+    return vi.spyOn(globalThis, "fetch").mockImplementation(async (input: RequestInfo | URL) => {
+      const u = typeof input === "string" ? input : input.toString();
+      if (!u.startsWith(ROSTER)) throw new Error(`unexpected fetch: ${u}`);
+      if (delayMs) await new Promise((r) => setTimeout(r, delayMs));
+      return json(names.map((display_name) => ({ display_name })));
+    });
+  }
+
+  afterEach(() => vi.restoreAllMocks());
+
+  it("masks prose against a roster that resolves AFTER the response body", async () => {
+    const spy = installRoster(["Aisha Kebbeh"], 25);
+    bounded.mockResolvedValue(json(drafts()));
+
+    const res = await demoFetch(`${REST}/social_bot_drafts?select=id,title`, {
+      headers: { apikey: "anon-key", Authorization: "Bearer jwt" },
+    });
+    const body = (await res.json()) as Array<Record<string, string>>;
+
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(body[0].title).not.toContain("Aisha");
+    expect(body[0].title).not.toContain("Kebbeh");
+    expect(body[0].title).toContain("Deal Win");
+  });
+
+  it("primes with the intercepted request's OWN credentials, never a second set", async () => {
+    const spy = installRoster(["Aisha Kebbeh"], 0);
+    bounded.mockResolvedValue(json(drafts()));
+
+    await demoFetch(`${REST}/social_bot_drafts?select=id,title`, {
+      headers: { apikey: "anon-key", Authorization: "Bearer the-callers-jwt" },
+    });
+
+    const init = spy.mock.calls[0][1] as RequestInit;
+    const sent = new Headers(init.headers as HeadersInit);
+    // A prime that outranks the caller would read rows the page itself cannot,
+    // and mask a demo against a roster the session was never allowed to see.
+    expect(sent.get("apikey")).toBe("anon-key");
+    expect(sent.get("Authorization")).toBe("Bearer the-callers-jwt");
+  });
+
+  it("returns the page when the roster read fails — the mask never takes the site down", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
+    bounded.mockResolvedValue(json([{ annual_premium: 2400, title: "Aisha Kebbeh · $1,284 Deal Win" }]));
+
+    const res = await demoFetch(`${REST}/social_bot_drafts?select=id,title`, {
+      headers: { apikey: "anon-key" },
+    });
+    const body = (await res.json()) as Array<Record<string, unknown>>;
+
+    expect(res.ok).toBe(true);
+    // Everything the key-based mask covers still works; only prose is degraded,
+    // and the banner is what says so.
+    expect(body[0].annual_premium).not.toBe(2400);
+    expect(String(body[0].title)).not.toContain("$1,284");
+  });
+});
+
+// The await that turns this from a prefetch-race into a fix is also what makes
+// a hung roster fatal: every masked response in the demo queues behind the
+// first one. A roster that never answers must degrade the mask, never freeze
+// the walkthrough on a blank screen in front of whoever Sam is showing it to.
+describe("MP-533 the awaited prime is bounded", () => {
+  afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers(); });
+
+  it("gives up on a roster that never answers and still returns the page", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      (_i: RequestInfo | URL, init?: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          // Exactly what an aborted fetch does: reject on the signal, never settle otherwise.
+          init?.signal?.addEventListener("abort", () => reject(new Error("AbortError")));
+        }),
+    );
+    bounded.mockResolvedValue(json([{ annual_premium: 2400, title: "Aisha Kebbeh · $1,284 Deal Win" }]));
+
+    const res = await demoFetch(`${REST}/social_bot_drafts?select=id,title`, {
+      headers: { apikey: "anon-key" },
+    });
+    const body = (await res.json()) as Array<Record<string, unknown>>;
+
+    expect(res.ok).toBe(true);
+    expect(body[0].annual_premium).not.toBe(2400);
+  }, 15000);
 });

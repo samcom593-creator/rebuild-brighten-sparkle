@@ -10,15 +10,36 @@
  * demoFetch falls back to the unmasked response if the mask throws, so the only
  * honest thing the banner can say is "demo mode is on", which is exactly what
  * governs the request path.
+ *
+ * MP-533: one clause of that sentence IS conditional, and now says so. Names
+ * spoken inside prose ("Aisha Kebbeh · $1,284 Deal Win") are rewritten only for
+ * people the session map knows, and the map is seeded from the roster. When
+ * that seed does not land — an unauthenticated session reads `agents` as `[]`,
+ * a network failure, a 403 — prose names are NOT covered, and a banner that
+ * kept saying "every name on screen is fake" would be telling the room the one
+ * thing that is no longer true. The words shrink to the claim that survives.
+ * Numbers and name COLUMNS are masked by key and are unaffected either way.
  */
 
-import { useState } from "react";
+import { useSyncExternalStore } from "react";
 import { EyeOff } from "lucide-react";
-import { isDemoMode, setDemoMode } from "@/lib/demoMode";
+import {
+  isDemoMode,
+  setDemoMode,
+  getDemoPrimeState,
+  subscribeDemoPrime,
+} from "@/lib/demoMode";
 
 export function DemoModeBanner() {
-  const [on] = useState(() => isDemoMode());
+  // Subscribed, not sampled once: priming resolves after mount, so a banner
+  // that read the state in a useState initializer would be frozen on
+  // "unprimed" forever and could never tell the truth about either outcome.
+  const primeState = useSyncExternalStore(subscribeDemoPrime, getDemoPrimeState, getDemoPrimeState);
+  const on = isDemoMode();
   if (!on) return null;
+
+  // Only a landed roster licenses the claim about names inside sentences.
+  const namesCovered = primeState === "primed";
 
   return (
     <div
@@ -27,7 +48,9 @@ export function DemoModeBanner() {
     >
       <EyeOff className="h-4 w-4 shrink-0" aria-hidden="true" />
       <span>
-        Demo mode — every number and name on screen is fake. Nothing here is live client data.
+        {namesCovered
+          ? "Demo mode — every number and name on screen is fake. Nothing here is live client data."
+          : "Demo mode — numbers and name fields on screen are fake. Names written inside sentences may still be real."}
       </span>
       <button
         type="button"

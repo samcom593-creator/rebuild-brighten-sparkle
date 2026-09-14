@@ -39,7 +39,7 @@
  */
 
 import { boundedFetch } from "./boundedFetch";
-import { isDemoMode, maskPayload } from "@/lib/demoMode";
+import { isDemoMode, maskPayload, primeNames } from "@/lib/demoMode";
 
 function urlOf(input: RequestInfo | URL): string {
   if (typeof input === "string") return input;
@@ -66,6 +66,60 @@ function isReadResponse(url: string, method: string): boolean {
   return url.includes("/rest/v1/rpc/") || url.includes("/functions/v1/");
 }
 
+
+/**
+ * The roster read that seeds demo mode's name map (MP-533).
+ *
+ * Reuses the headers of the request we are already intercepting, so the prime
+ * runs with EXACTLY the caller's own authority — no second credential to keep
+ * in sync, and no chance of the prime seeing rows the page itself cannot. An
+ * anonymous session gets `[]` back from the RLS gate, which primeNames records
+ * as `empty` rather than as a success.
+ *
+ * Calls the global fetch on purpose, not demoFetch: masking the roster would
+ * teach the map its own fake names, and routing it back through the SDK would
+ * recurse. This request is never masked and never rendered.
+ */
+/** Bounded so an unanswered roster read degrades demo mode instead of hanging it. */
+const ROSTER_TIMEOUT_MS = 6000;
+
+function rosterLoader(url: string, input: RequestInfo | URL, init?: RequestInit) {
+  return async (): Promise<string[]> => {
+    const base = url.split("/rest/v1")[0].split("/functions/v1")[0];
+    const headers = new Headers(
+      (init?.headers as HeadersInit | undefined) ??
+        (input instanceof Request ? input.headers : undefined),
+    );
+    const apikey = headers.get("apikey") ?? "";
+    const auth = headers.get("Authorization") ?? "";
+    if (!base || !apikey) throw new Error("demo prime: no endpoint or key on the intercepted request");
+
+    // BOUNDED, because this load is awaited. Every masked response in the demo
+    // queues behind the first one, so a roster read that hangs does not degrade
+    // the mask — it freezes the whole walkthrough on a blank screen. Found by
+    // reading back the fix rather than by a failure: the await that makes this
+    // a fix instead of a race is the same await that makes a hang fatal.
+    // A timeout lands as `failed`, which the banner already reports honestly.
+    const abort = new AbortController();
+    const timer = setTimeout(() => abort.abort(), ROSTER_TIMEOUT_MS);
+    let res: Response;
+    try {
+      res = await fetch(
+        `${base}/rest/v1/agents?select=display_name&display_name=not.is.null&limit=1000`,
+        { headers: { apikey, ...(auth ? { Authorization: auth } : {}) }, signal: abort.signal },
+      );
+    } finally {
+      clearTimeout(timer);
+    }
+    if (!res.ok) throw new Error(`demo prime: roster read ${res.status}`);
+    const rows = (await res.json()) as Array<{ display_name?: unknown }>;
+    if (!Array.isArray(rows)) throw new Error("demo prime: roster read returned a non-array");
+    return rows
+      .map((r) => r?.display_name)
+      .filter((n): n is string => typeof n === "string" && n.trim().length > 0);
+  };
+}
+
 export async function demoFetch(
   input: RequestInfo | URL,
   init?: RequestInit,
@@ -85,6 +139,11 @@ export async function demoFetch(
   try {
     const clone = response.clone();
     const body = await clone.json();
+    // AWAITED, not fired-and-forgotten. Priming the name map in the background
+    // when demo mode turns on would leave the first payloads masked against an
+    // empty map — the same ordering race MP-532 could not close, relocated.
+    // Once per demo session; every later request awaits the same promise.
+    await primeNames(rosterLoader(url, input, init));
     const masked = maskPayload(body);
     return new Response(JSON.stringify(masked), {
       status: response.status,

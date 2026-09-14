@@ -132,7 +132,8 @@
     "test:strip-comments": "node scripts/tests/strip-comments.test.mjs",
     "test:empty-body": "node scripts/tests/empty-body.test.mjs",
     "check:route-shape": "node scripts/check-route-shape.mjs",
-    "check:demo-mask-coverage": "node scripts/check-demo-mask-coverage.mjs"
+    "check:demo-mask-coverage": "node scripts/check-demo-mask-coverage.mjs",
+    "prove:demo-mask-live": "node scripts/prove-demo-mask-live.mjs"
   },
   "dependencies": {
     "@alloc/quick-lru": "5.2.0",

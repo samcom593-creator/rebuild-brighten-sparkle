@@ -286,3 +286,99 @@ describe("MP-531 admin surface", () => {
     expect(out[0].title).not.toContain("Obiajulu");
   });
 });
+
+// ─── MP-532: the name map's scope ────────────────────────────────────────────
+// Measured on live prod AFTER MP-531 shipped: /dashboard/admin/sam still spoke
+// "Obiajulu Ifediora - $1,165 Deal Win" under the banner. The prose pass fired
+// there — the money inside those same sentences WAS masked — so the branch was
+// reached and working. What failed was the name map: it was built per-PAYLOAD
+// and thrown away in a `finally`, and that payload carries no name column of
+// its own. The same person's name arrives under display_name in one response
+// and inside prose in another, so the map that could have rewritten the
+// sentence was built and discarded by a different fetch.
+//
+// Scope is the demo SESSION, not the response. This REDUCES the hole, it does
+// not close it by construction: a prose string can still render before any
+// response has spelled that person's name in a name column. Ordering, not
+// logic, decides — so these tests assert the direction that is fixable.
+describe("MP-532 name map scope", () => {
+  afterEach(() => setDemoMode(false));
+
+  it("rewrites prose using a name learned from an EARLIER response", () => {
+    // Response 1: the roster. Carries the name in a name column, no prose.
+    maskPayload([{ display_name: "Obiajulu Ifediora" }]);
+    // Response 2: the feed. Carries the name only inside a sentence.
+    const out = maskPayload([{
+      title: "Obiajulu Ifediora - $1,165 Deal Win",
+      hook: "Obiajulu Ifediora just locked in a $1,165 Life deal.",
+    }]) as Array<Record<string, string>>;
+    expect(out[0].title).not.toContain("Obiajulu");
+    expect(out[0].title).not.toContain("Ifediora");
+    expect(out[0].hook).not.toContain("Obiajulu");
+    expect(out[0].hook).not.toContain("Ifediora");
+    // the sentence must still be a sentence
+    expect(out[0].title).toContain("Deal Win");
+    expect(out[0].hook).toContain("just locked in");
+  });
+
+  it("gives the cross-response sentence the SAME fake identity as the roster", () => {
+    const roster = maskPayload([{ display_name: "Obiajulu Ifediora" }]) as Array<
+      Record<string, string>
+    >;
+    const feed = maskPayload([{ title: "Obiajulu Ifediora - $1,165 Deal Win" }]) as Array<
+      Record<string, string>
+    >;
+    // Two panels naming one person must not disagree about who that person is.
+    expect(feed[0].title).toContain(roster[0].display_name);
+  });
+
+  it("keeps learning after the first payload — a frozen map is the same leak", () => {
+    // The naive persistence (keep the map, only collect on the "outermost"
+    // call) freezes it after response 1 and never learns anyone again.
+    maskPayload([{ display_name: "Obiajulu Ifediora" }]);
+    maskPayload([{ display_name: "Xaviar Watts" }]);
+    const out = maskPayload([{ title: "Xaviar Watts closed it" }]) as Array<
+      Record<string, string>
+    >;
+    expect(out[0].title).not.toContain("Xaviar");
+    expect(out[0].title).not.toContain("Watts");
+  });
+
+  it("rewrites prose after a SINGLE-token name is learned late", () => {
+    // The landing ticker really does send `agent: "OBIAJULU"` — one word. A
+    // one-token name never reaches the part-mapping loop (the token IS the
+    // name it just stored), so it invalidates the prose-rule cache from ONE
+    // site only. Every other test here uses a two-word name and would pass
+    // with that site deleted: found because a mutation proof came back inert.
+    maskPayload([{ title: "warm the rule cache with no names known" }]);
+    maskPayload([{ agent: "OBIAJULU" }]);
+    const out = maskPayload([{ title: "OBIAJULU closed it" }]) as Array<
+      Record<string, string>
+    >;
+    expect(out[0].title).not.toContain("OBIAJULU");
+    expect(out[0].title).toContain("closed it");
+  });
+
+  it("forgets every identity when demo mode is turned off", () => {
+    setDemoMode(true);
+    maskPayload([{ display_name: "Obiajulu Ifediora" }]);
+    setDemoMode(false);
+    // A stale identity outliving its session would let a later demo rewrite a
+    // sentence using a map the viewer never saw built — and worse, would keep
+    // real names resident after the session that justified holding them.
+    const out = maskPayload([{ title: "Obiajulu Ifediora - $1,165 Deal Win" }]) as Array<
+      Record<string, string>
+    >;
+    expect(out[0].title).toContain("Obiajulu Ifediora");
+  });
+
+  it("forgets the previous session's identities when demo mode is turned ON", () => {
+    setDemoMode(true);
+    maskPayload([{ display_name: "Obiajulu Ifediora" }]);
+    setDemoMode(true); // re-entering demo mode starts a fresh session
+    const out = maskPayload([{ title: "Obiajulu Ifediora - $1,165 Deal Win" }]) as Array<
+      Record<string, string>
+    >;
+    expect(out[0].title).toContain("Obiajulu Ifediora");
+  });
+});

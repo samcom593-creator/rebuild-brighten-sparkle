@@ -153,12 +153,46 @@ function maskNumber(value: number, seed: string): number {
 }
 
 /**
- * Real name -> fake name for the payload currently being masked. Built in a
- * first pass so prose can be rewritten with the SAME fake identity the row's
- * own name column got: "Aisha Kebbeh - $1,284 Deal Win" and that row's
- * agent_name must not disagree, or the demo visibly contradicts itself.
+ * Real name -> fake name for the demo SESSION. Built as payloads arrive so
+ * prose can be rewritten with the SAME fake identity the row's own name column
+ * got: "Aisha Kebbeh - $1,284 Deal Win" and that row's agent_name must not
+ * disagree, or the demo visibly contradicts itself.
+ *
+ * MP-532 widened this from per-payload to per-session. Measured on live prod:
+ * /dashboard/admin/sam spoke "Obiajulu Ifediora - $1,165 Deal Win" under the
+ * banner because the payload carrying that sentence has no name column of its
+ * own — the map that could have rewritten it was built and discarded by a
+ * DIFFERENT fetch. Session scope is also the only scope that can keep two
+ * panels agreeing about who a person is; per-payload cannot guarantee it even
+ * where it happens to work.
+ *
+ * This REDUCES the hole. It does not close it by construction: a prose string
+ * can still render before any response has spelled that person's name in a
+ * name column, and no scope fixes ordering. The mapping itself is seeded from
+ * the real string, so a name resolves to the same fake identity whenever it is
+ * learned — learning it later changes WHETHER prose is rewritten, never INTO
+ * WHAT.
+ *
+ * The cost of a wider map is wider substring matching: a short name token
+ * learned on one screen can hit an unrelated word on another. That direction
+ * is the safe one — a garbled word is a cosmetic bug, an unmasked name is the
+ * leak this feature exists to prevent.
  */
 let activeNames: Map<string, string> = new Map();
+
+/**
+ * maskProse runs per prose string and the session map grows all demo long, so
+ * the sort + RegExp construction is cached and rebuilt only when a name is
+ * actually learned. Without this, persistence would re-sort a growing map for
+ * every sentence on the screen.
+ */
+let proseRules: Array<[RegExp, string]> | null = null;
+
+/** Drop every learned identity. A demo session is the lifetime of the map. */
+function resetNames(): void {
+  activeNames = new Map();
+  proseRules = null;
+}
 
 /** Collect every real name a payload carries in a name column, plus its parts. */
 function collectNames(node: unknown, into: Map<string, string>): void {
@@ -174,11 +208,14 @@ function collectNames(node: unknown, into: Map<string, string>): void {
     const fake = maskString(k, real);
     if (fake === real) continue;
     into.set(real, fake);
+    proseRules = null;
     // Map the parts too, so "Obiajulu just locked in" is covered by a row that
     // only ever spelled the full name. Two chars or fewer is not a name.
     const rp = real.split(/\s+/), fp = fake.split(/\s+/);
     if (rp.length === fp.length) {
-      rp.forEach((tok, i) => { if (tok.length > 2 && !into.has(tok)) into.set(tok, fp[i]); });
+      rp.forEach((tok, i) => {
+        if (tok.length > 2 && !into.has(tok)) { into.set(tok, fp[i]); proseRules = null; }
+      });
     }
   }
 }
@@ -193,9 +230,13 @@ function escapeRe(v: string): string { return v.replace(/[.*+?^${}()|[\]\\]/g, "
  */
 function maskProse(value: string): string {
   let out = value;
-  for (const real of [...activeNames.keys()].sort((a, b) => b.length - a.length)) {
-    out = out.replace(new RegExp(escapeRe(real), "g"), activeNames.get(real) as string);
+  if (proseRules === null) {
+    // Longest first so "Obiajulu Ifediora" is consumed before bare "Obiajulu".
+    proseRules = [...activeNames.keys()]
+      .sort((a, b) => b.length - a.length)
+      .map((real) => [new RegExp(escapeRe(real), "g"), activeNames.get(real) as string]);
   }
+  for (const [re, fake] of proseRules) out = out.replace(re, fake);
   out = out.replace(/\$\s?([\d,]+(?:\.\d+)?)/g, (whole, digits: string) => {
     const n = Number(String(digits).replace(/,/g, ""));
     if (!Number.isFinite(n) || n === 0) return whole;
@@ -272,17 +313,16 @@ export function maskIfDemo(payload: unknown): unknown {
 }
 
 export function maskPayload(payload: unknown): unknown {
-  // Two passes: learn the payload's real identities, then mask. Prose needs the
-  // map to exist before the row carrying it is rewritten, and nested calls must
-  // not reset it mid-walk, so only the outermost call owns the map.
-  const outermost = activeNames.size === 0;
-  if (outermost) collectNames(payload, activeNames);
-  try {
-    if (Array.isArray(payload)) return payload.map((r) => maskOne(r));
-    return maskOne(payload);
-  } finally {
-    if (outermost) activeNames = new Map();
-  }
+  // Two passes: learn this payload's real identities, then mask. Prose needs
+  // the map to exist before the row carrying it is rewritten.
+  //
+  // Every call collects — gating on "only the outermost call owns the map"
+  // would freeze the map after the first payload the moment it survives past
+  // one call, which is the same leak wearing a different scope. collectNames
+  // skips names it already holds, so re-collecting costs a walk, not a change.
+  collectNames(payload, activeNames);
+  if (Array.isArray(payload)) return payload.map((r) => maskOne(r));
+  return maskOne(payload);
 }
 
 function maskOne(payload: unknown): unknown {
@@ -298,6 +338,9 @@ export function isDemoMode(): boolean {
 }
 
 export function setDemoMode(on: boolean): void {
+  // Either direction ends the session that justified holding these names:
+  // OFF must not leave a stale identity resident, and ON starts a fresh one.
+  resetNames();
   enabled = on;
   try {
     if (on) localStorage.setItem(STORAGE_KEY, "1");

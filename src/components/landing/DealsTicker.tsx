@@ -1,7 +1,14 @@
 import { useRef, useEffect, useState } from "react";
+import { maskIfDemo } from "@/lib/demoMode";
 
 // Hand-rolled REST call to the public Supabase RPC so this component does NOT
-// import the full supabase-js bundle (~170 kB). landing_deal_highlights is
+// import the full supabase-js bundle (~170 kB). The cost of skipping the SDK is
+// that this request also skips demoFetch, which is installed as the SDK's fetch
+// — so MP-530's gate fix did not reach this component and the landing ticker
+// kept showing real producers and real ALP under a banner saying every number
+// and name on screen was fake. maskIfDemo is the same mask the seam applies,
+// called by hand because there is no seam here; it is a no-op outside demo mode
+// and importing it costs nothing (demoMode is already in the entry chunk). landing_deal_highlights is
 // a SECURITY DEFINER RPC that returns sanitized first-name + 30-day ALP and
 // is callable by anon, so we just need the anon apikey at request time.
 const SUPABASE_URL = "https://xrzweoneiieddzxogewk.supabase.co";
@@ -64,6 +71,7 @@ export function DealsTicker() {
       body: "{}",
     })
       .then((r) => (r.ok ? r.json() : null))
+      .then((raw) => maskIfDemo(raw) as DealHighlight[] | null)
       .then((data: DealHighlight[] | null) => {
         if (cancelled || !data) return;
         const rows = data.map((d, i) => ({

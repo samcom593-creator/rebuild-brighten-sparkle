@@ -174,6 +174,20 @@ function maskRow(row: Record<string, unknown>): Record<string, unknown> {
   return out;
 }
 
+/**
+ * maskPayload, but only when demo mode is on — for the handful of call sites
+ * that fetch Supabase directly instead of through the client.
+ *
+ * demoFetch is installed as the supabase-js `global.fetch`, so anything that
+ * deliberately skips the SDK (DealsTicker skips it to keep 170 kB off the
+ * landing bundle) also skips the mask. Those sites call this by hand. Kept
+ * beside maskPayload rather than in demoFetch so importing it does not drag
+ * boundedFetch and the SDK back into a chunk that was built to avoid them.
+ */
+export function maskIfDemo(payload: unknown): unknown {
+  return isDemoMode() ? maskPayload(payload) : payload;
+}
+
 export function maskPayload(payload: unknown): unknown {
   if (Array.isArray(payload)) return payload.map((r) => maskPayload(r));
   if (payload && typeof payload === "object") return maskRow(payload as Record<string, unknown>);

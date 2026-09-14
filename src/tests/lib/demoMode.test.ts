@@ -8,8 +8,8 @@
  * the point of this file; the "did it fake the money" ones are the easy half.
  */
 
-import { describe, it, expect } from "vitest";
-import { maskPayload } from "@/lib/demoMode";
+import { describe, it, expect, afterEach } from "vitest";
+import { maskPayload, maskIfDemo, setDemoMode } from "@/lib/demoMode";
 
 const row = () => ({
   id: "9f1c2d3e-4a5b-6c7d-8e9f-0a1b2c3d4e5f",
@@ -173,5 +173,37 @@ describe("demo mode never returns the real number", () => {
   it("still leaves zero alone — an empty state must stay empty", () => {
     const out = maskPayload({ policy_count: 0 }) as Record<string, unknown>;
     expect(out.policy_count).toBe(0);
+  });
+});
+
+/**
+ * The sites that skip the SDK, and therefore skip the seam.
+ *
+ * MP-530 fixed demoFetch's gate and the landing ticker still showed real
+ * producers, because DealsTicker fetches Supabase by hand to keep 170 kB off
+ * the landing bundle — so it never reaches demoFetch at all. A seam only covers
+ * what goes through it, and "one seam, not 250 pages" stops being true the
+ * moment a page has a reason to route around it.
+ */
+describe("maskIfDemo — the hand-called mask for seam-bypassing fetches", () => {
+  afterEach(() => setDemoMode(false));
+
+  it("masks the landing ticker's real producer and real ALP when demo is on", () => {
+    setDemoMode(true);
+    const out = maskIfDemo([{ agent: "OBIAJULU", amount: 20695 }]) as Array<Record<string, unknown>>;
+    expect(out[0].agent).not.toBe("OBIAJULU");
+    expect(out[0].amount).not.toBe(20695);
+  });
+
+  it("is a no-op with demo off, so the public page keeps showing the real book", () => {
+    setDemoMode(false);
+    const out = maskIfDemo([{ agent: "OBIAJULU", amount: 20695 }]) as Array<Record<string, unknown>>;
+    expect(out[0].agent).toBe("OBIAJULU");
+    expect(out[0].amount).toBe(20695);
+  });
+
+  it("passes null through, which is what the ticker sends on a failed fetch", () => {
+    setDemoMode(true);
+    expect(maskIfDemo(null)).toBeNull();
   });
 });

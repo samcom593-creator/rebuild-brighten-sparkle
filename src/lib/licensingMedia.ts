@@ -1,5 +1,5 @@
 const TRAINING_MEDIA_BASE =
-  "https://xrzweoneiieddzxogewk.supabase.co/storage/v1/object/public/training-videos/licensing/2026-08-31";
+  "https://xrzweoneiieddzxogewk.supabase.co/storage/v1/object/public/training-videos/licensing/2026-09-15";
 
 /**
  * Canonical media for every unlicensed-prospect licensing flow.
@@ -13,6 +13,6 @@ export const LICENSING_VIDEO = {
   src: `${TRAINING_MEDIA_BASE}/how-to-get-your-life-insurance-license.mp4`,
   poster: `${TRAINING_MEDIA_BASE}/how-to-get-your-life-insurance-license-poster.jpg`,
   pageUrl: "https://apex-financial.org/get-licensed#licensing-video",
-  durationLabel: "6:04",
-  durationSeconds: 364,
+  durationLabel: "5:18",
+  durationSeconds: 318,
 } as const;

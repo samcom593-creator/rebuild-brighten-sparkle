@@ -130,7 +130,7 @@ function stepsFor(app: MyApplication, licensed: boolean): Step[] {
       key: "license",
       icon: GraduationCap,
       title: "Get your life insurance license",
-      body: "Start the pre-licensing course, then watch the six-minute walkthrough that shows the whole path from course to exam to license. Once you've purchased the course, post a screenshot of the confirmation in #unlicensed on Slack — that's how we verify it and move you forward.",
+      body: "Start the pre-licensing course, then watch the five-minute walkthrough that shows the whole path from course to exam to license. Once you've purchased the course, post a screenshot of the confirmation in #unlicensed on Slack — that's how we verify it and move you forward.",
       primary: { label: "Start the licensing course", href: LICENSING_COURSE_URL, external: true },
       secondary: { label: "Watch the walkthrough", href: "/get-licensed#licensing-video" },
     },

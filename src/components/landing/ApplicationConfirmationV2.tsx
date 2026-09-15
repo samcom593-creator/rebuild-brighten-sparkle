@@ -175,7 +175,7 @@ function UnlicensedBody({
       <div className="rounded-md border border-border/40 bg-muted/20 p-4 sm:p-5 space-y-3">
         <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Your 3-step path</p>
         <Step done label="Application received" />
-        <Step current label="Watch: How to Get Your Life Insurance License" detail="A six-minute walkthrough puts every step in the right order." />
+        <Step current label="Watch: How to Get Your Life Insurance License" detail="A five-minute walkthrough puts every step in the right order." />
         <Step label="Start course → exam → fingerprints → license" />
       </div>
 

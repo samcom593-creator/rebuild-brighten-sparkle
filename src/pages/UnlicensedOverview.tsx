@@ -11,7 +11,7 @@ const steps = [
   {
     n: 1,
     title: "Watch the licensing walkthrough",
-    body: "Start with the six-minute 2026 process so you know the correct order for your course, exam, fingerprints, application, and license verification.",
+    body: "Start with the five-minute 2026 process so you know the correct order for your course, exam, fingerprints, application, and license verification.",
   },
   {
     n: 2,

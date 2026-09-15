@@ -6,6 +6,21 @@ const ROOT = resolve(__dirname, "../../..");
 const read = (path: string) => readFileSync(resolve(ROOT, path), "utf8");
 
 describe("new-agent onboarding video placement", () => {
+  it("uses the current get-licensed video everywhere", () => {
+    const media = read("src/lib/licensingMedia.ts");
+    expect(media).toContain("licensing/2026-09-15");
+    expect(media).toContain('durationLabel: "5:18"');
+    expect(media).toContain("durationSeconds: 318");
+
+    for (const page of [
+      "src/components/onboarding/ApplicantHome.tsx",
+      "src/components/landing/ApplicationConfirmationV2.tsx",
+      "src/pages/UnlicensedOverview.tsx",
+    ]) {
+      expect(read(page)).not.toContain("six-minute");
+    }
+  });
+
   it("releases the canonical hosted media", () => {
     const media = read("src/lib/onboardingMedia.ts");
     expect(media).toContain("apex-new-agent-onboarding.mp4");

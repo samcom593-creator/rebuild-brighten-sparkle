@@ -133,6 +133,15 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  // MP-540: vi.unstubAllGlobals() does NOT undo vi.spyOn, so a test that mocks
+  // document.visibilityState and does not restore it hands "hidden" to every
+  // test that follows. That leak was present and inert until this file started
+  // grading visibility: initWebVitals() reads visibilityState to decide whether
+  // the page was loaded in the background, so a leaked "hidden" makes the two
+  // MP-514 terminal tests assert against a module that is correctly discarding
+  // everything. Restore per-file rather than per-test — the next author to add
+  // a spy here should not have to know this.
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
   vi.unstubAllEnvs();
   fetchSpy.mockRestore();
@@ -289,4 +298,73 @@ describe("web-vitals terminal flush (MP-514)", () => {
     expect(rowWithValue(late, 300)).toBeDefined();
     expect(rowWithValue(late, 6_789)).toBeUndefined();
   });
+
+  /**
+   * MP-540. A background-loaded tab reports an honest LCP of "however long
+   * until the user looked at me", and 5.9% of this instance's live LCP rows are
+   * that number rather than a paint time — 45.7% of every "poor" verdict.
+   *
+   * These import the REAL module: a test that restates the rule proves only
+   * that the restatement is self-consistent (MP-274).
+   */
+  it("discards an LCP from a tab that was already hidden when it loaded", async () => {
+    const spy = vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
+    try {
+      const { initWebVitals } = await import("@/shared/lib/webVitals");
+      initWebVitals();
+
+      // 14 hours — the shape of this instance's worst live row (50,596s).
+      FakePerformanceObserver.emit("largest-contentful-paint", [{ startTime: 50_596_000 }]);
+      await vi.advanceTimersByTimeAsync(6000);
+      await flushMicrotasks();
+
+      expect(rowWithValue(insertedRows(), 50_596_000)).toBeUndefined();
+      expect(rowWithValue(beaconRows(), 50_596_000)).toBeUndefined();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("keeps an LCP from a tab that was visible when it loaded", async () => {
+    const spy = vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
+    try {
+      const { initWebVitals } = await import("@/shared/lib/webVitals");
+      initWebVitals();
+
+      FakePerformanceObserver.emit("largest-contentful-paint", [{ startTime: 1834 }]);
+      await vi.advanceTimersByTimeAsync(6000);
+      await flushMicrotasks();
+
+      // The positive control. Without it the test above passes on a module that
+      // discards everything, which is the failure mode that matters here:
+      // silence reads exactly like a clean instrument.
+      expect(rowWithValue(insertedRows(), 1834)).toBeDefined();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("discards an LCP that arrives after the page was hidden mid-visit", async () => {
+    const spy = vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
+    try {
+      const { initWebVitals } = await import("@/shared/lib/webVitals");
+      initWebVitals();
+
+      spy.mockReturnValue("hidden");
+      document.dispatchEvent(new Event("visibilitychange"));
+
+      // Buffered observers replay: this entry is delivered now but is timed far
+      // beyond the hide, so it measures the return, not the paint.
+      FakePerformanceObserver.emit("largest-contentful-paint", [{ startTime: 3_949_430 }]);
+      await vi.advanceTimersByTimeAsync(6000);
+      await flushMicrotasks();
+
+      expect(rowWithValue(insertedRows(), 3_949_430)).toBeUndefined();
+      expect(rowWithValue(beaconRows(), 3_949_430)).toBeUndefined();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+
 });

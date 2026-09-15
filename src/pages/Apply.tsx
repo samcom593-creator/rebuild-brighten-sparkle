@@ -38,6 +38,7 @@ import { US_STATES, AVAILABILITY_OPTIONS, REFERRAL_SOURCES } from "@/lib/constan
 import { CARRIER_OPTIONS } from "@/lib/carrierOptions";
 import { track } from "@/lib/analytics";
 import { createFieldProgressTracker } from "@/shared/telemetry/applyFieldProgress";
+import { createDebouncedWriter, type DebouncedWriter } from "@/shared/lib/debouncedWriter";
 import { QuickQualifyStep } from "@/pages/apply/QuickQualifyStep";
 // S11 fix (2026-06-15): when the landing -> /apply hop dropped `?ref=` from
 // the CTA href, fall back to the localStorage relay captured on landing
@@ -268,19 +269,45 @@ export default function Apply() {
     });
   }
 
-  // Persist form data to sessionStorage (debounced)
+  // Persist form data to sessionStorage (debounced).
+  //
+  // MP-541: this debounce never debounced. react-hook-form DISCARDS whatever a
+  // watch callback returns -- it is not a useEffect and has no cleanup
+  // protocol -- so the `return () => clearTimeout(timeout)` that used to sit
+  // here was dead code, proven 3 callback fires / 0 cleanup calls against
+  // react-hook-form 7.85.0. Every keystroke therefore scheduled its own timer
+  // and none were ever cancelled: N synchronous JSON.stringify + setItem pairs
+  // per N keystrokes instead of one per quiet period, on the applicant path.
+  //
+  // The timer id has to live OUTSIDE the callback for a later keystroke to be
+  // able to cancel an earlier one. The ref also gives the effect cleanup
+  // something to clear, which closes a second hole: the submit guard below is
+  // read when the timer is SCHEDULED, so a timer already in flight when the
+  // applicant submits used to fire afterwards and write the form back into
+  // sessionStorage that markAsConverted had just deliberately removed. That
+  // window is narrow (it needs a keystroke within 300ms of an awaited network
+  // round-trip finishing) and is NOT claimed to have fired in production --
+  // but it is PII, so it is closed rather than left to chance.
+  const persistRef = useRef<DebouncedWriter<unknown> | null>(null);
+  if (!persistRef.current) {
+    persistRef.current = createDebouncedWriter<unknown>(300, (value) => {
+      // Re-checked at FIRE time, not only at schedule time.
+      if (isSubmittedRef.current) return;
+      try {
+        sessionStorage.setItem(STORAGE_KEY_FORM, JSON.stringify(value));
+      } catch (e) { /* ignore */ } // empty-catch-allow:localstorage-incognito
+    });
+  }
   useEffect(() => {
     const subscription = watch((value, info) => {
       if (isSubmittedRef.current) return;
       fieldProgressRef.current?.(info);
-      const timeout = setTimeout(() => {
-        try {
-          sessionStorage.setItem(STORAGE_KEY_FORM, JSON.stringify(value));
-        } catch (e) { /* ignore */ } // empty-catch-allow:localstorage-incognito
-      }, 300);
-      return () => clearTimeout(timeout);
+      persistRef.current?.schedule(value);
     });
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      persistRef.current?.cancel();
+    };
   }, [watch]);
 
   // MP-512: apply_start. The funnel's entry event did not exist — it was

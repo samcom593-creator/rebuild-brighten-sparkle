@@ -26,6 +26,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { Resvg, initWasm } from "https://esm.sh/@resvg/resvg-wasm@2.6.2";
+import { postNtfyGraded } from "../_shared/ntfy-post.ts";
 
 // One-time WASM init (cold start cost ~150ms)
 let wasmReady = false;
@@ -411,11 +412,17 @@ Deno.serve(async (req) => {
                   : g.kind === "leaderboard" ? "Top 6 producers — full board attached"
                   : g.kind === "lifetime" ? `${fmt$(g.alp!)} career ALP · ${g.deals} deals all-time`
                   : `${fmt$(g.alp!)} · ${g.deals} deals`;
-        await fetch(NTFY_URL, {
-          method: "POST",
-          headers: { "Title": title, "Tags": "trophy", "Priority": "4", "Attach": g.url, "Click": g.url },
+        // `.catch(() => {})` only ever saw a transport failure; a 429 resolved
+        // normally and the plaque push vanished without a trace.
+        const ntfyRes = await postNtfyGraded(NTFY_URL, {
+          title,
           body: msg,
-        }).catch(() => {});
+          tags: "trophy",
+          priority: "4",
+          attach: g.url,
+          click: g.url,
+        });
+        if (!ntfyRes.ok) console.error(`[generate-monthly-awards] ntfy push refused: ${ntfyRes.receipt}`);
       }
     }
 

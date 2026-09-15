@@ -22,6 +22,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { findAuthUserByEmail, type AuthUserLister } from "../_shared/find-auth-user.ts";
 import { nanpTenDigits, nanpRefusalReason } from "../_shared/nanp-phone.ts";
+import { postNtfyGraded } from "../_shared/ntfy-post.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -58,12 +59,17 @@ function digitsOnly(s: string) {
 }
 
 function ntfyPush(title: string, message: string) {
-  // Fire-and-forget; do not block the response on this.
-  fetch(`https://ntfy.sh/${NTFY_TOPIC}`, {
-    method: "POST",
-    headers: { Title: title, Priority: "high" },
+  // Fire-and-forget; do not block the response on this. But fire-and-forget is
+  // not the same as outcome-blind: `.catch(() => {})` only ever sees a TRANSPORT
+  // failure, so an HTTP 429 quota refusal resolved normally and vanished. The
+  // push is still not awaited by the caller — the refusal is now logged.
+  void postNtfyGraded(`https://ntfy.sh/${NTFY_TOPIC}`, {
+    title,
     body: message,
-  }).catch(() => {});
+    priority: "high",
+  }).then((r) => {
+    if (!r.ok) console.error(`[consume-invite-token] ntfy push refused: ${r.receipt}`);
+  });
 }
 
 serve(async (req) => {

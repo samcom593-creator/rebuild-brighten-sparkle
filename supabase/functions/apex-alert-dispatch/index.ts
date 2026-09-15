@@ -10,7 +10,7 @@
 // Shared-secret auth for ad-hoc alerts via x-alert-dispatch-secret header.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { headerSafe } from "../_shared/header-safe.ts";
+import { postNtfyGraded } from "../_shared/ntfy-post.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const corsHeaders = {
@@ -88,33 +88,69 @@ async function postDiscord(alert: any): Promise<boolean> {
 }
 
 // WhatsApp channel removed 2026-09-07 (team is Slack + Discord only; no bot_alerts row ever seeded 'whatsapp').
-async function postNtfy(alert: any, topicOverride?: string): Promise<{ ok: boolean; receipt: string }> {
-  // ntfy.sh — Sam's primary mobile push. Always available, no creds needed.
-  let url = topicOverride ?? "";
-  if (!url) {
+
+// MP-542: this constant was deleted on 2026-09-07 by 66d59f20 ("remove WhatsApp
+// from the product") — it sat between the WhatsApp sender and the next function,
+// so removing that block took it along. Its ONLY use site, in the topic resolver
+// below, survived. system_settings has never held an `ntfy_topic_url` row, so the
+// `||` fallback is evaluated on EVERY real alert, and an undefined identifier
+// there is an uncaught ReferenceError, not a falsy value.
+//
+// Proven live before the fix, both directions, against deployed v171:
+//   selftest WITH a topic override  -> {"ok":true,"receipt":"ok"}
+//   selftest WITHOUT one            -> 500 Internal Server Error
+//
+// Inside send() the throw lands in the ntfy try/catch, so email and Discord kept
+// delivering and the alert still recorded as sent. The honest claim is therefore
+// NOT "Sam heard nothing" — it is that for 8 days the one channel that reaches
+// his pocket could not be reached by the dispatcher, and nothing said so.
+export const NTFY_DEFAULT_TOPIC = "https://ntfy.sh/sams-agent-yrkv9kbqp9e987nb";
+
+/**
+ * Resolve Sam's ntfy topic the way every real alert resolves it.
+ *
+ * Returns the source alongside the url because "which branch answered" is the
+ * thing the selftest has to be able to see — see the selftest note in Deno.serve.
+ * Never throws: a resolver that dies takes the whole invocation with it, which is
+ * exactly how this defect presented.
+ */
+async function resolveNtfyTopic(): Promise<{ url: string; source: string }> {
+  try {
     const { data } = await supabase
       .from("system_settings")
       .select("value")
       .eq("key", "ntfy_topic_url")
       .maybeSingle();
-    url = (data as any)?.value || NTFY_DEFAULT_TOPIC;
-  }
-  try {
-    const headers: Record<string, string> = {
-      "Title": headerSafe(String(alert.subject ?? "APEX alert").slice(0, 200)),
-      "Tags": alert.severity === "critical" ? "rotating_light" : alert.severity === "celebrate" ? "tada,fire" : "bell",
-      "Priority": alert.severity === "critical" ? "5" : "4",
-    };
-    if (alert.action_link) headers["Click"] = headerSafe(String(alert.action_link));
-    const r = await fetch(url, {
-      method: "POST",
-      headers,
-      body: String(alert.sms_body || alert.subject || "").slice(0, 4000),
-    });
-    return { ok: r.ok, receipt: r.ok ? "ok" : `http:${r.status}` };
+    const configured = (data as any)?.value;
+    if (configured) return { url: String(configured), source: "system_settings" };
+    return { url: NTFY_DEFAULT_TOPIC, source: "default_constant" };
   } catch (e: any) {
-    return { ok: false, receipt: `error:${e?.message ?? String(e)}` };
+    return { url: NTFY_DEFAULT_TOPIC, source: `default_constant_after_error:${e?.message ?? String(e)}` };
   }
+}
+
+async function postNtfy(alert: any, topicOverride?: string): Promise<{ ok: boolean; receipt: string; topicSource: string }> {
+  // ntfy.sh — Sam's primary mobile push. Always available, no creds needed.
+  //
+  // The resolver runs even when a destination override is supplied. A probe that
+  // skips resolution grades a branch no real alert takes: apex-doctor Check #21
+  // passes a throwaway topic, so it returned "ok" every run for 8 days while the
+  // live path 500'd. Resolve always, send wherever the caller asked.
+  const resolved = await resolveNtfyTopic();
+  const url = topicOverride || resolved.url;
+  // Receipt now NAMES the refusal instead of printing a bare `http:429`. On
+  // 2026-09-14 that bare status sent apex-doctor Check #21 to the false sentence
+  // "Sam's primary phone push is not delivering" while the channel was up and
+  // carrying 23 messages — the cause was ntfy code 42908, a per-visitor-IP daily
+  // quota on the shared Supabase egress, readable only from the response body.
+  const res = await postNtfyGraded(url, {
+    title: String(alert.subject ?? "APEX alert"),
+    body: String(alert.sms_body || alert.subject || ""),
+    tags: alert.severity === "critical" ? "rotating_light" : alert.severity === "celebrate" ? "tada,fire" : "bell",
+    priority: alert.severity === "critical" ? "5" : "4",
+    click: alert.action_link ? String(alert.action_link) : undefined,
+  });
+  return { ok: res.ok, receipt: res.receipt, topicSource: resolved.source };
 }
 
 async function send(alert: any): Promise<{ email_id: string | null; sent_sms: boolean; sms_receipt: string | null; sent_discord: boolean; sent_ntfy: boolean; error: string | null }> {
@@ -285,7 +321,9 @@ Deno.serve(async (req) => {
       { subject: body.subject ?? "🎓 apex-doctor ntfy selftest", sms_body: "selftest", severity: "info" },
       body.ntfy_topic || undefined,
     );
-    return new Response(JSON.stringify({ ok: n.ok, selftest: "ntfy", receipt: n.receipt }), {
+    // topic_source is published so a green probe proves the REAL resolution path
+    // answered, not just that a hardcoded override accepted a POST.
+    return new Response(JSON.stringify({ ok: n.ok, selftest: "ntfy", receipt: n.receipt, topic_source: n.topicSource }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

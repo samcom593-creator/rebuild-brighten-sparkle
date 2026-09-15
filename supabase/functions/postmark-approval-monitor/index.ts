@@ -5,6 +5,7 @@
 // approval timestamp, and pings Sam via ntfy. Idempotent — once approved,
 // subsequent runs no-op.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
+import { postNtfyGraded } from "../_shared/ntfy-post.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -70,17 +71,19 @@ Deno.serve(async (req) => {
 
     const messageId = String(parsed.MessageID);
     try {
-      await fetch(NTFY_URL, {
-        method: "POST",
-        headers: {
-          "Title": "APEX: Postmark APPROVED — 40-day reissue firing",
-          "Priority": "high",
-          "Tags": "envelope,rocket",
-        },
+      // This is a one-shot, high-consequence push: it is how Sam learns that the
+      // kill-switch flipped and 203 pending outreach rows are about to drain. A
+      // silent 429 here means outbound starts with nobody told, so the refusal
+      // is logged rather than swallowed as "best-effort".
+      const res = await postNtfyGraded(NTFY_URL, {
+        title: "APEX: Postmark APPROVED — 40-day reissue firing",
+        priority: "high",
+        tags: "envelope,rocket",
         body: `Postmark unlocked external sends at ${nowIso}. ` +
               `Reissue campaign kill-switch flipped false — outreach-sender will drain 203 pending rows on the next 5-min cron tick. ` +
               `Probe MessageID: ${messageId}`,
       });
+      if (!res.ok) console.error(`[postmark-approval-monitor] ntfy push refused: ${res.receipt}`);
     } catch (_e) { /* ntfy is best-effort */ }
 
     return json({ ok: true, action: "approved", approved_at: nowIso, probe_message_id: messageId });

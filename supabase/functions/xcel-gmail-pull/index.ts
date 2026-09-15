@@ -31,6 +31,7 @@
 // MP-245 · 2026-07-06 — per-run warning + 7-consecutive escalation to ntfy
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { postNtfyGraded } from "../_shared/ntfy-post.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -135,20 +136,15 @@ async function logAutomationRun(payload: {
 
 // Best-effort ntfy push. Never blocks the pull.
 async function ntfy(title: string, body: string, priority: "default" | "high" | "urgent" = "high") {
-  try {
-    await fetch(NTFY_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "text/plain",
-        "Title": title,
-        "Priority": priority,
-        "Tags": "warning,xcel",
-      },
-      body,
-    });
-  } catch (err) {
-    console.error(`[xcel-gmail-pull] ntfy push failed:`, err);
-  }
+  // The old try/catch only ever caught a TRANSPORT failure. An HTTP 429 resolves
+  // normally, so a quota-refused push logged nothing and read as delivered.
+  const res = await postNtfyGraded(NTFY_URL, {
+    title,
+    body,
+    priority,
+    tags: "warning,xcel",
+  });
+  if (!res.ok) console.error(`[xcel-gmail-pull] ntfy push refused: ${res.receipt}`);
 }
 
 // Best-effort system_health_logs insert. Never blocks the pull.

@@ -37,6 +37,7 @@ import {
 import { US_STATES, AVAILABILITY_OPTIONS, REFERRAL_SOURCES } from "@/lib/constants";
 import { CARRIER_OPTIONS } from "@/lib/carrierOptions";
 import { track } from "@/lib/analytics";
+import { createFieldProgressTracker } from "@/shared/telemetry/applyFieldProgress";
 import { QuickQualifyStep } from "@/pages/apply/QuickQualifyStep";
 // S11 fix (2026-06-15): when the landing -> /apply hop dropped `?ref=` from
 // the CTA href, fall back to the localStorage relay captured on landing
@@ -241,10 +242,37 @@ export default function Apply() {
     }
   }, [STORAGE_KEY_STEP, activeSteps.length, setValue]);
 
+  // MP-539: the step the user is on when a field is first touched. Read through
+  // a ref because the watch subscription below is created once (deps [watch])
+  // and would otherwise close over currentStep's value at mount forever.
+  const currentStepRef = useRef(currentStep);
+  useEffect(() => {
+    currentStepRef.current = currentStep;
+  }, [currentStep]);
+
+  // MP-539: one event the first time each distinct field is edited. See
+  // shared/telemetry/applyFieldProgress.ts for why this is the shape, and for
+  // the measurement that showed the whole /apply leak sits before the first
+  // Next press where nothing was emitted.
+  // Lazily initialised: useRef evaluates its argument on every render, and this
+  // component re-renders on each keystroke, so building the tracker inline would
+  // allocate a closure and a Set per keypress and throw both away.
+  const fieldProgressRef = useRef<ReturnType<typeof createFieldProgressTracker> | null>(null);
+  if (!fieldProgressRef.current) {
+    fieldProgressRef.current = createFieldProgressTracker((field, ordinal) => {
+      track("apply_field_first_input", {
+        field,
+        ordinal,
+        step: currentStepRef.current,
+      });
+    });
+  }
+
   // Persist form data to sessionStorage (debounced)
   useEffect(() => {
-    const subscription = watch((value) => {
+    const subscription = watch((value, info) => {
       if (isSubmittedRef.current) return;
+      fieldProgressRef.current?.(info);
       const timeout = setTimeout(() => {
         try {
           sessionStorage.setItem(STORAGE_KEY_FORM, JSON.stringify(value));

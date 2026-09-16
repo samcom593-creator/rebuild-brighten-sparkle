@@ -47,6 +47,8 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
+import { CompLevelEditor } from "@/components/dashboard/CompLevelEditor";
 import { getNextBestAction } from "@/lib/nextBestAction";
 import {
   getPriorityScore,
@@ -120,8 +122,28 @@ export default function ProducerDetailsDrawer({
   producer,
 }: Props) {
   const qc = useQueryClient();
+  const { isAdmin, isManager } = useAuth();
   const [noteText, setNoteText] = useState("");
   const [followUpDate, setFollowUpDate] = useState("");
+
+  // Contract (comp) level — the same resolved value the scoreboard shows, read
+  // through fn_agent_contract_pct so an alias id resolves to the canonical
+  // agent's level. Admins/managers get the inline editor; set_agent_contract_pct
+  // is the authority on who may actually change it.
+  const compQ = useQuery<{ pct: number | null; provenance: string } | null>({
+    enabled: !!producer?.producer_id,
+    queryKey: ["mp259-agent-comp", producer?.producer_id],
+    queryFn: async () => {
+      const q: any = supabase;
+      const { data, error } = await q.rpc("fn_agent_contract_pct", {
+        p_agent_id: producer!.producer_id,
+      });
+      if (error) return null;
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!row) return null;
+      return { pct: row.pct == null ? null : Number(row.pct), provenance: String(row.provenance ?? "unknown") };
+    },
+  });
 
   // Agent detail — real columns only. Missing = fallback.
   const agentQ = useQuery<AgentDetail | null>({
@@ -315,6 +337,32 @@ export default function ProducerDetailsDrawer({
           <Row
             label="License status"
             value={agent?.license_status ?? "—"}
+          />
+          <Row
+            label="Contract %"
+            value={
+              <span className="inline-flex items-center justify-end gap-1.5">
+                <span className="tabular-nums font-semibold">
+                  {compQ.data?.pct != null ? `${compQ.data.pct}%` : "—"}
+                </span>
+                {compQ.data?.provenance && compQ.data.provenance !== "unknown" && (
+                  <span className="text-[9px] uppercase tracking-wider text-muted-foreground normal-case">
+                    {compQ.data.provenance.replace(/_/g, " ")}
+                  </span>
+                )}
+                {(isAdmin || isManager) && agent?.id && (
+                  <CompLevelEditor
+                    agentId={agent.id}
+                    agentName={agent.display_name ?? producer.display_name}
+                    currentPct={compQ.data?.pct ?? 0}
+                    provenance={compQ.data?.provenance ?? "unknown"}
+                    onSaved={() => {
+                      qc.invalidateQueries({ queryKey: ["mp259-agent-comp", producer.producer_id] });
+                    }}
+                  />
+                )}
+              </span>
+            }
           />
           <Row
             label="AgentLink"

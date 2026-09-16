@@ -10,6 +10,7 @@ import {
   buildEthosAiRow,
   buildEthosComment,
   buildEthosKlRow,
+  COL_COMP_LEVEL,
   commentRangeForRow,
   klRangeForRow,
   matchEthosRow,
@@ -250,7 +251,13 @@ export async function deliverEthosSheet(
     };
   }
 
-  const values = buildEthosAiRow(intake, config);
+  // On an update-in-place, preserve a real "Level N" already in the Comp Level
+  // cell (John Ray / Ethos set it) instead of overwriting it from the APEX
+  // percentage. On an append there is no prior cell, so the base level is used.
+  const existingCompLevel = match.action === "update"
+    ? (rows[match.rowNumber - 1]?.[COL_COMP_LEVEL] ?? null)
+    : null;
+  const values = buildEthosAiRow(intake, config, existingCompLevel);
   const aiReceipt = match.action === "update"
     ? await sheets.updateRange(aiRangeForRow(config.tab, match.rowNumber), [values])
     : await sheets.appendRow(`${config.tab}!A:I`, values);

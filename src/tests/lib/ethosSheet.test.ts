@@ -73,22 +73,39 @@ describe("ethos · measured column contract", () => {
 });
 
 describe("ethos · row mapping", () => {
-  it("maps the five intake fields and the verified APEX configuration", () => {
+  it("maps the five intake fields, the config, and the BASE Ethos level", () => {
+    // A five-field intake with no comp is a standard recruit: base Level 12,
+    // never a blank money cell and never a guess upward.
     const built = buildEthosAiRow(INTAKE, CONFIG);
     expect(built).toEqual([
       "Jane", "Doe", "21346999", "21346366",
       "(602) 555-0143", "jane.doe@example.com",
-      "", "6 Month Advance", "Apex Financial Empire",
+      "Level 12", "6 Month Advance", "Apex Financial Empire",
     ]);
   });
 
-  it("leaves Comp Level blank, as all 188 verified rows do", () => {
-    // Comp level is negotiated, not derivable from a five-field intake, and a
-    // guessed level has real money consequences.
-    expect(buildEthosAiRow(INTAKE, CONFIG)[COL_COMP_LEVEL]).toBe("");
+  it("writes an Ethos LEVEL for the Comp Level column, not the APEX percentage", () => {
+    // The bug Sam flagged: the raw percentage "60"/"75" landed in the carrier's
+    // Comp Level column, which holds a LEVEL. 60% is Level 12 (Sam's anchor),
+    // and one level per five points above it: 75% -> Level 15 (matches Aisha's
+    // existing sheet row), 85% -> Level 17.
+    expect(buildEthosAiRow({ ...INTAKE, comp_percentage: 60 }, CONFIG)[COL_COMP_LEVEL]).toBe("Level 12");
+    expect(buildEthosAiRow({ ...INTAKE, comp_percentage: 75 }, CONFIG)[COL_COMP_LEVEL]).toBe("Level 15");
+    expect(buildEthosAiRow({ ...INTAKE, comp_percentage: 85 }, CONFIG)[COL_COMP_LEVEL]).toBe("Level 17");
+    // Unknown/blank comp defaults to the base, never blank.
+    expect(buildEthosAiRow(INTAKE, CONFIG)[COL_COMP_LEVEL]).toBe("Level 12");
   });
 
-  it("writes linked profile comp and derives licensed/E&O from evidence", () => {
+  it("preserves a real Level N already in the cell instead of demoting it", () => {
+    // An update-in-place must not clobber a manual "Level 15" back to the base
+    // just because the intake's percentage maps lower or is blank.
+    expect(buildEthosAiRow(INTAKE, CONFIG, "Level 15")[COL_COMP_LEVEL]).toBe("Level 15");
+    expect(buildEthosAiRow({ ...INTAKE, comp_percentage: 60 }, CONFIG, "Level 21")[COL_COMP_LEVEL]).toBe("Level 21");
+    // But a raw-number cell (the old bug's fingerprint) IS corrected.
+    expect(buildEthosAiRow({ ...INTAKE, comp_percentage: 75 }, CONFIG, "60")[COL_COMP_LEVEL]).toBe("Level 15");
+  });
+
+  it("derives licensed/E&O from evidence", () => {
     const enriched = {
       ...INTAKE,
       comp_percentage: 60,
@@ -98,7 +115,6 @@ describe("ethos · row mapping", () => {
       eo_per_claim_limit: 1_000_000,
       eo_aggregate_limit: 1_000_000,
     };
-    expect(buildEthosAiRow(enriched, CONFIG)[COL_COMP_LEVEL]).toBe("60");
     expect(buildEthosKlRow(enriched)).toEqual([true, true]);
     expect(buildEthosKlRow({
       ...enriched,
@@ -106,10 +122,13 @@ describe("ethos · row mapping", () => {
     })).toEqual([true, true]);
   });
 
-  it("builds a Comments cell carrying the intake id", () => {
+  it("builds a Comments cell carrying the intake id and the notify addresses", () => {
     const comment = buildEthosComment(CONFIG, "intake-123");
     expect(comment).toContain("Apex Financial Empire / Level 8 Financial");
     expect(comment).toContain("intake-123");
+    // The tag actually names people: resolvable addresses, not "@Level 8 Financial".
+    expect(comment).toContain("level8financial@gmail.com");
+    expect(comment).toContain("apalejohnray@gmail.com");
   });
 
   it("formats the phone the way the sheet's human readers expect", () => {

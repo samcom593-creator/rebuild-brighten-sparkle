@@ -32,7 +32,52 @@ export type EthosConfig = {
   advance_pay_tier: string;
   sub_agency_name: string;
   comment_prefix: string;
+  /**
+   * People who must appear on EVERY row's Comments cell so the shared-document
+   * owners see each intake. Written as their real, resolvable Google addresses
+   * (level8financial@gmail.com, apalejohnray@gmail.com) rather than the label
+   * "@Level 8 Financial", which resolves to nobody. A bare address is what
+   * Sheets turns into a person chip; a display name is not. Absent → the
+   * verified default pair below.
+   */
+  notify_emails?: string;
 };
+
+/**
+ * The Comments-cell notify list, as resolvable addresses.
+ *
+ * Sam's complaint was that "@Level 8 Financial" never actually tagged anyone —
+ * a display-name string is inert. The two accounts that co-own/edit the sheet
+ * are level8financial@gmail.com (owner) and apalejohnray@gmail.com (John Ray,
+ * writer), so those are what a row must carry to name a real person. A push
+ * NOTIFICATION to them rides the private contracting Discord, which already
+ * @mentions; the sheet cell carries the addresses for reference and chip
+ * resolution.
+ */
+export const ETHOS_DEFAULT_NOTIFY = "level8financial@gmail.com apalejohnray@gmail.com";
+
+/** A Comp Level cell already carrying a real Ethos level, e.g. "Level 15". */
+const ETHOS_LEVEL_RE = /^\s*level\s+\d{1,2}\s*$/i;
+
+/**
+ * Map an APEX contract percentage to an Ethos contract LEVEL string.
+ *
+ * The Ethos "Comp Level" column holds a LEVEL ("Level 12"), never an APEX
+ * percentage ("60") — the two are different vocabularies, and writing the raw
+ * percentage into a carrier-facing column was the bug Sam flagged. The anchor
+ * Sam gave is the base: a standard agent is 60% = **Level 12**. The elevated
+ * tiers follow the sheet's own data points (Aisha 75% = Level 15, An Ha = Level
+ * 17), i.e. one level per five points above the base, clamped to the grid's
+ * Level 12..27. A blank or non-numeric comp defaults to Level 12, never a guess
+ * upward. This is only ever used to FILL an empty or raw-number cell; an
+ * existing "Level N" set by John Ray/Ethos is preserved untouched.
+ */
+export function ethosLevelForPct(pct: number | string | null | undefined): string {
+  const n = Number(pct);
+  if (!Number.isFinite(n)) return "Level 12";
+  const level = Math.min(27, Math.max(12, 12 + Math.round((n - 60) / 5)));
+  return `Level ${level}`;
+}
 
 /** Columns A..I, in sheet order, exactly as the verified paste file holds them. */
 export const ETHOS_AI_COLUMNS = [
@@ -91,10 +136,19 @@ export function normalizePhoneForCompare(value: unknown): string {
 /**
  * Build the A..I values for a producer.
  *
- * Comp comes only from the linked APEX profile. A public submission without a
- * linked profile remains blank instead of guessing a money field.
+ * The Comp Level column (G) holds an Ethos LEVEL, never the APEX percentage.
+ * `existingCompLevel` is the value already in that cell on an update-in-place: a
+ * real "Level N" set by John Ray or Ethos is authoritative and preserved, so a
+ * routine re-delivery cannot silently demote an elevated producer back to the
+ * base level. A blank cell, or one still carrying the old raw percentage, is
+ * (re)written from the APEX comp via `ethosLevelForPct`, which defaults to
+ * Level 12 rather than guessing upward.
  */
-export function buildEthosAiRow(intake: EthosIntake, config: EthosConfig): string[] {
+export function buildEthosAiRow(
+  intake: EthosIntake,
+  config: EthosConfig,
+  existingCompLevel?: string | null,
+): string[] {
   const row = new Array<string>(ETHOS_AI_COLUMNS.length).fill("");
   row[COL_FIRST] = intake.first_name;
   row[COL_LAST] = intake.last_name;
@@ -102,14 +156,20 @@ export function buildEthosAiRow(intake: EthosIntake, config: EthosConfig): strin
   row[COL_UPLINE] = config.direct_upline_npn;
   row[COL_PHONE] = formatUsPhoneForSheet(intake.phone_e164);
   row[COL_EMAIL] = intake.email;
-  const comp = Number(intake.comp_percentage);
-  row[COL_COMP_LEVEL] = Number.isFinite(comp) ? String(comp) : "";
+  row[COL_COMP_LEVEL] = ETHOS_LEVEL_RE.test(existingCompLevel ?? "")
+    ? String(existingCompLevel).trim()
+    : ethosLevelForPct(intake.comp_percentage);
   row[COL_ADVANCE] = config.advance_pay_tier;
   row[COL_SUBAGENCY] = config.sub_agency_name;
   return row;
 }
 
-/** The Comments cell (column S), carrying the APEX intake id for traceability. */
+/**
+ * The Comments cell (column S), carrying the APEX intake id for traceability
+ * and — on EVERY row — the shared-document owners as resolvable addresses so
+ * they are actually named rather than labelled. The addresses come last so a
+ * reader scanning the column sees the same "who to notify" pair on each row.
+ */
 export function buildEthosComment(config: EthosConfig, value: (EthosIntake & { id?: string }) | string): string {
   const intake = typeof value === "string" ? { id: value } : value;
   const parts = [`${config.comment_prefix} · APEX Intake ${intake.id ?? "—"}`];
@@ -117,6 +177,7 @@ export function buildEthosComment(config: EthosConfig, value: (EthosIntake & { i
   if ("eo_expires_at" in intake && intake.eo_expires_at) parts.push(`expires ${intake.eo_expires_at}`);
   if ("contracting_contact_name" in intake && intake.contracting_contact_name) parts.push(`contact: ${intake.contracting_contact_name}`);
   if ("eft_ready" in intake && intake.eft_ready !== null && intake.eft_ready !== undefined) parts.push(`EFT ${intake.eft_ready ? "ready" : "pending"}`);
+  parts.push(`cc ${(config.notify_emails ?? ETHOS_DEFAULT_NOTIFY).trim()}`);
   return parts.join(" · ");
 }
 

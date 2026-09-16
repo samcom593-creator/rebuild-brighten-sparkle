@@ -1,6 +1,6 @@
 {
   "_generated_by": "scripts/check-deno-typecheck.mjs --write-baseline (MP-543)",
-  "_measured": "2026-09-16 against deno 2.9.6, 228 entrypoints, --node-modules-dir=none",
+  "_measured": "2026-09-16 against deno 2.9.6, 228 entrypoints, --node-modules-dir=none; generate-monthly-awards removed by MP-544 (the two TS2551 were a REAL runtime break, not a type nit -- see its index.ts)",
   "_rule": "This is a SET, not a count. Any failing slug absent from it is a regression. Any slug here that now PASSES must be deleted from it — the set may only shrink.",
   "failing": {
     "agentlink-clients-sync": "TS2345",
@@ -10,7 +10,6 @@
     "check-low-aop-friday": "TS2345",
     "create-lead-checkout": "TS2339",
     "discord-leaderboards": "TS2345",
-    "generate-monthly-awards": "TS2551",
     "insuracloud-sync": "TS2345",
     "notify-deal-alert": "TS18048",
     "notify-hire-announcement": "TS18046",

@@ -275,16 +275,28 @@ Deno.serve(async (req) => {
       Array.isArray(top6) ? top6.map((r: any) => ({ ...r, alp: Number(r.alp) })) : [];
 
     // Team totals
-    const { data: teamRows } = await sb.rpc("execute_sql", { q: `
+    const { data: teamRows, error: teamErr } = await sb.rpc("execute_sql", { q: `
       SELECT count(d.id)::int AS deals, sum(d.annual_premium)::numeric AS alp,
              count(DISTINCT d.agent_id)::int AS agents
       FROM deals d WHERE d.effective_date BETWEEN '${start}' AND '${end}'
-    `}).catch(() => ({ data: [{ deals: 0, alp: 0, agents: 0 }] }));
+    `});
+    // MEASURED 2026-09-16 against prod: this line used to read
+    // `.catch(() => ({ data: [...] }))`. sb.rpc() returns a PostgrestFilterBuilder,
+    // which is a THENABLE, not a Promise -- it defines then() and nothing else, so
+    // `.catch` is undefined and calling it throws TypeError synchronously. The outer
+    // try at the top of this handler swallowed that into a 500, which is what prod
+    // returned on EVERY invocation since this shape shipped on 2026-04-27:
+    //   {"ok":false,"error":"TypeError: sb.rpc(...).catch is not a function"}
+    // The fallback it was reaching for already exists below via `?? { deals: 0, ... }`,
+    // because PostgREST reports failure as data=null + error, never as a rejection.
+    // So the guard is removed and the error is LOGGED rather than silently defaulted:
+    // a zeroed team total that nobody can distinguish from a real zero is its own bug.
+    if (teamErr) console.error("team_totals_rpc_failed", teamErr);
     const team = (teamRows?.[0] ?? { deals: 0, alp: 0, agents: 0 }) as { deals: number; alp: number; agents: number };
     team.alp = Number(team.alp);
 
     // Lifetime $100k+ club
-    const { data: lifetimeRows } = await sb.rpc("execute_sql", { q: `
+    const { data: lifetimeRows, error: lifetimeErr } = await sb.rpc("execute_sql", { q: `
       SELECT a.id AS agent_id, p.full_name, p.avatar_url,
              count(d.id)::int AS deals, sum(d.annual_premium)::numeric AS alp
       FROM deals d
@@ -294,7 +306,10 @@ Deno.serve(async (req) => {
       GROUP BY a.id, p.full_name, p.avatar_url
       HAVING sum(d.annual_premium) >= 100000
       ORDER BY alp DESC
-    `}).catch(() => ({ data: [] }));
+    `});
+    // Same defect, same reason -- see team_totals_rpc_failed above. The `Array.isArray`
+    // guard below already yields [] when the read fails.
+    if (lifetimeErr) console.error("lifetime_100k_rpc_failed", lifetimeErr);
     const lifetime: Array<{ agent_id: string; full_name: string; avatar_url: string | null; deals: number; alp: number }> =
       Array.isArray(lifetimeRows) ? lifetimeRows.map((r: any) => ({ ...r, alp: Number(r.alp) })) : [];
 

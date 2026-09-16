@@ -44,8 +44,8 @@ export function IPhoneShortcutsSection() {
                 <div className="text-xs text-muted-foreground truncate">{s.description}</div>
                 <code className="text-[11px] text-muted-foreground truncate block">{url}</code>
               </div>
-              <Button size="sm" variant="outline" onClick={() => copy(s.name, url)} className="shrink-0">
-                <Copy className="h-3.5 w-3.5" />
+              <Button size="sm" variant="outline" onClick={() => copy(s.name, url)} className="shrink-0" aria-label={`Copy ${s.name} link`} title="Copy link">
+                <Copy className="h-3.5 w-3.5" aria-hidden="true" />
               </Button>
             </div>
           );

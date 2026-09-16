@@ -161,8 +161,9 @@ function InsuraCloudTokenSection() {
           <button
             type="button"
             onClick={() => setShow((s) => !s)}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
+            className="absolute right-1 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
             aria-label={show ? "Hide token" : "Show token"}
+            aria-pressed={show}
           >
             {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
@@ -593,7 +594,7 @@ export function ProfileSettings() {
                 setSaved(false);
               }}
             >
-              <SelectTrigger>
+              <SelectTrigger aria-label="Mobile carrier">
                 <SelectValue placeholder="Select your carrier" />
               </SelectTrigger>
               <SelectContent>
@@ -795,6 +796,7 @@ export function ProfileSettings() {
               </p>
             </div>
             <Switch
+              aria-label="New application alerts"
               checked={notifications.emailNewApplication}
               onCheckedChange={(checked) =>
                 setNotifications((prev) => ({
@@ -813,6 +815,7 @@ export function ProfileSettings() {
               </p>
             </div>
             <Switch
+              aria-label="Team updates"
               checked={notifications.emailTeamUpdates}
               onCheckedChange={(checked) =>
                 setNotifications((prev) => ({
@@ -831,6 +834,7 @@ export function ProfileSettings() {
               </p>
             </div>
             <Switch
+              aria-label="Weekly digest"
               checked={notifications.emailWeeklyDigest}
               onCheckedChange={(checked) =>
                 setNotifications((prev) => ({
@@ -860,6 +864,7 @@ export function ProfileSettings() {
             </p>
           </div>
           <Switch
+            aria-label="Enable sound effects"
             checked={soundEnabled}
             onCheckedChange={(checked) => {
               setSoundEnabled(checked);
@@ -883,6 +888,7 @@ export function ProfileSettings() {
               <div key={flag} className="flex items-center justify-between">
                 <p className="font-medium text-sm">{FEATURE_FLAG_LABELS[flag]}</p>
                 <Switch
+                  aria-label={FEATURE_FLAG_LABELS[flag]}
                   checked={featureFlagsState[flag]}
                   onCheckedChange={(checked) => {
                     setFeatureFlag(flag, checked);

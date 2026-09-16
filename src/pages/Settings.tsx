@@ -42,7 +42,7 @@ function Section({ title, description, children }: { title: string; description:
 }
 
 function ToggleRow({ label, description, checked, onCheckedChange }: { label: string; description: string; checked: boolean; onCheckedChange: (value: boolean) => void }) {
-  return <div className="flex items-center justify-between gap-4 border-b border-border/70 pb-4 last:border-0 last:pb-0"><div><p className="text-sm font-medium">{label}</p><p className="mt-0.5 text-xs text-muted-foreground">{description}</p></div><Switch checked={checked} onCheckedChange={onCheckedChange} /></div>;
+  return <div className="flex items-center justify-between gap-4 border-b border-border/70 pb-4 last:border-0 last:pb-0"><div><p className="text-sm font-medium">{label}</p><p className="mt-0.5 text-xs text-muted-foreground">{description}</p></div><Switch aria-label={label} checked={checked} onCheckedChange={onCheckedChange} /></div>;
 }
 
 function AgencySettings() {

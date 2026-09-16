@@ -611,7 +611,7 @@ export function TeamHierarchyManager() {
                           onValueChange={(value) => handleReassign(agent.id, value || null)}
                           disabled={updating === agent.id}
                         >
-                          <SelectTrigger className="h-7 w-24 text-xs">
+                          <SelectTrigger aria-label="Assign manager" className="h-7 w-24 text-xs">
                             {updating === agent.id ? (
                               <Loader2 className="h-3 w-3 animate-spin" />
                             ) : (
@@ -640,7 +640,7 @@ export function TeamHierarchyManager() {
         <div className="flex items-center gap-2 mb-3">
           <span className="text-xs text-muted-foreground">Filter:</span>
           <Select value={filterManager} onValueChange={setFilterManager}>
-            <SelectTrigger className="w-40 h-7 text-xs">
+            <SelectTrigger aria-label="Filter agents by manager" className="w-40 h-7 text-xs">
               <SelectValue placeholder="All agents" />
             </SelectTrigger>
             <SelectContent>
@@ -775,7 +775,7 @@ export function TeamHierarchyManager() {
                           onValueChange={(value) => handleStageChange(agent.id, value)}
                           disabled={updatingStage === agent.id}
                         >
-                          <SelectTrigger className="h-6 text-[10px] w-full">
+                          <SelectTrigger aria-label="Onboarding stage" className="h-6 text-[10px] w-full">
                             {updatingStage === agent.id ? (
                               <Loader2 className="h-3 w-3 animate-spin" />
                             ) : (

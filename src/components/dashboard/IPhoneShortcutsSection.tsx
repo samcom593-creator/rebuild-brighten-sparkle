@@ -52,7 +52,7 @@ export function IPhoneShortcutsSection() {
         })}
       </div>
 
-      <p className="text-[11px] text-muted-foreground/70 mt-4 leading-relaxed">
+      <p className="text-[11px] text-muted-foreground mt-4 leading-relaxed">
         <strong>How to add:</strong> Open <em>Shortcuts</em> → + → <em>Add Action</em> → search "Open URL" →
         paste link → name it → share to Home Screen.
       </p>

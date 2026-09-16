@@ -1154,7 +1154,7 @@ export default function DashboardCommandCenter() {
         {/* Collapsible: Invite Links + Lead Reassignment */}
         <Collapsible open={showInviteLinks} onOpenChange={setShowInviteLinks}>
           <CollapsibleTrigger asChild>
-            <Card className="cursor-pointer border-border/70 bg-card/95 shadow-sm transition-colors hover:bg-muted/50">
+            <Card role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.click(); } }} className="cursor-pointer border-border/70 bg-card/95 shadow-sm transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]">
               <CardHeader className="py-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base font-medium">Manager Links & Lead Reassignment</CardTitle>
@@ -1175,7 +1175,7 @@ export default function DashboardCommandCenter() {
         <div className="space-y-3">
           <Collapsible open={showTerminated} onOpenChange={setShowTerminated}>
             <CollapsibleTrigger asChild>
-              <Card className="cursor-pointer border-border/70 bg-card/95 shadow-sm transition-colors hover:bg-muted/50">
+              <Card role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.click(); } }} className="cursor-pointer border-border/70 bg-card/95 shadow-sm transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]">
                 <CardHeader className="py-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base font-medium flex items-center gap-2">
@@ -1193,7 +1193,7 @@ export default function DashboardCommandCenter() {
 
           <Collapsible open={showAbandoned} onOpenChange={setShowAbandoned}>
             <CollapsibleTrigger asChild>
-              <Card className="cursor-pointer border-border/70 bg-card/95 shadow-sm transition-colors hover:bg-muted/50">
+              <Card role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.click(); } }} className="cursor-pointer border-border/70 bg-card/95 shadow-sm transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]">
                 <CardHeader className="py-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base font-medium flex items-center gap-2">
@@ -1211,7 +1211,7 @@ export default function DashboardCommandCenter() {
 
           <Collapsible open={showAllLeads} onOpenChange={setShowAllLeads}>
             <CollapsibleTrigger asChild>
-              <Card className="cursor-pointer border-border/70 bg-card/95 shadow-sm transition-colors hover:bg-muted/50">
+              <Card role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.click(); } }} className="cursor-pointer border-border/70 bg-card/95 shadow-sm transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]">
                 <CardHeader className="py-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base font-medium flex items-center gap-2">

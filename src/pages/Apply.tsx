@@ -1096,7 +1096,7 @@ export default function Apply() {
                         <div className="space-y-2">
                           <Label htmlFor="state">State *</Label>
                           <Select value={watch("state") || undefined} onValueChange={(value) => setValue("state", value, { shouldValidate: true })}>
-                            <SelectTrigger className="bg-input">
+                            <SelectTrigger id="state" className="bg-input">
                               <SelectValue placeholder="Select state" />
                             </SelectTrigger>
                             <SelectContent>
@@ -1126,7 +1126,7 @@ export default function Apply() {
                           className="bg-input"
                         />
                         <p className="text-xs text-muted-foreground">
-                          We may reach out via Instagram for faster communication
+                          Optional. We reach out by text and email first.
                         </p>
                       </div>
 
@@ -1137,7 +1137,7 @@ export default function Apply() {
                           value={watch("carrier") || undefined}
                           onValueChange={(value) => setValue("carrier", value)}
                         >
-                          <SelectTrigger className="bg-input">
+                          <SelectTrigger id="carrier" className="bg-input">
                             <SelectValue placeholder="Select your carrier" />
                           </SelectTrigger>
                           <SelectContent>
@@ -1245,7 +1245,7 @@ export default function Apply() {
                           value={licenseStatus}
                           onValueChange={(value: "licensed" | "unlicensed" | "pending") => setValue("licenseStatus", value)}
                         >
-                          <SelectTrigger className="bg-input">
+                          <SelectTrigger aria-label="Current license status" className="bg-input">
                             <SelectValue placeholder="Select status" />
                           </SelectTrigger>
                           <SelectContent>
@@ -1329,7 +1329,7 @@ export default function Apply() {
                       <div className="space-y-2">
                         <Label>Availability *</Label>
                         <Select value={watch("availability") || undefined} onValueChange={(value) => setValue("availability", value, { shouldValidate: true })}>
-                          <SelectTrigger className="bg-input">
+                          <SelectTrigger aria-label="Availability" className="bg-input">
                             <SelectValue placeholder="Select availability" />
                           </SelectTrigger>
                           <SelectContent>
@@ -1393,7 +1393,7 @@ export default function Apply() {
                             value={selectedReferrer}
                             onValueChange={setSelectedReferrer}
                           >
-                            <SelectTrigger className="bg-input">
+                            <SelectTrigger aria-label="Which agent should get credit" className="bg-input">
                               <SelectValue placeholder="Choose an agent (optional)" />
                             </SelectTrigger>
                             <SelectContent>

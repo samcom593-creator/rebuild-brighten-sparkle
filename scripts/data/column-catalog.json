@@ -2461,10 +2461,12 @@
       "created_at",
       "created_by",
       "day",
+      "edit_prompt",
       "hook",
       "id",
       "job",
       "posted_at",
+      "record_script",
       "sort",
       "status",
       "title",
@@ -6678,15 +6680,37 @@
       "record_type",
       "source"
     ],
+    "v_apply_field_dropoff": [
+      "engaged_and_lost",
+      "engaged_and_submitted",
+      "lost_median_fields_touched",
+      "newest_field_event_at",
+      "quit_on_field_top10",
+      "readability",
+      "sessions_engaged",
+      "sessions_never_touched",
+      "sessions_reached_form"
+    ],
+    "v_apply_funnel_by_source": [
+      "conv_pct",
+      "conversions",
+      "first_session_at",
+      "last_session_at",
+      "sessions",
+      "single_pageview_sessions",
+      "source_class",
+      "window_label"
+    ],
     "v_apply_funnel_conversion": [
-      "base_apps",
       "base_conv_pct",
+      "base_conversions",
       "base_sessions",
-      "expected_apps_at_baseline",
+      "expected_conversions_at_baseline",
       "ratio_vs_baseline",
-      "recent_apps",
       "recent_conv_pct",
+      "recent_conversions",
       "recent_sessions",
+      "synthetic_sessions_excluded",
       "verdict"
     ],
     "v_attribution_capture_health": [

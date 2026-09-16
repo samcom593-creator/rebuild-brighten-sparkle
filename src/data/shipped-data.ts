@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "Accessibility pass across the live app plus the video kit on every Launch Board card. An axe-core WCAG 2.2 scan of 23 real pages (public and signed-in) drove the fixes: reduced-motion now reaches framer-motion, every keyboard focus is visible on the custom inputs that hid it, progress bars, icon buttons, selects and the home link have names, scrollable panels are keyboard-reachable, landmarks are unique, tap targets in the team, recruiting and leaderboard rows reach the 24px floor, and the apply form no longer promises Instagram outreach.",
+    detail:
+      "MotionConfig reducedMotion=user at the app root with its own pre-commit guard (check:reduced-motion-config, mutation-proven); focus token on Navbar search, ControlTerminal, BubbleDealEntry, AgentProfileDrawer, ProducerDetailsDrawer, gradient-button and badge; Progress gets a default aria-label; TopBar home link, avatar overlay, password eye toggles, course-reminder buttons and four apply selects named; DealsTicker, skip link, sidebar nav and Launch Board tabs are labelled landmarks; Interviews no longer renders a second <main>; ClaimAccount has a main landmark and an underlined sign-in link. Launch Board cards now carry a 🎥 record script and ✂️ edit prompt (content_cards.record_script / edit_prompt, migration 20260915213000) with one-tap copy and a fill-from-template button; the 18 seeded 80/20 cards ship hand-written kits and the delivery format is spelled out on the Week tab (MP-233).",
+    commit: "mp-a11y-wave-1-video-kit",
+  },
+  {
+    ts: "today",
+    label:
       "Launch Board runs the 80/20 YouTube plan: Instagram is retired, channels are YouTube long-form and Shorts (Repurpose republishes to TikTok), pillars are insurance sales / money at 20 / recruiting with fitness as the 20% slot, the Week tab is a real Mon–Sun calendar with a slot per day and a live 80/20 mix meter, and every caption gets a one-tap apex-financial.org/apply CTA.",
     detail:
       "content_cards.brand now allows YT and SH (migration 20260915203000, hand-applied and recorded); the 9 legacy Instagram cards were remapped and 18 seeded cards carry the next two weeks — one call close breakdown, first-year pay stubs, the $1.4M-agency day (cut done, unlisted APT60d13uIY), license/exam/commission how-tos, and the Monday objection / Tuesday deposit / Thursday recruiting / Friday fitness-for-closers / Saturday numbers Shorts. The 92-row YouTube retitle/unlist map is staged at business-ops/social-media-bot/youtube and applies the moment YouTube MFA re-auth clears in vidIQ.",

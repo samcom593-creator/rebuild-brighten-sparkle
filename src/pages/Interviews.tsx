@@ -628,7 +628,7 @@ export default function Interviews() {
       />
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px] xl:items-start">
-      <aside className="order-1 space-y-4 xl:order-2 xl:sticky xl:top-4">
+      <aside aria-label="Interview tools" className="order-1 space-y-4 xl:order-2 xl:sticky xl:top-4">
       {priorityCandidate && tab !== "hired" && tab !== "onboarding" && (
         <section aria-labelledby="priority-candidate" className="overflow-hidden rounded-2xl border border-[#C9A961]/35 bg-card text-foreground dark:bg-[#0A0A0A] dark:text-white shadow-[0_20px_55px_rgba(0,0,0,0.2)]">
           <div className="p-5">
@@ -697,7 +697,8 @@ export default function Interviews() {
       )}
 
       </aside>
-      <main className="order-2 min-w-0 space-y-4 xl:order-1">
+      {/* a section, not a second <main>: the layout already owns the main landmark */}
+      <section aria-label="Interviews" className="order-2 min-w-0 space-y-4 xl:order-1">
 
       <div className="sticky top-2 z-20 flex flex-col gap-3 rounded-2xl border border-border/80 bg-background/90 p-3 shadow-lg backdrop-blur-xl lg:flex-row lg:items-center lg:justify-between">
         <div className="relative w-full lg:w-96">
@@ -827,7 +828,7 @@ export default function Interviews() {
         </div>
       )}
 
-      </main>
+      </section>
       </div>
 
       <Dialog open={Boolean(pending)} onOpenChange={(open) => { if (!open && !saving) setPending(null); }}>

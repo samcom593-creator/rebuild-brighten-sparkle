@@ -89,7 +89,7 @@ export function LiveCommissionsLeaderboard() {
           No valid posted production exists in this period.
         </div>
       ) : (
-        <div className="space-y-2 overflow-y-auto scrollbar-custom max-h-[60vh]">
+        <div className="space-y-2 overflow-y-auto scrollbar-custom max-h-[60vh]" tabIndex={0} role="region" aria-label="Live commissions leaderboard">
           {rows.map((r, i) => {
             const isPodium = i < 3;
             return (

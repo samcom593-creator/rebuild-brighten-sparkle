@@ -74,7 +74,7 @@ export function TopBar() {
           </div>
         ) : (
           <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs">
-            <Link to="/dashboard" className="text-muted-foreground hover:text-foreground"><Home className="h-3.5 w-3.5" /></Link>
+            <Link to="/dashboard" aria-label="Dashboard home" className="inline-flex min-h-6 min-w-6 items-center justify-center text-muted-foreground hover:text-foreground"><Home className="h-3.5 w-3.5" aria-hidden="true" /></Link>
             {crumbs.map((crumb, index) => <span key={`${crumb}-${index}`} className={index === crumbs.length - 1 ? "font-medium text-foreground" : "text-muted-foreground"}>{index > 0 && <span className="mr-2 text-muted-foreground">/</span>}{crumb}</span>)}
           </nav>
         )}

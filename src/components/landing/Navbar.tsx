@@ -90,7 +90,7 @@ export function Navbar() {
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     placeholder="Jump to section…"
-                    className="w-full px-4 py-2.5 bg-transparent text-sm text-white placeholder:text-white/30 outline-none font-display"
+                    className="w-full px-4 py-2.5 bg-transparent text-sm text-white placeholder:text-white/30 outline-none focus-visible:shadow-[var(--apex-focus-ring)] font-display"
                   />
                   {filtered.length > 0 && (
                     <div className="border-t border-[#1e293b]">
@@ -141,7 +141,7 @@ export function Navbar() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Jump to section…"
-                className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder:text-white/30 outline-none font-display"
+                className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder:text-white/30 outline-none focus-visible:shadow-[var(--apex-focus-ring)] font-display"
               />
             </div>
 

@@ -42,6 +42,7 @@ type Tab = "today" | "board" | "week" | "library";
 interface Card {
   id: string; title: string; brand: string; content_type: string; job: string; hook: string; caption: string;
   status: string; day: number; clip: string; sort: number; posted_at: string | null;
+  record_script: string; edit_prompt: string;   // MP-233 kit: what to record, and the prompt that cuts it
 }
 interface Clip {
   id: string; path: string; name: string; folder: string; kind: string; size_bytes: number; modified_at: string | null; used_by_card: string | null;
@@ -131,7 +132,24 @@ function Head({ title, hint }: { title: string; hint?: string }) {
   );
 }
 
-const emptyDraft = { title: "", brand: "SH", job: "REACH", content_type: "short", hook: "", caption: "", clip: "", day: 0, status: "idea" };
+const emptyDraft = { title: "", brand: "SH", job: "REACH", content_type: "short", hook: "", caption: "", clip: "", day: 0, status: "idea", record_script: "", edit_prompt: "" };
+
+// MP-233 video kit (2026-09-15): two copy-paste blocks per card. "Fill from template" writes these from the
+// title + hook + channel so a brand-new idea is recordable and hand-off-able in one tap; the seeded 80/20
+// cards carry hand-written versions. Delivery format lives in master-prompts/233-video-format-and-prompt-kit.md.
+const isLongForm = (d: Record<string, unknown>) => String(d.brand) === "YT" || String(d.content_type) === "long";
+const recordTemplate = (d: Record<string, unknown>) => {
+  const title = String(d.title ?? "").trim() || "<title>"; const hook = String(d.hook ?? "").split(/[.!?]\s/)[0].trim() || "<the hook line>";
+  return isLongForm(d)
+    ? `RECORD: ${title}\nCamera: DJI or phone HORIZONTAL   Where: desk / car / gym   Length to shoot: 20-30 min of talking\n1. HOOK to camera, one sentence, say it twice: "${hook}"\n2. CHAPTER 1 — open on camera mid-energy, then show the thing (whiteboard, not a screen)\n3. CHAPTER 2 — the numbers, said out loud (every $ gets a card in the edit)\n4. CHAPTER 3 — a second voice: an agent, a friend, a real call (client names cut)\n5. CHAPTER 4 — the mistake most people make\n6. LESSON to camera, 30-45 s uncut, the last thing you say\nCTA to camera: "If you want to sell life insurance with my team, apply at apex-financial.org/apply."\nDo NOT: read a script, film a phone screen, name a client, mention anyone you have beef with.`
+    : `RECORD: ${title}\nCamera: phone VERTICAL   Where: car / desk / gym   Length to shoot: 3 takes of 30 s\n1. HOOK in the first 1.5 s: "${hook}"\n2. ONE idea, ONE payoff — say the number or the line, then stop\n3. Last line: "Apply at apex-financial.org/apply" (the edit adds the text card)\nDo NOT: read a script, film a phone screen, name a client, mention anyone you have beef with.`;
+};
+const editTemplate = (d: Record<string, unknown>) => {
+  const title = String(d.title ?? "").trim() || "<title>"; const hook = String(d.hook ?? "").split(/[.!?]\s/)[0].trim() || "<the hook line>";
+  const fmt = isLongForm(d) ? "long-form 16:9, 8-12 min, 1080p30 render then 4K upscale, 5-7 chapters, NumberCards on every stated figure, lesson → CTA → end card over the last shot" : "Short 9:16 1080x1920, 20-45 s, burned word captions ≤ 6 words per page, apply text card over the last 3 s";
+  return `Cut "${title}" per MP-232 (~/business-ops/master-prompts/232-youtube-cut-fast.md) and the MP-233 delivery format.\nFormat: ${fmt}. Sources: the clip(s) attached to this Launch Board card${d.clip ? ` (${String(d.clip)})` : ""}, plus any clip from the same date with his voice on it.\nHook: "${hook}".\nExclude: slurs, sexual lines, beef, client PII, phone screens. music: [].\nPackage: title "${title}", description = hook + the channel description block + chapters, tags TAGS_CORE. Deliver 4K + 1080p to ~/Desktop/YouTube-Ready/, attach the 1080p to this card, write the YouTube chapters, ntfy me when done.`;
+};
+const FORMAT_LINE = "Long-form: 3840×2160 16:9 30 fps, −14 LUFS, no music, chapters in the description, end card over the last shot. Shorts: 1080×1920 9:16 ≤ 45 s, burned captions, apply card last 3 s.";
 
 export default function LaunchBoard() {
   usePageTitle("Launch Board");
@@ -338,6 +356,10 @@ export default function LaunchBoard() {
     try { await navigator.clipboard.writeText(text); toast.success("Caption copied"); }
     catch { toast.error("Clipboard blocked — select the text and copy it"); }
   };
+  const copyText = async (text: string, what: string) => {
+    try { await navigator.clipboard.writeText(text); toast.success(`${what} copied`); }
+    catch { toast.error("Clipboard blocked — open the card and select the text"); }
+  };
   const togglePillar = async (k: Clip, p: PillarKey) => {
     const cur = k.tags ?? [];
     const on = cur.some((t) => t.toLowerCase() === p);
@@ -367,7 +389,7 @@ export default function LaunchBoard() {
   const cardFromClip = async (clip: Clip) => {
     const nextSort = (cards.reduce((m, c) => Math.max(m, c.sort), 0) || 0) + 10;
     const { data, error } = await supabase.from("content_cards")
-      .insert({ title: cleanName(clip.name), brand: clip.kind === "vertical" ? "SH" : "YT", job: "REACH", content_type: clip.kind === "vertical" ? "short" : "long", hook: "", caption: "", clip: clip.path, day: 0, status: "recorded", sort: nextSort })
+      .insert({ title: cleanName(clip.name), brand: clip.kind === "vertical" ? "SH" : "YT", job: "REACH", content_type: clip.kind === "vertical" ? "short" : "long", hook: "", caption: "", clip: clip.path, day: 0, status: "recorded", sort: nextSort, record_script: "", edit_prompt: "" })
       .select("*").single();
     if (error) { toast.error(`Couldn't create the card: ${error.message.slice(0, 120)}`); return; }
     setCards((cs) => [...cs, data as Card]);
@@ -384,7 +406,7 @@ export default function LaunchBoard() {
     const title = draftStr("title").trim();
     if (!title) { toast.error("Give the card a title"); return; }
     setSaving(true);
-    const payload = { title, brand: draftStr("brand") || "SFD", job: draftStr("job") || "REACH", content_type: draftStr("content_type") || "short", hook: draftStr("hook"), caption: draftStr("caption"), clip: draftStr("clip"), day: Number(draft.day ?? 0), status: draftStr("status") || "idea" };
+    const payload = { title, brand: draftStr("brand") || "SH", job: draftStr("job") || "REACH", content_type: draftStr("content_type") || "short", hook: draftStr("hook"), caption: draftStr("caption"), clip: draftStr("clip"), day: Number(draft.day ?? 0), status: draftStr("status") || "idea", record_script: draftStr("record_script"), edit_prompt: draftStr("edit_prompt") };
     try {
       if (editing) {
         const { error } = await supabase.from("content_cards").update(payload).eq("id", editing.id);
@@ -462,6 +484,12 @@ export default function LaunchBoard() {
         <Chip className="border-border text-muted-foreground">{c.job.toLowerCase()}</Chip>
       </div>
       {clipLine(c)}
+      {(c.record_script || c.edit_prompt) && (
+        <div className="flex flex-wrap gap-1.5">
+          {c.record_script && <button onClick={() => copyText(c.record_script, "Record script")} className="rounded-lg border border-border px-2 py-1 text-[11px] font-semibold text-muted-foreground hover:border-gold/50 hover:text-gold" title="Copy what to record">🎥 Copy script</button>}
+          {c.edit_prompt && <button onClick={() => copyText(c.edit_prompt, "Edit prompt")} className="rounded-lg border border-border px-2 py-1 text-[11px] font-semibold text-muted-foreground hover:border-gold/50 hover:text-gold" title="Copy the prompt that cuts this video">✂️ Copy edit prompt</button>}
+        </div>
+      )}
       <div className="mt-0.5 flex flex-wrap gap-1.5">
         {(c.status === "idea" || c.status === "recorded") && (
           <Button size="sm" onClick={() => advance(c)} className="h-7 bg-primary px-2.5 text-[11.5px] font-semibold text-primary-foreground hover:bg-primary/90"><ArrowRight className="mr-1 h-3 w-3" />{c.status === "idea" ? "Recorded" : "Ready"}</Button>
@@ -499,7 +527,7 @@ export default function LaunchBoard() {
         </div>
       </header>
 
-      <nav className="sticky top-0 z-10 -mx-4 mb-6 flex gap-1 overflow-x-auto border-b border-border bg-background/95 px-4 py-2 backdrop-blur sm:mx-0 sm:px-0">
+      <nav aria-label="Board sections" className="sticky top-0 z-10 -mx-4 mb-6 flex gap-1 overflow-x-auto border-b border-border bg-background/95 px-4 py-2 backdrop-blur sm:mx-0 sm:px-0">
         {TABS.map((t) => (
           <button key={t.k} onClick={() => setTab(t.k)} className={`rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors ${tab === t.k ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>{t.label}</button>
         ))}
@@ -624,6 +652,7 @@ export default function LaunchBoard() {
             })}
           </div>
           <p className="text-xs text-muted-foreground">Wed and Sun are long-form (8–12 min search how-tos, day-in-the-life). Every other day is a Short; Repurpose.io republishes Shorts to TikTok. Every caption ends with the website CTA — Instagram is retired.</p>
+          <div className="rounded-2xl border border-border bg-card px-4 py-3 text-xs text-muted-foreground"><span className="font-bold uppercase tracking-[0.12em] text-foreground">Delivery format</span> · {FORMAT_LINE} Every card carries a 🎥 script to record and a ✂️ edit prompt — open the card, copy, paste.</div>
         </div>
       )}
 
@@ -825,6 +854,21 @@ export default function LaunchBoard() {
               <Textarea id="lb-cap" rows={3} value={draftStr("caption")} onChange={(e) => setDraftField("caption", e.target.value)} placeholder="The caption you'll post with — end it with apex-financial.org/apply" />
             </div>
             <div className="grid gap-1.5"><Label htmlFor="lb-clip">Clip path <span className="text-muted-foreground">(or pick one in Library)</span></Label><Input id="lb-clip" value={draftStr("clip")} onChange={(e) => setDraftField("clip", e.target.value)} placeholder="Reels/2026/09/clip.mp4" /></div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="lb-script" className="flex items-center justify-between">Script to record <span className="flex gap-2">
+                {!draftStr("record_script") && <button type="button" onClick={() => setDraftField("record_script", recordTemplate(draft))} className="text-[11px] font-semibold text-gold underline-offset-2 hover:underline">Fill from template</button>}
+                {draftStr("record_script") && <button type="button" onClick={() => copyText(draftStr("record_script"), "Record script")} className="text-[11px] font-semibold text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">Copy</button>}
+              </span></Label>
+              <Textarea id="lb-script" rows={5} value={draftStr("record_script")} onChange={(e) => setDraftField("record_script", e.target.value)} placeholder="What to record: camera, where, the hook line, the beats, the lesson" className="font-mono text-[12px]" />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="lb-edit" className="flex items-center justify-between">Edit prompt <span className="text-muted-foreground">(paste to Claude / Codex)</span> <span className="flex gap-2">
+                {!draftStr("edit_prompt") && <button type="button" onClick={() => setDraftField("edit_prompt", editTemplate(draft))} className="text-[11px] font-semibold text-gold underline-offset-2 hover:underline">Fill from template</button>}
+                {draftStr("edit_prompt") && <button type="button" onClick={() => copyText(draftStr("edit_prompt"), "Edit prompt")} className="text-[11px] font-semibold text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">Copy</button>}
+              </span></Label>
+              <Textarea id="lb-edit" rows={4} value={draftStr("edit_prompt")} onChange={(e) => setDraftField("edit_prompt", e.target.value)} placeholder="The prompt that turns the footage into the finished cut (MP-232 + MP-233 format)" className="font-mono text-[12px]" />
+              <p className="text-[11px] text-muted-foreground">{FORMAT_LINE}</p>
+            </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <div className="grid gap-1.5"><Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Channel</Label>
                 <Select value={draftStr("brand")} onValueChange={(v) => setDraftField("brand", v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="SH">Shorts → Repurpose</SelectItem><SelectItem value="YT">YouTube long-form</SelectItem>{(draftStr("brand") === "SFD" || draftStr("brand") === "IMS") && <SelectItem value={draftStr("brand")}>{brandHandle(draftStr("brand"))}</SelectItem>}</SelectContent></Select></div>

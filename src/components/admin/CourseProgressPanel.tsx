@@ -306,6 +306,8 @@ export function CourseProgressPanel() {
                       variant="ghost"
                       size="sm"
                       className="h-6 w-6 p-0"
+                      aria-label={`Send course reminder to ${agent.agentName}`}
+                      title="Send course reminder"
                       onClick={() => handleSendReminder(agent.agentId, agent.agentName)}
                       disabled={sendingReminder === agent.agentId}
                     >

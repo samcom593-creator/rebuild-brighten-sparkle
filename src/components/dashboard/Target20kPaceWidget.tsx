@@ -101,7 +101,7 @@ export function Target20kPaceWidget() {
         </CardTitle>
       </CardHeader>
       <CardContent className="p-0">
-        <div className="max-h-[480px] overflow-y-auto">
+        <div className="max-h-[480px] overflow-y-auto" tabIndex={0} role="region" aria-label="Pace to $20K">
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-background z-10 border-b">
               <tr className="text-xs uppercase text-muted-foreground">

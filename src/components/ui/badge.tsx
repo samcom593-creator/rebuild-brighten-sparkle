@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 const badgeVariants = cva(
   // 2026-08-19 AC pass: status chips are compact rounded-md, not pills, and
   // read as data (11px, tabular) rather than decoration. 182 files inherit.
-  "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-semibold tabular-nums transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-semibold tabular-nums transition-colors focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
   {
     variants: {
       variant: {

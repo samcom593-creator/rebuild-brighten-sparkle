@@ -98,7 +98,8 @@ export function InlineEditApplicantField({
           setEditing(true);
         }}
         className={cn(
-          "group inline-flex items-center gap-1 max-w-full text-left",
+          // min-h-6 py-0.5: a 20px text row is under the 24px WCAG 2.2 tap-target floor (200 flagged per page).
+          "group inline-flex min-h-6 items-center gap-1 max-w-full py-0.5 text-left",
           "hover:text-foreground transition-colors",
           className,
         )}

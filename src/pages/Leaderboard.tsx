@@ -950,7 +950,7 @@ export default function Leaderboard() {
                               <button
                                 type="button"
                                 onClick={() => setSelectedProductionRow(row)}
-                                className="truncate text-sm font-bold tabular-nums text-emerald-600 underline-offset-2 hover:underline dark:text-emerald-400"
+                                className="truncate py-0.5 text-sm font-bold tabular-nums text-emerald-600 underline-offset-2 hover:underline dark:text-emerald-400"
                                 aria-label={`View income estimate for ${row.agent_name ?? "producer"}`}
                               >
                                 {formatMoney(row.est_earnings ?? 0)}

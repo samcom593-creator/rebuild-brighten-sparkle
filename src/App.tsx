@@ -25,6 +25,10 @@ const SonnerToaster = lazy(() =>
 // route that wraps every non-landing path. The shared singleton queryClient still
 // lives in `@/shared/api/queryClient` so every QCP mount points at the same cache.
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from "react-router-dom";
+// a11y (2026-09-15): framer-motion drives its animations through JS/WAAPI, which the
+// prefers-reduced-motion CSS override in index.css cannot reach. MotionConfig
+// reducedMotion="user" makes all 117 motion surfaces honour the OS setting.
+import { MotionConfig } from "framer-motion";
 import { LazyQueryRoot } from "@/shared/api/LazyQueryRoot";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuroraBackground } from "@/components/layout/AuroraBackground";
@@ -364,6 +368,7 @@ function PageLoader() {
 
 const App = () => (
   <ErrorBoundary>
+    <MotionConfig reducedMotion="user">
     <AuthProvider>
       <SidebarProvider>
         <DeferredToasters />
@@ -819,6 +824,7 @@ const App = () => (
           </ConfirmProvider>
       </SidebarProvider>
     </AuthProvider>
+    </MotionConfig>
   </ErrorBoundary>
 );
 

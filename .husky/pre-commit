@@ -844,6 +844,15 @@ if git diff --cached --name-only | grep -qE '^src/.*\.tsx$'; then
   npm run --silent check:icon-button-labels || exit 1
 fi
 
+# ---------- check-reduced-motion-config (a11y wave, 2026-09-15) ----------
+# Trigger: the app root or the guard itself. framer-motion ignores the CSS
+# reduced-motion override; <MotionConfig reducedMotion="user"> at the root is
+# the only switch, and this keeps it from being refactored away.
+if git diff --cached --name-only | grep -qE '^(src/App\.tsx|scripts/check-reduced-motion-config\.mjs)$'; then
+  echo "[pre-commit] App root staged — running check:reduced-motion-config…"
+  npm run --silent check:reduced-motion-config || exit 1
+fi
+
 # ---------- check-book-freshness-operand (MP-462, 2026-09-07) ----------
 # Trigger: anything that reads v_agentlink_book_freshness, plus the guard.
 # Cheap (filesystem only, no compiler). Catches at commit time what verify:core

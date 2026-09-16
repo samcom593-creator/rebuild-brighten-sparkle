@@ -192,7 +192,7 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
           </Link>
         </div>
 
-        <nav className="min-h-0 flex-1 overflow-y-auto px-2 py-3 [scrollbar-width:thin]">
+        <nav aria-label="Primary" className="min-h-0 flex-1 overflow-y-auto px-2 py-3 [scrollbar-width:thin]">
           {favorites.length > 0 && (
             <div className="mb-3">
               {!collapsed && (

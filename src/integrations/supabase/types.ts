@@ -37933,6 +37933,8 @@ export type Database = {
           id: string
           job: string
           posted_at: string | null
+          edit_prompt: string
+          record_script: string
           sort: number
           status: string
           title: string
@@ -37946,10 +37948,12 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           day?: number
+          edit_prompt?: string
           hook?: string
           id?: string
           job?: string
           posted_at?: string | null
+          record_script?: string
           sort?: number
           status?: string
           title: string
@@ -37963,10 +37967,12 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           day?: number
+          edit_prompt?: string
           hook?: string
           id?: string
           job?: string
           posted_at?: string | null
+          record_script?: string
           sort?: number
           status?: string
           title?: string
@@ -85490,12 +85496,12 @@ export type Database = {
     Views: {
       v_apply_funnel_conversion: {
         Row: {
-          base_apps: number | null
+          base_conversions: number | null
           base_conv_pct: number | null
           base_sessions: number | null
-          expected_apps_at_baseline: number | null
+          expected_conversions_at_baseline: number | null
           ratio_vs_baseline: number | null
-          recent_apps: number | null
+          recent_conversions: number | null
           recent_conv_pct: number | null
           recent_sessions: number | null
           verdict: string | null

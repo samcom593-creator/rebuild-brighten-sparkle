@@ -126,7 +126,7 @@ export default function ClaimAccount() {
 
   if (done) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+      <div role="main" className="min-h-screen flex items-center justify-center p-4 bg-background">
         <GlassCard className="w-full max-w-md p-8 text-center">
           <CheckCircle2 className="h-14 w-14 mx-auto mb-4 text-emerald-500" />
           <h1 className="text-2xl font-bold mb-2">You're in, {done.split(" ")[0]}.</h1>
@@ -139,7 +139,7 @@ export default function ClaimAccount() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+    <div role="main" className="min-h-screen flex items-center justify-center p-4 bg-background">
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
@@ -230,7 +230,7 @@ export default function ClaimAccount() {
 
           <p className="text-center text-sm text-muted-foreground mt-6">
             Already have a login?{" "}
-            <Link to="/login" className="text-primary hover:underline">
+            <Link to="/login" className="text-primary underline underline-offset-2">
               Sign in
             </Link>
           </p>

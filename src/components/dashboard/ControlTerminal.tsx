@@ -276,7 +276,7 @@ export function ControlTerminal() {
               onChange={(event) => setCommand(event.target.value)}
               rows={3}
               spellCheck={false}
-              className="w-full resize-y rounded-md border border-emerald-500/20 bg-white dark:bg-background/70 p-3 font-mono text-xs text-emerald-100 focus:border-emerald-400 focus:outline-none md:text-sm"
+              className="w-full resize-y rounded-md border border-emerald-500/20 bg-white dark:bg-background/70 p-3 font-mono text-xs text-emerald-100 focus:border-emerald-400 focus:outline-none focus-visible:shadow-[var(--apex-focus-ring)] md:text-sm"
               placeholder="Examples: refresh the leaderboard, open CRM, show me today's numbers, fix the homepage trust copy"
             />
             <div className="mt-3 flex flex-wrap gap-2">
@@ -379,7 +379,7 @@ export function ControlTerminal() {
             onChange={(event) => setSqlQuery(event.target.value)}
             rows={4}
             spellCheck={false}
-            className="w-full resize-y rounded-md border border-emerald-500/20 bg-white dark:bg-background/70 p-3 font-mono text-xs text-emerald-200 focus:border-emerald-400 focus:outline-none md:text-sm"
+            className="w-full resize-y rounded-md border border-emerald-500/20 bg-white dark:bg-background/70 p-3 font-mono text-xs text-emerald-200 focus:border-emerald-400 focus:outline-none focus-visible:shadow-[var(--apex-focus-ring)] md:text-sm"
             placeholder="paste SQL — e.g. select * from deals where posted_at >= now() - interval '24 hours' limit 20"
           />
 

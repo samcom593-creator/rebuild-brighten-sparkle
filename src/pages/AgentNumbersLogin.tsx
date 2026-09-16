@@ -397,7 +397,7 @@ export default function AgentNumbersLogin() {
                         {...identifierForm.register("identifier")}
                         placeholder="your@email.com or (555) 123-4567"
                         className="pl-10 bg-input h-11"
-                        autoComplete="email tel"
+                        autoComplete="username"
                         autoFocus
                       />
                     </div>

@@ -115,12 +115,15 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
       {/* Skip link — keyboard users otherwise have to tab through the entire
           sidebar nav on every single route change before reaching content.
           Visually hidden until focused, then pinned top-left above the sidebar. */}
-      <a
-        href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:rounded-md focus:bg-background focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-foreground focus:shadow-lg focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-primary"
-      >
-        Skip to main content
-      </a>
+      {/* Inside its own landmark so no page content sits outside a region (axe "region"). */}
+      <nav aria-label="Skip links">
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:rounded-md focus:bg-background focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-foreground focus:shadow-lg focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-primary"
+        >
+          Skip to main content
+        </a>
+      </nav>
 
       {/* Main Content - CSS transitions only, no framer-motion */}
       <ScrollProgress />

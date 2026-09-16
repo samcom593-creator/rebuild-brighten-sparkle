@@ -573,7 +573,7 @@ const qnum = (v: number | string | null | undefined): number | null => {
                       onKeyDown={(e) => {
                         if (e.key === "Escape") { setNameEditing(false); }
                       }}
-                      className="min-w-0 flex-1 text-lg font-bold leading-tight bg-background border-2 border-primary/60 rounded-md px-2 py-1 focus:outline-none"
+                      className="min-w-0 flex-1 text-lg font-bold leading-tight bg-background border-2 border-primary/60 rounded-md px-2 py-1 focus:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
                       placeholder="Display name"
                     />
                     <Button

@@ -1478,7 +1478,7 @@ export default function BookOfBusiness() {
                 and never-issued are excluded because they never had a chance to
                 lapse.
               </p>
-              <ul className="max-h-64 space-y-2 overflow-y-auto">
+              <ul className="max-h-64 space-y-2 overflow-y-auto" tabIndex={0} aria-label="Scrollable list">
                 {[...persistency]
                   .sort(
                     (a, b) =>
@@ -1551,7 +1551,7 @@ export default function BookOfBusiness() {
                 Share of the in-force book — a high share means losing one
                 appointment takes that much of the paying book with it.
               </p>
-              <ul className="max-h-64 space-y-2 overflow-y-auto">
+              <ul className="max-h-64 space-y-2 overflow-y-auto" tabIndex={0} aria-label="Scrollable list">
                 {[...concentration]
                   .sort(
                     (a, b) =>

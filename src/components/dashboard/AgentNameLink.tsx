@@ -31,7 +31,8 @@ export function AgentNameLink({ agentId, children, className, variant = "default
       className={cn(
         "text-left inline-flex items-center gap-1.5 max-w-full",
         variant === "default" &&
-          "hover:underline underline-offset-2 decoration-dotted hover:text-primary transition-colors cursor-pointer",
+          // py-0.5 lifts a 20px text link to the 24px WCAG 2.2 target floor without changing the row rhythm.
+          "py-0.5 hover:underline underline-offset-2 decoration-dotted hover:text-primary transition-colors cursor-pointer",
         className,
       )}
       style={{ touchAction: "manipulation" }}

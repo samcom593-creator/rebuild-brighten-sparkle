@@ -674,7 +674,7 @@ export function TeamHierarchyManager() {
                 <TableHead className="text-xs text-right">Month ALP</TableHead>
                 <TableHead className="text-xs w-36">Stage</TableHead>
                 <TableHead className="text-xs w-28">Course</TableHead>
-                <TableHead className="text-xs w-10"></TableHead>
+                <TableHead className="text-xs w-10"><span className="sr-only">Actions</span></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

@@ -107,7 +107,7 @@ export function BubbleDealEntry({ onALPChange, initialDeals }: BubbleDealEntryPr
               }
             }}
             onFocus={(e) => e.target.select()}
-            className="flex-1 h-12 bg-transparent border-0 text-lg font-semibold placeholder:text-muted-foreground focus:outline-none px-2"
+            className="flex-1 h-12 bg-transparent border-0 text-lg font-semibold placeholder:text-muted-foreground focus:outline-none focus-visible:shadow-[var(--apex-focus-ring)] px-2"
           />
         </div>
         <button

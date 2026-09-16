@@ -406,7 +406,7 @@ export default function ProducerDetailsDrawer({
             value={noteText}
             onChange={(e) => setNoteText(e.target.value)}
             placeholder="What did you cover with this producer?"
-            className="w-full min-h-[70px] rounded-md border border-white/[0.08] bg-card p-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-teal-500/50 focus:outline-none"
+            className="w-full min-h-[70px] rounded-md border border-white/[0.08] bg-card p-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-teal-500/50 focus:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
           />
           <div className="mt-2 flex items-center justify-end">
             <Button

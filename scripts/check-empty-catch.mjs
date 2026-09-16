@@ -112,7 +112,14 @@ import { normalizeBody, isEmptyCatchExpression } from "./lib/empty-body.mjs";
 // land in the same commit. NEVER raise one.
 const ROOTS = [
   { dir: "src", baseline: 0 },
-  { dir: "supabase/functions", baseline: 51 },
+  // MP-544: 51 -> 50. The drop is INHERITED, not earned by this commit: 438a9e2d
+  // (MP-542) replaced raw `fetch(...).catch(() => {})` ntfy pushes with
+  // postNtfyGraded in four functions, which retired empty catches, and the floor
+  // was never lowered. Measured at both HEAD and HEAD~1 = 50, so it is stable and
+  // not an artifact of one worker's tree. Locking it because a floor with a free
+  // slot lets the next real regression be absorbed in silence while the guard
+  // still exits 0 -- the fungible-floor disease MP-356 shipped a fix for.
+  { dir: "supabase/functions", baseline: 50 },
   // MP-479: the recovered orphan mirrors (live prod functions whose source
   // exists nowhere else) get their OWN budget rather than being folded into
   // the supabase/functions figure. Merging them would let a mirror regression

@@ -8,8 +8,23 @@ export class ValidationError extends Error {
   }
 }
 
+// MP-549: `required` has always been enforced at RUNTIME (the throw in the
+// implementation below) and was never expressed in the type, so every required
+// string field typed as `string | undefined`. That produced four baseline
+// errors that were pure noise -- notify-deal-alert TS18048, notify-notes-added
+// TS18048, and verify-nipr's 2x TS2345 (niprNumber + state, both required) --
+// and noise is how a type-checker gets silenced. Two call signatures, so the
+// declaration says what the runtime does. Object literals cannot carry
+// overloads, hence the factory type plus the one cast at the implementation;
+// both directions are asserted in validate.string.test.ts so the cast cannot
+// drift away from the runtime it stands for.
+interface StringValidatorFactory {
+  (opts: { min?: number; max?: number; required: true }): Validator<string>;
+  (opts?: { min?: number; max?: number; required?: false }): Validator<string | undefined>;
+}
+
 export const v = {
-  string(opts: { min?: number; max?: number; required?: boolean } = {}): Validator<string | undefined> {
+  string: ((opts: { min?: number; max?: number; required?: boolean } = {}) => {
     return (val: unknown) => {
       if (val === undefined || val === null || val === "") {
         if (opts.required) throw new ValidationError("value", "is required");
@@ -20,7 +35,7 @@ export const v = {
       if (opts.max !== undefined && val.length > opts.max) throw new ValidationError("value", `max length ${opts.max}`);
       return val;
     };
-  },
+  }) as StringValidatorFactory,
   email(): Validator<string> {
     return (val: unknown) => {
       if (typeof val !== "string" || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(val)) {

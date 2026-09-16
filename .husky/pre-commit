@@ -853,6 +853,15 @@ if git diff --cached --name-only | grep -qE '^(src/App\.tsx|scripts/check-reduce
   npm run --silent check:reduced-motion-config || exit 1
 fi
 
+# ---------- check-control-labels (a11y wave 1b, 2026-09-15) ----------
+# Trigger: any tsx, the guard, or its baseline. Unnamed <SelectTrigger>/<Switch> was the
+# largest single finding of the live axe scan (500+ nodes on one page); ratchet so the
+# count can only fall.
+if git diff --cached --name-only | grep -qE '^(src/.*\.tsx|scripts/check-control-labels\.mjs|scripts/data/control-labels-baseline\.json)$'; then
+  echo "[pre-commit] tsx staged — running check:control-labels…"
+  npm run --silent check:control-labels || exit 1
+fi
+
 # ---------- check-book-freshness-operand (MP-462, 2026-09-07) ----------
 # Trigger: anything that reads v_agentlink_book_freshness, plus the guard.
 # Cheap (filesystem only, no compiler). Catches at commit time what verify:core

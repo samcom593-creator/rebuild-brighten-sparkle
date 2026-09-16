@@ -295,7 +295,7 @@ export const BulkLeadAssignment = forwardRef<HTMLDivElement>(function BulkLeadAs
             />
           </div>
           <Select value={sourceFilter} onValueChange={(v) => setSourceFilter(v as typeof sourceFilter)}>
-            <SelectTrigger className="w-[150px] h-9">
+            <SelectTrigger aria-label="Filter by status" className="w-[150px] h-9">
               <Filter className="h-3.5 w-3.5 mr-1.5" />
               <SelectValue placeholder="Source" />
             </SelectTrigger>
@@ -306,7 +306,7 @@ export const BulkLeadAssignment = forwardRef<HTMLDivElement>(function BulkLeadAs
             </SelectContent>
           </Select>
           <Select value={assigneeFilter} onValueChange={(v) => setAssigneeFilter(v as typeof assigneeFilter)}>
-            <SelectTrigger className="w-[150px] h-9">
+            <SelectTrigger aria-label="Filter by assignee" className="w-[150px] h-9">
               <SelectValue placeholder="Assignee" />
             </SelectTrigger>
             <SelectContent>
@@ -330,6 +330,7 @@ export const BulkLeadAssignment = forwardRef<HTMLDivElement>(function BulkLeadAs
                 <Checkbox
                   checked={selectedLeads.size === filteredLeads.length && filteredLeads.length > 0}
                   onCheckedChange={toggleAll}
+                  aria-label="Select all leads"
                 />
                 <span className="text-sm text-muted-foreground">
                   {selectedLeads.size} of {filteredLeads.length} selected
@@ -338,7 +339,7 @@ export const BulkLeadAssignment = forwardRef<HTMLDivElement>(function BulkLeadAs
 
               <div className="flex-1 min-w-[200px]">
                 <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
-                  <SelectTrigger className="bg-input">
+                  <SelectTrigger aria-label="Manager to assign" className="bg-input">
                     <SelectValue placeholder="Select manager to assign..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -407,6 +408,7 @@ export const BulkLeadAssignment = forwardRef<HTMLDivElement>(function BulkLeadAs
                     <Checkbox
                       checked={selectedLeads.has(key)}
                       onCheckedChange={() => toggleLead(key)}
+                      aria-label="Select lead"
                     />
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">

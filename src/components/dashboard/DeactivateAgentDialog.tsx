@@ -351,7 +351,7 @@ export function DeactivateAgentDialog({
                 <div className="space-y-2">
                   <Label>Select new manager:</Label>
                   <Select value={selectedManagerId} onValueChange={setSelectedManagerId}>
-                    <SelectTrigger>
+                    <SelectTrigger aria-label="New manager">
                       <SelectValue placeholder="Select a manager" />
                     </SelectTrigger>
                     <SelectContent>

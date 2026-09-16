@@ -237,7 +237,7 @@ export function ManagerInviteLinks() {
               <div className="space-y-2">
                 <Label htmlFor="agent">Select Agent/Manager</Label>
                 <Select value={selectedAgent} onValueChange={setSelectedAgent}>
-                  <SelectTrigger>
+                  <SelectTrigger id="agent">
                     <SelectValue placeholder="Select an agent..." />
                   </SelectTrigger>
                   <SelectContent>

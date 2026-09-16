@@ -270,7 +270,7 @@ export function LeadImporter({ className }: { className?: string }) {
           <div>
             <Label>Assign to Manager</Label>
             <Select value={selectedManager} onValueChange={setSelectedManager} disabled={loadingManagers}>
-              <SelectTrigger className="mt-2">
+              <SelectTrigger aria-label="Assign to manager" className="mt-2">
                 <SelectValue placeholder={loadingManagers ? "Loading managers..." : "Select a manager..."} />
               </SelectTrigger>
               <SelectContent>

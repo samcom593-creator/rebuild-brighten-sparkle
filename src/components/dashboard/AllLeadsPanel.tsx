@@ -317,7 +317,7 @@ export function AllLeadsPanel() {
           />
         </div>
         <Select value={filterManager} onValueChange={setFilterManager}>
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger aria-label="Filter leads by source" className="w-[200px]">
             <Filter className="h-4 w-4 mr-2" />
             <SelectValue placeholder="Filter by manager" />
           </SelectTrigger>
@@ -331,7 +331,7 @@ export function AllLeadsPanel() {
           </SelectContent>
         </Select>
         <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger aria-label="Filter leads by status" className="w-[180px]">
             <SelectValue placeholder="Filter by status" />
           </SelectTrigger>
           <SelectContent>

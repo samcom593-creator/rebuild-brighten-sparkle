@@ -244,7 +244,7 @@ export function StatCardPopup({
             <>
               {/* Select-all */}
               <div className="flex items-center gap-2 px-3 py-2 border-b border-border/30 mb-2">
-                <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
+                <Checkbox checked={allSelected} onCheckedChange={toggleAll} aria-label="Select all agents" />
                 <span className="text-xs text-muted-foreground">
                   Select all {sortedAgents.length}
                 </span>
@@ -265,6 +265,7 @@ export function StatCardPopup({
                       <Checkbox
                         checked={selected.has(agent.id)}
                         onCheckedChange={() => toggleOne(agent.id)}
+                        aria-label="Select agent"
                       />
                       <div className={cn(
                         "w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0",

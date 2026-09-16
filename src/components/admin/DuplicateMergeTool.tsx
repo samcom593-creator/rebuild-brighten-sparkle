@@ -602,6 +602,7 @@ export function DuplicateMergeTool({ open, onClose, onMergeComplete }: Duplicate
                     <Checkbox
                       checked={manualSelectedAgents.includes(agent.id)}
                       onCheckedChange={() => toggleAgentSelection(agent.id)}
+                      aria-label={`Select ${agent.fullName}`}
                     />
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm truncate">{agent.fullName}</p>

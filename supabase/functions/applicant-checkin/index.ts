@@ -208,19 +208,33 @@ serve(async (req: Request) => {
     if (updateError) throw updateError;
 
     if (needsHelp && application.hiring_manager_user_id) {
-      await supabase.from("agent_tasks").insert({
-        agent_id: null,
-        assigned_by: application.hiring_manager_user_id,
-        title: `Licensing help needed: ${application.first_name} ${application.last_name}`,
-        description: blocker
-          ? `${application.first_name} requested help during their daily check-in. Blocker: ${blocker}`
-          : `${application.first_name} requested help during their daily check-in.`,
-        task_type: "licensing_followup",
-        priority: "high",
-        due_date: todayKey,
-      }).catch((error) => {
+      // MP-547: this was `.insert({...}).catch(handler)`. A PostgrestFilterBuilder
+      // is a thenable with a .then and NO .catch, so that line threw
+      // `insert(...).catch is not a function` SYNCHRONOUSLY — before .then() ran,
+      // which means the insert was never even sent. The throw then escaped to the
+      // outer catch, so an applicant who asked for licensing help got an HTTP 500
+      // *after* their check-in had already been committed, and the hiring manager
+      // was never told. Zero `licensing_followup` tasks have ever existed.
+      // try/catch is used rather than Promise.resolve() so the builder is awaited
+      // on its own line and a genuine insert failure is still only a warning.
+      try {
+        const { error: taskError } = await supabase.from("agent_tasks").insert({
+          agent_id: null,
+          assigned_by: application.hiring_manager_user_id,
+          title: `Licensing help needed: ${application.first_name} ${application.last_name}`,
+          description: blocker
+            ? `${application.first_name} requested help during their daily check-in. Blocker: ${blocker}`
+            : `${application.first_name} requested help during their daily check-in.`,
+          task_type: "licensing_followup",
+          priority: "high",
+          due_date: todayKey,
+        });
+        if (taskError) {
+          console.warn("[applicant-checkin] failed to create manager task:", taskError);
+        }
+      } catch (error) {
         console.warn("[applicant-checkin] failed to create manager task:", error);
-      });
+      }
     }
 
     return new Response(

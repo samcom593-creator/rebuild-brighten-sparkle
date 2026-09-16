@@ -298,10 +298,14 @@ export default function UnlicensedAll() {
       });
       if (error) throw error;
       if (row.source === 'applied') {
-        await supabase.rpc("log_contact_attempt" as any, {
+        // MP-547: Promise.resolve() is load-bearing. supabase.rpc() returns a
+        // lazy PostgrestFilterBuilder, which is a thenable with NO .catch — so
+        // `.catch()` on it threw before .then() ever fired and the RPC was
+        // never sent. channel='stage' held 0 rows for its whole life.
+        await Promise.resolve(supabase.rpc("log_contact_attempt" as any, {
           p_application_id: row.id, p_channel: 'stage', p_outcome: 'passed_test', p_notes: null,
           // empty-catch-allow:fire-and-forget stage-transition telemetry
-        }).catch(() => {});
+        })).catch(() => {});
       }
     },
     onSuccess: () => { toast.success('Marked passed test'); qc.invalidateQueries({ queryKey: ['v_unlicensed_all'] }); },
@@ -954,10 +958,13 @@ export default function UnlicensedAll() {
                         className="inline-flex h-10 min-w-0 items-center gap-2 rounded-sm border border-border bg-background px-3 text-xs font-semibold tabular-nums text-foreground transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)] sm:h-9"
                         onClick={() => {
                           if (r.source === 'applied') {
-                            supabase.rpc("log_contact_attempt" as any, {
+                            // MP-547: Promise.resolve() is load-bearing — see the
+                            // stage-transition site above. Without it this threw
+                            // synchronously and the RPC never left the browser.
+                            void Promise.resolve(supabase.rpc("log_contact_attempt" as any, {
                               p_application_id: r.id, p_channel: 'phone', p_outcome: 'attempted', p_notes: null,
                               // empty-catch-allow:fire-and-forget tel-click telemetry — must not block navigation
-                            }).catch(() => {});
+                            })).catch(() => {});
                           }
                         }}
                       >
@@ -972,10 +979,13 @@ export default function UnlicensedAll() {
                         title={r.email}
                         onClick={() => {
                           if (r.source === 'applied') {
-                            supabase.rpc("log_contact_attempt" as any, {
+                            // MP-547: Promise.resolve() is load-bearing — see the
+                            // stage-transition site above. Without it this threw
+                            // synchronously and the RPC never left the browser.
+                            void Promise.resolve(supabase.rpc("log_contact_attempt" as any, {
                               p_application_id: r.id, p_channel: 'email', p_outcome: 'attempted', p_notes: null,
                               // empty-catch-allow:fire-and-forget mailto-click telemetry — must not block navigation
-                            }).catch(() => {});
+                            })).catch(() => {});
                           }
                         }}
                       >

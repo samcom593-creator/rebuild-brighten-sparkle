@@ -200,7 +200,11 @@ const repoRoot = path.resolve(import.meta.dirname, "..");
 // legacy page-typing errors; lock the measured lower floor.
 // 2026-09-04: the usage-drain release's typed PerformanceObserver entries and
 // nullable RPC normalization reduced the verified project graph from 86 to 85.
-const BASELINE = 85; // 2026-08-27 (MP-330): 91 -> 86, removing 4 dead
+const BASELINE = 82; // 2026-09-16 (MP-547): 85 -> 82, three `.catch()` calls on a
+// lazy Postgrest builder in UnlicensedAll.tsx. NOTE: measured with THIS gate's
+// `tsc -b` (src/ + tests/). A first cut read 81 off `tsc -p tsconfig.app.json`,
+// a narrower operand that omits tests/ — the count moved under the measurement,
+// which is why the number in this file must only ever come from this gate.
                      // agent_onboarding writes. Prior (MP-329): 338 -> 91. NOT a pay-down of 247
 // individual defects -- src/integrations/supabase/types.ts had drifted to 161
 // tables / 5 views against a prod holding 369 / 279, so 148 .from() sites named
@@ -370,6 +374,45 @@ for (const line of errorLines) {
   byFile.set(file, (byFile.get(file) ?? 0) + 1);
 }
 const topFiles = [...byFile.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+// ── MP-547: the thenable-.catch tier, graded at ZERO and never baselined ─────
+// A count baseline is fungible (MP-356): three real `.catch()`-on-a-builder
+// bugs sat inside this gate's slack for their whole lives and it stayed green.
+// `supabase.from()/rpc()` returns a lazy PostgrestFilterBuilder — a thenable
+// with `.then` and NO `.catch`. So `builder.catch(fn)` throws
+// "catch is not a function" SYNCHRONOUSLY, before `.then()` is ever called,
+// which means THE REQUEST IS NEVER SENT. It does not degrade; it silently
+// deletes the call and then throws into whatever is above it. Measured on
+// 2026-09-16: application_contact_log held 36 rows, and the three broken call
+// sites had contributed 0 of them (channel 'phone' 0, channel 'stage' 0,
+// outcome 'attempted' 0) while the one site that wrapped in Promise.resolve()
+// had written 11.
+//
+// This tier ships at ZERO (measured 0 of 82 on 2026-09-16 after the fix), so
+// it cannot land permanently red — the failure mode apex-doctor Check #19's
+// header warns about. Same construction as check-deno-typecheck.mjs's TS2304
+// tier: a slug/count baseline must not grant amnesty to the exact class the
+// gate exists to catch.
+//
+// The fix is `Promise.resolve(builder).catch(...)` or `await` inside try/catch,
+// NOT deleting the handler.
+const thenableCatch = errorLines.filter((l) =>
+  /error TS2551: Property 'catch' does not exist on type 'Postgrest/.test(l)
+);
+if (thenableCatch.length > 0) {
+  console.error(
+    `\n✗ check:tsc-error-count — ${thenableCatch.length} \`.catch()\` call(s) on a lazy ` +
+      `Postgrest builder. This tier is graded at ZERO and is never baselined.\n`,
+  );
+  console.error(
+    "Each one throws synchronously and the query is NEVER SENT:",
+  );
+  for (const l of thenableCatch) console.error(`  ${l.split(":")[0]}`);
+  console.error(
+    "\nFix: Promise.resolve(supabase.rpc(...)).catch(fn), or await it inside try/catch.",
+  );
+  process.exit(1);
+}
 
 if (count <= BASELINE) {
   console.log(

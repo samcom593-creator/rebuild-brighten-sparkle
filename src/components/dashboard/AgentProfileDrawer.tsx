@@ -76,6 +76,7 @@ import { AgentOnboardingCommandCenter } from "@/components/dashboard/AgentOnboar
 import { ReassignManagerButton } from "@/components/agents/ReassignManagerButton";
 import { AgentCredentialsPanel } from "@/components/dashboard/AgentCredentialsPanel";
 import { AgentQuickEditDialog } from "@/components/dashboard/AgentQuickEditDialog";
+import { CompLevelEditor } from "@/components/dashboard/CompLevelEditor";
 import { AgentTaskManager } from "@/components/dashboard/AgentTaskManager";
 import { AgentNotes } from "@/components/dashboard/AgentNotes";
 import { DeactivateAgentDialog } from "@/components/dashboard/DeactivateAgentDialog";
@@ -413,6 +414,23 @@ const qnum = (v: number | string | null | undefined): number | null => {
         .maybeSingle();
       if (error) throw error;
       return (data as EarningsRow) ?? null;
+    },
+  });
+
+  // Contract (comp) level — resolved through fn_agent_contract_pct so an alias
+  // id lands on the canonical agent's level, the same number the scoreboard and
+  // the Ethos contracting sheet use.
+  const { data: comp } = useQuery<{ pct: number | null; provenance: string } | null>({
+    queryKey: ["agent-drawer-comp", agentId],
+    enabled: !!agentId,
+    staleTime: 60_000,
+    queryFn: async () => {
+      if (!agentId) return null;
+      const { data, error } = await (supabase as any).rpc("fn_agent_contract_pct", { p_agent_id: agentId });
+      if (error) return null;
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!row) return null;
+      return { pct: row.pct == null ? null : Number(row.pct), provenance: String(row.provenance ?? "unknown") };
     },
   });
 
@@ -833,6 +851,37 @@ const qnum = (v: number | string | null | undefined): number | null => {
                 />
               </div>
             ) : null}
+
+            {/* Contract % — current comp, and the inline editor for admins.
+                set_agent_contract_pct owns who may actually change it; this is
+                the same value the Ethos contracting sheet's level maps from. */}
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card p-3">
+              <div>
+                <p className="text-sm font-semibold">Contract %</p>
+                <p className="text-xs text-muted-foreground">
+                  {comp?.provenance && comp.provenance !== "unknown"
+                    ? comp.provenance.replace(/_/g, " ")
+                    : "Commission level on file"}
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-2xl font-black tabular-nums">
+                  {comp?.pct != null ? `${comp.pct}%` : "—"}
+                </span>
+                {isAdmin && (
+                  <CompLevelEditor
+                    agentId={agent.id}
+                    agentName={name}
+                    currentPct={comp?.pct ?? 0}
+                    provenance={comp?.provenance ?? "unknown"}
+                    onSaved={() => {
+                      qc.invalidateQueries({ queryKey: ["agent-drawer-comp", agentId] });
+                      qc.invalidateQueries({ queryKey: ["agent-drawer-earnings-estimate", agentId] });
+                    }}
+                  />
+                )}
+              </div>
+            </div>
 
             {/* Production qualification + permanent recruiting link. */}
             <FreeLeadsStatusCard agentId={agent.id} />

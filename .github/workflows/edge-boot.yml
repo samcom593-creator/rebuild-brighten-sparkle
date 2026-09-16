@@ -1,0 +1,30 @@
+# Does every deployed edge function LOAD? (MP-548)
+#
+# Deliberately a SCHEDULE, not a gate. check:edge-boot grades PRODUCTION, so
+# wiring it into pre-commit or verify:core would block every commit in the repo
+# on a condition only a deploy can clear — the permanently-red guard this repo
+# keeps paying for. A scheduled run notifies; it does not stand in the way.
+#
+# Needs no secrets: the probe is an anonymous OPTIONS preflight.
+name: edge-boot
+
+on:
+  schedule:
+    - cron: "17 13 * * *" # daily ~06:17 Phoenix; GH schedules drift (p90 ~40min, MP-304)
+  workflow_dispatch:
+  push:
+    paths:
+      - "scripts/check-edge-boot.mjs"
+      - ".github/workflows/edge-boot.yml"
+
+jobs:
+  boot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      # No continue-on-error: a failed step here must read as failed (MP-342 era
+      # deploy pipeline reported success for 8 days on exactly that flag).
+      - run: npm run check:edge-boot

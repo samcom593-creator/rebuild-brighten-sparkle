@@ -79,6 +79,7 @@
     "check:phone-gateway-source": "node scripts/check-phone-gateway-source.mjs",
     "check:deno-tests": "node scripts/check-deno-tests.mjs",
     "check:deno-typecheck": "node scripts/check-deno-typecheck.mjs",
+    "check:edge-boot": "node scripts/check-edge-boot.mjs",
     "check:inline-timeago": "node scripts/check-inline-timeago.mjs",
     "check:unresolved-imports": "node scripts/check-unresolved-imports.mjs",
     "check:orphan-pages": "node scripts/check-orphan-pages.mjs",

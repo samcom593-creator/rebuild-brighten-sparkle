@@ -18,7 +18,7 @@ const SKU_MAP: Record<string, SkuConfig> = {
 };
 
 const TIERS = ["gold", "platinum", "auto_dm", "social_growth", "fitness_reset", "kingofsales_course", "work_with_sam"] as const;
-const BodySchema = v.object({ tier: v.enum(TIERS).optional(), sku: v.enum(TIERS).optional() });
+const BodySchema = v.object({ tier: v.optional(v.enum(TIERS)), sku: v.optional(v.enum(TIERS)) });
 
 Deno.serve(
   createHandler(

@@ -792,6 +792,7 @@
     "https://esm.sh/resend@2.0.0": "b222433340dc6655ed294a343815916b5a5ceeac999f07f627a5614a87cd9fe4",
     "https://esm.sh/resend@4.0.0": "304b5edd6b05ffb21d29b90b4b3afb4ed6b4ca1df4f7a4c9a177866f429ed88a",
     "https://esm.sh/stripe@14.25.0?target=deno": "d51f866ea5a2e00948bbd0fbcd10e389f0a74811d5320874d08fde4ff54e6ccc",
+    "https://esm.sh/stripe@18.5.0": "da8bd0bec3e31938500a0f96624f2d8372a1566cd6595d2bfdbbab22d3164e04",
     "https://esm.sh/zod@4.5.4": "b05a568776213443d725f847f2ae6e2773330777938de8f75b44191257bc6df2"
   },
   "workspace": {

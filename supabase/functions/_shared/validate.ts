@@ -69,6 +69,15 @@ export const v = {
       return val as T;
     };
   },
+  // MP-548: compose optionality instead of chaining it. `v.enum(X).optional()`
+  // was a 142-day boot death: Validator<T> is a plain function, so that method
+  // does not exist and the expression threw a TypeError at MODULE scope --
+  // before Deno.serve ran, which is why the failure never reached the handler
+  // (and so never reached function_errors). Write v.optional(v.enum(X)).
+  // Existing validators are untouched; this only wraps.
+  optional<T>(inner: Validator<T>): Validator<T | undefined> {
+    return (val: unknown) => (val === undefined || val === null || val === "" ? undefined : inner(val));
+  },
   any(): Validator<unknown> {
     return (val: unknown) => val;
   },

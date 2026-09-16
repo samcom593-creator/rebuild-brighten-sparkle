@@ -1,13 +1,12 @@
 {
  "_generated_by": "scripts/check-deno-typecheck.mjs --write-baseline (MP-543)",
- "_measured": "2026-09-16 against deno 2.9.6, 228 entrypoints, --node-modules-dir=none; generate-monthly-awards removed by MP-544 (the two TS2551 were a REAL runtime break, not a type nit -- see its index.ts); applicant-checkin removed by MP-547 -- its TS2551 was ALSO a real runtime break: .catch() on a lazy PostgrestFilterBuilder threw before .then() fired, so the manager-task insert was never sent and the applicant got a 500 after their check-in had committed. Two for two: every TS2551 'Property does not exist' in this baseline that has been read turned out to be live, not cosmetic.",
- "_rule": "This is a SET, not a count. Any failing slug absent from it is a regression. Any slug here that now PASSES must be deleted from it \u2014 the set may only shrink.",
+ "_measured": "2026-09-16 against deno 2.9.6, 228 entrypoints, --node-modules-dir=none; generate-monthly-awards removed by MP-544 (the two TS2551 were a REAL runtime break, not a type nit -- see its index.ts); applicant-checkin removed by MP-547 -- its TS2551 was ALSO a real runtime break: .catch() on a lazy PostgrestFilterBuilder threw before .then() fired, so the manager-task insert was never sent and the applicant got a 500 after their check-in had committed. Two for two: every TS2551 'Property does not exist' in this baseline that has been read turned out to be live, not cosmetic. create-lead-checkout removed by MP-548 -- its TS2339 was a THIRD real runtime break, and the worst of the three: `v.enum(TIERS).optional()` sat at MODULE scope, so the TypeError fired at import and the worker never booted. Live-proven: POST and OPTIONS both returned 500 WORKER_ERROR while sibling functions sharing the same _shared/ files answered 200/400. It never reached function_errors (258 rows, live) because logFunctionError runs INSIDE the handler that never loaded -- which is why 142 days passed with no alert. Three for three: every 'property does not exist' entry in this baseline that has been read was live, not cosmetic.",
+ "_rule": "This is a SET, not a count. Any failing slug absent from it is a regression. Any slug here that now PASSES must be deleted from it — the set may only shrink.",
  "failing": {
   "agentlink-clients-sync": "TS2345",
   "bot-sql": "TS2345",
   "check-daily-awards": "TS18046,TS2339",
   "check-low-aop-friday": "TS2345",
-  "create-lead-checkout": "TS2339",
   "discord-leaderboards": "TS2345",
   "insuracloud-sync": "TS2345",
   "notify-deal-alert": "TS18048",

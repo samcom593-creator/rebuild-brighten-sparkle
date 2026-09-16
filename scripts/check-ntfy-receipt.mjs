@@ -75,41 +75,12 @@ function walk(dir, acc = []) {
   return acc;
 }
 
-// Strip line and block comments so a violation described in PROSE is not counted
-// as a violation, and so grading mentioned only in a comment cannot acquit one.
-// (MP-277 shipped a baseline inflated by its own footnotes; MP-345's sibling
-// silently dropped 288 literals doing this wrong. Strings are preserved.)
-export function stripComments(src) {
-  let out = "";
-  let i = 0;
-  let mode = "code"; // code | line | block | sq | dq | tpl
-  while (i < src.length) {
-    const c = src[i];
-    const n = src[i + 1];
-    if (mode === "code") {
-      if (c === "/" && n === "/") { mode = "line"; out += "  "; i += 2; continue; }
-      if (c === "/" && n === "*") { mode = "block"; out += "  "; i += 2; continue; }
-      if (c === "'") mode = "sq";
-      else if (c === '"') mode = "dq";
-      else if (c === "`") mode = "tpl";
-      out += c; i++; continue;
-    }
-    if (mode === "line") {
-      if (c === "\n") { mode = "code"; out += c; } else out += " ";
-      i++; continue;
-    }
-    if (mode === "block") {
-      if (c === "*" && n === "/") { mode = "code"; out += "  "; i += 2; continue; }
-      out += c === "\n" ? "\n" : " ";
-      i++; continue;
-    }
-    // Inside a string: copy verbatim, honour escapes, watch for the closer.
-    if (c === "\\") { out += c + (n ?? ""); i += 2; continue; }
-    if ((mode === "sq" && c === "'") || (mode === "dq" && c === '"') || (mode === "tpl" && c === "`")) mode = "code";
-    out += c; i++; continue;
-  }
-  return out;
-}
+// MP-543: this file used to carry its OWN comment stripper. check:strip-comments-copies
+// forbids that, and had been failing on this file since MP-542 wired it in --
+// verify:core was red for every worker, not just this one. The shared copy is held to
+// ground truth by scripts/tests/strip-comments.test.mjs, including the two directions a
+// hand-rolled one gets wrong: an apostrophe in prose, and a `//` inside a string literal.
+import { stripComments } from "./lib/strip-comments.mjs";
 
 export function findViolations(files, readFile = (f) => fs.readFileSync(f, "utf8")) {
   const hits = [];

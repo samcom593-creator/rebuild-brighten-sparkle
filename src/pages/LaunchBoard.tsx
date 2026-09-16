@@ -10,6 +10,13 @@
 // Library → card is one click ("New card" mints a Recorded card with the clip
 // attached; "Attach" drops the clip onto an existing idea). Post copies the
 // caption and stamps the date — publishing stays in Sam's hands.
+//
+// v3 (2026-09-15, vidIQ channel audit): Instagram is retired — every card
+// funnels to apex-financial.org/apply. Brands are now channels (YouTube
+// long-form / Shorts auto-republished by Repurpose.io). Pillars follow the
+// 80/20 rule: 80% insurance sales · money at 20 · recruiting, 20% fitness
+// framed for closers; cars/AZ are b-roll only. The Week tab is a real
+// Mon–Sun calendar with a slot per day and a live 80/20 mix meter.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -67,21 +74,39 @@ const TABS: { k: Tab; label: string }[] = [
   { k: "today", label: "Today" }, { k: "board", label: "Board" }, { k: "week", label: "Week" }, { k: "library", label: "Library" },
 ];
 
-// Sam's three brand pillars (2026-09-10): cars, fitness, entrepreneurship — plus the two jobs that pay: sales/insurance and the APEX ask.
+// The 80/20 pillars (2026-09-15, from the vidIQ channel audit). CORE = 80% of posts: insurance sales, money at 20,
+// recruiting/team proof. FLEX = 20%: fitness framed for closers. Cars / Arizona are b-roll, never the subject.
 // A clip's pillar is read off its existing AI tags/title/description, so nothing needs re-tagging; a tap on a chip pins it by writing the pillar word into tags.
-type PillarKey = "cars" | "fitness" | "entrepreneurship" | "sales" | "cta";
-const PILLARS: { k: PillarKey; label: string; re: RegExp }[] = [
-  { k: "cars", label: "Cars", re: /\b(cars?|corvette|vette|lambo|lamborghini|porsche|mercedes|benz|bmw|tesla|exotic|fleet|rental|turo|driving|wheels|garage)\b/i },
-  { k: "fitness", label: "Fitness", re: /\b(gym|workout|lift(?:ing)?|physique|training|fitness|bench|squat|deadlift|cardio|abs|muscle|shirtless|run(?:ning)?)\b/i },
-  { k: "entrepreneurship", label: "Entrepreneurship", re: /\b(office|desk|meeting|business|laptop|entrepreneur(?:ship)?|money|team|talking-head|whiteboard|podcast|mic|apex)\b/i },
-  { k: "sales", label: "Sales & insurance", re: /\b(sales?|insurance|agents?|closing|calls?|dialer|policy|policies|pitch|objection)\b/i },
-  { k: "cta", label: "CTA / recruiting", re: /\b(cta|recruit(?:ing)?|apply|application|hiring|join)\b/i },
+type PillarKey = "sales" | "money" | "recruiting" | "fitness" | "lifestyle";
+const PILLARS: { k: PillarKey; label: string; core: boolean; re: RegExp }[] = [
+  { k: "sales", label: "Insurance sales", core: true, re: /\b(sales?|insurance|closing|close|calls?|dialer|policy|policies|pitch|objection|license|licensed|carrier|ethos|leads?)\b/i },
+  { k: "money", label: "Money at 20", core: true, re: /\b(money|income|deposit|paid|pay|\$[\d,]+k?|production|revenue|rich|millionaire|cash|commission)\b/i },
+  { k: "recruiting", label: "Recruiting / team", core: true, re: /\b(recruit(?:ing)?|apply|application|hiring|hired|join|team|agents?|agency|onboard(?:ing)?|cta)\b/i },
+  { k: "fitness", label: "Fitness for closers", core: false, re: /\b(gym|workout|lift(?:ing)?|physique|training|fitness|bench|squat|deadlift|cardio|abs|muscle|shirtless|run(?:ning)?)\b/i },
+  { k: "lifestyle", label: "Lifestyle b-roll", core: false, re: /\b(cars?|corvette|vette|c8|lambo|lamborghini|porsche|exotic|rental|driving|garage|arizona|tempe|rooftop|pool|sunset)\b/i },
 ];
 const clipHay = (k: Clip) => `${k.title ?? ""} ${k.description ?? ""} ${(k.tags ?? []).join(" ")} ${k.name}`;
 const pillarsOf = (k: Clip): PillarKey[] => PILLARS.filter((p) => p.re.test(clipHay(k))).map((p) => p.k);
+const cardPillars = (c: Card): PillarKey[] => { const hay = `${c.title} ${c.hook} ${c.caption}`; return PILLARS.filter((p) => p.re.test(hay)).map((p) => p.k); };
+const isCoreCard = (c: Card) => { const ps = cardPillars(c); return ps.length === 0 ? null : ps.some((k) => PILLARS.find((p) => p.k === k)?.core); };
 
-const brandHandle = (b: string) => (b === "IMS" ? "@imakesystems" : "@sellfordaddy");
-const brandClass = (b: string) => (b === "IMS" ? "text-sky-300 border-sky-400/30 bg-sky-400/10" : "text-amber-300 border-amber-400/30 bg-amber-400/10");
+// Channels (Instagram retired 2026-09-15). YT = YouTube long-form, SH = Shorts (Repurpose.io republishes to TikTok).
+// Legacy SFD / IMS cards were the two Instagram handles; they render as retired so old rows still make sense.
+const CTA = "Want to sell life insurance with my team? Apply: https://apex-financial.org/apply";
+const hasCta = (s: string) => /apex-financial\.org/i.test(s);
+const brandHandle = (b: string) => (b === "SH" ? "YouTube Shorts → Repurpose" : b === "YT" ? "YouTube" : b === "IMS" ? "@imakesystems · retired" : b === "SFD" ? "@sellfordaddy · retired" : b);
+const brandClass = (b: string) => (b === "SH" ? "text-sky-300 border-sky-400/30 bg-sky-400/10" : b === "YT" ? "text-red-300 border-red-400/30 bg-red-400/10" : "text-zinc-400 border-zinc-500/30 bg-zinc-500/10");
+const WEEKDAY = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+// The 80/20 weekly template: 6 of 7 slots are core, one is fitness-for-closers.
+const WEEK_PLAN: Record<number, { slot: string; pillar: PillarKey }> = {
+  1: { slot: "Short · insurance sales", pillar: "sales" },
+  2: { slot: "Short · money at 20", pillar: "money" },
+  3: { slot: "Long-form · search how-to (8–12 min)", pillar: "sales" },
+  4: { slot: "Short · recruiting / team proof", pillar: "recruiting" },
+  5: { slot: "Short · fitness for closers", pillar: "fitness" },
+  6: { slot: "Short · real numbers", pillar: "money" },
+  7: { slot: "Long-form · day in the life", pillar: "recruiting" },
+};
 const cleanName = (n: string) => n.replace(/\.[a-z0-9]+$/i, "").replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
 const fmtSize = (b: number) => (b >= 1e9 ? `${(b / 1e9).toFixed(1)} GB` : `${Math.max(1, Math.round(b / 1e6))} MB`);
 const fmtDate = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—");
@@ -106,7 +131,7 @@ function Head({ title, hint }: { title: string; hint?: string }) {
   );
 }
 
-const emptyDraft = { title: "", brand: "SFD", job: "REACH", content_type: "short", hook: "", caption: "", clip: "", day: 0, status: "idea" };
+const emptyDraft = { title: "", brand: "SH", job: "REACH", content_type: "short", hook: "", caption: "", clip: "", day: 0, status: "idea" };
 
 export default function LaunchBoard() {
   usePageTitle("Launch Board");
@@ -342,7 +367,7 @@ export default function LaunchBoard() {
   const cardFromClip = async (clip: Clip) => {
     const nextSort = (cards.reduce((m, c) => Math.max(m, c.sort), 0) || 0) + 10;
     const { data, error } = await supabase.from("content_cards")
-      .insert({ title: cleanName(clip.name), brand: "SFD", job: "REACH", content_type: clip.kind === "vertical" ? "short" : "long", hook: "", caption: "", clip: clip.path, day: 0, status: "recorded", sort: nextSort })
+      .insert({ title: cleanName(clip.name), brand: clip.kind === "vertical" ? "SH" : "YT", job: "REACH", content_type: clip.kind === "vertical" ? "short" : "long", hook: "", caption: "", clip: clip.path, day: 0, status: "recorded", sort: nextSort })
       .select("*").single();
     if (error) { toast.error(`Couldn't create the card: ${error.message.slice(0, 120)}`); return; }
     setCards((cs) => [...cs, data as Card]);
@@ -404,6 +429,14 @@ export default function LaunchBoard() {
   const bangerColor = (s?: number | null) => (s == null ? "bg-zinc-600" : s >= 70 ? "bg-emerald-400" : s >= 45 ? "bg-gold" : "bg-zinc-500");
   const fmtDur = (s?: number | null) => (s ? `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}` : "");
   const counts = useMemo(() => ({ total: cards.length, ready: ready.length, posted: cards.filter((c) => c.status === "posted").length }), [cards, ready]);
+  // 80/20 mix over every open card (posted excluded): core pillars vs fitness/lifestyle. Untagged cards don't vote.
+  const mix = useMemo(() => {
+    const open = cards.filter((c) => c.status !== "posted");
+    let core = 0, flex = 0, blank = 0;
+    for (const c of open) { const v = isCoreCard(c); if (v === null) blank++; else if (v) core++; else flex++; }
+    const voted = core + flex;
+    return { core, flex, blank, pct: voted ? Math.round((core / voted) * 100) : null, noCta: open.filter((c) => c.caption && !hasCta(c.caption)).length };
+  }, [cards]);
 
   if (loading) return <div className="flex min-h-[60vh] items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading your board…</div>;
 
@@ -423,7 +456,9 @@ export default function LaunchBoard() {
       {c.hook && <p className="text-[12.5px] leading-snug text-muted-foreground">{c.hook}</p>}
       <div className="flex flex-wrap items-center gap-1.5">
         <Chip className={brandClass(c.brand)}>{brandHandle(c.brand)}</Chip>
-        {c.day > 0 && <Chip className="border-border bg-background/60 text-muted-foreground">Day {c.day}</Chip>}
+        {c.day > 0 && <Chip className="border-border bg-background/60 text-muted-foreground">{WEEKDAY[c.day]}</Chip>}
+        {isCoreCard(c) === false && <Chip className="border-amber-400/30 text-amber-300">20% slot</Chip>}
+        {c.caption && !hasCta(c.caption) && <Chip className="border-amber-400/30 text-amber-300">no CTA</Chip>}
         <Chip className="border-border text-muted-foreground">{c.job.toLowerCase()}</Chip>
       </div>
       {clipLine(c)}
@@ -560,21 +595,35 @@ export default function LaunchBoard() {
       )}
 
       {tab === "week" && (
-        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 lg:grid-cols-7">
-          {Array.from({ length: 7 }, (_, i) => i + 1).map((d) => {
-            const items = cards.filter((c) => c.day === d);
-            return (
-              <div key={d} className={`flex min-h-[140px] flex-col gap-1.5 rounded-xl border bg-card p-2.5 ${d === 1 ? "border-gold/50" : "border-border"}`}>
-                <div className="flex items-baseline justify-between"><span className={`text-[12px] font-extrabold tracking-wide ${d === 1 ? "text-gold" : "text-muted-foreground"}`}>DAY {d}</span><span className="text-[9px] uppercase tracking-wide text-muted-foreground">{d === 1 ? "launch" : items.length}</span></div>
-                {items.length === 0 ? <span className="mt-auto text-[10px] text-muted-foreground">—</span> : items.map((c) => (
-                  <button key={c.id} onClick={() => openEdit(c)} className={`rounded-lg border border-l-[3px] border-border bg-background/50 p-2 text-left ${c.status === "recorded" ? "border-l-sky-400" : c.status === "ready" ? "border-l-gold" : c.status === "posted" ? "border-l-emerald-400" : "border-l-zinc-500"}`}>
-                    <div className="text-[11.5px] font-semibold leading-tight text-foreground">{c.title.replace(/^Story · /, "")}</div>
-                    <div className="mt-1 flex items-center gap-1.5"><Chip className={brandClass(c.brand)}>{c.brand}</Chip><span className={`h-1.5 w-1.5 rounded-full ${DOT[c.status as Status]}`} /></div>
-                  </button>
-                ))}
-              </div>
-            );
-          })}
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-2xl border border-border bg-card px-4 py-3 text-sm">
+            <div className="flex items-center gap-2"><span className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">80/20 mix</span>
+              <span className={`text-lg font-extrabold tabular-nums ${mix.pct === null ? "text-muted-foreground" : mix.pct >= 75 ? "text-emerald-400" : "text-amber-400"}`}>{mix.pct === null ? "—" : `${mix.pct}%`}</span>
+              <span className="text-xs text-muted-foreground">core · target 80%</span></div>
+            <div className="h-2 w-40 overflow-hidden rounded-full bg-muted"><div className="h-full bg-emerald-400" style={{ width: `${mix.pct ?? 0}%` }} /></div>
+            <span className="text-xs text-muted-foreground">{mix.core} insurance / money / recruiting · {mix.flex} fitness / lifestyle · {mix.blank} untagged</span>
+            {mix.noCta > 0 && <span className="text-xs font-semibold text-amber-400">{mix.noCta} caption{mix.noCta === 1 ? "" : "s"} missing the apex-financial.org/apply CTA</span>}
+          </div>
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 lg:grid-cols-7">
+            {Array.from({ length: 7 }, (_, i) => i + 1).map((d) => {
+              const items = cards.filter((c) => c.day === d);
+              const plan = WEEK_PLAN[d];
+              const onPlan = items.some((c) => cardPillars(c).includes(plan.pillar));
+              return (
+                <div key={d} className={`flex min-h-[160px] flex-col gap-1.5 rounded-xl border bg-card p-2.5 ${d === 3 || d === 7 ? "border-gold/40" : "border-border"}`}>
+                  <div className="flex items-baseline justify-between"><span className="text-[12px] font-extrabold tracking-wide text-foreground">{WEEKDAY[d]}</span><span className="text-[9px] uppercase tracking-wide text-muted-foreground">{items.length ? `${items.length} card${items.length === 1 ? "" : "s"}` : "open"}</span></div>
+                  <div className={`rounded-md border border-dashed px-1.5 py-1 text-[10px] leading-tight ${onPlan ? "border-emerald-400/40 text-emerald-300" : "border-border text-muted-foreground"}`}>{plan.slot}</div>
+                  {items.length === 0 ? <button onClick={() => { setDraft({ ...emptyDraft, day: d, brand: d === 3 || d === 7 ? "YT" : "SH", content_type: d === 3 || d === 7 ? "long" : "short" }); setEditing(null); setEditorOpen(true); }} className="mt-auto rounded-lg border border-dashed border-border px-2 py-1.5 text-[10.5px] text-muted-foreground hover:border-gold/50 hover:text-gold">+ fill this slot</button> : items.map((c) => (
+                    <button key={c.id} onClick={() => openEdit(c)} className={`rounded-lg border border-l-[3px] border-border bg-background/50 p-2 text-left ${c.status === "recorded" ? "border-l-sky-400" : c.status === "ready" ? "border-l-gold" : c.status === "posted" ? "border-l-emerald-400" : "border-l-zinc-500"}`}>
+                      <div className="text-[11.5px] font-semibold leading-tight text-foreground">{c.title.replace(/^Story · /, "")}</div>
+                      <div className="mt-1 flex items-center gap-1.5"><Chip className={brandClass(c.brand)}>{c.brand}</Chip><span className={`h-1.5 w-1.5 rounded-full ${DOT[c.status as Status]}`} />{isCoreCard(c) === false && <span className="text-[9px] uppercase text-amber-400">20%</span>}</div>
+                    </button>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-xs text-muted-foreground">Wed and Sun are long-form (8–12 min search how-tos, day-in-the-life). Every other day is a Short; Repurpose.io republishes Shorts to TikTok. Every caption ends with the website CTA — Instagram is retired.</p>
         </div>
       )}
 
@@ -741,6 +790,12 @@ export default function LaunchBoard() {
             <div className="grid gap-3">
               <div className="flex flex-wrap gap-1.5"><Chip className={brandClass(postTarget.brand)}>{brandHandle(postTarget.brand)}</Chip>{postTarget.clip && <Chip className="border-sky-400/30 text-sky-300">{postTarget.clip.split("/").pop()}</Chip>}</div>
               <Textarea readOnly rows={6} value={postTarget.caption || "(no caption yet — edit the card to add one)"} className="text-sm" />
+              {postTarget.caption && !hasCta(postTarget.caption) && (
+                <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-xs text-amber-200">
+                  <span>No website CTA in this caption.</span>
+                  <Button size="sm" variant="outline" className="h-7 text-[11.5px]" onClick={async () => { const cap = `${postTarget.caption.trim()}\n\n${CTA}`; if (await patch(postTarget.id, { caption: cap })) setPostTarget({ ...postTarget, caption: cap }); }}>Add apex-financial.org/apply</Button>
+                </div>
+              )}
               <div className="flex flex-wrap gap-2">
                 <Button variant="outline" onClick={() => copyCaption(postTarget.caption)} disabled={!postTarget.caption}><Copy className="mr-1.5 h-4 w-4" />Copy caption</Button>
                 {postTarget.clip && (() => { const k = clips.find((x) => x.path === postTarget.clip); const d = k ? directUrl(k) : null; return d
@@ -763,15 +818,20 @@ export default function LaunchBoard() {
           <div className="grid gap-3">
             <div className="grid gap-1.5"><Label htmlFor="lb-title">Title</Label><Input id="lb-title" value={draftStr("title")} onChange={(e) => setDraftField("title", e.target.value)} placeholder="What's the video?" /></div>
             <div className="grid gap-1.5"><Label htmlFor="lb-hook">Hook / notes</Label><Textarea id="lb-hook" rows={2} value={draftStr("hook")} onChange={(e) => setDraftField("hook", e.target.value)} placeholder="The opening line, or the idea in one sentence" /></div>
-            <div className="grid gap-1.5"><Label htmlFor="lb-cap">Caption <span className="text-muted-foreground">(copied when you post)</span></Label><Textarea id="lb-cap" rows={3} value={draftStr("caption")} onChange={(e) => setDraftField("caption", e.target.value)} placeholder="The caption you'll post with" /></div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="lb-cap" className="flex items-center justify-between">Caption <span className="text-muted-foreground">(copied when you post)</span>
+                {!hasCta(draftStr("caption")) && <button type="button" onClick={() => setDraftField("caption", `${draftStr("caption").trim()}${draftStr("caption").trim() ? "\n\n" : ""}${CTA}`)} className="text-[11px] font-semibold text-gold underline-offset-2 hover:underline">+ website CTA</button>}
+              </Label>
+              <Textarea id="lb-cap" rows={3} value={draftStr("caption")} onChange={(e) => setDraftField("caption", e.target.value)} placeholder="The caption you'll post with — end it with apex-financial.org/apply" />
+            </div>
             <div className="grid gap-1.5"><Label htmlFor="lb-clip">Clip path <span className="text-muted-foreground">(or pick one in Library)</span></Label><Input id="lb-clip" value={draftStr("clip")} onChange={(e) => setDraftField("clip", e.target.value)} placeholder="Reels/2026/09/clip.mp4" /></div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <div className="grid gap-1.5"><Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Brand</Label>
-                <Select value={draftStr("brand")} onValueChange={(v) => setDraftField("brand", v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="SFD">@sellfordaddy</SelectItem><SelectItem value="IMS">@imakesystems</SelectItem></SelectContent></Select></div>
+              <div className="grid gap-1.5"><Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Channel</Label>
+                <Select value={draftStr("brand")} onValueChange={(v) => setDraftField("brand", v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="SH">Shorts → Repurpose</SelectItem><SelectItem value="YT">YouTube long-form</SelectItem>{(draftStr("brand") === "SFD" || draftStr("brand") === "IMS") && <SelectItem value={draftStr("brand")}>{brandHandle(draftStr("brand"))}</SelectItem>}</SelectContent></Select></div>
               <div className="grid gap-1.5"><Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Job</Label>
                 <Select value={draftStr("job")} onValueChange={(v) => setDraftField("job", v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{JOBS.map((j) => <SelectItem key={j.k} value={j.k}>{j.label}</SelectItem>)}</SelectContent></Select></div>
               <div className="grid gap-1.5"><Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Day</Label>
-                <Select value={draftStr("day")} onValueChange={(v) => setDraftField("day", Number(v))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="0">—</SelectItem>{[1, 2, 3, 4, 5, 6, 7].map((d) => <SelectItem key={d} value={String(d)}>Day {d}</SelectItem>)}</SelectContent></Select></div>
+                <Select value={draftStr("day")} onValueChange={(v) => setDraftField("day", Number(v))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="0">—</SelectItem>{[1, 2, 3, 4, 5, 6, 7].map((d) => <SelectItem key={d} value={String(d)}>{WEEKDAY[d]} · {WEEK_PLAN[d].slot.split(" · ")[1]}</SelectItem>)}</SelectContent></Select></div>
               <div className="grid gap-1.5"><Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Status</Label>
                 <Select value={draftStr("status")} onValueChange={(v) => setDraftField("status", v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{STATUSES.map((s) => <SelectItem key={s} value={s}>{STATUS_LABEL[s]}</SelectItem>)}</SelectContent></Select></div>
             </div>

@@ -23,6 +23,7 @@
 // authenticates every POST. Diagnostics require the service-role bearer.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
+import { base64Utf8 } from "../_shared/base64-utf8.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -131,17 +132,6 @@ function foldIcs(lines: string[]): string {
     out.push(first ? cur : " " + cur);
   }
   return out.join("\r\n") + "\r\n";
-}
-
-/** btoa() throws on any code point above 0xFF (MP-274's lesson one encoder over). */
-function base64Utf8(s: string): string {
-  const bytes = new TextEncoder().encode(s);
-  let bin = "";
-  const chunk = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunk) {
-    bin += String.fromCharCode(...bytes.subarray(i, i + chunk));
-  }
-  return btoa(bin);
 }
 
 function escapeHtml(s: string): string {

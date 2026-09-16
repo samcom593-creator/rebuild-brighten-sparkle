@@ -13,6 +13,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { base64Utf8 } from "../_shared/base64-utf8.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -215,7 +216,10 @@ async function loadSettings(): Promise<SeminarSettings> {
 // ---------------------------------------------------------------------------
 
 async function logFailureReceipt(opts: {
-  applicationId: string;
+  // null when the body never parsed: related_record_id is a uuid column, so a
+  // placeholder string would fail the insert and be swallowed by the catch below
+  // -- losing the receipt in exactly the case it is most needed.
+  applicationId: string | null;
   recipientEmail: string | null;
   reason: string;
 }): Promise<void> {
@@ -229,7 +233,7 @@ async function logFailureReceipt(opts: {
       status: "error",
       error: opts.reason,
       related_record_id: opts.applicationId,
-      related_record_type: "application",
+      related_record_type: opts.applicationId ? "application" : null,
       sent_at: null,
     });
   } catch (e) {
@@ -340,7 +344,7 @@ const handler = async (req: Request): Promise<Response> => {
       ? `https://t.me/${settings.telegramBotUsername}?start=apply_${applicationId}`
       : null;
 
-  const eventTitle = "Apex Seminar — Welcome Zoom";
+  const eventTitle = "Apex Seminar: Welcome Zoom";
   const eventDescription = [
     "Welcome to Apex Financial. This is the live recruiting Zoom Sam James's team runs every Wed, Fri, and Sun at 7pm CT.",
     "",
@@ -365,7 +369,10 @@ const handler = async (req: Request): Promise<Response> => {
     url: settings.zoomUrl,
   });
 
-  const icsBase64 = btoa(icsBody);
+  // MP-550: btoa() throws above 0xFF. The .ics declares charset=utf-8, so the
+  // bytes must be UTF-8. Shared with onboarding-call-invites so the two .ics
+  // senders cannot drift apart on the encoder again.
+  const icsBase64 = base64Utf8(icsBody);
 
   // 5) Send the email
   const firstName = (app.first_name || "there").trim();
@@ -475,18 +482,29 @@ const handler = async (req: Request): Promise<Response> => {
       const fromAddr = settings.fromEmail.includes("@apex-financial.org")
         ? `APEX Seminar <${settings.fromEmail}>`
         : "APEX Seminar <notifications@apex-financial.org>";
+      // resend@2.0.0's Attachment type declares only content/filename/path, but
+      // content_type is real and load-bearing: without it the .ics arrives as a
+      // generic octet-stream and the mail client renders no "add to calendar" card.
+      // Two layers verified 2026-09-16 rather than assumed:
+      //   1. The SDK does not filter. Emails.create() calls resend.post("/emails", e)
+      //      and post() sends `body: JSON.stringify(t)` -- the payload object goes out
+      //      verbatim, so unknown keys reach the API instead of being dropped.
+      //   2. Resend honors it. A probe send read back from the delivered MIME as
+      //      `Content-Type: text/calendar; charset=utf-8; method=REQUEST`.
+      // Declared through a named type rather than silenced with `as any`, so a typo
+      // in the field name is still a compile error (MP-349's lesson: a cast turns the
+      // check off for everything, not just the one thing you meant to allow).
+      const icsAttachment: { filename: string; content: string; content_type?: string } = {
+        filename: "apex-seminar.ics",
+        content: icsBase64,
+        content_type: "text/calendar; charset=utf-8; method=REQUEST",
+      };
       const sendResp = await resend.emails.send({
         from: fromAddr,
         to: [app.email],
         subject,
         html,
-        attachments: [
-          {
-            filename: "apex-seminar.ics",
-            content: icsBase64,
-            content_type: "text/calendar; charset=utf-8; method=REQUEST",
-          },
-        ],
+        attachments: [icsAttachment],
       });
       const respAny = sendResp as { data?: { id?: string }; error?: { message?: string } };
       providerMessageId = respAny.data?.id ?? null;
@@ -579,4 +597,39 @@ const handler = async (req: Request): Promise<Response> => {
   );
 };
 
-serve(handler);
+// MP-550: the three early-return paths each write a failure receipt, and the
+// expensive path where this function actually died wrote nothing. An uncaught
+// throw in `handler` becomes the edge runtime's own bare 500 -- no JSON body,
+// no email_delivery_log row, no function_errors row. submit-application calls
+// this fire-and-forget and only console.errors a non-ok response, so the
+// btoa crash ran on every application for months and left no queryable trace.
+//
+// The clone is taken BEFORE handler consumes the body and is per-request, so
+// attributing the receipt cannot race across concurrent invocations in the way
+// a module-level `currentApplicationId` would.
+serve(async (req: Request): Promise<Response> => {
+  const probe = req.method === "POST" ? req.clone() : null;
+  try {
+    return await handler(req);
+  } catch (e) {
+    const err = e as Error;
+    let applicationId: string | null = null;
+    try {
+      const body = await probe?.json();
+      const candidate = (body?.application_id || "").trim();
+      if (uuidRegex.test(candidate)) applicationId = candidate;
+    } catch (parseErr) {
+      console.error("[seminar-confirmation] could not re-read body for receipt:", parseErr);
+    }
+    console.error("[seminar-confirmation] uncaught:", err);
+    await logFailureReceipt({
+      applicationId,
+      recipientEmail: null,
+      reason: `uncaught ${err.name}: ${err.message}`,
+    });
+    return new Response(
+      JSON.stringify({ error: "internal error", detail: `${err.name}: ${err.message}` }),
+      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+    );
+  }
+});

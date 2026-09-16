@@ -23,6 +23,24 @@
 //   - sb.from("x").upsert({...}).catch(...)
 //   - sb.from("x").select(...).catch(...)   (no .then before)
 //   - sb.rpc("fn", {...}).catch(...)        (no .then before)
+//
+// MP-547 — WHY THIS NO LONGER USES A LINE WINDOW. The original scan looked
+// back a fixed SIX lines from `.catch` for the builder verb. An ordinary
+// Supabase insert is longer than that: applicant-checkin wrote a nine-field
+// agent_tasks payload, so `.from("agent_tasks")` sat TEN lines above its
+// `.catch` and this guard printed "ok — no unsafe .catch chains" against the
+// real, live bug sitting in its own scan root. PROVEN by re-running the old
+// scan against that exact pre-fix file. Only 5 of the 91 `).catch` lines in
+// supabase/functions have their nearest preceding builder verb inside six
+// lines, so the reach was shorter than the code it was written to read.
+//
+// The window is replaced by resolving the actual member chain: from the `.`
+// of `.catch`, walk backwards balancing (), [] and {} to the head of the
+// expression, then judge THAT. Distance stops mattering, which is the point —
+// a guard whose reach is a line count is guessing at syntax.
+//
+// Promise.resolve(builder).catch(...) is SAFE and must stay safe: it is the
+// idiom the correct call sites in src/ already use.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -54,24 +72,90 @@ const VERB_RE = /\b(?:from|rpc)\s*\(/;
 // Catches `.<op>(... arbitrary ...).catch(` on a chain that started with .from() or .rpc()
 const CHAIN_OP_RE = /\.(insert|update|upsert|delete|select|maybeSingle|single)\b/;
 
+// Blank out comment and string bodies while preserving offsets, so a `.catch`
+// written in prose or inside a SQL template literal cannot be mistaken for
+// code. (MP-277: a scanner that reads raw source counts its own footnotes.)
+function blankCommentsAndStrings(src) {
+  const out = src.split("");
+  let i = 0;
+  const n = src.length;
+  while (i < n) {
+    const c = src[i];
+    if (c === "/" && src[i + 1] === "/") {
+      let j = src.indexOf("\n", i);
+      if (j < 0) j = n;
+      for (let k = i; k < j; k++) out[k] = " ";
+      i = j;
+    } else if (c === "/" && src[i + 1] === "*") {
+      let j = src.indexOf("*/", i + 2);
+      j = j < 0 ? n : j + 2;
+      for (let k = i; k < j; k++) if (src[k] !== "\n") out[k] = " ";
+      i = j;
+    } else if (c === '"' || c === "'" || c === "`") {
+      const q = c;
+      let j = i + 1;
+      while (j < n) {
+        if (src[j] === "\\") { j += 2; continue; }
+        if (src[j] === q) { j += 1; break; }
+        j += 1;
+      }
+      for (let k = i + 1; k < Math.min(j - 1, n) + 1; k++) {
+        if (k < n && src[k] !== "\n") out[k] = " ";
+      }
+      i = j;
+    } else {
+      i += 1;
+    }
+  }
+  return out.join("");
+}
+
+// Walk backwards from `idx` (the `.` of `.catch`) to the head of the member
+// chain, balancing brackets. Returns the chain text.
+function chainHead(src, idx) {
+  let i = idx - 1;
+  let depth = 0;
+  while (i >= 0) {
+    const c = src[i];
+    if (c === ")" || c === "]" || c === "}") depth += 1;
+    else if (c === "(" || c === "[" || c === "{") {
+      if (depth === 0) break;
+      depth -= 1;
+    } else if (depth === 0 && (c === ";" || c === "=" || c === ",")) break;
+    i -= 1;
+  }
+  return src.slice(i + 1, idx);
+}
+
 function scan(file) {
   const text = fs.readFileSync(file, "utf8");
-  const lines = text.split(/\r?\n/);
-  // Use a sliding window of the previous 6 lines to handle multi-line chains.
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    if (!/\)\s*\.catch\b/.test(line)) continue;
-    // Look back up to 6 lines for a Supabase builder verb + a chain op
-    const window = lines.slice(Math.max(0, i - 6), i + 1).join("\n");
-    if (!VERB_RE.test(window)) continue;
-    if (!CHAIN_OP_RE.test(window)) continue;
-    // Allow `.then(...).catch(...)` — explicit .then converts to real Promise
-    if (/\.then\s*\([^)]*\)\s*\.catch\b/.test(line)) continue;
-    // Allow patterns where .catch is on `fetch(`/`res.json(`/`req.json(`/`Resend`
-    if (/(?:fetch\(|\.json\(\)\s*\.catch|\.invoke\([^)]*\)\s*\.catch|\.emails\.send\([^)]*\)\s*\.catch)/.test(window.split("\n").pop() ?? "")) continue;
-    // Allow .catch in a string template (raw SQL embedded RPC arg)
-    if (/`[^`]*\.catch[^`]*`/.test(line)) continue;
-    violations.push({ file: path.relative(repoRoot, file), line: i + 1, snippet: line.trim() });
+  const code = blankCommentsAndStrings(text);
+  const re = /\.catch\s*\(/g;
+  let m;
+  while ((m = re.exec(code)) !== null) {
+    const head = chainHead(code, m.index);
+
+    // Must be a Postgrest builder chain at all.
+    if (!VERB_RE.test(head)) continue;
+    if (!CHAIN_OP_RE.test(head) && !/\.\s*rpc\s*\(/.test(head)) continue;
+
+    // Already converted to a real Promise — safe.
+    if (/\.then\s*\(/.test(head)) continue;
+    if (/Promise\s*\.\s*(resolve|all|allSettled|race)\s*\(/.test(head)) continue;
+
+    // Non-Postgrest receivers that legitimately return real Promises.
+    if (/\.functions\s*\.\s*invoke\s*\(/.test(head)) continue;
+    if (/\.\s*(auth|storage)\s*\./.test(head)) continue;
+    if (/\bfetch\s*\(/.test(head)) continue;
+    if (/\.\s*(json|text)\s*\(\s*\)\s*$/.test(head.trimEnd())) continue;
+    if (/\.emails\s*\.\s*send\s*\(/.test(head)) continue;
+
+    const line = code.slice(0, m.index).split("\n").length;
+    violations.push({
+      file: path.relative(repoRoot, file),
+      line,
+      snippet: (text.split("\n")[line - 1] ?? "").trim(),
+    });
   }
 }
 

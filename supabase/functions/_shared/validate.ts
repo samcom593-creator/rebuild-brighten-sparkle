@@ -36,9 +36,24 @@ export const v = {
       return val;
     };
   }) as StringValidatorFactory,
+  // MP-553: this pattern was double-escaped and rejected 11 of 11 valid
+  // addresses. TWO distinct faults, not one -- both matter, because fixing
+  // only the visible half leaves a validator that still silently drops mail:
+  //   [^\\s@]  in a char class, `\\` is a literal backslash, so the class read
+  //            "not backslash, not the LETTER s, not @". bob@x.co passed it;
+  //            sam@x.co did not. Any address containing an `s` was rejected.
+  //   \\.      outside a class, `\\.` is a literal backslash then ANY char, so
+  //            the pattern demanded a real backslash inside the address. This
+  //            is the half that took the accept rate to zero.
+  // The repo already writes this pattern correctly at 14 other sites (e.g.
+  // agent-signup, update-user-email, consume-invite-token); this is now that
+  // same convention rather than a fifteenth spelling of it. Both directions are
+  // asserted in validate.email.test.ts, including that the OLD form really did
+  // reject everything -- so this can never quietly regress into protecting
+  // nothing. Guarded repo-wide by scripts/check-regex-double-escape.mjs.
   email(): Validator<string> {
     return (val: unknown) => {
-      if (typeof val !== "string" || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(val)) {
+      if (typeof val !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) {
         throw new ValidationError("email", "must be a valid email");
       }
       return val.toLowerCase().trim();

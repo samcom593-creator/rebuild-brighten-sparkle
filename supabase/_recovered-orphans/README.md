@@ -24,11 +24,21 @@ Putting a mirror there would push a machine-recovered transpilation over live pr
 moment a working Management PAT exists — and for `create-va-account` / `set-va-account`
 that is a live auth-level ban/unban path.
 
-**What that costs.** The six repo guards that walk `supabase/functions` — `check-ilike-user-input`,
-`check-phone-gateway-source`, `check-empty-catch`, the enum and CHECK vocabulary guards,
-`check-relation-exists` — are still blind to these five. Recovery did not fix that.
-Closing it needs a deploy skip-list keyed on this same JSON, so a slug cannot be graded
-and armed for overwrite at the same time. That is the next wave.
+**What that cost, and how it was actually closed.** Recovery alone left the repo guards that
+walk `supabase/functions` — `check-ilike-user-input`, `check-phone-gateway-source`,
+`check-empty-catch`, the enum/CHECK vocabulary guards, `check-relation-exists` — blind to
+these five. This paragraph used to end "closing it needs a deploy skip-list keyed on this
+same JSON... that is the next wave." **MP-479 refused that design and shipped a better one:**
+all three deploy paths are structurally confined to `supabase/functions/`, so a mirror
+outside it is un-deployable *by construction*, and a skip-list would have traded that
+guarantee for a maintained set plus a drift guard (fungible, per MP-356/MP-357). Instead the
+five guards were pointed **at** the mirrors, with their roots derived from the orphans JSON
+so the scanned set and the manifest cannot drift, and `check:orphan-mirror-containment` makes
+the placement a contract rather than an accident. All five come back clean, mutation-proven.
+
+Leaving the old sentence here cost a wave: MP-555 read "that is the next wave," started
+building the skip-list, and only found MP-479's refusal by reading the manifest. If you are
+about to move a mirror into `supabase/functions/`, read MP-479's entry in that JSON first.
 
 **Promoting a mirror.** A human reads it, restores the types, moves it to
 `supabase/functions/<slug>/index.ts`, and pays the slug down in the orphans JSON.

@@ -147,7 +147,7 @@ const recordTemplate = (d: Record<string, unknown>) => {
 const editTemplate = (d: Record<string, unknown>) => {
   const title = String(d.title ?? "").trim() || "<title>"; const hook = String(d.hook ?? "").split(/[.!?]\s/)[0].trim() || "<the hook line>";
   const fmt = isLongForm(d) ? "long-form 16:9, 8-12 min, 1080p30 render then 4K upscale, 5-7 chapters, NumberCards on every stated figure, lesson → CTA → end card over the last shot" : "Short 9:16 1080x1920, 20-45 s, burned word captions ≤ 6 words per page, apply text card over the last 3 s";
-  return `Cut "${title}" per MP-232 (~/business-ops/master-prompts/232-youtube-cut-fast.md) and the MP-233 delivery format.\nFormat: ${fmt}. Sources: the clip(s) attached to this Launch Board card${d.clip ? ` (${String(d.clip)})` : ""}, plus any clip from the same date with his voice on it.\nHook: "${hook}".\nExclude: slurs, sexual lines, beef, client PII, phone screens. music: [].\nPackage: title "${title}", description = hook + the channel description block + chapters, tags TAGS_CORE. Deliver 4K + 1080p to ~/Desktop/YouTube-Ready/, attach the 1080p to this card, write the YouTube chapters, ntfy me when done.`;
+  return `Cut "${title}" per MP-234 (~/business-ops/master-prompts/234-apex-video-editor.md).\nFormat: ${fmt}. Sources: the clip(s) attached to this Launch Board card${d.clip ? ` (${String(d.clip)})` : ""}, plus any clip from the same date with his voice on it.\nHook: "${hook}".\nExclude: slurs, sexual lines, beef, client PII, phone screens. music: [].\nPackage: title "${title}", description = hook + the channel description block + chapters, tags TAGS_CORE. Deliver 4K + 1080p to ~/Desktop/YouTube-Ready/, attach the 1080p to this card, write the YouTube chapters, ntfy me when done.`;
 };
 const FORMAT_LINE = "Long-form: 3840×2160 16:9 30 fps, −14 LUFS, no music, chapters in the description, end card over the last shot. Shorts: 1080×1920 9:16 ≤ 45 s, burned captions, apply card last 3 s.";
 
@@ -866,7 +866,7 @@ export default function LaunchBoard() {
                 {!draftStr("edit_prompt") && <button type="button" onClick={() => setDraftField("edit_prompt", editTemplate(draft))} className="text-[11px] font-semibold text-gold underline-offset-2 hover:underline">Fill from template</button>}
                 {draftStr("edit_prompt") && <button type="button" onClick={() => copyText(draftStr("edit_prompt"), "Edit prompt")} className="text-[11px] font-semibold text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">Copy</button>}
               </span></Label>
-              <Textarea id="lb-edit" rows={4} value={draftStr("edit_prompt")} onChange={(e) => setDraftField("edit_prompt", e.target.value)} placeholder="The prompt that turns the footage into the finished cut (MP-232 + MP-233 format)" className="font-mono text-[12px]" />
+              <Textarea id="lb-edit" rows={4} value={draftStr("edit_prompt")} onChange={(e) => setDraftField("edit_prompt", e.target.value)} placeholder="The prompt that turns the footage into the finished cut (MP-234 editor)" className="font-mono text-[12px]" />
               <p className="text-[11px] text-muted-foreground">{FORMAT_LINE}</p>
             </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

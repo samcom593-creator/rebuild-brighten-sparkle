@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "Launch Board edit prompts now point at one video editor spec. Every card’s “Copy edit prompt” (and the 18 seeded cards already on the board) hands the editor a single standing prompt that covers long-form, Shorts, packaging and delivery, so a card is cut the same way every time.",
+    detail:
+      "editTemplate in LaunchBoard.tsx cites MP-234 (the consolidated editor prompt: Sam’s approved/rejected notes as rules, DB-first shot list, a guard that refuses to republish footage, an exclusion scan over every audible window, a real Shorts composition with word captions and the apply card, disk gates, post-ready package). The 18 stored card prompts were repointed in content_cards with their pre-images snapshotted first; the posted weekend card keeps its own re-cut prompt.",
+    commit: "mp-234-video-editor-prompt",
+  },
+  {
+    ts: "today",
+    label:
       "Contracting cleanup, head to toe. The Ethos carrier sheet was writing the raw agency percentage “60” into the Comp Level column, which holds an Ethos LEVEL — so every app-added row read “60” where it should read “Level 12,” and the “@Level 8 Financial” tag named nobody. The agent drawer had no comp control at all.",
     detail:
       "buildEthosAiRow now writes an Ethos level (base Level 12 = 60%, one level per five points above it, so 75% -> Level 15, matching Aisha’s existing sheet row) and PRESERVES a real “Level N” John Ray already set instead of demoting it back to base on a routine re-delivery; the Comments cell now carries the two shared-document owners as resolvable addresses (level8financial@gmail.com, apalejohnray@gmail.com) on every row so the tag names real people instead of an inert label. Obiajulu 85->80 and Aisha 70->75 corrected in agent_contract_levels per Sam (KJ 105 / Chudi 85 already right); mv_agent_truth refreshes them on its existing 5-minute truth cron. The Producer drawer gained a Contract % row with the inline comp editor for admins and managers, reading the same fn_agent_contract_pct the scoreboard uses. v_contracting_reconciliation surfaces every non-terminated agent by action bucket: 19 licensed producers hidden behind no-login / inactive / alias flags (Grey Bowman is an alias of the terminated Dudley Bowman row; Isaac Assaba is licensed and producing but flagged inactive and cannot log in), 4 licensed with no login, 25 correctly in licensing, and the genuinely-unlicensed (Alonzo Johnson, David Ladd) carry zero NPN and zero production, so nothing in the book supports flipping them. 33 ethos + 43 contracting-delivery tests pass. MP-CONTRACTING-1.",

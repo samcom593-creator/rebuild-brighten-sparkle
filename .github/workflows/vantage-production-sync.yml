@@ -27,7 +27,23 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22.12.0'
+      # MP-603: `schedule` can only ever fire on the default branch (measured:
+      # 100/100 runs schedule/main), but `workflow_dispatch` accepts any ref, so
+      # this step could write production snapshots using unmerged code. Latent —
+      # it has never happened — and gated anyway, because the same repo already
+      # deployed to prod from 35 unmerged branches (MP-602).
+      - name: Prod write withheld (ref is not main)
+        if: github.ref != 'refs/heads/main'
+        run: |
+          {
+            echo "### Vantage sync withheld"
+            echo ""
+            echo "Ref \`${{ github.ref }}\` is not \`refs/heads/main\`, so no production"
+            echo "snapshot was written. Re-dispatch from main to sync."
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Fetch and reconcile production
+        if: github.ref == 'refs/heads/main'
         env:
           VANTAGE_PRODUCTION_API_KEY: ${{ secrets.VANTAGE_PRODUCTION_API_KEY }}
           VANTAGE_SYNC_BOT_TOKEN: ${{ secrets.VANTAGE_SYNC_BOT_TOKEN }}

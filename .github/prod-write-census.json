@@ -1,0 +1,50 @@
+{
+  "_why": "MP-603. Every CI step that can reach the production Supabase project (xrzweoneiieddzxogewk) is listed here, classified read or write, by a human who read it. check-prod-write-ref-gate.mjs refuses to grade an unclassified population: a NEW prod-touching step is RED even when the guard does not recognise the verb it uses, which is the failure a vocabulary-only matcher cannot avoid (MP-399: a dead status='error' filter matched no rows and printed green for its entire life).",
+  "_rules": "classification=write AND the workflow admits a non-main ref => the step must AND in a ref gate. Keys are file::job::step and are matched exactly; a stale key is RED so a deleted write's slot cannot be silently reused (MP-356: count-only floors are fungible).",
+  "steps": {
+    "deploy-supabase.yml::deploy::Sync rotated automation credential": {
+      "classification": "write",
+      "why": "runs `supabase secrets set` against prod. Fired successfully twice from an unmerged branch (runs 33531886227 / 33548643802, pull_request, codex/apex-imo-vsl-rewrite-20260901) before MP-602 gated it."
+    },
+    "deploy-supabase.yml::deploy::Deploy edge functions": {
+      "classification": "write",
+      "why": "runs `supabase functions deploy`. This is the step that deployed to prod from 35 non-main refs over 758 runs (MP-602)."
+    },
+    "deploy-supabase.yml::deploy::Apply migrations": {
+      "classification": "write",
+      "why": "runs `supabase db push`. 0 migrations ever applied from a non-main ref, but only because migrations are hand-applied via bot-sql before CI sees them - an accident of workflow, not a safety property."
+    },
+    "external-cron-backup.yml::heartbeat::Fire critical jobs": {
+      "classification": "write",
+      "why": "POSTs `SELECT <fn>()` to bot-sql and calls edge functions to fire pg_cron jobs that dropped. Executing those functions is the point of the workflow; they have side effects in prod."
+    },
+    "vantage-production-sync.yml::sync::Fetch and reconcile production": {
+      "classification": "write",
+      "why": "scripts/sync-vantage-production.ts runs `insert into public.production_external_daily_snapshots ... on conflict do update` via bot-sql. The workflow YAML names the prod ref zero times, so a YAML-only scan cannot see this."
+    },
+    "deploy-supabase.yml::deploy::Deploy credential ALIVE? (present != working)": {
+      "classification": "read",
+      "why": "capability probe. Echoes the sentence 'supabase secrets set was skipped' in a message, which is why the matcher requires command position."
+    },
+    "deploy-supabase.yml::deploy::Prod writes withheld (ref is not the deploy ref)": {
+      "classification": "read",
+      "why": "echo-only. Writes the job summary explaining why prod writes were withheld."
+    },
+    "deploy-supabase.yml::deploy::Summary": {
+      "classification": "read",
+      "why": "echo-only into $GITHUB_STEP_SUMMARY. Reaches the census solely because it prints $PROJECT_REF."
+    },
+    "deploy-supabase.yml::deployed-source-audit::Compare prod's ACTIVE function list against supabase/functions/": {
+      "classification": "read",
+      "why": "audit. No write verb anywhere in scripts/check-deployed-function-source.mjs."
+    },
+    "deploy-supabase.yml::deployed-source-audit::Verify prod is running the code this repo committed": {
+      "classification": "read",
+      "why": "audit. Its only `supabase functions deploy` occurrence is inside a remediation message it prints on failure."
+    },
+    "external-cron-backup.yml::heartbeat::Check pg_cron heartbeat": {
+      "classification": "read",
+      "why": "SELECT EXTRACT(EPOCH FROM ...) against cron.job_run_details. Reaches prod only through the job-level $BOT_SQL env var - it names nothing itself, which is how the first cut of the guard missed it."
+    }
+  }
+}

@@ -114,8 +114,22 @@ jobs:
             echo "::warning::pg_cron heartbeat is ${gap}s stale (>600s)"
           fi
 
+      # MP-603: schedule-only in practice (measured: 200/200 runs
+      # schedule/main), but workflow_dispatch accepts any ref and this step
+      # executes SQL functions and edge functions against prod. Gated so an
+      # unmerged branch cannot fire them.
+      - name: Prod write withheld (ref is not main)
+        if: github.ref != 'refs/heads/main'
+        run: |
+          {
+            echo "### Critical-job firing withheld"
+            echo ""
+            echo "Ref \`${{ github.ref }}\` is not \`refs/heads/main\`, so no prod job was fired."
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Fire critical jobs
         id: jobs
+        if: github.ref == 'refs/heads/main'
         run: |
           set -uo pipefail
           # We track success/failure per call and emit a summary. Failures

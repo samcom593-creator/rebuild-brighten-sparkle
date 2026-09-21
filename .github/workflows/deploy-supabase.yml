@@ -108,8 +108,65 @@ jobs:
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           REQUESTED_FUNCTION: ${{ inputs.only_function }}
           SKIP_MIGRATIONS: ${{ inputs.skip_migrations }}
+          THIS_REF: ${{ github.ref }}
         run: |
           set -euo pipefail
+
+          # ── MP-602: WHICH REF IS ALLOWED TO WRITE TO PROD ───────────────────
+          # Measured 2026-09-20 over this workflow's 758 lifetime runs: 89 ran
+          # from a ref that is not main, and 35 of those SUCCESSFULLY ran
+          # `supabase functions deploy` against project xrzweoneiieddzxogewk —
+          # prod — from branches whose PRs were still open. Run 30484091022
+          # (pull_request, fix/audit-batch2) deployed the ENTIRE function set
+          # off unmerged code. That is not theoretical and it is not a near
+          # miss; it landed, 35 times.
+          #
+          # RE-MEASURED 2026-09-21 before this was committed, and the first
+          # draft of this block undercounted its own finding. There are THREE
+          # write legs, not two, and TWO of them had already fired:
+          #   supabase functions deploy  35 non-main runs succeeded
+          #   supabase secrets set        2 non-main runs succeeded — runs
+          #                               33531886227 / 33548643802, both
+          #                               pull_request on
+          #                               codex/apex-imo-vsl-rewrite-20260901,
+          #                               log line "Finished supabase secrets
+          #                               set." That wrote APEX_BOT_TOKEN and
+          #                               BOT_SQL_PERSISTENT_TOKEN into the
+          #                               prod project from unmerged code.
+          #   supabase db push            0 applied. 3 non-main runs reached it
+          #                               and all three logged "Remote database
+          #                               is up to date" (verified in the logs
+          #                               of 30484091022 / 30554450584 /
+          #                               30561235935), because Sam hand-applies
+          #                               migrations via bot-sql before CI ever
+          #                               sees them. That is an ACCIDENT of his
+          #                               workflow, not a safety property — the
+          #                               chamber happened to be empty.
+          # All three are gated here. The honest claim is that two legs had
+          # already fired and one had not.
+          #
+          # SINGLE SOURCE ON PURPOSE. Three steps write to prod (secrets set,
+          # functions deploy, db push). Letting each re-derive "is this ref
+          # allowed" is how curl's --max-time and fn_agentlink_reap_stuck drifted
+          # into 36 false pages a day. They all read this one output.
+          #
+          # workflow_dispatch is allowed from any ref BY DESIGN: a human chose
+          # the ref and the workflow, which is the operator-controlled path the
+          # header already documents. push-to-main is the automatic path.
+          # Everything else — pull_request, push to feat/**, anything added to
+          # the trigger later — observes and reports, and writes nothing.
+          write_allowed=false
+          write_block_reason=""
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            write_allowed=true
+          elif [ "$EVENT_NAME" = "push" ] && [ "$THIS_REF" = "refs/heads/main" ]; then
+            write_allowed=true
+          else
+            write_block_reason="event=$EVENT_NAME ref=$THIS_REF is not the deploy ref (refs/heads/main) and not an operator workflow_dispatch"
+          fi
+          echo "write_allowed=$write_allowed" >> "$GITHUB_OUTPUT"
+          echo "write_block_reason=$write_block_reason" >> "$GITHUB_OUTPUT"
+          echo "Prod writes allowed: $write_allowed ${write_block_reason:+($write_block_reason)}"
 
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             if [ -n "$REQUESTED_FUNCTION" ]; then
@@ -271,6 +328,37 @@ jobs:
             } >> $GITHUB_STEP_SUMMARY
           fi
 
+      # MP-602. A withheld write is ANNOUNCED, never silently skipped.
+      # This repo's own history is the argument: a deploy pipeline reported
+      # green for 8 days while migrations never applied, and apex-doctor
+      # Check #19's header says a true alert nobody can act on costs what a
+      # false one costs. The inverse is just as bad — a write that quietly
+      # does not happen looks identical to one that did. So when the gate
+      # refuses, the run says exactly what was withheld and how to ship it.
+      #
+      # NOT a failure. A PR that touches functions is normal and correct; the
+      # right outcome is "observed, not deployed", not a red X on Sam's PR.
+      - name: Prod writes withheld (ref is not the deploy ref)
+        if: steps.scope.outputs.deploy_needed == 'true' && steps.scope.outputs.write_allowed != 'true'
+        run: |
+          {
+            echo "### 🔒 Prod writes withheld"
+            echo ""
+            echo "This run changed Supabase assets but wrote **nothing** to \`$PROJECT_REF\`."
+            echo ""
+            echo "- Reason: ${{ steps.scope.outputs.write_block_reason }}"
+            echo "- Functions changed: \`${{ steps.scope.outputs.functions }}\` (deploy_all=${{ steps.scope.outputs.deploy_all }})"
+            echo "- Migrations changed: ${{ steps.scope.outputs.migrations_changed }}"
+            echo ""
+            echo "Before MP-602 this run would have deployed that code to prod from an"
+            echo "unmerged ref. Measured over 758 lifetime runs, 35 non-main runs did"
+            echo "exactly that."
+            echo ""
+            echo "To ship: merge to \`main\`, or run this workflow manually against the"
+            echo "ref you intend (workflow_dispatch is still allowed from any ref)."
+          } >> $GITHUB_STEP_SUMMARY
+          echo "::notice::Prod writes withheld — ${{ steps.scope.outputs.write_block_reason }}"
+
       - uses: supabase/setup-cli@v1
         if: steps.scope.outputs.deploy_needed == 'true'
         with:
@@ -289,7 +377,7 @@ jobs:
         # Runs unless the gate PROVED the scope absent. Still a hard failure
         # when it does run: the gate only skips a known-impossible leg, so a
         # failure here is a real one and must not be swallowed.
-        if: steps.scope.outputs.functions_changed == 'true' && steps.cred.outputs.secrets_capable != 'false'
+        if: steps.scope.outputs.functions_changed == 'true' && steps.cred.outputs.secrets_capable != 'false' && steps.scope.outputs.write_allowed == 'true'
         run: |
           if [ -z "$APEX_BOT_TOKEN" ]; then
             echo "::error::APEX_BOT_TOKEN secret missing — automation credentials cannot be synchronized"
@@ -301,7 +389,7 @@ jobs:
             --project-ref "$PROJECT_REF"
 
       - name: Deploy edge functions
-        if: steps.scope.outputs.functions_changed == 'true'
+        if: steps.scope.outputs.functions_changed == 'true' && steps.scope.outputs.write_allowed == 'true'
         env:
           CHANGED_FUNCTIONS: ${{ steps.scope.outputs.functions }}
           # The CLI authenticates from SUPABASE_ACCESS_TOKEN, so the
@@ -393,7 +481,7 @@ jobs:
         # explicitly true (manual override), we skip with a notice. If
         # SUPABASE_DB_PASSWORD is missing the job FAILS so the green-but-
         # didn't-actually-apply mode Sam reported is dead.
-        if: steps.scope.outputs.migrations_changed == 'true'
+        if: steps.scope.outputs.migrations_changed == 'true' && steps.scope.outputs.write_allowed == 'true'
         run: |
           set -uo pipefail
           if [ -z "$SUPABASE_DB_PASSWORD" ]; then
@@ -431,6 +519,7 @@ jobs:
           echo "- Project: \`$PROJECT_REF\`" >> $GITHUB_STEP_SUMMARY
           echo "- Trigger: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
           echo "- SHA: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Prod writes allowed: \`${{ steps.scope.outputs.write_allowed }}\`" >> $GITHUB_STEP_SUMMARY
 
   # ── MP-423 ────────────────────────────────────────────────────────────────
   # Deliberately its OWN job, not a step in `deploy`.

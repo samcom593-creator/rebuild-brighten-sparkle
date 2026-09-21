@@ -159,6 +159,51 @@ const prodEnvNames = (doc, jobDef, step) => {
 };
 const usesEnv = (body, name) => new RegExp(`\\$\\{?${name}\\b`).test(body);
 
+// ── MP-606: EVIDENCE AGAINST A "read" CLAIM ─────────────────────────────────
+// MP-603 shipped the census and closed by naming this: "the prod-write census
+// is human-classified; a write mislabelled `read` passes green forever."
+// Measured before this was written, on the live guard at c6754f27:
+//
+//   classification "read" on `Deploy edge functions` -> EXIT 0, "gate intact"
+//   classification "wrote" (a typo)   on that step   -> EXIT 0, "gate intact"
+//
+// That is the step that deployed to prod from 35 unmerged branches. In the
+// first case the guard PRINTED it under "READ-only" while its own `found` map
+// held the string "runs supabase functions deploy" — it had the contradiction
+// in hand and never looked. In the second, `entry.classification !== "write"`
+// silently means "not graded", so one transposed letter unsays a write. That
+// is the enum-vocabulary hole MP-343/MP-344 shipped guards for, one file over.
+//
+// WHAT THIS CAN AND CANNOT DO — said plainly, because the honest bound is the
+// point. A "read" claim can be CONTRADICTED by machine; it cannot be PROVEN by
+// one. The live counter-example is in this same census: `Fire critical jobs` is
+// a write whose payload is `SELECT <fn>::text` — executing a function with side
+// effects. No SQL-verb matcher can ever see that, and none here pretends to.
+// So the reads below are UN-CONTRADICTED, not verified. What closes is the
+// cheap half: a mislabel that the guard already had the evidence to refuse.
+const CLASSIFICATIONS = ["read", "write"];
+
+// Payloads sent to prod, not prose about them. Anchored on a `query` field so a
+// step that merely echoes the word "insert" in a summary is untouched — MP-277
+// inflated a whole baseline by matching its own footnotes.
+const sqlPayloads = (text) => {
+  const out = [];
+  for (const m of text.matchAll(/\\?["'`]?\bquery\\?["'`]?\s*[:=]\s*(\\?["'`])([\s\S]*?)(?<!\\)\1/g)) out.push(m[2]);
+  return out;
+};
+// Statement position only: start, after `;`, or after a CTE's closing paren on
+// its own line — which is the exact shape of the one real mutation in this
+// repo (`with incoming as (...)` newline `insert into ...`).
+const MUTATING = /(^|\n|;)\s*\)?\s*(insert|update|delete|drop|alter|truncate|create|grant|revoke|refresh\s+materialized)\b/i;
+const stripSqlComments = (s) => s.split("\n").filter((l) => !/^\s*--/.test(l)).join("\n");
+const sqlMutationsIn = (text) =>
+  [...new Set(
+    sqlPayloads(text)
+      .map((q) => stripSqlComments(q).match(MUTATING))
+      .filter(Boolean)
+      .map((m) => m[2].toLowerCase().replace(/\s+/g, " ")),
+  )];
+
 // ── TRIGGER REACHABILITY ────────────────────────────────────────────────────
 // `on:` is the YAML 1.1 boolean `true` after parsing unless quoted, so both
 // spellings are read. Anything unrecognised coerces TOWARD alarm (assume a
@@ -211,7 +256,16 @@ for (const file of wfFiles) {
         viaEnv.length ? `uses env ${viaEnv.map((n) => "$" + n).join(", ")} (set to a ${PROD_REF} URL)` : null,
       ].filter(Boolean).join("; ");
 
-      found.set(label, { file, job, name, cmds, reason, cond: step.if ?? "", reach });
+      // Mutation evidence: the step's own payloads, plus those of every repo
+      // file it invokes that reaches prod. The second half is load-bearing —
+      // vantage-production-sync's insert lives only in the .ts, which is also
+      // what keeps the detector from being a dead filter (see control below).
+      const sqlMut = [...new Set([
+        ...sqlMutationsIn(body),
+        ...viaFile.flatMap((f) => sqlMutationsIn(readFileSync(f, "utf8"))),
+      ])];
+
+      found.set(label, { file, job, name, cmds, sqlMut, reason, cond: step.if ?? "", reach });
     }
   }
 }
@@ -227,6 +281,24 @@ const classified = new Map(Object.entries(census.steps ?? {}));
 
 const unclassified = [...found.keys()].filter((k) => !classified.has(k));
 const stale = [...classified.keys()].filter((k) => !found.has(k));
+
+// Vocabulary BEFORE verdicts. `entry.classification !== "write"` treats every
+// unrecognised value as "not graded", so `wrote` / `Write` / a missing key all
+// read green on a real write. Graded against an explicit set, both directions.
+const badVocab = [...classified.entries()]
+  .filter(([, e]) => !CLASSIFICATIONS.includes(e?.classification))
+  .map(([k, e]) => `${k}  classification=${JSON.stringify(e?.classification)}`);
+
+// A "read" claim the guard's own evidence refutes.
+const contradicted = [];
+for (const [key, f] of found) {
+  if (classified.get(key)?.classification !== "read") continue;
+  const ev = [
+    f.cmds.length ? `runs in command position: ${f.cmds.join(", ")}` : null,
+    f.sqlMut.length ? `sends SQL that mutates: ${f.sqlMut.join(", ")}` : null,
+  ].filter(Boolean);
+  if (ev.length) contradicted.push(`${key}\n      ${ev.join("\n      ")}`);
+}
 
 const ungated = [];
 const gated = [];
@@ -285,6 +357,14 @@ if (!routes.some((f) => f.reason.includes("invokes ")))
   controlProblems.push("no step detected reaching the prod ref VIA an invoked repo file");
 if (!routes.some((f) => f.reason.includes("uses env ")))
   controlProblems.push("no step detected reaching the prod ref VIA an env var");
+// MP-606. The SQL-mutation detector exists to contradict a "read" claim, and a
+// detector that matches nothing contradicts nothing while printing green —
+// MP-399, where a dead status='error' filter was green for its entire life.
+// `insert into public.production_external_daily_snapshots` is in this repo
+// today, reached only through an invoked .ts; if that stops being detected the
+// matcher broke, not the workflows.
+if (!routes.some((f) => f.sqlMut.includes("insert")))
+  controlProblems.push("SQL-mutation detector found no `insert` anywhere — it can no longer contradict a \"read\" claim");
 
 let rc = 0;
 const die = (lines) => { rc = 1; for (const l of lines) console.error(l); };
@@ -297,6 +377,26 @@ if (undetected.length || controlProblems.length) {
     `   Every verdict in this run is therefore unearned. Fix the matcher, not the`,
     `   workflows. If a command/route was deliberately removed, remove it from`,
     `   MUST_DETECT / the control in the same commit, on purpose.\n`,
+  ]);
+}
+if (badVocab.length) {
+  die([
+    `\n✖ ${badVocab.length} census entr(y/ies) carry a classification outside ${JSON.stringify(CLASSIFICATIONS)}:\n`,
+    ...badVocab.map((b) => `   - ${b}`),
+    `   Unrecognised values are NOT a soft state: the gate check reads`,
+    `   \`classification !== "write"\`, so one transposed letter silently demotes a`,
+    `   real write to ungraded and this guard reports green forever. Proven at`,
+    `   c6754f27: "wrote" on the step that deployed prod from 35 unmerged`,
+    `   branches exited 0.\n`,
+  ]);
+}
+if (contradicted.length) {
+  die([
+    `\n✖ ${contradicted.length} step(s) classified "read" in ${CENSUS_PATH}, refuted by this guard's own evidence:\n`,
+    ...contradicted.map((c) => `   - ${c}\n`),
+    `   Either the step writes — reclassify it "write" and gate it — or the`,
+    `   matcher is accusing working code, in which case fix the matcher in the`,
+    `   same commit, on purpose. Do not relabel to silence this.\n`,
   ]);
 }
 if (unclassified.length) {
@@ -339,7 +439,13 @@ if (rc === 0) {
   if (gated.length) { console.log(`  WRITE, non-main ref reachable, gated:`); for (const g of gated) console.log(`    ${g}`); }
   if (mainOnly.length) { console.log(`  WRITE, no gate required:`); for (const m of mainOnly) console.log(`    ${m}`); }
   const reads = [...found.keys()].filter((k) => classified.get(k)?.classification === "read");
-  if (reads.length) { console.log(`  READ-only (classified, not gated):`); for (const r of reads) console.log(`    ${r}`); }
+  if (reads.length) {
+    // "un-contradicted", never "verified": `Fire critical jobs` is a write whose
+    // payload is `SELECT <fn>::text`, and no matcher here can see a side effect
+    // behind a SELECT. The human `why` is still the load-bearing part.
+    console.log(`  READ-claimed (no write command, no mutating SQL payload — un-contradicted, not proven):`);
+    for (const r of reads) console.log(`    ${r}`);
+  }
   if (producerProblems.length === 0 && gated.some((g) => g.includes("deploy-supabase")))
     console.log(`  producer: scope step defines write_allowed and still grants push→refs/heads/main`);
   if (mentionsOut.length) {

@@ -142,7 +142,8 @@
     "check:demo-mask-coverage": "node scripts/check-demo-mask-coverage.mjs",
     "prove:demo-mask-live": "node scripts/prove-demo-mask-live.mjs",
     "check:prod-write-ref-gate": "node scripts/check-prod-write-ref-gate.mjs",
-    "prove:prod-write-ref-gate": "bash scripts/prove-prod-write-ref-gate.sh"
+    "prove:prod-write-ref-gate": "bash scripts/prove-prod-write-ref-gate.sh",
+    "prove:prod-write-census-claims": "bash scripts/prove-prod-write-census-claims.sh"
   },
   "dependencies": {
     "@alloc/quick-lru": "5.2.0",

@@ -338,6 +338,26 @@ jobs:
       #
       # NOT a failure. A PR that touches functions is normal and correct; the
       # right outcome is "observed, not deployed", not a red X on Sam's PR.
+      # MP-604: EXERCISED LIVE on a non-main ref, with the block attributable to
+      # this gate and nothing else. Run 35556970566 (push, feat/mp604-prove-ref-gate,
+      # an inert migration so migrations_changed=true) printed:
+      #   Prod writes allowed: false (event=push ref=refs/heads/feat/mp604-prove-ref-gate …)
+      # and then: this step SUCCESS; secrets-sync, functions-deploy and db-push all
+      # SKIPPED. That is the first live block of the `db push` leg, which MP-602
+      # measured as 0-applied — the chamber that had never been tested.
+      #
+      # THE PROOF WAS DESIGNED AROUND A TRAP, recorded so it is not re-sprung: a
+      # functions-changed push cannot prove this gate today, because
+      # "Deploy credential ALIVE?" is gated on functions_changed and `exit 1`s on
+      # the currently-401 functions PAT. The job would die there and every write
+      # step would read `skipped` for a reason that is NOT the ref. Migrations
+      # skip that step, so the gate is the only remaining explanation.
+      #
+      # ASYMMETRY, STATED RATHER THAN PAPERED OVER: the main direction is proven
+      # only by this gate's own printed verdict (run 35548960273, same file,
+      # "Prod writes allowed: true"), NOT by watching a write fire — that run had
+      # deploy_needed=false, so its skips prove nothing. Firing a real prod write
+      # to complete the pair was judged not worth a no-op row in schema_migrations.
       - name: Prod writes withheld (ref is not the deploy ref)
         if: steps.scope.outputs.deploy_needed == 'true' && steps.scope.outputs.write_allowed != 'true'
         run: |

@@ -118,6 +118,13 @@ jobs:
       # schedule/main), but workflow_dispatch accepts any ref and this step
       # executes SQL functions and edge functions against prod. Gated so an
       # unmerged branch cannot fire them.
+      # MP-604: PROVEN LIVE both directions at headSha 34832dae (identical file):
+      #   branch mp604-prove-ref-gate  run 35556870163 — withheld SUCCESS, fire SKIPPED
+      #   main                         run 35553219586 — withheld SKIPPED, fire SUCCESS
+      # NOTE FOR WHOEVER REPEATS THIS: "Check pg_cron heartbeat" above runs
+      # BEFORE this gate and POSTs a priority-5 ntfy push to Sam's phone when the
+      # gap exceeds 600s. Measure the gap first (it was 31s) — do not page him to
+      # prove a gate.
       - name: Prod write withheld (ref is not main)
         if: github.ref != 'refs/heads/main'
         run: |

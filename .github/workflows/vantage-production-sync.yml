@@ -32,6 +32,12 @@ jobs:
       # this step could write production snapshots using unmerged code. Latent —
       # it has never happened — and gated anyway, because the same repo already
       # deployed to prod from 35 unmerged branches (MP-602).
+      # MP-604: PROVEN LIVE both directions, and the ref is the only variable.
+      # Both runs carry headSha 34832dae, so the workflow file is byte-identical
+      # across the pair:
+      #   branch mp604-prove-ref-gate  run 35556799656 — withheld SUCCESS, write SKIPPED
+      #   main                         run 35556860657 — withheld SKIPPED, write SUCCESS
+      # Do not re-file this as "gated but never exercised".
       - name: Prod write withheld (ref is not main)
         if: github.ref != 'refs/heads/main'
         run: |

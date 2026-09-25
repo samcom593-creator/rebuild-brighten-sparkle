@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "Scoreboard now shows production by hierarchy — every downline lead (Obi and anyone with a team) with their group\u2019s production and policy count, not just two agency lines. Added a comp-% hide button so you can post numbers without exposing what level you\u2019re at, alongside the name / projection / split / earnings blur toggles and the Present-all switch.",
+    detail:
+      "ScopedProductionScoreboard: agency split replaced by a per-hierarchy breakdown driven by the same grouping as the who-sold list (Vantage / each first-hop sub-agency head / direct), each with AP + policies. New blur.comp toggle blurs viewer comp %, seller comp, override % and first-hop % across the card; Present now covers comp too. Light striping/polish. No data change.",
+    commit: "mp-dash-hierarchy-comp",
+  },
+  {
+    ts: "today",
+    label:
       "Production scoreboard rebuilt for posting: a Present toggle blurs names, the month-end projection, the agency split and earnings so you can screenshot numbers without leaking who or how much (click any blurred value to reveal it just for you). The \"who sold\" list is now grouped into collapsible agencies — Vantage, each sub-agency head, and direct sellers — each with its own subtotal.",
     detail:
       "ScopedProductionScoreboard: Reveal + SectionEye components, per-section eye buttons and a global Present button; who-sold rows grouped by hierarchy (Vantage / first-hop sub-agency head / direct), collapsible with subtotals; the External gap line removed from earnings and the agency split; agency-reported/unattributed line removed. No data change — same RPCs.",

@@ -18,6 +18,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { ContractingIntakeAdmin } from "@/components/contracting/ContractingIntakeAdmin";
+import { ContractingAuditPanel } from "@/components/contracting/ContractingAuditPanel";
 import {
   ContractsBoard, useContractSummary, useContractRows,
 } from "@/components/contracting/ContractsBoard";
@@ -42,6 +43,7 @@ export default function CarrierContracts() {
     : pathname.endsWith("/carriers") ? "carriers"
     : pathname.endsWith("/ops") ? "ops"
     : pathname.endsWith("/documents") ? "documents"
+    : pathname.endsWith("/audit") ? "audit"
     : "requests";
   usePageTitle(`${mode.charAt(0).toUpperCase() + mode.slice(1)} · APEX`);
   const { isAdmin, isManager } = useAuth();
@@ -80,6 +82,7 @@ export default function CarrierContracts() {
     ...(isAdmin ? [
       ["ops", "/dashboard/contracting/ops", "Operations"],
       ["documents", "/dashboard/contracting/documents", "Documents"],
+      ["audit", "/dashboard/contracting/audit", "Audit"],
     ] : []),
   ] as Array<[string, string, string]>;
 
@@ -116,6 +119,7 @@ export default function CarrierContracts() {
   const title = mode === "carriers" ? "Carrier Directory"
     : mode === "ops" ? "Contracting Operations"
     : mode === "requests" ? (canInvite ? "Contracting Requests" : "Start Contracting")
+    : mode === "audit" ? "Contracting Audit"
     : "Contract Documents";
   const subtitle = mode === "carriers"
     ? "Active carrier access, portals, and contracting availability."
@@ -125,6 +129,8 @@ export default function CarrierContracts() {
     ? (canInvite
       ? "Start and monitor producer contracting requests."
       : "Use the details already on your profile, add only what's missing, and start your carrier setup.")
+    : mode === "audit"
+    ? "Every agent against AgentLink and the Ethos sheet: valid NPN, profile, upline, carrier contracts, Ethos level. One next action each."
     : "Writing numbers, contract numbers, and appointment records for the producers you cover.";
 
   return (
@@ -151,6 +157,7 @@ export default function CarrierContracts() {
         </>
       )}
       {mode === "documents" && <ContractDocuments />}
+      {mode === "audit" && (isAdmin ? <ContractingAuditPanel /> : <EmptyState title="Admins only" description="The contracting audit is an admin surface." />)}
     </div>
   );
 }

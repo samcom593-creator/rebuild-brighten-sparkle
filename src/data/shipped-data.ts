@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "Contracting audit + Ethos NPN/level fixes + Book-of-Business audit bot. /dashboard/contracting/audit reconciles every agent against AgentLink (219 live) and the Ethos sheet (131 rows) and gives each ONE next action; 60 NPNs backfilled/corrected with an audit log; the book page now opens with flagged-policy tallies (no policy number / carriers we don’t use) and the carrier to move each one to.",
+    detail:
+      "Migrations contracting_audit + contracting_fixes + book_audit_bot: agentlink_roster + ethos_roster tables, v_contracting_audit/_summary, v_ethos_paste_rows + v_ethos_agent_updates (exact sheet columns, copy-as-TSV from the Audit tab), npn_audit_log (54 backfilled from AgentLink, 2 from Ethos, Jayden Jones + Chudi corrected, Sam’s 21346366 set, 3 placeholders cleared), comp basis re-based on Sam-set levels only. carrier_registry Foresters → inactive; v_book_audit_items/_tally/_totals/_by_agent; fn_book_audit_run() on pg_cron 07:00 Phoenix snapshots and pages only on NEW flags. Marlyn Johnson’s missing agent.hired outbox rows inserted.",
+    commit: "mp-contracting-book-audit",
+  },
+  {
+    ts: "today",
+    label:
       "Launch Board edit prompts now point at one video editor spec. Every card’s “Copy edit prompt” (and the 18 seeded cards already on the board) hands the editor a single standing prompt that covers long-form, Shorts, packaging and delivery, so a card is cut the same way every time.",
     detail:
       "editTemplate in LaunchBoard.tsx cites MP-234 (the consolidated editor prompt: Sam’s approved/rejected notes as rules, DB-first shot list, a guard that refuses to republish footage, an exclusion scan over every audible window, a real Shorts composition with word captions and the apply card, disk gates, post-ready package). The 18 stored card prompts were repointed in content_cards with their pre-images snapshotted first; the posted weekend card keeps its own re-cut prompt.",

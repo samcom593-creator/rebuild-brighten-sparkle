@@ -64,6 +64,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { AgentLinkConnectionPrompt } from "@/components/dashboard/AgentLinkConnectionPrompt";
 import { AgentNameLink } from "@/components/dashboard/AgentNameLink";
+import { BookAuditPanel } from "@/components/dashboard/BookAuditPanel";
 import { toast } from "@/hooks/use-toast";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -1370,6 +1371,9 @@ export default function BookOfBusiness() {
       />
 
       <AgentLinkConnectionPrompt />
+
+      {/* Sam 2026-09-24: the book audit bot — tallies at the top, flagged policies below. */}
+      <BookAuditPanel />
 
       {/* MP-268 — Book truth by status.
           "Annual Premium" above sums EVERY status together, so submitted-but-not-

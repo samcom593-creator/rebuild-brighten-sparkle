@@ -101121,6 +101121,70 @@ export type Database = {
         }
         Relationships: []
       }
+      v_book_audit_by_agent: {
+        Row: {
+          agent_id: string | null
+          agent_name: string | null
+          live_policies: number | null
+          no_policy_number_alp: number | null
+          no_policy_number_n: number | null
+          reroute_to: string | null
+          unused_carrier_alp: number | null
+          unused_carrier_n: number | null
+          unused_carriers: string | null
+        }
+        Relationships: []
+      }
+      v_book_audit_items: {
+        Row: {
+          age_days: number | null
+          agent_id: string | null
+          agent_name: string | null
+          annual_premium: number | null
+          carrier: string | null
+          carrier_relationship: string | null
+          category: string | null
+          client_name: string | null
+          dated: string | null
+          flag_no_policy_number: boolean | null
+          flag_unused_carrier: boolean | null
+          item_key: string | null
+          policy_number: string | null
+          product: string | null
+          reroute_to: string | null
+          source: string | null
+          status: string | null
+        }
+        Relationships: []
+      }
+      v_book_audit_tally: {
+        Row: {
+          agents: number | null
+          alp: number | null
+          carrier: string | null
+          category: string | null
+          last_30d: number | null
+          policies: number | null
+        }
+        Relationships: []
+      }
+      v_book_audit_totals: {
+        Row: {
+          agentlink_book_as_of: string | null
+          both_n: number | null
+          ethos_book_as_of: string | null
+          flagged_n: number | null
+          live_alp: number | null
+          live_policies: number | null
+          no_policy_number_alp: number | null
+          no_policy_number_n: number | null
+          unused_by_carrier: Json | null
+          unused_carrier_alp: number | null
+          unused_carrier_n: number | null
+          unused_carriers: string | null
+        }
+        Relationships: []
+      }
       v_carrier_reroute_plan: {
         Row: {
           active_appointments: string | null
@@ -101130,6 +101194,58 @@ export type Database = {
           policies_at_dead: number | null
           readiness: string | null
           suggested_carrier: string | null
+        }
+        Relationships: []
+      }
+      v_contracting_audit: {
+        Row: {
+          agent_id: string | null
+          al_active: number | null
+          al_approval: string | null
+          al_carriers_active: string | null
+          al_carriers_blocked: string | null
+          al_carriers_inflight: string | null
+          al_id: string | null
+          al_incomplete_profile_n: number | null
+          al_pending_upline_n: number | null
+          al_rejected_n: number | null
+          al_synced_at: string | null
+          al_total: number | null
+          comp_pct: number | null
+          contracted_at: string | null
+          display_name: string | null
+          dup_npn_with: string | null
+          eft_ready: boolean | null
+          email: string | null
+          ethos_level: string | null
+          ethos_level_expected: string | null
+          ethos_level_verdict: string | null
+          ethos_partner_id: string | null
+          ethos_status: string | null
+          ethos_subagency: string | null
+          ethos_synced_at: string | null
+          has_eo: boolean | null
+          is_inactive: boolean | null
+          license_status: string | null
+          manager_name: string | null
+          next_action: string | null
+          nipr_verified: boolean | null
+          npn_al: string | null
+          npn_db: string | null
+          npn_ethos: string | null
+          npn_verdict: string | null
+          phone: string | null
+          recon_bucket: string | null
+          status: string | null
+        }
+        Relationships: []
+      }
+      v_contracting_audit_summary: {
+        Row: {
+          agents: number | null
+          licensed: number | null
+          next_action: string | null
+          who: string | null
         }
         Relationships: []
       }

@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      ayro_book: {
+        Row: {
+          agent_id: string | null
+          agent_name: string
+          annual_premium: number
+          carrier: string | null
+          id: number
+          imported_at: string
+          is_excluded: boolean
+          period: string
+          policy_number: string | null
+          source: string
+          status: string | null
+        }
+        Insert: {
+          agent_id?: string | null
+          agent_name: string
+          annual_premium?: number
+          carrier?: string | null
+          id?: number
+          imported_at?: string
+          is_excluded?: boolean
+          period?: string
+          policy_number?: string | null
+          source?: string
+          status?: string | null
+        }
+        Update: {
+          agent_id?: string | null
+          agent_name?: string
+          annual_premium?: number
+          carrier?: string | null
+          id?: number
+          imported_at?: string
+          is_excluded?: boolean
+          period?: string
+          policy_number?: string | null
+          source?: string
+          status?: string | null
+        }
+        Relationships: []
+      }
       account_claims: {
         Row: {
           created_at: string
@@ -101118,6 +101160,42 @@ export type Database = {
           status: string | null
           unreconciled_ap: number | null
           unreconciled_count: number | null
+        }
+        Relationships: []
+      }
+      v_ayro_book: {
+        Row: {
+          agent_id: string | null
+          agent_name: string | null
+          annual_premium: number | null
+          carrier: string | null
+          id: number | null
+          imported_at: string | null
+          is_excluded: boolean | null
+          no_policy_number: boolean | null
+          policy_number: string | null
+          status: string | null
+        }
+        Relationships: []
+      }
+      v_ayro_production: {
+        Row: {
+          agent_id: string | null
+          agent_name: string | null
+          all_time_production: number | null
+          carriers: string | null
+          deals: number | null
+        }
+        Relationships: []
+      }
+      v_ayro_totals: {
+        Row: {
+          agents: number | null
+          as_of: string | null
+          deals: number | null
+          excluded_agents: string | null
+          excluded_production: number | null
+          production: number | null
         }
         Relationships: []
       }

@@ -65,6 +65,7 @@ import { cn } from "@/lib/utils";
 import { AgentLinkConnectionPrompt } from "@/components/dashboard/AgentLinkConnectionPrompt";
 import { AgentNameLink } from "@/components/dashboard/AgentNameLink";
 import { BookAuditPanel } from "@/components/dashboard/BookAuditPanel";
+import { AyroProductionPanel } from "@/components/dashboard/AyroProductionPanel";
 import { toast } from "@/hooks/use-toast";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -1371,6 +1372,9 @@ export default function BookOfBusiness() {
       />
 
       <AgentLinkConnectionPrompt />
+
+      {/* Sam 2026-09-24: Ayro Financial production (separate book) now live on the site. */}
+      <AyroProductionPanel />
 
       {/* Sam 2026-09-24: the book audit bot — tallies at the top, flagged policies below. */}
       <BookAuditPanel />

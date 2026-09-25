@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "Ayro Financial production is now live on the site. Pulled all-time from el.ayrofinancial.com into its own ayro_book table and rendered at the top of Book of Business: Tyler Krejcha $14,354, Michael Kayembe $5,651, jontay taylor $1,700, Travis N $1,620, David agbebaku $763 — $24,088 across 5 agents. Snowflake and Dom excluded per Sam.",
+    detail:
+      "Migration ayro_book_ingest: public.ayro_book (20 deals, is_excluded flag), v_ayro_production / v_ayro_book / v_ayro_totals, agent_id linked by name. AyroProductionPanel on BookOfBusiness.tsx. A separate book from AgentLink/Ethos so a resync can't wipe it.",
+    commit: "mp-ayro-1",
+  },
+  {
+    ts: "today",
+    label:
       "Contracting audit + Ethos NPN/level fixes + Book-of-Business audit bot. /dashboard/contracting/audit reconciles every agent against AgentLink (219 live) and the Ethos sheet (131 rows) and gives each ONE next action; 60 NPNs backfilled/corrected with an audit log; the book page now opens with flagged-policy tallies (no policy number / carriers we don’t use) and the carrier to move each one to.",
     detail:
       "Migrations contracting_audit + contracting_fixes + book_audit_bot: agentlink_roster + ethos_roster tables, v_contracting_audit/_summary, v_ethos_paste_rows + v_ethos_agent_updates (exact sheet columns, copy-as-TSV from the Audit tab), npn_audit_log (54 backfilled from AgentLink, 2 from Ethos, Jayden Jones + Chudi corrected, Sam’s 21346366 set, 3 placeholders cleared), comp basis re-based on Sam-set levels only. carrier_registry Foresters → inactive; v_book_audit_items/_tally/_totals/_by_agent; fn_book_audit_run() on pg_cron 07:00 Phoenix snapshots and pages only on NEW flags. Marlyn Johnson’s missing agent.hired outbox rows inserted.",

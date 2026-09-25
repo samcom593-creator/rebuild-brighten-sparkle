@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "Contracting delivery is fixed at the root: every producer on the contracting link now posts to the private contracting Discord channel and gets their Ethos row, no matter how the intake was created. Nine leaderboard producers that had been recorded but never posted are now live in Discord (verified message IDs), and the Ethos paste rows carry the level8 / John Ray tag.",
+    detail:
+      "New fn_ensure_contracting_delivery_legs + AFTER trigger on contracting_intakes mirrors submit_contracting_intake's idempotent enqueue, so an admin/backfill/importer path can no longer leave an intake with only a Slack ping and no Discord/Ethos leg. Backfilled 9 intakes: contracting_discord delivered 9/9, 47/47 intakes now delivered to Discord. Ethos automated sheet write stays not_configured until the Google service credential is restored; paste-rows path carries the tag. Re-measured the leaderboard: 0 of 29 no-intake producers are an active+licensed+valid-NPN person — the rest are non-live/duplicate/terminated book rows or inactive agents (human steps the audit already tracks).",
+    commit: "mp-contracting-delivery-legs",
+  },
+  {
+    ts: "today",
+    label:
       "Scoreboard now shows production by hierarchy — every downline lead (Obi and anyone with a team) with their group\u2019s production and policy count, not just two agency lines. Added a comp-% hide button so you can post numbers without exposing what level you\u2019re at, alongside the name / projection / split / earnings blur toggles and the Present-all switch.",
     detail:
       "ScopedProductionScoreboard: agency split replaced by a per-hierarchy breakdown driven by the same grouping as the who-sold list (Vantage / each first-hop sub-agency head / direct), each with AP + policies. New blur.comp toggle blurs viewer comp %, seller comp, override % and first-hop % across the card; Present now covers comp too. Light striping/polish. No data change.",

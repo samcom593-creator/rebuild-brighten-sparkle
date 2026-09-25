@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "One-click contracting worklist added: the 73 contracts waiting on you, grouped by what needs doing (25 rejected-contract fixes, 15 incomplete AgentLink profiles, and so on), each with a check-off that persists across reloads. Handle one and it drops away; if the next sync shows the same gap still open, it comes back so nothing gets silently lost.",
+    detail:
+      "New contracting_worklist_ack table (admin RLS) + contracting_worklist_ack/unack RPCs + v_contracting_worklist (Sam-owned next_actions from v_contracting_audit joined to handled state, keyed on agent_id + exact next_action so an ack only holds while that gap holds). Worklist card in OnboardingCommand with a progress bar, grouped open items, an AgentLink shortcut on AgentLink steps and the Copy-Ethos-rows hint on Ethos steps, and an undo strip. Live via migration 20260925191041.",
+    commit: "mp-contracting-worklist",
+  },
+  {
+    ts: "today",
+    label:
       "Onboarding command board added to the contracting audit: a visual funnel showing where every one of 126 live agents' contracts are parked, who owns the next move, and how many are sitting on you (73). Plus a free-leads tracker — who has earned free leads on the trailing 30 weekdays ($20k production and $15k verified/policy-numbered) and who is close.",
     detail:
       "New v_onboarding_funnel (+_summary) over v_contracting_audit — 16 ordered stages, owner per stage (you / agent / carrier / Ethos), 0 fully contracted surfaced honestly. v_free_leads_qualification (+_summary) reads v_production_canonical (the LIVE feed, not the frozen book snapshot): trailing 30 days weekdays-only, verified = carries a policy number. 2 qualify today (Edwin Ac-lumor, Obiajulu Ifediora), 16 producing-but-short with exact gap-to-threshold. OnboardingCommand panel mounts at the top of /dashboard/contracting/audit. Book-of-business carrier flagging (Foresters / Royal Neighbors / American Amicable = we don't hold these) already live on /dashboard/book-of-business. types.ts + relation/column catalogs regenerated from live.",

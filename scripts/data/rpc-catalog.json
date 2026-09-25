@@ -1414,6 +1414,35 @@
         "raw": ""
       }
     ],
+    "contracting_worklist_ack": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_next_action",
+          "p_note"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_next_action"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_next_action text, p_note text DEFAULT NULL::text"
+      }
+    ],
+    "contracting_worklist_unack": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_next_action"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_next_action"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_next_action text"
+      }
+    ],
     "count_unscheduled_agents": [
       {
         "all": [],
@@ -2073,6 +2102,34 @@
         "raw": "p_alert_id uuid, p_title text, p_body text, p_priority text DEFAULT 'high'::text"
       }
     ],
+    "fn_agentlink_book_verdict": [
+      {
+        "all": [
+          "p_book_rows",
+          "p_deals_24h",
+          "p_errors_24h",
+          "p_last_ok",
+          "p_newest_posted",
+          "p_no_cookie_7d",
+          "p_ok_24h",
+          "p_policies_seen",
+          "p_stuck"
+        ],
+        "required": [
+          "p_book_rows",
+          "p_deals_24h",
+          "p_errors_24h",
+          "p_last_ok",
+          "p_newest_posted",
+          "p_no_cookie_7d",
+          "p_ok_24h",
+          "p_policies_seen",
+          "p_stuck"
+        ],
+        "unnamed": false,
+        "raw": "p_ok_24h integer, p_policies_seen integer, p_deals_24h integer, p_stuck integer, p_errors_24h integer, p_no_cookie_7d integer, p_last_ok timestamp with time zone, p_book_rows integer, p_newest_posted date"
+      }
+    ],
     "fn_agentlink_outbox_uuid": [
       {
         "all": [
@@ -2150,6 +2207,14 @@
       }
     ],
     "fn_alert_sms_fix_anchor": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_apex_log_http_call": [
       {
         "all": [],
         "required": [],
@@ -2301,6 +2366,46 @@
         "raw": ""
       }
     ],
+    "fn_book_audit_run": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_book_parity_anchor": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_book_policy_identity_ok": [
+      {
+        "all": [
+          "p"
+        ],
+        "required": [
+          "p"
+        ],
+        "unnamed": false,
+        "raw": "p text"
+      }
+    ],
+    "fn_book_policy_key": [
+      {
+        "all": [
+          "p"
+        ],
+        "required": [
+          "p"
+        ],
+        "unnamed": false,
+        "raw": "p text"
+      }
+    ],
     "fn_book_row_proves_license": [
       {
         "all": [],
@@ -2310,6 +2415,14 @@
       }
     ],
     "fn_book_row_sets_first_deal": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_brand_lead_alert": [
       {
         "all": [],
         "required": [],
@@ -2701,6 +2814,30 @@
         "raw": ""
       }
     ],
+    "fn_ensure_contracting_delivery_legs": [
+      {
+        "all": [
+          "p_intake_id"
+        ],
+        "required": [
+          "p_intake_id"
+        ],
+        "unnamed": false,
+        "raw": "p_intake_id uuid"
+      }
+    ],
+    "fn_ethos_level_for_pct": [
+      {
+        "all": [
+          "pct"
+        ],
+        "required": [
+          "pct"
+        ],
+        "unnamed": false,
+        "raw": "pct numeric"
+      }
+    ],
     "fn_evaluate_personal_records": [
       {
         "all": [
@@ -2790,6 +2927,26 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "fn_insuracloud_lane_verdict": [
+      {
+        "all": [
+          "p_fires_7d",
+          "p_has_any_snapshot",
+          "p_has_clean_snapshot",
+          "p_last_success",
+          "p_repl_ok_24h"
+        ],
+        "required": [
+          "p_fires_7d",
+          "p_has_any_snapshot",
+          "p_has_clean_snapshot",
+          "p_last_success",
+          "p_repl_ok_24h"
+        ],
+        "unnamed": false,
+        "raw": "p_last_success timestamp with time zone, p_repl_ok_24h integer, p_fires_7d integer, p_has_any_snapshot boolean, p_has_clean_snapshot boolean"
       }
     ],
     "fn_insuracloud_refusal_anchor": [
@@ -3115,6 +3272,19 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "fn_npn_plausible": [
+      {
+        "all": [
+          "npn",
+          "phone"
+        ],
+        "required": [
+          "npn"
+        ],
+        "unnamed": false,
+        "raw": "npn text, phone text DEFAULT NULL::text"
       }
     ],
     "fn_onboarding_email_backfill_sweep": [
@@ -3525,6 +3695,18 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "fn_text_json_safe": [
+      {
+        "all": [
+          "p"
+        ],
+        "required": [
+          "p"
+        ],
+        "unnamed": false,
+        "raw": "p text"
       }
     ],
     "fn_today_tasks_touch_updated_at": [
@@ -4074,6 +4256,31 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "ingest_ayro_sales_deal": [
+      {
+        "all": [
+          "p_agent_name",
+          "p_annual_premium",
+          "p_carrier",
+          "p_external_ref",
+          "p_face_amount",
+          "p_monthly_premium",
+          "p_occurred_at",
+          "p_policy_number",
+          "p_posted_date",
+          "p_product",
+          "p_status"
+        ],
+        "required": [
+          "p_agent_name",
+          "p_annual_premium",
+          "p_carrier",
+          "p_policy_number"
+        ],
+        "unnamed": false,
+        "raw": "p_policy_number text, p_agent_name text, p_carrier text, p_annual_premium numeric, p_monthly_premium numeric DEFAULT NULL::numeric, p_face_amount numeric DEFAULT NULL::numeric, p_occurred_at timestamp with time zone DEFAULT now(), p_posted_date date DEFAULT ((now() AT TIME ZONE 'America/Phoenix'::text))::date, p_status text DEFAULT 'active'::text, p_product text DEFAULT NULL::text, p_external_ref text DEFAULT NULL::text"
       }
     ],
     "ingest_discord_production_deal": [
@@ -6235,6 +6442,14 @@
       }
     ],
     "trg_fn_deal_status_transition": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "trg_fn_ensure_contracting_legs": [
       {
         "all": [],
         "required": [],

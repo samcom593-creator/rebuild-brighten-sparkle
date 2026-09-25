@@ -12,13 +12,15 @@
  * Both views are security_invoker and this panel is admin-only (the audit route gates it).
  */
 import type { ReactNode } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Users, Gauge, Ticket, RefreshCw } from "lucide-react";
+import { Users, Gauge, Ticket, RefreshCw, CheckCircle2, Circle, ExternalLink, ClipboardCopy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 type FunnelStage = {
   stage_key: string; stage_order: number; owner: string; label: string;
@@ -40,6 +42,29 @@ type FreeLeadSummary = {
 
 const money = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n || 0);
+
+type WorkItem = {
+  agent_id: string; display_name: string; manager_name: string | null; next_action: string;
+  license_status: string | null; npn_db: string | null; email: string | null; al_id: string | null;
+  ethos_status: string; handled: boolean; acked_at: string | null; note: string | null;
+};
+
+// Per-action label + the fastest way to actually clear it. AgentLink fixes happen
+// in AgentLink; Ethos rows are the copy-to-sheet buttons above; merges are the
+// dedupe tool. "kind" drives which shortcut renders on the row.
+const WORK_META: Record<string, { label: string; kind: "agentlink" | "ethos" | "merge" }> = {
+  resolve_npn_conflict:            { label: "Resolve NPN conflict", kind: "agentlink" },
+  backfill_npn_from_source:        { label: "Backfill NPN", kind: "agentlink" },
+  merge_duplicate_agent_rows:      { label: "Merge duplicate rows", kind: "merge" },
+  create_agentlink_profile:        { label: "Create AgentLink profile", kind: "agentlink" },
+  complete_agentlink_profile:      { label: "Complete AgentLink profile", kind: "agentlink" },
+  upline_assign_in_agentlink:      { label: "Assign upline", kind: "agentlink" },
+  fix_rejected_contracts:          { label: "Fix rejected contracts", kind: "agentlink" },
+  no_active_carrier_contracts:     { label: "No active carrier contract", kind: "agentlink" },
+  add_to_ethos_sheet:              { label: "Add to Ethos sheet", kind: "ethos" },
+  ethos_agent_update_comp_level:   { label: "Fix Ethos comp level", kind: "ethos" },
+};
+const AGENTLINK_URL = "https://agentlink.insuracloud.ai";
 
 const OWNER_TONE: Record<string, string> = {
   Sam: "bg-amber-500/70 border-amber-400/50 text-amber-200",
@@ -95,11 +120,42 @@ export function OnboardingCommand() {
     },
   });
 
+  const worklistQ = useQuery({
+    queryKey: ["contracting-worklist"],
+    staleTime: 60_000,
+    queryFn: async (): Promise<WorkItem[]> => {
+      const { data, error } = await supabase.from("v_contracting_worklist" as never).select("*").order("next_action");
+      if (error) throw error;
+      return (data ?? []) as unknown as WorkItem[];
+    },
+  });
+  const [busy, setBusy] = useState<Record<string, boolean>>({});
+
+  const toggleHandled = async (it: WorkItem) => {
+    const key = `${it.agent_id}:${it.next_action}`;
+    setBusy((b) => ({ ...b, [key]: true }));
+    const fn = it.handled ? "contracting_worklist_unack" : "contracting_worklist_ack";
+    const args = it.handled
+      ? { p_agent_id: it.agent_id, p_next_action: it.next_action }
+      : { p_agent_id: it.agent_id, p_next_action: it.next_action, p_note: null };
+    const { error } = await supabase.rpc(fn as never, args as never);
+    setBusy((b) => ({ ...b, [key]: false }));
+    if (error) { toast.error(`Could not update: ${error.message}`); return; }
+    await worklistQ.refetch();
+  };
+
   const fs = funnelSumQ.data;
   const stages = funnelQ.data ?? [];
   const maxAgents = Math.max(1, ...stages.map((s) => s.agents));
   const leads = leadsQ.data ?? [];
   const ls = leadsSumQ.data;
+
+  const work = worklistQ.data ?? [];
+  const workOpen = work.filter((w) => !w.handled);
+  const workDone = work.filter((w) => w.handled);
+  const workGroups = Array.from(new Set(workOpen.map((w) => w.next_action)))
+    .map((action) => ({ action, items: workOpen.filter((w) => w.next_action === action) }))
+    .sort((a, b) => b.items.length - a.items.length);
 
   return (
     <div className="space-y-4">
@@ -233,6 +289,108 @@ export function OnboardingCommand() {
                 )}
               </tbody>
             </table>
+          </div>
+        )}
+      </GlassCard>
+
+      {/* ── Your worklist ─────────────────────────────────────────────── */}
+      <GlassCard className="space-y-3 p-4 sm:p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <CheckCircle2 className="h-4 w-4 text-primary" /> Your worklist — the contracts waiting on you
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {workDone.length} of {work.length} handled. Check one off and it drops away; if the next sync shows the same gap still open, it comes back.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => worklistQ.refetch()}
+            className="text-muted-foreground hover:text-foreground"
+            aria-label="Refresh worklist"
+          >
+            <RefreshCw className={cn("h-4 w-4", worklistQ.isFetching && "animate-spin")} />
+          </button>
+        </div>
+
+        {work.length > 0 && (
+          <div className="h-1.5 overflow-hidden rounded-full bg-muted/30">
+            <div className="h-full rounded-full bg-emerald-500/70" style={{ width: `${Math.round((workDone.length / work.length) * 100)}%` }} />
+          </div>
+        )}
+
+        {worklistQ.isLoading ? (
+          <Skeleton className="h-40" />
+        ) : (
+          <div className="space-y-4">
+            {workGroups.map((g) => {
+              const meta = WORK_META[g.action] ?? { label: g.action, kind: "agentlink" as const };
+              return (
+                <div key={g.action} className="space-y-1">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-amber-300">
+                    {meta.label} <span className="text-muted-foreground">· {g.items.length}</span>
+                  </div>
+                  {g.items.map((it) => {
+                    const key = `${it.agent_id}:${it.next_action}`;
+                    return (
+                      <div key={key} className="flex items-center gap-2 rounded-md border border-border/40 bg-muted/10 px-2 py-1.5">
+                        <button
+                          type="button"
+                          disabled={!!busy[key]}
+                          onClick={() => toggleHandled(it)}
+                          className="shrink-0 text-muted-foreground hover:text-emerald-400 disabled:opacity-40"
+                          aria-label="Mark handled"
+                        >
+                          <Circle className="h-4 w-4" />
+                        </button>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-medium">{it.display_name}</div>
+                          <div className="truncate text-[11px] text-muted-foreground">
+                            {it.manager_name ? `↑ ${it.manager_name}` : "no manager"}{it.npn_db ? ` · NPN ${it.npn_db}` : ""}
+                          </div>
+                        </div>
+                        {meta.kind === "agentlink" && (
+                          <a href={AGENTLINK_URL} target="_blank" rel="noopener noreferrer"
+                             className="inline-flex shrink-0 items-center gap-1 text-[11px] text-sky-300 hover:underline">
+                            AgentLink <ExternalLink className="h-3 w-3" />
+                          </a>
+                        )}
+                        {meta.kind === "ethos" && (
+                          <span className="inline-flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground">
+                            <ClipboardCopy className="h-3 w-3" /> Copy Ethos rows above
+                          </span>
+                        )}
+                        {meta.kind === "merge" && (
+                          <span className="shrink-0 text-[11px] text-muted-foreground">Dedupe tool</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+            {!workOpen.length && (
+              <div className="py-6 text-center text-sm text-emerald-400">Nothing waiting on you. Every Sam-owned contract step is handled.</div>
+            )}
+            {workDone.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 border-t border-border/40 pt-2 text-[11px] text-muted-foreground">
+                <span>{workDone.length} handled:</span>
+                {workDone.slice(0, 14).map((it) => (
+                  <button
+                    key={`${it.agent_id}:${it.next_action}`}
+                    type="button"
+                    disabled={!!busy[`${it.agent_id}:${it.next_action}`]}
+                    onClick={() => toggleHandled(it)}
+                    className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 px-2 py-0.5 text-emerald-400/80 hover:text-emerald-300 disabled:opacity-40"
+                    title="Undo"
+                  >
+                    <CheckCircle2 className="h-3 w-3" /> {it.display_name}
+                  </button>
+                ))}
+                {workDone.length > 14 && <span>+{workDone.length - 14} more</span>}
+              </div>
+            )}
           </div>
         )}
       </GlassCard>

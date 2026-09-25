@@ -2724,6 +2724,14 @@
       "name",
       "url"
     ],
+    "contracting_worklist_ack": [
+      "acked_at",
+      "acked_by",
+      "agent_id",
+      "id",
+      "next_action",
+      "note"
+    ],
     "critical_loss_events": [
       "detected_at",
       "dollar_impact_cents",
@@ -7660,6 +7668,20 @@
       "production",
       "recon_bucket",
       "status"
+    ],
+    "v_contracting_worklist": [
+      "acked_at",
+      "agent_id",
+      "al_id",
+      "display_name",
+      "email",
+      "ethos_status",
+      "handled",
+      "license_status",
+      "manager_name",
+      "next_action",
+      "note",
+      "npn_db"
     ],
     "v_critical_losses_open": [
       "detected_at",

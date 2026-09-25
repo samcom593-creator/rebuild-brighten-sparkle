@@ -836,6 +836,24 @@
       "rank",
       "title"
     ],
+    "agentlink_roster": [
+      "active_contracts",
+      "al_user_id",
+      "approval_status",
+      "carriers",
+      "deactivated_at",
+      "depth",
+      "email",
+      "first_name",
+      "last_active_at",
+      "last_name",
+      "npn",
+      "phone",
+      "producer_active",
+      "synced_at",
+      "total_contracts",
+      "upline_al_id"
+    ],
     "agentlink_sync_log": [
       "deals_inserted",
       "deals_updated",
@@ -1299,6 +1317,12 @@
       "note",
       "updated_at",
       "value"
+    ],
+    "apex_http_call_log": [
+      "method",
+      "posted_at",
+      "request_id",
+      "url"
     ],
     "apex_manychat_push_log": [
       "application_id",
@@ -1849,6 +1873,19 @@
       "winner_amount",
       "winner_name"
     ],
+    "ayro_book": [
+      "agent_id",
+      "agent_name",
+      "annual_premium",
+      "carrier",
+      "id",
+      "imported_at",
+      "is_excluded",
+      "period",
+      "policy_number",
+      "source",
+      "status"
+    ],
     "banned_prospects": [
       "banned_by",
       "created_at",
@@ -1858,6 +1895,16 @@
       "last_name",
       "phone",
       "reason"
+    ],
+    "book_audit_runs": [
+      "alerted",
+      "cleared",
+      "flagged_keys",
+      "id",
+      "new_flagged",
+      "ran_at",
+      "tally",
+      "totals"
     ],
     "bot_alerts": [
       "action_link",
@@ -1910,6 +1957,22 @@
       "rank",
       "sub_bot",
       "title"
+    ],
+    "brand_leads": [
+      "answers",
+      "created_at",
+      "email",
+      "fit_reason",
+      "id",
+      "income_range",
+      "name",
+      "page",
+      "phone",
+      "rental_end",
+      "rental_start",
+      "source",
+      "status",
+      "user_agent"
     ],
     "calendar_events": [
       "created_at",
@@ -3302,6 +3365,24 @@
       "source_row_numbers",
       "updated_at"
     ],
+    "ethos_roster": [
+      "advance",
+      "comment",
+      "comp_level",
+      "email",
+      "first_name",
+      "id",
+      "last_name",
+      "npn",
+      "partner_code",
+      "partner_id",
+      "phone",
+      "portal",
+      "source",
+      "subagency",
+      "synced_at",
+      "upline_npn"
+    ],
     "external_identities": [
       "created_at",
       "external_id",
@@ -4484,6 +4565,15 @@
       "title",
       "type",
       "user_id"
+    ],
+    "npn_audit_log": [
+      "agent_id",
+      "changed_at",
+      "id",
+      "new_npn",
+      "note",
+      "old_npn",
+      "source"
     ],
     "numbers_reminder_delivery_log": [
       "agent_id",
@@ -6240,6 +6330,8 @@
     "v_agentlink_auth_health": [
       "agent_link_deals_inserted_24h",
       "as_of",
+      "book_newest_posted",
+      "book_rows",
       "errors_24h",
       "last_attempt_at",
       "last_ok_at",
@@ -6247,7 +6339,8 @@
       "pipeline",
       "status",
       "stuck_running_rows",
-      "successful_syncs_24h"
+      "successful_syncs_24h",
+      "upstream_policies_seen_24h"
     ],
     "v_agentlink_book_freshness": [
       "days_since_last_posted",
@@ -6729,6 +6822,33 @@
       "web_rows",
       "window_days"
     ],
+    "v_ayro_book": [
+      "agent_id",
+      "agent_name",
+      "annual_premium",
+      "carrier",
+      "id",
+      "imported_at",
+      "is_excluded",
+      "no_policy_number",
+      "policy_number",
+      "status"
+    ],
+    "v_ayro_production": [
+      "agent_id",
+      "agent_name",
+      "all_time_production",
+      "carriers",
+      "deals"
+    ],
+    "v_ayro_totals": [
+      "agents",
+      "as_of",
+      "deals",
+      "excluded_agents",
+      "excluded_production",
+      "production"
+    ],
     "v_blacklisted_carrier_deals": [
       "al_user_id",
       "annual_premium",
@@ -6741,6 +6861,58 @@
       "id",
       "product_sold",
       "snapshot_at"
+    ],
+    "v_book_audit_by_agent": [
+      "agent_id",
+      "agent_name",
+      "live_policies",
+      "no_policy_number_alp",
+      "no_policy_number_n",
+      "reroute_to",
+      "unused_carrier_alp",
+      "unused_carrier_n",
+      "unused_carriers"
+    ],
+    "v_book_audit_items": [
+      "age_days",
+      "agent_id",
+      "agent_name",
+      "annual_premium",
+      "carrier",
+      "carrier_relationship",
+      "category",
+      "client_name",
+      "dated",
+      "flag_no_policy_number",
+      "flag_unused_carrier",
+      "item_key",
+      "policy_number",
+      "product",
+      "reroute_to",
+      "source",
+      "status"
+    ],
+    "v_book_audit_tally": [
+      "agents",
+      "alp",
+      "carrier",
+      "category",
+      "last_30d",
+      "policies"
+    ],
+    "v_book_audit_totals": [
+      "agentlink_book_as_of",
+      "both_n",
+      "ethos_book_as_of",
+      "flagged_n",
+      "live_alp",
+      "live_policies",
+      "no_policy_number_alp",
+      "no_policy_number_n",
+      "unused_by_carrier",
+      "unused_carrier_alp",
+      "unused_carrier_n",
+      "unused_carriers"
     ],
     "v_book_by_month": [
       "avg_premium",
@@ -6763,6 +6935,43 @@
       "lapsed",
       "persistency_pct",
       "reached_policy"
+    ],
+    "v_book_premium_parity": [
+      "agree_rows",
+      "amb_collision_ap",
+      "amb_collision_detail",
+      "amb_identity_collision_rows",
+      "amb_identity_collision_since_anchor",
+      "amb_pairing_rows",
+      "amb_parts_reconcile",
+      "amb_placeholder_collision_rows",
+      "amb_placeholder_collision_since_anchor",
+      "amb_placeholder_namematched_rows",
+      "ambiguous_rows",
+      "as_of",
+      "disagree_book_ap",
+      "disagree_deals_ap",
+      "disagree_policies",
+      "disagree_rows",
+      "disagree_rows_since_anchor",
+      "identity_conflict_detail",
+      "identity_conflict_rows",
+      "identity_conflict_rows_since_anchor",
+      "norm_merge_detail",
+      "norm_merge_groups",
+      "placeholder_keyed_agree",
+      "placeholder_keyed_ap",
+      "placeholder_keyed_detail",
+      "placeholder_keyed_disagree",
+      "placeholder_keyed_rows",
+      "provable_by_client_key",
+      "provable_by_policy",
+      "provable_rows",
+      "total_rows",
+      "uncorroborated_rows",
+      "unmatched_rows",
+      "verdict",
+      "worst_gap"
     ],
     "v_book_status_segments": [
       "alp_30d",
@@ -6809,6 +7018,20 @@
       "severity",
       "sms_receipt_is_literal",
       "sms_requested"
+    ],
+    "v_brand_leads": [
+      "created_phx",
+      "email",
+      "fit_reason",
+      "id",
+      "income_range",
+      "name",
+      "page",
+      "phone",
+      "rental_end",
+      "rental_start",
+      "source",
+      "status"
     ],
     "v_builder_operating_dashboard": [
       "above_100k_monthly",
@@ -7098,6 +7321,21 @@
       "unlinked_count",
       "unusual_amount_count"
     ],
+    "v_cfo_ghost_ap_verdict": [
+      "as_of",
+      "carrier_policies_rows",
+      "corroborated_ap",
+      "corroborated_rows",
+      "legacy_unfiltered_ap",
+      "native_unpushed_ap",
+      "native_unpushed_rows",
+      "newest_unreconciled_posted_at",
+      "not_ghost_ap",
+      "not_ghost_rows",
+      "unreconciled_ap",
+      "unreconciled_rows",
+      "verdict"
+    ],
     "v_cfo_ica_paid_stuck": [
       "as_of",
       "in_contracting",
@@ -7108,12 +7346,25 @@
       "stuck_count",
       "stuck_list"
     ],
+    "v_cfo_ica_paid_verdict": [
+      "as_of",
+      "awaiting_decision",
+      "decided_rejected",
+      "newest_paid_at",
+      "oldest_paid_at",
+      "stuck_count",
+      "verdict"
+    ],
     "v_cfo_snapshot": [
       "agentlink_sync",
       "as_of",
       "dup_charges_open",
       "ghost_ap_at_risk",
+      "ghost_ap_unreconciled",
+      "ghost_verdict",
+      "ica_awaiting_decision",
       "ica_paid_stuck",
+      "ica_verdict",
       "idle_active_agents",
       "insuracloud_sync",
       "lapsed_walked_commission",
@@ -7330,6 +7581,52 @@
       "rows",
       "status"
     ],
+    "v_contracting_audit": [
+      "agent_id",
+      "al_active",
+      "al_approval",
+      "al_carriers_active",
+      "al_carriers_blocked",
+      "al_carriers_inflight",
+      "al_id",
+      "al_incomplete_profile_n",
+      "al_pending_upline_n",
+      "al_rejected_n",
+      "al_synced_at",
+      "al_total",
+      "comp_pct",
+      "contracted_at",
+      "display_name",
+      "dup_npn_with",
+      "eft_ready",
+      "email",
+      "ethos_level",
+      "ethos_level_expected",
+      "ethos_level_verdict",
+      "ethos_partner_id",
+      "ethos_status",
+      "ethos_subagency",
+      "ethos_synced_at",
+      "has_eo",
+      "is_inactive",
+      "license_status",
+      "manager_name",
+      "next_action",
+      "nipr_verified",
+      "npn_al",
+      "npn_db",
+      "npn_ethos",
+      "npn_verdict",
+      "phone",
+      "recon_bucket",
+      "status"
+    ],
+    "v_contracting_audit_summary": [
+      "agents",
+      "licensed",
+      "next_action",
+      "who"
+    ],
     "v_contracting_intake_status": [
       "accepted_at",
       "attempts",
@@ -7348,6 +7645,20 @@
       "receipt",
       "review_reason",
       "state",
+      "status"
+    ],
+    "v_contracting_reconciliation": [
+      "agent_id",
+      "canonical_agent_id",
+      "comp_pct",
+      "display_name",
+      "has_login",
+      "is_alias",
+      "is_inactive",
+      "license_status",
+      "nipr_number",
+      "production",
+      "recon_bucket",
       "status"
     ],
     "v_critical_losses_open": [
@@ -7563,6 +7874,19 @@
       "in_force_deals",
       "manager"
     ],
+    "v_edge_call_health": [
+      "calls",
+      "last_call",
+      "last_error_body",
+      "last_status",
+      "n_2xx",
+      "n_4xx",
+      "n_5xx",
+      "n_timeout",
+      "resolved",
+      "slug",
+      "unresolved"
+    ],
     "v_ethos_agent_link_health": [
       "agents_total",
       "agents_with_npn",
@@ -7572,6 +7896,42 @@
       "ethos_policy_rows",
       "names_matched",
       "policy_rows_attributable"
+    ],
+    "v_ethos_agent_updates": [
+      "Advanced Payments",
+      "Agent First Name",
+      "Agent Last Name",
+      "Agent NPN",
+      "Comp Level",
+      "Direct Upline's NPN",
+      "Information submitted Date",
+      "PII Information",
+      "Termination",
+      "comp_pct",
+      "current_sheet_level",
+      "display_name"
+    ],
+    "v_ethos_paste_rows": [
+      "$1M in E&O coverage?",
+      "Advance Pay Tier",
+      "Agent Email",
+      "Agent First Name",
+      "Agent Last Name",
+      "Agent Mobile Number",
+      "Agent NPN",
+      "Comments",
+      "Comp Level",
+      "Date Portal Created",
+      "Direct Upline NPN",
+      "Ethos Partner Code",
+      "Ethos Partner ID",
+      "Ethos Partnership Ops Notes",
+      "Invite",
+      "Life Licensed?",
+      "Portal Created",
+      "Sub-Agency Name",
+      "Sub-Agent Head?",
+      "display_name"
     ],
     "v_external_production_gap": [
       "agency_name",
@@ -7597,6 +7957,28 @@
       "face_amount",
       "id",
       "policy_number"
+    ],
+    "v_free_leads_qualification": [
+      "agent_id",
+      "agent_name",
+      "deals_30d",
+      "ipd_gap",
+      "ipd_threshold",
+      "ipd_verified_30d",
+      "last_deal_date",
+      "production_30d",
+      "production_gap",
+      "production_threshold",
+      "qualifies_free_leads"
+    ],
+    "v_free_leads_summary": [
+      "ipd_threshold",
+      "not_yet_qualifying",
+      "producing_agents_30d",
+      "production_threshold",
+      "qualifying_agents",
+      "rule",
+      "window_days"
     ],
     "v_funnel_by_source": [
       "moved_past_new",
@@ -7787,9 +8169,12 @@
     ],
     "v_insuracloud_auth_health": [
       "days_dark",
+      "insuracloud_fires_7d",
       "last_7d",
       "last_event_at",
       "pipeline",
+      "replacement_last_ok_at",
+      "replacement_ok_syncs_24h",
       "status",
       "total_rows"
     ],
@@ -9174,6 +9559,23 @@
       "source",
       "updated_at",
       "was_rescheduled"
+    ],
+    "v_onboarding_funnel": [
+      "agents",
+      "label",
+      "licensed",
+      "owner",
+      "pct_complete_at_stage",
+      "pct_of_agents",
+      "stage_key",
+      "stage_order"
+    ],
+    "v_onboarding_funnel_summary": [
+      "fully_contracted",
+      "live_agents",
+      "waiting_external",
+      "waiting_on_agent",
+      "waiting_on_sam"
     ],
     "v_onboarding_integrity": [
       "added_on",

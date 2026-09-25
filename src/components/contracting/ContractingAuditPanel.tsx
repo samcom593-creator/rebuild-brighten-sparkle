@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { OnboardingCommand } from "@/components/contracting/OnboardingCommand";
 
 type Row = {
   agent_id: string; display_name: string; email: string | null; phone: string | null; manager_name: string | null;
@@ -134,6 +135,8 @@ export function ContractingAuditPanel() {
 
   return (
     <div className="space-y-4">
+      <OnboardingCommand />
+
       <GlassCard className="space-y-3 p-4 sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>

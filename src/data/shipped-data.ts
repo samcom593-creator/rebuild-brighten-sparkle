@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "Onboarding command board added to the contracting audit: a visual funnel showing where every one of 126 live agents' contracts are parked, who owns the next move, and how many are sitting on you (73). Plus a free-leads tracker — who has earned free leads on the trailing 30 weekdays ($20k production and $15k verified/policy-numbered) and who is close.",
+    detail:
+      "New v_onboarding_funnel (+_summary) over v_contracting_audit — 16 ordered stages, owner per stage (you / agent / carrier / Ethos), 0 fully contracted surfaced honestly. v_free_leads_qualification (+_summary) reads v_production_canonical (the LIVE feed, not the frozen book snapshot): trailing 30 days weekdays-only, verified = carries a policy number. 2 qualify today (Edwin Ac-lumor, Obiajulu Ifediora), 16 producing-but-short with exact gap-to-threshold. OnboardingCommand panel mounts at the top of /dashboard/contracting/audit. Book-of-business carrier flagging (Foresters / Royal Neighbors / American Amicable = we don't hold these) already live on /dashboard/book-of-business. types.ts + relation/column catalogs regenerated from live.",
+    commit: "mp-onboarding-freeleads",
+  },
+  {
+    ts: "today",
+    label:
       "Contracting delivery is fixed at the root: every producer on the contracting link now posts to the private contracting Discord channel and gets their Ethos row, no matter how the intake was created. Nine leaderboard producers that had been recorded but never posted are now live in Discord (verified message IDs), and the Ethos paste rows carry the level8 / John Ray tag.",
     detail:
       "New fn_ensure_contracting_delivery_legs + AFTER trigger on contracting_intakes mirrors submit_contracting_intake's idempotent enqueue, so an admin/backfill/importer path can no longer leave an intake with only a Slack ping and no Discord/Ethos leg. Backfilled 9 intakes: contracting_discord delivered 9/9, 47/47 intakes now delivered to Discord. Ethos automated sheet write stays not_configured until the Google service credential is restored; paste-rows path carries the tag. Re-measured the leaderboard: 0 of 29 no-intake producers are an active+licensed+valid-NPN person — the rest are non-live/duplicate/terminated book rows or inactive agents (human steps the audit already tracks).",

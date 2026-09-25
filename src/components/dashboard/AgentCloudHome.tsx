@@ -22,6 +22,7 @@ import { JoinYourTeam } from "@/components/dashboard/JoinYourTeam";
 import { ProducerPulse } from "@/components/dashboard/ProducerPulse";
 import { RecordsAndBounties } from "@/components/dashboard/RecordsAndBounties";
 import { ScopedProductionScoreboard } from "@/components/dashboard/ScopedProductionScoreboard";
+import { AyroProductionPanel } from "@/components/dashboard/AyroProductionPanel";
 import { OperationsCommandCenter } from "@/components/dashboard/OperationsCommandCenter";
 import { cn } from "@/lib/utils";
 import { useProductionRealtime } from "@/hooks/useProductionRealtime";
@@ -253,6 +254,13 @@ export function AgentCloudHome() {
           course. */}
       {!isAdmin && <TrainingNextStep />}
       <ScopedProductionScoreboard />
+
+      {/* Ayro Financial production (Sam, 2026-09-24: "make it live on the block").
+          A SEPARATE book from AgentLink/Ethos — the scoreboard above is date-windowed
+          and reconciles to the penny, and the Ayro sales page carries no per-deal dates,
+          so its all-time production sits here beside the scoreboard rather than being
+          folded into it with fabricated dates. */}
+      <AyroProductionPanel />
 
       {/* MP-430: straight from the scoreboard to Total IMO by agency. The three
           amber panels that used to sit here (just-hired, roll call, unlinked

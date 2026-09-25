@@ -157,7 +157,7 @@ export default function CarrierContracts() {
         </>
       )}
       {mode === "documents" && <ContractDocuments />}
-      {mode === "audit" && (isAdmin ? <ContractingAuditPanel /> : <EmptyState title="Admins only" description="The contracting audit is an admin surface." />)}
+      {mode === "audit" && (isAdmin ? <ContractingAuditPanel /> : <EmptyState icon={<ClipboardList className="h-6 w-6" />} title="Admins only" description="The contracting audit is an admin surface." />)}
     </div>
   );
 }

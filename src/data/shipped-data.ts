@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "Production scoreboard rebuilt for posting: a Present toggle blurs names, the month-end projection, the agency split and earnings so you can screenshot numbers without leaking who or how much (click any blurred value to reveal it just for you). The \"who sold\" list is now grouped into collapsible agencies — Vantage, each sub-agency head, and direct sellers — each with its own subtotal.",
+    detail:
+      "ScopedProductionScoreboard: Reveal + SectionEye components, per-section eye buttons and a global Present button; who-sold rows grouped by hierarchy (Vantage / first-hop sub-agency head / direct), collapsible with subtotals; the External gap line removed from earnings and the agency split; agency-reported/unattributed line removed. No data change — same RPCs.",
+    commit: "mp-dash-present",
+  },
+  {
+    ts: "today",
+    label:
       "Ayro Financial production is now live on the site. Pulled all-time from el.ayrofinancial.com into its own ayro_book table and rendered at the top of Book of Business: Tyler Krejcha $14,354, Michael Kayembe $5,651, jontay taylor $1,700, Travis N $1,620, David agbebaku $763 — $24,088 across 5 agents. Snowflake and Dom excluded per Sam.",
     detail:
       "Migration ayro_book_ingest: public.ayro_book (20 deals, is_excluded flag), v_ayro_production / v_ayro_book / v_ayro_totals, agent_id linked by name. AyroProductionPanel on BookOfBusiness.tsx. A separate book from AgentLink/Ethos so a resync can't wipe it.",

@@ -1,11 +1,15 @@
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 import {
   ArrowRight,
   Building2,
   CalendarDays,
+  ChevronDown,
+  ChevronRight,
   CircleDollarSign,
+  Eye,
+  EyeOff,
   Layers,
   RefreshCw,
   Sparkles,
@@ -13,6 +17,7 @@ import {
   Users,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { cn } from "@/lib/utils";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -212,6 +217,57 @@ function ProvenanceChip({ value }: { value: string | null | undefined }) {
   );
 }
 
+/**
+ * Present mode (Sam, 2026-09-24): "a lot of people look at my numbers" — he screenshots the
+ * scoreboard to post production without leaking client/agent names or the dollar figures he
+ * doesn't want public. `on` blurs the wrapped content; a click reveals just that item so he can
+ * still read it himself. Section eye-buttons and the global Present toggle drive `on`.
+ */
+function Reveal({ on, children, className }: { on: boolean; children: ReactNode; className?: string }) {
+  const [shown, setShown] = useState(false);
+  if (!on || shown) {
+    return (
+      <span
+        className={cn(on && "cursor-pointer rounded-sm ring-1 ring-inset ring-primary/30", className)}
+        onClick={on ? () => setShown(false) : undefined}
+        title={on ? "Click to hide again" : undefined}
+      >
+        {children}
+      </span>
+    );
+  }
+  return (
+    <span
+      role="button"
+      tabIndex={0}
+      title="Hidden for posting — click to reveal"
+      onClick={() => setShown(true)}
+      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && setShown(true)}
+      className={cn("inline-flex cursor-pointer select-none rounded-sm bg-muted/60 align-middle blur-[6px] transition hover:blur-[4px]", className)}
+    >
+      {children}
+    </span>
+  );
+}
+
+/** Small per-section blur toggle so Sam can hide one block (names / projection / split) at a time. */
+function SectionEye({ on, onToggle, label }: { on: boolean; onToggle: () => void; label: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={on}
+      title={on ? `Show ${label}` : `Blur ${label} for posting`}
+      className={cn(
+        "inline-flex h-6 w-6 items-center justify-center rounded-md border transition",
+        on ? "border-primary/50 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground",
+      )}
+    >
+      {on ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+    </button>
+  );
+}
+
 function AgencyChip({ agency }: { agency: string }) {
   const vantage = /vantage/i.test(agency);
   return (
@@ -255,6 +311,16 @@ export function ScopedProductionScoreboard() {
   // period. (Sam can still switch to Day/Week/Year.)
   const [period, setPeriod] = useState<ScoreboardPeriod>("month");
   const [throughDate, setThroughDate] = useState(phoenixToday);
+  // Present mode: blur the things Sam doesn't post (names / projection / agency split / earnings).
+  const [blur, setBlur] = useState({ names: false, projection: false, split: false, earnings: false });
+  const presenting = blur.names && blur.projection && blur.split && blur.earnings;
+  const toggleAll = () => {
+    const next = !presenting;
+    setBlur({ names: next, projection: next, split: next, earnings: next });
+  };
+  const toggleBlur = (key: keyof typeof blur) => setBlur((b) => ({ ...b, [key]: !b[key] }));
+  // Collapsible agency groups in the who-sold table (Apex / Vantage / sub-agency heads).
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const window = useMemo(() => scoreboardWindow(period, throughDate), [period, throughDate]);
 
   const query = useQuery({
@@ -389,11 +455,32 @@ export function ScopedProductionScoreboard() {
   // here as well rather than relying on the round trip to say no.
   const { isManager } = useAuth();
   const canEditComp = isAdmin || isManager;
-  const gap = data?.earnings.external_gap_override ?? null;
   const unknownLevels = data?.comp.unknown_levels_in_scope ?? 0;
   const apexAgency = data?.reconciliation.agencies.find((row) => /apex/i.test(row.agency));
   const vantageAgency = data?.reconciliation.agencies.find((row) => /vantage/i.test(row.agency));
-  const external = data?.reconciliation.external_unattributed;
+
+  // Group the who-sold rows by hierarchy so Sam can collapse/expand each sub-agency (Sam 2026-09-24:
+  // "separate Vantage, Apex, and whoever has a hierarchy — OB, Judy — make it collapsible"). Vantage is
+  // its own group; everyone else groups under the sub-agency head who sits one hop below Sam; Sam's own
+  // direct sellers group under "<Brand> — direct". Sorted by AP so the biggest agency leads.
+  const agentGroups = useMemo(() => {
+    const rows = data?.by_agent ?? [];
+    const groups = new Map<string, { label: string; rows: typeof rows; policies: number; ap: number; est: number }>();
+    for (const row of rows) {
+      const label = /vantage/i.test(row.agency)
+        ? "Vantage Financial"
+        : row.first_hop_name && row.first_hop_id && row.first_hop_id !== row.agent_id && !row.is_self
+          ? row.first_hop_name
+          : `${BRAND.shortName} — direct`;
+      const g = groups.get(label) ?? { label, rows: [], policies: 0, ap: 0, est: 0 };
+      g.rows.push(row);
+      g.policies += row.policies;
+      g.ap += row.ap;
+      g.est += row.est_override;
+      groups.set(label, g);
+    }
+    return Array.from(groups.values()).sort((a, b) => b.ap - a.ap);
+  }, [data]);
 
   return (
     <Card className="overflow-hidden border-primary/35 bg-primary/[0.035]">
@@ -433,6 +520,16 @@ export function ScopedProductionScoreboard() {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
+            <Button
+              aria-label={presenting ? "Show all hidden figures" : "Blur names, projection, split and earnings for posting"}
+              className={cn("h-9", presenting && "border-primary/50 bg-primary/10 text-primary")}
+              onClick={toggleAll}
+              size="sm"
+              variant="outline"
+            >
+              {presenting ? <EyeOff className="mr-1.5 h-4 w-4" /> : <Eye className="mr-1.5 h-4 w-4" />}
+              {presenting ? "Presenting" : "Present"}
+            </Button>
             <Button
               aria-label="Refresh production scoreboard"
               className="h-9 w-9 p-0"
@@ -498,7 +595,10 @@ export function ScopedProductionScoreboard() {
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">Live MTD pace · Phoenix time · {projectionData.scope_label}</p>
                   </div>
-                  <p className="text-[11px] text-muted-foreground">Day {projectionData.elapsed_calendar_days} of {projectionData.days_in_month}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-[11px] text-muted-foreground">Day {projectionData.elapsed_calendar_days} of {projectionData.days_in_month}</p>
+                    <SectionEye on={blur.projection} onToggle={() => toggleBlur("projection")} label="projection" />
+                  </div>
                 </div>
 
                 <div className={projectionData.imo ? "mt-3 grid gap-2 sm:grid-cols-3" : "mt-3 grid gap-2 sm:grid-cols-2"}>
@@ -512,8 +612,8 @@ export function ScopedProductionScoreboard() {
                         <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
                         <Badge variant={metric.confidence === "low" ? "outline" : "secondary"}>{metric.confidence} confidence</Badge>
                       </div>
-                      <p className="mt-2 text-2xl font-bold tabular-nums text-primary">{money(metric.projected_ap)}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">MTD {money(metric.mtd_ap)} · {policies(metric.policies)} · {metric.active_days} selling days</p>
+                      <p className="mt-2 text-2xl font-bold tabular-nums text-primary"><Reveal on={blur.projection}>{money(metric.projected_ap)}</Reveal></p>
+                      <p className="mt-1 text-xs text-muted-foreground">MTD <Reveal on={blur.projection}>{money(metric.mtd_ap)}</Reveal> · {policies(metric.policies)} · {metric.active_days} selling days</p>
                     </div>
                   ))}
                 </div>
@@ -529,7 +629,7 @@ export function ScopedProductionScoreboard() {
                             <p className="text-[11px] text-muted-foreground">MTD {money(agency.mtd_ap)} · {policies(agency.policies)}</p>
                           </div>
                           <div className="shrink-0 text-right">
-                            <p className="font-bold tabular-nums text-foreground">{money(agency.projected_ap)}</p>
+                            <p className="font-bold tabular-nums text-foreground"><Reveal on={blur.projection}>{money(agency.projected_ap)}</Reveal></p>
                             <p className="text-[10px] uppercase text-muted-foreground">projected · {agency.confidence}</p>
                           </div>
                         </div>
@@ -544,29 +644,23 @@ export function ScopedProductionScoreboard() {
 
             <div className="grid border-t border-border lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
               <div className="border-b border-border p-4 lg:border-b-0 lg:border-r">
-                <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                  <CircleDollarSign className="h-3.5 w-3.5" /> My estimated earnings
-                </p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                    <CircleDollarSign className="h-3.5 w-3.5" /> My estimated earnings
+                  </p>
+                  <SectionEye on={blur.earnings} onToggle={() => toggleBlur("earnings")} label="earnings" />
+                </div>
                 <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                  <p className="text-3xl font-bold tabular-nums text-primary">{money(data.earnings.estimated)}</p>
+                  <p className="text-3xl font-bold tabular-nums text-primary"><Reveal on={blur.earnings}>{money(data.earnings.estimated)}</Reveal></p>
                   <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
                     Your comp {pct(data.comp.viewer_pct)} <ProvenanceChip value={data.comp.provenance} />
                   </span>
                 </div>
                 <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
                   <dt className="text-muted-foreground">Direct</dt>
-                  <dd className="tabular-nums text-foreground">{money(data.earnings.direct)} on your own policies</dd>
+                  <dd className="tabular-nums text-foreground"><Reveal on={blur.earnings}>{money(data.earnings.direct)}</Reveal> on your own policies</dd>
                   <dt className="text-muted-foreground">Override</dt>
-                  <dd className="tabular-nums text-foreground">{money(data.earnings.override)} layered through your first hop</dd>
-                  {isAdmin && gap && gap.policies > 0 && (
-                    <>
-                      <dt className="text-muted-foreground">External gap</dt>
-                      <dd className="tabular-nums text-foreground">
-                        {money(gap.est)} on {money(gap.ap)} {gap.agency} unattributed at {pct(gap.override_pct)}{" "}
-                        <span className="text-muted-foreground">(estimated at agency head {gap.agency_head_name} {pct(gap.agency_head_pct)})</span>
-                      </dd>
-                    </>
-                  )}
+                  <dd className="tabular-nums text-foreground"><Reveal on={blur.earnings}>{money(data.earnings.override)}</Reveal> layered through your first hop</dd>
                 </dl>
                 {unknownLevels > 0 && (
                   <p className="mt-3 text-xs text-muted-foreground">
@@ -583,30 +677,25 @@ export function ScopedProductionScoreboard() {
               </div>
 
               <div className="p-4">
-                <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                  <Building2 className="h-3.5 w-3.5" /> Agency split
-                </p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                    <Building2 className="h-3.5 w-3.5" /> Agency split
+                  </p>
+                  <SectionEye on={blur.split} onToggle={() => toggleBlur("split")} label="agency split" />
+                </div>
                 <dl className="mt-2 space-y-1.5 text-sm">
                   <div className="flex items-center justify-between gap-3">
                     <dt className="text-muted-foreground">{BRAND.legalName}</dt>
                     <dd className="tabular-nums text-foreground">
-                      {money(apexAgency?.ap ?? 0)} <span className="text-xs text-muted-foreground">· {policies(apexAgency?.policies ?? 0)}</span>
+                      <Reveal on={blur.split}>{money(apexAgency?.ap ?? 0)}</Reveal> <span className="text-xs text-muted-foreground">· {policies(apexAgency?.policies ?? 0)}</span>
                     </dd>
                   </div>
                   <div className="flex items-center justify-between gap-3">
                     <dt className="text-muted-foreground">Vantage Financial</dt>
                     <dd className="tabular-nums text-foreground">
-                      {money(vantageAgency?.ap ?? 0)} <span className="text-xs text-muted-foreground">· {policies(vantageAgency?.policies ?? 0)}</span>
+                      <Reveal on={blur.split}>{money(vantageAgency?.ap ?? 0)}</Reveal> <span className="text-xs text-muted-foreground">· {policies(vantageAgency?.policies ?? 0)}</span>
                     </dd>
                   </div>
-                  {external && external.policies > 0 && (
-                    <div className="flex items-center justify-between gap-3 border-t border-border pt-1.5">
-                      <dt className="text-amber-700 dark:text-amber-300">Agency-reported production</dt>
-                      <dd className="tabular-nums text-foreground">
-                        {money(external.ap)} <span className="text-xs text-muted-foreground">· {policies(external.policies)} included in totals</span>
-                      </dd>
-                    </div>
-                  )}
                 </dl>
                 {data.reconciliation.duplicate_candidate_groups > 0 && (
                   <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">
@@ -636,9 +725,12 @@ export function ScopedProductionScoreboard() {
                   </p>
                 </div>
               )}
-              <div className="flex items-center justify-between px-4 pt-3">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Who sold · policy records</p>
-                <p className="text-xs text-muted-foreground">{data.by_agent.length} producers with individual policy records</p>
+              <div className="flex items-center justify-between gap-2 px-4 pt-3">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Who sold · by agency</p>
+                <div className="flex items-center gap-2">
+                  <p className="hidden text-xs text-muted-foreground sm:block">{data.by_agent.length} producers · {agentGroups.length} agencies</p>
+                  <SectionEye on={blur.names} onToggle={() => toggleBlur("names")} label="names" />
+                </div>
               </div>
               {data.by_agent.length === 0 ? (
                 <div className="px-4 pb-4 pt-2">
@@ -676,10 +768,31 @@ export function ScopedProductionScoreboard() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {data.by_agent.map((row) => (
+                      {agentGroups.map((group) => {
+                        const collapsed = collapsedGroups[group.label];
+                        return (
+                        <Fragment key={group.label}>
+                        <TableRow
+                          className="cursor-pointer bg-muted/40 hover:bg-muted/70"
+                          onClick={() => setCollapsedGroups((c) => ({ ...c, [group.label]: !c[group.label] }))}
+                        >
+                          <TableCell colSpan={2} className="font-semibold text-foreground">
+                            <span className="inline-flex items-center gap-1.5">
+                              {collapsed ? <ChevronRight className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                              <Reveal on={blur.names}>{group.label}</Reveal>
+                              <span className="text-xs font-normal text-muted-foreground">· {group.rows.length}</span>
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">{group.policies.toLocaleString()}</TableCell>
+                          <TableCell className="text-right font-semibold tabular-nums text-foreground">{money(group.ap)}</TableCell>
+                          <TableCell colSpan={2} />
+                          <TableCell className="text-right tabular-nums text-muted-foreground">{money(group.est)}</TableCell>
+                          <TableCell />
+                        </TableRow>
+                        {!collapsed && group.rows.map((row) => (
                         <TableRow data-testid="who-sold-row" key={row.agent_id}>
-                          <TableCell className="whitespace-nowrap font-medium text-foreground">
-                            {row.name}
+                          <TableCell className="whitespace-nowrap pl-8 font-medium text-foreground">
+                            <Reveal on={blur.names}>{row.name}</Reveal>
                             {row.is_self && <span className="ml-1.5 text-[10px] uppercase tracking-wide text-primary">you</span>}
                           </TableCell>
                           <TableCell><AgencyChip agency={row.agency} /></TableCell>
@@ -713,7 +826,10 @@ export function ScopedProductionScoreboard() {
                           <TableCell className="text-right tabular-nums text-foreground">{money(row.est_override)}</TableCell>
                           <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{row.last_sale_date ?? "—"}</TableCell>
                         </TableRow>
-                      ))}
+                        ))}
+                        </Fragment>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </div>
@@ -725,7 +841,7 @@ export function ScopedProductionScoreboard() {
         {data?.has_producer_profile && (
           <div className="flex flex-col gap-2 border-t border-border px-4 py-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
             <span>
-              Team estimated gross commission: <strong className="font-semibold text-foreground">{money(data.earnings.team_estimated)}</strong>
+              Team estimated gross commission: <strong className="font-semibold text-foreground"><Reveal on={blur.earnings}>{money(data.earnings.team_estimated)}</Reveal></strong>
             </span>
             <Link className="inline-flex items-center gap-1 font-semibold text-primary hover:underline" to="/dashboard/finances">
               Commission breakdown <ArrowRight className="h-3.5 w-3.5" />

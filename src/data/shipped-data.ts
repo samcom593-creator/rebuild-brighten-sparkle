@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "Deal-closed Discord posts now show the carrier. The carrier was already in the payload but never rendered — now every deal post (primary + Vantage sub-agency channel) shows ALP, Product and Carrier.",
+    detail:
+      "discord-webhook-notify embedDealClosed adds a Carrier field (reads details.carrier, already sent by apex-outbox-dispatcher on both the native and external/AgentLink deal paths). Deployed live to Supabase.",
+    commit: "mp-discord-carrier",
+  },
+  {
+    ts: "today",
+    label:
       "One-click contracting worklist added: the 73 contracts waiting on you, grouped by what needs doing (25 rejected-contract fixes, 15 incomplete AgentLink profiles, and so on), each with a check-off that persists across reloads. Handle one and it drops away; if the next sync shows the same gap still open, it comes back so nothing gets silently lost.",
     detail:
       "New contracting_worklist_ack table (admin RLS) + contracting_worklist_ack/unack RPCs + v_contracting_worklist (Sam-owned next_actions from v_contracting_audit joined to handled state, keyed on agent_id + exact next_action so an ack only holds while that gap holds). Worklist card in OnboardingCommand with a progress bar, grouped open items, an AgentLink shortcut on AgentLink steps and the Copy-Ethos-rows hint on Ethos steps, and an undo strip. Live via migration 20260925191041.",

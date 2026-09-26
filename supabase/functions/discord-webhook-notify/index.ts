@@ -208,6 +208,9 @@ function embedDealClosed(d: Record<string, unknown>) {
   const product = productLabel(d.product_type as string);
   const insta   = ig(d.instagram as string);
   const photo   = (d.photo_url as string) || null;
+  // Carrier is already sent in the payload (apex-outbox-dispatcher, native + external
+  // deal paths); surface it in the embed so the chat shows which carrier the deal is with.
+  const carrier = ((d.carrier ?? d.carrier_name) as string) || "";
 
   return {
     embeds: [{
@@ -220,6 +223,7 @@ function embedDealClosed(d: Record<string, unknown>) {
       fields: [
         { name: "ALP", value: fmt$(aop), inline: true },
         { name: "Product",        value: product,     inline: true },
+        ...(carrier ? [{ name: "Carrier", value: carrier, inline: true }] : []),
       ],
       timestamp: new Date().toISOString(),
     }],

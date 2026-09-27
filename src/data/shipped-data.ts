@@ -14,6 +14,13 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "Brand funnel leads on /dashboard/team: every sell4daddy.com form (mentorship ×3, fitness ×2, car rental, AI, collaboration) in one admin table — tap-to-call / tap-to-email, lane filter, status (new → contacted → booked → won/lost). Lead alerts now reach Sam only, on phone push + email (business inbox + Gmail) + text; Discord routes to a private-only webhook key, never the team room.",
+    detail:
+      "BrandLeadsPanel reads v_brand_leads (RLS: admins only) and updates brand_leads.status. fn_brand_lead_alert channels = [ntfy, email, sms]; apex-alert-dispatch sends brand_funnel email to both inboxes and resolves Discord to discord_webhook_url_brand (unset = no post). Insurance CTA on sell4daddy.com now deep-links to /apply with UTM (utm_source=sell4daddy) so every applicant is attributed.",
+  },
+  {
+    ts: "today",
+    label:
       "Team engagement panel on /dashboard/team: who has actually logged in, which onboarding emails really went out, portal link sent/used, Discord and course progress — with one-tap filters (never logged in, silent 7d+, licensed without Discord, portal link unused) and CSV export.",
     detail:
       "Admin-only RPC admin_team_engagement() joins auth.users.last_sign_in_at (only readable via SECURITY DEFINER; zero rows for non-admins) with agent_onboarding_queue SENT timestamps, magic_login_tokens sent/used, has_discord_access/has_training_course and onboarding_progress. Same wave: Discord invite backfilled for the 2 eligible hires never queued; the 2 licensed rows still unsent are terminal by design (no email / is_inactive).",

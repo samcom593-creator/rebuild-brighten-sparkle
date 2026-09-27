@@ -1,33 +1,25 @@
-// ManyChat webhook ingestion.
+// manychat-webhook — the INBOUND ROUTING BRAIN for every DM/comment transport.
 //
-// ManyChat is the aggregator that covers Instagram + Messenger + WhatsApp
-// natively. In ManyChat, set up a "New Subscriber" or "Default Reply" flow
-// with an "External Request" action pointing at this function. Sam will
-// paste the URL into ManyChat's External Request step.
+// One classifier, one source of truth for tone, shared by every channel that
+// forwards an inbound message here (instagram-webhook native Meta events, and
+// ManyChat's External Request while it is still in the loop). It classifies the
+// message, logs the lead, and returns the reply text the transport should send.
 //
-// Expected shape from ManyChat External Request (configurable via ManyChat UI):
-//   {
-//     source: "instagram" | "messenger" | "whatsapp" | "tiktok",
-//     subscriber_id: "<manychat_id>",
-//     sender_handle: "@username_or_phone",
-//     sender_name: "Display Name",
-//     sender_avatar: "https://...",
-//     body: "actual message text",
-//     page_id: "..."   // optional
-//   }
+// ROUTING SPEC (Sam, 2026-09-26 — "fix everything, make it live"):
+//   1. FITNESS intent  -> push straight to the King of Sales fitness funnel.
+//   2. LICENSED (has a life licence) -> URGENT. Push the onboarding-call link
+//      AND fire an instant ntfy + Discord alert so Sam can call them to get
+//      contracted as fast as physically possible.
+//   3. Everything else about the opportunity -> NO questions, NO qualifying.
+//      Push directly to the Apex apply site. Friction kills the funnel.
+//   4. Spam / not-interested -> logged, no reply.
 //
-// We also accept a simple {secret} field and validate against
-// MANYCHAT_WEBHOOK_SECRET env var to block random POSTs.
-//
-// Response shape (for ManyChat to dynamically respond):
-//   {
-//     ok: true,
-//     auto_reply: "... optional canned reply text ..."
-//   }
+// Expected inbound shape (configurable per transport):
+//   { source, subscriber_id, sender_handle, sender_name, body, email?, phone?, state? }
+// Auth: shared secret via x-manychat-secret header OR body.secret (MANYCHAT_WEBHOOK_SECRET).
+// Response: { ok, intent, lead_score, auto_reply, apply_url, ... }
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-
-// Deploy trigger: commit 3b07e4c — register manychat-webhook
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -35,16 +27,18 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-manychat-secret",
 };
 
+// Funnel destinations — where each intent is driven.
 const APPLY_URL = "https://apex-financial.org/apply";
-const CALENDLY_LICENSED = "https://calendly.com/apexfinancialempire/1on1-call-clone";
-const GET_LICENSED_URL = "https://apex-financial.org/get-licensed";
-const MANYCHAT_APPLY_URL = `${APPLY_URL}?utm_source=manychat&utm_medium=dm&utm_campaign=recruiting_dm`;
+const ONBOARD_CALL_URL = "https://calendly.com/apexfinancialempire/apex-onboarding-call";
+const FITNESS_URL = "https://kingofsales-brand.vercel.app/fitness";
+const NTFY_TOPIC = "https://ntfy.sh/sams-agent-yrkv9kbqp9e987nb";
 
-// Order matters in classify() — first match wins. Most specific first.
-const LICENSED_PATTERNS = [
-  /\b(i'?m licensed|have my license|got my license|life license|2-?15|2-?14|221[0-9])\b/i,
-  /\b(nipr|resident license|non[- ]?resident)\b/i,
-];
+function applyUrl(rawSource: string): string {
+  const src = (rawSource || "instagram").replace(/[^a-z0-9_]/gi, "").toLowerCase() || "instagram";
+  return `${APPLY_URL}?utm_source=${src}&utm_medium=dm&utm_campaign=recruiting_dm`;
+}
+
+// Order matters in classify() — first match wins, most specific first.
 const NOT_INTERESTED_PATTERNS = [
   /\b(not interested|no thanks|stop|unsubscribe|leave me alone|never mind)\b/i,
 ];
@@ -53,67 +47,98 @@ const SPAM_PATTERNS = [
   /\bonly\s?fans\b/i, /t\.me\//i, /\bbinary options\b/i, /forex signals/i,
   /click here to claim/i, /\bgift card\b/i, /\bsugar (daddy|momma)\b/i,
 ];
-const SCAM_SKEPTIC_PATTERNS = [
-  /\b(is this (a )?scam|too good to be true|sketchy|legit|real|fake|catch|red flag)\b/i,
-  /\b(mlm|pyramid|multi[- ]?level)\b/i,
+// LICENSED must be checked before FITNESS/APPLY — a licensed producer is the
+// highest-value lead and gets the urgent path no matter what else they say.
+const LICENSED_PATTERNS = [
+  /\b(i'?m licensed|i am licensed|have my license|have my licence|got my license|got my licence|already licensed)\b/i,
+  /\b(life license|life licence|life insurance license|2-?15|2-?14|221[0-9])\b/i,
+  /\b(nipr|resident license|non[- ]?resident license)\b/i,
 ];
-const PRICING_PATTERNS = [
-  /\b(how much|salary|pay|earn|income|commission|comp(ensation)?|make money|how do (you|i) get paid)\b/i,
-  /\$\d+|\d+k|\bsix figures?\b/i,
-];
-const STATE_ASK_PATTERNS = [
-  /\b(what state|which state|do you hire in|available in|hire in|where are you)\b/i,
-];
-const TIME_TO_PRODUCE_PATTERNS = [
-  /\b(how long|how soon|when can i start|time(line)? to|days to|weeks to)\b/i,
-];
-const INTEREST_PATTERNS = [
-  /\b(interested|info|tell me more|sign me up|count me in|how (do|can) i (join|apply))\b/i,
-  /\b(insurance|agent|sell|selling|hiring|opportunity|recruiting)\b/i,
-  /\b(apply|application)\b/i,
-];
-const GREETING_ONLY_PATTERNS = [
-  /^(hey|hi|hello|yo|sup|whats up|wsg|hola|gm|good (morning|evening|afternoon))[\s!.?]*$/i,
+// FITNESS intent — route to the fitness funnel instead of recruiting.
+const FITNESS_PATTERNS = [
+  /\b(fitness|gym|workout|work out|training plan|meal plan|diet|nutrition)\b/i,
+  /\b(lose weight|weight loss|get in shape|shredded|build muscle|transformation)\b/i,
+  /\b(personal train(er|ing)|coaching|body|physique|bulk|cut|fat loss)\b/i,
 ];
 
-type ReplyPath =
-  | "licensed" | "unlicensed" | "scam_skeptic" | "pricing"
-  | "state_ask" | "time_to_produce" | "greeting" | "generic";
+type ReplyPath = "licensed" | "fitness" | "apply";
 
 interface Classification {
   intent: string;
   lead_score: number;
-  reply_path: ReplyPath | null;
+  reply_path: ReplyPath | null; // null = logged, no reply (spam / not-interested)
+  urgent: boolean;              // true = fire the instant call-now alert
 }
 
 function classify(body: string): Classification {
-  const t = body.trim();
-  if (SPAM_PATTERNS.some(r => r.test(t)))           return { intent: "spam", lead_score: 0, reply_path: null };
-  if (NOT_INTERESTED_PATTERNS.some(r => r.test(t))) return { intent: "not_interested", lead_score: 0, reply_path: null };
-  if (LICENSED_PATTERNS.some(r => r.test(t)))       return { intent: "licensed", lead_score: 95, reply_path: "licensed" };
-  if (SCAM_SKEPTIC_PATTERNS.some(r => r.test(t)))   return { intent: "scam_skeptic", lead_score: 50, reply_path: "scam_skeptic" };
-  if (PRICING_PATTERNS.some(r => r.test(t)))        return { intent: "pricing", lead_score: 70, reply_path: "pricing" };
-  if (STATE_ASK_PATTERNS.some(r => r.test(t)))      return { intent: "state_ask", lead_score: 65, reply_path: "state_ask" };
-  if (TIME_TO_PRODUCE_PATTERNS.some(r => r.test(t))) return { intent: "time_to_produce", lead_score: 70, reply_path: "time_to_produce" };
-  if (GREETING_ONLY_PATTERNS.some(r => r.test(t)))  return { intent: "greeting", lead_score: 35, reply_path: "greeting" };
-  if (INTEREST_PATTERNS.some(r => r.test(t)))       return { intent: "interested", lead_score: 60, reply_path: "unlicensed" };
-  return { intent: "unknown", lead_score: 20, reply_path: "generic" };
+  const t = (body || "").trim();
+  if (SPAM_PATTERNS.some((r) => r.test(t)))           return { intent: "spam", lead_score: 0, reply_path: null, urgent: false };
+  if (NOT_INTERESTED_PATTERNS.some((r) => r.test(t))) return { intent: "not_interested", lead_score: 0, reply_path: null, urgent: false };
+  if (LICENSED_PATTERNS.some((r) => r.test(t)))       return { intent: "licensed", lead_score: 95, reply_path: "licensed", urgent: true };
+  if (FITNESS_PATTERNS.some((r) => r.test(t)))        return { intent: "fitness", lead_score: 55, reply_path: "fitness", urgent: false };
+  // Sam's directive: everyone else goes STRAIGHT to apply. No qualifying.
+  return { intent: "opportunity", lead_score: 60, reply_path: "apply", urgent: false };
 }
 
-// Sam-voice: short, direct, lowercase-friendly, ends with link or question.
-function replyFor(path: ReplyPath, firstName?: string): string {
+// Sam-voice: short, direct, ends with the link. No qualifying questions.
+function replyFor(path: ReplyPath, rawSource: string, firstName?: string): string {
   const n = (firstName?.trim() && firstName.split(" ")[0]) || "yo";
+  const apply = applyUrl(rawSource);
   const replies: Record<ReplyPath, string> = {
-    licensed:        `${n} — licensed? we fast-track contracted producers in 24-48h. grab 15min with me: ${CALENDLY_LICENSED}`,
-    unlicensed:      `${n} — appreciate the dm. if you're serious, start here and we'll route you by state/license status: ${MANYCHAT_APPLY_URL}`,
-    scam_skeptic:    `${n} — fair question. no downline requirement. you contract with carriers, we train and route the next step. start here: ${MANYCHAT_APPLY_URL}`,
-    pricing:         `${n} — comp depends on license/state/carrier, so we don't quote it loose in DMs. apply and the manager call will walk it clean: ${MANYCHAT_APPLY_URL}`,
-    state_ask:       `${n} — we recruit across the US. what state are you in? fastest path is this form so we can route you correctly: ${MANYCHAT_APPLY_URL}`,
-    time_to_produce: `${n} — licensed moves fastest; unlicensed depends on state/exam pace. start here and we'll put you on the right track: ${MANYCHAT_APPLY_URL}`,
-    greeting:        `${n} — Sam from APEX. We hire and train life insurance agents. Licensed or brand new? Start here: ${MANYCHAT_APPLY_URL}`,
-    generic:         `${n} — APEX Financial. We hire life insurance agents, licensed or not. Start here: ${MANYCHAT_APPLY_URL}`,
+    licensed: `${n} — you're licensed, that changes everything. we fast-track contracted producers. grab the first open onboarding call and let's get you writing this week: ${ONBOARD_CALL_URL}`,
+    fitness:  `${n} — appreciate you reaching out. everything on the fitness side lives here, plans + 1-on-1 coaching: ${FITNESS_URL}`,
+    apply:    `${n} — let's get you moving. start your application here and we'll route you by state and licence status: ${apply}`,
   };
   return replies[path];
+}
+
+// URGENT driving force for licensed producers: instant phone push + Discord so
+// Sam can call and onboard them as fast as physically possible. Direct POSTs
+// (not the bot_alerts flush cron) so delivery does not depend on a scheduler.
+async function fireUrgentLicensedAlert(
+  sb: ReturnType<typeof createClient>,
+  handle: string | null,
+  name: string | null,
+  text: string,
+  source: string,
+): Promise<void> {
+  const who = [name, handle].filter(Boolean).join(" ") || "unknown sender";
+  const line = `LICENSED lead just DMd (${source}): ${who}. Call to onboard NOW. "${text.slice(0, 140)}"`;
+  // ntfy: Sam's phone. Title header is ASCII-safe (RFC-2047 not needed here).
+  try {
+    await fetch(NTFY_TOPIC, {
+      method: "POST",
+      headers: { "Title": "APEX LICENSED lead - call now", "Priority": "5", "Tags": "rotating_light" },
+      body: line,
+    });
+  } catch (e) { console.error("[manychat-webhook] ntfy urgent failed", e); }
+  // Discord: the team channel, second exit if ntfy is down.
+  try {
+    const { data: setting } = await sb.from("system_settings")
+      .select("value").eq("key", "discord_webhook_url").maybeSingle();
+    const webhook = (setting as { value?: string } | null)?.value;
+    if (webhook) {
+      await fetch(webhook, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: "APEX LICENSED lead", content: `**CALL NOW** ${line}` }),
+      });
+    }
+  } catch (e) { console.error("[manychat-webhook] discord urgent failed", e); }
+  // Durable audit row (delivered directly above; this is the record, not the pager).
+  try {
+    await sb.from("bot_alerts").insert({
+      source: "inbound_dm",
+      event_type: "licensed_lead_dm",
+      severity: "celebrate",
+      subject: "LICENSED lead - call now",
+      body: line,
+      sms_body: line.slice(0, 160),
+      action_link: ONBOARD_CALL_URL,
+      channels: ["ntfy", "discord"],
+      sent_at: new Date().toISOString(),
+    });
+  } catch (e) { console.error("[manychat-webhook] bot_alerts insert failed", e); }
 }
 
 function firstText(...values: unknown[]) {
@@ -130,8 +155,8 @@ function normalizePhone(value: string | null) {
   return digits.length >= 10 ? digits.slice(-10) : value;
 }
 
-function buildName(body: any) {
-  const subscriber = body.subscriber ?? body.contact ?? body.user ?? {};
+function buildName(body: Record<string, unknown>) {
+  const subscriber = (body.subscriber ?? body.contact ?? body.user ?? {}) as Record<string, unknown>;
   const first = firstText(body.first_name, subscriber.first_name, subscriber.firstName);
   const last = firstText(body.last_name, subscriber.last_name, subscriber.lastName);
   return firstText(body.sender_name, body.name, subscriber.name, [first, last].filter(Boolean).join(" "));
@@ -146,13 +171,8 @@ const supabase = createClient(
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
-  // Shared-secret check. Allows both header and body-field auth so it
-  // works with ManyChat's External Request form (headers) or a stricter
-  // Zapier proxy (body).
+  // Shared-secret check. Fail closed if the secret is unset.
   const secret = Deno.env.get("MANYCHAT_WEBHOOK_SECRET");
-  // Fail closed. The old `secret && ...` guard let every caller through
-  // whenever MANYCHAT_WEBHOOK_SECRET was unset or rotated away. Refuse with
-  // 503 so the endpoint is never silently public.
   if (!secret) {
     return new Response(JSON.stringify({ error: "webhook_secret_unset" }), {
       status: 503,
@@ -160,9 +180,9 @@ Deno.serve(async (req) => {
     });
   }
   const headerSecret = req.headers.get("x-manychat-secret") ?? "";
-  let body: any = {};
-  try { body = await req.json(); } catch { /* empty */ }
-  const bodySecret = body?.secret ?? "";
+  let body: Record<string, unknown> = {};
+  try { body = await req.json(); } catch (_e) { body = {}; }
+  const bodySecret = (body?.secret as string) ?? "";
   if (headerSecret !== secret && bodySecret !== secret) {
     return new Response(JSON.stringify({ error: "forbidden" }), {
       status: 403,
@@ -170,32 +190,23 @@ Deno.serve(async (req) => {
     });
   }
 
-  const subscriber = body.subscriber ?? body.contact ?? body.user ?? {};
+  const subscriber = (body.subscriber ?? body.contact ?? body.user ?? {}) as Record<string, unknown>;
   const rawSource = firstText(body.source, body.channel, body.platform, body.network, "instagram")!.toLowerCase();
-  const source = rawSource.startsWith("manychat") ? rawSource : `manychat_${rawSource}`;
+  const source = rawSource.startsWith("manychat") ? rawSource : (rawSource === "instagram" ? "instagram" : `manychat_${rawSource}`);
   const subscriberId = firstText(
-    body.subscriber_id,
-    body.external_id,
-    body.contact_id,
-    body.user_id,
-    subscriber.id,
-    subscriber.subscriber_id,
+    body.subscriber_id, body.external_id, body.contact_id, body.user_id,
+    subscriber.id, subscriber.subscriber_id,
   );
   const senderHandle = firstText(
-    body.sender_handle,
-    body.handle,
-    body.username,
-    body.phone,
-    subscriber.username,
-    subscriber.handle,
-    subscriber.phone,
+    body.sender_handle, body.handle, body.username, body.phone,
+    subscriber.username, subscriber.handle, subscriber.phone,
   );
   const senderName = buildName(body);
   const senderAvatar = firstText(body.sender_avatar, body.avatar, subscriber.avatar, subscriber.profile_pic);
   const email = firstText(body.email, subscriber.email);
   const phone = normalizePhone(firstText(body.phone, subscriber.phone));
   const state = firstText(body.state, body.us_state, subscriber.state);
-  const text = (body.body ?? body.message ?? body.text ?? "").trim();
+  const text = ((body.body ?? body.message ?? body.text ?? "") as string).trim();
 
   if (!text) {
     return new Response(JSON.stringify({ ok: false, error: "empty body" }), {
@@ -204,26 +215,26 @@ Deno.serve(async (req) => {
     });
   }
 
-  const { intent, lead_score, reply_path } = classify(text);
-  const auto_reply = reply_path ? replyFor(reply_path, senderName?.split(" ")[0]) : null;
+  const { intent, lead_score, reply_path, urgent } = classify(text);
+  const auto_reply = reply_path ? replyFor(reply_path, rawSource, senderName?.split(" ")[0]) : null;
   const shouldTrackLead = intent !== "spam" && intent !== "not_interested" && lead_score >= 20;
-  const sessionId = `manychat:${source}:${subscriberId ?? senderHandle ?? crypto.randomUUID()}`;
+  const sessionId = `${source}:${subscriberId ?? senderHandle ?? crypto.randomUUID()}`;
   let partialApplicationId: string | null = null;
+
+  // URGENT licensed path — fire the call-now alert before anything else.
+  if (urgent) {
+    await fireUrgentLicensedAlert(supabase, senderHandle, senderName, text, source);
+  }
 
   if (shouldTrackLead) {
     const nameParts = (senderName ?? "").trim().split(/\s+/).filter(Boolean);
     const firstName = firstText(body.first_name, subscriber.first_name, nameParts[0]);
     const lastName = firstText(body.last_name, subscriber.last_name, nameParts.slice(1).join(" "));
     const formData = {
-      source,
-      raw_source: rawSource,
-      subscriber_id: subscriberId,
-      sender_handle: senderHandle,
-      first_message: text,
-      intent,
-      lead_score,
-      recommended_reply: auto_reply,
-      apply_url: MANYCHAT_APPLY_URL,
+      source, raw_source: rawSource, subscriber_id: subscriberId, sender_handle: senderHandle,
+      first_message: text, intent, lead_score, recommended_reply: auto_reply,
+      apply_url: reply_path === "fitness" ? FITNESS_URL : applyUrl(rawSource),
+      reply_path,
     };
     const { data: existingPartial } = await supabase
       .from("partial_applications")
@@ -235,32 +246,19 @@ Deno.serve(async (req) => {
       partialApplicationId = existingPartial.id as string;
       await supabase.from("partial_applications")
         .update({
-          email,
-          phone,
-          first_name: firstName,
-          last_name: lastName,
-          state,
-          step_completed: 1,
-          step: "manychat_dm",
-          abandoned_at: new Date().toISOString(),
-          form_data: formData,
+          email, phone, first_name: firstName, last_name: lastName, state,
+          step_completed: 1, step: "inbound_dm",
+          abandoned_at: new Date().toISOString(), form_data: formData,
           updated_at: new Date().toISOString(),
         })
         .eq("id", partialApplicationId);
     } else {
       const { data: partial } = await supabase.from("partial_applications")
         .insert({
-          session_id: sessionId,
-          email,
-          phone,
-          first_name: firstName,
-          last_name: lastName,
-          state,
-          step_completed: 1,
-          step: "manychat_dm",
-          abandoned_at: new Date().toISOString(),
-          form_data: formData,
-          user_agent: "manychat-webhook",
+          session_id: sessionId, email, phone, first_name: firstName, last_name: lastName, state,
+          step_completed: 1, step: "inbound_dm",
+          abandoned_at: new Date().toISOString(), form_data: formData,
+          user_agent: "inbound-dm-brain",
         })
         .select("id")
         .maybeSingle();
@@ -268,20 +266,12 @@ Deno.serve(async (req) => {
     }
   }
 
-  // Persist the inbound message (and the outbound auto-reply as a second row
-  // so the full conversation is visible in the inbox view).
+  // Persist inbound + the outbound auto-reply so the full thread is in the inbox.
   const inbound = {
-    source,
-    external_id: subscriberId,
-    sender_handle: senderHandle,
-    sender_name: senderName,
-    sender_avatar: senderAvatar,
-    body: text,
-    direction: "inbound",
-    intent,
-    lead_score,
+    source, external_id: subscriberId, sender_handle: senderHandle, sender_name: senderName,
+    sender_avatar: senderAvatar, body: text, direction: "inbound", intent, lead_score,
     auto_replied: !!auto_reply,
-    raw_payload: { ...body, partial_application_id: partialApplicationId, session_id: sessionId },
+    raw_payload: { ...body, partial_application_id: partialApplicationId, session_id: sessionId, reply_path },
     replied_at: auto_reply ? new Date().toISOString() : null,
   };
 
@@ -300,27 +290,18 @@ Deno.serve(async (req) => {
 
   if (auto_reply) {
     await supabase.from("inbox_messages").insert({
-      source,
-      external_id: subscriberId,
-      sender_handle: senderHandle,
-      sender_name: senderName,
-      body: auto_reply,
-      direction: "outbound",
-      intent,
-      auto_replied: true,
-      raw_payload: { in_reply_to: (inboundRow as any)?.id, path: reply_path, partial_application_id: partialApplicationId },
+      source, external_id: subscriberId, sender_handle: senderHandle, sender_name: senderName,
+      body: auto_reply, direction: "outbound", intent, auto_replied: true,
+      raw_payload: { in_reply_to: (inboundRow as { id?: string } | null)?.id, path: reply_path, partial_application_id: partialApplicationId },
     });
   }
 
   return new Response(JSON.stringify({
-    ok: true,
-    intent,
-    lead_score,
-    auto_reply,
-    message_id: (inboundRow as any)?.id,
+    ok: true, intent, lead_score, urgent, auto_reply, reply_path,
+    message_id: (inboundRow as { id?: string } | null)?.id,
     partial_application_id: partialApplicationId,
     lead_source: source,
-    apply_url: MANYCHAT_APPLY_URL,
+    apply_url: reply_path === "fitness" ? FITNESS_URL : applyUrl(rawSource),
   }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });

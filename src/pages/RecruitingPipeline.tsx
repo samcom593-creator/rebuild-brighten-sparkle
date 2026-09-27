@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { contactLinkProps, phoneHref, smsHref } from "@/lib/phone";
+import { openAgentProfile } from "@/stores/agentProfileDrawer";
 
 // One unified operating view over applications + agents. Reads v_recruiting_pipeline,
 // writes through rp_pipeline_action (existing columns only). No rebuild.
@@ -176,7 +177,11 @@ export default function RecruitingPipeline() {
             {filtered.slice(0, 400).map((r) => (
               <div key={r.person_key} className="p-3 flex flex-col lg:flex-row lg:flex-wrap lg:items-center gap-2">
                 <div className="min-w-0 lg:w-56">
-                  <div className="font-semibold truncate">{r.name || "Unknown"}</div>
+                  {r.person_type === "agent" ? (
+                    <button className="font-semibold truncate text-left hover:text-primary hover:underline" onClick={() => openAgentProfile(r.person_key.split(":")[1])}>{r.name || "Unknown"}</button>
+                  ) : (
+                    <div className="font-semibold truncate">{r.name || "Unknown"}</div>
+                  )}
                   <div className="text-xs text-muted-foreground truncate">
                     {r.phone || "no phone"}{r.instagram ? ` · @${r.instagram.replace(/^@/, "")}` : ""}
                     {r.lead_source ? ` · ${r.lead_source}` : ""}

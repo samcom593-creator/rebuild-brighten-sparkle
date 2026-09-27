@@ -77,6 +77,7 @@ import { ReassignManagerButton } from "@/components/agents/ReassignManagerButton
 import { AgentCredentialsPanel } from "@/components/dashboard/AgentCredentialsPanel";
 import { AgentQuickEditDialog } from "@/components/dashboard/AgentQuickEditDialog";
 import { CompLevelEditor } from "@/components/dashboard/CompLevelEditor";
+import AgentHealthPanel from "@/components/dashboard/AgentHealthPanel";
 import { AgentTaskManager } from "@/components/dashboard/AgentTaskManager";
 import { AgentNotes } from "@/components/dashboard/AgentNotes";
 import { DeactivateAgentDialog } from "@/components/dashboard/DeactivateAgentDialog";
@@ -724,6 +725,8 @@ const qnum = (v: number | string | null | undefined): number | null => {
                 </div>
               </div>
             </div>
+
+            {agent?.id && <AgentHealthPanel agentId={agent.id} />}
 
             {isAdmin && (
               <Button

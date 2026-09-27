@@ -34,6 +34,54 @@ Deno.serve(async (req) => {
     }), { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
+  // ── One-tap connect (GET redirect from Facebook Login) ─────────────────────
+  // Sam taps the OAuth link, presses Allow, Meta redirects here with ?code=.
+  // We exchange it server-side, resolve his Page -> Instagram business account,
+  // store the PAGE token (what IG messaging uses) where send-instagram-dm and
+  // instagram-webhook already look. No frontend, no paste.
+  if (req.method === "GET") {
+    const url  = new URL(req.url);
+    const code = url.searchParams.get("code");
+    const html = (msg: string, status = 200) =>
+      new Response(`<!doctype html><meta name=viewport content="width=device-width"><body style="font-family:-apple-system,sans-serif;background:#0b0b0c;color:#e9c46a;padding:40px;text-align:center"><h2>${msg}</h2><p style="color:#aaa">You can close this.</p></body>`,
+        { status, headers: { "Content-Type": "text/html" } });
+    if (!code) return html("Missing code — tap the link again.", 400);
+    try {
+      const SAM_UID = "71826bba-5577-4810-a226-1f6f2ad5288a";
+      const ex = await fetch(`https://graph.facebook.com/v21.0/oauth/access_token?client_id=${APP_ID}&client_secret=${APP_SECRET}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&code=${encodeURIComponent(code)}`);
+      const exJ = await ex.json();
+      if (!ex.ok || !exJ.access_token) return html(`Exchange failed: ${JSON.stringify(exJ).slice(0, 200)}`, 500);
+      const ll = await fetch(`https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${APP_ID}&client_secret=${APP_SECRET}&fb_exchange_token=${exJ.access_token}`);
+      const llJ = await ll.json();
+      const userToken = (llJ.access_token as string) ?? (exJ.access_token as string);
+      const expiresIn = Number(llJ.expires_in ?? 5184000);
+      const acc = await fetch(`https://graph.facebook.com/v21.0/me/accounts?fields=id,name,access_token,instagram_business_account{id,username}&access_token=${userToken}`).then(r => r.json());
+      const pages = (acc.data ?? []) as any[];
+      const page = pages.find(p => p.instagram_business_account) ?? pages[0] ?? null;
+      const igId   = page?.instagram_business_account?.id ?? null;
+      const igUser = page?.instagram_business_account?.username ?? null;
+      const token  = (page?.access_token as string) ?? userToken;   // page token = IG messaging token
+      const sb = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", { auth: { persistSession: false } });
+      await sb.from("instagram_connections").upsert({
+        user_id: SAM_UID,
+        instagram_user_id: igId ?? "pending",
+        instagram_username: igUser,
+        access_token: token,
+        token_expires_at: new Date(Date.now() + expiresIn * 1000).toISOString(),
+        scopes: ["instagram_basic", "instagram_manage_messages", "instagram_manage_comments", "pages_manage_metadata"],
+        connected_at: new Date().toISOString(),
+      }, { onConflict: "user_id,instagram_user_id" });
+      await sb.from("system_settings").upsert([
+        { key: "meta_instagram_token", value: token },
+        { key: "meta_instagram_page_id", value: page?.id ?? "" },
+      ], { onConflict: "key" });
+      if (!igId) return html(`Connected to Facebook (${page?.name ?? "no page"}), but no Instagram business account is linked to that Page yet.`);
+      return html(`Connected @${igUser}. DMs and comments are live.`);
+    } catch (e) {
+      return html(`Connect error: ${String(e).slice(0, 200)}`, 500);
+    }
+  }
+
   try {
     const body = await req.json();
     const code    = String(body.code ?? "");

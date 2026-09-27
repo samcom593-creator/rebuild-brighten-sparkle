@@ -20166,6 +20166,7 @@ export type Database = {
           id: string
           insuracloud_api_token: string | null
           insuracloud_user_id: number | null
+          intent_level: string | null
           invited_by_manager_id: string | null
           is_deactivated: boolean | null
           is_inactive: boolean | null
@@ -20272,6 +20273,7 @@ export type Database = {
           id?: string
           insuracloud_api_token?: string | null
           insuracloud_user_id?: number | null
+          intent_level?: string | null
           invited_by_manager_id?: string | null
           is_deactivated?: boolean | null
           is_inactive?: boolean | null
@@ -20378,6 +20380,7 @@ export type Database = {
           id?: string
           insuracloud_api_token?: string | null
           insuracloud_user_id?: number | null
+          intent_level?: string | null
           invited_by_manager_id?: string | null
           is_deactivated?: boolean | null
           is_inactive?: boolean | null
@@ -26850,6 +26853,7 @@ export type Database = {
           ica_paid_at: string | null
           id: string
           instagram_handle: string | null
+          intent_level: string | null
           is_duplicate: boolean | null
           is_ghosted: boolean | null
           is_transfer: boolean | null
@@ -26992,6 +26996,7 @@ export type Database = {
           ica_paid_at?: string | null
           id?: string
           instagram_handle?: string | null
+          intent_level?: string | null
           is_duplicate?: boolean | null
           is_ghosted?: boolean | null
           is_transfer?: boolean | null
@@ -27134,6 +27139,7 @@ export type Database = {
           ica_paid_at?: string | null
           id?: string
           instagram_handle?: string | null
+          intent_level?: string | null
           is_duplicate?: boolean | null
           is_ghosted?: boolean | null
           is_transfer?: boolean | null
@@ -133158,6 +133164,7 @@ export type Database = {
           hiring_manager_user_id: string | null
           id: string | null
           instagram: string | null
+          intent_level: string | null
           last_contact: string | null
           lead_source: string | null
           license_progress: string | null
@@ -140218,6 +140225,7 @@ export type Database = {
           ica_paid_at: string | null
           id: string
           instagram_handle: string | null
+          intent_level: string | null
           is_duplicate: boolean | null
           is_ghosted: boolean | null
           is_transfer: boolean | null
@@ -142051,6 +142059,10 @@ export type Database = {
       revive_dead_leads: { Args: never; Returns: Json }
       rp_pipeline_action: {
         Args: { p_action: string; p_person_key: string; p_value?: string }
+        Returns: string
+      }
+      rp_update_agent_comp: {
+        Args: { p_agent_id: string; p_comp?: number; p_contract?: number }
         Returns: string
       }
       run_apex_outbox_dispatch_if_pending: { Args: never; Returns: string }

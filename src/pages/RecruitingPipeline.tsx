@@ -37,7 +37,15 @@ interface Row {
   expected_start: string | null; last_contact: string | null; next_follow_up: string | null;
   next_action_display: string | null; notes: string | null;
   license_status: string | null; raw_status: string | null;
+  intent_level: string | null;
 }
+
+const INTENT_ORDER = [null, "hot", "warm", "cold"] as const;
+const INTENT_STYLE: Record<string, { label: string; cls: string }> = {
+  hot: { label: "🔥 Hot", cls: "bg-red-500 text-white border-red-500" },
+  warm: { label: "Warm", cls: "bg-amber-500 text-white border-amber-500" },
+  cold: { label: "Cold", cls: "bg-sky-500 text-white border-sky-500" },
+};
 
 function fmt(ts: string | null): string {
   if (!ts) return "—";
@@ -54,6 +62,7 @@ export default function RecruitingPipeline() {
   const [typeFilter, setTypeFilter] = useState<string>("");
   const [mondayFilter, setMondayFilter] = useState<string>("");
   const [activeFilter, setActiveFilter] = useState<string>("open"); // open | all | inactive
+  const [intentFilter, setIntentFilter] = useState<string>("");
   const [noteFor, setNoteFor] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
 
@@ -82,6 +91,12 @@ export default function RecruitingPipeline() {
 
   const fire = (person_key: string, act: string, value?: string | null, msg?: string) => {
     action.mutate({ person_key, action: act, value }, { onSuccess: () => { if (msg) toast.success(msg); qc.invalidateQueries({ queryKey: ["recruiting-pipeline"] }); } });
+  };
+
+  const cycleIntent = (r: Row) => {
+    const idx = INTENT_ORDER.indexOf((r.intent_level ?? null) as (typeof INTENT_ORDER)[number]);
+    const next = INTENT_ORDER[(idx + 1) % INTENT_ORDER.length];
+    fire(r.person_key, "intent", next ?? "clear", next ? `Intent: ${next}` : "Intent cleared");
   };
 
   // Monday / Start operating tiles.
@@ -120,6 +135,7 @@ export default function RecruitingPipeline() {
       if (stageFilter && r.stage !== stageFilter) return false;
       if (typeFilter && r.person_type !== typeFilter) return false;
       if (mondayFilter && r.monday_status !== mondayFilter) return false;
+      if (intentFilter && r.intent_level !== intentFilter) return false;
       if (q) {
         const hay = `${r.name} ${r.phone ?? ""} ${r.email ?? ""} ${r.instagram ?? ""} ${r.lead_source ?? ""}`.toLowerCase();
         if (!hay.includes(q)) return false;
@@ -133,9 +149,9 @@ export default function RecruitingPipeline() {
       const bt = b.last_contact ? Date.parse(b.last_contact) : 0;
       return bt - at; // most recently touched first within a rank
     });
-  }, [rows, search, stageFilter, typeFilter, mondayFilter, activeFilter]);
+  }, [rows, search, stageFilter, typeFilter, mondayFilter, activeFilter, intentFilter]);
 
-  const clearFilters = () => { setSearch(""); setStageFilter(""); setTypeFilter(""); setMondayFilter(""); setActiveFilter("open"); };
+  const clearFilters = () => { setSearch(""); setStageFilter(""); setTypeFilter(""); setMondayFilter(""); setActiveFilter("open"); setIntentFilter(""); };
 
   return (
     <div className="p-4 md:p-6 max-w-[1400px] mx-auto space-y-4">
@@ -194,6 +210,15 @@ export default function RecruitingPipeline() {
             <SelectItem value="inactive">Inactive only</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={intentFilter || "anyintent"} onValueChange={(v) => setIntentFilter(v === "anyintent" ? "" : v)}>
+          <SelectTrigger aria-label="Filter by intent" className="h-9 w-auto min-w-[7rem] text-sm"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="anyintent">Any intent</SelectItem>
+            <SelectItem value="hot">🔥 Hot</SelectItem>
+            <SelectItem value="warm">Warm</SelectItem>
+            <SelectItem value="cold">Cold</SelectItem>
+          </SelectContent>
+        </Select>
         <Button variant="ghost" size="sm" onClick={clearFilters}>Clear</Button>
         <span className="text-sm text-muted-foreground ml-auto">{filtered.length} shown</span>
       </div>
@@ -208,14 +233,23 @@ export default function RecruitingPipeline() {
           <div className="divide-y">
             {filtered.slice(0, 400).map((r) => (
               <div key={r.person_key} className="p-3 flex flex-col lg:flex-row lg:flex-wrap lg:items-center gap-2">
-                <div className="min-w-0 lg:w-56">
-                  {r.person_type === "agent" ? (
-                    <button className="font-semibold truncate text-left hover:text-primary hover:underline" onClick={() => openAgentProfile(r.person_key.split(":")[1])}>{r.name || "Unknown"}</button>
-                  ) : (
-                    <div className="font-semibold truncate">{r.name || "Unknown"}</div>
-                  )}
+                <div className="min-w-0 lg:w-60">
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      title="Click to set intent (hot → warm → cold → none)"
+                      onClick={() => cycleIntent(r)}
+                      className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold border ${r.intent_level && INTENT_STYLE[r.intent_level] ? INTENT_STYLE[r.intent_level].cls : "text-muted-foreground border-dashed"}`}>
+                      {r.intent_level && INTENT_STYLE[r.intent_level] ? INTENT_STYLE[r.intent_level].label : "Intent"}
+                    </button>
+                    {r.person_type === "agent" ? (
+                      <button className="font-semibold truncate text-left hover:text-primary hover:underline" onClick={() => openAgentProfile(r.person_key.split(":")[1])}>{r.name || "Unknown"}</button>
+                    ) : (
+                      <div className="font-semibold truncate">{r.name || "Unknown"}</div>
+                    )}
+                  </div>
                   <div className="text-xs text-muted-foreground truncate">
-                    {r.phone || "no phone"}{r.instagram ? ` · @${r.instagram.replace(/^@/, "")}` : ""}
+                    {r.phone || "no phone"}
+                    {r.instagram && <> · <a href={`https://instagram.com/${r.instagram.replace(/^@/, "")}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">@{r.instagram.replace(/^@/, "")}</a></>}
                     {r.lead_source ? ` · ${r.lead_source}` : ""}
                   </div>
                 </div>
@@ -250,6 +284,12 @@ export default function RecruitingPipeline() {
                   }}>+1d</Button>
                   <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => { setNoteFor(noteFor === r.person_key ? null : r.person_key); setNoteDraft(""); }}>Note</Button>
                 </div>
+                {r.notes && noteFor !== r.person_key && (
+                  <button onClick={() => { setNoteFor(r.person_key); setNoteDraft(""); }}
+                    className="w-full lg:basis-full text-left text-xs text-muted-foreground italic truncate mt-0.5 hover:text-foreground">
+                    📝 {r.notes.split("\n").filter(Boolean).pop()}
+                  </button>
+                )}
                 {noteFor === r.person_key && (
                   <div className="flex items-center gap-1 w-full lg:basis-full mt-1">
                     <Input autoFocus value={noteDraft} onChange={(e) => setNoteDraft(e.target.value)}

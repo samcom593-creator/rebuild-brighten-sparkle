@@ -1,0 +1,240 @@
+import { useMemo, useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { usePageTitle } from "@/hooks/usePageTitle";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
+import { contactLinkProps, phoneHref, smsHref } from "@/lib/phone";
+
+// One unified operating view over applications + agents. Reads v_recruiting_pipeline,
+// writes through rp_pipeline_action (existing columns only). No rebuild.
+
+const STAGES = [
+  "New Lead", "Contacted", "Call Scheduled", "Interested", "Confirmed",
+  "Expected Monday", "Showed", "No Show", "Onboarding", "Contract Sent",
+  "Contracting In Progress", "Ready for Training", "Active Agent",
+  "Inactive/No Longer With Us",
+] as const;
+
+const STAGE_COLOR: Record<string, string> = {
+  "New Lead": "bg-slate-500", "Contacted": "bg-sky-600", "Call Scheduled": "bg-indigo-600",
+  "Interested": "bg-violet-600", "Confirmed": "bg-purple-600", "Expected Monday": "bg-amber-600",
+  "Showed": "bg-emerald-600", "No Show": "bg-red-600", "Onboarding": "bg-teal-600",
+  "Contract Sent": "bg-cyan-600", "Contracting In Progress": "bg-blue-600",
+  "Ready for Training": "bg-lime-600", "Active Agent": "bg-green-700",
+  "Inactive/No Longer With Us": "bg-zinc-600",
+};
+
+interface Row {
+  person_key: string; person_type: string; name: string;
+  phone: string | null; email: string | null; instagram: string | null;
+  lead_source: string | null; stage: string; monday_status: string | null;
+  expected_start: string | null; last_contact: string | null; next_follow_up: string | null;
+  next_action_display: string | null; notes: string | null;
+  license_status: string | null; raw_status: string | null;
+}
+
+function fmt(ts: string | null): string {
+  if (!ts) return "—";
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+export default function RecruitingPipeline() {
+  usePageTitle("Recruiting Pipeline");
+  const qc = useQueryClient();
+  const [search, setSearch] = useState("");
+  const [stageFilter, setStageFilter] = useState<string>("");
+  const [typeFilter, setTypeFilter] = useState<string>("");
+  const [mondayFilter, setMondayFilter] = useState<string>("");
+  const [activeFilter, setActiveFilter] = useState<string>("open"); // open | all | inactive
+  const [noteFor, setNoteFor] = useState<string | null>(null);
+  const [noteDraft, setNoteDraft] = useState("");
+
+  const { data: rows = [], isLoading } = useQuery<Row[]>({
+    queryKey: ["recruiting-pipeline"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("v_recruiting_pipeline" as never)
+        .select("*")
+        .limit(2000);
+      if (error) throw error;
+      return (data ?? []) as unknown as Row[];
+    },
+  });
+
+  const action = useMutation({
+    mutationFn: async (v: { person_key: string; action: string; value?: string | null }) => {
+      const { error } = await supabase.rpc("rp_pipeline_action" as never, {
+        p_person_key: v.person_key, p_action: v.action, p_value: v.value ?? null,
+      } as never);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["recruiting-pipeline"] }); },
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "Action failed"),
+  });
+
+  const fire = (person_key: string, act: string, value?: string | null, msg?: string) => {
+    action.mutate({ person_key, action: act, value }, { onSuccess: () => { if (msg) toast.success(msg); qc.invalidateQueries({ queryKey: ["recruiting-pipeline"] }); } });
+  };
+
+  // Monday / Start operating tiles.
+  const tiles = useMemo(() => {
+    const apps = rows.filter((r) => r.person_type === "applicant");
+    const count = (p: (r: Row) => boolean) => rows.filter(p).length;
+    return [
+      { key: "expected", label: "Expected Monday", n: apps.filter((r) => r.monday_status === "expected").length, filter: () => { setMondayFilter("expected"); setStageFilter(""); } },
+      { key: "confirmed", label: "Confirmed", n: apps.filter((r) => r.monday_status === "confirmed").length, filter: () => { setMondayFilter("confirmed"); setStageFilter(""); } },
+      { key: "needs", label: "Needs Confirmation", n: apps.filter((r) => r.monday_status === "expected").length, filter: () => { setMondayFilter("expected"); setStageFilter(""); } },
+      { key: "showed", label: "Showed", n: apps.filter((r) => r.monday_status === "showed").length, filter: () => { setMondayFilter("showed"); setStageFilter(""); } },
+      { key: "noshow", label: "No Shows", n: apps.filter((r) => r.monday_status === "no_show").length, filter: () => { setMondayFilter("no_show"); setStageFilter(""); } },
+      { key: "onboarding", label: "Onboarding", n: count((r) => r.stage === "Onboarding"), filter: () => { setStageFilter("Onboarding"); setMondayFilter(""); } },
+      { key: "contracting", label: "Contracting", n: count((r) => r.stage === "Contract Sent" || r.stage === "Contracting In Progress"), filter: () => { setStageFilter("Contracting In Progress"); setMondayFilter(""); } },
+      { key: "active", label: "Active Agents", n: count((r) => r.stage === "Active Agent"), filter: () => { setStageFilter("Active Agent"); setMondayFilter(""); } },
+    ];
+  }, [rows]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return rows.filter((r) => {
+      if (activeFilter === "open" && r.stage === "Inactive/No Longer With Us") return false;
+      if (activeFilter === "inactive" && r.stage !== "Inactive/No Longer With Us") return false;
+      if (stageFilter && r.stage !== stageFilter) return false;
+      if (typeFilter && r.person_type !== typeFilter) return false;
+      if (mondayFilter && r.monday_status !== mondayFilter) return false;
+      if (q) {
+        const hay = `${r.name} ${r.phone ?? ""} ${r.email ?? ""} ${r.instagram ?? ""} ${r.lead_source ?? ""}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [rows, search, stageFilter, typeFilter, mondayFilter, activeFilter]);
+
+  const clearFilters = () => { setSearch(""); setStageFilter(""); setTypeFilter(""); setMondayFilter(""); setActiveFilter("open"); };
+
+  return (
+    <div className="p-4 md:p-6 max-w-[1400px] mx-auto space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <h1 className="text-2xl font-bold">Recruiting Pipeline</h1>
+          <p className="text-sm text-muted-foreground">{rows.length} people · one place for who's next</p>
+        </div>
+      </div>
+
+      {/* Monday / Start tiles */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
+        {tiles.map((t) => (
+          <button key={t.key} onClick={t.filter}
+            className="rounded-lg border bg-card p-3 text-left hover:border-primary transition-colors">
+            <div className="text-2xl font-bold">{t.n}</div>
+            <div className="text-xs text-muted-foreground leading-tight">{t.label}</div>
+          </button>
+        ))}
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Input placeholder="Search name, phone, email, IG…" value={search}
+          onChange={(e) => setSearch(e.target.value)} className="w-full sm:w-64" />
+        <select className="h-9 rounded-md border bg-background px-2 text-sm" value={stageFilter} onChange={(e) => setStageFilter(e.target.value)}>
+          <option value="">All stages</option>
+          {STAGES.map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>
+        <select className="h-9 rounded-md border bg-background px-2 text-sm" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+          <option value="">Everyone</option>
+          <option value="applicant">Prospects</option>
+          <option value="agent">Agents</option>
+        </select>
+        <select className="h-9 rounded-md border bg-background px-2 text-sm" value={mondayFilter} onChange={(e) => setMondayFilter(e.target.value)}>
+          <option value="">Any Monday</option>
+          <option value="expected">Expected</option>
+          <option value="confirmed">Confirmed</option>
+          <option value="showed">Showed</option>
+          <option value="no_show">No Show</option>
+        </select>
+        <select className="h-9 rounded-md border bg-background px-2 text-sm" value={activeFilter} onChange={(e) => setActiveFilter(e.target.value)}>
+          <option value="open">Open only</option>
+          <option value="all">Include inactive</option>
+          <option value="inactive">Inactive only</option>
+        </select>
+        <Button variant="ghost" size="sm" onClick={clearFilters}>Clear</Button>
+        <span className="text-sm text-muted-foreground ml-auto">{filtered.length} shown</span>
+      </div>
+
+      {/* People */}
+      <Card className="overflow-hidden">
+        {isLoading ? (
+          <div className="p-8 text-center text-muted-foreground">Loading…</div>
+        ) : filtered.length === 0 ? (
+          <div className="p-8 text-center text-muted-foreground">No one matches these filters.</div>
+        ) : (
+          <div className="divide-y">
+            {filtered.slice(0, 400).map((r) => (
+              <div key={r.person_key} className="p-3 flex flex-col lg:flex-row lg:flex-wrap lg:items-center gap-2">
+                <div className="min-w-0 lg:w-56">
+                  <div className="font-semibold truncate">{r.name || "Unknown"}</div>
+                  <div className="text-xs text-muted-foreground truncate">
+                    {r.phone || "no phone"}{r.instagram ? ` · @${r.instagram.replace(/^@/, "")}` : ""}
+                    {r.lead_source ? ` · ${r.lead_source}` : ""}
+                  </div>
+                </div>
+                <div className="lg:w-48 flex items-center gap-2">
+                  <span className={`inline-block h-2 w-2 rounded-full ${STAGE_COLOR[r.stage] ?? "bg-slate-500"}`} />
+                  <select
+                    className="h-8 rounded-md border bg-background px-1 text-xs max-w-[11rem]"
+                    value={STAGES.includes(r.stage as typeof STAGES[number]) ? r.stage : ""}
+                    onChange={(e) => fire(r.person_key, "stage", e.target.value, "Status updated")}>
+                    {!STAGES.includes(r.stage as typeof STAGES[number]) && <option value="">{r.stage}</option>}
+                    {STAGES.map((s) => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div className="lg:flex-1 text-xs text-muted-foreground min-w-0">
+                  <span className="font-medium text-foreground">Next: </span>{r.next_action_display || "Follow up"}
+                  <span className="mx-2">·</span>Last: {fmt(r.last_contact)}
+                  <span className="mx-2">·</span>Due: {fmt(r.next_follow_up)}
+                </div>
+                <div className="flex flex-wrap items-center gap-1">
+                  {r.phone && <a href={phoneHref(r.phone) ?? `tel:${r.phone}`} {...contactLinkProps(phoneHref(r.phone))}><Button size="sm" variant="outline" className="h-7 px-2 text-xs">Call</Button></a>}
+                  {r.phone && <a href={smsHref(r.phone) ?? `sms:${r.phone}`} {...contactLinkProps(smsHref(r.phone))}><Button size="sm" variant="outline" className="h-7 px-2 text-xs">Text</Button></a>}
+                  {r.person_type === "applicant" && <>
+                    <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => fire(r.person_key, "monday", "expected", "Marked expected Monday")}>Exp Mon</Button>
+                    <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => fire(r.person_key, "monday", "confirmed", "Confirmed")}>Confirm</Button>
+                    <Button size="sm" className="h-7 px-2 text-xs bg-emerald-600 hover:bg-emerald-700" onClick={() => fire(r.person_key, "monday", "showed", "Marked showed")}>Showed</Button>
+                    <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => fire(r.person_key, "monday", "no_show", "Marked no-show")}>No-show</Button>
+                  </>}
+                  <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => fire(r.person_key, "contacted", null, "Marked contacted")}>Contacted</Button>
+                  <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => {
+                    const d = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+                    fire(r.person_key, "followup", d, "Follow-up set for tomorrow");
+                  }}>+1d</Button>
+                  <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => { setNoteFor(noteFor === r.person_key ? null : r.person_key); setNoteDraft(""); }}>Note</Button>
+                </div>
+                {noteFor === r.person_key && (
+                  <div className="flex items-center gap-1 w-full lg:basis-full mt-1">
+                    <Input autoFocus value={noteDraft} onChange={(e) => setNoteDraft(e.target.value)}
+                      placeholder={`Note for ${r.name}…`} className="h-8 text-xs"
+                      onKeyDown={(e) => { if (e.key === "Enter" && noteDraft.trim()) { fire(r.person_key, "note", noteDraft.trim(), "Note added"); setNoteFor(null); } }} />
+                    <Button size="sm" className="h-8 px-3 text-xs" disabled={!noteDraft.trim()}
+                      onClick={() => { fire(r.person_key, "note", noteDraft.trim(), "Note added"); setNoteFor(null); }}>Save</Button>
+                    <Button size="sm" variant="ghost" className="h-8 px-2 text-xs" onClick={() => setNoteFor(null)}>Cancel</Button>
+                  </div>
+                )}
+              </div>
+            ))}
+            {filtered.length > 400 && (
+              <div className="p-3 text-center text-xs text-muted-foreground">Showing first 400 of {filtered.length}. Narrow with filters.</div>
+            )}
+          </div>
+        )}
+      </Card>
+      <p className="text-xs text-muted-foreground">
+        <Badge variant="outline" className="mr-1">Note</Badge>
+        Changing a status here sets a manual override that sticks until you clear it. Everything writes to your existing records — no data is duplicated.
+      </p>
+    </div>
+  );
+}

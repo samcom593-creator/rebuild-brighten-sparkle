@@ -165,6 +165,7 @@ const NotificationHub = lazy(() => import("./pages/NotificationHub"));
 const LinksPage = lazy(() => import("./pages/LinksPage"));
 const AdminCalendar = lazy(() => import("./pages/AdminCalendar"));
 const Interviews = lazy(() => import("./pages/Interviews"));
+const RecruitingPipeline = lazy(() => import("./pages/RecruitingPipeline"));
 const InterviewRecovery = lazy(() => import("./pages/InterviewRecovery"));
 const ProducerReactivation = lazy(() => import("./pages/ProducerReactivation"));
 const AdminBoardAccess = lazy(() => import("./pages/AdminBoardAccess"));
@@ -490,6 +491,7 @@ const App = () => (
                     {/* Unified APEX OS destinations. Legacy URLs below remain
                         as redirects so bookmarks keep their filters/query. */}
                     <Route path="/dashboard/recruiting" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va", "recruiter"]}><DashboardApplicants /></ProtectedRoute>} />
+                    <Route path="/dashboard/recruiting/pipeline" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va", "recruiter"]}><RecruitingPipeline /></ProtectedRoute>} />
                     <Route path="/dashboard/recruiting/interviews" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va", "recruiter"]}><Interviews /></ProtectedRoute>} />
                     <Route path="/dashboard/recruiting/follow-ups" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va", "recruiter"]}><InterviewRecovery /></ProtectedRoute>} />
                     <Route path="/dashboard/recruiting/hires" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va", "recruiter"]}><DashboardApplicants /></ProtectedRoute>} />

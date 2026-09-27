@@ -731,6 +731,7 @@
     "public.v_recruiting_inbox",
     "public.v_recruiting_inbox_summary",
     "public.v_recruiting_leaderboard",
+    "public.v_recruiting_pipeline",
     "public.v_referral_earnings_pending",
     "public.v_referral_pipeline",
     "public.v_rls_audit",

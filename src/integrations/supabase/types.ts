@@ -20199,6 +20199,7 @@ export type Database = {
           performance_tier:
             | Database["public"]["Enums"]["performance_tier"]
             | null
+          pipeline_stage_override: string | null
           portal_password_set: boolean | null
           potential_rating: number | null
           production_unlocked_at: string | null
@@ -20304,6 +20305,7 @@ export type Database = {
           performance_tier?:
             | Database["public"]["Enums"]["performance_tier"]
             | null
+          pipeline_stage_override?: string | null
           portal_password_set?: boolean | null
           potential_rating?: number | null
           production_unlocked_at?: string | null
@@ -20409,6 +20411,7 @@ export type Database = {
           performance_tier?:
             | Database["public"]["Enums"]["performance_tier"]
             | null
+          pipeline_stage_override?: string | null
           portal_password_set?: boolean | null
           potential_rating?: number | null
           production_unlocked_at?: string | null
@@ -26866,6 +26869,7 @@ export type Database = {
           licensed_states: string[] | null
           manager_track_flagged_at: string | null
           manual_followup_sent_at: string | null
+          monday_status: string | null
           msclkid: string | null
           next_action: string | null
           next_action_at: string | null
@@ -26882,6 +26886,7 @@ export type Database = {
           phone: string | null
           phone_bad_at: string | null
           phone_bad_reason: string | null
+          pipeline_stage_override: string | null
           previous_company: string | null
           previous_production: number | null
           previous_team_size: number | null
@@ -27006,6 +27011,7 @@ export type Database = {
           licensed_states?: string[] | null
           manager_track_flagged_at?: string | null
           manual_followup_sent_at?: string | null
+          monday_status?: string | null
           msclkid?: string | null
           next_action?: string | null
           next_action_at?: string | null
@@ -27022,6 +27028,7 @@ export type Database = {
           phone?: string | null
           phone_bad_at?: string | null
           phone_bad_reason?: string | null
+          pipeline_stage_override?: string | null
           previous_company?: string | null
           previous_production?: number | null
           previous_team_size?: number | null
@@ -27146,6 +27153,7 @@ export type Database = {
           licensed_states?: string[] | null
           manager_track_flagged_at?: string | null
           manual_followup_sent_at?: string | null
+          monday_status?: string | null
           msclkid?: string | null
           next_action?: string | null
           next_action_at?: string | null
@@ -27162,6 +27170,7 @@ export type Database = {
           phone?: string | null
           phone_bad_at?: string | null
           phone_bad_reason?: string | null
+          pipeline_stage_override?: string | null
           previous_company?: string | null
           previous_production?: number | null
           previous_team_size?: number | null
@@ -132644,6 +132653,37 @@ export type Database = {
         }
         Relationships: []
       }
+      v_recruiting_pipeline: {
+        Row: {
+          assigned_va_id: string | null
+          contracted_at: string | null
+          created_at: string | null
+          email: string | null
+          expected_start: string | null
+          hiring_manager_user_id: string | null
+          id: string | null
+          instagram: string | null
+          last_contact: string | null
+          lead_source: string | null
+          license_progress: string | null
+          license_status: string | null
+          monday_status: string | null
+          name: string | null
+          next_action_display: string | null
+          next_follow_up: string | null
+          notes: string | null
+          person_key: string | null
+          person_type: string | null
+          phone: string | null
+          pipeline_stage_override: string | null
+          raw_next_action: string | null
+          raw_status: string | null
+          recruiter_id: string | null
+          stage: string | null
+          upcoming_interviews: number | null
+        }
+        Relationships: []
+      }
       v_referral_earnings_pending: {
         Row: {
           agent_id: string | null
@@ -139702,6 +139742,7 @@ export type Database = {
           licensed_states: string[] | null
           manager_track_flagged_at: string | null
           manual_followup_sent_at: string | null
+          monday_status: string | null
           msclkid: string | null
           next_action: string | null
           next_action_at: string | null
@@ -139718,6 +139759,7 @@ export type Database = {
           phone: string | null
           phone_bad_at: string | null
           phone_bad_reason: string | null
+          pipeline_stage_override: string | null
           previous_company: string | null
           previous_production: number | null
           previous_team_size: number | null
@@ -141512,6 +141554,10 @@ export type Database = {
         }
       }
       revive_dead_leads: { Args: never; Returns: Json }
+      rp_pipeline_action: {
+        Args: { p_action: string; p_person_key: string; p_value?: string }
+        Returns: string
+      }
       run_apex_outbox_dispatch_if_pending: { Args: never; Returns: string }
       run_automation_job: {
         Args: { p_body?: Json; p_function_name: string; p_job_name: string }

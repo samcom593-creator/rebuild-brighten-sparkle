@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-rpc-column-vocabulary.sh (bot_sql -> pg_proc + pg_rewrite)",
- "_generated_at": "2026-09-10T22:57:07Z",
+ "_generated_at": "2026-09-27T20:43:19Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "check-enum-filter-literals.mjs grades literals inside supabase.from().eq() chains. This is the other half of the same class: a status word that arrives from an RPC and is compared in JavaScript, where the return type is text and every wrong word type-checks. Per (function, returned column) this records the relation columns of that name reachable from the function body and the literals the function synthesises itself. It deliberately records CANDIDATES rather than one resolved source: provenance from a body regex is a guess, so check-rpc-status-literals.mjs refuses a literal only when NO candidate vocabulary and no body literal accepts it.",
  "_vocabulary_source": "scripts/data/enum-catalog.json (check_vocab + column_enum + enums). Not copied here on purpose, so the two guards read one snapshot and cannot drift.",
@@ -117,6 +117,8 @@
   "content_clips_upsert": "jsonb",
   "content_library_search_update": "trigger",
   "content_queue_guard_update": "trigger",
+  "contracting_worklist_ack": "jsonb",
+  "contracting_worklist_unack": "jsonb",
   "course_max_attempts": "integer",
   "create_apex_toolkit_agent": "jsonb",
   "create_apex_toolkit_agent_legacy": "jsonb",
@@ -168,6 +170,7 @@
   "fn_agent_subagency": "text",
   "fn_agent_subagency_live": "text",
   "fn_agentlink_alert_page": "boolean",
+  "fn_agentlink_book_verdict": "text",
   "fn_agentlink_outbox_uuid": "uuid",
   "fn_agentlink_policy_fingerprint": "text",
   "fn_agentlink_policy_outbox_uuid": "uuid",
@@ -175,6 +178,7 @@
   "fn_alert_blacklisted_carrier_deal": "trigger",
   "fn_alert_licensed_applicant": "trigger",
   "fn_alert_sms_fix_anchor": "timestamp with time zone",
+  "fn_apex_log_http_call": "trigger",
   "fn_applicant_first_dm_on_apply": "trigger",
   "fn_application_milestone_broadcast": "trigger",
   "fn_applications_derive_record_type": "trigger",
@@ -188,8 +192,13 @@
   "fn_block_new_agent_identity_dup": "trigger",
   "fn_block_profile_email_dup": "trigger",
   "fn_block_retired_cloud_outbox": "trigger",
+  "fn_book_audit_run": "jsonb",
+  "fn_book_parity_anchor": "timestamp with time zone",
+  "fn_book_policy_identity_ok": "boolean",
+  "fn_book_policy_key": "text",
   "fn_book_row_proves_license": "trigger",
   "fn_book_row_sets_first_deal": "trigger",
+  "fn_brand_lead_alert": "trigger",
   "fn_bridge_hh_hire_to_apex": "trigger",
   "fn_broadcast_to_telegram_chat": "void",
   "fn_business_day_ordinal": "integer",
@@ -220,6 +229,8 @@
   "fn_enqueue_onboarding_call_booking": "jsonb",
   "fn_enqueue_unlicensed_activation": "trigger",
   "fn_enrich_contracting_intake": "trigger",
+  "fn_ensure_contracting_delivery_legs": "integer",
+  "fn_ethos_level_for_pct": "text",
   "fn_evaluate_personal_records": "integer",
   "fn_evaluate_recruiter_bounties": "integer",
   "fn_guard_daily_production_date": "trigger",
@@ -227,6 +238,7 @@
   "fn_hire_stage_rank": "integer",
   "fn_identity_collision_anchor": "timestamp with time zone",
   "fn_identity_collision_observe": "integer",
+  "fn_insuracloud_lane_verdict": "text",
   "fn_insuracloud_refusal_anchor": "timestamp with time zone",
   "fn_interview_events_classify_onboarding": "trigger",
   "fn_is_first_slack_deal_today": "boolean",
@@ -259,6 +271,7 @@
   "fn_normalize_license_progress": "trigger",
   "fn_normalize_policy_number": "text",
   "fn_notify_agent_hired": "trigger",
+  "fn_npn_plausible": "boolean",
   "fn_onboarding_email_backfill_sweep": "jsonb",
   "fn_policy_number_report_placeholder": "boolean",
   "fn_post_deal_celebration": "bigint",
@@ -298,6 +311,7 @@
   "fn_sync_is_manager": "trigger",
   "fn_system_settings_reject_json_quoted": "trigger",
   "fn_telegram_queue_inactivity_nudges": "integer",
+  "fn_text_json_safe": "text",
   "fn_today_tasks_touch_updated_at": "trigger",
   "fn_touch_agent_credentials_updated_at": "trigger",
   "fn_touch_candidate_smart_goal": "trigger",
@@ -344,6 +358,7 @@
   "hh_touch_user": "trigger",
   "ig_bucket": "text",
   "in_course_peer_pressure": "jsonb",
+  "ingest_ayro_sales_deal": "jsonb",
   "ingest_discord_production_deal": "jsonb",
   "ingest_external_production_deal": "jsonb",
   "is_agency_staff": "boolean",
@@ -416,6 +431,7 @@
   "resolve_hiring_manager_for_scope": "uuid",
   "resolve_strike": "agent_strikes",
   "revive_dead_leads": "jsonb",
+  "rp_pipeline_action": "text",
   "run_apex_outbox_dispatch_if_pending": "uuid",
   "run_automation_job": "uuid",
   "run_readymode_sync_if_due": "bigint",
@@ -501,6 +517,7 @@
   "trg_fn_deal_celebration": "trigger",
   "trg_fn_deal_closed_discord": "trigger",
   "trg_fn_deal_status_transition": "trigger",
+  "trg_fn_ensure_contracting_legs": "trigger",
   "trg_fn_first_deal_welcome": "trigger",
   "trg_fn_hot_streak": "trigger",
   "trg_fn_inbox_interview_scheduled": "trigger",
@@ -596,6 +613,280 @@
     "active",
     "agent",
     "public"
+   ]
+  },
+  "admin_team_engagement.agent_id": {
+   "candidates": [
+    "agent_onboarding_queue.agent_id",
+    "magic_login_tokens.agent_id",
+    "onboarding_progress.agent_id"
+   ],
+   "body_literals": [
+    "admin",
+    "course",
+    "discord",
+    "get_licensed",
+    "public",
+    "terminated"
+   ]
+  },
+  "admin_team_engagement.course_sent_at": {
+   "candidates": [],
+   "body_literals": [
+    "admin",
+    "course",
+    "discord",
+    "get_licensed",
+    "public",
+    "terminated"
+   ]
+  },
+  "admin_team_engagement.days_since_login": {
+   "candidates": [],
+   "body_literals": [
+    "admin",
+    "course",
+    "discord",
+    "get_licensed",
+    "public",
+    "terminated"
+   ]
+  },
+  "admin_team_engagement.discord_last_error": {
+   "candidates": [],
+   "body_literals": [
+    "admin",
+    "course",
+    "discord",
+    "get_licensed",
+    "public",
+    "terminated"
+   ]
+  },
+  "admin_team_engagement.discord_sent_at": {
+   "candidates": [],
+   "body_literals": [
+    "admin",
+    "course",
+    "discord",
+    "get_licensed",
+    "public",
+    "terminated"
+   ]
+  },
+  "admin_team_engagement.display_name": {
+   "candidates": [
+    "agents.display_name"
+   ],
+   "body_literals": [
+    "admin",
+    "course",
+    "discord",
+    "get_licensed",
+    "public",
+    "terminated"
+   ]
+  },
+  "admin_team_engagement.email": {
+   "candidates": [
+    "magic_login_tokens.email",
+    "profiles.email"
+   ],
+   "body_literals": [
+    "admin",
+    "course",
+    "discord",
+    "get_licensed",
+    "public",
+    "terminated"
+   ]
+  },
+  "admin_team_engagement.get_licensed_sent_at": {
+   "candidates": [],
+   "body_literals": [
+    "admin",
+    "course",
+    "discord",
+    "get_licensed",
+    "public",
+    "terminated"
+   ]
+  },
+  "admin_team_engagement.has_discord_access": {
+   "candidates": [
+    "agents.has_discord_access"
+   ],
+   "body_literals": [
+    "admin",
+    "course",
+    "discord",
+    "get_licensed",
+    "public",
+    "terminated"
+   ]
+  },
+  "admin_team_engagement.has_login": {
+   "candidates": [],
+   "body_literals": [
+    "admin",
+    "course",
+    "discord",
+    "get_licensed",
+    "public",
+    "terminated"
+   ]
+  },
+  "admin_team_engagement.has_training_course": {
+   "candidates": [
+    "agents.has_training_course"
+   ],
+   "body_literals": [
+    "admin",
+    "course",
+    "discord",
+    "get_licensed",
+    "public",
+    "terminated"
+   ]
+  },
+  "admin_team_engagement.hired_at": {
+   "candidates": [],
+   "body_literals": [
+    "admin",
+    "course",
+    "discord",
+    "get_licensed",
+    "public",
+    "terminated"
+   ]
+  },
+  "admin_team_engagement.last_module_activity_at": {
+   "candidates": [],
+   "body_literals": [
+    "admin",
+    "course",
+    "discord",
+    "get_licensed",
+    "public",
+    "terminated"
+   ]
+  },
+  "admin_team_engagement.last_sign_in_at": {
+   "candidates": [],
+   "body_literals": [
+    "admin",
+    "course",
+    "discord",
+    "get_licensed",
+    "public",
+    "terminated"
+   ]
+  },
+  "admin_team_engagement.license_status": {
+   "candidates": [
+    "agents.license_status"
+   ],
+   "body_literals": [
+    "admin",
+    "course",
+    "discord",
+    "get_licensed",
+    "public",
+    "terminated"
+   ]
+  },
+  "admin_team_engagement.manager_name": {
+   "candidates": [],
+   "body_literals": [
+    "admin",
+    "course",
+    "discord",
+    "get_licensed",
+    "public",
+    "terminated"
+   ]
+  },
+  "admin_team_engagement.modules_completed": {
+   "candidates": [],
+   "body_literals": [
+    "admin",
+    "course",
+    "discord",
+    "get_licensed",
+    "public",
+    "terminated"
+   ]
+  },
+  "admin_team_engagement.modules_total": {
+   "candidates": [],
+   "body_literals": [
+    "admin",
+    "course",
+    "discord",
+    "get_licensed",
+    "public",
+    "terminated"
+   ]
+  },
+  "admin_team_engagement.onboarding_stage": {
+   "candidates": [
+    "agents.onboarding_stage"
+   ],
+   "body_literals": [
+    "admin",
+    "course",
+    "discord",
+    "get_licensed",
+    "public",
+    "terminated"
+   ]
+  },
+  "admin_team_engagement.phone": {
+   "candidates": [
+    "profiles.phone"
+   ],
+   "body_literals": [
+    "admin",
+    "course",
+    "discord",
+    "get_licensed",
+    "public",
+    "terminated"
+   ]
+  },
+  "admin_team_engagement.portal_email_last_sent_at": {
+   "candidates": [],
+   "body_literals": [
+    "admin",
+    "course",
+    "discord",
+    "get_licensed",
+    "public",
+    "terminated"
+   ]
+  },
+  "admin_team_engagement.portal_link_used_at": {
+   "candidates": [],
+   "body_literals": [
+    "admin",
+    "course",
+    "discord",
+    "get_licensed",
+    "public",
+    "terminated"
+   ]
+  },
+  "admin_team_engagement.status": {
+   "candidates": [
+    "agents.status"
+   ],
+   "body_literals": [
+    "admin",
+    "course",
+    "discord",
+    "get_licensed",
+    "public",
+    "terminated"
    ]
   },
   "agency_roster_production.agency": {

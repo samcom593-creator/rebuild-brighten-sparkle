@@ -124,16 +124,20 @@ export function TeamEngagementPanel() {
   return (
     <Card className="border-amber-500/30">
       <CardHeader className="pb-3">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <CardTitle className="text-base sm:text-lg">Team engagement</CardTitle>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <button type="button" className="text-left" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+            <CardTitle className="text-base sm:text-lg">Team engagement {open ? "▾" : "▸"}</CardTitle>
             <p className="text-xs text-muted-foreground mt-1">
-              Who has actually logged in, which onboarding emails really went out, and where each person is stuck — so you know who to call.
+              {rows.length > 0
+                ? `${counts.never_logged_in} never logged in · ${counts.silent_7d} silent 7d+ · ${counts.licensed_no_discord} licensed w/o Discord · tap to ${open ? "collapse" : "open"}`
+                : "Who has logged in, which emails really went out, where each person is stuck."}
             </p>
-          </div>
-          <Button variant="outline" size="sm" onClick={exportCsv} disabled={visible.length === 0}>
-            Export CSV ({visible.length})
-          </Button>
+          </button>
+          {open && (
+            <Button variant="outline" size="sm" onClick={exportCsv} disabled={visible.length === 0}>
+              Export CSV ({visible.length})
+            </Button>
+          )}
         </div>
       </CardHeader>
       <CardContent className="space-y-4">

@@ -46,14 +46,18 @@ ${inner}
 async function postDiscord(alert: any): Promise<boolean> {
   // License-returned alerts are contracting work, not production/numbers chat.
   // Keep all other Pulse alerts on the existing production route.
-  // brand_funnel (sell4daddy.com leads) is PRIVATE to Sam: it resolves to
-  // discord_webhook_url_brand, a webhook for a channel only he can see. While that
-  // setting is unset nothing is posted — it never falls back to the team room.
-  const discordSettingKey = alert?.source === "brand_funnel"
-    ? "discord_webhook_url_brand"
-    : alert?.event_type === "agent_license_returned"
-      ? "discord_webhook_url_contracting"
-      : "discord_webhook_url";
+  // Team Discord channels carry TEAM-facing celebrations only. Everything else —
+  // brand-funnel leads, licensed-applicant callouts, setup/test alerts, ops — is
+  // Sam-only: it resolves to discord_webhook_url_private (a channel only he sees)
+  // and is posted NOWHERE while that key is unset. The team production webhook is
+  // never a fallback. Sam, 2026-09-26: "that stuff should only be known for me…
+  // it doesn't even have a purpose in being there."
+  const TEAM_EVENTS = new Set(["big_deal", "deal_closed", "first_deal_of_day", "applicant_contracted"]);
+  const discordSettingKey = alert?.event_type === "agent_license_returned"
+    ? "discord_webhook_url_contracting"
+    : TEAM_EVENTS.has(String(alert?.event_type ?? ""))
+      ? "discord_webhook_url"
+      : "discord_webhook_url_private";
   const { data } = await supabase
     .from("system_settings")
     .select("value")

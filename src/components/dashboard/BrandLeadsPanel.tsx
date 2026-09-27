@@ -93,16 +93,18 @@ export function BrandLeadsPanel() {
   return (
     <Card className="border-amber-500/30">
       <CardHeader className="pb-3">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <CardTitle className="text-base sm:text-lg">Brand funnel leads</CardTitle>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <button type="button" className="text-left" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+            <CardTitle className="text-base sm:text-lg">Brand funnel leads {open ? "▾" : "▸"}</CardTitle>
             <p className="text-xs text-muted-foreground mt-1">
-              Everyone who filled a form on sell4daddy.com — tap to call or email, then move the status. {newCount} new.
+              {newCount} new · {leads.length} total from sell4daddy.com · tap to {open ? "collapse" : "open"}
             </p>
-          </div>
-          <Button variant="outline" size="sm" onClick={() => setOpenOnly((v) => !v)}>
-            {openOnly ? "Show won/lost" : "Hide won/lost"}
-          </Button>
+          </button>
+          {open && (
+            <Button variant="outline" size="sm" onClick={() => setOpenOnly((v) => !v)}>
+              {openOnly ? "Show won/lost" : "Hide won/lost"}
+            </Button>
+          )}
         </div>
       </CardHeader>
       <CardContent className="space-y-3">

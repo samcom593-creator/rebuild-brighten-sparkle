@@ -159,6 +159,12 @@ async function send(alert: any): Promise<{ email_id: string | null; sent_sms: bo
   // email + sms also when configured.
   const requested: string[] = alert.channels ?? ["email", "sms", "discord", "ntfy"];
   const channels = new Set([...requested, "discord", "ntfy"]); // always include
+  // Personal-brand leads from sell4daddy.com (collaboration, fitness buyers, AI
+  // budgets, mentorship, rentals) are PRIVATE: they push to Sam's phone only and
+  // must never post to the APEX team production channel. The trigger already asks
+  // for ["ntfy"], but the force-add above would still route them to Discord — so
+  // the exclusion has to live here. Sam's directive, 2026-09-26.
+  if (alert?.source === "brand_funnel") channels.delete("discord");
   let email_id: string | null = null;
   let sent_sms = false;
   let sms_receipt: string | null = null;

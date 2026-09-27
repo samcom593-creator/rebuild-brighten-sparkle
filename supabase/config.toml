@@ -741,3 +741,11 @@ verify_jwt = false
 
 [functions.cron-newhire-portal-login]
 verify_jwt = false
+
+# sell4daddy.com (King of Sales brand site) — public endpoints, no JWT. Source of
+# truth is THIS repo (CI deploys from here); ~/projects/kingofsales-brand mirrors it.
+[functions.brand-collab]
+verify_jwt = false
+
+[functions.brand-photo-upload]
+verify_jwt = false

@@ -14,6 +14,13 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "Team engagement panel on /dashboard/team: who has actually logged in, which onboarding emails really went out, portal link sent/used, Discord and course progress — with one-tap filters (never logged in, silent 7d+, licensed without Discord, portal link unused) and CSV export.",
+    detail:
+      "Admin-only RPC admin_team_engagement() joins auth.users.last_sign_in_at (only readable via SECURITY DEFINER; zero rows for non-admins) with agent_onboarding_queue SENT timestamps, magic_login_tokens sent/used, has_discord_access/has_training_course and onboarding_progress. Same wave: Discord invite backfilled for the 2 eligible hires never queued; the 2 licensed rows still unsent are terminal by design (no email / is_inactive).",
+  },
+  {
+    ts: "today",
+    label:
       "Deal-closed Discord posts now show the carrier. The carrier was already in the payload but never rendered — now every deal post (primary + Vantage sub-agency channel) shows ALP, Product and Carrier.",
     detail:
       "discord-webhook-notify embedDealClosed adds a Carrier field (reads details.carrier, already sent by apex-outbox-dispatcher on both the native and external/AgentLink deal paths). Deployed live to Supabase.",

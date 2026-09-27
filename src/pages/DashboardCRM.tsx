@@ -27,6 +27,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { TeamEngagementPanel } from "@/components/dashboard/TeamEngagementPanel";
 import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 import { useAuth } from "@/hooks/useAuth";
 import { useConfirm } from "@/hooks/useConfirm";
@@ -2084,6 +2085,9 @@ export default function DashboardCRM() {
             </>
           }
         />
+
+        {/* 2026-09-26: login truth + onboarding-email truth per agent, admin-only (RPC returns 0 rows otherwise). */}
+        {isAdmin && <TeamEngagementPanel />}
 
         <ProductionMetricsCard
           snapshot={rosterSegmentsQuery.data ?? null}

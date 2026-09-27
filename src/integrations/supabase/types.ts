@@ -138857,6 +138857,34 @@ export type Database = {
           ref_slug: string
         }[]
       }
+      admin_team_engagement: {
+        Args: never
+        Returns: {
+          agent_id: string
+          course_sent_at: string
+          days_since_login: number
+          discord_last_error: string
+          discord_sent_at: string
+          display_name: string
+          email: string
+          get_licensed_sent_at: string
+          has_discord_access: boolean
+          has_login: boolean
+          has_training_course: boolean
+          hired_at: string
+          last_module_activity_at: string
+          last_sign_in_at: string
+          license_status: string
+          manager_name: string
+          modules_completed: number
+          modules_total: number
+          onboarding_stage: string
+          phone: string
+          portal_email_last_sent_at: string
+          portal_link_used_at: string
+          status: string
+        }[]
+      }
       admin_verify_slack_identity: {
         Args: {
           p_agent_id: string

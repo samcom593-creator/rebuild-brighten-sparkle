@@ -29,7 +29,11 @@ const corsHeaders = {
 
 // Funnel destinations — where each intent is driven.
 const APPLY_URL = "https://apex-financial.org/apply";
-const ONBOARD_CALL_URL = "https://calendly.com/apexfinancialempire/apex-onboarding-call";
+// Licensed prospects book straight onto Sam's schedule.
+const LICENSED_CALL_URL = "https://calendly.com/apexfinancialempire/licensed-prospect-call-clone";
+// Licensed prospect who is bringing a team / runs an agency. Same link until
+// Sam sends the team-specific one — swap this constant only, nothing else moves.
+const TEAM_CALL_URL = "https://calendly.com/apexfinancialempire/licensed-prospect-call-clone";
 const FITNESS_URL = "https://kingofsales-brand.vercel.app/fitness";
 const NTFY_TOPIC = "https://ntfy.sh/sams-agent-yrkv9kbqp9e987nb";
 
@@ -54,6 +58,13 @@ const LICENSED_PATTERNS = [
   /\b(life license|life licence|life insurance license|2-?15|2-?14|221[0-9])\b/i,
   /\b(nipr|resident license|non[- ]?resident license)\b/i,
 ];
+// TEAM signal — a licensed prospect who runs an agency / brings downline gets
+// the team call. Checked only within the licensed branch.
+const TEAM_PATTERNS = [
+  /\b(my team|our team|bring my team|have a team|got a team|move my team)\b/i,
+  /\b(my agency|agency owner|my downline|my agents|my producers|my group|my org)\b/i,
+  /\b(we have \d+|team of \d+|\d+ agents|\d+ producers)\b/i,
+];
 // FITNESS intent — route to the fitness funnel instead of recruiting.
 const FITNESS_PATTERNS = [
   /\b(fitness|gym|workout|work out|training plan|meal plan|diet|nutrition)\b/i,
@@ -61,7 +72,7 @@ const FITNESS_PATTERNS = [
   /\b(personal train(er|ing)|coaching|body|physique|bulk|cut|fat loss)\b/i,
 ];
 
-type ReplyPath = "licensed" | "fitness" | "apply";
+type ReplyPath = "licensed" | "licensed_team" | "fitness" | "apply";
 
 interface Classification {
   intent: string;
@@ -74,7 +85,11 @@ function classify(body: string): Classification {
   const t = (body || "").trim();
   if (SPAM_PATTERNS.some((r) => r.test(t)))           return { intent: "spam", lead_score: 0, reply_path: null, urgent: false };
   if (NOT_INTERESTED_PATTERNS.some((r) => r.test(t))) return { intent: "not_interested", lead_score: 0, reply_path: null, urgent: false };
-  if (LICENSED_PATTERNS.some((r) => r.test(t)))       return { intent: "licensed", lead_score: 95, reply_path: "licensed", urgent: true };
+  if (LICENSED_PATTERNS.some((r) => r.test(t))) {
+    // Licensed AND bringing a team = highest value: the team call.
+    if (TEAM_PATTERNS.some((r) => r.test(t)))         return { intent: "licensed_team", lead_score: 99, reply_path: "licensed_team", urgent: true };
+    return { intent: "licensed", lead_score: 95, reply_path: "licensed", urgent: true };
+  }
   if (FITNESS_PATTERNS.some((r) => r.test(t)))        return { intent: "fitness", lead_score: 55, reply_path: "fitness", urgent: false };
   // Sam's directive: everyone else goes STRAIGHT to apply. No qualifying.
   return { intent: "opportunity", lead_score: 60, reply_path: "apply", urgent: false };
@@ -85,9 +100,10 @@ function replyFor(path: ReplyPath, rawSource: string, firstName?: string): strin
   const n = (firstName?.trim() && firstName.split(" ")[0]) || "yo";
   const apply = applyUrl(rawSource);
   const replies: Record<ReplyPath, string> = {
-    licensed: `${n} — you're licensed, that changes everything. we fast-track contracted producers. grab the first open onboarding call and let's get you writing this week: ${ONBOARD_CALL_URL}`,
-    fitness:  `${n} — appreciate you reaching out. everything on the fitness side lives here, plans + 1-on-1 coaching: ${FITNESS_URL}`,
-    apply:    `${n} — let's get you moving. start your application here and we'll route you by state and licence status: ${apply}`,
+    licensed:      `${n} — you're licensed, that changes everything. we fast-track contracted producers. grab a call directly on my schedule and let's get you writing this week: ${LICENSED_CALL_URL}`,
+    licensed_team: `${n} — licensed AND you've got a team? that's exactly who we build with. book straight onto my calendar and let's map moving your whole team over: ${TEAM_CALL_URL}`,
+    fitness:       `${n} — appreciate you reaching out. everything on the fitness side lives here, plans + 1-on-1 coaching: ${FITNESS_URL}`,
+    apply:         `${n} — let's get you moving. start your application here and we'll route you by state and licence status: ${apply}`,
   };
   return replies[path];
 }
@@ -101,41 +117,34 @@ async function fireUrgentLicensedAlert(
   name: string | null,
   text: string,
   source: string,
+  isTeam: boolean,
 ): Promise<void> {
   const who = [name, handle].filter(Boolean).join(" ") || "unknown sender";
-  const line = `LICENSED lead just DMd (${source}): ${who}. Call to onboard NOW. "${text.slice(0, 140)}"`;
+  const kind = isTeam ? "LICENSED + TEAM" : "LICENSED";
+  const callUrl = isTeam ? TEAM_CALL_URL : LICENSED_CALL_URL;
+  const line = `${kind} lead just DMd (${source}): ${who}. Call to onboard NOW. "${text.slice(0, 140)}"`;
   // ntfy: Sam's phone. Title header is ASCII-safe (RFC-2047 not needed here).
   try {
     await fetch(NTFY_TOPIC, {
       method: "POST",
-      headers: { "Title": "APEX LICENSED lead - call now", "Priority": "5", "Tags": "rotating_light" },
+      headers: { "Title": `APEX ${kind} lead - call now`, "Priority": "5", "Tags": "rotating_light" },
       body: line,
     });
   } catch (e) { console.error("[manychat-webhook] ntfy urgent failed", e); }
-  // Discord: the team channel, second exit if ntfy is down.
-  try {
-    const { data: setting } = await sb.from("system_settings")
-      .select("value").eq("key", "discord_webhook_url").maybeSingle();
-    const webhook = (setting as { value?: string } | null)?.value;
-    if (webhook) {
-      await fetch(webhook, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: "APEX LICENSED lead", content: `**CALL NOW** ${line}` }),
-      });
-    }
-  } catch (e) { console.error("[manychat-webhook] discord urgent failed", e); }
-  // Durable audit row (delivered directly above; this is the record, not the pager).
+  // NO Discord. Lead alerts go to Sam's phone only (ntfy) — never the team
+  // members chat. Sam: "there's nothing to do with my team at all."
+  // Durable audit row (delivered to ntfy above; this is the record, not a pager).
+  // channels is ntfy-only so the alert-flush cron can never route it to Discord.
   try {
     await sb.from("bot_alerts").insert({
       source: "inbound_dm",
       event_type: "licensed_lead_dm",
       severity: "celebrate",
-      subject: "LICENSED lead - call now",
+      subject: `${kind} lead - call now`,
       body: line,
       sms_body: line.slice(0, 160),
-      action_link: ONBOARD_CALL_URL,
-      channels: ["ntfy", "discord"],
+      action_link: callUrl,
+      channels: ["ntfy"],
       sent_at: new Date().toISOString(),
     });
   } catch (e) { console.error("[manychat-webhook] bot_alerts insert failed", e); }
@@ -190,6 +199,15 @@ Deno.serve(async (req) => {
     });
   }
 
+  // Health probe for the always-on watchdog: authenticated no-op. Logs nothing,
+  // replies to nobody, pages no one — just proves the brain is reachable and
+  // parsing, so the watchdog can tell "alive" from "dark" without side effects.
+  if (body?.health_check === true) {
+    return new Response(JSON.stringify({ ok: true, health: "ok", ts: new Date().toISOString() }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   const subscriber = (body.subscriber ?? body.contact ?? body.user ?? {}) as Record<string, unknown>;
   const rawSource = firstText(body.source, body.channel, body.platform, body.network, "instagram")!.toLowerCase();
   const source = rawSource.startsWith("manychat") ? rawSource : (rawSource === "instagram" ? "instagram" : `manychat_${rawSource}`);
@@ -223,7 +241,7 @@ Deno.serve(async (req) => {
 
   // URGENT licensed path — fire the call-now alert before anything else.
   if (urgent) {
-    await fireUrgentLicensedAlert(supabase, senderHandle, senderName, text, source);
+    await fireUrgentLicensedAlert(supabase, senderHandle, senderName, text, source, intent === "licensed_team");
   }
 
   if (shouldTrackLead) {

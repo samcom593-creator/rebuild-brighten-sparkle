@@ -99,9 +99,22 @@ export default function RecruitingPipeline() {
     ];
   }, [rows]);
 
+  // Relevance rank: who needs action now + active agents first, inactive last.
+  const rank = (r: Row): number => {
+    const byStage: Record<string, number> = {
+      "Expected Monday": 0, "Confirmed": 0, "Showed": 1, "No Show": 1,
+      "Contract Sent": 2, "Contracting In Progress": 2,
+      "Onboarding": 3, "Ready for Training": 3,
+      "Interested": 4, "Call Scheduled": 4,
+      "Active Agent": 5, "Contacted": 6, "New Lead": 7,
+      "Inactive/No Longer With Us": 99,
+    };
+    return byStage[r.stage] ?? 8;
+  };
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return rows.filter((r) => {
+    const list = rows.filter((r) => {
       if (activeFilter === "open" && r.stage === "Inactive/No Longer With Us") return false;
       if (activeFilter === "inactive" && r.stage !== "Inactive/No Longer With Us") return false;
       if (stageFilter && r.stage !== stageFilter) return false;
@@ -112,6 +125,13 @@ export default function RecruitingPipeline() {
         if (!hay.includes(q)) return false;
       }
       return true;
+    });
+    return list.sort((a, b) => {
+      const dr = rank(a) - rank(b);
+      if (dr !== 0) return dr;
+      const at = a.last_contact ? Date.parse(a.last_contact) : 0;
+      const bt = b.last_contact ? Date.parse(b.last_contact) : 0;
+      return bt - at; // most recently touched first within a rank
     });
   }, [rows, search, stageFilter, typeFilter, mondayFilter, activeFilter]);
 

@@ -5488,6 +5488,20 @@
         "raw": "p_person_key text, p_action text, p_value text DEFAULT NULL::text"
       }
     ],
+    "rp_update_agent_comp": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_comp",
+          "p_contract"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_comp numeric DEFAULT NULL::numeric, p_contract numeric DEFAULT NULL::numeric"
+      }
+    ],
     "run_apex_outbox_dispatch_if_pending": [
       {
         "all": [],

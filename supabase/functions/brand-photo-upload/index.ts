@@ -36,7 +36,8 @@ Deno.serve(async (req) => {
   }
 
   const slot = new URL(req.url).searchParams.get("slot") || "";
-  if (!ALLOW.has(slot)) return json({ error: "unknown photo slot" }, 400);
+  // Fleet slots are open-ended (car-1 … car-99) so the whole rental fleet can be filled.
+  if (!ALLOW.has(slot) && !/^car-\d{1,2}$/.test(slot)) return json({ error: "unknown photo slot" }, 400);
 
   const ct = (req.headers.get("content-type") || "").split(";")[0].trim();
   if (!/^image\/(jpeg|png|webp)$/.test(ct)) return json({ error: "Use a JPG, PNG or WebP." }, 400);

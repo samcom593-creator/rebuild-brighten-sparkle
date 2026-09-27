@@ -13,7 +13,8 @@ const ALLOW = new Set([
   "fitness-hero", "fitness-t1", "fitness-t2", "fitness-t3", "fitness-t4",
   "mentorship-hero", "ai-hero", "transform-1", "transform-2", "transform-3", "transform-4",
 ]);
-const MAX = 15 * 1024 * 1024;
+const MAX = 15 * 1024 * 1024;        // photos
+const MAX_VIDEO = 60 * 1024 * 1024;  // videos (transformation proof, mentorship clips)
 
 const cors = {
   "access-control-allow-origin": "*",
@@ -40,11 +41,16 @@ Deno.serve(async (req) => {
   if (!ALLOW.has(slot) && !/^car-\d{1,2}$/.test(slot)) return json({ error: "unknown photo slot" }, 400);
 
   const ct = (req.headers.get("content-type") || "").split(";")[0].trim();
-  if (!/^image\/(jpeg|png|webp)$/.test(ct)) return json({ error: "Use a JPG, PNG or WebP." }, 400);
+  const isImage = /^image\/(jpeg|png|webp)$/.test(ct);
+  const isVideo = /^video\/(mp4|quicktime|webm)$/.test(ct); // iPhone .mov arrives as video/quicktime
+  if (!isImage && !isVideo) return json({ error: "Use a JPG, PNG or WebP photo, or an MP4/MOV video." }, 400);
 
   const bytes = new Uint8Array(await req.arrayBuffer());
   if (bytes.length === 0) return json({ error: "empty file" }, 400);
-  if (bytes.length > MAX) return json({ error: "That photo is over 15MB — pick a smaller one." }, 413);
+  const max = isVideo ? MAX_VIDEO : MAX;
+  if (bytes.length > max) {
+    return json({ error: isVideo ? "That video is over 60MB — trim it or pick a shorter one." : "That photo is over 15MB — pick a smaller one." }, 413);
+  }
 
   const up = await fetch(`${SB}/storage/v1/object/brand/${slot}`, {
     method: "POST",

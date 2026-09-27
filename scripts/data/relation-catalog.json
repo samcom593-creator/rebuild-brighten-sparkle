@@ -670,6 +670,7 @@
     "public.v_my_carrier_contracts",
     "public.v_new_hire_showup",
     "public.v_new_hires_activation",
+    "public.v_newhire_needs_portal_login",
     "public.v_next_step_candidate",
     "public.v_next_step_current",
     "public.v_next_step_funnel_health",

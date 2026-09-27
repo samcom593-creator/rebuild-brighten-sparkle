@@ -738,3 +738,6 @@ verify_jwt = false
 # caller is the MacBook testimonial classifier storing screenshot thumbnails,
 # which holds no Supabase JWT. Gating at the gateway would refuse it.
 verify_jwt = false
+
+[functions.cron-newhire-portal-login]
+verify_jwt = false

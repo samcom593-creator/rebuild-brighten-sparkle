@@ -46,9 +46,14 @@ ${inner}
 async function postDiscord(alert: any): Promise<boolean> {
   // License-returned alerts are contracting work, not production/numbers chat.
   // Keep all other Pulse alerts on the existing production route.
-  const discordSettingKey = alert?.event_type === "agent_license_returned"
-    ? "discord_webhook_url_contracting"
-    : "discord_webhook_url";
+  // brand_funnel (sell4daddy.com leads) is PRIVATE to Sam: it resolves to
+  // discord_webhook_url_brand, a webhook for a channel only he can see. While that
+  // setting is unset nothing is posted — it never falls back to the team room.
+  const discordSettingKey = alert?.source === "brand_funnel"
+    ? "discord_webhook_url_brand"
+    : alert?.event_type === "agent_license_returned"
+      ? "discord_webhook_url_contracting"
+      : "discord_webhook_url";
   const { data } = await supabase
     .from("system_settings")
     .select("value")
@@ -160,11 +165,11 @@ async function send(alert: any): Promise<{ email_id: string | null; sent_sms: bo
   const requested: string[] = alert.channels ?? ["email", "sms", "discord", "ntfy"];
   const channels = new Set([...requested, "discord", "ntfy"]); // always include
   // Personal-brand leads from sell4daddy.com (collaboration, fitness buyers, AI
-  // budgets, mentorship, rentals) are PRIVATE: they push to Sam's phone only and
-  // must never post to the APEX team production channel. The trigger already asks
-  // for ["ntfy"], but the force-add above would still route them to Discord — so
-  // the exclusion has to live here. Sam's directive, 2026-09-26.
-  if (alert?.source === "brand_funnel") channels.delete("discord");
+  // budgets, mentorship, rentals) are PRIVATE to Sam. The force-add above keeps
+  // "discord" in the set, but postDiscord() routes brand_funnel to
+  // discord_webhook_url_brand (a channel only Sam sees) and posts nothing while it
+  // is unset — the team production webhook is never a fallback. Sam's directive,
+  // 2026-09-26: "just me… email, Discord, text — all three if possible."
   let email_id: string | null = null;
   let sent_sms = false;
   let sms_receipt: string | null = null;
@@ -175,9 +180,11 @@ async function send(alert: any): Promise<{ email_id: string | null; sent_sms: bo
   if (channels.has("email")) {
     try {
       const html = emailShell(alert.subject, alert.body, alert.severity);
+      // brand_funnel leads also land in Sam's personal Gmail (the inbox on his
+      // phone); every other alert keeps the business inbox only.
       const r = await resend.emails.send({
         from: "APEX Engine <sam@apex-financial.org>",
-        to: SAM_EMAIL,
+        to: alert?.source === "brand_funnel" ? [SAM_EMAIL, "sam.com593@gmail.com"] : SAM_EMAIL,
         subject: alert.subject,
         html,
       });

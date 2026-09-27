@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { contactLinkProps, phoneHref, smsHref } from "@/lib/phone";
 import { openAgentProfile } from "@/stores/agentProfileDrawer";
@@ -90,7 +91,6 @@ export default function RecruitingPipeline() {
     return [
       { key: "expected", label: "Expected Monday", n: apps.filter((r) => r.monday_status === "expected").length, filter: () => { setMondayFilter("expected"); setStageFilter(""); } },
       { key: "confirmed", label: "Confirmed", n: apps.filter((r) => r.monday_status === "confirmed").length, filter: () => { setMondayFilter("confirmed"); setStageFilter(""); } },
-      { key: "needs", label: "Needs Confirmation", n: apps.filter((r) => r.monday_status === "expected").length, filter: () => { setMondayFilter("expected"); setStageFilter(""); } },
       { key: "showed", label: "Showed", n: apps.filter((r) => r.monday_status === "showed").length, filter: () => { setMondayFilter("showed"); setStageFilter(""); } },
       { key: "noshow", label: "No Shows", n: apps.filter((r) => r.monday_status === "no_show").length, filter: () => { setMondayFilter("no_show"); setStageFilter(""); } },
       { key: "onboarding", label: "Onboarding", n: count((r) => r.stage === "Onboarding"), filter: () => { setStageFilter("Onboarding"); setMondayFilter(""); } },
@@ -161,27 +161,39 @@ export default function RecruitingPipeline() {
       <div className="flex flex-wrap items-center gap-2">
         <Input placeholder="Search name, phone, email, IG…" value={search}
           onChange={(e) => setSearch(e.target.value)} className="w-full sm:w-64" />
-        <select className="h-9 rounded-md border bg-background px-2 text-sm" value={stageFilter} onChange={(e) => setStageFilter(e.target.value)}>
-          <option value="">All stages</option>
-          {STAGES.map((s) => <option key={s} value={s}>{s}</option>)}
-        </select>
-        <select className="h-9 rounded-md border bg-background px-2 text-sm" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
-          <option value="">Everyone</option>
-          <option value="applicant">Prospects</option>
-          <option value="agent">Agents</option>
-        </select>
-        <select className="h-9 rounded-md border bg-background px-2 text-sm" value={mondayFilter} onChange={(e) => setMondayFilter(e.target.value)}>
-          <option value="">Any Monday</option>
-          <option value="expected">Expected</option>
-          <option value="confirmed">Confirmed</option>
-          <option value="showed">Showed</option>
-          <option value="no_show">No Show</option>
-        </select>
-        <select className="h-9 rounded-md border bg-background px-2 text-sm" value={activeFilter} onChange={(e) => setActiveFilter(e.target.value)}>
-          <option value="open">Open only</option>
-          <option value="all">Include inactive</option>
-          <option value="inactive">Inactive only</option>
-        </select>
+        <Select value={stageFilter || "all"} onValueChange={(v) => setStageFilter(v === "all" ? "" : v)}>
+          <SelectTrigger aria-label="Filter by stage" className="h-9 w-auto min-w-[9rem] text-sm"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All stages</SelectItem>
+            {STAGES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={typeFilter || "everyone"} onValueChange={(v) => setTypeFilter(v === "everyone" ? "" : v)}>
+          <SelectTrigger aria-label="Filter by prospect or agent" className="h-9 w-auto min-w-[8rem] text-sm"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="everyone">Everyone</SelectItem>
+            <SelectItem value="applicant">Prospects</SelectItem>
+            <SelectItem value="agent">Agents</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={mondayFilter || "any"} onValueChange={(v) => setMondayFilter(v === "any" ? "" : v)}>
+          <SelectTrigger aria-label="Filter by Monday status" className="h-9 w-auto min-w-[8rem] text-sm"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="any">Any Monday</SelectItem>
+            <SelectItem value="expected">Expected</SelectItem>
+            <SelectItem value="confirmed">Confirmed</SelectItem>
+            <SelectItem value="showed">Showed</SelectItem>
+            <SelectItem value="no_show">No Show</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={activeFilter} onValueChange={setActiveFilter}>
+          <SelectTrigger aria-label="Filter by active status" className="h-9 w-auto min-w-[8rem] text-sm"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="open">Open only</SelectItem>
+            <SelectItem value="all">Include inactive</SelectItem>
+            <SelectItem value="inactive">Inactive only</SelectItem>
+          </SelectContent>
+        </Select>
         <Button variant="ghost" size="sm" onClick={clearFilters}>Clear</Button>
         <span className="text-sm text-muted-foreground ml-auto">{filtered.length} shown</span>
       </div>

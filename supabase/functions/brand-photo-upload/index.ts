@@ -6,7 +6,13 @@
 const SB = Deno.env.get("SUPABASE_URL")!;
 const KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const CODE = Deno.env.get("BRAND_EDIT_CODE") || "";
-const ALLOW = new Set(["hub-hero", "pane-cars", "pane-ins", "pane-ment", "pane-fit"]);
+// Every slot the site declares ([data-slot] keys across index/rentals/fitness/mentorship/ai).
+const ALLOW = new Set([
+  "hub-hero", "pane-ins", "pane-cars", "pane-ment", "pane-fit", "pane-ai",
+  "rental-hero", "car-1", "car-2", "car-3", "car-4", "car-5", "car-6",
+  "fitness-hero", "fitness-t1", "fitness-t2", "fitness-t3", "fitness-t4",
+  "mentorship-hero", "ai-hero", "transform-1", "transform-2", "transform-3", "transform-4",
+]);
 const MAX = 15 * 1024 * 1024;
 
 const cors = {

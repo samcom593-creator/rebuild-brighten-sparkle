@@ -48,35 +48,42 @@ Deno.serve(async (req) => {
     if (!code) return html("Missing code — tap the link again.", 400);
     try {
       const SAM_UID = "71826bba-5577-4810-a226-1f6f2ad5288a";
-      const ex = await fetch(`https://graph.facebook.com/v21.0/oauth/access_token?client_id=${APP_ID}&client_secret=${APP_SECRET}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&code=${encodeURIComponent(code)}`);
+      // Instagram-Login product: exchange with the INSTAGRAM app id/secret (not the
+      // Facebook app's). No Facebook Page is involved; the token lives on
+      // graph.instagram.com and messaging posts to /{ig_user_id}/messages.
+      const IG_ID  = Deno.env.get("INSTAGRAM_APP_ID") ?? APP_ID;
+      const IG_SEC = Deno.env.get("INSTAGRAM_APP_SECRET") ?? APP_SECRET;
+      const ex = await fetch("https://api.instagram.com/oauth/access_token", {
+        method: "POST",
+        body: new URLSearchParams({ client_id: IG_ID, client_secret: IG_SEC, grant_type: "authorization_code", redirect_uri: REDIRECT_URI, code }),
+      });
       const exJ = await ex.json();
-      if (!ex.ok || !exJ.access_token) return html(`Exchange failed: ${JSON.stringify(exJ).slice(0, 200)}`, 500);
-      const ll = await fetch(`https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${APP_ID}&client_secret=${APP_SECRET}&fb_exchange_token=${exJ.access_token}`);
+      if (!ex.ok || !exJ.access_token) return html(`Exchange failed: ${JSON.stringify(exJ).slice(0, 220)}`, 500);
+      const ll = await fetch(`https://graph.instagram.com/access_token?grant_type=ig_exchange_token&client_secret=${IG_SEC}&access_token=${exJ.access_token}`);
       const llJ = await ll.json();
-      const userToken = (llJ.access_token as string) ?? (exJ.access_token as string);
+      const token = (llJ.access_token as string) ?? (exJ.access_token as string);
       const expiresIn = Number(llJ.expires_in ?? 5184000);
-      const acc = await fetch(`https://graph.facebook.com/v21.0/me/accounts?fields=id,name,access_token,instagram_business_account{id,username}&access_token=${userToken}`).then(r => r.json());
-      const pages = (acc.data ?? []) as any[];
-      const page = pages.find(p => p.instagram_business_account) ?? pages[0] ?? null;
-      const igId   = page?.instagram_business_account?.id ?? null;
-      const igUser = page?.instagram_business_account?.username ?? null;
-      const token  = (page?.access_token as string) ?? userToken;   // page token = IG messaging token
+      const me = await fetch(`https://graph.instagram.com/v21.0/me?fields=id,user_id,username&access_token=${token}`).then(r => r.json());
+      const igId   = String(me.user_id ?? me.id ?? exJ.user_id ?? "");
+      const igUser = (me.username as string) ?? null;
+      // Subscribe THIS account to the app's webhook fields right here, so nothing
+      // depends on a later job for delivery to start.
+      const sub = await fetch(`https://graph.instagram.com/v21.0/${igId}/subscribed_apps?subscribed_fields=messages,comments,messaging_postbacks&access_token=${token}`, { method: "POST" }).then(r => r.json()).catch(() => ({}));
       const sb = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", { auth: { persistSession: false } });
       await sb.from("instagram_connections").upsert({
         user_id: SAM_UID,
-        instagram_user_id: igId ?? "pending",
+        instagram_user_id: igId || "pending",
         instagram_username: igUser,
         access_token: token,
         token_expires_at: new Date(Date.now() + expiresIn * 1000).toISOString(),
-        scopes: ["instagram_basic", "instagram_manage_messages", "instagram_manage_comments", "pages_manage_metadata"],
+        scopes: (exJ.permissions ?? ["instagram_business_basic", "instagram_business_manage_messages", "instagram_business_manage_comments"]) as string[],
         connected_at: new Date().toISOString(),
       }, { onConflict: "user_id,instagram_user_id" });
       await sb.from("system_settings").upsert([
         { key: "meta_instagram_token", value: token },
-        { key: "meta_instagram_page_id", value: page?.id ?? "" },
+        { key: "meta_instagram_page_id", value: igId },   // sender posts to graph.instagram.com/{this}/messages
       ], { onConflict: "key" });
-      if (!igId) return html(`Connected to Facebook (${page?.name ?? "no page"}), but no Instagram business account is linked to that Page yet.`);
-      return html(`Connected @${igUser}. DMs and comments are live.`);
+      return html(`Connected @${igUser ?? igId}. DMs and comments are live${sub?.success ? "" : " (webhook subscribe: " + JSON.stringify(sub).slice(0, 120) + ")"}.`);
     } catch (e) {
       return html(`Connect error: ${String(e).slice(0, 200)}`, 500);
     }

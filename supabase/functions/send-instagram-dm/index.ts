@@ -119,7 +119,9 @@ Deno.serve(async (req) => {
   }
 
   // Live send via Meta Graph API
-  const url = `https://graph.facebook.com/v20.0/${encodeURIComponent(pageId)}/messages`;
+  // Instagram-Login token: messaging lives on graph.instagram.com under the IG
+  // professional account id (meta_instagram_page_id holds that id). No FB Page.
+  const url = `https://graph.instagram.com/v21.0/${encodeURIComponent(pageId)}/messages`;
   const res = await fetch(url, {
     method: "POST",
     headers: {

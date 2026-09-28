@@ -101,6 +101,7 @@ const MENTORSHIP_PATTERNS = [
 // STRONG alone gates the insurance-client lane, so "how much does a policy cost"
 // stays a sale while "how much money can I make" is a recruit.
 const RECRUIT_STRONG_PATTERNS = [
+  /\b(get (into|in) (the )?(sales|insurance|life insurance|business|this|it|what you do)|how do i (get into|start|do (this|what you do)|get started|make money like you)|i want what you have|want to (sell|get into)|teach me (sales|how)|sales (job|career)|how can i (join|start|work with you))\b/i,
   /\b(join|your team|the team|recruit\w*|hiring|become an agent|be an agent|sell insurance|selling insurance|career|opportunity|how does this work|get started|work with you|apply|sign up|licens(e|ing) (course|exam|class)|get licensed)\b/i,
 ];
 // INTEREST — a yes to the pitch. Short replies like these in Sam's DMs are
@@ -183,7 +184,7 @@ function replyFor(path: ReplyPath, rawSource: string, _firstName?: string): stri
   const replies: Record<ReplyPath, string> = {
     licensed:      `perfect, let's get on a call. what's your number?`,
     licensed_team: `perfect, and you have a team too? let's get on a call. what's your number?`,
-    license_q:     `do you have your life insurance license?`,
+    license_q:     `do you have your life insurance license? either way, here's where you start and i'll reach out: ${apply}`,
     license_yes:   `perfect, let's get on a call. what's your number?`,
     license_no:    `all good, no stress. start here and i'll get you licensed: ${apply}`,
     license_explain: `it's the license you need to sell life insurance. don't have it yet? no stress, i get you licensed. start here and i'll walk you through it: ${apply}`,
@@ -208,6 +209,7 @@ function replyFor(path: ReplyPath, rawSource: string, _firstName?: string): stri
 // in, the last link sent, and how far the licensed call-booking flow got.
 const LICENSE_QUESTION_RE = /\b(what('?s| is| does) (a |the |that |this |it |your |my )?(life insurance |life |insurance )?licen[cs]e|what('?s| is) (that|this|it|a licence|a license)|what (do|does|u|you|that|it) mean|wdym|meaning|explain|come again|how (do|can|would) (i|you|u) get (a |my |the )?(life insurance |life |insurance )?licen[cs]e|how (do|can) i get licensed|do (i|you|u) need (a |the )?(life insurance |life |insurance )?licen[cs]e|is (a |the )?licen[cs]e (required|needed)|license for what|what license|which license|what kind of license|never heard|no idea what|idk what)\b/i;
 const LICENSE_EXPLAINED_RE = /license you need to sell life insurance/i;
+const FLIRTY_RE = /\b(fine|sexy|cute|hot|handsome|beautiful|marry|date me|single|boyfriend|girlfriend|crush|bae|daddy|zaddy)\b|😍|🥵|😘|❤️|💕/i;
 const LICENSE_Q_RE = /(do you have|you got|got|have) (your|a|one|your life insurance) ?(life insurance )?licen[cs]e|you got it or nah|do you have one\?/i;
 const YES_PATTERNS = [
   /^\s*(yes|yeah|yep|yea|ya|yup|yessir|i do|i am|already|correct|affirmative|100)\b/i,
@@ -723,6 +725,7 @@ async function decide(text: string, rawSource: string, firstName: string | undef
       const pub = EMOJI_ONLY_RE.test(text.trim()) ? null : (commentFlavor(text) || null);   // emoji-only comments: no reply
       return { ...base, intent: "props", reply_path: null, auto_reply: null, public_reply: pub };
     }
+    if (EMOJI_ONLY_RE.test(text.trim())) return { ...base, intent: "props", reply_path: null, auto_reply: null };   // "😉" in a DM: nothing
     return { ...base, intent: "props", reply_path: "props", auto_reply: props };
   }
 
@@ -822,6 +825,8 @@ async function decide(text: string, rawSource: string, firstName: string | undef
   }
   // 6) Anything else in a thread with business context: FAQ, then the model, then never silence.
   if (st.hasBusinessContext) {
+    // "you're hot af" after the link already went out: a laugh, not the link again (Aaron 2026-09-28).
+    if (FLIRTY_RE.test(text) && !/\?/.test(text)) return { ...base, intent: "flirty", reply_path: "props", auto_reply: "😂🙏" };
     const faq = faqReply(text, st, rawSource, firstName);
     if (faq) return { intent: st.threadIntent ?? base.intent, lead_score: Math.max(40, base.lead_score), reply_path: "llm", urgent: false, auto_reply: faq };
     const llm = await llmReply(history, text, st, rawSource);
@@ -832,7 +837,7 @@ async function decide(text: string, rawSource: string, firstName: string | undef
   // 7) No business context. Sam 2026-09-27: "every single message within 24 hours
   //    I want responded to" — a greeting gets pointed somewhere; only flirting /
   //    comments on his looks stay his to answer.
-  if (/\b(fine|sexy|cute|hot|handsome|beautiful|marry|date me|single|boyfriend|girlfriend|crush|bae|daddy|zaddy)\b|😍|🥵|😘|❤️|💕/i.test(text)) {
+  if (FLIRTY_RE.test(text)) {
     return { ...base, intent: "flirty", reply_path: "props", auto_reply: "😂🙏" };
   }
   // First touch only: a stranger's opening "hey" gets pointed somewhere. Casual talk after

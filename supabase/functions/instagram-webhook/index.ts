@@ -110,6 +110,23 @@ Deno.serve(async (req) => {
       });
     } catch (_logErr) { /* event log is best-effort; Meta still gets a 200 */ }
 
+    // Sam's own typed messages arrive as echoes. If the text isn't something the bot
+    // sent to that person in the last 10 minutes, Sam wrote it: mark the thread as his
+    // so the brain stays out of it (hand-off, 14 days).
+    for (const ev of (entry?.messaging ?? []) as any[]) {
+      if (!ev?.message?.is_echo || !ev?.message?.text) continue;
+      const them = ev?.recipient?.id; const text = String(ev.message.text).trim();
+      if (!them) continue;
+      try {
+        const since = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+        const { data: botSent } = await sb.from("inbox_messages").select("id, body").eq("external_id", them).eq("direction", "outbound").gte("created_at", since).limit(30);
+        const mine = (botSent ?? []).some((r: { body: string | null }) => (r.body ?? "").trim() === text);
+        if (!mine) {
+          await sb.from("inbox_messages").insert({ source: "instagram", direction: "outbound", external_id: them, sender_handle: them, body: text, intent: "sam_manual", auto_replied: false, raw_payload: { echo: true, mid: ev.message.mid ?? null } });
+        }
+      } catch (e) { console.error("[instagram-webhook] echo hand-off failed", e); }
+    }
+
     // Pull DM events out — IG sends them as entry.messaging[].message.text
     const dms = (entry?.messaging ?? []).filter((m: any) =>
       m?.message?.text && !m?.message?.is_echo

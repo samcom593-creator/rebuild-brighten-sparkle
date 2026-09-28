@@ -825,7 +825,7 @@ async function decide(text: string, rawSource: string, firstName: string | undef
     if (faq) return { intent: st.threadIntent ?? base.intent, lead_score: Math.max(40, base.lead_score), reply_path: "llm", urgent: false, auto_reply: faq };
     const llm = await llmReply(history, text, st, rawSource);
     if (llm) return { intent: st.threadIntent ?? base.intent, lead_score: Math.max(40, base.lead_score), reply_path: "llm", urgent: false, auto_reply: llm };
-    const fallback = st.lastLink ? `everything's on here, and if something's not clear just ask: ${st.lastLink}` : `what can i help you with?`;
+    const fallback = st.lastLink ? `everything's on here, and if something's not clear just ask: ${st.lastLink}` : null;
     return { intent: st.threadIntent ?? "followup", lead_score: Math.max(40, base.lead_score), reply_path: "llm", urgent: false, auto_reply: fallback };
   }
   // 7) No business context. Sam 2026-09-27: "every single message within 24 hours
@@ -834,8 +834,13 @@ async function decide(text: string, rawSource: string, firstName: string | undef
   if (/\b(fine|sexy|cute|hot|handsome|beautiful|marry|date me|single|boyfriend|girlfriend|crush|bae|daddy|zaddy)\b|😍|🥵|😘|❤️|💕/i.test(text)) {
     return { ...base, intent: "flirty", reply_path: "props", auto_reply: "😂🙏" };
   }
-  // Sam 2026-09-28: it should never "choose not to respond". Anything else casual gets pointed somewhere.
-  return { ...base, intent: base.intent === "casual" ? "greeting" : base.intent, reply_path: "route", auto_reply: `what's good, what can i help you with?` };
+  // First touch only: a stranger's opening "hey" gets pointed somewhere. Casual talk after
+  // that is Sam's conversation, not the bot's (it cut into a personal chat 2026-09-28).
+  const priorInbound = history.filter((h) => h.direction === "inbound").length;
+  if (priorInbound === 0 && /^\s*(yo+|hey+|hi+|hello|sup|wassup|wsg|what'?s (good|up)|whats (good|up)|ayo|aye)\b[\s!.?]*$/i.test(text)) {
+    return { ...base, intent: "greeting", reply_path: "route", auto_reply: `what's good, what can i help you with?` };
+  }
+  return { ...base, intent: "casual", reply_path: null, auto_reply: null };
 }
 
 async function fireUrgentLicensedAlert(
@@ -961,6 +966,16 @@ Deno.serve(async (req) => {
   }
 
   const channel = firstText(body.channel) ?? "dm";
+  // Hand-off (Sam 2026-09-28: "whenever you see me DM someone directly... don't interact"):
+  // any message Sam typed himself in this thread in the last 14 days mutes the bot here.
+  if (subscriberId && channel !== "comment" && channel !== "youtube_comment" && channel !== "tiktok_comment") {
+    const since = new Date(Date.now() - 14 * 86400000).toISOString();
+    const { data: manual } = await supabase.from("inbox_messages").select("id").eq("external_id", subscriberId).eq("intent", "sam_manual").gte("created_at", since).limit(1);
+    if (manual?.length) {
+      try { await supabase.from("inbox_messages").insert({ source, direction: "inbound", external_id: subscriberId, sender_handle: senderHandle, body: text, intent: "sam_thread", auto_replied: false, raw_payload: { muted: "sam_manual" } }); } catch (e) { console.error("[manychat-webhook] muted inbound log failed", e); }
+      return new Response(JSON.stringify({ ok: true, intent: "sam_thread", auto_reply: null, reply_path: null, muted: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+  }
   const decision = await decide(text, rawSource, senderName?.split(" ")[0], subscriberId, senderHandle, channel, senderName);
   // Same words twice in a row reads like a machine. Once: "like i said". Twice: nothing.
   if (decision.auto_reply && decision.reply_path !== "props") {

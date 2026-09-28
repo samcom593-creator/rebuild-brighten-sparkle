@@ -179,10 +179,10 @@ function classify(body: string): Classification {
 function replyFor(path: ReplyPath, rawSource: string, _firstName?: string): string {
   const apply = applyUrl(rawSource);
   const replies: Record<ReplyPath, string> = {
-    licensed:      `say less, let's hop on a call. what's your number?`,
-    licensed_team: `say less, you got a team too? let's hop on a call. what's your number?`,
+    licensed:      `perfect, let's get on a call. what's your number?`,
+    licensed_team: `perfect, and you have a team too? let's get on a call. what's your number?`,
     license_q:     `do you have your life insurance license?`,
-    license_yes:   `say less, let's hop on a call. what's your number?`,
+    license_yes:   `perfect, let's get on a call. what's your number?`,
     license_no:    `all good, no stress. start here and i'll get you licensed: ${apply}`,
     license_explain: `it's the license you need to sell life insurance. don't have it yet? no stress, i get you licensed. start here and i'll walk you through it: ${apply}`,
     trust:         `no, it's my own site. no card, no payment, just your info so i can reach you. look me up anywhere, apex financial. ${apply}`,

@@ -676,15 +676,19 @@ async function socialsReply(text: string): Promise<string | null> {
 // Public comment replies should read like a person, not a stamp: pick from a small
 // pool that matches what they said, varied by the comment text itself (no model).
 function commentFlavor(text: string): string {
+  // "" = don't reply publicly. A reply that doesn't fit the comment is worse than none.
   const t = text.toLowerCase();
-  let pool: string[];
-  if (/\b(can'?t wait|thinking about moving|want to move|moving (here|out|to)|finna move|about to move|i'?m moving|just moved)\b/.test(t)) pool = ["do it, best move i made 🙏", "you won't regret it", "pull up 🙏"];
-  else if (/\b(don'?t|dont|stop|full|closed|overrated|worst|sucks|hate|leave|too hot|so hot|hot as|packed|rent is|expensive|nooo+|pls|please)\b/.test(t)) pool = ["😂😂", "😂 i hear you", "haha fair", "😂 the heat is real"];
-  else if (/\b(fire|goat|facts|love|keep (going|it up)|congrats|proud|respect|inspir\w*|motivat\w*|welcome|beautiful|vibe)\b/.test(t)) pool = ["appreciate you 🙏", "🙏🔥", "appreciate that", "🔥🔥"];
-  else if (/😂|🤣|lmao|lol|haha/.test(t)) pool = ["😂😂", "😂", "lmaoo"];
-  else pool = ["🔥", "🙏", "facts", "💯"];
+  const words = t.split(/\s+/).filter(Boolean).length;
   let h = 0; for (const c of text) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-  return pool[h % pool.length];
+  const pick = (p: string[]) => p[h % p.length];
+  if (/\b(can'?t wait|thinking about moving|want to move|moving (here|out|to)|finna move|about to move|i'?m moving|just moved)\b/.test(t)) return pick(["do it, best move i made 🙏", "you won't regret it", "pull up 🙏"]);
+  if (/\b(fire|goat|love (this|it|that|you)|keep (going|it up)|congrats|proud|respect|inspir\w*|motivat\w*|welcom\w*|legend|let'?s go+|hell yea\w*|need(ed)? this|facts|real talk|so true)\b|🔥|💯|🙌|👏/.test(t))
+    return pick(["appreciate you 🙏", "🙏🔥", "appreciate that", "appreciate you 🙏 comment \"apex\" if you ever want in", "🙏 if you want to learn how, comment \"apex\""]);
+  if (/😂|🤣|lmao|lol|haha|funny|wrong for this|wild|crazy|dead/.test(t)) return pick(["😂😂", "😂", "lmaoo"]);
+  if (/\b(don'?t|dont|stop|full|closed|overrated|hot|packed|expensive|nooo+)\b/.test(t) && words <= 12) return pick(["😂😂", "😂 i hear you", "haha fair"]);
+  if (words > 12) return "";                                  // long and not clearly positive: leave it
+  if (/\b(no|nah|cap|lie|lying|fake|broke|delusional|brutal|yikes|cringe|mid)\b/.test(t)) return "";
+  return pick(["🔥", "🙏"]);
 }
 
 async function decide(text: string, rawSource: string, firstName: string | undefined, externalId: string | null, handle: string | null, channel: string, senderName: string | null): Promise<Decision> {
@@ -979,11 +983,11 @@ Deno.serve(async (req) => {
   // Casual / greeting / flirty under a comment or story reply: engagement only, no DM.
   if ((channel === "comment" || channel === "story" || channel === "youtube_comment" || channel === "tiktok_comment") && (decision.reply_path === "route" || ["greeting", "flirty", "casual"].includes(decision.intent))) {
     decision.auto_reply = channel === "story" ? "🔥" : null; decision.reply_path = "props";
-    if (channel !== "story") decision.public_reply = commentFlavor(text);
+    if (channel !== "story") decision.public_reply = commentFlavor(text) || null;
   }
   if ((channel === "comment" || channel === "youtube_comment" || channel === "tiktok_comment") && decision.intent === "socials" && decision.auto_reply) { decision.public_reply = decision.auto_reply; decision.auto_reply = null; }
   if (channel === "comment" && decision.auto_reply && !decision.public_reply) decision.public_reply = ["sent you a message 🙏", "just messaged you", "check your messages 🙏"][text.length % 3];
-  if (channel === "comment" && !decision.public_reply && decision.intent !== "spam") { decision.public_reply = "🔥"; decision.auto_reply = null; }
+  if (channel === "comment" && !decision.public_reply && decision.intent !== "spam") { decision.public_reply = commentFlavor(text) || null; decision.auto_reply = null; }
   if (channel === "story" && !decision.auto_reply && decision.intent !== "spam") { decision.auto_reply = "🔥"; decision.reply_path = "props"; }
   // YouTube has no DM API: anything with intent gets a public pointer to the one
   // place the conversation can continue; props get the 🔥; nothing else is posted.
@@ -998,8 +1002,8 @@ Deno.serve(async (req) => {
     if (decision.auto_reply && !decision.public_reply && (strongIntent || (ask && !hater))) decision.public_reply = channel === "tiktok_comment" ? "dm me 'apex' and i'll get you going 📩" : "dm me 'apex' on ig @sell4daddy and i'll get you going 📩";
     // Sam 2026-09-28: "YouTube is just about engagement. If it's a comment you
     // don't know what to say to, give it a fire emoji." Nothing goes unanswered.
-    if (!decision.public_reply && decision.intent !== "spam") decision.public_reply = commentFlavor(text);
-    else if (decision.public_reply === "🔥" || decision.public_reply === "appreciate you 🔥") decision.public_reply = commentFlavor(text);
+    if (!decision.public_reply && decision.intent !== "spam") decision.public_reply = commentFlavor(text) || null;
+    else if (decision.public_reply === "🔥" || decision.public_reply === "appreciate you 🔥") decision.public_reply = commentFlavor(text) || null;
     decision.auto_reply = null;
     decision.urgent = false; decision.email = null; decision.notify = null;
   }
@@ -1015,9 +1019,15 @@ Deno.serve(async (req) => {
       const { data: recent } = await supabase.from("inbox_messages").select("id, direction, raw_payload").eq("external_id", subscriberId ?? "").gte("created_at", since).limit(20);
       const engaged = (recent ?? []).some((r: { direction: string; raw_payload: any }) => r.direction === "outbound" || r.raw_payload?.public_reply);
       const explicitAsk = !!decision.reply_path && ["license_q", "licensed", "licensed_team", "fitness", "mentorship", "rentals", "partnership", "apply"].includes(decision.reply_path) &&
-        (/^\W*(apex|info|link|join|team|start|licensed|fitness|mentor(ship)?|cars?|rental)\W*$/i.test(text) || /\?|\b(how|i want|i need|interested|sign me up|put me on|dm me|send me)\b/i.test(text));
-      if (engaged) { decision.auto_reply = null; decision.public_reply = null; }
-      else if (!explicitAsk && decision.auto_reply) decision.auto_reply = null;
+        (/^\W*(apex|info|link|join|team|start|licensed|fitness|mentor(ship)?|cars?|rental)\W*$/i.test(text) || /\?|\b(how (do|can) i|interested|sign me up|put me on|dm me|send me (the )?(info|link|details)|i want (in|to join|to learn|to start)|teach me)\b/i.test(text));
+      // Real asks always get answered, however many times. The daily cap only stops
+      // the same person getting a stream of emoji replies to throwaway comments.
+      if (!explicitAsk) {
+        if (decision.auto_reply) decision.auto_reply = null;
+        // never say "messaged you" when no message goes out
+        if (decision.public_reply && /messag|dm me|check your/i.test(decision.public_reply)) decision.public_reply = commentFlavor(text) || null;
+        if (engaged) decision.public_reply = null;
+      }
     }
   }
   const { intent, lead_score, reply_path, urgent, auto_reply, alert_text, notify } = decision;

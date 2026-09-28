@@ -284,6 +284,7 @@
     "public.ics_feed_tokens",
     "public.idempotency_keys",
     "public.identity_collision_seen",
+    "public.ig_comment_events",
     "public.ig_reels_cache",
     "public.inactive_agent_queue",
     "public.inbound_leads",

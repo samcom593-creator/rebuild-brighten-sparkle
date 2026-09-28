@@ -52396,6 +52396,48 @@ export type Database = {
         }
         Relationships: []
       }
+      ig_comment_events: {
+        Row: {
+          comment_id: string
+          commented_at: string | null
+          created_at: string
+          dm_sent: boolean | null
+          error: string | null
+          intent: string | null
+          media_id: string | null
+          public_reply: string | null
+          reply_id: string | null
+          text: string | null
+          username: string | null
+        }
+        Insert: {
+          comment_id: string
+          commented_at?: string | null
+          created_at?: string
+          dm_sent?: boolean | null
+          error?: string | null
+          intent?: string | null
+          media_id?: string | null
+          public_reply?: string | null
+          reply_id?: string | null
+          text?: string | null
+          username?: string | null
+        }
+        Update: {
+          comment_id?: string
+          commented_at?: string | null
+          created_at?: string
+          dm_sent?: boolean | null
+          error?: string | null
+          intent?: string | null
+          media_id?: string | null
+          public_reply?: string | null
+          reply_id?: string | null
+          text?: string | null
+          username?: string | null
+        }
+        Relationships: []
+      }
       ig_reels_cache: {
         Row: {
           caption: string | null

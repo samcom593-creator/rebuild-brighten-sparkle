@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Team page decluttered: new hires are the default view, a one-tap 'Free leads ✓' category (and 'Close to free leads', within $5K) shows who qualifies at a glance, engagement / brand leads / roster health fold behind one-line summaries, and the header is down to Bulk, Add agent and More.",
+    detail: "DashboardCRM: ROSTER_SEGMENTS gains free_leads (crm_agent_free_leads_status.qualifies) and free_leads_close (needed_for_qual <= 5000), new_hires first and default. The 'Roster health' <details> had been pasted inside the Bulk Actions button in the header; moved out and folded with TeamEngagementPanel and BrandLeadsPanel. Send portal logins / check-in link / refresh moved into a More menu.",
+    commit: "mp-team-declutter",
+  },
+  {
+    ts: "today",
     label:
       "New agents get a first-login guide: a welcome dialog on their first visit that lays out the four phases (set up your account, start your training, get licensed or get contracted, start writing) with ONE button for the phase they are on, plus a 'Start here: step N of 4' card pinned above the launch stepper until they are settled. Training is step 2 for everyone, licensed or not.",
     detail:

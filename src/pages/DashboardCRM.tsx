@@ -5,18 +5,8 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { AgentAvatar, getAvatarUrl } from "@/components/ui/AgentAvatar";
 import { useSearchParams, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Users, Search, RefreshCw, Clock, AlertTriangle, ChevronRight,
-  Mail, Phone, UserX, Filter, GraduationCap, Briefcase, Sparkles,
-  Instagram, X, Send, CheckSquare, EyeOff, Link2, Eye, FileText,
-  KeyRound, Copy, StickyNote, ClipboardCheck, Circle, CircleCheck,
-  MoreHorizontal, TrendingUp, BadgeCheck, ArrowUpRight, Network, UserCheck, Flame,
-  ChevronDown,
-} from "lucide-react";
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
-  DropdownMenuSeparator, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Users, Search, RefreshCw, Clock, AlertTriangle, ChevronRight, Mail, Phone, UserX, Filter, GraduationCap, Briefcase, Sparkles, Instagram, X, Send, CheckSquare, EyeOff, Link2, Eye, FileText, KeyRound, Copy, StickyNote, ClipboardCheck, Circle, CircleCheck, MoreHorizontal, TrendingUp, BadgeCheck, ArrowUpRight, Network, UserCheck, Flame, ChevronDown } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -487,7 +477,7 @@ const daysSince = (iso: string | null): number | null => {
 
 type RosterSegmentKey =
   | "all" | "new_hires" | "producing" | "never_produced"
-  | "no_longer_here" | "unlicensed" | "inactive" | "terminated";
+  | "no_longer_here" | "unlicensed" | "inactive" | "terminated" | "free_leads" | "free_leads_close";
 
 /**
  * Honest segmentation — every predicate reads a column the row actually carries,
@@ -498,12 +488,18 @@ const ROSTER_SEGMENTS: Array<{
   key: RosterSegmentKey; label: string; icon: typeof Users; desc: string;
   match: (r: RosterRow) => boolean;
 }> = [
-  { key: "all", label: "All agents", icon: Users,
-    desc: "Active agents who have produced. Never-produced and departed seats stay in their own review queues.",
-    match: (r) => r.status === "active" && (r.lifetime_deals ?? 0) > 0 },
   { key: "new_hires", label: "New hires", icon: UserCheck,
     desc: "Joined in the last 30 days. Open a profile to control login, licensing, onboarding, contracting, and assigned work.",
     match: (r) => r.status === "active" && r.tenure_days !== null && r.tenure_days <= 30 },
+  { key: "free_leads", label: "Free leads ✓", icon: Sparkles,
+    desc: "Qualify for free leads right now. Route leads to these agents first.",
+    match: (r) => r.status === "active" && !!r.free_leads_qualified },
+  { key: "free_leads_close", label: "Close to free leads", icon: TrendingUp,
+    desc: "Within $5K of the free-leads bar. One push this week gets them there.",
+    match: (r) => r.status === "active" && !r.free_leads_qualified && num(r.free_leads_needed_for_qual) > 0 && num(r.free_leads_needed_for_qual) <= 5000 },
+  { key: "all", label: "All agents", icon: Users,
+    desc: "Active agents who have produced. Never-produced and departed seats stay in their own review queues.",
+    match: (r) => r.status === "active" && (r.lifetime_deals ?? 0) > 0 },
   { key: "producing", label: "Producing", icon: TrendingUp,
     desc: "Wrote business this month. This is the bench the agency's revenue is actually standing on.",
     match: (r) => r.status === "active" && num(r.mtd_alp) > 0 },
@@ -592,7 +588,7 @@ function RosterPanel({ rows, isLoading, isError, onRetry }: {
   isError: boolean;
   onRetry: () => void;
 }) {
-  const [segment, setSegment] = useState<RosterSegmentKey>("all");
+  const [segment, setSegment] = useState<RosterSegmentKey>("new_hires");
   const [q, setQ] = useState("");
   const [managerFilter, setManagerFilter] = useState("all");
   const [sort, setSort] = useState<RosterSortKey>("mtd_desc");
@@ -2049,7 +2045,37 @@ export default function DashboardCRM() {
                   if (next && crmView === "roster") setCrmView("pipeline");
                 }}>
                   <CheckSquare className="h-4 w-4 shrink-0" />
+ {bulkMode ? "Exit Bulk" : "Bulk Actions"}
+                </Button>
+              )}
+              <AddAgentModal onAgentAdded={fetchAgents} />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-10 gap-1.5 sm:h-9" aria-label="More team actions">
+                    <MoreHorizontal className="h-4 w-4 shrink-0" /> More
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {isAdmin && (
+                    <DropdownMenuItem disabled={sendingBulkLogins} onClick={handleBulkSendPortalLogins}>
+                      <Mail className="mr-2 h-4 w-4" /> {sendingBulkLogins ? "Sending..." : "Send portal logins (all)"}
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onClick={() => { navigator.clipboard.writeText("https://apex-financial.org/agent-login"); toast.success("Check-in link copied! Paste into a text or DM"); }}>
+                    <Link2 className="mr-2 h-4 w-4" /> Copy check-in link
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={fetchAgents}>
+                    <RefreshCw className="mr-2 h-4 w-4" /> Refresh
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          }
+        />
 
+        {/* 2026-09-26: login truth + onboarding-email truth per agent, admin-only (RPC returns 0 rows otherwise). */}
+        {/* 2026-09-28 (Sam: "less clutter, head to toe"): everything below the header
+            except the numbers and the table is folded behind one-line summaries. */}
         {/* MP-430: the roster-health panels moved here from the home page. Sam
             (2026-09-04): "under agent's production linkage, all those yellow
             boxes — remove all of them. What am I gonna do with any of those
@@ -2068,28 +2094,25 @@ export default function DashboardCRM() {
               <UnlinkedAgentsPanel />
             </div>
           </details>
-        )} {bulkMode ? "Exit Bulk" : "Bulk Actions"}
-                </Button>
-              )}
-              {isAdmin && (
-                <Button onClick={handleBulkSendPortalLogins} variant="outline" size="sm" className="h-10 gap-1.5 sm:h-9" disabled={sendingBulkLogins}>
-                  <Mail className="h-4 w-4 shrink-0" /> {sendingBulkLogins ? "Sending..." : "Send Portal Logins (All)"}
-                </Button>
-              )}
-              <AddAgentModal onAgentAdded={fetchAgents} />
-              <Button variant="outline" size="sm" className="h-10 gap-1.5 sm:h-9" onClick={() => { navigator.clipboard.writeText("https://apex-financial.org/agent-login"); toast.success("Check-in link copied! Paste into a text or DM"); }}>
-                <Link2 className="h-4 w-4 shrink-0" /> Check-In Link
-              </Button>
-              <Button onClick={fetchAgents} variant="outline" size="sm" className="h-10 gap-1.5 sm:h-9">
-                <RefreshCw className="h-4 w-4 shrink-0" /> Refresh
-              </Button>
-            </>
-          }
-        />
-
-        {/* 2026-09-26: login truth + onboarding-email truth per agent, admin-only (RPC returns 0 rows otherwise). */}
-        {isAdmin && <TeamEngagementPanel />}
-        {isAdmin && <BrandLeadsPanel />}
+        )}
+        {isAdmin && (
+          <details className="group rounded-lg border border-border bg-card [&[open]_.chev]:rotate-180">
+            <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground hover:text-foreground">
+              Engagement · who logged in, emails sent, course progress
+              <ChevronDown className="chev ml-auto h-4 w-4 transition-transform" />
+            </summary>
+            <div className="border-t border-border p-4"><TeamEngagementPanel /></div>
+          </details>
+        )}
+        {isAdmin && (
+          <details className="group rounded-lg border border-border bg-card [&[open]_.chev]:rotate-180">
+            <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground hover:text-foreground">
+              Brand funnel leads · mentorship, fitness, rentals, collabs
+              <ChevronDown className="chev ml-auto h-4 w-4 transition-transform" />
+            </summary>
+            <div className="border-t border-border p-4"><BrandLeadsPanel /></div>
+          </details>
+        )}
 
         <ProductionMetricsCard
           snapshot={rosterSegmentsQuery.data ?? null}

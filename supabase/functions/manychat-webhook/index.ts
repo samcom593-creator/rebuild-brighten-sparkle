@@ -666,6 +666,21 @@ async function socialsReply(text: string): Promise<string | null> {
   return `everything's on here: ${map.website}`;
 }
 
+
+// Public comment replies should read like a person, not a stamp: pick from a small
+// pool that matches what they said, varied by the comment text itself (no model).
+function commentFlavor(text: string): string {
+  const t = text.toLowerCase();
+  let pool: string[];
+  if (/\b(can'?t wait|thinking about moving|want to move|moving (here|out|to)|finna move|about to move|i'?m moving|just moved)\b/.test(t)) pool = ["do it, best move i made 🙏", "you won't regret it", "pull up 🙏"];
+  else if (/\b(don'?t|dont|stop|full|closed|overrated|worst|sucks|hate|leave|too hot|so hot|hot as|packed|rent is|expensive|nooo+|pls|please)\b/.test(t)) pool = ["😂😂", "😂 i hear you", "haha fair", "😂 the heat is real"];
+  else if (/\b(fire|goat|facts|love|keep (going|it up)|congrats|proud|respect|inspir\w*|motivat\w*|welcome|beautiful|vibe)\b/.test(t)) pool = ["appreciate you 🙏", "🙏🔥", "appreciate that", "🔥🔥"];
+  else if (/😂|🤣|lmao|lol|haha/.test(t)) pool = ["😂😂", "😂", "lmaoo"];
+  else pool = ["🔥", "🙏", "facts", "💯"];
+  let h = 0; for (const c of text) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return pool[h % pool.length];
+}
+
 async function decide(text: string, rawSource: string, firstName: string | undefined, externalId: string | null, handle: string | null, channel: string, senderName: string | null): Promise<Decision> {
   const base = classify(text);
   if (base.intent === "spam" || base.intent === "not_interested") return { ...base, auto_reply: null };
@@ -950,7 +965,7 @@ Deno.serve(async (req) => {
   // Casual / greeting / flirty under a comment or story reply: engagement only, no DM.
   if ((channel === "comment" || channel === "story" || channel === "youtube_comment" || channel === "tiktok_comment") && (decision.reply_path === "route" || ["greeting", "flirty", "casual"].includes(decision.intent))) {
     decision.auto_reply = channel === "story" ? "🔥" : null; decision.reply_path = "props";
-    if (channel !== "story") decision.public_reply = "🔥";
+    if (channel !== "story") decision.public_reply = commentFlavor(text);
   }
   if ((channel === "comment" || channel === "youtube_comment" || channel === "tiktok_comment") && decision.intent === "socials" && decision.auto_reply) { decision.public_reply = decision.auto_reply; decision.auto_reply = null; }
   if (channel === "comment" && decision.auto_reply && !decision.public_reply) decision.public_reply = "check your dms 📩";
@@ -969,7 +984,8 @@ Deno.serve(async (req) => {
     if (decision.auto_reply && !decision.public_reply && (strongIntent || (ask && !hater))) decision.public_reply = channel === "tiktok_comment" ? "dm me 'apex' and i'll get you going 📩" : "dm me 'apex' on ig @sell4daddy and i'll get you going 📩";
     // Sam 2026-09-28: "YouTube is just about engagement. If it's a comment you
     // don't know what to say to, give it a fire emoji." Nothing goes unanswered.
-    if (!decision.public_reply && decision.intent !== "spam") decision.public_reply = "🔥";
+    if (!decision.public_reply && decision.intent !== "spam") decision.public_reply = commentFlavor(text);
+    else if (decision.public_reply === "🔥" || decision.public_reply === "appreciate you 🔥") decision.public_reply = commentFlavor(text);
     decision.auto_reply = null;
     decision.urgent = false; decision.email = null; decision.notify = null;
   }

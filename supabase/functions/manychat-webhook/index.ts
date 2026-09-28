@@ -942,7 +942,7 @@ Deno.serve(async (req) => {
   }
   // Where it came from changes the opener, not the routing: a comment or a story
   // reply gets a DM that says why it's arriving. A 🔥 needs no opener.
-  if (decision.auto_reply && channel !== "dm" && decision.reply_path !== "props") {
+  if (decision.auto_reply && (channel === "comment" || channel === "story") && decision.reply_path !== "props" && decision.intent !== "socials") {
     const seen = channel === "comment" ? "saw your comment." : "saw your story reply.";
     decision.auto_reply = `${seen} ${decision.auto_reply}`;
   }
@@ -959,8 +959,9 @@ Deno.serve(async (req) => {
     // that happens to say "renting" gets nothing ("either renting or leasing that
     // hoe 😂" got the pointer on the first live pass).
     const ask = /\?|\b(how|put me on|link|info|dm|apex|join|team|mentor\w*|coach\w*|sign me up|i want|i need|tryna|let me|plug|tap in|price|cost|how much)\b/i.test(text);
-    const strongIntent = ["opportunity", "licensed", "licensed_team", "mentorship", "partnership"].includes(decision.intent);
-    if (decision.auto_reply && !decision.public_reply && (strongIntent || ask)) decision.public_reply = "dm me 'apex' on ig @sell4daddy and i'll get you going 📩";
+    const hater = /\b(stupid|idiot|dumb|dumbass|clown|loser|broke|fake|cap\b|scam|fraud|lame|trash|bum|corny|nobody cares|shut up|weird|cringe)\b/i.test(text);
+    const strongIntent = !hater && ["opportunity", "licensed", "licensed_team", "mentorship", "partnership"].includes(decision.intent);
+    if (decision.auto_reply && !decision.public_reply && (strongIntent || (ask && !hater))) decision.public_reply = "dm me 'apex' on ig @sell4daddy and i'll get you going 📩";
     // Sam 2026-09-28: "YouTube is just about engagement. If it's a comment you
     // don't know what to say to, give it a fire emoji." Nothing goes unanswered.
     if (!decision.public_reply && decision.intent !== "spam") decision.public_reply = "🔥";

@@ -958,7 +958,7 @@ Deno.serve(async (req) => {
     // ask: team/mentorship intent, or a lane keyword WITH an ask in it. A joke
     // that happens to say "renting" gets nothing ("either renting or leasing that
     // hoe 😂" got the pointer on the first live pass).
-    const ask = /\?|\b(how|put me on|link|info|dm|apex|join|team|mentor\w*|coach\w*|sign me up|i want|i need|tryna|let me|plug|tap in|price|cost|how much)\b/i.test(text);
+    const ask = /\?|\b(how|put me on|link|info|dm|apex|join|team|mentor\w*|coach\w*|sign me up|i want|i need|tryna|let me|plug|tap in|price|cost|how much|curious|what (you|u) (do|did)|what do you do|teach me|show me|where do i|i wanna|help me)\b/i.test(text);
     const hater = /\b(stupid|idiot|dumb|dumbass|clown|loser|broke|fake|cap\b|scam|fraud|lame|trash|bum|corny|nobody cares|shut up|weird|cringe)\b/i.test(text);
     const strongIntent = !hater && ["opportunity", "licensed", "licensed_team", "mentorship", "partnership"].includes(decision.intent);
     if (decision.auto_reply && !decision.public_reply && (strongIntent || (ask && !hater))) decision.public_reply = channel === "tiktok_comment" ? "dm me 'apex' and i'll get you going 📩" : "dm me 'apex' on ig @sell4daddy and i'll get you going 📩";

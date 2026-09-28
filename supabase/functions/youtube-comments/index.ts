@@ -119,7 +119,12 @@ Deno.serve(async (req) => {
         if (publicReply && replied < maxReplies) {
           const ins = await yt("comments?part=snippet", token, { method: "POST", body: JSON.stringify({ snippet: { parentId: commentId, textOriginal: publicReply } }) });
           if (ins.ok) { row.reply_comment_id = ins.body?.id ?? null; row.replied_at = new Date().toISOString(); replied++; }
-          else { row.error = JSON.stringify(ins.body?.error ?? ins.status).slice(0, 300); failed++; }
+          else {
+            const msg = JSON.stringify(ins.body?.error ?? ins.status);
+            // Quota exhausted: record nothing so this comment is retried after the reset, and stop the run.
+            if (/quota/i.test(msg)) { console.warn("[youtube-comments] quota exhausted; stopping, comment left for retry"); return json({ ok: true, mode: backfill ? "backfill" : "latest", stopped: "quota", videos: videosTotal, comments_seen: seen, new_comments: newComments, replied, silent, failed, receipts: receipts.slice(0, 30) }); }
+            row.error = msg.slice(0, 300); failed++;
+          }
         } else if (!publicReply) silent++;
         await sb.from("youtube_comment_events").insert(row);
         receipts.push({ channel: conn.channel_title, video: videoId, author, text: text.slice(0, 60), intent, reply: publicReply, ok: !row.error });

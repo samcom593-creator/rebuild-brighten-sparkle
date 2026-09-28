@@ -184,7 +184,7 @@ function replyFor(path: ReplyPath, rawSource: string, _firstName?: string): stri
     license_q:     `you got your life insurance license already or nah`,
     license_yes:   `say less, let's hop on a call. what's your number?`,
     license_no:    `all good, no stress. start here and i'll get you licensed: ${apply}`,
-    license_explain: `it's the license you need to sell life insurance bro. don't have it yet? no stress, i get you licensed. start here and i'll walk you through it: ${apply}`,
+    license_explain: `it's the license you need to sell life insurance bro. don't have it yet? no stress, i get you licensed. quick vid on how it works: https://youtu.be/i1e5p-GEfAU and start here: ${apply}`,
     trust:         `lol nah, it's my own site. no card, no payment, just your info so i can reach you. look me up anywhere, apex financial. ${apply}`,
     why_us:        `i train you myself, we run real leads, and you're on a team that's actually writing. easiest way to see it is a quick call, start here: ${apply}`,
     llm:           "",

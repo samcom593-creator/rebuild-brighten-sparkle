@@ -118,6 +118,9 @@ Deno.serve(async (req) => {
       const senderId = dm?.sender?.id;          // IGSID we reply to
       const messageText = dm?.message?.text;
       if (!senderId || !messageText) continue;
+      // A reply to one of Sam's stories arrives as a normal DM carrying
+      // reply_to.story — same thread, same brain, tagged so the reply can say so.
+      const channel: "dm" | "story" = dm?.message?.reply_to?.story ? "story" : "dm";
 
       // 2026-09-27: the old guard here skipped EVERY message from a sender for
       // 60 minutes after one reply. That is why Jesu's "fitness", "mentorship"
@@ -156,6 +159,7 @@ Deno.serve(async (req) => {
             },
             body: JSON.stringify({
               source: "instagram",
+              channel,
               subscriber_id: senderId,
               sender_handle: who.username ? `@${who.username}` : senderId,
               sender_name: who.name,
@@ -184,6 +188,79 @@ Deno.serve(async (req) => {
           if (!sentJson?.ok) console.error("[instagram-webhook] send failed", JSON.stringify(sentJson).slice(0, 400));
         } catch (e) {
           console.error("[instagram-webhook] auto-reply pipeline failed", e);
+        }
+      })();
+      pending.push(pipeline);
+    }
+
+    // ── Comments on Sam's own posts / reels ("comment APEX") ──
+    // Delivered as entry.changes[] with field "comments". A comment that carries
+    // intent gets a PRIVATE reply: Instagram delivers it as a DM to the commenter
+    // (recipient.comment_id). Sam's own comments and empty/emoji-only ones are
+    // ignored; the brain decides silence exactly as it does for DMs.
+    const comments = (entry?.changes ?? []).filter((c: any) =>
+      c?.field === "comments" && c?.value?.text && c?.value?.from?.id && c?.value?.id &&
+      String(c.value.from.id) !== String(entry?.id)
+    );
+    for (const c of comments) {
+      const v = c.value;
+      const commentId: string = String(v.id);
+      const senderId: string = String(v.from.id);
+      const username: string | null = v.from?.username ?? null;
+      const text: string = v.text;
+      const mediaId: string | null = v.media?.id ?? null;
+
+      // Meta redelivery of the same comment -> already logged once, skip.
+      const { count } = await sb.from("instagram_events")
+        .select("id", { count: "exact", head: true })
+        .contains("payload", { changes: [{ value: { id: commentId } }] });
+      if ((count ?? 0) > 1) continue;
+
+      const pipeline = (async () => {
+        try {
+          const who = username ? { name: null as string | null, username } : await resolveSender(sb, senderId);
+          const cls = await fetch(`${supabaseUrl}/functions/v1/manychat-webhook`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-manychat-secret": Deno.env.get("MANYCHAT_WEBHOOK_SECRET") ?? "",
+            },
+            body: JSON.stringify({
+              source: "instagram",
+              channel: "comment",
+              comment_id: commentId,
+              media_id: mediaId,
+              subscriber_id: senderId,
+              sender_handle: who.username ? `@${who.username}` : senderId,
+              sender_name: who.name,
+              body: text,
+            }),
+          });
+          const clsResult = await cls.json().catch(() => ({}));
+          const reply: string | null = clsResult?.auto_reply ?? null;
+          const publicReply: string | null = clsResult?.public_reply ?? null;
+          const sendHeaders = {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""}`,
+          };
+          // Public reply under the comment (🔥 on props, "check your dms 📩" on intent).
+          if (publicReply) {
+            const pub = await fetch(`${supabaseUrl}/functions/v1/send-instagram-dm`, {
+              method: "POST", headers: sendHeaders,
+              body: JSON.stringify({ comment_id: commentId, external_id: senderId, public: true, message: publicReply }),
+            });
+            const pubJson = await pub.json().catch(() => ({}));
+            if (!pubJson?.ok) console.error("[instagram-webhook] comment public-reply failed", JSON.stringify(pubJson).slice(0, 400));
+          }
+          if (!reply) return;
+          const sent = await fetch(`${supabaseUrl}/functions/v1/send-instagram-dm`, {
+            method: "POST", headers: sendHeaders,
+            body: JSON.stringify({ comment_id: commentId, external_id: senderId, message: reply }),
+          });
+          const sentJson = await sent.json().catch(() => ({}));
+          if (!sentJson?.ok) console.error("[instagram-webhook] comment private-reply failed", JSON.stringify(sentJson).slice(0, 400));
+        } catch (e) {
+          console.error("[instagram-webhook] comment pipeline failed", e);
         }
       })();
       pending.push(pipeline);

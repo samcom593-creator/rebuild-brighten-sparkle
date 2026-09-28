@@ -71,10 +71,19 @@ Deno.serve(async (req) => {
   try { body = await req.json(); }
   catch { return new Response(JSON.stringify({ ok: false, error: "bad json" }), { status: 400, headers: corsHeaders }); }
 
-  const recipientId = body.recipient_id ?? body.igsid ?? body.to;
+  // Two ways to address a send:
+  //   recipient_id — an IGSID from an inbound DM (24h messaging window applies)
+  //   comment_id   — a comment on our own media: Instagram delivers the text as
+  //                  a private DM to the commenter ("private reply", 7-day window,
+  //                  once per comment). This is the "comment APEX → get DM'd" lane.
+  const commentId   = body.comment_id ?? null;
+  const recipientId = body.recipient_id ?? body.igsid ?? body.to ?? null;
   const message     = body.message ?? body.text;
-  if (!recipientId || !message) {
-    return new Response(JSON.stringify({ ok: false, error: "recipient_id + message required" }),
+  // Row identity for the thread log: the commenter's IGSID when the caller
+  // knows it, so a comment and a later DM from the same person share a thread.
+  const externalId  = body.external_id ?? recipientId ?? commentId;
+  if ((!recipientId && !commentId) || !message) {
+    return new Response(JSON.stringify({ ok: false, error: "recipient_id or comment_id + message required" }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
@@ -88,12 +97,12 @@ Deno.serve(async (req) => {
     try {
       await sb.from("inbox_messages").insert({
         source: "instagram",
-        external_id: recipientId,
-        sender_handle: recipientId,
+        external_id: externalId,
+        sender_handle: externalId,
         body: message,
         direction: "outbound",
         auto_replied: false,
-        raw_payload: { queued: true, reason: "no_token", queued_at: new Date().toISOString() },
+        raw_payload: { queued: true, reason: "no_token", queued_at: new Date().toISOString(), comment_id: commentId },
       });
     } catch (_queueErr) { /* queue is best-effort; Discord ping below is the durable receipt */ }
 
@@ -121,33 +130,44 @@ Deno.serve(async (req) => {
   // Live send via Meta Graph API
   // Instagram-Login token: messaging lives on graph.instagram.com under the IG
   // professional account id (meta_instagram_page_id holds that id). No FB Page.
-  const url = `https://graph.instagram.com/v21.0/${encodeURIComponent(pageId)}/messages`;
+  // public: true + comment_id = a PUBLIC reply under the comment (🔥 back on
+  // props, "check your dms 📩" on an Apex comment). Everything else is a DM.
+  const isPublic = commentId && body.public === true;
+  const url = isPublic
+    ? `https://graph.instagram.com/v21.0/${encodeURIComponent(commentId)}/replies`
+    : `https://graph.instagram.com/v21.0/${encodeURIComponent(pageId)}/messages`;
+  const payload = isPublic
+    ? { message }
+    : commentId
+      ? { recipient: { comment_id: commentId }, message: { text: message } }
+      : { recipient: { id: recipientId }, messaging_type: "RESPONSE", message: { text: message } };   // 24h window after user's last msg
   const res = await fetch(url, {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${token}`,
       "Content-Type":  "application/json",
     },
-    body: JSON.stringify({
-      recipient:        { id: recipientId },
-      messaging_type:   "RESPONSE",   // 24h messaging window after user's last msg
-      message:          { text: message },
-    }),
+    body: JSON.stringify(payload),
   });
 
   const result = await res.json().catch(() => ({}));
+  if (isPublic) {
+    // Public replies are not thread messages: never queue them into inbox_messages.
+    return new Response(JSON.stringify(res.ok ? { ok: true, id: result?.id ?? null, public: true } : { ok: false, error: result?.error?.message ?? `HTTP ${res.status}`, raw: result, public: true }),
+      { status: res.ok ? 200 : res.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
   if (!res.ok) {
     // Meta rejected — also queue + ping so the reply isn't lost
     // supabase-js QueryBuilder has no .catch — await + try/catch
     try {
       await sb.from("inbox_messages").insert({
         source: "instagram",
-        external_id: recipientId,
-        sender_handle: recipientId,
+        external_id: externalId,
+        sender_handle: externalId,
         body: message,
         direction: "outbound",
         auto_replied: false,
-        raw_payload: { queued: true, reason: "send_failed", error: result?.error?.message ?? `HTTP ${res.status}` },
+        raw_payload: { queued: true, reason: "send_failed", error: result?.error?.message ?? `HTTP ${res.status}`, comment_id: commentId },
       });
     } catch (_queueErr) { /* queue is best-effort */ }
     return new Response(JSON.stringify({ ok: false, error: result?.error?.message ?? `HTTP ${res.status}`, raw: result, queued: true }),

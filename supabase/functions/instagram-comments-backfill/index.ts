@@ -39,8 +39,8 @@ Deno.serve(async (req) => {
         const who = c.from?.username ?? c.username ?? "";
         if (!c.text || !who || who === myName) continue;
         if ((c.replies?.data ?? []).some((r) => (r.from?.username ?? r.username) === myName)) continue;           // already answered (by Sam or the bot)
-        const { data: known } = await sb.from("ig_comment_events").select("comment_id").eq("comment_id", c.id).limit(1);
-        if (known?.length) continue;
+        const { data: claimed } = await sb.from("ig_comment_events").upsert({ comment_id: c.id, media_id: m.id, username: who, text: c.text, commented_at: c.timestamp, intent: "claimed_backfill" }, { onConflict: "comment_id", ignoreDuplicates: true }).select("comment_id");
+        if (!claimed?.length) continue;                                                        // someone (live webhook or an earlier run) already has it
         const ageDays = (Date.now() - new Date(c.timestamp).getTime()) / 86400000;
         const row: Record<string, unknown> = { comment_id: c.id, media_id: m.id, username: who, text: c.text, commented_at: c.timestamp };
         let d: any = {};
@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
           const j = await r.json().catch(() => ({}));
           row.dm_sent = !!j?.ok; if (j?.ok) dms++;
         }
-        await sb.from("ig_comment_events").insert(row);
+        await sb.from("ig_comment_events").update(row).eq("comment_id", c.id);
         receipts.push({ user: who, text: c.text.slice(0, 60), reply: d?.public_reply ?? null, dm: !!row.dm_sent });
         await new Promise((res) => setTimeout(res, 1500));   // human pacing
         if (answered >= MAX_REPLIES_PER_RUN) break;

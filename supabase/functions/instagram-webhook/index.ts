@@ -227,11 +227,11 @@ Deno.serve(async (req) => {
       const text: string = v.text;
       const mediaId: string | null = v.media?.id ?? null;
 
-      // Meta redelivery of the same comment -> already logged once, skip.
-      const { count } = await sb.from("instagram_events")
-        .select("id", { count: "exact", head: true })
-        .contains("payload", { changes: [{ value: { id: commentId } }] });
-      if ((count ?? 0) > 1) continue;
+      // Redeliveries are handled by the ig_comment_events claim below (atomic, primary key).
+
+      // One reply per comment, ever: claim it first (primary key), shared with the backfill job.
+      const { data: claimed } = await sb.from("ig_comment_events").upsert({ comment_id: commentId, media_id: mediaId, username, text, intent: "claimed_live" }, { onConflict: "comment_id", ignoreDuplicates: true }).select("comment_id");
+      if (!claimed?.length) continue;
 
       const pipeline = (async () => {
         try {

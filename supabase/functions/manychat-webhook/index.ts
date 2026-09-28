@@ -972,7 +972,7 @@ Deno.serve(async (req) => {
   // Where it came from changes the opener, not the routing: a comment or a story
   // reply gets a DM that says why it's arriving. A 🔥 needs no opener.
   if (decision.auto_reply && (channel === "comment" || channel === "story") && decision.reply_path !== "props" && decision.intent !== "socials") {
-    const seen = channel === "comment" ? "saw your comment." : "saw your story reply.";
+    const seen = channel === "comment" ? "hey, thanks for the comment." : "thanks for the reply on my story.";
     decision.auto_reply = `${seen} ${decision.auto_reply}`;
   }
   // Intent under a comment: the DM goes out privately and the comment gets a public pointer.
@@ -982,7 +982,7 @@ Deno.serve(async (req) => {
     if (channel !== "story") decision.public_reply = commentFlavor(text);
   }
   if ((channel === "comment" || channel === "youtube_comment" || channel === "tiktok_comment") && decision.intent === "socials" && decision.auto_reply) { decision.public_reply = decision.auto_reply; decision.auto_reply = null; }
-  if (channel === "comment" && decision.auto_reply && !decision.public_reply) decision.public_reply = "check your dms 📩";
+  if (channel === "comment" && decision.auto_reply && !decision.public_reply) decision.public_reply = ["sent you a message 🙏", "just messaged you", "check your messages 🙏"][text.length % 3];
   if (channel === "comment" && !decision.public_reply && decision.intent !== "spam") { decision.public_reply = "🔥"; decision.auto_reply = null; }
   if (channel === "story" && !decision.auto_reply && decision.intent !== "spam") { decision.auto_reply = "🔥"; decision.reply_path = "props"; }
   // YouTube has no DM API: anything with intent gets a public pointer to the one
@@ -1002,6 +1002,23 @@ Deno.serve(async (req) => {
     else if (decision.public_reply === "🔥" || decision.public_reply === "appreciate you 🔥") decision.public_reply = commentFlavor(text);
     decision.auto_reply = null;
     decision.urgent = false; decision.email = null; decision.notify = null;
+  }
+  // Comment etiquette (2026-09-28, after a troll got 9 "check your dms" in 8 minutes and
+  // commenters called the account a scam): talk about bots/AI/scams gets nothing; each
+  // person gets at most one public reply + one DM per day; only an explicit ask gets a DM.
+  const isComment = channel === "comment" || channel === "youtube_comment" || channel === "tiktok_comment";
+  if (isComment) {
+    if (/\b(ai|a\.i\.|bot|chatbot|chat ?gpt|automated|scam|fake|fraud|cutscene|npc)\b/i.test(text)) {
+      decision.auto_reply = null; decision.public_reply = null; decision.urgent = false; decision.email = null; decision.notify = null;
+    } else {
+      const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+      const { data: recent } = await supabase.from("inbox_messages").select("id, direction, raw_payload").eq("external_id", subscriberId ?? "").gte("created_at", since).limit(20);
+      const engaged = (recent ?? []).some((r: { direction: string; raw_payload: any }) => r.direction === "outbound" || r.raw_payload?.public_reply);
+      const explicitAsk = !!decision.reply_path && ["license_q", "licensed", "licensed_team", "fitness", "mentorship", "rentals", "partnership", "apply"].includes(decision.reply_path) &&
+        (/^\W*(apex|info|link|join|team|start|licensed|fitness|mentor(ship)?|cars?|rental)\W*$/i.test(text) || /\?|\b(how|i want|i need|interested|sign me up|put me on|dm me|send me)\b/i.test(text));
+      if (engaged) { decision.auto_reply = null; decision.public_reply = null; }
+      else if (!explicitAsk && decision.auto_reply) decision.auto_reply = null;
+    }
   }
   const { intent, lead_score, reply_path, urgent, auto_reply, alert_text, notify } = decision;
   if (decision.email) await emailSam(decision.email.subject, decision.email.body);
@@ -1069,7 +1086,7 @@ Deno.serve(async (req) => {
     source, external_id: subscriberId, sender_handle: senderHandle, sender_name: senderName,
     sender_avatar: senderAvatar, body: text, direction: "inbound", intent, lead_score,
     auto_replied: !!auto_reply,
-    raw_payload: { ...body, partial_application_id: partialApplicationId, session_id: sessionId, reply_path },
+    raw_payload: { ...body, partial_application_id: partialApplicationId, session_id: sessionId, reply_path, public_reply: decision.public_reply ?? null },
     replied_at: auto_reply ? new Date().toISOString() : null,
   };
 

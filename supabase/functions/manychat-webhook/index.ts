@@ -916,7 +916,13 @@ Deno.serve(async (req) => {
   // YouTube has no DM API: anything with intent gets a public pointer to the one
   // place the conversation can continue; props get the 🔥; nothing else is posted.
   if (channel === "youtube_comment") {
-    if (decision.auto_reply && !decision.public_reply) decision.public_reply = "dm me 'apex' on ig @sell4daddy and i'll get you going 📩";
+    // Public replies are visible to everyone, so the pointer only goes to a real
+    // ask: team/mentorship intent, or a lane keyword WITH an ask in it. A joke
+    // that happens to say "renting" gets nothing ("either renting or leasing that
+    // hoe 😂" got the pointer on the first live pass).
+    const ask = /\?|\b(how|put me on|link|info|dm|apex|join|team|mentor\w*|coach\w*|sign me up|i want|i need|tryna|let me|plug|tap in|price|cost|how much)\b/i.test(text);
+    const strongIntent = ["opportunity", "licensed", "licensed_team", "mentorship", "partnership"].includes(decision.intent);
+    if (decision.auto_reply && !decision.public_reply && (strongIntent || ask)) decision.public_reply = "dm me 'apex' on ig @sell4daddy and i'll get you going 📩";
     decision.auto_reply = null;
     decision.urgent = false; decision.email = null; decision.notify = null;
   }

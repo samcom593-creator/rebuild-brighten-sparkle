@@ -12,7 +12,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
-const VIDEOS_TO_WATCH = 10;
+const VIDEOS_TO_WATCH = 25;   // Sam posts several Shorts a day; comments land on older ones (25 list calls = 25 units per run)
 const MAX_REPLIES_PER_RUN = 25;
 
 function json(body: unknown, status = 200) {

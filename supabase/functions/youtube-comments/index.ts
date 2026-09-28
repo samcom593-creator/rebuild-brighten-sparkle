@@ -44,56 +44,63 @@ Deno.serve(async (req) => {
   const sb = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", { auth: { persistSession: false } });
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "https://xrzweoneiieddzxogewk.supabase.co";
 
-  const { data: conns } = await sb.from("youtube_connections").select("id, channel_id, refresh_token, access_token, token_expires_at").order("connected_at", { ascending: false }).limit(1);
-  const conn = conns?.[0] as { id: string; channel_id: string; refresh_token: string; access_token: string | null; token_expires_at: string | null } | undefined;
-  if (!conn) return json({ ok: true, action: "skip", reason: "no_channel_connected" });
-  const token = await accessToken(sb, conn);
-  if (!token) return json({ ok: false, error: "token_refresh_failed" }, 200);
+  // Every connected channel (Sam has more than one: Samuel James, APEX Nation).
+  const { data: conns } = await sb.from("youtube_connections").select("id, channel_id, channel_title, refresh_token, access_token, token_expires_at").order("connected_at", { ascending: true });
+  const channels = (conns ?? []) as Array<{ id: string; channel_id: string; channel_title: string | null; refresh_token: string; access_token: string | null; token_expires_at: string | null }>;
+  if (!channels.length) return json({ ok: true, action: "skip", reason: "no_channel_connected" });
 
-  // Latest uploads: channel -> uploads playlist -> newest N videos.
-  const ch = await yt(`channels?part=contentDetails&id=${conn.channel_id}`, token);
-  const uploads = ch.body?.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
-  if (!uploads) return json({ ok: false, error: "no_uploads_playlist", detail: ch.body }, 200);
-  const pl = await yt(`playlistItems?part=contentDetails&playlistId=${uploads}&maxResults=${VIDEOS_TO_WATCH}`, token);
-  const videoIds: string[] = (pl.body?.items ?? []).map((i: any) => i?.contentDetails?.videoId).filter(Boolean);
-
-  let seen = 0, newComments = 0, replied = 0, silent = 0, failed = 0;
+  let videosTotal = 0, seen = 0, newComments = 0, replied = 0, silent = 0, failed = 0;
   const receipts: Array<Record<string, unknown>> = [];
-  for (const videoId of videoIds) {
-    const th = await yt(`commentThreads?part=snippet&videoId=${videoId}&order=time&maxResults=50&textFormat=plainText`, token);
-    if (!th.ok) { console.warn("[youtube-comments] threads failed", videoId, th.status, JSON.stringify(th.body).slice(0, 200)); continue; }
-    for (const t of th.body?.items ?? []) {
-      seen++;
-      const top = t?.snippet?.topLevelComment; const sn = top?.snippet; const commentId = top?.id;
-      if (!commentId || !sn) continue;
-      if (sn.authorChannelId?.value === conn.channel_id) continue;   // Sam's own comments
-      const { data: known } = await sb.from("youtube_comment_events").select("comment_id").eq("comment_id", commentId).limit(1);
-      if (known?.length) continue;
-      newComments++;
-      const text: string = sn.textOriginal ?? sn.textDisplay ?? "";
-      const author: string = sn.authorDisplayName ?? "";
-      const authorId: string = sn.authorChannelId?.value ?? "";
-      const row: Record<string, unknown> = { comment_id: commentId, video_id: videoId, author_channel_id: authorId, author_name: author, text, published_at: sn.publishedAt ?? null };
+  const perChannel: Array<Record<string, unknown>> = [];
+  for (const conn of channels) {
+    const token = await accessToken(sb, conn);
+    if (!token) { perChannel.push({ channel: conn.channel_title, error: "token_refresh_failed" }); continue; }
 
-      let intent: string | null = null, publicReply: string | null = null;
-      try {
-        const cls = await fetch(`${supabaseUrl}/functions/v1/manychat-webhook`, {
-          method: "POST", headers: { "Content-Type": "application/json", "x-manychat-secret": Deno.env.get("MANYCHAT_WEBHOOK_SECRET") ?? "" },
-          body: JSON.stringify({ source: "youtube", channel: "youtube_comment", subscriber_id: authorId || commentId, sender_handle: author, sender_name: author, body: text, comment_id: commentId, media_id: videoId }),
-        });
-        const c = await cls.json().catch(() => ({}));
-        intent = c?.intent ?? null; publicReply = c?.public_reply ?? null;
-      } catch (e) { console.error("[youtube-comments] brain failed", e); }
-      row.intent = intent; row.public_reply = publicReply;
+    // Latest uploads: channel -> uploads playlist -> newest N videos.
+    const ch = await yt(`channels?part=contentDetails&id=${conn.channel_id}`, token);
+    const uploads = ch.body?.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
+    if (!uploads) { perChannel.push({ channel: conn.channel_title, error: "no_uploads_playlist" }); continue; }
+    const pl = await yt(`playlistItems?part=contentDetails&playlistId=${uploads}&maxResults=${VIDEOS_TO_WATCH}`, token);
+    const videoIds: string[] = (pl.body?.items ?? []).map((i: any) => i?.contentDetails?.videoId).filter(Boolean);
+    videosTotal += videoIds.length;
 
-      if (publicReply && replied < MAX_REPLIES_PER_RUN) {
-        const ins = await yt("comments?part=snippet", token, { method: "POST", body: JSON.stringify({ snippet: { parentId: commentId, textOriginal: publicReply } }) });
-        if (ins.ok) { row.reply_comment_id = ins.body?.id ?? null; row.replied_at = new Date().toISOString(); replied++; }
-        else { row.error = JSON.stringify(ins.body?.error ?? ins.status).slice(0, 300); failed++; }
-      } else if (!publicReply) silent++;
-      await sb.from("youtube_comment_events").insert(row);
-      receipts.push({ video: videoId, author, text: text.slice(0, 60), intent, reply: publicReply, ok: !row.error });
+    for (const videoId of videoIds) {
+      const th = await yt(`commentThreads?part=snippet&videoId=${videoId}&order=time&maxResults=50&textFormat=plainText`, token);
+      if (!th.ok) { console.warn("[youtube-comments] threads failed", videoId, th.status, JSON.stringify(th.body).slice(0, 200)); continue; }
+      for (const t of th.body?.items ?? []) {
+        seen++;
+        const top = t?.snippet?.topLevelComment; const sn = top?.snippet; const commentId = top?.id;
+        if (!commentId || !sn) continue;
+        if (sn.authorChannelId?.value === conn.channel_id) continue;   // Sam's own comments
+        const { data: known } = await sb.from("youtube_comment_events").select("comment_id").eq("comment_id", commentId).limit(1);
+        if (known?.length) continue;
+        newComments++;
+        const text: string = sn.textOriginal ?? sn.textDisplay ?? "";
+        const author: string = sn.authorDisplayName ?? "";
+        const authorId: string = sn.authorChannelId?.value ?? "";
+        const row: Record<string, unknown> = { comment_id: commentId, video_id: videoId, author_channel_id: authorId, author_name: author, text, published_at: sn.publishedAt ?? null };
+
+        let intent: string | null = null, publicReply: string | null = null;
+        try {
+          const cls = await fetch(`${supabaseUrl}/functions/v1/manychat-webhook`, {
+            method: "POST", headers: { "Content-Type": "application/json", "x-manychat-secret": Deno.env.get("MANYCHAT_WEBHOOK_SECRET") ?? "" },
+            body: JSON.stringify({ source: "youtube", channel: "youtube_comment", subscriber_id: authorId || commentId, sender_handle: author, sender_name: author, body: text, comment_id: commentId, media_id: videoId }),
+          });
+          const c = await cls.json().catch(() => ({}));
+          intent = c?.intent ?? null; publicReply = c?.public_reply ?? null;
+        } catch (e) { console.error("[youtube-comments] brain failed", e); }
+        row.intent = intent; row.public_reply = publicReply;
+
+        if (publicReply && replied < MAX_REPLIES_PER_RUN) {
+          const ins = await yt("comments?part=snippet", token, { method: "POST", body: JSON.stringify({ snippet: { parentId: commentId, textOriginal: publicReply } }) });
+          if (ins.ok) { row.reply_comment_id = ins.body?.id ?? null; row.replied_at = new Date().toISOString(); replied++; }
+          else { row.error = JSON.stringify(ins.body?.error ?? ins.status).slice(0, 300); failed++; }
+        } else if (!publicReply) silent++;
+        await sb.from("youtube_comment_events").insert(row);
+        receipts.push({ channel: conn.channel_title, video: videoId, author, text: text.slice(0, 60), intent, reply: publicReply, ok: !row.error });
+      }
     }
+    perChannel.push({ channel: conn.channel_title, videos: videoIds.length });
   }
-  return json({ ok: true, videos: videoIds.length, comments_seen: seen, new_comments: newComments, replied, silent, failed, receipts: receipts.slice(0, 30) });
+  return json({ ok: true, channels: perChannel, videos: videosTotal, comments_seen: seen, new_comments: newComments, replied, silent, failed, receipts: receipts.slice(0, 30) });
 });

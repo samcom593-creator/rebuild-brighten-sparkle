@@ -184,7 +184,7 @@ function replyFor(path: ReplyPath, rawSource: string, _firstName?: string): stri
     license_q:     `you got your life insurance license already or nah`,
     license_yes:   `say less, let's hop on a call. what's your number?`,
     license_no:    `all good, no stress. start here and i'll get you licensed: ${apply}`,
-    license_explain: `it's the license you need to sell life insurance bro. don't have it yet? no stress, i get you licensed. quick vid on how it works: https://youtu.be/i1e5p-GEfAU and start here: ${apply}`,
+    license_explain: `it's the license you need to sell life insurance bro. don't have it yet? no stress, i get you licensed. start here and i'll walk you through it: ${apply}`,
     trust:         `lol nah, it's my own site. no card, no payment, just your info so i can reach you. look me up anywhere, apex financial. ${apply}`,
     why_us:        `i train you myself, we run real leads, and you're on a team that's actually writing. easiest way to see it is a quick call, start here: ${apply}`,
     llm:           "",
@@ -765,10 +765,11 @@ async function decide(text: string, rawSource: string, firstName: string | undef
   // 7) No business context. Sam 2026-09-27: "every single message within 24 hours
   //    I want responded to" — a greeting gets pointed somewhere; only flirting /
   //    comments on his looks stay his to answer.
-  if (/^\s*(yo+|hey+|hi+|hello|sup|wassup|wsg|what'?s (good|up)|whats (good|up)|yooo+|ayo|aye)\b[\s!.?]*$/i.test(text)) {
-    return { ...base, intent: "greeting", reply_path: "route", auto_reply: `yo what's good bro, what you here for?` };
+  if (/\b(fine|sexy|cute|hot|handsome|beautiful|marry|date me|single|boyfriend|girlfriend|crush|bae|daddy|zaddy)\b|😍|🥵|😘|❤️|💕/i.test(text)) {
+    return { ...base, intent: "flirty", reply_path: "props", auto_reply: "😂🙏" };
   }
-  return { ...base, auto_reply: null };
+  // Sam 2026-09-28: it should never "choose not to respond". Anything else casual gets pointed somewhere.
+  return { ...base, intent: base.intent === "casual" ? "greeting" : base.intent, reply_path: "route", auto_reply: `yo what's good bro, what you here for?` };
 }
 
 async function fireUrgentLicensedAlert(
@@ -913,6 +914,8 @@ Deno.serve(async (req) => {
   }
   // Intent under a comment: the DM goes out privately and the comment gets a public pointer.
   if (channel === "comment" && decision.auto_reply && !decision.public_reply) decision.public_reply = "check your dms 📩";
+  if (channel === "comment" && !decision.public_reply && decision.intent !== "spam") { decision.public_reply = "🔥"; decision.auto_reply = null; }
+  if (channel === "story" && !decision.auto_reply && decision.intent !== "spam") { decision.auto_reply = "🔥"; decision.reply_path = "props"; }
   // YouTube has no DM API: anything with intent gets a public pointer to the one
   // place the conversation can continue; props get the 🔥; nothing else is posted.
   if (channel === "youtube_comment") {
@@ -923,6 +926,9 @@ Deno.serve(async (req) => {
     const ask = /\?|\b(how|put me on|link|info|dm|apex|join|team|mentor\w*|coach\w*|sign me up|i want|i need|tryna|let me|plug|tap in|price|cost|how much)\b/i.test(text);
     const strongIntent = ["opportunity", "licensed", "licensed_team", "mentorship", "partnership"].includes(decision.intent);
     if (decision.auto_reply && !decision.public_reply && (strongIntent || ask)) decision.public_reply = "dm me 'apex' on ig @sell4daddy and i'll get you going 📩";
+    // Sam 2026-09-28: "YouTube is just about engagement. If it's a comment you
+    // don't know what to say to, give it a fire emoji." Nothing goes unanswered.
+    if (!decision.public_reply && decision.intent !== "spam") decision.public_reply = "🔥";
     decision.auto_reply = null;
     decision.urgent = false; decision.email = null; decision.notify = null;
   }

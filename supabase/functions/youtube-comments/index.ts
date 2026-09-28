@@ -12,7 +12,9 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
-const VIDEOS_TO_WATCH = 25;   // Sam posts several Shorts a day; comments land on older ones (25 list calls = 25 units per run)
+const VIDEOS_TO_WATCH = 25;
+const BACKFILL_VIDEOS_PER_RUN = 60;      // ?backfill=1 walks the whole channel a page at a time (60 list units)
+const BACKFILL_REPLIES_PER_RUN = 30;     // 30 x 50 units; 3 runs/day stays inside the 10k quota with the poller   // Sam posts several Shorts a day; comments land on older ones (25 list calls = 25 units per run)
 const MAX_REPLIES_PER_RUN = 25;
 
 function json(body: unknown, status = 200) {
@@ -43,6 +45,8 @@ Deno.serve(async (req) => {
   if (!expected || (req.headers.get("authorization") ?? "") !== `Bearer ${expected}`) return json({ ok: false, error: "unauthorized" }, 401);
   const sb = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", { auth: { persistSession: false } });
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "https://xrzweoneiieddzxogewk.supabase.co";
+  const backfill = new URL(req.url).searchParams.get("backfill") === "1";
+  const maxReplies = backfill ? BACKFILL_REPLIES_PER_RUN : MAX_REPLIES_PER_RUN;
 
   // Every connected channel (Sam has more than one: Samuel James, APEX Nation).
   const { data: conns } = await sb.from("youtube_connections").select("id, channel_id, channel_title, refresh_token, access_token, token_expires_at").order("connected_at", { ascending: true });
@@ -60,18 +64,39 @@ Deno.serve(async (req) => {
     const ch = await yt(`channels?part=contentDetails&id=${conn.channel_id}`, token);
     const uploads = ch.body?.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
     if (!uploads) { perChannel.push({ channel: conn.channel_title, error: "no_uploads_playlist" }); continue; }
-    const pl = await yt(`playlistItems?part=contentDetails&playlistId=${uploads}&maxResults=${VIDEOS_TO_WATCH}`, token);
-    const videoIds: string[] = (pl.body?.items ?? []).map((i: any) => i?.contentDetails?.videoId).filter(Boolean);
+    let videoIds: string[] = [];
+    if (!backfill) {
+      const pl = await yt(`playlistItems?part=contentDetails&playlistId=${uploads}&maxResults=${VIDEOS_TO_WATCH}`, token);
+      videoIds = (pl.body?.items ?? []).map((i: any) => i?.contentDetails?.videoId).filter(Boolean);
+    } else {
+      // Resume from the page the last backfill run stopped at (system_settings), wrap at the end.
+      const cursorKey = `youtube_backfill_cursor_${conn.channel_id}`;
+      const { data: cur } = await sb.from("system_settings").select("value").eq("key", cursorKey).limit(1);
+      let pageToken: string | null = (cur?.[0]?.value as string | undefined) || null;
+      let fetched = 0;
+      while (fetched < BACKFILL_VIDEOS_PER_RUN) {
+        const pl = await yt(`playlistItems?part=contentDetails&playlistId=${uploads}&maxResults=50${pageToken ? `&pageToken=${pageToken}` : ""}`, token);
+        const ids = (pl.body?.items ?? []).map((i: any) => i?.contentDetails?.videoId).filter(Boolean);
+        videoIds.push(...ids); fetched += 50;
+        pageToken = pl.body?.nextPageToken ?? null;
+        if (!pageToken) break;
+      }
+      const next = pageToken ?? "";
+      if (cur?.length) await sb.from("system_settings").update({ value: next }).eq("key", cursorKey);
+      else await sb.from("system_settings").insert({ key: cursorKey, value: next });
+    }
     videosTotal += videoIds.length;
 
     for (const videoId of videoIds) {
-      const th = await yt(`commentThreads?part=snippet&videoId=${videoId}&order=time&maxResults=50&textFormat=plainText`, token);
+      const th = await yt(`commentThreads?part=snippet,replies&videoId=${videoId}&order=time&maxResults=50&textFormat=plainText`, token);
       if (!th.ok) { console.warn("[youtube-comments] threads failed", videoId, th.status, JSON.stringify(th.body).slice(0, 200)); continue; }
       for (const t of th.body?.items ?? []) {
         seen++;
         const top = t?.snippet?.topLevelComment; const sn = top?.snippet; const commentId = top?.id;
         if (!commentId || !sn) continue;
         if (sn.authorChannelId?.value === conn.channel_id) continue;   // Sam's own comments
+        const already = (t?.replies?.comments ?? []).some((r: any) => r?.snippet?.authorChannelId?.value === conn.channel_id);
+        if (already) { await sb.from("youtube_comment_events").upsert({ comment_id: commentId, video_id: videoId, author_channel_id: sn.authorChannelId?.value ?? null, author_name: sn.authorDisplayName ?? null, text: sn.textOriginal ?? null, published_at: sn.publishedAt ?? null, intent: "already_answered" }, { onConflict: "comment_id" }); continue; }
         const { data: known } = await sb.from("youtube_comment_events").select("comment_id").eq("comment_id", commentId).limit(1);
         if (known?.length) continue;
         newComments++;
@@ -91,7 +116,7 @@ Deno.serve(async (req) => {
         } catch (e) { console.error("[youtube-comments] brain failed", e); }
         row.intent = intent; row.public_reply = publicReply;
 
-        if (publicReply && replied < MAX_REPLIES_PER_RUN) {
+        if (publicReply && replied < maxReplies) {
           const ins = await yt("comments?part=snippet", token, { method: "POST", body: JSON.stringify({ snippet: { parentId: commentId, textOriginal: publicReply } }) });
           if (ins.ok) { row.reply_comment_id = ins.body?.id ?? null; row.replied_at = new Date().toISOString(); replied++; }
           else { row.error = JSON.stringify(ins.body?.error ?? ins.status).slice(0, 300); failed++; }
@@ -102,5 +127,5 @@ Deno.serve(async (req) => {
     }
     perChannel.push({ channel: conn.channel_title, videos: videoIds.length });
   }
-  return json({ ok: true, channels: perChannel, videos: videosTotal, comments_seen: seen, new_comments: newComments, replied, silent, failed, receipts: receipts.slice(0, 30) });
+  return json({ ok: true, mode: backfill ? "backfill" : "latest", channels: perChannel, videos: videosTotal, comments_seen: seen, new_comments: newComments, replied, silent, failed, receipts: receipts.slice(0, 30) });
 });

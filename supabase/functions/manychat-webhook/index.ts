@@ -181,18 +181,18 @@ function replyFor(path: ReplyPath, rawSource: string, _firstName?: string): stri
   const replies: Record<ReplyPath, string> = {
     licensed:      `say less, let's hop on a call. what's your number?`,
     licensed_team: `say less, you got a team too? let's hop on a call. what's your number?`,
-    license_q:     `you got your life insurance license already or nah`,
+    license_q:     `do you have your life insurance license?`,
     license_yes:   `say less, let's hop on a call. what's your number?`,
     license_no:    `all good, no stress. start here and i'll get you licensed: ${apply}`,
     license_explain: `it's the license you need to sell life insurance. don't have it yet? no stress, i get you licensed. start here and i'll walk you through it: ${apply}`,
-    trust:         `lol nah, it's my own site. no card, no payment, just your info so i can reach you. look me up anywhere, apex financial. ${apply}`,
+    trust:         `no, it's my own site. no card, no payment, just your info so i can reach you. look me up anywhere, apex financial. ${apply}`,
     why_us:        `i train you myself, we run real leads, and you're on a team that's actually writing. easiest way to see it is a quick call, start here: ${apply}`,
     llm:           "",
     props:         "🔥",
-    fitness:       `gotchu, everything's on here, plans and 1 on 1: ${FITNESS_URL}`,
+    fitness:       `everything's on here, plans and 1 on 1: ${FITNESS_URL}`,
     apply:         `bet, here's the link: ${apply}`,
     mentorship:    `mentorship's a soft launch right now. it's me working with you directly on sales and building your income, all on here, apply and i'll personally reach out: ${MENTORSHIP_URL}`,
-    rentals:       `gotchu, all the cars are on here, drop your dates and i'll get you a quote: ${RENTALS_URL}`,
+    rentals:       `all the cars are on here, drop your dates and i'll get you a quote: ${RENTALS_URL}`,
     partnership:   `yo this is sam's assistant, brand stuff goes through here so he sees it: ${PARTNER_URL}`,
     assistant:     `it's my assistant running the dms with me, i see everything. what can i help you with?`,
     route:         `what can i help you with?`,
@@ -206,7 +206,7 @@ function replyFor(path: ReplyPath, rawSource: string, _firstName?: string): stri
 // in, the last link sent, and how far the licensed call-booking flow got.
 const LICENSE_QUESTION_RE = /\b(what('?s| is| does) (a |the |that |this |it |your |my )?(life insurance |life |insurance )?licen[cs]e|what('?s| is) (that|this|it|a licence|a license)|what (do|does|u|you|that|it) mean|wdym|meaning|explain|come again|how (do|can|would) (i|you|u) get (a |my |the )?(life insurance |life |insurance )?licen[cs]e|how (do|can) i get licensed|do (i|you|u) need (a |the )?(life insurance |life |insurance )?licen[cs]e|is (a |the )?licen[cs]e (required|needed)|license for what|what license|which license|what kind of license|never heard|no idea what|idk what)\b/i;
 const LICENSE_EXPLAINED_RE = /license you need to sell life insurance/i;
-const LICENSE_Q_RE = /(do you have|you got|got|have) your (life insurance )?licen[cs]e|you got it or nah/i;
+const LICENSE_Q_RE = /(do you have|you got|got|have) (your|a|one|your life insurance) ?(life insurance )?licen[cs]e|you got it or nah|do you have one\?/i;
 const YES_PATTERNS = [
   /^\s*(yes|yeah|yep|yea|ya|yup|yessir|i do|i am|already|correct|affirmative|100)\b/i,
   /\b(yes i (do|am)|i'?m licensed|i am licensed|have my licen[cs]e|got my licen[cs]e|already licensed|licensed already|licensed (now|tho|though)|i have (it|one|mine|my licen[cs]e))\b/i,
@@ -475,7 +475,7 @@ async function llmReply(history: HistoryRow[], text: string, st: ReturnType<type
     `- mentorship: ${MENTORSHIP_URL}`,
     `- car rentals in Arizona: ${RENTALS_URL}`,
     `- brand partnership or collaboration: ${PARTNER_URL}`,
-    "For anyone interested in joining the team, the first thing to establish is whether they already hold a life insurance license. If that is still unknown, ask exactly: you got your life insurance license already or nah",
+    "For anyone interested in joining the team, the first thing to establish is whether they already hold a life insurance license. If that is still unknown, ask exactly: do you have your life insurance license?",
     `Thread context: intent ${st.threadIntent ?? "unknown"}; license ${st.licenseAnswer ?? (st.licenseAsked ? "asked, not answered yet" : "unknown")}; last link sent ${st.lastLink ?? "none"}.`,
   ].join("\n");
   const msgs: { role: "user" | "assistant"; content: string }[] = [];
@@ -554,7 +554,7 @@ function faqReply(text: string, st: ReturnType<typeof threadState>, rawSource: s
   const link = laneFromText(text) ? laneLink(lane, rawSource) : (st.lastLink ?? laneLink(lane, rawSource));
   const apply = applyUrl(rawSource);
   const gateOpen = st.licenseAsked && st.licenseAnswer === null;
-  const teamLine = st.licenseAnswer === "yes" ? (st.phone ? "" : " what's your number?") : (gateOpen ? " you got your license already or nah" : ` here's the link: ${apply}`);
+  const teamLine = st.licenseAnswer === "yes" ? (st.phone ? "" : " what's your number?") : (gateOpen ? " do you have your life insurance license?" : ` here's the link: ${apply}`);
 
   if (gateOpen && /\b(what (do you|do u|u) mean|what license|which license|what kind of license|what'?s a license|what is a license|huh|license for what)\b/.test(t)) {
     return replyFor("license_explain", rawSource, firstName);
@@ -627,7 +627,7 @@ function faqReply(text: string, st: ReturnType<typeof threadState>, rawSource: s
     return `all online: ${link}`;
   }
   if (/\b(what('?s| is) apex|what do you (guys )?do|what is (the )?(company|business|job|work)|what (kind of )?(work|job|business) is (it|this)|what is this about|what'?s this about)\b/.test(t)) {
-    return `my life insurance agency. you tryna join?`;
+    return `my life insurance agency. are you looking to join?`;
   }
   if (/\b(how does (it|this) work|what('?s| is) the process|next steps?|what happens (next|after)|then what|what now)\b/.test(t)) {
     if (lane === "opportunity" || lane === "licensed") return `you apply, get licensed, i train you, you start writing.${teamLine}`;

@@ -695,7 +695,7 @@ async function decide(text: string, rawSource: string, firstName: string | undef
 
   // 1) Licensed, at any point: page + email Sam, then run the call-booking flow.
   const licensedNow = base.intent === "licensed" || base.intent === "licensed_team";
-  const answeringYes = st.licenseAsked && st.licenseAnswer === null && YES_PATTERNS.some((r) => r.test(text));
+  const answeringYes = st.licenseAsked && (st.licenseAnswer === null || st.explainedLast) && YES_PATTERNS.some((r) => r.test(text));
   if (licensedNow || answeringYes || st.licenseAnswer === "yes") {
     const justLicensed = licensedNow || answeringYes || st.licenseAnswer !== "yes";
     const phoneNow = text.match(PHONE_RE)?.[0] ?? null;

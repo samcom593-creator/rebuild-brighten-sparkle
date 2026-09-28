@@ -797,6 +797,8 @@
     "public.xcel_pre_licensing_reports",
     "public.xcel_pre_licensing_students",
     "public.xcel_progress",
+    "public.youtube_comment_events",
+    "public.youtube_connections",
     "realtime.messages",
     "realtime.schema_migrations",
     "realtime.subscription",

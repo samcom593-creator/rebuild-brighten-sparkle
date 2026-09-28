@@ -89465,6 +89465,87 @@ export type Database = {
           },
         ]
       }
+      youtube_comment_events: {
+        Row: {
+          author_channel_id: string | null
+          author_name: string | null
+          comment_id: string
+          created_at: string
+          error: string | null
+          intent: string | null
+          public_reply: string | null
+          published_at: string | null
+          replied_at: string | null
+          reply_comment_id: string | null
+          text: string | null
+          video_id: string
+        }
+        Insert: {
+          author_channel_id?: string | null
+          author_name?: string | null
+          comment_id: string
+          created_at?: string
+          error?: string | null
+          intent?: string | null
+          public_reply?: string | null
+          published_at?: string | null
+          replied_at?: string | null
+          reply_comment_id?: string | null
+          text?: string | null
+          video_id: string
+        }
+        Update: {
+          author_channel_id?: string | null
+          author_name?: string | null
+          comment_id?: string
+          created_at?: string
+          error?: string | null
+          intent?: string | null
+          public_reply?: string | null
+          published_at?: string | null
+          replied_at?: string | null
+          reply_comment_id?: string | null
+          text?: string | null
+          video_id?: string
+        }
+        Relationships: []
+      }
+      youtube_connections: {
+        Row: {
+          access_token: string | null
+          channel_id: string
+          channel_title: string | null
+          connected_at: string
+          id: string
+          refresh_token: string
+          scopes: string | null
+          token_expires_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_token?: string | null
+          channel_id: string
+          channel_title?: string | null
+          connected_at?: string
+          id?: string
+          refresh_token: string
+          scopes?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string | null
+          channel_id?: string
+          channel_title?: string | null
+          connected_at?: string
+          id?: string
+          refresh_token?: string
+          scopes?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       agent_lifetime_production: {

@@ -109,6 +109,7 @@ const INTEREST_PATTERNS = [
 ];
 const INSURANCE_MENTION = /\b(life insurance|insurance|policy|policies|final expense|iul|term life|whole life|coverage)\b/i;
 const MONEY_PATTERNS = [
+  /\bhow much (do |did |can |you |u )?(you|u|he|sam) ?(make|earn|made|pull|bring|clear)\b/i,
   /(\bstarting %|\bwhat'?s the %|\d+\s*%|\b(comp|percentage|percent|munyun|bag|bread|racks|get money|get some money|make some money|lets get it|let'?s get it)\b)/i,
   /\b(make money|money can (i|you|we) make|how much (money )?(can|do|could|would) (i|you|we|someone) (make|earn)|earn(ing)?s?\b|income|get paid|commission)\b/i,
 ];
@@ -654,7 +655,7 @@ async function decide(text: string, rawSource: string, firstName: string | undef
   // 0) Emoji / props: 🔥 back (a public 🔥 under a comment, a DM everywhere else).
   const props = base.reply_path ? null : propsReply(text);
   if (props) {
-    if (channel === "comment") return { ...base, intent: "props", reply_path: null, auto_reply: null, public_reply: props };
+    if (channel === "comment" || channel === "youtube_comment") return { ...base, intent: "props", reply_path: null, auto_reply: null, public_reply: props };
     return { ...base, intent: "props", reply_path: "props", auto_reply: props };
   }
 
@@ -869,7 +870,7 @@ Deno.serve(async (req) => {
 
   const subscriber = (body.subscriber ?? body.contact ?? body.user ?? {}) as Record<string, unknown>;
   const rawSource = firstText(body.source, body.channel, body.platform, body.network, "instagram")!.toLowerCase();
-  const source = rawSource.startsWith("manychat") ? rawSource : (rawSource === "instagram" ? "instagram" : `manychat_${rawSource}`);
+  const source = rawSource.startsWith("manychat") ? rawSource : (/^(instagram|youtube|tiktok|snapchat)$/.test(rawSource) ? rawSource : `manychat_${rawSource}`);
   const subscriberId = firstText(
     body.subscriber_id, body.external_id, body.contact_id, body.user_id,
     subscriber.id, subscriber.subscriber_id,
@@ -912,6 +913,13 @@ Deno.serve(async (req) => {
   }
   // Intent under a comment: the DM goes out privately and the comment gets a public pointer.
   if (channel === "comment" && decision.auto_reply && !decision.public_reply) decision.public_reply = "check your dms 📩";
+  // YouTube has no DM API: anything with intent gets a public pointer to the one
+  // place the conversation can continue; props get the 🔥; nothing else is posted.
+  if (channel === "youtube_comment") {
+    if (decision.auto_reply && !decision.public_reply) decision.public_reply = "dm me 'apex' on ig @sell4daddy and i'll get you going 📩";
+    decision.auto_reply = null;
+    decision.urgent = false; decision.email = null; decision.notify = null;
+  }
   const { intent, lead_score, reply_path, urgent, auto_reply, alert_text, notify } = decision;
   if (decision.email) await emailSam(decision.email.subject, decision.email.body);
   const shouldTrackLead = intent !== "spam" && intent !== "not_interested" && lead_score >= 20;

@@ -76,7 +76,7 @@ const TEAM_PATTERNS = [
 const FITNESS_PATTERNS = [
   /\b(fitness|gym|workout|work out|training plan|meal plan|diet|nutrition)\b/i,
   /\b(lose weight|weight loss|get in shape|shredded|build muscle|transformation)\b/i,
-  /\b(personal train(er|ing)|coaching|body|physique|bulk|cut|fat loss)\b/i,
+  /\b(personal train(er|ing)|coaching|body|physique|bulk|cut|fat loss|abs|six ?pack|ab work ?out|get (big|shredded|lean)|stay (fit|in shape)|your (abs|body|physique))\b/i,
 ];
 
 // PARTNERSHIP — brands / collabs / sponsors go to the form, never handled in-thread.
@@ -89,6 +89,7 @@ const ASSISTANT_ASK_PATTERNS = [
   /\b(is this (really |actually |even )?(sam|you|him)|is (it|this) really you|am i talking to (sam|a bot|a real person|him)|who (is this|am i talking to)|real person|are you a bot|is this a bot|is this automated|automated|auto[- ]?reply|talk to sam|speak to sam|sam himself|the real sam|your number|can i call)\b/i,
 ];
 // CARS — Arizona rentals, quote-based.
+const HOUSING_RE = /\brent\b.*\b(spot|apartment|apt|place|house|condo|studio|a month|monthly|bedroom|1br|2br)\b|\b(spot|apartment|place)\b.*\brent\b/i;
 const RENTALS_PATTERNS = [
   /\b(rent(al|ing)?|rent a car|car rental|exotic|lambo|lamborghini|ferrari|porsche|mclaren|corvette|g[- ]?wagon|urus|need a car|weekend car|scottsdale|phoenix car)\b/i,
 ];
@@ -152,6 +153,7 @@ function classify(body: string): Classification {
   }
   if (PARTNER_PATTERNS.some((r) => r.test(t)))        return { intent: "partnership", lead_score: 50, reply_path: "partnership", urgent: false };
   if (ASSISTANT_ASK_PATTERNS.some((r) => r.test(t)))  return { intent: "assistant_ask", lead_score: 40, reply_path: "assistant", urgent: false };
+  if (HOUSING_RE.test(t))                             return { intent: "casual", lead_score: 5, reply_path: null, urgent: false };
   if (RENTALS_PATTERNS.some((r) => r.test(t)))        return { intent: "rentals", lead_score: 45, reply_path: "rentals", urgent: false };
   if (FITNESS_PATTERNS.some((r) => r.test(t)))        return { intent: "fitness", lead_score: 55, reply_path: "fitness", urgent: false };
   if (MENTORSHIP_PATTERNS.some((r) => r.test(t)))     return { intent: "mentorship", lead_score: 50, reply_path: "mentorship", urgent: false };
@@ -194,7 +196,7 @@ function replyFor(path: ReplyPath, rawSource: string, _firstName?: string): stri
     mentorship:    `mentorship's a soft launch right now. it's me working with you directly on sales and building your income, all on here, apply and i'll personally reach out: ${MENTORSHIP_URL}`,
     rentals:       `all the cars are on here, drop your dates and i'll get you a quote: ${RENTALS_URL}`,
     partnership:   `yo this is sam's assistant, brand stuff goes through here so he sees it: ${PARTNER_URL}`,
-    assistant:     `it's my assistant running the dms with me, i see everything. what can i help you with?`,
+    assistant:     `i've got help on the dms so nobody gets missed, but i read everything. what can i help you with?`,
     route:         `what can i help you with?`,
   };
   return replies[path];
@@ -629,6 +631,10 @@ function faqReply(text: string, st: ReturnType<typeof threadState>, rawSource: s
   if (/\b(what('?s| is) apex|what do you (guys )?do|what is (the )?(company|business|job|work)|what (kind of )?(work|job|business) is (it|this)|what is this about|what'?s this about)\b/.test(t)) {
     return `my life insurance agency. are you looking to join?`;
   }
+  if (/\b(how (can|do) i (do|start|get started|join|get in|sign up)( that| this)?|how do i start|where do i start|what do i do( next| now)?|yea+h? how)\b/.test(t) && (lane === "opportunity" || lane === "licensed")) {
+    if (lane === "licensed" || st.licenseAnswer === "yes") return st.phone ? `we'll go over everything on the call.` : `easiest is a quick call. what's your number?`;
+    return `fill this out, takes about 2 minutes, and i'll reach out after: ${apply}`;
+  }
   if (/\b(how does (it|this) work|what('?s| is) the process|next steps?|what happens (next|after)|then what|what now)\b/.test(t)) {
     if (lane === "opportunity" || lane === "licensed") return `you apply, get licensed, i train you, you start writing.${teamLine}`;
     return faqReply("what is this", st, rawSource, firstName);
@@ -684,6 +690,13 @@ function commentFlavor(text: string): string {
 async function decide(text: string, rawSource: string, firstName: string | undefined, externalId: string | null, handle: string | null, channel: string, senderName: string | null): Promise<Decision> {
   const base = classify(text);
   if (base.intent === "spam" || base.intent === "not_interested") return { ...base, auto_reply: null };
+  // Insults / trolling get nothing. Arguing with a hater in DMs only feeds them.
+  if (/\b(moron|idiot|stupid|dumb|clown|loser|broke|fake|cap|scam(mer)?|fraud|lame|trash|bum|corny|cringe|weirdo|shut up|nobody cares|you'?re crazy|your crazy)\b/i.test(text) && !/\?/.test(text.replace(/😂|🤣/g, ""))) {
+    return { ...base, intent: "troll", reply_path: null, auto_reply: null };
+  }
+  if (/^\s*(hello+|helo+|hey+)?\s*\?+\s*$|^\s*(hello+\?*|you there\??|u there\??|\?\?+)\s*$/i.test(text)) {
+    return { ...base, intent: "followup", reply_path: "llm", urgent: false, auto_reply: "my bad, i'm here. what's up?" };
+  }
   if (!PHONE_RE.test(text) && !EMAIL_RE.test(text)) {
     const social = await socialsReply(text);
     if (social) return { ...base, intent: "socials", reply_path: "llm", urgent: false, auto_reply: social };
@@ -808,7 +821,7 @@ async function decide(text: string, rawSource: string, firstName: string | undef
     if (faq) return { intent: st.threadIntent ?? base.intent, lead_score: Math.max(40, base.lead_score), reply_path: "llm", urgent: false, auto_reply: faq };
     const llm = await llmReply(history, text, st, rawSource);
     if (llm) return { intent: st.threadIntent ?? base.intent, lead_score: Math.max(40, base.lead_score), reply_path: "llm", urgent: false, auto_reply: llm };
-    const fallback = st.lastLink ? `it's all on the link: ${st.lastLink}` : `what can i help you with?`;
+    const fallback = st.lastLink ? `everything's on here, and if something's not clear just ask: ${st.lastLink}` : `what can i help you with?`;
     return { intent: st.threadIntent ?? "followup", lead_score: Math.max(40, base.lead_score), reply_path: "llm", urgent: false, auto_reply: fallback };
   }
   // 7) No business context. Sam 2026-09-27: "every single message within 24 hours
@@ -951,7 +964,8 @@ Deno.serve(async (req) => {
     const outs = hist.filter((h) => h.direction === "outbound").map((h) => (h.body ?? "").trim());
     const last = outs[outs.length - 1] ?? null;
     const secondLast = [...outs].reverse().find((o) => o !== last) ?? null;
-    if (last === decision.auto_reply.trim()) {
+    if (last === decision.auto_reply.trim() && decision.intent === "followup") decision.auto_reply = null;
+    else if (last === decision.auto_reply.trim()) {
       decision.auto_reply = secondLast === `like i said, ${decision.auto_reply}` || outs.filter((o) => o === last).length >= 2 ? null : `like i said, ${decision.auto_reply}`;
     }
   }

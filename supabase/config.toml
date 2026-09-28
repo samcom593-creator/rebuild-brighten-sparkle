@@ -752,3 +752,12 @@ verify_jwt = false
 
 [functions.cron-inbound-brain-health]
 verify_jwt = false
+
+[functions.youtube-auth]
+verify_jwt = false
+
+[functions.youtube-comments]
+verify_jwt = false
+
+[functions.instagram-token-keepalive]
+verify_jwt = false

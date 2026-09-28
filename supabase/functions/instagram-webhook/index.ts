@@ -48,10 +48,15 @@ Deno.serve(async (req) => {
 
   // ── Event delivery (POST) ──
   const rawBody = await req.text();
-  const secret  = Deno.env.get("META_APP_SECRET");
-  if (secret) {
+  // Instagram-Login product webhooks are signed with the INSTAGRAM app secret;
+  // Facebook-product webhooks with the Facebook app secret. Accept either —
+  // checking only META_APP_SECRET silently 401'd every real Instagram delivery
+  // (2026-09-27: Jesu DM'd, zero rows landed).
+  const secrets = [Deno.env.get("INSTAGRAM_APP_SECRET"), Deno.env.get("META_APP_SECRET")].filter((s): s is string => !!s);
+  if (secrets.length) {
     const sig = req.headers.get("x-hub-signature-256");
-    const ok  = await verifySignature(rawBody, sig, secret);
+    let ok = false;
+    for (const s of secrets) { if (await verifySignature(rawBody, sig, s)) { ok = true; break; } }
     if (!ok) return new Response("invalid signature", { status: 401 });
   }
 

@@ -682,13 +682,11 @@ function commentFlavor(text: string): string {
   let h = 0; for (const c of text) h = (h * 31 + c.charCodeAt(0)) >>> 0;
   const pick = (p: string[]) => p[h % p.length];
   if (/\b(can'?t wait|thinking about moving|want to move|moving (here|out|to)|finna move|about to move|i'?m moving|just moved)\b/.test(t)) return pick(["do it, best move i made 🙏", "you won't regret it", "pull up 🙏"]);
-  if (/\b(fire|goat|love (this|it|that|you)|keep (going|it up)|congrats|proud|respect|inspir\w*|motivat\w*|welcom\w*|legend|let'?s go+|hell yea\w*|need(ed)? this|facts|real talk|so true)\b|🔥|💯|🙌|👏/.test(t))
+  if (/\b(fire|goat|love (this|it|that|you|your)|keep (going|it up|grinding)|congrats|proud of you|respect|inspir\w*|motivat\w*|legend|hell yea\w*|need(ed)? this|real talk|so true|you('?re| are) (the|a) (man|goat|beast|legend)|big w|well said)\b/.test(t))
     return pick(["appreciate you 🙏", "🙏🔥", "appreciate that", "appreciate you 🙏 comment \"apex\" if you ever want in", "🙏 if you want to learn how, comment \"apex\""]);
-  if (/😂|🤣|lmao|lol|haha|funny|wrong for this|wild|crazy|dead/.test(t)) return pick(["😂😂", "😂", "lmaoo"]);
-  if (/\b(don'?t|dont|stop|full|closed|overrated|hot|packed|expensive|nooo+)\b/.test(t) && words <= 12) return pick(["😂😂", "😂 i hear you", "haha fair"]);
-  if (words > 12) return "";                                  // long and not clearly positive: leave it
-  if (/\b(no|nah|cap|lie|lying|fake|broke|delusional|brutal|yikes|cringe|mid)\b/.test(t)) return "";
-  return pick(["🔥", "🙏"]);
+  // Sam 2026-09-28: "it doesn't have to respond to non-purposeful comments." Jokes,
+  // reactions, complaints, people talking to each other, one-worders: no reply.
+  return "";
 }
 
 async function decide(text: string, rawSource: string, firstName: string | undefined, externalId: string | null, handle: string | null, channel: string, senderName: string | null): Promise<Decision> {
@@ -721,7 +719,10 @@ async function decide(text: string, rawSource: string, firstName: string | undef
   // 0) Emoji / props: 🔥 back (a public 🔥 under a comment, a DM everywhere else).
   const props = base.reply_path ? null : propsReply(text);
   if (props) {
-    if (channel === "comment" || channel === "youtube_comment" || channel === "tiktok_comment") return { ...base, intent: "props", reply_path: null, auto_reply: null, public_reply: props };
+    if (channel === "comment" || channel === "youtube_comment" || channel === "tiktok_comment") {
+      const pub = EMOJI_ONLY_RE.test(text.trim()) ? null : (commentFlavor(text) || null);   // emoji-only comments: no reply
+      return { ...base, intent: "props", reply_path: null, auto_reply: null, public_reply: pub };
+    }
     return { ...base, intent: "props", reply_path: "props", auto_reply: props };
   }
 

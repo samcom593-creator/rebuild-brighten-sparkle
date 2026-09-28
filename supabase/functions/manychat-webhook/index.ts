@@ -184,7 +184,7 @@ function replyFor(path: ReplyPath, rawSource: string, _firstName?: string): stri
     license_q:     `you got your life insurance license already or nah`,
     license_yes:   `say less, let's hop on a call. what's your number?`,
     license_no:    `all good, no stress. start here and i'll get you licensed: ${apply}`,
-    license_explain: `it's the license you need to sell life insurance bro. don't have it yet? no stress, i get you licensed. start here and i'll walk you through it: ${apply}`,
+    license_explain: `it's the license you need to sell life insurance. don't have it yet? no stress, i get you licensed. start here and i'll walk you through it: ${apply}`,
     trust:         `lol nah, it's my own site. no card, no payment, just your info so i can reach you. look me up anywhere, apex financial. ${apply}`,
     why_us:        `i train you myself, we run real leads, and you're on a team that's actually writing. easiest way to see it is a quick call, start here: ${apply}`,
     llm:           "",
@@ -194,8 +194,8 @@ function replyFor(path: ReplyPath, rawSource: string, _firstName?: string): stri
     mentorship:    `mentorship's a soft launch right now. it's me working with you directly on sales and building your income, all on here, apply and i'll personally reach out: ${MENTORSHIP_URL}`,
     rentals:       `gotchu, all the cars are on here, drop your dates and i'll get you a quote: ${RENTALS_URL}`,
     partnership:   `yo this is sam's assistant, brand stuff goes through here so he sees it: ${PARTNER_URL}`,
-    assistant:     `it's my assistant running the dms with me, i see everything. what you here for?`,
-    route:         `what you here for bro?`,
+    assistant:     `it's my assistant running the dms with me, i see everything. what can i help you with?`,
+    route:         `what can i help you with?`,
   };
   return replies[path];
 }
@@ -466,7 +466,7 @@ async function llmReply(history: HistoryRow[], text: string, st: ReturnType<type
   const system = [
     "You write Instagram DM replies AS Samuel James (@sell4daddy): managing partner of Apex Financial, a life-insurance agency that recruits, licenses and trains agents. He also offers fitness coaching, a mentorship program, and car rentals in Arizona.",
     "Nobody buys a policy through his DMs. Anyone who mentions life insurance, a policy, or insurance in any form wants to JOIN THE TEAM. Never offer a quote, never mention buying coverage.",
-    "Style: first person as Sam, lowercase, SHORT (under 20 words), casual ('yeah bro', 'say less', 'bet'), no dashes, no hype. Push them to the link: 'it's all on the link'. Only if asked point-blank whether this is a bot: say his assistant runs the DMs with him.",
+    "Style: first person as Sam, lowercase, SHORT (under 20 words), casual ('yeah', 'say less', 'bet'), no dashes, no hype. Push them to the link: 'it's all on the link'. Only if asked point-blank whether this is a bot: say his assistant runs the DMs with him.",
     "Never invent prices, commission numbers, dates, or guarantees. If you don't know, say you'll go over it on the call.",
     "When a link fits the question, include exactly one of these:",
     `- joining the team / getting licensed / applying: ${applyUrl(rawSource)}`,
@@ -573,61 +573,61 @@ function faqReply(text: string, st: ReturnType<typeof threadState>, rawSource: s
   }
   if (/\b(what('?s| is) (this|that|the link|it|that link|this link)|what am i looking at|what does (this|the link|it) do|whats this|wait what|what is this)\b/.test(t)) {
     const what: Record<Lane, string> = {
-      opportunity: `that's the application bro, takes 2 min: ${link}`,
-      licensed:    `that's my calendar bro. or just send your number and i'll call you`,
-      fitness:     `that's my fitness page bro, it's all on there: ${link}`,
-      mentorship:  `that's the mentorship app bro, everything's on there: ${link}`,
-      rentals:     `that's the rental page bro, dates and car on there: ${link}`,
+      opportunity: `that's the application, takes 2 min: ${link}`,
+      licensed:    `that's my calendar. or just send your number and i'll call you`,
+      fitness:     `that's my fitness page, it's all on there: ${link}`,
+      mentorship:  `that's the mentorship app, everything's on there: ${link}`,
+      rentals:     `that's the rental page, dates and car on there: ${link}`,
       partnership: `that's the partnership form, everything goes through there: ${link}`,
     };
     return what[lane];
   }
   if (/\b(make|earn|income|commission|comp|get paid|pay(s|ing)?|salary|percentage|percent)\b/.test(t) && (lane === "opportunity" || lane === "licensed")) {
-    return `it's all on the link bro, commission and uncapped. i'll break it down on the call.${teamLine}`;
+    return `it's all on the link, commission and uncapped. i'll break it down on the call.${teamLine}`;
   }
   if (/\b(how much|cost|price|pricing|fee|expensive|cheap|afford|rate)\b/.test(t)) {
     const cost: Record<Lane, string> = {
-      opportunity: `free to join bro, only cost is the licensing course.${teamLine}`,
-      licensed:    `nothing bro you're licensed, we just get you contracted.${teamLine || " i'll go over it on the call"}`,
-      fitness:     `$300 bro, it's all on the link: ${FITNESS_URL}`,
-      mentorship:  `no set price yet bro, apply on the link: ${MENTORSHIP_URL}`,
-      rentals:     `depends on the car bro, drop your dates on the link: ${RENTALS_URL}`,
+      opportunity: `free to join, only cost is the licensing course.${teamLine}`,
+      licensed:    `nothing, you're licensed. we just get you contracted.${teamLine || " i'll go over it on the call"}`,
+      fitness:     `$300, it's all on the link: ${FITNESS_URL}`,
+      mentorship:  `no set price yet, apply on the link: ${MENTORSHIP_URL}`,
+      rentals:     `depends on the car, drop your dates on the link: ${RENTALS_URL}`,
       partnership: `depends on the scope, put it in the form: ${PARTNER_URL}`,
     };
     return cost[lane];
   }
   if (/^\s*when\W*$/.test(t) || /\b(when (is|will|does|are|he|sam|you|u)|how soon|call me when|when('?s| is) the call|what day)\b/.test(t)) {
-    if (lane === "licensed" || st.licenseAnswer === "yes") return st.booked ? `we're locked in bro, i'll call you then` : st.phone ? `you tell me, today or tomorrow? give me a time and i'll call you` : `today bro. what's your number?`;
-    return `once you apply bro: ${link}`;
+    if (lane === "licensed" || st.licenseAnswer === "yes") return st.booked ? `we're locked in, i'll call you then` : st.phone ? `you tell me, today or tomorrow? give me a time and i'll call you` : `today. what's your number?`;
+    return `once you apply: ${link}`;
   }
   if (/\b(course|class|study|material|recommend)\b/.test(t) && lane === "opportunity") {
     return `yep, the pre licensing course is part of it, i set you up with it when you start here: ${apply}`;
   }
   if (/\b(how long|how many (days|weeks|months)|how fast|how quick|time does it take)\b/.test(t) && lane === "opportunity") {
-    return `1 to 2 weeks bro for most people.${teamLine}`;
+    return `1 to 2 weeks for most people.${teamLine}`;
   }
   if (/\b(experience|no background|never sold|beginner|new to this|qualifications|requirements|what do i need|do i need)\b/.test(t) && lane === "opportunity") {
-    return `nah bro no experience needed, i train you.${teamLine}`;
+    return `nah, no experience needed. i train you.${teamLine}`;
   }
   if (/\b(remote|from home|work from home|part[- ]?time|full[- ]?time|hours|schedule|flexible|9[- ]?5)\b/.test(t) && lane === "opportunity") {
-    return `yeah bro fully remote, you set your hours.${teamLine}`;
+    return `yeah fully remote, you set your hours.${teamLine}`;
   }
   if (/\b(not good|no good|bad at|not confident|scared|nervous|can'?t sell|never sold|what if i fail|what if i'?m not|introvert|shy|don'?t know how)\b/.test(t) && (lane === "opportunity" || lane === "licensed")) {
-    return `nobody is at first bro, that's what the training's for.${teamLine}`;
+    return `nobody is at first, that's what the training's for.${teamLine}`;
   }
   if (/\b(what (will|do|would) i get|what('?s| is) included|what do you offer|what comes with|what do i get)\b/.test(t)) {
-    if (lane === "mentorship") return `it's all on the link bro, apply and i'll go over it: ${link}`;
-    if (lane === "fitness") return `plans and 1 on 1 bro, all on the link: ${link}`;
-    if (lane === "opportunity" || lane === "licensed") return `licensing, training and a team bro.${teamLine}`;
-    return `it's all on the link bro: ${link}`;
+    if (lane === "mentorship") return `it's all on the link, apply and i'll go over it: ${link}`;
+    if (lane === "fitness") return `plans and 1 on 1, all on the link: ${link}`;
+    if (lane === "opportunity" || lane === "licensed") return `licensing, training and a team.${teamLine}`;
+    return `it's all on the link: ${link}`;
   }
   if (/\b(where (are you|r u|you|is this|is it) (located|based|at)|what state|which state|what city|location)\b/.test(t)) {
-    if (lane === "rentals") return `arizona bro, phoenix and scottsdale: ${RENTALS_URL}`;
-    if (lane === "opportunity" || lane === "licensed") return `i'm in arizona but you can do it from anywhere bro, what state you in?${teamLine}`;
-    return `all online bro: ${link}`;
+    if (lane === "rentals") return `arizona, phoenix and scottsdale: ${RENTALS_URL}`;
+    if (lane === "opportunity" || lane === "licensed") return `i'm in arizona but you can do it from anywhere. what state you in?${teamLine}`;
+    return `all online: ${link}`;
   }
   if (/\b(what('?s| is) apex|what do you (guys )?do|what is (the )?(company|business|job|work)|what (kind of )?(work|job|business) is (it|this)|what is this about|what'?s this about)\b/.test(t)) {
-    return `my life insurance agency bro. you tryna join?`;
+    return `my life insurance agency. you tryna join?`;
   }
   if (/\b(how does (it|this) work|what('?s| is) the process|next steps?|what happens (next|after)|then what|what now)\b/.test(t)) {
     if (lane === "opportunity" || lane === "licensed") return `you apply, get licensed, i train you, you start writing.${teamLine}`;
@@ -658,7 +658,7 @@ async function socialsReply(text: string): Promise<string | null> {
   const { data } = await supabase.from("system_settings").select("key,value").like("key", "social_%");
   const map: Record<string, string> = { ...SOCIAL_DEFAULTS };
   for (const r of (data ?? []) as Array<{ key: string; value: string }>) { const v = String(r.value ?? "").trim().replace(/^"|"$/g, ""); if (v) map[r.key.replace("social_", "")] = v; }
-  if (which === "snapchat") return map.snapchat ? `snap's ${map.snapchat} 👻` : `i'm barely on snap bro, hit me on ig, i'm on there all day: ${map.instagram}`;
+  if (which === "snapchat") return map.snapchat ? `snap's ${map.snapchat} 👻` : `i'm barely on snap, hit me on ig, i'm on there all day: ${map.instagram}`;
   if (which === "tiktok") return `tiktok's ${map.tiktok}`;
   if (which === "youtube") return `youtube's ${map.youtube}`;
   if (which === "instagram") return `ig's ${map.instagram}`;
@@ -793,7 +793,7 @@ async function decide(text: string, rawSource: string, firstName: string | undef
     if (faq) return { intent: st.threadIntent ?? base.intent, lead_score: Math.max(40, base.lead_score), reply_path: "llm", urgent: false, auto_reply: faq };
     const llm = await llmReply(history, text, st, rawSource);
     if (llm) return { intent: st.threadIntent ?? base.intent, lead_score: Math.max(40, base.lead_score), reply_path: "llm", urgent: false, auto_reply: llm };
-    const fallback = st.lastLink ? `bro it's all on the link: ${st.lastLink}` : `what you here for bro?`;
+    const fallback = st.lastLink ? `it's all on the link: ${st.lastLink}` : `what can i help you with?`;
     return { intent: st.threadIntent ?? "followup", lead_score: Math.max(40, base.lead_score), reply_path: "llm", urgent: false, auto_reply: fallback };
   }
   // 7) No business context. Sam 2026-09-27: "every single message within 24 hours
@@ -803,7 +803,7 @@ async function decide(text: string, rawSource: string, firstName: string | undef
     return { ...base, intent: "flirty", reply_path: "props", auto_reply: "😂🙏" };
   }
   // Sam 2026-09-28: it should never "choose not to respond". Anything else casual gets pointed somewhere.
-  return { ...base, intent: base.intent === "casual" ? "greeting" : base.intent, reply_path: "route", auto_reply: `yo what's good bro, what you here for?` };
+  return { ...base, intent: base.intent === "casual" ? "greeting" : base.intent, reply_path: "route", auto_reply: `what's good, what can i help you with?` };
 }
 
 async function fireUrgentLicensedAlert(
@@ -947,6 +947,11 @@ Deno.serve(async (req) => {
     decision.auto_reply = `${seen} ${decision.auto_reply}`;
   }
   // Intent under a comment: the DM goes out privately and the comment gets a public pointer.
+  // Casual / greeting / flirty under a comment or story reply: engagement only, no DM.
+  if ((channel === "comment" || channel === "story" || channel === "youtube_comment" || channel === "tiktok_comment") && (decision.reply_path === "route" || ["greeting", "flirty", "casual"].includes(decision.intent))) {
+    decision.auto_reply = channel === "story" ? "🔥" : null; decision.reply_path = "props";
+    if (channel !== "story") decision.public_reply = "🔥";
+  }
   if ((channel === "comment" || channel === "youtube_comment" || channel === "tiktok_comment") && decision.intent === "socials" && decision.auto_reply) { decision.public_reply = decision.auto_reply; decision.auto_reply = null; }
   if (channel === "comment" && decision.auto_reply && !decision.public_reply) decision.public_reply = "check your dms 📩";
   if (channel === "comment" && !decision.public_reply && decision.intent !== "spam") { decision.public_reply = "🔥"; decision.auto_reply = null; }

@@ -57,6 +57,7 @@ import { FreeLeadsStatusCard } from "@/components/dashboard/FreeLeadsStatusCard"
 import { RecruiterBountyCard } from "@/components/dashboard/RecruiterBountyCard";
 import { SlackJoinCard } from "@/components/recruiting/SlackJoinCard";
 import { AgentOnboardingStepper } from "@/components/dashboard/AgentOnboardingStepper";
+import { FirstLoginGuide } from "@/components/dashboard/FirstLoginGuide";
 // v26 audit fix: AgentLinkBookTruthCard + CarrierBreakdownCard + BookTrendCard
 // imports removed. They lived in the deleted whole-book footer. KPIs now
 // truth-sourced from agentlink_deals_snapshot, so the redundant footer was
@@ -376,6 +377,9 @@ export default function AgentCommandDashboard() {
       {/* This is the real post-login destination. Keep the complete launch
           roadmap here—not only on the retired legacy portal—so every new
           producer sees the next required action before production widgets. */}
+      {/* First login: welcome + the ONE next action, before the full stepper. */}
+      {agentId && <FirstLoginGuide agentId={agentId} />}
+
       {agentId && <AgentOnboardingStepper agentId={agentId} />}
 
       {/* ── NEXT STEP CARD — what's the next concrete move ───── */}

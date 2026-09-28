@@ -1,9 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Crown, Instagram, Video, Users, Sparkles, ArrowRight,
-  Loader2, CheckCircle2, X, Dumbbell, Heart
-} from "lucide-react";
+import { Crown, Instagram, Video, Users, Sparkles, ArrowRight, Loader2, CheckCircle2, X, Dumbbell, Heart, Youtube, Ghost } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -23,9 +20,13 @@ const waitlistSchema = z.object({
   motivation: z.string().trim().max(1000).optional(),
 });
 
+// 2026-09-28: @theprincejamez is dead; the live handles are the ones the DM
+// assistant hands out (system_settings.social_*). Keep these four in sync with it.
 const socialLinks = [
-  { icon: Instagram, label: "Instagram", href: "https://instagram.com/theprincejamez", gradient: "from-pink-500 to-purple-600", hoverGlow: "hover:" },
-  { icon: Video, label: "TikTok", href: "https://tiktok.com/@theprincejamez", gradient: "from-info to-pink-500", hoverGlow: "hover:" },
+  { icon: Instagram, label: "Instagram", href: "https://instagram.com/sell4daddy", gradient: "from-pink-500 to-purple-600", hoverGlow: "hover:" },
+  { icon: Video, label: "TikTok", href: "https://tiktok.com/@sellfordaddy", gradient: "from-info to-pink-500", hoverGlow: "hover:" },
+  { icon: Youtube, label: "YouTube", href: "https://youtube.com/@sell4daddy", gradient: "from-red-500 to-rose-600", hoverGlow: "hover:" },
+  { icon: Ghost, label: "Snapchat", href: "https://www.snapchat.com/add/samueljameshq", gradient: "from-yellow-400 to-amber-500", hoverGlow: "hover:" },
 ];
 
 const offerCards = [

@@ -124,9 +124,27 @@ interface Classification {
   urgent: boolean;              // true = fire the instant call-now alert
 }
 
+// CTA KEYWORDS — a message that IS just the keyword Sam's content tells people to
+// send ("DM me APEX"). One word, no sentence. 2026-09-27: the first real inbound
+// was exactly "apex" and fell to casual/silent.
+const CTA_KEYWORD = /^\s*[\p{Emoji}\s]*(apex|team|info|link|start|join|ready|yes|money|insurance|license|licensed|fitness|mentor|mentorship|cars?|rental|partner|collab|interested)[\p{Emoji}\s!.?]*$/iu;
+function ctaLane(t: string): Classification | null {
+  const m = t.match(CTA_KEYWORD);
+  if (!m) return null;
+  const k = m[1].toLowerCase();
+  if (k === "fitness")                          return { intent: "fitness", lead_score: 55, reply_path: "fitness", urgent: false };
+  if (k === "mentor" || k === "mentorship")     return { intent: "mentorship", lead_score: 50, reply_path: "mentorship", urgent: false };
+  if (k === "car" || k === "cars" || k === "rental") return { intent: "rentals", lead_score: 45, reply_path: "rentals", urgent: false };
+  if (k === "partner" || k === "collab")        return { intent: "partnership", lead_score: 50, reply_path: "partnership", urgent: false };
+  if (k === "licensed")                         return { intent: "licensed", lead_score: 95, reply_path: "licensed", urgent: true };
+  if (k === "insurance")                        return { intent: "insurance_client", lead_score: 80, reply_path: "insurance_client", urgent: false };
+  return { intent: "opportunity", lead_score: 65, reply_path: "apply", urgent: false };   // apex/team/info/link/start/join/ready/yes/money/license/interested
+}
+
 function classify(body: string): Classification {
   const t = (body || "").trim();
   if (SPAM_PATTERNS.some((r) => r.test(t)))           return { intent: "spam", lead_score: 0, reply_path: null, urgent: false };
+  const cta = ctaLane(t); if (cta) return cta;
   if (NOT_INTERESTED_PATTERNS.some((r) => r.test(t))) return { intent: "not_interested", lead_score: 0, reply_path: null, urgent: false };
   if (LICENSED_PATTERNS.some((r) => r.test(t))) {
     // Licensed AND bringing a team = highest value: the team call.

@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "Instagram auto-DMs now route every lane in one message with one link: mentorship, car rentals, a life-insurance buyer (to the Policy Help Center, not the recruiting form), join-the-team, fitness, licensed producers (straight to the call), and brand partnerships (to the collab form). Vague openers get one routing question instead of a blind apply link, and anyone asking \"is this Sam?\" is told it is his assistant and routed.",
+    detail:
+      "manychat-webhook classifier: new lanes partnership / assistant_ask / rentals / mentorship / insurance_client / route with first-match ordering (licensed > partnership > assistant > rentals > fitness > mentorship > insurance-client > opportunity > route). Insurance-client gated only on STRONG recruit words so \"how much does a policy cost\" stays a sale while \"how much money can I make\" is a recruit. 13-message live matrix green. Connected account @sell4daddy via Instagram Login; token auto-refresh + DM backlog (31 threads) via launchd completer.",
+    commit: "mp-ig-lanes",
+  },
+  {
+    ts: "today",
+    label:
       "Brand funnel leads on /dashboard/team: every sell4daddy.com form (mentorship ×3, fitness ×2, car rental, AI, collaboration) in one admin table — tap-to-call / tap-to-email, lane filter, status (new → contacted → booked → won/lost). Lead alerts now reach Sam only, on phone push + email (business inbox + Gmail) + text; Discord routes to a private-only webhook key, never the team room.",
     detail:
       "BrandLeadsPanel reads v_brand_leads (RLS: admins only) and updates brand_leads.status. fn_brand_lead_alert channels = [ntfy, email, sms]; apex-alert-dispatch sends brand_funnel email to both inboxes and resolves Discord to discord_webhook_url_brand (unset = no post). Insurance CTA on sell4daddy.com now deep-links to /apply with UTM (utm_source=sell4daddy) so every applicant is attributed.",

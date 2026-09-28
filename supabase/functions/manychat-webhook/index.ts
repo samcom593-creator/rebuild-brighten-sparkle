@@ -35,6 +35,14 @@ const LICENSED_CALL_URL = "https://calendly.com/apexfinancialempire/licensed-pro
 // Sam sends the team-specific one — swap this constant only, nothing else moves.
 const TEAM_CALL_URL = "https://calendly.com/apexfinancialempire/licensed-prospect-call-clone";
 const FITNESS_URL = "https://kingofsales-brand.vercel.app/fitness";
+// Sam's four other lanes (2026-09-27): every DM gets ONE message + ONE link to
+// the landing page that converts it. Nothing is answered in-thread.
+const MENTORSHIP_URL = "https://kingofsales-brand.vercel.app/mentorship";
+const RENTALS_URL    = "https://kingofsales-brand.vercel.app/rentals";
+const PARTNER_URL    = "https://kingofsales-brand.vercel.app/#f-collab";
+// Someone who wants a POLICY (a client, not a recruit) — the help-center intake
+// is the no-lost-leads pipeline Sam works personally.
+const INSURANCE_URL  = "https://policy-help-center-gamma.vercel.app";
 const NTFY_TOPIC = "https://ntfy.sh/sams-agent-yrkv9kbqp9e987nb";
 
 function applyUrl(rawSource: string): string {
@@ -72,7 +80,42 @@ const FITNESS_PATTERNS = [
   /\b(personal train(er|ing)|coaching|body|physique|bulk|cut|fat loss)\b/i,
 ];
 
-type ReplyPath = "licensed" | "licensed_team" | "fitness" | "apply";
+// PARTNERSHIP — brands / collabs / sponsors go to the form, never handled in-thread.
+const PARTNER_PATTERNS = [
+  /\b(partner|partnership|collab|collaborat\w*|sponsor\w*|brand deal|ambassador|affiliate|ugc|work together|feature (you|sam)|podcast|interview (you|sam)|paid promo|promo(te)? (my|our))\b/i,
+];
+// "Is this really Sam?" / pushback on talking to a bot — disclose the assistant.
+const ASSISTANT_ASK_PATTERNS = [
+  /\b(is this (really )?(sam|you)|real person|are you a bot|is this a bot|automated|auto[- ]?reply|talk to sam|speak to sam|sam himself|the real sam|your number|can i call)\b/i,
+];
+// CARS — Arizona rentals, quote-based.
+const RENTALS_PATTERNS = [
+  /\b(rent(al|ing)?|rent a car|car rental|exotic|lambo|lamborghini|ferrari|porsche|mclaren|corvette|g[- ]?wagon|urus|need a car|weekend car|scottsdale|phoenix car)\b/i,
+];
+// MENTORSHIP — the three-lane soft launch.
+const MENTORSHIP_PATTERNS = [
+  /\b(mentor\w*|inner circle|learn from you|teach me|show me how you|get into (car rentals|your business))\b/i,
+];
+// INSURANCE CLIENT — wants a policy, not a job. Checked AFTER licensed/opportunity signals.
+const INSURANCE_CLIENT_PATTERNS = [
+  /\b(life insurance|insurance policy|get (a )?policy|need (a )?policy|a policy|policy (cost|price|quote)|policies|premium|coverage|final expense|burial|term life|whole life|\biul\b|get covered|insure (me|my)|quote|how much (is|does|for|would) (a |the |my )?(policy|coverage|insurance))\b/i,
+];
+// OPPORTUNITY — explicit recruiting signals (STRONG) + earning questions (MONEY).
+// STRONG alone gates the insurance-client lane, so "how much does a policy cost"
+// stays a sale while "how much money can I make" is a recruit.
+const RECRUIT_STRONG_PATTERNS = [
+  /\b(join|your team|the team|recruit\w*|hiring|become an agent|be an agent|sell insurance|selling insurance|career|opportunity|how does this work|get started|work with you|apply|sign up|licens(e|ing) (course|exam|class)|get licensed)\b/i,
+];
+// INTEREST — a yes to the pitch. Short replies like these in Sam's DMs are
+// overwhelmingly prospects answering his recruiting content or outreach.
+const INTEREST_PATTERNS = [
+  /\b(i'?m interested|im interested|interested in (this|that|joining|the opportunity)|tell me more|more info|send me (the )?(info|details|link)|i'?m down|im down|let'?s do it|sign me up|count me in|how do i start|where do i start|i want in|i wanna join)\b/i,
+];
+const MONEY_PATTERNS = [
+  /\b(make money|money can (i|you|we) make|how much (money )?(can|do|could|would) (i|you|we|someone) (make|earn)|earn(ing)?s?\b|income|get paid|commission)\b/i,
+];
+
+type ReplyPath = "licensed" | "licensed_team" | "fitness" | "apply" | "partnership" | "assistant" | "rentals" | "mentorship" | "insurance_client" | "route";
 
 interface Classification {
   intent: string;
@@ -90,9 +133,22 @@ function classify(body: string): Classification {
     if (TEAM_PATTERNS.some((r) => r.test(t)))         return { intent: "licensed_team", lead_score: 99, reply_path: "licensed_team", urgent: true };
     return { intent: "licensed", lead_score: 95, reply_path: "licensed", urgent: true };
   }
+  if (PARTNER_PATTERNS.some((r) => r.test(t)))        return { intent: "partnership", lead_score: 50, reply_path: "partnership", urgent: false };
+  if (ASSISTANT_ASK_PATTERNS.some((r) => r.test(t)))  return { intent: "assistant_ask", lead_score: 40, reply_path: "assistant", urgent: false };
+  if (RENTALS_PATTERNS.some((r) => r.test(t)))        return { intent: "rentals", lead_score: 45, reply_path: "rentals", urgent: false };
   if (FITNESS_PATTERNS.some((r) => r.test(t)))        return { intent: "fitness", lead_score: 55, reply_path: "fitness", urgent: false };
-  // Sam's directive: everyone else goes STRAIGHT to apply. No qualifying.
-  return { intent: "opportunity", lead_score: 60, reply_path: "apply", urgent: false };
+  if (MENTORSHIP_PATTERNS.some((r) => r.test(t)))     return { intent: "mentorship", lead_score: 50, reply_path: "mentorship", urgent: false };
+  const recruitStrong = RECRUIT_STRONG_PATTERNS.some((r) => r.test(t));
+  // A policy buyer is a SALE — only a STRONG recruit signal overrides it.
+  if (!recruitStrong && INSURANCE_CLIENT_PATTERNS.some((r) => r.test(t))) return { intent: "insurance_client", lead_score: 80, reply_path: "insurance_client", urgent: false };
+  if (recruitStrong || MONEY_PATTERNS.some((r) => r.test(t))) return { intent: "opportunity", lead_score: 60, reply_path: "apply", urgent: false };
+  // Someone saying YES to the pitch ("interested", "tell me more", "I'm down") —
+  // that is a prospect replying to Sam's recruiting, push them through.
+  if (INTEREST_PATTERNS.some((r) => r.test(t)))        return { intent: "opportunity", lead_score: 65, reply_path: "apply", urgent: false };
+  // Sam 2026-09-27: casual / social / flirty DMs are NOT the bot's — no reply,
+  // just logged, so people can still reach him like a person. Only clear intent
+  // gets pushed through a funnel.
+  return { intent: "casual", lead_score: 10, reply_path: null, urgent: false };
 }
 
 // Sam-voice: short, direct, ends with the link. No qualifying questions.
@@ -100,10 +156,16 @@ function replyFor(path: ReplyPath, rawSource: string, firstName?: string): strin
   const n = (firstName?.trim() && firstName.split(" ")[0]) || "yo";
   const apply = applyUrl(rawSource);
   const replies: Record<ReplyPath, string> = {
-    licensed:      `${n} — you're licensed, that changes everything. we fast-track contracted producers. grab a call directly on my schedule and let's get you writing this week: ${LICENSED_CALL_URL}`,
-    licensed_team: `${n} — licensed AND you've got a team? that's exactly who we build with. book straight onto my calendar and let's map moving your whole team over: ${TEAM_CALL_URL}`,
-    fitness:       `${n} — appreciate you reaching out. everything on the fitness side lives here, plans + 1-on-1 coaching: ${FITNESS_URL}`,
-    apply:         `${n} — let's get you moving. start your application here and we'll route you by state and licence status: ${apply}`,
+    licensed:         `${n} — you're licensed, that changes everything. we fast-track contracted producers. grab a call directly on my schedule and let's get you writing this week: ${LICENSED_CALL_URL}`,
+    licensed_team:    `${n} — licensed AND you've got a team? that's exactly who we build with. book straight onto my calendar and let's map moving your whole team over: ${TEAM_CALL_URL}`,
+    fitness:          `${n} — appreciate you reaching out. everything on the fitness side lives here, plans + 1-on-1 coaching: ${FITNESS_URL}`,
+    apply:            `${n} — let's get you moving. start your application here and we'll route you by state and licence status: ${apply}`,
+    mentorship:       `${n} — mentorship is a soft launch, no price on the page. pick your lane and apply, if you're a fit i reach out personally: ${MENTORSHIP_URL}`,
+    rentals:          `${n} — cars are quote-based, no public pricing. drop your dates + the car you want here and i'll come back fast: ${RENTALS_URL}`,
+    insurance_client: `${n} — i can get you covered. drop the basics here and i'll personally follow up with options that fit: ${INSURANCE_URL}`,
+    partnership:      `${n} — quick heads up: this is sam's assistant, not sam. brand + partnership stuff runs through the form so it actually gets seen — fill it and it's in front of him same day: ${PARTNER_URL}`,
+    assistant:        `${n} — straight up: this is sam's assistant handling his DMs so nothing slips. tell me what you're here for — team, insurance, fitness, cars, mentorship, or a partnership — and i'll send you to the exact spot. partnerships go here: ${PARTNER_URL}`,
+    route:            `${n} — what are you here for? team / insurance / fitness / cars / mentorship / partnership. one word and i'll send you straight to the right spot.`,
   };
   return replies[path];
 }

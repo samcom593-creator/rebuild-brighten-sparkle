@@ -25,7 +25,9 @@ Deno.serve(async (req) => {
   const url = new URL(req.url);
   const clientId = Deno.env.get("YOUTUBE_CLIENT_ID");
   const clientSecret = Deno.env.get("YOUTUBE_CLIENT_SECRET");
-  const redirectUri = `${url.origin}${url.pathname}`;
+  // The edge runtime sees the request as http:// with /functions/v1 stripped from
+  // the path; Google only accepts the exact URI registered on the client.
+  const redirectUri = `https://${url.host}/functions/v1/youtube-auth`;
   if (!clientId || !clientSecret) return html("<h2>YouTube connect isn't configured yet</h2><p>YOUTUBE_CLIENT_ID / YOUTUBE_CLIENT_SECRET are not set.</p>", 503);
 
   const code = url.searchParams.get("code");

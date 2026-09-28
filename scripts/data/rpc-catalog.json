@@ -3295,6 +3295,34 @@
         "raw": "npn text, phone text DEFAULT NULL::text"
       }
     ],
+    "fn_ntfy_relay": [
+      {
+        "all": [
+          "p_body",
+          "p_priority",
+          "p_tags",
+          "p_title"
+        ],
+        "required": [
+          "p_body",
+          "p_title"
+        ],
+        "unnamed": false,
+        "raw": "p_title text, p_body text, p_priority text DEFAULT '4'::text, p_tags text DEFAULT 'bell'::text"
+      }
+    ],
+    "fn_ntfy_relay_result": [
+      {
+        "all": [
+          "p_request_id"
+        ],
+        "required": [
+          "p_request_id"
+        ],
+        "unnamed": false,
+        "raw": "p_request_id bigint"
+      }
+    ],
     "fn_onboarding_email_backfill_sweep": [
       {
         "all": [],

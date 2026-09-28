@@ -43,6 +43,36 @@ const PARTNER_URL    = "https://kingofsales-brand.vercel.app/#f-collab";
 // Someone who wants a POLICY (a client, not a recruit) — the help-center intake
 // is the no-lost-leads pipeline Sam works personally.
 const NTFY_TOPIC = "https://ntfy.sh/sams-agent-yrkv9kbqp9e987nb";
+// Push to Sam's phone and return ntfy's message id, or null if it never landed.
+// A fetch that resolves is not a delivery: a 4xx/5xx resolves too. One retry.
+async function pushNtfy(title: string, body: string, priority: string, tags: string): Promise<string | null> {
+  for (let i = 0; i < 2; i++) {
+    try {
+      const r = await fetch(NTFY_TOPIC, { method: "POST", headers: { "Title": title.replace(/[^\x20-\x7e]/g, ""), "Priority": priority, "Tags": tags }, body });
+      if (r.ok) { const j = await r.json().catch(() => ({})); return String(j?.id ?? "ok"); }
+      console.error("[manychat-webhook] ntfy refused", r.status);
+    } catch (e) { console.error("[manychat-webhook] ntfy push failed", e); }
+    if (i === 0) await new Promise((res) => setTimeout(res, 1500));
+  }
+  // ntfy 429s edge egress (shared IPs). The database egresses from an IP ntfy accepts:
+  // queue via pg_net, then read ntfy's actual reply (a queued request is not a delivery).
+  try {
+    const db = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", { auth: { persistSession: false } });
+    const { data: reqId, error } = await db.rpc("fn_ntfy_relay", { p_title: title.replace(/[^\x20-\x7e]/g, ""), p_body: body, p_priority: priority, p_tags: tags });
+    if (error || reqId == null) { console.error("[manychat-webhook] ntfy relay queue failed", error); }
+    else {
+      for (let k = 0; k < 8; k++) {
+        await new Promise((res) => setTimeout(res, 750));
+        const { data: id } = await db.rpc("fn_ntfy_relay_result", { p_request_id: reqId });
+        if (id) return `relay:${id}`;
+      }
+      console.error("[manychat-webhook] ntfy relay got no 200 for request", reqId);
+    }
+  } catch (e) { console.error("[manychat-webhook] ntfy relay threw", e); }
+  // Last resort: email lands on Sam's phone through Gmail.
+  await emailSam(`[push failed] ${title}`, body);
+  return null;
+}
 
 function applyUrl(rawSource: string): string {
   const src = (rawSource || "instagram").replace(/[^a-z0-9_]/gi, "").toLowerCase() || "instagram";
@@ -805,6 +835,11 @@ async function decide(text: string, rawSource: string, firstName: string | undef
     const num = text.match(PHONE_RE)![0];
     return { intent: st.threadIntent ?? "followup", lead_score: 70, reply_path: "llm", urgent: false, auto_reply: `bet, i'll hit you up`, notify: `Phone number from a ${laneOf(st)} prospect: ${num}` };
   }
+  // 2b') A number with no business thread yet (TikTok @lukegass_ 2026-09-28 got "what's good").
+  if (PHONE_RE.test(text) && !base.reply_path) {
+    const num = text.match(PHONE_RE)![0];
+    return { intent: "followup", lead_score: 60, reply_path: "llm", urgent: false, auto_reply: `got it, thank you. what's this about so i know what we're talking about when i call?`, notify: `Someone sent their number: ${num}` };
+  }
   // 2c) "ok" / "thanks": never answered, never a link.
   if (!base.reply_path && isAck(text)) return silent(st.hasBusinessContext ? "ack" : "casual");
   // 3) Any team interest: the license question comes FIRST, before any link.
@@ -862,13 +897,7 @@ async function fireUrgentLicensedAlert(
   const callUrl = isTeam ? TEAM_CALL_URL : LICENSED_CALL_URL;
   const line = `${kind} lead just DMd (${source}): ${who}. Call to onboard NOW. "${text.slice(0, 140)}"`;
   // ntfy: Sam's phone. Title header is ASCII-safe (RFC-2047 not needed here).
-  try {
-    await fetch(NTFY_TOPIC, {
-      method: "POST",
-      headers: { "Title": `APEX ${kind} lead - call now`, "Priority": "5", "Tags": "rotating_light" },
-      body: line,
-    });
-  } catch (e) { console.error("[manychat-webhook] ntfy urgent failed", e); }
+  const ntfyId = await pushNtfy(`APEX ${kind} lead - call now`, line, "5", "rotating_light");
   // NO Discord. Lead alerts go to Sam's phone only (ntfy) — never the team
   // members chat. Sam: "there's nothing to do with my team at all."
   // Durable audit row (delivered to ntfy above; this is the record, not a pager).
@@ -883,7 +912,7 @@ async function fireUrgentLicensedAlert(
       sms_body: line.slice(0, 160),
       action_link: callUrl,
       channels: ["ntfy"],
-      sent_at: new Date().toISOString(),
+      sent_at: ntfyId ? new Date().toISOString() : null,   // null = not delivered; never stamped on a failed push
     });
   } catch (e) { console.error("[manychat-webhook] bot_alerts insert failed", e); }
 }
@@ -960,7 +989,7 @@ Deno.serve(async (req) => {
   const senderName = buildName(body);
   const senderAvatar = firstText(body.sender_avatar, body.avatar, subscriber.avatar, subscriber.profile_pic);
   const email = firstText(body.email, subscriber.email);
-  const phone = normalizePhone(firstText(body.phone, subscriber.phone));
+  const phone = normalizePhone(firstText(body.phone, subscriber.phone, String(body.body ?? body.text ?? "").match(PHONE_RE)?.[0]));
   const state = firstText(body.state, body.us_state, subscriber.state);
   const text = normalizeText(((body.body ?? body.message ?? body.text ?? "") as string).trim());
 
@@ -1072,13 +1101,11 @@ Deno.serve(async (req) => {
   }
   // High-value non-urgent moments (policy buyer, partnership, a phone number) — ping Sam's phone.
   if (notify) {
+    const nbody = `${[senderName, senderHandle].filter(Boolean).join(" ") || "someone"} (${source}): "${text.slice(0, 140)}"`;
+    const nid = await pushNtfy(notify, nbody, "4", "moneybag");
     try {
-      await fetch(NTFY_TOPIC, {
-        method: "POST",
-        headers: { "Title": notify.replace(/[^\x20-\x7e]/g, ""), "Priority": "4", "Tags": "moneybag" },
-        body: `${[senderName, senderHandle].filter(Boolean).join(" ") || "someone"}: "${text.slice(0, 140)}"`,
-      });
-    } catch (e) { console.error("[manychat-webhook] ntfy lane alert failed", e); }
+      await supabase.from("bot_alerts").insert({ source: "inbound_dm", event_type: "dm_lead_notify", severity: "info", subject: notify.slice(0, 200), body: nbody, channels: ["ntfy"], sent_at: nid ? new Date().toISOString() : null });
+    } catch (e) { console.error("[manychat-webhook] notify audit row failed", e); }
   }
 
   if (shouldTrackLead) {

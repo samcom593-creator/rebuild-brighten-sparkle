@@ -971,7 +971,11 @@ Deno.serve(async (req) => {
   if (subscriberId && channel !== "comment" && channel !== "youtube_comment" && channel !== "tiktok_comment") {
     const since = new Date(Date.now() - 14 * 86400000).toISOString();
     const { data: manual } = await supabase.from("inbox_messages").select("id").eq("external_id", subscriberId).eq("intent", "sam_manual").gte("created_at", since).limit(1);
-    if (manual?.length) {
+    // ...except a direct business question, which still gets answered (Sam 2026-09-28).
+    const bc = classify(text);
+    const businessAsk = !!bc.reply_path && ["apply", "licensed", "licensed_team", "fitness", "mentorship", "rentals", "partnership", "license_explain"].includes(bc.reply_path) &&
+      /\?|\b(how|what|where|when|can i|could i|do i|i want|i need|interested|sign me up|put me on|teach me|licen[cs]\w*)\b/i.test(text);
+    if (manual?.length && !businessAsk) {
       try { await supabase.from("inbox_messages").insert({ source, direction: "inbound", external_id: subscriberId, sender_handle: senderHandle, body: text, intent: "sam_thread", auto_replied: false, raw_payload: { muted: "sam_manual" } }); } catch (e) { console.error("[manychat-webhook] muted inbound log failed", e); }
       return new Response(JSON.stringify({ ok: true, intent: "sam_thread", auto_reply: null, reply_path: null, muted: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }

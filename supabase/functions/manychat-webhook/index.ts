@@ -62,7 +62,7 @@ const SPAM_PATTERNS = [
 // highest-value lead and gets the urgent path no matter what else they say.
 const LICENSED_PATTERNS = [
   /\b(i'?m licensed|im licensed|i am licensed|have my licen[cs]e|got my licen[cs]e|already licensed|licensed (now|already|tho|though|too)|just got (my )?licens\w*|got licensed|i got my licen[cs]e)\b/i,
-  /\b(life license|life licence|life insurance license|2-?15|2-?14|221[0-9])\b/i,
+  /\b((have|got|hold|holding|with) (a |my |the )?(life|life insurance|insurance) licen[cs]e|licensed (in|for|with) [a-z]|2-?15 licen|2-?14 licen)\b/i,
   /\b(nipr|resident license|non[- ]?resident license)\b/i,
 ];
 // TEAM signal — a licensed prospect who runs an agency / brings downline gets
@@ -113,7 +113,7 @@ const MONEY_PATTERNS = [
   /\b(make money|money can (i|you|we) make|how much (money )?(can|do|could|would) (i|you|we|someone) (make|earn)|earn(ing)?s?\b|income|get paid|commission)\b/i,
 ];
 
-type ReplyPath = "licensed" | "licensed_team" | "fitness" | "apply" | "partnership" | "assistant" | "rentals" | "mentorship" | "route" | "license_q" | "license_yes" | "license_no" | "llm" | "props";
+type ReplyPath = "license_explain" | "licensed" | "licensed_team" | "fitness" | "apply" | "partnership" | "assistant" | "rentals" | "mentorship" | "route" | "license_q" | "license_yes" | "license_no" | "llm" | "props";
 
 interface Classification {
   intent: string;
@@ -143,6 +143,7 @@ function classify(body: string): Classification {
   if (SPAM_PATTERNS.some((r) => r.test(t)))           return { intent: "spam", lead_score: 0, reply_path: null, urgent: false };
   const cta = ctaLane(t); if (cta) return cta;
   if (NOT_INTERESTED_PATTERNS.some((r) => r.test(t))) return { intent: "not_interested", lead_score: 0, reply_path: null, urgent: false };
+  if (LICENSE_QUESTION_RE.test(t) && /licen/i.test(t)) return { intent: "opportunity", lead_score: 60, reply_path: "license_explain", urgent: false };
   if (LICENSED_PATTERNS.some((r) => r.test(t))) {
     // Licensed AND bringing a team = highest value: the team call.
     if (TEAM_PATTERNS.some((r) => r.test(t)))         return { intent: "licensed_team", lead_score: 99, reply_path: "licensed_team", urgent: true };
@@ -182,6 +183,7 @@ function replyFor(path: ReplyPath, rawSource: string, _firstName?: string): stri
     license_q:     `you got your life insurance license already or nah`,
     license_yes:   `say less, let's hop on a call. what's your number?`,
     license_no:    `all good, here's the link: ${apply}`,
+    license_explain: `it's the license you need to sell life insurance bro. you don't have one yet which is all good, i get you licensed. start here and i'll walk you through it: ${apply}`,
     llm:           "",
     props:         "🔥",
     fitness:       `yeah bro it's all on here: ${FITNESS_URL}`,
@@ -199,6 +201,8 @@ function replyFor(path: ReplyPath, rawSource: string, _firstName?: string): stri
 // Every inbound gets the thread's history from inbox_messages. From it we know
 // whether the license question was asked/answered, which lane the thread is
 // in, the last link sent, and how far the licensed call-booking flow got.
+const LICENSE_QUESTION_RE = /\b(what('?s| is| does) (a |the |that |this |it |your |my )?(life insurance |life |insurance )?licen[cs]e|what('?s| is) (that|this|it|a licence|a license)|what (do|does|u|you|that|it) mean|wdym|meaning|explain|come again|how (do|can|would) (i|you|u) get (a |my |the )?(life insurance |life |insurance )?licen[cs]e|how (do|can) i get licensed|do (i|you|u) need (a |the )?(life insurance |life |insurance )?licen[cs]e|is (a |the )?licen[cs]e (required|needed)|license for what|what license|which license|what kind of license|never heard|no idea what|idk what)\b/i;
+const LICENSE_EXPLAINED_RE = /license you need to sell life insurance/i;
 const LICENSE_Q_RE = /(do you have|you got|got|have) your (life insurance )?licen[cs]e|you got it or nah/i;
 const YES_PATTERNS = [
   /^\s*(yes|yeah|yep|yea|ya|yup|yessir|i do|i am|already|correct|affirmative|100)\b/i,
@@ -268,6 +272,7 @@ function threadState(history: HistoryRow[]) {
     const b = h.body ?? "";
     if (h.direction === "outbound") {
       if (LICENSE_Q_RE.test(b)) { licenseAsked = true; licenseAnswer = null; }
+      if (LICENSE_EXPLAINED_RE.test(b)) { licenseAsked = true; licenseAnswer = "no"; }
       const m = b.match(/https?:\/\/\S+/); if (m) lastLink = m[0];
       if (ASK_PHONE_RE.test(b)) askedPhone = true;
       if (ASK_TIME_RE.test(b)) askedTime = true;
@@ -533,7 +538,7 @@ function faqReply(text: string, st: ReturnType<typeof threadState>, rawSource: s
   const teamLine = st.licenseAnswer === "yes" ? (st.phone ? "" : " what's your number?") : (gateOpen ? " you got your license already or nah" : ` here's the link: ${apply}`);
 
   if (gateOpen && /\b(what (do you|do u|u) mean|what license|which license|what kind of license|what'?s a license|what is a license|huh|license for what)\b/.test(t)) {
-    return `the license to sell life insurance bro. you got it or nah`;
+    return replyFor("license_explain", rawSource, firstName);
   }
   if (/\b(what('?s| is) (this|that|the link|it|that link|this link)|what am i looking at|what does (this|the link|it) do|whats this|wait what|what is this)\b/.test(t)) {
     const what: Record<Lane, string> = {
@@ -606,6 +611,13 @@ async function decide(text: string, rawSource: string, firstName: string | undef
   const who = [senderName, handle].filter(Boolean).join(" ") || externalId || "someone";
   const silent = (intent: string): Decision => ({ ...base, intent, reply_path: null, auto_reply: null });
 
+  // 0a) They asked what the license is (or, with the gate open, asked anything
+  //     that isn't yes/no): explain it and start the licensing path. Tyler's
+  //     "what's that" once got the fitness link because the last link decided.
+  const gateOpenNow = st.licenseAsked && st.licenseAnswer === null && !YES_PATTERNS.some((r) => r.test(text)) && !NO_PATTERNS.some((r) => r.test(text));
+  if (base.reply_path === "license_explain" || (gateOpenNow && (LICENSE_QUESTION_RE.test(text) || /^\s*(what|wat|huh|hm+|\?+|que|como)\W*$/i.test(text) || (/\?\s*$/.test(text) && !base.reply_path)))) {
+    return { intent: "opportunity", lead_score: 60, reply_path: "license_explain", urgent: false, auto_reply: replyFor("license_explain", rawSource, firstName) };
+  }
   // 0) Emoji / props: 🔥 back (a public 🔥 under a comment, a DM everywhere else).
   const props = base.reply_path ? null : propsReply(text);
   if (props) {

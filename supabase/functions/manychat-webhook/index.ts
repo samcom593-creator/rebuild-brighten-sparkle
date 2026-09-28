@@ -266,11 +266,12 @@ function threadState(history: HistoryRow[]) {
   let lastLink: string | null = null;
   let phone: string | null = null;
   let whenText: string | null = null;
-  let askedPhone = false, askedTime = false, askedEmail = false, booked = false;
+  let askedPhone = false, askedTime = false, askedEmail = false, booked = false, explainedLast = false;
   let email: string | null = null;
   for (const h of history) {
     const b = h.body ?? "";
     if (h.direction === "outbound") {
+      explainedLast = LICENSE_EXPLAINED_RE.test(b);
       if (LICENSE_Q_RE.test(b)) { licenseAsked = true; licenseAnswer = null; }
       if (LICENSE_EXPLAINED_RE.test(b)) { licenseAsked = true; licenseAnswer = "no"; }
       const m = b.match(/https?:\/\/\S+/); if (m) lastLink = m[0];
@@ -293,7 +294,7 @@ function threadState(history: HistoryRow[]) {
       }
     }
   }
-  return { licenseAsked, licenseAnswer, threadIntent, lastLink, hasBusinessContext: !!threadIntent || licenseAsked, phone, whenText, askedPhone, askedTime, askedEmail, email, booked };
+  return { licenseAsked, licenseAnswer, threadIntent, lastLink, hasBusinessContext: !!threadIntent || licenseAsked, phone, whenText, askedPhone, askedTime, askedEmail, email, booked, explainedLast };
 }
 
 // ── "tomorrow at 3" -> an instant Sam can be paged about ────────────────────
@@ -688,7 +689,7 @@ async function decide(text: string, rawSource: string, firstName: string | undef
     return silent("ack");
   }
   // 2) Answering the license question with a no.
-  if (st.licenseAsked && st.licenseAnswer === null && NO_PATTERNS.some((r) => r.test(text))) {
+  if (st.licenseAsked && (st.licenseAnswer === null || st.explainedLast) && !base.reply_path && NO_PATTERNS.some((r) => r.test(text))) {
     return { intent: "opportunity", lead_score: 60, reply_path: "license_no", urgent: false, auto_reply: replyFor("license_no", rawSource, firstName) };
   }
   // 2b) A phone number in a non-licensed business thread: confirm, ping Sam.

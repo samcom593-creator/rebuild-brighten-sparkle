@@ -636,9 +636,43 @@ function faqReply(text: string, st: ReturnType<typeof threadState>, rawSource: s
   return null;
 }
 
+// "what's your snap" is a two-second answer. Sam 2026-09-28: "90% of my
+// messages I want this to respond to... I can't waste my time even opening a
+// message like that." Handles come from system_settings.social_* (no redeploy
+// to change one), with the known ones as fallbacks.
+const SOCIAL_DEFAULTS: Record<string, string> = { instagram: "@sell4daddy", tiktok: "@sellfordaddy", youtube: "https://youtube.com/@sell4daddy", website: "https://sell4daddy.com", email: "info@kingofsales.net" };
+async function socialsReply(text: string): Promise<string | null> {
+  const t = text.toLowerCase();
+  const asks = /\b(your|ur|u|you|got a|have a|whats|what's|what is|add|follow|send me)\b/.test(t) || /\?/.test(t);
+  if (!asks) return null;
+  const which =
+    /\bsnap(chat)?\b/.test(t) ? "snapchat" :
+    /\btik\s?tok\b/.test(t) ? "tiktok" :
+    /\b(youtube|yt|your channel)\b/.test(t) ? "youtube" :
+    /\b(instagram|insta|\big\b)/.test(t) ? "instagram" :
+    /\be-?mail\b/.test(t) ? "email" :
+    /\b(website|your site|link in bio|linktree|your page|landing page)\b/.test(t) ? "website" :
+    /\b(your (phone )?number|your cell|your phone)\b/.test(t) ? "phone" : null;
+  if (!which) return null;
+  if (which === "phone") return `drop yours and i'll hit you`;
+  const { data } = await supabase.from("system_settings").select("key,value").like("key", "social_%");
+  const map: Record<string, string> = { ...SOCIAL_DEFAULTS };
+  for (const r of (data ?? []) as Array<{ key: string; value: string }>) { const v = String(r.value ?? "").trim().replace(/^"|"$/g, ""); if (v) map[r.key.replace("social_", "")] = v; }
+  if (which === "snapchat") return map.snapchat ? `snap's ${map.snapchat} 👻` : `i'm barely on snap bro, hit me on ig, i'm on there all day: ${map.instagram}`;
+  if (which === "tiktok") return `tiktok's ${map.tiktok}`;
+  if (which === "youtube") return `youtube's ${map.youtube}`;
+  if (which === "instagram") return `ig's ${map.instagram}`;
+  if (which === "email") return `${map.email}`;
+  return `everything's on here: ${map.website}`;
+}
+
 async function decide(text: string, rawSource: string, firstName: string | undefined, externalId: string | null, handle: string | null, channel: string, senderName: string | null): Promise<Decision> {
   const base = classify(text);
   if (base.intent === "spam" || base.intent === "not_interested") return { ...base, auto_reply: null };
+  if (!PHONE_RE.test(text) && !EMAIL_RE.test(text)) {
+    const social = await socialsReply(text);
+    if (social) return { ...base, intent: "socials", reply_path: "llm", urgent: false, auto_reply: social };
+  }
   const history = await fetchHistory(externalId, handle);
   const st = threadState(history);
   const firstInbound = history.find((h) => h.direction === "inbound")?.body?.slice(0, 120);

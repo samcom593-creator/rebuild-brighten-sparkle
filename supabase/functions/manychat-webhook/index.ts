@@ -947,6 +947,7 @@ Deno.serve(async (req) => {
     decision.auto_reply = `${seen} ${decision.auto_reply}`;
   }
   // Intent under a comment: the DM goes out privately and the comment gets a public pointer.
+  if ((channel === "comment" || channel === "youtube_comment") && decision.intent === "socials" && decision.auto_reply) { decision.public_reply = decision.auto_reply; decision.auto_reply = null; }
   if (channel === "comment" && decision.auto_reply && !decision.public_reply) decision.public_reply = "check your dms 📩";
   if (channel === "comment" && !decision.public_reply && decision.intent !== "spam") { decision.public_reply = "🔥"; decision.auto_reply = null; }
   if (channel === "story" && !decision.auto_reply && decision.intent !== "spam") { decision.auto_reply = "🔥"; decision.reply_path = "props"; }

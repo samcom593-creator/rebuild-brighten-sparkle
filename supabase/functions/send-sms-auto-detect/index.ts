@@ -396,7 +396,9 @@ const handler = async (req: Request): Promise<Response> => {
     // MP-270: this admin copy was ungated, so it fired on every attempt including
     // the ~96% with no carrier on file. Combined with the 8-gateway broadcast that
     // made 9 Resend sends per single SMS. Only copy admin when a send actually went out.
-    if (outcome === "sent") {
+    // 2026-09-28 (Sam: too much email noise): the copy of every outgoing SMS is off;
+    // each send is still recorded in notification_log. SMS_ADMIN_COPY=on restores it.
+    if (outcome === "sent" && Deno.env.get("SMS_ADMIN_COPY") === "on") {
       try {
         await resend.emails.send({
           from: "Apex Financial <notifications@apex-financial.org>",

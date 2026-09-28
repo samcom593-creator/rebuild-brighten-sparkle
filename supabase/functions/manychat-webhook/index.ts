@@ -1049,6 +1049,11 @@ Deno.serve(async (req) => {
       }
     }
   }
+  // Test traffic never pages or emails anyone (today's tests sent Sam ~55 alerts).
+  const isTest = /test|^(m\d|mx-|fu-|q\d?-|v6|tone|nb-|soc|cmt|fl\d?-|cf-|yt-|t\d-|e2e|dup_)/i.test(`${senderName ?? ""} ${senderHandle ?? ""} ${subscriberId ?? ""}`) || /^9999/.test(subscriberId ?? "");
+  if (isTest) { decision.urgent = false; decision.email = null; decision.notify = null; }
+  // Two emails per licensed lead at most: "licensed" and "call booked". The rest is phone push only.
+  if (decision.email && !/^(LICENSED lead|CALL BOOKED)/.test(decision.email.subject)) decision.email = null;
   const { intent, lead_score, reply_path, urgent, auto_reply, alert_text, notify } = decision;
   if (decision.email) await emailSam(decision.email.subject, decision.email.body);
   const shouldTrackLead = intent !== "spam" && intent !== "not_interested" && lead_score >= 20;

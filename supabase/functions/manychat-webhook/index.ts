@@ -228,7 +228,7 @@ const BOOKED_RE = /^locked in/i;
 // Emoji-only ("🔥🔥", "💯") and props ("this is fire", "love your content"):
 // Sam: "the default emoji response should be a fire emoji back".
 const EMOJI_ONLY_RE = /^[\s\p{Extended_Pictographic}\p{Emoji_Modifier}️‍!.]+$/u;
-const PROPS_RE = /\b(fire|goat|facts|love (this|that|your|the|it|ur)|keep (going|it up|grinding|pushing)|inspir\w*|motivat\w*|big w|w video|respect|salute|legend|beast|hard work|well said|preach|real talk|congrats|proud of you|you the man|you got it|dope|go(es)? hard|crazy work|insane|killing it|killin it|need(ed)? this|gem|appreciate (you|this|it)|thank you for (this|sharing)|god bless|amen|blessed|w rizz|too real|so true|spitting|spittin|talk your shit)\b/i;
+const PROPS_RE = /\b(fire|goat|facts|love (this|that|your|the|it|ur)|keep (going|it up|grinding|pushing)|inspir\w*|motivat\w*|big w|w video|respect|salute|legend|beast|hard work|well said|preach|real talk|congrats|proud of you|you the man|you got it|dope|go(es)? hard|crazy work|insane|killing it|killin it|need(ed)? this|gem|appreciate (you|this|it)|preciate (you|it|u|this)|thank you for (this|sharing)|god bless|amen|blessed|w rizz|too real|so true|spitting|spittin|talk your shit)\b/i;
 function propsReply(text: string): string | null {
   const t = text.trim();
   if (!t) return null;

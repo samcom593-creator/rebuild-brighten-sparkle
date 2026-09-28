@@ -86,7 +86,7 @@ const PARTNER_PATTERNS = [
 ];
 // "Is this really Sam?" / pushback on talking to a bot — disclose the assistant.
 const ASSISTANT_ASK_PATTERNS = [
-  /\b(is this (really )?(sam|you)|real person|are you a bot|is this a bot|automated|auto[- ]?reply|talk to sam|speak to sam|sam himself|the real sam|your number|can i call)\b/i,
+  /\b(is this (really |actually |even )?(sam|you|him)|is (it|this) really you|am i talking to (sam|a bot|a real person|him)|who (is this|am i talking to)|real person|are you a bot|is this a bot|is this automated|automated|auto[- ]?reply|talk to sam|speak to sam|sam himself|the real sam|your number|can i call)\b/i,
 ];
 // CARS — Arizona rentals, quote-based.
 const RENTALS_PATTERNS = [
@@ -115,7 +115,7 @@ const MONEY_PATTERNS = [
   /\b(make money|money can (i|you|we) make|how much (money )?(can|do|could|would) (i|you|we|someone) (make|earn)|earn(ing)?s?\b|income|get paid|commission)\b/i,
 ];
 
-type ReplyPath = "licensed" | "licensed_team" | "fitness" | "apply" | "partnership" | "assistant" | "rentals" | "mentorship" | "insurance_client" | "route";
+type ReplyPath = "licensed" | "licensed_team" | "fitness" | "apply" | "partnership" | "assistant" | "rentals" | "mentorship" | "insurance_client" | "route" | "license_q" | "license_yes" | "license_no" | "llm";
 
 interface Classification {
   intent: string;
@@ -174,8 +174,13 @@ function replyFor(path: ReplyPath, rawSource: string, firstName?: string): strin
   const n = (firstName?.trim() && firstName.split(" ")[0]) || "yo";
   const apply = applyUrl(rawSource);
   const replies: Record<ReplyPath, string> = {
-    licensed:         `${n} — you're licensed, that changes everything. we fast-track contracted producers. grab a call directly on my schedule and let's get you writing this week: ${LICENSED_CALL_URL}`,
-    licensed_team:    `${n} — licensed AND you've got a team? that's exactly who we build with. book straight onto my calendar and let's map moving your whole team over: ${TEAM_CALL_URL}`,
+    // Sam 2026-09-27: a licensed prospect is told Sam will CALL them (urgent alert fires).
+    licensed:         `${n} — you're licensed, that changes everything. sam's going to call you personally — drop your best number and he'll hit you today. want to lock a time now instead? ${LICENSED_CALL_URL}`,
+    licensed_team:    `${n} — licensed AND you've got a team? that's exactly who we build with. sam's going to call you personally — drop your best number. or lock a time now: ${TEAM_CALL_URL}`,
+    license_q:        `${n} — quick one first: do you have your life insurance license? (yes / no)`,
+    license_yes:      `${n} — you're licensed, that changes everything. sam's going to call you personally — drop your best number and he'll hit you today. want to lock a time now instead? ${LICENSED_CALL_URL}`,
+    license_no:       `${n} — no problem, that's exactly what we help with. start here and we get you licensed and routed by state: ${apply}`,
+    llm:              "",
     fitness:          `${n} — appreciate you reaching out. everything on the fitness side lives here, plans + 1-on-1 coaching: ${FITNESS_URL}`,
     apply:            `${n} — let's get you moving. start your application here and we'll route you by state and licence status: ${apply}`,
     mentorship:       `${n} — mentorship is a soft launch, no price on the page. pick your lane and apply, if you're a fit i reach out personally: ${MENTORSHIP_URL}`,
@@ -186,6 +191,281 @@ function replyFor(path: ReplyPath, rawSource: string, firstName?: string): strin
     route:            `${n} — what are you here for? team / insurance / fitness / cars / mentorship / partnership. one word and i'll send you straight to the right spot.`,
   };
   return replies[path];
+}
+
+// ── Thread memory + license gate + model fallback (2026-09-27) ──────────────
+// Sam: "you're my executive DM assistant." The one-shot keyword router could not
+// (1) ask about the license before sending a link, (2) answer a follow-up, or
+// (3) say anything to a question it didn't pattern-match. Every inbound now gets
+// the thread's history from inbox_messages, a license state derived from it, and
+// a model-written answer for anything the lanes don't cover — silent only when
+// the thread has no business context at all (casual / social stays Sam's).
+const LICENSE_Q_MARK = "do you have your life insurance license";
+const YES_PATTERNS = [
+  /^\s*(yes|yeah|yep|yea|ya|yup|yessir|i do|i am|already|correct|affirmative|100)\b/i,
+  /\b(yes i (do|am)|i'?m licensed|i am licensed|have my licen[cs]e|got my licen[cs]e|already licensed|licensed already|i have (it|one|mine|my licen[cs]e))\b/i,
+];
+const NO_PATTERNS = [
+  /^\s*(no|nope|nah|not yet|negative)\b/i,
+  /\b(no i (don'?t|dont)|i (don'?t|dont) have|haven'?t|havent|not licensed|no licen[cs]e|working on it|studying|in progress|taking the (test|exam)|need to get)\b/i,
+];
+const BUSINESS_INTENTS = new Set(["opportunity", "licensed", "licensed_team", "fitness", "mentorship", "rentals", "insurance_client", "partnership", "assistant_ask", "followup"]);
+
+type HistoryRow = { direction: string; body: string | null; intent: string | null; created_at: string };
+
+async function fetchHistory(externalId: string | null, handle: string | null): Promise<HistoryRow[]> {
+  // 24 rows ≈ 8 turns: send-instagram-dm logs its own outbound row next to the
+  // brain's, so every reply occupies two rows.
+  let q = supabase.from("inbox_messages").select("direction, body, intent, created_at").order("created_at", { ascending: false }).limit(24);
+  if (externalId) q = q.eq("external_id", externalId);
+  else if (handle) q = q.eq("sender_handle", handle);
+  else return [];
+  const { data } = await q;
+  return ((data ?? []) as HistoryRow[]).reverse();
+}
+
+function threadState(history: HistoryRow[]) {
+  let licenseAsked = false;
+  let licenseAnswer: "yes" | "no" | null = null;
+  let threadIntent: string | null = null;
+  let lastLink: string | null = null;
+  for (const h of history) {
+    const b = h.body ?? "";
+    if (h.direction === "outbound") {
+      if (b.toLowerCase().includes(LICENSE_Q_MARK)) { licenseAsked = true; licenseAnswer = null; }
+      const m = b.match(/https?:\/\/\S+/); if (m) lastLink = m[0];
+    } else {
+      if (licenseAsked && licenseAnswer === null) {
+        if (YES_PATTERNS.some((r) => r.test(b))) licenseAnswer = "yes";
+        else if (NO_PATTERNS.some((r) => r.test(b))) licenseAnswer = "no";
+      }
+      // "I'm licensed" volunteered up front answers the gate without it being asked.
+      if (h.intent === "licensed" || h.intent === "licensed_team") { licenseAsked = true; licenseAnswer = "yes"; }
+      if (h.intent && BUSINESS_INTENTS.has(h.intent)) threadIntent = h.intent;
+    }
+  }
+  return { licenseAsked, licenseAnswer, threadIntent, lastLink, hasBusinessContext: !!threadIntent || licenseAsked };
+}
+
+async function llmReply(history: HistoryRow[], text: string, st: ReturnType<typeof threadState>, rawSource: string): Promise<string | null> {
+  const key = Deno.env.get("ANTHROPIC_API_KEY");
+  if (!key) return null;
+  const system = [
+    "You are the Instagram DM assistant for Samuel James (@sell4daddy): managing partner of Apex Financial, a life-insurance agency that recruits, licenses and trains agents. He also offers fitness coaching, a mentorship program, and car rentals in Arizona.",
+    "You answer on his behalf inside Instagram DMs. Style: lowercase, direct, warm, one or two short sentences, no hype. If asked whether this is Sam or a bot, say you are Sam's assistant. Never claim to be Sam.",
+    "Never invent prices, commission numbers, dates, or guarantees. If you don't know, say Sam will follow up personally.",
+    "When a link fits the question, include exactly one of these:",
+    `- joining the team / getting licensed / applying: ${applyUrl(rawSource)}`,
+    `- already licensed: tell them Sam will call them personally and offer ${LICENSED_CALL_URL}`,
+    `- fitness coaching: ${FITNESS_URL}`,
+    `- mentorship: ${MENTORSHIP_URL}`,
+    `- car rentals in Arizona: ${RENTALS_URL}`,
+    `- wants a life-insurance policy for themselves or family: ${INSURANCE_URL}`,
+    `- brand partnership or collaboration: ${PARTNER_URL}`,
+    "For anyone interested in joining the team, the first thing to establish is whether they already hold a life insurance license. If that is still unknown, ask exactly: do you have your life insurance license?",
+    "If they ask what a link is or what happens next, explain it plainly. Answer the actual question they asked.",
+    `Thread context — intent: ${st.threadIntent ?? "unknown"}; license: ${st.licenseAnswer ?? (st.licenseAsked ? "asked, not answered yet" : "unknown")}; last link sent: ${st.lastLink ?? "none"}.`,
+  ].join("\n");
+  const msgs: { role: "user" | "assistant"; content: string }[] = [];
+  for (const h of history) {
+    const role: "user" | "assistant" = h.direction === "outbound" ? "assistant" : "user";
+    const content = (h.body ?? "").trim();
+    if (!content) continue;
+    if (msgs.length && msgs[msgs.length - 1].role === role) msgs[msgs.length - 1].content += "\n" + content;
+    else msgs.push({ role, content });
+  }
+  if (!msgs.length || msgs[msgs.length - 1].role === "assistant") msgs.push({ role: "user", content: text });
+  else msgs[msgs.length - 1].content += "\n" + text;
+  while (msgs.length && msgs[0].role !== "user") msgs.shift();
+  try {
+    const r = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+      body: JSON.stringify({ model: "claude-haiku-4-5-20251001", max_tokens: 220, system, messages: msgs }),
+    });
+    const j = await r.json();
+    const out = (j?.content?.[0]?.text as string | undefined)?.trim();
+    if (!out) console.error("[manychat-webhook] llm no text", r.status, JSON.stringify(j).slice(0, 400));
+    return out || null;
+  } catch (e) {
+    console.error("[manychat-webhook] llm failed", e);
+    return null;
+  }
+}
+
+type Decision = Classification & {
+  auto_reply: string | null;
+  alert_text?: string;      // what Sam's urgent page says (defaults to the inbound text)
+  notify?: string | null;   // non-urgent phone ping title (policy lead, partnership, phone number)
+};
+
+// Bare acknowledgements never get a reply — answering "ok" with a link is spam.
+// Emoji, punctuation and a trailing "bro/man/sam" are stripped before the test.
+const ACK_WORDS = /^(ok|okay|k|kk|bet|cool|got it|gotcha|thanks|thank you|thank u|thx|ty|sounds good|alright|aight|word|say less|copy|will do|on it|appreciate it|appreciate you|love it|perfect|awesome|nice|great|ok thanks|okay thanks|ok thank you|ok bet|ok cool|bet bet|cool cool|yessir|lets go|let's go)$/i;
+function isAck(text: string): boolean {
+  const bare = text.replace(/[\p{Extended_Pictographic}\p{Emoji_Modifier}️‍!.,]/gu, " ").replace(/\s+/g, " ").trim().toLowerCase()
+    .replace(/\s+(bro|man|sam|brother|g|fam|boss|king)$/i, "");
+  return bare === "" || ACK_WORDS.test(bare);
+}
+const PHONE_RE = /(\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}\b/;
+
+type Lane = "opportunity" | "licensed" | "fitness" | "mentorship" | "rentals" | "insurance_client" | "partnership";
+function laneOf(st: ReturnType<typeof threadState>): Lane {
+  const l = st.lastLink ?? "";
+  if (l.includes("calendly.com")) return "licensed";
+  if (l.includes("/apply")) return "opportunity";
+  if (l.includes("/fitness")) return "fitness";
+  if (l.includes("/mentorship")) return "mentorship";
+  if (l.includes("/rentals")) return "rentals";
+  if (l.includes("policy-help-center")) return "insurance_client";
+  if (l.includes("f-collab")) return "partnership";
+  const i = st.threadIntent ?? "";
+  if (i === "licensed_team") return "licensed";
+  if (["licensed", "fitness", "mentorship", "rentals", "insurance_client", "partnership"].includes(i)) return i as Lane;
+  return "opportunity";
+}
+function laneLink(lane: Lane, rawSource: string): string {
+  return {
+    opportunity: applyUrl(rawSource), licensed: LICENSED_CALL_URL, fitness: FITNESS_URL, mentorship: MENTORSHIP_URL,
+    rentals: RENTALS_URL, insurance_client: INSURANCE_URL, partnership: PARTNER_URL,
+  }[lane];
+}
+
+// Deterministic answers for the follow-ups a prospect actually sends after the
+// first reply. Runs before the model so the common cases never depend on it.
+function faqReply(text: string, st: ReturnType<typeof threadState>, rawSource: string, firstName?: string): string | null {
+  const n = (firstName?.trim() && firstName.split(" ")[0]) || "yo";
+  const t = text.toLowerCase();
+  const lane = laneOf(st);
+  const link = st.lastLink ?? laneLink(lane, rawSource);
+  const apply = applyUrl(rawSource);
+  const gateOpen = st.licenseAsked && st.licenseAnswer === null;
+  const gate = gateOpen ? " quick one first: do you have your life insurance license? (yes / no)" : "";
+  const teamLine = st.licenseAnswer === "yes" ? ` lock a time with sam here: ${LICENSED_CALL_URL}` : (gateOpen ? gate : ` start here: ${apply}`);
+
+  if (gateOpen && /\b(what (do you|do u|u) mean|what license|which license|what kind of license|what'?s a license|what is a license|huh|license for what)\b/.test(t)) {
+    return `${n} — a life insurance license is what lets you legally sell policies (state exam, we walk you through it). do you have one yet? yes or no`;
+  }
+  if (/\b(what('?s| is) (this|that|the link|it|that link|this link)|what am i looking at|what does (this|the link|it) do|whats this|wait what|what is this)\b/.test(t)) {
+    const what: Record<Lane, string> = {
+      opportunity:      `${n} — that's the application to join apex. takes 2 minutes: name, state, whether you're licensed yet. from there we route you and get you on a call with sam. ${link}`,
+      licensed:         `${n} — that's sam's calendar. lock a time and he calls you then — or just drop your number here and he'll call you today.`,
+      fitness:          `${n} — that's sam's fitness page. plans + 1-on-1 coaching, pick what fits and it comes straight to him. ${link}`,
+      mentorship:       `${n} — that's the mentorship application. it's a soft launch, so you apply first and sam reaches out personally if it's a fit. ${link}`,
+      rentals:          `${n} — that's the rental request page. dates + the car you want, and you get a quote back. ${link}`,
+      insurance_client: `${n} — that's the quote form. the basics on you and who you're covering, and sam follows up with real options. ${link}`,
+      partnership:      `${n} — that's the partnership form. brand + collab stuff runs through there so sam actually sees it. ${link}`,
+    };
+    return what[lane];
+  }
+  if (/\b(make|earn|income|commission|get paid|pay(s|ing)?|salary)\b/.test(t) && (lane === "opportunity" || lane === "licensed")) {
+    return `${n} — it's commission, uncapped, and it scales with how much you write. sam shows you the real numbers on the call.${teamLine}`;
+  }
+  if (/\b(how much|cost|price|pricing|fee|expensive|cheap|afford|rate)\b/.test(t)) {
+    const cost: Record<Lane, string> = {
+      opportunity:      `${n} — joining is free. the only cost is the state licensing course if you're not licensed yet, and sam breaks that down on the call.${teamLine}`,
+      licensed:         `${n} — nothing to join — you're licensed, so it's contracting + getting you writing. sam covers comp on the call: ${LICENSED_CALL_URL}`,
+      fitness:          `${n} — plans start at $300, 1-on-1 coaching is priced separately. it's all laid out here: ${FITNESS_URL}`,
+      mentorship:       `${n} — no public price on mentorship right now, it's a soft launch. apply and sam goes over it with you personally: ${MENTORSHIP_URL}`,
+      rentals:          `${n} — cars are quote-based, no flat price. drop your dates + the car and you get a number back: ${RENTALS_URL}`,
+      insurance_client: `${n} — depends on age, health and how much coverage. drop the basics here and sam sends you real numbers: ${INSURANCE_URL}`,
+      partnership:      `${n} — rates depend on the scope. put the details in the form and sam replies with numbers: ${PARTNER_URL}`,
+    };
+    return cost[lane];
+  }
+  if (/\b(when (is|will|does|are|he|sam|you)|what time|how soon|call me when|when('?s| is) the call)\b/.test(t)) {
+    if (lane === "licensed" || st.licenseAnswer === "yes") return `${n} — same day, usually within a few hours. if you haven't dropped your number yet, send it here and he'll call you at that.`;
+    return `${n} — sam follows up personally once your application's in. get it started here: ${link}`;
+  }
+  if (/\b(how long|how many (days|weeks|months)|how fast|how quick|time does it take)\b/.test(t) && lane === "opportunity") {
+    return `${n} — most people finish the pre-licensing course in 1-2 weeks and test right after. we walk you through it step by step.${teamLine}`;
+  }
+  if (/\b(experience|no background|never sold|beginner|new to this|qualifications|requirements|what do i need|do i need)\b/.test(t) && lane === "opportunity") {
+    return `${n} — zero experience needed. you get licensed, then we train you from the ground up.${teamLine}`;
+  }
+  if (/\b(remote|from home|work from home|part[- ]?time|full[- ]?time|hours|schedule|flexible|9[- ]?5)\b/.test(t) && lane === "opportunity") {
+    return `${n} — fully remote, part-time or full-time, you set the hours.${teamLine}`;
+  }
+  if (/\b(where (are you|r u|you|is this|is it) (located|based|at)|what state|which state|what city|location)\b/.test(t)) {
+    if (lane === "rentals") return `${n} — cars are in arizona (phoenix / scottsdale). dates + car here: ${RENTALS_URL}`;
+    if (lane === "opportunity" || lane === "licensed") return `${n} — we're based in arizona and licensed in most states, so you can do this from anywhere. what state are you in?${teamLine}`;
+    return `${n} — everything's online, location doesn't matter. ${link}`;
+  }
+  if (/\b(what('?s| is) apex|what do you (guys )?do|what is (the )?(company|business|job|work)|what (kind of )?(work|job|business) is (it|this)|what is this about|what'?s this about)\b/.test(t)) {
+    return `${n} — apex financial is sam's life insurance agency. we bring people on, get them licensed, train them, and they earn commission writing policies. you looking to join, or looking for a policy?`;
+  }
+  if (/\b(how does (it|this) work|what('?s| is) the process|next steps?|what happens (next|after)|then what|what now)\b/.test(t)) {
+    if (lane === "opportunity" || lane === "licensed") return `${n} — simple: you apply, we get you licensed (or fast-track you if you already are), then sam gets you on a call and you start writing with the team.${teamLine}`;
+    return faqReply("what is this", st, rawSource, firstName);
+  }
+  return null;
+}
+
+async function decide(text: string, rawSource: string, firstName: string | undefined, externalId: string | null, handle: string | null): Promise<Decision> {
+  const base = classify(text);
+  if (base.intent === "spam" || base.intent === "not_interested") return { ...base, auto_reply: null };
+  const history = await fetchHistory(externalId, handle);
+  const st = threadState(history);
+  const firstInbound = history.find((h) => h.direction === "inbound")?.body?.slice(0, 120);
+  const n = (firstName?.trim() && firstName.split(" ")[0]) || "yo";
+
+  // 1) Explicit "I'm licensed" anywhere -> licensed path (urgent alert, Sam will call).
+  if (base.intent === "licensed" || base.intent === "licensed_team") {
+    return { ...base, auto_reply: replyFor(base.reply_path as ReplyPath, rawSource, firstName) };
+  }
+  // 2) They are answering the license question.
+  if (st.licenseAsked && st.licenseAnswer === null) {
+    if (YES_PATTERNS.some((r) => r.test(text))) {
+      return { intent: "licensed", lead_score: 95, reply_path: "license_yes", urgent: true, auto_reply: replyFor("license_yes", rawSource, firstName),
+        alert_text: `said YES to "do you have your life insurance license?" (first message: "${firstInbound ?? text}")` };
+    }
+    if (NO_PATTERNS.some((r) => r.test(text))) return { intent: "opportunity", lead_score: 60, reply_path: "license_no", urgent: false, auto_reply: replyFor("license_no", rawSource, firstName) };
+  }
+  // 2b) A phone number inside a business thread: confirm, and put it in Sam's hand.
+  if (st.hasBusinessContext && PHONE_RE.test(text) && !base.reply_path) {
+    const num = text.match(PHONE_RE)![0];
+    const licensedThread = st.licenseAnswer === "yes" || st.threadIntent === "licensed" || st.threadIntent === "licensed_team";
+    return { intent: licensedThread ? "licensed" : (st.threadIntent ?? "followup"), lead_score: licensedThread ? 99 : 70, reply_path: "llm", urgent: licensedThread,
+      auto_reply: `${n} — got it, sam will hit you at that number.`,
+      alert_text: `sent their number: ${num} — call now. (first message: "${firstInbound ?? text}")`,
+      notify: licensedThread ? null : `Phone number from a ${laneOf(st)} prospect: ${num}` };
+  }
+  // 2c) "ok" / "thanks" / an emoji: never answered, never a link.
+  if (!base.reply_path && isAck(text)) return { ...base, intent: st.hasBusinessContext ? "ack" : "casual", auto_reply: null };
+  // 3) Any team interest -> the license question comes FIRST, before any link.
+  if (base.intent === "opportunity" && !st.licenseAsked) {
+    return { intent: "opportunity", lead_score: base.lead_score, reply_path: "license_q", urgent: false, auto_reply: replyFor("license_q", rawSource, firstName) };
+  }
+  // 4) A clear non-team lane -> that lane's one-link reply (+ a phone ping where it's money).
+  if (base.reply_path && base.reply_path !== "apply") {
+    const notify = base.intent === "insurance_client" ? "Policy lead in IG DMs" : base.intent === "partnership" ? "Partnership inquiry in IG DMs" : null;
+    return { ...base, auto_reply: replyFor(base.reply_path, rawSource, firstName), notify };
+  }
+  // 5) Team interest after the license question: a real question gets its
+  //    answer (FAQ) before the link is repeated; otherwise route by the answer.
+  if (base.reply_path === "apply") {
+    const faq = st.licenseAnswer !== null ? faqReply(text, st, rawSource, firstName) : null;
+    if (faq) return { intent: st.licenseAnswer === "yes" ? "licensed" : "opportunity", lead_score: Math.max(60, base.lead_score), reply_path: "llm", urgent: false, auto_reply: faq };
+    if (st.licenseAnswer === "yes") return { intent: "licensed", lead_score: 95, reply_path: "license_yes", urgent: true, auto_reply: replyFor("license_yes", rawSource, firstName), alert_text: `${text} (already said they're licensed)` };
+    if (st.licenseAnswer === "no")  return { ...base, auto_reply: replyFor("license_no", rawSource, firstName) };
+  }
+  // 6) Anything else in a thread that already has business context -> answer it:
+  //    FAQ first (deterministic), then the model, then a no-silence fallback.
+  if (st.hasBusinessContext || base.reply_path === "apply") {
+    const faq = faqReply(text, st, rawSource, firstName);
+    if (faq) return { intent: st.threadIntent ?? base.intent, lead_score: Math.max(40, base.lead_score), reply_path: "llm", urgent: false, auto_reply: faq };
+    const llm = await llmReply(history, text, st, rawSource);
+    if (llm) return { intent: st.threadIntent ?? base.intent, lead_score: Math.max(40, base.lead_score), reply_path: "llm", urgent: false, auto_reply: llm };
+    if (base.reply_path === "apply") return { intent: "opportunity", lead_score: base.lead_score, reply_path: "license_q", urgent: false, auto_reply: replyFor("license_q", rawSource, firstName) };
+    // Model unavailable: a real question in a live business thread still gets
+    // an answer, never silence — Sam picks it up, the link stays in front of them.
+    const fallback = st.lastLink
+      ? `${n} — good question, sam will answer that one personally. everything you need to get started is here: ${st.lastLink}`
+      : `${n} — good question, sam will answer that one personally. what are you here for — team, insurance, fitness, cars, mentorship or partnership?`;
+    return { intent: st.threadIntent ?? "followup", lead_score: Math.max(40, base.lead_score), reply_path: "llm", urgent: false, auto_reply: fallback };
+  }
+  // 7) No business context at all: casual / social — Sam's, not the bot's.
+  return { ...base, auto_reply: null };
 }
 
 // URGENT driving force for licensed producers: instant phone push + Discord so
@@ -313,15 +593,24 @@ Deno.serve(async (req) => {
     });
   }
 
-  const { intent, lead_score, reply_path, urgent } = classify(text);
-  const auto_reply = reply_path ? replyFor(reply_path, rawSource, senderName?.split(" ")[0]) : null;
+  const { intent, lead_score, reply_path, urgent, auto_reply, alert_text, notify } = await decide(text, rawSource, senderName?.split(" ")[0], subscriberId, senderHandle);
   const shouldTrackLead = intent !== "spam" && intent !== "not_interested" && lead_score >= 20;
   const sessionId = `${source}:${subscriberId ?? senderHandle ?? crypto.randomUUID()}`;
   let partialApplicationId: string | null = null;
 
   // URGENT licensed path — fire the call-now alert before anything else.
   if (urgent) {
-    await fireUrgentLicensedAlert(supabase, senderHandle, senderName, text, source, intent === "licensed_team");
+    await fireUrgentLicensedAlert(supabase, senderHandle, senderName, alert_text ?? text, source, intent === "licensed_team");
+  }
+  // High-value non-urgent moments (policy buyer, partnership, a phone number) — ping Sam's phone.
+  if (notify) {
+    try {
+      await fetch(NTFY_TOPIC, {
+        method: "POST",
+        headers: { "Title": notify.replace(/[^\x20-\x7e]/g, ""), "Priority": "4", "Tags": "moneybag" },
+        body: `${[senderName, senderHandle].filter(Boolean).join(" ") || "someone"}: "${text.slice(0, 140)}"`,
+      });
+    } catch (e) { console.error("[manychat-webhook] ntfy lane alert failed", e); }
   }
 
   if (shouldTrackLead) {

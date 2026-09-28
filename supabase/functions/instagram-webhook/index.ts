@@ -27,6 +27,29 @@ async function verifySignature(body: string, signature: string | null, secret: s
   return hex === expected;
 }
 
+// IGSID -> { name, username } via the Instagram-Login user profile endpoint,
+// with the same token send-instagram-dm uses. Best-effort: any failure returns
+// nulls and the pipeline carries on with the numeric id.
+async function resolveSender(sb: any, igsid: string): Promise<{ name: string | null; username: string | null }> {
+  const none = { name: null, username: null };
+  try {
+    const { data } = await sb.from("system_settings").select("value").eq("key", "meta_instagram_token").limit(1);
+    const raw = data?.[0]?.value;
+    const token = typeof raw === "string" ? raw.trim().replace(/^"|"$/g, "") : null;
+    if (!token) return none;
+    const r = await fetch(
+      `https://graph.instagram.com/v21.0/${encodeURIComponent(igsid)}?fields=name,username&access_token=${encodeURIComponent(token)}`,
+      { signal: AbortSignal.timeout(4000) },
+    );
+    const j = await r.json();
+    if (!r.ok || j?.error) { console.warn("[instagram-webhook] profile lookup failed", JSON.stringify(j).slice(0, 200)); return none; }
+    return { name: typeof j?.name === "string" ? j.name : null, username: typeof j?.username === "string" ? j.username : null };
+  } catch (e) {
+    console.warn("[instagram-webhook] profile lookup threw", e);
+    return none;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -75,6 +98,7 @@ Deno.serve(async (req) => {
   // launched async without blocking the response.
   const entries = (payload?.entry ?? []) as Array<any>;
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "https://xrzweoneiieddzxogewk.supabase.co";
+  const pending: Promise<void>[] = [];
 
   for (const entry of entries) {
     // supabase-js QueryBuilder has no .catch — await + try/catch
@@ -95,56 +119,81 @@ Deno.serve(async (req) => {
       const messageText = dm?.message?.text;
       if (!senderId || !messageText) continue;
 
-      // Idempotency: skip if we've already auto-replied to this sender
-      // in the last 60 minutes (prevents loops + spam from rapid msgs).
-      const { data: recent } = await sb.from("inbox_messages")
+      // 2026-09-27: the old guard here skipped EVERY message from a sender for
+      // 60 minutes after one reply. That is why Jesu's "fitness", "mentorship"
+      // and "what is this link" got silence — they never reached the brain.
+      // A conversation needs every turn answered. Duplicate protection is now
+      // (a) Meta redeliveries: same message mid already logged -> skip, and
+      // (b) a 10s storm guard per sender so a burst gets one reply.
+      const mid: string | null = dm?.message?.mid ?? null;
+      if (mid) {
+        const { count } = await sb.from("instagram_events")
+          .select("id", { count: "exact", head: true })
+          .contains("payload", { messaging: [{ message: { mid } }] });
+        if ((count ?? 0) > 1) continue;
+      }
+      const { data: burst } = await sb.from("inbox_messages")
         .select("id")
         .eq("source", "instagram")
         .eq("external_id", senderId)
         .eq("direction", "outbound")
-        .gte("created_at", new Date(Date.now() - 60 * 60 * 1000).toISOString())
+        .gte("created_at", new Date(Date.now() - 5 * 1000).toISOString())
         .limit(1);
-      if (recent && recent.length) continue;
+      if (burst && burst.length) continue;
 
-      // Forward to manychat-webhook for classification + reply selection.
-      // Reusing that classifier so we have one source of truth for tone.
-      try {
-        const cls = await fetch(`${supabaseUrl}/functions/v1/manychat-webhook`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-manychat-secret": Deno.env.get("MANYCHAT_WEBHOOK_SECRET") ?? "",
-          },
-          body: JSON.stringify({
-            source: "instagram",
-            subscriber_id: senderId,
-            sender_handle: senderId,  // IG webhook doesn't expose @handle directly
-            body: messageText,
-          }),
-        });
-        const clsResult = await cls.json().catch(() => ({}));
-        const reply: string | null = clsResult?.auto_reply ?? null;
+      // Brain + send run AFTER the 200 goes back to Meta (5s deadline): the brain
+      // now reads thread history and may call a model, so it is not awaited here.
+      const pipeline = (async () => {
+        try {
+          // The webhook carries only the IG-scoped id; the profile endpoint turns it
+          // into a name + @handle so replies greet a person and Sam's page names one.
+          const who = await resolveSender(sb, senderId);
+          const cls = await fetch(`${supabaseUrl}/functions/v1/manychat-webhook`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-manychat-secret": Deno.env.get("MANYCHAT_WEBHOOK_SECRET") ?? "",
+            },
+            body: JSON.stringify({
+              source: "instagram",
+              subscriber_id: senderId,
+              sender_handle: who.username ? `@${who.username}` : senderId,
+              sender_name: who.name,
+              body: messageText,
+              message_id: mid,
+            }),
+          });
+          const clsResult = await cls.json().catch(() => ({}));
+          const reply: string | null = clsResult?.auto_reply ?? null;
 
-        // Urgent hot-lead alerting (licensed = call now) is owned by the brain
-        // (manychat-webhook), which fires ntfy + Discord for every transport so
-        // there is a single source of truth and no double-push. Here we only
-        // send the reply the brain selected.
-        if (!reply) continue;
+          // Urgent hot-lead alerting (licensed = call now) is owned by the brain
+          // (manychat-webhook), which fires ntfy + Discord for every transport so
+          // there is a single source of truth and no double-push. Here we only
+          // send the reply the brain selected.
+          if (!reply) return;
 
-        // Fire the actual IG send. Don't await — keep the webhook fast.
-        fetch(`${supabaseUrl}/functions/v1/send-instagram-dm`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""}`,
-          },
-          body: JSON.stringify({ recipient_id: senderId, message: reply }),
-        }).catch((e) => console.error("[instagram-webhook] send failed", e));
-      } catch (e) {
-        console.error("[instagram-webhook] auto-reply pipeline failed", e);
-      }
+          const sent = await fetch(`${supabaseUrl}/functions/v1/send-instagram-dm`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""}`,
+            },
+            body: JSON.stringify({ recipient_id: senderId, message: reply }),
+          });
+          const sentJson = await sent.json().catch(() => ({}));
+          if (!sentJson?.ok) console.error("[instagram-webhook] send failed", JSON.stringify(sentJson).slice(0, 400));
+        } catch (e) {
+          console.error("[instagram-webhook] auto-reply pipeline failed", e);
+        }
+      })();
+      pending.push(pipeline);
     }
   }
+
+  // Keep the isolate alive for the reply work without holding Meta's 5s clock.
+  const all = Promise.allSettled(pending);
+  const rt = (globalThis as { EdgeRuntime?: { waitUntil?: (p: Promise<unknown>) => void } }).EdgeRuntime;
+  if (rt?.waitUntil) rt.waitUntil(all); else await all;
 
   // Meta expects 200 within 5 seconds or it retries.
   return new Response(JSON.stringify({ ok: true }), {

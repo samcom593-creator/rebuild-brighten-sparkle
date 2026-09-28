@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "Instagram DM assistant rebuilt as a conversation, not a one-shot router: any team interest gets 'do you have your life insurance license?' FIRST, a yes pages Sam's phone and tells the prospect Sam is calling, a no gets the licensing path; every follow-up in a business thread is answered (what is this link, how much, when does he call, how long does licensing take, experience, remote, where are you, what is apex, how does it work), a phone number is confirmed and put in Sam's hand, and 'ok / thanks / 🔥' gets nothing. Casual DMs with no business context still stay silent for Sam.",
+    detail:
+      "Root cause of the silence Sam saw: instagram-webhook skipped EVERY message from a sender for 60 minutes after one reply, so Tyler's 'wait what is this', 'can you put me on with fitness' and 'can you mentor me' never reached the brain (proven from instagram_events). Replaced with message-id dedupe (Meta redeliveries) + a 5s burst guard; the brain + send now run after the 200 via EdgeRuntime.waitUntil so Meta's 5s clock is never at risk. manychat-webhook reads the thread from inbox_messages (fetchHistory/threadState: license asked/answered, lane, last link), gates the team lane on the license question, answers follow-ups from a deterministic FAQ keyed by lane, then a model (ANTHROPIC_API_KEY in Supabase is dead — 401 — so the FAQ carries it), then a no-silence fallback. Sender IGSID is resolved to name + @handle via graph.instagram.com so replies greet a person and alerts name one. Urgent alert text now says what they answered and the number they sent. 37/37 conversation matrix + signed e2e with redelivery de-duped. 'Can't reply to old DMs' is Instagram's 24h messaging window (error 10 / 2534022), not a bug.",
+    commit: "mp-ig-assistant",
+  },
+  {
+    ts: "today",
+    label:
       "Instagram auto-DMs now route every lane in one message with one link: mentorship, car rentals, a life-insurance buyer (to the Policy Help Center, not the recruiting form), join-the-team, fitness, licensed producers (straight to the call), and brand partnerships (to the collab form). Vague openers get one routing question instead of a blind apply link, and anyone asking \"is this Sam?\" is told it is his assistant and routed.",
     detail:
       "manychat-webhook classifier: new lanes partnership / assistant_ask / rentals / mentorship / insurance_client / route with first-match ordering (licensed > partnership > assistant > rentals > fitness > mentorship > insurance-client > opportunity > route). Insurance-client gated only on STRONG recruit words so \"how much does a policy cost\" stays a sale while \"how much money can I make\" is a recruit. 13-message live matrix green. Connected account @sell4daddy via Instagram Login; token auto-refresh + DM backlog (31 threads) via launchd completer.",

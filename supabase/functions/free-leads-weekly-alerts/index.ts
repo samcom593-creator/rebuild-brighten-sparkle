@@ -54,7 +54,7 @@ Deno.serve(async (request) => {
       !row.qualifies && Number(row.needed_for_qual) > 0 && Number(row.needed_for_qual) <= 5_000
     );
     const eligible = statuses.filter((row) => row.qualifies);
-    const alertRows = [...eligible, ...near];
+    const alertRows = ([...eligible, ...near]).filter((r: FreeLeadsRow) => r.qualifies || r.needed_for_qual !== null);  // in-training / no-sale agents get no free-leads email
     const agentIds = alertRows.map((row) => row.agent_id);
 
     const { data: agents, error: agentError } = agentIds.length

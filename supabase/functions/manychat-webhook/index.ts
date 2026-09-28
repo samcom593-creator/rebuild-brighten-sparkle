@@ -689,7 +689,7 @@ async function decide(text: string, rawSource: string, firstName: string | undef
   // 0) Emoji / props: 🔥 back (a public 🔥 under a comment, a DM everywhere else).
   const props = base.reply_path ? null : propsReply(text);
   if (props) {
-    if (channel === "comment" || channel === "youtube_comment") return { ...base, intent: "props", reply_path: null, auto_reply: null, public_reply: props };
+    if (channel === "comment" || channel === "youtube_comment" || channel === "tiktok_comment") return { ...base, intent: "props", reply_path: null, auto_reply: null, public_reply: props };
     return { ...base, intent: "props", reply_path: "props", auto_reply: props };
   }
 
@@ -947,13 +947,13 @@ Deno.serve(async (req) => {
     decision.auto_reply = `${seen} ${decision.auto_reply}`;
   }
   // Intent under a comment: the DM goes out privately and the comment gets a public pointer.
-  if ((channel === "comment" || channel === "youtube_comment") && decision.intent === "socials" && decision.auto_reply) { decision.public_reply = decision.auto_reply; decision.auto_reply = null; }
+  if ((channel === "comment" || channel === "youtube_comment" || channel === "tiktok_comment") && decision.intent === "socials" && decision.auto_reply) { decision.public_reply = decision.auto_reply; decision.auto_reply = null; }
   if (channel === "comment" && decision.auto_reply && !decision.public_reply) decision.public_reply = "check your dms 📩";
   if (channel === "comment" && !decision.public_reply && decision.intent !== "spam") { decision.public_reply = "🔥"; decision.auto_reply = null; }
   if (channel === "story" && !decision.auto_reply && decision.intent !== "spam") { decision.auto_reply = "🔥"; decision.reply_path = "props"; }
   // YouTube has no DM API: anything with intent gets a public pointer to the one
   // place the conversation can continue; props get the 🔥; nothing else is posted.
-  if (channel === "youtube_comment") {
+  if (channel === "youtube_comment" || channel === "tiktok_comment") {
     // Public replies are visible to everyone, so the pointer only goes to a real
     // ask: team/mentorship intent, or a lane keyword WITH an ask in it. A joke
     // that happens to say "renting" gets nothing ("either renting or leasing that
@@ -961,7 +961,7 @@ Deno.serve(async (req) => {
     const ask = /\?|\b(how|put me on|link|info|dm|apex|join|team|mentor\w*|coach\w*|sign me up|i want|i need|tryna|let me|plug|tap in|price|cost|how much)\b/i.test(text);
     const hater = /\b(stupid|idiot|dumb|dumbass|clown|loser|broke|fake|cap\b|scam|fraud|lame|trash|bum|corny|nobody cares|shut up|weird|cringe)\b/i.test(text);
     const strongIntent = !hater && ["opportunity", "licensed", "licensed_team", "mentorship", "partnership"].includes(decision.intent);
-    if (decision.auto_reply && !decision.public_reply && (strongIntent || (ask && !hater))) decision.public_reply = "dm me 'apex' on ig @sell4daddy and i'll get you going 📩";
+    if (decision.auto_reply && !decision.public_reply && (strongIntent || (ask && !hater))) decision.public_reply = channel === "tiktok_comment" ? "dm me 'apex' and i'll get you going 📩" : "dm me 'apex' on ig @sell4daddy and i'll get you going 📩";
     // Sam 2026-09-28: "YouTube is just about engagement. If it's a comment you
     // don't know what to say to, give it a fire emoji." Nothing goes unanswered.
     if (!decision.public_reply && decision.intent !== "spam") decision.public_reply = "🔥";

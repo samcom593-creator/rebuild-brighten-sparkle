@@ -643,7 +643,7 @@ function faqReply(text: string, st: ReturnType<typeof threadState>, rawSource: s
 const SOCIAL_DEFAULTS: Record<string, string> = { instagram: "@sell4daddy", tiktok: "@sellfordaddy", youtube: "https://youtube.com/@sell4daddy", website: "https://sell4daddy.com", email: "info@kingofsales.net" };
 async function socialsReply(text: string): Promise<string | null> {
   const t = text.toLowerCase();
-  const asks = /\b(your|ur|u|you|got a|have a|whats|what's|what is|add|follow|send me)\b/.test(t) || /\?/.test(t);
+  const asks = /\b(your|ur|u|you|got a|have a|whats|what's|what is|add|follow|send me)\b/.test(t) || /\?/.test(t) || /^\s*(snap(chat)?|tik\s?tok|youtube|yt|insta(gram)?|ig|email|website)\W*$/.test(t);
   if (!asks) return null;
   const which =
     /\bsnap(chat)?\b/.test(t) ? "snapchat" :

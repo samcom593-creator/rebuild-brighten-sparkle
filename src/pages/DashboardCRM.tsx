@@ -1,6 +1,7 @@
 import { JustHiredPanel } from "@/components/dashboard/JustHiredPanel";
 import { OnboardingRollCall } from "@/components/dashboard/OnboardingRollCall";
 import { UnlinkedAgentsPanel } from "@/components/dashboard/UnlinkedAgentsPanel";
+import { ContractingCheckinPanel } from "@/components/dashboard/ContractingCheckinPanel";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { AgentAvatar, getAvatarUrl } from "@/components/ui/AgentAvatar";
 import { useSearchParams, Link } from "react-router-dom";
@@ -2072,6 +2073,21 @@ export default function DashboardCRM() {
             </>
           }
         />
+
+        {/* 2026-09-30: contracting check-in. Sam audits every agent on a call:
+            contracts sent -> confirmed -> ready for training, or already producing.
+            Open by default because it is the working list during a check-in. */}
+        {(isAdmin || isManager || isVaManager || isVa) && (
+          <details open className="group rounded-lg border border-border bg-card [&[open]_.chev]:rotate-180">
+            <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground hover:text-foreground">
+              Contracting check-in · contracts sent, confirmed, ready for training
+              <ChevronDown className="chev ml-auto h-4 w-4 transition-transform" />
+            </summary>
+            <div className="border-t border-border p-4">
+              <ContractingCheckinPanel />
+            </div>
+          </details>
+        )}
 
         {/* 2026-09-26: login truth + onboarding-email truth per agent, admin-only (RPC returns 0 rows otherwise). */}
         {/* 2026-09-28 (Sam: "less clutter, head to toe"): everything below the header

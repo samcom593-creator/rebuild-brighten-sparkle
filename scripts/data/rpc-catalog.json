@@ -1422,6 +1422,14 @@
         "raw": ""
       }
     ],
+    "contracting_checkin_list": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "contracting_worklist_ack": [
       {
         "all": [
@@ -2656,6 +2664,14 @@
         "raw": ""
       }
     ],
+    "fn_contracting_checkin_scope": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "fn_culture_loop_on_deal": [
       {
         "all": [],
@@ -3718,6 +3734,14 @@
       }
     ],
     "fn_telegram_queue_inactivity_nudges": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_text_json_quoted_adjudicate": [
       {
         "all": [],
         "required": [],
@@ -5895,6 +5919,22 @@
         ],
         "unnamed": false,
         "raw": "p_application_id uuid, p_stage text, p_note text DEFAULT NULL::text"
+      }
+    ],
+    "set_contracting_checkin": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_done",
+          "p_note",
+          "p_step"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_step"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_step text, p_done boolean DEFAULT true, p_note text DEFAULT NULL::text"
       }
     ],
     "set_hire_license_status": [

@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-rpc-column-vocabulary.sh (bot_sql -> pg_proc + pg_rewrite)",
- "_generated_at": "2026-09-27T21:09:18Z",
+ "_generated_at": "2026-09-30T18:17:49Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "check-enum-filter-literals.mjs grades literals inside supabase.from().eq() chains. This is the other half of the same class: a status word that arrives from an RPC and is compared in JavaScript, where the return type is text and every wrong word type-checks. Per (function, returned column) this records the relation columns of that name reachable from the function body and the literals the function synthesises itself. It deliberately records CANDIDATES rather than one resolved source: provenance from a body regex is a guess, so check-rpc-status-literals.mjs refuses a literal only when NO candidate vocabulary and no body literal accepts it.",
  "_vocabulary_source": "scripts/data/enum-catalog.json (check_vocab + column_enum + enums). Not copied here on purpose, so the two guards read one snapshot and cannot drift.",
@@ -272,6 +272,8 @@
   "fn_normalize_policy_number": "text",
   "fn_notify_agent_hired": "trigger",
   "fn_npn_plausible": "boolean",
+  "fn_ntfy_relay": "bigint",
+  "fn_ntfy_relay_result": "text",
   "fn_onboarding_email_backfill_sweep": "jsonb",
   "fn_policy_number_report_placeholder": "boolean",
   "fn_post_deal_celebration": "bigint",
@@ -460,6 +462,7 @@
   "set_agent_training_stage": "jsonb",
   "set_apex_journey_step": "jsonb",
   "set_applicant_stage": "jsonb",
+  "set_contracting_checkin": "jsonb",
   "set_hire_license_status": "jsonb",
   "set_limit": "real",
   "set_my_insuracloud_token": "void",
@@ -2313,6 +2316,268 @@
     "public"
    ]
   },
+  "contracting_checkin_list.agent_id": {
+   "candidates": [
+    "agent_contracting_checkins.agent_id",
+    "agentlink_book.agent_id",
+    "contracting_intakes.agent_id",
+    "deals.agent_id",
+    "production_external_deals.agent_id",
+    "v_agent_canonical_map.agent_id",
+    "v_agentlink_book_scoped.agent_id",
+    "v_production_canonical.agent_id"
+   ],
+   "body_literals": [
+    "active",
+    "contracts_confirmed",
+    "contracts_sent",
+    "needs_contracts",
+    "producing",
+    "public",
+    "ready_for_training"
+   ]
+  },
+  "contracting_checkin_list.contracts_confirmed_at": {
+   "candidates": [
+    "agent_contracting_checkins.contracts_confirmed_at"
+   ],
+   "body_literals": [
+    "active",
+    "contracts_confirmed",
+    "contracts_sent",
+    "needs_contracts",
+    "producing",
+    "public",
+    "ready_for_training"
+   ]
+  },
+  "contracting_checkin_list.contracts_sent_at": {
+   "candidates": [
+    "agent_contracting_checkins.contracts_sent_at"
+   ],
+   "body_literals": [
+    "active",
+    "contracts_confirmed",
+    "contracts_sent",
+    "needs_contracts",
+    "producing",
+    "public",
+    "ready_for_training"
+   ]
+  },
+  "contracting_checkin_list.deals_30d": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "contracts_confirmed",
+    "contracts_sent",
+    "needs_contracts",
+    "producing",
+    "public",
+    "ready_for_training"
+   ]
+  },
+  "contracting_checkin_list.display_name": {
+   "candidates": [
+    "agents.display_name"
+   ],
+   "body_literals": [
+    "active",
+    "contracts_confirmed",
+    "contracts_sent",
+    "needs_contracts",
+    "producing",
+    "public",
+    "ready_for_training"
+   ]
+  },
+  "contracting_checkin_list.email": {
+   "candidates": [
+    "contracting_intakes.email",
+    "profiles.email"
+   ],
+   "body_literals": [
+    "active",
+    "contracts_confirmed",
+    "contracts_sent",
+    "needs_contracts",
+    "producing",
+    "public",
+    "ready_for_training"
+   ]
+  },
+  "contracting_checkin_list.hired_on": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "contracts_confirmed",
+    "contracts_sent",
+    "needs_contracts",
+    "producing",
+    "public",
+    "ready_for_training"
+   ]
+  },
+  "contracting_checkin_list.intake_received": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "contracts_confirmed",
+    "contracts_sent",
+    "needs_contracts",
+    "producing",
+    "public",
+    "ready_for_training"
+   ]
+  },
+  "contracting_checkin_list.last_checkin_at": {
+   "candidates": [
+    "agent_contracting_checkins.last_checkin_at"
+   ],
+   "body_literals": [
+    "active",
+    "contracts_confirmed",
+    "contracts_sent",
+    "needs_contracts",
+    "producing",
+    "public",
+    "ready_for_training"
+   ]
+  },
+  "contracting_checkin_list.last_deal_date": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "contracts_confirmed",
+    "contracts_sent",
+    "needs_contracts",
+    "producing",
+    "public",
+    "ready_for_training"
+   ]
+  },
+  "contracting_checkin_list.license_status": {
+   "candidates": [
+    "agents.license_status",
+    "contracting_intakes.license_status"
+   ],
+   "body_literals": [
+    "active",
+    "contracts_confirmed",
+    "contracts_sent",
+    "needs_contracts",
+    "producing",
+    "public",
+    "ready_for_training"
+   ]
+  },
+  "contracting_checkin_list.manager_name": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "contracts_confirmed",
+    "contracts_sent",
+    "needs_contracts",
+    "producing",
+    "public",
+    "ready_for_training"
+   ]
+  },
+  "contracting_checkin_list.note": {
+   "candidates": [
+    "agent_contracting_checkins.note"
+   ],
+   "body_literals": [
+    "active",
+    "contracts_confirmed",
+    "contracts_sent",
+    "needs_contracts",
+    "producing",
+    "public",
+    "ready_for_training"
+   ]
+  },
+  "contracting_checkin_list.npn": {
+   "candidates": [
+    "contracting_intakes.npn"
+   ],
+   "body_literals": [
+    "active",
+    "contracts_confirmed",
+    "contracts_sent",
+    "needs_contracts",
+    "producing",
+    "public",
+    "ready_for_training"
+   ]
+  },
+  "contracting_checkin_list.onboarding_stage": {
+   "candidates": [
+    "agents.onboarding_stage"
+   ],
+   "body_literals": [
+    "active",
+    "contracts_confirmed",
+    "contracts_sent",
+    "needs_contracts",
+    "producing",
+    "public",
+    "ready_for_training"
+   ]
+  },
+  "contracting_checkin_list.phone": {
+   "candidates": [
+    "carriers.phone",
+    "profiles.phone"
+   ],
+   "body_literals": [
+    "active",
+    "contracts_confirmed",
+    "contracts_sent",
+    "needs_contracts",
+    "producing",
+    "public",
+    "ready_for_training"
+   ]
+  },
+  "contracting_checkin_list.producing": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "contracts_confirmed",
+    "contracts_sent",
+    "needs_contracts",
+    "producing",
+    "public",
+    "ready_for_training"
+   ]
+  },
+  "contracting_checkin_list.stage": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "contracts_confirmed",
+    "contracts_sent",
+    "needs_contracts",
+    "producing",
+    "public",
+    "ready_for_training"
+   ]
+  },
+  "contracting_checkin_list.training_ready_at": {
+   "candidates": [
+    "agent_contracting_checkins.training_ready_at"
+   ],
+   "body_literals": [
+    "active",
+    "contracts_confirmed",
+    "contracts_sent",
+    "needs_contracts",
+    "producing",
+    "public",
+    "ready_for_training"
+   ]
+  },
   "count_unscheduled_agents.count": {
    "candidates": [],
    "body_literals": []
@@ -2375,73 +2640,154 @@
     "v_production_canonical.agent_id"
    ],
    "body_literals": [
+    "Live ",
     "active",
+    "applied",
+    "evaluated",
+    "in_field_training",
+    "inactive",
+    "licensed",
+    "live",
+    "pre_licensed",
     "public",
-    "service_role"
+    "service_role",
+    "training_online"
    ]
   },
   "crm_agent_free_leads_status.days_left_in_ramp": {
    "candidates": [],
    "body_literals": [
+    "Live ",
     "active",
+    "applied",
+    "evaluated",
+    "in_field_training",
+    "inactive",
+    "licensed",
+    "live",
+    "pre_licensed",
     "public",
-    "service_role"
+    "service_role",
+    "training_online"
    ]
   },
   "crm_agent_free_leads_status.l30_alp": {
    "candidates": [],
    "body_literals": [
+    "Live ",
     "active",
+    "applied",
+    "evaluated",
+    "in_field_training",
+    "inactive",
+    "licensed",
+    "live",
+    "pre_licensed",
     "public",
-    "service_role"
+    "service_role",
+    "training_online"
    ]
   },
   "crm_agent_free_leads_status.needed_for_qual": {
    "candidates": [],
    "body_literals": [
+    "Live ",
     "active",
+    "applied",
+    "evaluated",
+    "in_field_training",
+    "inactive",
+    "licensed",
+    "live",
+    "pre_licensed",
     "public",
-    "service_role"
+    "service_role",
+    "training_online"
    ]
   },
   "crm_agent_free_leads_status.qualifies": {
    "candidates": [],
    "body_literals": [
+    "Live ",
     "active",
+    "applied",
+    "evaluated",
+    "in_field_training",
+    "inactive",
+    "licensed",
+    "live",
+    "pre_licensed",
     "public",
-    "service_role"
+    "service_role",
+    "training_online"
    ]
   },
   "crm_agent_free_leads_status.qualifying_threshold": {
    "candidates": [],
    "body_literals": [
+    "Live ",
     "active",
+    "applied",
+    "evaluated",
+    "in_field_training",
+    "inactive",
+    "licensed",
+    "live",
+    "pre_licensed",
     "public",
-    "service_role"
+    "service_role",
+    "training_online"
    ]
   },
   "crm_agent_free_leads_status.ramp_days": {
    "candidates": [],
    "body_literals": [
+    "Live ",
     "active",
+    "applied",
+    "evaluated",
+    "in_field_training",
+    "inactive",
+    "licensed",
+    "live",
+    "pre_licensed",
     "public",
-    "service_role"
+    "service_role",
+    "training_online"
    ]
   },
   "crm_agent_free_leads_status.reason": {
    "candidates": [],
    "body_literals": [
+    "Live ",
     "active",
+    "applied",
+    "evaluated",
+    "in_field_training",
+    "inactive",
+    "licensed",
+    "live",
+    "pre_licensed",
     "public",
-    "service_role"
+    "service_role",
+    "training_online"
    ]
   },
   "crm_agent_free_leads_status.tenure_days": {
    "candidates": [],
    "body_literals": [
+    "Live ",
     "active",
+    "applied",
+    "evaluated",
+    "in_field_training",
+    "inactive",
+    "licensed",
+    "live",
+    "pre_licensed",
     "public",
-    "service_role"
+    "service_role",
+    "training_online"
    ]
   },
   "crm_agent_roster.agent_code": {
@@ -4480,6 +4826,15 @@
    "candidates": [],
    "body_literals": []
   },
+  "fn_contracting_checkin_scope.agent_id": {
+   "candidates": [],
+   "body_literals": [
+    "manager",
+    "public",
+    "va",
+    "va_manager"
+   ]
+  },
   "fn_dedupe_phantom_lead_purchases.archived_count": {
    "candidates": [],
    "body_literals": [
@@ -4848,6 +5203,76 @@
     "interview_upcoming_t30",
     "public",
     "scheduled"
+   ]
+  },
+  "fn_text_json_quoted_adjudicate.acquitted": {
+   "candidates": [],
+   "body_literals": [
+    "body",
+    "corruption",
+    "false",
+    "jsonb",
+    "public",
+    "r",
+    "system_settings",
+    "upstream_verbatim",
+    "value"
+   ]
+  },
+  "fn_text_json_quoted_adjudicate.col": {
+   "candidates": [],
+   "body_literals": [
+    "body",
+    "corruption",
+    "false",
+    "jsonb",
+    "public",
+    "r",
+    "system_settings",
+    "upstream_verbatim",
+    "value"
+   ]
+  },
+  "fn_text_json_quoted_adjudicate.hits": {
+   "candidates": [],
+   "body_literals": [
+    "body",
+    "corruption",
+    "false",
+    "jsonb",
+    "public",
+    "r",
+    "system_settings",
+    "upstream_verbatim",
+    "value"
+   ]
+  },
+  "fn_text_json_quoted_adjudicate.rel": {
+   "candidates": [],
+   "body_literals": [
+    "body",
+    "corruption",
+    "false",
+    "jsonb",
+    "public",
+    "r",
+    "system_settings",
+    "upstream_verbatim",
+    "value"
+   ]
+  },
+  "fn_text_json_quoted_adjudicate.verdict": {
+   "candidates": [],
+   "body_literals": [
+    "body",
+    "corruption",
+    "false",
+    "jsonb",
+    "public",
+    "r",
+    "system_settings",
+    "upstream_verbatim",
+    "value"
    ]
   },
   "fn_text_json_quoted_sweep.col": {

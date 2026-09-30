@@ -41,6 +41,7 @@ type Row = {
   next_action_label: string | null;
   manager_name: string | null;
   license_status: string | null;
+  license_progress: string | null;
   npn: string | null;
   manual_stage_key: string | null;
   status: string;
@@ -223,7 +224,9 @@ export default function RecruitPipeline() {
                             <Badge variant="outline" className="text-[10px]">{r.person_type === "agent" ? "Agent" : "Applicant"}</Badge>
                             {r.person_type === "agent" && (
                               <Badge variant="outline" className={cn("text-[10px]", r.license_status === "licensed" ? "text-emerald-300" : "text-amber-300")}>
-                                {r.license_status === "licensed" ? "Licensed" : "Not licensed"}
+                                {r.license_status === "licensed"
+                                  ? "Licensed"
+                                  : `Not licensed${r.license_progress && r.license_progress !== "unlicensed" ? ` · ${r.license_progress.replace(/_/g, " ")}` : ""}`}
                               </Badge>
                             )}
                             {r.manual_stage_key && <Hand className="h-3 w-3 text-muted-foreground" aria-label="Stage set by hand" />}

@@ -144,7 +144,7 @@ begin
   end if;
   if p_agent_id is not null and v_to < v_hired then
     return jsonb_build_object('ok', false, 'reason', 'agent_before_hired',
-      'message', 'They are already hired, so the applicant stages do not apply. Use the license chip for licensing.');
+      'message', 'They are already hired, so the applicant stages do not apply. Their licensing shows on the row.');
   end if;
   if p_agent_id is not null and p_to_stage = 'closed_lost' then
     return jsonb_build_object('ok', false, 'reason', 'use_no_longer_with_us',

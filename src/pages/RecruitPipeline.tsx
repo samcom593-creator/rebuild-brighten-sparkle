@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/ui/page-header";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { contactLinkProps, phoneHref, smsHref } from "@/lib/phone";
+import { contactLinkProps, formatPhoneDisplay, phoneHref, smsHref } from "@/lib/phone";
 
 /**
  * Recruit Stages (2026-09-30). Sam: "fix the licensing tracking so I can see
@@ -58,6 +58,8 @@ export default function RecruitPipeline() {
   const [stalledOnly, setStalledOnly] = useState(false);
   const [showClosed, setShowClosed] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const PAGE = 40;
 
   const stagesQuery = useQuery({
     queryKey: ["next-step-stages"],
@@ -188,28 +190,32 @@ export default function RecruitPipeline() {
           <AlertTriangle className="mr-1.5 h-4 w-4" /> {stalledOnly ? "Stalled only" : "Stalled"}
         </Button>
         <Button size="sm" variant={showClosed ? "secondary" : "ghost"} className="h-9" onClick={() => setShowClosed((v) => !v)}>
-          {showClosed ? "Hiding closed" : "Show closed"}
+          {showClosed ? "Hide closed" : "Show closed"}
         </Button>
         <span className="ml-auto text-xs text-muted-foreground">{visible.length} shown</span>
       </div>
 
       {rowsQuery.isLoading || stagesQuery.isLoading ? (
         <Skeleton className="h-64 w-full" />
-      ) : rowsQuery.isError ? (
-        <p className="text-sm text-rose-400">The recruit list did not load. Nothing is being guessed at in its place; refresh to retry.</p>
+      ) : rowsQuery.isError || stagesQuery.isError ? (
+        <p className="text-sm text-rose-400">
+          {rowsQuery.isError ? "The recruit list" : "The stage ladder"} did not load. Nothing is being guessed at in its place; refresh to retry.
+        </p>
       ) : visible.length === 0 ? (
         <p className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">Nobody matches.</p>
       ) : (
         stages
           .filter((s) => visible.some((r) => r.stage_key === s.stage_key))
           .map((s) => {
-            const list = visible.filter((r) => r.stage_key === s.stage_key).sort((a, b) => b.days_in_stage - a.days_in_stage);
+            const full = visible.filter((r) => r.stage_key === s.stage_key).sort((a, b) => a.days_in_stage - b.days_in_stage);
+            const open = expanded.has(s.stage_key) || !!search || !!stageFilter;
+            const list = open ? full : full.slice(0, PAGE);
             return (
               <section key={s.stage_key} className="space-y-1.5">
                 <div className="flex items-baseline gap-2 pt-2">
                   <h2 className="text-sm font-semibold">{s.order_index}. {s.display_name}</h2>
-                  <span className="text-xs text-muted-foreground">{list.length}</span>
-                  {list[0]?.next_action_label && <span className="text-xs text-muted-foreground">· next: {list[0].next_action_label}</span>}
+                  <span className="text-xs text-muted-foreground">{full.length}</span>
+                  {full[0]?.next_action_label && <span className="text-xs text-muted-foreground">· next: {full[0].next_action_label}</span>}
                 </div>
                 <div className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card">
                   {list.map((r) => {
@@ -243,7 +249,7 @@ export default function RecruitPipeline() {
                         <div className="flex items-center gap-2 text-sm">
                           {tel ? (
                             <>
-                              <span className="font-mono text-xs tabular-nums">{r.phone}</span>
+                              <span className="font-mono text-xs tabular-nums">{formatPhoneDisplay(r.phone)}</span>
                               <Button asChild size="sm" variant="outline" className="h-7 px-2"><a {...contactLinkProps(tel)}><Phone className="h-3.5 w-3.5" /></a></Button>
                               <Button asChild size="sm" variant="outline" className="h-7 px-2"><a {...contactLinkProps(smsHref(r.phone))}><MessageSquare className="h-3.5 w-3.5" /></a></Button>
                             </>
@@ -252,7 +258,7 @@ export default function RecruitPipeline() {
                           )}
                         </div>
                         <Select value={r.stage_key} onValueChange={(v) => setStage(r, v)} disabled={isBusy}>
-                          <SelectTrigger className="h-8 w-[220px] text-xs" aria-label={`Stage for ${r.display_name}`}>
+                          <SelectTrigger className="h-8 w-full text-xs sm:w-[220px]" aria-label={`Stage for ${r.display_name}`}>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -269,6 +275,15 @@ export default function RecruitPipeline() {
                       </div>
                     );
                   })}
+                  {full.length > list.length && (
+                    <button
+                      type="button"
+                      className="w-full px-3 py-2 text-center text-xs text-primary hover:underline"
+                      onClick={() => setExpanded((prev) => new Set(prev).add(s.stage_key))}
+                    >
+                      Show all {full.length} in {s.display_name}
+                    </button>
+                  )}
                 </div>
               </section>
             );

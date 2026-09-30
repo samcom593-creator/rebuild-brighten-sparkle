@@ -12,9 +12,9 @@
 //
 // Gate: x-cron-secret == INBOUND_HEALTH_SECRET (pg_cron passes it from Vault).
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { raiseApexAlert } from "../_shared/alert-raise.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "https://xrzweoneiieddzxogewk.supabase.co";
-const NTFY_TOPIC = "https://ntfy.sh/sams-agent-yrkv9kbqp9e987nb";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -51,19 +51,33 @@ serve(async (req: Request): Promise<Response> => {
     detail = e instanceof Error ? e.message : String(e);
   }
 
+  // MP-414: this used to be a bare `await fetch(NTFY_TOPIC, ...)` in a try/catch.
+  // fetch() rejects only on a TRANSPORT failure, so ntfy's HTTP 429 resolved, the
+  // catch never fired, and the one alert this watchdog ever sends vanished with
+  // nothing logged. That was not hypothetical: ntfy refuses Supabase egress on a
+  // per-visitor-IP daily quota (code 42908), measured on both the edge and pg_net
+  // legs at 2026-09-30T23:43Z while the laptop got 200 to the same topic.
+  //
+  // Raising through apex-alert-dispatch instead of pushing one channel: it owns
+  // the ladder (email + SMS + Discord + ntfy), grades every leg, and its email
+  // leg is proven to escape Supabase while ntfy refuses. The receipt rides out in
+  // the response body, which pg_cron stores in net._http_response — so whether
+  // Sam was actually paged is auditable after the fact instead of assumed.
+  let page_receipt: string | null = null;
   if (!healthy) {
-    // Page Sam. The responder — the thing that answers his DMs and funnels
-    // leads — is down. This is the one alert this watchdog ever sends.
-    try {
-      await fetch(NTFY_TOPIC, {
-        method: "POST",
-        headers: { "Title": "APEX DM responder is DOWN", "Priority": "5", "Tags": "warning" },
-        body: `The inbound DM routing brain failed its health check: ${detail}. New DMs may not be getting answered or routed.`,
-      });
-    } catch (_e) { /* if ntfy itself is unreachable, the return still reports unhealthy */ }
+    const raised = await raiseApexAlert({
+      source: "cron-inbound-brain-health",
+      eventType: "inbound_brain_down",
+      severity: "critical",
+      subject: "APEX DM responder is DOWN",
+      body: `The inbound DM routing brain failed its health check: ${detail}. New DMs may not be getting answered or routed.`,
+      smsBody: `APEX DM responder DOWN: ${detail}`.slice(0, 90),
+    });
+    page_receipt = raised.receipt;
+    if (!raised.ok) console.error("[cron-inbound-brain-health] page NOT delivered:", raised.receipt);
   }
 
-  return new Response(JSON.stringify({ ok: true, healthy, detail, ts: new Date().toISOString() }), {
+  return new Response(JSON.stringify({ ok: true, healthy, detail, page_receipt, ts: new Date().toISOString() }), {
     status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 });

@@ -42,6 +42,8 @@ const RENTALS_URL    = "https://kingofsales-brand.vercel.app/rentals";
 const PARTNER_URL    = "https://kingofsales-brand.vercel.app/#f-collab";
 // Someone who wants a POLICY (a client, not a recruit) — the help-center intake
 // is the no-lost-leads pipeline Sam works personally.
+import { describeNtfyRefusal } from "../_shared/ntfy-post.ts";
+
 const NTFY_TOPIC = "https://ntfy.sh/sams-agent-yrkv9kbqp9e987nb";
 // Push to Sam's phone and return ntfy's message id, or null if it never landed.
 // A fetch that resolves is not a delivery: a 4xx/5xx resolves too. One retry.
@@ -50,12 +52,26 @@ async function pushNtfy(title: string, body: string, priority: string, tags: str
     try {
       const r = await fetch(NTFY_TOPIC, { method: "POST", headers: { "Title": title.replace(/[^\x20-\x7e]/g, ""), "Priority": priority, "Tags": tags }, body });
       if (r.ok) { const j = await r.json().catch(() => ({})); return String(j?.id ?? "ok"); }
-      console.error("[manychat-webhook] ntfy refused", r.status);
+      // MP-414: read the body, do not just the status. `http:429` names nothing and
+      // cost apex-doctor Check #21 twenty-six days of diagnosis; ntfy's body says
+      // {"code":42908,...} and 42908 is a per-visitor-IP quota no cadence fixes.
+      const refusal = describeNtfyRefusal(r.status, await r.text().catch(() => ""));
+      console.error("[manychat-webhook] ntfy refused", refusal.receipt);
     } catch (e) { console.error("[manychat-webhook] ntfy push failed", e); }
     if (i === 0) await new Promise((res) => setTimeout(res, 1500));
   }
-  // ntfy 429s edge egress (shared IPs). The database egresses from an IP ntfy accepts:
-  // queue via pg_net, then read ntfy's actual reply (a queued request is not a delivery).
+  // ntfy 429s edge egress on a per-visitor-IP daily quota (code 42908). Queue via
+  // pg_net and read ntfy's ACTUAL reply, because a queued request is not a delivery.
+  //
+  // MP-414 CORRECTION: this comment used to assert "the database egresses from an IP
+  // ntfy accepts". That was measured on 2026-09-30T23:45Z and is FALSE — the relay
+  // came back state=refused status=429 code=42908, with 0 matching messages in ntfy's
+  // own log, in the same minute a laptop push to the same topic returned 200. BOTH
+  // Supabase legs share the refused egress. The relay is therefore worth attempting
+  // (the quota rolls over daily and it costs one round-trip) but it is NOT a reliable
+  // fallback, and the emailSam() call below is what actually carries the lead when
+  // ntfy is refusing. Anything needing a dependable second channel should raise
+  // through apex-alert-dispatch (see _shared/alert-raise.ts), not lean on this.
   try {
     const db = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", { auth: { persistSession: false } });
     const { data: reqId, error } = await db.rpc("fn_ntfy_relay", { p_title: title.replace(/[^\x20-\x7e]/g, ""), p_body: body, p_priority: priority, p_tags: tags });

@@ -12,8 +12,8 @@
 // Auth: Authorization: Bearer <APEX_BOT_TOKEN> (the vault's apex_bot_token).
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { raiseApexAlert } from "../_shared/alert-raise.ts";
 
-const NTFY_TOPIC = "https://ntfy.sh/sams-agent-yrkv9kbqp9e987nb";
 const REFRESH_WHEN_DAYS_LEFT = 20;
 
 function json(body: unknown, status = 200) {
@@ -46,13 +46,27 @@ Deno.serve(async (req) => {
   if (!r.ok || !j?.access_token) {
     const msg = j?.error?.message ?? `HTTP ${r.status}`;
     console.error("[instagram-token-keepalive] refresh failed", msg);
+    // MP-414: this was a bare ntfy fetch in a try/catch. An HTTP 429 is a resolved
+    // Response, so the catch never fired and the warning that the DM assistant is
+    // about to die was lost in silence. ntfy refuses Supabase egress on a
+    // per-visitor-IP daily quota (42908) - measured live on both the edge and
+    // pg_net legs - so that was the likely outcome, not the edge case. Raised
+    // through apex-alert-dispatch now: it ladders email + SMS + Discord + ntfy and
+    // grades each leg, and its email leg is proven to escape while ntfy refuses.
+    let page_receipt: string | null = null;
     if (daysLeft < 10) {
-      try {
-        await fetch(NTFY_TOPIC, { method: "POST", headers: { "Title": "Instagram token refresh FAILED", "Priority": "5", "Tags": "rotating_light" },
-          body: `IG DM assistant token dies in ${daysLeft.toFixed(1)} days and the refresh failed: ${msg}. Re-connect: ~/.config/apex-creds/ig-connect-link.txt` });
-      } catch (e) { console.error("[instagram-token-keepalive] ntfy failed", e); }
+      const raised = await raiseApexAlert({
+        source: "instagram-token-keepalive",
+        eventType: "instagram_token_expiring",
+        severity: "critical",
+        subject: "Instagram token refresh FAILED",
+        body: `IG DM assistant token dies in ${daysLeft.toFixed(1)} days and the refresh failed: ${msg}. Re-connect: ~/.config/apex-creds/ig-connect-link.txt`,
+        smsBody: `IG token dies in ${daysLeft.toFixed(1)}d, refresh failed`.slice(0, 90),
+      });
+      page_receipt = raised.receipt;
+      if (!raised.ok) console.error("[instagram-token-keepalive] page NOT delivered:", raised.receipt);
     }
-    return json({ ok: false, action: "refresh_failed", days_left: Number(daysLeft.toFixed(1)), error: msg }, 200);
+    return json({ ok: false, action: "refresh_failed", days_left: Number(daysLeft.toFixed(1)), error: msg, page_receipt }, 200);
   }
 
   const expiresAt = new Date(Date.now() + Number(j.expires_in ?? 5184000) * 1000).toISOString();

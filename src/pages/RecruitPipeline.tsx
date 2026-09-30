@@ -55,7 +55,7 @@ type Row = {
   manual_stage_key: string | null;
   status: string;
 };
-type Stage = { stage_key: string; order_index: number; display_name: string; is_terminal: boolean | null };
+type Stage = { stage_key: string; order_index: number; display_name: string; is_terminal: boolean | null; retired_at: string | null };
 type IdleFilter = "all" | "7" | "21" | "60";
 
 const HIRED_INDEX = 12;
@@ -90,7 +90,7 @@ export default function RecruitPipeline() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("next_step_stages" as never)
-        .select("stage_key, order_index, display_name, is_terminal")
+        .select("stage_key, order_index, display_name, is_terminal, retired_at")
         .order("order_index");
       if (error) throw error;
       return (data ?? []) as unknown as Stage[];
@@ -107,7 +107,9 @@ export default function RecruitPipeline() {
     },
   });
 
-  const stages = useMemo(() => stagesQuery.data ?? [], [stagesQuery.data]);
+  // Retired stages (the seminar pair) stay in the table for history but are
+  // never shown, offered, or derived.
+  const stages = useMemo(() => (stagesQuery.data ?? []).filter((s) => !s.retired_at), [stagesQuery.data]);
   const all = useMemo(() => rowsQuery.data ?? [], [rowsQuery.data]);
   const stageName = useCallback((key: string) => stages.find((s) => s.stage_key === key)?.display_name ?? key, [stages]);
 
@@ -267,14 +269,14 @@ export default function RecruitPipeline() {
         <button type="button" onClick={() => setStageFilter(null)} className={chip(!stageFilter)}>
           All <span className="tabular-nums opacity-70">{active.length}</span>
         </button>
-        {stages.filter((s) => s.stage_key !== "closed_lost").map((s) => {
+        {stages.filter((s) => s.stage_key !== "closed_lost" && (counts.get(s.stage_key)?.n ?? 0) > 0).map((s) => {
           const c = counts.get(s.stage_key);
           return (
             <button
               key={s.stage_key}
               type="button"
               onClick={() => setStageFilter(stageFilter === s.stage_key ? null : s.stage_key)}
-              className={cn(chip(stageFilter === s.stage_key), !c && "opacity-50")}
+              className={chip(stageFilter === s.stage_key)}
               title={c?.idle21 ? `${c.idle21} idle 21d+` : undefined}
             >
               {s.order_index}. {s.display_name} <span className="tabular-nums opacity-70">{c?.n ?? 0}</span>

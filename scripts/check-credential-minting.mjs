@@ -138,7 +138,81 @@ const GATES = {
     /\bis_admin\b/g,
     /\bhas_role\s*\(/g,
   ],
+  // MP-413: the repo's THIRD gating convention, and the one that produced this
+  // guard's first false CRITICAL. cron-newhire-portal-login mints a
+  // magic_login_tokens row and mails it, and reads its caller's credential as
+  // the very first statement of the handler — `x-cron-secret` compared against
+  // NEWHIRE_CRON_SECRET, 401 on mismatch, probed live and confirmed 401 on a
+  // bare unauthenticated POST. Every CRED pattern above matches either a helper
+  // CALL or the literal word Authorization, so a shared secret in a custom
+  // header was invisible and the guard reported an unauthenticated outbound
+  // trigger on Sam's sending domain. cron-inbound-brain-health gates the
+  // identical way. MP-452 widened this same table once for
+  // createHandler({requireAuth:true}) and wrote the lesson in a comment on line
+  // 124 — then swept only the convention it had already found.
+  //
+  // WHAT IS DELIBERATELY NOT ACCEPTED, and why the entry is a function rather
+  // than another regex: a BARE header read is not a gate. MP-357 proved a
+  // security floor can be turned green by allowlisting a bystander, and the
+  // cheap version of this fix — adding /headers.get\(["\x27`]x-cron-secret/ to
+  // CRED — would hand a pass to any function that merely LOOKS at the header
+  // and then mints anyway. That is letting a real hole through to clear a false
+  // red, the exact trade MP-357 exists to refuse. Three things must all hold,
+  // and the offset returned is the COMPARISON, never the read:
+  //   1. an identifier bound from req.headers.get(...)
+  //   2. an identifier bound from Deno.env.get(...)
+  //   3. an equality comparison between them, followed within 240 chars by a
+  //      refusal (401/403/throw) — so a comparison whose result is discarded
+  //      does not acquit.
+  //
+  // KNOWN LIMIT, STATED RATHER THAN CLAIMED AWAY: this cannot prove the refusal
+  // is reached on every path, only that it is written and sits above the mint.
+  // Every other gate in this table shares that limit (a requireAuth() whose
+  // promise is never awaited reads as present too). It is a stronger operand
+  // than the ones already here, not a proof of correctness.
+  SHARED_SECRET: sharedSecretGateAt,
 };
+
+// Identifiers assigned from `expr` matching `probe`, anywhere in the file.
+// Bounded at 300 chars so a runaway match cannot swallow the rest of the source.
+function boundIdents(code, probe) {
+  const out = new Set();
+  for (const m of code.matchAll(/(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::\s*[^=;]+)?=\s*([\s\S]{0,300}?);/g)) {
+    if (probe.test(m[2])) out.add(m[1]);
+  }
+  return out;
+}
+
+function sharedSecretGateAt(code) {
+  const headerIds = boundIdents(code, /\bheaders\s*\.\s*get\s*\(/);
+  const envIds = boundIdents(code, /Deno\s*\.\s*env\s*\.\s*get\s*\(/);
+  if (headerIds.size === 0 || envIds.size === 0) return Infinity;
+
+  let best = Infinity;
+  for (const m of code.matchAll(/([A-Za-z_$][\w$]*)\s*(?:!==|===|!=|==)\s*([\s\S]{0,120}?)(?:[)&|;\n])/g)) {
+    const lhs = m[1];
+    const rhs = m[2];
+    if (!headerIds.has(lhs)) continue;
+    // The secret may be the bare identifier or interpolated into a template
+    // (`Bearer ${APEX_BOT_TOKEN}`), so the right-hand side is searched for any
+    // env-bound name rather than required to equal one.
+    let namesSecret = false;
+    for (const e of envIds) { if (new RegExp("\\b" + e + "\\b").test(rhs)) { namesSecret = true; break; } }
+    if (!namesSecret) continue;
+    // A comparison nobody acts on is not a gate.
+    const after = code.slice(m.index, m.index + 240);
+    if (!/status\s*:\s*40[13]|\bthrow\b/.test(after)) continue;
+    if (m.index < best) best = m.index;
+  }
+  return best;
+}
+
+// A gate spec is either a list of patterns or a function that resolves the
+// offset itself. Both call sites go through this so a future non-regex gate
+// cannot be silently skipped by one of them.
+function gateOffset(spec, src) {
+  return typeof spec === "function" ? spec(src) : firstOffset(spec, src);
+}
 
 // Earliest source offset at which any pattern in the list matches, or Infinity.
 function firstOffset(pats, src) {
@@ -328,8 +402,8 @@ for (const dir of readdirSync(ROOT).sort()) {
     const mailAt = firstOffset(MAILS, code);
     if (mailAt !== Infinity) {
       const held = [];
-      for (const [name, pats] of Object.entries(GATES)) {
-        if (firstOffset(pats, code) < mintAt) held.push(name);
+      for (const [name, spec] of Object.entries(GATES)) {
+        if (gateOffset(spec, code) < mintAt) held.push(name);
       }
       if (held.length === 0) {
         if (MAIL_UNADJUDICATED.has(dir)) mailNamed.push(dir);
@@ -341,8 +415,8 @@ for (const dir of readdirSync(ROOT).sort()) {
   }
 
   const gatesHeld = [];
-  for (const [name, pats] of Object.entries(GATES)) {
-    const gateAt = firstOffset(pats, code);
+  for (const [name, spec] of Object.entries(GATES)) {
+    const gateAt = gateOffset(spec, code);
     // Ordering is the contract: a gate below the mint guards nothing.
     if (gateAt < mintAt) gatesHeld.push(name);
   }

@@ -124,6 +124,7 @@ const CallLabReport = lazy(() => import("./pages/CallLabReport"));
 const DashboardAgedLeads = lazy(() => import("./pages/DashboardAgedLeads"));
 const DashboardCommandCenter = lazy(() => import("./pages/DashboardCommandCenter"));
 const ManagerNextStepBoard = lazy(() => import("./pages/ManagerNextStepBoard"));
+const RecruitPipeline = lazy(() => import("./pages/RecruitPipeline"));
 const AdminStuckPool = lazy(() => import("./pages/AdminStuckPool"));
 const AdminFunnelHealth = lazy(() => import("./pages/AdminFunnelHealth"));
 const AdminEmailGaps = lazy(() => import("./pages/AdminEmailGaps"));
@@ -602,6 +603,7 @@ const App = () => (
                     <Route path="/dashboard/aged-leads" element={<DashboardAgedLeads />} />
                     <Route path="/dashboard/command" element={<LegacyWorkspaceRedirect to="/dashboard/admin" />} />
                     <Route path="/dashboard/team/next-step" element={<ProtectedRoute requireAdmin allowManagers><ManagerNextStepBoard /></ProtectedRoute>} />
+                    <Route path="/dashboard/recruits" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><RecruitPipeline /></ProtectedRoute>} />
                     <Route path="/admin/next-step/stuck" element={<ProtectedRoute requireAdmin><AdminStuckPool /></ProtectedRoute>} />
                     <Route path="/admin/next-step/funnel-health" element={<ProtectedRoute requireAdmin><AdminFunnelHealth /></ProtectedRoute>} />
                     {/* 2026-06-17 Sam: surface every licensed agent missing course email + bulk send */}

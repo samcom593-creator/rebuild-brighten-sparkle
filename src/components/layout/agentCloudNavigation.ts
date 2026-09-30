@@ -27,8 +27,7 @@ import {
   UserPlus,
   Users,
   WalletCards,
-  Mic,
-} from "lucide-react";
+  Mic, Milestone } from "lucide-react";
 
 import type { AccountMode } from "@/hooks/useAuth";
 
@@ -145,6 +144,7 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
     kicker: "BUILD THE TEAM",
     modes: RECRUITING,
     items: [
+      { label: "Recruit Stages", href: "/dashboard/recruits", icon: Milestone },
       { label: "Recruit Pipeline", href: "/dashboard/recruiting", icon: FolderKanban },
       { label: "Interviews", href: "/dashboard/recruiting/interviews", icon: CalendarDays },
       { label: "Invite an agent", href: "/admin/invite-links", icon: UserPlus },

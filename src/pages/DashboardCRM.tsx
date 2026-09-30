@@ -6,7 +6,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { AgentAvatar, getAvatarUrl } from "@/components/ui/AgentAvatar";
 import { useSearchParams, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Users, Search, RefreshCw, Clock, AlertTriangle, ChevronRight, Mail, Phone, UserX, Filter, GraduationCap, Briefcase, Sparkles, Instagram, X, Send, CheckSquare, EyeOff, Link2, Eye, FileText, KeyRound, Copy, StickyNote, ClipboardCheck, Circle, CircleCheck, MoreHorizontal, TrendingUp, BadgeCheck, ArrowUpRight, Network, UserCheck, Flame, ChevronDown } from "lucide-react";
+import { Users, Search, RefreshCw, Clock, AlertTriangle, ChevronRight, Mail, Phone, UserX, Filter, GraduationCap, Briefcase, Sparkles, Instagram, X, Send, CheckSquare, EyeOff, Link2, Eye, FileText, KeyRound, Copy, StickyNote, ClipboardCheck, Circle, CircleCheck, MoreHorizontal, TrendingUp, BadgeCheck, ArrowUpRight, Network, UserCheck, Flame, ChevronDown, Download } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -1552,6 +1552,27 @@ export default function DashboardCRM() {
   );
 
   // Dry-run count → confirm → send → receipt from the function's own results.
+  // 2026-09-30 (Sam): "a button in CRM to download all agents: first name,
+  // last name, email, NPN." crm_agents_export() = every non-duplicate,
+  // non-placeholder agent at any status, same audience as the roster.
+  const downloadAgentsCsv = async () => {
+    const { data, error } = await supabase.rpc("crm_agents_export" as never);
+    if (error) { toast.error(`Export failed: ${error.message}`); return; }
+    const rows = (data ?? []) as Array<Record<string, string | null>>;
+    if (rows.length === 0) { toast.error("No agents to export."); return; }
+    const cols = ["first_name", "last_name", "email", "npn", "phone", "status", "license_status", "manager_name", "agent_code", "start_date"];
+    const cell = (v: string | null | undefined) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const csv = [cols.join(","), ...rows.map((r) => cols.map((c) => cell(r[c])).join(","))].join("\r\n");
+    const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `apex-agents-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    toast.success(`Downloaded ${rows.length} agents.`);
+  };
+
   const handleBulkSendPortalLogins = () => portalLogins.send();
 
   const onAgentUpdate = (id: string, updates: Partial<AgentCRM>) => {
@@ -2067,6 +2088,9 @@ export default function DashboardCRM() {
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={fetchAgents}>
                     <RefreshCw className="mr-2 h-4 w-4" /> Refresh
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={downloadAgentsCsv}>
+                    <Download className="mr-2 h-4 w-4" /> Download agents CSV
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

@@ -1560,6 +1560,14 @@
         "raw": ""
       }
     ],
+    "crm_agents_export": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "crm_can_read_agent_scope": [
       {
         "all": [
@@ -3215,6 +3223,18 @@
         "raw": ""
       }
     ],
+    "fn_next_step_rank": [
+      {
+        "all": [
+          "p_stage"
+        ],
+        "required": [
+          "p_stage"
+        ],
+        "unnamed": false,
+        "raw": "p_stage text"
+      }
+    ],
     "fn_next_step_recompute_all": [
       {
         "all": [],
@@ -3553,6 +3573,20 @@
         ],
         "unnamed": false,
         "raw": "p_application_id uuid, p_action text, p_new_agent_id uuid DEFAULT NULL::uuid, p_note text DEFAULT NULL::text"
+      }
+    ],
+    "fn_recruit_scope_ok": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_application_id"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_application_id"
+        ],
+        "unnamed": false,
+        "raw": "p_application_id uuid, p_agent_id uuid"
       }
     ],
     "fn_reissue_40d_html": [
@@ -5387,6 +5421,14 @@
         "raw": ""
       }
     ],
+    "recruit_pipeline_list": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "recruiting_income_estimate": [
       {
         "all": [
@@ -6008,6 +6050,23 @@
         ],
         "unnamed": false,
         "raw": "p_token text"
+      }
+    ],
+    "set_recruit_stage": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_application_id",
+          "p_reason",
+          "p_to_stage"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_application_id",
+          "p_to_stage"
+        ],
+        "unnamed": false,
+        "raw": "p_application_id uuid, p_agent_id uuid, p_to_stage text, p_reason text DEFAULT NULL::text"
       }
     ],
     "set_recruiter_bounty_status": [

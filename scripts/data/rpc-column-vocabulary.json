@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-rpc-column-vocabulary.sh (bot_sql -> pg_proc + pg_rewrite)",
- "_generated_at": "2026-09-30T19:09:22Z",
+ "_generated_at": "2026-09-30T19:29:51Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "check-enum-filter-literals.mjs grades literals inside supabase.from().eq() chains. This is the other half of the same class: a status word that arrives from an RPC and is compared in JavaScript, where the return type is text and every wrong word type-checks. Per (function, returned column) this records the relation columns of that name reachable from the function body and the literals the function synthesises itself. It deliberately records CANDIDATES rather than one resolved source: provenance from a body regex is a guess, so check-rpc-status-literals.mjs refuses a literal only when NO candidate vocabulary and no body literal accepts it.",
  "_vocabulary_source": "scripts/data/enum-catalog.json (check_vocab + column_enum + enums). Not copied here on purpose, so the two guards read one snapshot and cannot drift.",
@@ -265,6 +265,7 @@
   "fn_next_step_deal_first_check": "trigger",
   "fn_next_step_manual_advance": "jsonb",
   "fn_next_step_messages_auto_dispatch": "trigger",
+  "fn_next_step_rank": "integer",
   "fn_next_step_recompute_one": "void",
   "fn_normalize_contracting_email": "text",
   "fn_normalize_contracting_npn": "text",
@@ -296,6 +297,7 @@
   "fn_reconcile_licensing_vocabularies": "trigger",
   "fn_record_auth_provision_failure": "void",
   "fn_recover_stale_applicant": "jsonb",
+  "fn_recruit_scope_ok": "boolean",
   "fn_reissue_40d_html": "text",
   "fn_reissue_40d_text": "text",
   "fn_rpc_single_flight": "jsonb",
@@ -469,6 +471,7 @@
   "set_hire_license_status": "jsonb",
   "set_limit": "real",
   "set_my_insuracloud_token": "void",
+  "set_recruit_stage": "jsonb",
   "set_recruiter_bounty_status": "recruiter_bounties",
   "should_post_to_discord": "boolean",
   "show_limit": "real",
@@ -4310,6 +4313,114 @@
     "public"
    ]
   },
+  "crm_agents_export.agent_code": {
+   "candidates": [
+    "agents.agent_code"
+   ],
+   "body_literals": [
+    "inactive",
+    "public",
+    "terminated"
+   ]
+  },
+  "crm_agents_export.email": {
+   "candidates": [
+    "applications.email",
+    "contracting_intakes.email",
+    "profiles.email"
+   ],
+   "body_literals": [
+    "inactive",
+    "public",
+    "terminated"
+   ]
+  },
+  "crm_agents_export.first_name": {
+   "candidates": [
+    "applications.first_name",
+    "contracting_intakes.first_name"
+   ],
+   "body_literals": [
+    "inactive",
+    "public",
+    "terminated"
+   ]
+  },
+  "crm_agents_export.last_name": {
+   "candidates": [
+    "applications.last_name",
+    "contracting_intakes.last_name"
+   ],
+   "body_literals": [
+    "inactive",
+    "public",
+    "terminated"
+   ]
+  },
+  "crm_agents_export.license_status": {
+   "candidates": [
+    "agents.license_status",
+    "applications.license_status",
+    "contracting_intakes.license_status"
+   ],
+   "body_literals": [
+    "inactive",
+    "public",
+    "terminated"
+   ]
+  },
+  "crm_agents_export.manager_name": {
+   "candidates": [],
+   "body_literals": [
+    "inactive",
+    "public",
+    "terminated"
+   ]
+  },
+  "crm_agents_export.npn": {
+   "candidates": [
+    "contracting_intakes.npn"
+   ],
+   "body_literals": [
+    "inactive",
+    "public",
+    "terminated"
+   ]
+  },
+  "crm_agents_export.phone": {
+   "candidates": [
+    "applications.phone",
+    "profiles.phone"
+   ],
+   "body_literals": [
+    "inactive",
+    "public",
+    "terminated"
+   ]
+  },
+  "crm_agents_export.start_date": {
+   "candidates": [
+    "agents.start_date",
+    "applications.start_date"
+   ],
+   "body_literals": [
+    "inactive",
+    "public",
+    "terminated"
+   ]
+  },
+  "crm_agents_export.status": {
+   "candidates": [
+    "agents.status",
+    "applications.status",
+    "contracting_intakes.status"
+   ],
+   "body_literals": [
+    "inactive",
+    "public",
+    "terminated"
+   ]
+  },
   "crm_roster_segments.active": {
    "candidates": [],
    "body_literals": [
@@ -7755,6 +7866,236 @@
    ],
    "body_literals": [
     "public"
+   ]
+  },
+  "recruit_pipeline_list.agent_id": {
+   "candidates": [
+    "next_step_progress.agent_id"
+   ],
+   "body_literals": [
+    "manager",
+    "public",
+    "va",
+    "va_manager"
+   ]
+  },
+  "recruit_pipeline_list.application_id": {
+   "candidates": [
+    "next_step_progress.application_id"
+   ],
+   "body_literals": [
+    "manager",
+    "public",
+    "va",
+    "va_manager"
+   ]
+  },
+  "recruit_pipeline_list.days_in_stage": {
+   "candidates": [],
+   "body_literals": [
+    "manager",
+    "public",
+    "va",
+    "va_manager"
+   ]
+  },
+  "recruit_pipeline_list.display_name": {
+   "candidates": [
+    "agents.display_name",
+    "next_step_stages.display_name"
+   ],
+   "body_literals": [
+    "manager",
+    "public",
+    "va",
+    "va_manager"
+   ]
+  },
+  "recruit_pipeline_list.email": {
+   "candidates": [
+    "applications.email",
+    "profiles.email"
+   ],
+   "body_literals": [
+    "manager",
+    "public",
+    "va",
+    "va_manager"
+   ]
+  },
+  "recruit_pipeline_list.entered_at": {
+   "candidates": [
+    "next_step_progress.entered_at"
+   ],
+   "body_literals": [
+    "manager",
+    "public",
+    "va",
+    "va_manager"
+   ]
+  },
+  "recruit_pipeline_list.is_stalled": {
+   "candidates": [
+    "next_step_progress.is_stalled"
+   ],
+   "body_literals": [
+    "manager",
+    "public",
+    "va",
+    "va_manager"
+   ]
+  },
+  "recruit_pipeline_list.last_contacted_at": {
+   "candidates": [
+    "applications.last_contacted_at"
+   ],
+   "body_literals": [
+    "manager",
+    "public",
+    "va",
+    "va_manager"
+   ]
+  },
+  "recruit_pipeline_list.license_status": {
+   "candidates": [
+    "agents.license_status",
+    "applications.license_status"
+   ],
+   "body_literals": [
+    "manager",
+    "public",
+    "va",
+    "va_manager"
+   ]
+  },
+  "recruit_pipeline_list.manager_name": {
+   "candidates": [],
+   "body_literals": [
+    "manager",
+    "public",
+    "va",
+    "va_manager"
+   ]
+  },
+  "recruit_pipeline_list.manual_stage_key": {
+   "candidates": [
+    "next_step_progress.manual_stage_key"
+   ],
+   "body_literals": [
+    "manager",
+    "public",
+    "va",
+    "va_manager"
+   ]
+  },
+  "recruit_pipeline_list.next_action_label": {
+   "candidates": [
+    "next_step_stages.next_action_label"
+   ],
+   "body_literals": [
+    "manager",
+    "public",
+    "va",
+    "va_manager"
+   ]
+  },
+  "recruit_pipeline_list.npn": {
+   "candidates": [],
+   "body_literals": [
+    "manager",
+    "public",
+    "va",
+    "va_manager"
+   ]
+  },
+  "recruit_pipeline_list.order_index": {
+   "candidates": [
+    "next_step_stages.order_index"
+   ],
+   "body_literals": [
+    "manager",
+    "public",
+    "va",
+    "va_manager"
+   ]
+  },
+  "recruit_pipeline_list.person_type": {
+   "candidates": [
+    "next_step_progress.person_type"
+   ],
+   "body_literals": [
+    "manager",
+    "public",
+    "va",
+    "va_manager"
+   ]
+  },
+  "recruit_pipeline_list.phone": {
+   "candidates": [
+    "applications.phone",
+    "profiles.phone"
+   ],
+   "body_literals": [
+    "manager",
+    "public",
+    "va",
+    "va_manager"
+   ]
+  },
+  "recruit_pipeline_list.sla_due_at": {
+   "candidates": [
+    "next_step_progress.sla_due_at"
+   ],
+   "body_literals": [
+    "manager",
+    "public",
+    "va",
+    "va_manager"
+   ]
+  },
+  "recruit_pipeline_list.stage_key": {
+   "candidates": [
+    "next_step_stages.stage_key"
+   ],
+   "body_literals": [
+    "manager",
+    "public",
+    "va",
+    "va_manager"
+   ]
+  },
+  "recruit_pipeline_list.stage_name": {
+   "candidates": [],
+   "body_literals": [
+    "manager",
+    "public",
+    "va",
+    "va_manager"
+   ]
+  },
+  "recruit_pipeline_list.state": {
+   "candidates": [
+    "applications.state",
+    "profiles.state"
+   ],
+   "body_literals": [
+    "manager",
+    "public",
+    "va",
+    "va_manager"
+   ]
+  },
+  "recruit_pipeline_list.status": {
+   "candidates": [
+    "agents.status",
+    "applications.status",
+    "next_step_progress.status"
+   ],
+   "body_literals": [
+    "manager",
+    "public",
+    "va",
+    "va_manager"
    ]
   },
   "recruiting_pipeline_rollup.count": {

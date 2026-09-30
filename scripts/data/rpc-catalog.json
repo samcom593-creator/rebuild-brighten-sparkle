@@ -6069,6 +6069,21 @@
         "raw": "p_application_id uuid, p_agent_id uuid, p_to_stage text, p_reason text DEFAULT NULL::text"
       }
     ],
+    "set_recruit_stage_bulk": [
+      {
+        "all": [
+          "p_people",
+          "p_reason",
+          "p_to_stage"
+        ],
+        "required": [
+          "p_people",
+          "p_to_stage"
+        ],
+        "unnamed": false,
+        "raw": "p_people jsonb, p_to_stage text, p_reason text DEFAULT NULL::text"
+      }
+    ],
     "set_recruiter_bounty_status": [
       {
         "all": [

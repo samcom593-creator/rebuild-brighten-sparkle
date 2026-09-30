@@ -435,10 +435,10 @@ export function ContractingCheckinPanel() {
                     <>
                       <span className="font-mono text-sm tabular-nums">{prettyPhone(r.phone)}</span>
                       <Button asChild size="sm" className="h-8 gap-1 bg-emerald-600 text-white hover:bg-emerald-500">
-                        <a {...contactLinkProps(tel)}><Phone className="h-3.5 w-3.5" /> Call</a>
+                        <a href={tel} {...contactLinkProps(tel)}><Phone className="h-3.5 w-3.5" /> Call</a>
                       </Button>
                       <Button asChild size="sm" variant="outline" className="h-8 gap-1">
-                        <a {...contactLinkProps(smsHref(r.phone))}><MessageSquare className="h-3.5 w-3.5" /> Text</a>
+                        <a href={smsHref(r.phone) ?? undefined} {...contactLinkProps(smsHref(r.phone))}><MessageSquare className="h-3.5 w-3.5" /> Text</a>
                       </Button>
                     </>
                   ) : (
@@ -535,10 +535,10 @@ function CallCard(props: {
               </button>
               <div className="flex flex-wrap gap-2">
                 <Button asChild size="lg" className="h-12 gap-2 bg-emerald-600 px-6 text-base text-white hover:bg-emerald-500">
-                  <a {...contactLinkProps(tel)}><Phone className="h-5 w-5" /> Call</a>
+                  <a href={tel} {...contactLinkProps(tel)}><Phone className="h-5 w-5" /> Call</a>
                 </Button>
                 <Button asChild size="lg" variant="outline" className="h-12 gap-2 px-6 text-base">
-                  <a {...contactLinkProps(smsHref(r.phone))}><MessageSquare className="h-5 w-5" /> Text</a>
+                  <a href={smsHref(r.phone) ?? undefined} {...contactLinkProps(smsHref(r.phone))}><MessageSquare className="h-5 w-5" /> Text</a>
                 </Button>
               </div>
             </div>

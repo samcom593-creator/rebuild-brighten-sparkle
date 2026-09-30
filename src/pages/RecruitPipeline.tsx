@@ -417,8 +417,8 @@ export default function RecruitPipeline() {
                           {tel ? (
                             <>
                               <span className="font-mono text-xs tabular-nums">{formatPhoneDisplay(r.phone)}</span>
-                              <Button asChild size="sm" variant="outline" className="h-7 px-2"><a {...contactLinkProps(tel)} aria-label={`Call ${r.display_name}`}><Phone className="h-3.5 w-3.5" /></a></Button>
-                              <Button asChild size="sm" variant="outline" className="h-7 px-2"><a {...contactLinkProps(smsHref(r.phone))} aria-label={`Text ${r.display_name}`}><MessageSquare className="h-3.5 w-3.5" /></a></Button>
+                              <Button asChild size="sm" variant="outline" className="h-7 px-2"><a href={tel} {...contactLinkProps(tel)} aria-label={`Call ${r.display_name}`}><Phone className="h-3.5 w-3.5" /></a></Button>
+                              <Button asChild size="sm" variant="outline" className="h-7 px-2"><a href={smsHref(r.phone) ?? undefined} {...contactLinkProps(smsHref(r.phone))} aria-label={`Text ${r.display_name}`}><MessageSquare className="h-3.5 w-3.5" /></a></Button>
                             </>
                           ) : r.email ? (
                             <a href={`mailto:${r.email}`} className="inline-flex items-center gap-1 truncate text-xs text-muted-foreground hover:text-foreground">

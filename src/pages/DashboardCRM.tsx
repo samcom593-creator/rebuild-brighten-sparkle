@@ -2080,7 +2080,7 @@ export default function DashboardCRM() {
         {(isAdmin || isManager || isVaManager || isVa) && (
           <details open className="group rounded-lg border border-border bg-card [&[open]_.chev]:rotate-180">
             <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground hover:text-foreground">
-              Contracting check-in · contracts sent, confirmed, ready for training
+              Contracting call list · call, log it, tick contracts off
               <ChevronDown className="chev ml-auto h-4 w-4 transition-transform" />
             </summary>
             <div className="border-t border-border p-4">

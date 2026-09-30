@@ -2672,6 +2672,14 @@
         "raw": ""
       }
     ],
+    "fn_contracting_is_staff": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "fn_culture_loop_on_deal": [
       {
         "all": [],
@@ -5925,16 +5933,18 @@
       {
         "all": [
           "p_agent_id",
+          "p_checkin_id",
           "p_done",
           "p_note",
           "p_step"
         ],
         "required": [
           "p_agent_id",
+          "p_checkin_id",
           "p_step"
         ],
         "unnamed": false,
-        "raw": "p_agent_id uuid, p_step text, p_done boolean DEFAULT true, p_note text DEFAULT NULL::text"
+        "raw": "p_checkin_id uuid, p_agent_id uuid, p_step text, p_done boolean DEFAULT true, p_note text DEFAULT NULL::text"
       }
     ],
     "set_hire_license_status": [

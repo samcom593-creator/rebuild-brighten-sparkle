@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-rpc-column-vocabulary.sh (bot_sql -> pg_proc + pg_rewrite)",
- "_generated_at": "2026-09-30T18:17:49Z",
+ "_generated_at": "2026-09-30T18:35:42Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "check-enum-filter-literals.mjs grades literals inside supabase.from().eq() chains. This is the other half of the same class: a status word that arrives from an RPC and is compared in JavaScript, where the return type is text and every wrong word type-checks. Per (function, returned column) this records the relation columns of that name reachable from the function body and the literals the function synthesises itself. It deliberately records CANDIDATES rather than one resolved source: provenance from a body regex is a guess, so check-rpc-status-literals.mjs refuses a literal only when NO candidate vocabulary and no body literal accepts it.",
  "_vocabulary_source": "scripts/data/enum-catalog.json (check_vocab + column_enum + enums). Not copied here on purpose, so the two guards read one snapshot and cannot drift.",
@@ -213,6 +213,7 @@
   "fn_client_pipeline_update": "jsonb",
   "fn_close_communication_gaps": "jsonb",
   "fn_contact_log_stamp_application": "trigger",
+  "fn_contracting_is_staff": "boolean",
   "fn_culture_loop_on_deal": "trigger",
   "fn_deal_capture_writing_npn": "trigger",
   "fn_default_agent_manager_to_sam": "trigger",
@@ -2318,8 +2319,8 @@
   },
   "contracting_checkin_list.agent_id": {
    "candidates": [
-    "agent_contracting_checkins.agent_id",
     "agentlink_book.agent_id",
+    "contracting_checkins.agent_id",
     "contracting_intakes.agent_id",
     "deals.agent_id",
     "production_external_deals.agent_id",
@@ -2329,172 +2330,368 @@
    ],
    "body_literals": [
     "active",
+    "agent",
+    "applicant",
     "contracts_confirmed",
     "contracts_sent",
+    "inactive",
+    "name only",
     "needs_contracts",
+    "not_an_agent",
+    "portal account",
     "producing",
     "public",
-    "ready_for_training"
+    "ready_for_training",
+    "terminated"
+   ]
+  },
+  "contracting_checkin_list.agent_status": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "agent",
+    "applicant",
+    "contracts_confirmed",
+    "contracts_sent",
+    "inactive",
+    "name only",
+    "needs_contracts",
+    "not_an_agent",
+    "portal account",
+    "producing",
+    "public",
+    "ready_for_training",
+    "terminated"
+   ]
+  },
+  "contracting_checkin_list.call_count": {
+   "candidates": [
+    "contracting_checkins.call_count"
+   ],
+   "body_literals": [
+    "active",
+    "agent",
+    "applicant",
+    "contracts_confirmed",
+    "contracts_sent",
+    "inactive",
+    "name only",
+    "needs_contracts",
+    "not_an_agent",
+    "portal account",
+    "producing",
+    "public",
+    "ready_for_training",
+    "terminated"
+   ]
+  },
+  "contracting_checkin_list.checkin_id": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "agent",
+    "applicant",
+    "contracts_confirmed",
+    "contracts_sent",
+    "inactive",
+    "name only",
+    "needs_contracts",
+    "not_an_agent",
+    "portal account",
+    "producing",
+    "public",
+    "ready_for_training",
+    "terminated"
    ]
   },
   "contracting_checkin_list.contracts_confirmed_at": {
    "candidates": [
-    "agent_contracting_checkins.contracts_confirmed_at"
+    "contracting_checkins.contracts_confirmed_at"
    ],
    "body_literals": [
     "active",
+    "agent",
+    "applicant",
     "contracts_confirmed",
     "contracts_sent",
+    "inactive",
+    "name only",
     "needs_contracts",
+    "not_an_agent",
+    "portal account",
     "producing",
     "public",
-    "ready_for_training"
+    "ready_for_training",
+    "terminated"
    ]
   },
   "contracting_checkin_list.contracts_sent_at": {
    "candidates": [
-    "agent_contracting_checkins.contracts_sent_at"
+    "contracting_checkins.contracts_sent_at"
    ],
    "body_literals": [
     "active",
+    "agent",
+    "applicant",
     "contracts_confirmed",
     "contracts_sent",
+    "inactive",
+    "name only",
     "needs_contracts",
+    "not_an_agent",
+    "portal account",
     "producing",
     "public",
-    "ready_for_training"
+    "ready_for_training",
+    "terminated"
    ]
   },
   "contracting_checkin_list.deals_30d": {
    "candidates": [],
    "body_literals": [
     "active",
+    "agent",
+    "applicant",
     "contracts_confirmed",
     "contracts_sent",
+    "inactive",
+    "name only",
     "needs_contracts",
+    "not_an_agent",
+    "portal account",
     "producing",
     "public",
-    "ready_for_training"
+    "ready_for_training",
+    "terminated"
    ]
   },
   "contracting_checkin_list.display_name": {
    "candidates": [
-    "agents.display_name"
+    "agents.display_name",
+    "contracting_checkins.display_name"
    ],
    "body_literals": [
     "active",
+    "agent",
+    "applicant",
     "contracts_confirmed",
     "contracts_sent",
+    "inactive",
+    "name only",
     "needs_contracts",
+    "not_an_agent",
+    "portal account",
     "producing",
     "public",
-    "ready_for_training"
+    "ready_for_training",
+    "terminated"
    ]
   },
   "contracting_checkin_list.email": {
    "candidates": [
+    "applications.email",
+    "contracting_checkins.email",
     "contracting_intakes.email",
     "profiles.email"
    ],
    "body_literals": [
     "active",
+    "agent",
+    "applicant",
     "contracts_confirmed",
     "contracts_sent",
+    "inactive",
+    "name only",
     "needs_contracts",
+    "not_an_agent",
+    "portal account",
     "producing",
     "public",
-    "ready_for_training"
+    "ready_for_training",
+    "terminated"
    ]
   },
-  "contracting_checkin_list.hired_on": {
+  "contracting_checkin_list.flagged": {
    "candidates": [],
    "body_literals": [
     "active",
+    "agent",
+    "applicant",
     "contracts_confirmed",
     "contracts_sent",
+    "inactive",
+    "name only",
     "needs_contracts",
+    "not_an_agent",
+    "portal account",
     "producing",
     "public",
-    "ready_for_training"
+    "ready_for_training",
+    "terminated"
    ]
   },
   "contracting_checkin_list.intake_received": {
    "candidates": [],
    "body_literals": [
     "active",
+    "agent",
+    "applicant",
     "contracts_confirmed",
     "contracts_sent",
+    "inactive",
+    "name only",
     "needs_contracts",
+    "not_an_agent",
+    "portal account",
     "producing",
     "public",
-    "ready_for_training"
+    "ready_for_training",
+    "terminated"
+   ]
+  },
+  "contracting_checkin_list.is_agent": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "agent",
+    "applicant",
+    "contracts_confirmed",
+    "contracts_sent",
+    "inactive",
+    "name only",
+    "needs_contracts",
+    "not_an_agent",
+    "portal account",
+    "producing",
+    "public",
+    "ready_for_training",
+    "terminated"
+   ]
+  },
+  "contracting_checkin_list.last_call_at": {
+   "candidates": [
+    "contracting_checkins.last_call_at"
+   ],
+   "body_literals": [
+    "active",
+    "agent",
+    "applicant",
+    "contracts_confirmed",
+    "contracts_sent",
+    "inactive",
+    "name only",
+    "needs_contracts",
+    "not_an_agent",
+    "portal account",
+    "producing",
+    "public",
+    "ready_for_training",
+    "terminated"
+   ]
+  },
+  "contracting_checkin_list.last_call_outcome": {
+   "candidates": [
+    "contracting_checkins.last_call_outcome"
+   ],
+   "body_literals": [
+    "active",
+    "agent",
+    "applicant",
+    "contracts_confirmed",
+    "contracts_sent",
+    "inactive",
+    "name only",
+    "needs_contracts",
+    "not_an_agent",
+    "portal account",
+    "producing",
+    "public",
+    "ready_for_training",
+    "terminated"
    ]
   },
   "contracting_checkin_list.last_checkin_at": {
    "candidates": [
-    "agent_contracting_checkins.last_checkin_at"
+    "contracting_checkins.last_checkin_at"
    ],
    "body_literals": [
     "active",
+    "agent",
+    "applicant",
     "contracts_confirmed",
     "contracts_sent",
+    "inactive",
+    "name only",
     "needs_contracts",
+    "not_an_agent",
+    "portal account",
     "producing",
     "public",
-    "ready_for_training"
-   ]
-  },
-  "contracting_checkin_list.last_deal_date": {
-   "candidates": [],
-   "body_literals": [
-    "active",
-    "contracts_confirmed",
-    "contracts_sent",
-    "needs_contracts",
-    "producing",
-    "public",
-    "ready_for_training"
+    "ready_for_training",
+    "terminated"
    ]
   },
   "contracting_checkin_list.license_status": {
    "candidates": [
     "agents.license_status",
+    "applications.license_status",
     "contracting_intakes.license_status"
    ],
    "body_literals": [
     "active",
+    "agent",
+    "applicant",
     "contracts_confirmed",
     "contracts_sent",
+    "inactive",
+    "name only",
     "needs_contracts",
+    "not_an_agent",
+    "portal account",
     "producing",
     "public",
-    "ready_for_training"
+    "ready_for_training",
+    "terminated"
    ]
   },
   "contracting_checkin_list.manager_name": {
    "candidates": [],
    "body_literals": [
     "active",
+    "agent",
+    "applicant",
     "contracts_confirmed",
     "contracts_sent",
+    "inactive",
+    "name only",
     "needs_contracts",
+    "not_an_agent",
+    "portal account",
     "producing",
     "public",
-    "ready_for_training"
+    "ready_for_training",
+    "terminated"
    ]
   },
   "contracting_checkin_list.note": {
    "candidates": [
-    "agent_contracting_checkins.note"
+    "contracting_checkins.note"
    ],
    "body_literals": [
     "active",
+    "agent",
+    "applicant",
     "contracts_confirmed",
     "contracts_sent",
+    "inactive",
+    "name only",
     "needs_contracts",
+    "not_an_agent",
+    "portal account",
     "producing",
     "public",
-    "ready_for_training"
+    "ready_for_training",
+    "terminated"
    ]
   },
   "contracting_checkin_list.npn": {
@@ -2503,79 +2700,128 @@
    ],
    "body_literals": [
     "active",
+    "agent",
+    "applicant",
     "contracts_confirmed",
     "contracts_sent",
+    "inactive",
+    "name only",
     "needs_contracts",
+    "not_an_agent",
+    "portal account",
     "producing",
     "public",
-    "ready_for_training"
-   ]
-  },
-  "contracting_checkin_list.onboarding_stage": {
-   "candidates": [
-    "agents.onboarding_stage"
-   ],
-   "body_literals": [
-    "active",
-    "contracts_confirmed",
-    "contracts_sent",
-    "needs_contracts",
-    "producing",
-    "public",
-    "ready_for_training"
+    "ready_for_training",
+    "terminated"
    ]
   },
   "contracting_checkin_list.phone": {
    "candidates": [
+    "applications.phone",
     "carriers.phone",
+    "contracting_checkins.phone",
     "profiles.phone"
    ],
    "body_literals": [
     "active",
+    "agent",
+    "applicant",
     "contracts_confirmed",
     "contracts_sent",
+    "inactive",
+    "name only",
     "needs_contracts",
+    "not_an_agent",
+    "portal account",
     "producing",
     "public",
-    "ready_for_training"
+    "ready_for_training",
+    "terminated"
    ]
   },
   "contracting_checkin_list.producing": {
    "candidates": [],
    "body_literals": [
     "active",
+    "agent",
+    "applicant",
     "contracts_confirmed",
     "contracts_sent",
+    "inactive",
+    "name only",
     "needs_contracts",
+    "not_an_agent",
+    "portal account",
     "producing",
     "public",
-    "ready_for_training"
+    "ready_for_training",
+    "terminated"
+   ]
+  },
+  "contracting_checkin_list.source": {
+   "candidates": [
+    "agentlink_book.source",
+    "applications.source",
+    "contracting_intakes.source",
+    "deals.source",
+    "production_external_deals.source",
+    "v_agentlink_book_scoped.source"
+   ],
+   "body_literals": [
+    "active",
+    "agent",
+    "applicant",
+    "contracts_confirmed",
+    "contracts_sent",
+    "inactive",
+    "name only",
+    "needs_contracts",
+    "not_an_agent",
+    "portal account",
+    "producing",
+    "public",
+    "ready_for_training",
+    "terminated"
    ]
   },
   "contracting_checkin_list.stage": {
    "candidates": [],
    "body_literals": [
     "active",
+    "agent",
+    "applicant",
     "contracts_confirmed",
     "contracts_sent",
+    "inactive",
+    "name only",
     "needs_contracts",
+    "not_an_agent",
+    "portal account",
     "producing",
     "public",
-    "ready_for_training"
+    "ready_for_training",
+    "terminated"
    ]
   },
   "contracting_checkin_list.training_ready_at": {
    "candidates": [
-    "agent_contracting_checkins.training_ready_at"
+    "contracting_checkins.training_ready_at"
    ],
    "body_literals": [
     "active",
+    "agent",
+    "applicant",
     "contracts_confirmed",
     "contracts_sent",
+    "inactive",
+    "name only",
     "needs_contracts",
+    "not_an_agent",
+    "portal account",
     "producing",
     "public",
-    "ready_for_training"
+    "ready_for_training",
+    "terminated"
    ]
   },
   "count_unscheduled_agents.count": {

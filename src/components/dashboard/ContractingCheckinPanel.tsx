@@ -1,73 +1,152 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Phone, Search } from "lucide-react";
+import {
+  ArrowLeft, ArrowRight, Check, Copy, Flag, List, MessageSquare, Phone, PhoneCall, PhoneOff, Search, Voicemail, X,
+} from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { formatTimeAgo } from "@/lib/dateUtils";
-import { contactLinkProps, phoneHref } from "@/lib/phone";
+import { contactLinkProps, phoneHref, smsHref, startPhoneCall } from "@/lib/phone";
 
 /**
- * Contracting check-in (2026-09-30). Sam: "a function in my team where I can
- * mark down and confirm that somebody's contracts have been worked on ... I'm
- * about to do a check-in with everyone to audit. Make sure everyone's contracts
- * are sent out and they're ready to go for training if they're not already
- * ripping."
+ * Contracting call list (2026-09-30).
  *
- * Three manual steps, one derived state:
- *   contracts sent -> contracts confirmed -> ready for training
- *   producing = posted production in the last 30 days (never a checkbox, so an
- *   agent already writing business is never shown as blocked on paperwork).
- * Every tick goes through set_contracting_checkin(), which logs who changed what.
+ * Sam, running check-ins: "make it easier for me to call them directly from the
+ * dashboard ... show me their phone numbers ... so I can get through it a lot
+ * smoother." Two views over one list:
+ *   - List: every person, grouped by where their contracts stand.
+ *   - Call mode: one person at a time, big Call/Text buttons, one-tap outcome
+ *     that logs the call and jumps to the next person.
+ * The list holds agents, licensed applicants and people who only exist by name.
+ * Every tick, call and note is written through set_contracting_checkin() and
+ * logged with who did it.
  */
 type Stage = "needs_contracts" | "contracts_sent" | "contracts_confirmed" | "ready_for_training" | "producing";
 type Step = "contracts_sent" | "contracts_confirmed" | "training_ready";
+type Outcome = "talked" | "no_answer" | "voicemail" | "texted" | "wrong_number";
 
 type Row = {
-  agent_id: string;
+  checkin_id: string | null;
+  agent_id: string | null;
   display_name: string;
   manager_name: string | null;
-  email: string | null;
   phone: string | null;
+  email: string | null;
+  agent_status: string;
   license_status: string | null;
-  onboarding_stage: string | null;
   npn: string | null;
-  hired_on: string | null;
+  is_agent: boolean;
+  source: string;
   intake_received: boolean;
   deals_30d: number;
-  last_deal_date: string | null;
   producing: boolean;
+  flagged: boolean;
   contracts_sent_at: string | null;
   contracts_confirmed_at: string | null;
   training_ready_at: string | null;
+  last_call_at: string | null;
+  last_call_outcome: Outcome | null;
+  call_count: number;
   last_checkin_at: string | null;
   note: string | null;
   stage: Stage;
 };
 
-const GROUPS: { stage: Stage; title: string; hint: string; tone: string }[] = [
-  { stage: "needs_contracts", title: "Contracts not sent", hint: "Send contracting, then tick Sent", tone: "border-rose-500/40" },
-  { stage: "contracts_sent", title: "Sent, waiting on confirmation", hint: "Confirm the carriers finished them", tone: "border-amber-500/40" },
-  { stage: "contracts_confirmed", title: "Contracted, not in training yet", hint: "Get them booked into training", tone: "border-sky-500/40" },
-  { stage: "ready_for_training", title: "Ready for training", hint: "Contracts done, cleared to train", tone: "border-emerald-500/40" },
-  { stage: "producing", title: "Already producing", hint: "Posted business in the last 30 days", tone: "border-border" },
+const STAGE_LABEL: Record<Stage, string> = {
+  needs_contracts: "No contracts yet",
+  contracts_sent: "Contracts sent",
+  contracts_confirmed: "Contracted",
+  ready_for_training: "Ready for training",
+  producing: "Producing",
+};
+const STAGE_TONE: Record<Stage, string> = {
+  needs_contracts: "bg-rose-500/15 text-rose-300 border-rose-500/30",
+  contracts_sent: "bg-amber-500/15 text-amber-300 border-amber-500/30",
+  contracts_confirmed: "bg-sky-500/15 text-sky-300 border-sky-500/30",
+  ready_for_training: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+  producing: "bg-emerald-500/10 text-emerald-200 border-emerald-500/20",
+};
+
+const TABS: { key: string; label: string; match: (r: Row) => boolean }[] = [
+  { key: "list", label: "Your no-contracts list", match: (r) => r.flagged },
+  { key: "needs_contracts", label: "No contracts", match: (r) => r.stage === "needs_contracts" },
+  { key: "contracts_sent", label: "Sent", match: (r) => r.stage === "contracts_sent" },
+  { key: "contracts_confirmed", label: "Contracted", match: (r) => r.stage === "contracts_confirmed" },
+  { key: "ready_for_training", label: "Ready for training", match: (r) => r.stage === "ready_for_training" },
+  { key: "producing", label: "Producing", match: (r) => r.stage === "producing" },
+  { key: "all", label: "Everyone", match: () => true },
 ];
 
-const STEPS: { step: Step; label: string; field: keyof Row }[] = [
-  { step: "contracts_sent", label: "Sent", field: "contracts_sent_at" },
-  { step: "contracts_confirmed", label: "Confirmed", field: "contracts_confirmed_at" },
-  { step: "training_ready", label: "Training ready", field: "training_ready_at" },
+const STEPS: { step: Step; label: string; field: "contracts_sent_at" | "contracts_confirmed_at" | "training_ready_at" }[] = [
+  { step: "contracts_sent", label: "Contracts sent", field: "contracts_sent_at" },
+  { step: "contracts_confirmed", label: "Contracts confirmed", field: "contracts_confirmed_at" },
+  { step: "training_ready", label: "Ready for training", field: "training_ready_at" },
 ];
+
+const OUTCOMES: { key: Outcome; label: string; icon: typeof Check; tone: string; hotkey: string }[] = [
+  { key: "talked", label: "Talked", icon: PhoneCall, tone: "bg-emerald-600 hover:bg-emerald-500 text-white", hotkey: "1" },
+  { key: "no_answer", label: "No answer", icon: PhoneOff, tone: "bg-zinc-700 hover:bg-zinc-600 text-white", hotkey: "2" },
+  { key: "voicemail", label: "Left voicemail", icon: Voicemail, tone: "bg-zinc-700 hover:bg-zinc-600 text-white", hotkey: "3" },
+  { key: "texted", label: "Texted", icon: MessageSquare, tone: "bg-zinc-700 hover:bg-zinc-600 text-white", hotkey: "4" },
+  { key: "wrong_number", label: "Wrong number", icon: X, tone: "bg-rose-900/70 hover:bg-rose-800 text-white", hotkey: "5" },
+];
+const OUTCOME_LABEL: Record<Outcome, string> = {
+  talked: "Talked", no_answer: "No answer", voicemail: "Left voicemail", texted: "Texted", wrong_number: "Wrong number",
+};
+
+function digitsOf(phone: string | null): string | null {
+  if (!phone) return null;
+  let d = phone.replace(/\D/g, "");
+  if (d.length === 11 && d.startsWith("1")) d = d.slice(1);
+  return d.length === 10 ? d : null;
+}
+function prettyPhone(phone: string | null): string | null {
+  const d = digitsOf(phone);
+  return d ? `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}` : phone;
+}
+// Call/Text go through @/lib/phone: native dialer on phones, Google Voice on desktop.
+const telHref = (p: string | null) => (digitsOf(p) ? phoneHref(p) : null);
+const rowKey = (r: Row) => r.agent_id ?? r.checkin_id ?? r.display_name;
+const calledToday = (r: Row) =>
+  !!r.last_call_at && new Date(r.last_call_at).toDateString() === new Date().toDateString();
+
+function StatusBadges({ r }: { r: Row }) {
+  return (
+    <>
+      <Badge variant="outline" className={cn("text-[11px]", STAGE_TONE[r.stage])}>{STAGE_LABEL[r.stage]}</Badge>
+      {r.agent_status === "terminated" && <Badge variant="outline" className="border-rose-500/50 text-[11px] text-rose-300">Terminated in system</Badge>}
+      {r.agent_status === "inactive" && <Badge variant="outline" className="border-amber-500/50 text-[11px] text-amber-300">Inactive in system</Badge>}
+      {!r.is_agent && <Badge variant="outline" className="text-[11px]">Not an agent yet · {r.source}</Badge>}
+      {r.license_status === "licensed" ? (
+        <Badge variant="outline" className="text-[11px]">Licensed</Badge>
+      ) : r.license_status ? (
+        <Badge variant="outline" className="text-[11px] text-muted-foreground">Not licensed</Badge>
+      ) : null}
+      {r.npn ? (
+        <span className="text-[11px] text-muted-foreground">NPN {r.npn}</span>
+      ) : (
+        <Badge variant="outline" className="border-rose-500/40 text-[11px] text-rose-300">No NPN</Badge>
+      )}
+      {r.producing && (
+        <span className="text-[11px] text-emerald-300">{r.deals_30d} deal{r.deals_30d === 1 ? "" : "s"} in 30 days</span>
+      )}
+    </>
+  );
+}
 
 export function ContractingCheckinPanel() {
   const qc = useQueryClient();
+  const [tab, setTab] = useState("list");
+  const [mode, setMode] = useState<"list" | "call">("call");
   const [search, setSearch] = useState("");
-  const [busy, setBusy] = useState<string | null>(null);
+  const [cursor, setCursor] = useState(0);
+  const [busy, setBusy] = useState(false);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["contracting-checkin"],
@@ -79,139 +158,394 @@ export function ContractingCheckinPanel() {
     },
   });
 
+  const all = useMemo(() => data ?? [], [data]);
+  const activeTab = TABS.find((t) => t.key === tab) ?? TABS[0];
+
   const rows = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const all = data ?? [];
-    const filtered = q
-      ? all.filter((r) => `${r.display_name} ${r.manager_name ?? ""}`.toLowerCase().includes(q))
-      : all;
-    return [...filtered].sort((a, b) => a.display_name.localeCompare(b.display_name));
-  }, [data, search]);
+    return all
+      .filter(activeTab.match)
+      .filter((r) => !q || `${r.display_name} ${r.manager_name ?? ""} ${r.phone ?? ""}`.toLowerCase().includes(q))
+      .sort((a, b) => a.display_name.localeCompare(b.display_name));
+  }, [all, activeTab, search]);
 
-  const save = async (row: Row, step: Step | "note", done: boolean, note?: string) => {
-    setBusy(`${row.agent_id}:${step}`);
-    const { error } = await supabase.rpc("set_contracting_checkin" as never, {
-      p_agent_id: row.agent_id,
-      p_step: step,
-      p_done: done,
-      p_note: note ?? null,
-    } as never);
-    setBusy(null);
-    if (error) {
-      toast.error(`Not saved for ${row.display_name}: ${error.message}`);
-      return;
+  // Call order: people not yet reached today first, people with no number last.
+  const queue = useMemo(
+    () => [...rows].sort((a, b) =>
+      Number(calledToday(a)) - Number(calledToday(b)) ||
+      Number(!digitsOf(a.phone)) - Number(!digitsOf(b.phone)) ||
+      a.display_name.localeCompare(b.display_name)),
+    [rows],
+  );
+  const [pinnedKey, setPinnedKey] = useState<string | null>(null);
+  const current = useMemo(() => {
+    if (pinnedKey) {
+      const hit = queue.find((r) => rowKey(r) === pinnedKey);
+      if (hit) return hit;
     }
-    if (step !== "note") toast.success(`${row.display_name}: ${done ? "marked" : "unmarked"} ${step.replace(/_/g, " ")}`);
-    await qc.invalidateQueries({ queryKey: ["contracting-checkin"] });
-  };
+    return queue[Math.min(cursor, Math.max(queue.length - 1, 0))];
+  }, [queue, cursor, pinnedKey]);
+  const currentIndex = current ? queue.indexOf(current) : -1;
 
-  if (isLoading) return <Skeleton className="h-40 w-full" />;
+  const save = useCallback(
+    async (r: Row, step: Step | "note" | "call" | "flag" | "phone", done: boolean, note?: string | null) => {
+      setBusy(true);
+      const { error } = await supabase.rpc("set_contracting_checkin" as never, {
+        p_checkin_id: r.agent_id ? null : r.checkin_id,
+        p_agent_id: r.agent_id,
+        p_step: step,
+        p_done: done,
+        p_note: note ?? null,
+      } as never);
+      setBusy(false);
+      if (error) {
+        toast.error(`Not saved for ${r.display_name}: ${error.message}`);
+        return false;
+      }
+      await qc.invalidateQueries({ queryKey: ["contracting-checkin"] });
+      return true;
+    },
+    [qc],
+  );
+
+  const go = useCallback(
+    (delta: number) => {
+      if (!queue.length) return;
+      const next = (Math.max(currentIndex, 0) + delta + queue.length) % queue.length;
+      setPinnedKey(rowKey(queue[next]));
+      setCursor(next);
+    },
+    [queue, currentIndex],
+  );
+
+  const logCall = useCallback(
+    async (outcome: Outcome) => {
+      if (!current || busy) return;
+      const nextRow = queue[(currentIndex + 1) % queue.length];
+      const ok = await save(current, "call", true, outcome);
+      if (ok) {
+        toast.success(`${current.display_name}: ${OUTCOME_LABEL[outcome]}`);
+        if (nextRow && rowKey(nextRow) !== rowKey(current)) setPinnedKey(rowKey(nextRow));
+      }
+    },
+    [current, busy, queue, currentIndex, save],
+  );
+
+  // Keyboard: ← → move, C calls, 1-5 log an outcome. Ignored while typing.
+  useEffect(() => {
+    if (mode !== "call") return;
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === "ArrowRight") { e.preventDefault(); go(1); }
+      else if (e.key === "ArrowLeft") { e.preventDefault(); go(-1); }
+      else if (e.key.toLowerCase() === "c" && current && telHref(current.phone)) { startPhoneCall(current.phone); }
+      else {
+        const o = OUTCOMES.find((x) => x.hotkey === e.key);
+        if (o) { e.preventDefault(); void logCall(o.key); }
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mode, go, logCall, current]);
+
+  if (isLoading) return <Skeleton className="h-56 w-full" />;
   if (isError) {
-    return (
-      <p className="text-sm text-rose-400">
-        The contracting list did not load. Nothing is being guessed at in its place; refresh to retry.
-      </p>
-    );
+    return <p className="text-sm text-rose-400">The contracting list did not load. Nothing is being guessed at in its place; refresh to retry.</p>;
   }
 
-  const total = data?.length ?? 0;
-  const counts = Object.fromEntries(GROUPS.map((g) => [g.stage, (data ?? []).filter((r) => r.stage === g.stage).length]));
+  const flagged = all.filter((r) => r.flagged);
+  const flaggedSent = flagged.filter((r) => r.contracts_sent_at).length;
+  const flaggedReady = flagged.filter((r) => r.training_ready_at).length;
+  const flaggedCalledToday = flagged.filter(calledToday).length;
 
   return (
     <div className="space-y-4">
+      {/* Progress on Sam's list */}
+      {flagged.length > 0 && (
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {[
+            { label: "On your list", value: flagged.length },
+            { label: "Called today", value: `${flaggedCalledToday}/${flagged.length}` },
+            { label: "Contracts sent", value: `${flaggedSent}/${flagged.length}` },
+            { label: "Ready for training", value: `${flaggedReady}/${flagged.length}` },
+          ].map((s) => (
+            <div key={s.label} className="rounded-lg border border-border bg-background/40 px-3 py-2">
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{s.label}</div>
+              <div className="text-xl font-semibold tabular-nums">{s.value}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Tabs + mode switch */}
       <div className="flex flex-wrap items-center gap-2">
-        {GROUPS.map((g) => (
-          <Badge key={g.stage} variant="outline" className="text-xs">
-            {g.title}: {counts[g.stage] ?? 0}
-          </Badge>
-        ))}
-        <span className="text-xs text-muted-foreground">{total} active agents</span>
-        <div className="relative ml-auto w-full sm:w-64">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search agent or manager"
-            className="h-9 pl-8"
-          />
+        <div className="flex flex-wrap gap-1">
+          {TABS.map((t) => {
+            const n = all.filter(t.match).length;
+            return (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => { setTab(t.key); setCursor(0); setPinnedKey(null); }}
+                className={cn(
+                  "rounded-full border px-3 py-1 text-xs transition",
+                  tab === t.key ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {t.label} <span className="tabular-nums opacity-70">{n}</span>
+              </button>
+            );
+          })}
+        </div>
+        <div className="ml-auto flex items-center gap-2">
+          <div className="relative w-44 sm:w-56">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search" className="h-9 pl-8" />
+          </div>
+          <div className="flex rounded-md border border-border p-0.5">
+            <Button size="sm" variant={mode === "call" ? "default" : "ghost"} className="h-8 gap-1.5" onClick={() => setMode("call")}>
+              <Phone className="h-4 w-4" /> Call mode
+            </Button>
+            <Button size="sm" variant={mode === "list" ? "default" : "ghost"} className="h-8 gap-1.5" onClick={() => setMode("list")}>
+              <List className="h-4 w-4" /> List
+            </Button>
+          </div>
         </div>
       </div>
 
-      {GROUPS.map((g) => {
-        const list = rows.filter((r) => r.stage === g.stage);
-        if (list.length === 0) return null;
-        return (
-          <section key={g.stage} className="space-y-2">
-            <div className="flex items-baseline gap-2">
-              <h3 className="text-sm font-semibold">{g.title} · {list.length}</h3>
-              <span className="text-xs text-muted-foreground">{g.hint}</span>
-            </div>
-            <div className="space-y-2">
-              {list.map((r) => {
-                const tel = phoneHref(r.phone);
-                return (
-                  <div key={r.agent_id} className={cn("rounded-lg border bg-card p-3", g.tone)}>
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                      <span className="font-medium">{r.display_name}</span>
-                      {r.manager_name && <span className="text-xs text-muted-foreground">under {r.manager_name}</span>}
-                      <Badge variant="outline" className="text-[10px]">
-                        {r.license_status === "licensed" ? "Licensed" : "Not licensed"}
-                      </Badge>
-                      {r.npn ? (
-                        <span className="text-xs text-muted-foreground">NPN {r.npn}</span>
-                      ) : (
-                        <Badge variant="outline" className="border-rose-500/50 text-[10px] text-rose-400">No NPN</Badge>
-                      )}
-                      {r.intake_received && <Badge variant="outline" className="text-[10px]">Intake received</Badge>}
-                      {r.producing && (
-                        <span className="text-xs text-emerald-400">
-                          {r.deals_30d} deal{r.deals_30d === 1 ? "" : "s"} in 30d
-                        </span>
-                      )}
-                      {tel && (
-                        <a {...contactLinkProps(tel)} className="ml-auto inline-flex items-center gap-1 text-xs text-primary">
-                          <Phone className="h-3 w-3" /> {r.phone}
-                        </a>
-                      )}
-                    </div>
-                    <div className="mt-2 flex flex-wrap items-center gap-4">
-                      {STEPS.map((s) => {
-                        const at = r[s.field] as string | null;
-                        const id = `${r.agent_id}-${s.step}`;
-                        return (
-                          <label key={s.step} htmlFor={id} className="flex cursor-pointer items-center gap-2 text-sm">
-                            <Checkbox
-                              id={id}
-                              checked={!!at}
-                              disabled={busy === `${r.agent_id}:${s.step}`}
-                              onCheckedChange={(v) => save(r, s.step, v === true)}
-                            />
-                            {s.label}
-                            {at && <span className="text-[11px] text-muted-foreground">{formatTimeAgo(at)}</span>}
-                          </label>
-                        );
-                      })}
-                      <Input
-                        key={`${r.agent_id}-${r.note ?? ""}`}
-                        defaultValue={r.note ?? ""}
-                        placeholder="Check-in note (saves when you click away)"
-                        className="h-8 min-w-[200px] flex-1 text-sm"
-                        onBlur={(e) => {
-                          const v = e.target.value.trim();
-                          if (v !== (r.note ?? "")) void save(r, "note", true, v);
-                        }}
-                      />
-                      {r.last_checkin_at && (
-                        <span className="text-[11px] text-muted-foreground">checked {formatTimeAgo(r.last_checkin_at)}</span>
-                      )}
-                    </div>
+      {rows.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">Nobody here.</p>
+      ) : mode === "call" && current ? (
+        <CallCard
+          r={current}
+          index={currentIndex}
+          total={queue.length}
+          busy={busy}
+          onPrev={() => go(-1)}
+          onNext={() => go(1)}
+          onOutcome={logCall}
+          onStep={(step, done) => save(current, step, done)}
+          onNote={(v) => save(current, "note", true, v)}
+          onPhone={(v) => save(current, "phone", true, v)}
+        />
+      ) : (
+        <div className="divide-y divide-border overflow-hidden rounded-lg border border-border">
+          {rows.map((r) => {
+            const tel = telHref(r.phone);
+            return (
+              <div key={rowKey(r)} className="flex flex-col gap-2 bg-card p-3 sm:flex-row sm:items-center">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      className="truncate text-left font-semibold hover:underline"
+                      onClick={() => { setPinnedKey(rowKey(r)); setMode("call"); }}
+                    >
+                      {r.display_name}
+                    </button>
+                    {r.manager_name && <span className="text-xs text-muted-foreground">under {r.manager_name}</span>}
                   </div>
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5"><StatusBadges r={r} /></div>
+                  {(r.last_call_at || r.note) && (
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {r.last_call_at && r.last_call_outcome && <>Last call: {OUTCOME_LABEL[r.last_call_outcome]} {formatTimeAgo(r.last_call_at)}</>}
+                      {r.last_call_at && r.note && " · "}
+                      {r.note}
+                    </div>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {tel ? (
+                    <>
+                      <span className="font-mono text-sm tabular-nums">{prettyPhone(r.phone)}</span>
+                      <Button asChild size="sm" className="h-8 gap-1 bg-emerald-600 text-white hover:bg-emerald-500">
+                        <a {...contactLinkProps(tel)}><Phone className="h-3.5 w-3.5" /> Call</a>
+                      </Button>
+                      <Button asChild size="sm" variant="outline" className="h-8 gap-1">
+                        <a {...contactLinkProps(smsHref(r.phone))}><MessageSquare className="h-3.5 w-3.5" /> Text</a>
+                      </Button>
+                    </>
+                  ) : (
+                    <span className="text-xs text-rose-300">No phone on file</span>
+                  )}
+                  <div className="flex gap-1">
+                    {STEPS.map((s) => {
+                      const on = !!r[s.field];
+                      return (
+                        <button
+                          key={s.step}
+                          type="button"
+                          title={s.label}
+                          disabled={busy}
+                          onClick={() => save(r, s.step, !on)}
+                          className={cn(
+                            "rounded-md border px-2 py-1 text-[11px] transition",
+                            on ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-300" : "border-border text-muted-foreground hover:text-foreground",
+                          )}
+                        >
+                          {on && <Check className="mr-0.5 inline h-3 w-3" />}
+                          {s.step === "contracts_sent" ? "Sent" : s.step === "contracts_confirmed" ? "Confirmed" : "Training"}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {!r.flagged && (
+                    <Button size="sm" variant="ghost" className="h-8 gap-1 text-xs text-muted-foreground" onClick={() => save(r, "flag", true)}>
+                      <Flag className="h-3.5 w-3.5" /> Add to list
+                    </Button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CallCard(props: {
+  r: Row;
+  index: number;
+  total: number;
+  busy: boolean;
+  onPrev: () => void;
+  onNext: () => void;
+  onOutcome: (o: Outcome) => void;
+  onStep: (step: Step, done: boolean) => void;
+  onNote: (v: string) => void;
+  onPhone: (v: string) => void;
+}) {
+  const { r, index, total, busy } = props;
+  const tel = telHref(r.phone);
+  const [phoneDraft, setPhoneDraft] = useState("");
+  const pct = total ? Math.round(((index + 1) / total) * 100) : 0;
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-border bg-card">
+      <div className="h-1 bg-border"><div className="h-1 bg-primary transition-all" style={{ width: `${pct}%` }} /></div>
+      <div className="flex items-center justify-between px-4 pt-3 text-xs text-muted-foreground">
+        <span>Person {index + 1} of {total}</span>
+        <span className="hidden sm:inline">Keys: ← → move · C call · 1-5 log outcome</span>
+      </div>
+
+      <div className="grid gap-6 p-4 sm:p-6 lg:grid-cols-[1.2fr_1fr]">
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-2xl font-bold leading-tight sm:text-3xl">{r.display_name}</h2>
+            <div className="mt-1 text-sm text-muted-foreground">
+              {r.manager_name ? `Under ${r.manager_name}` : r.is_agent ? "No manager set" : "Not on the roster yet"}
+              {r.email && <> · {r.email}</>}
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-1.5"><StatusBadges r={r} /></div>
+          </div>
+
+          {tel ? (
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={() => { void navigator.clipboard.writeText(prettyPhone(r.phone) ?? ""); toast.success("Number copied"); }}
+                className="group inline-flex items-center gap-2 font-mono text-3xl font-semibold tabular-nums tracking-tight sm:text-4xl"
+                title="Copy number"
+              >
+                {prettyPhone(r.phone)}
+                <Copy className="h-4 w-4 opacity-0 transition group-hover:opacity-60" />
+              </button>
+              <div className="flex flex-wrap gap-2">
+                <Button asChild size="lg" className="h-12 gap-2 bg-emerald-600 px-6 text-base text-white hover:bg-emerald-500">
+                  <a {...contactLinkProps(tel)}><Phone className="h-5 w-5" /> Call</a>
+                </Button>
+                <Button asChild size="lg" variant="outline" className="h-12 gap-2 px-6 text-base">
+                  <a {...contactLinkProps(smsHref(r.phone))}><MessageSquare className="h-5 w-5" /> Text</a>
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2 rounded-lg border border-rose-500/30 bg-rose-500/5 p-3">
+              <div className="text-sm text-rose-300">No phone number on file.</div>
+              {!r.is_agent && (
+                <div className="flex gap-2">
+                  <Input value={phoneDraft} onChange={(e) => setPhoneDraft(e.target.value)} placeholder="Add their number" className="h-9" />
+                  <Button size="sm" className="h-9" disabled={!digitsOf(phoneDraft) || busy} onClick={() => { props.onPhone(phoneDraft); setPhoneDraft(""); }}>
+                    Save
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div>
+            <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">How did the call go?</div>
+            <div className="flex flex-wrap gap-2">
+              {OUTCOMES.map((o) => (
+                <button
+                  key={o.key}
+                  type="button"
+                  disabled={busy}
+                  onClick={() => props.onOutcome(o.key)}
+                  className={cn("inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition disabled:opacity-50", o.tone)}
+                >
+                  <o.icon className="h-4 w-4" /> {o.label}
+                  <span className="ml-1 rounded bg-black/20 px-1 text-[10px] opacity-70">{o.hotkey}</span>
+                </button>
+              ))}
+            </div>
+            <div className="mt-2 text-xs text-muted-foreground">
+              {r.last_call_at && r.last_call_outcome
+                ? <>Last call: {OUTCOME_LABEL[r.last_call_outcome]} {formatTimeAgo(r.last_call_at)} · {r.call_count} call{r.call_count === 1 ? "" : "s"} logged</>
+                : "Not called yet"}
+              {" · logging an outcome moves to the next person"}
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Contracts</div>
+            <div className="space-y-2">
+              {STEPS.map((s) => {
+                const at = r[s.field];
+                return (
+                  <button
+                    key={s.step}
+                    type="button"
+                    disabled={busy}
+                    onClick={() => props.onStep(s.step, !at)}
+                    className={cn(
+                      "flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition",
+                      at ? "border-emerald-500/40 bg-emerald-500/10" : "border-border hover:border-foreground/30",
+                    )}
+                  >
+                    <span className={cn("flex h-5 w-5 items-center justify-center rounded border", at ? "border-emerald-400 bg-emerald-500 text-white" : "border-muted-foreground/50")}>
+                      {at && <Check className="h-3.5 w-3.5" />}
+                    </span>
+                    <span className="flex-1 text-sm font-medium">{s.label}</span>
+                    {at && <span className="text-[11px] text-muted-foreground">{formatTimeAgo(at)}</span>}
+                  </button>
                 );
               })}
             </div>
-          </section>
-        );
-      })}
+          </div>
+          <div>
+            <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Notes</div>
+            <textarea
+              key={`${r.agent_id ?? r.checkin_id}-${r.note ?? ""}`}
+              defaultValue={r.note ?? ""}
+              rows={3}
+              placeholder="What did they say? Saves when you click away."
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+              onBlur={(e) => { if (e.target.value.trim() !== (r.note ?? "")) props.onNote(e.target.value.trim()); }}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between border-t border-border px-4 py-3">
+        <Button variant="ghost" className="gap-1.5" onClick={props.onPrev}><ArrowLeft className="h-4 w-4" /> Previous</Button>
+        <Button variant="outline" className="gap-1.5" onClick={props.onNext}>Skip <ArrowRight className="h-4 w-4" /></Button>
+      </div>
     </div>
   );
 }

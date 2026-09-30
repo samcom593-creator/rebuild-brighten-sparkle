@@ -269,8 +269,8 @@ export default function RecruitingPipeline() {
                   <span className="mx-2">·</span>Due: {fmt(r.next_follow_up)}
                 </div>
                 <div className="flex flex-wrap items-center gap-1">
-                  {r.phone && <a href={phoneHref(r.phone) ?? `tel:${r.phone}`} {...contactLinkProps(phoneHref(r.phone))}><Button size="sm" variant="outline" className="h-7 px-2 text-xs">Call</Button></a>}
-                  {r.phone && <a href={smsHref(r.phone) ?? `sms:${r.phone}`} {...contactLinkProps(smsHref(r.phone))}><Button size="sm" variant="outline" className="h-7 px-2 text-xs">Text</Button></a>}
+                  {r.phone && <Button asChild size="sm" variant="outline" className="h-7 px-2 text-xs"><a href={phoneHref(r.phone) ?? `tel:${r.phone}`} {...contactLinkProps(phoneHref(r.phone))}>Call</a></Button>}
+                  {r.phone && <Button asChild size="sm" variant="outline" className="h-7 px-2 text-xs"><a href={smsHref(r.phone) ?? `sms:${r.phone}`} {...contactLinkProps(smsHref(r.phone))}>Text</a></Button>}
                   {r.person_type === "applicant" && <>
                     <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => fire(r.person_key, "monday", "expected", "Marked expected Monday")}>Exp Mon</Button>
                     <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => fire(r.person_key, "monday", "confirmed", "Confirmed")}>Confirm</Button>

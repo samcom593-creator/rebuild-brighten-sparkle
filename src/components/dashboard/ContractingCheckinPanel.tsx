@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  ArrowLeft, ArrowRight, Check, Copy, Flag, List, MessageSquare, Phone, PhoneCall, PhoneOff, Search, Voicemail, X,
+  ArrowLeft, ArrowRight, Check, Copy, Flag, List, MessageSquare, Phone, PhoneCall, PhoneOff, Search, UserX, Voicemail, X,
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -13,6 +13,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { formatTimeAgo } from "@/lib/dateUtils";
 import { contactLinkProps, phoneHref, smsHref, startPhoneCall } from "@/lib/phone";
+import { useAuth } from "@/hooks/useAuth";
+import { useConfirm } from "@/hooks/useConfirm";
+import { resolveBrand } from "@/config/brand";
 
 /**
  * Contracting call list (2026-09-30).
@@ -112,6 +115,23 @@ function prettyPhone(phone: string | null): string | null {
 }
 // Call/Text go through @/lib/phone: native dialer on phones, Google Voice on desktop.
 const telHref = (p: string | null) => (digitsOf(p) ? phoneHref(p) : null);
+const escapeHtml = (v: string) =>
+  v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+// Short and direct, Sam's voice. send-email does not check email_unsubscribes;
+// mark_no_longer_with_us() does, and anyone unsubscribed is never emailed.
+function reengageEmail(name: string) {
+  const first = escapeHtml((name || "").trim().split(/\s+/)[0] || "there");
+  const org = escapeHtml(resolveBrand().legalName);
+  return {
+    subject: "The door's still open",
+    html: `<p>Hey ${first},</p>
+<p>It's Sam from ${org}. Looks like the timing didn't line up for you with us right now, and that's okay.</p>
+<p>If you ever want another shot at building this, the door is open. Reply to this email or apply again at <a href="https://apex-financial.org/apply">apex-financial.org/apply</a> and I'll get you plugged back in.</p>
+<p>Hold the standard,<br/>Sam James<br/>${org}</p>`,
+  };
+}
+
 const rowKey = (r: Row) => r.agent_id ?? r.checkin_id ?? r.display_name;
 const calledToday = (r: Row) =>
   !!r.last_call_at && new Date(r.last_call_at).toDateString() === new Date().toDateString();
@@ -142,6 +162,9 @@ function StatusBadges({ r }: { r: Row }) {
 
 export function ContractingCheckinPanel() {
   const qc = useQueryClient();
+  const askConfirm = useConfirm();
+  const { isAdmin, isManager } = useAuth();
+  const canRemove = !!(isAdmin || isManager);
   const [tab, setTab] = useState("list");
   const [mode, setMode] = useState<"list" | "call">("call");
   const [search, setSearch] = useState("");
@@ -229,6 +252,56 @@ export function ContractingCheckinPanel() {
       }
     },
     [current, busy, queue, currentIndex, save],
+  );
+
+  // "No longer with us": set inactive (off the roster and this list), log it,
+  // then send the re-engagement email. The roster change never waits on email.
+  const markLeft = useCallback(
+    async (r: Row) => {
+      const ok = await askConfirm({
+        title: `${r.display_name} is no longer with us?`,
+        description: r.is_agent
+          ? "They'll be set inactive and removed from your roster and this list, which also ends their team access. We'll email them that the door is still open."
+          : "They'll be removed from this list. We'll email them that the door is still open.",
+        confirmText: "Remove and send email",
+        tone: "danger",
+      });
+      if (!ok) return;
+      const nextRow = queue[(currentIndex + 1) % Math.max(queue.length, 1)];
+      setBusy(true);
+      const { data, error } = await supabase.rpc("mark_no_longer_with_us" as never, {
+        p_checkin_id: r.agent_id ? null : r.checkin_id,
+        p_agent_id: r.agent_id,
+        p_reason: null,
+      } as never);
+      if (error) {
+        setBusy(false);
+        toast.error(`${r.display_name} was not removed: ${error.message}`);
+        return;
+      }
+      const res = (data ?? {}) as { checkin_id?: string; email?: string | null; unsubscribed?: boolean };
+      let emailNote = "no email on file, so nothing was sent";
+      if (res.email && res.unsubscribed) {
+        emailNote = `${res.email} unsubscribed from our emails, so nothing was sent`;
+      } else if (res.email) {
+        const mail = reengageEmail(r.display_name);
+        const { error: mailErr } = await supabase.functions.invoke("send-email", {
+          body: { to: res.email, subject: mail.subject, html: mail.html, reply_to: resolveBrand().supportEmail },
+        });
+        if (mailErr) {
+          emailNote = `the email to ${res.email} failed (${mailErr.message})`;
+        } else {
+          emailNote = `re-engagement email sent to ${res.email}`;
+          if (res.checkin_id) await supabase.rpc("mark_reengage_email_sent" as never, { p_checkin_id: res.checkin_id } as never);
+        }
+      }
+      setBusy(false);
+      if (emailNote.startsWith("the email")) toast.error(`${r.display_name} removed, but ${emailNote}.`);
+      else toast.success(`${r.display_name} removed from your roster; ${emailNote}.`);
+      if (nextRow && rowKey(nextRow) !== rowKey(r)) setPinnedKey(rowKey(nextRow));
+      await qc.invalidateQueries({ queryKey: ["contracting-checkin"] });
+    },
+    [askConfirm, queue, currentIndex, qc],
   );
 
   // Keyboard: ← → move, C calls, 1-5 log an outcome. Ignored while typing.
@@ -329,6 +402,7 @@ export function ContractingCheckinPanel() {
           onStep={(step, done) => save(current, step, done)}
           onNote={(v) => save(current, "note", true, v)}
           onPhone={(v) => save(current, "phone", true, v)}
+          onLeft={canRemove ? () => markLeft(current) : undefined}
         />
       ) : (
         <div className="divide-y divide-border overflow-hidden rounded-lg border border-border">
@@ -396,6 +470,11 @@ export function ContractingCheckinPanel() {
                       <Flag className="h-3.5 w-3.5" /> Add to list
                     </Button>
                   )}
+                  {canRemove && (
+                    <Button size="sm" variant="ghost" disabled={busy} className="h-8 gap-1 text-xs text-rose-300 hover:text-rose-200" onClick={() => markLeft(r)}>
+                      <UserX className="h-3.5 w-3.5" /> No longer with us
+                    </Button>
+                  )}
                 </div>
               </div>
             );
@@ -417,6 +496,7 @@ function CallCard(props: {
   onStep: (step: Step, done: boolean) => void;
   onNote: (v: string) => void;
   onPhone: (v: string) => void;
+  onLeft?: () => void;
 }) {
   const { r, index, total, busy } = props;
   const tel = telHref(r.phone);
@@ -544,6 +624,11 @@ function CallCard(props: {
 
       <div className="flex items-center justify-between border-t border-border px-4 py-3">
         <Button variant="ghost" className="gap-1.5" onClick={props.onPrev}><ArrowLeft className="h-4 w-4" /> Previous</Button>
+        {props.onLeft && (
+          <Button variant="ghost" disabled={busy} className="gap-1.5 text-rose-300 hover:text-rose-200" onClick={props.onLeft}>
+            <UserX className="h-4 w-4" /> No longer with us
+          </Button>
+        )}
         <Button variant="outline" className="gap-1.5" onClick={props.onNext}>Skip <ArrowRight className="h-4 w-4" /></Button>
       </div>
     </div>

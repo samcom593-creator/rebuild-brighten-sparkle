@@ -4723,6 +4723,21 @@
         "raw": "p_application_id uuid DEFAULT NULL::uuid, p_email text DEFAULT NULL::text, p_amount_cents integer DEFAULT NULL::integer, p_stripe_customer_id text DEFAULT NULL::text, p_stripe_checkout_session_id text DEFAULT NULL::text, p_paid_at timestamp with time zone DEFAULT now()"
       }
     ],
+    "mark_no_longer_with_us": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_checkin_id",
+          "p_reason"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_checkin_id"
+        ],
+        "unnamed": false,
+        "raw": "p_checkin_id uuid, p_agent_id uuid, p_reason text DEFAULT NULL::text"
+      }
+    ],
     "mark_partial_application_converted": [
       {
         "all": [
@@ -4746,6 +4761,18 @@
         ],
         "unnamed": false,
         "raw": "p_application_id uuid, p_reason text DEFAULT NULL::text"
+      }
+    ],
+    "mark_reengage_email_sent": [
+      {
+        "all": [
+          "p_checkin_id"
+        ],
+        "required": [
+          "p_checkin_id"
+        ],
+        "unnamed": false,
+        "raw": "p_checkin_id uuid"
       }
     ],
     "merge_agent_into_canonical": [

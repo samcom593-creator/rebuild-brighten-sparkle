@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowRight, Download, Instagram, Mail, MessageSquare, Phone, Search, X } from "lucide-react";
+import { ArrowRight, Download, Instagram, Mail, MessageSquare, Phone, Search, UserX, X } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { LicenseProgressSelector } from "@/components/dashboard/LicenseProgressSelector";
 import { cn } from "@/lib/utils";
 import { contactLinkProps, formatPhoneDisplay, phoneHref, smsHref } from "@/lib/phone";
+import { markNoLongerWithUs } from "@/lib/noLongerWithUs";
+import { useAuth } from "@/hooks/useAuth";
+import { useConfirm } from "@/hooks/useConfirm";
 import { formatTimeAgo } from "@/lib/dateUtils";
 
 /**
@@ -79,6 +82,9 @@ function heatClass(days: number) {
 
 export default function RecruitPipeline() {
   const qc = useQueryClient();
+  const askConfirm = useConfirm();
+  const { isAdmin, isManager } = useAuth();
+  const canRemove = !!(isAdmin || isManager);
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState<string | null>(null);
   const [idle, setIdle] = useState<IdleFilter>("all");
@@ -249,6 +255,28 @@ export default function RecruitPipeline() {
       await refresh();
     },
     [refresh],
+  );
+
+  // "No longer with us" for an agent: confirm, deactivate (they leave the roster
+  // and this page on the next derive), log it, send the door-is-open email.
+  const removeAgent = useCallback(
+    async (r: Row) => {
+      if (!r.agent_id) return;
+      const ok = await askConfirm({
+        title: `${r.display_name} is no longer with us?`,
+        description: "They'll be set inactive and removed from your roster and this page, which also ends their team access. We'll email them that the door is still open.",
+        confirmText: "Remove and send email",
+        tone: "danger",
+      });
+      if (!ok) return;
+      setBusy(personKey(r));
+      const out = await markNoLongerWithUs({ agentId: r.agent_id, displayName: r.display_name });
+      setBusy(null);
+      if (!out.ok || out.emailFailed) toast.error(out.message);
+      else toast.success(out.message);
+      await refresh();
+    },
+    [askConfirm, refresh],
   );
 
   const toggle = (r: Row) =>
@@ -505,6 +533,18 @@ export default function RecruitPipeline() {
                         <Button size="sm" variant="ghost" className="h-8 gap-1 text-xs" disabled={!next || isBusy} onClick={() => next && void setStage(r, next.stage_key)} title={next ? `Move to ${next.display_name}` : "Last stage"}>
                           {next ? next.display_name : "Done"} <ArrowRight className="h-3.5 w-3.5" />
                         </Button>
+                        {canRemove && r.person_type === "agent" && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 gap-1 text-xs text-rose-300 hover:text-rose-200 sm:col-start-5 sm:justify-self-end"
+                            disabled={isBusy}
+                            aria-label={`No longer with us: ${r.display_name}`}
+                            onClick={() => void removeAgent(r)}
+                          >
+                            <UserX className="h-3.5 w-3.5" /> No longer with us
+                          </Button>
+                        )}
                       </div>
                     );
                   })}

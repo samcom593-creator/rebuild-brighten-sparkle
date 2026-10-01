@@ -15,7 +15,7 @@ import { formatTimeAgo } from "@/lib/dateUtils";
 import { contactLinkProps, phoneHref, smsHref, startPhoneCall } from "@/lib/phone";
 import { useAuth } from "@/hooks/useAuth";
 import { useConfirm } from "@/hooks/useConfirm";
-import { resolveBrand } from "@/config/brand";
+import { markNoLongerWithUs } from "@/lib/noLongerWithUs";
 
 /**
  * Contracting call list (2026-09-30).
@@ -115,23 +115,6 @@ function prettyPhone(phone: string | null): string | null {
 }
 // Call/Text go through @/lib/phone: native dialer on phones, Google Voice on desktop.
 const telHref = (p: string | null) => (digitsOf(p) ? phoneHref(p) : null);
-const escapeHtml = (v: string) =>
-  v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-
-// Short and direct, Sam's voice. send-email does not check email_unsubscribes;
-// mark_no_longer_with_us() does, and anyone unsubscribed is never emailed.
-function reengageEmail(name: string) {
-  const first = escapeHtml((name || "").trim().split(/\s+/)[0] || "there");
-  const org = escapeHtml(resolveBrand().legalName);
-  return {
-    subject: "The door's still open",
-    html: `<p>Hey ${first},</p>
-<p>It's Sam from ${org}. Looks like the timing didn't line up for you with us right now, and that's okay.</p>
-<p>If you ever want another shot at building this, the door is open. Reply to this email or apply again at <a href="https://apex-financial.org/apply">apex-financial.org/apply</a> and I'll get you plugged back in.</p>
-<p>Hold the standard,<br/>Sam James<br/>${org}</p>`,
-  };
-}
-
 const rowKey = (r: Row) => r.agent_id ?? r.checkin_id ?? r.display_name;
 const calledToday = (r: Row) =>
   !!r.last_call_at && new Date(r.last_call_at).toDateString() === new Date().toDateString();
@@ -269,35 +252,11 @@ export function ContractingCheckinPanel() {
       if (!ok) return;
       const nextRow = queue[(currentIndex + 1) % Math.max(queue.length, 1)];
       setBusy(true);
-      const { data, error } = await supabase.rpc("mark_no_longer_with_us" as never, {
-        p_checkin_id: r.agent_id ? null : r.checkin_id,
-        p_agent_id: r.agent_id,
-        p_reason: null,
-      } as never);
-      if (error) {
-        setBusy(false);
-        toast.error(`${r.display_name} was not removed: ${error.message}`);
-        return;
-      }
-      const res = (data ?? {}) as { checkin_id?: string; email?: string | null; unsubscribed?: boolean };
-      let emailNote = "no email on file, so nothing was sent";
-      if (res.email && res.unsubscribed) {
-        emailNote = `${res.email} unsubscribed from our emails, so nothing was sent`;
-      } else if (res.email) {
-        const mail = reengageEmail(r.display_name);
-        const { error: mailErr } = await supabase.functions.invoke("send-email", {
-          body: { to: res.email, subject: mail.subject, html: mail.html, reply_to: resolveBrand().supportEmail },
-        });
-        if (mailErr) {
-          emailNote = `the email to ${res.email} failed (${mailErr.message})`;
-        } else {
-          emailNote = `re-engagement email sent to ${res.email}`;
-          if (res.checkin_id) await supabase.rpc("mark_reengage_email_sent" as never, { p_checkin_id: res.checkin_id } as never);
-        }
-      }
+      const out = await markNoLongerWithUs({ agentId: r.agent_id, checkinId: r.checkin_id, displayName: r.display_name });
       setBusy(false);
-      if (emailNote.startsWith("the email")) toast.error(`${r.display_name} removed, but ${emailNote}.`);
-      else toast.success(`${r.display_name} removed from your roster; ${emailNote}.`);
+      if (!out.ok || out.emailFailed) toast.error(out.message);
+      else toast.success(out.message);
+      if (!out.ok) return;
       if (nextRow && rowKey(nextRow) !== rowKey(r)) setPinnedKey(rowKey(nextRow));
       await qc.invalidateQueries({ queryKey: ["contracting-checkin"] });
     },

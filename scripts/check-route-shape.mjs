@@ -33,8 +33,64 @@ check("dynamic leaf", toShape("/status/6f1c2a90-1111-2222-3333-444455556666"), "
 check("dynamic under dashboard", toShape("/dashboard/agent/abc123"), "/dashboard/agent/:id");
 check("sibling dynamic not confused", toShape("/dashboard/agents/abc123"), "/dashboard/agents/:id");
 check("deep dynamic", toShape("/dashboard/training/library/course/xyz"), "/dashboard/training/library/course/:courseId");
-check("undeclared path is unmatched", toShape("/dashboard/recruiting/pipeline"), null);
-check("undeclared top level is unmatched", toShape("/no-such-route-anywhere"), null);
+// NEGATIVE FIXTURES ARE DERIVED, NEVER HARDCODED. MP-417: this check sat red for
+// 4.3 days because it hardcoded "/dashboard/recruiting/pipeline" as an example of
+// an UNDECLARED path, and commit 3a9b887a shipped exactly that route. A negative
+// fixture that names a plausible future route rots the day somebody builds it --
+// and a guard that is red for a reason nobody can act on is a guard everybody
+// learns to skip, which is the cost this repo has now paid in at least six checks.
+// Derived from the live pattern list, these cannot rot: the nonce segment is
+// declared nowhere, and the probe's non-declaredness is ASSERTED, not assumed.
+const NONCE = "zz-mp417-undeclared-segment";
+const declared = new Set(patterns);
+const segmentsOf = (p) => p.split("/").filter(Boolean);
+
+// A nested probe is the one that matters: it proves a shallower dynamic route
+// does not swallow a deeper undeclared path. Only usable under a fully static
+// prefix with no :param sibling at the probe's depth -- against such a sibling
+// the matcher is RIGHT to resolve the shape, so that would be a false fixture.
+function nestedUndeclaredProbe() {
+  for (const pattern of patterns) {
+    const s = segmentsOf(pattern);
+    if (s.length < 2 || s.some((x) => x.startsWith(":"))) continue;
+    const parent = s.slice(0, -1);
+    const hasDynamicSibling = patterns.some((q) => {
+      const t = segmentsOf(q);
+      return (
+        t.length === parent.length + 1 &&
+        t.slice(0, parent.length).join("/") === parent.join("/") &&
+        t[parent.length].startsWith(":")
+      );
+    });
+    if (hasDynamicSibling) continue;
+    return `/${[...parent, NONCE].join("/")}`;
+  }
+  return null;
+}
+
+const nestedProbe = nestedUndeclaredProbe();
+// Could-not-construct is never a pass (MP-399): silently skipping would leave
+// the matcher's whole refusal path unproven while the check still printed OK.
+if (!nestedProbe) {
+  console.error("check:route-shape FAIL — could not derive a nested undeclared probe from the pattern list");
+  process.exit(1);
+}
+check("derived nested probe is genuinely undeclared", declared.has(nestedProbe), false);
+check("undeclared path nested under a declared prefix is unmatched", toShape(nestedProbe), null);
+
+// Top-level sibling of the same property. Guarded the same way: if a root-level
+// :param route ever exists, matching it is correct and this fixture is invalid.
+const rootDynamic = patterns.some((q) => {
+  const t = segmentsOf(q);
+  return t.length === 1 && t[0].startsWith(":");
+});
+const topProbe = `/${NONCE}`;
+check("derived top-level probe is genuinely undeclared", declared.has(topProbe), false);
+check(
+  "undeclared top level is unmatched",
+  rootDynamic ? null : toShape(topProbe),
+  null,
+);
 
 // A :param is ONE segment. Caught by mutation M1: widening [^/]+ to .+ left
 // every assertion above green while /status/a/b started resolving to

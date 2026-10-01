@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { formatTimeAgo } from "@/lib/dateUtils";
-import { contactLinkProps, phoneHref, smsHref, startPhoneCall } from "@/lib/phone";
+import { contactLinkProps, formatPhoneDisplay, phoneHref, smsHref, startPhoneCall } from "@/lib/phone";
 import { useAuth } from "@/hooks/useAuth";
 import { useConfirm } from "@/hooks/useConfirm";
 import { markNoLongerWithUs } from "@/lib/noLongerWithUs";
@@ -108,10 +108,6 @@ function digitsOf(phone: string | null): string | null {
   let d = phone.replace(/\D/g, "");
   if (d.length === 11 && d.startsWith("1")) d = d.slice(1);
   return d.length === 10 ? d : null;
-}
-function prettyPhone(phone: string | null): string | null {
-  const d = digitsOf(phone);
-  return d ? `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}` : phone;
 }
 // Call/Text go through @/lib/phone: native dialer on phones, Google Voice on desktop.
 const telHref = (p: string | null) => (digitsOf(p) ? phoneHref(p) : null);
@@ -392,7 +388,7 @@ export function ContractingCheckinPanel() {
                 <div className="flex flex-wrap items-center gap-2">
                   {tel ? (
                     <>
-                      <span className="font-mono text-sm tabular-nums">{prettyPhone(r.phone)}</span>
+                      <span className="font-mono text-sm tabular-nums">{formatPhoneDisplay(r.phone)}</span>
                       <Button asChild size="sm" className="h-8 gap-1 bg-emerald-600 text-white hover:bg-emerald-500">
                         <a href={tel} {...contactLinkProps(tel)}><Phone className="h-3.5 w-3.5" /> Call</a>
                       </Button>
@@ -485,11 +481,11 @@ function CallCard(props: {
             <div className="space-y-3">
               <button
                 type="button"
-                onClick={() => { void navigator.clipboard.writeText(prettyPhone(r.phone) ?? ""); toast.success("Number copied"); }}
+                onClick={() => { void navigator.clipboard.writeText(formatPhoneDisplay(r.phone)); toast.success("Number copied"); }}
                 className="group inline-flex items-center gap-2 font-mono text-3xl font-semibold tabular-nums tracking-tight sm:text-4xl"
                 title="Copy number"
               >
-                {prettyPhone(r.phone)}
+                {formatPhoneDisplay(r.phone)}
                 <Copy className="h-4 w-4 opacity-0 transition group-hover:opacity-60" />
               </button>
               <div className="flex flex-wrap gap-2">

@@ -8,18 +8,20 @@
 // recorded cost is curl's --max-time against fn_agentlink_reap_stuck's 300s
 // threshold, which disagreed for long enough to send 36 false pages a day.
 //
-// STATE OF THAT, HONESTLY: only check-function-contracts.mjs imports this
-// module today. check-credential-minting.mjs still carries its own copy of the
-// CRED table and sharedSecretGateAt, and that copy does NOT have the two
-// conventions MP-415 added here (MAC_VERIFY, and the positional `json(body,
-// 401)` refusal shape). So the drift this module exists to prevent currently
-// EXISTS, in the safe direction: the older copy is the stricter one, so it can
-// report a gate as absent on correct code but cannot acquit an ungated minter.
-// Migrating it was deliberately not bundled into this wave — it is a green
-// security guard, and widening a security gate at the end of a budget is how a
-// real hole gets let through (MP-357). The migration owes a pre/post diff of
-// that guard's full per-function annotation list, the same blast-radius
-// measurement MP-413 shipped as its G3.
+// STATE OF THAT, AS OF MP-416: both guards import this module.
+// check-credential-minting.mjs carried its own older copy for 20 hours after
+// MP-415 shipped, and that copy was missing BOTH conventions added here — so the
+// drift this module exists to prevent really did exist, in the safe direction
+// (the older copy was stricter, so it could call correct code ungated but could
+// not acquit an ungated minter). The migration's blast radius was measured the
+// way MP-413 shipped its G3, and it is 13 of 13 annotation lines byte-identical:
+// the widening moved no verdict, because no function that mints gates by MAC or
+// by a positional refusal today. It is carried for the next one that does.
+//
+// That migration was asked for IN THIS COMMENT and sat here while the drift
+// stayed live, which is why the invariant is now a guard and not a paragraph:
+// scripts/check-gate-detector-copies.mjs fails if any script outside this file
+// defines these primitives, or if either consumer stops importing them.
 //
 // KNOWN LIMIT, STATED RATHER THAN CLAIMED AWAY: this proves a refusal is
 // WRITTEN and sits at a lower source offset than the protected operation. It
@@ -30,9 +32,35 @@
 // Identifiers assigned from an expression matching `probe`, anywhere in the
 // file. Bounded at 300 chars so a runaway match cannot swallow the rest of the
 // source.
+//
+// MP-416: the initializer must not contain a brace that OPENS A BLOCK, and
+// leaving that out made this function answer the wrong question on a shape the
+// repo uses. `[\s\S]{0,300}?;` is lazy up to the first semicolon, so against
+//
+//     const handler = async (req: Request) => {
+//       const provided = req.headers.get("x-cron-secret");
+//
+// the first match is `handler`, whose "initializer" is the arrow body up to that
+// inner semicolon. So `handler` was returned as the header-bound identifier, the
+// real binding `provided` was consumed and never seen, and a function reading its
+// caller's secret as the first statement of its handler reported NO GATE. The
+// comparison leg then looked for `provided === SECRET` with `provided` absent
+// from the set and returned Infinity.
+//
+// LATENT, NOT A LIVE HOLE, and measured rather than assumed: every function that
+// actually gates this way today declares its env secrets at module top level and
+// opens with `serve(async (req) => {`, which this regex handles correctly — the
+// pre/post verdict diff across BOTH consuming guards is byte-identical. It bit a
+// fixture first. That is still worth fixing, in the direction this repo keeps
+// paying for: a gate that is red on correct code is a gate everybody learns to
+// skip (MP-452, MP-413, MP-415).
+//
+// `${...}` is explicitly allowed through, because an env secret interpolated into
+// a template (`Bearer ${APEX_BOT_TOKEN}`) is a real binding the comparison leg
+// documents support for; a bare `{` is not.
 export function boundIdents(code, probe) {
   const out = new Set();
-  for (const m of code.matchAll(/(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::\s*[^=;]+)?=\s*([\s\S]{0,300}?);/g)) {
+  for (const m of code.matchAll(/(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::\s*[^=;{]+)?=\s*((?:\$\{[^{}]*\}|[^;{]){0,300}?);/g)) {
     if (probe.test(m[2])) out.add(m[1]);
   }
   return out;

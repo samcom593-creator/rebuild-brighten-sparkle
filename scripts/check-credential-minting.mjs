@@ -1,5 +1,11 @@
 #!/usr/bin/env node
 import { stripComments } from "./lib/strip-comments.mjs";
+import {
+  CRED_PATTERNS,
+  sharedSecretGateAt,
+  macVerifyGateAt,
+  firstOffset,
+} from "./lib/in-handler-gate.mjs";
 // check-credential-minting — MP-450 (2026-09-06)
 //
 // THE BUG THIS EXISTS FOR (MP-447):
@@ -115,21 +121,24 @@ const MAILS = [
 ];
 
 const GATES = {
-  CRED: [
-    /requireAuth\s*\(/g,
-    // MP-452: the four patterns above all match a CALL, and the repo's other
-    // gating convention is not a call — createHandler({ requireAuth: true })
-    // makes the WRAPPER call requireAuth(req) before the handler body ever
-    // runs. 6 functions already gate this way, and to this guard every one of
-    // them read as ungated. That is the failure mode this file's own header
-    // warns about in the other direction: a gate that is red on correct code is
-    // a gate everybody learns to skip. Ordering still holds — the opts object
-    // is necessarily at a lower source offset than the handler that mints.
-    /requireAuth\s*:\s*true/g,
-    /requireSendAuth\s*\(/g,
-    /headers\s*\.\s*get\s*\(\s*["'`]\s*[Aa]uthorization/g,
-    /auth\s*\.\s*get(User|Claims)\s*\(/g,
-  ],
+  // MP-416: this table used to carry its own copy of the CRED patterns and of
+  // sharedSecretGateAt. Two guards ask one question -- does this function refuse
+  // an unproven caller, above the thing that matters -- and the second copy had
+  // already drifted: it was missing MAC_VERIFY and the positional `json(body,
+  // 401)` refusal shape, both of which scripts/lib/in-handler-gate.mjs learned
+  // in MP-415 from functions this repo actually ships. The recorded cost of two
+  // derivations of one question is curl's --max-time against
+  // fn_agentlink_reap_stuck's 300s threshold, which disagreed long enough to
+  // send 36 false pages a day.
+  //
+  // The five CRED patterns were byte-identical across the two copies when this
+  // landed (asserted pattern-for-pattern, not assumed), so this leg cannot move
+  // a verdict. SHARED_SECRET and MAC_VERIFY are where the drift actually was.
+  // SELECTOR and PRIVGATE stay local because they are NOT that question: they are
+  // specific to minting -- an unguessable selector validated against the DB, and
+  // a refusal to mint for a privileged account -- and check-function-contracts
+  // has no business asking them.
+  CRED: CRED_PATTERNS,
   SELECTOR: [
     /\.eq\s*\(\s*["'`](token|invite_token|inviteToken|invite_code|token_hash|magic_token|hash|code|nonce)["'`]/g,
   ],
@@ -171,58 +180,22 @@ const GATES = {
   // promise is never awaited reads as present too). It is a stronger operand
   // than the ones already here, not a proof of correctness.
   SHARED_SECRET: sharedSecretGateAt,
+  // MP-415 found this convention one directory wider: youtube-auth holds no
+  // `===` against a header ANYWHERE, because the comparison IS a crypto MAC
+  // verification, so both conventions above read it as completely ungated.
+  // No function that MINTS gates this way today -- the blast-radius diff for
+  // MP-416 is 13 of 13 annotation lines byte-identical -- so this is carried for
+  // the reason the module exists: the next minter that verifies a signed
+  // selector instead of comparing a header must not be called a violation on a
+  // convention the sibling guard already understands.
+  MAC_VERIFY: macVerifyGateAt,
 };
-
-// Identifiers assigned from `expr` matching `probe`, anywhere in the file.
-// Bounded at 300 chars so a runaway match cannot swallow the rest of the source.
-function boundIdents(code, probe) {
-  const out = new Set();
-  for (const m of code.matchAll(/(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::\s*[^=;]+)?=\s*([\s\S]{0,300}?);/g)) {
-    if (probe.test(m[2])) out.add(m[1]);
-  }
-  return out;
-}
-
-function sharedSecretGateAt(code) {
-  const headerIds = boundIdents(code, /\bheaders\s*\.\s*get\s*\(/);
-  const envIds = boundIdents(code, /Deno\s*\.\s*env\s*\.\s*get\s*\(/);
-  if (headerIds.size === 0 || envIds.size === 0) return Infinity;
-
-  let best = Infinity;
-  for (const m of code.matchAll(/([A-Za-z_$][\w$]*)\s*(?:!==|===|!=|==)\s*([\s\S]{0,120}?)(?:[)&|;\n])/g)) {
-    const lhs = m[1];
-    const rhs = m[2];
-    if (!headerIds.has(lhs)) continue;
-    // The secret may be the bare identifier or interpolated into a template
-    // (`Bearer ${APEX_BOT_TOKEN}`), so the right-hand side is searched for any
-    // env-bound name rather than required to equal one.
-    let namesSecret = false;
-    for (const e of envIds) { if (new RegExp("\\b" + e + "\\b").test(rhs)) { namesSecret = true; break; } }
-    if (!namesSecret) continue;
-    // A comparison nobody acts on is not a gate.
-    const after = code.slice(m.index, m.index + 240);
-    if (!/status\s*:\s*40[13]|\bthrow\b/.test(after)) continue;
-    if (m.index < best) best = m.index;
-  }
-  return best;
-}
 
 // A gate spec is either a list of patterns or a function that resolves the
 // offset itself. Both call sites go through this so a future non-regex gate
 // cannot be silently skipped by one of them.
 function gateOffset(spec, src) {
   return typeof spec === "function" ? spec(src) : firstOffset(spec, src);
-}
-
-// Earliest source offset at which any pattern in the list matches, or Infinity.
-function firstOffset(pats, src) {
-  let best = Infinity;
-  for (const r of pats) {
-    r.lastIndex = 0;
-    const m = r.exec(src);
-    if (m && m.index < best) best = m.index;
-  }
-  return best;
 }
 
 // Every JSON.stringify(...) argument that is actually being RETURNED, extracted

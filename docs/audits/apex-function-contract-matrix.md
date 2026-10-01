@@ -1,15 +1,15 @@
 # APEX Function Contract Matrix
 
-Generated: 2026-09-12T22:42:53.398Z
+Generated: 2026-10-01T01:13:38.599Z
 Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 
 ## Inventory Summary
 
-- Total Local Edge Functions: **228**
-- Configured in `config.toml`: **229**
+- Total Local Edge Functions: **236**
+- Configured in `config.toml`: **237**
 - Invoked Edge Functions in Source: **102**
-- Invoked RPC Calls in Source: **151**
-- SQL Functions in Migrations: **527**
+- Invoked RPC Calls in Source: **165**
+- SQL Functions in Migrations: **554**
 
 ## Edge Function Auth & Verification Contracts
 
@@ -41,6 +41,8 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 | `assistant-add-interview` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `backfill-plaque-images` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `bot-sql` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `brand-collab` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
+| `brand-photo-upload` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `bulk-agent-message` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `bulk-resend-course-emails` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `bulk-send-licensing` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -74,6 +76,8 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 | `create-agent-from-leaderboard` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `create-lead-checkout` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `create-new-agent-account` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `cron-inbound-brain-health` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
+| `cron-newhire-portal-login` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `daily-brief` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `dedupe-aged-leads` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `detect-dropped-leads` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -94,6 +98,8 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 | `ics-feed` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `ig-voice-broadcast` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `instagram-auth` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `instagram-comments-backfill` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
+| `instagram-token-keepalive` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `instagram-webhook` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `insuracloud-outbox` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `insuracloud-sync` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -244,6 +250,8 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 | `xcel-csv-ingest` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `xcel-gmail-pull` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `xcel-import` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `youtube-auth` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
+| `youtube-comments` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 
 ## Invoked RPC Coverage (informational)
 
@@ -252,6 +260,6 @@ applied by hand through bot-sql and never round-tripped into
 `supabase/migrations`, so this directory does not model the deployed database.
 `apex-doctor` queries `pg_proc` and is the authority on deployed state.
 
-- Invoked RPCs: **151**
-- Also declared in this commit's migrations: **142**
+- Invoked RPCs: **165**
+- Also declared in this commit's migrations: **156**
 - Declared only in the database: **9**

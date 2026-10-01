@@ -119,6 +119,22 @@ PUBLIC_ALLOWLIST=(
   "provision-agent-accounts"
   "site-shell-watch"
   "slack-announce"
+  # MP-415 — the eight classified in check-function-contracts.mjs's
+  # PUBLIC_CONTRACT. Seven refuse an unproven caller in code (verified against
+  # scripts/lib/in-handler-gate.mjs on every run); brand-collab is the public
+  # King of Sales collab form. They are here because this file is the direction
+  # that fails SILENTLY: absent a stanza, this script writes verify_jwt = true
+  # over a reviewed public endpoint and the gateway then refuses its non-JWT
+  # caller before the handler runs, while pg_cron keeps recording 'succeeded'.
+  # That is the sixteen-day death agentlink-clients-sync already paid for.
+  "brand-collab"
+  "brand-photo-upload"
+  "cron-inbound-brain-health"
+  "cron-newhire-portal-login"
+  "instagram-comments-backfill"
+  "instagram-token-keepalive"
+  "youtube-auth"
+  "youtube-comments"
 )
 
 is_public() {

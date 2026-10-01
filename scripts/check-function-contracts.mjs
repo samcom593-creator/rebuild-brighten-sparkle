@@ -16,6 +16,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { inHandlerGate } from "./lib/in-handler-gate.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "..");
@@ -41,7 +42,14 @@ const BASELINE_PATH = path.join(REPO_ROOT, "scripts/data/function-contracts-base
 const GLYPH_OK = "\u2705";
 const GLYPH_BAD = "\u274c";
 
-const buckets = { missing_config_block: [], missing_local_source: [], unallowlisted_public: [] };
+// MP-415: the three buckets below the original trio are all BASELINE 0 and are
+// meant to stay there. They do not record pre-existing debt — they grade a
+// claim an allowlist entry makes about itself, and a claim that fails is a
+// defect in the entry, never inherited debt to be absorbed.
+const buckets = {
+  missing_config_block: [], missing_local_source: [], unallowlisted_public: [],
+  allowlist_undeclared: [], allowlist_gate_unproven: [], public_by_design_over_ceiling: [],
+};
 
 // Every violation carries the FUNCTION NAME as its key. The prose message is
 // for the human; the key is what the floor is graded on. See the WHY block at
@@ -262,7 +270,193 @@ const PUBLIC_ALLOWLIST = new Set([
   // seam, not an open door.
   "provision-agent-accounts",
   "slack-announce",
+  // MP-415 — the eight that turned this bucket red on 2026-09-30, each
+  // classified in PUBLIC_CONTRACT below. Seven gate their caller in code and
+  // the detector confirms it on every run; brand-collab is a public form. They
+  // are allowlisted here rather than added to the floor because the floor
+  // records debt, and correct code is not debt.
+  "brand-collab",
+  "brand-photo-upload",
+  "cron-inbound-brain-health",
+  "cron-newhire-portal-login",
+  "instagram-comments-backfill",
+  "instagram-token-keepalive",
+  "youtube-auth",
+  "youtube-comments",
 ]);
+
+// ---------------------------------------------------------------------------
+// MP-415 — what an allowlist entry has to SHOW, not merely assert.
+//
+// THE DEFECT THIS CLOSES: for its whole life the test above was
+// `PUBLIC_ALLOWLIST.has(fn)`. A name in a Set was the entire evidence standard
+// for shipping verify_jwt = false, and the prose rationale beside each entry —
+// careful, specific, often citing a live probe — was read by humans and graded
+// by nothing. So the cost of turning this guard green on a genuinely open
+// endpoint was typing one line.
+//
+// That is not hypothetical. On 2026-09-30 this bucket went red naming eight
+// functions at once. SEVEN of them gate their caller in code and were correct.
+// The eighth, youtube-auth, had no gate of any kind: it walked Google consent
+// with no `state` and no initiation secret, and its callback upserted
+// youtube_connections with the service role, which youtube-comments then reads
+// unfiltered and treats as a standing instruction. Clearing that red the cheap
+// way — paste all eight names in — would have handed the hole a permanent green
+// under a rationale nobody checked. MP-357 is the recorded precedent: a
+// security floor was turned green by allowlisting a bystander.
+//
+// SO: every allowlisted function must declare HOW it is protected, and the one
+// claim that can be mechanically checked is checked.
+//
+//   in_handler_gate    — refuses an unproven caller in code. VERIFIED against
+//                        scripts/lib/in-handler-gate.mjs on every run. If the
+//                        detector cannot find the gate, the claim fails the
+//                        build. This is the load-bearing category.
+//   url_token          — the credential is in the URL and is looked up; the
+//                        share/feed/invite token IS the caller's proof.
+//   provider_signature — a third-party webhook signature or shared secret
+//                        (Stripe constructEvent, Meta app secret, et al).
+//   public_by_design   — NO caller credential, intentionally. The dangerous
+//                        set. Bounded by a ceiling below so it cannot grow
+//                        quietly, and every member is NAMED on every run.
+//
+// WHY THE OTHER THREE ARE NOT MECHANICALLY GRADED, stated rather than claimed
+// away: a url_token lookup and a provider signature are real gates, but writing
+// detectors for them in the same breath as this one would be two more
+// conventions sized by guesswork. They are declared, named, and counted. That
+// is strictly more than the Set they replace, and less than in_handler_gate.
+// The honest reading of a url_token line is "a human asserted this and nothing
+// re-checks it" — the same standing every entry had before, now visible as such
+// instead of hiding inside a flat list.
+const PUBLIC_CONTRACT = {
+  // --- gates its caller in code; CHECKED every run -----------------------
+  "agentlink-clients-sync": "in_handler_gate",
+  "content-library": "in_handler_gate",
+  "content-thumb": "in_handler_gate",
+  "slack-unlicensed-welcome": "in_handler_gate",
+  "site-shell-watch": "in_handler_gate",
+  "discord-webhook-notify": "in_handler_gate",
+  "manychat-webhook": "in_handler_gate",
+  "telegram-webhook": "in_handler_gate",
+  "free-leads-weekly-alerts": "in_handler_gate",
+  "onboarding-call-invites": "in_handler_gate",
+  "numbers-reminder": "in_handler_gate",
+  "license-milestone-sms-drain": "in_handler_gate",
+  "slack-identity-admin": "in_handler_gate",
+  "provision-agent-accounts": "in_handler_gate",
+  "slack-announce": "in_handler_gate",
+  // cron-newhire-portal-login + cron-inbound-brain-health: x-cron-secret
+  // compared against the environment as the handler's first statement, probed
+  // live 401 on a bare POST and on a wrong secret (MP-413).
+  "cron-newhire-portal-login": "in_handler_gate",
+  "cron-inbound-brain-health": "in_handler_gate",
+  "instagram-comments-backfill": "in_handler_gate",
+  "instagram-token-keepalive": "in_handler_gate",
+  "youtube-comments": "in_handler_gate",
+  // youtube-auth (MP-412): two gates, both proven live on prod — a connect key
+  // derived HMAC-SHA256(APEX_BOT_TOKEN, "youtube-auth-connect-v1") to reach
+  // consent, and a `state` this function signed within 15 minutes on the
+  // callback. Absent APEX_BOT_TOKEN it returns 503 rather than falling open.
+  // Detected via MAC_VERIFY: it holds no `===` against a header anywhere,
+  // because the comparison IS the MAC verification.
+  "youtube-auth": "in_handler_gate",
+  // brand-photo-upload: x-edit-code compared against BRAND_EDIT_CODE, length
+  // check first and a 700ms delay on mismatch so the code cannot be brute
+  // forced fast. Refuses with json(body, 401) — a positional argument, which
+  // is why the detector had to learn that shape (MP-415).
+  "brand-photo-upload": "in_handler_gate",
+
+  // --- the credential is the token in the URL ----------------------------
+  "content-share": "url_token",
+  "ics-feed": "url_token",
+  "consume-invite-token": "url_token",
+
+  // --- third-party webhook signature / shared secret ---------------------
+  "stripe-webhook-lead-purchase": "provider_signature",
+  "instagram-webhook": "provider_signature",
+  "readymode-webhook": "provider_signature",
+  "calendly-webhook": "provider_signature",
+
+  // --- no caller credential, intentionally -------------------------------
+  // Public forms, email-link endpoints and tracking pixels. Each writes with
+  // the service role on behalf of a stranger BY DESIGN, which is why this set
+  // is ceilinged and named rather than merely listed.
+  "submit-application": "public_by_design",
+  "submit-contracting-intake": "public_by_design",
+  "seminar-register": "public_by_design",
+  "seminar-confirmation": "public_by_design",
+  "manager-signup": "public_by_design",
+  "applicant-checkin": "public_by_design",
+  "get-public-recruiters": "public_by_design",
+  "track-email-click": "public_by_design",
+  "track-email-open": "public_by_design",
+  "unsubscribe": "public_by_design",
+  // brand-collab (MP-415): the King of Sales collab form. POST-only, validates
+  // an email shape and a message length, then inserts with the service role and
+  // mails Sam. Same shape as submit-application. No gate, and correctly so.
+  "brand-collab": "public_by_design",
+  // MP-415 RECORDED HONESTLY RATHER THAN DRESSED UP: these two sat in the flat
+  // allowlist under a shared comment asserting they "authenticate with the
+  // rotating bot token or a valid user session". They do not. Neither reads any
+  // caller credential — measured, not inferred:
+  //   poke-webhook              — any caller can insert into poke_queue and ack
+  //                               rows with the service role.
+  //   update-application-referral — takes an applicationId and writes
+  //                               applications.notes with the service role; the
+  //                               user_roles/admin lookup inside it authorizes
+  //                               the ASSIGNED AGENT, not the caller.
+  // They are declared public_by_design because that is what the code is, not
+  // because it is desirable. Classifying them in_handler_gate would fail this
+  // guard, which is the point — the prose claim can no longer outrank the
+  // source. Left functionally unchanged this wave: both have live callers and
+  // closing them is a product change, not a guard change. They are NAMED on
+  // every run instead of hiding in a list of 34.
+  "poke-webhook": "public_by_design",
+  "update-application-referral": "public_by_design",
+};
+
+// The ceiling on gateless endpoints. A ceiling, not a bump-me floor: the only
+// way past it is to delete an entry or argue in a commit for raising it.
+const PUBLIC_BY_DESIGN_CEILING = 13;
+
+// Neither structure may drift from the other. An allowlist entry with no
+// declared contract would silently keep the old name-is-enough standard, and a
+// declared contract for a name that is not allowlisted is a dead rationale.
+for (const fn of PUBLIC_ALLOWLIST) {
+  if (!PUBLIC_CONTRACT[fn]) {
+    logError("allowlist_undeclared", fn, `Function '${fn}' is in PUBLIC_ALLOWLIST with no declared PUBLIC_CONTRACT category`);
+  }
+}
+for (const fn of Object.keys(PUBLIC_CONTRACT)) {
+  if (!PUBLIC_ALLOWLIST.has(fn)) {
+    logError("allowlist_undeclared", fn, `Function '${fn}' declares a PUBLIC_CONTRACT category but is not in PUBLIC_ALLOWLIST`);
+  }
+}
+
+// The in_handler_gate claim is the one that is checked.
+const gatelessByDesign = [];
+for (const [fn, kind] of Object.entries(PUBLIC_CONTRACT)) {
+  if (kind === "public_by_design") gatelessByDesign.push(fn);
+  if (kind !== "in_handler_gate") continue;
+  const srcPath = path.join(FUNCTIONS_DIR, fn, "index.ts");
+  if (!fs.existsSync(srcPath)) {
+    logError("allowlist_gate_unproven", fn, `Function '${fn}' claims in_handler_gate but has no local source to check`);
+    continue;
+  }
+  const gate = inHandlerGate(fs.readFileSync(srcPath, "utf8"));
+  if (!gate.via) {
+    logError("allowlist_gate_unproven", fn, `Function '${fn}' is allowlisted as in_handler_gate but no in-handler gate was found. Either it does not refuse an unproven caller (fix the function), or it gates by a convention scripts/lib/in-handler-gate.mjs does not know yet (widen the detector and prove the new convention load-bearing -- do NOT reclassify it to silence this).`);
+  }
+}
+
+if (gatelessByDesign.length > PUBLIC_BY_DESIGN_CEILING) {
+  logError(
+    "public_by_design_over_ceiling",
+    "ceiling",
+    `${gatelessByDesign.length} functions are declared public_by_design, over the ceiling of ${PUBLIC_BY_DESIGN_CEILING}. A gateless endpoint that writes with the service role is the most expensive thing in this file; raise the ceiling only in a commit that argues for it.`,
+  );
+}
+
 
 // Rule 4: verify_jwt status. Ratcheted, not absolute. Flipping the ~236 legacy
 // functions in one sweep is not deployment-safe: verify_jwt = true rejects any

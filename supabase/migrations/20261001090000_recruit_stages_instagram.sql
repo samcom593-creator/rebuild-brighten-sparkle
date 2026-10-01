@@ -21,7 +21,9 @@ begin
   if auth.uid() is null then raise exception 'authentication required' using errcode='42501'; end if;
   if (p_application_id is null) = (p_agent_id is null) then raise exception 'pass exactly one of application or agent'; end if;
   if not public.fn_recruit_scope_ok(p_application_id, p_agent_id) then raise exception 'not allowed to edit this person' using errcode='42501'; end if;
-  if v_h is not null and v_h !~ '^[a-z0-9._]{1,30}$' then raise exception 'that is not an Instagram handle'; end if;
+  -- Empty input clears the handle; anything non-empty that does not normalise to a
+  -- handle is refused rather than silently clearing what was there.
+  if nullif(btrim(coalesce(p_handle,'')),'') is not null and v_h is null then raise exception 'that is not an Instagram handle'; end if;
   if p_application_id is not null then
     update public.applications set instagram_handle = v_h, updated_at = now() where id = p_application_id;
   else

@@ -61,6 +61,7 @@ type Row = {
   link_sent_at: string | null;
   link_used_at: string | null;
   last_sign_in_at: string | null;
+  resident_state: string | null;
 };
 type Stage = { stage_key: string; order_index: number; display_name: string; is_terminal: boolean | null; retired_at: string | null };
 type IdleFilter = "all" | "7" | "21" | "60";
@@ -95,6 +96,7 @@ export default function RecruitPipeline() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkStage, setBulkStage] = useState<string>("");
   const [igEditing, setIgEditing] = useState<string | null>(null);
+  const [stateEditing, setStateEditing] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
   const stagesQuery = useQuery({
@@ -143,7 +145,7 @@ export default function RecruitPipeline() {
       if (link !== "all" && (r.person_type !== "agent" || linkState(r) !== link)) return false;
       if (stageFilter && r.stage_key !== stageFilter) return false;
       if (managerFilter === "none" ? !!r.manager_name : managerFilter !== "all" && r.manager_name !== managerFilter) return false;
-      if (q && !`${r.display_name} ${r.manager_name ?? ""} ${r.phone ?? ""} ${r.email ?? ""} ${r.stage_name} ${r.instagram ?? ""}`.toLowerCase().includes(q)) return false;
+      if (q && !`${r.display_name} ${r.manager_name ?? ""} ${r.phone ?? ""} ${r.email ?? ""} ${r.stage_name} ${r.instagram ?? ""} ${r.resident_state ?? ""}`.toLowerCase().includes(q)) return false;
       return true;
     });
   }, [all, search, idle, link, stageFilter, managerFilter, showClosed]);
@@ -279,6 +281,19 @@ export default function RecruitPipeline() {
     [askConfirm, refresh],
   );
 
+  const saveState = useCallback(
+    async (r: Row, state: string) => {
+      const { data, error } = await supabase.rpc("set_recruit_state" as never, {
+        p_application_id: r.application_id, p_agent_id: r.agent_id, p_state: state,
+      } as never);
+      setStateEditing(null);
+      if (error) { toast.error(`${r.display_name}: ${error.message}`); return; }
+      toast.success(`${r.display_name}: state ${(data as { state?: string } | null)?.state ?? "cleared"}`);
+      await refresh();
+    },
+    [refresh],
+  );
+
   const toggle = (r: Row) =>
     setSelected((prev) => { const n = new Set(prev); const k = personKey(r); if (n.has(k)) n.delete(k); else n.add(k); return n; });
   const toggleMany = (rows: Row[], on: boolean) =>
@@ -289,7 +304,7 @@ export default function RecruitPipeline() {
     const cols: [string, (r: Row) => string | number | null][] = [
       ["name", (r) => r.display_name], ["type", (r) => r.person_type], ["stage", (r) => r.stage_name],
       ["days_in_stage", (r) => Math.round(r.days_in_stage)], ["manager", (r) => r.manager_name],
-      ["phone", (r) => formatPhoneDisplay(r.phone)], ["email", (r) => r.email], ["instagram", (r) => r.instagram], ["state", (r) => r.state],
+      ["phone", (r) => formatPhoneDisplay(r.phone)], ["email", (r) => r.email], ["instagram", (r) => r.instagram], ["state", (r) => r.resident_state],
       ["license_status", (r) => r.license_status], ["license_progress", (r) => r.license_progress], ["npn", (r) => r.npn],
       ["last_contact", (r) => r.last_contacted_at?.slice(0, 10) ?? null],
       ["link_sent", (r) => r.link_sent_at?.slice(0, 10) ?? null], ["link_clicked", (r) => (r.link_used_at ?? r.last_sign_in_at)?.slice(0, 10) ?? null],
@@ -463,7 +478,25 @@ export default function RecruitPipeline() {
                           </div>
                           <div className="text-xs text-muted-foreground">
                             {r.manager_name ? `under ${r.manager_name}` : "unassigned"}
-                            {r.state ? ` · ${r.state}` : ""}
+                            {" · "}
+                            {r.resident_state ? (
+                              <button type="button" className="font-medium text-foreground hover:underline" title="Resident state (click to change)" onClick={() => setStateEditing(personKey(r))}>{r.resident_state}</button>
+                            ) : stateEditing === personKey(r) ? null : (
+                              <button type="button" className="text-rose-300 hover:underline" onClick={() => setStateEditing(personKey(r))} aria-label={`Add state for ${r.display_name}`}>add state</button>
+                            )}
+                            {stateEditing === personKey(r) && (
+                              <Input
+                                autoFocus
+                                maxLength={2}
+                                placeholder="WI"
+                                className="ml-1 inline-block h-6 w-12 px-1 text-center text-xs uppercase"
+                                onBlur={(e) => { const v = e.target.value.trim(); if (v) void saveState(r, v); else setStateEditing(null); }}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") { const v = (e.target as HTMLInputElement).value.trim(); if (v) void saveState(r, v); else setStateEditing(null); }
+                                  if (e.key === "Escape") setStateEditing(null);
+                                }}
+                              />
+                            )}
                             {" · "}
                             <span className={heatClass(r.days_in_stage)}>{Math.round(r.days_in_stage)}d in stage</span>
                             {contact && <> · last contact {contact}</>}

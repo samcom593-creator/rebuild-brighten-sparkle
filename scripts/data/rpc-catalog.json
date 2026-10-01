@@ -3298,6 +3298,18 @@
         "raw": "p_raw text"
       }
     ],
+    "fn_normalize_instagram_handle": [
+      {
+        "all": [
+          "p"
+        ],
+        "required": [
+          "p"
+        ],
+        "unnamed": false,
+        "raw": "p text"
+      }
+    ],
     "fn_normalize_license_progress": [
       {
         "all": [],
@@ -3345,14 +3357,27 @@
           "p_body",
           "p_priority",
           "p_tags",
-          "p_title"
+          "p_title",
+          "p_topic"
         ],
         "required": [
           "p_body",
           "p_title"
         ],
         "unnamed": false,
-        "raw": "p_title text, p_body text, p_priority text DEFAULT '4'::text, p_tags text DEFAULT 'bell'::text"
+        "raw": "p_title text, p_body text, p_priority text DEFAULT '4'::text, p_tags text DEFAULT 'bell'::text, p_topic text DEFAULT 'sams-agent-yrkv9kbqp9e987nb'::text"
+      }
+    ],
+    "fn_ntfy_relay_receipt": [
+      {
+        "all": [
+          "p_request_id"
+        ],
+        "required": [
+          "p_request_id"
+        ],
+        "unnamed": false,
+        "raw": "p_request_id bigint"
       }
     ],
     "fn_ntfy_relay_result": [
@@ -6050,6 +6075,22 @@
         ],
         "unnamed": false,
         "raw": "p_token text"
+      }
+    ],
+    "set_recruit_instagram": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_application_id",
+          "p_handle"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_application_id",
+          "p_handle"
+        ],
+        "unnamed": false,
+        "raw": "p_application_id uuid, p_agent_id uuid, p_handle text"
       }
     ],
     "set_recruit_stage": [

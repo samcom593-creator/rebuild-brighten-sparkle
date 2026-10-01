@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-rpc-column-vocabulary.sh (bot_sql -> pg_proc + pg_rewrite)",
- "_generated_at": "2026-09-30T19:56:06Z",
+ "_generated_at": "2026-10-01T15:56:25Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "check-enum-filter-literals.mjs grades literals inside supabase.from().eq() chains. This is the other half of the same class: a status word that arrives from an RPC and is compared in JavaScript, where the return type is text and every wrong word type-checks. Per (function, returned column) this records the relation columns of that name reachable from the function body and the literals the function synthesises itself. It deliberately records CANDIDATES rather than one resolved source: provenance from a body regex is a guess, so check-rpc-status-literals.mjs refuses a literal only when NO candidate vocabulary and no body literal accepts it.",
  "_vocabulary_source": "scripts/data/enum-catalog.json (check_vocab + column_enum + enums). Not copied here on purpose, so the two guards read one snapshot and cannot drift.",
@@ -270,11 +270,13 @@
   "fn_normalize_contracting_email": "text",
   "fn_normalize_contracting_npn": "text",
   "fn_normalize_contracting_phone": "text",
+  "fn_normalize_instagram_handle": "text",
   "fn_normalize_license_progress": "trigger",
   "fn_normalize_policy_number": "text",
   "fn_notify_agent_hired": "trigger",
   "fn_npn_plausible": "boolean",
   "fn_ntfy_relay": "bigint",
+  "fn_ntfy_relay_receipt": "jsonb",
   "fn_ntfy_relay_result": "text",
   "fn_onboarding_email_backfill_sweep": "jsonb",
   "fn_policy_number_report_placeholder": "boolean",
@@ -471,6 +473,7 @@
   "set_hire_license_status": "jsonb",
   "set_limit": "real",
   "set_my_insuracloud_token": "void",
+  "set_recruit_instagram": "jsonb",
   "set_recruit_stage": "jsonb",
   "set_recruit_stage_bulk": "jsonb",
   "set_recruiter_bounty_status": "recruiter_bounties",
@@ -5384,12 +5387,18 @@
   "fn_next_step_recompute_all.advanced": {
    "candidates": [],
    "body_literals": [
+    "active",
+    "closed_lost",
+    "completed",
     "public"
    ]
   },
   "fn_next_step_recompute_all.processed": {
    "candidates": [],
    "body_literals": [
+    "active",
+    "closed_lost",
+    "completed",
     "public"
    ]
   },
@@ -7874,6 +7883,7 @@
     "next_step_progress.agent_id"
    ],
    "body_literals": [
+    "g",
     "manager",
     "public",
     "va",
@@ -7885,6 +7895,7 @@
     "next_step_progress.application_id"
    ],
    "body_literals": [
+    "g",
     "manager",
     "public",
     "va",
@@ -7894,6 +7905,7 @@
   "recruit_pipeline_list.days_in_stage": {
    "candidates": [],
    "body_literals": [
+    "g",
     "manager",
     "public",
     "va",
@@ -7906,6 +7918,7 @@
     "next_step_stages.display_name"
    ],
    "body_literals": [
+    "g",
     "manager",
     "public",
     "va",
@@ -7918,6 +7931,7 @@
     "profiles.email"
    ],
    "body_literals": [
+    "g",
     "manager",
     "public",
     "va",
@@ -7929,6 +7943,17 @@
     "next_step_progress.entered_at"
    ],
    "body_literals": [
+    "g",
+    "manager",
+    "public",
+    "va",
+    "va_manager"
+   ]
+  },
+  "recruit_pipeline_list.instagram": {
+   "candidates": [],
+   "body_literals": [
+    "g",
     "manager",
     "public",
     "va",
@@ -7940,6 +7965,7 @@
     "next_step_progress.is_stalled"
    ],
    "body_literals": [
+    "g",
     "manager",
     "public",
     "va",
@@ -7951,6 +7977,7 @@
     "applications.last_contacted_at"
    ],
    "body_literals": [
+    "g",
     "manager",
     "public",
     "va",
@@ -7963,6 +7990,7 @@
     "applications.license_progress"
    ],
    "body_literals": [
+    "g",
     "manager",
     "public",
     "va",
@@ -7975,6 +8003,7 @@
     "applications.license_status"
    ],
    "body_literals": [
+    "g",
     "manager",
     "public",
     "va",
@@ -7984,6 +8013,7 @@
   "recruit_pipeline_list.manager_name": {
    "candidates": [],
    "body_literals": [
+    "g",
     "manager",
     "public",
     "va",
@@ -7995,6 +8025,7 @@
     "next_step_progress.manual_stage_key"
    ],
    "body_literals": [
+    "g",
     "manager",
     "public",
     "va",
@@ -8006,6 +8037,7 @@
     "next_step_stages.next_action_label"
    ],
    "body_literals": [
+    "g",
     "manager",
     "public",
     "va",
@@ -8015,6 +8047,7 @@
   "recruit_pipeline_list.npn": {
    "candidates": [],
    "body_literals": [
+    "g",
     "manager",
     "public",
     "va",
@@ -8026,6 +8059,7 @@
     "next_step_stages.order_index"
    ],
    "body_literals": [
+    "g",
     "manager",
     "public",
     "va",
@@ -8037,6 +8071,7 @@
     "next_step_progress.person_type"
    ],
    "body_literals": [
+    "g",
     "manager",
     "public",
     "va",
@@ -8049,6 +8084,7 @@
     "profiles.phone"
    ],
    "body_literals": [
+    "g",
     "manager",
     "public",
     "va",
@@ -8060,6 +8096,7 @@
     "next_step_progress.sla_due_at"
    ],
    "body_literals": [
+    "g",
     "manager",
     "public",
     "va",
@@ -8071,6 +8108,7 @@
     "next_step_stages.stage_key"
    ],
    "body_literals": [
+    "g",
     "manager",
     "public",
     "va",
@@ -8080,6 +8118,7 @@
   "recruit_pipeline_list.stage_name": {
    "candidates": [],
    "body_literals": [
+    "g",
     "manager",
     "public",
     "va",
@@ -8092,6 +8131,7 @@
     "profiles.state"
    ],
    "body_literals": [
+    "g",
     "manager",
     "public",
     "va",
@@ -8105,6 +8145,7 @@
     "next_step_progress.status"
    ],
    "body_literals": [
+    "g",
     "manager",
     "public",
     "va",

@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowRight, Download, Mail, MessageSquare, Phone, Search, X } from "lucide-react";
+import { ArrowRight, Download, Instagram, Mail, MessageSquare, Phone, Search, X } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -54,6 +54,7 @@ type Row = {
   last_contacted_at: string | null;
   manual_stage_key: string | null;
   status: string;
+  instagram: string | null;
 };
 type Stage = { stage_key: string; order_index: number; display_name: string; is_terminal: boolean | null; retired_at: string | null };
 type IdleFilter = "all" | "7" | "21" | "60";
@@ -63,6 +64,7 @@ const HIRED_INDEX = 12;
 const DERIVED_ONLY = new Set(["watched_vsl", "completed_application"]);
 const PAGE = 40;
 const personKey = (r: Row) => r.application_id ?? r.agent_id ?? r.display_name;
+const igUrl = (h: string) => `https://instagram.com/${encodeURIComponent(h)}`;
 
 function heatClass(days: number) {
   if (days >= 60) return "text-rose-400 font-medium";
@@ -82,6 +84,7 @@ export default function RecruitPipeline() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkStage, setBulkStage] = useState<string>("");
+  const [igEditing, setIgEditing] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
   const stagesQuery = useQuery({
@@ -126,7 +129,7 @@ export default function RecruitPipeline() {
       if (r.days_in_stage < minDays) return false;
       if (stageFilter && r.stage_key !== stageFilter) return false;
       if (managerFilter === "none" ? !!r.manager_name : managerFilter !== "all" && r.manager_name !== managerFilter) return false;
-      if (q && !`${r.display_name} ${r.manager_name ?? ""} ${r.phone ?? ""} ${r.email ?? ""} ${r.stage_name}`.toLowerCase().includes(q)) return false;
+      if (q && !`${r.display_name} ${r.manager_name ?? ""} ${r.phone ?? ""} ${r.email ?? ""} ${r.stage_name} ${r.instagram ?? ""}`.toLowerCase().includes(q)) return false;
       return true;
     });
   }, [all, search, idle, stageFilter, managerFilter, showClosed]);
@@ -226,6 +229,20 @@ export default function RecruitPipeline() {
     [selectedRows, stageName, refresh],
   );
 
+  const saveInstagram = useCallback(
+    async (r: Row, handle: string) => {
+      const { data, error } = await supabase.rpc("set_recruit_instagram" as never, {
+        p_application_id: r.application_id, p_agent_id: r.agent_id, p_handle: handle,
+      } as never);
+      setIgEditing(null);
+      if (error) { toast.error(`${r.display_name}: ${error.message}`); return; }
+      const saved = (data as { instagram?: string | null } | null)?.instagram;
+      toast.success(saved ? `${r.display_name}: Instagram @${saved}` : `${r.display_name}: Instagram cleared`);
+      await refresh();
+    },
+    [refresh],
+  );
+
   const toggle = (r: Row) =>
     setSelected((prev) => { const n = new Set(prev); const k = personKey(r); if (n.has(k)) n.delete(k); else n.add(k); return n; });
   const toggleMany = (rows: Row[], on: boolean) =>
@@ -236,7 +253,7 @@ export default function RecruitPipeline() {
     const cols: [string, (r: Row) => string | number | null][] = [
       ["name", (r) => r.display_name], ["type", (r) => r.person_type], ["stage", (r) => r.stage_name],
       ["days_in_stage", (r) => Math.round(r.days_in_stage)], ["manager", (r) => r.manager_name],
-      ["phone", (r) => formatPhoneDisplay(r.phone)], ["email", (r) => r.email], ["state", (r) => r.state],
+      ["phone", (r) => formatPhoneDisplay(r.phone)], ["email", (r) => r.email], ["instagram", (r) => r.instagram], ["state", (r) => r.state],
       ["license_status", (r) => r.license_status], ["license_progress", (r) => r.license_progress], ["npn", (r) => r.npn],
       ["last_contact", (r) => r.last_contacted_at?.slice(0, 10) ?? null],
     ];
@@ -426,6 +443,28 @@ export default function RecruitPipeline() {
                             </a>
                           ) : (
                             <span className="text-xs text-rose-300">no phone or email</span>
+                          )}
+                          {r.instagram ? (
+                            <Button asChild size="sm" variant="outline" className="h-7 gap-1 px-2 text-xs">
+                              <a href={igUrl(r.instagram)} target="_blank" rel="noopener noreferrer" aria-label={`Instagram ${r.display_name}`}>
+                                <Instagram className="h-3.5 w-3.5" /> @{r.instagram}
+                              </a>
+                            </Button>
+                          ) : igEditing === personKey(r) ? (
+                            <Input
+                              autoFocus
+                              placeholder="@handle"
+                              className="h-7 w-36 text-xs"
+                              onBlur={(e) => { const v = e.target.value.trim(); if (v) void saveInstagram(r, v); else setIgEditing(null); }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") { const v = (e.target as HTMLInputElement).value.trim(); if (v) void saveInstagram(r, v); else setIgEditing(null); }
+                                if (e.key === "Escape") setIgEditing(null);
+                              }}
+                            />
+                          ) : (
+                            <button type="button" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground" onClick={() => setIgEditing(personKey(r))} aria-label={`Add Instagram for ${r.display_name}`}>
+                              <Instagram className="h-3.5 w-3.5" /> add IG
+                            </button>
                           )}
                         </div>
                         <Select value={r.stage_key} onValueChange={(v) => void setStage(r, v)} disabled={isBusy}>

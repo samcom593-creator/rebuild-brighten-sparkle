@@ -55,11 +55,14 @@ type Row = {
   manual_stage_key: string | null;
   status: string;
   instagram: string | null;
+  link_sent_at: string | null;
+  link_used_at: string | null;
+  last_sign_in_at: string | null;
 };
 type Stage = { stage_key: string; order_index: number; display_name: string; is_terminal: boolean | null; retired_at: string | null };
 type IdleFilter = "all" | "7" | "21" | "60";
+type LinkFilter = "all" | "not_sent" | "sent" | "clicked";
 
-const HIRED_INDEX = 12;
 // Stages the operator cannot know first-hand; Next skips them, the dropdown keeps them.
 const DERIVED_ONLY = new Set(["watched_vsl", "completed_application"]);
 const PAGE = 40;
@@ -79,6 +82,7 @@ export default function RecruitPipeline() {
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState<string | null>(null);
   const [idle, setIdle] = useState<IdleFilter>("all");
+  const [link, setLink] = useState<LinkFilter>("all");
   const [managerFilter, setManagerFilter] = useState<string>("all");
   const [showClosed, setShowClosed] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -115,6 +119,9 @@ export default function RecruitPipeline() {
   const stages = useMemo(() => (stagesQuery.data ?? []).filter((s) => !s.retired_at), [stagesQuery.data]);
   const all = useMemo(() => rowsQuery.data ?? [], [rowsQuery.data]);
   const stageName = useCallback((key: string) => stages.find((s) => s.stage_key === key)?.display_name ?? key, [stages]);
+  // First agent stage; everything below it is applicant territory.
+  const agentFloor = useMemo(() => stages.find((s) => s.stage_key === "hired_unlicensed")?.order_index ?? stages.find((s) => s.stage_key === "hired")?.order_index ?? 12, [stages]);
+  const linkState = (r: Row): LinkFilter => (r.link_used_at || r.last_sign_in_at ? "clicked" : r.link_sent_at ? "sent" : "not_sent");
 
   const managers = useMemo(
     () => Array.from(new Set(all.map((r) => r.manager_name).filter((m): m is string => !!m))).sort(),
@@ -127,12 +134,13 @@ export default function RecruitPipeline() {
     return all.filter((r) => {
       if (!showClosed && r.status !== "active") return false;
       if (r.days_in_stage < minDays) return false;
+      if (link !== "all" && (r.person_type !== "agent" || linkState(r) !== link)) return false;
       if (stageFilter && r.stage_key !== stageFilter) return false;
       if (managerFilter === "none" ? !!r.manager_name : managerFilter !== "all" && r.manager_name !== managerFilter) return false;
       if (q && !`${r.display_name} ${r.manager_name ?? ""} ${r.phone ?? ""} ${r.email ?? ""} ${r.stage_name} ${r.instagram ?? ""}`.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [all, search, idle, stageFilter, managerFilter, showClosed]);
+  }, [all, search, idle, link, stageFilter, managerFilter, showClosed]);
 
   const counts = useMemo(() => {
     const m = new Map<string, { n: number; idle21: number }>();
@@ -149,9 +157,9 @@ export default function RecruitPipeline() {
     (r: Row) =>
       stages.filter((s) =>
         r.person_type === "applicant"
-          ? s.order_index < HIRED_INDEX || s.stage_key === "closed_lost"
-          : s.order_index >= HIRED_INDEX && s.stage_key !== "closed_lost"),
-    [stages],
+          ? s.order_index < agentFloor || s.stage_key === "closed_lost"
+          : s.order_index >= agentFloor && s.stage_key !== "closed_lost"),
+    [stages, agentFloor],
   );
   const nextStageFor = useCallback(
     (r: Row) => {
@@ -200,11 +208,11 @@ export default function RecruitPipeline() {
     const hasAgent = selectedRows.some((r) => r.person_type === "agent");
     return stages.filter((s) => {
       if (s.stage_key === "closed_lost") return !hasAgent;
-      if (hasApplicant && s.order_index >= HIRED_INDEX) return false;
-      if (hasAgent && s.order_index < HIRED_INDEX) return false;
+      if (hasApplicant && s.order_index >= agentFloor) return false;
+      if (hasAgent && s.order_index < agentFloor) return false;
       return true;
     });
-  }, [selectedRows, stages]);
+  }, [selectedRows, stages, agentFloor]);
 
   const bulkMove = useCallback(
     async (toStage: string) => {
@@ -256,6 +264,7 @@ export default function RecruitPipeline() {
       ["phone", (r) => formatPhoneDisplay(r.phone)], ["email", (r) => r.email], ["instagram", (r) => r.instagram], ["state", (r) => r.state],
       ["license_status", (r) => r.license_status], ["license_progress", (r) => r.license_progress], ["npn", (r) => r.npn],
       ["last_contact", (r) => r.last_contacted_at?.slice(0, 10) ?? null],
+      ["link_sent", (r) => r.link_sent_at?.slice(0, 10) ?? null], ["link_clicked", (r) => (r.link_used_at ?? r.last_sign_in_at)?.slice(0, 10) ?? null],
     ];
     const cell = (v: string | number | null | undefined) => `"${String(v ?? "").replace(/"/g, '""')}"`;
     const csv = [cols.map((c) => c[0]).join(","), ...visible.map((r) => cols.map((c) => cell(c[1](r))).join(","))].join("\r\n");
@@ -311,6 +320,11 @@ export default function RecruitPipeline() {
           <div className="flex rounded-md border border-border p-0.5">
             {([["all", "Everyone"], ["7", "7d+"], ["21", "21d+"], ["60", "60d+"]] as [IdleFilter, string][]).map(([k, label]) => (
               <Button key={k} size="sm" variant={idle === k ? "default" : "ghost"} className="h-8 px-2.5 text-xs" onClick={() => setIdle(k)}>{label}</Button>
+            ))}
+          </div>
+          <div className="flex rounded-md border border-border p-0.5" title="Portal login link, hired agents only">
+            {([["all", "Any link"], ["not_sent", "Not sent"], ["sent", "Sent, not clicked"], ["clicked", "Clicked"]] as [LinkFilter, string][]).map(([k, label]) => (
+              <Button key={k} size="sm" variant={link === k ? "default" : "ghost"} className="h-8 px-2.5 text-xs" onClick={() => setLink(k)}>{label}</Button>
             ))}
           </div>
           <Select value={managerFilter} onValueChange={setManagerFilter}>
@@ -369,7 +383,7 @@ export default function RecruitPipeline() {
           .filter((s) => visible.some((r) => r.stage_key === s.stage_key))
           .map((s) => {
             const full = visible.filter((r) => r.stage_key === s.stage_key).sort((a, b) => a.days_in_stage - b.days_in_stage);
-            const open = expanded.has(s.stage_key) || !!search || !!stageFilter || idle !== "all";
+            const open = expanded.has(s.stage_key) || !!search || !!stageFilter || idle !== "all" || link !== "all";
             const list = open ? full : full.slice(0, PAGE);
             const allSelected = full.every((r) => selected.has(personKey(r)));
             const someSelected = !allSelected && full.some((r) => selected.has(personKey(r)));
@@ -384,7 +398,6 @@ export default function RecruitPipeline() {
                   />
                   <h2 className="text-sm font-semibold">{s.order_index}. {s.display_name}</h2>
                   <span className="text-xs text-muted-foreground">{full.length}</span>
-                  {full[0]?.next_action_label && <span className="hidden text-xs text-muted-foreground sm:inline">· next: {full[0].next_action_label}</span>}
                 </div>
                 <div className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card">
                   {list.map((r) => {
@@ -397,7 +410,7 @@ export default function RecruitPipeline() {
                       <div
                         key={personKey(r)}
                         className={cn(
-                          "grid items-center gap-x-3 gap-y-1.5 px-3 py-2 sm:grid-cols-[auto_minmax(0,1.4fr)_minmax(0,1fr)_auto_auto]",
+                          "grid items-center gap-x-3 gap-y-1.5 px-3 py-2 sm:grid-cols-[auto_minmax(0,1.1fr)_minmax(0,1.3fr)_auto_auto]",
                           isSel && "bg-primary/[0.06]",
                         )}
                       >
@@ -409,7 +422,6 @@ export default function RecruitPipeline() {
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-1.5">
                             <span className="truncate font-medium">{r.display_name}</span>
-                            <Badge variant="outline" className="text-[10px]">{r.person_type === "agent" ? "Agent" : "Applicant"}</Badge>
                             {r.person_type === "agent" && (r.license_status === "licensed" ? (
                               <Badge variant="outline" className="text-[10px] text-emerald-300">Licensed</Badge>
                             ) : (
@@ -420,7 +432,6 @@ export default function RecruitPipeline() {
                                 className="h-6 text-[10px]"
                               />
                             ))}
-                            {r.manual_stage_key && <span className="text-[10px] text-muted-foreground" title="Stage set by hand">✎</span>}
                           </div>
                           <div className="text-xs text-muted-foreground">
                             {r.manager_name ? `under ${r.manager_name}` : "unassigned"}
@@ -428,12 +439,24 @@ export default function RecruitPipeline() {
                             {" · "}
                             <span className={heatClass(r.days_in_stage)}>{Math.round(r.days_in_stage)}d in stage</span>
                             {contact && <> · last contact {contact}</>}
+                            {r.person_type === "agent" && (
+                              <>
+                                {" · "}
+                                {linkState(r) === "clicked" ? (
+                                  <span className="text-emerald-300">link clicked {formatTimeAgo(r.link_used_at ?? r.last_sign_in_at)}</span>
+                                ) : linkState(r) === "sent" ? (
+                                  <span className="text-amber-300">link sent {formatTimeAgo(r.link_sent_at)}, not clicked</span>
+                                ) : (
+                                  <span className="text-rose-300">link not sent</span>
+                                )}
+                              </>
+                            )}
                           </div>
                         </div>
-                        <div className="flex items-center gap-2 text-sm">
+                        <div className="flex flex-wrap items-center gap-2 text-sm">
                           {tel ? (
                             <>
-                              <span className="font-mono text-xs tabular-nums">{formatPhoneDisplay(r.phone)}</span>
+                              <span className="whitespace-nowrap font-mono text-xs tabular-nums">{formatPhoneDisplay(r.phone)}</span>
                               <Button asChild size="sm" variant="outline" className="h-7 px-2"><a href={tel} {...contactLinkProps(tel)} aria-label={`Call ${r.display_name}`}><Phone className="h-3.5 w-3.5" /></a></Button>
                               <Button asChild size="sm" variant="outline" className="h-7 px-2"><a href={smsHref(r.phone) ?? undefined} {...contactLinkProps(smsHref(r.phone))} aria-label={`Text ${r.display_name}`}><MessageSquare className="h-3.5 w-3.5" /></a></Button>
                             </>

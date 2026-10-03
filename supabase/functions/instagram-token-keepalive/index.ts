@@ -13,6 +13,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { raiseApexAlert } from "../_shared/alert-raise.ts";
+import { pageTokenDead, probeInstagramToken } from "../_shared/instagram-token-dead.ts";
 
 const REFRESH_WHEN_DAYS_LEFT = 20;
 
@@ -37,6 +38,13 @@ Deno.serve(async (req) => {
   if (!conn?.access_token) return json({ ok: false, error: "no_connection" }, 200);
 
   const daysLeft = (new Date(conn.token_expires_at).getTime() - Date.now()) / 86400000;
+  // Days-left is a calendar, not a pulse. 2026-10-01: Meta invalidated the token
+  // with 57 days on the clock and this skipped as "fine" for a week. Ask Meta first.
+  const live = await probeInstagramToken(conn.access_token);
+  if (live.dead) {
+    const paged = await pageTokenDead(sb, "instagram-token-keepalive", live.error ?? "dead");
+    return json({ ok: false, action: "token_dead", days_left: Number(daysLeft.toFixed(1)), error: live.error, page_receipt: paged.receipt }, 200);
+  }
   if (daysLeft > REFRESH_WHEN_DAYS_LEFT && !force) {
     return json({ ok: true, action: "skip", days_left: Number(daysLeft.toFixed(1)), expires_at: conn.token_expires_at });
   }

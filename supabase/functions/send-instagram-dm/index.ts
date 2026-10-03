@@ -15,6 +15,7 @@
 // the upstream Meta error (since the token / permissions / 24-hour
 // messaging-window constraint are the most common failure modes).
 
+import { isTokenDeadError, pageTokenDead } from "../_shared/instagram-token-dead.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
@@ -157,8 +158,15 @@ Deno.serve(async (req) => {
       { status: res.ok ? 200 : res.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
   if (!res.ok) {
-    // Meta rejected — also queue + ping so the reply isn't lost
-    // supabase-js QueryBuilder has no .catch — await + try/catch
+    const errText: string = result?.error?.message ?? `HTTP ${res.status}`;
+    // A dead token (OAuthException 190) is not a per-message failure: nothing sent
+    // through it can succeed until Sam reconnects. 2026-10-01: the drain
+    // (dm_send_retry) re-sent every queued row every few hours, and this branch
+    // re-queued a FRESH row on each failure, so one reply became 69 rows and the
+    // inbox filled with noise while nobody was paged. Held rows (queued:"hold")
+    // are invisible to the drain and replayed by instagram-dm-replay the moment a
+    // new token lands (trigger on system_settings.meta_instagram_token).
+    const tokenDead = isTokenDeadError(result?.error);
     try {
       await sb.from("inbox_messages").insert({
         source: "instagram",
@@ -167,10 +175,14 @@ Deno.serve(async (req) => {
         body: message,
         direction: "outbound",
         auto_replied: false,
-        raw_payload: { queued: true, reason: "send_failed", error: result?.error?.message ?? `HTTP ${res.status}`, comment_id: commentId },
+        raw_payload: tokenDead
+          ? { queued: "hold", reason: "token_dead", error: errText, comment_id: commentId, recipient_id: recipientId, held_at: new Date().toISOString() }
+          : { queued: true, reason: "send_failed", error: errText, comment_id: commentId },
       });
     } catch (_queueErr) { /* queue is best-effort */ }
-    return new Response(JSON.stringify({ ok: false, error: result?.error?.message ?? `HTTP ${res.status}`, raw: result, queued: true }),
+    let page_receipt: string | null = null;
+    if (tokenDead) page_receipt = (await pageTokenDead(sb, "send-instagram-dm", errText)).receipt;
+    return new Response(JSON.stringify({ ok: false, error: errText, raw: result, queued: !tokenDead, held: tokenDead, page_receipt }),
       { status: res.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
   return new Response(JSON.stringify({ ok: true, id: result?.message_id ?? null }),

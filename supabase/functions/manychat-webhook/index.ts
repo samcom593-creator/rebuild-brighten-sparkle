@@ -1043,6 +1043,15 @@ Deno.serve(async (req) => {
       decision.auto_reply = secondLast === `like i said, ${decision.auto_reply}` || outs.filter((o) => o === last).length >= 2 ? null : `like i said, ${decision.auto_reply}`;
     }
   }
+  // The CTA on every reel is "comment apex". A comment that carries the word with
+  // anything around it ("Apex check the dm's", "apex 🔥🔥", "@friend apex") is the
+  // same ask as a bare "Apex" and gets the same DM. 2026-10-02: "_v1ktor.l: Apex
+  // check the dm's" routed to the generic path, failed the explicit-ask test below,
+  // and got nothing. AI/scam talk is still silenced by the etiquette block.
+  if (channel === "comment" && /\bapex\b/i.test(text) && (decision.intent === "opportunity" || decision.intent === "casual" || decision.intent === "greeting" || decision.intent === "followup") && decision.reply_path !== "license_q") {
+    decision.intent = "opportunity"; decision.reply_path = "license_q"; decision.lead_score = Math.max(decision.lead_score ?? 0, 65);
+    decision.auto_reply = replyFor("license_q", rawSource, senderName?.split(" ")[0]);
+  }
   // Where it came from changes the opener, not the routing: a comment or a story
   // reply gets a DM that says why it's arriving. A 🔥 needs no opener.
   if (decision.auto_reply && (channel === "comment" || channel === "story") && decision.reply_path !== "props" && decision.intent !== "socials") {
@@ -1089,7 +1098,7 @@ Deno.serve(async (req) => {
       const { data: recent } = await supabase.from("inbox_messages").select("id, direction, raw_payload").eq("external_id", subscriberId ?? "").gte("created_at", since).limit(20);
       const engaged = (recent ?? []).some((r: { direction: string; raw_payload: any }) => r.direction === "outbound" || r.raw_payload?.public_reply);
       const explicitAsk = !!decision.reply_path && ["license_q", "licensed", "licensed_team", "fitness", "mentorship", "rentals", "partnership", "apply"].includes(decision.reply_path) &&
-        (/^\W*(apex|info|link|join|team|start|licensed|fitness|mentor(ship)?|cars?|rental)\W*$/i.test(text) || /\?|\b(how (do|can) i|interested|sign me up|put me on|dm me|send me (the )?(info|link|details)|i want (in|to join|to learn|to start)|teach me)\b/i.test(text));
+        (/^\W*(apex|info|link|join|team|start|licensed|fitness|mentor(ship)?|cars?|rental)\W*$/i.test(text) || /\bapex\b/i.test(text) || /\?|\b(how (do|can) i|interested|sign me up|put me on|dm me|send me (the )?(info|link|details)|i want (in|to join|to learn|to start)|teach me)\b/i.test(text));
       // Real asks always get answered, however many times. The daily cap only stops
       // the same person getting a stream of emoji replies to throwaway comments.
       if (!explicitAsk) {

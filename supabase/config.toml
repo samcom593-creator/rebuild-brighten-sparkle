@@ -764,3 +764,6 @@ verify_jwt = false
 
 [functions.instagram-comments-backfill]
 verify_jwt = false
+
+[functions.instagram-dm-replay]
+verify_jwt = false

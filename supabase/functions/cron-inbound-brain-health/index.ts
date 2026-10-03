@@ -13,6 +13,8 @@
 // Gate: x-cron-secret == INBOUND_HEALTH_SECRET (pg_cron passes it from Vault).
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { raiseApexAlert } from "../_shared/alert-raise.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { pageTokenDead, probeInstagramToken } from "../_shared/instagram-token-dead.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "https://xrzweoneiieddzxogewk.supabase.co";
 
@@ -77,7 +79,24 @@ serve(async (req: Request): Promise<Response> => {
     if (!raised.ok) console.error("[cron-inbound-brain-health] page NOT delivered:", raised.receipt);
   }
 
-  return new Response(JSON.stringify({ ok: true, healthy, detail, page_receipt, ts: new Date().toISOString() }), {
+  // The responder answering is half the question. 2026-10-01: it answered every
+  // probe for two days while every reply it chose died on a dead Graph token, so
+  // "healthy" was printed 576 times over 305 failed DMs. Probe the token itself.
+  // Dead -> one page per 6h with the reconnect link (shared dedupe with the sender
+  // and the keepalive). "unverified" (Meta 5xx/timeout) is reported, never paged.
+  let token: { dead: boolean; error: string | null; username: string | null } = { dead: false, error: "not probed", username: null };
+  let token_page_receipt: string | null = null;
+  try {
+    const sb = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", { auth: { persistSession: false } });
+    const { data: row } = await sb.from("system_settings").select("value").eq("key", "meta_instagram_token").maybeSingle();
+    const stored = typeof row?.value === "string" ? row.value.replace(/^"|"$/g, "") : null;
+    token = await probeInstagramToken(stored);
+    if (token.dead) token_page_receipt = (await pageTokenDead(sb, "cron-inbound-brain-health", token.error ?? "dead")).receipt;
+  } catch (e) {
+    token = { dead: false, error: `unverified: ${e instanceof Error ? e.message : String(e)}`, username: null };
+  }
+
+  return new Response(JSON.stringify({ ok: true, healthy, detail, page_receipt, token, token_page_receipt, ts: new Date().toISOString() }), {
     status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 });

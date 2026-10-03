@@ -45,6 +45,20 @@ Deno.serve(async (req) => {
     const html = (msg: string, status = 200) =>
       new Response(`<!doctype html><meta name=viewport content="width=device-width"><body style="font-family:-apple-system,sans-serif;background:#0b0b0c;color:#e9c46a;padding:40px;text-align:center"><h2>${msg}</h2><p style="color:#aaa">You can close this.</p></body>`,
         { status, headers: { "Content-Type": "text/html" } });
+    // ?link=1 -> the reconnect link itself, built from this function's own env so it
+    // can never drift from the redirect URI Meta will accept. The weekly keepalive and
+    // the 5-minute brain-health probe both put this in their page when the token dies
+    // (2026-10-01: Meta invalidated the token after a password change; 305 DMs failed
+    // over two days and nothing could say how to fix it). ?format=json for scripts.
+    if (!code && url.searchParams.get("link") === "1") {
+      const IG_ID = Deno.env.get("INSTAGRAM_APP_ID") ?? APP_ID;
+      const scopes = "instagram_business_basic,instagram_business_manage_messages,instagram_business_manage_comments";
+      const link = `https://www.instagram.com/oauth/authorize?client_id=${encodeURIComponent(IG_ID)}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=${scopes}&force_reauth=true`;
+      if (url.searchParams.get("format") === "json") {
+        return new Response(JSON.stringify({ ok: true, link, redirect_uri: REDIRECT_URI }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      return html(`<a href="${link}" style="color:#e9c46a;font-size:20px">Reconnect Instagram (@sell4daddy) — tap, then Allow</a>`);
+    }
     if (!code) return html("Missing code — tap the link again.", 400);
     try {
       const SAM_UID = "71826bba-5577-4810-a226-1f6f2ad5288a";

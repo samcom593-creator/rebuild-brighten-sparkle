@@ -233,6 +233,11 @@ Deno.serve(async (req) => {
       const { data: claimed } = await sb.from("ig_comment_events").upsert({ comment_id: commentId, media_id: mediaId, username, text, intent: "claimed_live" }, { onConflict: "comment_id", ignoreDuplicates: true }).select("comment_id");
       if (!claimed?.length) continue;
 
+      // The claim row is also the audit row: intent / public reply id / dm_sent land
+      // on it when the pipeline settles, the same shape the backfill writes. Until
+      // 2026-10-03 the live path only ever wrote "claimed_live" (142 rows, 0 updated),
+      // so nothing could say which live comments were answered.
+      const audit: Record<string, unknown> = {};
       const pipeline = (async () => {
         try {
           const who = username ? { name: null as string | null, username } : await resolveSender(sb, senderId);
@@ -256,6 +261,7 @@ Deno.serve(async (req) => {
           const clsResult = await cls.json().catch(() => ({}));
           const reply: string | null = clsResult?.auto_reply ?? null;
           const publicReply: string | null = clsResult?.public_reply ?? null;
+          audit.intent = clsResult?.intent ?? "unclassified"; audit.public_reply = publicReply; audit.dm_sent = false;
           const sendHeaders = {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""}`,
@@ -267,7 +273,8 @@ Deno.serve(async (req) => {
               body: JSON.stringify({ comment_id: commentId, external_id: senderId, public: true, message: publicReply }),
             });
             const pubJson = await pub.json().catch(() => ({}));
-            if (!pubJson?.ok) console.error("[instagram-webhook] comment public-reply failed", JSON.stringify(pubJson).slice(0, 400));
+            if (pubJson?.ok) audit.reply_id = pubJson.id ?? null;
+            else { audit.error = `public: ${String(pubJson?.error ?? "failed").slice(0, 160)}`; console.error("[instagram-webhook] comment public-reply failed", JSON.stringify(pubJson).slice(0, 400)); }
           }
           if (!reply) return;
           const sent = await fetch(`${supabaseUrl}/functions/v1/send-instagram-dm`, {
@@ -275,9 +282,14 @@ Deno.serve(async (req) => {
             body: JSON.stringify({ comment_id: commentId, external_id: senderId, message: reply }),
           });
           const sentJson = await sent.json().catch(() => ({}));
-          if (!sentJson?.ok) console.error("[instagram-webhook] comment private-reply failed", JSON.stringify(sentJson).slice(0, 400));
+          if (sentJson?.ok) audit.dm_sent = true;
+          else { audit.error = [audit.error, `dm: ${String(sentJson?.error ?? "failed").slice(0, 160)}`].filter(Boolean).join(" | "); console.error("[instagram-webhook] comment private-reply failed", JSON.stringify(sentJson).slice(0, 400)); }
         } catch (e) {
+          audit.error = [audit.error, `pipeline: ${String(e).slice(0, 160)}`].filter(Boolean).join(" | ");
           console.error("[instagram-webhook] comment pipeline failed", e);
+        } finally {
+          try { await sb.from("ig_comment_events").update(audit).eq("comment_id", commentId); }
+          catch (e) { console.error("[instagram-webhook] comment audit write failed", e); }
         }
       })();
       pending.push(pipeline);

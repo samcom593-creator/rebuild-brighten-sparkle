@@ -1,15 +1,15 @@
 # APEX Function Contract Matrix
 
-Generated: 2026-10-06T03:34:49.059Z
+Generated: 2026-10-06T11:37:26.699Z
 Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 
 ## Inventory Summary
 
-- Total Local Edge Functions: **237**
-- Configured in `config.toml`: **238**
-- Invoked Edge Functions in Source: **102**
-- Invoked RPC Calls in Source: **167**
-- SQL Functions in Migrations: **562**
+- Total Local Edge Functions: **238**
+- Configured in `config.toml`: **239**
+- Invoked Edge Functions in Source: **103**
+- Invoked RPC Calls in Source: **168**
+- SQL Functions in Migrations: **563**
 
 ## Edge Function Auth & Verification Contracts
 
@@ -87,6 +87,7 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 | `detect-production-gaps` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `discord-leaderboards` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `discord-webhook-notify` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
+| `ethos-sheet-sync` | Yes | Yes | `true` | Authenticated JWT | PASS |
 | `free-leads-weekly-alerts` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `gcal-sync` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `generate-award-graphics` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -261,6 +262,6 @@ applied by hand through bot-sql and never round-tripped into
 `supabase/migrations`, so this directory does not model the deployed database.
 `apex-doctor` queries `pg_proc` and is the authority on deployed state.
 
-- Invoked RPCs: **167**
-- Also declared in this commit's migrations: **158**
+- Invoked RPCs: **168**
+- Also declared in this commit's migrations: **159**
 - Declared only in the database: **9**

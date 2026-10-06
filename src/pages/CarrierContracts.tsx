@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { ContractingIntakeAdmin } from "@/components/contracting/ContractingIntakeAdmin";
 import { ContractingAuditPanel } from "@/components/contracting/ContractingAuditPanel";
+import { EthosContractingHealth } from "@/components/contracting/EthosContractingHealth";
 import {
   ContractsBoard, useContractSummary, useContractRows,
 } from "@/components/contracting/ContractsBoard";
@@ -44,6 +45,7 @@ export default function CarrierContracts() {
     : pathname.endsWith("/ops") ? "ops"
     : pathname.endsWith("/documents") ? "documents"
     : pathname.endsWith("/audit") ? "audit"
+    : pathname.endsWith("/ethos") ? "ethos"
     : "requests";
   usePageTitle(`${mode.charAt(0).toUpperCase() + mode.slice(1)} · APEX`);
   const { isAdmin, isManager } = useAuth();
@@ -83,6 +85,7 @@ export default function CarrierContracts() {
       ["ops", "/dashboard/contracting/ops", "Operations"],
       ["documents", "/dashboard/contracting/documents", "Documents"],
       ["audit", "/dashboard/contracting/audit", "Audit"],
+      ["ethos", "/dashboard/contracting/ethos", "Ethos"],
     ] : []),
   ] as Array<[string, string, string]>;
 
@@ -120,6 +123,7 @@ export default function CarrierContracts() {
     : mode === "ops" ? "Contracting Operations"
     : mode === "requests" ? (canInvite ? "Contracting Requests" : "Start Contracting")
     : mode === "audit" ? "Contracting Audit"
+    : mode === "ethos" ? "Ethos Contracting"
     : "Contract Documents";
   const subtitle = mode === "carriers"
     ? "Active carrier access, portals, and contracting availability."
@@ -129,6 +133,8 @@ export default function CarrierContracts() {
     ? (canInvite
       ? "Start and monitor producer contracting requests."
       : "Use the details already on your profile, add only what's missing, and start your carrier setup.")
+    : mode === "ethos"
+    ? "Verify, approve and submit each producer to the Ethos sheet once — then reconcile what Ethos does with it."
     : mode === "audit"
     ? "Every agent against AgentLink and the Ethos sheet: valid NPN, profile, upline, carrier contracts, Ethos level. One next action each."
     : "Writing numbers, contract numbers, and appointment records for the producers you cover.";
@@ -157,6 +163,7 @@ export default function CarrierContracts() {
         </>
       )}
       {mode === "documents" && <ContractDocuments />}
+      {mode === "ethos" && <EthosContractingHealth />}
       {mode === "audit" && (isAdmin ? <ContractingAuditPanel /> : <EmptyState icon={<ClipboardList className="h-6 w-6" />} title="Admins only" description="The contracting audit is an admin surface." />)}
     </div>
   );

@@ -5,20 +5,17 @@
 // runs the SAME functions against stubs. Testing a reimplementation would prove
 // nothing about the code that emails the support desk and posts to Discord.
 
+import type { EthosIntake } from "./ethos.ts";
 import {
-  aiRangeForRow,
-  buildEthosAiRow,
-  buildEthosComment,
-  buildEthosKlRow,
-  COL_COMP_LEVEL,
-  commentRangeForRow,
-  klRangeForRow,
-  matchEthosRow,
-  rowNumberFromRange,
-  verifyReadBack,
-  type EthosConfig,
-  type EthosIntake,
-} from "./ethos.ts";
+  SIGNUP_HEADERS,
+  SIGNUP_TAB,
+  evaluateSignupGate,
+  planSignupWrite,
+  signupAgencyRange,
+  verifySignupReadBack,
+  type Principal,
+  type SignupApproval,
+} from "./ethos-contract.ts";
 import { createSheetsClient, getAccessToken, type FetchLike } from "./google-sheets.ts";
 
 /**
@@ -30,7 +27,7 @@ export class ProviderRejectedError extends Error {
   readonly definite = true;
 }
 
-export type IntakeRow = EthosIntake & { id: string; status: string };
+export type IntakeRow = EthosIntake & { id: string; status: string; agent_id?: string | null };
 
 export type DeliveryState =
   | "accepted" | "delivered" | "manual_review" | "not_configured";
@@ -56,6 +53,11 @@ export type DeliveryDeps = {
    * key material and this test is about the sheet, not about JWT signing.
    */
   getToken?(credential: string, now: number, fetchImpl: FetchLike): Promise<string>;
+  /**
+   * Evidence + leadership approval for this producer (contracting_ethos_approvals), or null.
+   * Optional so legs that never touch Ethos need not supply it; absent means "no approval".
+   */
+  loadEthosApproval?(intake: IntakeRow): Promise<SignupApproval | null>;
 };
 
 /**
@@ -205,6 +207,32 @@ export async function deliverContractingWorkbook(
   throw new Error(`Unsupported workbook destination: ${destination.slice(0, 40)}`);
 }
 
+type EthosSheetConfig = {
+  sheet_id: string;
+  tab?: string;
+  principal_npn?: string;
+  principal_mobile?: string;
+  principal_email?: string;
+  direct_upline_npn?: string;
+};
+
+/**
+ * Ethos "Agent Portal Signup" leg — gated, append-once, A:L only.
+ *
+ * Order is the safety argument:
+ *   1. The production write flag (system_settings.ethos_sheet_writes_enabled) must be 'true'.
+ *      It ships OFF; until a human turns it on, staff use the gate-checked paste on
+ *      /dashboard/contracting/ethos and this leg reports not_configured.
+ *   2. A Google credential must exist.
+ *   3. The tab is re-read in full (A:S) right before any write; header drift stops it.
+ *   4. An NPN already on the sheet means the producer was submitted (by us or by hand): nothing
+ *      is written again, the leg converges. An email/mobile under another NPN is a human call.
+ *   5. The shared gate (ethos-contract.ts) must pass: verified NPN, license and unexpired E&O,
+ *      explicit leadership approval of level / advance / upline / sub-agency / head. Nothing is
+ *      defaulted — no principal-as-upline, no level inferred from an internal percentage.
+ *   6. The target row is re-read and must still be empty; then A:L is written RAW and all twelve
+ *      cells are read back. M:S belong to Ethos and are never written.
+ */
 export async function deliverEthosSheet(
   intakeId: string,
   deps: DeliveryDeps,
@@ -212,6 +240,15 @@ export async function deliverEthosSheet(
   const rawConfig = await deps.readSetting("ethos_agents_sheet");
   if (!rawConfig) {
     return { state: "not_configured", receipt: null, note: "system_settings.ethos_agents_sheet is missing." };
+  }
+  const enabled = (await deps.readSetting("ethos_sheet_writes_enabled")) === "true";
+  if (!enabled) {
+    return {
+      state: "not_configured",
+      receipt: null,
+      note: "Automated Ethos sheet writes are OFF (system_settings.ethos_sheet_writes_enabled). " +
+        "Verify, approve and copy the gate-checked A:L row from /dashboard/contracting/ethos, then refresh from the sheet.",
+    };
   }
   if (!deps.googleCredential) {
     return {
@@ -221,17 +258,11 @@ export async function deliverEthosSheet(
     };
   }
 
-  const config = JSON.parse(rawConfig) as EthosConfig;
+  const config = JSON.parse(rawConfig) as EthosSheetConfig;
+  const tab = config.tab || SIGNUP_TAB.title;
   const intake = await deps.loadIntake(intakeId);
-
-  // Belt and braces against the RPC's own hold: a row a human must adjudicate
-  // never reaches the shared sheet, even if an event for it were enqueued.
   if (intake.status === "needs_review") {
-    return {
-      state: "manual_review",
-      receipt: null,
-      note: "Held: the submitted email is already on a different NPN.",
-    };
+    return { state: "manual_review", receipt: null, note: "Held: the submitted email is already on a different NPN." };
   }
 
   const exchange = deps.getToken
@@ -239,55 +270,79 @@ export async function deliverEthosSheet(
   const token = await exchange(deps.googleCredential, deps.now(), deps.fetchImpl);
   const sheets = createSheetsClient(config.sheet_id, token, deps.fetchImpl);
 
-  // Read identity A..I. Writes target A..I, K:L and S; J/M..R are untouched.
-  const rows = await sheets.getRange(`${config.tab}!A:I`);
-  const match = matchEthosRow(rows, intake);
+  const rows = await sheets.getRange(`${tab}!A:S`);
+  const candidate = {
+    first_name: intake.first_name,
+    last_name: intake.last_name,
+    npn: intake.npn,
+    mobile: intake.phone_e164,
+    email: intake.email,
+  };
+  const principal: Principal = {
+    npn: config.principal_npn ?? config.direct_upline_npn ?? null,
+    mobile: config.principal_mobile ?? null,
+    email: config.principal_email ?? null,
+  };
 
-  if (match.action === "manual_review") {
+  // Already on the sheet (our earlier run, or a reviewed paste): converge, never append twice.
+  const npnDigits = String(intake.npn ?? "").replace(/[^0-9]/g, "");
+  const presentAt: number[] = [];
+  for (let i = SIGNUP_TAB.firstDataRow - 1; i < rows.length; i++) {
+    if (String(rows[i]?.[2] ?? "").replace(/[^0-9]/g, "") === npnDigits && npnDigits) presentAt.push(i + 1);
+  }
+  if (presentAt.length) {
     return {
-      state: "manual_review",
-      receipt: null,
-      note: `Held: ${match.reason}${match.rowNumber ? ` (sheet row ${match.rowNumber})` : ""}.`,
+      state: "delivered",
+      receipt: { provider: "google_sheets", action: "already_present", rows: presentAt, written: false },
+      note: `NPN already on the Ethos sheet (row ${presentAt.join(", ")}); nothing written. Carrier-owned columns are reconciled by the sheet sync.`,
     };
   }
 
-  // On an update-in-place, preserve a real "Level N" already in the Comp Level
-  // cell (John Ray / Ethos set it) instead of overwriting it from the APEX
-  // percentage. On an append there is no prior cell, so the base level is used.
-  const existingCompLevel = match.action === "update"
-    ? (rows[match.rowNumber - 1]?.[COL_COMP_LEVEL] ?? null)
-    : null;
-  const values = buildEthosAiRow(intake, config, existingCompLevel);
-  const aiReceipt = match.action === "update"
-    ? await sheets.updateRange(aiRangeForRow(config.tab, match.rowNumber), [values])
-    : await sheets.appendRow(`${config.tab}!A:I`, values);
+  const approval = deps.loadEthosApproval ? await deps.loadEthosApproval(intake) : null;
+  const gate = evaluateSignupGate(candidate, approval, { now: deps.now(), sheetRows: rows, principal });
+  if (!gate.ready || !gate.payload) {
+    return {
+      state: "manual_review",
+      receipt: null,
+      note: `Held by the Ethos gate: ${gate.blockers.map((b) => b.code).join(", ") || "payload incomplete"}.`,
+    };
+  }
 
-  // A 2xx means Google accepted the call, not that the right producer is in the
-  // right row. Read it back before claiming anything.
-  const written = await sheets.getRange(aiReceipt);
-  const check = verifyReadBack(written[0] ?? [], intake);
+  const plan = planSignupWrite(rows, gate.payload);
+  if (plan.action !== "append") {
+    return {
+      state: "manual_review",
+      receipt: null,
+      note: plan.action === "manual_review"
+        ? `Held: ${plan.reason} (sheet row ${plan.rowNumbers.join(", ")}).`
+        : `NPN appeared on the sheet during this run (row ${plan.rowNumbers.join(", ")}); nothing written.`,
+    };
+  }
+
+  // The row must still be empty when we write it: a collaborator may have typed into it.
+  const target = await sheets.getRange(`${tab}!A${plan.rowNumber}:S${plan.rowNumber}`);
+  if ((target[0] ?? []).slice(0, 6).some((cell) => String(cell ?? "").trim() !== "")) {
+    throw new Error(`Ethos target row ${plan.rowNumber} is no longer empty; refusing to overwrite a concurrent edit`);
+  }
+
+  const range = signupAgencyRange(tab, plan.rowNumber);
+  const receipt = await sheets.updateRange(range, [gate.payload]);
+  const written = await sheets.getRange(range);
+  const check = verifySignupReadBack(written[0], gate.payload);
   if (!check.ok) throw new Error(`Ethos read-back mismatch on ${check.mismatches.join(", ")}`);
-
-  // License/E&O and Comments are targeted writes after identity read-back.
-  const landedRow = rowNumberFromRange(aiReceipt);
-  const klReceipt = landedRow
-    ? await sheets.updateRange(klRangeForRow(config.tab, landedRow), [buildEthosKlRow(intake)])
-    : null;
-  const commentReceipt = landedRow
-    ? await sheets.updateRange(commentRangeForRow(config.tab, landedRow), [[buildEthosComment(config, intake)]])
-    : null;
 
   return {
     state: "delivered",
     receipt: {
       provider: "google_sheets",
-      updated_range: aiReceipt,
-      license_eo_range: klReceipt,
-      comment_range: commentReceipt,
-      action: match.action,
+      action: "appended_a_to_l",
+      updated_range: receipt,
+      row: plan.rowNumber,
+      columns: SIGNUP_HEADERS.slice(0, 12),
       read_back_verified: true,
+      review_items: gate.review.map((r) => r.code),
     },
-    note: null,
+    note: "Written to the agency input block only (A:L). Being on the sheet is not Ethos approval; portal and reparenting are reconciled from the sheet sync.",
   };
 }
 

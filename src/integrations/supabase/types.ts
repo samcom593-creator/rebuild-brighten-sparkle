@@ -23721,6 +23721,42 @@ export type Database = {
         }
         Relationships: []
       }
+      analytics_events_2026_12: {
+        Row: {
+          created_at: string
+          event_category: string | null
+          event_name: string
+          id: string
+          properties: Json | null
+          session_id: string | null
+          url: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_category?: string | null
+          event_name: string
+          id?: string
+          properties?: Json | null
+          session_id?: string | null
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_category?: string | null
+          event_name?: string
+          id?: string
+          properties?: Json | null
+          session_id?: string | null
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       analytics_events_default: {
         Row: {
           created_at: string
@@ -29637,6 +29673,51 @@ export type Database = {
         Relationships: []
       }
       audit_log_2026_11: {
+        Row: {
+          action: string
+          actor_role: string | null
+          actor_user_id: string | null
+          after_data: Json | null
+          before_data: Json | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          ip_address: string | null
+          request_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_role?: string | null
+          actor_user_id?: string | null
+          after_data?: Json | null
+          before_data?: Json | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          ip_address?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_role?: string | null
+          actor_user_id?: string | null
+          after_data?: Json | null
+          before_data?: Json | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          ip_address?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      audit_log_2026_12: {
         Row: {
           action: string
           actor_role: string | null
@@ -40357,6 +40438,255 @@ export type Database = {
         }
         Relationships: []
       }
+      contracting_checkin_log: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          checkin_id: string
+          done: boolean | null
+          id: number
+          note: string | null
+          step: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          checkin_id: string
+          done?: boolean | null
+          id?: number
+          note?: string | null
+          step: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          checkin_id?: string
+          done?: boolean | null
+          id?: number
+          note?: string | null
+          step?: string
+        }
+        Relationships: []
+      }
+      contracting_checkins: {
+        Row: {
+          agent_id: string | null
+          application_id: string | null
+          call_count: number
+          contracts_confirmed_at: string | null
+          contracts_confirmed_by: string | null
+          contracts_sent_at: string | null
+          contracts_sent_by: string | null
+          created_at: string
+          display_name: string | null
+          email: string | null
+          flagged_at: string | null
+          flagged_no_contracts: boolean
+          id: string
+          last_call_at: string | null
+          last_call_outcome: string | null
+          last_checkin_at: string | null
+          left_at: string | null
+          left_by: string | null
+          left_reason: string | null
+          note: string | null
+          phone: string | null
+          profile_id: string | null
+          reengage_email_sent_at: string | null
+          training_ready_at: string | null
+          training_ready_by: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          agent_id?: string | null
+          application_id?: string | null
+          call_count?: number
+          contracts_confirmed_at?: string | null
+          contracts_confirmed_by?: string | null
+          contracts_sent_at?: string | null
+          contracts_sent_by?: string | null
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          flagged_at?: string | null
+          flagged_no_contracts?: boolean
+          id?: string
+          last_call_at?: string | null
+          last_call_outcome?: string | null
+          last_checkin_at?: string | null
+          left_at?: string | null
+          left_by?: string | null
+          left_reason?: string | null
+          note?: string | null
+          phone?: string | null
+          profile_id?: string | null
+          reengage_email_sent_at?: string | null
+          training_ready_at?: string | null
+          training_ready_by?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          agent_id?: string | null
+          application_id?: string | null
+          call_count?: number
+          contracts_confirmed_at?: string | null
+          contracts_confirmed_by?: string | null
+          contracts_sent_at?: string | null
+          contracts_sent_by?: string | null
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          flagged_at?: string | null
+          flagged_no_contracts?: boolean
+          id?: string
+          last_call_at?: string | null
+          last_call_outcome?: string | null
+          last_checkin_at?: string | null
+          left_at?: string | null
+          left_by?: string | null
+          left_reason?: string | null
+          note?: string | null
+          phone?: string | null
+          profile_id?: string | null
+          reengage_email_sent_at?: string | null
+          training_ready_at?: string | null
+          training_ready_by?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      contracting_ethos_approval_log: {
+        Row: {
+          action: string
+          actor: string | null
+          after: Json | null
+          approval_id: string
+          at: string
+          before: Json | null
+          id: number
+        }
+        Insert: {
+          action: string
+          actor?: string | null
+          after?: Json | null
+          approval_id: string
+          at?: string
+          before?: Json | null
+          id?: number
+        }
+        Update: {
+          action?: string
+          actor?: string | null
+          after?: Json | null
+          approval_id?: string
+          at?: string
+          before?: Json | null
+          id?: number
+        }
+        Relationships: []
+      }
+      contracting_ethos_approvals: {
+        Row: {
+          agent_id: string | null
+          approved_advance_tier: string | null
+          approved_at: string | null
+          approved_by: string | null
+          approved_comp_level: string | null
+          approved_sub_agency: string | null
+          approved_sub_agent_head: boolean | null
+          approved_upline_npn: string | null
+          comp_grid_version: string | null
+          contact_confirmed_at: string | null
+          contact_confirmed_by: string | null
+          created_at: string
+          eo_evidence_ref: string | null
+          eo_expires_at: string | null
+          eo_verified_at: string | null
+          eo_verified_by: string | null
+          id: string
+          intake_id: string | null
+          legal_first_name: string | null
+          legal_last_name: string | null
+          license_evidence_ref: string | null
+          license_verified_at: string | null
+          license_verified_by: string | null
+          note: string | null
+          npn_verified_at: string | null
+          npn_verified_by: string | null
+          npn_verified_source: string | null
+          owner_name: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          agent_id?: string | null
+          approved_advance_tier?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          approved_comp_level?: string | null
+          approved_sub_agency?: string | null
+          approved_sub_agent_head?: boolean | null
+          approved_upline_npn?: string | null
+          comp_grid_version?: string | null
+          contact_confirmed_at?: string | null
+          contact_confirmed_by?: string | null
+          created_at?: string
+          eo_evidence_ref?: string | null
+          eo_expires_at?: string | null
+          eo_verified_at?: string | null
+          eo_verified_by?: string | null
+          id?: string
+          intake_id?: string | null
+          legal_first_name?: string | null
+          legal_last_name?: string | null
+          license_evidence_ref?: string | null
+          license_verified_at?: string | null
+          license_verified_by?: string | null
+          note?: string | null
+          npn_verified_at?: string | null
+          npn_verified_by?: string | null
+          npn_verified_source?: string | null
+          owner_name?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          agent_id?: string | null
+          approved_advance_tier?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          approved_comp_level?: string | null
+          approved_sub_agency?: string | null
+          approved_sub_agent_head?: boolean | null
+          approved_upline_npn?: string | null
+          comp_grid_version?: string | null
+          contact_confirmed_at?: string | null
+          contact_confirmed_by?: string | null
+          created_at?: string
+          eo_evidence_ref?: string | null
+          eo_expires_at?: string | null
+          eo_verified_at?: string | null
+          eo_verified_by?: string | null
+          id?: string
+          intake_id?: string | null
+          legal_first_name?: string | null
+          legal_last_name?: string | null
+          license_evidence_ref?: string | null
+          license_verified_at?: string | null
+          license_verified_by?: string | null
+          note?: string | null
+          npn_verified_at?: string | null
+          npn_verified_by?: string | null
+          npn_verified_source?: string | null
+          owner_name?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       contracting_intake_deliveries: {
         Row: {
           accepted_at: string | null
@@ -50176,6 +50506,126 @@ export type Database = {
           subagency?: string | null
           synced_at?: string
           upline_npn?: string | null
+        }
+        Relationships: []
+      }
+      ethos_sheet_rows: {
+        Row: {
+          advance_tier: string | null
+          blockers: string[]
+          comp_level: string | null
+          email: string | null
+          eo: string | null
+          first_name: string | null
+          invite_unique: boolean | null
+          last_name: string | null
+          life_licensed: string | null
+          mobile: string | null
+          npn: string | null
+          partner_code: string | null
+          partner_id: string | null
+          portal_created: string | null
+          portal_date_raw: string | null
+          review: string[]
+          row_number: number
+          snapshot_id: string
+          sub_agency: string | null
+          sub_agent_head: string | null
+          upline_npn: string | null
+        }
+        Insert: {
+          advance_tier?: string | null
+          blockers?: string[]
+          comp_level?: string | null
+          email?: string | null
+          eo?: string | null
+          first_name?: string | null
+          invite_unique?: boolean | null
+          last_name?: string | null
+          life_licensed?: string | null
+          mobile?: string | null
+          npn?: string | null
+          partner_code?: string | null
+          partner_id?: string | null
+          portal_created?: string | null
+          portal_date_raw?: string | null
+          review?: string[]
+          row_number: number
+          snapshot_id: string
+          sub_agency?: string | null
+          sub_agent_head?: string | null
+          upline_npn?: string | null
+        }
+        Update: {
+          advance_tier?: string | null
+          blockers?: string[]
+          comp_level?: string | null
+          email?: string | null
+          eo?: string | null
+          first_name?: string | null
+          invite_unique?: boolean | null
+          last_name?: string | null
+          life_licensed?: string | null
+          mobile?: string | null
+          npn?: string | null
+          partner_code?: string | null
+          partner_id?: string | null
+          portal_created?: string | null
+          portal_date_raw?: string | null
+          review?: string[]
+          row_number?: number
+          snapshot_id?: string
+          sub_agency?: string | null
+          sub_agent_head?: string | null
+          upline_npn?: string | null
+        }
+        Relationships: []
+      }
+      ethos_sheet_snapshots: {
+        Row: {
+          allocated_rows: number | null
+          counts: Json | null
+          duplicates: Json | null
+          error: string | null
+          fetched_at: string
+          header_ok: boolean | null
+          id: string
+          populated_rows: number | null
+          source: string
+          status: string
+          triggered_by: string | null
+          update_rows: Json | null
+          updates_counts: Json | null
+        }
+        Insert: {
+          allocated_rows?: number | null
+          counts?: Json | null
+          duplicates?: Json | null
+          error?: string | null
+          fetched_at?: string
+          header_ok?: boolean | null
+          id?: string
+          populated_rows?: number | null
+          source?: string
+          status?: string
+          triggered_by?: string | null
+          update_rows?: Json | null
+          updates_counts?: Json | null
+        }
+        Update: {
+          allocated_rows?: number | null
+          counts?: Json | null
+          duplicates?: Json | null
+          error?: string | null
+          fetched_at?: string
+          header_ok?: boolean | null
+          id?: string
+          populated_rows?: number | null
+          source?: string
+          status?: string
+          triggered_by?: string | null
+          update_rows?: Json | null
+          updates_counts?: Json | null
         }
         Relationships: []
       }
@@ -110600,14 +111050,13 @@ export type Database = {
           "Agent First Name": string | null
           "Agent Last Name": string | null
           "Agent NPN": string | null
+          agent_id: string | null
+          approved_at: string | null
+          approved_by: string | null
           "Comp Level": string | null
-          comp_pct: number | null
           current_sheet_level: string | null
           "Direct Upline's NPN": string | null
           display_name: string | null
-          "Information submitted Date": string | null
-          "PII Information": string | null
-          Termination: string | null
         }
         Relationships: []
       }
@@ -110620,19 +111069,34 @@ export type Database = {
           "Agent Last Name": string | null
           "Agent Mobile Number": string | null
           "Agent NPN": string | null
-          Comments: string | null
+          agent_id: string | null
           "Comp Level": string | null
-          "Date Portal Created": string | null
           "Direct Upline NPN": string | null
           display_name: string | null
-          "Ethos Partner Code": string | null
-          "Ethos Partner ID": string | null
-          "Ethos Partnership Ops Notes": string | null
-          Invite: string | null
           "Life Licensed?": string | null
-          "Portal Created": string | null
           "Sub-Agency Name": string | null
           "Sub-Agent Head?": string | null
+        }
+        Relationships: []
+      }
+      v_ethos_roster_current: {
+        Row: {
+          advance: string | null
+          comment: string | null
+          comp_level: string | null
+          email: string | null
+          first_name: string | null
+          id: number | null
+          last_name: string | null
+          npn: string | null
+          partner_code: string | null
+          partner_id: string | null
+          phone: string | null
+          portal: string | null
+          source: string | null
+          subagency: string | null
+          synced_at: string | null
+          upline_npn: string | null
         }
         Relationships: []
       }

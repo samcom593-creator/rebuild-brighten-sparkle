@@ -149,6 +149,7 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
       // Interviews and Follow-ups are tabs inside Recruit Pipeline (RecruitingWorkspaceNav), not
       // standalone destinations. Staff accounts (the former top-level "VA Team") live here too.
       { label: "Staff accounts", href: "/va-team", icon: Users, modes: ["va_manager"] },
+      { label: "Ethos Contracting", href: "/dashboard/contracting/ethos", icon: FileSearch, modes: ["va", "va_manager"] },
     ],
   },
 
@@ -197,6 +198,7 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
       { label: "Finances", href: "/dashboard/finances", icon: WalletCards, adminOnly: true },
       { label: "Contracting Ops", href: "/dashboard/contracting/ops", icon: Target, adminOnly: true },
       { label: "Contract Requests", href: "/dashboard/contracting/requests", icon: FileSearch, adminOnly: true },
+      { label: "Ethos Contracting", href: "/dashboard/contracting/ethos", icon: FileSearch, adminOnly: true },
       { label: "Import", href: "/dashboard/import", icon: Import, adminOnly: true },
     ],
   },

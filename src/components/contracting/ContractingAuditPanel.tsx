@@ -45,7 +45,7 @@ const ACTION_LABEL: Record<string, string> = {
   fix_rejected_contracts: "Carrier rejected / issue",
   add_to_ethos_sheet: "Add to Ethos sheet (agwnts tab)",
   agent_sends_ethos_reparenting_email: "Agent must email agents@getethos.com (reparenting)",
-  ethos_agent_update_comp_level: "Ethos comp level wrong → Agent Updates tab",
+  ethos_agent_update_comp_level: "Ethos level differs from the APEX record — leadership decides (never inferred)",
   waiting_on_ethos_portal: "Waiting on Ethos to create portal",
   no_active_carrier_contracts: "No active carrier contract",
   carrier_contracts_in_flight: "Carrier contracts in flight",
@@ -70,8 +70,10 @@ const download = (name: string, text: string) => {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
 
-const AGWNTS_COLS = ["Agent First Name", "Agent Last Name", "Agent NPN", "Direct Upline NPN", "Agent Mobile Number", "Agent Email", "Comp Level", "Advance Pay Tier", "Sub-Agency Name", "Sub-Agent Head?", "Life Licensed?", "$1M in E&O coverage?", "Portal Created", "Date Portal Created", "Ethos Partner ID", "Ethos Partner Code", "Invite", "Ethos Partnership Ops Notes", "Comments"];
-const UPDATES_COLS = ["Agent First Name", "Agent Last Name", "Agent NPN", "Direct Upline's NPN", "Comp Level", "Advanced Payments", "PII Information", "Termination", "Information submitted Date"];
+// Agency-input columns only. M:S (signup) and I:L (updates) belong to Ethos; the views behind
+// these exports emit approved values only (contracting_ethos_approvals), never defaults.
+const AGWNTS_COLS = ["Agent First Name", "Agent Last Name", "Agent NPN", "Direct Upline NPN", "Agent Mobile Number", "Agent Email", "Comp Level", "Advance Pay Tier", "Sub-Agency Name", "Sub-Agent Head?", "Life Licensed?", "$1M in E&O coverage?"];
+const UPDATES_COLS = ["Agent First Name", "Agent Last Name", "Agent NPN", "Direct Upline's NPN", "Comp Level", "Advanced Payments", "PII Information", "Termination"];
 
 export function ContractingAuditPanel() {
   const [action, setAction] = useState<string>("all");
@@ -114,7 +116,7 @@ export function ContractingAuditPanel() {
     const { data, error } = await supabase.from(view as never).select("*");
     if (error) { toast.error(`Could not read ${view}: ${error.message}`); return; }
     const list = (data ?? []) as unknown as Record<string, unknown>[];
-    if (!list.length) { toast.info("Nothing to paste — that tab is already in sync."); return; }
+    if (!list.length) { toast.info("Nothing approved to paste. Producers move through Contracting → Ethos: verify, approve, then copy."); return; }
     if (mode === "copy") {
       try {
         await navigator.clipboard.writeText(tsv(list, cols));

@@ -657,6 +657,9 @@ verify_jwt = false
 [functions.interviews-pipeline]
 verify_jwt = true
 
+[functions.ethos-sheet-sync]
+verify_jwt = true
+
 [functions.interviews-outcome]
 verify_jwt = true
 

@@ -1430,6 +1430,22 @@
         "raw": ""
       }
     ],
+    "contracting_save_ethos_review": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_approval",
+          "p_evidence",
+          "p_intake_id"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_intake_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_intake_id uuid, p_evidence jsonb DEFAULT '{}'::jsonb, p_approval jsonb DEFAULT NULL::jsonb"
+      }
+    ],
     "contracting_worklist_ack": [
       {
         "all": [
@@ -2019,6 +2035,18 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "fn_agent_is_placeholder": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
       }
     ],
     "fn_agent_is_roster_excluded": [
@@ -2962,6 +2990,14 @@
       }
     ],
     "fn_identity_collision_observe": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_instagram_token_replay": [
       {
         "all": [],
         "required": [],
@@ -4550,6 +4586,20 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "is_placeholder_agent": [
+      {
+        "all": [
+          "p_agent_code",
+          "p_user_id"
+        ],
+        "required": [
+          "p_agent_code",
+          "p_user_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_code text, p_user_id uuid"
       }
     ],
     "issue_strike": [

@@ -844,7 +844,7 @@ async function deliverContractingIntake(sb: any, event: any): Promise<DispatchRe
           "id, first_name, last_name, email, phone_e164, npn, status, " +
             "comp_percentage, license_status, license_states, eo_certificate_url, " +
             "eo_expires_at, eo_per_claim_limit, eo_aggregate_limit, eft_ready, " +
-            "contracting_contact_name",
+            "contracting_contact_name, agent_id",
         )
         .eq("id", id)
         .single();
@@ -856,6 +856,18 @@ async function deliverContractingIntake(sb: any, event: any): Promise<DispatchRe
     fetchImpl: fetch,
     googleCredential: Deno.env.get("GOOGLE_SERVICE_ACCOUNT_JSON") || null,
     now: () => Date.now(),
+    loadEthosApproval: async (intake) => {
+      // Evidence + leadership approval live in contracting_ethos_approvals (one row per producer).
+      // A read error throws: "no approval" is a verdict, an outage is not.
+      const byAgent = intake.agent_id
+        ? await sb.from("contracting_ethos_approvals").select("*").eq("agent_id", intake.agent_id).maybeSingle()
+        : { data: null, error: null };
+      if (byAgent.error) throw new Error(`Could not read the Ethos approval: ${byAgent.error.message}`);
+      if (byAgent.data) return byAgent.data;
+      const byIntake = await sb.from("contracting_ethos_approvals").select("*").eq("intake_id", intake.id).maybeSingle();
+      if (byIntake.error) throw new Error(`Could not read the Ethos approval: ${byIntake.error.message}`);
+      return byIntake.data ?? null;
+    },
 
     currentState: async () => {
       const { data, error } = await sb

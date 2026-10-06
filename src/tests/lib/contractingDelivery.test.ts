@@ -175,11 +175,23 @@ describe("contracting delivery · honest not_configured", () => {
     expect(outcome.note).toContain("admin export");
   });
 
-  it("reports Ethos unconfigured without a Google credential, and touches nothing", async () => {
+  it("ships with the production write flag OFF: no sheet call even with a credential", async () => {
     const fetchImpl = vi.fn();
     const outcome = await deliverEthosSheet(INTAKE.id, deps({
       fetchImpl: fetchImpl as never,
       readSetting: async (k) => (k === "ethos_agents_sheet" ? '{"sheet_id":"s","tab":"Agents"}' : null),
+      googleCredential: '{"client_email":"x","private_key":"y"}',
+    }));
+    expect(outcome.state).toBe("not_configured");
+    expect(outcome.note).toContain("ethos_sheet_writes_enabled");
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("reports Ethos unconfigured without a Google credential, and touches nothing", async () => {
+    const fetchImpl = vi.fn();
+    const outcome = await deliverEthosSheet(INTAKE.id, deps({
+      fetchImpl: fetchImpl as never,
+      readSetting: async (k) => (k === "ethos_agents_sheet" ? '{"sheet_id":"s","tab":"Agents"}' : k === "ethos_sheet_writes_enabled" ? "true" : null),
       googleCredential: null,
     }));
     expect(outcome.state).toBe("not_configured");
@@ -191,7 +203,7 @@ describe("contracting delivery · honest not_configured", () => {
     const fetchImpl = vi.fn();
     const outcome = await deliverEthosSheet(INTAKE.id, deps({
       fetchImpl: fetchImpl as never,
-      readSetting: async (k) => (k === "ethos_agents_sheet" ? '{"sheet_id":"s","tab":"Agents"}' : null),
+      readSetting: async (k) => (k === "ethos_agents_sheet" ? '{"sheet_id":"s","tab":"Agents"}' : k === "ethos_sheet_writes_enabled" ? "true" : null),
       googleCredential: '{"client_email":"x","private_key":"y"}',
       loadIntake: async () => ({ ...INTAKE, status: "needs_review" }),
     }));
@@ -359,41 +371,50 @@ describe("contracting delivery · exactly-once across the settlement gap", () =>
     expect(h.calls.markAttempting).toBe(0);
   });
 
-  it("an Ethos retry after a settlement failure updates rather than appends", async () => {
-    // Ethos needs no marker because a retry re-reads the sheet, finds the NPN it
-    // just wrote and takes the update branch. Proven here end to end.
-    const sheet: string[][] = [];
-    const appended: string[][] = [];
-    const updated: string[] = [];
+  it("an Ethos retry after a settlement failure converges instead of writing twice", async () => {
+    // First run: the gate passes, A:L lands on the first empty row (PUT, never :append), the
+    // read-back verifies, then the settlement write fails so the outbox retries. Second run:
+    // the NPN is now on the sheet, so the leg converges with no second write.
+    const HEADER = ["Agent First Name", "Agent Last Name", "Agent NPN", "Direct Upline NPN", "Agent Mobile Number",
+      "Agent Email", "Comp Level", "Advance Pay Tier", "Sub-Agency Name", "Sub-Agent Head?", "Life Licensed?",
+      "$1M in E&O coverage?", "Portal Created (Completed by Ethos)", "Date Portal Created / Date Reparenting Completed",
+      "Ethos Partner ID", "Ethos Partner Code", "https://agents.ethoslife.com/invite/", "Ethos Partnership Ops Notes", "Comments"];
+    const sheet: string[][] = [HEADER, ["Other", "Agent", "21000077", "21346366", "(555) 010-0077", "other@example.com"]];
+    const puts: string[] = [];
+    const appends: string[] = [];
+    const rowOf = (u: string) => Number(/A(\d+)%3A|A(\d+):/.exec(decodeURIComponent(u))?.slice(1).find(Boolean) ?? 0);
     const fetchImpl = (async (url: string, init?: RequestInit) => {
-      const u = String(url);
-      if (u.includes("oauth2") || u.includes("token")) {
-        return new Response(JSON.stringify({ access_token: "t" }), { status: 200 });
-      }
-      if (u.includes(":append")) {
-        appended.push(JSON.parse(String(init?.body)).values[0]);
-        sheet.push(appended[appended.length - 1]);
-        return new Response(JSON.stringify({ updates: { updatedRange: `Agents!A${sheet.length}:I${sheet.length}` } }), { status: 200 });
-      }
+      const u = decodeURIComponent(String(url));
+      if (u.includes(":append")) { appends.push(u); return new Response("{}", { status: 200 }); }
       if (init?.method === "PUT") {
-        updated.push(u);
-        return new Response(JSON.stringify({ updatedRange: "Agents!A1:I1" }), { status: 200 });
+        const values = JSON.parse(String(init.body)).values[0];
+        const n = rowOf(u);
+        while (sheet.length < n) sheet.push([]);
+        sheet[n - 1] = values.map((v: unknown) => (typeof v === "boolean" ? (v ? "TRUE" : "FALSE") : String(v)));
+        puts.push(u);
+        return new Response(JSON.stringify({ updatedRange: `Agents!A${n}:L${n}` }), { status: 200 });
       }
-      if (u.includes("A%3AI") || u.includes("A:I")) {
-        return new Response(JSON.stringify({ values: sheet }), { status: 200 });
-      }
-      return new Response(JSON.stringify({ values: [sheet[sheet.length - 1] ?? []] }), { status: 200 });
+      if (u.includes("!A:S")) return new Response(JSON.stringify({ values: sheet }), { status: 200 });
+      const n = rowOf(u);
+      return new Response(JSON.stringify({ values: n && sheet[n - 1] ? [sheet[n - 1]] : [] }), { status: 200 });
     }) as never;
 
+    const approval = {
+      npn_verified_at: "2026-10-01T00:00:00Z", license_verified_at: "2026-10-01T00:00:00Z",
+      eo_verified_at: "2026-10-01T00:00:00Z", eo_expires_at: "2027-12-31",
+      approved_comp_level: "Level 12", approved_advance_tier: "6 Month Advance", approved_upline_npn: "21346366",
+      approved_sub_agency: "Apex Financial Empire", approved_sub_agent_head: false,
+      approved_by: "admin-1", approved_at: "2026-10-02T00:00:00Z",
+    };
     const base = {
       ...deps({
         fetchImpl,
         googleCredential: '{"client_email":"a@b.c","private_key":"k"}',
         getToken: async () => "stub-token",
+        loadEthosApproval: async () => approval,
         readSetting: async (k: string) =>
-          k === "ethos_agents_sheet"
-            ? '{"sheet_id":"s","tab":"Agents","direct_upline_npn":"21346366","advance_pay_tier":"6 Month Advance","sub_agency_name":"Apex Financial Empire","comment_prefix":"Apex"}'
-            : null,
+          k === "ethos_agents_sheet" ? '{"sheet_id":"s","tab":"Agents","principal_npn":"21346366"}'
+          : k === "ethos_sheet_writes_enabled" ? "true" : null,
       }),
       currentState: async () => "queued",
       markAttempting: async () => {},
@@ -401,16 +422,39 @@ describe("contracting delivery · exactly-once across the settlement gap", () =>
       markUnknownOutcome: async () => {},
     };
 
-    // First run: append lands, settlement blows up -> outbox retries.
     await expect(runContractingDelivery("ethos_sheet", INTAKE.id, {
       ...base, settle: async () => { throw new Error("db down"); },
     } as never)).rejects.toThrow(/db down/);
-    expect(appended).toHaveLength(1);
+    expect(puts).toHaveLength(1);
+    expect(puts[0]).toContain("Agents!A3:L3");
+    expect(sheet[2].slice(0, 12)).toEqual(["Jane", "Doe", "21346999", "21346366", "(602) 555-0143", "jane.doe@example.com",
+      "Level 12", "6 Month Advance", "Apex Financial Empire", "FALSE", "TRUE", "TRUE"]);
 
-    // Second run: the NPN is now in the sheet, so it updates in place.
-    await runContractingDelivery("ethos_sheet", INTAKE.id, { ...base, settle: async () => {} } as never);
-    expect(appended).toHaveLength(1);
+    let settled: unknown = null;
+    await runContractingDelivery("ethos_sheet", INTAKE.id, { ...base, settle: async (o: unknown) => { settled = o; } } as never);
+    expect(puts).toHaveLength(1);
+    expect(appends).toHaveLength(0);
     expect(sheet.filter((r) => r[2] === INTAKE.npn)).toHaveLength(1);
+    expect((settled as { receipt: { action: string } }).receipt.action).toBe("already_present");
+  });
+
+  it("holds an unapproved producer at the gate and writes nothing", async () => {
+    const puts: string[] = [];
+    const fetchImpl = (async (url: string, init?: RequestInit) => {
+      if (init?.method === "PUT") { puts.push(String(url)); return new Response("{}", { status: 200 }); }
+      return new Response(JSON.stringify({ values: [["Agent First Name", "Agent Last Name", "Agent NPN", "Direct Upline NPN", "Agent Mobile Number", "Agent Email", "Comp Level", "Advance Pay Tier", "Sub-Agency Name", "Sub-Agent Head?", "Life Licensed?", "$1M in E&O coverage?", "Portal Created (Completed by Ethos)", "Date Portal Created / Date Reparenting Completed", "Ethos Partner ID", "Ethos Partner Code", "https://agents.ethoslife.com/invite/", "Ethos Partnership Ops Notes", "Comments"]] }), { status: 200 });
+    }) as never;
+    const outcome = await deliverEthosSheet(INTAKE.id, deps({
+      fetchImpl,
+      googleCredential: '{"client_email":"a@b.c","private_key":"k"}',
+      getToken: async () => "stub-token",
+      loadEthosApproval: async () => null,
+      readSetting: async (k) => (k === "ethos_agents_sheet" ? '{"sheet_id":"s","tab":"Agents"}' : k === "ethos_sheet_writes_enabled" ? "true" : null),
+    }));
+    expect(outcome.state).toBe("manual_review");
+    expect(outcome.note).toContain("approval_comp_level_missing");
+    expect(outcome.note).toContain("license_not_verified");
+    expect(puts).toHaveLength(0);
   });
 });
 

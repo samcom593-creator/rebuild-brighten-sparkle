@@ -1065,7 +1065,6 @@ export default function Dashboard() {
     return (
       <div className="mx-auto w-full max-w-7xl space-y-5 p-4 sm:p-6">
         <AgentCloudHome />
-        <ReferralLinkCard />
       </div>
     );
   }

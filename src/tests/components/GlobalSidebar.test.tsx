@@ -102,7 +102,13 @@ describe("GlobalSidebar · AgentCloud application navigation", () => {
     setRoles({ isAdmin: true });
     renderSidebar();
     expect(group("Grow")).toBeTruthy();
-    expect(link("Interviews")?.getAttribute("href")).toBe("/dashboard/recruiting/interviews");
+    // Interviews / Follow-ups are tabs inside Recruit Pipeline now, never standalone sidebar destinations.
+    expect(link("Interviews")).toBeNull();
+    expect(link("Follow-ups")).toBeNull();
+    expect(link("Quoter")).toBeNull();
+    expect(link("Scripts")).toBeNull();
+    expect(link("Agencies")).toBeNull();
+    expect(link("VA Team")).toBeNull();
     expect(link("Recruit Pipeline")?.getAttribute("href")).toBe("/dashboard/recruiting");
     expect(link("Invite an agent")?.getAttribute("href")).toBe("/admin/invite-links");
   });
@@ -115,14 +121,13 @@ describe("GlobalSidebar · AgentCloud application navigation", () => {
     setRoles(roles as Partial<typeof authState>);
     renderSidebar();
     expect(group("Grow")).toBeTruthy();
-    expect(link("Interviews")).toBeTruthy();
     expect(link("Recruit Pipeline")).toBeTruthy();
   });
 
   it("keeps high-frequency work discoverable to plain agents without internal contracting", () => {
     renderSidebar();
     expect(group("Grow")).toBeTruthy();
-    expect(link("Interviews")).toBeTruthy();
+    expect(link("Recruit Stages")).toBeTruthy();
     expect(group("Learn")).toBeTruthy();
     expect(link("Training Home")).toBeTruthy();
     expect(link("Call Center")).toBeTruthy();
@@ -148,8 +153,7 @@ describe("GlobalSidebar · AgentCloud application navigation", () => {
     setRoles({ isRecruiter: true, effectiveMode: "recruiter" as never });
     renderSidebar();
     expect(group("Grow")).toBeTruthy();
-    expect(link("Interviews")).toBeTruthy();
-    expect(link("Follow-ups")).toBeTruthy();
+    expect(link("Recruit Pipeline")).toBeTruthy();
     expect(link("Invite an agent")).toBeTruthy();
     expect(group("Sell")).toBeNull();
     expect(link("Book of Business")).toBeNull();

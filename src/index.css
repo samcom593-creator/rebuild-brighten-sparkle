@@ -2231,3 +2231,37 @@ h1,
     border-color: #c9a84c !important;
   }
 }
+
+/* ── Page loading state (src/components/ui/page-skeleton.tsx) ──────────────
+   One quiet, layout-shaped skeleton for every page load. Hidden for 180ms so
+   fast loads never flash; a 2px primary progress line instead of a splash. */
+.page-skeleton {
+  animation: page-skeleton-in 160ms ease-out 180ms both;
+}
+@keyframes page-skeleton-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.page-skeleton-bar {
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: 2px;
+  z-index: 60;
+  overflow: hidden;
+}
+.page-skeleton-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  background: hsl(var(--primary));
+  animation: page-skeleton-progress 1.1s ease-in-out infinite;
+}
+@keyframes page-skeleton-progress {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(250%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .page-skeleton { animation: none; }
+  .page-skeleton-bar::after { animation: none; width: 100%; opacity: 0.5; }
+}

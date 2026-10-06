@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import apexIcon from "@/assets/apex-icon.png";
+import { PageSkeleton } from "@/components/ui/page-skeleton";
 
 interface SkeletonLoaderProps {
   className?: string;
@@ -7,24 +7,10 @@ interface SkeletonLoaderProps {
 }
 
 export function SkeletonLoader({ className, variant = "card" }: SkeletonLoaderProps) {
+  // The old branded splash (pulsing logo + glow + "Powered by Apex") is retired:
+  // every page load now uses the same layout-shaped skeleton.
   if (variant === "page") {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center landing-scale-in">
-          <div className="relative">
-            <img 
-              src={apexIcon} 
-              alt="Apex" 
-              className="h-12 w-12 mx-auto mb-4 animate-pulse rounded-md"
-            />
-            <div className="absolute inset-0 h-12 w-12 mx-auto rounded-full bg-primary/20 blur-xl animate-pulse" />
-          </div>
-          <p className="text-muted-foreground font-medium text-sm">
-            Powered by Apex
-          </p>
-        </div>
-      </div>
-    );
+    return <PageSkeleton fullScreen />;
   }
 
   if (variant === "circle") {

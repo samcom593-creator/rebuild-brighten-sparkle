@@ -37,15 +37,15 @@ const managerNavItems = [
 const recruiterNavItems = [
   { path: "/dashboard",                        icon: LayoutDashboard, label: "Home" },
   { path: "/dashboard/recruiting",             icon: Briefcase,       label: "Recruiting" },
-  { path: "/dashboard/recruiting/interviews",  icon: CalendarClock,   label: "Interviews" },
-  { path: "/dashboard/recruiting/follow-ups",  icon: Users,           label: "Follow-ups" },
+  { path: "/dashboard/calendar",               icon: CalendarClock,   label: "Calendar" },
+  { path: "/dashboard/team",                   icon: Users,           label: "Team" },
   { path: "/dashboard/settings",               icon: User,            label: "Profile" },
 ];
 
 const staffNavItems = [
   { path: "/dashboard",                        icon: LayoutDashboard, label: "Home" },
   { path: "/dashboard/recruiting",             icon: Briefcase,       label: "Recruiting" },
-  { path: "/dashboard/recruiting/interviews",  icon: CalendarClock,   label: "Interviews" },
+  { path: "/dashboard/calendar",               icon: CalendarClock,   label: "Calendar" },
   { path: "/dashboard/team",                   icon: Users,           label: "Team" },
   { path: "/dashboard/resources",              icon: Library,         label: "Resources" },
 ];

@@ -10,7 +10,7 @@ import { CommandHintFab } from "./CommandHintFab";
 import { WelcomeToast } from "./WelcomeToast";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ComponentErrorBoundary } from "@/components/ComponentErrorBoundary";
-import { Skeleton } from "@/components/ui/skeleton";
+import { PageSkeleton } from "@/components/ui/page-skeleton";
 import { CommandPalette } from "@/components/command/CommandPalette";
 import { CelebrationProvider } from "@/components/celebrations/CelebrationProvider";
 import { RequireProfilePicture } from "@/components/profile/RequireProfilePicture";
@@ -49,24 +49,7 @@ import { ConfirmProvider } from "@/hooks/useConfirm";
 import { MotionConfig } from "framer-motion";
 
 function InnerPageLoader() {
-  return (
-    // Every Skeleton bar is aria-hidden, so without a labelled container a
-    // screen reader hears nothing at all during a route transition. role=status
-    // + aria-live=polite announces the wait without interrupting.
-    <div
-      className="flex items-center justify-center p-8 w-full min-h-[50vh]"
-      role="status"
-      aria-live="polite"
-      aria-busy="true"
-    >
-      <div className="w-full max-w-md space-y-4">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-48 w-full rounded-md" />
-        <Skeleton className="h-10 w-full" />
-      </div>
-      <span className="sr-only">Loading page…</span>
-    </div>
-  );
+  return <PageSkeleton />;
 }
 
 /**

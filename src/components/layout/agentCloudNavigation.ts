@@ -131,7 +131,6 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
     items: [
       { label: "My Pipeline", href: "/dashboard/agent-pipeline", icon: FolderKanban, modes: PRODUCERS },
       { label: "Call Center", href: "/dashboard/call-center", icon: ContactRound },
-      { label: "Quoter", href: "/dashboard/quoter", icon: Cloud, modes: PRODUCERS },
       { label: "Calendar", href: "/dashboard/calendar", icon: CalendarDays, modes: PRODUCERS },
     ],
   },
@@ -146,9 +145,10 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
     items: [
       { label: "Recruit Stages", href: "/dashboard/recruits", icon: Milestone },
       { label: "Recruit Pipeline", href: "/dashboard/recruiting", icon: FolderKanban },
-      { label: "Interviews", href: "/dashboard/recruiting/interviews", icon: CalendarDays },
       { label: "Invite an agent", href: "/admin/invite-links", icon: UserPlus },
-      { label: "Follow-ups", href: "/dashboard/recruiting/follow-ups", icon: Target, modes: ["recruiter", "va", "va_manager", "manager", "agency_owner"] },
+      // Interviews and Follow-ups are tabs inside Recruit Pipeline (RecruitingWorkspaceNav), not
+      // standalone destinations. Staff accounts (the former top-level "VA Team") live here too.
+      { label: "Staff accounts", href: "/va-team", icon: Users, modes: ["va_manager"] },
     ],
   },
 
@@ -170,7 +170,6 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
     items: [
       { label: "Field Course", href: "/dashboard/training/sales-course", icon: GraduationCap },
       { label: "Training Home", href: "/dashboard/training/library", icon: BookOpenCheck },
-      { label: "Scripts", href: "/dashboard/scripts", icon: ScrollText },
       { label: "Call Lab", href: "/dashboard/call-lab", icon: Mic },
     ],
   },
@@ -185,8 +184,6 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
     ],
   },
 
-  { label: "VA Team", href: "/va-team", icon: Users, modes: ["va_manager"] },
-
   {
     // Owner-only, in one place. A manager's sidebar differs from Sam's by this
     // section being absent, not by items sprinkled through five groups.
@@ -194,7 +191,6 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
     icon: Building2,
     kicker: "ADMIN",
     items: [
-      { label: "Agencies", href: "/dashboard/agencies", icon: Building2, adminOnly: true },
       { label: "Launch Board", href: "/dashboard/launch-board", icon: Megaphone, adminOnly: true },
       { label: "Content", href: "/dashboard/content", icon: Clapperboard, adminOnly: true },
       { label: "Reports", href: "/dashboard/analytics", icon: BarChart3, adminOnly: true },

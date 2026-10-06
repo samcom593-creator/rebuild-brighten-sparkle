@@ -96,7 +96,7 @@ export function RecordsAndBounties() {
   const bounties = data?.bounties ?? [];
 
   return (
-    <div className="grid gap-3 lg:grid-cols-2">
+    <div className="grid gap-3">
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-sm font-semibold">
@@ -125,60 +125,6 @@ export function RecordsAndBounties() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-            <Gift className="h-4 w-4 text-primary" /> $500 recruiter bounties
-            {data?.is_admin && data.candidates_near != null && (
-              <Badge variant="outline" className="ml-auto font-normal">{data.candidates_near} recruits one policy away</Badge>
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {query.isLoading ? (
-            <p className="text-xs text-muted-foreground">Loading bounties…</p>
-          ) : bounties.length === 0 ? (
-            <p className="text-xs text-muted-foreground">No bounties qualified yet. A producer (not a manager) earns $500 the moment someone they recruited posts their first two canonical policies.</p>
-          ) : (
-            bounties.map((b) => (
-              <div key={b.id} className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-1.5 last:border-0">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{b.recruiter_name ?? "Recruiter"} <span className="text-muted-foreground">← {b.recruit_name ?? "recruit"}</span></p>
-                  <p className="text-xs text-muted-foreground">{money(b.amount_cents / 100)} · {b.policies_at_qualification} policies · {b.qualified_at.slice(0, 10)}{b.reversed_reason ? ` · ${b.reversed_reason}` : ""}</p>
-                </div>
-                <div className="flex shrink-0 items-center gap-1">
-                  <Badge variant="outline" className={statusTone[b.status]}>{b.status}</Badge>
-                  {data?.is_admin && b.status === "qualified" && (
-                    <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => setStatus(b.id, "approved")}>Approve</Button>
-                  )}
-                  {data?.is_admin && b.status === "approved" && (
-                    <Button size="sm" className="h-7 px-2 text-xs" onClick={() => setStatus(b.id, "paid")}>Mark paid</Button>
-                  )}
-                  {data?.is_admin && (b.status === "qualified" || b.status === "approved") && (
-                    <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setStatus(b.id, "reversed")}>Reverse</Button>
-                  )}
-                </div>
-                {pending?.id === b.id && (
-                  <form
-                    className="flex w-full items-center gap-2 pt-1"
-                    onSubmit={(e) => { e.preventDefault(); void setStatus(b.id, pending.status, pending.note); }}
-                  >
-                    <Input
-                      autoFocus
-                      className="h-7 text-xs"
-                      placeholder={pending.status === "paid" ? "Payment reference (check #, Zelle memo…)" : "Reason for reversal"}
-                      value={pending.note}
-                      onChange={(e) => setPending({ ...pending, note: e.target.value })}
-                    />
-                    <Button type="submit" size="sm" className="h-7 px-2 text-xs" disabled={!pending.note.trim()}>Confirm {pending.status}</Button>
-                    <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setPending(null)}>Cancel</Button>
-                  </form>
-                )}
-              </div>
-            ))
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }

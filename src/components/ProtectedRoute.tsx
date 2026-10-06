@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { SkeletonLoader } from "@/components/ui/skeleton-loader";
+import { PageSkeleton } from "@/components/ui/page-skeleton";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -97,7 +97,7 @@ export function ProtectedRoute({
   const presenterCheckPending = needsPresenterCheck && (presenterLoading || presenterCheckedUserId !== user.id);
 
   if ((isLoading && !hasResolved.current) || presenterCheckPending) {
-    return <SkeletonLoader variant="page" />;
+    return <PageSkeleton fullScreen />;
   }
 
   // Not authenticated - redirect to appropriate login

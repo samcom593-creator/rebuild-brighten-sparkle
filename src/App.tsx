@@ -1,4 +1,5 @@
 import { Suspense, lazy, useEffect, useState } from "react";
+import { PageSkeleton } from "@/components/ui/page-skeleton";
 // wave-17 (2026-06-04): Toaster + Sonner moved off the eager entry static
 // graph. Together they pulled @radix-ui/react-toast (vendor-radix slice)
 // + sonner + next-themes (vendor-ui slice) into landing's critical path
@@ -42,7 +43,6 @@ import { AuthProvider } from "@/hooks/useAuth";
 // threw "useConfirm must be used inside <ConfirmProvider>", tripping the
 // ErrorBoundary and white-screening /login and every non-landing public route.
 import { ConfirmProvider } from "@/hooks/useConfirm";
-import { Skeleton } from "@/components/ui/skeleton";
 // AuthenticatedShell is lazy: it pulls in SidebarLayout + CommandPalette +
 // CelebrationProvider + RequireProfilePicture which the literal landing route
 // (`/`) does NOT need. Eager-importing it shipped ~40-60kB of sidebar/command
@@ -355,17 +355,9 @@ function QueryShell() {
   );
 }
 
-// Page loading fallback
+// Page loading fallback — the shared layout-shaped skeleton (no splash, no glow).
 function PageLoader() {
-  return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-md space-y-4">
-        <Skeleton className="h-12 w-48 mx-auto" />
-        <Skeleton className="h-64 w-full rounded-xl" />
-        <Skeleton className="h-10 w-full" />
-      </div>
-    </div>
-  );
+  return <PageSkeleton fullScreen />;
 }
 
 const App = () => (

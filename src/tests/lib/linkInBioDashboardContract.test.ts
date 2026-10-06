@@ -27,7 +27,9 @@ describe("agent link-in-bio contract", () => {
 
     const dashboard = read("src/pages/Dashboard.tsx");
     const adminBranch = dashboard.slice(dashboard.indexOf("if (shouldRenderDefaultAdminCommand)"));
-    expect(adminBranch).toContain("<ReferralLinkCard />");
+    // Sam (2026-10-05): "Personal Referrals" is retired from the owner Home. The link lives on the
+    // agent/manager dashboards above and on /dashboard/recruiting-links.
+    expect(adminBranch).not.toContain("<ReferralLinkCard />");
   });
 
   it("allows any active agent link without a licensed-only gate", () => {

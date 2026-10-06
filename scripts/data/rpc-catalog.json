@@ -4420,6 +4420,22 @@
         "raw": ""
       }
     ],
+    "free_leads_qualification_rows": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "free_leads_summary_rows": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "generate_invite_token": [
       {
         "all": [

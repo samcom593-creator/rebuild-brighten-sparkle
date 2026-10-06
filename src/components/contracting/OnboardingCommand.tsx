@@ -105,7 +105,7 @@ export function OnboardingCommand() {
     queryKey: ["free-leads-qual"],
     staleTime: 60_000,
     queryFn: async (): Promise<FreeLeadRow[]> => {
-      const { data, error } = await supabase.from("v_free_leads_qualification" as never)
+      const { data, error } = await supabase.rpc("free_leads_qualification_rows" as never)
         .select("*").order("qualifies_free_leads", { ascending: false }).order("production_30d", { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as FreeLeadRow[];
@@ -115,9 +115,10 @@ export function OnboardingCommand() {
     queryKey: ["free-leads-summary"],
     staleTime: 60_000,
     queryFn: async (): Promise<FreeLeadSummary | null> => {
-      const { data, error } = await supabase.from("v_free_leads_summary" as never).select("*").limit(1);
+      const { data, error } = await supabase.rpc("free_leads_summary_rows" as never).select("*").limit(1);
       if (error) throw error;
-      return ((data?.[0]) ?? null) as unknown as FreeLeadSummary | null;
+      const rows = (data ?? []) as unknown as FreeLeadSummary[];
+      return rows[0] ?? null;
     },
   });
 

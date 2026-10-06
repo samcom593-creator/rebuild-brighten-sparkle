@@ -15,8 +15,11 @@
 //   opens a real browser, renders desktop + mobile, and asserts the visible
 //   text carries no broken token and mobile does not scroll sideways.
 //
-//   It is run by the BOT each fire (Playwright + chromium live on Sam's Mac),
-//   deliberately NOT wired as a blocking CI gate: a browser render in CI is
+//   This header used to say "run by the BOT each fire". It was run by nothing
+//   until 2026-10-06 (PL-WIB-LIVE-RENDER-WIRE). It now runs every 6h on Sam's
+//   Mac via launchd com.samjames.apex.live-render ->
+//   business-ops/scripts/apex-live-render-cron.sh, graded by apex-doctor
+//   Check #92. It is deliberately NOT wired as a blocking CI gate: a browser render in CI is
 //   flaky, and a flaky gate that blocks the deploy is worse than the bug it
 //   guards (the lesson from every "permanently-red guard" wave). So this
 //   fails LOUD locally and NEVER blocks a push.

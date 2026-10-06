@@ -59937,6 +59937,12 @@ export type Database = {
       }
       invite_tokens: {
         Row: {
+          accepted_email: string | null
+          accepted_terms: Json | null
+          agency_key: string | null
+          carrier_exceptions: Json
+          claim_id: string | null
+          claimed_at: string | null
           created_at: string
           created_by: string
           created_by_user_id: string | null
@@ -59944,10 +59950,17 @@ export type Database = {
           id: string
           is_active: boolean
           kind: string
+          last_shared_at: string | null
           notes: string | null
+          offered_comp_pct: number | null
           prefill_json: Json
+          recipient_email: string | null
+          recipient_name: string | null
           revoked_at: string | null
           revoked_by: string | null
+          share_count: number
+          superseded_at: string | null
+          superseded_by: string | null
           target_manager_id: string | null
           target_role: string | null
           token: string
@@ -59956,6 +59969,12 @@ export type Database = {
           used_by_application_id: string | null
         }
         Insert: {
+          accepted_email?: string | null
+          accepted_terms?: Json | null
+          agency_key?: string | null
+          carrier_exceptions?: Json
+          claim_id?: string | null
+          claimed_at?: string | null
           created_at?: string
           created_by: string
           created_by_user_id?: string | null
@@ -59963,10 +59982,17 @@ export type Database = {
           id?: string
           is_active?: boolean
           kind: string
+          last_shared_at?: string | null
           notes?: string | null
+          offered_comp_pct?: number | null
           prefill_json?: Json
+          recipient_email?: string | null
+          recipient_name?: string | null
           revoked_at?: string | null
           revoked_by?: string | null
+          share_count?: number
+          superseded_at?: string | null
+          superseded_by?: string | null
           target_manager_id?: string | null
           target_role?: string | null
           token: string
@@ -59975,6 +60001,12 @@ export type Database = {
           used_by_application_id?: string | null
         }
         Update: {
+          accepted_email?: string | null
+          accepted_terms?: Json | null
+          agency_key?: string | null
+          carrier_exceptions?: Json
+          claim_id?: string | null
+          claimed_at?: string | null
           created_at?: string
           created_by?: string
           created_by_user_id?: string | null
@@ -59982,10 +60014,17 @@ export type Database = {
           id?: string
           is_active?: boolean
           kind?: string
+          last_shared_at?: string | null
           notes?: string | null
+          offered_comp_pct?: number | null
           prefill_json?: Json
+          recipient_email?: string | null
+          recipient_name?: string | null
           revoked_at?: string | null
           revoked_by?: string | null
+          share_count?: number
+          superseded_at?: string | null
+          superseded_by?: string | null
           target_manager_id?: string | null
           target_role?: string | null
           token?: string

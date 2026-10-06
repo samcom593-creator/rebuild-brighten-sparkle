@@ -225,6 +225,18 @@
         "raw": ""
       }
     ],
+    "agent_invitation_terms": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
+      }
+    ],
     "agentlink_award_top_producers": [
       {
         "all": [],
@@ -1721,6 +1733,26 @@
         ],
         "unnamed": false,
         "raw": "p_first_name text, p_last_name text, p_email text, p_phone text, p_pa_number text"
+      }
+    ],
+    "create_invitation": [
+      {
+        "all": [
+          "p_carrier_exceptions",
+          "p_expires_hours",
+          "p_kind",
+          "p_license_status",
+          "p_notes",
+          "p_offered_comp_pct",
+          "p_recipient_email",
+          "p_recipient_name",
+          "p_recipient_phone",
+          "p_target_manager_id",
+          "p_target_role"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_kind text DEFAULT 'hire'::text, p_target_role text DEFAULT 'hired_unlicensed'::text, p_target_manager_id uuid DEFAULT NULL::uuid, p_recipient_email text DEFAULT NULL::text, p_recipient_name text DEFAULT NULL::text, p_recipient_phone text DEFAULT NULL::text, p_license_status text DEFAULT NULL::text, p_offered_comp_pct numeric DEFAULT NULL::numeric, p_carrier_exceptions jsonb DEFAULT '[]'::jsonb, p_expires_hours integer DEFAULT 168, p_notes text DEFAULT NULL::text"
       }
     ],
     "crm_agent_contacts": [
@@ -3258,6 +3290,99 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "fn_invitation_status": [
+      {
+        "all": [
+          "p_expires_at",
+          "p_is_active",
+          "p_now",
+          "p_revoked_at",
+          "p_superseded_by",
+          "p_used_at"
+        ],
+        "required": [
+          "p_expires_at",
+          "p_is_active",
+          "p_revoked_at",
+          "p_superseded_by",
+          "p_used_at"
+        ],
+        "unnamed": false,
+        "raw": "p_used_at timestamp with time zone, p_superseded_by uuid, p_is_active boolean, p_revoked_at timestamp with time zone, p_expires_at timestamp with time zone, p_now timestamp with time zone DEFAULT now()"
+      }
+    ],
+    "fn_invite_authorize": [
+      {
+        "all": [
+          "p_carrier_exceptions",
+          "p_kind",
+          "p_offered_comp_pct",
+          "p_target_manager_id",
+          "p_target_role"
+        ],
+        "required": [
+          "p_carrier_exceptions",
+          "p_kind",
+          "p_offered_comp_pct",
+          "p_target_manager_id",
+          "p_target_role"
+        ],
+        "unnamed": false,
+        "raw": "p_kind text, p_target_role text, p_target_manager_id uuid, p_offered_comp_pct numeric, p_carrier_exceptions jsonb"
+      }
+    ],
+    "fn_invite_caller": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_invite_can_manage": [
+      {
+        "all": [
+          "p_id"
+        ],
+        "required": [
+          "p_id"
+        ],
+        "unnamed": false,
+        "raw": "p_id uuid"
+      }
+    ],
+    "fn_invite_comp_levels": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_invite_insert": [
+      {
+        "all": [
+          "p_auth",
+          "p_expires_hours",
+          "p_kind",
+          "p_notes",
+          "p_prefill",
+          "p_recipient_email",
+          "p_recipient_name"
+        ],
+        "required": [
+          "p_auth",
+          "p_expires_hours",
+          "p_kind",
+          "p_notes",
+          "p_prefill",
+          "p_recipient_email",
+          "p_recipient_name"
+        ],
+        "unnamed": false,
+        "raw": "p_kind text, p_auth jsonb, p_expires_hours integer, p_recipient_email text, p_recipient_name text, p_prefill jsonb, p_notes text"
       }
     ],
     "fn_is_first_slack_deal_today": [
@@ -4819,6 +4944,90 @@
         "raw": "p_at timestamp with time zone"
       }
     ],
+    "invitation_apply_terms": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_claim_id",
+          "p_invitation_id"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_claim_id",
+          "p_invitation_id"
+        ],
+        "unnamed": false,
+        "raw": "p_invitation_id uuid, p_claim_id uuid, p_agent_id uuid"
+      }
+    ],
+    "invitation_claim": [
+      {
+        "all": [
+          "p_email",
+          "p_token"
+        ],
+        "required": [
+          "p_email",
+          "p_token"
+        ],
+        "unnamed": false,
+        "raw": "p_token text, p_email text"
+      }
+    ],
+    "invitation_complete": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_application_id",
+          "p_claim_id",
+          "p_email",
+          "p_intake_id",
+          "p_invitation_id",
+          "p_prior_comp_pct"
+        ],
+        "required": [
+          "p_claim_id",
+          "p_email",
+          "p_invitation_id"
+        ],
+        "unnamed": false,
+        "raw": "p_invitation_id uuid, p_claim_id uuid, p_email text, p_agent_id uuid DEFAULT NULL::uuid, p_application_id uuid DEFAULT NULL::uuid, p_intake_id uuid DEFAULT NULL::uuid, p_prior_comp_pct numeric DEFAULT NULL::numeric"
+      }
+    ],
+    "invitation_link": [
+      {
+        "all": [
+          "p_id"
+        ],
+        "required": [
+          "p_id"
+        ],
+        "unnamed": false,
+        "raw": "p_id uuid"
+      }
+    ],
+    "invitation_mint_options": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "invitation_release": [
+      {
+        "all": [
+          "p_claim_id",
+          "p_invitation_id"
+        ],
+        "required": [
+          "p_claim_id",
+          "p_invitation_id"
+        ],
+        "unnamed": false,
+        "raw": "p_invitation_id uuid, p_claim_id uuid"
+      }
+    ],
     "is_agency_staff": [
       {
         "all": [],
@@ -5073,6 +5282,18 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "list_invitations": [
+      {
+        "all": [
+          "p_include_history",
+          "p_limit",
+          "p_search"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_include_history boolean DEFAULT false, p_search text DEFAULT NULL::text, p_limit integer DEFAULT 200"
       }
     ],
     "list_my_vas": [
@@ -5797,6 +6018,19 @@
         "raw": "p_source text, p_status text, p_last_message_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_last_ingested_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_detail text DEFAULT NULL::text"
       }
     ],
+    "record_invitation_share": [
+      {
+        "all": [
+          "p_channel",
+          "p_id"
+        ],
+        "required": [
+          "p_id"
+        ],
+        "unnamed": false,
+        "raw": "p_id uuid, p_channel text DEFAULT 'copy'::text"
+      }
+    ],
     "record_onboarding_call_outcome": [
       {
         "all": [
@@ -5969,6 +6203,19 @@
         "raw": ""
       }
     ],
+    "regenerate_invitation": [
+      {
+        "all": [
+          "p_expires_hours",
+          "p_id"
+        ],
+        "required": [
+          "p_id"
+        ],
+        "unnamed": false,
+        "raw": "p_id uuid, p_expires_hours integer DEFAULT NULL::integer"
+      }
+    ],
     "register_for_seminar": [
       {
         "all": [
@@ -6105,6 +6352,18 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "revoke_invitation": [
+      {
+        "all": [
+          "p_id"
+        ],
+        "required": [
+          "p_id"
+        ],
+        "unnamed": false,
+        "raw": "p_id uuid"
       }
     ],
     "rp_pipeline_action": [

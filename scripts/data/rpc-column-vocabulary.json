@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-rpc-column-vocabulary.sh (bot_sql -> pg_proc + pg_rewrite)",
- "_generated_at": "2026-10-06T16:47:21Z",
+ "_generated_at": "2026-10-06T16:48:39Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "check-enum-filter-literals.mjs grades literals inside supabase.from().eq() chains. This is the other half of the same class: a status word that arrives from an RPC and is compared in JavaScript, where the return type is text and every wrong word type-checks. Per (function, returned column) this records the relation columns of that name reachable from the function body and the literals the function synthesises itself. It deliberately records CANDIDATES rather than one resolved source: provenance from a body regex is a guess, so check-rpc-status-literals.mjs refuses a literal only when NO candidate vocabulary and no body literal accepts it.",
  "_vocabulary_source": "scripts/data/enum-catalog.json (check_vocab + column_enum + enums). Not copied here on purpose, so the two guards read one snapshot and cannot drift.",
@@ -17,6 +17,7 @@
   "agent_claim_state": "text",
   "agent_credentials_upsert": "uuid",
   "agent_inbox_touch_updated_at": "trigger",
+  "agent_invitation_terms": "jsonb",
   "agentlink_book_rebuild": "integer",
   "agentlink_live_pull": "agentlink_sync_log",
   "agentlink_mark_stale_deals_cancelled": "integer",
@@ -135,6 +136,7 @@
   "course_max_attempts": "integer",
   "create_apex_toolkit_agent": "jsonb",
   "create_apex_toolkit_agent_legacy": "jsonb",
+  "create_invitation": "jsonb",
   "crm_can_read_agent_scope": "boolean",
   "crm_can_read_roster": "boolean",
   "current_agent_id": "uuid",
@@ -260,6 +262,11 @@
   "fn_insuracloud_lane_verdict": "text",
   "fn_insuracloud_refusal_anchor": "timestamp with time zone",
   "fn_interview_events_classify_onboarding": "trigger",
+  "fn_invitation_status": "text",
+  "fn_invite_authorize": "jsonb",
+  "fn_invite_can_manage": "boolean",
+  "fn_invite_comp_levels": "numeric[]",
+  "fn_invite_insert": "invite_tokens",
   "fn_is_first_slack_deal_today": "boolean",
   "fn_license_milestone_emit": "trigger",
   "fn_license_stage_rank": "integer",
@@ -391,6 +398,12 @@
   "ingest_ayro_sales_deal": "jsonb",
   "ingest_discord_production_deal": "jsonb",
   "ingest_external_production_deal": "jsonb",
+  "invitation_apply_terms": "jsonb",
+  "invitation_claim": "jsonb",
+  "invitation_complete": "jsonb",
+  "invitation_link": "jsonb",
+  "invitation_mint_options": "jsonb",
+  "invitation_release": "boolean",
   "is_agency_staff": "boolean",
   "is_first_monday_of_month": "boolean",
   "is_fresh_deal_close": "boolean",
@@ -408,6 +421,7 @@
   "landing_next_step_for": "jsonb",
   "landing_unclaimed_summary": "jsonb",
   "list_abandoned_partial_applications": "SETOF v_partial_applications_abandoned",
+  "list_invitations": "jsonb",
   "log_contact_attempt": "uuid",
   "manager_daily_accountability": "jsonb",
   "map_al_status": "text",
@@ -455,6 +469,7 @@
   "record_charge_action": "charge_review_actions",
   "record_discord_deal_ingestion_exception": "jsonb",
   "record_discord_deal_ingestion_heartbeat": "void",
+  "record_invitation_share": "jsonb",
   "record_onboarding_call_outcome": "jsonb",
   "record_recruiting_outcome": "jsonb",
   "record_snap_stats_public": "jsonb",
@@ -465,6 +480,7 @@
   "refresh_mat_production_unified_if_needed": "jsonb",
   "refresh_production_truth": "jsonb",
   "refresh_sync_health": "void",
+  "regenerate_invitation": "jsonb",
   "request_onboarding_call_booking": "jsonb",
   "reschedule_interview_event": "interview_events",
   "rescue_stale_applications": "jsonb",
@@ -472,6 +488,7 @@
   "resolve_hiring_manager_for_scope": "uuid",
   "resolve_strike": "agent_strikes",
   "revive_dead_leads": "jsonb",
+  "revoke_invitation": "jsonb",
   "rp_pipeline_action": "text",
   "rp_update_agent_comp": "text",
   "run_apex_outbox_dispatch_if_pending": "uuid",
@@ -5786,6 +5803,45 @@
   "fn_hierarchy_first_hops_live.parent_candidates": {
    "candidates": [],
    "body_literals": [
+    "public"
+   ]
+  },
+  "fn_invite_caller.agent_id": {
+   "candidates": [],
+   "body_literals": [
+    "manager",
+    "public"
+   ]
+  },
+  "fn_invite_caller.cap_pct": {
+   "candidates": [],
+   "body_literals": [
+    "manager",
+    "public"
+   ]
+  },
+  "fn_invite_caller.is_admin": {
+   "candidates": [],
+   "body_literals": [
+    "manager",
+    "public"
+   ]
+  },
+  "fn_invite_caller.is_manager": {
+   "candidates": [
+    "agents.is_manager"
+   ],
+   "body_literals": [
+    "manager",
+    "public"
+   ]
+  },
+  "fn_invite_caller.user_id": {
+   "candidates": [
+    "agents.user_id"
+   ],
+   "body_literals": [
+    "manager",
     "public"
    ]
   },

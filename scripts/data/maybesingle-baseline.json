@@ -1,13 +1,12 @@
 {
   "_why": "Floor for check-maybesingle-nonunique.mjs, keyed per file+table+filter so a regression in one file cannot be offset by a pay-down in another. No line numbers: they shift under unrelated edits. See MP-356 in the guard header.",
-  "_generated_from_catalog": "2026-09-08T04:39:25Z",
-  "total": 57,
+  "_generated_from_catalog": "2026-10-06T16:48:37Z",
+  "total": 54,
   "sites": {
     "src/components/dashboard/AddAgentModal.tsx::agents(user_id)": 1,
     "src/components/dashboard/AgentLinkConnectionPrompt.tsx::agents(user_id)": 1,
     "src/components/dashboard/ContractedModal.tsx::agents(user_id)": 1,
     "src/components/dashboard/ContractedModal.tsx::profiles(email)": 1,
-    "src/components/dashboard/InviteTeamModal.tsx::agents(user_id)": 3,
     "src/components/dashboard/PersonalStatsCard.tsx::agents(user_id)": 1,
     "src/components/dashboard/ProductionEntry.tsx::agents(user_id)": 1,
     "src/components/dashboard/TeamHierarchyManager.tsx::agents(is_deactivated,user_id)": 1,

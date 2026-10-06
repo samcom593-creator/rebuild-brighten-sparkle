@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Launch Board is easier to read and use: brighter gray text and borders in dark mode site-wide, bigger labels, Today titles wrap instead of cutting off, clip titles rename with a tap, and on a phone the first tap plays a clip's preview.",
+    detail: "The Library had been frozen at Sep 22 because the Mac mini indexer is offline; the MacBook classifier now adds new Dropbox YouTube/Reels videos every run (37 added, incl. the Oct 6 SD card) and gave 873 untitled clips their readable labels. Reviewed by the four-lens council.",
+    commit: "launch-board-readability-2026-10-06",
+  },
+  {
+    ts: "today",
     label: "Book of Business now matches Home: this month reads $41,409 across 21 deals instead of $1,863,009, because the tiles stop counting a $1.82M pair of imported deals with no agent on the roster. A note names the excluded deals. Contracting Ops cards read the live carrier cases (103 verified, 45 with carriers, 35 needing staff) instead of an empty table that said \"Nothing outstanding\".",
     detail: "Calendar shows one birthday per client instead of one per client record (1,836 records, 1,041 people). The floating search pill that covered buttons on every page is gone, the recruiting strip drops the retired Interviews and Follow-ups tabs, suggested next actions read in sentence case, and review reasons read as sentences.",
     commit: "apex-os-truth-polish-2026-10-06",

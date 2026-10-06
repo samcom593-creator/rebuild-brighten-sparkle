@@ -30,7 +30,7 @@
 // framed for closers; cars/AZ are b-roll only. The Week tab is a real
 // Mon–Sun calendar with a slot per day and a live 80/20 mix meter.
 
-import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
+import { useRef, Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
 import { externalHref } from "@/lib/externalHref";
 import { supabase } from "@/integrations/supabase/client";
 import { useConfirm } from "@/hooks/useConfirm";
@@ -102,7 +102,7 @@ const STAGE_BAR: Record<Stage, string> = {
   ready: "border-l-primary", scheduled: "border-l-primary", published_unconfirmed: "border-l-destructive", published: "border-l-border",
 };
 function StageChip({ stage }: { stage: Stage }) {
-  return <span className={`inline-flex items-center whitespace-nowrap rounded-full border px-2 py-0.5 text-[10.5px] font-semibold ${STAGE_TONE[stage]}`}>{STAGE_LABEL[stage]}</span>;
+  return <span className={`inline-flex items-center whitespace-nowrap rounded-full border px-2 py-0.5 text-[11.5px] font-semibold ${STAGE_TONE[stage]}`}>{STAGE_LABEL[stage]}</span>;
 }
 const JOBS: { k: Job; label: string; desc: string; accent: string; border: string }[] = [
   { k: "REACH", label: "Reach", desc: "Get seen — who you are, wider than the offer.", accent: "text-amber-400", border: "border-t-amber-400/70" },
@@ -160,12 +160,12 @@ const dropboxUrl = (path: string) => {
 };
 
 function Chip({ className, children }: { className?: string; children: React.ReactNode }) {
-  return <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${className ?? "border-border text-muted-foreground"}`}>{children}</span>;
+  return <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${className ?? "border-border text-muted-foreground"}`}>{children}</span>;
 }
 function Head({ title, hint }: { title: string; hint?: string }) {
   return (
     <div className="mb-3 flex items-baseline gap-3">
-      <h2 className="text-[12px] font-bold uppercase tracking-[0.16em] text-muted-foreground">{title}</h2>
+      <h2 className="text-[13px] font-bold uppercase tracking-[0.16em] text-muted-foreground">{title}</h2>
       <span className="h-px flex-1 bg-border" />
       {hint && <span className="text-xs text-muted-foreground">{hint}</span>}
     </div>
@@ -233,6 +233,21 @@ export default function LaunchBoard() {
       if (p === "testimonials") { next.set("tab", "library"); next.set("filter", "testimonials"); } else { next.delete("filter"); }
       return next;
     }, { replace: true });
+  };
+  // Tap a clip's title to rename it (saved as its find_label, the label the Library shows first).
+  // NOTE: hand renames live in find_label. Any future find_label backfill must only fill NULLs
+  // (as apex-testimonial-classifier.py does) or it will wipe Sam's titles.
+  const [renaming, setRenaming] = useState<{ id: string; text: string } | null>(null);
+  const renameDone = useRef(false);   // Enter/Escape already handled it: the blur that follows must not save again
+  const saveRename = async () => {
+    if (!renaming || renameDone.current) return;
+    renameDone.current = true;
+    const { id, text } = renaming; const label = text.trim(); setRenaming(null);
+    const k = clips.find((c) => c.id === id); if (!k || !label || label === (k.find_label || k.title || cleanName(k.name))) return;
+    setClips((cs) => cs.map((c) => (c.id === id ? { ...c, find_label: label } : c)));
+    const { data, error } = await supabase.from("content_clips").update({ find_label: label }).eq("id", id).select("id");
+    if (error || !data?.length) { setClips((cs) => cs.map((c) => (c.id === id ? { ...c, find_label: k.find_label } : c))); toast.error(`Couldn't rename: ${error ? error.message.slice(0, 100) : "not saved (no permission)"}`); }
+    else toast.success("Renamed");
   };
   // Sam's tap beats the classifier: source='manual' is never overwritten by the daemon.
   const setVerdict = async (k: Clip, value: boolean) => {
@@ -600,11 +615,11 @@ export default function LaunchBoard() {
   const locked = workflowReady === false;
 
   const clipLine = (c: Card) => c.clip ? (
-    <a href={(() => { const k = clips.find((x) => x.path === c.clip); return (k && directUrl(k)) || dropboxUrl(c.clip); })()} target="_blank" rel="noopener noreferrer" className="flex min-w-0 items-center gap-1.5 text-[12px] text-primary hover:underline" title={c.clip}>
+    <a href={(() => { const k = clips.find((x) => x.path === c.clip); return (k && directUrl(k)) || dropboxUrl(c.clip); })()} target="_blank" rel="noopener noreferrer" className="flex min-w-0 items-center gap-1.5 text-[13px] text-primary hover:underline" title={c.clip}>
       <Film className="h-3 w-3 shrink-0" aria-hidden /><span className="truncate">{c.clip.split("/").pop()}</span>
     </a>
   ) : (
-    <button onClick={() => { setAttachTarget(c); setTab("library"); }} className="flex items-center gap-1.5 text-left text-[12px] text-muted-foreground hover:text-primary">
+    <button onClick={() => { setAttachTarget(c); setTab("library"); }} className="flex items-center gap-1.5 text-left text-[13px] text-muted-foreground hover:text-primary">
       <Paperclip className="h-3 w-3" aria-hidden /> Attach footage
     </button>
   );
@@ -613,12 +628,12 @@ export default function LaunchBoard() {
   const primaryAction = (c: Card) => {
     const stage = stageOf(c);
     const busy = busyId === c.id;
-    const base = "h-7 px-2.5 text-[11.5px] font-semibold";
+    const base = "h-7 px-2.5 text-[12.5px] font-semibold";
     if (stage === "published") {
       const liveHref = externalHref(c.published_url);
       return liveHref ? <Button asChild size="sm" variant="outline" className={base}><a href={liveHref} target="_blank" rel="noopener noreferrer"><ExternalLink className="mr-1 h-3 w-3" aria-hidden />View post</a></Button> : null;
     }
-    if (stage === "review" && !isAdmin) return <span className="text-[11.5px] text-muted-foreground">Awaiting approval</span>;
+    if (stage === "review" && !isAdmin) return <span className="text-[12.5px] text-muted-foreground">Awaiting approval</span>;
     const label: Record<Stage, string> = {
       idea: "Plan recording", record: "Footage in", edit: "Send to review", review: "Approve", ready: "Publish kit",
       scheduled: "Confirm live", published_unconfirmed: "Add live URL", published: "",
@@ -635,8 +650,8 @@ export default function LaunchBoard() {
     const stage = stageOf(c);
     return (
       <>
-        {stage === "ready" && <Button size="sm" variant="outline" disabled={locked || busyId === c.id} onClick={() => openSchedule(c)} className="h-7 px-2 text-[11.5px]"><CalendarClock className="mr-1 h-3 w-3" aria-hidden />Plan time</Button>}
-        {previousStatus(stage) && <Button size="sm" variant="ghost" disabled={locked || busyId === c.id} onClick={() => sendBack(c)} className="h-7 px-2 text-[11.5px] text-muted-foreground" aria-label={`Send ${c.title} back to ${STAGE_LABEL[previousStatus(stage) as Stage]}`}><Undo2 className="h-3.5 w-3.5" aria-hidden /></Button>}
+        {stage === "ready" && <Button size="sm" variant="outline" disabled={locked || busyId === c.id} onClick={() => openSchedule(c)} className="h-7 px-2 text-[12.5px]"><CalendarClock className="mr-1 h-3 w-3" aria-hidden />Plan time</Button>}
+        {previousStatus(stage) && <Button size="sm" variant="ghost" disabled={locked || busyId === c.id} onClick={() => sendBack(c)} className="h-7 px-2 text-[12.5px] text-muted-foreground" aria-label={`Send ${c.title} back to ${STAGE_LABEL[previousStatus(stage) as Stage]}`}><Undo2 className="h-3.5 w-3.5" aria-hidden /></Button>}
         <Button size="sm" variant="ghost" onClick={() => openEdit(c)} className="h-7 px-2 text-muted-foreground" aria-label={`Edit ${c.title}`}><Pencil className="h-3.5 w-3.5" aria-hidden /></Button>
         <Button size="sm" variant="ghost" onClick={() => remove(c)} className="h-7 px-2 text-muted-foreground hover:text-destructive" aria-label={`Delete ${c.title}`}><Trash2 className="h-3.5 w-3.5" aria-hidden /></Button>
       </>
@@ -645,7 +660,7 @@ export default function LaunchBoard() {
   const scheduleNote = (c: Card) => {
     const s = scheduleLabel(c);
     if (!s || !c.scheduled_for) return null;
-    return <span className="text-[11px] text-muted-foreground">{s.label} · {new Date(c.scheduled_for).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>;
+    return <span className="text-[12px] text-muted-foreground">{s.label} · {new Date(c.scheduled_for).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>;
   };
 
   const questions: { key: string; q: string; items: Card[]; count: number; note?: string; noteTone?: string; go: "open" | Stage }[] = [
@@ -674,12 +689,12 @@ export default function LaunchBoard() {
           ].map((s) => (
             <div key={s.l} className="min-w-[76px] rounded-lg border border-border bg-card px-3 py-2">
               <div className="text-lg font-extrabold tabular-nums text-foreground">{s.n}</div>
-              <div className="mt-0.5 text-[10.5px] uppercase tracking-[0.09em] text-muted-foreground">{s.l}</div>
+              <div className="mt-0.5 text-[11.5px] uppercase tracking-[0.09em] text-muted-foreground">{s.l}</div>
             </div>
           ))}
           <button onClick={() => { chooseProof("testimonials"); setTab("library"); }} className="min-w-[76px] rounded-lg border border-primary/40 bg-primary/5 px-3 py-2 text-left hover:bg-primary/10" title="Every testimonial — calls, videos, screenshots, texts — one tap from download">
             <div className="text-lg font-extrabold tabular-nums text-primary">{testimonialClips.length.toLocaleString()}</div>
-            <div className="mt-0.5 text-[10.5px] uppercase tracking-[0.09em] text-primary">Testimonials</div>
+            <div className="mt-0.5 text-[11.5px] uppercase tracking-[0.09em] text-primary">Testimonials</div>
           </button>
         </div>
       </header>
@@ -700,17 +715,17 @@ export default function LaunchBoard() {
 
       {tab === "today" && (
         <div className="space-y-8">
-          <section aria-label="Four questions" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <section aria-label="Four questions" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {questions.map((qq) => (
               <div key={qq.key} className="flex flex-col gap-2 rounded-lg border border-border bg-card p-4">
-                <div className="text-[12px] font-semibold text-muted-foreground">{qq.q}</div>
+                <div className="text-[13px] font-semibold text-muted-foreground">{qq.q}</div>
                 <button onClick={() => { setStageFilter(qq.go); setTab("board"); }} className="self-start text-2xl font-extrabold tabular-nums text-foreground hover:text-primary" aria-label={`${qq.q} ${qq.count} — open on the board`}>{qq.count}</button>
-                {qq.note && <div className={`text-[11.5px] ${qq.noteTone ?? "text-muted-foreground"}`}>{qq.note}</div>}
+                {qq.note && <div className={`text-[12.5px] ${qq.noteTone ?? "text-muted-foreground"}`}>{qq.note}</div>}
                 <ul className="mt-auto space-y-1">
                   {qq.items.slice(0, 3).map((c) => (
-                    <li key={c.id}><button onClick={() => openEdit(c)} className="w-full truncate text-left text-[12.5px] text-foreground hover:text-primary" title={c.title}>{c.title}</button></li>
+                    <li key={c.id}><button onClick={() => openEdit(c)} className="w-full line-clamp-2 text-left text-[13.5px] text-foreground hover:text-primary" title={c.title}>{c.title}</button></li>
                   ))}
-                  {qq.items.length === 0 && <li className="text-[12px] text-muted-foreground">None</li>}
+                  {qq.items.length === 0 && <li className="text-[13px] text-muted-foreground">None</li>}
                 </ul>
               </div>
             ))}
@@ -723,7 +738,7 @@ export default function LaunchBoard() {
             ) : (
               <div className="overflow-x-auto rounded-lg border border-border">
                 <table className="w-full min-w-[640px] text-sm">
-                  <thead className="bg-muted/50 text-left text-[11px] uppercase tracking-wide text-muted-foreground">
+                  <thead className="bg-muted/50 text-left text-[12px] uppercase tracking-wide text-muted-foreground">
                     <tr><th className="w-8 px-3 py-2">#</th><th className="px-3 py-2">Item</th><th className="px-3 py-2">Stage</th><th className="px-3 py-2">Next action</th><th className="px-3 py-2">Due</th><th className="px-3 py-2 text-right">Do it</th></tr>
                   </thead>
                   <tbody>
@@ -732,11 +747,11 @@ export default function LaunchBoard() {
                         <td className="px-3 py-2.5 font-bold tabular-nums text-muted-foreground">{i + 1}</td>
                         <td className="px-3 py-2.5">
                           <button onClick={() => openEdit(t.card)} className="text-left font-semibold text-foreground hover:text-primary">{t.card.title}</button>
-                          <div className="text-[11.5px] text-muted-foreground">{t.reason}{t.card.owner ? ` · ${t.card.owner}` : ""}</div>
+                          <div className="text-[12.5px] text-muted-foreground">{t.reason}{t.card.owner ? ` · ${t.card.owner}` : ""}</div>
                         </td>
                         <td className="px-3 py-2.5"><StageChip stage={t.stage} /></td>
-                        <td className="px-3 py-2.5 text-[12.5px] text-foreground">{nextAction(t.card)}</td>
-                        <td className={`px-3 py-2.5 text-[12px] ${dueTone(t.card.due_date)}`}>{fmtDue(t.card.due_date) || "—"}</td>
+                        <td className="px-3 py-2.5 text-[13.5px] text-foreground">{nextAction(t.card)}</td>
+                        <td className={`px-3 py-2.5 text-[13px] ${dueTone(t.card.due_date)}`}>{fmtDue(t.card.due_date) || "—"}</td>
                         <td className="px-3 py-2.5 text-right">{primaryAction(t.card)}</td>
                       </tr>
                     ))}
@@ -770,7 +785,7 @@ export default function LaunchBoard() {
           </div>
           <div className="overflow-x-auto rounded-lg border border-border">
             <table className="w-full min-w-[880px] text-sm">
-              <thead className="bg-muted/50 text-left text-[11px] uppercase tracking-wide text-muted-foreground">
+              <thead className="bg-muted/50 text-left text-[12px] uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th className="px-3 py-2">Item</th><th className="px-3 py-2">Stage</th><th className="px-3 py-2">Destination</th><th className="px-3 py-2">Source media</th>
                   <th className="px-3 py-2">Owner</th><th className="px-3 py-2">Due</th><th className="px-3 py-2">Next action</th><th className="px-3 py-2 text-right">Actions</th>
@@ -782,15 +797,15 @@ export default function LaunchBoard() {
                   <tr key={c.id} className="border-t border-border align-top">
                     <td className="max-w-[280px] px-3 py-2.5">
                       <button onClick={() => openEdit(c)} className="text-left font-semibold leading-snug text-foreground hover:text-primary">{c.title}</button>
-                      {c.hook && <div className="line-clamp-2 text-[11.5px] text-muted-foreground">{c.hook}</div>}
+                      {c.hook && <div className="line-clamp-2 text-[12.5px] text-muted-foreground">{c.hook}</div>}
                       {scheduleNote(c)}
                     </td>
                     <td className="px-3 py-2.5"><StageChip stage={stageOf(c)} /></td>
-                    <td className="px-3 py-2.5"><Chip className={brandClass(c.brand)}>{brandHandle(c.brand)}</Chip>{c.day > 0 && <div className="mt-1 text-[11px] text-muted-foreground">{WEEKDAY[c.day]} slot</div>}</td>
+                    <td className="px-3 py-2.5"><Chip className={brandClass(c.brand)}>{brandHandle(c.brand)}</Chip>{c.day > 0 && <div className="mt-1 text-[12px] text-muted-foreground">{WEEKDAY[c.day]} slot</div>}</td>
                     <td className="max-w-[180px] px-3 py-2.5">{clipLine(c)}</td>
-                    <td className="px-3 py-2.5 text-[12px] text-foreground">{c.owner || <span className="text-muted-foreground">—</span>}</td>
-                    <td className={`px-3 py-2.5 text-[12px] ${dueTone(c.due_date)}`}>{fmtDue(c.due_date) || "—"}</td>
-                    <td className="max-w-[220px] px-3 py-2.5 text-[12px] text-foreground">{nextAction(c)}</td>
+                    <td className="px-3 py-2.5 text-[13px] text-foreground">{c.owner || <span className="text-muted-foreground">—</span>}</td>
+                    <td className={`px-3 py-2.5 text-[13px] ${dueTone(c.due_date)}`}>{fmtDue(c.due_date) || "—"}</td>
+                    <td className="max-w-[220px] px-3 py-2.5 text-[13px] text-foreground">{nextAction(c)}</td>
                     <td className="px-3 py-2.5"><div className="flex flex-wrap items-center justify-end gap-1">{primaryAction(c)}{secondaryActions(c)}</div></td>
                   </tr>
                 ))}
@@ -803,7 +818,7 @@ export default function LaunchBoard() {
       {tab === "week" && (
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-2xl border border-border bg-card px-4 py-3 text-sm">
-            <div className="flex items-center gap-2"><span className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">80/20 mix</span>
+            <div className="flex items-center gap-2"><span className="text-[12px] font-bold uppercase tracking-[0.12em] text-muted-foreground">80/20 mix</span>
               <span className={`text-lg font-extrabold tabular-nums ${mix.pct === null ? "text-muted-foreground" : mix.pct >= 75 ? "text-emerald-400" : "text-amber-400"}`}>{mix.pct === null ? "—" : `${mix.pct}%`}</span>
               <span className="text-xs text-muted-foreground">core · target 80%</span></div>
             <div className="h-2 w-40 overflow-hidden rounded-full bg-muted"><div className="h-full bg-emerald-400" style={{ width: `${mix.pct ?? 0}%` }} /></div>
@@ -817,11 +832,11 @@ export default function LaunchBoard() {
               const onPlan = items.some((c) => cardPillars(c).includes(plan.pillar));
               return (
                 <div key={d} className={`flex min-h-[160px] flex-col gap-1.5 rounded-xl border bg-card p-2.5 ${d === 3 || d === 7 ? "border-gold/40" : "border-border"}`}>
-                  <div className="flex items-baseline justify-between"><span className="text-[12px] font-extrabold tracking-wide text-foreground">{WEEKDAY[d]}</span><span className="text-[9px] uppercase tracking-wide text-muted-foreground">{items.length ? `${items.length} card${items.length === 1 ? "" : "s"}` : "open"}</span></div>
-                  <div className={`rounded-md border border-dashed px-1.5 py-1 text-[10px] leading-tight ${onPlan ? "border-emerald-400/40 text-emerald-300" : "border-border text-muted-foreground"}`}>{plan.slot}</div>
-                  {items.length === 0 ? <button onClick={() => { setDraft({ ...emptyDraft, day: d, brand: d === 3 || d === 7 ? "YT" : "SH", content_type: d === 3 || d === 7 ? "long" : "short" }); setEditing(null); setEditorOpen(true); }} className="mt-auto rounded-lg border border-dashed border-border px-2 py-1.5 text-[10.5px] text-muted-foreground hover:border-gold/50 hover:text-gold">+ fill this slot</button> : items.map((c) => (
+                  <div className="flex items-baseline justify-between"><span className="text-[13px] font-extrabold tracking-wide text-foreground">{WEEKDAY[d]}</span><span className="text-[9px] uppercase tracking-wide text-muted-foreground">{items.length ? `${items.length} card${items.length === 1 ? "" : "s"}` : "open"}</span></div>
+                  <div className={`rounded-md border border-dashed px-1.5 py-1 text-[11px] leading-tight ${onPlan ? "border-emerald-400/40 text-emerald-300" : "border-border text-muted-foreground"}`}>{plan.slot}</div>
+                  {items.length === 0 ? <button onClick={() => { setDraft({ ...emptyDraft, day: d, brand: d === 3 || d === 7 ? "YT" : "SH", content_type: d === 3 || d === 7 ? "long" : "short" }); setEditing(null); setEditorOpen(true); }} className="mt-auto rounded-lg border border-dashed border-border px-2 py-1.5 text-[11.5px] text-muted-foreground hover:border-gold/50 hover:text-gold">+ fill this slot</button> : items.map((c) => (
                     <button key={c.id} onClick={() => openEdit(c)} className={`rounded-lg border border-l-[3px] border-border bg-background/50 p-2 text-left ${STAGE_BAR[stageOf(c)]}`}>
-                      <div className="text-[11.5px] font-semibold leading-tight text-foreground">{c.title.replace(/^Story · /, "")}</div>
+                      <div className="text-[12.5px] font-semibold leading-tight text-foreground">{c.title.replace(/^Story · /, "")}</div>
                       <div className="mt-1 flex items-center gap-1.5"><Chip className={brandClass(c.brand)}>{c.brand}</Chip><span className="text-[9px] uppercase text-muted-foreground">{STAGE_LABEL[stageOf(c)]}</span>{isCoreCard(c) === false && <span className="text-[9px] uppercase text-amber-400">20%</span>}</div>
                     </button>
                   ))}
@@ -910,12 +925,18 @@ export default function LaunchBoard() {
                 <label className="absolute left-2 top-2 z-10 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border border-border bg-background/85 text-primary" title="Select to share">
                   <input type="checkbox" checked={picked.has(k.id)} onChange={() => togglePick(k.id)} className="h-3.5 w-3.5 accent-[hsl(var(--primary))]" />
                 </label>
-                <a href={directUrl(k) ?? dropboxUrl(k.path)} target="_blank" rel="noopener noreferrer" className={`relative block bg-muted/40 ${k.kind === "vertical" ? "aspect-[9/16] max-h-64" : "aspect-video"}`} title={k.media === "image" ? "Open the screenshot" : "Open in Dropbox"}>
+                <a href={directUrl(k) ?? dropboxUrl(k.path)} target="_blank" rel="noopener noreferrer"
+                  onClick={(e) => {
+                    // Phones and tablets have no hover: the first tap plays the preview, the next tap opens the clip.
+                    const v = e.currentTarget.querySelector("video");
+                    if (v && v.paused && window.matchMedia("(hover: none)").matches) { e.preventDefault(); v.style.opacity = "1"; void v.play(); }
+                  }}
+                  className={`relative block bg-muted/40 ${k.kind === "vertical" ? "aspect-[9/16] max-h-64" : "aspect-video"}`} title={k.media === "image" ? "Open the screenshot" : "Open in Dropbox"}>
                   {k.thumb_url ? (
                     <>
                       <img src={k.thumb_url} alt="" loading="lazy" className={`h-full w-full ${k.media === "image" ? "object-contain bg-black/40" : "object-cover"}`} />
                       {isTestimonial(k) && (
-                        <span className="absolute bottom-1.5 left-1.5 flex items-center gap-1 rounded-full bg-gold px-1.5 py-0.5 text-[10px] font-extrabold text-zinc-950" title={k.testimonial_reason ?? "testimonial"}>
+                        <span className="absolute bottom-1.5 left-1.5 flex items-center gap-1 rounded-full bg-gold px-1.5 py-0.5 text-[11px] font-extrabold text-zinc-950" title={k.testimonial_reason ?? "testimonial"}>
                           <MessageSquareQuote className="h-3 w-3" /> {k.media === "image" ? "TEXT" : k.testimonial_kind === "video_call" ? "CALL" : "TESTIMONIAL"}
                         </span>
                       )}
@@ -926,19 +947,23 @@ export default function LaunchBoard() {
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-muted-foreground">{k.media === "image" ? <ImageIcon className="h-6 w-6" /> : <Film className="h-6 w-6" />}</div>
                   )}
-                  {k.duration_s ? <span className="absolute bottom-1.5 right-1.5 rounded bg-background/80 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-foreground">{fmtDur(k.duration_s)}</span> : null}
-                  {k.used_by_card && <span className="absolute left-1.5 top-1.5 rounded bg-emerald-500/90 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-950">on a card</span>}
+                  {k.duration_s ? <span className="absolute bottom-1.5 right-1.5 rounded bg-background/80 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-foreground">{fmtDur(k.duration_s)}</span> : null}
+                  {k.used_by_card && <span className="absolute left-1.5 top-1.5 rounded bg-emerald-500/90 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-950">on a card</span>}
                   {k.banger_score != null && (
-                    <span className={`absolute right-1.5 top-1.5 flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-extrabold tabular-nums text-zinc-950 ${bangerColor(k.banger_score)}`} title={k.banger_reason ?? "traction potential"}>🔥 {k.banger_score}</span>
+                    <span className={`absolute right-1.5 top-1.5 flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] font-extrabold tabular-nums text-zinc-950 ${bangerColor(k.banger_score)}`} title={k.banger_reason ?? "traction potential"}>🔥 {k.banger_score}</span>
                   )}
                 </a>
                 <div className="flex flex-1 flex-col gap-1.5 p-3">
-                  <div className="line-clamp-2 text-sm font-bold leading-snug text-foreground">{k.find_label || k.title || cleanName(k.name)}</div>
-                  {k.hook_title && <div className="line-clamp-1 text-[11px] italic text-muted-foreground">🎬 {k.hook_title}</div>}
-                  {isTestimonial(k) && k.testimonial_reason && <div className="line-clamp-2 text-[11px] text-gold/90" title={k.testimonial_reason}>{k.testimonial_reason}</div>}
-                  {!isTestimonial(k) && k.transcript && proof === "all" && query && <div className="line-clamp-2 text-[10.5px] italic text-muted-foreground" title={k.transcript}>“{k.transcript.slice(0, 140)}”</div>}
+                  {renaming?.id === k.id ? (
+                    <input autoFocus value={renaming.text} onChange={(e) => setRenaming({ id: k.id, text: e.target.value })} onBlur={() => void saveRename()} onKeyDown={(e) => { if (e.key === "Enter") void saveRename(); if (e.key === "Escape") { renameDone.current = true; setRenaming(null); } }} aria-label="Clip title" className="w-full rounded border border-primary/60 bg-background px-2 py-1 text-sm font-bold text-foreground outline-none" />
+                  ) : (
+                    <button onClick={() => { renameDone.current = false; setRenaming({ id: k.id, text: k.find_label || k.title || cleanName(k.name) }); }} title="Tap to rename" className="line-clamp-2 text-left text-sm font-bold leading-snug text-foreground hover:text-primary">{k.find_label || k.title || cleanName(k.name)}</button>
+                  )}
+                  {k.hook_title && <div className="line-clamp-1 text-[12px] italic text-muted-foreground">🎬 {k.hook_title}</div>}
+                  {isTestimonial(k) && k.testimonial_reason && <div className="line-clamp-2 text-[12px] text-gold/90" title={k.testimonial_reason}>{k.testimonial_reason}</div>}
+                  {!isTestimonial(k) && k.transcript && proof === "all" && query && <div className="line-clamp-2 text-[11.5px] italic text-muted-foreground" title={k.transcript}>“{k.transcript.slice(0, 140)}”</div>}
                   <div className="flex items-center gap-1">
-                    <span className="text-[10px] text-muted-foreground">{k.testimonial == null ? "not judged yet" : isTestimonial(k) ? (k.testimonial_source === "manual" ? "testimonial · you" : "testimonial") : "not a testimonial"}</span>
+                    <span className="text-[11px] text-muted-foreground">{k.testimonial == null ? "not judged yet" : isTestimonial(k) ? (k.testimonial_source === "manual" ? "testimonial · you" : "testimonial") : "not a testimonial"}</span>
                     <button onClick={() => void setVerdict(k, true)} title="Mark as a testimonial" className={`rounded border p-0.5 ${isTestimonial(k) ? "border-gold/60 bg-gold/15 text-gold" : "border-border text-muted-foreground hover:text-gold"}`}><ThumbsUp className="h-3 w-3" /></button>
                     <button onClick={() => void setVerdict(k, false)} title="Not a testimonial" className={`rounded border p-0.5 ${k.testimonial === false ? "border-border bg-muted text-foreground" : "border-border text-muted-foreground hover:text-foreground"}`}><ThumbsDown className="h-3 w-3" /></button>
                   </div>
@@ -947,32 +972,32 @@ export default function LaunchBoard() {
                       <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted"><div className={`h-full ${bangerColor(k.banger_score)}`} style={{ width: `${k.banger_score}%` }} /></div>
                     </div>
                   )}
-                  {k.hook_title && <button onClick={() => { void navigator.clipboard?.writeText(k.hook_title ?? "").then(() => toast.success("Hook copied")).catch(() => toast.error("Clipboard blocked")); }} className="self-start text-[10px] text-muted-foreground underline-offset-2 hover:text-primary hover:underline">copy hook</button>}
+                  {k.hook_title && <button onClick={() => { void navigator.clipboard?.writeText(k.hook_title ?? "").then(() => toast.success("Hook copied")).catch(() => toast.error("Clipboard blocked")); }} className="self-start text-[11px] text-muted-foreground underline-offset-2 hover:text-primary hover:underline">copy hook</button>}
                   <div className="flex flex-wrap gap-1">
                     {PILLARS.map((p) => {
                       const on = pillarsOf(k).includes(p.k);
                       return (
                         <button key={p.k} title={on ? `Tagged ${p.label}` : `Tag as ${p.label}`} onClick={() => void togglePillar(k, p.k)}
-                          className={`rounded border px-1.5 py-0.5 text-[10px] font-semibold ${on ? "border-primary/40 bg-primary/15 text-primary" : "border-border text-muted-foreground hover:text-foreground"}`}>
+                          className={`rounded border px-1.5 py-0.5 text-[11px] font-semibold ${on ? "border-primary/40 bg-primary/15 text-primary" : "border-border text-muted-foreground hover:text-foreground"}`}>
                           {p.label.split(" ")[0]}
                         </button>
                       );
                     })}
                   </div>
-                  {k.tags && k.tags.length > 0 && <div className="flex flex-wrap gap-1">{k.tags.slice(0, 4).map((tg) => <button key={tg} onClick={() => setQuery(tg)} className="rounded-full border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground hover:text-foreground">{tg}</button>)}</div>}
-                  <div className="mt-auto text-[11px] text-muted-foreground">{k.folder} · {fmtDate(k.modified_at)} · {fmtSize(k.size_bytes)}</div>
+                  {k.tags && k.tags.length > 0 && <div className="flex flex-wrap gap-1">{k.tags.slice(0, 4).map((tg) => <button key={tg} onClick={() => setQuery(tg)} className="rounded-full border border-border px-1.5 py-0.5 text-[11px] text-muted-foreground hover:text-foreground">{tg}</button>)}</div>}
+                  <div className="mt-auto text-[12px] text-muted-foreground">{k.folder} · {fmtDate(k.modified_at)} · {fmtSize(k.size_bytes)}</div>
                   <div className="flex gap-1.5">
                     {attachTarget
-                      ? <Button size="sm" onClick={() => attachClip(k, attachTarget)} className="h-7 flex-1 bg-primary px-2.5 text-[11.5px] text-primary-foreground hover:bg-primary/90"><Paperclip className="mr-1 h-3 w-3" />Attach</Button>
-                      : <Button size="sm" variant="outline" onClick={() => cardFromClip(k)} className="h-7 flex-1 px-2.5 text-[11.5px]"><Plus className="mr-1 h-3 w-3" />New card</Button>}
+                      ? <Button size="sm" onClick={() => attachClip(k, attachTarget)} className="h-7 flex-1 bg-primary px-2.5 text-[12.5px] text-primary-foreground hover:bg-primary/90"><Paperclip className="mr-1 h-3 w-3" />Attach</Button>
+                      : <Button size="sm" variant="outline" onClick={() => cardFromClip(k)} className="h-7 flex-1 px-2.5 text-[12.5px]"><Plus className="mr-1 h-3 w-3" />New card</Button>}
                     {(directUrl(k) || k.phone_url)
                       ? <Button size="sm" disabled={mobileSave && !!pull[k.id] && pull[k.id].pct !== null && pull[k.id].pct! < 100 && !pull[k.id].error} onClick={() => void saveOne(k)}
-                          className={`h-7 px-2.5 text-[11.5px] font-semibold ${pull[k.id]?.file ? "bg-gold text-zinc-950 hover:bg-gold/90" : "bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25"}`}
+                          className={`h-7 px-2.5 text-[12.5px] font-semibold ${pull[k.id]?.file ? "bg-gold text-zinc-950 hover:bg-gold/90" : "bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25"}`}
                           title={mobileSave ? (k.phone_url ? "Phone-size copy — tap to pull, tap again to save to camera roll" : "Tap to pull, tap again to save to camera roll") : "Download the original — one tap"}>
                           {mobileSave && pull[k.id] && !pull[k.id].file && !pull[k.id].error ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-1 h-3.5 w-3.5" />}
                           {!mobileSave ? "Download" : pull[k.id]?.file ? "Save to camera roll" : pull[k.id] && !pull[k.id].error ? (pull[k.id].pct !== null ? `${pull[k.id].pct}%` : fmtSize(pull[k.id].loaded)) : k.phone_url ? `Get · ${fmtSize(k.phone_bytes ?? 0)}` : "Get"}
                         </Button>
-                      : <Button asChild size="sm" variant="outline" className="h-7 px-2.5 text-[11.5px] text-muted-foreground"><a href={dropboxUrl(k.path)} target="_blank" rel="noopener noreferrer" title="Direct link is being re-minted (every 20 min) — this opens the file in Dropbox, where Download is one tap"><ExternalLink className="mr-1 h-3.5 w-3.5" />Dropbox</a></Button>}
+                      : <Button asChild size="sm" variant="outline" className="h-7 px-2.5 text-[12.5px] text-muted-foreground"><a href={dropboxUrl(k.path)} target="_blank" rel="noopener noreferrer" title="Direct link is being re-minted (every 20 min) — this opens the file in Dropbox, where Download is one tap"><ExternalLink className="mr-1 h-3.5 w-3.5" />Dropbox</a></Button>}
                     <Button size="sm" variant="ghost" onClick={() => { void navigator.clipboard?.writeText(k.path).then(() => toast.success("Path copied")).catch(() => toast.error("Clipboard blocked")); }} className="h-7 px-2 text-muted-foreground" title="Copy Dropbox path (for getclips / editors)"><Copy className="h-3.5 w-3.5" /></Button>
                   </div>
                 </div>
@@ -1011,7 +1036,7 @@ export default function LaunchBoard() {
               {postTarget.caption && !hasCta(postTarget.caption) && !hasCta(postTarget.cta ?? "") && (
                 <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-foreground">
                   <span>No website CTA in this caption.</span>
-                  <Button size="sm" variant="outline" className="h-7 text-[11.5px]" onClick={async () => { const cap = `${postTarget.caption.trim()}\n\n${CTA}`; if (await patch(postTarget.id, { caption: cap })) setPostTarget({ ...postTarget, caption: cap }); }}>Add apex-financial.org/apply</Button>
+                  <Button size="sm" variant="outline" className="h-7 text-[12.5px]" onClick={async () => { const cap = `${postTarget.caption.trim()}\n\n${CTA}`; if (await patch(postTarget.id, { caption: cap })) setPostTarget({ ...postTarget, caption: cap }); }}>Add apex-financial.org/apply</Button>
                 </div>
               )}
               <div className="flex flex-wrap gap-2">
@@ -1020,13 +1045,13 @@ export default function LaunchBoard() {
                   ? <Button asChild variant="outline"><a href={d} download={k?.name}><Download className="mr-1.5 h-4 w-4" aria-hidden />Download the clip</a></Button>
                   : <Button asChild variant="outline"><a href={dropboxUrl(postTarget.clip)} target="_blank" rel="noopener noreferrer"><ExternalLink className="mr-1.5 h-4 w-4" aria-hidden />Open clip in Dropbox</a></Button>; })()}
               </div>
-              <p className="text-[11.5px] text-muted-foreground">Copying and downloading do not change the stage. Post it on the platform yourself, then paste the live link below.</p>
+              <p className="text-[12.5px] text-muted-foreground">Copying and downloading do not change the stage. Post it on the platform yourself, then paste the live link below.</p>
               <div className="grid gap-1.5 border-t border-border pt-3">
                 <Label htmlFor="lb-live-url">Live post URL</Label>
                 <Input id="lb-live-url" inputMode="url" autoComplete="off" value={publishUrl} onChange={(e) => setPublishUrl(e.target.value)} placeholder="https://www.youtube.com/shorts/…" />
                 {publishUrl.trim() !== "" && (publishCheck.ok
-                  ? <p className="text-[11.5px] text-muted-foreground">Looks like a {publishCheck.platform} post.{publishCheck.warning ? ` ${publishCheck.warning}` : ""}</p>
-                  : <p className="text-[11.5px] text-destructive">{publishCheck.reason}</p>)}
+                  ? <p className="text-[12.5px] text-muted-foreground">Looks like a {publishCheck.platform} post.{publishCheck.warning ? ` ${publishCheck.warning}` : ""}</p>
+                  : <p className="text-[12.5px] text-destructive">{publishCheck.reason}</p>)}
               </div>
             </div>
           )}
@@ -1046,7 +1071,7 @@ export default function LaunchBoard() {
           <div className="grid gap-2">
             <Label htmlFor="lb-schedule-at">Post at (your local time)</Label>
             <Input id="lb-schedule-at" type="datetime-local" value={scheduleAt} onChange={(e) => setScheduleAt(e.target.value)} />
-            <p className="text-[11.5px] text-muted-foreground">This is a <b className="text-foreground">Manual plan</b>: nothing posts automatically. It shows on Today when the time comes; post it yourself, then confirm the live URL.</p>
+            <p className="text-[12.5px] text-muted-foreground">This is a <b className="text-foreground">Manual plan</b>: nothing posts automatically. It shows on Today when the time comes; post it yourself, then confirm the live URL.</p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setScheduleTarget(null)}>Cancel</Button>
@@ -1073,24 +1098,24 @@ export default function LaunchBoard() {
             <div className="grid gap-1.5"><Label htmlFor="lb-hook">Hook</Label><Textarea id="lb-hook" rows={2} value={draftStr("hook")} onChange={(e) => setDraftField("hook", e.target.value)} placeholder="The opening line, in the first 1.5 seconds" /></div>
             <div className="grid gap-1.5">
               <Label htmlFor="lb-script" className="flex items-center justify-between">Recording script / shot list <span className="flex gap-2">
-                {!draftStr("record_script") && <button type="button" onClick={() => setDraftField("record_script", recordTemplate(draft))} className="text-[11px] font-semibold text-primary underline-offset-2 hover:underline">Fill from template</button>}
-                {draftStr("record_script") && <button type="button" onClick={() => copyText(draftStr("record_script"), "Shot list")} className="text-[11px] font-semibold text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">Copy</button>}
+                {!draftStr("record_script") && <button type="button" onClick={() => setDraftField("record_script", recordTemplate(draft))} className="text-[12px] font-semibold text-primary underline-offset-2 hover:underline">Fill from template</button>}
+                {draftStr("record_script") && <button type="button" onClick={() => copyText(draftStr("record_script"), "Shot list")} className="text-[12px] font-semibold text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">Copy</button>}
               </span></Label>
-              <Textarea id="lb-script" rows={5} value={draftStr("record_script")} onChange={(e) => setDraftField("record_script", e.target.value)} placeholder="Camera, where, the hook line, the beats, the lesson" className="font-mono text-[12px]" />
+              <Textarea id="lb-script" rows={5} value={draftStr("record_script")} onChange={(e) => setDraftField("record_script", e.target.value)} placeholder="Camera, where, the hook line, the beats, the lesson" className="font-mono text-[13px]" />
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="lb-clip" className="flex items-center justify-between">Source media
-                {editing && <button type="button" onClick={() => { setAttachTarget(editing); setEditorOpen(false); setTab("library"); }} className="text-[11px] font-semibold text-primary underline-offset-2 hover:underline">Pick from Library</button>}
+                {editing && <button type="button" onClick={() => { setAttachTarget(editing); setEditorOpen(false); setTab("library"); }} className="text-[12px] font-semibold text-primary underline-offset-2 hover:underline">Pick from Library</button>}
               </Label>
               <Input id="lb-clip" value={draftStr("clip")} onChange={(e) => setDraftField("clip", e.target.value)} placeholder="Reels/2026/09/clip.mp4 (Dropbox path)" />
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="lb-edit" className="flex items-center justify-between">Edit instructions <span className="flex gap-2">
-                {!draftStr("edit_prompt") && <button type="button" onClick={() => setDraftField("edit_prompt", editTemplate(draft))} className="text-[11px] font-semibold text-primary underline-offset-2 hover:underline">Fill from template</button>}
-                {draftStr("edit_prompt") && <button type="button" onClick={() => copyText(draftStr("edit_prompt"), "Edit instructions")} className="text-[11px] font-semibold text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">Copy</button>}
+                {!draftStr("edit_prompt") && <button type="button" onClick={() => setDraftField("edit_prompt", editTemplate(draft))} className="text-[12px] font-semibold text-primary underline-offset-2 hover:underline">Fill from template</button>}
+                {draftStr("edit_prompt") && <button type="button" onClick={() => copyText(draftStr("edit_prompt"), "Edit instructions")} className="text-[12px] font-semibold text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">Copy</button>}
               </span></Label>
-              <Textarea id="lb-edit" rows={4} value={draftStr("edit_prompt")} onChange={(e) => setDraftField("edit_prompt", e.target.value)} placeholder="How to cut it (format, length, captions, what to exclude)" className="font-mono text-[12px]" />
-              <p className="text-[11px] text-muted-foreground">{FORMAT_LINE}</p>
+              <Textarea id="lb-edit" rows={4} value={draftStr("edit_prompt")} onChange={(e) => setDraftField("edit_prompt", e.target.value)} placeholder="How to cut it (format, length, captions, what to exclude)" className="font-mono text-[13px]" />
+              <p className="text-[12px] text-muted-foreground">{FORMAT_LINE}</p>
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="lb-cap">Caption</Label>
@@ -1098,20 +1123,20 @@ export default function LaunchBoard() {
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="lb-cta" className="flex items-center justify-between">Call to action
-                {!draftStr("cta") && <button type="button" onClick={() => setDraftField("cta", CTA)} className="text-[11px] font-semibold text-primary underline-offset-2 hover:underline">Use the apply CTA</button>}
+                {!draftStr("cta") && <button type="button" onClick={() => setDraftField("cta", CTA)} className="text-[12px] font-semibold text-primary underline-offset-2 hover:underline">Use the apply CTA</button>}
               </Label>
               <Input id="lb-cta" value={draftStr("cta")} disabled={!workflowReady} onChange={(e) => setDraftField("cta", e.target.value)} placeholder="What the viewer should do" />
             </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <div className="grid gap-1.5"><Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Destination</Label>
+              <div className="grid gap-1.5"><Label className="text-[12px] uppercase tracking-wide text-muted-foreground">Destination</Label>
                 <Select value={draftStr("brand")} onValueChange={(v) => setDraftField("brand", v)}><SelectTrigger aria-label="Destination channel"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="SH">Shorts → Repurpose</SelectItem><SelectItem value="YT">YouTube long-form</SelectItem>{(draftStr("brand") === "SFD" || draftStr("brand") === "IMS") && <SelectItem value={draftStr("brand")}>{brandHandle(draftStr("brand"))}</SelectItem>}</SelectContent></Select></div>
-              <div className="grid gap-1.5"><Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Job</Label>
+              <div className="grid gap-1.5"><Label className="text-[12px] uppercase tracking-wide text-muted-foreground">Job</Label>
                 <Select value={draftStr("job")} onValueChange={(v) => setDraftField("job", v)}><SelectTrigger aria-label="Content job"><SelectValue /></SelectTrigger><SelectContent>{JOBS.map((j) => <SelectItem key={j.k} value={j.k}>{j.label}</SelectItem>)}</SelectContent></Select></div>
-              <div className="grid gap-1.5"><Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Week slot</Label>
+              <div className="grid gap-1.5"><Label className="text-[12px] uppercase tracking-wide text-muted-foreground">Week slot</Label>
                 <Select value={draftStr("day")} onValueChange={(v) => setDraftField("day", Number(v))}><SelectTrigger aria-label="Week slot"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="0">—</SelectItem>{[1, 2, 3, 4, 5, 6, 7].map((d) => <SelectItem key={d} value={String(d)}>{WEEKDAY[d]} · {WEEK_PLAN[d].slot.split(" · ")[1]}</SelectItem>)}</SelectContent></Select></div>
-              <div className="grid gap-1.5"><Label htmlFor="lb-owner" className="text-[11px] uppercase tracking-wide text-muted-foreground">Owner</Label>
+              <div className="grid gap-1.5"><Label htmlFor="lb-owner" className="text-[12px] uppercase tracking-wide text-muted-foreground">Owner</Label>
                 <Input id="lb-owner" value={draftStr("owner")} disabled={!workflowReady} onChange={(e) => setDraftField("owner", e.target.value)} placeholder="Who does the next step" /></div>
-              <div className="grid gap-1.5"><Label htmlFor="lb-due" className="text-[11px] uppercase tracking-wide text-muted-foreground">Deadline</Label>
+              <div className="grid gap-1.5"><Label htmlFor="lb-due" className="text-[12px] uppercase tracking-wide text-muted-foreground">Deadline</Label>
                 <Input id="lb-due" type="date" value={draftStr("due_date").slice(0, 10)} disabled={!workflowReady} onChange={(e) => setDraftField("due_date", e.target.value)} /></div>
             </div>
           </div>

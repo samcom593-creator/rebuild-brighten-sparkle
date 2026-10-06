@@ -73,6 +73,7 @@ import { CandidateGoalsNotesPanel } from "@/components/dashboard/CandidateGoalsN
 import { FreeLeadsStatusCard } from "@/components/dashboard/FreeLeadsStatusCard";
 import { AgentOnboardingEmailStatus } from "@/components/dashboard/AgentOnboardingEmailStatus";
 import { AgentOnboardingCommandCenter } from "@/components/dashboard/AgentOnboardingCommandCenter";
+import { ReadyToWriteCard } from "@/components/contracting/ReadyToWriteCard";
 import { ReassignManagerButton } from "@/components/agents/ReassignManagerButton";
 import { AgentCredentialsPanel } from "@/components/dashboard/AgentCredentialsPanel";
 import { AgentQuickEditDialog } from "@/components/dashboard/AgentQuickEditDialog";
@@ -885,6 +886,9 @@ const qnum = (v: number | string | null | undefined): number | null => {
                 )}
               </div>
             </div>
+
+            {/* Carriers this agent can actually write: AgentLink-active or staff-verified with evidence. */}
+            <ReadyToWriteCard agentId={agent.id} />
 
             {/* Production qualification + permanent recruiting link. */}
             <FreeLeadsStatusCard agentId={agent.id} />

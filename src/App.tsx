@@ -718,8 +718,8 @@ const App = () => (
                      <Route path="/dashboard/headhunters-calendar" element={<Navigate to="/dashboard/command" replace />} />
                      {/* MP-264: VAs book every one of these calls — they need to see
                          the queue and the applicant names behind it. */}
-                     <Route path="/dashboard/interviews" element={<LegacyWorkspaceRedirect to="/dashboard/recruiting/interviews" />} />
-                     <Route path="/dashboard/interview-recovery" element={<LegacyWorkspaceRedirect to="/dashboard/recruiting/follow-ups" />} />
+                     <Route path="/dashboard/interviews" element={<LegacyWorkspaceRedirect to="/dashboard/calendar" />} />
+                     <Route path="/dashboard/interview-recovery" element={<LegacyWorkspaceRedirect to="/dashboard/recruiting" />} />
                      {/* MP-264: 60% of everyone who has ever produced is dark. */}
                      <Route path="/dashboard/reactivation" element={<ProtectedRoute requireAdmin allowManagers><ProducerReactivation /></ProtectedRoute>} />
                      <Route path="/dashboard/hierarchy" element={<Navigate to="/dashboard/crm" replace />} />

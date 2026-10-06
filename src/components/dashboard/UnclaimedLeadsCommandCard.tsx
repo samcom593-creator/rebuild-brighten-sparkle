@@ -169,7 +169,7 @@ export function UnclaimedLeadsCommandCard() {
           </div>
         </div>
         <Button asChild variant="outline" size="sm">
-          <Link to="/dashboard/applicants?bucket=new&assignment=unclaimed">
+          <Link to="/dashboard/recruiting?queue=unassigned">
             Full queue <ArrowRight className="h-4 w-4 ml-1.5" />
           </Link>
         </Button>

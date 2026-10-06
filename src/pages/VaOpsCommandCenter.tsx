@@ -113,16 +113,18 @@ export default function VaOpsCommandCenter() {
     {
       key: "interviews",
       label: "Interview Queue",
-      desc: "Booked interviews to run and dispose",
-      href: "/dashboard/recruiting/interviews",
+      // Interviews are booked and run from Calendar; the standalone page is retired.
+      desc: "Booked interviews to run and dispose, on the calendar",
+      href: "/dashboard/calendar",
       icon: PhoneCall,
       count: viewCount("v_command_center_queue"),
     },
     {
       key: "interview-recovery",
       label: "Interview Recovery",
-      desc: "Dropped bookings to rescue",
-      href: "/dashboard/interview-recovery",
+      // The follow-ups page is retired; dropped bookings are worked from the recruit worklist.
+      desc: "Dropped bookings to rescue from the recruit worklist",
+      href: "/dashboard/recruiting",
       icon: Rocket,
       count: viewCount("v_prospect_review_queue"),
     },
@@ -163,7 +165,7 @@ export default function VaOpsCommandCenter() {
   if (isVaManager) {
     cards.push({
       key: "va-team",
-      label: "VA Team",
+      label: "Staff accounts",
       desc: "Create, monitor, disable VA logins",
       href: "/va-team",
       icon: Users,

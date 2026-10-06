@@ -49,9 +49,9 @@ const DESTINATIONS = [
     external: false,
   },
   {
-    title: "Course Catalog",
+    title: "Field Course",
     subtitle: "APEX Onboarding, Release Course, and live-training replays with progress tracking.",
-    href: "/course-catalog",
+    href: "/dashboard/training/sales-course",
     icon: GraduationCap,
     highlight: false,
     badge: "Onboarding + Core",

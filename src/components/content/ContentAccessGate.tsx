@@ -40,7 +40,7 @@ export function ContentAccessGate({ children }: { children: ReactNode }) {
           <p className="text-sm text-muted-foreground">
             {access.isError
               ? "Access could not be checked. Reload, and if it repeats tell Sam."
-              : `Ask Sam to add ${user?.email ?? "your email"} on the Content page. Access can be granted and removed in one tap.`}
+              : `Ask Sam to add ${user?.email ?? "your email"} on the Launch Board's Queue tab. Access can be granted and removed in one tap.`}
           </p>
         </CardContent>
       </Card>

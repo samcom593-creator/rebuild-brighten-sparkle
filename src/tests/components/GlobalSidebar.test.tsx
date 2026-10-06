@@ -127,7 +127,12 @@ describe("GlobalSidebar · AgentCloud application navigation", () => {
   it("keeps high-frequency work discoverable to plain agents without internal contracting", () => {
     renderSidebar();
     expect(group("Grow")).toBeTruthy();
-    expect(link("Recruit Stages")).toBeTruthy();
+    // Recruit Stages, Recruit Pipeline and invite links are guarded to
+    // managers and recruiting staff; a plain agent gets the open referral form.
+    expect(link("Recruit Stages")).toBeNull();
+    expect(link("Recruit Pipeline")).toBeNull();
+    expect(link("Invite an agent")).toBeNull();
+    expect(link("Refer a recruit")?.getAttribute("href")).toBe("/dashboard/referrals/new");
     expect(group("Learn")).toBeTruthy();
     expect(link("Training Home")).toBeTruthy();
     expect(link("Call Center")).toBeTruthy();
@@ -149,12 +154,15 @@ describe("GlobalSidebar · AgentCloud application navigation", () => {
   // MP-332 — mode-tailored nav. A Pure Recruiter sees recruiting, never the
   // selling surface; VA staff see the queues they work, never Clients; an
   // Agency Owner sees Reports (a leader surface) that a plain agent does not.
-  it("gives a Pure Recruiter recruiting + invite, and hides the selling surface", () => {
+  it("gives a Pure Recruiter recruiting + calendar, and hides the selling surface", () => {
     setRoles({ isRecruiter: true, effectiveMode: "recruiter" as never });
     renderSidebar();
     expect(group("Grow")).toBeTruthy();
     expect(link("Recruit Pipeline")).toBeTruthy();
-    expect(link("Invite an agent")).toBeTruthy();
+    expect(link("Calendar")?.getAttribute("href")).toBe("/dashboard/calendar");
+    // /admin/invite-links and /dashboard/recruits do not admit recruiters.
+    expect(link("Invite an agent")).toBeNull();
+    expect(link("Recruit Stages")).toBeNull();
     expect(group("Sell")).toBeNull();
     expect(link("Book of Business")).toBeNull();
     expect(link("Quoter")).toBeNull();

@@ -9,12 +9,15 @@ import { useRolePreview } from "@/hooks/useRolePreview";
 // readiness): removed Awards (vanity) and Team Chat (deprecated surface)
 // from both role variants. Replaced with the operating verbs Sam wants
 // agents and managers to reach in one tap.
+// 2026-10-06: every ladder points at the canonical path the desktop sidebar
+// uses (agentCloudNavigation.ts), so the active tab, breadcrumb and favorites
+// agree, and each ladder offers only pages its mode's route guard admits.
 const agentNavItems = [
-  { path: "/agent-portal",            icon: Home,       label: "Home" },
-  { path: "/numbers",                 icon: BarChart3,  label: "Numbers" },
-  { path: "/dashboard/my-deals",      icon: Briefcase,  label: "Deals" },
-  { path: "/agent-pipeline",          icon: Users,      label: "Pipeline" },
-  { path: "/dashboard/settings",      icon: User,       label: "Profile" },
+  { path: "/dashboard",                 icon: Home,       label: "Home" },
+  { path: "/numbers",                   icon: BarChart3,  label: "Numbers" },
+  { path: "/dashboard/production",      icon: Briefcase,  label: "Book" },
+  { path: "/dashboard/agent-pipeline",  icon: Users,      label: "Pipeline" },
+  { path: "/dashboard/profile",         icon: User,       label: "Profile" },
 ];
 
 const adminNavItems = [
@@ -26,28 +29,39 @@ const adminNavItems = [
 ];
 
 const managerNavItems = [
-  { path: "/dashboard",               icon: LayoutDashboard, label: "Home" },
-  { path: "/dashboard/recruiting",    icon: Briefcase,  label: "Recruiting" },
-  { path: "/dashboard/team",          icon: Users,      label: "Team" },
-  { path: "/dashboard/production",    icon: BarChart3,  label: "Production" },
-  { path: "/dashboard/resources",     icon: Library,    label: "Resources" },
+  { path: "/dashboard",                   icon: LayoutDashboard, label: "Home" },
+  { path: "/dashboard/recruiting",        icon: Briefcase,  label: "Recruiting" },
+  { path: "/dashboard/team",              icon: Users,      label: "Team" },
+  { path: "/dashboard/production",        icon: BarChart3,  label: "Production" },
+  { path: "/dashboard/training/library",  icon: Library,    label: "Training" },
 ];
 
-// MP-332: Pure Recruiter — recruiting verbs only, no production.
+// Agency owner mode does not imply the manager role, and the recruiting
+// workspace is gated on that role, so this ladder stays on producer pages.
+const agencyOwnerNavItems = [
+  { path: "/dashboard",                   icon: LayoutDashboard, label: "Home" },
+  { path: "/dashboard/agent-pipeline",    icon: Briefcase,  label: "Pipeline" },
+  { path: "/dashboard/team",              icon: Users,      label: "Team" },
+  { path: "/dashboard/production",        icon: BarChart3,  label: "Production" },
+  { path: "/dashboard/training/library",  icon: Library,    label: "Training" },
+];
+
+// MP-332: Pure Recruiter, recruiting verbs only, no production.
 const recruiterNavItems = [
   { path: "/dashboard",                        icon: LayoutDashboard, label: "Home" },
   { path: "/dashboard/recruiting",             icon: Briefcase,       label: "Recruiting" },
   { path: "/dashboard/calendar",               icon: CalendarClock,   label: "Calendar" },
   { path: "/dashboard/team",                   icon: Users,           label: "Team" },
-  { path: "/dashboard/settings",               icon: User,            label: "Profile" },
+  { path: "/dashboard/settings",               icon: Settings,        label: "Settings" },
 ];
 
+// VA and VA manager: the same destinations their desktop sidebar offers.
 const staffNavItems = [
   { path: "/dashboard",                        icon: LayoutDashboard, label: "Home" },
   { path: "/dashboard/recruiting",             icon: Briefcase,       label: "Recruiting" },
   { path: "/dashboard/calendar",               icon: CalendarClock,   label: "Calendar" },
-  { path: "/dashboard/team",                   icon: Users,           label: "Team" },
-  { path: "/dashboard/resources",              icon: Library,         label: "Resources" },
+  { path: "/dashboard/recruits",               icon: Users,           label: "Stages" },
+  { path: "/dashboard/contracting/ethos",      icon: Library,         label: "Ethos" },
 ];
 
 export function MobileBottomNav() {
@@ -62,7 +76,8 @@ export function MobileBottomNav() {
   // One ladder keyed on the resolved account mode (admin > account_mode > roles).
   const navItems =
     effectiveMode === "admin" ? adminNavItems
-    : effectiveMode === "manager" || effectiveMode === "agency_owner" ? managerNavItems
+    : effectiveMode === "manager" ? managerNavItems
+    : effectiveMode === "agency_owner" ? agencyOwnerNavItems
     : effectiveMode === "recruiter" ? recruiterNavItems
     : effectiveMode === "va" || effectiveMode === "va_manager" ? staffNavItems
     : agentNavItems;

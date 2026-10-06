@@ -26,7 +26,7 @@ import {
   UserPlus,
   Users,
   WalletCards,
-  Mic, Milestone } from "lucide-react";
+  Mic, Milestone, Send } from "lucide-react";
 
 import type { AccountMode } from "@/hooks/useAuth";
 
@@ -124,7 +124,7 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
     label: "Sell",
     icon: Target,
     kicker: "MONEY TODAY",
-    // Admits VAs for the Call Center — they work the recruit queue all day and
+    // Admits VAs for the Call Center: they work the recruit queue all day and
     // would otherwise have no path to it. Every other item stays producer-only.
     modes: [...PRODUCERS, "va", "va_manager"],
     items: [
@@ -142,13 +142,25 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
     kicker: "BUILD THE TEAM",
     modes: RECRUITING,
     items: [
-      { label: "Recruit Stages", href: "/dashboard/recruits", icon: Milestone },
-      { label: "Recruit Pipeline", href: "/dashboard/recruiting", icon: FolderKanban },
-      { label: "Invite an agent", href: "/admin/invite-links", icon: UserPlus },
-      // Interviews and Follow-ups are tabs inside Recruit Pipeline (RecruitingWorkspaceNav), not
-      // standalone destinations. Staff accounts (the former top-level "VA Team") live here too.
+      // Each item names the modes whose route guard admits it (App.tsx). The
+      // guards are role based: /dashboard/recruits admits managers, VAs and VA
+      // managers; /dashboard/recruiting adds recruiters; /admin/invite-links
+      // admits managers only. A plain agent or agency owner gets the referral
+      // form, which is open to every signed-in user.
+      { label: "Recruit Stages", href: "/dashboard/recruits", icon: Milestone, modes: ["manager", "va", "va_manager"] },
+      { label: "Recruit Pipeline", href: "/dashboard/recruiting", icon: FolderKanban, modes: ["manager", "recruiter", "va", "va_manager"] },
+      { label: "Invite an agent", href: "/admin/invite-links", icon: UserPlus, modes: ["manager"] },
+      { label: "Refer a recruit", href: "/dashboard/referrals/new", icon: Send, modes: ["agent", "agency_owner"] },
+      // Interviews are booked from Calendar (open to every signed-in user).
+      // Producers and managers reach it under Sell; the staff who book
+      // interviews but have no Sell calendar get it here.
+      { label: "Calendar", href: "/dashboard/calendar", icon: CalendarDays, modes: ["recruiter", "va", "va_manager"] },
+      // Interviews and Follow-ups are not standalone destinations: interviews are
+      // booked from Calendar and follow-ups are the worklist's due queues.
+      // Staff accounts (the former top-level "VA Team") live here too.
       { label: "Staff accounts", href: "/va-team", icon: Users, modes: ["va_manager"] },
       { label: "Ethos Contracting", href: "/dashboard/contracting/ethos", icon: FileSearch, modes: ["va", "va_manager"] },
+      { label: "Contracting cases", href: "/dashboard/contracting/cases", icon: ScrollText, modes: ["va", "va_manager"] },
     ],
   },
 
@@ -246,7 +258,27 @@ export function agentCloudPathIsActive(pathname: string, href: string): boolean 
   return pathname === target || pathname.startsWith(`${target}/`);
 }
 
+/**
+ * Breadcrumbs for routes the nav does not list, or lists under a different
+ * path. Checked before the nav walk so a page reads the same name the sidebar
+ * gives it (the favorites star saves this label too).
+ */
+const ROUTE_CRUMBS: Record<string, string[]> = {
+  "/dashboard/contracting/cases": ["Contracting", "Contracting cases"],
+  "/dashboard/contracting/ethos": ["Contracting", "Ethos Contracting"],
+  "/dashboard/recruiting/pipeline": ["Grow", "Recruit Pipeline"],
+  "/dashboard/recruiting/hires": ["Grow", "Recruit Pipeline"],
+  "/dashboard/book-of-business": ["My Business", "Retention"],
+  "/dashboard/my-deals": ["My Business", "Book of Business"],
+  "/dashboard/nova": ["Support desk"],
+  "/dashboard/help": ["Support desk"],
+};
+
+const ID_SEGMENT = /^(?:[0-9a-f]{8}-[0-9a-f-]{8,}|[0-9a-f]{16,}|\d+)$/i;
+
 export function agentCloudBreadcrumb(pathname: string): string[] {
+  const override = ROUTE_CRUMBS[pathname];
+  if (override) return override;
   for (const entry of [...AGENT_CLOUD_PRIMARY_NAV, ...AGENT_CLOUD_ACCOUNT_NAV]) {
     if (isAgentCloudGroup(entry)) {
       const child = entry.items.find((item) => agentCloudPathIsActive(pathname, item.href));
@@ -255,6 +287,59 @@ export function agentCloudBreadcrumb(pathname: string): string[] {
       return [entry.label];
     }
   }
-  const final = pathname.split("/").filter(Boolean).at(-1) ?? "Home";
+  // Detail routes (/dashboard/agents/:id and friends) end in a record id.
+  // Name the section instead of title-casing a UUID.
+  const segments = pathname.split("/").filter(Boolean);
+  let final = segments.at(-1) ?? "Home";
+  if (ID_SEGMENT.test(final)) final = segments.at(-2) ?? "Home";
   return [final.replace(/-/g, " ").replace(/\b\w/g, (character) => character.toUpperCase())];
+}
+
+export interface AgentCloudNavViewer {
+  /** Admin outside role preview: sees every entry. */
+  seesAll: boolean;
+  /** Account mode the entries are filtered for (the previewed mode while previewing). */
+  viewMode: AccountMode;
+}
+
+/**
+ * The sidebar's visibility rule: an entry shows when it is not adminOnly (or
+ * the viewer sees all) and it has no `modes` list or the viewer's mode is in
+ * it. Groups left with no items are dropped. Mirrors GlobalSidebar.tsx.
+ */
+export function filterAgentCloudNav(entries: AgentCloudNavEntry[], viewer: AgentCloudNavViewer): AgentCloudNavEntry[] {
+  const modeAllows = (modes?: AccountMode[]) => viewer.seesAll || !modes || modes.includes(viewer.viewMode);
+  return entries
+    .filter((entry) => !(!isAgentCloudGroup(entry) && entry.adminOnly && !viewer.seesAll))
+    .filter((entry) => modeAllows(entry.modes))
+    .map((entry) => (isAgentCloudGroup(entry)
+      ? { ...entry, items: entry.items.filter((item) => (!item.adminOnly || viewer.seesAll) && modeAllows(item.modes)) }
+      : entry))
+    .filter((entry) => !isAgentCloudGroup(entry) || entry.items.length > 0);
+}
+
+export interface AgentCloudNavLink {
+  label: string;
+  href: string;
+  icon?: ElementType;
+  group?: string;
+}
+
+/** Flatten nav entries into links, first occurrence of each href wins. */
+export function flattenAgentCloudNav(entries: AgentCloudNavEntry[]): AgentCloudNavLink[] {
+  const seen = new Set<string>();
+  const links: AgentCloudNavLink[] = [];
+  const add = (link: AgentCloudNavLink) => {
+    if (seen.has(link.href)) return;
+    seen.add(link.href);
+    links.push(link);
+  };
+  for (const entry of entries) {
+    if (isAgentCloudGroup(entry)) {
+      for (const item of entry.items) add({ label: item.label, href: item.href, icon: item.icon, group: entry.label });
+    } else {
+      add({ label: entry.label, href: entry.href, icon: entry.icon });
+    }
+  }
+  return links;
 }

@@ -117,7 +117,8 @@ const TILES: Tile[] = [
     key: "interview",
     label: "Interview stage",
     desc: "Booked or being scheduled",
-    href: "/dashboard/recruiting/interviews",
+    // Interviews are booked from Calendar; the standalone Interviews page is retired.
+    href: "/dashboard/calendar",
     icon: CalendarClock,
     count: (a) => countWhere(a, (q) => q.eq("status", "interview")),
   },
@@ -141,7 +142,8 @@ const TILES: Tile[] = [
     key: "followup",
     label: "Needs follow-up",
     desc: "In contact, silent 7+ days",
-    href: "/dashboard/recruiting/follow-ups",
+    // Follow-ups are the worklist's overdue queue; the standalone page is retired.
+    href: "/dashboard/recruiting?queue=overdue",
     icon: ArrowRight,
     count: (a) =>
       countWhere(a, (q) =>
@@ -286,9 +288,8 @@ export default function RecruiterHome() {
 
       {/* Quick actions */}
       <div className="flex flex-wrap gap-2">
-        <Button asChild size="sm" variant="outline"><Link to="/dashboard/recruiting/interviews">Interviews</Link></Button>
-        <Button asChild size="sm" variant="outline"><Link to="/dashboard/recruiting/follow-ups">Follow-ups</Link></Button>
-        <Button asChild size="sm" variant="outline"><Link to="/admin/invite-links">Invite an agent</Link></Button>
+        <Button asChild size="sm" variant="outline"><Link to="/dashboard/calendar">Calendar</Link></Button>
+        <Button asChild size="sm" variant="outline"><Link to="/dashboard/recruiting?queue=overdue">Overdue follow-ups</Link></Button>
         <Button asChild size="sm" variant="outline"><Link to="/dashboard/recruiter">Recruiter cockpit</Link></Button>
       </div>
     </div>

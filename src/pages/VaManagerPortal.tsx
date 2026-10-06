@@ -37,7 +37,7 @@ interface VaRow {
  * the caller manages (profiles.managed_by). list_my_vas() returns only own VAs.
  */
 export default function VaManagerPortal() {
-  usePageTitle("VA Team · APEX");
+  usePageTitle("Staff accounts · APEX");
   const { isAdmin, isVaManager } = useAuth();
   const askConfirm = useConfirm();
   const qc = useQueryClient();
@@ -137,7 +137,7 @@ export default function VaManagerPortal() {
 
   if (!isAdmin && !isVaManager) {
     return (
-      <div className="p-8 text-center text-muted-foreground">You don't have access to the VA Team portal.</div>
+      <div className="p-8 text-center text-muted-foreground">You don't have access to Staff accounts.</div>
     );
   }
 
@@ -149,7 +149,7 @@ export default function VaManagerPortal() {
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-info">
-            <ShieldCheck className="h-3.5 w-3.5" /> VA Team · Portal
+            <ShieldCheck className="h-3.5 w-3.5" /> Staff accounts
           </div>
           <h1 className="mt-1 flex items-center gap-2 text-2xl font-bold">
             <Users className="h-6 w-6 text-primary" /> Virtual Assistants

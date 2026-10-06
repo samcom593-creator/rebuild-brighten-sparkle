@@ -101,7 +101,11 @@ function Tile({ icon: Icon, label, value, desc, href, tone }: {
 export default function AgencyOwnerHome() {
   const brand = useBrand();
   usePageTitle(`Agency Owner · ${brand.shortName}`);
-  const { user } = useAuth();
+  const { user, isAdmin, isManager } = useAuth();
+  // The recruiting workspace, invite links and Reports are gated on the
+  // manager role (App.tsx), which agency owner mode does not imply. Only offer
+  // those links to someone the guard will let in.
+  const canOpenManagerPages = isAdmin || isManager;
   const downline = useMyDownline();
   const downlineIds = downline.data ?? [];
 
@@ -271,9 +275,11 @@ export default function AgencyOwnerHome() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm">Recruiting · last 30 days</CardTitle>
-            <Button asChild size="sm" variant="ghost" className="gap-1">
-              <Link to="/dashboard/recruiting">Pipeline <ArrowRight className="h-3.5 w-3.5" /></Link>
-            </Button>
+            {canOpenManagerPages && (
+              <Button asChild size="sm" variant="ghost" className="gap-1">
+                <Link to="/dashboard/recruiting">Pipeline <ArrowRight className="h-3.5 w-3.5" /></Link>
+              </Button>
+            )}
           </CardHeader>
           <CardContent>
             {recruits.isLoading && downlineIds.length > 0 ? (
@@ -294,10 +300,16 @@ export default function AgencyOwnerHome() {
 
       {/* Quick actions */}
       <div className="flex flex-wrap gap-2">
-        <Button asChild size="sm" variant="outline"><Link to="/dashboard/recruiting/interviews"><CalendarClock className="mr-1.5 h-3.5 w-3.5" />Interviews</Link></Button>
+        <Button asChild size="sm" variant="outline"><Link to="/dashboard/calendar"><CalendarClock className="mr-1.5 h-3.5 w-3.5" />Calendar</Link></Button>
         <Button asChild size="sm" variant="outline"><Link to="/dashboard/leaderboard"><Trophy className="mr-1.5 h-3.5 w-3.5" />Leaderboard</Link></Button>
-        <Button asChild size="sm" variant="outline"><Link to="/admin/invite-links"><UserPlus className="mr-1.5 h-3.5 w-3.5" />Invite an agent</Link></Button>
-        <Button asChild size="sm" variant="outline"><Link to="/dashboard/analytics">Reports</Link></Button>
+        {canOpenManagerPages ? (
+          <>
+            <Button asChild size="sm" variant="outline"><Link to="/admin/invite-links"><UserPlus className="mr-1.5 h-3.5 w-3.5" />Invite an agent</Link></Button>
+            <Button asChild size="sm" variant="outline"><Link to="/dashboard/analytics">Reports</Link></Button>
+          </>
+        ) : (
+          <Button asChild size="sm" variant="outline"><Link to="/dashboard/referrals/new"><UserPlus className="mr-1.5 h-3.5 w-3.5" />Refer a recruit</Link></Button>
+        )}
       </div>
     </div>
   );

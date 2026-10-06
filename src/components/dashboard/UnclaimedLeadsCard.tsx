@@ -94,10 +94,10 @@ export function UnclaimedLeadsCard() {
             </div>
           </div>
           <Link
-            to="/dashboard/leads"
+            to="/dashboard/admin/unclaimed"
             className="text-xs inline-flex items-center gap-1 rounded-md border border-rose-500/40 bg-rose-500/15 hover:bg-rose-500/25 text-rose-200 px-3 py-2 transition-colors shrink-0 font-medium"
           >
-            Claim → Lead Center <ArrowRight className="h-3 w-3" />
+            Claim → Unclaimed Leads <ArrowRight className="h-3 w-3" />
           </Link>
         </div>
 

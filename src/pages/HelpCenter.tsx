@@ -27,13 +27,13 @@ const FAQ: FaqItem[] = [
   { category: "Getting Started", q: "I just got hired. What's the very first thing I do?",
     a: "1) Schedule your prelicensing course immediately. 2) Pass your state exam (most people do it in 14 days if serious). 3) The day you're licensed, your manager onboards you, runs your carrier contracts, and gives you your first lead block. Until you're licensed you can't write business, so don't waste days." },
   { category: "Getting Started", q: "Where do I find my carrier contracting links?",
-    a: "Go to /dashboard/contracting. Your contracting profile, carrier checklist, status, writing numbers, E&O, EFT readiness, and issues are tracked there." },
+    a: "Start or update your contracting at /start-contracting. The contracting team tracks your carrier checklist, writing numbers, E&O and EFT readiness from there. If a carrier link is missing, open the Support Desk tab on this page." },
   { category: "Getting Started", q: "What's the agent code on my profile?",
     a: "Your agent code is your internal identifier across recruiting, contracting, production, and reporting. You can see it on /dashboard/profile." },
 
   // Licensing
   { category: "Licensing", q: "How long does prelicensing take?",
-    a: "If you're serious: 7-14 days of focused study. Some states require a fixed minimum number of hours — check /dashboard/pre-licensing for state-specific guidance." },
+    a: "If you're serious: 7-14 days of focused study. Some states require a fixed minimum number of hours — check Get licensed (/get-licensed) for state-specific guidance." },
   { category: "Licensing", q: "What states should I get licensed in first?",
     a: "Your resident state first (required). Then prioritize high-volume FE/IUL states: TX, FL, GA, NC, OH, AZ. We'll guide you on which carriers we're already appointed in." },
   { category: "Licensing", q: "Do I need to take continuing education (CE)?",
@@ -41,39 +41,39 @@ const FAQ: FaqItem[] = [
 
   // Selling
   { category: "Selling", q: "What products do we sell most?",
-    a: "Final Expense (FE) is our top volume. Then Whole Life, IUL, Term, Annuity, Mortgage Protection, and supplemental health. Carrier mix on /dashboard/carriers shows current 30-day production split." },
+    a: "Final Expense (FE) is our top volume. Then Whole Life, IUL, Term, Annuity, Mortgage Protection, and supplemental health. Your Book of Business (/dashboard/production) lists every policy with its carrier." },
   { category: "Selling", q: "What's the right script for an inbound call?",
-    a: "Use the Switch Center scripts on /dashboard/scripts → Inbound. Open → Fact Find → Close. Run it every time. The scripts work; agents who freelance underperform." },
+    a: "Use the Inbound script. Your scripts unlock once your required training is complete (start at Training Home, /dashboard/training/library), and then they live under Scripts → Inbound. Open → Fact Find → Close. Run it every time. The scripts work; agents who freelance underperform." },
   { category: "Selling", q: "How do I handle 'I need to talk to my spouse'?",
-    a: "Don't lose them. The exact rebuttal is in /dashboard/scripts → Objections → spouse. Frame: locking in today's health rate + 30-day free look. If they cancel, they cancel — but they won't." },
+    a: "Don't lose them. The exact rebuttal is in your scripts under Objections → spouse (they unlock once your required training is complete). Frame: locking in today's health rate + 30-day free look. If they cancel, they cancel — but they won't." },
   { category: "Selling", q: "What if the carrier rejects my client?",
     a: "Most carriers we partner with have a 'Plan B' tier. Re-quote in the field using the carrier's underwriting matrix. If it's truly uninsurable, we have guaranteed-issue carriers." },
 
   // Commission + Payouts
   { category: "Commission + Payouts", q: "When do I get paid?",
-    a: "Carrier-direct commissions hit your account on the carrier's schedule (usually weekly or daily after the policy is in force and the first premium clears). Check /dashboard/finances for your live ledger." },
+    a: "Carrier-direct commissions hit your account on the carrier's schedule (usually weekly or daily after the policy is in force and the first premium clears). Check My Commissions (/dashboard/my-commissions) for your live ledger." },
   { category: "Commission + Payouts", q: "What's a chargeback and how do I avoid them?",
     a: "If a policy lapses within the first 6-12 months, the carrier claws back the commission. To avoid: solid fact-finding + realistic budgeting + post-sale check-in calls at 30/60/90 days." },
   { category: "Commission + Payouts", q: "Where do I see my real numbers?",
-    a: "Use /dashboard/production for policies and production, /dashboard/analytics for performance, and the home scoreboard for personal production, team production, policies, and estimated earnings based on your saved comp." },
+    a: "Use Book of Business (/dashboard/production) for policies and production, My Commissions (/dashboard/my-commissions) for earnings, Leaderboard (/dashboard/leaderboard) for your standing, and the home scoreboard for personal production, team production, policies, and estimated earnings based on your saved comp." },
 
   // Carriers
   { category: "Carriers", q: "How do I request a carrier contract?",
-    a: "/dashboard/contracting → open your carrier checklist and complete the required profile, E&O, and EFT readiness. The site tracks sent, action-required, submitted, active, and issue statuses without an AgentLink handoff." },
+    a: "Submit the contracting intake at /start-contracting. The contracting team then tracks sent, action-required, submitted, active and issue statuses for each carrier and will reach out for E&O and EFT." },
   { category: "Carriers", q: "Which carrier is best for diabetic clients?",
-    a: "Depends on A1C, age, and other conditions. Generally: American Home Life or Royal Neighbors for milder cases. For guaranteed issue, look at our GI carriers. The Carrier Resources page shows 'Best For' tags per carrier." },
+    a: "Depends on A1C, age, and other conditions. Generally: American Home Life or Royal Neighbors for milder cases. For guaranteed issue, look at our GI carriers. Ask your manager or open the Support Desk tab on this page for the current carrier underwriting guides." },
 
   // Tools
   { category: "Tools", q: "How do I use the dialer?",
-    a: "Open /dashboard/readymode for live sync health and management, or /dashboard/call-center for your call queue. If access or call data is missing, submit a ReadyMode request in the Support Desk on this page." },
+    a: "Open Call Center (/dashboard/call-center) for your call queue. If dialer access or call data is missing, submit a ReadyMode request in the Support Desk on this page." },
   { category: "Tools", q: "Where's the AI assistant?",
-    a: "Ask Apex AI is the floating dock at the bottom-right of every dashboard route. Hit it anytime — it knows your data and can answer questions about your book or our products." },
+    a: "There is no in-app AI chat right now. Open the Support Desk tab on this page or message your manager, and we will answer." },
   { category: "Tools", q: "How do I share an APEX win on social?",
-    a: "/dashboard/announcements → 'Post a Deal' button → fill in premium + product. It posts to the live News Feed and we'll auto-feed it to the public landing page ticker." },
+    a: "Tap 'Post a Deal' in the top bar (or 'Add Deal' on Community, /dashboard/community) → fill in premium + product. It posts to the live News Feed and we'll auto-feed it to the public landing page ticker." },
 
   // Brand + Culture
   { category: "Brand + Culture", q: "What's the Apex Standard?",
-    a: "Hold the Standard. Average is the disease. Read the full brand voice script on /dashboard/scripts → Brand. We don't chase low-rated carriers, we don't compromise client coverage for commission, and we don't work with agents who do." },
+    a: "Hold the Standard. Average is the disease. Read the full brand voice script under Scripts → Brand once your required training is complete. We don't chase low-rated carriers, we don't compromise client coverage for commission, and we don't work with agents who do." },
   { category: "Brand + Culture", q: "I want to post content but I'm new — what's safe to say?",
     a: "Talk about what you're learning, who you're protecting, and what you're discovering about the industry. Avoid: client names, claim amounts, anything that could be construed as advice without a license, and lying about ratings. When in doubt: ask your manager." },
 ];
@@ -84,7 +84,7 @@ const CATEGORIES = Array.from(new Set(FAQ.map((f) => f.category)));
 const READ_TIME_MIN = Math.max(1, Math.round((FAQ.length * 30) / 60));
 
 // Curated last-updated date — bump when FAQ array changes.
-const LAST_UPDATED = "Jun 14";
+const LAST_UPDATED = "Oct 6";
 
 const CATEGORY_ICONS: Record<string, any> = {
   "Getting Started":      BookOpen,
@@ -250,7 +250,7 @@ export default function HelpCenter() {
           <div>
             <p className="text-13 font-bold">Still stuck?</p>
             <p className="text-12 text-foreground/80">
-              Open Ask Apex AI (bottom-right dock on any dashboard page) or DM your manager directly.
+              Open the Support Desk tab above or DM your manager directly.
               For escalations: <a href="mailto:info@kingofsales.net" className="text-amber-600 hover:underline">info@kingofsales.net</a>.
             </p>
           </div>

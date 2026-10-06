@@ -31,7 +31,7 @@ const suggestions: Array<{ label: string; to: string; kicker: string }> = [
 function explain(pathname: string): string | null {
   const p = pathname.toLowerCase().replace(/\/+$/, "");
   if (p === "/status") {
-    return "Application status pages are personal. Open the status link from your confirmation email or text — it looks like /status/your-application-id.";
+    return "Application status pages are personal. Sign in and use Open my status on your home page, or ask your manager for your status link.";
   }
   if (p === "/mentorship" || p.startsWith("/mentorship/")) {
     return "Mentorship isn't hosted on this site. Ask your manager for the current enrollment link.";

@@ -89,7 +89,7 @@ export function AskApex() {
     if (q.includes("top producer") || q.includes("who is") || q.includes("best agent")) {
       if (d.topProducers.length === 0) return "No producers have written in the last 30 days yet.";
       const t = d.topProducers[0];
-      const name = t.agent_name ?? `AgentLink user #${t.user_id}`;
+      const name = t.agent_name ?? `Unmatched producer #${t.user_id}`;
       return `${name} (${t.agent_code ?? "no code"}) is your top producer · ${t.deals_30d} deals · ${fmtUsd(Number(t.premium_30d))} last 30d.`;
     }
     if (q.includes("top carrier") || q.includes("which carrier") || q.includes("best carrier")) {
@@ -138,7 +138,7 @@ export function AskApex() {
     if (q.includes("hello") || q.includes("hi") || q.includes("hey")) {
       return "Ask me about your top producer, top carrier, MTD performance, current streak, team rhythm, or sales challenges.";
     }
-    return "I can answer questions about: top producer · top carrier · MTD performance · streak · team rhythm · sales challenges · concentration risk. Try one of the suggestions below, or check /dashboard/business-analytics for the full view.";
+    return "I can answer questions about: top producer · top carrier · MTD performance · streak · team rhythm · sales challenges · concentration risk. Try one of the suggestions below.";
   }
 
   function submit(text: string) {

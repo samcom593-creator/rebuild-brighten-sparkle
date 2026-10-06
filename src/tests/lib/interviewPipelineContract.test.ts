@@ -10,8 +10,10 @@ describe("native recruiting interview contract", () => {
     const app = read("src/App.tsx");
     expect(app).toContain('path="/dashboard/recruiting/interviews"');
     expect(app).toContain('path="/dashboard/recruiting/training"');
-    expect(app).toContain('<LegacyWorkspaceRedirect to="/dashboard/recruiting/interviews" />');
-    expect(app).toContain('<LegacyWorkspaceRedirect to="/dashboard/recruiting/follow-ups" />');
+    // 2026-10-06: Interviews and Follow-ups are retired destinations. Old
+    // bookmarks land where that work lives now: Calendar and the worklist.
+    expect(app).toContain('<Route path="/dashboard/interviews" element={<LegacyWorkspaceRedirect to="/dashboard/calendar" />} />');
+    expect(app).toContain('<Route path="/dashboard/interview-recovery" element={<LegacyWorkspaceRedirect to="/dashboard/recruiting" />} />');
     expect(read("src/pages/Interviews.tsx")).not.toContain("headhunter-sand.vercel.app");
   });
 

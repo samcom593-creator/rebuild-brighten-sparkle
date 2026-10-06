@@ -57,7 +57,7 @@ const CHECKLIST_STEPS = [
   { key: "contracted_with_carriers", label: "Contracted with carriers", stage: "contracting", href: "/start-contracting" },
   { key: "completed_first_training", label: "Completed first training", stage: "field_training", href: "/dashboard/training/sales-course" },
   { key: "made_first_prospect_call", label: "Made first prospect call", stage: "field_training", href: "/dashboard/call-center" },
-  { key: "ran_first_appointment", label: "Ran first appointment", stage: "field_training", href: "/dashboard/scripts" },
+  { key: "ran_first_appointment", label: "Ran first appointment", stage: "field_training", href: "/dashboard/call-lab" },
   { key: "closed_first_deal", label: "Closed first deal", stage: "producing", href: "/dashboard/agent-pipeline" },
 ] as const;
 

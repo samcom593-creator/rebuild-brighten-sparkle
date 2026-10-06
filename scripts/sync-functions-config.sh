@@ -133,6 +133,8 @@ PUBLIC_ALLOWLIST=(
   "cron-newhire-portal-login"
   "instagram-comments-backfill"
   "instagram-token-keepalive"
+  # instagram-dm-replay: fired by trg on system_settings.meta_instagram_token (019db365); reviewed public per the security guard.
+  "instagram-dm-replay"
   "youtube-auth"
   "youtube-comments"
 )

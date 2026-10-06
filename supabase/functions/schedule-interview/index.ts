@@ -26,7 +26,21 @@ Deno.serve(async (req: Request) => {
       interviewType,
       meetingLink,
       notes,
+      timeZone,
     } = await req.json();
+
+    // The interview's own IANA zone (sent by the scheduler). Without it the
+    // runtime default is UTC, which told applicants "5:00 PM UTC" for a 10 AM
+    // Arizona interview. Falls back to Arizona, the business zone, never UTC.
+    let zone = "America/Phoenix";
+    if (typeof timeZone === "string" && timeZone) {
+      try {
+        new Intl.DateTimeFormat("en-US", { timeZone });
+        zone = timeZone;
+      } catch {
+        zone = "America/Phoenix";
+      }
+    }
 
     if (!applicationId || !interviewDate) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
@@ -51,12 +65,14 @@ Deno.serve(async (req: Request) => {
 
     const interviewDateObj = new Date(interviewDate);
     const dateStr = interviewDateObj.toLocaleDateString("en-US", {
+      timeZone: zone,
       weekday: "long",
       year: "numeric",
       month: "long",
       day: "numeric",
     });
     const timeStr = interviewDateObj.toLocaleTimeString("en-US", {
+      timeZone: zone,
       hour: "numeric",
       minute: "2-digit",
       timeZoneName: "short",
@@ -189,13 +205,21 @@ Deno.serve(async (req: Request) => {
       body: JSON.stringify(emailPayload),
     });
 
+    // A request is not a delivery: only Resend's acknowledgement (with its
+    // message id) is reported as success. A refused send is a 502 the caller
+    // shows, not a silent success.
     if (!emailRes.ok) {
       const emailErr = await emailRes.text();
       console.error("Email send failed:", emailErr);
+      return new Response(
+        JSON.stringify({ success: false, error: `mail service refused the message (${emailRes.status})` }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
+    const emailBody = await emailRes.json().catch(() => null) as { id?: string } | null;
 
     return new Response(
-      JSON.stringify({ success: true }),
+      JSON.stringify({ success: true, email_id: emailBody?.id ?? null, time_zone: zone }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {

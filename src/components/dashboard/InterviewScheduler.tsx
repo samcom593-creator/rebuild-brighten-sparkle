@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Calendar, Video, Phone, MapPin, Link2, Clock, CalendarPlus, Send, Loader2 } from "lucide-react";
 import { format } from "date-fns";
@@ -29,6 +29,24 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
+import { resolveBrand } from "@/config/brand";
+import { bookInterviewEvent } from "@/components/calendar/calendarApi";
+import { TimeZoneSelect } from "@/components/calendar/TimeZoneSelect";
+import { ConflictNotice, useOwnerConflicts } from "@/components/calendar/ConflictNotice";
+import { BUSINESS_TZ, describeEventTime, viewerTimeZone, zonedWallTimeToUtc } from "@/lib/calendarTime";
+
+/*
+ * One event model (redesign section 7). This modal used to INSERT
+ * scheduled_interviews, a table the Calendar never read (2 rows ever, last
+ * 2026-05-15), so every interview booked here vanished from the Calendar,
+ * Calls Today and Follow-Ups. It now books through book_interview_event(),
+ * which writes the same interview_events row Pipeline and Calendar read and
+ * edit, with an explicit IANA time zone and the booking owner. The wall time is
+ * converted to an instant in the CHOSEN zone, never the browser's, so a VA in
+ * Manila booking a 10 AM Arizona interview books 10 AM Arizona.
+ */
+const BRAND = resolveBrand();
 
 interface InterviewSchedulerProps {
   open: boolean;
@@ -55,9 +73,11 @@ function buildCalendarUrl(params: {
   description: string;
   location?: string;
 }): string {
-  const start = format(params.startDate, "yyyyMMdd'T'HHmmss");
-  const endDate = new Date(params.startDate.getTime() + params.durationMinutes * 60000);
-  const end = format(endDate, "yyyyMMdd'T'HHmmss");
+  // UTC with a Z suffix: a floating local time would be read in whatever zone
+  // the viewer's Google account uses.
+  const stamp = (d: Date) => d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+  const start = stamp(params.startDate);
+  const end = stamp(new Date(params.startDate.getTime() + params.durationMinutes * 60000));
   const url = new URL("https://calendar.google.com/calendar/render");
   url.searchParams.set("action", "TEMPLATE");
   url.searchParams.set("text", params.title);
@@ -84,16 +104,31 @@ export function InterviewScheduler({
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [calendarUrl, setCalendarUrl] = useState<string | null>(null);
+  const [timeZone, setTimeZone] = useState<string>(BUSINESS_TZ);
+  const [duration, setDuration] = useState("30");
+  const [emailState, setEmailState] = useState<{ ok: boolean; text: string } | null>(null);
+  const { user } = useAuth();
 
-  const getInterviewDateTime = (): Date | null => {
+  /** The instant for the chosen wall time IN THE CHOSEN ZONE (not the browser's). */
+  const interviewIso = useMemo((): string | null => {
     if (!selectedDate) return null;
-    const dt = new Date(selectedDate);
     let hour = parseInt(timeHour, 10);
     if (timePeriod === "PM" && hour !== 12) hour += 12;
     if (timePeriod === "AM" && hour === 12) hour = 0;
-    dt.setHours(hour, parseInt(timeMinute, 10), 0, 0);
-    return dt;
-  };
+    try {
+      return zonedWallTimeToUtc(format(selectedDate, "yyyy-MM-dd"), `${String(hour).padStart(2, "0")}:${timeMinute}`, timeZone);
+    } catch {
+      return null;
+    }
+  }, [selectedDate, timeHour, timeMinute, timePeriod, timeZone]);
+
+  const interviewEndIso = interviewIso
+    ? new Date(Date.parse(interviewIso) + Number(duration) * 60000).toISOString()
+    : null;
+  const conflicts = useOwnerConflicts({ ownerUserId: user?.id, startsAt: interviewIso, endsAt: interviewEndIso });
+  const timeLabel = interviewIso ? describeEventTime(interviewIso, timeZone, viewerTimeZone()) : null;
+
+  const getInterviewDateTime = (): Date | null => (interviewIso ? new Date(interviewIso) : null);
 
   const handleSchedule = async () => {
     const interviewDate = getInterviewDateTime();
@@ -108,64 +143,59 @@ export function InterviewScheduler({
 
     setSubmitting(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      // Insert into scheduled_interviews
-      const { error: dbError } = await supabase
-        .from("scheduled_interviews" as any)
-        .insert({
-          application_id: applicationId,
-          scheduled_by: user.id,
-          interview_date: interviewDate.toISOString(),
-          interview_type: interviewType,
-          meeting_link: meetingLink || null,
-          notes: notes || null,
-          status: "scheduled",
-        });
+      // One write: the interview_events row Calendar + Pipeline share. The RPC
+      // also advances applications.status to 'interview' for early stages only
+      // and logs the booking to the person's activity history.
+      await bookInterviewEvent({
+        scheduledAt: interviewDate.toISOString(),
+        eventTz: timeZone,
+        applicationId,
+        inviteeName: applicantName,
+        inviteeEmail: applicantEmail,
+        durationMinutes: Number(duration),
+        meetingLink: meetingLink.trim() || null,
+        notes: notes.trim() || null,
+      });
 
-      if (dbError) throw dbError;
-
-      // Update application status to 'interview'
-      await supabase
-        .from("applications")
-        .update({ status: "interview" })
-        .eq("id", applicationId);
-
-      // Send notification via edge function
-      const { error: notifyError } = await supabase.functions.invoke("schedule-interview", {
+      // Applicant confirmation email (existing path). A 2xx from the function is
+      // only a request; report what the mail service actually acknowledged.
+      const { data: notifyData, error: notifyError } = await supabase.functions.invoke("schedule-interview", {
         body: {
           applicationId,
           interviewDate: interviewDate.toISOString(),
           interviewType,
           meetingLink: meetingLink || null,
           notes: notes || null,
+          timeZone,
         },
       });
-
-      if (notifyError) {
-        console.error("Notification failed (non-critical):", notifyError);
+      const notify = (notifyData ?? null) as { success?: boolean; email_id?: string | null; error?: string } | null;
+      if (notifyError || notify?.success === false) {
+        setEmailState({ ok: false, text: `Confirmation email not confirmed: ${notifyError?.message ?? notify?.error ?? "unknown error"}` });
+      } else if (notify?.email_id) {
+        setEmailState({ ok: true, text: `Confirmation email accepted by the mail service for ${applicantEmail}` });
+      } else {
+        setEmailState({ ok: true, text: `Confirmation email requested for ${applicantEmail} (no delivery receipt returned)` });
       }
 
       // Build Google Calendar URL
       const typeLabel = interviewTypeConfig[interviewType].label;
       const gcalUrl = buildCalendarUrl({
-        title: `Interview: ${applicantName} - Apex Financial`,
+        title: `Interview: ${applicantName} - ${BRAND.legalName}`,
         startDate: interviewDate,
-        durationMinutes: 30,
+        durationMinutes: Number(duration),
         description: `Interview with ${applicantName} (${applicantEmail})\nType: ${typeLabel}\n${meetingLink ? `Link: ${meetingLink}` : ""}\n${notes || ""}`,
         location: meetingLink || undefined,
       });
       setCalendarUrl(gcalUrl);
 
-      toast.success(`Interview scheduled with ${applicantName}!`);
+      toast.success(`Interview booked with ${applicantName}`);
       onScheduled?.();
     } catch (err: any) {
-      // Surface the actual cause so Sam never sees a generic "Failed to
-      // schedule interview" again. Common failure modes:
-      //   - scheduled_interviews table missing or RLS-blocked (PGRST403/PGRST116)
-      //   - schedule-interview edge fn 5xx (Resend down, Supabase data plane stuck)
-      //   - applications.status enum doesn't accept 'interview' (UDT mismatch)
+      // Surface the actual cause (permission, bad zone, past time, missing
+      // person) rather than a generic "failed to schedule".
       console.error("Error scheduling interview:", err);
       const code   = err?.code ?? err?.status ?? "";
       const detail = err?.details ?? err?.hint ?? err?.message ?? String(err);
@@ -185,6 +215,9 @@ export function InterviewScheduler({
     setMeetingLink("");
     setNotes("");
     setCalendarUrl(null);
+    setTimeZone(BUSINESS_TZ);
+    setDuration("30");
+    setEmailState(null);
     onOpenChange(false);
   };
 
@@ -214,10 +247,15 @@ export function InterviewScheduler({
               <div className="w-14 h-14 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-3">
                 <CalendarPlus className="h-7 w-7 text-emerald-400" />
               </div>
-              <h3 className="font-semibold text-lg">Interview Scheduled! 🎉</h3>
+              <h3 className="font-semibold text-lg">Interview booked</h3>
               <p className="text-sm text-muted-foreground mt-1">
-                Confirmation sent to {applicantEmail}
+                On the calendar{timeLabel ? ` for ${timeLabel.eventLabel}` : ""}.
               </p>
+              {emailState && (
+                <p className={cn("text-xs mt-1", emailState.ok ? "text-muted-foreground" : "text-destructive")}>
+                  {emailState.text}
+                </p>
+              )}
             </div>
             <div className="flex gap-2">
               <Button
@@ -325,6 +363,23 @@ export function InterviewScheduler({
               </div>
             </div>
 
+            {/* Time zone + length */}
+            <div className="grid grid-cols-3 gap-2">
+              <div className="col-span-2 space-y-2">
+                <Label htmlFor="interview-zone">Time zone</Label>
+                <TimeZoneSelect id="interview-zone" value={timeZone} onChange={setTimeZone} ariaLabel="Interview time zone" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="interview-length">Length</Label>
+                <Select value={duration} onValueChange={setDuration}>
+                  <SelectTrigger id="interview-length" aria-label="Interview length"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {["15", "30", "45", "60"].map((m) => <SelectItem key={m} value={m}>{m} min</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             {/* Meeting Link */}
             {interviewType === "video" && (
               <div className="space-y-2">
@@ -360,9 +415,13 @@ export function InterviewScheduler({
                   Preview
                 </Badge>
                 <span className="text-sm text-muted-foreground">
-                  {format(selectedDate, "EEEE, MMM d")} at {timeHour}:{timeMinute} {timePeriod}
+                  {format(selectedDate, "EEEE, MMM d")} at {timeLabel?.eventLabel ?? `${timeHour}:${timeMinute} ${timePeriod}`}
+                  {timeLabel?.viewerLabel ? ` · ${timeLabel.viewerLabel} your time` : ""}
                 </span>
               </div>
+            )}
+            {selectedDate && (
+              <ConflictNotice conflicts={conflicts.data} isLoading={conflicts.isFetching} isError={conflicts.isError} />
             )}
 
             {/* Actions */}
@@ -377,7 +436,7 @@ export function InterviewScheduler({
                 ) : (
                   <Send className="h-4 w-4 mr-2" />
                 )}
-                Schedule & Notify
+                Book & email applicant
               </Button>
               <Button variant="outline" onClick={handleClose} disabled={submitting}>
                 Cancel

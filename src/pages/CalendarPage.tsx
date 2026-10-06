@@ -1,13 +1,12 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   format, parseISO, startOfMonth, endOfMonth, startOfWeek, endOfWeek,
   addMonths, addWeeks, addDays, eachDayOfInterval, isSameMonth,
 } from "date-fns";
 import {
-  Calendar as CalendarIcon, Plus, Download, ChevronLeft, ChevronRight,
-  AlertTriangle, CalendarPlus, ExternalLink, Search, User, RefreshCw,
-  Pencil, Trash2, CalendarDays, Cake, FileSignature, PhoneCall, Flag, Video, Award,
+  Calendar as CalendarIcon, Plus, ChevronLeft, ChevronRight,
+  AlertTriangle, Search, User, RefreshCw, CalendarDays,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -16,8 +15,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { InterviewScheduler } from "@/components/dashboard/InterviewScheduler";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PageSkeleton } from "@/components/ui/page-skeleton";
 import { PageHeader } from "@/components/ui/page-header";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as DayCalendar } from "@/components/ui/calendar";
@@ -30,111 +31,83 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
-import { resolveBrand } from "@/config/brand";
+import { AgendaList } from "@/components/calendar/AgendaList";
+import { ProviderHealthPanel } from "@/components/calendar/ProviderHealthPanel";
+import { TimeZoneSelect } from "@/components/calendar/TimeZoneSelect";
+import { ConflictNotice, useOwnerConflicts } from "@/components/calendar/ConflictNotice";
+import { CancelInterviewDialog, RescheduleInterviewDialog } from "@/components/calendar/InterviewEventDialogs";
+import {
+  type CalendarView, DEFAULT_CALENDAR_PREFS, loadCalendarPrefs, saveCalendarPrefs,
+} from "@/components/calendar/calendarPrefs";
+import { disposeInterview, fetchAgendaRows, fetchWindowRows } from "@/components/calendar/calendarApi";
+import { type CalendarItem, groupByDay, mergeAgenda } from "@/lib/calendarAgenda";
+import {
+  BUSINESS_TZ, dateKeyInZone, isValidTimeZone, timeValueInZone, formatClock, zonedWallTimeToUtc,
+} from "@/lib/calendarTime";
 
 /* ─────────────────────────────────────────────────────────────────────────────
- * APEX Calendar
+ * Calendar — one event model (redesign section 7).
  *
- * Every row on this page comes from two server-side functions:
- *   calendar_window(p_from date, p_to date, p_kinds text[])  → the events
- *   calendar_window_counts(p_from date, p_to date)           → the headline counts
+ * Two server feeds, merged without duplicates by src/lib/calendarAgenda.ts:
+ *   v_calendar_agenda (security_invoker view) — every EDITABLE appointment:
+ *     interview_events (Calendly + staff-booked interviews, onboarding calls)
+ *     and calendar_events (appointments, draft dates, post-test follow-ups),
+ *     with time zone, owner, meeting link, status and reminder state.
+ *   calendar_window(p_from, p_to) — the read-only date markers (milestones,
+ *     policy effective dates, callbacks, birthdays, applicant next actions).
+ * Both are read page by page past PostgREST's 1000-row cap; headline numbers
+ * still come from calendar_window_counts, never from an array length.
  *
- * Why that matters: the previous version of this page ran four independent
- * client queries (applications / seminar_registrations / calendar_events /
- * interview_events), each with its own .limit(), then sorted the union by date
- * ASC and kept `.slice(0, 120)` — the OLDEST 120 rows. On a book with 1,700+
- * historic policy dates that slice never reached the present, so "upcoming"
- * rendered empty while the DB held hundreds of live events.
+ * Writes go to the SAME records Pipeline uses:
+ *   book / reschedule / cancel an interview → book_interview_event /
+ *     reschedule_interview_event / cancel_interview_event (RPCs; reminders for
+ *     the old time are superseded server-side; history rows written)
+ *   no-show → cc_dispose_interview (the Follow-Ups disposition writer)
+ *   appointment → calendar_events (own rows), cancel = status 'cancelled'
+ *     with a reason, never a DELETE.
  *
- * Two rules this page holds:
- *   1. A headline number is NEVER `someArray.length`. PostgREST caps a result
- *      set at 1000 rows (measured: a 2026-08-01→2026-12-31 window whose true
- *      total is 1,110 returns exactly 1000), so an array length silently
- *      becomes a lie the moment a range gets busy. Counts come from
- *      calendar_window_counts, which aggregates in Postgres. When the fetched
- *      rows fall short of the counted total the page SAYS SO rather than
- *      quietly drawing a partial month.
- *   2. Dates are bucketed on the `event_date` STRING the RPC returns, never on
- *      `new Date(event_date)`. The RPC already resolved every timestamp in
- *      America/Phoenix; re-parsing "2026-08-20" in a browser west of UTC lands
- *      on the 19th and shifts the whole grid back a day.
+ * Time: day buckets are business days in America/Phoenix; every timed row
+ * prints its OWN zone (event_tz) plus the viewer's local time when different.
+ * Calendly-owned bookings are moved/canceled with Calendly's own links, because
+ * the 15-minute Calendly reconcile overwrites in-app edits to them.
  * ────────────────────────────────────────────────────────────────────────── */
-
-const PHOENIX_TZ = "America/Phoenix";
-const BRAND = resolveBrand();
-/** Arizona does not observe DST, so its offset is a constant. */
-const PHOENIX_OFFSET = "-07:00";
-
-type ViewMode = "day" | "week" | "month";
-
-type CalendarEventRow = {
-  event_id: string;
-  event_date: string;      // YYYY-MM-DD, already resolved in America/Phoenix
-  event_at: string;        // ISO timestamptz
-  kind: string;
-  title: string;
-  subtitle: string | null;
-  person_name: string | null;
-  status: string | null;
-  ref_id: string | null;
-  link: string | null;
-};
 
 type KindMeta = {
   key: string;
   label: string;
   dot: string;
-  chip: string;
-  icon: typeof CalendarIcon;
   source: string;
 };
 
-/**
- * The eight kinds calendar_window actually emits, in the vocabulary the page
- * shows an operator. "Policy Starting Soon" is the policy effective date out of
- * agentlink_book — same event, the name Sam's team uses for it.
- */
+/** The kinds the calendar shows, in the vocabulary an operator uses. */
 const KINDS: KindMeta[] = [
-  { key: "appointment", label: "Appointment", dot: "bg-primary", chip: "bg-primary/10 text-primary border-primary/30", icon: CalendarDays, source: "calendar_events" },
-  { key: "interview", label: "Interview", dot: "bg-sky-500", chip: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/30", icon: Video, source: "interview_events" },
-  { key: "onboarding_call", label: "Onboarding call", dot: "bg-primary", chip: "bg-primary/10 text-primary border-primary/30", icon: Video, source: "interview_events" },
-  { key: "birthday", label: "Birthday", dot: "bg-pink-500", chip: "bg-pink-500/10 text-pink-600 dark:text-pink-400 border-pink-500/30", icon: Cake, source: "agentlink_clients.date_of_birth" },
-  // NB: `emerald` and `teal` are remapped onto the APEX gold ramp in
-  // tailwind.config.ts, so bg-emerald-500 renders GOLD and would be
-  // indistinguishable from Appointment. `green-*` is deliberately left alone by
-  // that remap, which is why it is used here.
-  { key: "policy_effective", label: "Policy Starting Soon", dot: "bg-green-500", chip: "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30", icon: FileSignature, source: "agentlink_book.effective_date" },
-  { key: "draft_date", label: "Draft Date", dot: "bg-orange-500", chip: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/30", icon: FileSignature, source: "calendar_events (auto-fill)" },
-  { key: "follow_up", label: "Follow-Up", dot: "bg-violet-500", chip: "bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/30", icon: Flag, source: "applications.next_action_at" },
-  { key: "callback", label: "Callback", dot: "bg-cyan-500", chip: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/30", icon: PhoneCall, source: "agentlink_clients.callback_date" },
-  // red, not rose: rose-500 and pink-500 are one hue-step apart and were
-  // indistinguishable against Birthday at the 6px dot size the grid uses.
-  { key: "milestone", label: "Milestone", dot: "bg-red-500", chip: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30", icon: Award, source: "applications milestones" },
+  { key: "appointment", label: "Appointment", dot: "bg-primary", source: "calendar_events" },
+  { key: "interview", label: "Interview", dot: "bg-sky-500", source: "interview_events" },
+  { key: "onboarding_call", label: "Onboarding call", dot: "bg-primary", source: "interview_events" },
+  { key: "birthday", label: "Birthday", dot: "bg-pink-500", source: "agentlink_clients.date_of_birth" },
+  // `emerald`/`teal` are remapped onto the brand gold ramp in tailwind.config.ts;
+  // `green-*` is left alone, which is why it is used here.
+  { key: "policy_effective", label: "Policy Starting Soon", dot: "bg-green-500", source: "agentlink_book.effective_date" },
+  { key: "draft_date", label: "Draft Date", dot: "bg-orange-500", source: "calendar_events (auto-fill)" },
+  { key: "follow_up", label: "Follow-Up", dot: "bg-violet-500", source: "applications.next_action_at" },
+  { key: "callback", label: "Callback", dot: "bg-cyan-500", source: "agentlink_clients.callback_date" },
+  { key: "milestone", label: "Milestone", dot: "bg-red-500", source: "applications milestones" },
 ];
-
+const KIND_KEYS = KINDS.map((k) => k.key);
 const KIND_BY_KEY: Record<string, KindMeta> = Object.fromEntries(KINDS.map((k) => [k.key, k]));
 
 /**
  * Event names carried over from the reference calendar that NO table on this
- * database publishes a date for. They are named here on purpose: an operator
- * who expects a Beneficiary Check-In to appear should be told it has no feed,
- * not left to assume the calendar is complete. Nothing is invented to fill them.
+ * database publishes a date for. Named so an operator is told they have no
+ * feed rather than assuming the calendar is complete. Nothing is invented.
  */
 const UNFED_KINDS = ["Beneficiary Check-In", "Lapse Follow-Up", "Policy Anniversary"];
 
-/** Internal feed tokens that land in `subtitle` for appointments. A machine
- *  token is not a description, so it is suppressed rather than rendered. */
-const INTERNAL_SOURCE_TOKENS = new Set(["apex", "siri", "schedule-auto-populate", "calendly", "apex-calendar"]);
-
 const fmtKey = (d: Date) => format(d, "yyyy-MM-dd");
+const AGENDA_DAYS = 14;
 
-/**
- * The days a given view actually PAINTS. Month view draws a 6-week grid, so it
- * shows leading/trailing days of the neighbouring months — the window queried
- * and counted is that whole grid, not the calendar month. Shared by the range
- * memo and by navigation so the two can never disagree about what is on screen.
- */
-function rangeFor(date: Date, view: ViewMode): { from: Date; to: Date } {
+/** The days a view paints. Month view draws a 6-week grid. */
+function rangeFor(date: Date, view: CalendarView): { from: Date; to: Date } {
   if (view === "month") {
     return {
       from: startOfWeek(startOfMonth(date), { weekStartsOn: 0 }),
@@ -144,67 +117,20 @@ function rangeFor(date: Date, view: ViewMode): { from: Date; to: Date } {
   if (view === "week") {
     return { from: startOfWeek(date, { weekStartsOn: 0 }), to: endOfWeek(date, { weekStartsOn: 0 }) };
   }
+  if (view === "agenda") return { from: date, to: addDays(date, AGENDA_DAYS - 1) };
   return { from: date, to: date };
 }
 
-/** Today's date key in Phoenix, regardless of where the browser is. */
-function phoenixTodayKey(): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: PHOENIX_TZ, year: "numeric", month: "2-digit", day: "2-digit",
-  }).format(new Date());
+function stepAnchor(anchor: Date, view: CalendarView, dir: 1 | -1): Date {
+  if (view === "month") return addMonths(anchor, dir);
+  if (view === "week") return addWeeks(anchor, dir);
+  if (view === "agenda") return addDays(anchor, dir * AGENDA_DAYS);
+  return addDays(anchor, dir);
 }
 
-/** "9:00 AM" for a timestamptz, rendered in Phoenix. */
-function phoenixTime(iso: string): string {
-  return new Intl.DateTimeFormat("en-US", {
-    timeZone: PHOENIX_TZ, hour: "numeric", minute: "2-digit",
-  }).format(new Date(iso));
-}
-
-/** All-day rows land on Phoenix midnight; do not print a meaningless "12:00 AM". */
-function isAllDay(row: CalendarEventRow): boolean {
-  return phoenixTime(row.event_at) === "12:00 AM";
-}
-
-function subtitleFor(row: CalendarEventRow): string | null {
-  if (!row.subtitle) return null;
-  if (row.kind === "appointment" && INTERNAL_SOURCE_TOKENS.has(row.subtitle)) return null;
-  return row.subtitle;
-}
-
-function buildCalendarUrl(params: {
-  title: string; startDate: Date; durationMinutes: number; description: string; location?: string;
-}): string {
-  const start = format(params.startDate, "yyyyMMdd'T'HHmmss");
-  const end = format(new Date(params.startDate.getTime() + params.durationMinutes * 60000), "yyyyMMdd'T'HHmmss");
-  const url = new URL("https://calendar.google.com/calendar/render");
-  url.searchParams.set("action", "TEMPLATE");
-  url.searchParams.set("text", params.title);
-  url.searchParams.set("dates", `${start}/${end}`);
-  url.searchParams.set("details", params.description);
-  if (params.location) url.searchParams.set("location", params.location);
-  return url.toString();
-}
-
-function downloadIcs(row: CalendarEventRow) {
-  const start = new Date(row.event_at);
-  const end = new Date(start.getTime() + 30 * 60000);
-  const stamp = (d: Date) => d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
-  const ics = [
-    "BEGIN:VCALENDAR", "VERSION:2.0", `PRODID:-//${BRAND.legalName}//Calendar//EN`, "BEGIN:VEVENT",
-    `DTSTART:${stamp(start)}`,
-    `DTEND:${stamp(end)}`,
-    `SUMMARY:${row.title}`,
-    `DESCRIPTION:${[KIND_BY_KEY[row.kind]?.label ?? row.kind, subtitleFor(row)].filter(Boolean).join(" — ")}`,
-    row.link ? `URL:${row.link}` : "",
-    "END:VEVENT", "END:VCALENDAR",
-  ].filter(Boolean).join("\r\n");
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(new Blob([ics], { type: "text/calendar" }));
-  link.download = `${row.title.replace(/[^a-z0-9]+/gi, "-").toLowerCase() || "event"}.ics`;
-  link.click();
-  URL.revokeObjectURL(link.href);
-  toast.success("Downloaded .ics — open it to add to Apple Calendar");
+/** Today's business-day key, regardless of where the browser is. */
+function businessTodayKey(): string {
+  return dateKeyInZone(new Date(), BUSINESS_TZ);
 }
 
 // ─── Add New Applicant (shown when the lead search finds nobody) ───
@@ -228,13 +154,13 @@ function AddNewApplicantForm({ onCreated }: { onCreated: (lead: LeadResult) => v
         email: form.email,
         phone: form.phone || null,
         instagram_handle: form.instagram_handle || null,
-        status: "new" as any,
+        status: "new" as never,
       }).select("id, first_name, last_name, email, phone, status").single();
       if (error) throw error;
       toast.success(`${form.first_name} ${form.last_name} added`);
       onCreated(data as LeadResult);
-    } catch (err: any) {
-      toast.error(err.message || "Failed to add applicant");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to add applicant");
     } finally {
       setSaving(false);
     }
@@ -263,45 +189,75 @@ function AddNewApplicantForm({ onCreated }: { onCreated: (lead: LeadResult) => v
 }
 
 // ─── Event chip inside a grid cell ───
-function EventChip({ row, onClick, compact }: { row: CalendarEventRow; onClick: () => void; compact?: boolean }) {
-  const meta = KIND_BY_KEY[row.kind];
+function EventChip({ item, onClick }: { item: CalendarItem; onClick: () => void }) {
+  const meta = KIND_BY_KEY[item.kind];
   return (
     <button
       type="button"
       onClick={onClick}
-      title={`${row.title}${subtitleFor(row) ? ` — ${subtitleFor(row)}` : ""}`}
+      title={item.title}
       className={cn(
-        "flex w-full items-center gap-1 rounded px-1 py-0.5 text-left text-[10px] leading-tight transition-colors hover:bg-muted",
-        compact && "py-[1px]",
+        "flex w-full items-center gap-1 rounded px-1 py-[1px] text-left text-[10px] leading-tight transition-colors hover:bg-muted",
+        item.status === "canceled" && "text-muted-foreground line-through",
       )}
     >
       <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", meta?.dot ?? "bg-muted-foreground")} />
-      {!isAllDay(row) && <span className="shrink-0 tabular-nums text-muted-foreground">{phoenixTime(row.event_at).replace(":00", "")}</span>}
-      <span className="truncate">{row.title}</span>
+      {!item.allDay && (
+        <span className="shrink-0 tabular-nums text-muted-foreground">
+          {formatClock(item.startsAt, BUSINESS_TZ).replace(":00", "")}
+        </span>
+      )}
+      <span className="truncate">{item.title}</span>
     </button>
   );
 }
 
+type ApptForm = { title: string; person: string; date: string; time: string; duration: string; zone: string; link: string; notes: string };
+
 export default function CalendarPage() {
-  const { user } = useAuth();
+  const { user, isAdmin, isManager, isVaManager, isVa } = useAuth();
+  const isStaff = isAdmin || isManager || isVaManager || isVa;
   const queryClient = useQueryClient();
   const { playSound } = useSoundEffects();
 
-  const todayKey = useMemo(() => phoenixTodayKey(), []);
-  const [anchor, setAnchor] = useState<Date>(() => parseISO(phoenixTodayKey()));
-  const [view, setView] = useState<ViewMode>("month");
+  const todayKey = useMemo(() => businessTodayKey(), []);
+  const [anchor, setAnchor] = useState<Date>(() => parseISO(businessTodayKey()));
+  const [view, setView] = useState<CalendarView>(DEFAULT_CALENDAR_PREFS.view);
   const [activeKinds, setActiveKinds] = useState<string[]>([]); // [] = every kind
+  const [showCanceled, setShowCanceled] = useState(false);
   const [selectedDay, setSelectedDay] = useState<string>(todayKey);
   const [jumpOpen, setJumpOpen] = useState(false);
+  const [providersOpen, setProvidersOpen] = useState(false);
 
-  // create / edit appointment
+  // ── remembered view + filters, per user (localStorage, never required) ──
+  const prefsLoadedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!user?.id || prefsLoadedFor.current === user.id) return;
+    prefsLoadedFor.current = user.id;
+    const prefs = loadCalendarPrefs(user.id, KIND_KEYS);
+    setView(prefs.view);
+    setActiveKinds(prefs.kinds);
+    setShowCanceled(prefs.showCanceled);
+  }, [user?.id]);
+  useEffect(() => {
+    if (!user?.id || prefsLoadedFor.current !== user.id) return;
+    saveCalendarPrefs(user.id, { view, kinds: activeKinds, showCanceled });
+  }, [user?.id, view, activeKinds, showCanceled]);
+
+  // create / edit appointment (calendar_events)
   const [apptOpen, setApptOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [apptForm, setApptForm] = useState({ title: "", person: "", date: todayKey, time: "09:00", duration: "30", notes: "" });
+  const [apptForm, setApptForm] = useState<ApptForm>({ title: "", person: "", date: todayKey, time: "09:00", duration: "30", zone: BUSINESS_TZ, link: "", notes: "" });
   const [savingAppt, setSavingAppt] = useState(false);
-  const [deletingAppt, setDeletingAppt] = useState(false);
+  const [apptCancel, setApptCancel] = useState<CalendarItem | null>(null);
+  const [apptCancelReason, setApptCancelReason] = useState("");
+  const [cancelingAppt, setCancelingAppt] = useState(false);
 
-  // interview scheduling
+  // interview actions
+  const [rescheduleItem, setRescheduleItem] = useState<CalendarItem | null>(null);
+  const [cancelItem, setCancelItem] = useState<CalendarItem | null>(null);
+
+  // interview scheduling (lead search → InterviewScheduler)
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<LeadResult[]>([]);
@@ -310,17 +266,16 @@ export default function CalendarPage() {
   const [schedulerOpen, setSchedulerOpen] = useState(false);
   const [autoPopulating, setAutoPopulating] = useState(false);
 
-  // ── visible range, derived from the view ────────────────────────────────
+  // ── visible range ───────────────────────────────────────────────────────
   const range = useMemo(() => rangeFor(anchor, view), [anchor, view]);
-
   const fromKey = fmtKey(range.from);
   const toKey = fmtKey(range.to);
 
   const periodLabel = view === "month"
     ? format(anchor, "MMMM yyyy")
-    : view === "week"
-      ? `${format(range.from, "MMM d")} – ${format(range.to, "MMM d, yyyy")}`
-      : format(anchor, "EEEE, MMMM d, yyyy");
+    : view === "day"
+      ? format(anchor, "EEEE, MMMM d, yyyy")
+      : `${format(range.from, "MMM d")} – ${format(range.to, "MMM d, yyyy")}`;
 
   // ── counts: aggregated in Postgres, never an array length ───────────────
   const { data: counts } = useQuery({
@@ -341,47 +296,62 @@ export default function CalendarPage() {
   }, [counts]);
 
   const countedTotal = useMemo(() => {
-    const keys = activeKinds.length ? activeKinds : KINDS.map((k) => k.key);
+    const keys = activeKinds.length ? activeKinds : KIND_KEYS;
     return keys.reduce((sum, k) => sum + (countByKind[k] ?? 0), 0);
   }, [countByKind, activeKinds]);
 
-  // ── the events themselves ───────────────────────────────────────────────
-  const kindsParam = activeKinds.length ? [...activeKinds].sort() : null;
-
-  const { data: events, isLoading, isError, error } = useQuery({
-    queryKey: ["calendar-window", fromKey, toKey, kindsParam?.join(",") ?? "all"],
-    queryFn: async () => {
-      const { data, error: rpcError } = await supabase.rpc("calendar_window" as never, {
-        p_from: fromKey, p_to: toKey, p_kinds: kindsParam,
-      } as never);
-      if (rpcError) throw rpcError;
-      return (data ?? []) as CalendarEventRow[];
-    },
+  // ── the events: window markers + the editable agenda ────────────────────
+  const windowQuery = useQuery({
+    queryKey: ["calendar-window", fromKey, toKey],
+    queryFn: () => fetchWindowRows(fromKey, toKey, null),
+    enabled: !!user,
+    staleTime: 30_000,
+  });
+  const agendaQuery = useQuery({
+    queryKey: ["calendar-agenda", fromKey, toKey],
+    queryFn: () => fetchAgendaRows(fromKey, toKey),
     enabled: !!user,
     staleTime: 30_000,
   });
 
-  /** PostgREST hard-caps a result set at 1000 rows. If the server counted more
-   *  than we received, the grid is incomplete and must say so. */
-  const truncated = !!events && countedTotal > events.length;
-
-  const byDay = useMemo(() => {
-    const map = new Map<string, CalendarEventRow[]>();
-    for (const row of events ?? []) {
-      // bucket on the RPC's Phoenix date string — never re-parse it as a Date
-      const list = map.get(row.event_date);
-      if (list) list.push(row);
-      else map.set(row.event_date, [row]);
-    }
-    return map;
-  }, [events]);
+  const items = useMemo(() => mergeAgenda(
+    windowQuery.data?.rows,
+    agendaQuery.isError ? null : agendaQuery.data?.rows,
+    { kinds: activeKinds, showCanceled, viewerUserId: user?.id ?? null },
+  ), [windowQuery.data, agendaQuery.data, agendaQuery.isError, activeKinds, showCanceled, user?.id]);
+  const byDay = useMemo(() => groupByDay(items), [items]);
+  const isLoading = windowQuery.isLoading || agendaQuery.isLoading;
+  const truncated = !!windowQuery.data?.truncated || !!agendaQuery.data?.truncated;
 
   const gridDays = useMemo(
     () => eachDayOfInterval({ start: range.from, end: range.to }),
     [range.from, range.to],
   );
+  const dayKeys = useMemo(() => gridDays.map(fmtKey), [gridDays]);
 
-  const selectedDayEvents = byDay.get(selectedDay) ?? [];
+  // Owner names for the agenda (profiles RLS decides what resolves).
+  const ownerIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const item of items) {
+      const id = item.agenda?.owner_user_id;
+      if (id && id !== user?.id) ids.add(id);
+    }
+    return Array.from(ids).sort();
+  }, [items, user?.id]);
+  const { data: ownerNames } = useQuery({
+    queryKey: ["calendar-owner-names", ownerIds.join(",")],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("profiles").select("user_id, full_name").in("user_id", ownerIds);
+      if (error) return {} as Record<string, string>;
+      const map: Record<string, string> = {};
+      for (const row of (data ?? []) as { user_id: string; full_name: string | null }[]) {
+        if (row.full_name && !map[row.user_id]) map[row.user_id] = row.full_name;
+      }
+      return map;
+    },
+    enabled: ownerIds.length > 0,
+    staleTime: 5 * 60_000,
+  });
 
   // ── today / next-30 KPIs, both server-counted ───────────────────────────
   const { data: todayCounts } = useQuery({
@@ -394,7 +364,6 @@ export default function CalendarPage() {
     enabled: !!user,
     staleTime: 60_000,
   });
-
   const { data: next30Counts } = useQuery({
     queryKey: ["calendar-window-counts-next30", todayKey],
     queryFn: async () => {
@@ -406,64 +375,32 @@ export default function CalendarPage() {
     enabled: !!user,
     staleTime: 60_000,
   });
-
   const sumCounts = (rows?: { kind: string; n: number }[]) => (rows ?? []).reduce((s, r) => s + Number(r.n), 0);
 
-  // Sync freshness reads created_at — when the feed last WROTE a row. Ordering
-  // on starts_at instead would let a September booking read as "synced Sep 20"
-  // and make a live feed look stale. Do not change this operand.
-  const { data: calendarSyncStatus } = useQuery({
-    queryKey: ["calendar-sync-freshness", user?.id],
-    queryFn: async () => {
-      const { data, error: syncError } = await supabase
-        .from("calendar_events")
-        .select("id, created_at")
-        .order("created_at", { ascending: false })
-        .limit(1);
-      if (syncError) return { live: false, lastSync: null as string | null };
-      const last = data?.[0];
-      if (!last?.created_at) return { live: false, lastSync: null };
-      const fresh = Date.now() - new Date(last.created_at).getTime() < 7 * 86_400_000;
-      return { live: fresh, lastSync: last.created_at };
-    },
-    enabled: !!user,
-    staleTime: 5 * 60_000,
-  });
-
   // ── navigation ──────────────────────────────────────────────────────────
-  /**
-   * Move the anchor, then pull the selected day onto the screen with it.
-   * Without this the detail card below the grid keeps describing a day from the
-   * month you just navigated away from — it renders "0 events" for a date that
-   * is no longer painted, which reads as data loss rather than navigation.
-   */
-  const stepTo = useCallback((next: Date, nextView: ViewMode) => {
+  /** Move the anchor and keep the selected day on screen with it. */
+  const stepTo = useCallback((next: Date, nextView: CalendarView) => {
     const r = rangeFor(next, nextView);
     const from = fmtKey(r.from);
     const to = fmtKey(r.to);
     setAnchor(next);
     setSelectedDay((cur) => {
-      if (cur >= from && cur <= to) return cur;                 // still visible
-      const today = phoenixTodayKey();
-      if (today >= from && today <= to) return today;           // prefer today
+      if (cur >= from && cur <= to) return cur;
+      const today = businessTodayKey();
+      if (today >= from && today <= to) return today;
       return nextView === "month" ? fmtKey(startOfMonth(next)) : from;
     });
   }, []);
 
-  const step = useCallback((dir: 1 | -1) => {
-    const next = view === "month" ? addMonths(anchor, dir) : view === "week" ? addWeeks(anchor, dir) : addDays(anchor, dir);
-    stepTo(next, view);
-  }, [anchor, view, stepTo]);
+  const step = useCallback((dir: 1 | -1) => stepTo(stepAnchor(anchor, view, dir), view), [anchor, view, stepTo]);
 
-  const changeView = useCallback((mode: ViewMode) => {
+  const changeView = useCallback((mode: CalendarView) => {
     setView(mode);
-    // Day view is anchored on the selected day, so switching to it must follow
-    // the selection rather than stay on whatever month the grid was showing.
-    stepTo(mode === "day" ? parseISO(selectedDay) : anchor, mode);
+    stepTo(mode === "day" || mode === "agenda" ? parseISO(selectedDay) : anchor, mode);
   }, [anchor, selectedDay, stepTo]);
 
   const goToday = useCallback(() => {
-    const key = phoenixTodayKey();
+    const key = businessTodayKey();
     setAnchor(parseISO(key));
     setSelectedDay(key);
   }, []);
@@ -477,19 +414,26 @@ export default function CalendarPage() {
     setActiveKinds((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
   }, []);
 
-  // ── appointment create / edit / delete (calendar_events) ────────────────
+  const invalidateCalendar = useCallback(() => {
+    for (const key of ["calendar-window", "calendar-agenda", "calendar-window-counts", "calendar-window-counts-today",
+      "calendar-window-counts-next30", "calendar-provider-health", "calendar-owner-conflicts"]) {
+      queryClient.invalidateQueries({ queryKey: [key] });
+    }
+  }, [queryClient]);
+
+  // ── appointment create / edit / cancel (calendar_events) ────────────────
   const openCreate = (dayKey?: string) => {
     setEditingId(null);
-    setApptForm({ title: "", person: "", date: dayKey ?? selectedDay, time: "09:00", duration: "30", notes: "" });
+    setApptForm({ title: "", person: "", date: dayKey ?? selectedDay, time: "09:00", duration: "30", zone: BUSINESS_TZ, link: "", notes: "" });
     setApptOpen(true);
   };
 
-  const openEdit = async (row: CalendarEventRow) => {
-    if (!row.ref_id) return;
+  const openEdit = async (item: CalendarItem) => {
+    if (!item.refId) return;
     const { data, error: readError } = await supabase
       .from("calendar_events")
       .select("id, title, starts_at, ends_at, metadata")
-      .eq("id", row.ref_id)
+      .eq("id", item.refId)
       .maybeSingle();
     if (readError || !data) {
       toast.error("Could not load that appointment");
@@ -497,45 +441,56 @@ export default function CalendarPage() {
     }
     const meta = (data.metadata && typeof data.metadata === "object" && !Array.isArray(data.metadata)
       ? data.metadata : {}) as Record<string, unknown>;
+    const zone = isValidTimeZone(meta.event_tz as string) ? (meta.event_tz as string) : BUSINESS_TZ;
     const startsMs = new Date(data.starts_at).getTime();
     const endsMs = data.ends_at ? new Date(data.ends_at).getTime() : startsMs + 30 * 60000;
     setEditingId(data.id);
     setApptForm({
       title: data.title ?? "",
       person: typeof meta.person_name === "string" ? meta.person_name : "",
-      date: row.event_date,
-      time: new Intl.DateTimeFormat("en-GB", { timeZone: PHOENIX_TZ, hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(data.starts_at)),
+      date: dateKeyInZone(data.starts_at, zone),
+      time: timeValueInZone(data.starts_at, zone),
       duration: String(Math.max(15, Math.round((endsMs - startsMs) / 60000))),
+      zone,
+      link: typeof meta.meeting_link === "string" ? meta.meeting_link : "",
       notes: typeof meta.notes === "string" ? meta.notes : "",
     });
     setApptOpen(true);
   };
 
-  const invalidateCalendar = () => {
-    queryClient.invalidateQueries({ queryKey: ["calendar-window"] });
-    queryClient.invalidateQueries({ queryKey: ["calendar-window-counts"] });
-    queryClient.invalidateQueries({ queryKey: ["calendar-window-counts-today"] });
-    queryClient.invalidateQueries({ queryKey: ["calendar-window-counts-next30"] });
-    queryClient.invalidateQueries({ queryKey: ["calendar-sync-freshness"] });
-  };
+  const apptSlot = useMemo(() => {
+    if (!apptForm.date || !apptForm.time) return null;
+    try {
+      const start = zonedWallTimeToUtc(apptForm.date, apptForm.time, apptForm.zone);
+      return { start, end: new Date(Date.parse(start) + Number(apptForm.duration) * 60000).toISOString() };
+    } catch {
+      return null;
+    }
+  }, [apptForm.date, apptForm.time, apptForm.zone, apptForm.duration]);
+  const apptConflicts = useOwnerConflicts({
+    ownerUserId: apptOpen ? user?.id : null,
+    startsAt: apptSlot?.start ?? null,
+    endsAt: apptSlot?.end ?? null,
+    excludeKey: editingId ? `cal:${editingId}` : null,
+  });
 
   const saveAppointment = async () => {
     if (!apptForm.title.trim()) { toast.error("Give the appointment a title"); return; }
-    if (!apptForm.date) { toast.error("Pick a date"); return; }
+    if (!apptSlot) { toast.error("Pick a valid date and time"); return; }
+    const link = apptForm.link.trim();
+    if (link && !/^https:\/\/\S+$/i.test(link)) { toast.error("Meeting link must be an https:// URL"); return; }
     setSavingAppt(true);
     try {
-      // Phoenix has no DST, so a fixed -07:00 offset is exact all year.
-      const startsAt = `${apptForm.date}T${apptForm.time}:00${PHOENIX_OFFSET}`;
-      const endsAt = new Date(new Date(startsAt).getTime() + Number(apptForm.duration) * 60000).toISOString();
       const metadata = {
         person_name: apptForm.person.trim() || null,
         notes: apptForm.notes.trim() || null,
+        event_tz: apptForm.zone,
+        meeting_link: link || null,
       };
-
       if (editingId) {
         const { error: updateError } = await supabase
           .from("calendar_events")
-          .update({ title: apptForm.title.trim(), starts_at: startsAt, ends_at: endsAt, metadata } as never)
+          .update({ title: apptForm.title.trim(), starts_at: apptSlot.start, ends_at: apptSlot.end, metadata } as never)
           .eq("id", editingId);
         if (updateError) throw updateError;
         toast.success("Appointment updated");
@@ -544,8 +499,8 @@ export default function CalendarPage() {
           .from("calendar_events")
           .insert({
             title: apptForm.title.trim(),
-            starts_at: startsAt,
-            ends_at: endsAt,
+            starts_at: apptSlot.start,
+            ends_at: apptSlot.end,
             source: "apex",
             status: "scheduled",
             user_id: user?.id ?? null,
@@ -556,7 +511,7 @@ export default function CalendarPage() {
       }
       playSound("success");
       setApptOpen(false);
-      setSelectedDay(apptForm.date);
+      setSelectedDay(dateKeyInZone(apptSlot.start, BUSINESS_TZ));
       invalidateCalendar();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Could not save the appointment");
@@ -566,43 +521,58 @@ export default function CalendarPage() {
     }
   };
 
-  const deleteAppointment = async () => {
-    if (!editingId) return;
-    setDeletingAppt(true);
+  /** Soft cancel: the row stays, with status 'cancelled' and the reason. */
+  const cancelAppointment = async () => {
+    if (!apptCancel?.refId || !apptCancelReason.trim()) return;
+    setCancelingAppt(true);
     try {
-      const { error: deleteError } = await supabase.from("calendar_events").delete().eq("id", editingId);
-      if (deleteError) throw deleteError;
-      toast.success("Appointment deleted");
-      setApptOpen(false);
+      const { data, error: readError } = await supabase
+        .from("calendar_events")
+        .select("id, metadata")
+        .eq("id", apptCancel.refId)
+        .maybeSingle();
+      if (readError || !data) throw new Error(readError?.message ?? "Appointment not found");
+      const meta = (data.metadata && typeof data.metadata === "object" && !Array.isArray(data.metadata)
+        ? data.metadata : {}) as Record<string, unknown>;
+      const { error: updateError } = await supabase
+        .from("calendar_events")
+        .update({
+          status: "cancelled",
+          metadata: { ...meta, cancel_reason: apptCancelReason.trim(), canceled_at: new Date().toISOString(), canceled_by: user?.id ?? null },
+        } as never)
+        .eq("id", apptCancel.refId);
+      if (updateError) throw updateError;
+      toast.success("Appointment canceled — kept on record");
+      setApptCancel(null);
+      setApptCancelReason("");
       invalidateCalendar();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Could not delete the appointment");
+      toast.error(err instanceof Error ? err.message : "Could not cancel the appointment");
     } finally {
-      setDeletingAppt(false);
+      setCancelingAppt(false);
     }
   };
 
   // ── interview actions ───────────────────────────────────────────────────
-  const markNoShow = async (row: CalendarEventRow) => {
-    if (!row.ref_id) return;
-    const { error: updateError } = await supabase
-      .from("interview_events" as never)
-      .update({ outcome: "no_show", outcome_at: new Date().toISOString() } as never)
-      .eq("id", row.ref_id);
-    if (updateError) { toast.error(updateError.message); return; }
-    toast.success("Marked as no-show");
-    playSound("error");
-    invalidateCalendar();
+  /** Same disposition writer as Follow-Ups, so applications.status moves too. */
+  const markNoShow = async (item: CalendarItem) => {
+    if (!item.refId) return;
+    try {
+      await disposeInterview(item.refId, "no_show");
+      toast.success("Marked as no-show");
+      playSound("error");
+      invalidateCalendar();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Could not record the no-show");
+    }
   };
 
-  const addToGoogle = (row: CalendarEventRow) => {
-    window.open(buildCalendarUrl({
-      title: row.title,
-      startDate: new Date(row.event_at),
-      durationMinutes: 30,
-      description: [KIND_BY_KEY[row.kind]?.label ?? row.kind, subtitleFor(row)].filter(Boolean).join(" — "),
-      location: row.link || undefined,
-    }), "_blank", "noopener,noreferrer");
+  const agendaActions = {
+    onReschedule: (item: CalendarItem) => setRescheduleItem(item),
+    onCancel: (item: CalendarItem) => setCancelItem(item),
+    onNoShow: markNoShow,
+    onEditAppointment: openEdit,
+    onCancelAppointment: (item: CalendarItem) => { setApptCancel(item); setApptCancelReason(""); },
   };
 
   const handleAutoPopulate = async () => {
@@ -619,8 +589,7 @@ export default function CalendarPage() {
       const inserted = result?.inserted?.total ?? 0;
       const drafts = result?.inserted?.draft_dates ?? 0;
       const followUps = result?.inserted?.post_test_follow_ups ?? 0;
-      // This function notifies the owning manager about each NEW item it books.
-      // Say so — a button that quietly sends mail is a button nobody can trust.
+      // This function notifies the owning manager about each NEW item it books. Say so.
       const mailed = result?.email_summary?.sent ?? 0;
       toast.success(inserted > 0
         ? `Auto-filled ${inserted} schedule item${inserted === 1 ? "" : "s"} (${drafts} drafts, ${followUps} follow-ups)${mailed > 0 ? ` · ${mailed} manager email${mailed === 1 ? "" : "s"} sent` : ""}`
@@ -657,16 +626,20 @@ export default function CalendarPage() {
     setSchedulerOpen(true);
   };
 
+  if (!user) return <PageSkeleton />;
+
   // ── render ──────────────────────────────────────────────────────────────
   const weekdayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const listDays = view === "day" ? [fmtKey(anchor)] : dayKeys;
+  const selectedDayCount = byDay.get(selectedDay)?.length ?? 0;
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
+    <div className="space-y-5 p-4 md:p-6">
       <PageHeader
         eyebrow="Clients"
         eyebrowIcon={<CalendarIcon className="h-4 w-4" />}
         title="Calendar"
-        subtitle="Auto-generated insurance events and your appointments, in one view."
+        subtitle="Interviews, onboarding calls, appointments and client dates — one record each, times shown in their own zone."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Button variant="outline" size="sm" onClick={goToday}>Today</Button>
@@ -678,11 +651,12 @@ export default function CalendarPage() {
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
-            <div className="flex items-center rounded-md border border-border p-0.5">
-              {(["day", "week", "month"] as ViewMode[]).map((mode) => (
+            <div className="flex items-center rounded-md border border-border p-0.5" role="group" aria-label="Calendar view">
+              {(["agenda", "day", "week", "month"] as CalendarView[]).map((mode) => (
                 <button
                   key={mode}
                   type="button"
+                  aria-pressed={view === mode}
                   onClick={() => changeView(mode)}
                   className={cn(
                     "rounded px-3 py-1 text-xs font-medium capitalize transition-colors",
@@ -713,44 +687,28 @@ export default function CalendarPage() {
                 />
               </PopoverContent>
             </Popover>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleAutoPopulate}
-              disabled={autoPopulating}
-              title="Book upcoming policy draft checks and post-test follow-ups. Emails the owning manager about each NEW item it books."
-            >
-              <RefreshCw className={cn("mr-1 h-4 w-4", autoPopulating && "animate-spin")} />Auto-fill
+            <Button variant="outline" size="sm" onClick={() => setSearchOpen(true)}>
+              <Search className="mr-1 h-4 w-4" />Schedule interview
             </Button>
             <Button size="sm" onClick={() => openCreate()}>
-              <Plus className="mr-1 h-4 w-4" />Create
+              <Plus className="mr-1 h-4 w-4" />Appointment
             </Button>
           </div>
         }
       />
 
-      {/* KPI strip — every number aggregated server-side by calendar_window_counts */}
+      {/* KPI strip — numbers aggregated server-side by calendar_window_counts */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {[
           {
             label: "In view",
             value: countedTotal.toLocaleString(),
-            // NOT periodLabel. Month view paints a 6-week grid, so "August 2026"
-            // would label a number that also counts Jul 26–31 and Sep 1–5. The
-            // note states the window actually counted.
             note: fromKey === toKey
               ? format(range.from, "EEE, MMM d")
               : `${format(range.from, "MMM d")} – ${format(range.to, "MMM d, yyyy")}`,
           },
           { label: "Today", value: sumCounts(todayCounts).toLocaleString(), note: format(parseISO(todayKey), "EEE, MMM d") },
           { label: "Next 30 days", value: sumCounts(next30Counts).toLocaleString(), note: "all event kinds" },
-          {
-            label: "Calendar sync",
-            value: calendarSyncStatus?.live ? "Live" : calendarSyncStatus?.lastSync ? "Stale" : "—",
-            note: calendarSyncStatus?.lastSync
-              ? `last write ${format(new Date(calendarSyncStatus.lastSync), "MMM d")}`
-              : "no feed on file",
-          },
         ].map((metric) => (
           <Card key={metric.label}>
             <CardContent className="p-4">
@@ -760,15 +718,41 @@ export default function CalendarPage() {
             </CardContent>
           </Card>
         ))}
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground">Booking sources</p>
+            <button
+              type="button"
+              className="mt-1 text-left text-sm font-medium text-primary underline-offset-2 hover:underline"
+              aria-expanded={providersOpen}
+              onClick={() => setProvidersOpen((v) => !v)}
+            >
+              {providersOpen ? "Hide provider status" : "Calendly, Google, reminders"}
+            </button>
+            <p className="truncate text-xs text-muted-foreground">read from sync logs, not assumed</p>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Period label + kind filters */}
+      {providersOpen && <ProviderHealthPanel enabled={isStaff} />}
+      {providersOpen && !isStaff && (
+        <p className="text-xs text-muted-foreground">Booking-provider status is visible to scheduling staff.</p>
+      )}
+
+      {/* Period label + filters */}
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <h2 className="text-xl font-semibold">{periodLabel}</h2>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
+        <div className="flex flex-wrap items-center gap-3">
+          <h2 className="text-xl font-semibold">{periodLabel}</h2>
+          <label className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Switch checked={showCanceled} onCheckedChange={setShowCanceled} aria-label="Show canceled events" />
+            Show canceled
+          </label>
+        </div>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs">
           <button
             type="button"
             onClick={() => setActiveKinds([])}
+            aria-pressed={activeKinds.length === 0}
             className={cn(
               "rounded-full border px-2.5 py-1 font-medium transition-colors",
               activeKinds.length === 0 ? "border-primary/40 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground",
@@ -784,6 +768,7 @@ export default function CalendarPage() {
                 key={kind.key}
                 type="button"
                 onClick={() => toggleKind(kind.key)}
+                aria-pressed={on}
                 title={`Source: ${kind.source}`}
                 className={cn(
                   "flex items-center gap-2 rounded-full border px-2.5 py-1 transition-colors",
@@ -801,37 +786,46 @@ export default function CalendarPage() {
       </div>
 
       {truncated && (
-        <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300">
-          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+        <div className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-xs text-foreground">
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" />
           <span>
-            Showing {events?.length.toLocaleString()} of {countedTotal.toLocaleString()} events — the API returns at most 1,000 rows per
-            request. Filter by kind, or switch to Week or Day, to see the rest. Nothing has been dropped from the counts above.
+            This range holds more rows than the page reads at once ({countedTotal.toLocaleString()} counted). Filter by kind or
+            switch to a shorter view to see every row. The counts above are complete.
           </span>
         </div>
       )}
 
-      {isError && (
+      {(windowQuery.isError || agendaQuery.isError) && (
         <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
           <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          <span>Calendar feed did not answer: {error instanceof Error ? error.message : "unknown error"}. Nothing is being guessed in its place.</span>
+          <span>
+            {agendaQuery.isError
+              ? `Appointments feed did not answer (${agendaQuery.error instanceof Error ? agendaQuery.error.message : "unknown error"}); interviews are shown read-only from the date feed.`
+              : `Date feed did not answer (${windowQuery.error instanceof Error ? windowQuery.error.message : "unknown error"}).`}
+            {" "}Nothing is being guessed in its place.
+          </span>
         </div>
       )}
 
-      {/* ── Grid ─────────────────────────────────────────────────────────── */}
+      {/* ── Main view ────────────────────────────────────────────────────── */}
       <Card>
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="space-y-2 p-4">
+            <div className="space-y-2 p-4" aria-busy="true">
               {/* stable-key-allow:skeleton */}
-              {[1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-16 w-full rounded-md" />)}
+              {["s1", "s2", "s3", "s4", "s5"].map((id) => <Skeleton key={id} className="h-12 w-full rounded-md" />)}
             </div>
-          ) : view === "day" ? (
-            <DayAgenda
-              dayKey={fmtKey(anchor)}
-              rows={byDay.get(fmtKey(anchor)) ?? []}
+          ) : view === "agenda" || view === "day" ? (
+            <AgendaList
+              days={listDays}
+              itemsByDay={byDay}
               todayKey={todayKey}
-              onCreate={() => openCreate(fmtKey(anchor))}
-              onSelect={(row) => pickDay(row.event_date)}
+              viewerUserId={user.id}
+              ownerNames={ownerNames ?? {}}
+              actions={agendaActions}
+              emptyText={view === "day"
+                ? `Nothing on ${format(anchor, "EEEE, MMMM d")}${activeKinds.length ? " for the selected kinds" : ""}.`
+                : `Nothing in the next ${AGENDA_DAYS} days${activeKinds.length ? " for the selected kinds" : ""}.`}
             />
           ) : (
             <>
@@ -848,13 +842,16 @@ export default function CalendarPage() {
                   const isToday = key === todayKey;
                   const cap = view === "week" ? 12 : 3;
                   return (
-                    <button
+                    <div
                       key={key}
-                      type="button"
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`${format(day, "EEEE, MMMM d")}: ${rows.length} event${rows.length === 1 ? "" : "s"}`}
                       onClick={() => pickDay(key)}
+                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pickDay(key); } }}
                       onDoubleClick={() => openCreate(key)}
                       className={cn(
-                        "min-h-[104px] border-b border-r border-border p-1.5 text-left align-top transition-colors last:border-r-0 hover:bg-muted/40",
+                        "min-h-[104px] cursor-pointer border-b border-r border-border p-1.5 text-left align-top transition-colors last:border-r-0 hover:bg-muted/40 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
                         view === "week" && "min-h-[420px]",
                         outside && "bg-muted/20",
                         selectedDay === key && "bg-primary/5 ring-1 ring-inset ring-primary/40",
@@ -873,131 +870,73 @@ export default function CalendarPage() {
                         )}
                       </div>
                       <div className="space-y-0.5">
-                        {rows.slice(0, cap).map((row) => (
-                          <EventChip key={row.event_id} row={row} compact={view === "month"} onClick={() => pickDay(key)} />
+                        {rows.slice(0, cap).map((item) => (
+                          <EventChip key={item.key} item={item} onClick={() => pickDay(key)} />
                         ))}
                         {rows.length > cap && (
                           <span className="block px-1 text-[10px] text-muted-foreground">+{rows.length - cap} more</span>
                         )}
                       </div>
-                    </button>
+                    </div>
                   );
                 })}
               </div>
             </>
           )}
-
-          {!isLoading && (events?.length ?? 0) === 0 && view !== "day" && (
-            <div className="border-t border-border py-10 text-center">
-              <p className="text-sm text-muted-foreground">
-                No events this {view} — enjoy the quiet! Or{" "}
-                <button type="button" className="text-primary underline underline-offset-2" onClick={() => openCreate()}>
-                  create an appointment
-                </button>.
-              </p>
-            </div>
-          )}
         </CardContent>
       </Card>
 
-      {/* ── Selected day detail ──────────────────────────────────────────── */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <p className="font-semibold">{format(parseISO(selectedDay), "EEEE, MMMM d, yyyy")}</p>
-              <p className="text-xs text-muted-foreground">
-                {selectedDay === todayKey ? "Today · " : ""}
-                {selectedDayEvents.length} event{selectedDayEvents.length === 1 ? "" : "s"} in view
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => setSearchOpen(true)}>
-                <Search className="mr-1 h-3.5 w-3.5" />Schedule interview
-              </Button>
-              <Button size="sm" onClick={() => openCreate(selectedDay)}>
+      {/* ── Selected day detail (week / month) ───────────────────────────── */}
+      {(view === "week" || view === "month") && (
+        <Card>
+          <CardContent className="p-0">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2.5">
+              <div>
+                <p className="font-semibold">{format(parseISO(selectedDay), "EEEE, MMMM d, yyyy")}</p>
+                <p className="text-xs text-muted-foreground">
+                  {selectedDay === todayKey ? "Today · " : ""}
+                  {selectedDayCount} event{selectedDayCount === 1 ? "" : "s"} in view
+                </p>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => openCreate(selectedDay)}>
                 <Plus className="mr-1 h-3.5 w-3.5" />Appointment
               </Button>
             </div>
-          </div>
+            <AgendaList
+              days={[selectedDay]}
+              itemsByDay={byDay}
+              todayKey={todayKey}
+              viewerUserId={user.id}
+              ownerNames={ownerNames ?? {}}
+              actions={agendaActions}
+              emptyText={`Nothing on this day${activeKinds.length ? " for the selected kinds" : ""}.`}
+            />
+          </CardContent>
+        </Card>
+      )}
 
-          {selectedDayEvents.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              Nothing on this day{activeKinds.length ? " for the selected kinds" : ""}. Book something and it lands here.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {selectedDayEvents.map((row) => {
-                const meta = KIND_BY_KEY[row.kind];
-                const Icon = meta?.icon ?? CalendarIcon;
-                const isAppointment = row.kind === "appointment";
-                const isInterview = row.kind === "interview" || row.kind === "onboarding_call";
-                const past = row.event_date < todayKey;
-                return (
-                  <div key={row.event_id} className="flex flex-wrap items-center gap-3 rounded-lg border border-border p-3">
-                    <div className={cn("shrink-0 rounded-lg border p-2", meta?.chip ?? "border-border")}>
-                      <Icon className="h-4 w-4" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="truncate font-medium">{row.title}</span>
-                        <Badge variant="outline" className="text-[10px]">{meta?.label ?? row.kind}</Badge>
-                        {row.status && row.status !== "birthday" && row.status !== "milestone" && (
-                          <Badge variant="secondary" className="text-[10px] capitalize">{row.status.replace(/_/g, " ")}</Badge>
-                        )}
-                      </div>
-                      <div className="mt-0.5 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                        <span>{isAllDay(row) ? "All day" : phoenixTime(row.event_at)}</span>
-                        {subtitleFor(row) && <span className="truncate">{subtitleFor(row)}</span>}
-                      </div>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-1">
-                      {row.link && (
-                        <Button variant="ghost" size="icon" className="h-8 w-8" title="Open meeting link" aria-label="Open meeting link"
-                          onClick={() => window.open(row.link!, "_blank", "noopener,noreferrer")}>
-                          <ExternalLink className="h-3.5 w-3.5" />
-                        </Button>
-                      )}
-                      <Button variant="ghost" size="icon" className="h-8 w-8" title="Add to Google Calendar" aria-label="Add to Google Calendar"
-                        onClick={() => addToGoogle(row)}>
-                        <CalendarPlus className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" title="Download .ics" aria-label="Download .ics"
-                        onClick={() => downloadIcs(row)}>
-                        <Download className="h-3.5 w-3.5" />
-                      </Button>
-                      {isAppointment && (
-                        <Button variant="ghost" size="icon" className="h-8 w-8" title="Edit appointment" aria-label="Edit appointment"
-                          onClick={() => openEdit(row)}>
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                      )}
-                      {isInterview && past && row.status === "scheduled" && (
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" title="Mark as no-show" aria-label="Mark as no-show"
-                          onClick={() => markNoShow(row)}>
-                          <AlertTriangle className="h-3.5 w-3.5" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          <p className="mt-4 border-t border-border pt-3 text-[11px] text-muted-foreground">
-            No feed yet: {UNFED_KINDS.join(" · ")} — no table on this database publishes those dates, so the calendar does not
-            invent them. They appear the day a source does.
-          </p>
-        </CardContent>
-      </Card>
+      <div className="flex flex-wrap items-center justify-between gap-3 text-[11px] text-muted-foreground">
+        <p>
+          No feed yet: {UNFED_KINDS.join(" · ")} — no table publishes those dates, so the calendar does not invent them.
+        </p>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 text-xs"
+          onClick={handleAutoPopulate}
+          disabled={autoPopulating}
+          title="Book upcoming policy draft checks and post-test follow-ups. Emails the owning manager about each NEW item it books."
+        >
+          <RefreshCw className={cn("mr-1 h-3.5 w-3.5", autoPopulating && "animate-spin")} />Auto-fill draft dates (emails managers)
+        </Button>
+      </div>
 
       {/* ── Create / edit appointment ────────────────────────────────────── */}
       <Dialog open={apptOpen} onOpenChange={setApptOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>{editingId ? "Edit appointment" : "New appointment"}</DialogTitle>
-            <DialogDescription>Saved to the shared calendar in America/Phoenix time.</DialogDescription>
+            <DialogDescription>Saved on your calendar in the time zone you pick.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div>
@@ -1024,7 +963,7 @@ export default function CalendarPage() {
               <div>
                 <label htmlFor="appt-duration" className="text-xs font-medium text-muted-foreground">Length</label>
                 <Select value={apptForm.duration} onValueChange={(v) => setApptForm((p) => ({ ...p, duration: v }))}>
-                  <SelectTrigger id="appt-duration" className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="appt-duration" aria-label="Appointment length" className="mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {["15", "30", "45", "60", "90"].map((m) => (
                       <SelectItem key={m} value={m}>{m} min</SelectItem>
@@ -1034,26 +973,65 @@ export default function CalendarPage() {
               </div>
             </div>
             <div>
+              <label htmlFor="appt-zone" className="text-xs font-medium text-muted-foreground">Time zone</label>
+              <TimeZoneSelect id="appt-zone" className="mt-1" value={apptForm.zone} ariaLabel="Appointment time zone"
+                onChange={(zone) => setApptForm((p) => ({ ...p, zone }))} />
+            </div>
+            <div>
+              <label htmlFor="appt-link" className="text-xs font-medium text-muted-foreground">Meeting link</label>
+              <Input id="appt-link" className="mt-1" placeholder="https://…"
+                value={apptForm.link} onChange={(e) => setApptForm((p) => ({ ...p, link: e.target.value }))} />
+            </div>
+            <ConflictNotice conflicts={apptConflicts.data} isLoading={apptConflicts.isFetching} isError={apptConflicts.isError} />
+            <div>
               <label htmlFor="appt-notes" className="text-xs font-medium text-muted-foreground">Notes</label>
               <Textarea id="appt-notes" rows={2} className="mt-1" placeholder="Anything worth remembering"
                 value={apptForm.notes} onChange={(e) => setApptForm((p) => ({ ...p, notes: e.target.value }))} />
             </div>
           </div>
-          <DialogFooter className="gap-2 sm:justify-between">
-            {editingId ? (
-              <Button variant="ghost" className="text-destructive" onClick={deleteAppointment} disabled={deletingAppt}>
-                <Trash2 className="mr-1 h-4 w-4" />{deletingAppt ? "Deleting…" : "Delete"}
-              </Button>
-            ) : <span />}
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setApptOpen(false)}>Cancel</Button>
-              <Button onClick={saveAppointment} disabled={savingAppt || !apptForm.title.trim()}>
-                {savingAppt ? "Saving…" : editingId ? "Save changes" : "Create"}
-              </Button>
-            </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setApptOpen(false)}>Close</Button>
+            <Button onClick={saveAppointment} disabled={savingAppt || !apptForm.title.trim()}>
+              {savingAppt ? "Saving…" : editingId ? "Save changes" : "Create"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ── Cancel appointment (soft) ────────────────────────────────────── */}
+      <Dialog open={!!apptCancel} onOpenChange={(open) => { if (!open) setApptCancel(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Cancel {apptCancel?.title ?? "appointment"}</DialogTitle>
+            <DialogDescription>The appointment stays on record as canceled, with your reason.</DialogDescription>
+          </DialogHeader>
+          <div>
+            <label htmlFor="appt-cancel-reason" className="text-xs font-medium text-muted-foreground">Reason *</label>
+            <Textarea id="appt-cancel-reason" rows={2} className="mt-1" value={apptCancelReason}
+              onChange={(e) => setApptCancelReason(e.target.value)} />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setApptCancel(null)}>Keep it</Button>
+            <Button variant="destructive" onClick={cancelAppointment} disabled={cancelingAppt || !apptCancelReason.trim()}>
+              {cancelingAppt ? "Canceling…" : "Cancel appointment"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <RescheduleInterviewDialog
+        item={rescheduleItem}
+        viewerUserId={user.id}
+        open={!!rescheduleItem}
+        onOpenChange={(open) => { if (!open) setRescheduleItem(null); }}
+        onDone={invalidateCalendar}
+      />
+      <CancelInterviewDialog
+        item={cancelItem}
+        open={!!cancelItem}
+        onOpenChange={(open) => { if (!open) setCancelItem(null); }}
+        onDone={invalidateCalendar}
+      />
 
       {/* ── Lead search → interview scheduler ────────────────────────────── */}
       <Dialog open={searchOpen} onOpenChange={setSearchOpen}>
@@ -1070,7 +1048,7 @@ export default function CalendarPage() {
             {searchResults.length > 0 && (
               <div className="max-h-64 space-y-1 overflow-y-auto">
                 {searchResults.map((lead) => (
-                  <button key={lead.id} onClick={() => handleSelectLead(lead)}
+                  <button key={lead.id} type="button" onClick={() => handleSelectLead(lead)}
                     className="flex w-full items-center gap-3 rounded-lg border border-border p-3 text-left transition-colors hover:bg-muted/50">
                     <div className="rounded-full bg-primary/10 p-1.5">
                       <User className="h-3.5 w-3.5 text-primary" />
@@ -1098,58 +1076,9 @@ export default function CalendarPage() {
           applicationId={selectedLead.id}
           applicantName={`${selectedLead.first_name} ${selectedLead.last_name}`}
           applicantEmail={selectedLead.email}
-          onScheduled={() => {
-            invalidateCalendar();
-            setSchedulerOpen(false);
-            setSelectedLead(null);
-          }}
+          onScheduled={invalidateCalendar}
         />
       )}
-    </div>
-  );
-}
-
-// ─── Day view ───
-function DayAgenda({ dayKey, rows, todayKey, onCreate, onSelect }: {
-  dayKey: string;
-  rows: CalendarEventRow[];
-  todayKey: string;
-  onCreate: () => void;
-  onSelect: (row: CalendarEventRow) => void;
-}) {
-  if (rows.length === 0) {
-    return (
-      <div className="py-16 text-center">
-        <CalendarIcon className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">
-          Nothing on {format(parseISO(dayKey), "EEEE, MMMM d")}{dayKey === todayKey ? " — enjoy the quiet!" : "."}
-        </p>
-        <Button variant="outline" size="sm" className="mt-3" onClick={onCreate}>Create an appointment</Button>
-      </div>
-    );
-  }
-  return (
-    <div className="divide-y divide-border">
-      {rows.map((row) => {
-        const meta = KIND_BY_KEY[row.kind];
-        const Icon = meta?.icon ?? CalendarIcon;
-        return (
-          <button key={row.event_id} type="button" onClick={() => onSelect(row)}
-            className="flex w-full items-center gap-3 p-3 text-left transition-colors hover:bg-muted/40">
-            <span className="w-20 shrink-0 text-xs tabular-nums text-muted-foreground">
-              {isAllDay(row) ? "All day" : phoenixTime(row.event_at)}
-            </span>
-            <span className={cn("shrink-0 rounded-lg border p-2", meta?.chip ?? "border-border")}>
-              <Icon className="h-4 w-4" />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-medium">{row.title}</span>
-              {subtitleFor(row) && <span className="block truncate text-xs text-muted-foreground">{subtitleFor(row)}</span>}
-            </span>
-            <Badge variant="outline" className="shrink-0 text-[10px]">{meta?.label ?? row.kind}</Badge>
-          </button>
-        );
-      })}
     </div>
   );
 }

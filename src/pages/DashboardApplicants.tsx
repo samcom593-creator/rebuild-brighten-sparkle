@@ -81,12 +81,13 @@ import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
 import { ApplicationDetailSheet } from "@/components/dashboard/ApplicationDetailSheet";
 import { GlassCard } from "@/components/ui/glass-card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { phoneHref, smsHref, contactLinkProps } from "@/lib/phone";
+import { phoneHref, smsHref, contactLinkProps, startPhoneCall, startSmsThread } from "@/lib/phone";
 import { ReferralLinkCard } from "@/components/dashboard/ReferralLinkCard";
 import { APPLICATION_RECORD_TYPE } from "@/shared/api/applicationRecordType";
 import { RecruitingWorkspaceNav } from "@/components/recruiting/RecruitingWorkspaceNav";
 import { RecruitingCommandHero } from "@/components/recruiting/RecruitingCommandHero";
 import { NoHireLeftBehindPanel } from "@/components/recruiting/NoHireLeftBehindPanel";
+import { RecruitingWorklist } from "@/components/pipeline/worklist/RecruitingWorklist";
 import { RecruitingIncomeEstimateCard } from "@/components/dashboard/RecruitingIncomeEstimateCard";
 
 interface Application {
@@ -254,7 +255,25 @@ function licenseTrust(app: Application): LicenseTrust {
   return { level: "claimed_bare", label: "unverified", tint: "text-muted-foreground", title: "Self-reported licensed — no NPN on file yet. Hover/verify before relying on it." };
 }
 
+/**
+ * /dashboard/recruiting — APEX OS §5: the recruiting worklist is the default view.
+ * `?view=classic` keeps the previous applicants table (terminate/restore, scoring,
+ * interviews, speed-to-lead) reachable while its capabilities move into the worklist.
+ */
 export default function DashboardApplicants() {
+  const [searchParams] = useSearchParams();
+  const { isAdmin, isManager, isVaManager, isVa } = useAuth();
+  if (searchParams.get("view") === "classic") return <ApplicantsClassicView />;
+  return (
+    <div className="page-enter w-full space-y-5 pb-24">
+      <RecruitingWorkspaceNav />
+      <RecruitingWorklist />
+      {(isAdmin || isManager || isVaManager || isVa) && <NoHireLeftBehindPanel />}
+    </div>
+  );
+}
+
+function ApplicantsClassicView() {
   const { user, isAdmin, isManager, isVaManager, isVa, isRecruiter } = useAuth();
   // VA ops staff (2026-07-27): backed by applications_va_read/_va_update RLS.
   // They see the full queue like admins — they have no agents row to scope by.
@@ -690,19 +709,9 @@ export default function DashboardApplicants() {
     window.open(`https://instagram.com/${clean}`, "_blank", "noopener,noreferrer");
   };
 
-  // 2026-07-07 Sam: fire-and-forget contact-attempt log. Never blocks tel:/sms:/mailto: navigation.
-  const logContactAttempt = (
-    applicationId: string,
-    channel: "call" | "sms" | "email",
-  ) => {
-    void Promise.resolve(supabase.rpc("log_contact_attempt" as any, {
-        p_application_id: applicationId,
-        p_channel: channel,
-        p_outcome: "initiated",
-      }))
-      // empty-catch-allow:fire-and-forget telemetry — must not block tel:/sms:/mailto: navigation
-      .catch(() => undefined);
-  };
+  // APEX OS §5 (2026-10-06): opening a tel:/sms:/mailto: link no longer writes an
+  // `initiated` contact row. A dial-link click is not a call; outcomes are recorded
+  // through record_recruiting_outcome() in the worklist (the default view of this route).
 
   const [badPhoneBusy, setBadPhoneBusy] = useState<string | null>(null);
   const handleMarkBadPhone = async (app: Application) => {
@@ -1969,7 +1978,6 @@ export default function DashboardApplicants() {
                                       <a
                                         href={phoneHref(app.phone)!}
                                         {...contactLinkProps(phoneHref(app.phone))}
-                                        onClick={() => logContactAttempt(app.id, "call")}
                                       >
                                         <Phone className="h-3.5 w-3.5" />
                                       </a>
@@ -1987,7 +1995,6 @@ export default function DashboardApplicants() {
                                       <a
                                         href={smsHref(app.phone)!}
                                         {...contactLinkProps(smsHref(app.phone))}
-                                        onClick={() => logContactAttempt(app.id, "sms")}
                                       >
                                         <MessageCircle className="h-3.5 w-3.5" />
                                       </a>
@@ -2019,7 +2026,6 @@ export default function DashboardApplicants() {
                                     >
                                       <a
                                         href={`mailto:${app.email}`}
-                                        onClick={() => logContactAttempt(app.id, "email")}
                                       >
                                         <Mail className="h-3.5 w-3.5" />
                                       </a>
@@ -2249,8 +2255,7 @@ export default function DashboardApplicants() {
               toast.error("This application does not have a dialable phone number");
               return;
             }
-            void logContactAttempt(app.id, "call");
-            window.location.href = href;
+            startPhoneCall(app.phone);
           }}
           onLogText={async (app) => {
             const href = smsHref(app.phone);
@@ -2258,11 +2263,9 @@ export default function DashboardApplicants() {
               toast.error("This application does not have a textable phone number");
               return;
             }
-            void logContactAttempt(app.id, "sms");
-            window.location.href = href;
+            startSmsThread(app.phone);
           }}
           onLogEmail={async (app) => {
-            void logContactAttempt(app.id, "email");
             window.location.href = `mailto:${app.email || ""}`;
           }}
         />

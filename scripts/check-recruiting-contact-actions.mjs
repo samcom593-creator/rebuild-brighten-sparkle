@@ -66,6 +66,8 @@ const WATCHED = [
   "src/pages/AgentPipeline.tsx",
   "src/pages/XcelPipeline.tsx",
   "src/pages/StaleRecovery.tsx",
+  // APEX OS §5 (2026-10-06): the recruiting worklist's person panel.
+  "src/components/pipeline/worklist/PersonPanel.tsx",
 ];
 
 // Surfaces where a raw tel:/sms: is the CORRECT behaviour. Exempt with a reason,

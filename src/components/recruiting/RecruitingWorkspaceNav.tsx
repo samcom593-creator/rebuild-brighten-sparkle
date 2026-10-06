@@ -7,8 +7,8 @@ import { cn } from "@/lib/utils";
 const trainingLabel = `${resolveBrand().platformName} Training`;
 
 const WORKSPACE_VIEWS = [
+  { label: "Worklist", detail: "Contact, outcome, next step", href: "/dashboard/recruiting", icon: Users, exact: true },
   { label: "Pipeline", detail: "Everyone, one view", href: "/dashboard/recruiting/pipeline", icon: LayoutList },
-  { label: "Applicants", detail: "Work new leads", href: "/dashboard/recruiting", icon: Users, exact: true },
   { label: "Interviews", detail: "Book and decide", href: "/dashboard/recruiting/interviews", icon: CalendarClock },
   { label: "Follow-ups", detail: "Clear overdue work", href: "/dashboard/recruiting/follow-ups", icon: RotateCcw },
   { label: "Hires", detail: "Launch onboarding", href: "/dashboard/recruiting/interviews?tab=hired", icon: UserCheck },

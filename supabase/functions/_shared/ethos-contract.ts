@@ -198,9 +198,10 @@ export function classifyNpn(raw: unknown, ctx: { mobileDigits?: string | null } 
   return { digits: s, findings: out };
 }
 
+// Both arms declare every field: this project's tsconfig does not narrow a boolean discriminant.
 export type MobileNorm =
-  | { ok: true; national: string; display: string }
-  | { ok: false; reason: "missing" | "unsupported_format" | "invalid_number" };
+  | { ok: true; national: string; display: string; reason?: undefined }
+  | { ok: false; reason: "missing" | "unsupported_format" | "invalid_number"; national?: undefined; display?: undefined };
 
 /** Supported US mobiles only; international numbers and extensions are reported, never guessed. */
 export function normalizeUsMobile(raw: unknown): MobileNorm {

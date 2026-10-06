@@ -10,7 +10,7 @@ import {
 
 // Synthetic fixtures only. 555-01xx numbers are reserved and never real.
 const NOW = Date.parse("2026-10-05T12:00:00Z");
-const header = [...SIGNUP_HEADERS];
+const header: string[] = [...SIGNUP_HEADERS];
 const row = (over: Partial<Record<keyof typeof S, unknown>> = {}) => {
   const r: unknown[] = ["Test", "Agent", "21000001", "21346366", "(555) 010-0001", "test.agent@example.com", "Level 12", "6 Month Advance", "Apex Financial Empire", "FALSE", "TRUE", "TRUE", "FALSE", "", "", "", "https://agents.ethoslife.com/invite/", "", ""];
   for (const [k, v] of Object.entries(over)) r[(S as Record<string, number>)[k]] = v;
@@ -76,7 +76,7 @@ test("advance tier: blank is a blocker (Ethos defaults blank to 9 months), enum 
 
 test("header signature: exact live headers pass; drift is named by column and stops the audit", () => {
   assert.equal(verifyHeaderSignature(SIGNUP_HEADERS, header).ok, true);
-  const drifted = [...header]; drifted[2] = "NPN";
+  const drifted: string[] = [...header]; drifted[2] = "NPN";
   const chk = verifyHeaderSignature(SIGNUP_HEADERS, drifted);
   assert.equal(chk.ok, false);
   assert.deepEqual(chk.drift, [{ column: "C", expected: "Agent NPN", actual: "NPN" }]);
@@ -196,7 +196,7 @@ test("gate: sheet collisions — NPN already present blocks a second submission;
   assert.deepEqual(g.sheet.npnRows, [2]);
   const sheet2 = [header, row({ NPN: "21999999", EMAIL: "test.agent@example.com", MOBILE: "(555) 010-0777" })];
   assert.ok(codes(evaluateSignupGate(cand, approvalOk, { now: NOW, sheetRows: sheet2 }).blockers).includes("sheet_email_on_other_npn"));
-  const drifted = [...header]; drifted[0] = "First";
+  const drifted: string[] = [...header]; drifted[0] = "First";
   assert.ok(codes(evaluateSignupGate(cand, approvalOk, { now: NOW, sheetRows: [drifted] }).blockers).includes("sheet_header_drift"));
   // queue collision, excluding self
   const q = [{ id: "self", npn: "21000001" }, { id: "other", npn: "21000001" }];

@@ -148,6 +148,37 @@ export function isQueueKey(value: string | null | undefined): value is QueueKey 
   return !!value && (QUEUE_KEYS as readonly string[]).includes(value);
 }
 
+/**
+ * Deep links into /dashboard/recruiting (and the /dashboard/applicants redirect)
+ * were written for the classic applicants table, which reads ?id= or ?lead=; other
+ * senders use ?focus=. All of them carry an application id, which is also the
+ * worklist row id. `person` is the worklist's own param and wins.
+ */
+export const PERSON_PARAM_ALIASES = ["id", "lead", "focus"] as const;
+
+export function personFromParams(params: URLSearchParams): string | null {
+  const own = params.get("person");
+  if (own) return own;
+  for (const key of PERSON_PARAM_ALIASES) {
+    const value = params.get(key);
+    if (value) return value;
+  }
+  return null;
+}
+
+/**
+ * The classic table's filter params, mapped onto the saved queue that answers the
+ * same question. Used only when the link carries no explicit ?queue=.
+ */
+export function queueFromLegacyParams(params: URLSearchParams): QueueKey | null {
+  const filter = params.get("filter");
+  if (filter === "follow_up_due") return "overdue";
+  if (filter === "unclaimed" || params.get("assignment") === "unclaimed") return "unassigned";
+  if (params.get("contacted") === "untouched") return "uncontacted";
+  if (params.get("bucket") === "new") return "new";
+  return null;
+}
+
 const PHOENIX_OFFSET_MS = 7 * 60 * 60 * 1000; // America/Phoenix is UTC-7 all year (no DST).
 const DAY_MS = 24 * 60 * 60 * 1000;
 export const NEW_WINDOW_DAYS = 7;
@@ -175,7 +206,9 @@ export function isClosed(row: WorklistRow): boolean {
   if (row.do_not_contact_at) return true;
   if (row.last_contact_outcome === "not_interested") return true;
   const status = (row.status ?? "").toLowerCase();
-  if (status === "rejected" || status === "disqualified") return true;
+  // "lapsed" is what Recruit Stages writes when someone is moved to Closed/Lost
+  // (set_recruit_stage), and the stage derivation already reads it as closed_lost.
+  if (status === "rejected" || status === "disqualified" || status === "lapsed") return true;
   if (row.next_step_stage_key === "closed_lost") return true;
   return false;
 }

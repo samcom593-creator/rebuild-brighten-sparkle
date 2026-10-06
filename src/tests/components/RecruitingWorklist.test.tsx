@@ -152,4 +152,22 @@ describe("RecruitingWorklist", () => {
     fireEvent.click(within(panel).getByRole("link", { name: /Call Sample A1/ }));
     expect(db.rpcCalls.some((c) => c.fn === "record_recruiting_outcome" || c.fn === "log_contact_attempt")).toBe(false);
   });
+  it("opens the person another page links with ?id= / ?lead= / ?focus=, in All open", async () => {
+    for (const param of ["id", "lead", "focus"]) {
+      const view = renderAt(`/dashboard/recruiting?${param}=a1`);
+      const panel = await screen.findByRole("complementary", { name: "Selected person" });
+      expect(await within(panel).findByText(/A1/)).toBeTruthy();
+      const queues = screen.getByRole("navigation", { name: "Saved queues" });
+      expect(within(queues).getByRole("button", { name: /All open/ }).getAttribute("aria-pressed")).toBe("true");
+      view.unmount();
+    }
+  });
+
+  it("says so when a linked person is not in the viewer's worklist instead of opening someone else", async () => {
+    renderAt("/dashboard/recruiting?id=not-a-row");
+    const panel = await screen.findByRole("complementary", { name: "Selected person" });
+    expect(await within(panel).findByText(/not in your worklist/)).toBeTruthy();
+    expect(within(panel).getByRole("link", { name: /classic applicants view/ }).getAttribute("href"))
+      .toBe("/dashboard/recruiting?view=classic&id=not-a-row");
+  });
 });

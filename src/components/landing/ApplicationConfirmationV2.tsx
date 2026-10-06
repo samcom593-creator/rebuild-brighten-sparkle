@@ -47,7 +47,14 @@ export function ApplicationConfirmationV2({
   forceLicenseStatus,
   showCalendly = true,
 }: Props) {
-  const { snap, isLoading } = useApplicationStatus(applicationId);
+  // useApplicationStatus is a react-query result: the snapshot lives on .data.
+  const { data: snap, isLoading } = useApplicationStatus(applicationId);
+
+  // On /status/:id nothing forces the branch, so the license status has to
+  // come from the snapshot. Until it arrives we must not guess "unlicensed",
+  // or a licensed applicant is briefly told to start the licensing course and
+  // the magic link is minted for the wrong destination.
+  const statusPending = !forceLicenseStatus && !!applicationId && isLoading;
 
   const license =
     forceLicenseStatus ??
@@ -69,7 +76,7 @@ export function ApplicationConfirmationV2({
   const [autoLoginUrl, setAutoLoginUrl] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
-    if (!applicationId) {
+    if (!applicationId || statusPending) {
       setAutoLoginUrl(null);
       return () => {
         cancelled = true;
@@ -103,7 +110,7 @@ export function ApplicationConfirmationV2({
     return () => {
       cancelled = true;
     };
-  }, [applicationId, license]);
+  }, [applicationId, license, statusPending]);
 
   // Sticky-bottom CTA on mobile so it never gets lost in scroll.
   return (
@@ -132,9 +139,17 @@ export function ApplicationConfirmationV2({
           </div>
 
           {/* Branched body */}
-          {license === "licensed" ? <LicensedBody applicationId={applicationId} showCalendly={showCalendly} autoLoginUrl={autoLoginUrl} /> : null}
-          {license === "unlicensed" ? <UnlicensedBody firstName={firstName} email={snap?.email ?? ""} autoLoginUrl={autoLoginUrl} /> : null}
-          {license === "pending" ? <PendingBody /> : null}
+          {statusPending ? (
+            <p className="text-center text-sm text-muted-foreground" role="status">
+              Loading your next step...
+            </p>
+          ) : (
+            <>
+              {license === "licensed" ? <LicensedBody applicationId={applicationId} showCalendly={showCalendly} autoLoginUrl={autoLoginUrl} /> : null}
+              {license === "unlicensed" ? <UnlicensedBody applicationId={applicationId} autoLoginUrl={autoLoginUrl} /> : null}
+              {license === "pending" ? <PendingBody /> : null}
+            </>
+          )}
 
           {/* Culture line — small, no CTA, no buttons */}
           <p className="text-center text-xs italic text-muted-foreground pt-2">
@@ -149,17 +164,17 @@ export function ApplicationConfirmationV2({
 // ---------- Unlicensed ----------
 
 function UnlicensedBody({
-  firstName,
-  email,
+  applicationId,
   autoLoginUrl,
 }: {
-  firstName: string;
-  email: string;
+  applicationId: string | null;
   autoLoginUrl: string | null;
 }) {
-  // Pre-fill applicant email into the get-licensed URL so XCEL recognizes them.
-  const courseUrl = email
-    ? `/get-licensed?email=${encodeURIComponent(email)}#licensing-video`
+  // Identify the applicant on /get-licensed by application id, the param
+  // GetLicensed reads (and the one JoinLink already passes). The status
+  // snapshot carries no email, so an email param could never be filled.
+  const courseUrl = applicationId
+    ? `/get-licensed?applicationId=${encodeURIComponent(applicationId)}#licensing-video`
     : "/get-licensed#licensing-video";
 
   // Primary CTA: when the magic-link mint succeeded, clicking the button

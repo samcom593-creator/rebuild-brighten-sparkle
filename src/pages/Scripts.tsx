@@ -109,10 +109,12 @@ export default function Scripts() {
           <p className="text-base font-semibold">Your scripts unlock when your required training is complete</p>
           <p className="mt-1 text-sm text-muted-foreground">
             {access.state === "unknown"
-              ? "We could not check your training progress right now. Try again in a minute."
-              : `${access.passed ?? 0} of ${access.total ?? 0} required modules passed. Finish them and the scripts open here — you'll also get them by email.`}
+              ? "We could not read your training progress. Try again in a minute, and ask your manager if this keeps showing."
+              : `${access.passed ?? 0} of ${access.total ?? 0} required modules passed. Finish them and the scripts open here. You'll also get them by email.`}
           </p>
-          <Link to="/dashboard/training/library" className="mt-4 inline-block text-sm font-semibold text-primary underline-offset-2 hover:underline">Go to Training Home →</Link>
+          {/* The unlock counts required Field Course modules (onboarding_progress), not
+              the Training Home library, so send the agent straight to the course. */}
+          <Link to="/dashboard/training/sales-course" className="mt-4 inline-block text-sm font-semibold text-primary underline-offset-2 hover:underline">Finish required modules →</Link>
         </div>
       </div>
     );

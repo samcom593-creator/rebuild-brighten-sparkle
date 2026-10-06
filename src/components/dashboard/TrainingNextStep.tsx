@@ -167,8 +167,11 @@ export function TrainingNextStep() {
           </div>
 
           <Button asChild size="sm" className="shrink-0 gap-1.5">
-            <Link to={done ? TRAINING_ROUTES.home : toCanonicalTrainingHref(data.next_href ?? TRAINING_ROUTES.home)}>
-              {done ? "Training library" : "Continue"}
+            {/* course_complete means every active module is passed, which is the
+                scripts unlock rule (v_training_required_completion). Send the agent
+                to what just opened rather than back to the library. */}
+            <Link to={done ? "/dashboard/scripts" : toCanonicalTrainingHref(data.next_href ?? TRAINING_ROUTES.home)}>
+              {done ? "Open your scripts" : "Continue"}
               <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>

@@ -12,7 +12,8 @@ import { useApplicationStatus } from "@/hooks/useApplicationStatus";
 export default function ApplicationStatus() {
   usePageTitle("Your APEX Application Status");
   const { applicationId } = useParams<{ applicationId: string }>();
-  const { snap } = useApplicationStatus(applicationId ?? null);
+  // react-query result: the snapshot is on .data.
+  const { data: snap, isLoading } = useApplicationStatus(applicationId ?? null);
 
   return (
     <div className="min-h-screen bg-background">
@@ -20,12 +21,16 @@ export default function ApplicationStatus() {
         <div className="container mx-auto px-4 pt-6 max-w-3xl space-y-4">
           {/* Always show "what's next" first — no scrolling required. */}
           <NextStepCandidateCard applicationId={applicationId} />
-          {/* XCEL Gmail pull fallback — applicants can self-report progress. */}
-          <ApplicantSelfReport
-            applicationId={applicationId}
-            currentStage={(snap as any)?.next_step_stage_key ?? null}
-            licenseStatus={(snap?.license_status as any) ?? null}
-          />
+          {/* XCEL Gmail pull fallback — applicants can self-report progress.
+              Held back until the snapshot loads so a licensed applicant is
+              never shown the licensing self-report buttons. */}
+          {!isLoading && (
+            <ApplicantSelfReport
+              applicationId={applicationId}
+              currentStage={(snap as any)?.next_step_stage_key ?? null}
+              licenseStatus={snap?.license_status ?? null}
+            />
+          )}
         </div>
       )}
       <ApplicationConfirmation

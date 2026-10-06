@@ -1229,7 +1229,12 @@ function ApplicantsClassicView() {
             icon: UserCheck,
             tone: "good",
             active: false,
-            onClick: () => navigate("/dashboard/recruiting/interviews?tab=hired"),
+            // Recruit Stages ("Hire to first deal") is the hires surface. Its route
+            // does not admit recruiters, so they keep the Interviews page's
+            // Active hires tab, which they can open.
+            onClick: () => navigate(
+              isAdmin || isManager || isVaStaff ? "/dashboard/recruits" : "/dashboard/recruiting/interviews?tab=hired",
+            ),
           },
           {
             label: "Active pipeline",

@@ -15,6 +15,9 @@ import {
   fullName,
   inQueue,
   isQueueKey,
+  PERSON_PARAM_ALIASES,
+  personFromParams,
+  queueFromLegacyParams,
   sortForQueue,
   type QueueKey,
   type WorklistRow,
@@ -93,11 +96,15 @@ export function RecruitingWorklist() {
   const counts = useMemo(() => computeQueueCounts(rows, ctx), [rows, ctx]);
 
   const queueParam = params.get("queue");
-  const queue: QueueKey = isQueueKey(queueParam) ? queueParam : counts.mine > 0 ? "mine" : "all_open";
+  const legacyQueue = queueFromLegacyParams(params);
+  const queue: QueueKey = isQueueKey(queueParam)
+    ? queueParam
+    : legacyQueue ?? (counts.mine > 0 ? "mine" : "all_open");
   const view = params.get("view") === "board" ? "board" : "list";
   const search = params.get("q") ?? "";
   const license = params.get("license") ?? "all";
-  const selectedId = params.get("person");
+  // Other pages open a person with ?id=, ?lead= or ?focus= (all application ids).
+  const selectedId = personFromParams(params);
 
   const setParam = useCallback(
     (patch: Record<string, string | null>) => {
@@ -112,6 +119,20 @@ export function RecruitingWorklist() {
     },
     [setParams],
   );
+
+  // Rewrite an aliased deep link to ?person= once, so later selection changes (and
+  // clearing the selection after the last save) are not overridden by the alias.
+  // A link that names a person but no queue opens All open, so the person is in
+  // the list beside the panel rather than hidden behind My queue.
+  useEffect(() => {
+    if (params.get("person")) return;
+    const alias = PERSON_PARAM_ALIASES.find((k) => params.get(k));
+    if (!alias) return;
+    const patch: Record<string, string | null> = { person: params.get(alias) };
+    for (const k of PERSON_PARAM_ALIASES) patch[k] = null;
+    if (!isQueueKey(queueParam) && !legacyQueue) patch.queue = "all_open";
+    setParam(patch);
+  }, [params, queueParam, legacyQueue, setParam]);
 
   const filtered = useMemo(() => {
     const list = rows.filter((r) =>
@@ -209,6 +230,16 @@ export function RecruitingWorklist() {
       nextId={nextAfter(selected.id)}
       onSaved={onSaved}
     />
+  ) : selectedId ? (
+    <div className="space-y-2 p-6 text-center text-sm text-muted-foreground">
+      <p>This person is not in your worklist. They may be a duplicate, a test record, or outside the people you can see.</p>
+      <Link
+        to={`/dashboard/recruiting?view=classic&id=${encodeURIComponent(selectedId)}`}
+        className="inline-block text-primary underline-offset-2 hover:underline"
+      >
+        Look them up in the classic applicants view
+      </Link>
+    </div>
   ) : (
     <p className="p-6 text-center text-sm text-muted-foreground">
       {filtered.length === 0 ? "Nobody in this queue." : "Pick a person to start."}
@@ -349,7 +380,7 @@ export function RecruitingWorklist() {
             {panel}
           </aside>
         ) : (
-          <Sheet open={Boolean(selected)} onOpenChange={(open) => { if (!open) setParam({ person: null }); }}>
+          <Sheet open={Boolean(selectedId)} onOpenChange={(open) => { if (!open) setParam({ person: null }); }}>
             <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-md">
               <SheetHeader className="sr-only">
                 <SheetTitle>{selected ? fullName(selected) : "Person"}</SheetTitle>

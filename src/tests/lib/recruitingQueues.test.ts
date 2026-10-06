@@ -17,8 +17,10 @@ import {
   describeSaveError,
   inQueue,
   isClosed,
+  personFromParams,
   phoenixDayBounds,
   planCheck,
+  queueFromLegacyParams,
   sortForQueue,
   validateOutcomeDraft,
   type WorklistRow,
@@ -335,5 +337,30 @@ describe("unfinished notes survive", () => {
     expect(loadDraft(ME, "a", broken)).toBeNull();
     expect(saveDraft(ME, "a", { ...EMPTY_DRAFT, notes: "x" }, broken)).toBe(false);
     expect(() => clearDraft(ME, "a", broken)).not.toThrow();
+  });
+});
+
+describe("deep links into the worklist", () => {
+  it("opens the person from ?person=, or from the ?id= / ?lead= / ?focus= other pages send", () => {
+    expect(personFromParams(new URLSearchParams("person=a1&id=b2"))).toBe("a1");
+    expect(personFromParams(new URLSearchParams("id=b2"))).toBe("b2");
+    expect(personFromParams(new URLSearchParams("lead=c3"))).toBe("c3");
+    expect(personFromParams(new URLSearchParams("focus=d4"))).toBe("d4");
+    expect(personFromParams(new URLSearchParams("queue=overdue"))).toBeNull();
+  });
+
+  it("maps the classic table's filter params onto the matching saved queue", () => {
+    expect(queueFromLegacyParams(new URLSearchParams("filter=follow_up_due"))).toBe("overdue");
+    expect(queueFromLegacyParams(new URLSearchParams("filter=unclaimed"))).toBe("unassigned");
+    expect(queueFromLegacyParams(new URLSearchParams("bucket=new&assignment=unclaimed"))).toBe("unassigned");
+    expect(queueFromLegacyParams(new URLSearchParams("contacted=untouched"))).toBe("uncontacted");
+    expect(queueFromLegacyParams(new URLSearchParams("bucket=new"))).toBe("new");
+    expect(queueFromLegacyParams(new URLSearchParams("status=course_bought"))).toBeNull();
+  });
+
+  it("a person closed on Recruit Stages (status lapsed) is closed in the worklist too", () => {
+    const lapsed = row({ status: "lapsed", next_step_stage_key: "contacted" });
+    expect(isClosed(lapsed)).toBe(true);
+    expect(inQueue(lapsed, "all_open", { now: NOW, userId: ME })).toBe(false);
   });
 });

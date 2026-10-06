@@ -14,7 +14,7 @@ import { ONBOARDING_FACTS_KEY } from "./useOnboardingExceptionFacts";
 export interface ResolutionPermissions {
   /** send-agent-portal-login admits admin + manager only (VA gets 403). */
   canSendLogin: boolean;
-  /** /dashboard/contracting is admin-only. */
+  /** /dashboard/contracting/cases admits admin (and VA staff); this queue grants it to admin only. */
   canOpenContracting: boolean;
 }
 
@@ -77,7 +77,12 @@ export function ExceptionResolution({
 
   if (r.kind === "open_contracting") {
     return perms.canOpenContracting ? (
-      <Button asChild size="sm" variant="outline" className="h-7 text-xs"><Link to="/dashboard/contracting">Open contracting</Link></Button>
+      // Carrier cases (one agent x one carrier) are where an intake, document or
+      // carrier blocker is worked; /dashboard/contracting opens the generic
+      // requests page. ?q= names the hire for the cases search.
+      <Button asChild size="sm" variant="outline" className="h-7 text-xs">
+        <Link to={`/dashboard/contracting/cases?q=${encodeURIComponent(facts.agent_name ?? "")}`}>Open carrier cases</Link>
+      </Button>
     ) : profileButton();
   }
 

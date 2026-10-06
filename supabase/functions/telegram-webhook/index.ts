@@ -645,7 +645,7 @@ async function handleCommand(chat_id: number, fromUser: any, command: string, ar
         await tgSend({ chat_id, text: `Training opens after you're hired. Your stage: ${u?.stage ?? "unknown"}` });
       } else {
         // Discord link gate: LICENSED ONLY (matches send-agent-onboarding-email
-        // guard). Unlicensed hired agents still get training + script library,
+        // guard). Unlicensed hired agents still get training + the scripts note,
         // just no Discord line — Discord is post-license privilege.
         let isLicensed = false;
         if (u?.agent_id) {
@@ -657,7 +657,11 @@ async function handleCommand(chat_id: number, fromUser: any, command: string, ar
           const licenseStatus = ((ag as any)?.license_status ?? "").toString().toLowerCase();
           isLicensed = licenseStatus === "licensed";
         }
-        const base = `Training hub:\n\n• Onboarding videos: https://apex-financial.org/training\n• Script library: https://apex-financial.org/dashboard/scripts`;
+        // /dashboard/scripts stays locked until hire plus required training
+        // (useScriptsUnlocked / v_training_required_completion), so a fresh hire
+        // handed that link lands on a locked page. send-agent-onboarding-email
+        // delivers the scripts link at unlock time instead.
+        const base = `Training hub:\n\n• Onboarding videos: https://apex-financial.org/training\n• Your scripts unlock after your required training. We email them to you when you finish.`;
         const text = base;
         await tgSend({ chat_id, text });
       }

@@ -27,6 +27,8 @@ export function useScriptsUnlocked(): { state: "loading" | "staff" | "unlocked" 
   });
   if (staff) return { state: "staff" };
   if (q.isLoading) return { state: "loading" };
-  if (q.isError || !q.data) return { state: q.isError ? "unknown" : "locked" };
+  // No agents row, or no completion row, means we cannot say how far they are.
+  // Reporting "locked" here rendered "0 of 0 required modules passed", which is false.
+  if (q.isError || !q.data) return { state: "unknown" };
   return { state: q.data.required_complete ? "unlocked" : "locked", passed: q.data.required_passed, total: q.data.required_total };
 }

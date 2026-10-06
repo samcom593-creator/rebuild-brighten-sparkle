@@ -696,7 +696,7 @@ serve(async (req) => {
     return json({ ok: false, error: (doneData as { error?: string } | null)?.error ?? "invite_already_used" }, 409);
   }
 
-  // 7. Mint a magic login token so they land straight in /agent-hub.
+  // 7. Mint a magic login token so they land straight in the agent portal.
   let magicToken: string | null = null;
   try {
     const raw =
@@ -718,7 +718,9 @@ serve(async (req) => {
 
   const redirect_url = magicToken
     ? `/magic-login?token=${magicToken}`
-    : `/agent-hub?welcome=1`;
+    // /agent-hub is not a route; /agent-portal is the agent home in App.tsx
+    // (ProtectedRoute sends a signed-out hire to log in first).
+    : `/agent-portal?welcome=1`;
 
   // 8. Push Sam a ntfy receipt (fire-and-forget).
   ntfyPush(

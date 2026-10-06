@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Pencil } from "lucide-react";
 import { toast } from "sonner";
 
@@ -21,6 +21,12 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 //
 // The 0-200 range below is a client-side sanity bound, not the permission. A
 // manager capped at 85 can type 150 here and the server will refuse it.
+//
+// §8 (2026-10-06): the popover also shows the OFFERED comp — the level an
+// invitation or Add Agent approved (agents.comp_percentage, via
+// agent_invitation_terms) — beside the resolved level this control edits, so
+// "what we offered" and "what the carrier confirmed / scoreboard resolves" are
+// never read as one number. The offered line is read-only here.
 export function CompLevelEditor({
   agentId,
   agentName,
@@ -38,6 +44,21 @@ export function CompLevelEditor({
   const [open, setOpen] = useState(false);
   const [pct, setPct] = useState(String(currentPct));
   const [note, setNote] = useState("");
+
+  const offered = useQuery({
+    queryKey: ["agent-invitation-terms", agentId],
+    enabled: open,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("agent_invitation_terms" as never, { p_agent_id: agentId } as never);
+      if (error) throw error;
+      return data as unknown as {
+        offered_comp_pct: number | null;
+        offered_comp_approval: string | null;
+        invitation: { accepted_at: string | null } | null;
+      };
+    },
+  });
 
   const mutation = useMutation({
     mutationFn: async (input: { pct: number; note: string }) => {
@@ -89,6 +110,15 @@ export function CompLevelEditor({
           <p className="text-sm font-semibold text-foreground">{agentName}</p>
           <p className="text-xs text-muted-foreground">
             Current {currentPct}% · {provenance.replace(/_/g, " ")}
+          </p>
+          <p className="text-xs text-muted-foreground" data-testid="comp-offered-line">
+            {offered.isLoading
+              ? "Offered: loading…"
+              : offered.error || !offered.data
+                ? "Offered: unavailable"
+                : offered.data.offered_comp_pct == null
+                  ? "Offered: none on file"
+                  : `Offered ${Number(offered.data.offered_comp_pct)}%${offered.data.offered_comp_approval && offered.data.offered_comp_approval !== "approved" ? ` (${offered.data.offered_comp_approval.replace(/_/g, " ")})` : ""}${offered.data.invitation?.accepted_at ? " · via invitation" : ""}`}
           </p>
         </div>
         <div className="space-y-1">

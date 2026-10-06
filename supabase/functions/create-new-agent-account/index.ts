@@ -10,6 +10,21 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// §8 APEX OS redesign (2026-10-06). This function used to read NO credential
+// (verify_jwt = false) and created a CONFIRMED login with the fixed password
+// "123456" for any address POSTed to it, then answered {existed:true, 200} for
+// a person already on file, which its only in-app caller (InviteTeamModal)
+// treated as licence to insert a second agents row. Invite Team now mints an
+// invitation instead (create_invitation → /hire/:token → consume-invite-token),
+// so this endpoint is admin/manager-only, never sets a known password, and
+// refuses an existing person with 409 instead of handing back their ids.
+function json(body: unknown, status: number) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json", ...corsHeaders },
+  });
+}
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -22,7 +37,28 @@ const handler = async (req: Request): Promise<Response> => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    const { email, fullName, phone, licenseStatus, managerId } = await req.json();
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return json({ error: "Unauthorized" }, 401);
+    }
+    const { data: caller, error: callerError } = await supabaseAdmin.auth.getUser(
+      authHeader.replace("Bearer ", ""),
+    );
+    if (callerError || !caller?.user) {
+      return json({ error: "Invalid token" }, 401);
+    }
+    const { data: callerRoles, error: rolesError } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", caller.user.id);
+    if (rolesError) {
+      return json({ error: "Permission check could not be completed." }, 500);
+    }
+    if (!(callerRoles ?? []).some((r: { role: string }) => r.role === "admin" || r.role === "manager")) {
+      return json({ error: "Permission denied. Only admins and managers can create agent accounts." }, 403);
+    }
+
+    const { email, fullName, phone } = await req.json();
 
     if (!email || !fullName) {
       throw new Error("Email and full name are required");
@@ -62,16 +98,9 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     if (existingProfile) {
-      // Return existing user_id if profile exists
-      console.log(`Profile already exists for ${normalizedEmail}, returning existing user_id`);
-      return new Response(
-        JSON.stringify({ 
-          userId: existingProfile.user_id,
-          profileId: existingProfile.id,
-          existed: true 
-        }),
-        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
+      // A person already on file is a refusal, not a success to build on.
+      console.log(`Profile already exists for ${normalizedEmail}; refusing to create another`);
+      return json({ error: `An account for ${normalizedEmail} already exists.`, existed: true }, 409);
     }
 
     // Check if auth user already exists. Pages until found or the table ends —
@@ -84,6 +113,8 @@ const handler = async (req: Request): Promise<Response> => {
     const existingAuthUser = authLookup.user;
 
     if (existingAuthUser) {
+      // A login with no profile: repair the profile, but never mint an agents
+      // row here and never report the person as new.
       console.log(`Auth user already exists for ${normalizedEmail}`);
       // Create profile and agent for existing auth user
       const { data: newProfile, error: profileError } = await supabaseAdmin
@@ -112,8 +143,12 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Create new auth user with default password (agents change on first login)
-    const randomPassword = "123456";
+    // Unguessable password nobody is told; the agent signs in by magic link or
+    // the reset flow. A fixed shared password made every account it created
+    // takeover-able by anyone who knew the address.
+    const pwBytes = new Uint8Array(24);
+    crypto.getRandomValues(pwBytes);
+    const randomPassword = Array.from(pwBytes, (b) => b.toString(36).padStart(2, "0")).join("") + "Aa1!";
     
     const { data: newAuthUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email: normalizedEmail,

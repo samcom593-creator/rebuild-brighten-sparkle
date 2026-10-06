@@ -28,6 +28,8 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { PageSkeleton } from "@/components/ui/page-skeleton";
+import { DEAD_LINK_CODES, acceptanceRefusalMessage, deadLinkMessage } from "@/lib/invitationState";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Input } from "@/components/ui/input";
@@ -151,24 +153,23 @@ export default function JoinLink() {
         },
       );
       if (error) {
-        const detail = (error as { context?: { body?: string } })?.context
-          ?.body;
-        let parsed: { error?: string } | null = null;
-        try {
-          if (detail) parsed = JSON.parse(detail);
-        } catch { // empty-catch-allow:jsonparse-fallback
-          // noop
+        // FunctionsHttpError.context is the raw Response; its body is a stream,
+        // so the old JSON.parse(context.body) never parsed and every refusal
+        // surfaced as "non-2xx status code". Read the body (same as HireLink).
+        let parsed: { error?: string; email_hint?: string } | null = null;
+        const ctx = (error as { context?: Response })?.context;
+        if (ctx && typeof ctx.json === "function") {
+          try {
+            parsed = (await ctx.clone().json()) as { error?: string; email_hint?: string };
+          } catch { // empty-catch-allow:jsonparse-fallback
+            parsed = null;
+          }
         }
         const code = parsed?.error ?? error.message ?? "unknown_error";
-        if (
-          code === "invite_invalid" ||
-          code === "invite_already_used" ||
-          code === "invite_expired" ||
-          code === "invite_revoked"
-        ) {
+        if (DEAD_LINK_CODES.has(code)) {
           setInvalid(code);
         } else {
-          toast.error(`Couldn't submit: ${code}`);
+          toast.error(acceptanceRefusalMessage(code, parsed?.email_hint));
         }
         setSubmitting(false);
         return;
@@ -198,11 +199,7 @@ export default function JoinLink() {
   }
 
   if (loadingPrefill) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <PageSkeleton fullScreen />;
   }
 
   if (wrongKind) {
@@ -370,16 +367,9 @@ export default function JoinLink() {
 }
 
 function InviteTokenInvalid({ reason }: { reason: string }) {
-  const message =
-    reason === "invite_already_used"
-      ? "This link has already been used."
-      : reason === "invite_expired"
-        ? "This link has expired."
-        : reason === "invite_revoked"
-          ? "This link was revoked."
-          : reason === "wrong_kind_use_hire"
-            ? "Wrong link. Ask your recruiter to resend the join link."
-            : "This link isn't valid.";
+  const message = reason === "wrong_kind_use_hire"
+    ? "Wrong link. Ask your recruiter to resend the join link."
+    : deadLinkMessage(reason);
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 bg-background">

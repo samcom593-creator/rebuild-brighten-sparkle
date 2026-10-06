@@ -17,6 +17,20 @@
 // Anti-fake-success rule (Sam directive, 465 InsuraCloud memory):
 //   Never return {ok:true} unless the underlying row (agents for hire,
 //   applications for join) exists AND invite_tokens.used_at is set.
+//
+// §8 invitation lifecycle (20261006140000_invitation_lifecycle.sql):
+//   * The token is CLAIMED atomically by invitation_claim() (row lock + a
+//     3-minute lease). Status (pending/accepted/expired/revoked/superseded) and
+//     the recipient restriction are decided there, server-side, from the row.
+//     A second concurrent submit gets invite_in_progress, never a second person.
+//   * Every refusal after the claim releases the lease (invitation_release) so
+//     the recruit can retry immediately; a crash just lets the lease lapse.
+//   * Offered terms come from the ROW, never from the URL or this body:
+//     invitation_apply_terms() writes the offered comp to agents.comp_percentage
+//     BEFORE the contracting intake so the intake snapshots the offer.
+//     Carrier-confirmed comp (agent_contract_levels) is never touched here.
+//   * invitation_complete() is the single-use stamp (used_at IS NULL + the
+//     matching claim id) and records the accepted-terms snapshot.
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -110,31 +124,64 @@ serve(async (req) => {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  // 1. Look up token. Service-role read bypasses RLS.
-  const { data: tokenRow, error: tokenErr } = await admin
-    .from("invite_tokens")
-    .select(
-      "id, kind, is_active, used_at, expires_at, target_role, target_manager_id, created_by, prefill_json",
-    )
-    .eq("token", token)
-    .maybeSingle();
-
-  if (tokenErr) {
-    console.error("token_lookup_failed", tokenErr);
+  // 1. Claim the invitation. Validation, recipient restriction and the
+  //    single-flight lease all live in SQL so they hold under concurrency.
+  type ClaimedInvitation = {
+    id: string;
+    kind: string;
+    target_role: string | null;
+    target_manager_id: string | null;
+    created_by: string | null;
+    prefill_json: Record<string, unknown> | null;
+    offered_comp_pct: number | null;
+  };
+  const { data: claimData, error: claimErr } = await admin.rpc("invitation_claim", {
+    p_token: token,
+    p_email: email,
+  });
+  if (claimErr) {
+    console.error("invitation_claim_failed", claimErr);
     return json({ ok: false, error: "lookup_failed" }, 500);
   }
-  if (!tokenRow) {
-    return json({ ok: false, error: "invite_invalid" }, 409);
+  const claim = (claimData ?? {}) as {
+    ok?: boolean;
+    error?: string;
+    email_hint?: string;
+    claim_id?: string;
+    invitation?: ClaimedInvitation;
+  };
+  if (claim.ok !== true || !claim.claim_id || !claim.invitation?.id) {
+    const code = claim.error ?? "invite_invalid";
+    return json(
+      code === "recipient_mismatch"
+        ? { ok: false, error: code, email_hint: claim.email_hint ?? null }
+        : { ok: false, error: code },
+      409,
+    );
   }
-  if (!tokenRow.is_active) {
-    return json({ ok: false, error: "invite_revoked" }, 409);
+  const tokenRow = claim.invitation as ClaimedInvitation;
+  const claimId = claim.claim_id as string;
+
+  // Every non-success response below releases the lease so a corrected retry
+  // is not locked out for three minutes. The release is guarded by the claim
+  // id, so it can never reopen an invitation that was completed.
+  let response: Response;
+  try {
+    response = await acceptClaimed();
+  } catch (e) {
+    console.error("invite_accept_threw", e);
+    response = json({ ok: false, error: "internal_error" }, 500);
   }
-  if (tokenRow.used_at) {
-    return json({ ok: false, error: "invite_already_used" }, 409);
+  if (response.status !== 200) {
+    const { error: releaseErr } = await admin.rpc("invitation_release", {
+      p_invitation_id: tokenRow.id,
+      p_claim_id: claimId,
+    });
+    if (releaseErr) console.error("invitation_release_failed", releaseErr);
   }
-  if (new Date(tokenRow.expires_at).getTime() < Date.now()) {
-    return json({ ok: false, error: "invite_expired" }, 409);
-  }
+  return response;
+
+  async function acceptClaimed(): Promise<Response> {
   if (tokenRow.kind !== "hire" && tokenRow.kind !== "join") {
     return json(
       { ok: false, error: "unsupported_kind", detail: tokenRow.kind },
@@ -205,24 +252,20 @@ serve(async (req) => {
       );
     }
 
-    // Mark token consumed (race-safe).
-    const { data: markedJoin, error: markJoinErr } = await admin
-      .from("invite_tokens")
-      .update({
-        used_at: new Date().toISOString(),
-        used_by_application_id: appRow.id,
-      })
-      .eq("id", tokenRow.id)
-      .is("used_at", null)
-      .select("id")
-      .maybeSingle();
-
-    if (markJoinErr) {
-      console.error("token_mark_failed_join", markJoinErr);
+    // Single-use stamp. Only a completed claim is a success.
+    const { data: joinDone, error: joinDoneErr } = await admin.rpc("invitation_complete", {
+      p_invitation_id: tokenRow.id,
+      p_claim_id: claimId,
+      p_email: email,
+      p_application_id: appRow.id,
+    });
+    if (joinDoneErr) {
+      console.error("token_mark_failed_join", joinDoneErr);
       return json({ ok: false, error: "token_mark_failed" }, 500);
     }
-    if (!markedJoin) {
+    if ((joinDone as { ok?: boolean } | null)?.ok !== true) {
       console.warn("token_race_lost_join", tokenRow.id);
+      return json({ ok: false, error: (joinDone as { error?: string } | null)?.error ?? "invite_already_used" }, 409);
     }
 
     ntfyPush(
@@ -243,7 +286,7 @@ serve(async (req) => {
   const targetRole: string = tokenRow.target_role ?? "hired_unlicensed";
   const lockedLicenseStatus = tokenRow.prefill_json?.license_status_locked === true
     && ["licensed", "unlicensed"].includes(String(tokenRow.prefill_json?.license_status ?? ""))
-    ? String(tokenRow.prefill_json.license_status)
+    ? String(tokenRow.prefill_json?.license_status)
     : null;
   // Add Agent path links are intentionally locked. Older generic links remain
   // backward-compatible and still accept the recruit's explicit answer.
@@ -546,6 +589,19 @@ serve(async (req) => {
     agentId = inserted.id;
   }
 
+  // Offered terms from the invitation row (never from the URL or the body).
+  // Applied before the contracting intake so the intake snapshots the offer.
+  const { data: termsData, error: termsErr } = await admin.rpc("invitation_apply_terms", {
+    p_invitation_id: tokenRow.id,
+    p_claim_id: claimId,
+    p_agent_id: agentId,
+  });
+  const terms = (termsData ?? {}) as { ok?: boolean; error?: string; prior_comp_pct?: number | null; offered_comp_pct?: number | null };
+  if (termsErr || terms.ok !== true) {
+    console.error("invitation_terms_failed", termsErr ?? terms);
+    return json({ ok: false, error: "invitation_terms_failed" }, 500);
+  }
+
   // A licensed hire is not "done" when the profile row exists. Queue the
   // canonical contracting intake in the same request so the Ethos spreadsheet
   // and private contracting support routing start automatically. The intake dedupes by
@@ -618,25 +674,26 @@ serve(async (req) => {
     console.info("slack_invite_skipped", { agentId, reason: slackEligibility?.eligibility_status ?? "not_found" });
   }
 
-  // 6. Mark invite consumed. Idempotency safety: only mark if still unused.
-  const { data: updatedToken, error: markErr } = await admin
-    .from("invite_tokens")
-    .update({
-      used_at: new Date().toISOString(),
-      used_by_agent_id: agentId,
-    })
-    .eq("id", tokenRow.id)
-    .is("used_at", null)
-    .select("id")
-    .maybeSingle();
+  // 6. Single-use stamp + accepted-terms snapshot. invitation_complete only
+  //    succeeds for the claim this request holds and an unused row.
+  const { data: doneData, error: markErr } = await admin.rpc("invitation_complete", {
+    p_invitation_id: tokenRow.id,
+    p_claim_id: claimId,
+    p_email: email,
+    p_agent_id: agentId,
+    p_intake_id: (contracting as { intake_id?: string | null }).intake_id ?? null,
+    p_prior_comp_pct: terms.prior_comp_pct ?? null,
+  });
 
   if (markErr) {
     console.error("token_mark_failed", markErr);
     return json({ ok: false, error: "token_mark_failed" }, 500);
   }
-  if (!updatedToken) {
-    // Someone raced us to it. Agent creation already succeeded — this is a soft loss.
-    console.warn("token_race_lost", tokenRow.id);
+  if ((doneData as { ok?: boolean } | null)?.ok !== true) {
+    // The agent row is settled (identity dedupe makes a retry upgrade it in
+    // place), but the invitation was not stamped, so this is not a success.
+    console.warn("token_race_lost", tokenRow.id, doneData);
+    return json({ ok: false, error: (doneData as { error?: string } | null)?.error ?? "invite_already_used" }, 409);
   }
 
   // 7. Mint a magic login token so they land straight in /agent-hub.
@@ -674,7 +731,11 @@ serve(async (req) => {
     kind: "hire",
     agent_id: agentId,
     license_path: licensed ? "licensed" : "pre_license",
+    offered_terms: {
+      comp_pct: terms.offered_comp_pct ?? null,
+    },
     contracting,
     redirect_url,
   });
+  }
 });

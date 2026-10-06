@@ -29,8 +29,13 @@ describe("licensed and unlicensed onboarding email policy", () => {
   });
 
   it("routes invite-created agents through the correct licensed or unlicensed welcome branch", () => {
-    expect(inviteModal).toContain("portalLink: magicLink");
-    expect(inviteModal).toContain("licenseStatus,");
+    // §8 (2026-10-06): Invite Team no longer creates the account itself (that
+    // path inserted a duplicate agents row and set a fixed password). It mints a
+    // personal invitation; acceptance runs consume-invite-token, which branches
+    // licensed vs unlicensed and queues contracting.
+    expect(inviteModal).toContain("InviteAgentForm");
+    expect(inviteModal).not.toContain("create-new-agent-account");
+    expect(inviteModal).not.toContain('from("agents")');
     expect(welcome).toContain("licenseStatus === \"licensed\"");
     expect(welcome).toContain("Create Your XCEL Course Account");
     expect(welcome).toContain("Complete Online Training");

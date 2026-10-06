@@ -300,6 +300,29 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // §8: the profile-email 409 above was the ONLY identity guard, so a person
+    // already on file by NPN (or by an auth login with no profile row, below)
+    // was inserted a second time. Same identity signals consume-invite-token
+    // uses; a promotion of this request's own application row is exempt.
+    if (normalizedNpn) {
+      const { data: npnMatches, error: npnError } = await supabaseAdmin
+        .from("agents")
+        .select("id")
+        .eq("nipr_number", normalizedNpn)
+        .is("canonical_agent_id", null)
+        .limit(5);
+      if (npnError) {
+        throw new Error("Identity lookup could not be completed. No account was created; please retry.");
+      }
+      const others = (npnMatches ?? []).filter((row: { id: string }) => row.id !== sourceAgent?.id);
+      if (others.length > 0) {
+        return new Response(
+          JSON.stringify({ error: `An agent with NPN ${normalizedNpn} already exists.`, code: "identity_conflict" }),
+          { status: 409, headers: { "Content-Type": "application/json", ...corsHeaders } },
+        );
+      }
+    }
+
     // Check if auth user already exists. Pages until found or the table ends;
     // a single page of 1000 was one growth spurt from reading "no account" for
     // somebody who has one, and then trying to create it again.
@@ -313,6 +336,22 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (existingAuthUser) {
       console.log(`Auth user already exists for ${normalizedEmail}, using existing`);
+      // A login with no profile row can still own an agents row. Inserting
+      // another one keyed on the same user_id was the latent duplicate path.
+      const { data: authAgents, error: authAgentsError } = await supabaseAdmin
+        .from("agents")
+        .select("id")
+        .eq("user_id", existingAuthUser.id)
+        .limit(5);
+      if (authAgentsError) {
+        throw new Error("Identity lookup could not be completed. No account was created; please retry.");
+      }
+      if ((authAgents ?? []).some((row: { id: string }) => row.id !== sourceAgent?.id)) {
+        return new Response(
+          JSON.stringify({ error: `An agent account for ${normalizedEmail} already exists.`, code: "identity_conflict" }),
+          { status: 409, headers: { "Content-Type": "application/json", ...corsHeaders } },
+        );
+      }
       userId = existingAuthUser.id;
     } else {
       // Strong random password. The previous "123456" was rejected when the

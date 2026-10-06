@@ -8,7 +8,14 @@
  * magic-login token minted, redirect to /magic-login?token=... (or /agent-hub).
  *
  * Anti-fake-success: never show success unless the edge fn returned ok:true.
- * Invalid/used/expired tokens render <InviteTokenInvalid /> — no form.
+ * Invalid/used/expired/revoked/superseded tokens render <InviteTokenInvalid />
+ * — no form.
+ *
+ * §8 (2026-10-06): the offer shown here (comp, carrier exceptions, upline,
+ * agency) is read from the invitation row by get_invite_token_prefill, never
+ * from URL params, and it is the same row consume-invite-token applies at
+ * acceptance. A recipient-restricted invitation locks the email field to the
+ * address it was sent to; the server enforces the match either way.
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -19,6 +26,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { GlassCard } from "@/components/ui/glass-card";
+import { PageSkeleton } from "@/components/ui/page-skeleton";
+import { resolveBrand } from "@/config/brand";
+import {
+  DEAD_LINK_CODES,
+  acceptanceRefusalMessage,
+  agencyLabel,
+  deadLinkMessage,
+} from "@/lib/invitationState";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -36,6 +51,13 @@ interface Prefill {
   license_status_locked?: boolean | null;
 }
 
+interface OfferedTerms {
+  comp_pct?: number | null;
+  carrier_exceptions?: Array<{ carrier_name: string; pct: number }> | null;
+  upline_name?: string | null;
+  agency_key?: string | null;
+}
+
 interface PrefillResponse {
   ok: boolean;
   reason?: string;
@@ -43,7 +65,11 @@ interface PrefillResponse {
   target_role?: string;
   expires_at?: string;
   prefill?: Prefill;
+  offered_terms?: OfferedTerms | null;
+  recipient?: { restricted?: boolean; email_hint?: string | null } | null;
 }
+
+const BRAND = resolveBrand();
 
 function maskPhone(v: string) {
   const d = v.replace(/\D+/g, "").slice(0, 10);
@@ -60,6 +86,8 @@ export default function HireLink() {
   const [loadingPrefill, setLoadingPrefill] = useState(true);
   const [invalid, setInvalid] = useState<string | null>(null);
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
+  const [offeredTerms, setOfferedTerms] = useState<OfferedTerms | null>(null);
+  const [recipientLocked, setRecipientLocked] = useState(false);
 
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
@@ -105,6 +133,8 @@ export default function HireLink() {
           setLicensedHire(true);
         }
         if (resp.expires_at) setExpiresAt(resp.expires_at);
+        setOfferedTerms(resp.offered_terms ?? null);
+        setRecipientLocked(resp.recipient?.restricted === true && !!pf.email);
         setLoadingPrefill(false);
       } catch {
         if (!cancelled) {
@@ -167,23 +197,10 @@ export default function HireLink() {
           }
         }
         const code = parsed?.error ?? error.message ?? "unknown_error";
-        if (
-          code === "invite_invalid" ||
-          code === "invite_already_used" ||
-          code === "invite_expired" ||
-          code === "invite_revoked"
-        ) {
+        if (DEAD_LINK_CODES.has(code)) {
           setInvalid(code);
-        } else if (code === "email_mismatch") {
-          toast.error(
-            `You already have an account under ${parsed?.email_hint ?? "a different email"}. Sign in with that address, or ask your manager to correct the email on file — this link can't change it.`,
-          );
-        } else if (code === "identity_conflict") {
-          toast.error(
-            "This email, phone, or NPN is already on file for another account. Sign in with that account, or ask your manager to merge the records before using this link.",
-          );
         } else {
-          toast.error(`Couldn't activate: ${code}`);
+          toast.error(acceptanceRefusalMessage(code, parsed?.email_hint));
         }
         if (onboardingPrepared) await onboardingPlayerRef.current?.cancel();
         setSubmitting(false);
@@ -215,12 +232,12 @@ export default function HireLink() {
   }
 
   if (loadingPrefill) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <PageSkeleton fullScreen />;
   }
+
+  const offerComp = offeredTerms?.comp_pct;
+  const offerExceptions = offeredTerms?.carrier_exceptions ?? [];
+  const showOffer = offerComp != null || offerExceptions.length > 0 || !!offeredTerms?.upline_name;
 
   if (invalid) {
     return <InviteTokenInvalid reason={invalid} />;
@@ -247,6 +264,47 @@ export default function HireLink() {
             Confirm your info — your manager will reach out.
           </p>
         </div>
+
+        {showOffer && (
+          <section
+            aria-label="Your offer"
+            className="mb-4 rounded-lg border border-border bg-card p-4"
+            data-testid="hire-offered-terms"
+          >
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Your offer</p>
+            <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+              {offerComp != null && (
+                <>
+                  <dt className="text-muted-foreground">Comp level</dt>
+                  <dd className="font-semibold text-foreground">{Number(offerComp)}%</dd>
+                </>
+              )}
+              {offeredTerms?.upline_name && (
+                <>
+                  <dt className="text-muted-foreground">Upline</dt>
+                  <dd className="text-foreground">{offeredTerms.upline_name}</dd>
+                </>
+              )}
+              {offeredTerms?.agency_key && (
+                <>
+                  <dt className="text-muted-foreground">Agency</dt>
+                  <dd className="text-foreground">{agencyLabel(offeredTerms.agency_key, BRAND.legalName)}</dd>
+                </>
+              )}
+              {offerExceptions.map((ex) => (
+                <div key={ex.carrier_name} className="col-span-2 flex justify-between">
+                  <dt className="text-muted-foreground">{ex.carrier_name}</dt>
+                  <dd className="text-foreground">{Number(ex.pct)}%</dd>
+                </div>
+              ))}
+            </dl>
+            {offerComp != null && (
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                Offered level. Each carrier confirms your final contract level during contracting.
+              </p>
+            )}
+          </section>
+        )}
 
         <GlassCard className="p-6">
           <form onSubmit={onSubmit} className="space-y-4">
@@ -291,9 +349,16 @@ export default function HireLink() {
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                readOnly={recipientLocked}
+                aria-describedby={recipientLocked ? "hire-email-locked" : undefined}
                 placeholder="you@example.com"
                 className="mt-1 h-11 text-base"
               />
+              {recipientLocked && (
+                <p id="hire-email-locked" className="mt-1 text-[11px] text-muted-foreground">
+                  This invitation is for this address only.
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -389,14 +454,7 @@ export default function HireLink() {
 }
 
 function InviteTokenInvalid({ reason }: { reason: string }) {
-  const message =
-    reason === "invite_already_used"
-      ? "This link has already been used."
-      : reason === "invite_expired"
-        ? "This link has expired."
-        : reason === "invite_revoked"
-          ? "This link was revoked."
-          : "This link isn't valid.";
+  const message = deadLinkMessage(reason);
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 bg-background">
@@ -404,7 +462,7 @@ function InviteTokenInvalid({ reason }: { reason: string }) {
         <Crown className="h-10 w-10 text-primary mx-auto mb-4 opacity-60" />
         <h1 className="text-xl font-bold mb-2">{message}</h1>
         <p className="text-sm text-muted-foreground">
-          Ask Sam for a fresh link and try again.
+          Ask whoever invited you for a fresh link and try again.
         </p>
       </div>
     </div>

@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-enum-catalog.sh (bot_sql -> pg_enum + pg_attribute.atttypid)",
- "_generated_at": "2026-09-10T16:49:49Z",
+ "_generated_at": "2026-10-06T16:51:32Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "A repo guard cannot query prod. This is a snapshot of every enum-typed column in the public schema and the exact member list Postgres will accept for it, so scripts/check-enum-filter-literals.mjs can decide whether a filter or write literal will survive PostgREST's coercion. Enum types are SCHEMA-QUALIFIED because this database has more than one type sharing a bare name. Views are included: a bad literal in a filter against a view column raises the same 22P02 as one against a table. apex-doctor Check #29 re-queries pg_enum weekly and goes red when this snapshot drifts from the live catalog.",
  "_ambiguous_bare_names": {
@@ -52,6 +52,8 @@
   "v_applications_real": "v",
   "v_builder_operating_dashboard": "v",
   "v_channel_deprovision_needed": "v",
+  "v_contracting_audit": "v",
+  "v_contracting_worklist": "v",
   "v_cw_active_outliers": "v",
   "v_dormant_dialer_seats": "v",
   "v_hierarchy_unreachable": "v",
@@ -90,7 +92,8 @@
   "auth.factor_type": [
    "totp",
    "webauthn",
-   "phone"
+   "phone",
+   "recovery_code"
   ],
   "auth.oauth_authorization_status": [
    "pending",
@@ -536,6 +539,8 @@
   "v_builder_operating_dashboard.onboarding_stage": "public.onboarding_stage",
   "v_builder_operating_dashboard.status": "public.agent_status",
   "v_channel_deprovision_needed.status": "public.agent_status",
+  "v_contracting_audit.license_status": "public.license_status",
+  "v_contracting_worklist.license_status": "public.license_status",
   "v_cw_active_outliers.platform": "public.cw_platform",
   "v_dormant_dialer_seats.status": "public.agent_status",
   "v_hierarchy_unreachable.status": "public.agent_status",
@@ -712,7 +717,8 @@
     "discord",
     "hired_whatsapp",
     "onboarding_call",
-    "get_licensed"
+    "get_licensed",
+    "scripts_packet"
    ],
    "constraint": "agent_onboarding_queue_email_kind_check"
   },
@@ -727,9 +733,28 @@
   "agent_stage_moves.field": {
    "members": [
     "onboarding_stage",
-    "license_status"
+    "license_status",
+    "expected_start",
+    "start_outcome"
    ],
    "constraint": "agent_stage_moves_field_check"
+  },
+  "agent_start_plans.expected_start_status": {
+   "members": [
+    "confirmed",
+    "likely",
+    "awaiting_response",
+    "not_attending"
+   ],
+   "constraint": "agent_start_plans_expected_start_status_check"
+  },
+  "agent_start_plans.start_outcome": {
+   "members": [
+    "attended",
+    "no_show",
+    "rescheduled"
+   ],
+   "constraint": "agent_start_plans_start_outcome_check"
   },
   "agent_touches.touch_type": {
    "members": [
@@ -961,9 +986,45 @@
     "call",
     "sms",
     "email",
-    "note"
+    "note",
+    "in_person",
+    "manual"
    ],
    "constraint": "application_contact_log_channel_check"
+  },
+  "application_contact_log.contact_outcome": {
+   "members": [
+    "no_answer",
+    "callback",
+    "interested",
+    "appointment_booked",
+    "not_interested",
+    "wrong_number",
+    "do_not_contact"
+   ],
+   "constraint": "application_contact_log_contact_outcome_check"
+  },
+  "applications.last_contact_channel": {
+   "members": [
+    "call",
+    "sms",
+    "email",
+    "in_person",
+    "manual"
+   ],
+   "constraint": "applications_last_contact_channel_check"
+  },
+  "applications.last_contact_outcome": {
+   "members": [
+    "no_answer",
+    "callback",
+    "interested",
+    "appointment_booked",
+    "not_interested",
+    "wrong_number",
+    "do_not_contact"
+   ],
+   "constraint": "applications_last_contact_outcome_check"
   },
   "applications.record_type": {
    "members": [
@@ -1159,7 +1220,9 @@
   "content_cards.brand": {
    "members": [
     "SFD",
-    "IMS"
+    "IMS",
+    "YT",
+    "SH"
    ],
    "constraint": "content_cards_brand_check"
   },
@@ -1172,11 +1235,30 @@
    ],
    "constraint": "content_cards_job_check"
   },
+  "content_cards.publish_evidence": {
+   "members": [
+    "provider",
+    "manual_confirmation"
+   ],
+   "constraint": "content_cards_publish_evidence_check"
+  },
+  "content_cards.schedule_kind": {
+   "members": [
+    "manual",
+    "job"
+   ],
+   "constraint": "content_cards_schedule_kind_check"
+  },
   "content_cards.status": {
    "members": [
     "idea",
-    "recorded",
+    "record",
+    "edit",
+    "review",
     "ready",
+    "scheduled",
+    "published",
+    "recorded",
     "posted"
    ],
    "constraint": "content_cards_status_check"
@@ -1221,6 +1303,62 @@
     "docusign"
    ],
    "constraint": "contract_templates_send_method_check"
+  },
+  "contracting_case_events.action": {
+   "members": [
+    "update",
+    "verify",
+    "unverify",
+    "close",
+    "reopen",
+    "agentlink_status_changed"
+   ],
+   "constraint": "contracting_case_events_action_check"
+  },
+  "contracting_case_events.source": {
+   "members": [
+    "staff",
+    "agentlink_sync"
+   ],
+   "constraint": "contracting_case_events_source_check"
+  },
+  "contracting_case_tracking.blocker_override": {
+   "members": [
+    "none",
+    "login_access",
+    "wrong_agency",
+    "missing_documents",
+    "missing_comp_upline",
+    "release_required",
+    "existing_carrier_relationship",
+    "upline_approval",
+    "carrier_issue"
+   ],
+   "constraint": "contracting_case_tracking_blocker_check"
+  },
+  "contracting_case_tracking.carrier_stage": {
+   "members": [
+    "carrier_review",
+    "approved"
+   ],
+   "constraint": "contracting_case_tracking_carrier_stage_check"
+  },
+  "contracting_case_tracking.waiting_on": {
+   "members": [
+    "agent",
+    "staff",
+    "carrier",
+    "upline"
+   ],
+   "constraint": "contracting_case_tracking_waiting_on_check"
+  },
+  "contracting_ethos_approvals.approved_advance_tier": {
+   "members": [
+    "As Earned",
+    "6 Month Advance",
+    "9 Month Advance"
+   ],
+   "constraint": "contracting_ethos_approvals_approved_advance_tier_check"
   },
   "contracting_intake_deliveries.destination": {
    "members": [
@@ -1366,6 +1504,14 @@
    ],
    "constraint": "discord_deal_ingestion_receipts_status_check"
   },
+  "ethos_sheet_snapshots.status": {
+   "members": [
+    "pending",
+    "complete",
+    "failed"
+   ],
+   "constraint": "ethos_sheet_snapshots_status_check"
+  },
   "external_identities.status": {
    "members": [
     "pending",
@@ -1465,6 +1611,14 @@
    ],
    "constraint": "integration_capabilities_support_state_check"
   },
+  "interview_event_activity.action": {
+   "members": [
+    "booked",
+    "rescheduled",
+    "canceled"
+   ],
+   "constraint": "interview_event_activity_action_check"
+  },
   "interview_events.call_track": {
    "members": [
     "licensed",
@@ -1511,6 +1665,13 @@
     "readymode"
    ],
    "constraint": "interview_events_source_check"
+  },
+  "invite_tokens.agency_key": {
+   "members": [
+    "primary",
+    "vantage"
+   ],
+   "constraint": "invite_tokens_agency_key_vocab"
   },
   "invite_tokens.kind": {
    "members": [

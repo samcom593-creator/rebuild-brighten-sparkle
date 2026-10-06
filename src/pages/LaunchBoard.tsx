@@ -31,6 +31,7 @@
 // Mon–Sun calendar with a slot per day and a live 80/20 mix meter.
 
 import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
+import { externalHref } from "@/lib/externalHref";
 import { supabase } from "@/integrations/supabase/client";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useAuth } from "@/hooks/useAuth";
@@ -614,7 +615,8 @@ export default function LaunchBoard() {
     const busy = busyId === c.id;
     const base = "h-7 px-2.5 text-[11.5px] font-semibold";
     if (stage === "published") {
-      return c.published_url ? <Button asChild size="sm" variant="outline" className={base}><a href={c.published_url} target="_blank" rel="noopener noreferrer"><ExternalLink className="mr-1 h-3 w-3" aria-hidden />View post</a></Button> : null;
+      const liveHref = externalHref(c.published_url);
+      return liveHref ? <Button asChild size="sm" variant="outline" className={base}><a href={liveHref} target="_blank" rel="noopener noreferrer"><ExternalLink className="mr-1 h-3 w-3" aria-hidden />View post</a></Button> : null;
     }
     if (stage === "review" && !isAdmin) return <span className="text-[11.5px] text-muted-foreground">Awaiting approval</span>;
     const label: Record<Stage, string> = {
@@ -1063,7 +1065,7 @@ export default function LaunchBoard() {
               <span className="text-muted-foreground">Next action:</span>
               <span className="font-semibold text-foreground">{nextAction({ ...editing, ...(draft as Partial<Card>) } as Card)}</span>
               {editing.approved_at && <span className="text-muted-foreground">· approved {fmtDate(editing.approved_at)}</span>}
-              {editing.published_url && <a href={editing.published_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">· live post</a>}
+              {externalHref(editing.published_url) && <a href={externalHref(editing.published_url) ?? undefined} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">· live post</a>}
             </div>
           )}
           <div className="grid gap-3">

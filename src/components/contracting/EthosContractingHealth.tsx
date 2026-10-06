@@ -111,7 +111,7 @@ export function EthosContractingHealth() {
         latest
           ? readAll<SheetRow>((a, b) => supabase.from("ethos_sheet_rows" as never).select("*").eq("snapshot_id", latest.id).order("row_number").range(a, b))
           : Promise.resolve([] as SheetRow[]),
-        readAll<AuditRow>((a, b) => supabase.from("v_contracting_audit" as never)
+        readAll<AuditRow>((a, b) => supabase.rpc("contracting_audit_rows" as never)
           .select("agent_id, display_name, email, phone, manager_name, license_status, npn_db, npn_al, comp_pct")
           .eq("license_status", "licensed").order("display_name").range(a, b)),
         readAll<Intake>((a, b) => supabase.from("contracting_intakes" as never)

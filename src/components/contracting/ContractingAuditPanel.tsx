@@ -83,7 +83,7 @@ export function ContractingAuditPanel() {
     queryKey: ["contracting-audit"],
     staleTime: 60_000,
     queryFn: async (): Promise<Row[]> => {
-      const { data, error } = await supabase.from("v_contracting_audit" as never).select("*").order("display_name").limit(1000);
+      const { data, error } = await supabase.rpc("contracting_audit_rows" as never).select("*").order("display_name").limit(1000);
       if (error) throw error;
       return (data ?? []) as unknown as Row[];
     },
@@ -92,7 +92,7 @@ export function ContractingAuditPanel() {
     queryKey: ["contracting-audit-summary"],
     staleTime: 60_000,
     queryFn: async (): Promise<Summary[]> => {
-      const { data, error } = await supabase.from("v_contracting_audit_summary" as never).select("*");
+      const { data, error } = await supabase.rpc("contracting_audit_summary_rows" as never).select("*");
       if (error) throw error;
       return (data ?? []) as unknown as Summary[];
     },
@@ -113,7 +113,8 @@ export function ContractingAuditPanel() {
   }, [auditQ.data]);
 
   const exportView = async (view: "v_ethos_paste_rows" | "v_ethos_agent_updates", cols: string[], mode: "copy" | "download") => {
-    const { data, error } = await supabase.from(view as never).select("*");
+    const rpcName = view === "v_ethos_paste_rows" ? "ethos_paste_rows_approved" : "ethos_agent_update_rows";
+    const { data, error } = await supabase.rpc(rpcName as never).select("*");
     if (error) { toast.error(`Could not read ${view}: ${error.message}`); return; }
     const list = (data ?? []) as unknown as Record<string, unknown>[];
     if (!list.length) { toast.info("Nothing approved to paste. Producers move through Contracting → Ethos: verify, approve, then copy."); return; }

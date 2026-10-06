@@ -86,7 +86,7 @@ export function OnboardingCommand() {
     queryKey: ["onboarding-funnel"],
     staleTime: 60_000,
     queryFn: async (): Promise<FunnelStage[]> => {
-      const { data, error } = await supabase.from("v_onboarding_funnel" as never).select("*").order("stage_order");
+      const { data, error } = await supabase.rpc("onboarding_funnel_rows" as never).select("*").order("stage_order");
       if (error) throw error;
       return (data ?? []) as unknown as FunnelStage[];
     },
@@ -95,9 +95,10 @@ export function OnboardingCommand() {
     queryKey: ["onboarding-funnel-summary"],
     staleTime: 60_000,
     queryFn: async (): Promise<FunnelSummary | null> => {
-      const { data, error } = await supabase.from("v_onboarding_funnel_summary" as never).select("*").limit(1);
+      const { data, error } = await supabase.rpc("onboarding_funnel_summary_rows" as never).select("*").limit(1);
       if (error) throw error;
-      return ((data?.[0]) ?? null) as unknown as FunnelSummary | null;
+      const rows = (data ?? []) as unknown as FunnelSummary[];
+      return rows[0] ?? null;
     },
   });
   const leadsQ = useQuery({
@@ -124,7 +125,7 @@ export function OnboardingCommand() {
     queryKey: ["contracting-worklist"],
     staleTime: 60_000,
     queryFn: async (): Promise<WorkItem[]> => {
-      const { data, error } = await supabase.from("v_contracting_worklist" as never).select("*").order("next_action");
+      const { data, error } = await supabase.rpc("contracting_worklist_rows" as never).select("*").order("next_action");
       if (error) throw error;
       return (data ?? []) as unknown as WorkItem[];
     },

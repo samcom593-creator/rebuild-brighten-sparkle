@@ -1569,6 +1569,22 @@
         "raw": ""
       }
     ],
+    "contracting_audit_rows": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "contracting_audit_summary_rows": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "contracting_carrier_cases": [
       {
         "all": [
@@ -1662,6 +1678,14 @@
         ],
         "unnamed": false,
         "raw": "p_agent_id uuid, p_next_action text, p_note text DEFAULT NULL::text"
+      }
+    ],
+    "contracting_worklist_rows": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
       }
     ],
     "contracting_worklist_unack": [
@@ -2155,6 +2179,22 @@
       }
     ],
     "ensure_next_month_partitions": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "ethos_agent_update_rows": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "ethos_paste_rows_approved": [
       {
         "all": [],
         "required": [],
@@ -5645,6 +5685,22 @@
       }
     ],
     "onboarding_exception_facts": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "onboarding_funnel_rows": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "onboarding_funnel_summary_rows": [
       {
         "all": [],
         "required": [],

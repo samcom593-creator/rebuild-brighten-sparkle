@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Book of Business now matches Home: this month reads $41,409 across 21 deals instead of $1,863,009, because the tiles stop counting the $1.82M AgentLink pair with no agent on the roster. A note names the excluded deals. Contracting Ops cards read the live carrier cases (103 verified, 45 with carriers, 35 needing staff) instead of an empty table that said \"Nothing outstanding\".",
+    detail: "Calendar shows one birthday per client instead of one per client record (1,836 records, 1,041 people). The floating search pill that covered buttons on every page is gone, the recruiting strip drops the retired Interviews and Follow-ups tabs, suggested next actions read in sentence case, and review reasons read as sentences.",
+    commit: "apex-os-truth-polish-2026-10-06",
+  },
+  {
+    ts: "today",
     label: "Contracting, recruiting and content now run as working queues: Ethos submissions pass a verify-and-approve gate (nothing default-filled reaches the carrier sheet), every agent x carrier contract has a lifecycle, owner and next action, recruiters work one worklist with recorded outcomes, onboarding stalls show the exact missing step, interviews live in Calendar, invitations carry server-checked offer terms, and Launch Board only calls something Published with a live URL.",
     detail: "Six nav destinations retired with their capabilities kept in context; four Home widgets removed; one quiet page skeleton replaces the splash loader. Home, scoreboard and IMO-by-agency now count only roster-scoped agent identities (Oct: $41,409.20 on all three) and report the $1,821,600 unattributed AgentLink pair as an exception. Scripts packet emails once after hire + required training (no backfill). notify-course-complete now verifies the caller and re-derives completion server-side. Discord removed from the agent and applicant journey. Migrations 20261006070000-150000 applied and recorded.",
     commit: "apex-os-redesign-2026-10-06",

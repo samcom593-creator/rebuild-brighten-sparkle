@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { BookOpenCheck, CalendarClock, ChevronRight, LayoutList, RotateCcw, UserCheck, Users } from "lucide-react";
+import { BookOpenCheck, CalendarClock, ChevronRight, LayoutList, UserCheck, Users } from "lucide-react";
 
 import { resolveBrand } from "@/config/brand";
 import { cn } from "@/lib/utils";
@@ -9,28 +9,24 @@ const trainingLabel = `${resolveBrand().platformName} Training`;
 const WORKSPACE_VIEWS = [
   { label: "Worklist", detail: "Contact, outcome, next step", href: "/dashboard/recruiting", icon: Users, exact: true },
   { label: "Pipeline", detail: "Everyone, one view", href: "/dashboard/recruiting/pipeline", icon: LayoutList },
-  { label: "Interviews", detail: "Book and decide", href: "/dashboard/recruiting/interviews", icon: CalendarClock },
-  { label: "Follow-ups", detail: "Clear overdue work", href: "/dashboard/recruiting/follow-ups", icon: RotateCcw },
-  { label: "Hires", detail: "Launch onboarding", href: "/dashboard/recruiting/interviews?tab=hired", icon: UserCheck },
+  { label: "Stages", detail: "Hire to first deal", href: "/dashboard/recruits", icon: UserCheck },
+  { label: "Calendar", detail: "Interviews and calls", href: "/dashboard/calendar", icon: CalendarClock },
   { label: trainingLabel, detail: "Ramp to field", href: "/dashboard/recruiting/training", icon: BookOpenCheck },
 ] as const;
 
 /** One URL-addressable recruiting journey; no second product or sidebar island. */
 export function RecruitingWorkspaceNav() {
-  const { pathname, search } = useLocation();
-  const activeTab = new URLSearchParams(search).get("tab");
+  const { pathname } = useLocation();
 
   return (
     <nav aria-label="Recruiting workspace" className="overflow-x-auto rounded-xl border border-border/80 bg-card/70 p-1.5 shadow-sm backdrop-blur">
       <div className="flex min-w-max gap-1.5">
         {WORKSPACE_VIEWS.map((view) => {
-          const active = view.label === "Hires"
-            ? pathname === "/dashboard/recruiting/interviews" && activeTab === "hired"
-            : view.label === "Interviews"
-              ? pathname === "/dashboard/recruiting/interviews" && activeTab !== "hired"
-              : "exact" in view && view.exact
-                ? pathname === view.href
-                : pathname.startsWith(view.href.split("?")[0]);
+          // Interviews and follow-ups are no longer separate destinations: interviews are booked
+          // from Calendar and the worklist, follow-ups are the worklist's due and overdue queues.
+          const active = "exact" in view && view.exact
+            ? pathname === view.href
+            : pathname.startsWith(view.href);
           const Icon = view.icon;
           return (
             <Link

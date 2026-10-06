@@ -71,6 +71,13 @@ export function isoToLocalInput(value: string | null | undefined): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+/** A system-suggested next action reads as a suggestion, not a shout: "CALL WITHIN 60 MIN" -> "Suggested: call within 60 min". */
+export function formatNextAction(action: string, setByPerson: boolean): string {
+  if (setByPerson) return action;
+  const words = action.replace(/_/g, " ").trim().toLowerCase().replace(/\b(sms|npn|nipr)\b/g, (m) => m.toUpperCase());
+  return `Suggested: ${words}`;
+}
+
 export function humanizeKey(value: string | null | undefined): string {
   if (!value) return "—";
   return value.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());

@@ -38,6 +38,7 @@ import {
 import {
   VERIFIED_ZONE_OPTIONS,
   formatDay,
+  formatNextAction,
   formatWhen,
   humanizeKey,
   ownerName,
@@ -302,7 +303,7 @@ export function PersonPanel({ row, userId, backendReady, canAssign, staff, staff
         <dt className="text-muted-foreground">Next action</dt>
         <dd className="text-right text-foreground">
           {row.next_action
-            ? `${row.next_action_set_at ? row.next_action : `System: ${humanizeKey(row.next_action)}`} · ${formatWhen(row.next_action_due_at)}`
+            ? `${formatNextAction(row.next_action, Boolean(row.next_action_set_at))} · ${formatWhen(row.next_action_due_at)}`
             : row.waiting_reason
               ? `Waiting: ${row.waiting_reason} · review ${formatWhen(row.next_review_at)}`
               : "None"}

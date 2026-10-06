@@ -9,18 +9,21 @@ function renderNav(pathname: string) {
 }
 
 describe("RecruitingWorkspaceNav", () => {
-  it("keeps every recruiting step under the canonical workspace", () => {
-    renderNav("/dashboard/recruiting/interviews");
+  it("links the recruiting journey and no retired destinations", () => {
+    renderNav("/dashboard/recruiting/pipeline");
     expect(screen.getByRole("link", { name: "Worklist" }).getAttribute("href")).toBe("/dashboard/recruiting");
-    expect(screen.getByRole("link", { name: "Interviews" }).getAttribute("href")).toBe("/dashboard/recruiting/interviews");
-    expect(screen.getByRole("link", { name: "Follow-ups" }).getAttribute("href")).toBe("/dashboard/recruiting/follow-ups");
-    expect(screen.getByRole("link", { name: "Hires" }).getAttribute("href")).toBe("/dashboard/recruiting/interviews?tab=hired");
+    expect(screen.getByRole("link", { name: "Pipeline" }).getAttribute("href")).toBe("/dashboard/recruiting/pipeline");
+    expect(screen.getByRole("link", { name: "Stages" }).getAttribute("href")).toBe("/dashboard/recruits");
+    expect(screen.getByRole("link", { name: "Calendar" }).getAttribute("href")).toBe("/dashboard/calendar");
     expect(screen.getByRole("link", { name: "APEX Training" }).getAttribute("href")).toBe("/dashboard/recruiting/training");
+    expect(screen.queryByRole("link", { name: "Interviews" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Follow-ups" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Hires" })).toBeNull();
   });
 
   it("marks only the current slice", () => {
-    renderNav("/dashboard/recruiting/follow-ups");
-    expect(screen.getByRole("link", { name: "Follow-ups" }).getAttribute("aria-current")).toBe("page");
+    renderNav("/dashboard/recruiting/pipeline");
+    expect(screen.getByRole("link", { name: "Pipeline" }).getAttribute("aria-current")).toBe("page");
     expect(screen.getByRole("link", { name: "Worklist" }).getAttribute("aria-current")).toBeNull();
   });
 });

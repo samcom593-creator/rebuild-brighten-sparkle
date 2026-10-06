@@ -199,6 +199,20 @@ export default function MyDeals() {
     },
   });
 
+  // What the tiles deliberately leave out (no agent identity on the roster, or an excluded external
+  // producer), all-time so the tiles reconcile with the deal list below. Shown, never summed in.
+  const { data: notCounted = [] } = useQuery({
+    queryKey: ["production-attribution-exceptions", "all-time"],
+    enabled: Boolean(isAdmin),
+    staleTime: 60_000,
+    queryFn: async () => {
+      const end = new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 10);
+      const { data, error } = await supabase.rpc("production_attribution_exceptions" as never, { p_start: "2000-01-01", p_end: end } as never);
+      if (error) throw error;
+      return (data ?? []) as unknown as Array<{ kind: string; policies: number; alp: number }>;
+    },
+  });
+
   const prod30dDelta = book && book.premium_prior_30d > 0
     ? ((book.premium_30d - book.premium_prior_30d) / book.premium_prior_30d) * 100
     : null;
@@ -284,6 +298,19 @@ export default function MyDeals() {
           </div>
         </div>
       )}
+      {teamView && book && notCounted.length > 0 && (
+        <p className="-mt-3 text-xs text-muted-foreground" role="note">
+          Not counted above:{" "}
+          {notCounted.map((x, i) => (
+            <span key={x.kind}>
+              {i > 0 ? " · " : ""}
+              {x.policies} {x.policies === 1 ? "deal" : "deals"} ({fmtMoney(Number(x.alp))})
+              {x.kind === "no_agent_identity" ? " with no agent on the roster" : " from producers outside the roster"}
+            </span>
+          ))}
+          . They still appear in the deal list below.
+        </p>
+      )}
 
       {teamView && statusTiles.length > 0 && (
         <div>
@@ -336,7 +363,7 @@ export default function MyDeals() {
             <Zap className="h-5 w-5 text-primary mt-0.5" />
             <div>
               <p className="text-sm font-semibold">Every deal, straight from the book.</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Pulled from the same deduped live feed used by every production total and Discord delivery.</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Pulled from the same deduped live feed used by every production total.</p>
             </div>
           </div>
           <SubmitDealDialog trigger={<Button size="sm" variant="default">Post a Deal</Button>} />

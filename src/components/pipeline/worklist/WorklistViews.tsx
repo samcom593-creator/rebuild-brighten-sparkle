@@ -13,7 +13,7 @@ import {
 } from "@/lib/recruitingQueues";
 import { cn } from "@/lib/utils";
 import type { StaffMember, StageDefinition } from "./useRecruitingWorklist";
-import { formatRelative, formatWhen, humanizeKey, ownerName } from "./worklistFormat";
+import { formatNextAction, formatRelative, formatWhen, humanizeKey, ownerName } from "./worklistFormat";
 
 interface ViewProps {
   rows: WorklistRow[];
@@ -41,7 +41,8 @@ function DueCell({ row, now }: { row: WorklistRow; now: number }) {
 
 function NextActionText({ row }: { row: WorklistRow }) {
   if (row.next_action) {
-    return <span>{row.next_action_set_at ? row.next_action : `System: ${humanizeKey(row.next_action)}`}</span>;
+    const text = formatNextAction(row.next_action, Boolean(row.next_action_set_at));
+    return <span title={text} className={row.next_action_set_at ? undefined : "text-muted-foreground"}>{text}</span>;
   }
   if (row.waiting_reason) return <span className="text-muted-foreground">Waiting: {row.waiting_reason}</span>;
   return <span className="text-muted-foreground">None</span>;
@@ -93,7 +94,7 @@ export function WorklistTable({ rows, selectedId, onSelect, staff, staffAvailabl
               >
                 <td className="px-3 py-2">
                   <div className="font-medium text-foreground">{fullName(row)}</div>
-                  {needsPlan && <div className="text-[10px] font-medium text-destructive">Needs a plan</div>}
+                  {needsPlan && <div className="text-[10px] font-medium text-muted-foreground">Needs a plan</div>}
                 </td>
                 <td className="whitespace-nowrap px-2 py-2 tabular-nums text-foreground">{row.phone ? formatPhoneDisplay(row.phone) : "—"}</td>
                 <td className="px-2 py-2 text-foreground">{row.state ?? "—"}</td>

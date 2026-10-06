@@ -18,6 +18,17 @@ import {
   type ContractingExportRow,
 } from "@/lib/contractingExport";
 
+// review_reason holds either a machine code or a sentence a person wrote. Codes read as words.
+const REVIEW_REASON_LABELS: Record<string, string> = {
+  email_matches_a_different_npn: "this email is already on file under a different NPN",
+};
+function reviewReasonLabel(reason: string | null | undefined): string {
+  if (!reason) return "reason not recorded";
+  if (REVIEW_REASON_LABELS[reason]) return REVIEW_REASON_LABELS[reason];
+  return /^[a-z0-9_]+$/.test(reason) ? reason.replace(/_/g, " ").replace(/\bnpn\b/g, "NPN") : reason;
+}
+
+
 /**
  * Staff view of contracting intakes and where each destination actually got to.
  *
@@ -196,7 +207,7 @@ export function ContractingIntakeAdmin({ showEmptyState = false }: { showEmptySt
                 </p>
                 {head.status === "needs_review" && (
                   <span className="rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-300">
-                    Needs review · {head.review_reason ?? "unspecified"}
+                    Needs review: {reviewReasonLabel(head.review_reason)}
                   </span>
                 )}
               </div>

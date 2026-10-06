@@ -6,7 +6,6 @@ import { secondsUntilExpiry } from "@/lib/sessionClock";
 import { SessionClockBanner } from "@/components/SessionClockBanner";
 import { SidebarLayout } from "./SidebarLayout";
 import { PushNotificationPrompt } from "./PushNotificationPrompt";
-import { CommandHintFab } from "./CommandHintFab";
 import { WelcomeToast } from "./WelcomeToast";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ComponentErrorBoundary } from "@/components/ComponentErrorBoundary";
@@ -176,7 +175,6 @@ export function AuthenticatedShell() {
             <OfflineSyncStatus />
             <CelebrationProvider />
             <CommandPalette />
-            <CommandHintFab />
             <WelcomeToast />
             <PushNotificationPrompt />
             <RequireProfilePicture />

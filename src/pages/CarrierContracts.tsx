@@ -247,51 +247,78 @@ function CarrierDirectory({ carriersQ }: {
 
 /* ───────────────────────── Operations ───────────────────────── */
 
+type CaseQueue = { key: string; label: string; cases: number };
+
 function ContractingOps({ canInvite, isAdmin }: { canInvite: boolean; isAdmin: boolean }) {
-  const summaryQ = useContractSummary("agency", "");
-  const s = summaryQ.data ?? { total: 0, active: 0, requested: 0, issues: 0, by_status: {} };
+  // Carrier cases (one agent x one carrier) are the contracting source of truth. The legacy
+  // contracts summary read an empty table, so this page showed "0 · Nothing outstanding" over
+  // 200+ live cases. A failed read shows the error, never a zero.
+  const digestQ = useQuery({
+    queryKey: ["contracting-ops-digest"],
+    staleTime: 60_000,
+    queryFn: async (): Promise<CaseQueue[]> => {
+      const { data, error } = await supabase.rpc("contracting_exception_digest" as never);
+      if (error) throw new Error(error.message);
+      return (data as { queues?: CaseQueue[] } | null)?.queues ?? [];
+    },
+  });
+  const queues = digestQ.data ?? [];
+  const count = (key: string) => queues.find((q) => q.key === key)?.cases ?? 0;
 
   const stats: Array<[string, number, string]> = [
-    ["Contracts on file", s.total, "Across the agency book"],
-    ["Active appointments", s.active, "Writing today"],
-    ["Requests in progress", (s.by_status.requested ?? 0) + (s.by_status.submitted ?? 0) + (s.by_status.pending_upline_assignment ?? 0), "Requested, submitted or awaiting upline"],
-    ["Needs attention", s.issues, s.issues > 0 ? "Issue, jail or rejected" : "Nothing outstanding"],
+    ["Verified · ready to write", count("verified"), "Carrier cases confirmed"],
+    ["Ready to submit", count("ready_to_submit"), "Prepared, not sent yet"],
+    ["With carriers", count("carrier_review"), "Submitted, awaiting the carrier"],
+    ["Needs staff action", count("staff_action"), `${count("agent_action")} waiting on agents · ${count("support")} with support`],
   ];
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map(([label, value, note]) => (
-          <GlassCard key={label} className="p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{label}</p>
-            {summaryQ.isLoading ? <Skeleton className="mt-1 h-8 w-14" /> : <p className="mt-0.5 text-3xl font-bold tabular-nums">{value}</p>}
-            <p className="mt-1 text-xs text-muted-foreground">{note}</p>
-          </GlassCard>
-        ))}
-      </div>
+      {digestQ.isError ? (
+        <GlassCard className="p-4 text-sm text-destructive" role="alert">
+          Couldn't load contracting cases: {(digestQ.error as Error).message}
+        </GlassCard>
+      ) : (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {stats.map(([label, value, note]) => (
+            <Link key={label} to="/dashboard/contracting/cases" className="block rounded-lg focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]">
+              <GlassCard className="h-full p-4 transition-colors hover:border-primary/40">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{label}</p>
+                {digestQ.isLoading ? <Skeleton className="mt-1 h-8 w-14" /> : <p className="mt-0.5 text-3xl font-bold tabular-nums">{value}</p>}
+                <p className="mt-1 text-xs text-muted-foreground">{note}</p>
+              </GlassCard>
+            </Link>
+          ))}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <GlassCard className="p-4">
-          <h3 className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">Requests by status</h3>
-          {summaryQ.isLoading ? (
+          <h3 className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">Carrier cases by queue</h3>
+          {digestQ.isLoading ? (
             <div className="mt-3 space-y-2"><Skeleton className="h-8 w-full" /><Skeleton className="h-8 w-full" /></div>
-          ) : Object.keys(s.by_status).length === 0 ? (
+          ) : digestQ.isError ? (
+            <p className="mt-3 text-sm text-muted-foreground">Unavailable until the case read succeeds.</p>
+          ) : queues.length === 0 ? (
             <EmptyState
               icon={<ClipboardList className="h-7 w-7" />}
-              title="No contracting requests yet"
-              description="A request appears here when a producer needs a new carrier contract, transfer, state appointment or hierarchy change."
+              title="No carrier cases yet"
+              description="A case opens when an agent needs a carrier contract, then moves through documents, submission and carrier review to verified."
             />
           ) : (
-            <ul className="mt-3 space-y-1.5">
-              {Object.entries(s.by_status)
-                .sort((a, b) => b[1] - a[1])
-                .map(([key, n]) => (
-                  <li key={key} className="flex items-center justify-between rounded-md border border-border/60 px-3 py-2 text-sm">
-                    <span className="capitalize">{key.replace(/_/g, " ")}</span>
-                    <span className="font-bold tabular-nums">{n}</span>
+            <>
+              <ul className="mt-3 space-y-1.5">
+                {queues.map((q) => (
+                  <li key={q.key}>
+                    <Link to="/dashboard/contracting/cases" className="flex items-center justify-between rounded-md border border-border/60 px-3 py-2 text-sm transition-colors hover:border-primary/40">
+                      <span>{q.label}</span>
+                      <span className="font-bold tabular-nums">{q.cases}</span>
+                    </Link>
                   </li>
                 ))}
-            </ul>
+              </ul>
+              <p className="mt-2 text-xs text-muted-foreground">One case is one agent with one carrier. A case can sit in more than one queue, so these don't add up to a total.</p>
+            </>
           )}
         </GlassCard>
 

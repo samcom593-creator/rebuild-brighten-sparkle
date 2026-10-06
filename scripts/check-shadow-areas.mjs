@@ -94,7 +94,7 @@ const AREAS = [
   { dir: "src/components/awards", baseline: 3 },
   { dir: "src/components/agent", baseline: 2 },
   { dir: "src/components/callcenter", baseline: 2 },
-  { dir: "src/components/layout", baseline: 2 },
+  { dir: "src/components/layout", baseline: 1 }, // 2 -> 1: CommandHintFab removed 2026-10-06
   { dir: "src/components/ui", baseline: 4 },
   // v24/v25 codemod-cleaned trees (sweep verified at exactly 0)
   { dir: "src/components/recruiter", baseline: 0 },

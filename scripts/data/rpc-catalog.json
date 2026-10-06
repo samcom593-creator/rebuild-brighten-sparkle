@@ -1342,6 +1342,14 @@
         "raw": ""
       }
     ],
+    "content_cards_workflow_guard": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "content_clips_canon_tags": [
       {
         "all": [
@@ -1424,6 +1432,18 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "content_publish_url_ok": [
+      {
+        "all": [
+          "p_url"
+        ],
+        "required": [
+          "p_url"
+        ],
+        "unnamed": false,
+        "raw": "p_url text"
       }
     ],
     "content_queue_guard_update": [

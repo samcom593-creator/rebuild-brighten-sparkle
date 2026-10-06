@@ -40043,59 +40043,98 @@ export type Database = {
       }
       content_cards: {
         Row: {
+          approved_at: string | null
+          approved_by: string | null
           brand: string
           caption: string
           clip: string
           content_type: string
           created_at: string
           created_by: string | null
+          cta: string
           day: number
+          due_date: string | null
           edit_prompt: string
           hook: string
           id: string
           job: string
+          owner: string
           posted_at: string | null
+          publish_evidence: string | null
+          published_confirmed_at: string | null
+          published_confirmed_by: string | null
+          published_url: string | null
           record_script: string
+          schedule_job_ref: string | null
+          schedule_kind: string | null
+          scheduled_for: string | null
           sort: number
           status: string
+          status_changed_at: string | null
           title: string
           updated_at: string
         }
         Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
           brand?: string
           caption?: string
           clip?: string
           content_type?: string
           created_at?: string
           created_by?: string | null
+          cta?: string
           day?: number
+          due_date?: string | null
           edit_prompt?: string
           hook?: string
           id?: string
           job?: string
+          owner?: string
           posted_at?: string | null
+          publish_evidence?: string | null
+          published_confirmed_at?: string | null
+          published_confirmed_by?: string | null
+          published_url?: string | null
           record_script?: string
+          schedule_job_ref?: string | null
+          schedule_kind?: string | null
+          scheduled_for?: string | null
           sort?: number
           status?: string
+          status_changed_at?: string | null
           title: string
           updated_at?: string
         }
         Update: {
+          approved_at?: string | null
+          approved_by?: string | null
           brand?: string
           caption?: string
           clip?: string
           content_type?: string
           created_at?: string
           created_by?: string | null
+          cta?: string
           day?: number
+          due_date?: string | null
           edit_prompt?: string
           hook?: string
           id?: string
           job?: string
+          owner?: string
           posted_at?: string | null
+          publish_evidence?: string | null
+          published_confirmed_at?: string | null
+          published_confirmed_by?: string | null
+          published_url?: string | null
           record_script?: string
+          schedule_job_ref?: string | null
+          schedule_kind?: string | null
+          scheduled_for?: string | null
           sort?: number
           status?: string
+          status_changed_at?: string | null
           title?: string
           updated_at?: string
         }

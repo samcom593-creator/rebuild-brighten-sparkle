@@ -10,7 +10,7 @@
  * carrier sheet: the "Copy ready rows" action produces the exact A:L cells for a reviewed paste,
  * and the next sheet refresh is what moves a producer to "Submitted".
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, ClipboardCopy, RefreshCw, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -149,6 +149,18 @@ export function EthosContractingHealth() {
     },
     onError: (e: Error) => toast.error(`Sheet refresh failed: ${e.message}`),
   });
+
+  // A stale mirror refreshes itself once per visit (older than 6h, or never read), so nobody works
+  // from yesterday's copy of the carrier sheet. A failed read is shown, never retried in a loop.
+  const autoSynced = useRef(false);
+  useEffect(() => {
+    const d = data.data;
+    if (!d || autoSynced.current || sync.isPending) return;
+    const fresh = d.latest && Date.now() - new Date(d.latest.fetched_at).getTime() <= 6 * 3_600_000;
+    if (fresh) return;
+    autoSynced.current = true;
+    sync.mutate();
+  }, [data.data, sync]);
 
   const producers = useMemo<Producer[]>(() => {
     const d = data.data;

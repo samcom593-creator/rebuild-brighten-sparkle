@@ -478,50 +478,90 @@ const daysSince = (iso: string | null): number | null => {
 
 type RosterSegmentKey =
   | "all" | "new_hires" | "producing" | "never_produced"
-  | "no_longer_here" | "unlicensed" | "inactive" | "terminated" | "free_leads" | "free_leads_close";
+  | "no_longer_here" | "unlicensed" | "inactive" | "terminated" | "free_leads" | "free_leads_close"
+  | "sync_only";
+
+/**
+ * A sync-only row is NOT a person on this team. crm_agent_roster() projects
+ * `is_sync_only` = (agent_code like 'GHOST\_%' and user_id is null) for the
+ * placeholder seats ingest_ayro_sales_deal() / ingest_discord_production_deal()
+ * mint to hold the attribution of a Discord post whose author matched no agent.
+ * They have no auth user, no email, no phone and no onboarding path.
+ *
+ * The flag was projected, typed at RosterRow.is_sync_only, counted by
+ * crm_roster_segments() as `sync_only` — and read by nothing on this page, so
+ * 6 of them sat inside the worklists below wearing every marker a real hire
+ * wears. ProducerProfile.tsx:277 badged them; the LIST where the work actually
+ * happens did not.
+ */
+const isSyncOnly = (r: RosterRow): boolean => r.is_sync_only === true;
 
 /**
  * Honest segmentation — every predicate reads a column the row actually carries,
  * and the chip count is the length of the very list the chip renders, so a chip
  * can never advertise a number the table below disagrees with.
+ *
+ * `admitsSyncOnly` is declared, never inferred. A worklist chip that implies a
+ * human action (open their profile, chase their license, coach them) must set
+ * it false, because none of those actions exist for a placeholder. A chip that
+ * mirrors a server-side tile in ProductionMetricsCard must set it TRUE and say
+ * which tile: the roster totals come from crm_roster_segments() and are not
+ * touched here, so narrowing only the client side would put two different
+ * answers to one question on the same screen. Whether that $16,600 of
+ * discord_external production belongs in Apex's month at all is a book
+ * question, deliberately not decided by a UI filter.
  */
 const ROSTER_SEGMENTS: Array<{
   key: RosterSegmentKey; label: string; icon: typeof Users; desc: string;
-  match: (r: RosterRow) => boolean;
+  admitsSyncOnly: boolean; match: (r: RosterRow) => boolean;
 }> = [
   { key: "new_hires", label: "New hires", icon: UserCheck,
-    desc: "Joined in the last 30 days. Open a profile to control login, licensing, onboarding, contracting, and assigned work.",
-    match: (r) => r.status === "active" && r.tenure_days !== null && r.tenure_days <= 30 },
+    desc: "Joined in the last 30 days. Open a profile to control login, licensing, onboarding, contracting, and assigned work. Sync-only placeholder seats are not hires and sit in their own chip.",
+    admitsSyncOnly: false,
+    match: (r) => r.status === "active" && !isSyncOnly(r) && r.tenure_days !== null && r.tenure_days <= 30 },
   { key: "free_leads", label: "Free leads ✓", icon: Sparkles,
     desc: "Qualify for free leads right now. Route leads to these agents first.",
-    match: (r) => r.status === "active" && !!r.free_leads_qualified },
+    admitsSyncOnly: false,
+    match: (r) => r.status === "active" && !isSyncOnly(r) && !!r.free_leads_qualified },
   { key: "free_leads_close", label: "Close to free leads", icon: TrendingUp,
     desc: "Within $5K of the free-leads bar. One push this week gets them there.",
-    match: (r) => r.status === "active" && !r.free_leads_qualified && num(r.free_leads_needed_for_qual) > 0 && num(r.free_leads_needed_for_qual) <= 5000 },
+    admitsSyncOnly: false,
+    match: (r) => r.status === "active" && !isSyncOnly(r) && !r.free_leads_qualified && num(r.free_leads_needed_for_qual) > 0 && num(r.free_leads_needed_for_qual) <= 5000 },
   { key: "all", label: "All agents", icon: Users,
-    desc: "Active agents who have produced. Never-produced and departed seats stay in their own review queues.",
+    desc: "Active agents who have produced. Never-produced and departed seats stay in their own review queues. Sync-only placeholder seats are included and badged, so this count still reconciles with Team size.",
+    admitsSyncOnly: true, // mirrors ProductionMetricsCard "Team size" / "Active" (crm_roster_segments.total/active)
     match: (r) => r.status === "active" && (r.lifetime_deals ?? 0) > 0 },
   { key: "producing", label: "Producing", icon: TrendingUp,
-    desc: "Wrote business this month. This is the bench the agency's revenue is actually standing on.",
+    desc: "Wrote business this month. Sync-only placeholder seats are badged here rather than dropped — the headline tile counts them too, and hiding them from one of the two would make the screen disagree with itself.",
+    admitsSyncOnly: true, // mirrors ProductionMetricsCard "Producing this month" (crm_roster_segments.producing_mtd)
     match: (r) => r.status === "active" && num(r.mtd_alp) > 0 },
   { key: "never_produced", label: "Never produced", icon: UserX,
-    desc: "Active roster seats with zero lifetime deals — the activation and coaching queue.",
-    match: (r) => r.status === "active" && (r.lifetime_deals ?? 0) === 0 },
+    desc: "Active roster seats with zero lifetime deals — the activation and coaching queue. A placeholder cannot be coached, so sync-only seats are excluded.",
+    admitsSyncOnly: false,
+    match: (r) => r.status === "active" && !isSyncOnly(r) && (r.lifetime_deals ?? 0) === 0 },
   { key: "no_longer_here", label: "No longer here", icon: EyeOff,
-    desc: "Previously produced but no business in 60+ days. Review these seats before formally marking them inactive or terminated.",
+    desc: "Previously produced but no business in 60+ days. Review these seats before formally marking them inactive or terminated. Sync-only seats are excluded — there is no seat to retire.",
+    admitsSyncOnly: false,
     match: (r) => {
       const d = daysSince(r.last_posted_date);
-      return r.status === "active" && (r.lifetime_deals ?? 0) > 0 && d !== null && d >= 60;
+      return r.status === "active" && !isSyncOnly(r) && (r.lifetime_deals ?? 0) > 0 && d !== null && d >= 60;
     } },
   { key: "unlicensed", label: "Unlicensed", icon: GraduationCap,
-    desc: "Still working through licensing — these seats cannot legally earn yet.",
-    match: (r) => r.license_status !== "licensed" },
+    desc: "Still working through licensing — these seats cannot legally earn yet. Sync-only placeholder seats carry license_status 'unlicensed' by default and have nobody to license, so they are excluded.",
+    admitsSyncOnly: false,
+    match: (r) => r.license_status !== "licensed" && !isSyncOnly(r) },
   { key: "inactive", label: "Inactive", icon: EyeOff,
     desc: "Dormant or hidden by hand. Confirm they are gone before the seat stops counting.",
+    admitsSyncOnly: true, // a status bucket, not a worklist: it must partition the roster by status alone
     match: (r) => r.status === "inactive" },
   { key: "terminated", label: "Terminated", icon: X,
     desc: "Off the roster. Kept visible so a wrong removal can be caught and reversed.",
+    admitsSyncOnly: true, // a status bucket, not a worklist: it must partition the roster by status alone
     match: (r) => r.status === "terminated" },
+  { key: "sync_only", label: "Sync only", icon: Link2,
+    desc: "Placeholder seats, not people. The Discord deal ingest mints one of these when a posted sale names an author it cannot match to an agent, so the production has somewhere to land. They have no login, no email and no onboarding path — do not chase them. Match a real agent to the posts and the seat stops being needed.",
+    admitsSyncOnly: true,
+    match: (r) => isSyncOnly(r) },
 ];
 
 type RosterSortKey = "mtd_desc" | "l30_desc" | "lifetime_desc" | "streak_desc" | "name" | "stalest" | "newest";
@@ -805,6 +845,16 @@ function RosterPanel({ rows, isLoading, isError, onRetry }: {
                               >
                                 {r.full_name ?? "Name not on file"}
                               </Link>
+                              {isSyncOnly(r) && (
+                                <Badge
+                                  variant="outline"
+                                  className="h-4 shrink-0 border-amber-500/50 bg-amber-500/10 px-1.5 text-[9px] font-bold uppercase tracking-wide text-amber-500 ring-1 ring-amber-500/20"
+                                  title="Placeholder seat, not a person. Minted by the Discord deal ingest to hold production it could not match to an agent — no login, no onboarding path, nothing to chase."
+                                >
+                                  <Link2 className="mr-1 h-2.5 w-2.5 shrink-0" />
+                                  Sync only
+                                </Badge>
+                              )}
                               {r.free_leads_qualified && (
                                 <Badge
                                   variant="outline"

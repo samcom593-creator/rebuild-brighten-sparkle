@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-rpc-column-vocabulary.sh (bot_sql -> pg_proc + pg_rewrite)",
- "_generated_at": "2026-10-06T16:45:46Z",
+ "_generated_at": "2026-10-06T16:47:21Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "check-enum-filter-literals.mjs grades literals inside supabase.from().eq() chains. This is the other half of the same class: a status word that arrives from an RPC and is compared in JavaScript, where the return type is text and every wrong word type-checks. Per (function, returned column) this records the relation columns of that name reachable from the function body and the literals the function synthesises itself. It deliberately records CANDIDATES rather than one resolved source: provenance from a body regex is a guess, so check-rpc-status-literals.mjs refuses a literal only when NO candidate vocabulary and no body literal accepts it.",
  "_vocabulary_source": "scripts/data/enum-catalog.json (check_vocab + column_enum + enums). Not copied here on purpose, so the two guards read one snapshot and cannot drift.",
@@ -81,6 +81,7 @@
   "backfill_monthly_awards": "jsonb",
   "backfill_plaque_images": "jsonb",
   "block_duplicate_agent_per_email": "trigger",
+  "book_interview_event": "interview_events",
   "bot_alert_agent_contracted": "trigger",
   "bot_alert_agent_deactivated": "trigger",
   "bot_alert_automation_failure": "trigger",
@@ -94,8 +95,13 @@
   "build_plaque_svg": "text",
   "bump_manager_post": "integer",
   "calculate_closing_rate": "trigger",
+  "calendar_can_book_for_application": "boolean",
+  "calendar_interview_reminders_enabled": "boolean",
+  "calendar_is_scheduling_staff": "boolean",
+  "calendar_valid_tz": "boolean",
   "can_work_application": "boolean",
   "can_work_recruiting_application": "boolean",
+  "cancel_interview_event": "interview_events",
   "cc_dispose": "jsonb",
   "cc_dispose_interview": "interview_events",
   "check_banned_prospect": "boolean",
@@ -258,6 +264,7 @@
   "fn_license_milestone_emit": "trigger",
   "fn_license_stage_rank": "integer",
   "fn_licensing_readiness": "jsonb",
+  "fn_log_interview_event_activity": "void",
   "fn_logged_backfill_orphan_agent_id": "integer",
   "fn_logged_backfill_orphan_failed_payments": "bigint",
   "fn_logged_backfill_orphan_lead_purchases": "bigint",
@@ -327,6 +334,7 @@
   "fn_stamp_applications_licensed_at": "trigger",
   "fn_stamp_candidate_note_author": "trigger",
   "fn_status_answer_indicates_licensed": "boolean",
+  "fn_supersede_interview_reminders": "integer",
   "fn_sweep_manager_followup_reminders": "integer",
   "fn_sweep_onboarding_call_gaps": "integer",
   "fn_sweep_recruiting_milestones": "integer",
@@ -458,6 +466,7 @@
   "refresh_production_truth": "jsonb",
   "refresh_sync_health": "void",
   "request_onboarding_call_booking": "jsonb",
+  "reschedule_interview_event": "interview_events",
   "rescue_stale_applications": "jsonb",
   "reset_quiz_attempts": "integer",
   "resolve_hiring_manager_for_scope": "uuid",
@@ -1804,6 +1813,332 @@
     "public",
     "rejected",
     "statement_timeout"
+   ]
+  },
+  "calendar_owner_conflicts.ends_at": {
+   "candidates": [
+    "calendar_events.ends_at"
+   ],
+   "body_literals": [
+    "Appointment",
+    "Interview",
+    "a valid time range is required",
+    "calendar_events",
+    "calendly",
+    "canceled",
+    "cancelled",
+    "done",
+    "draft_date",
+    "interview_events",
+    "kind",
+    "not authorized to read that calendar",
+    "owner",
+    "post_test_follow_up",
+    "public",
+    "rescheduled",
+    "scheduled",
+    "unassigned"
+   ]
+  },
+  "calendar_owner_conflicts.event_key": {
+   "candidates": [],
+   "body_literals": [
+    "Appointment",
+    "Interview",
+    "a valid time range is required",
+    "calendar_events",
+    "calendly",
+    "canceled",
+    "cancelled",
+    "done",
+    "draft_date",
+    "interview_events",
+    "kind",
+    "not authorized to read that calendar",
+    "owner",
+    "post_test_follow_up",
+    "public",
+    "rescheduled",
+    "scheduled",
+    "unassigned"
+   ]
+  },
+  "calendar_owner_conflicts.scope": {
+   "candidates": [],
+   "body_literals": [
+    "Appointment",
+    "Interview",
+    "a valid time range is required",
+    "calendar_events",
+    "calendly",
+    "canceled",
+    "cancelled",
+    "done",
+    "draft_date",
+    "interview_events",
+    "kind",
+    "not authorized to read that calendar",
+    "owner",
+    "post_test_follow_up",
+    "public",
+    "rescheduled",
+    "scheduled",
+    "unassigned"
+   ]
+  },
+  "calendar_owner_conflicts.source_table": {
+   "candidates": [],
+   "body_literals": [
+    "Appointment",
+    "Interview",
+    "a valid time range is required",
+    "calendar_events",
+    "calendly",
+    "canceled",
+    "cancelled",
+    "done",
+    "draft_date",
+    "interview_events",
+    "kind",
+    "not authorized to read that calendar",
+    "owner",
+    "post_test_follow_up",
+    "public",
+    "rescheduled",
+    "scheduled",
+    "unassigned"
+   ]
+  },
+  "calendar_owner_conflicts.starts_at": {
+   "candidates": [
+    "calendar_events.starts_at"
+   ],
+   "body_literals": [
+    "Appointment",
+    "Interview",
+    "a valid time range is required",
+    "calendar_events",
+    "calendly",
+    "canceled",
+    "cancelled",
+    "done",
+    "draft_date",
+    "interview_events",
+    "kind",
+    "not authorized to read that calendar",
+    "owner",
+    "post_test_follow_up",
+    "public",
+    "rescheduled",
+    "scheduled",
+    "unassigned"
+   ]
+  },
+  "calendar_owner_conflicts.title": {
+   "candidates": [
+    "calendar_events.title"
+   ],
+   "body_literals": [
+    "Appointment",
+    "Interview",
+    "a valid time range is required",
+    "calendar_events",
+    "calendly",
+    "canceled",
+    "cancelled",
+    "done",
+    "draft_date",
+    "interview_events",
+    "kind",
+    "not authorized to read that calendar",
+    "owner",
+    "post_test_follow_up",
+    "public",
+    "rescheduled",
+    "scheduled",
+    "unassigned"
+   ]
+  },
+  "calendar_provider_health.calendly_last_reconcile_at": {
+   "candidates": [],
+   "body_literals": [
+    "backfill",
+    "calendly",
+    "failed",
+    "ok",
+    "origin",
+    "public",
+    "queued",
+    "sent"
+   ]
+  },
+  "calendar_provider_health.calendly_last_reconcile_status": {
+   "candidates": [],
+   "body_literals": [
+    "backfill",
+    "calendly",
+    "failed",
+    "ok",
+    "origin",
+    "public",
+    "queued",
+    "sent"
+   ]
+  },
+  "calendar_provider_health.calendly_last_webhook_booking_at": {
+   "candidates": [],
+   "body_literals": [
+    "backfill",
+    "calendly",
+    "failed",
+    "ok",
+    "origin",
+    "public",
+    "queued",
+    "sent"
+   ]
+  },
+  "calendar_provider_health.calendly_reconcile_failures_24h": {
+   "candidates": [],
+   "body_literals": [
+    "backfill",
+    "calendly",
+    "failed",
+    "ok",
+    "origin",
+    "public",
+    "queued",
+    "sent"
+   ]
+  },
+  "calendar_provider_health.google_last_synced_at": {
+   "candidates": [],
+   "body_literals": [
+    "backfill",
+    "calendly",
+    "failed",
+    "ok",
+    "origin",
+    "public",
+    "queued",
+    "sent"
+   ]
+  },
+  "calendar_provider_health.google_sync_job_active": {
+   "candidates": [],
+   "body_literals": [
+    "backfill",
+    "calendly",
+    "failed",
+    "ok",
+    "origin",
+    "public",
+    "queued",
+    "sent"
+   ]
+  },
+  "calendar_provider_health.ics_feed_last_polled_at": {
+   "candidates": [],
+   "body_literals": [
+    "backfill",
+    "calendly",
+    "failed",
+    "ok",
+    "origin",
+    "public",
+    "queued",
+    "sent"
+   ]
+  },
+  "calendar_provider_health.interview_reminders_enabled": {
+   "candidates": [],
+   "body_literals": [
+    "backfill",
+    "calendly",
+    "failed",
+    "ok",
+    "origin",
+    "public",
+    "queued",
+    "sent"
+   ]
+  },
+  "calendar_provider_health.interview_reminders_sent": {
+   "candidates": [],
+   "body_literals": [
+    "backfill",
+    "calendly",
+    "failed",
+    "ok",
+    "origin",
+    "public",
+    "queued",
+    "sent"
+   ]
+  },
+  "calendar_provider_health.measured_at": {
+   "candidates": [],
+   "body_literals": [
+    "backfill",
+    "calendly",
+    "failed",
+    "ok",
+    "origin",
+    "public",
+    "queued",
+    "sent"
+   ]
+  },
+  "calendar_provider_health.onboarding_invite_last_error": {
+   "candidates": [],
+   "body_literals": [
+    "backfill",
+    "calendly",
+    "failed",
+    "ok",
+    "origin",
+    "public",
+    "queued",
+    "sent"
+   ]
+  },
+  "calendar_provider_health.onboarding_invites_failed": {
+   "candidates": [],
+   "body_literals": [
+    "backfill",
+    "calendly",
+    "failed",
+    "ok",
+    "origin",
+    "public",
+    "queued",
+    "sent"
+   ]
+  },
+  "calendar_provider_health.onboarding_invites_queued": {
+   "candidates": [],
+   "body_literals": [
+    "backfill",
+    "calendly",
+    "failed",
+    "ok",
+    "origin",
+    "public",
+    "queued",
+    "sent"
+   ]
+  },
+  "calendar_provider_health.onboarding_invites_sent": {
+   "candidates": [],
+   "body_literals": [
+    "backfill",
+    "calendly",
+    "failed",
+    "ok",
+    "origin",
+    "public",
+    "queued",
+    "sent"
    ]
   },
   "calendar_window.event_at": {
@@ -5693,12 +6028,17 @@
    "body_literals": [
     "applicant",
     "application_id",
+    "calendly",
     "high",
+    "interview_event_id",
     "interview_id",
     "interview_missed",
     "interview_upcoming_t30",
     "public",
-    "scheduled"
+    "scheduled",
+    "scheduled_at",
+    "true",
+    "your interview"
    ]
   },
   "fn_sweep_interview_reminders.upcoming_emitted": {
@@ -5706,12 +6046,17 @@
    "body_literals": [
     "applicant",
     "application_id",
+    "calendly",
     "high",
+    "interview_event_id",
     "interview_id",
     "interview_missed",
     "interview_upcoming_t30",
     "public",
-    "scheduled"
+    "scheduled",
+    "scheduled_at",
+    "true",
+    "your interview"
    ]
   },
   "fn_text_json_quoted_adjudicate.acquitted": {

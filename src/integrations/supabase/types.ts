@@ -57978,6 +57978,48 @@ export type Database = {
           },
         ]
       }
+      interview_event_activity: {
+        Row: {
+          action: string
+          actor_user_id: string | null
+          created_at: string
+          event_tz: string | null
+          from_at: string | null
+          id: string
+          interview_event_id: string
+          outcome: string | null
+          reason: string | null
+          reminders_superseded: number
+          to_at: string | null
+        }
+        Insert: {
+          action: string
+          actor_user_id?: string | null
+          created_at?: string
+          event_tz?: string | null
+          from_at?: string | null
+          id?: string
+          interview_event_id: string
+          outcome?: string | null
+          reason?: string | null
+          reminders_superseded?: number
+          to_at?: string | null
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string | null
+          created_at?: string
+          event_tz?: string | null
+          from_at?: string | null
+          id?: string
+          interview_event_id?: string
+          outcome?: string | null
+          reason?: string | null
+          reminders_superseded?: number
+          to_at?: string | null
+        }
+        Relationships: []
+      }
       interview_events: {
         Row: {
           agent_id: string | null
@@ -57993,6 +58035,7 @@ export type Database = {
           created_at: string
           ended_at: string | null
           event_type_name: string | null
+          event_tz: string | null
           followup_due_at: string | null
           id: string
           instagram_handle: string | null
@@ -58001,12 +58044,15 @@ export type Database = {
           invitee_phone: string | null
           invitee_status: string | null
           match_method: string | null
+          meeting_link: string | null
           notes: string | null
           outcome: string | null
           outcome_at: string | null
           outcome_by: string | null
+          owner_user_id: string | null
           prep_notes: string | null
           raw_payload: Json | null
+          reminder_notification_id: string | null
           reminder_sent_at: string | null
           reschedule_url: string | null
           scheduled_at: string
@@ -58029,6 +58075,7 @@ export type Database = {
           created_at?: string
           ended_at?: string | null
           event_type_name?: string | null
+          event_tz?: string | null
           followup_due_at?: string | null
           id?: string
           instagram_handle?: string | null
@@ -58037,12 +58084,15 @@ export type Database = {
           invitee_phone?: string | null
           invitee_status?: string | null
           match_method?: string | null
+          meeting_link?: string | null
           notes?: string | null
           outcome?: string | null
           outcome_at?: string | null
           outcome_by?: string | null
+          owner_user_id?: string | null
           prep_notes?: string | null
           raw_payload?: Json | null
+          reminder_notification_id?: string | null
           reminder_sent_at?: string | null
           reschedule_url?: string | null
           scheduled_at: string
@@ -58065,6 +58115,7 @@ export type Database = {
           created_at?: string
           ended_at?: string | null
           event_type_name?: string | null
+          event_tz?: string | null
           followup_due_at?: string | null
           id?: string
           instagram_handle?: string | null
@@ -58073,12 +58124,15 @@ export type Database = {
           invitee_phone?: string | null
           invitee_status?: string | null
           match_method?: string | null
+          meeting_link?: string | null
           notes?: string | null
           outcome?: string | null
           outcome_at?: string | null
           outcome_by?: string | null
+          owner_user_id?: string | null
           prep_notes?: string | null
           raw_payload?: Json | null
+          reminder_notification_id?: string | null
           reminder_sent_at?: string | null
           reschedule_url?: string | null
           scheduled_at?: string
@@ -105863,6 +105917,36 @@ export type Database = {
           premium_last_month: number | null
           total_deals_mtd: number | null
           total_premium_mtd: number | null
+        }
+        Relationships: []
+      }
+      v_calendar_agenda: {
+        Row: {
+          agent_id: string | null
+          application_id: string | null
+          booking_source: string | null
+          call_track: string | null
+          cancel_reason: string | null
+          cancel_url: string | null
+          ends_at: string | null
+          event_key: string | null
+          event_tz: string | null
+          kind: string | null
+          meeting_link: string | null
+          notes: string | null
+          outcome: string | null
+          owner_user_id: string | null
+          person_email: string | null
+          person_name: string | null
+          ref_id: string | null
+          reminder_state: string | null
+          reschedule_url: string | null
+          source_table: string | null
+          starts_at: string | null
+          status: string | null
+          title: string | null
+          updated_at: string | null
+          was_rescheduled: boolean | null
         }
         Relationships: []
       }

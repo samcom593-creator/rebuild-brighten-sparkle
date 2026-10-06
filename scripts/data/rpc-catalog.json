@@ -964,6 +964,29 @@
         "raw": ""
       }
     ],
+    "book_interview_event": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_application_id",
+          "p_duration_minutes",
+          "p_event_tz",
+          "p_invitee_email",
+          "p_invitee_name",
+          "p_kind",
+          "p_meeting_link",
+          "p_notes",
+          "p_owner_user_id",
+          "p_scheduled_at"
+        ],
+        "required": [
+          "p_event_tz",
+          "p_scheduled_at"
+        ],
+        "unnamed": false,
+        "raw": "p_scheduled_at timestamp with time zone, p_event_tz text, p_application_id uuid DEFAULT NULL::uuid, p_agent_id uuid DEFAULT NULL::uuid, p_invitee_name text DEFAULT NULL::text, p_invitee_email text DEFAULT NULL::text, p_kind text DEFAULT 'interview'::text, p_duration_minutes integer DEFAULT 30, p_meeting_link text DEFAULT NULL::text, p_notes text DEFAULT NULL::text, p_owner_user_id uuid DEFAULT NULL::uuid"
+      }
+    ],
     "bot_alert_agent_contracted": [
       {
         "all": [],
@@ -1102,6 +1125,71 @@
         "raw": ""
       }
     ],
+    "calendar_can_book_for_application": [
+      {
+        "all": [
+          "p_application_id"
+        ],
+        "required": [
+          "p_application_id"
+        ],
+        "unnamed": false,
+        "raw": "p_application_id uuid"
+      }
+    ],
+    "calendar_interview_reminders_enabled": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "calendar_is_scheduling_staff": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "calendar_owner_conflicts": [
+      {
+        "all": [
+          "p_ends_at",
+          "p_exclude_event_key",
+          "p_owner_user_id",
+          "p_starts_at"
+        ],
+        "required": [
+          "p_ends_at",
+          "p_owner_user_id",
+          "p_starts_at"
+        ],
+        "unnamed": false,
+        "raw": "p_owner_user_id uuid, p_starts_at timestamp with time zone, p_ends_at timestamp with time zone, p_exclude_event_key text DEFAULT NULL::text"
+      }
+    ],
+    "calendar_provider_health": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "calendar_valid_tz": [
+      {
+        "all": [
+          "p_tz"
+        ],
+        "required": [
+          "p_tz"
+        ],
+        "unnamed": false,
+        "raw": "p_tz text"
+      }
+    ],
     "calendar_window": [
       {
         "all": [
@@ -1153,6 +1241,21 @@
         ],
         "unnamed": false,
         "raw": "p_application_id uuid"
+      }
+    ],
+    "cancel_interview_event": [
+      {
+        "all": [
+          "p_id",
+          "p_outcome",
+          "p_reason"
+        ],
+        "required": [
+          "p_id",
+          "p_reason"
+        ],
+        "unnamed": false,
+        "raw": "p_id uuid, p_reason text, p_outcome text DEFAULT NULL::text"
       }
     ],
     "cc_dispose": [
@@ -3205,6 +3308,28 @@
         "raw": "p_student_id uuid"
       }
     ],
+    "fn_log_interview_event_activity": [
+      {
+        "all": [
+          "p_action",
+          "p_event",
+          "p_from_at",
+          "p_outcome",
+          "p_reason",
+          "p_superseded"
+        ],
+        "required": [
+          "p_action",
+          "p_event",
+          "p_from_at",
+          "p_outcome",
+          "p_reason",
+          "p_superseded"
+        ],
+        "unnamed": false,
+        "raw": "p_event interview_events, p_action text, p_from_at timestamp with time zone, p_reason text, p_outcome text, p_superseded integer"
+      }
+    ],
     "fn_logged_backfill_orphan_agent_id": [
       {
         "all": [],
@@ -3928,6 +4053,20 @@
         ],
         "unnamed": false,
         "raw": "p_status text"
+      }
+    ],
+    "fn_supersede_interview_reminders": [
+      {
+        "all": [
+          "p_event_id",
+          "p_reason"
+        ],
+        "required": [
+          "p_event_id",
+          "p_reason"
+        ],
+        "unnamed": false,
+        "raw": "p_event_id uuid, p_reason text"
       }
     ],
     "fn_sweep_interview_reminders": [
@@ -5866,6 +6005,23 @@
         ],
         "unnamed": false,
         "raw": "p_agent_id uuid"
+      }
+    ],
+    "reschedule_interview_event": [
+      {
+        "all": [
+          "p_duration_minutes",
+          "p_event_tz",
+          "p_id",
+          "p_new_at",
+          "p_reason"
+        ],
+        "required": [
+          "p_id",
+          "p_new_at"
+        ],
+        "unnamed": false,
+        "raw": "p_id uuid, p_new_at timestamp with time zone, p_event_tz text DEFAULT NULL::text, p_reason text DEFAULT NULL::text, p_duration_minutes integer DEFAULT NULL::integer"
       }
     ],
     "rescue_stale_applications": [

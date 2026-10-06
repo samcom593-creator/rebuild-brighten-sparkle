@@ -12,7 +12,6 @@ import { Loader2, TrendingUp, Target, AlertTriangle } from "lucide-react";
 type Row = {
   agent_id: string;
   name: string;
-  email: string | null;
   license_status: string | null;
   hired: string | null;
   deals_mtd: number;
@@ -46,7 +45,7 @@ export function Target20kPaceWidget() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("v_agent_20k_target_leaderboard")
-        .select("*")
+        .select("agent_id, name, license_status, hired, deals_mtd, ap_mtd, deals_no_policy_mtd, ap_at_risk_mtd, ap_to_20k, projected_eom_ap, pace_verdict")
         .order("ap_mtd", { ascending: false })
         .limit(100);
       if (error) throw error;

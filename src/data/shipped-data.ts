@@ -13,7 +13,7 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
-    label: "Book of Business now matches Home: this month reads $41,409 across 21 deals instead of $1,863,009, because the tiles stop counting the $1.82M AgentLink pair with no agent on the roster. A note names the excluded deals. Contracting Ops cards read the live carrier cases (103 verified, 45 with carriers, 35 needing staff) instead of an empty table that said \"Nothing outstanding\".",
+    label: "Book of Business now matches Home: this month reads $41,409 across 21 deals instead of $1,863,009, because the tiles stop counting a $1.82M pair of imported deals with no agent on the roster. A note names the excluded deals. Contracting Ops cards read the live carrier cases (103 verified, 45 with carriers, 35 needing staff) instead of an empty table that said \"Nothing outstanding\".",
     detail: "Calendar shows one birthday per client instead of one per client record (1,836 records, 1,041 people). The floating search pill that covered buttons on every page is gone, the recruiting strip drops the retired Interviews and Follow-ups tabs, suggested next actions read in sentence case, and review reasons read as sentences.",
     commit: "apex-os-truth-polish-2026-10-06",
   },

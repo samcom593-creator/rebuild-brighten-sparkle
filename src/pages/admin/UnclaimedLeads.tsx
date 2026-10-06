@@ -238,7 +238,6 @@ export default function UnclaimedLeads() {
                 <tbody>
                   {filtered.slice(0, visibleCount).map(row => {
                     const days = ageDays(row.created_at);
-                    const isKJ = row.assigned_agent_id === kjId;
                     const assigned = row.assigned_agent_id ? (agentMap.get(row.assigned_agent_id) ?? "—") : "(none)";
                     return (
                       <tr key={row.id} className="border-t border-border hover:bg-white/[0.02]">
@@ -252,7 +251,7 @@ export default function UnclaimedLeads() {
                           <Badge variant={days >= 7 ? "destructive" : days >= 3 ? "secondary" : "outline"}>{days}d</Badge>
                         </td>
                         <td className="p-3">
-                          <span className={cn(isKJ && "text-amber-400 font-medium")}>{assigned}</span>
+                          <span>{assigned}</span>
                         </td>
                         <td className="p-3 text-xs text-slate-600 dark:text-slate-300">
                           {row.last_contacted_at ? formatDistanceToNow(new Date(row.last_contacted_at), { addSuffix: true }) : <span className="text-rose-400">never</span>}

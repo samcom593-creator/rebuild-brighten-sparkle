@@ -175,10 +175,16 @@ export default function DashboardAccounts() {
       );
       const userIds = candidateUserIds.filter((userId) => authUserIds.has(userId));
 
-      const profilesResult = userIds.length > 0
-        ? await supabase.from("profiles").select("user_id, full_name, email, created_at").in("user_id", userIds)
-        : { data: [], error: null };
-      if (profilesResult.error) throw profilesResult.error;
+      // One .in() with every user id builds a URL past the gateway limit (691 ids returned 400),
+      // so read profiles in pages of 100 and fail loudly if any page fails.
+      const idPages: string[][] = [];
+      for (let i = 0; i < userIds.length; i += 100) idPages.push(userIds.slice(i, i + 100));
+      const pageResults = await Promise.all(
+        idPages.map((ids) => supabase.from("profiles").select("user_id, full_name, email, created_at").in("user_id", ids)),
+      );
+      const failedPage = pageResults.find((r) => r.error);
+      if (failedPage?.error) throw failedPage.error;
+      const profilesResult = { data: pageResults.flatMap((r) => r.data ?? []) };
 
       const profileMap = new Map<string, { full_name: string | null; email: string | null; created_at: string }>();
       for (const p of profilesResult.data || []) {

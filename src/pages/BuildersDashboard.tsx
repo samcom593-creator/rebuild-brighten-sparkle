@@ -199,9 +199,7 @@ interface LeadPaymentRow {
   agent_id: string;
   paid: boolean | null;
   tier: string;
-  payment_status?: string | null;
-  lead_type?: string | null;
-  amount?: number | string | null;
+  week_start?: string | null;
   marked_at?: string | null;
 }
 
@@ -263,11 +261,9 @@ function fmtDate(value: string | null | undefined): string {
 function paymentLabel(rows: LeadPaymentRow[] | undefined): string {
   if (!rows || rows.length === 0) return "No lead payment";
   const latest = [...rows].sort((a, b) => String(b.marked_at ?? "").localeCompare(String(a.marked_at ?? "")))[0];
-  const status = latest.payment_status || (latest.paid ? "confirmed" : "pending");
-  const type = latest.lead_type || latest.tier || "lead";
-  const amount = Number(latest.amount ?? 0);
-  const amountLabel = Number.isFinite(amount) && amount > 0 ? ` · ${fmtMoney(amount)}` : "";
-  return `${type} · ${status}${amountLabel}`;
+  const status = latest.paid ? "confirmed" : "pending";
+  const type = latest.tier || "lead";
+  return `${type} · ${status}${latest.week_start ? ` · week of ${latest.week_start}` : ""}`;
 }
 
 function daysAgo(value: string | null | undefined): string {
@@ -461,7 +457,7 @@ export default function BuildersDashboard({ mode = "builders" }: { mode?: Dashbo
     queryFn: async (): Promise<LeadPaymentRow[]> => {
       const { data, error } = await (supabase as any)
         .from("lead_payment_tracking")
-        .select("agent_id, paid, tier, payment_status, lead_type, amount, marked_at")
+        .select("agent_id, paid, tier, week_start, marked_at")
         .order("marked_at", { ascending: false, nullsFirst: false })
         .limit(500);
       if (error) throw error;

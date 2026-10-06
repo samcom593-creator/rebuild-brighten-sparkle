@@ -1,4 +1,5 @@
 import { useCallback, useState, useEffect, type ReactNode } from "react";
+import { EmailTypoHint } from "@/components/ui/email-typo-hint";
 import { ArrowLeft, Check, Copy, Crown, ExternalLink, GraduationCap, Link2, Loader2, ShieldCheck, User, UserPlus, Users, type LucideIcon } from "lucide-react";
 import {
   Dialog,
@@ -623,6 +624,7 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
               placeholder="john@example.com"
               required
             />
+            <EmailTypoHint value={email} onAccept={setEmail} />
           </div>
 
           {/* Phone */}

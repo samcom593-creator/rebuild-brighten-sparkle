@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { EmailTypoHint } from "@/components/ui/email-typo-hint";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { motion, AnimatePresence } from "framer-motion";
@@ -1060,6 +1061,7 @@ export default function Apply() {
                           placeholder="john@example.com"
                           className="bg-input"
                         />
+                        <EmailTypoHint value={watch("email") ?? ""} onAccept={(next) => setValue("email", next, { shouldValidate: true, shouldDirty: true })} />
                         {errors.email && (
                           <p className="text-sm text-destructive">{errors.email.message}</p>
                         )}

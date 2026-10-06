@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { EmailTypoHint } from "@/components/ui/email-typo-hint";
 import { Loader2, Mail, Send, UserPlus, Copy, Check, Link2, Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -342,6 +343,7 @@ export function InviteTeamModal({ open, onClose }: InviteTeamModalProps) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
+              <EmailTypoHint value={email} onAccept={setEmail} />
             </div>
 
             <div className="space-y-2">

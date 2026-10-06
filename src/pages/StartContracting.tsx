@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { EmailTypoHint } from "@/components/ui/email-typo-hint";
 import { CheckCircle2, Loader2, Pencil, UserRoundCheck } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -357,6 +358,7 @@ export default function StartContracting() {
                   aria-describedby={errors[field.name] ? `${field.name}-error` : undefined}
                   className="mt-1.5"
                 />
+                {field.name === "email" && <EmailTypoHint value={form.email} onAccept={(next) => setField("email", next)} />}
                 {errors[field.name] && (
                   <p id={`${field.name}-error`} role="alert" className="mt-1.5 text-xs text-rose-600 dark:text-rose-400">
                     {errors[field.name]}

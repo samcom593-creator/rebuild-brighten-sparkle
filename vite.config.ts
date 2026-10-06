@@ -464,10 +464,20 @@ export default defineConfig(({ mode }) => ({
               priority: 60,
               test: "[\\\\/]node_modules[\\\\/]@radix-ui[\\\\/]",
             },
+            // PL-WIB-APPLY-RADIX (2026-10-06): sonner has its own group.
+            // Grouped with cmdk + vaul (both import @radix-ui/react-dialog),
+            // a bare `toast()` import made vendor-ui -> vendor-radix a static
+            // edge, so /apply and every other page that toasts downloaded
+            // 72 KB of cmdk/vaul/embla plus 163 KB of radix to show a toast.
+            {
+              name: "vendor-sonner",
+              priority: 60,
+              test: "[\\\\/]node_modules[\\\\/]sonner[\\\\/]",
+            },
             {
               name: "vendor-ui",
               priority: 60,
-              test: "[\\\\/]node_modules[\\\\/](cmdk|sonner|vaul|embla-carousel-react)[\\\\/]",
+              test: "[\\\\/]node_modules[\\\\/](cmdk|vaul|embla-carousel-react)[\\\\/]",
             },
           ],
         },

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, lazy, Suspense, type ComponentProps } from "react";
 import { EmailTypoHint } from "@/components/ui/email-typo-hint";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -26,20 +26,102 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { US_STATES, AVAILABILITY_OPTIONS, REFERRAL_SOURCES } from "@/lib/constants";
 import { CARRIER_OPTIONS } from "@/lib/carrierOptions";
 import { track } from "@/lib/analytics";
 import { createFieldProgressTracker } from "@/shared/telemetry/applyFieldProgress";
 import { createDebouncedWriter, type DebouncedWriter } from "@/shared/lib/debouncedWriter";
 import { QuickQualifyStep } from "@/pages/apply/QuickQualifyStep";
+import type { ApplySelectProps } from "@/pages/apply/ApplyRadixFields";
+
+// PL-WIB-APPLY-RADIX (2026-10-06): radix Select/Checkbox live behind this
+// lazy module so vendor-radix (163 KB raw) loads after step 1 paints instead
+// of gating the LCP heading. React.lazy fetches on first render, and the state
+// field is on step 1, so the lazy controls are not rendered until the page has
+// loaded and gone idle, or the visitor first points, types or focuses,
+// whichever is first. The fallbacks are the same size as the real controls so
+// the swap does not shift layout.
+const LazyApplySelect = lazy(() => import("@/pages/apply/ApplyRadixFields").then((m) => ({ default: m.ApplySelect })));
+const LazyApplyCheckbox = lazy(() => import("@/pages/apply/ApplyRadixFields").then((m) => ({ default: m.ApplyCheckbox })));
+
+let radixFieldsRequested = false;
+const radixFieldsListeners = new Set<() => void>();
+function requestRadixFields() {
+  if (radixFieldsRequested) return;
+  radixFieldsRequested = true;
+  radixFieldsListeners.forEach((listener) => listener());
+}
+
+function useRadixFieldsRequested() {
+  const [requested, setRequested] = useState(radixFieldsRequested);
+  useEffect(() => {
+    if (radixFieldsRequested) {
+      setRequested(true);
+      return;
+    }
+    const onRequest = () => setRequested(true);
+    radixFieldsListeners.add(onRequest);
+    return () => {
+      radixFieldsListeners.delete(onRequest);
+    };
+  }, []);
+  return requested;
+}
+
+function useRequestRadixFieldsAfterPaint() {
+  useEffect(() => {
+    const interactions = ["pointerdown", "keydown", "focusin"] as const;
+    const onInteract = () => requestRadixFields();
+    interactions.forEach((type) => window.addEventListener(type, onInteract, { once: true, passive: true }));
+    // Safari has no requestIdleCallback; fall back to a short timeout there.
+    const idle = window.requestIdleCallback as typeof window.requestIdleCallback | undefined;
+    let idleHandle: number | undefined;
+    const scheduleIdle = () => {
+      idleHandle = idle
+        ? idle(requestRadixFields, { timeout: 2000 })
+        : window.setTimeout(requestRadixFields, 200);
+    };
+    if (document.readyState === "complete") scheduleIdle();
+    else window.addEventListener("load", scheduleIdle, { once: true });
+    return () => {
+      interactions.forEach((type) => window.removeEventListener(type, onInteract));
+      window.removeEventListener("load", scheduleIdle);
+      if (idleHandle !== undefined) {
+        if (idle) window.cancelIdleCallback(idleHandle);
+        else window.clearTimeout(idleHandle);
+      }
+    };
+  }, []);
+}
+
+function ApplySelect(props: ApplySelectProps) {
+  const requested = useRadixFieldsRequested();
+  const fallback = (
+    <div
+      aria-hidden="true"
+      className="flex h-10 w-full items-center rounded-md border border-input bg-input px-3 py-2 text-sm text-muted-foreground"
+    >
+      {props.placeholder}
+    </div>
+  );
+  if (!requested) return fallback;
+  return (
+    <Suspense fallback={fallback}>
+      <LazyApplySelect {...props} />
+    </Suspense>
+  );
+}
+
+function ApplyCheckbox(props: ComponentProps<typeof LazyApplyCheckbox>) {
+  const requested = useRadixFieldsRequested();
+  const fallback = <span aria-hidden="true" className={`inline-block h-4 w-4 shrink-0 rounded-sm border border-primary ${props.className ?? ""}`} />;
+  if (!requested) return fallback;
+  return (
+    <Suspense fallback={fallback}>
+      <LazyApplyCheckbox {...props} />
+    </Suspense>
+  );
+}
 // S11 fix (2026-06-15): when the landing -> /apply hop dropped `?ref=` from
 // the CTA href, fall back to the localStorage relay captured on landing
 // mount. Cleared on successful submit so it doesn't leak into a second
@@ -153,6 +235,7 @@ const steps = [
 
 export default function Apply() {
   usePageTitle("Apply to APEX Financial · Insurance Career Pathway");
+  useRequestRadixFieldsAfterPaint();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   // S11 fix: prefer URL ?ref= when present, fall back to the localStorage
@@ -1103,18 +1186,13 @@ export default function Apply() {
 
                         <div className="space-y-2">
                           <Label htmlFor="state">State *</Label>
-                          <Select value={watch("state") || undefined} onValueChange={(value) => setValue("state", value, { shouldValidate: true })}>
-                            <SelectTrigger id="state" className="bg-input">
-                              <SelectValue placeholder="Select state" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {US_STATES.map((state) => (
-                                <SelectItem key={state.value} value={state.value}>
-                                  {state.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <ApplySelect
+                            id="state"
+                            value={watch("state") || undefined}
+                            onValueChange={(value) => setValue("state", value, { shouldValidate: true })}
+                            placeholder="Select state"
+                            options={US_STATES}
+                          />
                           {errors.state && (
                             <p className="text-sm text-destructive">{errors.state.message}</p>
                           )}
@@ -1141,21 +1219,13 @@ export default function Apply() {
                       {/* Mobile Carrier Field */}
                       <div className="space-y-2">
                         <Label htmlFor="carrier">Mobile Carrier (optional)</Label>
-                        <Select
+                        <ApplySelect
+                          id="carrier"
                           value={watch("carrier") || undefined}
                           onValueChange={(value) => setValue("carrier", value)}
-                        >
-                          <SelectTrigger id="carrier" className="bg-input">
-                            <SelectValue placeholder="Select your carrier" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {CARRIER_OPTIONS.map((c) => (
-                              <SelectItem key={c.value} value={c.value}>
-                                {c.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          placeholder="Select your carrier"
+                          options={CARRIER_OPTIONS}
+                        />
                         <p className="text-xs text-muted-foreground">
                           Helps us send you text alerts about your application status
                         </p>
@@ -1172,7 +1242,7 @@ export default function Apply() {
                       </div>
 
                       <div className="flex items-center space-x-3 p-4 rounded-lg border border-border">
-                        <Checkbox
+                        <ApplyCheckbox
                           id="hasExperience"
                           checked={hasExperience}
                           onCheckedChange={(checked) => setValue("hasInsuranceExperience", checked === true)}
@@ -1245,19 +1315,17 @@ export default function Apply() {
 
                       <div className="space-y-2">
                         <Label>Current License Status *</Label>
-                        <Select 
+                        <ApplySelect
+                          ariaLabel="Current license status"
                           value={licenseStatus}
-                          onValueChange={(value: "licensed" | "unlicensed" | "pending") => setValue("licenseStatus", value)}
-                        >
-                          <SelectTrigger aria-label="Current license status" className="bg-input">
-                            <SelectValue placeholder="Select status" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="licensed">Currently Licensed</SelectItem>
-                            <SelectItem value="pending">License Pending</SelectItem>
-                            <SelectItem value="unlicensed">Not Yet Licensed</SelectItem>
-                          </SelectContent>
-                        </Select>
+                          onValueChange={(value) => setValue("licenseStatus", value as "licensed" | "unlicensed" | "pending")}
+                          placeholder="Select status"
+                          options={[
+                            { value: "licensed", label: "Currently Licensed" },
+                            { value: "pending", label: "License Pending" },
+                            { value: "unlicensed", label: "Not Yet Licensed" },
+                          ]}
+                        />
                       </div>
 
                       {licenseStatus === "licensed" && (
@@ -1328,18 +1396,13 @@ export default function Apply() {
 
                       <div className="space-y-2">
                         <Label>Availability *</Label>
-                        <Select value={watch("availability") || undefined} onValueChange={(value) => setValue("availability", value, { shouldValidate: true })}>
-                          <SelectTrigger aria-label="Availability" className="bg-input">
-                            <SelectValue placeholder="Select availability" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {AVAILABILITY_OPTIONS.map((option) => (
-                              <SelectItem key={option.value} value={option.value}>
-                                {option.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <ApplySelect
+                          ariaLabel="Availability"
+                          value={watch("availability") || undefined}
+                          onValueChange={(value) => setValue("availability", value, { shouldValidate: true })}
+                          placeholder="Select availability"
+                          options={AVAILABILITY_OPTIONS}
+                        />
                         {errors.availability && (
                           <p className="text-sm text-destructive">{errors.availability.message}</p>
                         )}
@@ -1368,18 +1431,13 @@ export default function Apply() {
                             ? `Referred by ${referrerName} ✓`
                             : "Where did you find APEX? (optional)"}
                         </Label>
-                        <Select value={watch("referralSource") || undefined} onValueChange={(value) => setValue("referralSource", value, { shouldValidate: true })}>
-                          <SelectTrigger className="bg-input">
-                            <SelectValue placeholder="Select source" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {REFERRAL_SOURCES.map((source) => (
-                              <SelectItem key={source.value} value={source.value}>
-                                {source.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <ApplySelect
+                          ariaLabel="Where did you find APEX?"
+                          value={watch("referralSource") || undefined}
+                          onValueChange={(value) => setValue("referralSource", value, { shouldValidate: true })}
+                          placeholder="Select source"
+                          options={REFERRAL_SOURCES}
+                        />
                       </div>
 
                       {/* Agent picker — asked BEFORE submit so the writing
@@ -1389,17 +1447,16 @@ export default function Apply() {
                       {!referrerId && (
                         <div className="space-y-2">
                           <Label>Which APEX agent should get credit?</Label>
-                          <Select
+                          <ApplySelect
+                            ariaLabel="Which agent should get credit"
                             value={selectedReferrer}
                             onValueChange={setSelectedReferrer}
-                          >
-                            <SelectTrigger aria-label="Which agent should get credit" className="bg-input">
-                              <SelectValue placeholder="Choose an agent (optional)" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">I found APEX on my own</SelectItem>
-                              {activeAgents.map((agent) => (
-                                <SelectItem key={agent.id} value={agent.id}>
+                            placeholder="Choose an agent (optional)"
+                            options={[
+                              { value: "none", label: "I found APEX on my own" },
+                              ...activeAgents.map((agent) => ({
+                                value: agent.id,
+                                label: (
                                   <div className="flex items-center gap-2 py-0.5">
                                     <ManagerAvatar name={agent.name} src={agent.avatarUrl ?? null} />
                                     <span className="font-medium">{agent.name}</span>
@@ -1408,11 +1465,11 @@ export default function Apply() {
                                       <span className="text-xs text-muted-foreground">@{agent.instagramHandle}</span>
                                     )}
                                   </div>
-                                </SelectItem>
-                              ))}
-                              <SelectItem value="other">Someone else not listed</SelectItem>
-                            </SelectContent>
-                          </Select>
+                                ),
+                              })),
+                              { value: "other", label: "Someone else not listed" },
+                            ]}
+                          />
                           {selectedReferrer === "other" && (
                             <Input
                               value={customReferrer}
@@ -1441,7 +1498,7 @@ export default function Apply() {
                             Consent is not a condition of purchase.
                           </p>
                           <div className="flex items-start gap-3">
-                            <Checkbox
+                            <ApplyCheckbox
                               id="smsConsent"
                               checked={watch("smsConsent") || false}
                               onCheckedChange={(checked) => 
@@ -1466,7 +1523,7 @@ export default function Apply() {
                             application updates and onboarding.
                           </p>
                           <div className="flex items-start gap-3">
-                            <Checkbox
+                            <ApplyCheckbox
                               id="emailConsent"
                               checked={watch("emailConsent") || false}
                               onCheckedChange={(checked) => 

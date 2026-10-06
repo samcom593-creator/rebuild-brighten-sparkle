@@ -27,6 +27,15 @@
 //
 // Fix: use tailwindcss-animate classes (animate-in fade-in slide-in-from-*),
 // or move the animated piece behind lazy() so it loads after first paint.
+//
+// PL-WIB-APPLY-RADIX (2026-10-06) widened the forbidden set to @radix-ui,
+// cmdk and vaul. Label, Select and Checkbox pulled the 163 KB vendor-radix
+// chunk in front of the heading; radix controls now load through
+// src/pages/apply/ApplyRadixFields.tsx (dynamic import, not followed here).
+// `import type` edges are erased at build and are skipped. One edge this
+// source walk cannot see is chunk grouping: `toast` from sonner shared the
+// vendor-ui chunk with cmdk + vaul, which import radix, so the guard also
+// asserts vite.config.ts keeps sonner out of the vendor-ui group.
 
 import { readFileSync, existsSync, statSync } from "node:fs";
 import path from "node:path";
@@ -34,9 +43,12 @@ import path from "node:path";
 const repoRoot = path.resolve(import.meta.dirname, "..");
 const srcRoot = path.join(repoRoot, "src");
 const ROOT = path.join(repoRoot, "src/pages/Apply.tsx");
-const FORBIDDEN = "framer-motion";
+const FORBIDDEN = ["framer-motion", "@radix-ui", "cmdk", "vaul"];
+// @radix-ui/react-slot is pinned into vendor-react by vite.config.ts (wave-36),
+// so it does not pull vendor-radix. Any other radix package does.
+const ALLOWED = new Set(["@radix-ui/react-slot"]);
 
-const EDGE_RE = /^\s*(?:import|export)\s+(?:[^'";]+\s+from\s+)?['"]([^'"]+)['"]/gm;
+const EDGE_RE = /^\s*(?:import|export)\s+(type\s+)?(?:[^'";]+\s+from\s+)?['"]([^'"]+)['"]/gm;
 
 function resolveExt(base) {
   if (existsSync(base) && !statSync(base).isDirectory()) return base;
@@ -70,10 +82,12 @@ while (stack.length) {
   seen.add(file);
   const src = readFileSync(file, "utf8");
   for (const m of src.matchAll(EDGE_RE)) {
-    const spec = m[1];
-    if (spec === FORBIDDEN || spec.startsWith(FORBIDDEN + "/")) {
+    if (m[1]) continue; // `import type` / `export type`: erased at build
+    const spec = m[2];
+    const hit = !ALLOWED.has(spec) && FORBIDDEN.find((pkg) => spec === pkg || spec.startsWith(pkg + "/"));
+    if (hit) {
       const line = src.slice(0, m.index).split("\n").length;
-      offenders.push(`${path.relative(repoRoot, file)}:${line}`);
+      offenders.push(`${path.relative(repoRoot, file)}:${line} (${spec})`);
       continue;
     }
     const next = resolveSource(file, spec);
@@ -81,10 +95,18 @@ while (stack.length) {
   }
 }
 
+const viteConfig = readFileSync(path.join(repoRoot, "vite.config.ts"), "utf8");
+const uiGroup = viteConfig.match(/name:\s*"vendor-ui",[^}]*?test:\s*"([^"]+)"/);
+if (!uiGroup) {
+  offenders.push('vite.config.ts: vendor-ui chunk group not found; cannot prove sonner is kept out of it. Update this guard if the group was renamed.');
+} else if (new RegExp(uiGroup[1].replace(/\\\\/g, "\\")).test("/node_modules/sonner/dist/index.mjs")) {
+  offenders.push("vite.config.ts: vendor-ui group matches sonner; vendor-ui also holds cmdk + vaul (radix importers), so a toast() import drags vendor-radix onto /apply");
+}
+
 if (offenders.length) {
-  console.error(`check-apply-framer-free: FAIL — ${offenders.length} static framer-motion edge(s) reachable from src/pages/Apply.tsx:`);
+  console.error(`check-apply-framer-free: FAIL — ${offenders.length} heavy static edge(s) reachable from src/pages/Apply.tsx:`);
   for (const o of offenders) console.error(`  ${o}`);
-  console.error("Every byte in Apply's static closure delays the step-1 heading (the page's LCP). Use tailwindcss-animate classes, or lazy() the animated piece.");
+  console.error("Every byte in Apply's static closure delays the step-1 heading (the page's LCP). Use tailwindcss-animate classes, or lazy() the piece (radix controls go through src/pages/apply/ApplyRadixFields.tsx).");
   process.exit(1);
 }
-console.log(`check-apply-framer-free: OK — ${seen.size} files statically reachable from Apply.tsx, 0 framer-motion edges.`);
+console.log(`check-apply-framer-free: OK — ${seen.size} files statically reachable from Apply.tsx, 0 framer-motion/@radix-ui/cmdk/vaul edges, sonner outside vendor-ui.`);

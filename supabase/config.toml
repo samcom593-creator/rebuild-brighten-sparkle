@@ -182,7 +182,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.notify-course-complete]
-verify_jwt = false
+verify_jwt = true
 
 [functions.check-team-milestones]
 verify_jwt = false

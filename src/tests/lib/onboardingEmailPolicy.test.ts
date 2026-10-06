@@ -15,7 +15,6 @@ describe("licensed and unlicensed onboarding email policy", () => {
   it("gives both license cohorts an ordered roadmap with community, account, and training steps", () => {
     for (const expected of [
       "Join the APEX Slack",
-      "Join the APEX Discord",
       "Set Up Your APEX Account",
       "Set Up Your Course Account",
       "Open Your APEX Roadmap",
@@ -24,7 +23,8 @@ describe("licensed and unlicensed onboarding email policy", () => {
     ]) {
       expect(licensing).toContain(expected);
     }
-    expect(licensing).toContain("https://discord.gg/JpUWA73UZX");
+    // Owner directive 2026-10-05: Discord is out of the agent journey; Slack is the one team workspace.
+    expect(licensing).not.toMatch(/discord/i);
     expect(licensing).not.toMatch(/whatsapp/i);
   });
 
@@ -35,7 +35,7 @@ describe("licensed and unlicensed onboarding email policy", () => {
     expect(welcome).toContain("Create Your XCEL Course Account");
     expect(welcome).toContain("Complete Online Training");
     expect(welcome).toContain("Open My Account &amp; Roadmap");
-    expect(welcome).toContain("Join Team Discord");
+    expect(welcome).not.toMatch(/discord/i);
     expect(welcome).not.toMatch(/whatsapp/i);
   });
 
@@ -45,7 +45,8 @@ describe("licensed and unlicensed onboarding email policy", () => {
     expect(queueWorker).not.toContain("Your APEX prelicensing course access is ready");
     expect(course).toContain("Your next-step roadmap");
     expect(course).toContain("Join the APEX Slack");
-    expect(queueWorker).toContain("Join the APEX Discord");
+    expect(queueWorker).toContain("Join the APEX Slack");
+    expect(queueWorker).not.toMatch(/discord\.gg|Join the APEX Discord|Join Discord/);
     expect(course).not.toMatch(/whatsapp/i);
     expect(queueWorker.match(/Slack is your <strong>primary team hub<\/strong>/g)).toHaveLength(1);
   });

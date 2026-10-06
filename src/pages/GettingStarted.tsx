@@ -45,7 +45,8 @@ const CHECKLIST_STEPS = [
   // reported they could not find the Discord; the invites were live the whole
   // time but existed only inside one email. settingKey resolves the real URL
   // at render so the link can never drift from what the onboarding email sends.
-  { key: "joined_discord", label: "Joined team Slack + Discord", stage: "onboarding", settingKey: "community" },
+  // key kept for stored progress continuity; the step is Slack-only (Discord left the journey 2026-10-05).
+  { key: "joined_discord", label: "Joined the team Slack", stage: "onboarding", settingKey: "community" },
   { key: "added_phone_number", label: "Added phone number", stage: "onboarding", href: "/dashboard/profile" },
   { key: "uploaded_id", label: "Uploaded ID", stage: "onboarding", href: "/dashboard/profile" },
   { key: "signed_ica", label: "Signed contract", stage: "onboarding", href: "/start-contracting" },
@@ -278,10 +279,6 @@ export default function GettingStarted() {
                       {communityLinks.slack && (
                         <a className="text-[11px] font-medium text-primary underline-offset-2 hover:underline"
                            href={communityLinks.slack} target="_blank" rel="noopener noreferrer">Open Slack invite</a>
-                      )}
-                      {communityLinks.discord && (
-                        <a className="text-[11px] font-medium text-primary underline-offset-2 hover:underline"
-                           href={communityLinks.discord} target="_blank" rel="noopener noreferrer">Open Discord invite</a>
                       )}
                     </div>
                   )}

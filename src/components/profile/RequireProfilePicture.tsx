@@ -129,7 +129,7 @@ export function RequireProfilePicture() {
             Add your profile picture
           </DialogTitle>
           <DialogDescription>
-            Your face shows up next to every deal you close on Discord. Agents
+            Your face shows up next to every deal you close on the team boards. Agents
             compete harder when they see who's writing production. One upload and
             you're set.
           </DialogDescription>

@@ -578,7 +578,7 @@ export default function GetLicensed() {
               </div>
               <p className="text-sm text-muted-foreground">
                 {isLicensed
-                  ? "You're cleared. Book your onboarding call — Discord + contracting arrive the same day."
+                  ? "You're cleared. Book your onboarding call — contracting starts the same day."
                   : "Preview of the activation path once your license is issued."}
               </p>
             </div>
@@ -622,7 +622,7 @@ export default function GetLicensed() {
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold">Book Onboarding Call</p>
                 <p className="text-xs text-muted-foreground">
-                  Get contracted + Discord invite
+                  Get contracted
                 </p>
               </div>
             </li>

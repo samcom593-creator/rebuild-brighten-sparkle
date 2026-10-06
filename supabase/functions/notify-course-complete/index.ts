@@ -17,7 +17,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const discordLink = "https://discord.gg/JpUWA73UZX";
 const portalLink = "https://apex-financial.org/agent-portal";
 
 const handler = async (req: Request): Promise<Response> => {
@@ -36,10 +35,36 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Missing agentId");
     }
 
+    // Completion is re-derived on the server. Before 2026-10-06 this endpoint took the
+    // browser's word and accepted any agentId from any caller (verify_jwt=false), so anyone
+    // could advance any agent to in_field_training and trigger two emails.
+    const json = (body: unknown, status: number) =>
+      new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    const jwt = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
+    const { data: caller } = await supabase.auth.getUser(jwt);
+    if (!caller?.user) return json({ error: "Sign in required" }, 401);
+    const { data: roleRows, error: roleError } = await supabase.from("user_roles").select("role").eq("user_id", caller.user.id);
+    if (roleError) return json({ error: "Could not check your role" }, 503);
+    const callerIsAdmin = (roleRows ?? []).some((r: { role: string }) => r.role === "admin");
+    if (!callerIsAdmin) {
+      const { data: owned, error: ownError } = await supabase.from("agents").select("id").eq("id", agentId).eq("user_id", caller.user.id).limit(1);
+      if (ownError) return json({ error: "Could not check agent ownership" }, 503);
+      if (!owned?.length) return json({ error: "You can only report your own course completion" }, 403);
+    }
+    const { data: completion, error: completionError } = await supabase
+      .from("v_training_required_completion")
+      .select("required_total, required_passed, required_complete")
+      .eq("agent_id", agentId)
+      .limit(1);
+    if (completionError) return json({ error: "Could not verify course progress" }, 503);
+    if (!completion?.[0]?.required_complete) {
+      return json({ error: "Required training is not complete", progress: completion?.[0] ?? null }, 409);
+    }
+
     console.log(`Processing course completion for agent: ${agentId}`);
 
     // Get agent's manager and profile (include manager_id as fallback).
-    // license_status gates the Discord CTA (LICENSED ONLY — matches
+    // license_status gates licensed-only content (matches
     // send-agent-onboarding-email guard).
     const { data: agent } = await supabase
       .from("agents")
@@ -160,7 +185,7 @@ const handler = async (req: Request): Promise<Response> => {
           <strong style="color:#ffffff;">Recommended Actions:</strong><br>
           • Schedule first field training session<br>
           • Verify CRM access is set up<br>
-          • Confirm Discord channel access<br>
+          • Confirm Slack workspace access<br>
           • Review initial lead assignments
         </p>
       </div>
@@ -213,22 +238,12 @@ const handler = async (req: Request): Promise<Response> => {
         </p>
       </div>
       
-      <!-- Discord (LICENSED ONLY — gate matches send-agent-onboarding-email) -->
-      ${isLicensed ? `
-      <div style="background:rgba(20,184,166,0.1);border-radius:8px;padding:20px;margin:24px 0;">
-        <h3 style="font-size:16px;color:#14b8a6;margin:0 0 12px 0;">💬 Join Our Discord</h3>
-        <p style="font-size:14px;color:#d1d5db;margin:0 0 12px 0;">
-          This is where all team communication happens:
-        </p>
-        <a href="${discordLink}" style="display:inline-block;background:#14b8a6;color:#ffffff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">Join Discord →</a>
-      </div>
-      ` : ''}
       
       <!-- Daily Meeting -->
       <div style="background:rgba(20,184,166,0.1);border-radius:8px;padding:20px;margin:24px 0;">
         <h3 style="font-size:16px;color:#14b8a6;margin:0 0 12px 0;">📅 Daily Team Meeting</h3>
         <p style="font-size:14px;color:#d1d5db;margin:0;">
-          <strong style="color:#ffffff;">Time:</strong> 10:00 AM CST on Discord<br><br>
+          <strong style="color:#ffffff;">Time:</strong> 10:00 AM CST in the team Slack huddle<br><br>
           <strong style="color:#ffffff;">Expectations:</strong><br>
           • Camera ON (required)<br>
           • Remember: <strong style="color:#f59e0b;">On time is LATE</strong>

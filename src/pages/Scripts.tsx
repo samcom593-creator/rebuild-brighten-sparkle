@@ -11,6 +11,9 @@
 // {agent_name}, etc. left as-is — agent fills in live.
 
 import { useState, useMemo } from "react";
+import { Link } from "react-router-dom";
+import { useScriptsUnlocked } from "@/hooks/useScriptsUnlocked";
+import { PageSkeleton } from "@/components/ui/page-skeleton";
 import { useQuery } from "@tanstack/react-query";
 import {
   ScrollText, Copy, Check, RefreshCw, Filter, Tag, Phone, Shield, Users, Crown, Search,
@@ -46,6 +49,7 @@ const CATEGORIES = [
 
 export default function Scripts() {
   usePageTitle("Scripts · APEX");
+  const access = useScriptsUnlocked();
   const [activeCat, setActiveCat] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -95,6 +99,24 @@ export default function Scripts() {
     if (k === "all") return scripts.data?.length ?? 0;
     return (scripts.data ?? []).filter((s) => s.category === k).length;
   };
+
+  // The packet is delivered after hire + required training (see useScriptsUnlocked).
+  if (access.state === "loading") return <PageSkeleton />;
+  if (access.state === "locked" || access.state === "unknown") {
+    return (
+      <div className="page-enter px-4 sm:px-6 pb-24">
+        <div className="mx-auto max-w-xl rounded-lg border border-border p-6 text-center">
+          <p className="text-base font-semibold">Your scripts unlock when your required training is complete</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {access.state === "unknown"
+              ? "We could not check your training progress right now. Try again in a minute."
+              : `${access.passed ?? 0} of ${access.total ?? 0} required modules passed. Finish them and the scripts open here — you'll also get them by email.`}
+          </p>
+          <Link to="/dashboard/training/library" className="mt-4 inline-block text-sm font-semibold text-primary underline-offset-2 hover:underline">Go to Training Home →</Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="page-enter px-4 sm:px-6 pb-24 space-y-5">

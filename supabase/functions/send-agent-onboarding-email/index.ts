@@ -37,7 +37,8 @@ function tokenMatches(presented: string, expected: string): boolean {
 interface QueueRow {
   id: string;
   agent_id: string;
-  email_kind: "course" | "discord" | "hired_whatsapp" | "onboarding_call" | "get_licensed";
+  // "discord" is a legacy kind name: it delivers the Slack team-access email (no Discord).
+  email_kind: "course" | "discord" | "hired_whatsapp" | "onboarding_call" | "get_licensed" | "scripts_packet";
   attempt_count: number;
   meta: Record<string, unknown> | null;
 }
@@ -82,7 +83,9 @@ async function loadSettings(sb: any): Promise<Settings> {
   // fallback so an operator cannot strand a hire while settings are migrated.
   const slackRaw = map.get("slack_community_invite_url");
   const discordRaw = map.get("discord_invite_url");
-  const communityRaw = slackRaw && slackRaw.trim().length > 0 ? slackRaw : discordRaw;
+  // No Discord fallback: a missing Slack invite asks the hire to reply for the link instead of
+  // pointing a "Join the APEX Slack" button at a Discord server.
+  const communityRaw = slackRaw && slackRaw.trim().length > 0 ? slackRaw : null;
   const communityUrl = communityRaw && communityRaw.trim().length > 0 ? communityRaw.trim() : null;
   const fromRaw = map.get("onboarding_email_from_address");
   const fromAddr = fromRaw && fromRaw.trim().length > 0
@@ -238,11 +241,12 @@ function buildCourseEmail(name: string): { subject: string; html: string; text: 
   return { subject, html, text };
 }
 
-function buildCommunityEmail(name: string, communityUrl: string | null, discordUrl: string | null): { subject: string; html: string; text: string } {
+// Slack is the team workspace. Discord was removed from the agent journey (owner directive
+// 2026-10-05); this email never links to it.
+function buildCommunityEmail(name: string, communityUrl: string | null): { subject: string; html: string; text: string } {
   const fn = escapeHtml(firstName(name));
   const url = communityUrl ? escapeHtml(communityUrl) : null;
-  const discord = discordUrl ? escapeHtml(discordUrl) : null;
-  const subject = "Join APEX Slack + Discord — your team access";
+  const subject = "Join the APEX Slack — your team access";
 
   const linkLine = url
     ? `Join here: ${communityUrl}`
@@ -252,7 +256,6 @@ function buildCommunityEmail(name: string, communityUrl: string | null, discordU
     `Hey ${fn},`,
     ``,
     linkLine,
-    discordUrl ? `Join Discord: ${discordUrl}` : `Reply to this email if you still need the Discord invite.`,
     ``,
     `Slack is your primary team hub for next steps, contracting support, training, and sales wins.`,
     `Join now so your onboarding team can keep you moving.`,
@@ -267,22 +270,48 @@ function buildCommunityEmail(name: string, communityUrl: string | null, discordU
   const ctaHtml = url
     ? `<p><a href="${url}" style="display:inline-block;padding:12px 20px;background:#4A154B;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">Join the APEX Slack</a></p>`
     : `<p>Reply to this email and I'll send you the invite link directly.</p>`;
-  const discordHtml = discord
-    ? `<p><a href="${discord}" style="display:inline-block;padding:12px 20px;background:#5865F2;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">Join the APEX Discord</a></p>`
-    : `<p>Reply to this email if you still need the Discord invite.</p>`;
 
   const html = `
 <!doctype html>
 <html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#111;line-height:1.55;">
   <p>Hey ${fn},</p>
   ${ctaHtml}
-  ${discordHtml}
   <p>Slack is your <strong>primary team hub</strong> for next steps, contracting support, training, and sales wins. Join now so your onboarding team can keep you moving.</p>
   <p><strong>Next:</strong> <a href="https://apex-financial.org/agent-portal">open your APEX account roadmap</a>, confirm your profile, and complete the action shown as current.</p>
   <p>See you there.</p>
   <p style="margin-top:24px;">— Sam<br/>APEX Financial</p>
 </body></html>`.trim();
 
+  return { subject, html, text };
+}
+
+// Sent once per packet version after hire + every REQUIRED module passed (fn_enqueue_scripts_packet,
+// evaluated from committed rows by triggers on onboarding_progress and agents). The email carries a
+// link, never script bodies: the packet is served in-app to signed-in agents.
+function buildScriptsPacketEmail(name: string): { subject: string; html: string; text: string } {
+  const fn = escapeHtml(firstName(name));
+  const url = "https://apex-financial.org/dashboard/scripts";
+  const subject = "Your APEX scripts are unlocked";
+  const text = [
+    `Hey ${firstName(name)},`,
+    ``,
+    `You finished your required training, so your approved scripts and call resources are unlocked.`,
+    `Open them here (sign in first): ${url}`,
+    ``,
+    `Run them word for word on your first appointments, then bring questions to your manager.`,
+    ``,
+    `— Sam`,
+    `APEX Financial`,
+  ].join("\n");
+  const html = `
+<!doctype html>
+<html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#111;line-height:1.55;">
+  <p>Hey ${fn},</p>
+  <p>You finished your required training, so your approved scripts and call resources are unlocked.</p>
+  <p><a href="${url}" style="display:inline-block;padding:12px 20px;background:#111;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">Open my scripts</a></p>
+  <p>Run them word for word on your first appointments, then bring questions to your manager.</p>
+  <p style="margin-top:24px;">— Sam<br/>APEX Financial</p>
+</body></html>`.trim();
   return { subject, html, text };
 }
 
@@ -330,6 +359,7 @@ async function sendViaResend(
   subject: string,
   html: string,
   text: string,
+  idempotencyKey?: string,
 ): Promise<ResendResult> {
   let res: Response;
   try {
@@ -338,6 +368,7 @@ async function sendViaResend(
       headers: {
         "Authorization": `Bearer ${apiKey}`,
         "Content-Type": "application/json",
+        ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
       },
       body: JSON.stringify({
         from,
@@ -530,7 +561,7 @@ async function drainQueue(sb: any, settings: Settings): Promise<ProcessResult> {
     // material pre-licence, and the onboarding call is the licensed-hire call.
     // 'get_licensed' is the inverse and is gated just below.
     if (
-      (row.email_kind === "course" || row.email_kind === "onboarding_call") &&
+      (row.email_kind === "course" || row.email_kind === "onboarding_call" || row.email_kind === "scripts_packet") &&
       !isLicensed
     ) {
       await sb
@@ -561,6 +592,9 @@ async function drainQueue(sb: any, settings: Settings): Promise<ProcessResult> {
       built = buildGetLicensedEmail(name ?? "", settings.onboarding_call_scheduling_url ?? null);
     } else if (row.email_kind === "course") {
       built = buildCourseEmail(name ?? "");
+    } else if (row.email_kind === "scripts_packet") {
+      built = buildScriptsPacketEmail(name ?? "");
+      meta = { packet_version: (row.meta as Record<string, unknown> | null)?.packet_version ?? null };
     } else if (row.email_kind === "onboarding_call") {
       // Lane 3 (2026-08-26): ONE booking link per licensed hire. Re-check the
       // calendar at send time — a hire who booked between enqueue and drain must
@@ -596,7 +630,7 @@ async function drainQueue(sb: any, settings: Settings): Promise<ProcessResult> {
       built = buildOnboardingCallEmail(name ?? "", link.url);
       meta = { booking_url: link.url, link_kind: link.kind, link_error: link.error };
     } else {
-      built = buildCommunityEmail(name ?? "", settings.community_invite_url, settings.discord_invite_url);
+      built = buildCommunityEmail(name ?? "", settings.community_invite_url);
     }
 
     // The legacy `discord` queue kind now delivers the primary Slack invite.
@@ -610,6 +644,7 @@ async function drainQueue(sb: any, settings: Settings): Promise<ProcessResult> {
       built.subject,
       built.html,
       built.text,
+      `agent-onboarding-queue:${row.id}`,
     );
 
     if (sendResult.ok) {

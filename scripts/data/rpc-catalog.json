@@ -2866,6 +2866,18 @@
         "raw": "p_agent_id uuid, p_source text DEFAULT 'trigger'::text"
       }
     ],
+    "fn_enqueue_scripts_packet": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
+      }
+    ],
     "fn_enqueue_unlicensed_activation": [
       {
         "all": [],
@@ -6943,6 +6955,22 @@
       }
     ],
     "trg_mark_truth_dirty": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "trg_scripts_packet_on_agent": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "trg_scripts_packet_on_progress": [
       {
         "all": [],
         "required": [],

@@ -75563,6 +75563,7 @@ export type Database = {
           duration_seconds: number | null
           id: string
           is_active: boolean | null
+          is_required: boolean
           learning_objectives: Json
           media_has_audio: boolean
           order_index: number
@@ -75581,6 +75582,7 @@ export type Database = {
           duration_seconds?: number | null
           id?: string
           is_active?: boolean | null
+          is_required?: boolean
           learning_objectives?: Json
           media_has_audio?: boolean
           order_index: number
@@ -75599,6 +75601,7 @@ export type Database = {
           duration_seconds?: number | null
           id?: string
           is_active?: boolean | null
+          is_required?: boolean
           learning_objectives?: Json
           media_has_audio?: boolean
           order_index?: number
@@ -75610,6 +75613,39 @@ export type Database = {
           transcript_segments?: Json
           video_parts?: Json
           video_url?: string
+        }
+        Relationships: []
+      }
+      onboarding_packet_versions: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          is_current: boolean
+          label: string
+          links: Json
+          script_ids: string[]
+          version: number
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          is_current?: boolean
+          label: string
+          links?: Json
+          script_ids?: string[]
+          version: number
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          is_current?: boolean
+          label?: string
+          links?: Json
+          script_ids?: string[]
+          version?: number
         }
         Relationships: []
       }
@@ -137935,6 +137971,15 @@ export type Database = {
           deals_mtd: number | null
           display_name: string | null
           manager_name: string | null
+        }
+        Relationships: []
+      }
+      v_training_required_completion: {
+        Row: {
+          agent_id: string | null
+          required_complete: boolean | null
+          required_passed: number | null
+          required_total: number | null
         }
         Relationships: []
       }

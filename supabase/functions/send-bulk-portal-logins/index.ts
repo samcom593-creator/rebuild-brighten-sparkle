@@ -323,20 +323,6 @@ const handler = async (req: Request): Promise<Response> => {
                     </a>
                   </div>
 
-                  <!-- Discord Link (LICENSED ONLY — gate matches send-agent-onboarding-email) -->
-                  ${isLicensed ? `
-                  <div style="background: rgba(88, 101, 242, 0.1); border-radius: 12px; padding: 20px; margin: 24px 0; text-align: center;">
-                    <p style="color: #5865F2; font-size: 14px; font-weight: bold; margin: 0 0 8px 0;">
-                      💬 Join Our Team Discord
-                    </p>
-                    <p style="color: #94a3b8; font-size: 13px; margin: 0 0 12px 0;">
-                      Get daily training, support, and connect with the team:
-                    </p>
-                    <a href="https://discord.gg/JpUWA73UZX" style="display: inline-block; background: #5865F2; color: #ffffff; text-decoration: none; padding: 10px 24px; border-radius: 6px; font-weight: bold; font-size: 14px;">
-                      Join Discord →
-                    </a>
-                  </div>
-                  ` : ''}
 
                   <!-- Fallback note -->
                   <div style="background: rgba(148, 163, 184, 0.1); border-radius: 8px; padding: 16px; margin: 24px 0;">

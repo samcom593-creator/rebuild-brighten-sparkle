@@ -86,9 +86,8 @@ function stepsFor(app: MyApplication, licensed: boolean): Step[] {
     key: "community",
     icon: MessageSquare,
     title: "Join the team Slack",
-    body: "Slack is where the team talks every day — questions, wins, and the daily meeting link. Discord carries the live rooms.",
+    body: "Slack is where the team talks every day — questions, wins, and the daily meeting link.",
     primary: { label: "Join Slack", href: TEAM_COMMUNITY_LINKS.slack, external: true },
-    secondary: { label: "Join Discord", href: TEAM_COMMUNITY_LINKS.discord, external: true },
   };
   const status: Step = {
     key: "status",

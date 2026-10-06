@@ -429,7 +429,7 @@ function inferNextStep(stage: string): string {
     case "exam_scheduled": return "Pass the exam.";
     case "licensed": return "Hire docs incoming from your manager.";
     case "hired": return "Onboarding D1 — paperwork + first video.";
-    case "active_agent": return "Move to Discord — production lives there.";
+    case "active_agent": return "Move to the team Slack — support, wins and the daily huddle live there.";
     default: return "Run /help.";
   }
 }
@@ -658,9 +658,7 @@ async function handleCommand(chat_id: number, fromUser: any, command: string, ar
           isLicensed = licenseStatus === "licensed";
         }
         const base = `Training hub:\n\n• Onboarding videos: https://apex-financial.org/training\n• Script library: https://apex-financial.org/dashboard/scripts`;
-        const text = isLicensed
-          ? `${base}\n• Live floor (Discord): https://discord.gg/apex`
-          : base;
+        const text = base;
         await tgSend({ chat_id, text });
       }
       break;

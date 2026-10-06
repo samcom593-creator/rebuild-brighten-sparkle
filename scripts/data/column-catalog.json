@@ -4782,6 +4782,7 @@
       "duration_seconds",
       "id",
       "is_active",
+      "is_required",
       "learning_objectives",
       "media_has_audio",
       "order_index",
@@ -4793,6 +4794,16 @@
       "transcript_segments",
       "video_parts",
       "video_url"
+    ],
+    "onboarding_packet_versions": [
+      "approved_at",
+      "approved_by",
+      "created_at",
+      "is_current",
+      "label",
+      "links",
+      "script_ids",
+      "version"
     ],
     "onboarding_progress": [
       "agent_id",
@@ -11062,6 +11073,12 @@
       "deals_mtd",
       "display_name",
       "manager_name"
+    ],
+    "v_training_required_completion": [
+      "agent_id",
+      "required_complete",
+      "required_passed",
+      "required_total"
     ],
     "v_transfer_requests": [
       "agent_id",

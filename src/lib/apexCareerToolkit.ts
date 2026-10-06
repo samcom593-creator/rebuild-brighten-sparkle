@@ -62,7 +62,7 @@ const SHARED_ACTIVATION_STEPS: ApexJourneyStep[] = [
   {
     key: "contracting",
     label: "Contracting",
-    description: "Track carrier requirements through the contracting spreadsheet and private support Discord.",
+    description: "Track carrier requirements and contracting status from your APEX profile.",
     successCondition: "Every required carrier is active, submitted, or has a recorded next action",
   },
   {

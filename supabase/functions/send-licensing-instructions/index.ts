@@ -8,7 +8,6 @@ import { SCHEDULING_LINKS } from "../_shared/apex.ts";
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const ADMIN_EMAIL = "info@kingofsales.net";
 const SLACK_LINK = "https://join.slack.com/t/apex-financial-co/shared_invite/zt-47rdeq1fr-ETmj8yGBgRcoYVkwfc3DBQ";
-const DISCORD_LINK = "https://discord.gg/JpUWA73UZX";
 const PORTAL_LINK = "https://apex-financial.org/agent-portal";
 const CONTRACTING_LINK = "https://apex-financial.org/start-contracting";
 const TRAINING_LINK = "https://apex-financial.org/dashboard/training/library";
@@ -149,14 +148,13 @@ const handler = async (req: Request): Promise<Response> => {
                 Hey ${firstName}! 👋
               </p>
               <p style="color: #e0e0e0; font-size: 16px; line-height: 1.6; margin: 0 0 25px;">
-                Since you're already licensed, follow this roadmap in order. Slack is the primary team hub and Discord gives you direct community and contracting support.
+                Since you're already licensed, follow this roadmap in order. Slack is the primary team hub for community and contracting support.
               </p>
               ${buildStepCard("1", "Join the APEX Slack", "Join the primary team workspace for daily huddles, support, training, scripts, and sales wins.", SLACK_LINK, "Join Team Slack →", "#D4AF37", "212, 175, 55")}
-              ${buildStepCard("2", "Join the APEX Discord", "Join the community and contracting-support workspace so you never lose the next handoff.", DISCORD_LINK, "Join Team Discord →", "#5865F2", "88, 101, 242")}
-              ${buildStepCard("3", "Book Your Onboarding Call", "Meet with Milver, your Contracting &amp; Onboarding Manager, to lock in your first-week plan.", SCHEDULING_LINKS.licensed, "Book My Call →", "#667eea", "102, 126, 234")}
-              ${buildStepCard("4", "Set Up Your APEX Account", "Open the portal, sign in with your email, confirm your profile, and use the live roadmap as your source of truth.", PORTAL_LINK, "Open My Account &amp; Roadmap →", "#14b8a6", "20, 184, 166")}
-              ${buildStepCard("5", "Complete APEX Contracting", "Submit your NPN and profile once. APEX routes the intake to the private contracting desk automatically.", CONTRACTING_LINK, "Complete Contracting →", "#f59e0b", "245, 158, 11")}
-              ${buildStepCard("6", "Finish Online Training", "Complete onboarding, scripts, objections, ReadyMode, pipeline, deal-posting, and underwriting training before launch.", TRAINING_LINK, "Start Training →", "#4CAF50", "76, 175, 80")}
+              ${buildStepCard("2", "Book Your Onboarding Call", "Meet with Milver, your Contracting &amp; Onboarding Manager, to lock in your first-week plan.", SCHEDULING_LINKS.licensed, "Book My Call →", "#667eea", "102, 126, 234")}
+              ${buildStepCard("3", "Set Up Your APEX Account", "Open the portal, sign in with your email, confirm your profile, and use the live roadmap as your source of truth.", PORTAL_LINK, "Open My Account &amp; Roadmap →", "#14b8a6", "20, 184, 166")}
+              ${buildStepCard("4", "Complete APEX Contracting", "Submit your NPN and profile once. APEX routes the intake to the private contracting desk automatically.", CONTRACTING_LINK, "Complete Contracting →", "#f59e0b", "245, 158, 11")}
+              ${buildStepCard("5", "Finish Online Training", "Complete onboarding, scripts, objections, ReadyMode, pipeline, deal-posting, and underwriting training before launch.", TRAINING_LINK, "Start Training →", "#4CAF50", "76, 175, 80")}
             </td>
           </tr>
           <tr>
@@ -214,16 +212,6 @@ const handler = async (req: Request): Promise<Response> => {
 
               ${buildStepCard(
                 "2",
-                "Join the APEX Discord",
-                "Join the community and licensing-support workspace so you always know who to ask and what comes next.",
-                DISCORD_LINK,
-                "Join Team Discord →",
-                "#5865F2",
-                "88, 101, 242",
-              )}
-
-              ${buildStepCard(
-                "3",
                 "Set Up Your Course Account",
                 "Create your XCEL account with the same legal name shown on your ID, then begin the pre-licensing course.",
                 PRELICENSING_LINK,
@@ -233,7 +221,7 @@ const handler = async (req: Request): Promise<Response> => {
               )}
 
               ${buildStepCard(
-                "4",
+                "3",
                 "Learn the Licensing Process",
                 "Watch the overview, then work the course modules in order until you are ready for the state exam.",
                 "https://apex-financial.org/get-licensed#licensing-video",
@@ -243,7 +231,7 @@ const handler = async (req: Request): Promise<Response> => {
               )}
 
               ${buildStepCard(
-                "5",
+                "4",
                 "Open Your APEX Roadmap",
                 "Sign in to your APEX account and update course, exam, fingerprints, and license milestones as they happen.",
                 "https://apex-financial.org/get-licensed",
@@ -253,7 +241,7 @@ const handler = async (req: Request): Promise<Response> => {
               )}
 
               ${buildStepCard(
-                "6",
+                "5",
                 "Pass, Add Your NPN, Then Onboard",
                 "After your license posts, add your NPN in APEX and book the onboarding call. Contracting and sales training unlock next.",
                 SCHEDULING_LINKS.licensed,

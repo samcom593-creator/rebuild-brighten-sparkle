@@ -24,7 +24,7 @@ import { resolveBrand } from "@/config/brand";
  * 2026-08-31: every branch used to end in "Open APEX bot on Telegram". Telegram
  * had EIGHT registered users in its entire lifetime while that CTA sat on every
  * applicant confirmation, so it converted essentially nobody, and Sam has moved
- * the team to Slack + Discord.
+ * the team to Slack.
  *
  * Slack is deliberately NOT offered here. These /apply/success routes are
  * public, and the Slack invite is an open shared-invite URL — putting it on
@@ -270,7 +270,7 @@ function LicensedBody({
       ) : null}
 
       <p className="text-xs text-center text-muted-foreground">
-        Slack and Discord access is issued after you are hired and your {BRAND.shortName} identity
+        Slack access is issued after you are hired and your {BRAND.shortName} identity
         is verified — you'll get both links by email at that point.
       </p>
     </div>

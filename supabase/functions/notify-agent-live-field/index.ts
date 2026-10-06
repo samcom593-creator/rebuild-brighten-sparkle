@@ -23,7 +23,6 @@ const corsHeaders = {
 // in-app page, behind the agent's own login.
 const releaseVideoUrl = "https://apex-financial.org/dashboard/training/library/course/r-mqv77rk9";
 const portalLink = "https://apex-financial.org/agent-portal";
-const discordLink = "https://discord.gg/JpUWA73UZX";
 
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
@@ -135,16 +134,7 @@ const handler = async (req: Request): Promise<Response> => {
         <a href="${portalLink}" style="display:inline-block;background:#14b8a6;color:#ffffff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">Open Agent Portal →</a>
       </div>
       
-      <!-- Discord (LICENSED ONLY — gate matches send-agent-onboarding-email) -->
-      ${isLicensed ? `
-      <div style="background:rgba(20,184,166,0.1);border-radius:8px;padding:20px;margin:24px 0;">
-        <h3 style="font-size:16px;color:#14b8a6;margin:0 0 12px 0;">💬 Stay Connected</h3>
-        <p style="font-size:14px;color:#d1d5db;margin:0 0 12px 0;">
-          Daily meetings at <strong style="color:#ffffff;">10:00 AM CST</strong> on Discord. Camera on!
-        </p>
-        <a href="${discordLink}" style="display:inline-block;background:#5865F2;color:#ffffff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">Join Discord →</a>
-      </div>
-      ` : ''}
+      ${isLicensed ? `<p style="color:#d1d5db;font-size:14px;margin:16px 0;text-align:center;">Daily huddle: <strong style="color:#ffffff;">10:00 AM CST</strong> in the team Slack. Camera on.</p>` : ''}
       
       <!-- The Standard -->
       <div style="background:linear-gradient(135deg,rgba(20,184,166,0.2),rgba(14,165,233,0.2));border-radius:8px;padding:20px;margin:24px 0;border:1px solid rgba(20,184,166,0.3);">

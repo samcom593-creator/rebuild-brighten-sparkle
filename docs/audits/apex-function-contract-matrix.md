@@ -1,6 +1,6 @@
 # APEX Function Contract Matrix
 
-Generated: 2026-10-06T11:37:26.699Z
+Generated: 2026-10-06T11:50:36.979Z
 Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 
 ## Inventory Summary
@@ -8,8 +8,8 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 - Total Local Edge Functions: **238**
 - Configured in `config.toml`: **239**
 - Invoked Edge Functions in Source: **103**
-- Invoked RPC Calls in Source: **168**
-- SQL Functions in Migrations: **563**
+- Invoked RPC Calls in Source: **169**
+- SQL Functions in Migrations: **569**
 
 ## Edge Function Auth & Verification Contracts
 
@@ -125,7 +125,7 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 | `notify-all-managers-leaderboard` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `notify-attendance-reminder` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `notify-comeback-alert` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `notify-course-complete` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `notify-course-complete` | Yes | Yes | `true` | Authenticated JWT | PASS |
 | `notify-course-started` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `notify-deal-alert` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `notify-deal-submitted` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -262,6 +262,6 @@ applied by hand through bot-sql and never round-tripped into
 `supabase/migrations`, so this directory does not model the deployed database.
 `apex-doctor` queries `pg_proc` and is the authority on deployed state.
 
-- Invoked RPCs: **168**
-- Also declared in this commit's migrations: **159**
+- Invoked RPCs: **169**
+- Also declared in this commit's migrations: **160**
 - Declared only in the database: **9**

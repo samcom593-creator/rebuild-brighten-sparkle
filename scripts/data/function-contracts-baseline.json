@@ -92,7 +92,6 @@
       "notify-all-managers-leaderboard",
       "notify-attendance-reminder",
       "notify-comeback-alert",
-      "notify-course-complete",
       "notify-course-started",
       "notify-deal-alert",
       "notify-deal-submitted",
@@ -195,6 +194,9 @@
       "xcel-csv-ingest",
       "xcel-gmail-pull",
       "xcel-import"
-    ]
+    ],
+    "allowlist_undeclared": [],
+    "allowlist_gate_unproven": [],
+    "public_by_design_over_ceiling": []
   }
 }

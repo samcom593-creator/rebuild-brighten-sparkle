@@ -49,7 +49,7 @@ export function JoinYourTeam() {
   // Nothing to offer, not an agent, or already settled in: render nothing.
   if (!data || !data.isAgent) return null;
   if (JOINED_STAGES.has(data.stage)) return null;
-  if (!data.discord && !data.slack) return null;
+  if (!data.slack) return null;
 
   return (
     <Card className="border-primary/30 bg-primary/5">
@@ -57,7 +57,7 @@ export function JoinYourTeam() {
         <div className="min-w-0">
           <p className="text-sm font-semibold text-foreground">Join your team</p>
           <p className="text-[11px] text-muted-foreground">
-            Slack is the team hub. Discord is where deals and wins get posted. Join both.
+            Slack is the team hub: questions, wins, contracting support and the daily huddle.
           </p>
         </div>
         <div className="ml-auto flex flex-wrap gap-2">
@@ -66,13 +66,6 @@ export function JoinYourTeam() {
               {/* Invite links leave the app, so they are real anchors, not router links. */}
               <a href={data.slack} target="_blank" rel="noopener noreferrer">
                 <Users className="mr-1.5 h-4 w-4" />Join Slack
-              </a>
-            </Button>
-          )}
-          {data.discord && (
-            <Button asChild size="sm" variant="outline">
-              <a href={data.discord} target="_blank" rel="noopener noreferrer">
-                <MessageSquare className="mr-1.5 h-4 w-4" />Join Discord
               </a>
             </Button>
           )}

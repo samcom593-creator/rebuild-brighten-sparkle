@@ -4,11 +4,18 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar, Copy, ExternalLink, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import { formatTimeAgo } from "@/lib/dateUtils";
 
+// Honest label (redesign section 7): ics-feed serves the user's agent_tasks
+// with a due date, NOT calendar appointments or interviews. The card used to be
+// titled "Apple Calendar Sync", which read as "my appointments are on my phone".
+// It also shows when a device last fetched the feed, the only delivery signal
+// this feed has.
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 
 export function CalendarSyncSection() {
   const [token, setToken] = useState<string | null>(null);
+  const [lastPolled, setLastPolled] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   // Try to load existing token on mount
@@ -19,10 +26,14 @@ export function CalendarSyncSection() {
       if (!user) return;
       const { data } = await supabase
         .from("ics_feed_tokens" as any)
-        .select("token")
+        .select("token, last_accessed_at")
         .eq("user_id", user.id)
         .maybeSingle();
-      if (!cancelled && data) setToken((data as any).token);
+      if (!cancelled && data) {
+        const row = data as unknown as { token: string; last_accessed_at: string | null };
+        setToken(row.token);
+        setLastPolled(row.last_accessed_at);
+      }
     })();
     return () => { cancelled = true; };
   }, []);
@@ -48,12 +59,14 @@ export function CalendarSyncSection() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Calendar className="h-5 w-5 text-primary" /> Apple Calendar Sync
+          <Calendar className="h-5 w-5 text-primary" /> Task feed for your phone calendar
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-sm text-muted-foreground">
-          Subscribe to your APEX tasks feed in Apple Calendar. Tasks auto-sync to iPhone, iPad, and Mac. Refreshes every 15 minutes.
+          Subscribes Apple, Google or Outlook Calendar to your open tasks due in the next 60 days. Interviews and
+          appointments are not in this feed — they live on the Calendar page. Your calendar app decides how often it
+          refreshes.
         </p>
 
         {!token ? (
@@ -65,6 +78,11 @@ export function CalendarSyncSection() {
             <div className="p-3 bg-muted/30 rounded-lg break-all text-xs font-mono border border-border">
               {httpsUrl}
             </div>
+            <p className="text-xs text-muted-foreground">
+              {lastPolled
+                ? `Last fetched by a device: ${formatTimeAgo(lastPolled)}.`
+                : "No device has fetched this feed yet."}
+            </p>
             <div className="flex gap-2 flex-wrap">
               <Button
                 size="sm"

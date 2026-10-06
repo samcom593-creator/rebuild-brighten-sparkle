@@ -11397,6 +11397,54 @@ export type Database = {
           },
         ]
       }
+      agent_start_plans: {
+        Row: {
+          agent_id: string
+          created_at: string
+          expected_start_note: string | null
+          expected_start_on: string | null
+          expected_start_set_at: string | null
+          expected_start_set_by: string | null
+          expected_start_status: string | null
+          start_outcome: string | null
+          start_outcome_at: string | null
+          start_outcome_by: string | null
+          start_outcome_note: string | null
+          start_outcome_on: string | null
+          updated_at: string
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string
+          expected_start_note?: string | null
+          expected_start_on?: string | null
+          expected_start_set_at?: string | null
+          expected_start_set_by?: string | null
+          expected_start_status?: string | null
+          start_outcome?: string | null
+          start_outcome_at?: string | null
+          start_outcome_by?: string | null
+          start_outcome_note?: string | null
+          start_outcome_on?: string | null
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string
+          expected_start_note?: string | null
+          expected_start_on?: string | null
+          expected_start_set_at?: string | null
+          expected_start_set_by?: string | null
+          expected_start_status?: string | null
+          start_outcome?: string | null
+          start_outcome_at?: string | null
+          start_outcome_by?: string | null
+          start_outcome_note?: string | null
+          start_outcome_on?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       agent_status_changes: {
         Row: {
           agent_id: string

@@ -5224,6 +5224,14 @@
         "raw": ""
       }
     ],
+    "onboarding_exception_facts": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "orphan_deal_audit": [
       {
         "all": [],
@@ -5590,6 +5598,21 @@
         "raw": "p_source text, p_status text, p_last_message_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_last_ingested_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_detail text DEFAULT NULL::text"
       }
     ],
+    "record_onboarding_call_outcome": [
+      {
+        "all": [
+          "p_event_id",
+          "p_note",
+          "p_outcome"
+        ],
+        "required": [
+          "p_event_id",
+          "p_outcome"
+        ],
+        "unnamed": false,
+        "raw": "p_event_id uuid, p_outcome text, p_note text DEFAULT NULL::text"
+      }
+    ],
     "record_snap_stats_public": [
       {
         "all": [
@@ -5604,6 +5627,22 @@
         ],
         "unnamed": false,
         "raw": "p_secret text, p_subscribers integer DEFAULT NULL::integer, p_story_views integer DEFAULT NULL::integer, p_spotlight_views integer DEFAULT NULL::integer, p_note text DEFAULT NULL::text"
+      }
+    ],
+    "record_start_outcome": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_new_start_on",
+          "p_note",
+          "p_outcome"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_outcome"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_outcome text, p_new_start_on date DEFAULT NULL::date, p_note text DEFAULT NULL::text"
       }
     ],
     "recover_partial_applications": [
@@ -5710,6 +5749,18 @@
         ],
         "unnamed": false,
         "raw": "p_first_name text, p_last_name text, p_email text, p_phone text, p_seminar_date date, p_license_status text DEFAULT 'unknown'::text, p_source text DEFAULT 'website-seminar-form'::text, p_utm_source text DEFAULT NULL::text, p_utm_medium text DEFAULT NULL::text, p_utm_campaign text DEFAULT NULL::text, p_reminder_opt_in boolean DEFAULT false"
+      }
+    ],
+    "request_onboarding_call_booking": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
       }
     ],
     "rescue_stale_applications": [
@@ -6207,6 +6258,23 @@
         ],
         "unnamed": false,
         "raw": "p_checkin_id uuid, p_agent_id uuid, p_step text, p_done boolean DEFAULT true, p_note text DEFAULT NULL::text"
+      }
+    ],
+    "set_expected_start": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_expected_start_on",
+          "p_note",
+          "p_status"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_expected_start_on",
+          "p_status"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_expected_start_on date, p_status text, p_note text DEFAULT NULL::text"
       }
     ],
     "set_hire_license_status": [

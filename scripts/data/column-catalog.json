@@ -372,6 +372,21 @@
       "note",
       "to_value"
     ],
+    "agent_start_plans": [
+      "agent_id",
+      "created_at",
+      "expected_start_note",
+      "expected_start_on",
+      "expected_start_set_at",
+      "expected_start_set_by",
+      "expected_start_status",
+      "start_outcome",
+      "start_outcome_at",
+      "start_outcome_by",
+      "start_outcome_note",
+      "start_outcome_on",
+      "updated_at"
+    ],
     "agent_status_changes": [
       "agent_id",
       "changed_at",

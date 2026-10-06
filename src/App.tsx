@@ -43,6 +43,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 // threw "useConfirm must be used inside <ConfirmProvider>", tripping the
 // ErrorBoundary and white-screening /login and every non-landing public route.
 import { ConfirmProvider } from "@/hooks/useConfirm";
+import { useAgentProfileDrawer } from "@/stores/agentProfileDrawer";
 // AuthenticatedShell is lazy: it pulls in SidebarLayout + CommandPalette +
 // CelebrationProvider + RequireProfilePicture which the literal landing route
 // (`/`) does NOT need. Eager-importing it shipped ~40-60kB of sidebar/command
@@ -341,6 +342,26 @@ const AgentProfileDrawer = lazy(() =>
   import("@/components/dashboard/AgentProfileDrawer").then((m) => ({ default: m.AgentProfileDrawer })),
 );
 
+// WIB 2026-10-06: lazy() only defers a chunk until first RENDER, and QueryShell
+// rendered the drawer unconditionally, so every /apply, /join and /login visitor
+// downloaded the admin drawer plus ~20 admin chunks (edit/deactivate/comp-level
+// dialogs, radix, forms) that only staff can open. Lighthouse mobile /apply:
+// 62 scripts / 432 KB, LCP 5.4s (3 of 3 runs). Mount on the first openAgent()
+// and stay mounted after, so the Sheet's close animation still plays.
+function AgentProfileDrawerHost() {
+  const requested = useAgentProfileDrawer((s) => s.agentId !== null);
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    if (requested) setArmed(true);
+  }, [requested]);
+  if (!armed && !requested) return null;
+  return (
+    <Suspense fallback={null}>
+      <AgentProfileDrawer />
+    </Suspense>
+  );
+}
+
 function QueryShell() {
   return (
     <LazyQueryRoot>
@@ -348,9 +369,7 @@ function QueryShell() {
       {/* Global agent profile drawer — any surface in the app can call
           openAgentProfile(agentId) and the deep profile slides in over
           whatever page Sam is on. 2026-06-15 directive. */}
-      <Suspense fallback={null}>
-        <AgentProfileDrawer />
-      </Suspense>
+      <AgentProfileDrawerHost />
     </LazyQueryRoot>
   );
 }

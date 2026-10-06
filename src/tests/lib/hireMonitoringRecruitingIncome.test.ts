@@ -24,12 +24,19 @@ describe("hire monitoring and recruiting income contract", () => {
 
   it("keeps Milver and VA hiring operations on a real-time no-hire-left-behind queue", () => {
     const panel = source("src/components/recruiting/NoHireLeftBehindPanel.tsx");
+    const facts = source("src/components/onboarding/useOnboardingExceptionFacts.ts");
     const applicants = source("src/pages/DashboardApplicants.tsx");
     expect(panel).toContain("No Hire Left Behind");
     expect(panel).toContain("Live Milver + VA handoff queue");
-    expect(panel).toContain('table: "agents"');
-    expect(panel).toContain('table: "onboarding_progress"');
-    expect(panel).toContain("v_hire_notification_gaps");
+    // APEX OS §6: the panel is an actionable exception queue now, fed by one
+    // facts RPC with realtime on the hot tables (moved into the shared hook).
+    expect(panel).toContain("useOnboardingExceptionFacts");
+    expect(panel).toContain("OnboardingExceptionQueue");
+    expect(facts).toContain('"onboarding_exception_facts"');
+    expect(facts).toContain('table: "agents"');
+    expect(facts).toContain('table: "onboarding_progress"');
+    // The notification-gap tile was a doctor metric (0 rows), not a hire exception.
+    expect(panel).not.toContain("v_hire_notification_gaps");
     expect(applicants).toContain("isAdmin || isManager || isVaStaff");
     expect(applicants).toContain("<NoHireLeftBehindPanel />");
   });

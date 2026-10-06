@@ -132,6 +132,21 @@ export function ImoByAgency({
     invalidateProduction,
   );
 
+  // What the agency totals deliberately leave out: deals with no agent identity on the roster, and deals by
+  // producers excluded from the roster (e.g. external Ayro placeholders). Shown, never summed in.
+  const excStart = start?.slice(0, 10) ?? `${phoenixToday.slice(0, 7)}-01`;
+  const excEnd = end?.slice(0, 10) ?? new Date(Date.parse(`${phoenixToday}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
+  const { data: exceptions = [] } = useQuery({
+    enabled: Boolean(isAdmin),
+    queryKey: ["production-attribution-exceptions", excStart, excEnd],
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("production_attribution_exceptions" as never, { p_start: excStart, p_end: excEnd } as never);
+      if (error) throw error;
+      return (data ?? []) as unknown as Array<{ kind: string; policies: number; alp: number; largest_label: string; largest_alp: number }>;
+    },
+  });
+
   if (imo.length === 0) return null;
   // Second half of the gate: render nothing at all for a non-admin. The
   // disabled query above already prevents the fetch; this makes sure no
@@ -204,6 +219,18 @@ export function ImoByAgency({
           ))}
         </CardContent>
       </Card>
+      {exceptions.length > 0 && (
+        <div className="mt-2 space-y-1 rounded-md border border-dashed border-border px-3 py-2 text-xs text-muted-foreground" role="note">
+          <p className="font-semibold text-foreground">Not counted in the agency totals</p>
+          {exceptions.map((x) => (
+            <p key={x.kind}>
+              {fmt(Number(x.alp))} across {x.policies} {x.policies === 1 ? "policy" : "policies"}
+              {x.kind === "no_agent_identity" ? " with no agent identity on your roster — needs an identity before it can count" : " from producers outside your roster (external agency placeholders)"}
+              {x.largest_label ? ` · largest: ${x.largest_label} ${fmt(Number(x.largest_alp))}` : ""}
+            </p>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

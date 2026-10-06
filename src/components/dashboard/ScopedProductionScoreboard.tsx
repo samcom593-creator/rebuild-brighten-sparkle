@@ -39,7 +39,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 interface Totals { ap: number; policies: number }
-interface TeamTotals extends Totals { agents: number }
+// agents = everyone ever placed under this node (historical graph size);
+// agents_current = canonical, non-placeholder, not deactivated, not terminated people today.
+interface TeamTotals extends Totals { agents: number; agents_current?: number }
 
 interface ProjectionMetric {
   label: string;
@@ -562,7 +564,7 @@ export function ScopedProductionScoreboard() {
                 value={money(data.personal.ap)}
               />
               <ScoreTile
-                detail={`${policies(data.direct_team.policies)} · ${plural(data.direct_team.agents, "direct report")}`}
+                detail={`${policies(data.direct_team.policies)} · ${plural(data.direct_team.agents_current ?? data.direct_team.agents, "current direct agent")}${data.direct_team.agents_current != null ? ` (${data.direct_team.agents} on record)` : ""}`}
                 icon={Users}
                 label="My direct team"
                 value={money(data.direct_team.ap)}
@@ -576,7 +578,7 @@ export function ScopedProductionScoreboard() {
               {isAdmin && data.imo && (
                 <ScoreTile
                   accent
-                  detail={`${policies(data.imo.policies)} · ${plural(data.imo.agents, "roster agent")} · Vantage counted`}
+                  detail={`${policies(data.imo.policies)} · ${plural(data.imo.agents_current ?? data.imo.agents, "current agent")} incl. you${data.imo.agents_current != null ? ` (${data.imo.agents} on record)` : ""} · Vantage counted`}
                   icon={Building2}
                   label="IMO total"
                   value={money(data.imo.ap)}

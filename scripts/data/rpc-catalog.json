@@ -2925,6 +2925,14 @@
         "raw": ""
       }
     ],
+    "fn_exclude_external_placeholder": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "fn_guard_daily_production_date": [
       {
         "all": [],
@@ -5262,6 +5270,20 @@
         ],
         "unnamed": false,
         "raw": "p_agent_id uuid"
+      }
+    ],
+    "production_attribution_exceptions": [
+      {
+        "all": [
+          "p_end",
+          "p_start"
+        ],
+        "required": [
+          "p_end",
+          "p_start"
+        ],
+        "unnamed": false,
+        "raw": "p_start date, p_end date"
       }
     ],
     "production_book_freshness": [

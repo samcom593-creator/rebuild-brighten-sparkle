@@ -140,7 +140,7 @@ describe("queue and card summaries", () => {
 
   it("shows a verified carrier only with its source", () => {
     expect(verificationLabel(row({ lifecycle: "verified_ready_to_write", al_status: "active", verified_at: "2026-10-05T12:00:00Z", verification_source: "AgentLink sync" })))
-      .toMatch(/^AgentLink sync · synced /);
+      .toMatch(/^Imported carrier record · last synced /);
     expect(verificationLabel(row({ lifecycle: "verified_ready_to_write", al_status: "submitted", verified_at: "2026-10-05T12:00:00Z", verification_source: "Carrier portal" })))
       .toMatch(/^Verified by staff · Carrier portal/);
     expect(verificationLabel(row({ lifecycle: "verified_ready_to_write", al_status: "submitted", verification_source: null }))).toBeNull();

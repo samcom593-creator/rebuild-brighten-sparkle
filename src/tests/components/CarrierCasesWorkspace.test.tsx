@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MemoryRouter } from "react-router-dom";
 import type { ReactNode } from "react";
 import type { CarrierCaseRow } from "@/lib/contractingCases";
 
@@ -34,9 +35,13 @@ function base(partial: Partial<CarrierCaseRow>): CarrierCaseRow {
   };
 }
 
-function wrap(node: ReactNode) {
+function wrap(node: ReactNode, path = "/dashboard/contracting/cases") {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(<QueryClientProvider client={qc}>{node}</QueryClientProvider>);
+  return render(
+    <MemoryRouter initialEntries={[path]}>
+      <QueryClientProvider client={qc}>{node}</QueryClientProvider>
+    </MemoryRouter>,
+  );
 }
 
 beforeEach(() => fetchMock.mockReset());
@@ -56,7 +61,28 @@ describe("CarrierCasesWorkspace", () => {
     expect(screen.getAllByRole("row")).toHaveLength(4); // header + 3 cases
     expect(screen.getByText("Unknown (needs review)")).toBeTruthy();
     expect(screen.getByText(/does not recognise/)).toBeTruthy();
-    expect(screen.getByText(/^AgentLink sync · synced/)).toBeTruthy();
+    expect(screen.getByText(/^Imported carrier record · last synced/)).toBeTruthy();
+    expect(screen.getByText(/imported AgentLink records, last synced/)).toBeTruthy();
+  });
+
+  it("opens the queue and search named in the URL", async () => {
+    fetchMock.mockResolvedValue([
+      base({ carrier_name: "Carrier A" }),
+      base({ agent_id: "a2", agent_name: "Test Agent Two", carrier_name: "Carrier B", q_carrier_review: false, q_staff_action: true }),
+      base({ agent_id: "a3", agent_name: "Test Agent Three", carrier_name: "Carrier C", q_carrier_review: false, q_staff_action: true }),
+    ]);
+    wrap(<CarrierCasesWorkspace />, "/dashboard/contracting/cases?queue=staff_action&q=Three");
+    await waitFor(() => expect(screen.getByText(/carrier cases across/)).toBeTruthy());
+    expect(screen.getByRole("tab", { name: /Staff Action/ }).getAttribute("aria-selected")).toBe("true");
+    expect((screen.getByLabelText("Search carrier cases") as HTMLInputElement).value).toBe("Three");
+    expect(screen.getAllByRole("row")).toHaveLength(2); // header + Test Agent Three
+  });
+
+  it("ignores an unknown queue in the URL instead of showing an empty list", async () => {
+    fetchMock.mockResolvedValue([base({ carrier_name: "Carrier A" })]);
+    wrap(<CarrierCasesWorkspace />, "/dashboard/contracting/cases?queue=not_a_queue");
+    await waitFor(() => expect(screen.getByText(/carrier cases across/)).toBeTruthy());
+    expect(screen.getByRole("tab", { name: /All cases/ }).getAttribute("aria-selected")).toBe("true");
   });
 });
 
@@ -75,6 +101,6 @@ describe("ReadyToWriteCard", () => {
     ]);
     wrap(<ReadyToWriteCard agentId="a1" />);
     await waitFor(() => expect(screen.getByText("Carrier B")).toBeTruthy());
-    expect(screen.getByText(/^AgentLink sync · synced/)).toBeTruthy();
+    expect(screen.getByText(/^Imported carrier record · last synced/)).toBeTruthy();
   });
 });

@@ -5,14 +5,20 @@
  * three independent columns, never collapsed into one "contracted" badge.
  *
  * Data: contracting_carrier_cases() over v_contracting_carrier_cases
- * (AgentLink carrier status joined to live, canonical, non-placeholder agents,
- * plus the staff tracking layer). Queue membership is decided in the database
+ * (imported AgentLink carrier records joined to live, canonical,
+ * non-placeholder agents, plus the staff tracking layer). The imported status
+ * is labelled as an import with its last sync time everywhere it shows; staff
+ * work cases here, never in AgentLink.
+ *
+ * Deep links: ?queue=<CASE_QUEUES key> opens a queue and ?q=<text> pre-fills
+ * the search, so a count elsewhere can land on the cases it counted. Queue membership is decided in the database
  * (q_* columns) so this page and the staff digest cannot disagree.
  *
  * Writes: contracting_update_case() only. It logs before/after to the
  * append-only contracting_case_events. Nothing here sends a message.
  */
 import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, RefreshCw, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -66,9 +72,13 @@ function caseKey(r: Pick<CarrierCaseRow, "agent_id" | "carrier_name">): string {
 }
 
 export function CarrierCasesWorkspace() {
-  const [queue, setQueue] = useState<string>(ALL);
+  const [searchParams] = useSearchParams();
+  const [queue, setQueue] = useState<string>(() => {
+    const requested = searchParams.get("queue");
+    return requested && CASE_QUEUES.some((q) => q.key === requested) ? requested : ALL;
+  });
   const [lifecycle, setLifecycle] = useState<string>(ALL);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(() => searchParams.get("q") ?? "");
   const [editing, setEditing] = useState<CarrierCaseRow | null>(null);
 
   const casesQ = useQuery({
@@ -119,7 +129,7 @@ export function CarrierCasesWorkspace() {
           <p>
             <span className="font-semibold tabular-nums text-foreground">{rows.length}</span> carrier cases across{" "}
             <span className="font-semibold tabular-nums text-foreground">{distinctPeople(rows)}</span> people
-            {lastSync ? <> · AgentLink synced {formatTimeAgo(lastSync)}</> : <> · no AgentLink sync on file</>}
+            {lastSync ? <> · imported AgentLink records, last synced {formatTimeAgo(lastSync)}</> : <> · no imported AgentLink records on file</>}
           </p>
           <p className="text-xs">
             Counts are carrier cases (one agent × one carrier); people are counted separately. Queues overlap and do not add up.
@@ -134,7 +144,7 @@ export function CarrierCasesWorkspace() {
       {unknownCount > 0 && (
         <p className="flex items-center gap-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-warning">
           <AlertTriangle className="h-4 w-4" />
-          {unknownCount} case{unknownCount === 1 ? "" : "s"} carry an AgentLink status this workspace does not recognise. They sit in Support, never in Verified.
+          {unknownCount} case{unknownCount === 1 ? "" : "s"} carry an imported AgentLink status this workspace does not recognise. They sit in Support, never in Verified.
         </p>
       )}
 
@@ -181,7 +191,7 @@ export function CarrierCasesWorkspace() {
       {shown.length === 0 ? (
         <p className="rounded-lg border border-border bg-card px-4 py-8 text-center text-sm text-muted-foreground">
           {rows.length === 0
-            ? "No carrier cases: no live agent is linked to an AgentLink roster entry with carriers."
+            ? "No carrier cases yet: cases are built from imported AgentLink carrier records, and no live agent has one."
             : "No cases match this queue and filter."}
         </p>
       ) : (
@@ -195,7 +205,7 @@ export function CarrierCasesWorkspace() {
                 <TableHead>Blocker</TableHead>
                 <TableHead>Owner</TableHead>
                 <TableHead>Waiting on</TableHead>
-                <TableHead>Last verified update</TableHead>
+                <TableHead>Last import</TableHead>
                 <TableHead>In state</TableHead>
                 <TableHead>Next action</TableHead>
                 <TableHead>Follow-up</TableHead>
@@ -257,12 +267,12 @@ function CaseRow({ row, onEdit }: { row: CarrierCaseRow; onEdit: () => void }) {
       </TableCell>
       <TableCell className="whitespace-nowrap">
         <Badge variant="outline" className={cn("font-medium", lifecycleTone(row.lifecycle))}>{lifecycleLabel(row.lifecycle)}</Badge>
-        <span className="block text-xs text-muted-foreground" title={`AgentLink alone reads as ${LIFECYCLE_LABELS[upstream.lifecycle]}`}>
-          AgentLink: {agentLinkStatusLabel(row.al_status)}
+        <span className="block text-xs text-muted-foreground" title={`Imported AgentLink record alone reads as ${LIFECYCLE_LABELS[upstream.lifecycle]}`}>
+          Imported status: {agentLinkStatusLabel(row.al_status)}
         </span>
         {verified && <span className="block text-xs text-success">{verified}</span>}
         {row.manual_verification_conflict && (
-          <span className="block text-xs text-destructive">Staff verification conflicts with AgentLink</span>
+          <span className="block text-xs text-destructive">Staff verification conflicts with the imported AgentLink record</span>
         )}
       </TableCell>
       <TableCell className="whitespace-nowrap text-sm">
@@ -275,7 +285,7 @@ function CaseRow({ row, onEdit }: { row: CarrierCaseRow; onEdit: () => void }) {
       </TableCell>
       <TableCell className="whitespace-nowrap text-sm">{waitingOnLabel(row.waiting_on) ?? <span className="text-muted-foreground">Nobody</span>}</TableCell>
       <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
-        {row.al_synced_at ? formatTimeAgo(row.al_synced_at) : "Never synced"}
+        {row.al_synced_at ? formatTimeAgo(row.al_synced_at) : "Never imported"}
       </TableCell>
       <TableCell className="whitespace-nowrap text-xs tabular-nums text-muted-foreground" title={row.state_since_is_lower_bound ? "Already in this state when first observed; true age is at least this" : undefined}>
         {days ?? "Unknown"}
@@ -380,9 +390,9 @@ function CaseDialog({ row, onClose }: { row: CarrierCaseRow; onClose: () => void
         <DialogHeader>
           <DialogTitle>{row.agent_name ?? "Agent"} · {row.carrier_name}</DialogTitle>
           <DialogDescription>
-            {lifecycleLabel(row.lifecycle)} · AgentLink says “{agentLinkStatusLabel(row.al_status)}”
-            {row.al_synced_at ? `, synced ${formatTimeAgo(row.al_synced_at)}` : ""}.
-            {row.upline_name ? ` Upline ${row.upline_name}.` : " No upline in AgentLink."}
+            {lifecycleLabel(row.lifecycle)} · imported AgentLink status “{agentLinkStatusLabel(row.al_status)}”
+            {row.al_synced_at ? `, last synced ${formatTimeAgo(row.al_synced_at)}` : ""}.
+            {row.upline_name ? ` Upline ${row.upline_name}.` : " No upline on the imported record."}
             {row.carrier_level ? ` Comp level ${row.carrier_level}.` : ""}
           </DialogDescription>
         </DialogHeader>
@@ -422,7 +432,7 @@ function CaseDialog({ row, onClose }: { row: CarrierCaseRow; onClose: () => void
             <Select value={waitingOn} onValueChange={setWaitingOn}>
               <SelectTrigger id="case-waiting-on" aria-label="Waiting on"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value={DERIVED}>From AgentLink ({waitingOnLabel(mapAgentLinkStatus(row.al_status).waitingOn) ?? "nobody"})</SelectItem>
+                <SelectItem value={DERIVED}>From imported record ({waitingOnLabel(mapAgentLinkStatus(row.al_status).waitingOn) ?? "nobody"})</SelectItem>
                 {WAITING_ON.map((w) => <SelectItem key={w} value={w}>{WAITING_ON_LABELS[w]}</SelectItem>)}
               </SelectContent>
             </Select>
@@ -432,7 +442,7 @@ function CaseDialog({ row, onClose }: { row: CarrierCaseRow; onClose: () => void
             <Select value={blocker} onValueChange={setBlocker}>
               <SelectTrigger id="case-blocker" aria-label="Blocker"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value={DERIVED}>From AgentLink ({blockerLabel(mapAgentLinkStatus(row.al_status).blocker) ?? "none"})</SelectItem>
+                <SelectItem value={DERIVED}>From imported record ({blockerLabel(mapAgentLinkStatus(row.al_status).blocker) ?? "none"})</SelectItem>
                 <SelectItem value={NONE}>No blocker</SelectItem>
                 {BLOCKERS.map((b) => <SelectItem key={b} value={b}>{BLOCKER_LABELS[b]}</SelectItem>)}
               </SelectContent>
@@ -476,7 +486,7 @@ function CaseDialog({ row, onClose }: { row: CarrierCaseRow; onClose: () => void
                 <p className="text-xs text-muted-foreground">Record only what you confirmed yourself, with where you saw it.</p>
               ) : (
                 <p className="text-xs text-muted-foreground">
-                  {row.al_status === "active" ? "Verified by the AgentLink sync." : `AgentLink shows ${agentLinkStatusLabel(row.al_status)}; resolve that before verifying.`}
+                  {row.al_status === "active" ? "Verified from the imported AgentLink carrier record." : `The imported AgentLink record shows ${agentLinkStatusLabel(row.al_status)}; staff verification is locked while it does. Record what the carrier tells you in the next action and note.`}
                 </p>
               )}
             </div>
@@ -528,7 +538,7 @@ function CaseDialog({ row, onClose }: { row: CarrierCaseRow; onClose: () => void
               {(historyQ.data ?? []).map((e) => (
                 <li key={e.id}>
                   <span className="tabular-nums">{formatTimeAgo(e.created_at)}</span> · {e.source === "agentlink_sync"
-                    ? `AgentLink status ${String(e.before?.status ?? "none")} → ${String(e.after?.status ?? "none")}`
+                    ? `Imported AgentLink status ${String(e.before?.status ?? "none")} → ${String(e.after?.status ?? "none")}`
                     : `${e.action}${e.actor_name ? ` by ${e.actor_name}` : ""}`}
                 </li>
               ))}

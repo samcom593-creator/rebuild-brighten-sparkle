@@ -14,7 +14,8 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Users, Gauge, Ticket, RefreshCw, CheckCircle2, Circle, ExternalLink, ClipboardCopy } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Users, Gauge, Ticket, RefreshCw, CheckCircle2, Circle, ClipboardCopy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
@@ -49,22 +50,27 @@ type WorkItem = {
   ethos_status: string; handled: boolean; acked_at: string | null; note: string | null;
 };
 
-// Per-action label + the fastest way to actually clear it. AgentLink fixes happen
-// in AgentLink; Ethos rows are the copy-to-sheet buttons above; merges are the
-// dedupe tool. "kind" drives which shortcut renders on the row.
-const WORK_META: Record<string, { label: string; kind: "agentlink" | "ethos" | "merge" }> = {
-  resolve_npn_conflict:            { label: "Resolve NPN conflict", kind: "agentlink" },
-  backfill_npn_from_source:        { label: "Backfill NPN", kind: "agentlink" },
+// Per-action label + the fastest way to actually clear it, inside Apex. Carrier
+// and NPN gaps are worked on the agent's carrier cases (staff never work in
+// AgentLink; its records are imported history); Ethos rows are the copy-to-sheet
+// buttons above; merges are the dedupe tool. "kind" drives which shortcut
+// renders on the row. The action keys come from the audit SQL and are kept as
+// is; only the words shown here describe them.
+const WORK_META: Record<string, { label: string; kind: "cases" | "ethos" | "merge" }> = {
+  resolve_npn_conflict:            { label: "Resolve NPN conflict", kind: "cases" },
+  backfill_npn_from_source:        { label: "Backfill NPN", kind: "cases" },
   merge_duplicate_agent_rows:      { label: "Merge duplicate rows", kind: "merge" },
-  create_agentlink_profile:        { label: "Create AgentLink profile", kind: "agentlink" },
-  complete_agentlink_profile:      { label: "Complete AgentLink profile", kind: "agentlink" },
-  upline_assign_in_agentlink:      { label: "Assign upline", kind: "agentlink" },
-  fix_rejected_contracts:          { label: "Fix rejected contracts", kind: "agentlink" },
-  no_active_carrier_contracts:     { label: "No active carrier contract", kind: "agentlink" },
+  create_agentlink_profile:        { label: "No imported carrier record", kind: "cases" },
+  complete_agentlink_profile:      { label: "Imported carrier record incomplete", kind: "cases" },
+  upline_assign_in_agentlink:      { label: "No upline on imported record", kind: "cases" },
+  fix_rejected_contracts:          { label: "Fix rejected contracts", kind: "cases" },
+  no_active_carrier_contracts:     { label: "No active carrier contract", kind: "cases" },
   add_to_ethos_sheet:              { label: "Add to Ethos sheet", kind: "ethos" },
   ethos_agent_update_comp_level:   { label: "Fix Ethos comp level", kind: "ethos" },
 };
-const AGENTLINK_URL = "https://agentlink.insuracloud.ai";
+
+/** The agent's carrier cases, pre-searched by name. The audit route is admin-only, and /cases admits admins. */
+const casesHref = (name: string) => `/dashboard/contracting/cases?q=${encodeURIComponent(name)}`;
 
 const OWNER_TONE: Record<string, string> = {
   Sam: "bg-amber-500/70 border-amber-400/50 text-amber-200",
@@ -327,7 +333,7 @@ export function OnboardingCommand() {
         ) : (
           <div className="space-y-4">
             {workGroups.map((g) => {
-              const meta = WORK_META[g.action] ?? { label: g.action, kind: "agentlink" as const };
+              const meta = WORK_META[g.action] ?? { label: g.action.replace(/_/g, " "), kind: "cases" as const };
               return (
                 <div key={g.action} className="space-y-1">
                   <div className="flex items-center gap-2 text-xs font-semibold text-amber-300">
@@ -352,11 +358,14 @@ export function OnboardingCommand() {
                             {it.manager_name ? `↑ ${it.manager_name}` : "no manager"}{it.npn_db ? ` · NPN ${it.npn_db}` : ""}
                           </div>
                         </div>
-                        {meta.kind === "agentlink" && (
-                          <a href={AGENTLINK_URL} target="_blank" rel="noopener noreferrer"
-                             className="inline-flex shrink-0 items-center gap-1 text-[11px] text-sky-300 hover:underline">
-                            AgentLink <ExternalLink className="h-3 w-3" />
-                          </a>
+                        {meta.kind === "cases" && (
+                          <Link
+                            to={casesHref(it.display_name)}
+                            className="inline-flex shrink-0 items-center gap-1 text-[11px] text-sky-300 hover:underline"
+                            aria-label={`Open carrier cases for ${it.display_name}`}
+                          >
+                            Carrier cases
+                          </Link>
                         )}
                         {meta.kind === "ethos" && (
                           <span className="inline-flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground">

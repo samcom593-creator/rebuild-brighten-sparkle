@@ -2,8 +2,8 @@
  * ReadyToWriteCard — which carriers this agent can actually write today.
  *
  * Verified Ready to Write means one of two things and nothing else:
- *   - AgentLink (the carrier contracting system) shows the contract active —
- *     labelled "AgentLink sync" with the sync time; or
+ *   - the imported AgentLink carrier record shows the contract active,
+ *     labelled "Imported carrier record" with its last sync time; or
  *   - contracting staff recorded a verification with its source and evidence.
  * "Submitted", "pending" or "no outstanding requirements" never appear here as
  * approval. Every other carrier is summarised by lifecycle, one count each,
@@ -75,7 +75,7 @@ export function ReadyToWriteCard({ agentId }: { agentId: string | null | undefin
             </p>
           )}
           {(q.data ?? []).length === 0 && (
-            <p className="mt-1 text-xs text-muted-foreground">No AgentLink carrier records are linked to this agent.</p>
+            <p className="mt-1 text-xs text-muted-foreground">No carrier records on file for this agent yet.</p>
           )}
         </>
       )}

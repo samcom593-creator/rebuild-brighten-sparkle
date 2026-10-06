@@ -80,17 +80,22 @@ export default function CarrierContracts() {
     },
   });
 
+  // Each tab is offered only to the roles its route admits (src/App.tsx):
+  // every contracting route is requireAdmin, and only /cases and /ethos also
+  // let va_manager and va through. A tab a role cannot open would bounce it.
   const workspaceNavItems = [
-    ["requests", "/dashboard/contracting", isAdmin || isManager ? "Requests" : "Start"],
-    ["carriers", "/dashboard/contracting/carriers", "Carriers"],
-    ["contracts", "/dashboard/contracting/contracts", "Contracts"],
+    ...(isAdmin ? [
+      ["requests", "/dashboard/contracting", "Requests"],
+      ["carriers", "/dashboard/contracting/carriers", "Carriers"],
+      ["contracts", "/dashboard/contracting/contracts", "Contracts"],
+    ] : []),
     ...(isContractingStaff ? [["cases", "/dashboard/contracting/cases", "Cases"]] : []),
     ...(isAdmin ? [
       ["ops", "/dashboard/contracting/ops", "Operations"],
       ["documents", "/dashboard/contracting/documents", "Documents"],
       ["audit", "/dashboard/contracting/audit", "Audit"],
-      ["ethos", "/dashboard/contracting/ethos", "Ethos"],
     ] : []),
+    ...(isContractingStaff ? [["ethos", "/dashboard/contracting/ethos", "Ethos"]] : []),
   ] as Array<[string, string, string]>;
 
   const workspaceNav = (
@@ -143,7 +148,7 @@ export default function CarrierContracts() {
     : mode === "ethos"
     ? "Verify, approve and submit each producer to the Ethos sheet once — then reconcile what Ethos does with it."
     : mode === "audit"
-    ? "Every agent against AgentLink and the Ethos sheet: valid NPN, profile, upline, carrier contracts, Ethos level. One next action each."
+    ? "Every agent against imported AgentLink carrier records and the Ethos sheet: valid NPN, profile, upline, carrier contracts, Ethos level. One next action each."
     : "Writing numbers, contract numbers, and appointment records for the producers you cover.";
 
   return (
@@ -265,11 +270,12 @@ function ContractingOps({ canInvite, isAdmin }: { canInvite: boolean; isAdmin: b
   const queues = digestQ.data ?? [];
   const count = (key: string) => queues.find((q) => q.key === key)?.cases ?? 0;
 
-  const stats: Array<[string, number, string]> = [
-    ["Verified · ready to write", count("verified"), "Carrier cases confirmed"],
-    ["Ready to submit", count("ready_to_submit"), "Prepared, not sent yet"],
-    ["With carriers", count("carrier_review"), "Submitted, awaiting the carrier"],
-    ["Needs staff action", count("staff_action"), `${count("agent_action")} waiting on agents · ${count("support")} with support`],
+  // [label, value, note, queue key]. Each tile opens the queue it counts.
+  const stats: Array<[string, number, string, string]> = [
+    ["Verified · ready to write", count("verified"), "Carrier cases confirmed", "verified"],
+    ["Ready to submit", count("ready_to_submit"), "Prepared, not sent yet", "ready_to_submit"],
+    ["With carriers", count("carrier_review"), "Submitted, awaiting the carrier", "carrier_review"],
+    ["Needs staff action", count("staff_action"), `${count("agent_action")} waiting on agents · ${count("support")} with support`, "staff_action"],
   ];
 
   return (
@@ -280,8 +286,8 @@ function ContractingOps({ canInvite, isAdmin }: { canInvite: boolean; isAdmin: b
         </GlassCard>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {stats.map(([label, value, note]) => (
-            <Link key={label} to="/dashboard/contracting/cases" className="block rounded-lg focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]">
+          {stats.map(([label, value, note, queueKey]) => (
+            <Link key={label} to={`/dashboard/contracting/cases?queue=${queueKey}`} className="block rounded-lg focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]">
               <GlassCard className="h-full p-4 transition-colors hover:border-primary/40">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{label}</p>
                 {digestQ.isLoading ? <Skeleton className="mt-1 h-8 w-14" /> : <p className="mt-0.5 text-3xl font-bold tabular-nums">{value}</p>}
@@ -310,7 +316,7 @@ function ContractingOps({ canInvite, isAdmin }: { canInvite: boolean; isAdmin: b
               <ul className="mt-3 space-y-1.5">
                 {queues.map((q) => (
                   <li key={q.key}>
-                    <Link to="/dashboard/contracting/cases" className="flex items-center justify-between rounded-md border border-border/60 px-3 py-2 text-sm transition-colors hover:border-primary/40">
+                    <Link to={`/dashboard/contracting/cases?queue=${encodeURIComponent(q.key)}`} className="flex items-center justify-between rounded-md border border-border/60 px-3 py-2 text-sm transition-colors hover:border-primary/40">
                       <span>{q.label}</span>
                       <span className="font-bold tabular-nums">{q.cases}</span>
                     </Link>

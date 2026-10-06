@@ -1,7 +1,7 @@
 /**
  * ContractingAuditPanel — /dashboard/contracting/audit (2026-09-24, Sam directive).
  *
- * One row per live agent from v_contracting_audit: the DB, AgentLink (agentlink_roster) and the Ethos
+ * One row per live agent from v_contracting_audit: the DB, imported AgentLink records (agentlink_roster) and the Ethos
  * "Agent Portal Signup" sheet (ethos_roster) reconciled on NPN, email and name. Each row carries ONE
  * next_action (the first gap in the contracting chain: license -> real NPN -> AgentLink profile ->
  * upline assignment -> carrier contracts -> Ethos sheet row -> Ethos comp level -> live). The summary
@@ -39,9 +39,9 @@ const ACTION_LABEL: Record<string, string> = {
   collect_real_npn: "Collect a real NPN",
   resolve_npn_conflict: "NPN conflict (DB vs AgentLink/Ethos)",
   backfill_npn_from_source: "NPN known upstream, blank here",
-  create_agentlink_profile: "No AgentLink profile",
-  complete_agentlink_profile: "AgentLink profile incomplete",
-  upline_assign_in_agentlink: "Assign upline in AgentLink",
+  create_agentlink_profile: "No imported AgentLink record",
+  complete_agentlink_profile: "Imported AgentLink record incomplete",
+  upline_assign_in_agentlink: "No upline on imported AgentLink record",
   fix_rejected_contracts: "Carrier rejected / issue",
   add_to_ethos_sheet: "Add to Ethos sheet (agwnts tab)",
   agent_sends_ethos_reparenting_email: "Agent must email agents@getethos.com (reparenting)",
@@ -145,8 +145,8 @@ export function ContractingAuditPanel() {
           <div>
             <div className="text-sm font-semibold">Where every agent stands</div>
             <p className="text-xs text-muted-foreground">
-              DB ↔ AgentLink ↔ Ethos sheet, reconciled on NPN / email / name. Each agent gets one next action — the first gap in the chain.
-              {freshness.al && <> AgentLink roster synced {new Date(freshness.al).toLocaleString()}.</>}
+              DB ↔ imported AgentLink records ↔ Ethos sheet, reconciled on NPN / email / name. Each agent gets one next action — the first gap in the chain.
+              {freshness.al && <> Imported AgentLink roster, last synced {new Date(freshness.al).toLocaleString()}.</>}
               {freshness.et && <> Ethos sheet snapshot {new Date(freshness.et).toLocaleString()}.</>}
             </p>
           </div>
@@ -244,7 +244,7 @@ export function ContractingAuditPanel() {
                   </td>
                   <td className="py-1.5 pr-3 text-xs">
                     {r.al_id == null ? (
-                      <span className="text-amber-300">no AgentLink profile</span>
+                      <span className="text-muted-foreground">no imported record</span>
                     ) : (
                       <>
                         <div>{r.al_active ?? 0} active{r.al_carriers_active ? `: ${r.al_carriers_active}` : ""}</div>

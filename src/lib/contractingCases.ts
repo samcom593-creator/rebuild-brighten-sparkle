@@ -9,9 +9,10 @@
  * disagree, so the page and the database can never label a status differently.
  *
  * Rules carried by the map:
- *   - "active" in AgentLink is the carrier contracting system's own approval and
- *     is the ONLY upstream status that reads as Verified Ready to Write. It is
- *     always shown with its source ("AgentLink sync") and the sync time.
+ *   - "active" on the imported AgentLink carrier record is the ONLY upstream
+ *     status that reads as Verified Ready to Write. It is always shown as an
+ *     imported record ("Imported carrier record") with its last sync time, so
+ *     nobody reads it as a live system staff should go and work in.
  *   - "submitted" is not approval. Carrier Review / Approved exist only as a
  *     staff-recorded carrier stage on a submitted case.
  *   - Any status not in the map is "Unknown (needs review)" and waits on staff.
@@ -136,9 +137,9 @@ export function waitingOnLabel(party: string | null | undefined): string | null 
 export const PRESUBMIT_LABELS: Record<string, string> = {
   identity: "Identity linked by email/name only",
   npn: "No NPN on file",
-  npn_mismatch: "NPN differs from AgentLink",
+  npn_mismatch: "NPN differs from the imported AgentLink record",
   agency: "Agency approval not confirmed",
-  hierarchy: "No upline in AgentLink",
+  hierarchy: "No upline on the imported record",
   comp: "No comp level for this carrier",
 };
 
@@ -222,7 +223,7 @@ export const CASE_QUEUES: readonly CaseQueue[] = [
   { key: "carrier_review", label: "Carrier Review", column: "q_carrier_review", hint: "Submitted, with the carrier" },
   { key: "follow_up_due", label: "Follow-Up Due", column: "q_follow_up_due", hint: "Follow-up date today or earlier (Phoenix)" },
   { key: "ready_to_submit", label: "Ready to Submit", column: "q_ready_to_submit", hint: "Set up and ready to send to the carrier" },
-  { key: "verified", label: "Verified Ready to Write", column: "q_verified", hint: "Active in AgentLink or verified by staff with evidence" },
+  { key: "verified", label: "Verified Ready to Write", column: "q_verified", hint: "Active on the imported AgentLink carrier record, or verified by staff with evidence" },
 ];
 
 export interface QueueCount {
@@ -261,7 +262,7 @@ function shortDate(iso: string | null): string | null {
 export function verificationLabel(row: Pick<CarrierCaseRow, "lifecycle" | "verification_source" | "verified_at" | "al_status">): string | null {
   if (row.lifecycle !== "verified_ready_to_write") return null;
   const when = shortDate(row.verified_at);
-  if (row.al_status === "active") return `AgentLink sync${when ? ` · synced ${when}` : ""}`;
+  if (row.al_status === "active") return `Imported carrier record${when ? ` · last synced ${when}` : ""}`;
   const source = row.verification_source?.trim();
   if (!source) return null;
   return `Verified by staff · ${source}${when ? ` · ${when}` : ""}`;

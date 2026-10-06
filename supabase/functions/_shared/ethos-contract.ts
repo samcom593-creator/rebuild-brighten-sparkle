@@ -184,7 +184,8 @@ export function classifyNpn(raw: unknown, ctx: { mobileDigits?: string | null } 
     out.push(finding("npn_placeholder", "blocker", field, column, "Sequential or repeated-digit placeholder.", "Collect the real individual NPN."));
     return { digits: s, findings: out };
   }
-  const mobile10 = digitsOnly(ctx.mobileDigits).slice(-10);
+  const mobileNorm = normalizeUsMobile(ctx.mobileDigits);
+  const mobile10 = mobileNorm.ok ? mobileNorm.national : "";
   if (mobile10 && (s === mobile10 || s === `1${mobile10}` || (s.length >= 7 && mobile10.endsWith(s)))) {
     out.push(finding("npn_equals_phone", "blocker", field, column, "The NPN cell holds the agent's phone number.", "Collect the real individual NPN; never refill an NPN from a mobile number."));
     return { digits: s, findings: out };
@@ -870,7 +871,11 @@ export function verifySignupReadBack(written: unknown[] | undefined, payload: Sh
     const got = written?.[c];
     let same: boolean;
     if (typeof want === "boolean") same = parseSheetBoolean(got) === want;
-    else if (c === S.MOBILE) same = digitsOnly(got).slice(-10) === digitsOnly(want).slice(-10);
+    else if (c === S.MOBILE) {
+      const g = normalizeUsMobile(got);
+      const w = normalizeUsMobile(want);
+      same = g.ok && w.ok && g.national === w.national;
+    }
     else if (c === S.EMAIL) same = trimOuter(got).toLowerCase() === trimOuter(want).toLowerCase();
     else same = trimOuter(got) === trimOuter(want);
     if (!same) mismatches.push(SIGNUP_HEADERS[c]);

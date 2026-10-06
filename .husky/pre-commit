@@ -157,6 +157,15 @@ if match '^(src/.*\.(tsx?|jsx?)$|scripts/check-cold-landing-sonner\.mjs$)'; then
   node scripts/check-cold-landing-sonner.mjs
 fi
 
+# ---------- check-apply-framer-free (PL-WIB-APPLY-FRAMER) ----------
+# Trigger: any src/ tsx|ts|jsx|js change or the script itself. Walks the static
+# import graph from src/pages/Apply.tsx (~29 files) and fails on any static
+# framer-motion edge: framer put 124 KB raw in front of /apply's LCP heading.
+if match '^(src/.*\.(tsx?|jsx?)$|scripts/check-apply-framer-free\.mjs$)'; then
+  echo "[pre-commit] src/ file staged — running check:apply-framer-free…"
+  node scripts/check-apply-framer-free.mjs
+fi
+
 # ---------- check-cold-landing-supabase-queryFn (wave-44) ----------
 # Trigger: any src/ tsx|ts change. Walks cold-landing static-import graph and
 # fails on any reachable file that calls useQuery+supabase-dynamic-import

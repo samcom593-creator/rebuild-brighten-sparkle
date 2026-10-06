@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { EmailTypoHint } from "@/components/ui/email-typo-hint";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import { motion, AnimatePresence } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -170,6 +169,13 @@ export default function Apply() {
     ? [{ id: 1, title: "Quick Qualify", icon: User }, ...steps.map((step) => ({ ...step, id: step.id + 1 }))]
     : steps;
   const visibleFormStep = isQuickQualifyTraffic ? currentStep - 1 : currentStep;
+  // Step changes slide in; the first paint does not. The step-1 heading is the
+  // page's LCP element, and an entrance fade from opacity 0 holds it back. Set
+  // during render (only ever flips to true) so the step that follows the first
+  // change is already marked when it mounts.
+  const firstStepRef = useRef(currentStep);
+  const stepHasChangedRef = useRef(false);
+  if (currentStep !== firstStepRef.current) stepHasChangedRef.current = true;
   const [isSubmitting, setIsSubmitting] = useState(false);
   // VSL gate fully removed — no video, no gate, no placeholder state.
   const [selectedStates, setSelectedStates] = useState<string[]>([]);
@@ -994,13 +1000,13 @@ export default function Apply() {
 
           {/* Form */}
           <form onSubmit={handleSubmit(onSubmit)}>
-            <AnimatePresence mode="popLayout">
-              <motion.div
+              <div
                 key={currentStep}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.2 }}
+                className={
+                  stepHasChangedRef.current
+                    ? "animate-in fade-in slide-in-from-right-5 duration-200 motion-reduce:animate-none"
+                    : undefined
+                }
               >
                 <GlassCard className="p-4 sm:p-8">
                   {isQuickQualifyTraffic && currentStep === 1 && (
@@ -1177,11 +1183,7 @@ export default function Apply() {
                       </div>
 
                       {hasExperience && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: "auto" }}
-                          className="space-y-4"
-                        >
+                        <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-200 motion-reduce:animate-none">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
                               <Label htmlFor="yearsExperience">Years of Experience</Label>
@@ -1217,7 +1219,7 @@ export default function Apply() {
                               className="bg-input"
                             />
                           </div>
-                        </motion.div>
+                        </div>
                       )}
 
                       {!hasExperience && (
@@ -1259,11 +1261,7 @@ export default function Apply() {
                       </div>
 
                       {licenseStatus === "licensed" && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: "auto" }}
-                          className="space-y-4"
-                        >
+                        <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-200 motion-reduce:animate-none">
                           <div className="space-y-2">
                             <Label htmlFor="niprNumber">NPN / NIPR Number <span className="text-rose-400">*</span></Label>
                             <Input
@@ -1297,7 +1295,7 @@ export default function Apply() {
                               ))}
                             </div>
                           </div>
-                        </motion.div>
+                        </div>
                       )}
 
                       {licenseStatus === "unlicensed" && (
@@ -1558,8 +1556,7 @@ export default function Apply() {
                     )}
                   </div>
                 </GlassCard>
-              </motion.div>
-            </AnimatePresence>
+              </div>
           </form>
           </>
         </div>

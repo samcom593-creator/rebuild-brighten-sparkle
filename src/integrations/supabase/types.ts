@@ -16825,6 +16825,36 @@ export type Database = {
           },
         ]
       }
+      agentlink_carrier_status_observations: {
+        Row: {
+          al_user_id: number
+          carrier_name: string
+          last_seen_at: string
+          observed_since: string
+          observed_since_is_lower_bound: boolean
+          previous_status: string | null
+          status: string | null
+        }
+        Insert: {
+          al_user_id: number
+          carrier_name: string
+          last_seen_at?: string
+          observed_since: string
+          observed_since_is_lower_bound?: boolean
+          previous_status?: string | null
+          status?: string | null
+        }
+        Update: {
+          al_user_id?: number
+          carrier_name?: string
+          last_seen_at?: string
+          observed_since?: string
+          observed_since_is_lower_bound?: boolean
+          previous_status?: string | null
+          status?: string | null
+        }
+        Relationships: []
+      }
       agentlink_carriers: {
         Row: {
           contract_invite_url: string | null
@@ -40435,6 +40465,120 @@ export type Database = {
           send_method?: string
           subject_template?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      contracting_case_events: {
+        Row: {
+          action: string
+          actor: string | null
+          after: Json | null
+          agent_id: string | null
+          al_user_id: number | null
+          before: Json | null
+          carrier_name: string
+          created_at: string
+          id: number
+          source: string
+        }
+        Insert: {
+          action: string
+          actor?: string | null
+          after?: Json | null
+          agent_id?: string | null
+          al_user_id?: number | null
+          before?: Json | null
+          carrier_name: string
+          created_at?: string
+          id?: number
+          source?: string
+        }
+        Update: {
+          action?: string
+          actor?: string | null
+          after?: Json | null
+          agent_id?: string | null
+          al_user_id?: number | null
+          before?: Json | null
+          carrier_name?: string
+          created_at?: string
+          id?: number
+          source?: string
+        }
+        Relationships: []
+      }
+      contracting_case_tracking: {
+        Row: {
+          agent_id: string
+          blocker_override: string | null
+          carrier_name: string
+          carrier_stage: string | null
+          carrier_stage_at: string | null
+          closed_at: string | null
+          closed_by: string | null
+          closed_reason: string | null
+          created_at: string
+          evidence_ref: string | null
+          follow_up_on: string | null
+          id: string
+          next_action: string | null
+          note: string | null
+          owner_name: string | null
+          owner_user_id: string | null
+          updated_at: string
+          updated_by: string | null
+          verification_source: string | null
+          verified_by: string | null
+          verified_ready_at: string | null
+          waiting_on: string | null
+        }
+        Insert: {
+          agent_id: string
+          blocker_override?: string | null
+          carrier_name: string
+          carrier_stage?: string | null
+          carrier_stage_at?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
+          closed_reason?: string | null
+          created_at?: string
+          evidence_ref?: string | null
+          follow_up_on?: string | null
+          id?: string
+          next_action?: string | null
+          note?: string | null
+          owner_name?: string | null
+          owner_user_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          verification_source?: string | null
+          verified_by?: string | null
+          verified_ready_at?: string | null
+          waiting_on?: string | null
+        }
+        Update: {
+          agent_id?: string
+          blocker_override?: string | null
+          carrier_name?: string
+          carrier_stage?: string | null
+          carrier_stage_at?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
+          closed_reason?: string | null
+          created_at?: string
+          evidence_ref?: string | null
+          follow_up_on?: string | null
+          id?: string
+          next_action?: string | null
+          note?: string | null
+          owner_name?: string | null
+          owner_user_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          verification_source?: string | null
+          verified_by?: string | null
+          verified_ready_at?: string | null
+          waiting_on?: string | null
         }
         Relationships: []
       }
@@ -109122,6 +109266,61 @@ export type Database = {
           licensed: number | null
           next_action: string | null
           who: string | null
+        }
+        Relationships: []
+      }
+      v_contracting_carrier_cases: {
+        Row: {
+          agency_approval: string | null
+          agent_id: string | null
+          agent_name: string | null
+          agent_user_id: string | null
+          al_lifecycle: string | null
+          al_status: string | null
+          al_synced_at: string | null
+          al_user_id: number | null
+          blocker: string | null
+          blocker_override: string | null
+          blocker_source: string | null
+          carrier_level: string | null
+          carrier_name: string | null
+          carrier_stage: string | null
+          carrier_stage_at: string | null
+          closed_at: string | null
+          closed_reason: string | null
+          days_in_state: number | null
+          evidence_ref: string | null
+          follow_up_on: string | null
+          license_status: string | null
+          lifecycle: string | null
+          manager_id: string | null
+          manager_name: string | null
+          manual_verification_conflict: boolean | null
+          match_basis: string | null
+          next_action: string | null
+          note: string | null
+          npn: string | null
+          owner_name: string | null
+          owner_source: string | null
+          owner_user_id: string | null
+          presubmit_missing: string[] | null
+          q_agent_action: boolean | null
+          q_carrier_review: boolean | null
+          q_follow_up_due: boolean | null
+          q_ready_to_submit: boolean | null
+          q_staff_action: boolean | null
+          q_support: boolean | null
+          q_verified: boolean | null
+          state_since: string | null
+          state_since_is_lower_bound: boolean | null
+          tracking_updated_at: string | null
+          upline_al_id: number | null
+          upline_name: string | null
+          verification_source: string | null
+          verified_at: string | null
+          verified_by: string | null
+          waiting_on: string | null
+          waiting_on_override: string | null
         }
         Relationships: []
       }

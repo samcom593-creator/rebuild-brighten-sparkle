@@ -1422,7 +1422,47 @@
         "raw": ""
       }
     ],
+    "contracting_carrier_cases": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_agent_id uuid DEFAULT NULL::uuid"
+      }
+    ],
+    "contracting_case_history": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_carrier"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_carrier"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_carrier text"
+      }
+    ],
+    "contracting_case_owner_options": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "contracting_checkin_list": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "contracting_exception_digest": [
       {
         "all": [],
         "required": [],
@@ -1444,6 +1484,22 @@
         ],
         "unnamed": false,
         "raw": "p_agent_id uuid, p_intake_id uuid, p_evidence jsonb DEFAULT '{}'::jsonb, p_approval jsonb DEFAULT NULL::jsonb"
+      }
+    ],
+    "contracting_update_case": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_carrier",
+          "p_patch"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_carrier",
+          "p_patch"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_carrier text, p_patch jsonb"
       }
     ],
     "contracting_worklist_ack": [
@@ -2700,6 +2756,14 @@
         "raw": ""
       }
     ],
+    "fn_contracting_case_events_append_only": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "fn_contracting_checkin_scope": [
       {
         "all": [],
@@ -3458,6 +3522,14 @@
         ],
         "unnamed": false,
         "raw": "p_request_id bigint"
+      }
+    ],
+    "fn_observe_agentlink_carrier_statuses": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
       }
     ],
     "fn_onboarding_email_backfill_sweep": [

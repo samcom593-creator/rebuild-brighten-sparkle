@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-rpc-column-vocabulary.sh (bot_sql -> pg_proc + pg_rewrite)",
- "_generated_at": "2026-10-06T11:50:11Z",
+ "_generated_at": "2026-10-06T16:39:40Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "check-enum-filter-literals.mjs grades literals inside supabase.from().eq() chains. This is the other half of the same class: a status word that arrives from an RPC and is compared in JavaScript, where the return type is text and every wrong word type-checks. Per (function, returned column) this records the relation columns of that name reachable from the function body and the literals the function synthesises itself. It deliberately records CANDIDATES rather than one resolved source: provenance from a body regex is a guess, so check-rpc-status-literals.mjs refuses a literal only when NO candidate vocabulary and no body literal accepts it.",
  "_vocabulary_source": "scripts/data/enum-catalog.json (check_vocab + column_enum + enums). Not copied here on purpose, so the two guards read one snapshot and cannot drift.",
@@ -117,7 +117,10 @@
   "content_clips_upsert": "jsonb",
   "content_library_search_update": "trigger",
   "content_queue_guard_update": "trigger",
+  "contracting_carrier_cases": "SETOF v_contracting_carrier_cases",
+  "contracting_exception_digest": "jsonb",
   "contracting_save_ethos_review": "contracting_ethos_approvals",
+  "contracting_update_case": "jsonb",
   "contracting_worklist_ack": "jsonb",
   "contracting_worklist_unack": "jsonb",
   "course_max_attempts": "integer",
@@ -215,6 +218,7 @@
   "fn_client_pipeline_update": "jsonb",
   "fn_close_communication_gaps": "jsonb",
   "fn_contact_log_stamp_application": "trigger",
+  "fn_contracting_case_events_append_only": "trigger",
   "fn_contracting_is_staff": "boolean",
   "fn_culture_loop_on_deal": "trigger",
   "fn_deal_capture_writing_npn": "trigger",
@@ -284,6 +288,7 @@
   "fn_ntfy_relay": "bigint",
   "fn_ntfy_relay_receipt": "jsonb",
   "fn_ntfy_relay_result": "text",
+  "fn_observe_agentlink_carrier_statuses": "trigger",
   "fn_onboarding_email_backfill_sweep": "jsonb",
   "fn_policy_number_report_placeholder": "boolean",
   "fn_post_deal_celebration": "bigint",
@@ -2334,6 +2339,118 @@
    "candidates": [],
    "body_literals": [
     "public"
+   ]
+  },
+  "contracting_case_history.action": {
+   "candidates": [
+    "contracting_case_events.action"
+   ],
+   "body_literals": [
+    "authentication required",
+    "not allowed to view this agent",
+    "public"
+   ]
+  },
+  "contracting_case_history.actor_name": {
+   "candidates": [],
+   "body_literals": [
+    "authentication required",
+    "not allowed to view this agent",
+    "public"
+   ]
+  },
+  "contracting_case_history.after": {
+   "candidates": [
+    "contracting_case_events.after"
+   ],
+   "body_literals": [
+    "authentication required",
+    "not allowed to view this agent",
+    "public"
+   ]
+  },
+  "contracting_case_history.before": {
+   "candidates": [
+    "contracting_case_events.before"
+   ],
+   "body_literals": [
+    "authentication required",
+    "not allowed to view this agent",
+    "public"
+   ]
+  },
+  "contracting_case_history.created_at": {
+   "candidates": [
+    "agents.created_at",
+    "contracting_case_events.created_at",
+    "profiles.created_at"
+   ],
+   "body_literals": [
+    "authentication required",
+    "not allowed to view this agent",
+    "public"
+   ]
+  },
+  "contracting_case_history.id": {
+   "candidates": [
+    "agents.id",
+    "contracting_case_events.id",
+    "profiles.id"
+   ],
+   "body_literals": [
+    "authentication required",
+    "not allowed to view this agent",
+    "public"
+   ]
+  },
+  "contracting_case_history.source": {
+   "candidates": [
+    "contracting_case_events.source"
+   ],
+   "body_literals": [
+    "authentication required",
+    "not allowed to view this agent",
+    "public"
+   ]
+  },
+  "contracting_case_owner_options.name": {
+   "candidates": [],
+   "body_literals": [
+    "Unnamed account",
+    "admin",
+    "contracting staff only",
+    "manager",
+    "public",
+    "va",
+    "va_manager"
+   ]
+  },
+  "contracting_case_owner_options.roles": {
+   "candidates": [],
+   "body_literals": [
+    "Unnamed account",
+    "admin",
+    "contracting staff only",
+    "manager",
+    "public",
+    "va",
+    "va_manager"
+   ]
+  },
+  "contracting_case_owner_options.user_id": {
+   "candidates": [
+    "agents.user_id",
+    "profiles.user_id",
+    "user_roles.user_id"
+   ],
+   "body_literals": [
+    "Unnamed account",
+    "admin",
+    "contracting staff only",
+    "manager",
+    "public",
+    "va",
+    "va_manager"
    ]
   },
   "contracting_checkin_list.agent_id": {

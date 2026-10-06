@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-rpc-column-vocabulary.sh (bot_sql -> pg_proc + pg_rewrite)",
- "_generated_at": "2026-10-06T16:41:11Z",
+ "_generated_at": "2026-10-06T16:44:26Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "check-enum-filter-literals.mjs grades literals inside supabase.from().eq() chains. This is the other half of the same class: a status word that arrives from an RPC and is compared in JavaScript, where the return type is text and every wrong word type-checks. Per (function, returned column) this records the relation columns of that name reachable from the function body and the literals the function synthesises itself. It deliberately records CANDIDATES rather than one resolved source: provenance from a body regex is a guess, so check-rpc-status-literals.mjs refuses a literal only when NO candidate vocabulary and no body literal accepts it.",
  "_vocabulary_source": "scripts/data/enum-catalog.json (check_vocab + column_enum + enums). Not copied here on purpose, so the two guards read one snapshot and cannot drift.",
@@ -95,6 +95,7 @@
   "bump_manager_post": "integer",
   "calculate_closing_rate": "trigger",
   "can_work_application": "boolean",
+  "can_work_recruiting_application": "boolean",
   "cc_dispose": "jsonb",
   "cc_dispose_interview": "interview_events",
   "check_banned_prospect": "boolean",
@@ -296,6 +297,7 @@
   "fn_post_unlicensed_digest": "void",
   "fn_production_integrity_anchor": "timestamp with time zone",
   "fn_protect_application_attribution": "trigger",
+  "fn_protect_human_next_action": "trigger",
   "fn_prune_agentlink_alerts": "integer",
   "fn_prune_cron_run_details": "integer",
   "fn_queue_application_slack": "trigger",
@@ -384,6 +386,8 @@
   "is_fresh_deal_close": "boolean",
   "is_owner": "boolean",
   "is_placeholder_agent": "boolean",
+  "is_recruiting_owner_eligible": "boolean",
+  "is_recruiting_staff": "boolean",
   "issue_strike": "agent_strikes",
   "job_run_finish": "void",
   "job_run_start": "uuid",
@@ -442,10 +446,12 @@
   "record_discord_deal_ingestion_exception": "jsonb",
   "record_discord_deal_ingestion_heartbeat": "void",
   "record_onboarding_call_outcome": "jsonb",
+  "record_recruiting_outcome": "jsonb",
   "record_snap_stats_public": "jsonb",
   "record_start_outcome": "jsonb",
   "recruiting_income_estimate": "jsonb",
   "recruiting_tier": "jsonb",
+  "recruiting_worklist_row": "jsonb",
   "refresh_mat_production_unified_if_needed": "jsonb",
   "refresh_production_truth": "jsonb",
   "refresh_sync_health": "void",
@@ -494,6 +500,7 @@
   "set_recruit_stage_bulk": "jsonb",
   "set_recruit_state": "jsonb",
   "set_recruiter_bounty_status": "recruiter_bounties",
+  "set_recruiting_plan": "jsonb",
   "should_post_to_discord": "boolean",
   "show_limit": "real",
   "show_trgm": "text[]",
@@ -9616,6 +9623,45 @@
     "test_scheduled",
     "unlicensed",
     "waiting_on_license"
+   ]
+  },
+  "recruiting_staff_directory.display_name": {
+   "candidates": [],
+   "body_literals": [
+    "Staff member",
+    "admin",
+    "manager",
+    "public",
+    "recruiter",
+    "va",
+    "va_manager"
+   ]
+  },
+  "recruiting_staff_directory.roles": {
+   "candidates": [],
+   "body_literals": [
+    "Staff member",
+    "admin",
+    "manager",
+    "public",
+    "recruiter",
+    "va",
+    "va_manager"
+   ]
+  },
+  "recruiting_staff_directory.user_id": {
+   "candidates": [
+    "profiles.user_id",
+    "user_roles.user_id"
+   ],
+   "body_literals": [
+    "Staff member",
+    "admin",
+    "manager",
+    "public",
+    "recruiter",
+    "va",
+    "va_manager"
    ]
   },
   "register_for_seminar.application_id": {

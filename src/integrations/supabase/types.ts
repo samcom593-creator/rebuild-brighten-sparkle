@@ -26721,31 +26721,58 @@ export type Database = {
           application_id: string
           channel: string
           contact_action_id: string | null
+          contact_outcome: string | null
           id: string
+          is_manual: boolean | null
           logged_at: string
           logged_by: string | null
+          next_action: string | null
+          next_action_due_at: string | null
+          next_review_at: string | null
           notes: string | null
           outcome: string
+          owner_user_id: string | null
+          provider_event_ref: string | null
+          source_surface: string | null
+          waiting_reason: string | null
         }
         Insert: {
           application_id: string
           channel: string
           contact_action_id?: string | null
+          contact_outcome?: string | null
           id?: string
+          is_manual?: boolean | null
           logged_at?: string
           logged_by?: string | null
+          next_action?: string | null
+          next_action_due_at?: string | null
+          next_review_at?: string | null
           notes?: string | null
           outcome: string
+          owner_user_id?: string | null
+          provider_event_ref?: string | null
+          source_surface?: string | null
+          waiting_reason?: string | null
         }
         Update: {
           application_id?: string
           channel?: string
           contact_action_id?: string | null
+          contact_outcome?: string | null
           id?: string
+          is_manual?: boolean | null
           logged_at?: string
           logged_by?: string | null
+          next_action?: string | null
+          next_action_due_at?: string | null
+          next_review_at?: string | null
           notes?: string | null
           outcome?: string
+          owner_user_id?: string | null
+          provider_event_ref?: string | null
+          source_surface?: string | null
+          waiting_reason?: string | null
         }
         Relationships: [
           {
@@ -26934,6 +26961,9 @@ export type Database = {
           course_started_at: string | null
           created_at: string
           desired_income: number | null
+          do_not_contact_at: string | null
+          do_not_contact_by: string | null
+          do_not_contact_reason: string | null
           duplicate_of: string | null
           email: string
           email_bad_at: string | null
@@ -26959,9 +26989,7 @@ export type Database = {
           gclid: string | null
           has_insurance_experience: boolean | null
           hiring_manager_user_id: string | null
-          hiring_scope_at_intake:
-            | Database["public"]["Enums"]["hiring_scope"]
-            | null
+          hiring_scope_at_intake: string | null
           ica_amount_cents: number | null
           ica_paid: boolean | null
           ica_paid_at: string | null
@@ -26973,16 +27001,18 @@ export type Database = {
           is_transfer: boolean | null
           landing_url: string | null
           last_automated_email_at: string | null
+          last_contact_channel: string | null
+          last_contact_outcome: string | null
+          last_contact_outcome_at: string | null
+          last_contact_outcome_by: string | null
           last_contacted_at: string | null
           last_name: string
           last_response_at: string | null
           lead_score: number | null
           license_approved_at: string | null
           license_doc_url: string | null
-          license_progress:
-            | Database["public"]["Enums"]["license_progress"]
-            | null
-          license_status: Database["public"]["Enums"]["license_status"]
+          license_progress: string | null
+          license_status: string
           licensed_at: string | null
           licensed_states: string[] | null
           manager_track_flagged_at: string | null
@@ -26992,7 +27022,10 @@ export type Database = {
           next_action: string | null
           next_action_at: string | null
           next_action_due_at: string | null
+          next_action_set_at: string | null
+          next_action_set_by: string | null
           next_action_type: string | null
+          next_review_at: string | null
           next_step_due_at: string | null
           next_step_stage_key: string | null
           next_touch_by: string | null
@@ -27012,6 +27045,9 @@ export type Database = {
           qualified_role: string | null
           record_type: string
           recruiter_id: string | null
+          recruiting_owner_set_at: string | null
+          recruiting_owner_set_by: string | null
+          recruiting_owner_user_id: string | null
           referral_manager_id: string | null
           referral_recruiter_id: string | null
           referral_source: string | null
@@ -27033,7 +27069,7 @@ export type Database = {
           start_date: string | null
           started_training: boolean | null
           state: string | null
-          status: Database["public"]["Enums"]["application_status"]
+          status: string
           stripe_checkout_session_id: string | null
           stripe_customer_id: string | null
           tags: string[] | null
@@ -27042,6 +27078,8 @@ export type Database = {
           terminated_at: string | null
           termination_reason: string | null
           test_scheduled_date: string | null
+          time_zone: string | null
+          time_zone_source: string | null
           ttclid: string | null
           updated_at: string
           utm_campaign: string | null
@@ -27051,6 +27089,7 @@ export type Database = {
           utm_term: string | null
           vsl_watch_percent: number | null
           vsl_watched_at: string | null
+          waiting_reason: string | null
           wbraid: string | null
           winback_sent_at: string | null
           years_experience: number | null
@@ -27077,6 +27116,9 @@ export type Database = {
           course_started_at?: string | null
           created_at?: string
           desired_income?: number | null
+          do_not_contact_at?: string | null
+          do_not_contact_by?: string | null
+          do_not_contact_reason?: string | null
           duplicate_of?: string | null
           email: string
           email_bad_at?: string | null
@@ -27102,9 +27144,7 @@ export type Database = {
           gclid?: string | null
           has_insurance_experience?: boolean | null
           hiring_manager_user_id?: string | null
-          hiring_scope_at_intake?:
-            | Database["public"]["Enums"]["hiring_scope"]
-            | null
+          hiring_scope_at_intake?: string | null
           ica_amount_cents?: number | null
           ica_paid?: boolean | null
           ica_paid_at?: string | null
@@ -27116,16 +27156,18 @@ export type Database = {
           is_transfer?: boolean | null
           landing_url?: string | null
           last_automated_email_at?: string | null
+          last_contact_channel?: string | null
+          last_contact_outcome?: string | null
+          last_contact_outcome_at?: string | null
+          last_contact_outcome_by?: string | null
           last_contacted_at?: string | null
           last_name: string
           last_response_at?: string | null
           lead_score?: number | null
           license_approved_at?: string | null
           license_doc_url?: string | null
-          license_progress?:
-            | Database["public"]["Enums"]["license_progress"]
-            | null
-          license_status?: Database["public"]["Enums"]["license_status"]
+          license_progress?: string | null
+          license_status?: string
           licensed_at?: string | null
           licensed_states?: string[] | null
           manager_track_flagged_at?: string | null
@@ -27135,7 +27177,10 @@ export type Database = {
           next_action?: string | null
           next_action_at?: string | null
           next_action_due_at?: string | null
+          next_action_set_at?: string | null
+          next_action_set_by?: string | null
           next_action_type?: string | null
+          next_review_at?: string | null
           next_step_due_at?: string | null
           next_step_stage_key?: string | null
           next_touch_by?: string | null
@@ -27155,6 +27200,9 @@ export type Database = {
           qualified_role?: string | null
           record_type?: string
           recruiter_id?: string | null
+          recruiting_owner_set_at?: string | null
+          recruiting_owner_set_by?: string | null
+          recruiting_owner_user_id?: string | null
           referral_manager_id?: string | null
           referral_recruiter_id?: string | null
           referral_source?: string | null
@@ -27176,7 +27224,7 @@ export type Database = {
           start_date?: string | null
           started_training?: boolean | null
           state?: string | null
-          status?: Database["public"]["Enums"]["application_status"]
+          status?: string
           stripe_checkout_session_id?: string | null
           stripe_customer_id?: string | null
           tags?: string[] | null
@@ -27185,6 +27233,8 @@ export type Database = {
           terminated_at?: string | null
           termination_reason?: string | null
           test_scheduled_date?: string | null
+          time_zone?: string | null
+          time_zone_source?: string | null
           ttclid?: string | null
           updated_at?: string
           utm_campaign?: string | null
@@ -27194,6 +27244,7 @@ export type Database = {
           utm_term?: string | null
           vsl_watch_percent?: number | null
           vsl_watched_at?: string | null
+          waiting_reason?: string | null
           wbraid?: string | null
           winback_sent_at?: string | null
           years_experience?: number | null
@@ -27220,6 +27271,9 @@ export type Database = {
           course_started_at?: string | null
           created_at?: string
           desired_income?: number | null
+          do_not_contact_at?: string | null
+          do_not_contact_by?: string | null
+          do_not_contact_reason?: string | null
           duplicate_of?: string | null
           email?: string
           email_bad_at?: string | null
@@ -27245,9 +27299,7 @@ export type Database = {
           gclid?: string | null
           has_insurance_experience?: boolean | null
           hiring_manager_user_id?: string | null
-          hiring_scope_at_intake?:
-            | Database["public"]["Enums"]["hiring_scope"]
-            | null
+          hiring_scope_at_intake?: string | null
           ica_amount_cents?: number | null
           ica_paid?: boolean | null
           ica_paid_at?: string | null
@@ -27259,16 +27311,18 @@ export type Database = {
           is_transfer?: boolean | null
           landing_url?: string | null
           last_automated_email_at?: string | null
+          last_contact_channel?: string | null
+          last_contact_outcome?: string | null
+          last_contact_outcome_at?: string | null
+          last_contact_outcome_by?: string | null
           last_contacted_at?: string | null
           last_name?: string
           last_response_at?: string | null
           lead_score?: number | null
           license_approved_at?: string | null
           license_doc_url?: string | null
-          license_progress?:
-            | Database["public"]["Enums"]["license_progress"]
-            | null
-          license_status?: Database["public"]["Enums"]["license_status"]
+          license_progress?: string | null
+          license_status?: string
           licensed_at?: string | null
           licensed_states?: string[] | null
           manager_track_flagged_at?: string | null
@@ -27278,7 +27332,10 @@ export type Database = {
           next_action?: string | null
           next_action_at?: string | null
           next_action_due_at?: string | null
+          next_action_set_at?: string | null
+          next_action_set_by?: string | null
           next_action_type?: string | null
+          next_review_at?: string | null
           next_step_due_at?: string | null
           next_step_stage_key?: string | null
           next_touch_by?: string | null
@@ -27298,6 +27355,9 @@ export type Database = {
           qualified_role?: string | null
           record_type?: string
           recruiter_id?: string | null
+          recruiting_owner_set_at?: string | null
+          recruiting_owner_set_by?: string | null
+          recruiting_owner_user_id?: string | null
           referral_manager_id?: string | null
           referral_recruiter_id?: string | null
           referral_source?: string | null
@@ -27319,7 +27379,7 @@ export type Database = {
           start_date?: string | null
           started_training?: boolean | null
           state?: string | null
-          status?: Database["public"]["Enums"]["application_status"]
+          status?: string
           stripe_checkout_session_id?: string | null
           stripe_customer_id?: string | null
           tags?: string[] | null
@@ -27328,6 +27388,8 @@ export type Database = {
           terminated_at?: string | null
           termination_reason?: string | null
           test_scheduled_date?: string | null
+          time_zone?: string | null
+          time_zone_source?: string | null
           ttclid?: string | null
           updated_at?: string
           utm_campaign?: string | null
@@ -27337,6 +27399,7 @@ export type Database = {
           utm_term?: string | null
           vsl_watch_percent?: number | null
           vsl_watched_at?: string | null
+          waiting_reason?: string | null
           wbraid?: string | null
           winback_sent_at?: string | null
           years_experience?: number | null

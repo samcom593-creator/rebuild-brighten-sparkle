@@ -1143,6 +1143,18 @@
         "raw": "p_application_id uuid"
       }
     ],
+    "can_work_recruiting_application": [
+      {
+        "all": [
+          "p_application_id"
+        ],
+        "required": [
+          "p_application_id"
+        ],
+        "unnamed": false,
+        "raw": "p_application_id uuid"
+      }
+    ],
     "cc_dispose": [
       {
         "all": [
@@ -3601,6 +3613,14 @@
         "raw": ""
       }
     ],
+    "fn_protect_human_next_action": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "fn_prune_agentlink_alerts": [
       {
         "all": [],
@@ -4694,6 +4714,26 @@
         "raw": "p_agent_code text, p_user_id uuid"
       }
     ],
+    "is_recruiting_owner_eligible": [
+      {
+        "all": [
+          "p_user_id"
+        ],
+        "required": [
+          "p_user_id"
+        ],
+        "unnamed": false,
+        "raw": "p_user_id uuid"
+      }
+    ],
+    "is_recruiting_staff": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "issue_strike": [
       {
         "all": [
@@ -5613,6 +5653,31 @@
         "raw": "p_event_id uuid, p_outcome text, p_note text DEFAULT NULL::text"
       }
     ],
+    "record_recruiting_outcome": [
+      {
+        "all": [
+          "p_application_id",
+          "p_channel",
+          "p_check_conflict",
+          "p_expected_last_outcome_at",
+          "p_next_action",
+          "p_next_action_due_at",
+          "p_next_review_at",
+          "p_notes",
+          "p_outcome",
+          "p_owner_user_id",
+          "p_source_surface",
+          "p_waiting_reason"
+        ],
+        "required": [
+          "p_application_id",
+          "p_channel",
+          "p_outcome"
+        ],
+        "unnamed": false,
+        "raw": "p_application_id uuid, p_outcome text, p_channel text, p_notes text DEFAULT NULL::text, p_next_action text DEFAULT NULL::text, p_next_action_due_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_waiting_reason text DEFAULT NULL::text, p_next_review_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_owner_user_id uuid DEFAULT NULL::uuid, p_expected_last_outcome_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_check_conflict boolean DEFAULT true, p_source_surface text DEFAULT 'recruiting_worklist'::text"
+      }
+    ],
     "record_snap_stats_public": [
       {
         "all": [
@@ -5685,6 +5750,14 @@
         "raw": ""
       }
     ],
+    "recruiting_staff_directory": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "recruiting_tier": [
       {
         "all": [
@@ -5697,6 +5770,18 @@
         ],
         "unnamed": false,
         "raw": "p_count integer, p_period text"
+      }
+    ],
+    "recruiting_worklist_row": [
+      {
+        "all": [
+          "p_application_id"
+        ],
+        "required": [
+          "p_application_id"
+        ],
+        "unnamed": false,
+        "raw": "p_application_id uuid"
       }
     ],
     "refresh_mat_production_unified_if_needed": [
@@ -6390,6 +6475,29 @@
         ],
         "unnamed": false,
         "raw": "p_id uuid, p_status text, p_note text DEFAULT NULL::text"
+      }
+    ],
+    "set_recruiting_plan": [
+      {
+        "all": [
+          "p_application_id",
+          "p_check_conflict",
+          "p_expected_plan_set_at",
+          "p_next_action",
+          "p_next_action_due_at",
+          "p_next_review_at",
+          "p_notes",
+          "p_owner_user_id",
+          "p_time_zone",
+          "p_update_owner",
+          "p_update_plan",
+          "p_waiting_reason"
+        ],
+        "required": [
+          "p_application_id"
+        ],
+        "unnamed": false,
+        "raw": "p_application_id uuid, p_update_owner boolean DEFAULT false, p_owner_user_id uuid DEFAULT NULL::uuid, p_update_plan boolean DEFAULT false, p_next_action text DEFAULT NULL::text, p_next_action_due_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_waiting_reason text DEFAULT NULL::text, p_next_review_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_time_zone text DEFAULT NULL::text, p_notes text DEFAULT NULL::text, p_expected_plan_set_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_check_conflict boolean DEFAULT true"
       }
     ],
     "should_post_to_discord": [

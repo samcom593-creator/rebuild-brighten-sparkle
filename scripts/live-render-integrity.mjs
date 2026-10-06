@@ -149,6 +149,13 @@ async function probe(browser, leg) {
            defects, consoleErrCount: consoleErrs.length, textLen: bodyText.length };
 }
 
+// RESULT_FILE: the scheduled runner (business-ops/scripts/apex-live-render-cron.sh)
+// reads the verdict from here rather than scraping stdout, which also carries prose.
+import { writeFileSync } from "node:fs";
+const RESULT_FILE = process.env.RESULT_FILE || "";
+const _err = console.error;
+function record(obj) { if (RESULT_FILE) { try { writeFileSync(RESULT_FILE, JSON.stringify(obj)); } catch (e) { _err("RESULT_FILE write failed: " + e); } } }
+
 (async () => {
   const results = [];
   const unavailable = [];
@@ -173,6 +180,7 @@ async function probe(browser, leg) {
   }
 
   if (!results.length) {
+    record({ verdict: "INSTRUMENT_UNAVAILABLE", unavailable });
     console.error(JSON.stringify({ verdict: "INSTRUMENT_UNAVAILABLE",
       reason: "no browser engine could be launched — nothing about the site was measured",
       remedy: "npx playwright install chromium webkit", unavailable }, null, 2));
@@ -183,16 +191,27 @@ async function probe(browser, leg) {
   if (navFailed.length === results.length) {
     const controlUp = await controlReachable();
     if (!controlUp) {
+      record({ verdict: "UNKNOWN", results });
       console.log(JSON.stringify({ verdict: "UNKNOWN", reason: "site AND control both unreachable — network/laptop offline, not a site defect", results }, null, 2));
       process.exit(0); // never false-red on Sam's wifi dropping
     }
+    record({ verdict: "SITE_DOWN", results });
     console.error(JSON.stringify({ verdict: "SITE_DOWN", reason: "control reachable but site did not load on any viewport", results }, null, 2));
     process.exit(2);
   }
 
   const defective = results.filter((r) => r.ok === false && !r.navErr);
+  // A leg whose navigation failed twice while another leg loaded the same URL
+  // was NOT measured. Until 2026-10-06 it fell through both filters and the run
+  // printed CLEAN naming it in legsRun — so a WebKit-only load failure (the one
+  // fault class this file's mobile-webkit leg exists to catch) read as a pass.
+  // It is reported with the never-ran legs, which is what it is.
+  for (const r of navFailed) unavailable.push({ label: r.label, reason: "navigation failed twice: " + r.navErr });
+  const measured = results.filter((r) => !r.navErr);
   const verdict = defective.length ? "DEFECT" : (unavailable.length ? "CLEAN_PARTIAL" : "CLEAN");
-  const ran = results.map((r) => r.label).join(", ");
+  const ran = measured.map((r) => r.label).join(", ");
+  record({ verdict, base: BASE, legsRun: ran, legsNotRun: unavailable,
+    defects: defective.flatMap((r) => r.defects.map((d) => `[${r.label}] ${d}`)) });
   console.log(JSON.stringify({ verdict, base: BASE, legsRun: ran,
     legsNotRun: unavailable, results }, null, 2));
   if (defective.length) {

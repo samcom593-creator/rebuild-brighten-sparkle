@@ -1,3 +1,8 @@
+// intentionally-orphan: unrouted since 2026-10-06 (§11). It was already unreachable: a second
+// <Route path="/dashboard/content"> declared earlier in App.tsx (ContentQueue, 2026-09-09) shadowed it, so
+// nobody had opened it since. Its table public.content_library holds 0 rows; the content-library bucket's
+// 142 objects are the phone-size copies under phone/ that content_clips.phone_url points at (Launch Board
+// Library serves them). Kept, not deleted, for its upload + AI-tag + award-card code until a decision.
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   Search, Download, Upload, Trash2, Plus, Image, Video, Tag, X, Loader2,

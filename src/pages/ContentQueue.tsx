@@ -48,7 +48,7 @@ const SLOTS: { slot: string; pillars: string[]; brand: string; job: string }[] =
 const DAILY_TARGET = 13;
 const OPEN_STATUSES = ["INBOX", "EDITING", "NEEDS_REVIEW", "APPROVED", "READY"];
 const MEDIA_BUCKET = "content-media";
-const CONTENT_URL = "https://apex-financial.org/dashboard/content";
+const CONTENT_URL = "https://apex-financial.org/dashboard/launch-board?tab=queue";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // The daily plan + first-time setup, lived on the site (not just Notes) so the crew always has it.
@@ -139,8 +139,9 @@ function statusTone(s: string | null): "default" | "secondary" | "outline" | "de
   return "outline";
 }
 
-export default function ContentQueue() {
-  usePageTitle("Content");
+// Rendered as the Queue tab of the Launch Board (`embedded`): /dashboard/content redirects there.
+export default function ContentQueue({ embedded = false }: { embedded?: boolean } = {}) {
+  usePageTitle(embedded ? "Launch Board" : "Content");
   const { user, isAdmin } = useAuth();
   const qc = useQueryClient();
   const approver = (user?.user_metadata?.display_name as string | undefined) || user?.email || "admin";
@@ -345,17 +346,25 @@ export default function ContentQueue() {
   );
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6 p-4">
-      <PageHeader
-        eyebrow="Content"
-        eyebrowIcon={<Clapperboard className="h-3.5 w-3.5" aria-hidden />}
-        title="Content Queue"
-        subtitle={`Yesterday ${score.yesterday}/${DAILY_TARGET} posted · streak ${score.streak} · last 7 days ${score.week}/${7 * DAILY_TARGET}. Only clips archived with a post URL count.`}
-      />
+    <div className={embedded ? "mx-auto max-w-2xl space-y-6" : "mx-auto max-w-2xl space-y-6 p-4"}>
+      {embedded ? (
+        <p className="text-sm text-muted-foreground">
+          Approval queue synced from the Mac content-ops tool. Yesterday {score.yesterday}/{DAILY_TARGET} posted · streak {score.streak} · last 7 days {score.week}/{7 * DAILY_TARGET}. Only clips archived with a post URL count.
+        </p>
+      ) : (
+        <PageHeader
+          eyebrow="Content"
+          eyebrowIcon={<Clapperboard className="h-3.5 w-3.5" aria-hidden />}
+          title="Content Queue"
+          subtitle={`Yesterday ${score.yesterday}/${DAILY_TARGET} posted · streak ${score.streak} · last 7 days ${score.week}/${7 * DAILY_TARGET}. Only clips archived with a post URL count.`}
+        />
+      )}
 
-      <p className="text-xs text-muted-foreground">
+      {!embedded && (
+        <p className="text-xs text-muted-foreground">
         Clips, ideas and the week live on the <Link to="/dashboard/launch-board" className="font-semibold text-primary hover:underline">Launch Board</Link>; this page is the approval queue the Mac tool syncs to.
       </p>
+      )}
 
       <Card>
         <CardContent className="p-4">

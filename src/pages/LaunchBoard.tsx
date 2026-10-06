@@ -1,4 +1,16 @@
-// Launch Board v2 — the page where Sam sees his content to post.
+// Launch Board — the one content workspace (§11, 2026-10-06).
+//
+// v4: one workflow, Idea → Record → Edit → Review → Ready → Scheduled →
+// Published (src/lib/contentWorkflow.ts + migration 20261006150000). Today
+// answers four questions (record next / needs editing / ready to publish /
+// actually published) above a ≤7 item prioritized queue. Copying a caption or
+// downloading a clip changes nothing; Ready needs an admin approval; Scheduled
+// is a "Manual plan" unless a scheduler job backs it; Published needs a live
+// https post URL on a known platform (server-enforced). The old Content page
+// (/dashboard/content, the content-ops approval queue + invite list) now lives
+// here as the Queue tab and its URL redirects here.
+//
+// Earlier history:
 //
 // v1 (2026-09-07 morning) ported the standalone board. Sam: "make it easier
 // on the eyes, easier to use, more functional — and pull content from my
@@ -18,12 +30,18 @@
 // framed for closers; cars/AZ are b-roll only. The Week tab is a real
 // Mon–Sun calendar with a slot per day and a live 80/20 mix meter.
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useConfirm } from "@/hooks/useConfirm";
+import { useAuth } from "@/hooks/useAuth";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { toast } from "sonner";
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
+import { PageSkeleton } from "@/components/ui/page-skeleton";
+import {
+  STAGE_LABEL, STAGE_ORDER, WORKFLOW, checkPublishUrl, fourQuestions, nextAction, nextStatus, phoenixDate, previousStatus,
+  scheduleLabel, stageOf, todayQueue, type Stage, type WorkflowStatus,
+} from "@/lib/contentWorkflow";
 import { canShareFiles, pullFile, saveMedia, shareFiles } from "@/lib/saveMedia";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,17 +50,24 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  ArrowRight, Check, Clapperboard, Copy, Crown, Download, ExternalLink, Film, Image as ImageIcon, Loader2, MessageSquareQuote, Paperclip, Pencil, Plus, Search, ThumbsDown, ThumbsUp, Trash2, Undo2,
+  ArrowRight, CalendarClock, Check, Copy, Crown, Download, ExternalLink, Film, Image as ImageIcon, Link2, Loader2, MessageSquareQuote, Paperclip, Pencil, Plus, Search, ShieldCheck, ThumbsDown, ThumbsUp, Trash2, Undo2,
 } from "lucide-react";
 
-type Status = "idea" | "recorded" | "ready" | "posted";
+// The content-ops approval queue + invite list (formerly /dashboard/content) renders as the Queue tab.
+const ContentQueue = lazy(() => import("./ContentQueue"));
+
 type Job = "REACH" | "AUTHORITY" | "PROOF" | "CONVERT";
-type Tab = "today" | "board" | "week" | "library";
+type Tab = "today" | "board" | "week" | "library" | "queue";
 
 interface Card {
   id: string; title: string; brand: string; content_type: string; job: string; hook: string; caption: string;
   status: string; day: number; clip: string; sort: number; posted_at: string | null;
   record_script: string; edit_prompt: string;   // MP-233 kit: what to record, and the prompt that cuts it
+  // §11 execution + evidence fields (migration 20261006150000). Optional: absent until the migration is live.
+  cta?: string; owner?: string; due_date?: string | null;
+  approved_at?: string | null; approved_by?: string | null;
+  scheduled_for?: string | null; schedule_kind?: string | null; schedule_job_ref?: string | null;
+  published_url?: string | null; publish_evidence?: string | null; published_confirmed_at?: string | null;
 }
 interface Clip {
   id: string; path: string; name: string; folder: string; kind: string; size_bytes: number; modified_at: string | null; used_by_card: string | null;
@@ -59,12 +84,25 @@ type ProofKind = "all" | "video" | "image";
 const isTestimonial = (k: Clip) => k.testimonial === true || (k.tags ?? []).includes("testimonial");
 const proofKindOf = (k: Clip): Exclude<ProofKind, "all"> => (k.media === "image" ? "image" : "video");
 
-const STATUSES: Status[] = ["idea", "recorded", "ready", "posted"];
-const STATUS_LABEL: Record<Status, string> = { idea: "Ideas", recorded: "Recorded", ready: "Ready", posted: "Posted" };
-const STATUS_SUB: Record<Status, string> = { idea: "to record", recorded: "attach + caption", ready: "post it", posted: "live" };
-const STATUS_RANK: Record<string, number> = { ready: 3, recorded: 2, idea: 1, posted: 0 };
-const DOT: Record<Status, string> = { idea: "bg-zinc-500", recorded: "bg-sky-400", ready: "bg-gold", posted: "bg-emerald-400" };
-const TXT: Record<Status, string> = { idea: "text-zinc-400", recorded: "text-sky-400", ready: "text-gold", posted: "text-emerald-400" };
+// Stage styling with semantic tokens only. Published (confirmed) reads as done; unconfirmed reads as a warning.
+const STAGES: Stage[] = [...WORKFLOW.slice(0, 6), "published_unconfirmed", "published"];
+const STAGE_TONE: Record<Stage, string> = {
+  idea: "border-border text-muted-foreground",
+  record: "border-border text-foreground",
+  edit: "border-border text-foreground",
+  review: "border-primary/40 text-primary",
+  ready: "border-primary/60 bg-primary/10 text-primary",
+  scheduled: "border-primary/40 text-primary",
+  published_unconfirmed: "border-destructive/40 text-destructive",
+  published: "border-border bg-muted text-muted-foreground",
+};
+const STAGE_BAR: Record<Stage, string> = {
+  idea: "border-l-border", record: "border-l-muted-foreground", edit: "border-l-muted-foreground", review: "border-l-primary/60",
+  ready: "border-l-primary", scheduled: "border-l-primary", published_unconfirmed: "border-l-destructive", published: "border-l-border",
+};
+function StageChip({ stage }: { stage: Stage }) {
+  return <span className={`inline-flex items-center whitespace-nowrap rounded-full border px-2 py-0.5 text-[10.5px] font-semibold ${STAGE_TONE[stage]}`}>{STAGE_LABEL[stage]}</span>;
+}
 const JOBS: { k: Job; label: string; desc: string; accent: string; border: string }[] = [
   { k: "REACH", label: "Reach", desc: "Get seen — who you are, wider than the offer.", accent: "text-amber-400", border: "border-t-amber-400/70" },
   { k: "AUTHORITY", label: "Authority", desc: "Give value — a lesson people keep.", accent: "text-sky-400", border: "border-t-sky-400/70" },
@@ -72,8 +110,9 @@ const JOBS: { k: Job; label: string; desc: string; accent: string; border: strin
   { k: "CONVERT", label: "Convert", desc: "One clear ask — apply.", accent: "text-emerald-400", border: "border-t-emerald-400/70" },
 ];
 const TABS: { k: Tab; label: string }[] = [
-  { k: "today", label: "Today" }, { k: "board", label: "Board" }, { k: "week", label: "Week" }, { k: "library", label: "Library" },
+  { k: "today", label: "Today" }, { k: "board", label: "Board" }, { k: "week", label: "Week" }, { k: "library", label: "Library" }, { k: "queue", label: "Queue" },
 ];
+const TAB_KEYS = new Set<Tab>(TABS.map((t) => t.k));
 
 // The 80/20 pillars (2026-09-15, from the vidIQ channel audit). CORE = 80% of posts: insurance sales, money at 20,
 // recruiting/team proof. FLEX = 20%: fitness framed for closers. Cars / Arizona are b-roll, never the subject.
@@ -132,7 +171,9 @@ function Head({ title, hint }: { title: string; hint?: string }) {
   );
 }
 
-const emptyDraft = { title: "", brand: "SH", job: "REACH", content_type: "short", hook: "", caption: "", clip: "", day: 0, status: "idea", record_script: "", edit_prompt: "" };
+const emptyDraft = { title: "", brand: "SH", job: "REACH", content_type: "short", hook: "", caption: "", clip: "", day: 0, status: "idea", record_script: "", edit_prompt: "", cta: "", owner: "", due_date: "" };
+// Fields the editor writes. Status is never written from the editor: stage moves go through the workflow actions.
+const WORKFLOW_FIELDS = ["cta", "owner", "due_date"] as const;
 
 // MP-233 video kit (2026-09-15): two copy-paste blocks per card. "Fill from template" writes these from the
 // title + hook + channel so a brand-new idea is recordable and hand-off-able in one tap; the seeded 80/20
@@ -154,7 +195,8 @@ const FORMAT_LINE = "Long-form: 3840×2160 16:9 30 fps, −14 LUFS, no music, ch
 export default function LaunchBoard() {
   usePageTitle("Launch Board");
   const askConfirm = useConfirm();
-  const [tab, setTab] = useState<Tab>("today");
+  const { isAdmin } = useAuth();
+  const [tab, setTabState] = useState<Tab>("today");
   const [cards, setCards] = useState<Card[]>([]);
   const [clips, setClips] = useState<Clip[]>([]);
   const [loading, setLoading] = useState(true);
@@ -167,16 +209,29 @@ export default function LaunchBoard() {
   const [proofKind, setProofKind] = useState<ProofKind>("all");
   const [health, setHealth] = useState<{ judged: number; waiting: number; testimonials: number; last_judged_at: string | null } | null>(null);
   const [downloadingAll, setDownloadingAll] = useState(false);
+  // The tab lives in the URL (?tab=queue is where /dashboard/content redirects), so a reload or a shared link opens the same view.
   useEffect(() => {
-    if (searchParams.get("tab") === "library") setTab("library");
+    const t = searchParams.get("tab") as Tab | null;
+    if (t && TAB_KEYS.has(t)) setTabState(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  const setTab = (t: Tab) => {
+    setTabState(t);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (t === "today") next.delete("tab"); else next.set("tab", t);
+      if (t !== "library") next.delete("filter");
+      return next;
+    }, { replace: true });
+  };
   const chooseProof = (p: "all" | "testimonials") => {
     setProof(p);
     if (p === "all") setProofKind("all");
-    const next = new URLSearchParams(searchParams);
-    if (p === "testimonials") { next.set("tab", "library"); next.set("filter", "testimonials"); } else { next.delete("filter"); }
-    setSearchParams(next, { replace: true });
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (p === "testimonials") { next.set("tab", "library"); next.set("filter", "testimonials"); } else { next.delete("filter"); }
+      return next;
+    }, { replace: true });
   };
   // Sam's tap beats the classifier: source='manual' is never overwritten by the daemon.
   const setVerdict = async (k: Clip, value: boolean) => {
@@ -299,7 +354,14 @@ export default function LaunchBoard() {
   const [editing, setEditing] = useState<Card | null>(null);
   const [draft, setDraft] = useState<Record<string, unknown>>(emptyDraft);
   const [saving, setSaving] = useState(false);
-  const [postTarget, setPostTarget] = useState<Card | null>(null);
+  const [postTarget, setPostTarget] = useState<Card | null>(null);        // publish kit: caption, clip, live-URL confirmation
+  const [publishUrl, setPublishUrl] = useState("");
+  const [scheduleTarget, setScheduleTarget] = useState<Card | null>(null);
+  const [scheduleAt, setScheduleAt] = useState("");
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [stageFilter, setStageFilter] = useState<"open" | "all" | Stage>("open");
+  // null = not probed yet; false = the §11 migration is not on this database, so new stages cannot be written.
+  const [workflowReady, setWorkflowReady] = useState<boolean | null>(null);
   const [attachTarget, setAttachTarget] = useState<Card | null>(null);   // card waiting for a clip from the Library
 
   const load = useCallback(async () => {
@@ -307,6 +369,10 @@ export default function LaunchBoard() {
       const c = await supabase.from("content_cards").select("*").order("day", { ascending: true }).order("sort", { ascending: true });
       if (c.error) throw c.error;
       setCards((c.data as Card[]) ?? []);
+      // Probe the §11 columns once. A missing column (42703) means the migration has not reached this database:
+      // the board still reads, and says plainly that stage moves are unavailable rather than failing on every tap.
+      const probe = await supabase.from("content_cards").select("published_url" as never).limit(1);
+      setWorkflowReady(!probe.error);
       // The whole library, paged: PostgREST returns at most 1,000 rows per request.
       // The whole library, paged in PARALLEL: PostgREST returns at most 1,000 rows per request, and seven
       // sequential round-trips were the visible half of "Loading your board…" (the other half was RLS
@@ -341,16 +407,67 @@ export default function LaunchBoard() {
   const patch = useCallback(async (id: string, changes: Partial<Card>) => {
     const prev = cards;
     setCards((cs) => cs.map((c) => (c.id === id ? { ...c, ...changes } : c)));
-    const { error } = await supabase.from("content_cards").update(changes).eq("id", id);
-    if (error) { setCards(prev); toast.error(`Save failed: ${error.message.slice(0, 120)}`); return false; }
+    const { data, error } = await supabase.from("content_cards").update(changes as never).eq("id", id).select("*").maybeSingle();
+    if (error) { setCards(prev); toast.error(`Save failed: ${error.message.slice(0, 160)}`); return false; }
+    if (!data) { setCards(prev); toast.error("Save failed: the card was not updated (no access, or it was deleted). Reload the board."); return false; }
+    // The server is the truth: the workflow trigger stamps approval / confirmation and may map legacy values.
+    setCards((cs) => cs.map((c) => (c.id === id ? (data as Card) : c)));
     return true;
   }, [cards]);
 
-  const advance = (c: Card) => patch(c.id, { status: c.status === "idea" ? "recorded" : "ready" });
-  const back = (c: Card) => patch(c.id, { status: c.status === "ready" ? "recorded" : "idea" });
-  const unpost = (c: Card) => patch(c.id, { status: "ready", posted_at: null });
-  const markPosted = async (c: Card) => {
-    if (await patch(c.id, { status: "posted", posted_at: new Date().toISOString() })) { toast.success("Marked posted"); setPostTarget(null); }
+  // Workflow moves. Each one is a single server-validated write; the toast only fires after it lands.
+  const move = async (c: Card, to: WorkflowStatus, extra: Partial<Card> = {}, msg?: string) => {
+    if (workflowReady === false) { toast.error("Stage moves are unavailable until the Launch Board workflow migration is applied."); return false; }
+    setBusyId(c.id);
+    try {
+      const ok = await patch(c.id, { status: to, ...extra });
+      if (ok) toast.success(msg ?? `Moved to ${STAGE_LABEL[to]}`);
+      return ok;
+    } finally { setBusyId(null); }
+  };
+  const forward = (c: Card) => {
+    const stage = stageOf(c);
+    const to = nextStatus(stage);
+    if (!to) return;
+    if (stage === "review") return void approve(c);
+    if (to === "scheduled") { openSchedule(c); return; }
+    if (to === "published") { openPublish(c); return; }
+    void move(c, to);
+  };
+  const sendBack = (c: Card) => {
+    const to = previousStatus(stageOf(c));
+    if (!to) return;
+    // Leaving Ready/Scheduled/Published for an earlier stage drops the approval and any schedule/evidence on the row.
+    const extra: Partial<Card> = to === "edit" || to === "record" || to === "idea"
+      ? { approved_at: null, scheduled_for: null, schedule_kind: null, schedule_job_ref: null, published_url: null, publish_evidence: null }
+      : to === "ready" ? { scheduled_for: null, schedule_kind: null, schedule_job_ref: null, published_url: null, publish_evidence: null } : {};
+    void move(c, to, extra, `Sent back to ${STAGE_LABEL[to]}`);
+  };
+  // Approval is admin-only and enforced by the database trigger; the button is hidden for everyone else.
+  const approve = (c: Card) => {
+    if (!isAdmin) { toast.error("Only an admin can approve content for publishing."); return; }
+    if (!(c.caption ?? "").trim()) { toast.error("Write the caption before approving."); return; }
+    void move(c, "ready", { approved_at: new Date().toISOString() }, "Approved — Ready to publish");
+  };
+  const openSchedule = (c: Card) => {
+    setScheduleTarget(c);
+    const d = c.scheduled_for ? new Date(c.scheduled_for) : new Date(Date.now() + 24 * 3600_000);
+    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+    setScheduleAt(local);
+  };
+  const saveSchedule = async () => {
+    if (!scheduleTarget) return;
+    const when = new Date(scheduleAt);
+    if (!scheduleAt || Number.isNaN(when.getTime())) { toast.error("Pick a date and time."); return; }
+    // No scheduler integration writes jobs to this board yet, so every schedule a person sets is a manual plan.
+    if (await move(scheduleTarget, "scheduled", { scheduled_for: when.toISOString(), schedule_kind: "manual", schedule_job_ref: null }, "Planned — labelled Manual plan (nothing will post automatically)")) setScheduleTarget(null);
+  };
+  const openPublish = (c: Card) => { setPostTarget(c); setPublishUrl(c.published_url ?? ""); };
+  const publishCheck = useMemo(() => checkPublishUrl(publishUrl, postTarget?.brand), [publishUrl, postTarget]);
+  const confirmPublished = async () => {
+    if (!postTarget) return;
+    if (!publishCheck.ok) { toast.error(publishCheck.reason); return; }
+    if (await move(postTarget, "published", { published_url: publishUrl.trim(), publish_evidence: "manual_confirmation", posted_at: postTarget.posted_at ?? new Date().toISOString() }, `Published — confirmed on ${publishCheck.platform}`)) setPostTarget(null);
   };
   const copyCaption = async (text: string) => {
     try { await navigator.clipboard.writeText(text); toast.success("Caption copied"); }
@@ -380,22 +497,26 @@ export default function LaunchBoard() {
 
   // Library → card
   const attachClip = async (clip: Clip, card: Card) => {
-    const ok = await patch(card.id, { clip: clip.path, status: card.status === "idea" ? "recorded" : card.status });
+    // Attaching footage is source media, not a stage move: an Idea/Record card goes to Edit only when the workflow is live.
+    const st = stageOf(card);
+    const ok = await patch(card.id, workflowReady && (st === "idea" || st === "record") ? { clip: clip.path, status: "edit" } : { clip: clip.path });
     if (!ok) return;
-    await supabase.from("content_clips").update({ used_by_card: card.id }).eq("id", clip.id);
+    const link = await supabase.from("content_clips").update({ used_by_card: card.id }).eq("id", clip.id);
+    if (link.error) toast.error(`Clip attached to the card, but the library link did not save: ${link.error.message.slice(0, 100)}`);
     setClips((ks) => ks.map((k) => (k.id === clip.id ? { ...k, used_by_card: card.id } : k)));
     setAttachTarget(null); toast.success(`Attached to “${card.title}”`); setTab("board");
   };
   const cardFromClip = async (clip: Clip) => {
     const nextSort = (cards.reduce((m, c) => Math.max(m, c.sort), 0) || 0) + 10;
     const { data, error } = await supabase.from("content_cards")
-      .insert({ title: cleanName(clip.name), brand: clip.kind === "vertical" ? "SH" : "YT", job: "REACH", content_type: clip.kind === "vertical" ? "short" : "long", hook: "", caption: "", clip: clip.path, day: 0, status: "recorded", sort: nextSort, record_script: "", edit_prompt: "" })
+      .insert({ title: cleanName(clip.name), brand: clip.kind === "vertical" ? "SH" : "YT", job: "REACH", content_type: clip.kind === "vertical" ? "short" : "long", hook: "", caption: "", clip: clip.path, day: 0, status: workflowReady ? "edit" : "recorded", sort: nextSort, record_script: "", edit_prompt: "" } as never)
       .select("*").single();
     if (error) { toast.error(`Couldn't create the card: ${error.message.slice(0, 120)}`); return; }
     setCards((cs) => [...cs, data as Card]);
-    await supabase.from("content_clips").update({ used_by_card: (data as Card).id }).eq("id", clip.id);
-    setClips((ks) => ks.map((k) => (k.id === clip.id ? { ...k, used_by_card: (data as Card).id } : k)));
-    toast.success("Card created in Recorded — add a caption, then it's ready");
+    const link = await supabase.from("content_clips").update({ used_by_card: (data as Card).id }).eq("id", clip.id);
+    if (link.error) toast.error(`Card created, but the library link did not save: ${link.error.message.slice(0, 100)}`);
+    else setClips((ks) => ks.map((k) => (k.id === clip.id ? { ...k, used_by_card: (data as Card).id } : k)));
+    toast.success("Card created in Edit with the footage attached — write the edit instructions and caption next");
   };
 
   const openNew = () => { setEditing(null); setDraft({ ...emptyDraft }); setEditorOpen(true); };
@@ -406,15 +527,19 @@ export default function LaunchBoard() {
     const title = draftStr("title").trim();
     if (!title) { toast.error("Give the card a title"); return; }
     setSaving(true);
-    const payload = { title, brand: draftStr("brand") || "SH", job: draftStr("job") || "REACH", content_type: draftStr("content_type") || "short", hook: draftStr("hook"), caption: draftStr("caption"), clip: draftStr("clip"), day: Number(draft.day ?? 0), status: draftStr("status") || "idea", record_script: draftStr("record_script"), edit_prompt: draftStr("edit_prompt") };
+    const base: Record<string, unknown> = { title, brand: draftStr("brand") || "SH", job: draftStr("job") || "REACH", content_type: draftStr("content_type") || "short", hook: draftStr("hook"), caption: draftStr("caption"), clip: draftStr("clip"), day: Number(draft.day ?? 0), record_script: draftStr("record_script"), edit_prompt: draftStr("edit_prompt") };
+    // The §11 fields are only sent once the migration is live, so the editor keeps working on the legacy schema.
+    if (workflowReady) for (const f of WORKFLOW_FIELDS) base[f] = f === "due_date" ? (draftStr(f) || null) : draftStr(f);
+    const payload = editing ? base : { ...base, status: "idea" };
     try {
       if (editing) {
-        const { error } = await supabase.from("content_cards").update(payload).eq("id", editing.id);
+        const { data, error } = await supabase.from("content_cards").update(payload as never).eq("id", editing.id).select("*").maybeSingle();
         if (error) throw error;
-        setCards((cs) => cs.map((c) => (c.id === editing.id ? { ...c, ...payload } : c)));
+        if (!data) throw new Error("the card was not updated (no access, or it was deleted)");
+        setCards((cs) => cs.map((c) => (c.id === editing.id ? (data as Card) : c)));
       } else {
         const nextSort = (cards.reduce((m, c) => Math.max(m, c.sort), 0) || 0) + 10;
-        const { data, error } = await supabase.from("content_cards").insert({ ...payload, sort: nextSort }).select("*").single();
+        const { data, error } = await supabase.from("content_cards").insert({ ...payload, sort: nextSort } as never).select("*").single();
         if (error) throw error;
         setCards((cs) => [...cs, data as Card]);
       }
@@ -424,13 +549,20 @@ export default function LaunchBoard() {
     } finally { setSaving(false); }
   };
 
-  const launch4 = useMemo(() => JOBS.map((j) => ({
-    job: j,
-    pick: cards.filter((c) => c.job === j.k && c.status !== "posted").sort((a, b) => (STATUS_RANK[b.status] - STATUS_RANK[a.status]) || ((a.day || 9) - (b.day || 9)))[0] ?? null,
-  })), [cards]);
-  const ready = useMemo(() => cards.filter((c) => c.status === "ready"), [cards]);
-  const recordNext = useMemo(() => cards.filter((c) => c.status === "idea").sort((a, b) => (a.day || 9) - (b.day || 9)).slice(0, 5), [cards]);
-  const needsClip = useMemo(() => cards.filter((c) => c.status !== "posted" && !c.clip), [cards]);
+  // The four questions + Today. content_cards is small (29 rows on 2026-10-06) and loaded whole; if it ever
+  // passes 1,000 rows the load above must page the way content_clips does.
+  const isOpen = (c: Card) => { const st = stageOf(c); return st !== "published" && st !== "published_unconfirmed"; };
+  const q4 = useMemo(() => fourQuestions(cards), [cards]);
+  const today = useMemo(() => todayQueue(cards, new Date(), 7), [cards]);
+  const stageCounts = useMemo(() => {
+    const m = Object.fromEntries(STAGES.map((st) => [st, 0])) as Record<Stage, number>;
+    for (const c of cards) m[stageOf(c)] += 1;
+    return m;
+  }, [cards]);
+  const boardRows = useMemo(() => {
+    const rows = cards.filter((c) => (stageFilter === "all" ? true : stageFilter === "open" ? isOpen(c) : stageOf(c) === stageFilter));
+    return rows.sort((a, b) => STAGE_ORDER[stageOf(b)] - STAGE_ORDER[stageOf(a)] || (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999") || (a.day || 9) - (b.day || 9) || a.sort - b.sort);
+  }, [cards, stageFilter]);
   const visibleClips = useMemo(() => {
     const q = query.trim().toLowerCase();
     const SYN: Record<string, string> = { gym: "workout", exercise: "workout", weights: "workout", lifting: "workout", fitness: "workout", cars: "car", vehicle: "car", corvette: "car", driving: "car", aerial: "drone", dji: "drone", desk: "office", computer: "office", laptop: "office", talking: "talking-head", speaking: "talking-head", podcast: "talking-head", vlog: "talking-head", outside: "outdoors", street: "outdoors", sunset: "outdoors", crowd: "event", seminar: "event", conference: "event", tiktok: "vertical", reel: "vertical", reels: "vertical", youtube: "horizontal" };
@@ -450,175 +582,219 @@ export default function LaunchBoard() {
   const testimonialClips = useMemo(() => clips.filter(isTestimonial), [clips]);
   const bangerColor = (s?: number | null) => (s == null ? "bg-zinc-600" : s >= 70 ? "bg-emerald-400" : s >= 45 ? "bg-gold" : "bg-zinc-500");
   const fmtDur = (s?: number | null) => (s ? `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}` : "");
-  const counts = useMemo(() => ({ total: cards.length, ready: ready.length, posted: cards.filter((c) => c.status === "posted").length }), [cards, ready]);
   // 80/20 mix over every open card (posted excluded): core pillars vs fitness/lifestyle. Untagged cards don't vote.
   const mix = useMemo(() => {
-    const open = cards.filter((c) => c.status !== "posted");
+    const open = cards.filter(isOpen);
     let core = 0, flex = 0, blank = 0;
     for (const c of open) { const v = isCoreCard(c); if (v === null) blank++; else if (v) core++; else flex++; }
     const voted = core + flex;
-    return { core, flex, blank, pct: voted ? Math.round((core / voted) * 100) : null, noCta: open.filter((c) => c.caption && !hasCta(c.caption)).length };
+    return { core, flex, blank, pct: voted ? Math.round((core / voted) * 100) : null, noCta: open.filter((c) => c.caption && !hasCta(c.caption) && !hasCta(c.cta ?? "")).length };
   }, [cards]);
 
-  if (loading) return <div className="flex min-h-[60vh] items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading your board…</div>;
+  if (loading) return <PageSkeleton />;
+
+  const todayStr = phoenixDate(new Date());
+  const fmtDue = (d?: string | null) => (d ? new Date(`${d.slice(0, 10)}T12:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "");
+  const dueTone = (d?: string | null) => (!d ? "text-muted-foreground" : d.slice(0, 10) < todayStr ? "font-semibold text-destructive" : d.slice(0, 10) === todayStr ? "font-semibold text-foreground" : "text-muted-foreground");
+  const locked = workflowReady === false;
 
   const clipLine = (c: Card) => c.clip ? (
-    <a href={dropboxUrl(c.clip)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 truncate rounded-lg border border-sky-400/30 px-2 py-1.5 text-[11.5px] text-sky-400 hover:bg-sky-400/10">
-      <Film className="h-3 w-3 shrink-0" /><span className="truncate">{c.clip.split("/").pop()}</span><ExternalLink className="ml-auto h-3 w-3 shrink-0 opacity-70" />
+    <a href={(() => { const k = clips.find((x) => x.path === c.clip); return (k && directUrl(k)) || dropboxUrl(c.clip); })()} target="_blank" rel="noopener noreferrer" className="flex min-w-0 items-center gap-1.5 text-[12px] text-primary hover:underline" title={c.clip}>
+      <Film className="h-3 w-3 shrink-0" aria-hidden /><span className="truncate">{c.clip.split("/").pop()}</span>
     </a>
   ) : (
-    <button onClick={() => { setAttachTarget(c); setTab("library"); }} className="flex items-center gap-1.5 rounded-lg border border-dashed border-border px-2 py-1.5 text-left text-[11.5px] text-muted-foreground hover:border-gold/50 hover:text-gold">
-      <Paperclip className="h-3 w-3" /> Attach a clip from the library
+    <button onClick={() => { setAttachTarget(c); setTab("library"); }} className="flex items-center gap-1.5 text-left text-[12px] text-muted-foreground hover:text-primary">
+      <Paperclip className="h-3 w-3" aria-hidden /> Attach footage
     </button>
   );
 
-  const CardView = ({ c }: { c: Card }) => (
-    <div className={`flex flex-col gap-2.5 rounded-xl border border-border bg-card p-3.5 ${c.status === "posted" ? "opacity-70" : ""}`}>
-      <button onClick={() => openEdit(c)} className="text-left text-[15px] font-bold leading-tight text-foreground">{c.title}</button>
-      {c.hook && <p className="text-[12.5px] leading-snug text-muted-foreground">{c.hook}</p>}
-      <div className="flex flex-wrap items-center gap-1.5">
-        <Chip className={brandClass(c.brand)}>{brandHandle(c.brand)}</Chip>
-        {c.day > 0 && <Chip className="border-border bg-background/60 text-muted-foreground">{WEEKDAY[c.day]}</Chip>}
-        {isCoreCard(c) === false && <Chip className="border-amber-400/30 text-amber-300">20% slot</Chip>}
-        {c.caption && !hasCta(c.caption) && <Chip className="border-amber-400/30 text-amber-300">no CTA</Chip>}
-        <Chip className="border-border text-muted-foreground">{c.job.toLowerCase()}</Chip>
-      </div>
-      {clipLine(c)}
-      {(c.record_script || c.edit_prompt) && (
-        <div className="flex flex-wrap gap-1.5">
-          {c.record_script && <button onClick={() => copyText(c.record_script, "Record script")} className="rounded-lg border border-border px-2 py-1 text-[11px] font-semibold text-muted-foreground hover:border-gold/50 hover:text-gold" title="Copy what to record">🎥 Copy script</button>}
-          {c.edit_prompt && <button onClick={() => copyText(c.edit_prompt, "Edit prompt")} className="rounded-lg border border-border px-2 py-1 text-[11px] font-semibold text-muted-foreground hover:border-gold/50 hover:text-gold" title="Copy the prompt that cuts this video">✂️ Copy edit prompt</button>}
-        </div>
-      )}
-      <div className="mt-0.5 flex flex-wrap gap-1.5">
-        {(c.status === "idea" || c.status === "recorded") && (
-          <Button size="sm" onClick={() => advance(c)} className="h-7 bg-primary px-2.5 text-[11.5px] font-semibold text-primary-foreground hover:bg-primary/90"><ArrowRight className="mr-1 h-3 w-3" />{c.status === "idea" ? "Recorded" : "Ready"}</Button>
-        )}
-        {c.status === "ready" && <Button size="sm" onClick={() => setPostTarget(c)} className="h-7 border border-emerald-400/35 bg-emerald-400/15 px-2.5 text-[11.5px] font-semibold text-emerald-400 hover:bg-emerald-400/25"><Check className="mr-1 h-3 w-3" />Post</Button>}
-        {c.status === "posted" && <Button size="sm" variant="outline" onClick={() => unpost(c)} className="h-7 px-2.5 text-[11.5px]"><Undo2 className="mr-1 h-3 w-3" />Undo</Button>}
-        {(c.status === "recorded" || c.status === "ready") && <Button size="sm" variant="outline" onClick={() => back(c)} className="h-7 px-2 text-[11.5px] text-muted-foreground">back</Button>}
-        <Button size="sm" variant="ghost" onClick={() => openEdit(c)} className="h-7 px-2 text-muted-foreground" title="edit"><Pencil className="h-3.5 w-3.5" /></Button>
-        <Button size="sm" variant="ghost" onClick={() => remove(c)} className="h-7 px-2 text-muted-foreground hover:text-destructive" title="delete"><Trash2 className="h-3.5 w-3.5" /></Button>
-      </div>
-    </div>
-  );
+  // One obvious primary action per card, derived from its stage. Nothing here publishes anything.
+  const primaryAction = (c: Card) => {
+    const stage = stageOf(c);
+    const busy = busyId === c.id;
+    const base = "h-7 px-2.5 text-[11.5px] font-semibold";
+    if (stage === "published") {
+      return c.published_url ? <Button asChild size="sm" variant="outline" className={base}><a href={c.published_url} target="_blank" rel="noopener noreferrer"><ExternalLink className="mr-1 h-3 w-3" aria-hidden />View post</a></Button> : null;
+    }
+    if (stage === "review" && !isAdmin) return <span className="text-[11.5px] text-muted-foreground">Awaiting approval</span>;
+    const label: Record<Stage, string> = {
+      idea: "Plan recording", record: "Footage in", edit: "Send to review", review: "Approve", ready: "Publish kit",
+      scheduled: "Confirm live", published_unconfirmed: "Add live URL", published: "",
+    };
+    const icon = stage === "review" ? <ShieldCheck className="mr-1 h-3 w-3" aria-hidden /> : stage === "ready" || stage === "scheduled" || stage === "published_unconfirmed" ? <Link2 className="mr-1 h-3 w-3" aria-hidden /> : <ArrowRight className="mr-1 h-3 w-3" aria-hidden />;
+    const opensDialog = stage === "ready" || stage === "scheduled" || stage === "published_unconfirmed";
+    return (
+      <Button size="sm" disabled={busy || (locked && !opensDialog)} onClick={() => (opensDialog ? openPublish(c) : forward(c))} className={`${base} bg-primary text-primary-foreground hover:bg-primary/90`}>
+        {busy ? <Loader2 className="mr-1 h-3 w-3 animate-spin" aria-hidden /> : icon}{label[stage]}
+      </Button>
+    );
+  };
+  const secondaryActions = (c: Card) => {
+    const stage = stageOf(c);
+    return (
+      <>
+        {stage === "ready" && <Button size="sm" variant="outline" disabled={locked || busyId === c.id} onClick={() => openSchedule(c)} className="h-7 px-2 text-[11.5px]"><CalendarClock className="mr-1 h-3 w-3" aria-hidden />Plan time</Button>}
+        {previousStatus(stage) && <Button size="sm" variant="ghost" disabled={locked || busyId === c.id} onClick={() => sendBack(c)} className="h-7 px-2 text-[11.5px] text-muted-foreground" aria-label={`Send ${c.title} back to ${STAGE_LABEL[previousStatus(stage) as Stage]}`}><Undo2 className="h-3.5 w-3.5" aria-hidden /></Button>}
+        <Button size="sm" variant="ghost" onClick={() => openEdit(c)} className="h-7 px-2 text-muted-foreground" aria-label={`Edit ${c.title}`}><Pencil className="h-3.5 w-3.5" aria-hidden /></Button>
+        <Button size="sm" variant="ghost" onClick={() => remove(c)} className="h-7 px-2 text-muted-foreground hover:text-destructive" aria-label={`Delete ${c.title}`}><Trash2 className="h-3.5 w-3.5" aria-hidden /></Button>
+      </>
+    );
+  };
+  const scheduleNote = (c: Card) => {
+    const s = scheduleLabel(c);
+    if (!s || !c.scheduled_for) return null;
+    return <span className="text-[11px] text-muted-foreground">{s.label} · {new Date(c.scheduled_for).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>;
+  };
+
+  const questions: { key: string; q: string; items: Card[]; count: number; note?: string; noteTone?: string; go: "open" | Stage }[] = [
+    { key: "record", q: "What should I record next?", items: q4.recordNext, count: q4.recordNext.length, go: q4.recordNext.some((c) => stageOf(c) === "record") ? "record" : "idea" },
+    { key: "edit", q: "What needs editing?", items: q4.needsEditing, count: q4.needsEditing.length, note: q4.awaitingApproval.length ? `${q4.awaitingApproval.length} awaiting approval` : undefined, go: "edit" },
+    { key: "ready", q: "What is ready to publish?", items: q4.readyToPublish, count: q4.readyToPublish.length, go: "ready" },
+    { key: "published", q: "What has actually been published?", items: q4.published, count: q4.published.length, note: q4.unconfirmed.length ? `${q4.unconfirmed.length} marked posted with no live URL` : "only cards with a live post URL count", noteTone: q4.unconfirmed.length ? "text-destructive" : undefined, go: "published" },
+  ];
 
   return (
     <div className="mx-auto max-w-6xl px-4 pb-24 pt-6 sm:px-6">
       <header className="flex flex-wrap items-end justify-between gap-5 border-b border-border pb-4">
         <div className="flex items-center gap-3">
-          <Crown className="h-8 w-8 text-gold" />
+          <Crown className="h-7 w-7 text-primary" aria-hidden />
           <div>
             <h1 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-[28px]">Launch Board</h1>
-            <p className="mt-1 max-w-[56ch] text-sm text-muted-foreground">What to post today, where everything stands, and your whole Dropbox library one click from a card.</p>
+            <p className="mt-1 max-w-[60ch] text-sm text-muted-foreground">Idea → Record → Edit → Review → Ready → Scheduled → Published. Publishing stays approval-gated and in your hands.</p>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2.5">
-          {[{ n: counts.total, l: "Cards", c: "text-foreground" }, { n: counts.ready, l: "Ready", c: "text-gold" }, { n: counts.posted, l: "Posted", c: "text-emerald-400" }, { n: clips.length.toLocaleString(), l: "Clips indexed", c: "text-foreground" }].map((s) => (
-            <div key={s.l} className="min-w-[76px] rounded-xl border border-border bg-card px-3.5 py-2.5">
-              <div className={`text-xl font-extrabold tabular-nums ${s.c}`}>{s.n}</div>
+        <div className="flex flex-wrap gap-2">
+          {[
+            { n: cards.filter(isOpen).length, l: "In progress" },
+            { n: q4.readyToPublish.length, l: "Ready" },
+            { n: q4.published.length, l: "Published" },
+            { n: clips.length.toLocaleString(), l: "Clips indexed" },
+          ].map((s) => (
+            <div key={s.l} className="min-w-[76px] rounded-lg border border-border bg-card px-3 py-2">
+              <div className="text-lg font-extrabold tabular-nums text-foreground">{s.n}</div>
               <div className="mt-0.5 text-[10.5px] uppercase tracking-[0.09em] text-muted-foreground">{s.l}</div>
             </div>
           ))}
-          <button onClick={() => { chooseProof("testimonials"); setTab("library"); }} className="min-w-[76px] rounded-xl border border-gold/50 bg-gold/10 px-3.5 py-2.5 text-left hover:bg-gold/15" title="Every testimonial — calls, videos, screenshots, texts — one tap from download">
-            <div className="text-xl font-extrabold tabular-nums text-gold">{testimonialClips.length.toLocaleString()}</div>
-            <div className="mt-0.5 text-[10.5px] uppercase tracking-[0.09em] text-gold/80">Testimonials</div>
+          <button onClick={() => { chooseProof("testimonials"); setTab("library"); }} className="min-w-[76px] rounded-lg border border-primary/40 bg-primary/5 px-3 py-2 text-left hover:bg-primary/10" title="Every testimonial — calls, videos, screenshots, texts — one tap from download">
+            <div className="text-lg font-extrabold tabular-nums text-primary">{testimonialClips.length.toLocaleString()}</div>
+            <div className="mt-0.5 text-[10.5px] uppercase tracking-[0.09em] text-primary">Testimonials</div>
           </button>
         </div>
       </header>
 
-      <nav aria-label="Board sections" className="sticky top-0 z-10 -mx-4 mb-6 flex gap-1 overflow-x-auto border-b border-border bg-background/95 px-4 py-2 backdrop-blur sm:mx-0 sm:px-0">
+      <nav aria-label="Board sections" className="sticky top-0 z-10 -mx-4 mb-6 flex gap-1 overflow-x-auto border-b border-border bg-background px-4 py-2 sm:mx-0 sm:px-0">
         {TABS.map((t) => (
-          <button key={t.k} onClick={() => setTab(t.k)} className={`rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors ${tab === t.k ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>{t.label}</button>
+          <button key={t.k} onClick={() => setTab(t.k)} aria-current={tab === t.k ? "page" : undefined} className={`rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors ${tab === t.k ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>{t.label}</button>
         ))}
-        <span className="ml-auto self-center text-xs text-muted-foreground">{attachTarget ? <>Attaching to <b className="text-foreground">{attachTarget.title}</b> · <button className="underline" onClick={() => setAttachTarget(null)}>cancel</button></> : null}</span>
-        <Button asChild size="sm" variant="outline" className="ml-2 h-8"><Link to="/dashboard/content">Queue &amp; approvals</Link></Button>
-        <Button size="sm" onClick={openNew} className="ml-2 h-8 bg-primary text-primary-foreground hover:bg-primary/90"><Plus className="mr-1 h-3.5 w-3.5" />New idea</Button>
+        <span className="ml-auto self-center whitespace-nowrap text-xs text-muted-foreground">{attachTarget ? <>Attaching to <b className="text-foreground">{attachTarget.title}</b> · <button className="underline" onClick={() => setAttachTarget(null)}>cancel</button></> : null}</span>
+        <Button size="sm" onClick={openNew} className="ml-2 h-8 bg-primary text-primary-foreground hover:bg-primary/90"><Plus className="mr-1 h-3.5 w-3.5" aria-hidden />New idea</Button>
       </nav>
+
+      {locked && (
+        <div role="status" className="mb-5 rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-foreground">
+          The content workflow migration (20261006150000) is not on this database yet. The board, library and downloads work; stage moves, approvals, schedules and publish confirmations are disabled until it is applied.
+        </div>
+      )}
 
       {tab === "today" && (
         <div className="space-y-8">
-          {/* Sam, 2026-09-12: "it's time for me to build collage testimonials" — the pack is one tap from Today. */}
-          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-gold/40 bg-gold/10 px-4 py-3">
-            <MessageSquareQuote className="h-5 w-5 text-gold" />
-            <div className="flex-1 text-sm">
-              <b className="text-foreground">{testimonialClips.length.toLocaleString()} testimonials ready</b>
-              <span className="text-muted-foreground"> · {testimonialClips.filter((k) => k.media !== "image").length} calls &amp; videos · {testimonialClips.filter((k) => k.media === "image").length} screenshots &amp; texts{health && health.waiting > 0 ? ` · ${health.waiting.toLocaleString()} clips still being judged` : ""}</span>
-            </div>
-            <Button size="sm" onClick={() => { chooseProof("testimonials"); setTab("library"); }} className="h-8 bg-gold text-zinc-950 hover:bg-gold/90"><Download className="mr-1.5 h-3.5 w-3.5" />Open the pack</Button>
-          </div>
+          <section aria-label="Four questions" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {questions.map((qq) => (
+              <div key={qq.key} className="flex flex-col gap-2 rounded-lg border border-border bg-card p-4">
+                <div className="text-[12px] font-semibold text-muted-foreground">{qq.q}</div>
+                <button onClick={() => { setStageFilter(qq.go); setTab("board"); }} className="self-start text-2xl font-extrabold tabular-nums text-foreground hover:text-primary" aria-label={`${qq.q} ${qq.count} — open on the board`}>{qq.count}</button>
+                {qq.note && <div className={`text-[11.5px] ${qq.noteTone ?? "text-muted-foreground"}`}>{qq.note}</div>}
+                <ul className="mt-auto space-y-1">
+                  {qq.items.slice(0, 3).map((c) => (
+                    <li key={c.id}><button onClick={() => openEdit(c)} className="w-full truncate text-left text-[12.5px] text-foreground hover:text-primary" title={c.title}>{c.title}</button></li>
+                  ))}
+                  {qq.items.length === 0 && <li className="text-[12px] text-muted-foreground">None</li>}
+                </ul>
+              </div>
+            ))}
+          </section>
+
           <section>
-            <Head title="Post today" hint={ready.length ? `${ready.length} ready` : "nothing is Ready yet"} />
-            {ready.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-border p-6 text-sm text-muted-foreground">Move a card to <b className="text-gold">Ready</b> (clip attached + caption written) and it shows up here with a one-tap Post.</div>
+            <Head title="Today" hint={today.length ? `${today.length} to work, most urgent first` : "nothing urgent"} />
+            {today.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">Nothing is due, ready or waiting on approval. Plan a recording from an idea, or add one.</div>
             ) : (
-              <div className="grid gap-3 sm:grid-cols-2">{ready.map((c) => <CardView key={c.id} c={c} />)}</div>
+              <div className="overflow-x-auto rounded-lg border border-border">
+                <table className="w-full min-w-[640px] text-sm">
+                  <thead className="bg-muted/50 text-left text-[11px] uppercase tracking-wide text-muted-foreground">
+                    <tr><th className="w-8 px-3 py-2">#</th><th className="px-3 py-2">Item</th><th className="px-3 py-2">Stage</th><th className="px-3 py-2">Next action</th><th className="px-3 py-2">Due</th><th className="px-3 py-2 text-right">Do it</th></tr>
+                  </thead>
+                  <tbody>
+                    {today.map((t, i) => (
+                      <tr key={t.card.id} className="border-t border-border align-top">
+                        <td className="px-3 py-2.5 font-bold tabular-nums text-muted-foreground">{i + 1}</td>
+                        <td className="px-3 py-2.5">
+                          <button onClick={() => openEdit(t.card)} className="text-left font-semibold text-foreground hover:text-primary">{t.card.title}</button>
+                          <div className="text-[11.5px] text-muted-foreground">{t.reason}{t.card.owner ? ` · ${t.card.owner}` : ""}</div>
+                        </td>
+                        <td className="px-3 py-2.5"><StageChip stage={t.stage} /></td>
+                        <td className="px-3 py-2.5 text-[12.5px] text-foreground">{nextAction(t.card)}</td>
+                        <td className={`px-3 py-2.5 text-[12px] ${dueTone(t.card.due_date)}`}>{fmtDue(t.card.due_date) || "—"}</td>
+                        <td className="px-3 py-2.5 text-right">{primaryAction(t.card)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </section>
-          <section>
-            <Head title="Launch 4" hint="one card per job — auto-picked, strongest first" />
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {launch4.map(({ job, pick }) => (
-                <div key={job.k} className={`flex min-h-[150px] flex-col gap-2 rounded-2xl border border-t-[3px] border-border ${job.border} bg-card p-4`}>
-                  <div className={`text-[10.5px] font-bold uppercase tracking-[0.12em] ${job.accent}`}>{job.label}</div>
-                  <div className="text-[11.5px] leading-snug text-muted-foreground">{job.desc}</div>
-                  {pick ? (
-                    <button onClick={() => openEdit(pick)} className="mt-auto rounded-xl border border-border bg-background/60 p-3 text-left">
-                      <div className="text-sm font-bold leading-tight text-foreground">{pick.title}</div>
-                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5"><Chip className={brandClass(pick.brand)}>{pick.brand}</Chip><Chip className={`border-border ${TXT[pick.status as Status]}`}><span className={`h-1.5 w-1.5 rounded-full ${DOT[pick.status as Status]}`} />{pick.status}</Chip></div>
-                    </button>
-                  ) : <div className="mt-auto rounded-xl border border-dashed border-border p-3 text-center text-[12px] text-muted-foreground">No card for {job.label} yet.</div>}
-                </div>
-              ))}
+
+          <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card px-4 py-3">
+            <MessageSquareQuote className="h-5 w-5 text-primary" aria-hidden />
+            <div className="flex-1 text-sm">
+              <b className="text-foreground">{testimonialClips.length.toLocaleString()} testimonials in the library</b>
+              <span className="text-muted-foreground"> · {testimonialClips.filter((k) => k.media !== "image").length} calls &amp; videos · {testimonialClips.filter((k) => k.media === "image").length} screenshots &amp; texts{health && health.waiting > 0 ? ` · ${health.waiting.toLocaleString()} clips still being judged` : ""}</span>
             </div>
-          </section>
-          <div className="grid gap-6 lg:grid-cols-2">
-            <section>
-              <Head title="Record next" hint="ideas, earliest day first" />
-              <ol className="space-y-2">
-                {recordNext.length === 0 && <li className="text-sm text-muted-foreground">No ideas queued — add one.</li>}
-                {recordNext.map((c, i) => (
-                  <li key={c.id} className="flex items-center gap-3 rounded-xl border border-border bg-card px-3 py-2.5">
-                    <span className="w-5 text-center text-sm font-bold tabular-nums text-muted-foreground">{i + 1}</span>
-                    <button onClick={() => openEdit(c)} className="min-w-0 flex-1 text-left text-sm font-semibold text-foreground">{c.title}</button>
-                    {c.day > 0 && <Chip className="border-border text-muted-foreground">Day {c.day}</Chip>}
-                    <Button size="sm" onClick={() => advance(c)} className="h-7 bg-primary px-2.5 text-[11.5px] text-primary-foreground hover:bg-primary/90">Recorded</Button>
-                  </li>
-                ))}
-              </ol>
-            </section>
-            <section>
-              <Head title="Needs a clip" hint={`${needsClip.length}`} />
-              <ul className="space-y-2">
-                {needsClip.length === 0 && <li className="text-sm text-muted-foreground">Every open card has a clip.</li>}
-                {needsClip.slice(0, 6).map((c) => (
-                  <li key={c.id} className="flex items-center gap-3 rounded-xl border border-border bg-card px-3 py-2.5">
-                    <Clapperboard className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    <span className="min-w-0 flex-1 truncate text-sm text-foreground">{c.title}</span>
-                    <Button size="sm" variant="outline" onClick={() => { setAttachTarget(c); setTab("library"); }} className="h-7 px-2.5 text-[11.5px]"><Paperclip className="mr-1 h-3 w-3" />Pick a clip</Button>
-                  </li>
-                ))}
-              </ul>
-            </section>
+            <Button size="sm" variant="outline" onClick={() => { chooseProof("testimonials"); setTab("library"); }} className="h-8"><Download className="mr-1.5 h-3.5 w-3.5" aria-hidden />Open the pack</Button>
           </div>
         </div>
       )}
 
       {tab === "board" && (
-        <div className="grid items-start gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
-          {STATUSES.map((st) => {
-            const items = cards.filter((c) => c.status === st);
-            return (
-              <div key={st} className="flex flex-col gap-2.5 rounded-2xl border border-border bg-background/40 p-3">
-                <div className="flex items-center justify-between px-0.5 pt-0.5">
-                  <span className={`flex items-center gap-2 text-[12.5px] font-extrabold uppercase tracking-wide ${TXT[st]}`}><span className={`h-1.5 w-1.5 rounded-full ${DOT[st]}`} />{STATUS_LABEL[st]}</span>
-                  <span className="text-[11px] text-muted-foreground">{items.length} · {STATUS_SUB[st]}</span>
-                </div>
-                {items.map((c) => <CardView key={c.id} c={c} />)}
-                {st === "idea" && <Button variant="outline" onClick={openNew} className="border-dashed text-muted-foreground hover:border-gold/50 hover:text-gold"><Plus className="mr-1.5 h-4 w-4" />New idea</Button>}
-              </div>
-            );
-          })}
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Filter by stage">
+            {([{ k: "open", label: "In progress", n: cards.filter(isOpen).length }, ...STAGES.map((st) => ({ k: st, label: STAGE_LABEL[st], n: stageCounts[st] })), { k: "all", label: "All", n: cards.length }] as { k: "open" | "all" | Stage; label: string; n: number }[])
+              .filter((f) => f.k !== "published_unconfirmed" || f.n > 0)
+              .map((f) => (
+                <button key={f.k} onClick={() => setStageFilter(f.k)} aria-pressed={stageFilter === f.k} className={`rounded-full border px-3 py-1 text-xs font-semibold ${stageFilter === f.k ? "border-primary/40 bg-primary/15 text-primary" : "border-border text-muted-foreground hover:text-foreground"}`}>
+                  {f.label} <span className="opacity-60 tabular-nums">{f.n}</span>
+                </button>
+              ))}
+          </div>
+          <div className="overflow-x-auto rounded-lg border border-border">
+            <table className="w-full min-w-[880px] text-sm">
+              <thead className="bg-muted/50 text-left text-[11px] uppercase tracking-wide text-muted-foreground">
+                <tr>
+                  <th className="px-3 py-2">Item</th><th className="px-3 py-2">Stage</th><th className="px-3 py-2">Destination</th><th className="px-3 py-2">Source media</th>
+                  <th className="px-3 py-2">Owner</th><th className="px-3 py-2">Due</th><th className="px-3 py-2">Next action</th><th className="px-3 py-2 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {boardRows.length === 0 && <tr><td colSpan={8} className="px-3 py-6 text-center text-sm text-muted-foreground">No cards in this stage.</td></tr>}
+                {boardRows.map((c) => (
+                  <tr key={c.id} className="border-t border-border align-top">
+                    <td className="max-w-[280px] px-3 py-2.5">
+                      <button onClick={() => openEdit(c)} className="text-left font-semibold leading-snug text-foreground hover:text-primary">{c.title}</button>
+                      {c.hook && <div className="line-clamp-2 text-[11.5px] text-muted-foreground">{c.hook}</div>}
+                      {scheduleNote(c)}
+                    </td>
+                    <td className="px-3 py-2.5"><StageChip stage={stageOf(c)} /></td>
+                    <td className="px-3 py-2.5"><Chip className={brandClass(c.brand)}>{brandHandle(c.brand)}</Chip>{c.day > 0 && <div className="mt-1 text-[11px] text-muted-foreground">{WEEKDAY[c.day]} slot</div>}</td>
+                    <td className="max-w-[180px] px-3 py-2.5">{clipLine(c)}</td>
+                    <td className="px-3 py-2.5 text-[12px] text-foreground">{c.owner || <span className="text-muted-foreground">—</span>}</td>
+                    <td className={`px-3 py-2.5 text-[12px] ${dueTone(c.due_date)}`}>{fmtDue(c.due_date) || "—"}</td>
+                    <td className="max-w-[220px] px-3 py-2.5 text-[12px] text-foreground">{nextAction(c)}</td>
+                    <td className="px-3 py-2.5"><div className="flex flex-wrap items-center justify-end gap-1">{primaryAction(c)}{secondaryActions(c)}</div></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -642,9 +818,9 @@ export default function LaunchBoard() {
                   <div className="flex items-baseline justify-between"><span className="text-[12px] font-extrabold tracking-wide text-foreground">{WEEKDAY[d]}</span><span className="text-[9px] uppercase tracking-wide text-muted-foreground">{items.length ? `${items.length} card${items.length === 1 ? "" : "s"}` : "open"}</span></div>
                   <div className={`rounded-md border border-dashed px-1.5 py-1 text-[10px] leading-tight ${onPlan ? "border-emerald-400/40 text-emerald-300" : "border-border text-muted-foreground"}`}>{plan.slot}</div>
                   {items.length === 0 ? <button onClick={() => { setDraft({ ...emptyDraft, day: d, brand: d === 3 || d === 7 ? "YT" : "SH", content_type: d === 3 || d === 7 ? "long" : "short" }); setEditing(null); setEditorOpen(true); }} className="mt-auto rounded-lg border border-dashed border-border px-2 py-1.5 text-[10.5px] text-muted-foreground hover:border-gold/50 hover:text-gold">+ fill this slot</button> : items.map((c) => (
-                    <button key={c.id} onClick={() => openEdit(c)} className={`rounded-lg border border-l-[3px] border-border bg-background/50 p-2 text-left ${c.status === "recorded" ? "border-l-sky-400" : c.status === "ready" ? "border-l-gold" : c.status === "posted" ? "border-l-emerald-400" : "border-l-zinc-500"}`}>
+                    <button key={c.id} onClick={() => openEdit(c)} className={`rounded-lg border border-l-[3px] border-border bg-background/50 p-2 text-left ${STAGE_BAR[stageOf(c)]}`}>
                       <div className="text-[11.5px] font-semibold leading-tight text-foreground">{c.title.replace(/^Story · /, "")}</div>
-                      <div className="mt-1 flex items-center gap-1.5"><Chip className={brandClass(c.brand)}>{c.brand}</Chip><span className={`h-1.5 w-1.5 rounded-full ${DOT[c.status as Status]}`} />{isCoreCard(c) === false && <span className="text-[9px] uppercase text-amber-400">20%</span>}</div>
+                      <div className="mt-1 flex items-center gap-1.5"><Chip className={brandClass(c.brand)}>{c.brand}</Chip><span className="text-[9px] uppercase text-muted-foreground">{STAGE_LABEL[stageOf(c)]}</span>{isCoreCard(c) === false && <span className="text-[9px] uppercase text-amber-400">20%</span>}</div>
                     </button>
                   ))}
                 </div>
@@ -809,80 +985,137 @@ export default function LaunchBoard() {
         </div>
       )}
 
-      <p className="pt-10 text-center text-xs leading-relaxed text-muted-foreground">Saves to your account on every change. Publishing stays in your hands — Post copies the caption and stamps the date.</p>
+      {tab === "queue" && (
+        <Suspense fallback={<PageSkeleton />}>
+          <ContentQueue embedded />
+        </Suspense>
+      )}
 
-      {/* Post dialog */}
+      <p className="pt-10 text-center text-xs leading-relaxed text-muted-foreground">Saves on every change. Copying a caption or downloading a clip never changes a stage; Published needs the live post URL.</p>
+
+      {/* Publish kit: caption + clip to post by hand, then the live URL that proves it. */}
       <Dialog open={!!postTarget} onOpenChange={(o) => !o && setPostTarget(null)}>
         <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>Post: {postTarget?.title}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Publish: {postTarget?.title}</DialogTitle></DialogHeader>
           {postTarget && (
             <div className="grid gap-3">
-              <div className="flex flex-wrap gap-1.5"><Chip className={brandClass(postTarget.brand)}>{brandHandle(postTarget.brand)}</Chip>{postTarget.clip && <Chip className="border-sky-400/30 text-sky-300">{postTarget.clip.split("/").pop()}</Chip>}</div>
-              <Textarea readOnly rows={6} value={postTarget.caption || "(no caption yet — edit the card to add one)"} className="text-sm" />
-              {postTarget.caption && !hasCta(postTarget.caption) && (
-                <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-xs text-amber-200">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Chip className={brandClass(postTarget.brand)}>{brandHandle(postTarget.brand)}</Chip>
+                <StageChip stage={stageOf(postTarget)} />
+                {scheduleNote(postTarget)}
+              </div>
+              <Textarea readOnly rows={5} aria-label="Caption" value={postTarget.caption || "(no caption yet — edit the card to add one)"} className="text-sm" />
+              {postTarget.cta && <p className="text-xs text-muted-foreground">Call to action: <span className="text-foreground">{postTarget.cta}</span></p>}
+              {postTarget.caption && !hasCta(postTarget.caption) && !hasCta(postTarget.cta ?? "") && (
+                <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-foreground">
                   <span>No website CTA in this caption.</span>
                   <Button size="sm" variant="outline" className="h-7 text-[11.5px]" onClick={async () => { const cap = `${postTarget.caption.trim()}\n\n${CTA}`; if (await patch(postTarget.id, { caption: cap })) setPostTarget({ ...postTarget, caption: cap }); }}>Add apex-financial.org/apply</Button>
                 </div>
               )}
               <div className="flex flex-wrap gap-2">
-                <Button variant="outline" onClick={() => copyCaption(postTarget.caption)} disabled={!postTarget.caption}><Copy className="mr-1.5 h-4 w-4" />Copy caption</Button>
+                <Button variant="outline" onClick={() => copyCaption(postTarget.caption)} disabled={!postTarget.caption}><Copy className="mr-1.5 h-4 w-4" aria-hidden />Copy caption</Button>
                 {postTarget.clip && (() => { const k = clips.find((x) => x.path === postTarget.clip); const d = k ? directUrl(k) : null; return d
-                  ? <Button asChild variant="outline"><a href={d} download={k?.name}><Download className="mr-1.5 h-4 w-4" />Download the clip</a></Button>
-                  : <Button asChild variant="outline"><a href={dropboxUrl(postTarget.clip)} target="_blank" rel="noopener noreferrer"><ExternalLink className="mr-1.5 h-4 w-4" />Open clip in Dropbox</a></Button>; })()}
+                  ? <Button asChild variant="outline"><a href={d} download={k?.name}><Download className="mr-1.5 h-4 w-4" aria-hidden />Download the clip</a></Button>
+                  : <Button asChild variant="outline"><a href={dropboxUrl(postTarget.clip)} target="_blank" rel="noopener noreferrer"><ExternalLink className="mr-1.5 h-4 w-4" aria-hidden />Open clip in Dropbox</a></Button>; })()}
+              </div>
+              <p className="text-[11.5px] text-muted-foreground">Copying and downloading do not change the stage. Post it on the platform yourself, then paste the live link below.</p>
+              <div className="grid gap-1.5 border-t border-border pt-3">
+                <Label htmlFor="lb-live-url">Live post URL</Label>
+                <Input id="lb-live-url" inputMode="url" autoComplete="off" value={publishUrl} onChange={(e) => setPublishUrl(e.target.value)} placeholder="https://www.youtube.com/shorts/…" />
+                {publishUrl.trim() !== "" && (publishCheck.ok
+                  ? <p className="text-[11.5px] text-muted-foreground">Looks like a {publishCheck.platform} post.{publishCheck.warning ? ` ${publishCheck.warning}` : ""}</p>
+                  : <p className="text-[11.5px] text-destructive">{publishCheck.reason}</p>)}
               </div>
             </div>
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setPostTarget(null)}>Not yet</Button>
-            <Button onClick={() => postTarget && markPosted(postTarget)} className="bg-emerald-500 text-emerald-950 hover:bg-emerald-400"><Check className="mr-1.5 h-4 w-4" />I posted it</Button>
+            <Button onClick={() => void confirmPublished()} disabled={locked || !publishCheck.ok || (postTarget ? busyId === postTarget.id : false) || (postTarget ? !["ready", "scheduled", "published_unconfirmed", "published"].includes(stageOf(postTarget)) : true)} className="bg-primary text-primary-foreground hover:bg-primary/90">
+              <Check className="mr-1.5 h-4 w-4" aria-hidden />Confirm published
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Editor dialog */}
+      {/* Plan a time. No scheduler integration writes to this board, so it is always a labelled manual plan. */}
+      <Dialog open={!!scheduleTarget} onOpenChange={(o) => !o && setScheduleTarget(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Plan a post time: {scheduleTarget?.title}</DialogTitle></DialogHeader>
+          <div className="grid gap-2">
+            <Label htmlFor="lb-schedule-at">Post at (your local time)</Label>
+            <Input id="lb-schedule-at" type="datetime-local" value={scheduleAt} onChange={(e) => setScheduleAt(e.target.value)} />
+            <p className="text-[11.5px] text-muted-foreground">This is a <b className="text-foreground">Manual plan</b>: nothing posts automatically. It shows on Today when the time comes; post it yourself, then confirm the live URL.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setScheduleTarget(null)}>Cancel</Button>
+            <Button onClick={() => void saveSchedule()} disabled={locked || (scheduleTarget ? busyId === scheduleTarget.id : false)} className="bg-primary text-primary-foreground hover:bg-primary/90"><CalendarClock className="mr-1.5 h-4 w-4" aria-hidden />Save manual plan</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Editor: only execution fields. Stage moves happen through the workflow actions, never from here. */}
       <Dialog open={editorOpen} onOpenChange={setEditorOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
           <DialogHeader><DialogTitle>{editing ? "Edit card" : "New idea"}</DialogTitle></DialogHeader>
+          {editing && (
+            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs">
+              <StageChip stage={stageOf(editing)} />
+              <span className="text-muted-foreground">Next action:</span>
+              <span className="font-semibold text-foreground">{nextAction({ ...editing, ...(draft as Partial<Card>) } as Card)}</span>
+              {editing.approved_at && <span className="text-muted-foreground">· approved {fmtDate(editing.approved_at)}</span>}
+              {editing.published_url && <a href={editing.published_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">· live post</a>}
+            </div>
+          )}
           <div className="grid gap-3">
             <div className="grid gap-1.5"><Label htmlFor="lb-title">Title</Label><Input id="lb-title" value={draftStr("title")} onChange={(e) => setDraftField("title", e.target.value)} placeholder="What's the video?" /></div>
-            <div className="grid gap-1.5"><Label htmlFor="lb-hook">Hook / notes</Label><Textarea id="lb-hook" rows={2} value={draftStr("hook")} onChange={(e) => setDraftField("hook", e.target.value)} placeholder="The opening line, or the idea in one sentence" /></div>
+            <div className="grid gap-1.5"><Label htmlFor="lb-hook">Hook</Label><Textarea id="lb-hook" rows={2} value={draftStr("hook")} onChange={(e) => setDraftField("hook", e.target.value)} placeholder="The opening line, in the first 1.5 seconds" /></div>
             <div className="grid gap-1.5">
-              <Label htmlFor="lb-cap" className="flex items-center justify-between">Caption <span className="text-muted-foreground">(copied when you post)</span>
-                {!hasCta(draftStr("caption")) && <button type="button" onClick={() => setDraftField("caption", `${draftStr("caption").trim()}${draftStr("caption").trim() ? "\n\n" : ""}${CTA}`)} className="text-[11px] font-semibold text-gold underline-offset-2 hover:underline">+ website CTA</button>}
+              <Label htmlFor="lb-script" className="flex items-center justify-between">Recording script / shot list <span className="flex gap-2">
+                {!draftStr("record_script") && <button type="button" onClick={() => setDraftField("record_script", recordTemplate(draft))} className="text-[11px] font-semibold text-primary underline-offset-2 hover:underline">Fill from template</button>}
+                {draftStr("record_script") && <button type="button" onClick={() => copyText(draftStr("record_script"), "Shot list")} className="text-[11px] font-semibold text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">Copy</button>}
+              </span></Label>
+              <Textarea id="lb-script" rows={5} value={draftStr("record_script")} onChange={(e) => setDraftField("record_script", e.target.value)} placeholder="Camera, where, the hook line, the beats, the lesson" className="font-mono text-[12px]" />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="lb-clip" className="flex items-center justify-between">Source media
+                {editing && <button type="button" onClick={() => { setAttachTarget(editing); setEditorOpen(false); setTab("library"); }} className="text-[11px] font-semibold text-primary underline-offset-2 hover:underline">Pick from Library</button>}
               </Label>
-              <Textarea id="lb-cap" rows={3} value={draftStr("caption")} onChange={(e) => setDraftField("caption", e.target.value)} placeholder="The caption you'll post with — end it with apex-financial.org/apply" />
-            </div>
-            <div className="grid gap-1.5"><Label htmlFor="lb-clip">Clip path <span className="text-muted-foreground">(or pick one in Library)</span></Label><Input id="lb-clip" value={draftStr("clip")} onChange={(e) => setDraftField("clip", e.target.value)} placeholder="Reels/2026/09/clip.mp4" /></div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="lb-script" className="flex items-center justify-between">Script to record <span className="flex gap-2">
-                {!draftStr("record_script") && <button type="button" onClick={() => setDraftField("record_script", recordTemplate(draft))} className="text-[11px] font-semibold text-gold underline-offset-2 hover:underline">Fill from template</button>}
-                {draftStr("record_script") && <button type="button" onClick={() => copyText(draftStr("record_script"), "Record script")} className="text-[11px] font-semibold text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">Copy</button>}
-              </span></Label>
-              <Textarea id="lb-script" rows={5} value={draftStr("record_script")} onChange={(e) => setDraftField("record_script", e.target.value)} placeholder="What to record: camera, where, the hook line, the beats, the lesson" className="font-mono text-[12px]" />
+              <Input id="lb-clip" value={draftStr("clip")} onChange={(e) => setDraftField("clip", e.target.value)} placeholder="Reels/2026/09/clip.mp4 (Dropbox path)" />
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="lb-edit" className="flex items-center justify-between">Edit prompt <span className="text-muted-foreground">(paste to Claude / Codex)</span> <span className="flex gap-2">
-                {!draftStr("edit_prompt") && <button type="button" onClick={() => setDraftField("edit_prompt", editTemplate(draft))} className="text-[11px] font-semibold text-gold underline-offset-2 hover:underline">Fill from template</button>}
-                {draftStr("edit_prompt") && <button type="button" onClick={() => copyText(draftStr("edit_prompt"), "Edit prompt")} className="text-[11px] font-semibold text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">Copy</button>}
+              <Label htmlFor="lb-edit" className="flex items-center justify-between">Edit instructions <span className="flex gap-2">
+                {!draftStr("edit_prompt") && <button type="button" onClick={() => setDraftField("edit_prompt", editTemplate(draft))} className="text-[11px] font-semibold text-primary underline-offset-2 hover:underline">Fill from template</button>}
+                {draftStr("edit_prompt") && <button type="button" onClick={() => copyText(draftStr("edit_prompt"), "Edit instructions")} className="text-[11px] font-semibold text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">Copy</button>}
               </span></Label>
-              <Textarea id="lb-edit" rows={4} value={draftStr("edit_prompt")} onChange={(e) => setDraftField("edit_prompt", e.target.value)} placeholder="The prompt that turns the footage into the finished cut (MP-234 editor)" className="font-mono text-[12px]" />
+              <Textarea id="lb-edit" rows={4} value={draftStr("edit_prompt")} onChange={(e) => setDraftField("edit_prompt", e.target.value)} placeholder="How to cut it (format, length, captions, what to exclude)" className="font-mono text-[12px]" />
               <p className="text-[11px] text-muted-foreground">{FORMAT_LINE}</p>
             </div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <div className="grid gap-1.5"><Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Channel</Label>
-                <Select value={draftStr("brand")} onValueChange={(v) => setDraftField("brand", v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="SH">Shorts → Repurpose</SelectItem><SelectItem value="YT">YouTube long-form</SelectItem>{(draftStr("brand") === "SFD" || draftStr("brand") === "IMS") && <SelectItem value={draftStr("brand")}>{brandHandle(draftStr("brand"))}</SelectItem>}</SelectContent></Select></div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="lb-cap">Caption</Label>
+              <Textarea id="lb-cap" rows={3} value={draftStr("caption")} onChange={(e) => setDraftField("caption", e.target.value)} placeholder="The caption you'll post with" />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="lb-cta" className="flex items-center justify-between">Call to action
+                {!draftStr("cta") && <button type="button" onClick={() => setDraftField("cta", CTA)} className="text-[11px] font-semibold text-primary underline-offset-2 hover:underline">Use the apply CTA</button>}
+              </Label>
+              <Input id="lb-cta" value={draftStr("cta")} disabled={!workflowReady} onChange={(e) => setDraftField("cta", e.target.value)} placeholder="What the viewer should do" />
+            </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <div className="grid gap-1.5"><Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Destination</Label>
+                <Select value={draftStr("brand")} onValueChange={(v) => setDraftField("brand", v)}><SelectTrigger aria-label="Destination channel"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="SH">Shorts → Repurpose</SelectItem><SelectItem value="YT">YouTube long-form</SelectItem>{(draftStr("brand") === "SFD" || draftStr("brand") === "IMS") && <SelectItem value={draftStr("brand")}>{brandHandle(draftStr("brand"))}</SelectItem>}</SelectContent></Select></div>
               <div className="grid gap-1.5"><Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Job</Label>
-                <Select value={draftStr("job")} onValueChange={(v) => setDraftField("job", v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{JOBS.map((j) => <SelectItem key={j.k} value={j.k}>{j.label}</SelectItem>)}</SelectContent></Select></div>
-              <div className="grid gap-1.5"><Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Day</Label>
-                <Select value={draftStr("day")} onValueChange={(v) => setDraftField("day", Number(v))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="0">—</SelectItem>{[1, 2, 3, 4, 5, 6, 7].map((d) => <SelectItem key={d} value={String(d)}>{WEEKDAY[d]} · {WEEK_PLAN[d].slot.split(" · ")[1]}</SelectItem>)}</SelectContent></Select></div>
-              <div className="grid gap-1.5"><Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Status</Label>
-                <Select value={draftStr("status")} onValueChange={(v) => setDraftField("status", v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{STATUSES.map((s) => <SelectItem key={s} value={s}>{STATUS_LABEL[s]}</SelectItem>)}</SelectContent></Select></div>
+                <Select value={draftStr("job")} onValueChange={(v) => setDraftField("job", v)}><SelectTrigger aria-label="Content job"><SelectValue /></SelectTrigger><SelectContent>{JOBS.map((j) => <SelectItem key={j.k} value={j.k}>{j.label}</SelectItem>)}</SelectContent></Select></div>
+              <div className="grid gap-1.5"><Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Week slot</Label>
+                <Select value={draftStr("day")} onValueChange={(v) => setDraftField("day", Number(v))}><SelectTrigger aria-label="Week slot"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="0">—</SelectItem>{[1, 2, 3, 4, 5, 6, 7].map((d) => <SelectItem key={d} value={String(d)}>{WEEKDAY[d]} · {WEEK_PLAN[d].slot.split(" · ")[1]}</SelectItem>)}</SelectContent></Select></div>
+              <div className="grid gap-1.5"><Label htmlFor="lb-owner" className="text-[11px] uppercase tracking-wide text-muted-foreground">Owner</Label>
+                <Input id="lb-owner" value={draftStr("owner")} disabled={!workflowReady} onChange={(e) => setDraftField("owner", e.target.value)} placeholder="Who does the next step" /></div>
+              <div className="grid gap-1.5"><Label htmlFor="lb-due" className="text-[11px] uppercase tracking-wide text-muted-foreground">Deadline</Label>
+                <Input id="lb-due" type="date" value={draftStr("due_date").slice(0, 10)} disabled={!workflowReady} onChange={(e) => setDraftField("due_date", e.target.value)} /></div>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditorOpen(false)}>Cancel</Button>
-            <Button onClick={saveDraft} disabled={saving} className="bg-primary text-primary-foreground hover:bg-primary/90">{saving && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}{editing ? "Save" : "Add idea"}</Button>
+            <Button onClick={saveDraft} disabled={saving} className="bg-primary text-primary-foreground hover:bg-primary/90">{saving && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" aria-hidden />}{editing ? "Save" : "Add idea"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

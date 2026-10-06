@@ -117,7 +117,6 @@ const Storefront = lazy(() => import("./pages/Storefront"));
 const XcelPipeline = lazy(() => import("./pages/XcelPipeline"));
 const DashboardCRM = lazy(() => import("./pages/DashboardCRM"));
 const RecruitingLinks = lazy(() => import("./pages/RecruitingLinks"));
-const ContentQueue = lazy(() => import("./pages/ContentQueue"));
 const ContentAccessGate = lazy(() => import("./components/content/ContentAccessGate").then((m) => ({ default: m.ContentAccessGate })));
 const CallLab = lazy(() => import("./pages/CallLab"));
 const CallLabLive = lazy(() => import("./pages/CallLabLive"));
@@ -184,7 +183,6 @@ const AutomationHealth = lazy(() => import("./pages/AutomationHealth"));
 // (see line ~563 comment). The lazy import was orphaned. Removed.
 const AgentPipelineSimple = lazy(() => import("./pages/AgentPipelineSimple"));
 const InstagramAutomation = lazy(() => import("./pages/InstagramAutomation"));
-const ContentLibrary = lazy(() => import("./pages/ContentLibrary"));
 const HiringPipeline = lazy(() => import("./pages/HiringPipeline"));
 const BookOfBusiness = lazy(() => import("./pages/BookOfBusiness"));
 const BusinessAnalytics = lazy(() => import("./pages/BusinessAnalytics"));
@@ -533,7 +531,8 @@ const App = () => (
                         agency-wide operating view. */}
                     <Route path="/dashboard/team" element={<ProtectedRoute><DashboardCRM /></ProtectedRoute>} />
                   <Route path="/dashboard/recruiting-links" element={<ProtectedRoute requireAdmin><RecruitingLinks /></ProtectedRoute>} />
-                  <Route path="/dashboard/content" element={<ProtectedRoute><ContentAccessGate><ContentQueue /></ContentAccessGate></ProtectedRoute>} />
+                  {/* §11: the Content page (approval queue + invite list) is the Launch Board's Queue tab now. Single hop. */}
+                  <Route path="/dashboard/content" element={<Navigate to="/dashboard/launch-board?tab=queue" replace />} />
                     <Route path="/dashboard/call-lab" element={<ProtectedRoute><CallLab /></ProtectedRoute>} />
                     <Route path="/dashboard/call-lab/live/:id" element={<ProtectedRoute><CallLabLive /></ProtectedRoute>} />
                     <Route path="/dashboard/call-lab/report/:id" element={<ProtectedRoute><CallLabReport /></ProtectedRoute>} />
@@ -772,7 +771,6 @@ const App = () => (
                         {/* /dashboard/hierarchy = Hierarchy (line 473) per Sam's 2026-06-15 directive. Pre-existing TeamHierarchy retired here to kill duplicate-route landmine. */}
                         <Route path="/dashboard/pipeline-simple" element={<AgentPipelineSimple />} />
                          <Route path="/dashboard/instagram-automation" element={<ProtectedRoute requireAdmin><InstagramAutomation /></ProtectedRoute>} />
-                          <Route path="/dashboard/content" element={<ProtectedRoute requireAdmin><ContentLibrary /></ProtectedRoute>} />
                            <Route path="/dashboard/hiring-pipeline" element={<ProtectedRoute requireAdmin allowManagers><HiringPipeline /></ProtectedRoute>} />
                           <Route path="/dashboard/admin/board-access" element={<ProtectedRoute requireAdmin><AdminBoardAccess /></ProtectedRoute>} />
                            <Route path="/dashboard/prelicensing" element={<ProtectedRoute><PrelicensingManager /></ProtectedRoute>} />

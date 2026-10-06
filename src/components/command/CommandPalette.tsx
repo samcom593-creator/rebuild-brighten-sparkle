@@ -68,7 +68,7 @@ const ROUTES: RouteEntry[] = [
   { label: "Inbox", path: "/dashboard/inbox", icon: Inbox, group: "Navigate", requires: "admin" },
   { label: "My Notifications", path: "/dashboard/notifications/mine", icon: Bell, group: "Navigate" },
   { label: "Notification Hub", path: "/dashboard/notifications", icon: Bell, group: "Navigate", requires: "admin" },
-  { label: "Content Library", path: "/dashboard/content", icon: ImageIcon, group: "Navigate", requires: "manager" },
+  { label: "Launch Board · Content", path: "/dashboard/launch-board", icon: ImageIcon, group: "Navigate", requires: "manager" },
   { label: "Award Graphics", path: "/dashboard/awards", icon: ImageIcon, group: "Navigate", requires: "admin" },
   { label: "Purchase Leads", path: "/purchase-leads", icon: ShoppingCart, group: "Navigate" },
   { label: "Automation Hub", path: "/dashboard/automation", icon: Activity, group: "Navigate", requires: "admin" },

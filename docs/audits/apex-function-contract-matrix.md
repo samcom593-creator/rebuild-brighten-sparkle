@@ -1,15 +1,15 @@
 # APEX Function Contract Matrix
 
-Generated: 2026-10-01T01:13:38.599Z
+Generated: 2026-10-06T03:34:49.059Z
 Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 
 ## Inventory Summary
 
-- Total Local Edge Functions: **236**
-- Configured in `config.toml`: **237**
+- Total Local Edge Functions: **237**
+- Configured in `config.toml`: **238**
 - Invoked Edge Functions in Source: **102**
-- Invoked RPC Calls in Source: **165**
-- SQL Functions in Migrations: **554**
+- Invoked RPC Calls in Source: **167**
+- SQL Functions in Migrations: **562**
 
 ## Edge Function Auth & Verification Contracts
 
@@ -99,6 +99,7 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 | `ig-voice-broadcast` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `instagram-auth` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `instagram-comments-backfill` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
+| `instagram-dm-replay` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `instagram-token-keepalive` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `instagram-webhook` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `insuracloud-outbox` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -260,6 +261,6 @@ applied by hand through bot-sql and never round-tripped into
 `supabase/migrations`, so this directory does not model the deployed database.
 `apex-doctor` queries `pg_proc` and is the authority on deployed state.
 
-- Invoked RPCs: **165**
-- Also declared in this commit's migrations: **156**
+- Invoked RPCs: **167**
+- Also declared in this commit's migrations: **158**
 - Declared only in the database: **9**

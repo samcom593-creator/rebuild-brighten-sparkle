@@ -55,6 +55,10 @@ export function BrandLeadsPanel() {
   const qc = useQueryClient();
   const [source, setSource] = useState<string>("all");
   const [openOnly, setOpenOnly] = useState(true);
+  // d3cc9bdf ("panels collapse by default") used `open`/`setOpen` without ever
+  // declaring them: `open` resolved to the global window.open -- a function, so
+  // always truthy -- and setOpen threw ReferenceError on every click.
+  const [open, setOpen] = useState(false);
 
   const query = useQuery({
     queryKey: ["brand-leads"],
@@ -112,7 +116,7 @@ export function BrandLeadsPanel() {
         {setStatus.error && <p className="text-sm text-amber-500">Status not saved: {(setStatus.error as Error).message}</p>}
         {query.isLoading && <p className="text-sm text-muted-foreground">Loading leads…</p>}
 
-        {leads.length > 0 && (
+        {open && leads.length > 0 && (
           <>
             <div className="flex flex-wrap gap-2">
               {["all", ...sources].map((s) => (

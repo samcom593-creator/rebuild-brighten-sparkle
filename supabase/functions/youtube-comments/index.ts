@@ -10,7 +10,7 @@
 //
 // Auth: Authorization: Bearer <APEX_BOT_TOKEN>.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const VIDEOS_TO_WATCH = 25;
 const BACKFILL_VIDEOS_PER_RUN = 60;      // ?backfill=1 walks the whole channel a page at a time (60 list units)
@@ -21,7 +21,7 @@ function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 }
 
-async function accessToken(sb: ReturnType<typeof createClient>, conn: { id: string; refresh_token: string; access_token: string | null; token_expires_at: string | null }): Promise<string | null> {
+async function accessToken(sb: SupabaseClient, conn: { id: string; refresh_token: string; access_token: string | null; token_expires_at: string | null }): Promise<string | null> {
   const fresh = conn.access_token && conn.token_expires_at && new Date(conn.token_expires_at).getTime() - Date.now() > 120_000;
   if (fresh) return conn.access_token;
   const r = await fetch("https://oauth2.googleapis.com/token", {

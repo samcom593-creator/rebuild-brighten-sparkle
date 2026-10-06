@@ -210,6 +210,24 @@ const PUBLIC_ALLOWLIST = new Set([
   // 2026-08-19 after it landed in 82c3dc20 without this entry and turned CI
   // red on every subsequent push.
   "site-shell-watch",
+  // instagram-dm-replay (MP-561): same shape as the MP-491 three. Its only
+  // automated caller is trg_instagram_token_replay, which fires through pg_net
+  // from an AFTER INSERT/UPDATE on system_settings.meta_instagram_token and
+  // presents `Bearer <apex_bot_token>` — a 64-char hex string, not a JWT, which
+  // the gateway refuses with UNAUTHORIZED_INVALID_JWT_FORMAT before the handler
+  // can run. So verify_jwt = true could never be this function's boundary; it
+  // would only break the trigger that exists to drain the hold queue the moment
+  // a fresh Instagram token lands, leaving every held reply unsent.
+  // The handler fails closed FIRST, before any read or any send: index.ts:36-38
+  // 401s unless the bearer matches APEX_BOT_TOKEN or the service-role key
+  // exactly, and both arms are `&&`-guarded on a non-empty env so an unset
+  // secret cannot acquit a caller. PROVEN LIVE against prod 2026-10-04, not
+  // read off the comment: no Authorization -> HTTP 401 {"ok":false,
+  // "error":"unauthorized"}, and `Bearer not-a-real-token` -> the same 401 —
+  // the handler's own refusal, never the gateway's. It sends DMs, so this gate
+  // is load-bearing: listed with rationale rather than raising the floor,
+  // because a count-only ratchet is fungible (MP-356).
+  "instagram-dm-replay",
   // Database triggers and durable outbox workers may authenticate with the
   // rotating bot token rather than a gateway-verifiable JWT. The function
   // itself fails closed and accepts only that trusted token or a valid user
@@ -352,6 +370,7 @@ const PUBLIC_CONTRACT = {
   "cron-inbound-brain-health": "in_handler_gate",
   "instagram-comments-backfill": "in_handler_gate",
   "instagram-token-keepalive": "in_handler_gate",
+  "instagram-dm-replay": "in_handler_gate",
   "youtube-comments": "in_handler_gate",
   // youtube-auth (MP-412): two gates, both proven live on prod — a connect key
   // derived HMAC-SHA256(APEX_BOT_TOKEN, "youtube-auth-connect-v1") to reach

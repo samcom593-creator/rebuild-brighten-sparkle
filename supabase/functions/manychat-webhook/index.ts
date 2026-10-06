@@ -19,7 +19,7 @@
 // Auth: shared secret via x-manychat-secret header OR body.secret (MANYCHAT_WEBHOOK_SECRET).
 // Response: { ok, intent, lead_score, auto_reply, apply_url, ... }
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -901,7 +901,7 @@ async function decide(text: string, rawSource: string, firstName: string | undef
 }
 
 async function fireUrgentLicensedAlert(
-  sb: ReturnType<typeof createClient>,
+  sb: SupabaseClient,
   handle: string | null,
   name: string | null,
   text: string,

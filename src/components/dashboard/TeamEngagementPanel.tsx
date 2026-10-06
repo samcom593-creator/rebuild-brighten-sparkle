@@ -84,6 +84,9 @@ function toCsv(rows: Row[]): string {
 export function TeamEngagementPanel() {
   const [filter, setFilter] = useState<FilterKey>("all");
   const [search, setSearch] = useState("");
+  // See BrandLeadsPanel: d3cc9bdf referenced `open`/`setOpen` without declaring
+  // them, so the toggle threw and the panel could never collapse.
+  const [open, setOpen] = useState(false);
 
   const query = useQuery({
     queryKey: ["admin-team-engagement"],
@@ -146,7 +149,7 @@ export function TeamEngagementPanel() {
         )}
         {query.isLoading && <p className="text-sm text-muted-foreground">Loading engagement…</p>}
 
-        {rows.length > 0 && (
+        {open && rows.length > 0 && (
           <>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
               {FILTERS.filter((f) => f.key !== "all").map((f) => (

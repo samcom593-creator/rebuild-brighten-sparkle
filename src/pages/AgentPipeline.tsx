@@ -209,6 +209,8 @@ export default function AgentPipeline() {
   const [schedulerOpen, setSchedulerOpen] = useState(false);
   const [schedulerApp, setSchedulerApp] = useState<Application | null>(null);
   const [detailAppId, setDetailAppId]   = useState<string | null>(null);
+  // PCW-10: a login with no agents row (VA, recruiter) used to get a silent empty page.
+  const [noAgentRow, setNoAgentRow]     = useState(false);
 
   const fetchApplications = useCallback(async () => {
     if (!user) return;
@@ -217,7 +219,8 @@ export default function AgentPipeline() {
       const { data: agentData } = await supabase
         .from("agents").select("id").eq("user_id", user.id).maybeSingle();
       if (!mounted.current) return;
-      if (!agentData) { setLoading(false); return; }
+      if (!agentData) { setNoAgentRow(true); setLoading(false); return; }
+      setNoAgentRow(false);
       setAgentId(agentData.id);
 
       let query = supabase.from("applications").select("*").is("terminated_at", null);
@@ -738,10 +741,21 @@ export default function AgentPipeline() {
             <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">No recruits found</h3>
             <p className="text-muted-foreground text-sm">
-              {applications.length === 0
-                ? "You don't have any recruits assigned yet."
-                : "Try adjusting your search or filter."}
+              {noAgentRow
+                ? "This page lists recruits attributed to your agent record, and your login has none."
+                : applications.length === 0
+                  ? "You don't have any recruits assigned yet."
+                  : "Try adjusting your search or filter."}
             </p>
+            {noAgentRow && (
+              <button
+                type="button"
+                onClick={() => navigate("/dashboard/recruiting")}
+                className="mt-4 text-sm font-semibold text-primary underline-offset-2 hover:underline"
+              >
+                Open the recruiting worklist
+              </button>
+            )}
           </GlassCard>
         ) : viewMode === "kanban" ? (
           <KanbanBoard

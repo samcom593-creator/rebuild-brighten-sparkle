@@ -114,7 +114,7 @@ export function UnlinkedAgentsPanel() {
       } as never);
       if (error) throw error;
     },
-    onSuccess: async () => { toast.success("Linked to AgentLink — production can credit them now"); await refresh(); },
+    onSuccess: async () => { toast.success("AgentLink ID saved. Older imported deals now credit them."); await refresh(); },
     onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "Could not link"),
   });
 
@@ -128,11 +128,11 @@ export function UnlinkedAgentsPanel() {
       <CardContent className="p-4">
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-            <ShieldAlert className="h-3 w-3" />Agents · production linkage
+            <ShieldAlert className="h-3 w-3" />Agents · AgentLink history link
           </p>
           {unlinked.length > 0 && (
             <Badge variant="outline" className="border-amber-500/40 text-amber-600 dark:text-amber-400">
-              {unlinked.length} cannot be credited
+              {unlinked.length} without AgentLink ID
             </Badge>
           )}
           <span className="ml-auto text-[11px] text-muted-foreground">{data.length} recent agents</span>
@@ -223,8 +223,8 @@ export function UnlinkedAgentsPanel() {
 
         {unlinked.length > 0 && (
           <p className="mt-3 text-[11px] text-muted-foreground">
-            AgentLink keys production by its own user id. Until one is set, nothing these {unlinked.length} write
-            can be credited to them — their book will read zero however much they sell.
+            An AgentLink ID only attributes older imported AgentLink deals. Deals posted in Apex and the Discord
+            feed credit these {unlinked.length} agents without one.
           </p>
         )}
       </CardContent>

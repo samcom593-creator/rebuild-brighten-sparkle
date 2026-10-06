@@ -541,32 +541,27 @@ function LeaksSection() {
   const { data: leaks } = useQuery({
     queryKey: ["sam_hq_leaks"],
     queryFn: async () => {
-      const [unclaimed, premiumGap, ghostAP, ica] = await Promise.all([
+      const [unclaimed, premiumGap, ghostAP] = await Promise.all([
         supabase.from("v_unclaimed_new_apps").select("*", { count: "exact", head: true }),
         supabase.from("v_carrier_premium_data_gap").select("*", { count: "exact", head: true }),
         // v_carrier_reconciliation status is emoji-prefixed ('🔴 BLIND' / '🟠 MOSTLY
         // BLIND' / '🟢 RECONCILED') — there is no literal 'unreconciled', so the old
         // filter always counted 0. Count everything that is not fully reconciled.
         supabase.from("v_carrier_reconciliation").select("*", { count: "exact", head: true }).neq("status", "🟢 RECONCILED"),
-        supabase.from("v_insuracloud_auth_health").select("status").limit(1),
       ]);
       return {
         unclaimed: unclaimed.count ?? null,
         premium_gap: premiumGap.count ?? null,
         ghost_ap: ghostAP.count ?? null,
-        ica_health: ica.data?.[0] ?? null,
       };
     },
     refetchInterval: 300_000,
   });
 
   const tiles = [
-    { label: "Unclaimed applicants", value: leaks?.unclaimed ?? "—", href: "/dashboard/applicants?filter=unclaimed", color: "text-amber-400" },
+    { label: "Unclaimed applicants", value: leaks?.unclaimed ?? "—", href: "/dashboard/recruiting?queue=unassigned", color: "text-amber-400" },
     { label: "Policies missing premium", value: leaks?.premium_gap ?? "—", href: "/dashboard/book-quality", color: "text-red-400" },
-    { label: "Unreconciled commissions", value: leaks?.ghost_ap ?? "—", href: "/dashboard/admin/book-quality", color: "text-red-400" },
-    // The health view's status is a full sentence ('🔴 AUTH DEAD — no successful
-    // sync in 2+ days…') that overflowed the tile. Collapse to a short badge.
-    { label: "InsuraCloud auth", value: (() => { const s = (leaks?.ica_health as { status?: string } | null)?.status ?? ""; if (!s) return "—"; return s.startsWith("🔴") ? "🔴 DEAD" : s.startsWith("🟠") ? "🟠 STALE" : s.startsWith("🟢") ? "🟢 OK" : s.slice(0, 16); })(), href: "/dashboard/system-health", color: "text-slate-600 dark:text-slate-300" },
+    { label: "Unreconciled commissions", value: leaks?.ghost_ap ?? "—", href: "/dashboard/book-quality", color: "text-red-400" },
   ];
 
   return (

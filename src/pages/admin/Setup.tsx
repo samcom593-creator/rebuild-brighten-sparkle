@@ -32,7 +32,7 @@ export default function Setup() {
       results.push({
         key: "agentlink_cookie", label: "Agent Link cookie",
         status: (cookie as any)?.value ? "ok" : "fail",
-        detail: (cookie as any)?.value ? "stored" : "not set — paste at /dashboard/agentlink-sync",
+        detail: (cookie as any)?.value ? "stored" : "not set",
       });
 
       // 2. Discord webhook configured
@@ -93,7 +93,7 @@ export default function Setup() {
         key: "stale_submitted", label: "Deals stuck in 'submitted' > 7 days",
         status: (staleCount ?? 0) === 0 ? "ok" : (staleCount! > 100 ? "warn" : "warn"),
         value: `${staleCount} deals · $${staleAlp.toLocaleString(undefined,{maximumFractionDigits:0})} ALP`,
-        detail: "Agent Link null-status upstream — not an APEX bug",
+        detail: "Includes historical AgentLink rows with no upstream status",
       });
 
       // 7. Orphan deals
@@ -132,8 +132,10 @@ export default function Setup() {
         .select("id, insuracloud_user_id").eq("is_deactivated", false);
       const unmapped = (activeAgents ?? []).filter((a:any) => !a.insuracloud_user_id).length;
       results.push({
-        key: "unmapped_agents", label: "Active agents not mapped to Agent Link",
-        status: unmapped === 0 ? "ok" : (unmapped > 20 ? "fail" : "warn"),
+        // AgentLink IDs only attribute historical imports; deals posted in Apex credit by agent_id,
+        // so a missing ID is informational, never a setup failure.
+        key: "unmapped_agents", label: "Active agents with no AgentLink ID (history only)",
+        status: "ok",
         value: unmapped,
         detail: "Auto-resolves via downline cron at 6 UTC daily",
       });
@@ -211,7 +213,7 @@ export default function Setup() {
       </GlassCard>
 
       <div className="text-xs text-muted-foreground">
-        For wiring help see Agent Link Sync (cookie paste) and the Integrations page (webhooks).
+        For wiring help see the Integrations page (webhooks).
       </div>
     </div>
   );

@@ -79,7 +79,7 @@ export default function CompTiersSettings() {
         <div>
           <h1 className="text-2xl font-bold">Comp Tiers</h1>
           <p className="text-sm text-muted-foreground">
-            Contract % (personal) and Override % (downline) per agent. Also InsuraCloud user ID for deal sync.
+            Contract % (personal) and Override % (downline) per agent. Also the legacy InsuraCloud user ID.
           </p>
         </div>
       </div>

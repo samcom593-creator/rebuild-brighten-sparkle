@@ -155,7 +155,7 @@ export default function ManagerCommandView() {
         subtitle={
           downlineIds.length === 0
             ? "No agents in your downline yet."
-            : `${downlineIds.length} agents · live production from AgentLink`
+            : `${downlineIds.length} agents · AgentLink history only. This month's posted and Discord deals are on the Leaderboard.`
         }
       />
 
@@ -204,7 +204,7 @@ export default function ManagerCommandView() {
               <p className="text-28 font-bold tabular-nums mt-1">{stuck.data?.length ?? 0}</p>
             )}
             <Button asChild variant="link" className="p-0 h-auto text-12 mt-1">
-              <Link to="/dashboard/applicants">Open applicants <ArrowRight className="h-3 w-3 ml-1" /></Link>
+              <Link to="/dashboard/recruiting">Open applicants <ArrowRight className="h-3 w-3 ml-1" /></Link>
             </Button>
           </CardContent>
         </Card>
@@ -263,13 +263,13 @@ export default function ManagerCommandView() {
               {agentRows.map((a) => (
                 <Link
                   key={a.id}
-                  to={`/dashboard/agent-management?agent=${a.id}`}
+                  to={`/dashboard/agent/${a.id}`}
                   className="flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-border hover:bg-slate-50 dark:hover:bg-muted transition-base"
                 >
                   <div className="min-w-0">
                     <p className="text-14 font-medium truncate">{a.display_name ?? "Unnamed"}</p>
                     <p className="text-11 text-muted-foreground">
-                      {a.al_user_id == null ? "AgentLink mapping pending" : `${a.monthly_deals} deals this month`}
+                      {a.al_user_id == null ? "No AgentLink history" : `${a.monthly_deals} AgentLink deals this month`}
                     </p>
                   </div>
                   <span className="tabular-nums text-14 font-semibold whitespace-nowrap">{money(a.monthly_premium)}</span>
@@ -283,19 +283,19 @@ export default function ManagerCommandView() {
       {/* Quick actions */}
       <div className="grid gap-2 sm:grid-cols-3">
         <Button asChild variant="outline" className="justify-between">
-          <Link to="/dashboard/inbound-leads">
-            <span className="flex items-center gap-2"><PhoneIncoming className="h-4 w-4" /> Inbound leads</span>
+          <Link to="/dashboard/call-center">
+            <span className="flex items-center gap-2"><PhoneIncoming className="h-4 w-4" /> Call Center</span>
             <ArrowRight className="h-4 w-4" />
           </Link>
         </Button>
         <Button asChild variant="outline" className="justify-between">
-          <Link to="/dashboard/applicants">
+          <Link to="/dashboard/recruiting">
             <span className="flex items-center gap-2"><Users className="h-4 w-4" /> Applicants</span>
             <ArrowRight className="h-4 w-4" />
           </Link>
         </Button>
         <Button asChild variant="outline" className="justify-between">
-          <Link to="/course-catalog">
+          <Link to="/dashboard/training/sales-course">
             <span className="flex items-center gap-2"><GraduationCap className="h-4 w-4" /> Apex Course</span>
             <ArrowRight className="h-4 w-4" />
           </Link>

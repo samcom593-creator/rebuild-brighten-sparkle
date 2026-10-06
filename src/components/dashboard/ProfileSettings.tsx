@@ -106,77 +106,6 @@ function DiscordWebhookSection() {
   );
 }
 
-function InsuraCloudTokenSection() {
-  const { user } = useAuth();
-  const [token, setToken] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [loaded, setLoaded] = useState(false);
-  const [show, setShow] = useState(false);
-
-  useEffect(() => {
-    if (!user?.id) return;
-    const load = async () => {
-      // Own token via SECURITY DEFINER RPC — the column is admin/owner-only at
-      // the DB (audit 2026-08-27), no longer readable off the agents row.
-      const { data } = await supabase.rpc("get_my_insuracloud_token" as never);
-      setToken((data as unknown as string) || "");
-      setLoaded(true);
-    };
-    load();
-  }, [user?.id]);
-
-  const handleSave = async () => {
-    if (!user?.id) return;
-    setSaving(true);
-    try {
-      const { error } = await supabase.rpc("set_my_insuracloud_token" as never, { p_token: token || "" } as never);
-      if (error) throw error;
-      toast({ title: "InsuraCloud token saved" });
-    } catch (e: any) {
-      toast({ title: "Failed to save", description: e?.message, variant: "destructive" });
-    }
-    setSaving(false);
-  };
-
-  if (!loaded) return null;
-
-  return (
-    <GlassCard className="p-6">
-      <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
-        <KeyRound className="h-5 w-5 text-amber-400" />
-        InsuraCloud Sync Token
-      </h3>
-      <p className="text-sm text-muted-foreground mb-4">
-        Paste your InsuraCloud (agentlink) Bearer token so your submitted deals sync automatically.
-        Open <a href="https://agentlink.replit.app" target="_blank" rel="noopener noreferrer" className="underline">agentlink</a>, sign in, open DevTools → Application → Local Storage and copy the <code>access_token</code> value. This token expires every ~15 minutes.
-      </p>
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <Input
-            type={show ? "text" : "password"}
-            placeholder="eyJ0eXAiOiJKV1Qi..."
-            value={token}
-            onChange={(e) => setToken(e.target.value)}
-          />
-          <button
-            type="button"
-            onClick={() => setShow((s) => !s)}
-            className="absolute right-1 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
-            aria-label={show ? "Hide token" : "Show token"}
-            aria-pressed={show}
-          >
-            {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-          </button>
-        </div>
-        <Button onClick={handleSave} disabled={saving} size="sm">
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}
-          Save
-        </Button>
-      </div>
-    </GlassCard>
-  );
-}
-
 export function ProfileSettings() {
   const { user, profile, refreshProfile, isAdmin } = useAuth();
   const navigate = useNavigate();
@@ -900,9 +829,6 @@ export function ProfileSettings() {
           </div>
         </GlassCard>
       )}
-
-      {/* Per-agent InsuraCloud sync token */}
-      <InsuraCloudTokenSection />
 
       {/* Admin Only: Discord Webhook */}
       {isAdmin && (

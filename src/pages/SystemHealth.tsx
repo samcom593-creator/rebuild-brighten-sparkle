@@ -82,17 +82,16 @@ interface DataQualityRow {
 const DQ_LABELS: Record<string, { label: string; href?: string }> = {
   interview_events_undispositioned_past: {
     label: "Interviews held with no outcome recorded",
-    href: "/dashboard/interview-recovery",
+    href: "/dashboard/recruiting",
   },
   prospects_no_person_record: {
     label: "Booked prospects with no application on file",
-    href: "/dashboard/interview-recovery",
+    href: "/dashboard/recruiting",
   },
   applications_flagged_duplicate: { label: "Applications flagged as duplicates" },
   book_impossible_effective_future: { label: "Book rows dated in the future" },
   agents_hired_licensed_no_agentlink: {
-    label: "Licensed agents with no AgentLink id",
-    href: "/admin/missing-al-link",
+    label: "Licensed agents with no AgentLink id (history only)",
   },
   agents_active_no_manager: { label: "Active agents with no manager" },
   interview_events_orphan_link: { label: "Interviews linked to a missing application" },
@@ -102,8 +101,8 @@ const DQ_LABELS: Record<string, { label: string; href?: string }> = {
   // Keys the v_data_quality_dashboard view emits that had no human label (rendered
   // as raw snake_case before).
   agent_status_contradicts_production: { label: "Agents whose status contradicts their production" },
-  agents_orphaned_no_manager: { label: "Agents with no manager", href: "/dashboard/agents" },
-  agents_sharing_agentlink_id: { label: "Agents sharing one AgentLink id", href: "/admin/missing-al-link" },
+  agents_orphaned_no_manager: { label: "Agents with no manager", href: "/dashboard/team" },
+  agents_sharing_agentlink_id: { label: "Agents sharing one AgentLink id", href: "/admin/agent-duplicates" },
   book_effective_date_implausible: { label: "Book rows with an implausible effective date" },
   book_rows_unattributed: { label: "Book rows with no agent (invisible to rollups)" },
   duplicate_active_agent_names: { label: "Active agents with duplicate names" },

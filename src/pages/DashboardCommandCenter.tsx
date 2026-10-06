@@ -87,7 +87,6 @@ import { ControlTerminal } from "@/components/dashboard/ControlTerminal";
 import { UnclaimedLeadsCard } from "@/components/dashboard/UnclaimedLeadsCard";
 import { Target20kPaceWidget } from "@/components/dashboard/Target20kPaceWidget";
 import { TeamHierarchyWidget } from "@/components/dashboard/TeamHierarchyWidget";
-import { InsuraCloudHealthAlert } from "@/components/dashboard/InsuraCloudHealthAlert";
 import { XcelLastSyncedBadge } from "@/components/dashboard/XcelLastSyncedBadge";
 import { NextStepStuckPool } from "@/components/next-step/NextStepStuckPool";
 import { NextStepFunnelStrip } from "@/components/next-step/NextStepFunnelStrip";
@@ -118,7 +117,7 @@ const HIDEABLE_CARDS: Record<string, string> = {
   "admin.team-hierarchy": "Team Hierarchy Manager",
   "admin.manager-invites": "Manager Invites",
   "admin.bulk-lead-assignment": "Bulk Lead Assignment",
-  "admin.team-commissions": "Team Commissions (InsuraCloud Live)",
+  "admin.team-commissions": "Team Commissions",
 };
 
 const surfaceMotion = {
@@ -653,9 +652,6 @@ export default function DashboardCommandCenter() {
 
         <ControlTerminal />
 
-        {/* InsuraCloud sync auth — only renders when 🔴 broken. Self-hiding. */}
-        <InsuraCloudHealthAlert />
-
         {/* Unclaimed applicants — money on the floor, first thing Sam sees */}
         <UnclaimedLeadsCard />
 
@@ -669,7 +665,7 @@ export default function DashboardCommandCenter() {
         <NextStepFunnelStrip />
         <NextStepStuckPool />
 
-        {/* Team Commissions (InsuraCloud Live) - sits ABOVE the stat grid */}
+        {/* Team Commissions - sits ABOVE the stat grid */}
         <HideableCard cardKey="admin.team-commissions" label="Team Commissions (Live)">
           <TeamCommissionsCard />
         </HideableCard>

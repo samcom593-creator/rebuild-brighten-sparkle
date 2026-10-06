@@ -228,7 +228,7 @@ const currentSnapshot = [
   "Claude background auto-resume is manual-only.",
   "Codex smart handoff is on for P0 website/code work only.",
   "Finance, social, and broad bots are manual-only by default.",
-  "Next P0 lane: Schedule, ReadyMode sync, AgentLink sync, System Setup, Seminar form.",
+  "Next P0 lane: Schedule, ReadyMode sync, System Setup, Seminar form.",
 ];
 
 const nextBuilds = [

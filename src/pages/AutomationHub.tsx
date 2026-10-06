@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Zap, Play, RefreshCw, Clock, CheckCircle2, XCircle, ToggleLeft, ToggleRight, Cloud, ChevronDown } from "lucide-react";
+import { Zap, Play, RefreshCw, Clock, CheckCircle2, XCircle, ToggleLeft, ToggleRight, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -7,7 +7,6 @@ import { PageHeader } from "@/components/ui/page-header";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
-import { InsuraCloudOutbox } from "@/components/admin/InsuraCloudOutbox";
 import { CronJobsPanel } from "@/components/admin/CronJobsPanel";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
@@ -42,7 +41,6 @@ export default function AutomationHub() {
   const [automations, setAutomations] = useState<AutomationSetting[]>([]);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState<string | null>(null);
-  const [outboxOpen, setOutboxOpen] = useState(true);
   const [cronOpen, setCronOpen] = useState(false);
 
   const fetchAutomations = async () => {
@@ -105,24 +103,6 @@ export default function AutomationHub() {
           </Button>
         }
       />
-
-      {isAdmin && (
-        <Collapsible open={outboxOpen} onOpenChange={setOutboxOpen}>
-          <div className="bg-card border border-border rounded-md">
-            <CollapsibleTrigger className="w-full flex items-center justify-between p-4 hover:bg-muted/30 rounded-md transition-colors">
-              <div className="flex items-center gap-2">
-                <Cloud className="h-4 w-4 text-primary" />
-                <span className="font-semibold text-sm" style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>InsuraCloud Outbox</span>
-                <span className="text-xs text-muted-foreground">— deal sync, mapping, retries</span>
-              </div>
-              <ChevronDown className={cn("h-4 w-4 transition-base", outboxOpen && "rotate-180")} />
-            </CollapsibleTrigger>
-            <CollapsibleContent className="p-4 pt-0">
-              <InsuraCloudOutbox />
-            </CollapsibleContent>
-          </div>
-        </Collapsible>
-      )}
 
       {isAdmin && (
         <Collapsible open={cronOpen} onOpenChange={setCronOpen}>

@@ -254,7 +254,7 @@ export function AgentOnboardingCommandCenter({
                         <p className="truncate text-sm font-semibold">{row.carrier_name}</p>
                         <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-muted-foreground">
                           <span>Comp {comp == null ? "—" : `${Number(comp)}%`}</span>
-                          {row.live_status && <span>AgentLink: {row.live_status.replace(/_/g, " ")}</span>}
+                          {row.live_status && <span>Imported status: {row.live_status.replace(/_/g, " ")}</span>}
                           {row.writing_number && <span>Writing #{row.writing_number}</span>}
                         </div>
                         {row.sent_at && (

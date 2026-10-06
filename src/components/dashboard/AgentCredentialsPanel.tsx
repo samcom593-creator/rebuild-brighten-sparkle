@@ -35,8 +35,6 @@ interface ServiceMeta {
 
 const SERVICES: ServiceMeta[] = [
   { key: "readymode",   label: "ReadyMode dialer",     hint: "Username + password the agent uses to log into ReadyMode." },
-  { key: "insuracloud", label: "InsuraCloud / AgentLink", hint: "InsuraCloud carrier portal login." },
-  { key: "agentlink",   label: "AgentLink CRM",        hint: "AgentLink agent portal credentials." },
   { key: "xcel",        label: "Xcel pre-licensing",   hint: "Xcel student account if Sam paid for the course." },
   { key: "other",       label: "Other",                hint: "Anything else (Discord recovery, etc.)." },
 ];

@@ -521,7 +521,7 @@ export default function AgentCommandDashboard() {
               {stats?.apps_needing_contact ? `${stats.apps_needing_contact} need contact now` : "Pipeline clean"}
             </span>
             <Button asChild size="sm" variant="ghost">
-              <Link to="/dashboard/applicants">Open <ChevronRight className="h-3 w-3 ml-0.5" /></Link>
+              <Link to="/dashboard/recruit-pipeline">Open <ChevronRight className="h-3 w-3 ml-0.5" /></Link>
             </Button>
           </div>
         </GlassCard>
@@ -1892,7 +1892,7 @@ function AgencyCommandView() {
               icon: FileCheck, label: "Policies Issued", value: fmtNum(policiesIssued),
               sub: `${periodBounds.label}`,
               tone: "text-foreground border-border bg-card",
-              href: "/book-of-business",
+              href: "/dashboard/book-of-business",
             },
             {
               icon: GraduationCap, label: "Licensed MTD", value: fmtNum(licensedMtd),
@@ -1992,8 +1992,8 @@ function AgencyCommandView() {
           { label: "Unlicensed recovery", count: priCounts?.unlicensed_ghosted_30 ?? 0, href: "/admin/unlicensed-all?filter=ghosted_30" },
           { label: "Producer drop risk", count: priCounts?.producer_risk ?? 0, href: "/admin/producer-trends" },
           { label: "Hot applicants", count: priCounts?.hot_applicants ?? 0, href: "/dashboard/applicants" },
-          { label: "Manager follow-ups", count: priCounts?.overdue_follow_ups ?? 0, href: "/dashboard/applicants?filter=follow_up_due" },
-          { label: "Chargeback watch", count: priCounts?.chargebacks_30d ?? 0, href: "/book-of-business" },
+          { label: "Manager follow-ups", count: priCounts?.overdue_follow_ups ?? 0, href: "/dashboard/recruiting?queue=overdue" },
+          { label: "Chargeback watch", count: priCounts?.chargebacks_30d ?? 0, href: "/dashboard/book-of-business" },
         ];
         const todayTotal = todayItems.reduce((a, b) => a + b.count, 0);
         const topItem = [...todayItems].sort((a, b) => b.count - a.count)[0];
@@ -2016,7 +2016,7 @@ function AgencyCommandView() {
         const sparkPts = spark.map((v, i) => `${(i / Math.max(1, spark.length - 1)) * 100},${34 - (v / sparkMax) * 30}`).join(" ");
         const attention = [
           { label: "Producer drop risk", count: priCounts?.producer_risk ?? 0, href: "/admin/producer-trends" },
-          { label: "Chargebacks in 30d window", count: priCounts?.chargebacks_30d ?? 0, href: "/book-of-business" },
+          { label: "Chargebacks in 30d window", count: priCounts?.chargebacks_30d ?? 0, href: "/dashboard/book-of-business" },
           { label: "Producers idle 10d+", count: (leak?.idle_active_agents ?? 0) as number, href: "/admin/producer-trends" },
         ].filter((r) => r.count > 0);
         return (
@@ -2172,8 +2172,8 @@ function AgencyCommandView() {
                 { title: "Unlicensed Recovery", count: priCounts?.unlicensed_ghosted_30 ?? 0, reason: "Ghosted 30d+ with no VA owner", href: "/admin/unlicensed-all?filter=ghosted_30", priorityKind: 'hot', icon: AlertTriangle },
                 { title: "Producer Drop Risk", count: priCounts?.producer_risk ?? 0, reason: "Currently dropping WoW ALP", href: "/admin/producer-trends", priorityKind: 'hot', icon: TrendingDown },
                 { title: "Hot Applicants", count: priCounts?.hot_applicants ?? 0, reason: "New applicants with no contact logged", href: "/dashboard/applicants", priorityKind: 'today', icon: Flame },
-                { title: "Manager Follow-Ups", count: priCounts?.overdue_follow_ups ?? 0, reason: "Overdue next-action across pipeline", href: "/dashboard/applicants?filter=follow_up_due", priorityKind: 'watch', icon: Clock },
-                { title: "Chargeback Watch", count: priCounts?.chargebacks_30d ?? 0, reason: "Policies within 30d chargeback window", href: "/book-of-business", priorityKind: 'watch', icon: ShieldAlert },
+                { title: "Manager Follow-Ups", count: priCounts?.overdue_follow_ups ?? 0, reason: "Overdue next-action across pipeline", href: "/dashboard/recruiting?queue=overdue", priorityKind: 'watch', icon: Clock },
+                { title: "Chargeback Watch", count: priCounts?.chargebacks_30d ?? 0, reason: "Policies within 30d chargeback window", href: "/dashboard/book-of-business", priorityKind: 'watch', icon: ShieldAlert },
               ];
               return cards.map((c) => {
                 const badge = priorityBadgeClasses(c.priorityKind);
@@ -2277,7 +2277,7 @@ function AgencyCommandView() {
                   </ul>
                   <div className="mt-3 space-y-1.5">
                     <Link to="/admin/recovery-queue" className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-13 font-medium hover:bg-secondary transition-colors">Open licensing push <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" /></Link>
-                    <Link to="/dashboard/applicants?filter=follow_up_due" className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-13 font-medium hover:bg-secondary transition-colors">Work overdue follow-ups <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" /></Link>
+                    <Link to="/dashboard/recruiting?queue=overdue" className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-13 font-medium hover:bg-secondary transition-colors">Work overdue follow-ups <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" /></Link>
                   </div>
                 </div>
               </div>
@@ -2495,9 +2495,9 @@ function AgencyCommandView() {
               </Link>
             </div>
             <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-              <Lane title="Uncontacted" count={uncontacted.length} tone="rose" items={uncontacted} tip="Inbox zero." href="/dashboard/applicants?contacted=untouched" />
+              <Lane title="Uncontacted" count={uncontacted.length} tone="rose" items={uncontacted} tip="Inbox zero." href="/dashboard/recruiting?queue=uncontacted" />
               <Lane title="Contacted · in progress" count={inProgress.length} tone="amber" items={inProgress} tip="Move them forward." href="/dashboard/applicants" />
-              <Lane title="Course bought" count={inCourse.length} tone="emerald" items={inCourse} tip="Coach to exam." href="/dashboard/applicants?status=course_bought" />
+              <Lane title="Course bought" count={inCourse.length} tone="emerald" items={inCourse} tip="Coach to exam." href="/dashboard/recruiting?view=classic&status=course_bought" />
               <Lane title="Licensed" count={licensed.length} tone="emerald" items={licensed} tip="Onboard fast." href="/dashboard/applicants?license=licensed" />
             </div>
           </div>
@@ -2608,16 +2608,12 @@ function AgencyCommandView() {
               <div className="group p-3 rounded-xl bg-white/[0.04] border border-white/[0.08] hover:border-white/20 transition-all">
                 <div className="flex items-center gap-1.5 mb-1.5">
                   <Activity className="h-3 w-3 text-white/60" />
-                  <p className="text-[9px] uppercase tracking-widest text-white/50 font-bold">Carrier sync</p>
+                  <p className="text-[9px] uppercase tracking-widest text-white/50 font-bold">Legacy imports</p>
                 </div>
                 <div className="space-y-0.5">
-                  <p className={`text-[13px] font-bold leading-tight flex items-center gap-1 ${String(leak.insuracloud_sync ?? "").includes("🟢") ? "text-emerald-300" : "text-rose-300"}`}>
-                    <span className={`h-1.5 w-1.5 rounded-full ${String(leak.insuracloud_sync ?? "").includes("🟢") ? "bg-emerald-400" : "bg-rose-400"}`} />
-                    InsuraCloud
-                  </p>
                   <p className={`text-[13px] font-bold leading-tight flex items-center gap-1 ${String(leak.agentlink_sync ?? "").includes("🟢") ? "text-emerald-300" : "text-rose-300"}`}>
                     <span className={`h-1.5 w-1.5 rounded-full ${String(leak.agentlink_sync ?? "").includes("🟢") ? "bg-emerald-400" : "bg-rose-400"}`} />
-                    AgentLink
+                    AgentLink history import
                   </p>
                 </div>
               </div>
@@ -2946,7 +2942,7 @@ function AgencyCommandView() {
       <details className="group rounded-lg border border-border bg-card">
         <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-muted-foreground flex items-center gap-2 hover:text-foreground">
           <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" />
-          Deep analytics — carrier mix, funnels &amp; AgentLink-parity panels
+          Deep analytics: carrier mix, funnels &amp; pace panels
         </summary>
         <div className="space-y-4 p-4 pt-0">
       <div className="grid gap-4 lg:grid-cols-2">
@@ -3125,7 +3121,7 @@ function AgencyCommandView() {
             <h3 className="text-14 font-bold text-slate-100">Manager Accountability</h3>
           </div>
           <Button asChild variant="ghost" size="sm">
-            <Link to="/dashboard/managers" className="text-11">Full board <ArrowRight className="h-3 w-3 ml-1" /></Link>
+            <Link to="/dashboard/team" className="text-11">My Team <ArrowRight className="h-3 w-3 ml-1" /></Link>
           </Button>
         </div>
         {managerAccountability.isLoading ? (
@@ -3248,7 +3244,7 @@ function AgencyCommandView() {
                 {
                   title: "6. Manager accountability",
                   metric: `${fmtNum(mgrRows.length)} managers tracked`,
-                  href: "/dashboard/managers",
+                  href: "/dashboard/team",
                   bullets: mgrRows.slice(0, 3).map((m) => ({ label: m.manager_name ?? "—", sub: `${fmtUsd(Number(m.team_alp_mtd ?? 0), true)} · ${fmtNum(m.team_size ?? 0)} team` })),
                 },
                 {
@@ -3352,7 +3348,7 @@ function CarrierMixPanel({ data, loading }: {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 items-center">
-            <Link to="/dashboard/carriers" className="sm:col-span-2 h-40 block group" title="Open Carrier Resources">
+            <Link to="/dashboard/book-of-business" className="sm:col-span-2 h-40 block group" title="Open Book of Business">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -3380,9 +3376,9 @@ function CarrierMixPanel({ data, loading }: {
               {chartData.slice(0, 6).map((row, i) => (
                 <Link
                   key={row.name}
-                  to="/dashboard/carriers"
+                  to="/dashboard/book-of-business"
                   className="flex items-center justify-between gap-2 text-[11px] hover:bg-white/[0.04] rounded-md px-1.5 py-1 transition-colors group"
-                  title={`Open ${row.name} resources`}
+                  title={`Open Book of Business for ${row.name}`}
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="h-2 w-2 rounded-full shrink-0" style={{ background: palette[i % palette.length] }} />
@@ -3960,9 +3956,9 @@ function PersonalPacePanel() {
         {pace.isLoading ? (
           <div className="space-y-2">{Array.from({length:3}).map((_,i)=><Skeleton key={i} /* stable-key-allow:skeleton */ className="h-10 bg-white/[0.04]" />)}</div>
         ) : !alUid ? (
-          <p className="text-12 text-white/60 italic">Link your al_user_id on your agent profile to see personal pace.</p>
+          <p className="text-12 text-white/60 italic">Personal pace reads AgentLink history only, and you have none. Your posted deals are on the <Link to="/dashboard/leaderboard" className="underline">Leaderboard</Link>.</p>
         ) : !p ? (
-          <p className="text-12 text-white/60">No production data found. Wire your AgentLink.</p>
+          <p className="text-12 text-white/60">Personal pace reads AgentLink history only. Deals you post in Apex show on the <Link to="/dashboard/leaderboard" className="underline">Leaderboard</Link>.</p>
         ) : (
           <>
             <div className="grid gap-4 grid-cols-1 sm:grid-cols-3 mb-4">

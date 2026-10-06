@@ -115,7 +115,8 @@ export function HomeOperationsSummary() {
       const waited = daysWaiting(r.primary?.waitingSince ?? null);
       list.push({
         key: `onb-${r.facts.agent_id}`,
-        to: "/dashboard/recruits",
+        // RecruitPipeline seeds its search box from ?q=, so the row opens on this hire.
+        to: r.facts.agent_name ? `/dashboard/recruits?q=${encodeURIComponent(r.facts.agent_name)}` : "/dashboard/recruits",
         text: `${r.facts.agent_name ?? "New hire"}: ${r.primary?.label ?? "onboarding step missing"}`,
         detail: `${r.primary?.owner ?? "Unassigned"}${waited != null ? ` · waiting ${waited}d` : ""}`,
       });

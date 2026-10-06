@@ -277,11 +277,6 @@ const QUICK_LINKS = [
     url: "https://apexfinancial.readymode.com/",
   },
   {
-    label: "AgentLink",
-    subtitle: "Agent CRM",
-    url: "https://agentlink.insuracloud.ai/",
-  },
-  {
     label: "APEX Recruits Sheet",
     subtitle: "See all applicants",
     url: "https://docs.google.com/spreadsheets/d/1bRk9DAsg0xUvAxWlo9DsGC1WxdDaCwlSQ13JYIN1cO4/edit?usp=sharing",

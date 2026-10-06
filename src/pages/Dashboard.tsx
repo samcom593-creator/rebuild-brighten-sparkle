@@ -58,9 +58,6 @@ const JustHiredPanel = lazy(() =>
 const BuilderProgressDashboard = lazy(() =>
   import("@/components/dashboard/BuilderProgressDashboard").then((m) => ({ default: m.BuilderProgressDashboard })),
 );
-const AgentLinkBookTruthCard = lazy(() =>
-  import("@/components/dashboard/AgentLinkBookTruthCard").then((m) => ({ default: m.AgentLinkBookTruthCard })),
-);
 const CarrierBreakdownCard = lazy(() =>
   import("@/components/dashboard/CarrierBreakdownCard").then((m) => ({ default: m.CarrierBreakdownCard })),
 );
@@ -653,7 +650,7 @@ function IntegrationCard({
   value: string;
   detail: string;
   state: IntegrationState;
-  href: string;
+  href?: string;
 }) {
   return (
     <GlassCard className="p-4">
@@ -666,11 +663,13 @@ function IntegrationCard({
       </div>
       <p className="text-sm font-bold tabular-nums text-foreground">{value}</p>
       <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-muted-foreground">{detail}</p>
-      <Button asChild variant="ghost" size="sm" className="mt-2 h-10 justify-start px-0 text-xs sm:h-9">
-        <Link to={href}>
-          Open <ArrowRight className="ml-1.5 h-4 w-4" />
-        </Link>
-      </Button>
+      {href ? (
+        <Button asChild variant="ghost" size="sm" className="mt-2 h-10 justify-start px-0 text-xs sm:h-9">
+          <Link to={href}>
+            Open <ArrowRight className="ml-1.5 h-4 w-4" />
+          </Link>
+        </Button>
+      ) : null}
     </GlassCard>
   );
 }
@@ -903,11 +902,10 @@ function ExecutiveDashboard({
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <IntegrationCard
           icon={Database}
-          title="AgentLink"
+          title="AgentLink history import"
           value={snapshot.agentLink.status ?? "No sync"}
           detail={`${number(snapshot.agentLink.policiesSeen)} policies seen · ${number(snapshot.agentLink.dealsInserted + snapshot.agentLink.dealsUpdated)} deal writes · ${ageLabel(snapshot.agentLink.lastSyncAt)}`}
           state={snapshot.agentLink.state}
-          href="/dashboard/agentlink-sync"
         />
         <IntegrationCard
           icon={Zap}
@@ -915,7 +913,7 @@ function ExecutiveDashboard({
           value={readyValue}
           detail={readyDetail}
           state={snapshot.readyMode.state}
-          href="/dashboard/leads"
+          href="/dashboard/readymode"
         />
         <IntegrationCard
           icon={CreditCard}

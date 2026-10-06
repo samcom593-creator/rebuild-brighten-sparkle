@@ -108,8 +108,8 @@ export default function AgentLinkSync() {
         accent="blue"
         eyebrow="Admin · Sync"
         eyebrowIcon={<Link2 className="h-3 w-3" />}
-        title="AgentLink Live Sync"
-        subtitle="Paste your AgentLink cookie once. The Edge sync pulls and routes your full book automatically every minute."
+        title="AgentLink History Sync"
+        subtitle="Admin only. Keeps the historical AgentLink import current. Current production comes from posted deals and the Discord feed."
         actions={
           cookieSet
             ? <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/40"><Zap className="h-3 w-3 mr-1" /> Live</Badge>

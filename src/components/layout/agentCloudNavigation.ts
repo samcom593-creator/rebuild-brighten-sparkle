@@ -1,7 +1,6 @@
 import type { ElementType } from "react";
 import { resolveBrand } from "@/config/brand";
 import {
-  Clapperboard,
   BarChart3,
   BookOpen,
   BookOpenCheck,
@@ -193,7 +192,6 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
     kicker: "ADMIN",
     items: [
       { label: "Launch Board", href: "/dashboard/launch-board", icon: Megaphone, adminOnly: true },
-      { label: "Content", href: "/dashboard/content", icon: Clapperboard, adminOnly: true },
       { label: "Reports", href: "/dashboard/analytics", icon: BarChart3, adminOnly: true },
       { label: "Finances", href: "/dashboard/finances", icon: WalletCards, adminOnly: true },
       { label: "Contracting Ops", href: "/dashboard/contracting/ops", icon: Target, adminOnly: true },

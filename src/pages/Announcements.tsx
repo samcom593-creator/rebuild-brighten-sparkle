@@ -152,7 +152,7 @@ export default function Announcements() {
         eyebrow="Community · Feed"
         eyebrowIcon={<Megaphone className="h-3 w-3" />}
         title="Announcements + News Feed"
-        subtitle="Active company announcements + live celebrations stream. Mirrors AgentLink's Announcements + News Feed."
+        subtitle="Active company announcements + live celebrations stream."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Button

@@ -932,7 +932,7 @@ export default function ProducerProfile() {
                   )}
                 </div>
               ) : (
-                <p className="text-12 text-muted-foreground">Production stats unlock once your manager links your AgentLink record. Ping your upline to wire it up.</p>
+                <p className="text-12 text-muted-foreground">Production stats appear once your login is linked to an agent record. Ask your upline or an admin to link it.</p>
               )}
             </CardContent>
           </Card>

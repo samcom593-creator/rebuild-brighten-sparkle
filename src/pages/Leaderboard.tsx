@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Crown, Loader2, Medal, TrendingUp, Calendar as CalendarIcon, Clock3, Target, Users, Activity, CalendarDays, Trophy, DollarSign, TrendingDown, AlertTriangle } from "lucide-react";
+import { Crown, Loader2, Medal, TrendingUp, Calendar as CalendarIcon, Target, Users, Activity, CalendarDays, Trophy, DollarSign, TrendingDown, AlertTriangle } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { formatDistanceToNowStrict } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
@@ -58,7 +58,7 @@ const RANK_ICONS: Record<number, { icon: typeof Crown; color: string }> = {
 };
 
 const BOARD_META: Record<Board, { label: string; icon: typeof Crown; source: string }> = {
-  production: { label: "Production", icon: Crown, source: "AgentLink book + deals posted in-app + Discord-reported · posted date · dead statuses excluded" },
+  production: { label: "Production", icon: Crown, source: "Deals posted in-app + Discord-reported + historical AgentLink imports · posted date · dead statuses excluded" },
   recruiting: { label: "Recruiting", icon: Target, source: "applications.created_at + owner attribution" },
   referrals: { label: "Referral", icon: Users, source: "applications.referral_manager_id" },
   activity: { label: "Activity", icon: Activity, source: "daily_production manual activity fields" },
@@ -191,9 +191,11 @@ export default function Leaderboard() {
     },
   });
 
-  // Freshness guard — the original bug was that the book silently froze
-  // (last synced 2026-07-06) while the board kept rendering stale totals as if
-  // live. Surface the book's age so staleness screams instead of lying.
+  // AgentLink history freshness. The header staleness badge that used to read
+  // this was removed (PL-APEX-OS-COHERENCE): AgentLink no longer delivers deals,
+  // so "No AgentLink deal posted in Nd" stayed on permanently while production
+  // kept flowing from posted and Discord deals. The empty state below still
+  // names the newest imported AgentLink policy as context.
   const bookFreshness = useQuery({
     queryKey: ["leaderboard-book-freshness"],
     refetchInterval: 300_000,
@@ -212,29 +214,6 @@ export default function Leaderboard() {
       } | null;
     },
   });
-  const staleDays = bookFreshness.data?.days_since_last_posted != null
-    ? Number(bookFreshness.data.days_since_last_posted)
-    : null;
-  // MP-462: this used to read last_import and call it "the pipeline question".
-  // It is not. MP-431 put trg_fn_suppress_noop_update('imported_at') on
-  // agentlink_book, so a rebuild that finds no content change writes nothing
-  // and last_import does not move -- by design. MP-435 added
-  // last_successful_refresh as the honest operand and said so in the view's own
-  // comment, then left this page (and the ntfy pager) on the old column. On
-  // 2026-09-07 that rendered a destructive "Book not imported in 2d" badge
-  // while the book had been rebuilt 45 minutes earlier and 125 of the previous
-  // 126 rebuilds had succeeded.
-  //
-  // greatest(refresh marker, content change) mirrors what the DB already does
-  // at migration 20260904224500:390: a NULL marker degrades to real evidence of
-  // a write rather than reading as "never synced".
-  const refreshHours = (() => {
-    const cands = [bookFreshness.data?.last_successful_refresh, bookFreshness.data?.last_import]
-      .map((v) => (v ? new Date(v).getTime() : NaN))
-      .filter((t) => Number.isFinite(t));
-    if (cands.length === 0) return null;
-    return Math.floor((Date.now() - Math.max(...cands)) / 3_600_000);
-  })();
 
   const buildRows = useCallback(async (ids: string[], grouped: Map<string, { primary: number; secondary: number; tertiary: number }>) => {
     if (ids.length === 0) return [];
@@ -505,7 +484,7 @@ export default function Leaderboard() {
       const deals = row.secondary;
       const size = row.leg_size ?? 0;
       const sizeLabel = `${size} agent${size === 1 ? "" : "s"} in leg`;
-      if (deals === 0) return `${sizeLabel} · 0 deals via AgentLink yet`;
+      if (deals === 0) return `${sizeLabel} · 0 deals in AgentLink history`;
       const avg = row.primary / deals;
       return `${sizeLabel} · ${deals} deal${deals === 1 ? "" : "s"} · avg ${formatMoney(avg)}`;
     }
@@ -530,29 +509,6 @@ export default function Leaderboard() {
         subtitle="Production, recruiting, referral, and activity rankings from live platform tables."
         actions={
           <div className="flex items-center gap-2">
-            {/* The badge used to read "Book Nd stale", which says the sync is
-                broken. It measures something else: the age of the newest deal
-                POSTED in the AgentLink book. On 2026-08-31 that was 6 days
-                while the import itself had run 0h earlier and the board was
-                carrying deals through 08-28 from the other two sources. Both
-                facts are worth having; conflating them turns a quiet week into
-                a red alarm and teaches Sam to ignore the one badge here. */}
-            {board === "production" && staleDays !== null && staleDays > 3 && (
-              <Badge
-                variant={refreshHours !== null && refreshHours > 24 ? "destructive" : "outline"}
-                className="gap-1.5"
-                title={
-                  refreshHours !== null
-                    ? `Newest AgentLink-posted deal is ${staleDays}d old. The book itself was last refreshed ${refreshHours}h ago.`
-                    : `Newest AgentLink-posted deal is ${staleDays}d old. The last refresh time is unknown.`
-                }
-              >
-                <Clock3 className="h-3 w-3" />
-                {refreshHours !== null && refreshHours > 24
-                  ? `Book not refreshed in ${refreshHours}h`
-                  : `No AgentLink deal posted in ${staleDays}d`}
-              </Badge>
-            )}
             {lastUpdatedAt && (
               <Badge variant="outline" className="gap-1.5">
                 <CalendarIcon className="h-3 w-3" />
@@ -583,7 +539,7 @@ export default function Leaderboard() {
           </span>
         </div>
         <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
-          Source · v_production_comp_truth (AgentLink book + deals posted in-app + Discord-reported, de-duplicated) · posted date · America/Phoenix month window · same rows as the board below
+          Source · v_production_comp_truth (deals posted in-app + Discord-reported + historical AgentLink imports, de-duplicated) · posted date · America/Phoenix month window · same rows as the board below
         </p>
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -682,7 +638,7 @@ export default function Leaderboard() {
       <p className="text-xs leading-relaxed text-muted-foreground">
         {sourceHint}
         {board === "production" && productionMode === "top_legs" && (
-          <> · Top Producing Leg sources v_top_legs_excl_sam (AgentLink book, excludes Sam's leg).</>
+          <> · Top Producing Leg reads AgentLink history only (v_top_legs_excl_sam, excludes Sam's leg). It does not include deals posted in-app or the Discord feed.</>
         )}
       </p>
 
@@ -810,7 +766,7 @@ export default function Leaderboard() {
                       Fetched <span className="font-bold tabular-nums text-foreground">{rows.length.toLocaleString()}</span> ranked rows for the <span className="font-bold text-foreground">{period.replace("_", " ")}</span> window.
                       {/* MP-372: on the 1st/2nd of a month every to-date window is honestly empty. Say when the book last moved so an empty board is not read as a broken one. */}
                       {bookFreshness.data?.latest_posted && (
-                        <> Last policy posted <span className="font-bold text-foreground">{bookFreshness.data.latest_posted}</span>.</>
+                        <> Last imported AgentLink policy posted <span className="font-bold text-foreground">{bookFreshness.data.latest_posted}</span>.</>
                       )}
                     </>
                   }

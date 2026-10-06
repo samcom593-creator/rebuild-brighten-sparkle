@@ -550,11 +550,8 @@ const snapshot = useQuery({
             <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Activity className="h-3.5 w-3.5" /> System
             </span>
-            <Badge variant="outline" className={syncChipClass(snap.insuracloud_sync)}>
-              InsuraCloud {snap.insuracloud_sync}
-            </Badge>
             <Badge variant="outline" className={syncChipClass(snap.agentlink_sync)}>
-              AgentLink {snap.agentlink_sync}
+              AgentLink history import {snap.agentlink_sync}
             </Badge>
             <Badge variant="outline" className="bg-success/15 text-success border-success/30">
               <ShieldCheck className="h-3 w-3" /> Snapshot LIVE · cron-refreshed

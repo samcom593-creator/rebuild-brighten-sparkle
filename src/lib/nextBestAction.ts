@@ -278,9 +278,9 @@ function producerRiskNBA(input: NBAInput): NextBestAction {
 
   if (input.never_activated_60_days) {
     return {
-      action: 'AgentLink check + first-deal push',
+      action: 'Activation check + first-deal push',
       reason: 'Licensed 60+ days with no activation',
-      cta: 'AgentLink check',
+      cta: 'Activation check',
       priority: 'critical',
     };
   }
@@ -296,9 +296,9 @@ function producerRiskNBA(input: NBAInput): NextBestAction {
 
   if (input.no_agentlink) {
     return {
-      action: 'Fix AgentLink before production tracking breaks',
-      reason: 'AgentLink missing — production invisible',
-      cta: 'Fix AgentLink',
+      action: 'Link legacy AgentLink ID (history only)',
+      reason: 'No AgentLink ID, so older imported deals are not credited',
+      cta: 'Link AgentLink ID',
       priority: 'hot',
     };
   }

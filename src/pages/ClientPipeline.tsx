@@ -892,8 +892,8 @@ export default function ClientPipeline() {
         </div>
         {!housingDataAvailable && (
           <p className="text-xs text-muted-foreground mt-3 leading-relaxed">
-            Housing type isn't currently synced from AgentLink. The mortgage / rent fields land NULL or 0 for every client in the mirror.
-            Request the field in the next AgentLink sync to enable a real renter vs homeowner split.
+            Housing type isn't recorded for these clients. The mortgage / rent fields are empty for every client in this list,
+            so a renter vs homeowner split isn't possible yet.
           </p>
         )}
       </div>

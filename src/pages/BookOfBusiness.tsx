@@ -19,7 +19,6 @@ import {
   DollarSign,
   Shield,
   MoreVertical,
-  ExternalLink,
   Filter,
   Download,
   X,
@@ -62,8 +61,8 @@ import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
-import { AgentLinkConnectionPrompt } from "@/components/dashboard/AgentLinkConnectionPrompt";
 import { AgentNameLink } from "@/components/dashboard/AgentNameLink";
+import { Link } from "react-router-dom";
 import { BookAuditPanel } from "@/components/dashboard/BookAuditPanel";
 import { AyroProductionPanel } from "@/components/dashboard/AyroProductionPanel";
 import { toast } from "@/hooks/use-toast";
@@ -273,7 +272,7 @@ function sourceKey(source?: string | null): BookSourceKey {
 function sourceLabel(source?: string | null): string {
   const key = sourceKey(source);
   if (key === "ethos") return "Ethos";
-  return key === "agent_link" ? "AgentLink" : "APEX";
+  return key === "agent_link" ? "AgentLink (imported)" : "APEX";
 }
 
 function pipelineLabel(deal: DealRow): string {
@@ -695,8 +694,8 @@ export default function BookOfBusiness() {
             mappedAgent?.profile?.full_name ??
             mappedAgent?.display_name ??
             (Number.isFinite(agentlinkUserId)
-              ? `AgentLink user #${agentlinkUserId}`
-              : "Unmatched AgentLink agent"),
+              ? `Unmatched imported agent #${agentlinkUserId}`
+              : "Unmatched imported agent"),
           carrier_name: carrierId ? (alCarrierMap[carrierId] ?? "") : "",
         } as DealRow;
       });
@@ -844,7 +843,7 @@ export default function BookOfBusiness() {
             (r.agent_id
               ? (agentMap[r.agent_id] ?? "Agent")
               : r.agentlink_user_id
-                ? `AgentLink user #${r.agentlink_user_id}`
+                ? `Unmatched imported agent #${r.agentlink_user_id}`
                 : "Agent"),
           carrier_name:
             r.carrier_name ??
@@ -1288,22 +1287,6 @@ export default function BookOfBusiness() {
     URL.revokeObjectURL(url);
   }
 
-  const openAgentLink = (deal?: DealRow | null) => {
-    if (deal?.policy_number) {
-      window.open(
-        `https://agentlink.insuracloud.ai/book-of-business?q=${encodeURIComponent(deal.policy_number)}`,
-        "_blank",
-        "noopener,noreferrer",
-      );
-    } else {
-      window.open(
-        "https://agentlink.insuracloud.ai/book-of-business",
-        "_blank",
-        "noopener,noreferrer",
-      );
-    }
-  };
-
   const syncErrors = useMemo(
     () => filtered.filter((d) => Boolean(d.insuracloud_sync_error)).length,
     [filtered],
@@ -1317,7 +1300,7 @@ export default function BookOfBusiness() {
         eyebrow="Production · Book of Business"
         eyebrowIcon={<Book className="h-3 w-3" />}
         title="Book of Business"
-        subtitle="Every policy record across the agency. Synced from AgentLink and Ethos."
+        subtitle="Every policy record across the agency: deals posted in-app, Ethos policies, and historical AgentLink imports."
         actions={
           <>
             <Button
@@ -1330,16 +1313,6 @@ export default function BookOfBusiness() {
                 className={cn("mr-1.5 h-4 w-4", loading && "animate-spin")}
               />
               Refresh
-            </Button>
-            <Button variant="outline" size="sm" asChild className="h-10 sm:h-9">
-              <a
-                href="https://agentlink.insuracloud.ai/book-of-business"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <ExternalLink className="mr-1.5 h-4 w-4" />
-                Open AgentLink
-              </a>
             </Button>
             <Button
               variant="outline"
@@ -1370,8 +1343,6 @@ export default function BookOfBusiness() {
           </>
         }
       />
-
-      <AgentLinkConnectionPrompt />
 
       {/* Sam 2026-09-24: Ayro Financial production (separate book) now live on the site. */}
       <AyroProductionPanel />
@@ -1625,22 +1596,12 @@ export default function BookOfBusiness() {
           label="Total Deals"
           value={loading ? "…" : kpi.totalDeals.toLocaleString()}
           tone="neutral"
-          sub={
-            truth?.deals_this_month != null
-              ? `${Number(truth.deals_this_month).toLocaleString()} AgentLink this month`
-              : undefined
-          }
         />
         <KpiCard
           icon={<DollarSign className="h-4 w-4" />}
           label="Annual Premium"
           value={loading ? "…" : fmt$(kpi.totalALP)}
           tone="neutral"
-          sub={
-            truth?.premium_this_month != null
-              ? `${fmt$(Number(truth.premium_this_month))} AgentLink this month`
-              : undefined
-          }
         />
         <KpiCard
           icon={<DollarSign className="h-4 w-4" />}
@@ -1680,8 +1641,8 @@ export default function BookOfBusiness() {
             <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
             <p className="min-w-0 text-sm text-foreground">
               <span className="font-semibold tabular-nums">{syncErrors}</span>{" "}
-              deal{syncErrors === 1 ? "" : "s"} have AgentLink sync errors.
-              Filter/search by policy or external id before trusting totals.
+              deal{syncErrors === 1 ? "" : "s"} carry an old failed AgentLink
+              push. The deals and the totals here are unaffected.
             </p>
           </div>
         </div>
@@ -1787,7 +1748,7 @@ export default function BookOfBusiness() {
                     <SelectContent>
                       <SelectItem value="all">All</SelectItem>
                       <SelectItem value="apex">APEX</SelectItem>
-                      <SelectItem value="agent_link">AgentLink</SelectItem>
+                      <SelectItem value="agent_link">AgentLink (imported)</SelectItem>
                       <SelectItem value="ethos">Ethos</SelectItem>
                     </SelectContent>
                   </Select>
@@ -1902,7 +1863,7 @@ export default function BookOfBusiness() {
           </div>
           {truth?.last_synced_at && (
             <span className="shrink-0 text-[11px] text-muted-foreground">
-              Synced{" "}
+              AgentLink history imported{" "}
               {formatDistanceToNowStrict(new Date(truth.last_synced_at), {
                 addSuffix: true,
               })}
@@ -1954,21 +1915,24 @@ export default function BookOfBusiness() {
                       }
                       description={
                         deals.length === 0
-                          ? "Zero rows returned for your scope. The book is not empty until the sync and your AgentLink mapping both check out."
+                          ? "Zero rows returned for your scope. Deals you post appear here once saved."
                           : `Fetched ${deals.length.toLocaleString()} deals from the database. Nothing in the book matches the current filter set.`
                       }
                       actions={
                         deals.length === 0 ? (
                           <ul className="max-w-md list-disc space-y-1 pl-5 text-left text-xs leading-relaxed text-muted-foreground">
                             <li>
-                              Agent has no AgentLink user mapping (al_user_id
-                              NULL)
+                              No deal has been posted under your agent record
+                              yet. Use{" "}
+                              <Link
+                                to="/dashboard/production"
+                                className="font-medium text-foreground underline underline-offset-2"
+                              >
+                                Post a Deal
+                              </Link>{" "}
+                              to record one.
                             </li>
                             <li>Your session expired (log out + back in)</li>
-                            <li>
-                              AgentLink sync is dark — check /dashboard/finances
-                              · CFO bot
-                            </li>
                           </ul>
                         ) : (
                           <Button
@@ -2121,14 +2085,6 @@ export default function BookOfBusiness() {
                               <Eye className="mr-2 h-4 w-4" />
                               View policy
                             </DropdownMenuItem>
-                            {sourceKey(d.source) !== "ethos" && (
-                              <DropdownMenuItem
-                                onClick={() => openAgentLink(d)}
-                              >
-                                <ExternalLink className="mr-2 h-4 w-4" />
-                                Open AgentLink
-                              </DropdownMenuItem>
-                            )}
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               onClick={() => markReviewed(d.id)}
@@ -2176,7 +2132,6 @@ export default function BookOfBusiness() {
       <PolicyDetailDrawer
         deal={selectedDeal}
         onClose={() => setSelectedDeal(null)}
-        onOpenAgentLink={openAgentLink}
       />
 
       {/* Chargeback Watch drawer */}
@@ -2289,11 +2244,9 @@ function FilterField({
 function PolicyDetailDrawer({
   deal,
   onClose,
-  onOpenAgentLink,
 }: {
   deal: DealRow | null;
   onClose: () => void;
-  onOpenAgentLink: (deal: DealRow | null) => void;
 }) {
   const { isAdmin } = useAuth();
   const [client, setClient] = useState<ClientFullRow | null>(null);
@@ -2638,23 +2591,11 @@ function PolicyDetailDrawer({
             </DrawerSection>
           )}
 
-          {/* 11. Source action */}
+          {/* 11. Close */}
           <div className="flex gap-2 pt-2">
-            {sourceKey(deal.source) !== "ethos" && (
-              <Button
-                className="h-10 flex-1 sm:h-9"
-                onClick={() => onOpenAgentLink(deal)}
-              >
-                <ExternalLink className="mr-1.5 h-4 w-4" />
-                Open AgentLink
-              </Button>
-            )}
             <Button
               variant="outline"
-              className={cn(
-                "h-10 sm:h-9",
-                sourceKey(deal.source) === "ethos" && "flex-1",
-              )}
+              className="h-10 flex-1 sm:h-9"
               onClick={onClose}
             >
               Close

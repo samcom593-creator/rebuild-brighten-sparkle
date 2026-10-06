@@ -66,7 +66,7 @@ export function AyroProductionPanel() {
             <Trophy className="h-4 w-4" /> Ayro Financial · production (all-time)
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            A separate book from AgentLink and Ethos, now live. {t?.excluded_agents ? <>Excluded per Sam: {t.excluded_agents}.</> : null}
+            A separate book from deals posted in-app and from Ethos, now live. {t?.excluded_agents ? <>Excluded per Sam: {t.excluded_agents}.</> : null}
             {t?.as_of && <span className="ml-1 text-xs">Pulled {new Date(t.as_of).toLocaleString()}.</span>}
           </p>
         </div>

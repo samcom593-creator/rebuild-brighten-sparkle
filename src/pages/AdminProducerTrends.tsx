@@ -2,7 +2,7 @@
  * /admin/producer-trends — MP-259 rebuild
  *
  * Sam directive (2026-07-07): rebuild the Producer Trends surface with a
- * proper CommandHeader + 6-KPI grid + 3 ProducerAlertCards + ProducerRiskTable
+ * proper CommandHeader + 6-KPI grid + 2 ProducerAlertCards + ProducerRiskTable
  * + NeverActivatedTable + ProducerDetailsDrawer wired to the recovery-review
  * workflow.
  *
@@ -694,11 +694,6 @@ export default function AdminProducerTrends() {
     };
   }, [drawerRow]);
 
-  const noAgentLinkCount = useMemo(
-    () => rows.filter((r) => r.no_agentlink).length,
-    [rows],
-  );
-
   return (
     <>
       {/* max-w-[1400px] (not max-w-6xl) — the primary content is a 12-column
@@ -820,7 +815,7 @@ export default function AdminProducerTrends() {
         </div>
 
         {/* Alert Cards */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <ProducerAlertCard
             tone="rose"
             icon={
@@ -842,17 +837,6 @@ export default function AdminProducerTrends() {
             body="Licensed, cleared the finish line, still zero production."
             cta="Start Activation Push"
             onCta={() => setKpi("never_activated_60d")}
-          />
-          <ProducerAlertCard
-            tone="amber"
-            icon={
-              <Link2Off className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
-            }
-            eyebrow="No AgentLink"
-            title={`${noAgentLinkCount} producer${noAgentLinkCount === 1 ? "" : "s"} missing AgentLink`}
-            body="Production is invisible until AgentLink is linked. Fix the pipe."
-            cta="Fix Links"
-            onCta={() => setRiskFilter("watch")}
           />
         </div>
 
@@ -1418,7 +1402,7 @@ function ProducerRiskTable({
             <th className="px-2 py-2 text-left">3-Week Trend</th>
             <th className="px-2 py-2 text-right">Policies</th>
             <th className="px-2 py-2 text-left">Stage</th>
-            <th className="px-2 py-2 text-left">AgentLink</th>
+            <th className="px-2 py-2 text-left">AgentLink ID (history)</th>
             <th className="px-2 py-2 text-right">Last Contact</th>
             <th className="px-2 py-2 text-left">Risk</th>
             <th className="px-2 py-2 text-left">Next Best Action</th>
@@ -1491,7 +1475,7 @@ function ProducerRiskTable({
                   ) : (
                     <Badge
                       variant="outline"
-                      className="border-amber-500/40 text-[10px] text-amber-600 dark:text-amber-400"
+                      className="text-[10px] text-muted-foreground"
                     >
                       <Link2Off className="mr-1 h-3 w-3 shrink-0" /> unlinked
                     </Badge>
@@ -1615,7 +1599,7 @@ function NeverActivatedTable({ rows }: { rows: NewHireActivationRow[] }) {
             <th className="px-2 py-2 text-right">Days Since Hire</th>
             <th className="px-2 py-2 text-left">Stage</th>
             <th className="px-2 py-2 text-left">Manager</th>
-            <th className="px-2 py-2 text-left">AgentLink</th>
+            <th className="px-2 py-2 text-left">AgentLink ID (history)</th>
             <th className="px-2 py-2 text-right">Last Activity</th>
             <th className="px-2 py-2 text-left">Next Action</th>
             <th className="px-2 py-2 text-right">Actions</th>
@@ -1666,7 +1650,7 @@ function NeverActivatedTable({ rows }: { rows: NewHireActivationRow[] }) {
                 ) : (
                   <Badge
                     variant="outline"
-                    className="border-amber-500/40 text-[10px] text-amber-600 dark:text-amber-400"
+                    className="text-[10px] text-muted-foreground"
                   >
                     <Link2Off className="mr-1 h-3 w-3 shrink-0" />
                     unlinked
@@ -1681,7 +1665,7 @@ function NeverActivatedTable({ rows }: { rows: NewHireActivationRow[] }) {
                   className="truncate text-sm font-medium text-foreground"
                   title={r.next_action_text ?? undefined}
                 >
-                  {r.next_action_text ?? "AgentLink check + first-deal push"}
+                  {r.next_action_text ?? "Activation check + first-deal push"}
                 </div>
                 {r.next_action_due_at && (
                   <div className="mt-0.5 truncate text-[11px] tabular-nums text-muted-foreground">

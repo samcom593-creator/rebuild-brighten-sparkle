@@ -225,7 +225,11 @@ function computeAgentNBA(agent: {
       (agent.daysSinceHire ?? 0) >= 60,
     no_alp_30_days: agent.monthlyALP === 0 && agent.agentLicenseStatus === "licensed",
     down_this_week: agent.prevWeekALP > 0 && agent.weeklyALP < agent.prevWeekALP,
-    no_agentlink: !agent.hasReadymodeCreds && agent.agentLicenseStatus === "licensed",
+    // This used to read !agent.hasReadymodeCreds, so a missing DIALER login was
+    // reported as a missing AgentLink link. AgentLink IDs only matter for
+    // older imported deals (posted deals credit by agent_id), so the CRM does
+    // not raise it as a next action.
+    no_agentlink: false,
     no_recent_contact: daysSinceContact !== null && daysSinceContact >= 7,
     suppressed: agent.isDeactivated || agent.isInactive,
   };
@@ -2175,7 +2179,7 @@ export default function DashboardCRM() {
         {(isAdmin || isManager) && (
           <details className="group rounded-lg border border-border bg-card [&[open]_.chev]:rotate-180">
             <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground hover:text-foreground">
-              Roster health · just hired, onboarding roll call, unlinked production
+              Roster health · just hired, onboarding roll call, AgentLink history links
               <ChevronDown className="chev ml-auto h-4 w-4 transition-transform" />
             </summary>
             <div className="space-y-4 border-t border-border p-4">

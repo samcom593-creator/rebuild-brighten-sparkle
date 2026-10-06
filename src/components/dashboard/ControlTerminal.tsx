@@ -119,9 +119,9 @@ export function ControlTerminal() {
           supabase.rpc("agentlink_award_top_producers" as never),
         ]);
         if (syncRes.error || awardsRes.error) throw new Error(syncRes.error?.message || awardsRes.error?.message || "Sync failed");
-        const result = { ...planned, executedAction: "Refreshed AgentLink deals and leaderboard cache", result: "Live numbers and leaderboard snapshots were refreshed." };
+        const result = { ...planned, executedAction: "Re-ran the AgentLink history pull and nightly awards", result: "Leaderboard snapshots rebuilt. Current production comes from posted deals and the Discord feed." };
         setHistory((prev) => [result, ...prev].slice(0, 12));
-        toast.success("AgentLink data refreshed");
+        toast.success("Leaderboard rebuilt");
         setCommand("");
         return;
       }
@@ -245,7 +245,9 @@ export function ControlTerminal() {
   const headers = rows && rows.length > 0 ? Object.keys(rows[0]) : [];
 
   const quickPrompts = useMemo(() => [
-    "Refresh AgentLink and rebuild the leaderboard",
+    // Must not contain "leaderboard": that word matches the Open Leaderboard
+    // route shortcut first, so the old prompt navigated instead of syncing.
+    "Refresh deal numbers and nightly awards",
     "Show me today's live numbers",
     "Open CRM",
     "Run the system health check",

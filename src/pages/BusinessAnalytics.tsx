@@ -288,7 +288,7 @@ export default function BusinessAnalytics() {
         eyebrow="Reports · Overview"
         eyebrowIcon={<TrendingUp className="h-3 w-3" />}
         title="Business Analytics"
-        subtitle="This team's production, carriers and coaching signals — recomputed from the book every five minutes. Mirrors AgentLink's business-analytics page."
+        subtitle="This team's production, carriers and coaching signals, recomputed from the book every five minutes."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="outline" className="uppercase tracking-wide">Last 30 days</Badge>
@@ -713,7 +713,7 @@ export default function BusinessAnalytics() {
               <Sparkles className="mx-auto h-7 w-7 text-muted-foreground/50" />
               <p className="mt-2 text-sm font-medium text-foreground">No carrier data in the last 30 days</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Carrier rows appear here as deals land via the AgentLink sync. Check sync status if this stays empty.
+                Carrier rows appear here as deals land in the book.
               </p>
             </div>
           ) : (

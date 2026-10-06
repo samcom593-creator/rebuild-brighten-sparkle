@@ -93,7 +93,7 @@ export default function Rewards() {
         eyebrow="Production · Rewards"
         eyebrowIcon={<Sparkles className="h-3 w-3" />}
         title="Awards & Rewards"
-        subtitle="Auto-issued to top producers every night at 3:05 UTC from live AgentLink data."
+        subtitle="Auto-issued to top producers every night at 3:05 UTC from posted deals."
       />
 
       {loading ? (

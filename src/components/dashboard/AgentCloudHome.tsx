@@ -19,6 +19,7 @@ import {
 import { ImoByAgency } from "@/components/dashboard/ImoByAgency";
 import { TrainingNextStep } from "@/components/dashboard/TrainingNextStep";
 import { JoinYourTeam } from "@/components/dashboard/JoinYourTeam";
+import { HomeOperationsSummary } from "@/components/dashboard/HomeOperationsSummary";
 import { RecordsAndBounties } from "@/components/dashboard/RecordsAndBounties";
 import { ScopedProductionScoreboard } from "@/components/dashboard/ScopedProductionScoreboard";
 import { AyroProductionPanel } from "@/components/dashboard/AyroProductionPanel";
@@ -298,6 +299,10 @@ export function AgentCloudHome() {
             contract → sell, one truthful queue each. */}
         <OperationsCommandCenter />
       </div>
+
+      {/* Brief §4 order: production + agency breakdown above, then contracting, recruiting
+          & expected starts, and the few actions that need someone today. */}
+      <HomeOperationsSummary />
       <RecordsAndBounties />
 
       {/* MP-338 declutter. Sam: "so much options, that looks kinda cluttery."

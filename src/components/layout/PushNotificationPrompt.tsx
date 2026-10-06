@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
 const NOT_NOW_KEY = "push_prompt_not_now_at";
-const RE_PROMPT_MS = 7 * 24 * 60 * 60 * 1000; // 7 days — don't nag
+const RE_PROMPT_MS = 7 * 24 * 60 * 60 * 1000; // one ask per week, not per day // 7 days — don't nag
 
 // Surfaces that exist to be screenshotted/presented — a modal over them ruins
 // the capture, so the prompt never renders there.
@@ -37,7 +37,7 @@ export function PushNotificationPrompt() {
     const notNowAt = localStorage.getItem(NOT_NOW_KEY);
     if (notNowAt) {
       const elapsed = Date.now() - parseInt(notNowAt, 10);
-      if (elapsed < RE_PROMPT_MS) return; // Still within 24h cooldown
+      if (elapsed < RE_PROMPT_MS) return; // Still within the 7-day cooldown
     }
 
     // Home dashboard only: the 2026-08-20 UI audit saw this fire on all 9
@@ -54,7 +54,7 @@ export function PushNotificationPrompt() {
     const ok = await subscribe();
     if (ok) {
       setVisible(false);
-      toast.success("🔔 Push notifications enabled!");
+      toast.success("Alerts are on for this device.");
     } else {
       toast.info("Push notifications were not enabled. You can try again later.");
     }
@@ -68,59 +68,17 @@ export function PushNotificationPrompt() {
   if (!visible) return null;
 
   return (
-    // Non-blocking corner card — does NOT cover the dashboard. Was a full-screen
-    // inset-0 overlay that blocked the whole page on every load.
-    <div className="animate-fade-in fixed bottom-4 right-4 z-40 w-full max-w-sm">
-      <div className="landing-scale-in w-full rounded-md border border-primary/30 bg-card shadow-2xl">
-        {/* Header */}
-        <div className="flex flex-col items-center gap-3 p-6 pb-2 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-            <Bell className="h-8 w-8 text-primary" />
-          </div>
-          <h2 className="text-xl font-bold text-foreground">
-            Enable Push Notifications
-          </h2>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            Get instant alerts for new leads, deal closings, team updates, and important reminders — right on your device.
-          </p>
-        </div>
-
-        {/* Benefits */}
-        <div className="px-6 py-3">
-          <div className="space-y-2 rounded-md bg-muted/50 p-4">
-            {[
-              "📥 New lead assignments",
-              "🔥 Deal alerts from your team",
-              "📊 Production reminders",
-              "🎉 Milestone celebrations",
-            ].map((item) => (
-              <div key={item} className="flex items-center gap-2 text-sm text-foreground">
-                <span>{item}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex flex-col gap-2 p-6 pt-3">
-          <Button
-            size="lg"
-            onClick={handleEnable}
-            disabled={loading}
-            className="w-full text-base font-semibold"
-          >
-            {loading ? "Enabling..." : "🔔 Enable Notifications"}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleNotNow}
-            className="w-full text-muted-foreground hover:text-foreground"
-          >
-            <BellOff className="mr-2 h-4 w-4" />
-            Not Now
-          </Button>
-        </div>
+    // One compact line in the corner: asking for permission should never cover the dashboard.
+    <div className="animate-fade-in fixed bottom-4 right-4 z-40 w-[calc(100%-2rem)] max-w-sm" role="dialog" aria-label="Turn on device alerts">
+      <div className="flex items-center gap-3 rounded-md border border-border bg-card p-3 shadow-lg">
+        <Bell className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+        <p className="min-w-0 flex-1 text-sm text-foreground">Get deal and lead alerts on this device.</p>
+        <Button size="sm" onClick={handleEnable} disabled={loading} className="h-8 shrink-0">
+          {loading ? "Turning on…" : "Turn on"}
+        </Button>
+        <Button variant="ghost" size="sm" onClick={handleNotNow} className="h-8 shrink-0 text-muted-foreground" aria-label="Not now">
+          <BellOff className="h-4 w-4" aria-hidden />
+        </Button>
       </div>
     </div>
   );

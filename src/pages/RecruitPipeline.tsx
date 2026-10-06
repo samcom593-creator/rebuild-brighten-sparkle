@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ArrowRight, Download, Instagram, Mail, MessageSquare, Phone, Search, UserX, X } from "lucide-react";
@@ -8,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
+import { PageSkeleton } from "@/components/ui/page-skeleton";
 import { PageHeader } from "@/components/ui/page-header";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LicenseProgressSelector } from "@/components/dashboard/LicenseProgressSelector";
@@ -18,6 +19,9 @@ import { markNoLongerWithUs } from "@/lib/noLongerWithUs";
 import { useAuth } from "@/hooks/useAuth";
 import { useConfirm } from "@/hooks/useConfirm";
 import { formatTimeAgo } from "@/lib/dateUtils";
+import { buildExceptionQueue, type OnboardingFacts } from "@/lib/onboardingExceptions";
+import { ExpectedStartControl } from "@/components/onboarding/ExpectedStartControl";
+import { useOnboardingExceptionFacts } from "@/components/onboarding/useOnboardingExceptionFacts";
 
 /**
  * Recruit Stages (2026-09-30). Sam: "fix the licensing tracking so I can see
@@ -74,10 +78,9 @@ const personKey = (r: Row) => r.application_id ?? r.agent_id ?? r.display_name;
 const igUrl = (h: string) => `https://instagram.com/${encodeURIComponent(h)}`;
 
 function heatClass(days: number) {
-  if (days >= 60) return "text-rose-400 font-medium";
-  if (days >= 21) return "text-rose-300";
-  if (days >= 7) return "text-amber-300";
-  if (days < 2) return "text-emerald-300";
+  if (days >= 60) return "text-destructive font-medium";
+  if (days >= 21) return "text-destructive";
+  if (days >= 7) return "text-foreground font-medium";
   return "text-muted-foreground";
 }
 
@@ -86,7 +89,9 @@ export default function RecruitPipeline() {
   const askConfirm = useConfirm();
   const { isAdmin, isManager } = useAuth();
   const canRemove = !!(isAdmin || isManager);
-  const [search, setSearch] = useState("");
+  const [searchParams] = useSearchParams();
+  // ?q= deep link (the onboarding queue's "Update license" button lands here).
+  const [search, setSearch] = useState(() => searchParams.get("q") ?? "");
   const [stageFilter, setStageFilter] = useState<string | null>(null);
   const [idle, setIdle] = useState<IdleFilter>("all");
   const [link, setLink] = useState<LinkFilter>("all");
@@ -121,6 +126,21 @@ export default function RecruitPipeline() {
       return (data ?? []) as unknown as Row[];
     },
   });
+
+  // Expected start + open onboarding items per hired agent, from the same
+  // facts the No Hire Left Behind queue reads. A failure here never hides the
+  // recruit list; the agent rows say "unknown" instead of zero.
+  const factsQuery = useOnboardingExceptionFacts({ realtime: false });
+  const factsByAgent = useMemo(() => {
+    const m = new Map<string, { facts: OnboardingFacts; open: number; blocking: number }>();
+    for (const f of factsQuery.data ?? []) m.set(f.agent_id, { facts: f, open: 0, blocking: 0 });
+    for (const q of buildExceptionQueue(factsQuery.data ?? [])) {
+      const cur = m.get(q.facts.agent_id);
+      if (cur) { cur.open = q.exceptions.length; cur.blocking = q.exceptions.filter((e) => e.blocking).length; }
+    }
+    return m;
+  }, [factsQuery.data]);
+  const hiresWithOpenItems = useMemo(() => Array.from(factsByAgent.values()).filter((v) => v.open > 0).length, [factsByAgent]);
 
   // Retired stages (the seminar pair) stay in the table for history but are
   // never shown, offered, or derived.
@@ -322,6 +342,8 @@ export default function RecruitPipeline() {
   const idle7 = active.filter((r) => r.days_in_stage >= 7).length;
   const idle60 = active.filter((r) => r.days_in_stage >= 60).length;
 
+  if (rowsQuery.isLoading || stagesQuery.isLoading) return <PageSkeleton />;
+
   const chip = (on: boolean) =>
     cn("rounded-full border px-3 py-1 text-xs transition", on ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground hover:text-foreground");
 
@@ -331,7 +353,7 @@ export default function RecruitPipeline() {
         accent="cyan"
         eyebrow="Grow"
         title="Recruit Stages"
-        subtitle={`${active.length} recruits · ${idle7} idle 7d+ · ${idle60} idle 60d+`}
+        subtitle={`${active.length} recruits · ${idle7} idle 7d+ · ${idle60} idle 60d+${factsQuery.isSuccess ? ` · ${hiresWithOpenItems} hires with open onboarding items` : ""}`}
       />
 
       <div className="flex flex-wrap gap-1.5">
@@ -404,7 +426,7 @@ export default function RecruitPipeline() {
               {busy === "bulk" ? "Moving…" : "Apply"}
             </Button>
             {bulkOptions.some((o) => o.stage_key === "closed_lost") && (
-              <Button size="sm" variant="outline" className="h-8 text-rose-300" disabled={busy === "bulk"} onClick={() => bulkMove("closed_lost")}>
+              <Button size="sm" variant="outline" className="h-8 text-destructive" disabled={busy === "bulk"} onClick={() => bulkMove("closed_lost")}>
                 Close all {selectedRows.length}
               </Button>
             )}
@@ -413,10 +435,8 @@ export default function RecruitPipeline() {
         )}
       </div>
 
-      {rowsQuery.isLoading || stagesQuery.isLoading ? (
-        <Skeleton className="h-64 w-full" />
-      ) : rowsQuery.isError || stagesQuery.isError ? (
-        <p className="text-sm text-rose-400">
+      {rowsQuery.isError || stagesQuery.isError ? (
+        <p className="text-sm text-destructive">
           {rowsQuery.isError ? "The recruit list" : "The stage ladder"} did not load. Nothing is being guessed at in its place; refresh to retry.
         </p>
       ) : visible.length === 0 ? (
@@ -466,7 +486,7 @@ export default function RecruitPipeline() {
                           <div className="flex flex-wrap items-center gap-1.5">
                             <span className="truncate font-medium">{r.display_name}</span>
                             {r.person_type === "agent" && (r.license_status === "licensed" ? (
-                              <Badge variant="outline" className="text-[10px] text-emerald-300">Licensed</Badge>
+                              <Badge variant="outline" className="text-[10px] text-primary">Licensed</Badge>
                             ) : (
                               <LicenseProgressSelector
                                 agentId={r.agent_id ?? undefined}
@@ -482,7 +502,7 @@ export default function RecruitPipeline() {
                             {r.resident_state ? (
                               <button type="button" className="font-medium text-foreground hover:underline" title="Resident state (click to change)" onClick={() => setStateEditing(personKey(r))}>{r.resident_state}</button>
                             ) : stateEditing === personKey(r) ? null : (
-                              <button type="button" className="text-rose-300 hover:underline" onClick={() => setStateEditing(personKey(r))} aria-label={`Add state for ${r.display_name}`}>add state</button>
+                              <button type="button" className="text-destructive hover:underline" onClick={() => setStateEditing(personKey(r))} aria-label={`Add state for ${r.display_name}`}>add state</button>
                             )}
                             {stateEditing === personKey(r) && (
                               <Input
@@ -504,11 +524,11 @@ export default function RecruitPipeline() {
                               <>
                                 {" · "}
                                 {linkState(r) === "clicked" ? (
-                                  <span className="text-emerald-300">link clicked {formatTimeAgo(r.link_used_at ?? r.last_sign_in_at)}</span>
+                                  <span className="text-foreground">link clicked {formatTimeAgo(r.link_used_at ?? r.last_sign_in_at)}</span>
                                 ) : linkState(r) === "sent" ? (
-                                  <span className="text-amber-300">link sent {formatTimeAgo(r.link_sent_at)}, not clicked</span>
+                                  <span className="font-medium text-foreground">link sent {formatTimeAgo(r.link_sent_at)}, not clicked</span>
                                 ) : (
-                                  <span className="text-rose-300">link not sent</span>
+                                  <span className="text-destructive">link not sent</span>
                                 )}
                               </>
                             )}
@@ -526,7 +546,7 @@ export default function RecruitPipeline() {
                               <Mail className="h-3.5 w-3.5 shrink-0" /> {r.email}
                             </a>
                           ) : (
-                            <span className="text-xs text-rose-300">no phone or email</span>
+                            <span className="text-xs text-destructive">no phone or email</span>
                           )}
                           {r.instagram ? (
                             <Button asChild size="sm" variant="outline" className="h-7 gap-1 px-2 text-xs">
@@ -550,6 +570,28 @@ export default function RecruitPipeline() {
                               <Instagram className="h-3.5 w-3.5" /> add IG
                             </button>
                           )}
+                          {r.person_type === "agent" && r.agent_id && (() => {
+                            const info = factsByAgent.get(r.agent_id);
+                            if (!info) {
+                              // Outside the live onboarding population (paused,
+                              // departed, placeholder) or the facts did not load.
+                              return factsQuery.isError ? <span className="text-xs text-muted-foreground">start unknown</span> : null;
+                            }
+                            return (
+                              <>
+                                <ExpectedStartControl facts={info.facts} />
+                                {info.open > 0 && (
+                                  <Link
+                                    to={`/dashboard/onboarding-ladder`}
+                                    className={cn("text-xs hover:underline", info.blocking > 0 ? "font-medium text-destructive" : "text-muted-foreground")}
+                                    title="Open the onboarding queue"
+                                  >
+                                    {info.open} open item{info.open === 1 ? "" : "s"}
+                                  </Link>
+                                )}
+                              </>
+                            );
+                          })()}
                         </div>
                         <Select value={r.stage_key} onValueChange={(v) => void setStage(r, v)} disabled={isBusy}>
                           <SelectTrigger className="h-8 w-full text-xs sm:w-[220px]" aria-label={`Stage for ${r.display_name}`}>
@@ -570,7 +612,7 @@ export default function RecruitPipeline() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="h-8 gap-1 text-xs text-rose-300 hover:text-rose-200 sm:col-start-5 sm:justify-self-end"
+                            className="h-8 gap-1 text-xs text-destructive hover:text-destructive/80 sm:col-start-5 sm:justify-self-end"
                             disabled={isBusy}
                             aria-label={`No longer with us: ${r.display_name}`}
                             onClick={() => void removeAgent(r)}

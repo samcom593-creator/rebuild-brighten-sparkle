@@ -45,9 +45,7 @@ export default function InstagramAutomation() {
       // Use rpc or raw query since types may not be generated yet
       const { data, error } = await supabase
         .from("instagram_subscriptions" as any)
-        .select(`
-          id, agent_id, status, amount, last_paid, next_due
-        `)
+        .select("id, agent_id, status, instagram_handle, created_at") // amount, last_paid and next_due are not columns (400 on every load)
         .order("created_at", { ascending: false });
 
       if (error) throw error;

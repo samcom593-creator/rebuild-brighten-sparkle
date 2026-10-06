@@ -177,19 +177,37 @@ export default function ClientDetail() {
     },
   });
 
+  // agentlink_beneficiaries has no client id column (the old filter and three of its columns did not
+  // exist, so this read returned 400 on every load); it links to a client only by client_full_name.
+  const clientFullName = [client.data?.first_name, client.data?.last_name].filter(Boolean).join(" ").trim();
   const beneficiaries = useQuery<Beneficiary[]>({
-    queryKey: ["client-beneficiaries", client.data?.insuracloud_pipeline_client_id], enabled: !!client.data?.insuracloud_pipeline_client_id,
+    queryKey: ["client-beneficiaries", clientFullName], enabled: clientFullName.length > 0,
     queryFn: async () => {
-      const { data } = await supabase.from("agentlink_beneficiaries").select("id, first_name, last_name, relationship, percentage, date_of_birth").eq("insuracloud_pipeline_client_id", client.data!.insuracloud_pipeline_client_id!);
-      return (data ?? []) as unknown as Beneficiary[];
+      const { data, error } = await supabase.from("agentlink_beneficiaries").select("id, first_name, last_name").eq("client_full_name", clientFullName);
+      if (error) throw error;
+      return (data ?? []).map((b) => ({ ...b, relationship: null, percentage: null, date_of_birth: null })) as Beneficiary[];
     },
   });
 
+  // agentlink_contracts holds agents' carrier contracts (writing numbers), not client policies, so the
+  // old read here returned 400 on every load. The client row carries its own policy number.
   const contracts = useQuery<Contract[]>({
-    queryKey: ["client-contracts", clientId], enabled: !!clientId,
+    queryKey: ["client-policies", client.data?.policy_number], enabled: !!client.data?.policy_number,
     queryFn: async () => {
-      const { data } = await supabase.from("agentlink_contracts").select("id, carrier_name, product_name, face_amount, monthly_premium, status, effective_date").eq("client_id", clientId!).order("effective_date", { ascending: false });
-      return (data ?? []) as unknown as Contract[];
+      const { data, error } = await (supabase as unknown as { from: (t: string) => { select: (c: string) => { eq: (k: string, v: string) => Promise<{ data: Array<{ row_key: string; carrier: string | null; product: string | null; annual_premium: number | string | null; status: string | null; effective_date: string | null }> | null; error: Error | null }> } } })
+        .from("v_production_unified")
+        .select("row_key, carrier, product, annual_premium, status, effective_date")
+        .eq("policy_number", String(client.data!.policy_number));
+      if (error) throw error;
+      return (data ?? []).map((p) => ({
+        id: p.row_key,
+        carrier_name: p.carrier,
+        product_name: p.product,
+        face_amount: client.data?.face_amount ?? null,
+        monthly_premium: p.annual_premium != null ? Math.round(Number(p.annual_premium) / 12) : null,
+        status: p.status,
+        effective_date: p.effective_date,
+      }));
     },
   });
 

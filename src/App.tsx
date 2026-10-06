@@ -83,7 +83,18 @@ function LegacyWorkspaceRedirect({ to }: { to: string }) {
 import Index from "./pages/Index";
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Login = lazy(() => import("./pages/Login"));
-const Apply = lazy(() => import("./pages/Apply"));
+// WIB 2026-10-06: lazy() fetches on first RENDER, and /apply renders inside
+// QueryShell's lazy QueryProviderInner, so a cold /apply visit was a 3-level
+// waterfall: entry -> QueryProviderInner + vendor-supabase -> Apply chunk
+// (prod trace: Apply requested at 570ms, only after supabase landed at 560ms).
+// Landing directly on /apply starts the chunk at module eval instead, in
+// parallel with the provider. Same specifier, so the module map dedupes it.
+const loadApply = () => import("./pages/Apply");
+if (typeof window !== "undefined" && /^\/apply\/?$/.test(window.location.pathname)) {
+  // empty-catch-allow:apply-prefetch — a failed prefetch is retried by lazy() on render, where chunkRecovery owns the error.
+  loadApply().catch(() => {});
+}
+const Apply = lazy(loadApply);
 const AssistantInterviewForm = lazy(() => import("./pages/AssistantInterviewForm"));
 const StateCareerLanding = lazy(() => import("./pages/StateCareerLanding"));
 

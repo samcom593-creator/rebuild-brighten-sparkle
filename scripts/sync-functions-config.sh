@@ -130,6 +130,9 @@ PUBLIC_ALLOWLIST=(
   "brand-collab"
   "brand-photo-upload"
   "cron-inbound-brain-health"
+  # monday-starter-reminders: Sunday pg_cron caller presents a vault hex secret,
+  # gated in-handler (rationale in check-function-contracts.mjs).
+  "monday-starter-reminders"
   "cron-newhire-portal-login"
   "instagram-comments-backfill"
   "instagram-token-keepalive"

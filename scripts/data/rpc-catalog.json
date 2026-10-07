@@ -984,6 +984,46 @@
         "raw": ""
       }
     ],
+    "book_flip_client_key": [
+      {
+        "all": [
+          "p_client_name",
+          "p_deal_key",
+          "p_pipeline_client_id"
+        ],
+        "required": [
+          "p_client_name",
+          "p_deal_key",
+          "p_pipeline_client_id"
+        ],
+        "unnamed": false,
+        "raw": "p_client_name text, p_pipeline_client_id integer, p_deal_key text"
+      }
+    ],
+    "book_flip_set": [
+      {
+        "all": [
+          "p_callback_at",
+          "p_carrier",
+          "p_client_key",
+          "p_count_attempt",
+          "p_note",
+          "p_policy_number",
+          "p_resold_annual_premium",
+          "p_resold_carrier",
+          "p_resold_deal_id",
+          "p_resold_policy_number",
+          "p_status"
+        ],
+        "required": [
+          "p_carrier",
+          "p_policy_number",
+          "p_status"
+        ],
+        "unnamed": false,
+        "raw": "p_carrier text, p_policy_number text, p_status text, p_note text DEFAULT NULL::text, p_callback_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_count_attempt boolean DEFAULT false, p_resold_deal_id uuid DEFAULT NULL::uuid, p_resold_policy_number text DEFAULT NULL::text, p_resold_carrier text DEFAULT NULL::text, p_resold_annual_premium numeric DEFAULT NULL::numeric, p_client_key text DEFAULT NULL::text"
+      }
+    ],
     "book_interview_event": [
       {
         "all": [

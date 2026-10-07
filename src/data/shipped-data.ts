@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "New Book Flips page (sidebar, My Business): every policy in a carrier's book with the client's number, ready to call. Combined and American Home Life first, then Royal Neighbors and Transamerica. One tap logs No answer, Callback, Appointment, Not interested, Bad number or Do not call, and Resold posts the new deal so it counts in production.",
+    detail: "793 policies across the four books, each with its own row even when carriers reused a placeholder policy number for different people. Phones come from the client record, or from a posted deal only when the client's name matches too, so a call never goes to a stranger. Statuses are from the Sep 4 book import; Combined has no known statuses, so the page says to confirm on the call.",
+    commit: "book-flips-2026-10-07",
+  },
+  {
+    ts: "today",
     label: "Every page-load speed reading now records what was the slowest thing to appear and where the time went: the server, a picture downloading, or the page building itself. On a computer, 1 in 4 visits to your main dashboard takes 3 seconds or more to show its main content (72 real visits measured), past the 2.5 second target. This is what will show why.",
     detail: "Speed readings used to say only how long a page took. Logged-in pages like the dashboard cannot be tested by the bot from outside, so real visits are the only way to see what is slow there. Picture addresses are never saved, because they can contain a person's id. The answer shows up once about 30 new dashboard visits come in.",
     commit: "PL-WIB-LCP-ATTRIBUTION",

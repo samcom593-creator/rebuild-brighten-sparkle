@@ -283,6 +283,7 @@ const TelegramBot = lazy(() => import("./pages/admin/TelegramBot"));
 // const ConductCommandCenter = lazy(() => import("./pages/ConductCommandCenter"));
 const PreLicensing = lazy(() => import("./pages/PreLicensing"));
 const BookReconciliation = lazy(() => import("./pages/BookReconciliation"));
+const BookFlips = lazy(() => import("./pages/BookFlips"));
 const ReadyModeIntegration = lazy(() => import("./pages/ReadyModeIntegration"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const ContentWheel = lazy(() => import("./pages/ContentWheel"));
@@ -821,6 +822,7 @@ const App = () => (
                            <Route path="/dashboard/pre-licensing" element={<ProtectedRoute requireAdmin allowManagers><PreLicensing /></ProtectedRoute>} />
                            {/* Book Quality Engine — carrier-direct vs internal recon */}
                            <Route path="/dashboard/book-quality" element={<ProtectedRoute requireAdmin allowManagers><BookReconciliation /></ProtectedRoute>} />
+                           <Route path="/dashboard/books" element={<ProtectedRoute requireAdmin allowManagers><BookFlips /></ProtectedRoute>} />
                            <Route path="/dashboard/admin/book-quality" element={<Navigate to="/dashboard/book-quality" replace />} />
                            {/* ReadyMode dialer integration — credentials live in system_settings */}
                            <Route path="/dashboard/readymode" element={<ProtectedRoute requireAdmin><ReadyModeIntegration /></ProtectedRoute>} />

@@ -30808,6 +30808,110 @@ export type Database = {
         }
         Relationships: []
       }
+      book_flip_events: {
+        Row: {
+          carrier: string
+          client_key: string
+          created_at: string
+          created_by: string | null
+          detail: Json
+          from_status: string | null
+          id: number
+          note: string | null
+          policy_number: string
+          to_status: string
+        }
+        Insert: {
+          carrier: string
+          client_key?: string
+          created_at?: string
+          created_by?: string | null
+          detail?: Json
+          from_status?: string | null
+          id?: number
+          note?: string | null
+          policy_number: string
+          to_status: string
+        }
+        Update: {
+          carrier?: string
+          client_key?: string
+          created_at?: string
+          created_by?: string | null
+          detail?: Json
+          from_status?: string | null
+          id?: number
+          note?: string | null
+          policy_number?: string
+          to_status?: string
+        }
+        Relationships: []
+      }
+      book_flips: {
+        Row: {
+          attempts: number
+          callback_at: string | null
+          carrier: string
+          client_key: string
+          created_at: string
+          flip_status: string
+          id: string
+          last_contact_at: string | null
+          notes: string | null
+          policy_number: string
+          resold_annual_premium: number | null
+          resold_carrier: string | null
+          resold_deal_id: string | null
+          resold_policy_number: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          attempts?: number
+          callback_at?: string | null
+          carrier: string
+          client_key?: string
+          created_at?: string
+          flip_status?: string
+          id?: string
+          last_contact_at?: string | null
+          notes?: string | null
+          policy_number: string
+          resold_annual_premium?: number | null
+          resold_carrier?: string | null
+          resold_deal_id?: string | null
+          resold_policy_number?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          attempts?: number
+          callback_at?: string | null
+          carrier?: string
+          client_key?: string
+          created_at?: string
+          flip_status?: string
+          id?: string
+          last_contact_at?: string | null
+          notes?: string | null
+          policy_number?: string
+          resold_annual_premium?: number | null
+          resold_carrier?: string | null
+          resold_deal_id?: string | null
+          resold_policy_number?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "book_flips_resold_deal_id_fkey"
+            columns: ["resold_deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       book_audit_runs: {
         Row: {
           alerted: boolean
@@ -104968,6 +105072,72 @@ export type Database = {
         }
         Relationships: []
       }
+      v_book_flip_carrier_counts: {
+        Row: {
+          book_active: number | null
+          callbacks_due: number | null
+          carrier: string | null
+          lapsing: number | null
+          last_imported_at: string | null
+          policies: number | null
+          resold: number | null
+          resold_annual_premium: number | null
+          to_call: number | null
+          unknown_status: number | null
+          with_phone: number | null
+          workable: number | null
+        }
+        Relationships: []
+      }
+      v_book_flip_worklist: {
+        Row: {
+          age_years: number | null
+          agent_gone: boolean | null
+          agent_id: string | null
+          agent_name: string | null
+          agent_status: string | null
+          annual_premium: number | null
+          attempts: number | null
+          best_time_to_call: string | null
+          book_rows: number | null
+          book_status: string | null
+          callback_at: string | null
+          carrier: string | null
+          city: string | null
+          client_first_name: string | null
+          client_key: string | null
+          client_last_name: string | null
+          client_name: string | null
+          client_timezone: string | null
+          clients_on_number: number | null
+          do_not_call: boolean | null
+          dob: string | null
+          effective_date: string | null
+          face_amount: number | null
+          flip_key: string | null
+          flip_status: string | null
+          flip_updated_at: string | null
+          imported_at: string | null
+          is_book_active: boolean | null
+          is_dead: boolean | null
+          last_contact_at: string | null
+          monthly_premium: number | null
+          months_in_force: number | null
+          notes: string | null
+          phone: string | null
+          phone_source: string | null
+          policy_number: string | null
+          posted_date: string | null
+          product: string | null
+          resold_annual_premium: number | null
+          resold_carrier: string | null
+          resold_deal_id: string | null
+          resold_policy_number: string | null
+          state: string | null
+          status_group: string | null
+        }
+        Relationships: []
+      }
       v_book_status_tiles: {
         Row: {
           alp: number | null
@@ -141097,6 +141267,26 @@ export type Database = {
       }
       apex_is_admin: { Args: never; Returns: boolean }
       day_plan_ensure_seeded: { Args: never; Returns: number }
+      book_flip_client_key: {
+        Args: { p_client_name: string; p_deal_key: string; p_pipeline_client_id: number }
+        Returns: string
+      }
+      book_flip_set: {
+        Args: {
+          p_callback_at?: string
+          p_carrier: string
+          p_client_key?: string
+          p_count_attempt?: boolean
+          p_note?: string
+          p_policy_number: string
+          p_resold_annual_premium?: number
+          p_resold_carrier?: string
+          p_resold_deal_id?: string
+          p_resold_policy_number?: string
+          p_status: string
+        }
+        Returns: Json
+      }
       apex_provision_licensed_applicant: {
         Args: { p_application_id: string }
         Returns: Json

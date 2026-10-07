@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-rpc-column-vocabulary.sh (bot_sql -> pg_proc + pg_rewrite)",
- "_generated_at": "2026-10-07T03:29:32Z",
+ "_generated_at": "2026-10-07T15:20:23Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "check-enum-filter-literals.mjs grades literals inside supabase.from().eq() chains. This is the other half of the same class: a status word that arrives from an RPC and is compared in JavaScript, where the return type is text and every wrong word type-checks. Per (function, returned column) this records the relation columns of that name reachable from the function body and the literals the function synthesises itself. It deliberately records CANDIDATES rather than one resolved source: provenance from a body regex is a guess, so check-rpc-status-literals.mjs refuses a literal only when NO candidate vocabulary and no body literal accepts it.",
  "_vocabulary_source": "scripts/data/enum-catalog.json (check_vocab + column_enum + enums). Not copied here on purpose, so the two guards read one snapshot and cannot drift.",
@@ -82,6 +82,8 @@
   "backfill_monthly_awards": "jsonb",
   "backfill_plaque_images": "jsonb",
   "block_duplicate_agent_per_email": "trigger",
+  "book_flip_client_key": "text",
+  "book_flip_set": "jsonb",
   "book_interview_event": "interview_events",
   "bot_alert_agent_contracted": "trigger",
   "bot_alert_agent_deactivated": "trigger",

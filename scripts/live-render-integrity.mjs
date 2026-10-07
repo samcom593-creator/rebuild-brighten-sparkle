@@ -120,7 +120,14 @@ async function probe(browser, leg) {
   // and it would be silent without this read.
   const vendor = await pg.evaluate(() => navigator.vendor).catch(() => "<unreadable>");
 
-  const bodyText = (await pg.innerText("body").catch(() => "")).slice(0, 12000);
+  // The WHOLE body is scanned. Until 2026-10-07 this was .slice(0, 12000), and
+  // the homepage had grown to 14,502 chars, so the last 17% (closing CTA with
+  // the live "{active_agents}+ agents" number, the FAQ, the footer and the
+  // income disclaimer) was scanned by nothing. textLen below read the SLICED
+  // length, so this probe's own output capped at 12000 and could not show it
+  // was truncating. Latent when found: that one live number floors at 40
+  // (CTASection.tsx), so a null RPC could not have printed NaN there.
+  const bodyText = await pg.innerText("body").catch(() => "");
   const overflow = await pg.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth
   );

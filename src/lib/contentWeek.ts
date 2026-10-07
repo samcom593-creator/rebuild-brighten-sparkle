@@ -58,3 +58,25 @@ export function phoenixWeekday(now: Date = new Date()): number {
 export function phoenixDateKey(now: Date = new Date()): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Phoenix", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
 }
+
+type PostLike = { posted_at: string | null; platform: string | null; format: string | null };
+
+/** Repurpose posts each piece to every platform, so a day's count is its busiest platform that day,
+ *  not the sum across platforms. Keyed by Phoenix date (YYYY-MM-DD). */
+export function piecesByDay(posts: PostLike[], format: string): Record<string, number> {
+  const per: Record<string, Record<string, number>> = {};
+  for (const p of posts) {
+    if (p.format !== format || !p.posted_at) continue;
+    const day = (per[phoenixDateKey(new Date(p.posted_at))] ??= {});
+    const pl = p.platform ?? "other";
+    day[pl] = (day[pl] ?? 0) + 1;
+  }
+  const out: Record<string, number> = {};
+  for (const [d, v] of Object.entries(per)) out[d] = Math.max(...Object.values(v));
+  return out;
+}
+
+/** Pieces of one format in `posts`, each counted once rather than once per platform. */
+export function countPieces(posts: PostLike[], format: string): number {
+  return Object.values(piecesByDay(posts, format)).reduce((sum, n) => sum + n, 0);
+}

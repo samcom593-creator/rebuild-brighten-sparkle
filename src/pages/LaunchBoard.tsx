@@ -45,7 +45,7 @@ import {
   scheduleLabel, stageOf, todayQueue, type Stage, type WorkflowStatus,
 } from "@/lib/contentWorkflow";
 import { DndContext, PointerSensor, TouchSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
-import { DAY_THEMES, THEME_TONE, WEEKLY_TARGETS, phoenixDateKey, phoenixWeekday } from "@/lib/contentWeek";
+import { DAY_THEMES, THEME_TONE, WEEKLY_TARGETS, phoenixDateKey, phoenixWeekday, piecesByDay } from "@/lib/contentWeek";
 import { canShareFiles, pullFile, saveMedia, shareFiles } from "@/lib/saveMedia";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -239,17 +239,9 @@ function WeekTab({ cards, mix, onOpen, onMove, onAdd }: { cards: Card[]; mix: Mi
       const { data, error } = await supabase.from("content_posts").select("posted_at, format, platform").gte("posted_at", `${dayKeys[0]}T00:00:00-07:00`);
       if (off || error) { if (!off) setShortsByDay({}); return; }
       // Repurpose sends one Short to every platform, so a day's Shorts = its busiest platform, not the sum.
-      const per: Record<number, Record<string, number>> = {};
-      for (const r of (data ?? []) as { posted_at: string | null; format: string | null; platform: string | null }[]) {
-        if (r.format !== "short" || !r.posted_at) continue;
-        const idx = dayKeys.indexOf(phoenixDateKey(new Date(r.posted_at)));
-        if (idx < 0) continue;
-        const day = (per[idx + 1] ??= {});
-        const pl = r.platform ?? "other";
-        day[pl] = (day[pl] ?? 0) + 1;
-      }
+      const byDate = piecesByDay((data ?? []) as { posted_at: string | null; format: string | null; platform: string | null }[], "short");
       const m: Record<number, number> = {};
-      for (const [k, v] of Object.entries(per)) m[Number(k)] = Math.max(...Object.values(v));
+      dayKeys.forEach((k, i) => { if (byDate[k]) m[i + 1] = byDate[k]; });
       setShortsByDay(m);
     })();
     return () => { off = true; };

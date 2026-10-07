@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatTimeAgo } from "@/lib/dateUtils";
-import { DAY_THEMES, THEME_TONE, phoenixDateKey, phoenixWeekday } from "@/lib/contentWeek";
+import { DAY_THEMES, THEME_TONE, countPieces, phoenixDateKey, phoenixWeekday, piecesByDay } from "@/lib/contentWeek";
 
 type Post = {
   id: number; platform: string; account: string | null; format: string; category: string | null; title: string | null;
@@ -139,11 +139,7 @@ export function ContentHome({ onOpenAnalytics }: { onOpenAnalytics: () => void }
   const tone = THEME_TONE[t.theme];
   const todayKey = phoenixDateKey();
   // Repurpose posts one Short to every platform: count pieces as the busiest platform today, not the sum.
-  const shortsToday = useMemo(() => {
-    const per: Record<string, number> = {};
-    posts.forEach((p) => { if (p.format === "short" && phoenixDateKey(new Date(p.posted_at)) === todayKey) per[p.platform] = (per[p.platform] ?? 0) + 1; });
-    return Math.max(0, ...Object.values(per));
-  }, [posts, todayKey]);
+  const shortsToday = useMemo(() => piecesByDay(posts, "short")[todayKey] ?? 0, [posts, todayKey]);
   const showDay = wd === 7 ? 1 : wd;
   const ideas = useMemo(() => (ins?.ideas ?? []).filter((i) => i.day === showDay).sort(sortIdeas), [ins, showDay]);
   const pct = t.shortsTarget > 0 ? Math.min(100, Math.round((shortsToday / t.shortsTarget) * 100)) : 0;
@@ -184,8 +180,8 @@ export function PostedTodayStrip({ onOpen }: { onOpen: () => void }) {
   const week = posts.filter((p) => Date.now() - new Date(p.posted_at).getTime() < 7 * 86400_000);
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card px-4 py-3">
-      <span className="text-sm text-foreground"><b className="text-lg tabular-nums">{t.length}</b> posted today
-        <span className="text-muted-foreground"> · {t.filter((p) => p.format === "short").length} short · {t.filter((p) => p.format === "long").length} long · {week.length} this week</span></span>
+      <span className="text-sm text-foreground"><b className="text-lg tabular-nums">{countPieces(t, "short") + countPieces(t, "long")}</b> posted today
+        <span className="text-muted-foreground"> · {countPieces(t, "short")} short · {countPieces(t, "long")} long · {countPieces(week, "short") + countPieces(week, "long")} this week</span></span>
       <Button size="sm" variant="outline" onClick={onOpen} className="ml-auto h-8">Log a post / Analytics</Button>
     </div>
   );
@@ -294,8 +290,8 @@ export default function AccountsAnalytics() {
   return (
     <div className="flex flex-col gap-6">
       <section aria-label="Totals" className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <Stat label="Posted today" value={String(todayPosts.length)} sub={`${todayPosts.filter((p) => p.format === "short").length} short · ${todayPosts.filter((p) => p.format === "long").length} long`} />
-        <Stat label="Last 7 days" value={String(week.length)} sub={`${week.filter((p) => p.format === "short").length} short · ${week.filter((p) => p.format === "long").length} long`} />
+        <Stat label="Posted today" value={String(countPieces(todayPosts, "short") + countPieces(todayPosts, "long"))} sub={`${countPieces(todayPosts, "short")} short · ${countPieces(todayPosts, "long")} long · ${todayPosts.length} platform posts`} />
+        <Stat label="Last 7 days" value={String(countPieces(week, "short") + countPieces(week, "long"))} sub={`${countPieces(week, "short")} short · ${countPieces(week, "long")} long · ${week.length} platform posts`} />
         <Stat label="Views, 30 days" value={fmtNum(views30)} sub={`${month.length} posts`} />
         <Stat label="YouTube subs" value={yt?.subscribers != null ? fmtNum(yt.subscribers) : "—"} sub="updates every 3 hours" />
       </section>

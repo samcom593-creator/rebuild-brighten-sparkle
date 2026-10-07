@@ -113,9 +113,11 @@ const JOBS: { k: Job; label: string; desc: string; accent: string; border: strin
   { k: "CONVERT", label: "Convert", desc: "One clear ask — apply.", accent: "text-emerald-400", border: "border-t-emerald-400/70" },
 ];
 const TABS: { k: Tab; label: string }[] = [
-  { k: "today", label: "Today" }, { k: "board", label: "Board" }, { k: "week", label: "Week" }, { k: "library", label: "Library" }, { k: "queue", label: "Queue" }, { k: "analytics", label: "Analytics" },
+  { k: "today", label: "Today" }, { k: "board", label: "Board" }, { k: "week", label: "Week" }, { k: "library", label: "Library" }, { k: "analytics", label: "Analytics" },
 ];
-const TAB_KEYS = new Set<Tab>(TABS.map((t) => t.k));
+// Queue is hidden from the bar while its Mac mini feed is offline (it showed 14 empty "Nothing slated" boxes);
+// ?tab=queue and /dashboard/content still open it.
+const TAB_KEYS = new Set<Tab>([...TABS.map((t) => t.k), "queue"]);
 
 // The 80/20 pillars (2026-09-15, from the vidIQ channel audit). CORE = 80% of posts: insurance sales, money at 20,
 // recruiting/team proof. FLEX = 20%: fitness framed for closers. Cars / Arizona are b-roll, never the subject.
@@ -240,6 +242,10 @@ export default function LaunchBoard() {
   // NOTE: hand renames live in find_label. Any future find_label backfill must only fill NULLs
   // (as apex-testimonial-classifier.py does) or it will wipe Sam's titles.
   const [renaming, setRenaming] = useState<{ id: string; text: string } | null>(null);
+  // Library cards show the video, title, hook and buttons; votes/score/pillars/tags hide behind "Show details" (Sam: less clutter).
+  const [showDetails, setShowDetailsState] = useState<boolean>(() => { try { return localStorage.getItem("lb:details") === "1"; } catch { return false; } });
+  // empty-catch-allow:private-mode-storage (the switch still works for this visit; only the memory of it is lost)
+  const setShowDetails = (v: boolean) => { setShowDetailsState(v); try { localStorage.setItem("lb:details", v ? "1" : "0"); } catch { /* private mode: keep it in memory */ } };
   const renameDone = useRef(false);   // Enter/Escape already handled it: the blur that follows must not save again
   const saveRename = async () => {
     if (!renaming || renameDone.current) return;
@@ -906,6 +912,7 @@ export default function LaunchBoard() {
               ))}
             </div>
             <span className="w-full text-xs text-muted-foreground">
+              <button onClick={() => setShowDetails(!showDetails)} aria-pressed={showDetails} className="mr-2 rounded-full border border-border px-2.5 py-0.5 font-semibold text-foreground hover:border-primary/60">{showDetails ? "Hide details" : "Show details"}</button>
               {visibleClips.length.toLocaleString()} match · {clips.filter((k) => k.thumb_url).length.toLocaleString()} with previews
               {health && (proof === "testimonials" || health.waiting > 0) && (
                 <> · classifier: <b className="text-foreground">{health.judged.toLocaleString()}</b> judged, <b className="text-foreground">{health.waiting.toLocaleString()}</b> still waiting{health.last_judged_at ? ` · last ${fmtDate(health.last_judged_at)}` : ""} — the list grows as it works</>
@@ -962,21 +969,20 @@ export default function LaunchBoard() {
                   ) : (
                     <button onClick={() => { renameDone.current = false; setRenaming({ id: k.id, text: k.find_label || k.title || cleanName(k.name) }); }} title="Tap to rename" className="line-clamp-2 text-left text-sm font-bold leading-snug text-foreground hover:text-primary">{k.find_label || k.title || cleanName(k.name)}</button>
                   )}
-                  {k.hook_title && <div className="line-clamp-1 text-[12px] italic text-muted-foreground">🎬 {k.hook_title}</div>}
+                  {k.hook_title && <button onClick={() => { void navigator.clipboard?.writeText(k.hook_title ?? "").then(() => toast.success("Hook copied")).catch(() => toast.error("Clipboard blocked")); }} title="Tap to copy the hook" className="line-clamp-1 text-left text-[13px] italic text-muted-foreground hover:text-foreground">🎬 {k.hook_title}</button>}
                   {isTestimonial(k) && k.testimonial_reason && <div className="line-clamp-2 text-[12px] text-gold/90" title={k.testimonial_reason}>{k.testimonial_reason}</div>}
                   {!isTestimonial(k) && k.transcript && proof === "all" && query && <div className="line-clamp-2 text-[11.5px] italic text-muted-foreground" title={k.transcript}>“{k.transcript.slice(0, 140)}”</div>}
-                  <div className="flex items-center gap-1">
+                  {(showDetails || proof === "testimonials") && <div className="flex items-center gap-1">
                     <span className="text-[11px] text-muted-foreground">{k.testimonial == null ? "not judged yet" : isTestimonial(k) ? (k.testimonial_source === "manual" ? "testimonial · you" : "testimonial") : "not a testimonial"}</span>
                     <button onClick={() => void setVerdict(k, true)} title="Mark as a testimonial" className={`rounded border p-0.5 ${isTestimonial(k) ? "border-gold/60 bg-gold/15 text-gold" : "border-border text-muted-foreground hover:text-gold"}`}><ThumbsUp className="h-3 w-3" /></button>
                     <button onClick={() => void setVerdict(k, false)} title="Not a testimonial" className={`rounded border p-0.5 ${k.testimonial === false ? "border-border bg-muted text-foreground" : "border-border text-muted-foreground hover:text-foreground"}`}><ThumbsDown className="h-3 w-3" /></button>
-                  </div>
-                  {k.banger_score != null && (
+                  </div>}
+                  {showDetails && k.banger_score != null && (
                     <div className="flex items-center gap-2">
                       <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted"><div className={`h-full ${bangerColor(k.banger_score)}`} style={{ width: `${k.banger_score}%` }} /></div>
                     </div>
                   )}
-                  {k.hook_title && <button onClick={() => { void navigator.clipboard?.writeText(k.hook_title ?? "").then(() => toast.success("Hook copied")).catch(() => toast.error("Clipboard blocked")); }} className="self-start text-[11px] text-muted-foreground underline-offset-2 hover:text-primary hover:underline">copy hook</button>}
-                  <div className="flex flex-wrap gap-1">
+                  {showDetails && <div className="flex flex-wrap gap-1">
                     {PILLARS.map((p) => {
                       const on = pillarsOf(k).includes(p.k);
                       return (
@@ -986,8 +992,8 @@ export default function LaunchBoard() {
                         </button>
                       );
                     })}
-                  </div>
-                  {k.tags && k.tags.length > 0 && <div className="flex flex-wrap gap-1">{k.tags.slice(0, 4).map((tg) => <button key={tg} onClick={() => setQuery(tg)} className="rounded-full border border-border px-1.5 py-0.5 text-[11px] text-muted-foreground hover:text-foreground">{tg}</button>)}</div>}
+                  </div>}
+                  {showDetails && k.tags && k.tags.length > 0 && <div className="flex flex-wrap gap-1">{k.tags.slice(0, 4).map((tg) => <button key={tg} onClick={() => setQuery(tg)} className="rounded-full border border-border px-1.5 py-0.5 text-[11px] text-muted-foreground hover:text-foreground">{tg}</button>)}</div>}
                   <div className="mt-auto text-[12px] text-muted-foreground">{k.folder} · {fmtDate(k.modified_at)} · {fmtSize(k.size_bytes)}</div>
                   <div className="flex gap-1.5">
                     {attachTarget

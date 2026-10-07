@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Easier on the eyes everywhere: the dark theme is now a warm charcoal with off-white text instead of pure black. On the Launch Board, Analytics shows your actual videos with their views, Library cards show just the video, title, hook and buttons (details behind one switch), and the empty Queue tab is hidden.",
+    detail: "Logging an Instagram/TikTok post is one button that opens the form; no tagging chores in the list. Queue is still reachable at ?tab=queue while its Mac mini feed is offline.",
+    commit: "launch-board-calm-2026-10-06",
+  },
+  {
+    ts: "today",
     label: "Launch Board has an Analytics tab: posts today, this week and 30-day views per account, a 14-day posts-per-day chart split short vs long, and one-tap logging for Instagram, TikTok and Facebook with a content category (Fitness, Cars, My Life, Insurance, Top of Funnel, Education) and a purposeful-or-not tag.",
     detail: "YouTube fills itself every 3 hours from public data (356 videos found, 768 subscribers); Today shows a posted-today counter.",
     commit: "launch-board-analytics-2026-10-06",

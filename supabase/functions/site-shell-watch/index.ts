@@ -106,7 +106,15 @@ const NTFY = Deno.env.get("SHELL_WATCH_NTFY") ??
 // would have made apex-doctor report a page of CRITICALs about a healthy DB).
 // Env override exists so the proof harness can point this at a throwaway sink.
 const DISCORD_ENV = Deno.env.get("SHELL_WATCH_DISCORD") ?? "";
-const MIN_JS_BYTES = Number(Deno.env.get("SHELL_WATCH_MIN_JS_BYTES") ?? "128");
+// No byte floor (2026-10-07). The 128B floor called utils-BsVvCH83.js, a
+// complete 102-byte module (shadcn cn()), a "TRUNCATED BUNDLE" and held this
+// watcher CRIT for 22h alongside the laptop probe. A floor tuned to today's
+// smallest chunk is falsified by tomorrow's smaller one, and it never caught
+// truncation of a real bundle anyway (a cut 134KB file is still ~100KB). This
+// watcher only flags an EMPTY module. Truncation is graded by the deep check,
+// apex-site-health.sh, which parses every module with node --check. That keeps
+// this watcher a strict subset of the deep check, as MP-304 requires. The env
+// override is gone too, so no leftover secret can bring the floor back.
 const CONFIRM_DELAY_MS = Number(Deno.env.get("SHELL_WATCH_CONFIRM_MS") ?? "20000");
 const FETCH_TIMEOUT_MS = 25000;
 
@@ -218,7 +226,7 @@ async function probe(): Promise<Probe> {
       // would 200 with a body far above any byte floor - a total white screen
       // that a size check reports as healthy.
       if (!/javascript|ecmascript/i.test(r.ctype)) wrongType.push(`${a}(200 as '${r.ctype || "unknown"}')`);
-      else if (r.bytes < MIN_JS_BYTES) thin.push(`${a}(${r.bytes}B)`);
+      else if (r.bytes === 0) thin.push(`${a}(0B)`);
     } else {
       if (!/text\/css/i.test(r.ctype)) wrongType.push(`${a}(200 as '${r.ctype || "unknown"}')`);
     }
@@ -232,7 +240,7 @@ async function probe(): Promise<Probe> {
     parts.push(`WHITE SCREEN - index.html returns 200 but the assets it names do not resolve:${broken.join(" ")}`);
   }
   if (thin.length) {
-    parts.push(`TRUNCATED BUNDLE (200 but under ${MIN_JS_BYTES}B):${thin.join(" ")}`);
+    parts.push(`EMPTY BUNDLE (200, 0 bytes):${thin.join(" ")}`);
   }
 
   if (parts.length) {

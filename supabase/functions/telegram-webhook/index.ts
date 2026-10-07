@@ -16,6 +16,7 @@
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { type LicenseAnswer, parseLicenseAnswer } from "../_shared/license-answer.ts";
+import { raiseApexAlert } from "../_shared/alert-raise.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -208,10 +209,28 @@ const HARD_PATTERNS: Array<{ re: RegExp; reason: string }> = [
   { re: /\b(part[\s-]?time|side hustle|on the side|nights and weekends)\b/i, reason: "part_time_question" },
 ];
 
-async function raiseEscalation(chat_id: number, reason: string, ctx: Record<string, unknown> = {}): Promise<number | null> {
+// An escalation tells the applicant a person will answer, so it is only true
+// if a person was told. Until 2026-10-07 nothing checked that: no
+// manager_alerts group has ever been registered (telegram_groups holds the
+// ai_dm row and an inactive placeholder), so postManagerAlert logged a warning
+// and returned on every escalation. 4 of 4 rows, 0 acknowledged, 0 resolved,
+// and 3 applicants were told "Expected reply: within 12 business hours" with
+// nobody alerted. The group stays the first choice; when it is missing or
+// refuses, the alert goes through apex-alert-dispatch, which reports which
+// channel landed. The applicant hears "routed" only when one did.
+type AlertOutcome = { landed: boolean; receipt: string };
+const ALERT_OK = "alert ok:";
+const NO_HUMAN_REACHED =
+  "I couldn't reach a manager from here just now. Email info@kingofsales.net and a person will answer.";
+
+async function raiseEscalation(
+  chat_id: number,
+  reason: string,
+  ctx: Record<string, unknown> = {},
+): Promise<{ id: number | null; landed: boolean }> {
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   const { data: existing } = await sb.from("telegram_escalations")
-    .select("id")
+    .select("id, notes")
     .eq("chat_id", chat_id)
     .is("resolved_at", null)
     .gt("created_at", since)
@@ -223,83 +242,128 @@ async function raiseEscalation(chat_id: number, reason: string, ctx: Record<stri
     .maybeSingle();
   if (existing) {
     await sb.from("telegram_escalations").update({ trigger_context: { ...ctx, also_triggered: reason } }).eq("id", existing.id);
-    return existing.id;
+    // Folding in stays quiet only if the first alert landed. If it did not,
+    // the repeat ask is another chance to reach someone.
+    if (String(existing.notes ?? "").startsWith(ALERT_OK)) return { id: existing.id, landed: true };
+    const retry = await postManagerAlert(chat_id, reason, existing.id, ctx);
+    await recordAlert(existing.id, retry);
+    return { id: existing.id, landed: retry.landed };
   }
   const { data, error } = await sb.from("telegram_escalations")
     .insert({ chat_id, reason, trigger_context: ctx })
     .select("id")
     .single();
-  if (error) {
-    console.error("escalation insert", error);
-    return null;
-  }
+  // A failed insert loses the row, not the person: still alert.
+  if (error) console.error("escalation insert", error);
   await sb.from("telegram_users").update({
     escalated_at: new Date().toISOString(),
     escalated_reason: reason,
   }).eq("chat_id", chat_id);
-  await postManagerAlert(chat_id, reason, data?.id);
-  return data?.id ?? null;
+  const id = (data?.id as number | undefined) ?? null;
+  const out = await postManagerAlert(chat_id, reason, id, ctx);
+  if (id !== null) await recordAlert(id, out);
+  return { id, landed: out.landed };
 }
 
-async function postManagerAlert(source_chat_id: number, reason: string, escalationId?: number | null) {
+async function recordAlert(id: number, out: AlertOutcome) {
+  const notes = out.landed ? `${ALERT_OK} ${out.receipt}` : `alert FAILED: ${out.receipt}`;
+  const { error } = await sb.from("telegram_escalations").update({ notes: notes.slice(0, 500) }).eq("id", id);
+  if (error) console.error("escalation notes", error);
+}
+
+const escHtml = (v: unknown) =>
+  String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]!));
+
+async function postManagerAlert(
+  source_chat_id: number,
+  reason: string,
+  escalationId: number | null,
+  ctx: Record<string, unknown> = {},
+): Promise<AlertOutcome> {
+  const { data: user } = await sb.from("telegram_users").select("first_name, username, stage").eq("chat_id", source_chat_id).maybeSingle();
   const { data: group } = await sb.from("telegram_groups")
     .select("chat_id")
     .eq("type", "manager_alerts")
     .eq("is_active", true)
     .limit(1)
     .maybeSingle();
-  if (!group?.chat_id) {
-    console.warn("no manager_alerts group registered — cannot post alert");
-    return;
+
+  if (group?.chat_id) {
+    // Fixed UTC-5. The old `getUTCHours() - 5` went negative for 00-04 UTC, so
+    // 7-11pm CT read as quiet hours.
+    const hourCT = (new Date().getUTCHours() + 19) % 24;
+    const quiet = hourCT >= 22 || hourCT < 7;
+    if (quiet && reason !== "money_question") {
+      const target = new Date();
+      target.setUTCHours(12, 0, 0, 0);
+      if (target.getTime() < Date.now()) target.setUTCDate(target.getUTCDate() + 1);
+      const { error } = await sb.from("telegram_scheduled_messages").insert({
+        chat_id: group.chat_id,
+        template_key: "escalation.manager_alert",
+        context: { source_chat_id, reason, escalation_id: escalationId },
+        scheduled_at: target.toISOString(),
+        reason: "escalation_deferred_quiet_hours",
+      });
+      if (!error) return { landed: true, receipt: `deferred to group ${group.chat_id} at ${target.toISOString()}` };
+      console.error("escalation defer insert", error);
+    } else {
+      const body =
+        `🚨 Telegram escalation\n` +
+        `From: ${escHtml(user?.first_name ?? "?")} (@${escHtml(user?.username ?? "no_handle")}) — stage ${escHtml(user?.stage ?? "?")}\n` +
+        `Reason: ${escHtml(reason)}\n` +
+        `Source chat_id: ${source_chat_id}\n` +
+        `Escalation id: ${escalationId ?? "?"}`;
+      const ok = await tgSend({
+        chat_id: group.chat_id,
+        text: body,
+        reply_markup: {
+          inline_keyboard: [[
+            { text: "✅ Take this", callback_data: `esc:take:${escalationId}` },
+            { text: "✔ Resolve", callback_data: `esc:resolve:${escalationId}` },
+          ]],
+        },
+      });
+      if (ok) return { landed: true, receipt: `telegram_group:${group.chat_id}` };
+    }
+  } else {
+    console.warn("no manager_alerts group registered — routing escalation through apex-alert-dispatch");
   }
 
-  const hourCT = new Date().getUTCHours() - 5;
-  const quiet = hourCT >= 22 || hourCT < 7;
-  if (quiet && reason !== "money_question") {
-    const target = new Date();
-    target.setUTCHours(12, 0, 0, 0);
-    if (target.getTime() < Date.now()) target.setUTCDate(target.getUTCDate() + 1);
-    await sb.from("telegram_scheduled_messages").insert({
-      chat_id: group.chat_id,
-      template_key: "escalation.manager_alert",
-      context: { source_chat_id, reason, escalation_id: escalationId },
-      scheduled_at: target.toISOString(),
-      reason: "escalation_deferred_quiet_hours",
-    });
-    return;
-  }
-
-  const { data: user } = await sb.from("telegram_users").select("first_name, username, stage").eq("chat_id", source_chat_id).maybeSingle();
-  const body =
-    `🚨 Telegram escalation\n` +
-    `From: ${user?.first_name ?? "?"} (@${user?.username ?? "no_handle"}) — stage \`${user?.stage ?? "?"}\`\n` +
-    `Reason: ${reason}\n` +
-    `Source chat_id: ${source_chat_id}\n` +
-    `Escalation id: ${escalationId ?? "?"}`;
-
-  await tgSend({
-    chat_id: group.chat_id,
-    text: body,
-    reply_markup: {
-      inline_keyboard: [[
-        { text: "✅ Take this", callback_data: `esc:take:${escalationId}` },
-        { text: "✔ Resolve", callback_data: `esc:resolve:${escalationId}` },
-      ]],
-    },
+  const name = user?.first_name ? String(user.first_name) : "An applicant";
+  const handle = user?.username ? String(user.username) : null;
+  const said = typeof ctx.matched_text === "string" ? ctx.matched_text.slice(0, 160) : (ctx.command ? String(ctx.command) : "");
+  const reply = handle
+    ? `Reply to them in Telegram: https://t.me/${encodeURIComponent(handle)}`
+    : `They have no Telegram @handle; reach them through their application.`;
+  // critical is the only severity apex-alert-dispatch sends on its own; warn
+  // waits for a digest, which breaks the 12-business-hour promise. Volume is
+  // low: 4 escalations from 2026-05-22 to 2026-10-05, one of them a test.
+  const r = await raiseApexAlert({
+    source: "telegram-webhook",
+    eventType: "telegram.escalation",
+    severity: "critical",
+    subject: `Telegram: ${name} asked for a person`,
+    body:
+      `${escHtml(name)}${handle ? ` (@${escHtml(handle)})` : ""}, stage ${escHtml(user?.stage ?? "unknown")}, ` +
+      `sent "${escHtml(said)}" to the Apex Telegram bot (${escHtml(reason)}). ` +
+      `The bot told them a manager will reply within 12 business hours. ${escHtml(reply)}`,
+    smsBody: `Telegram: ${name} asked for a person`.slice(0, 90),
+    actionLink: "https://apex-financial.org/dashboard/admin/telegram-bot",
   });
+  if (!r.ok) console.error("escalation alert did not land", r.receipt);
+  return { landed: r.ok, receipt: r.receipt };
 }
 
 async function checkEscalation(chat_id: number, text: string): Promise<boolean> {
   for (const p of HARD_PATTERNS) {
     if (p.re.test(text)) {
-      await raiseEscalation(chat_id, p.reason, { matched_text: text.slice(0, 240) });
-      if (p.reason === "money_question" || p.reason === "legal_question") {
+      const { landed } = await raiseEscalation(chat_id, p.reason, { matched_text: text.slice(0, 240) });
+      if (!landed) {
+        await tgSend({ chat_id, text: NO_HUMAN_REACHED });
+      } else if (p.reason === "money_question" || p.reason === "legal_question") {
         await sendTemplate(chat_id, "ai.escalating", { manager: "your assigned manager" });
       } else {
-        await sendTemplate(chat_id, "escalation.confirmed", {
-          manager: "your assigned manager",
-          manager_phone: "(see DM after pickup)",
-        });
+        await sendTemplate(chat_id, "escalation.confirmed", { manager: "your assigned manager" });
       }
       return true;
     }
@@ -689,13 +753,12 @@ async function handleCommand(chat_id: number, fromUser: any, command: string, ar
       }
       break;
     }
-    case "/manager":
-      await raiseEscalation(chat_id, "user_requested", { command: "/manager" });
-      await sendTemplate(chat_id, "escalation.confirmed", {
-        manager: "your manager",
-        manager_phone: "(see DM after pickup)",
-      });
+    case "/manager": {
+      const { landed } = await raiseEscalation(chat_id, "user_requested", { command: "/manager" });
+      if (landed) await sendTemplate(chat_id, "escalation.confirmed", { manager: "your manager" });
+      else await tgSend({ chat_id, text: NO_HUMAN_REACHED });
       break;
+    }
     case "/ask":
       if (!args.trim()) {
         await tgSend({ chat_id, text: "Ask me anything — `/ask how long does licensing take?`" });

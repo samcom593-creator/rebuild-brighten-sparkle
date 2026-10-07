@@ -410,3 +410,80 @@ describe("web-vitals terminal flush (MP-514)", () => {
 
 
 });
+
+/**
+ * 2026-10-07: LCP rows carried only value + rating, so a slow page could be
+ * graded but never diagnosed. /dashboard desktop read p75 3.0s over 72 real
+ * sessions and no lab run can reach that page logged out. These import the
+ * REAL module and drive describeLcp through the observer.
+ */
+describe("LCP attribution", () => {
+  function stubTimings(nav: Record<string, number>, resources: Array<Record<string, unknown>>) {
+    return vi.spyOn(performance, "getEntriesByType").mockImplementation(((type: string) => {
+      if (type === "navigation") return [nav];
+      if (type === "resource") return resources;
+      return [];
+    }) as unknown as typeof performance.getEntriesByType);
+  }
+
+  function lcpRow(value: number) {
+    return rowWithValue(insertedRows(), value)?.properties as Record<string, unknown> | undefined;
+  }
+
+  it("names a text element and puts everything after TTFB in render_delay", async () => {
+    const spy = stubTimings({ responseStart: 420 }, []);
+    try {
+      const { initWebVitals } = await import("@/shared/lib/webVitals");
+      initWebVitals();
+      const h1 = document.createElement("h1");
+      h1.className = "stat-card big extra";
+      FakePerformanceObserver.emit("largest-contentful-paint", [{ startTime: 3012, element: h1 }]);
+      await vi.advanceTimersByTimeAsync(6000);
+      await flushMicrotasks();
+
+      const p = lcpRow(3012);
+      expect(p).toMatchObject({ lcp_element: "h1.stat-card.big", ttfb: 420, load_delay: 0, load_time: 0, render_delay: 2592 });
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("splits an image LCP into its request phases, which sum to the LCP", async () => {
+    const url = "https://cdn.example/avatars/user-8f3a.png";
+    const spy = stubTimings({ responseStart: 300 }, [{ name: url, requestStart: 900, fetchStart: 850, responseEnd: 1700 }]);
+    try {
+      const { initWebVitals } = await import("@/shared/lib/webVitals");
+      initWebVitals();
+      const img = document.createElement("img");
+      img.id = "hero";
+      FakePerformanceObserver.emit("largest-contentful-paint", [{ startTime: 2100, element: img, url }]);
+      await vi.advanceTimersByTimeAsync(6000);
+      await flushMicrotasks();
+
+      const p = lcpRow(2100) as Record<string, number> | undefined;
+      expect(p).toMatchObject({ lcp_element: "img#hero", ttfb: 300, load_delay: 600, load_time: 800, render_delay: 400 });
+      expect(p!.ttfb + p!.load_delay + p!.load_time + p!.render_delay).toBe(2100);
+      // The resource URL can carry a user id; it must never reach the row.
+      expect(JSON.stringify(rowWithValue(insertedRows(), 2100))).not.toContain("user-8f3a");
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("still writes the LCP row when timing APIs throw", async () => {
+    const spy = vi.spyOn(performance, "getEntriesByType").mockImplementation(() => {
+      throw new Error("no timing");
+    });
+    try {
+      const { initWebVitals } = await import("@/shared/lib/webVitals");
+      initWebVitals();
+      FakePerformanceObserver.emit("largest-contentful-paint", [{ startTime: 1777 }]);
+      await vi.advanceTimersByTimeAsync(6000);
+      await flushMicrotasks();
+
+      expect(lcpRow(1777)).toMatchObject({ value: 1777, lcp_element: null, ttfb: 0, render_delay: 1777 });
+    } finally {
+      spy.mockRestore();
+    }
+  });
+});

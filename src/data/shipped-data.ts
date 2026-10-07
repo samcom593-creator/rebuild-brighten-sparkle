@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Every page-load speed reading now records what was the slowest thing to appear and where the time went: the server, a picture downloading, or the page building itself. On a computer, 1 in 4 visits to your main dashboard takes 3 seconds or more to show its main content (72 real visits measured), past the 2.5 second target. This is what will show why.",
+    detail: "Speed readings used to say only how long a page took. Logged-in pages like the dashboard cannot be tested by the bot from outside, so real visits are the only way to see what is slow there. Picture addresses are never saved, because they can contain a person's id. The answer shows up once about 30 new dashboard visits come in.",
+    commit: "PL-WIB-LCP-ATTRIBUTION",
+  },
+  {
+    ts: "today",
     label: "The site's click-speed number now counts real clicks and taps only. It was also counting the mouse just passing over the page while it loaded, which is why the homepage looked slow on computers (314 ms) while phones were fine.",
     detail: "Tested in a real browser on the live homepage: the old method reported 784 ms for a mouse hover while the actual click took 464 ms. Each slow click now also records what was clicked and where the time went, so the next fix goes after the real cause. The homepage computer number shows 'not enough data' until about 30 new visits come in.",
     commit: "PL-WIB-INP-INTERACTIONS",

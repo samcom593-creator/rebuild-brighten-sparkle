@@ -16,8 +16,8 @@ interface VitalEntry {
    * another route and the metric is filed against a page that never produced it.
    */
   url: string | null;
-  /** INP only: which interaction this was and where its time went. See describeInteraction(). */
-  attribution?: InteractionAttribution;
+  /** INP: which interaction and where its time went (describeInteraction). LCP: which element and phase (describeLcp). */
+  attribution?: InteractionAttribution | LcpAttribution;
 }
 
 interface InteractionAttribution {
@@ -26,6 +26,32 @@ interface InteractionAttribution {
   input_delay: number;
   processing: number;
   presentation: number;
+}
+
+/**
+ * The four phases LCP is made of, using the web-vitals library's definitions,
+ * so a slow row says what to fix. ttfb is the server and edge; load_delay and
+ * load_time are the LCP image's request (both 0 for a text element); and
+ * render_delay is everything after that before the paint, which on a
+ * client-rendered page is JS, auth and data. The four sum to the LCP value
+ * (within rounding).
+ *
+ * Added 2026-10-07 for the admin pages: /dashboard desktop read p75 3.0s over
+ * 72 real sessions, and a lab run cannot reach a logged-in page without a
+ * session this bot does not hold. The field row is the only place that can
+ * name the slow element there.
+ */
+interface LcpAttribution {
+  lcp_element: string | null;
+  ttfb: number;
+  load_delay: number;
+  load_time: number;
+  render_delay: number;
+}
+
+interface LcpEntry extends PerformanceEntry {
+  readonly element?: Element | null;
+  readonly url?: string;
 }
 
 interface LayoutShiftEntry extends PerformanceEntry {
@@ -149,6 +175,47 @@ function describeInteraction(entry: EventTimingEntry): InteractionAttribution {
   };
 }
 
+/**
+ * Never throws and never reads the resource URL: an avatar or document URL can
+ * carry a user id, and analytics_events accepts anonymous inserts. Only the
+ * element descriptor (describeTarget's rules) and four durations are written.
+ */
+function describeLcp(entry: LcpEntry): LcpAttribution {
+  const lcp = entry.startTime;
+  let ttfb = 0;
+  let requestStart = 0;
+  let responseEnd = 0;
+  try {
+    const nav = performance.getEntriesByType("navigation")[0] as
+      | (PerformanceNavigationTiming & { activationStart?: number })
+      | undefined;
+    const activation = nav?.activationStart ?? 0;
+    ttfb = Math.max(0, (nav?.responseStart ?? 0) - activation);
+    const res = entry.url
+      ? (performance.getEntriesByType("resource") as PerformanceResourceTiming[]).find((r) => r.name === entry.url)
+      : undefined;
+    if (res) {
+      requestStart = Math.max(ttfb, (res.requestStart || res.fetchStart) - activation);
+      responseEnd = Math.max(requestStart, res.responseEnd - activation);
+    }
+  } catch { // empty-catch-allow:telemetry-fire-and-forget
+  }
+  // Text, or an image whose resource entry is gone or cross-origin: no request
+  // phase can be named, so its time is not invented; it all lands in render_delay.
+  if (!responseEnd) requestStart = responseEnd = ttfb;
+  // Clamp every boundary to the LCP itself so the four phases always sum to it.
+  ttfb = Math.min(ttfb, lcp);
+  requestStart = Math.min(requestStart, lcp);
+  responseEnd = Math.min(responseEnd, lcp);
+  return {
+    lcp_element: describeTarget(entry.element),
+    ttfb: Math.round(ttfb),
+    load_delay: Math.round(requestStart - ttfb),
+    load_time: Math.round(responseEnd - requestStart),
+    render_delay: Math.round(lcp - responseEnd),
+  };
+}
+
 function buildRows(batch: VitalEntry[]) {
   const sessionId = telemetrySessionId();
   return batch.map((v) => ({
@@ -225,8 +292,8 @@ export function initWebVitals() {
   try {
     new PerformanceObserver((list) => {
       const entries = list.getEntries();
-      const last = entries[entries.length - 1];
-      if (last && !observedWhileHidden(last)) enqueue({ name: "LCP", value: last.startTime, rating: last.startTime < 2500 ? "good" : last.startTime < 4000 ? "needs-improvement" : "poor" });
+      const last = entries[entries.length - 1] as LcpEntry | undefined;
+      if (last && !observedWhileHidden(last)) enqueue({ name: "LCP", value: last.startTime, rating: last.startTime < 2500 ? "good" : last.startTime < 4000 ? "needs-improvement" : "poor", attribution: describeLcp(last) });
     }).observe({ type: "largest-contentful-paint", buffered: true });
   } catch { // empty-catch-allow:telemetry-fire-and-forget
   }

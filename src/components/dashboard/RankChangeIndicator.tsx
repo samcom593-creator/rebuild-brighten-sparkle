@@ -46,7 +46,7 @@ const MotionUp = forwardRef<HTMLDivElement, { change: number; compact: boolean }
       transition={{ type: "spring", stiffness: 400 }}
       className={cn(
         "flex items-center gap-0.5 text-emerald-500 font-medium",
-        compact ? "text-[10px]" : "text-xs"
+        compact ? "text-[11px]" : "text-xs"
       )}
     >
       <TrendingUp className={compact ? "h-3 w-3" : "h-3.5 w-3.5"} />
@@ -65,7 +65,7 @@ const MotionDown = forwardRef<HTMLDivElement, { change: number; compact: boolean
       transition={{ type: "spring", stiffness: 400 }}
       className={cn(
         "flex items-center gap-0.5 text-rose-500 font-medium",
-        compact ? "text-[10px]" : "text-xs"
+        compact ? "text-[11px]" : "text-xs"
       )}
     >
       <TrendingDown className={compact ? "h-3 w-3" : "h-3.5 w-3.5"} />

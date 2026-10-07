@@ -189,7 +189,7 @@ export function AgentOnboardingCommandCenter({
       <div className="space-y-3 border-b border-border p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-amber-500">Onboarding command center</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-amber-500">Onboarding command center</p>
             <h3 className="mt-1 text-sm font-bold">{agentName}</h3>
           </div>
           <Badge variant="outline" className="tabular-nums">{finishedSteps}/{steps.length} complete</Badge>
@@ -200,7 +200,7 @@ export function AgentOnboardingCommandCenter({
             const Icon = step.icon;
             return (
               <div key={step.label} className={cn(
-                "flex min-w-0 items-center gap-1.5 rounded-lg border px-2 py-2 text-[10px] font-semibold",
+                "flex min-w-0 items-center gap-1.5 rounded-lg border px-2 py-2 text-[11px] font-semibold",
                 step.done
                   ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-500"
                   : "border-border bg-background/60 text-muted-foreground",
@@ -220,7 +220,7 @@ export function AgentOnboardingCommandCenter({
               <FileSignature className="h-4 w-4 text-amber-500" />
               <span className="text-xs font-bold uppercase tracking-wide">Carrier contracts</span>
             </div>
-            <div className="flex flex-wrap gap-1.5 text-[10px]">
+            <div className="flex flex-wrap gap-1.5 text-[11px]">
               <Badge variant="outline">{sentCount}/{applicableCount || contracts.length} sent</Badge>
               <Badge variant="outline" className="border-emerald-500/30 text-emerald-500">{activeCount} active</Badge>
               {attentionCount > 0 && (
@@ -252,18 +252,18 @@ export function AgentOnboardingCommandCenter({
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold">{row.carrier_name}</p>
-                        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-muted-foreground">
+                        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
                           <span>Comp {comp == null ? "—" : `${Number(comp)}%`}</span>
                           {row.live_status && <span>Imported status: {row.live_status.replace(/_/g, " ")}</span>}
                           {row.writing_number && <span>Writing #{row.writing_number}</span>}
                         </div>
                         {row.sent_at && (
-                          <p className="mt-1 text-[10px] text-muted-foreground">
+                          <p className="mt-1 text-[11px] text-muted-foreground">
                             Sent {formatDateTime(row.sent_at)}{row.sent_by_name ? ` by ${row.sent_by_name}` : ""}
                           </p>
                         )}
                       </div>
-                      <Badge variant="outline" className={cn("shrink-0 text-[9px]", statusTone(row.workflow_status))}>
+                      <Badge variant="outline" className={cn("shrink-0 text-[10px]", statusTone(row.workflow_status))}>
                         {STATUS_OPTIONS.find((option) => option.value === row.workflow_status)?.label ?? row.workflow_status}
                       </Badge>
                     </div>

@@ -279,7 +279,7 @@ export function StatCardPopup({
                       <div className="min-w-0 flex-1">
                         <p className="font-medium text-sm truncate">{agent.fullName}</p>
                         {(agent.email || agent.phone) && (
-                          <p className="text-[10px] text-muted-foreground truncate">
+                          <p className="text-[11px] text-muted-foreground truncate">
                             {agent.phone || ""}{agent.phone && agent.email ? " · " : ""}{agent.email || ""}
                           </p>
                         )}
@@ -294,7 +294,7 @@ export function StatCardPopup({
                         ) : type === "totalDeals" ? (
                           <>
                             <p className="font-bold text-sm">{agent.totalDeals} deals</p>
-                            <p className="text-[10px] text-muted-foreground">
+                            <p className="text-[11px] text-muted-foreground">
                               ${Math.round(agent.totalAlp).toLocaleString()}
                             </p>
                           </>
@@ -307,7 +307,7 @@ export function StatCardPopup({
                               ${Math.round(agent.totalAlp).toLocaleString()}
                             </p>
                             {type === "producers" && (
-                              <p className="text-[10px] text-muted-foreground">{agent.totalDeals} deals</p>
+                              <p className="text-[11px] text-muted-foreground">{agent.totalDeals} deals</p>
                             )}
                           </>
                         )}

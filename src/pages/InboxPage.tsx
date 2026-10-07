@@ -494,7 +494,7 @@ export default function InboxPage() {
                   <SelectItem value="unlicensed_outreach">Unlicensed outreach (cold + dormant unlicensed)</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-[12px] text-muted-foreground">
                 {blastCampaign === "reapply" && "Pulls applications status=new/no_pickup/reviewing/interview from the last 30d. Two copy variants (licensed/unlicensed). Email + SMS where available."}
                 {blastCampaign === "seminar" && "Pulls seminar_registrations from the last 14d. Re-sends the seminar invite + link via carrier-gateway SMS where supported."}
                 {blastCampaign === "unlicensed_outreach" && "Pulls every unlicensed applicant not terminated. Wakes up dormant signups + nudges them onto the licensing path."}
@@ -522,7 +522,7 @@ export default function InboxPage() {
             {blastResult ? (
               <div className="space-y-1">
                 <Label className="text-xs">Result</Label>
-                <pre className="text-[11px] bg-muted/40 p-2 rounded max-h-32 overflow-y-auto">
+                <pre className="text-[12px] bg-muted/40 p-2 rounded max-h-32 overflow-y-auto">
                   {JSON.stringify(blastResult, null, 2)}
                 </pre>
               </div>
@@ -584,7 +584,7 @@ export default function InboxPage() {
             </div>
             <div>
               <p className="text-lg font-bold" style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>{emailsToday}</p>
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Emails Today</p>
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Emails Today</p>
             </div>
           </div>
         </button>
@@ -601,7 +601,7 @@ export default function InboxPage() {
             </div>
             <div>
               <p className="text-lg font-bold" style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>{smsToday}</p>
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">SMS Today</p>
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">SMS Today</p>
             </div>
           </div>
         </button>
@@ -612,7 +612,7 @@ export default function InboxPage() {
             </div>
             <div>
               <p className="text-lg font-bold" style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>{deliveryRate}%</p>
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Delivery Rate</p>
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Delivery Rate</p>
             </div>
           </div>
         </div>
@@ -629,7 +629,7 @@ export default function InboxPage() {
             </div>
             <div>
               <p className={cn("text-lg font-bold", failedCount > 0 && "text-destructive")} style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>{failedCount}</p>
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Failed · Click to Retry</p>
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Failed · Click to Retry</p>
             </div>
           </div>
         </button>
@@ -646,7 +646,7 @@ export default function InboxPage() {
             </div>
             <div>
               <p className="text-lg font-bold" style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>{messages.length}</p>
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Total Logged</p>
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Total Logged</p>
             </div>
           </div>
         </button>
@@ -731,14 +731,14 @@ export default function InboxPage() {
                       <span className="flex-1 truncate text-xs font-medium">
                         {m.recipient_email || m.recipient_phone || "—"}
                       </span>
-                      <span className="whitespace-nowrap text-[10px] text-muted-foreground">
+                      <span className="whitespace-nowrap text-[11px] text-muted-foreground">
                         {format(new Date(m.created_at), "MMM d, h:mm a")}
                       </span>
                     </div>
                     <p className="truncate text-sm font-medium">{m.subject || m.title}</p>
                     <p className="truncate text-xs text-muted-foreground">{m.message}</p>
                     {FAILURE_STATUSES.has(m.status) && (
-                      <Badge variant="destructive" className="mt-1 text-[10px] h-4 px-1">
+                      <Badge variant="destructive" className="mt-1 text-[11px] h-4 px-1">
                         {m.status}
                       </Badge>
                     )}

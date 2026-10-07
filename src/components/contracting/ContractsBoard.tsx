@@ -212,7 +212,7 @@ export function ContractsBoard({
           ["Issues", summary.issues, summary.issues > 0 ? "text-amber-600 dark:text-amber-400" : ""],
         ] as const).map(([label, value, tone]) => (
           <div key={label}>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{label}</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{label}</p>
             {summaryQ.isLoading ? (
               <Skeleton className="mt-1 h-8 w-14" />
             ) : (
@@ -267,7 +267,7 @@ export function ContractsBoard({
 
       {/* Rows */}
       <GlassCard className="overflow-hidden">
-        <div className="hidden grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_110px_130px_110px] border-b border-border bg-muted/40 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground sm:grid">
+        <div className="hidden grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_110px_130px_110px] border-b border-border bg-muted/40 px-4 py-2 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground sm:grid">
           <span>Carrier</span><span>Producer</span><span>Level</span><span>Status</span><span>Writing #</span>
         </div>
         {rowsQ.isLoading ? (
@@ -295,7 +295,7 @@ export function ContractsBoard({
                 <span className="truncate text-muted-foreground">{row.agent_name ?? "Producer not on file"}</span>
                 <span className="truncate tabular-nums text-muted-foreground">{row.commission_level ?? "—"}</span>
                 <span>
-                  <span className={cn("inline-block rounded border px-1.5 py-0.5 text-[11px] font-medium capitalize", statusTone(row.status))}>
+                  <span className={cn("inline-block rounded border px-1.5 py-0.5 text-[12px] font-medium capitalize", statusTone(row.status))}>
                     {humanStatus(row.status)}
                   </span>
                 </span>

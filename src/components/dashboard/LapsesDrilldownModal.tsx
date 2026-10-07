@@ -98,21 +98,21 @@ export function LapsesDrilldownModal({ open, onOpenChange }: LapsesDrilldownModa
                 </div>
                 <div className="text-right">
                   <p className="text-xs font-mono">{fmtMoney(r.face_amount)} face</p>
-                  <p className="text-[10px] text-muted-foreground">
+                  <p className="text-[11px] text-muted-foreground">
                     {fmtMoney(r.annual_premium)}/yr · ${Number(r.monthly_premium ?? 0).toFixed(2)}/mo
                   </p>
                 </div>
                 <div className="text-right">
-                  <Badge variant="outline" className="text-[10px]">
+                  <Badge variant="outline" className="text-[11px]">
                     {r.policy_status_standard ?? r.status ?? "lapsed"}
                   </Badge>
                   {r.lapsed_at && (
-                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
                       {formatDistanceToNowStrict(new Date(r.lapsed_at), { addSuffix: true })}
                     </p>
                   )}
                   {r.effective_date && (
-                    <p className="text-[10px] text-muted-foreground">
+                    <p className="text-[11px] text-muted-foreground">
                       effective {format(new Date(r.effective_date), "MMM d, yyyy")}
                     </p>
                   )}

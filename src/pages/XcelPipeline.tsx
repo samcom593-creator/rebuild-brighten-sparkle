@@ -164,16 +164,16 @@ export default function XcelPipeline() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold">{r.student_name || r.student_email.split("@")[0]}</span>
-                    <Badge variant="outline" className={cn("text-[10px] gap-1", m.color)}>
+                    <Badge variant="outline" className={cn("text-[11px] gap-1", m.color)}>
                       <m.Icon className="h-3 w-3" /> {m.label}
                     </Badge>
                     {r.license_progress && (
-                      <Badge variant="outline" className="text-[10px] capitalize">
+                      <Badge variant="outline" className="text-[11px] capitalize">
                         {r.license_progress.replace(/_/g, " ")}
                       </Badge>
                     )}
                     {!r.application_id && (
-                      <Badge variant="outline" className="text-[10px] text-rose-300 border-rose-500/40 bg-rose-500/10">
+                      <Badge variant="outline" className="text-[11px] text-rose-300 border-rose-500/40 bg-rose-500/10">
                         No CRM record
                       </Badge>
                     )}
@@ -205,12 +205,12 @@ export default function XcelPipeline() {
                 </div>
                 <div className="flex flex-col gap-1.5">
                   {r.app_phone && (
-                    <Button asChild size="sm" variant="outline" className="h-7 text-[11px] gap-1">
+                    <Button asChild size="sm" variant="outline" className="h-7 text-[12px] gap-1">
                       <a href={phoneHref(r.app_phone) ?? `tel:${r.app_phone}`} {...contactLinkProps(phoneHref(r.app_phone))}><Phone className="h-3 w-3" /> Call</a>
                     </Button>
                   )}
                   {r.student_email && (
-                    <Button asChild size="sm" variant="outline" className="h-7 text-[11px] gap-1">
+                    <Button asChild size="sm" variant="outline" className="h-7 text-[12px] gap-1">
                       <a href={`mailto:${r.student_email}?subject=${encodeURIComponent("Quick check-in on your APEX licensing course")}`}>
                         <Mail className="h-3 w-3" /> Email
                       </a>

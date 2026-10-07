@@ -55,7 +55,7 @@ export function SmbBridgeCard({ smb }: Props) {
           </div>
           <div className="min-w-0">
             <h3 className="text-sm font-semibold tracking-tight">Social Media Bot · tactical hopper</h3>
-            <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">
+            <p className="text-[12px] text-muted-foreground leading-snug mt-0.5">
               The DOER. Daily drafts, daemon health, analytics, blockers — bot ships, ContentWheel grades.
             </p>
           </div>
@@ -102,8 +102,8 @@ export function SmbBridgeCard({ smb }: Props) {
       </div>
 
       {run && (
-        <div className="mt-3 flex items-center gap-2 text-[11px] text-muted-foreground">
-          <Badge variant="outline" className="font-mono text-[10px] uppercase">
+        <div className="mt-3 flex items-center gap-2 text-[12px] text-muted-foreground">
+          <Badge variant="outline" className="font-mono text-[11px] uppercase">
             {run.mode ?? "run"}
           </Badge>
           <span>
@@ -113,7 +113,7 @@ export function SmbBridgeCard({ smb }: Props) {
         </div>
       )}
       {a && (a.days_since_upload ?? 0) >= 7 && (
-        <div className="mt-3 rounded-md bg-amber-500/10 border border-amber-500/30 px-3 py-2 text-[11px] text-amber-300 leading-snug">
+        <div className="mt-3 rounded-md bg-amber-500/10 border border-amber-500/30 px-3 py-2 text-[12px] text-amber-300 leading-snug">
           {a.days_since_upload} days since last upload to {a.platform}. The wheel stops turning when the doer goes quiet.
         </div>
       )}
@@ -144,12 +144,12 @@ function BridgeStat({ icon: Icon, label, value, sub, tone }: StatProps) {
   };
   return (
     <div className={cn("rounded-lg border bg-card/40 p-3", ring[tone])}>
-      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+      <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
         <Icon className="h-3 w-3" />
         {label}
       </div>
       <div className={cn("mt-1.5 text-xl font-bold tabular-nums leading-none", accent[tone])}>{value}</div>
-      <p className="mt-1.5 text-[10px] text-muted-foreground leading-snug">{sub}</p>
+      <p className="mt-1.5 text-[11px] text-muted-foreground leading-snug">{sub}</p>
     </div>
   );
 }

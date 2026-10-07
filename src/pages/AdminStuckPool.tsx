@@ -111,7 +111,7 @@ export default function AdminStuckPool() {
   return (
     <div className="container mx-auto px-4 py-8 space-y-6 max-w-7xl">
       <div>
-        <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-muted-foreground mb-1">
+        <div className="flex items-center gap-2 text-[12px] uppercase tracking-[0.18em] text-muted-foreground mb-1">
           <Compass className="h-3.5 w-3.5" /> Pipeline · Stuck Pool
         </div>
         <h1 className="text-3xl font-bold">Stuck Pool</h1>
@@ -124,11 +124,11 @@ export default function AdminStuckPool() {
         {(["critical", "high", "medium", "low"] as const).map((sev) => (
           <Card key={sev} className={cn("border", SEVERITY_BG[sev])}>
             <CardContent className="p-4">
-              <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{sev}</div>
+              <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{sev}</div>
               <div className={cn("text-3xl font-bold tabular-nums leading-none mt-1", SEVERITY_COLORS[sev])}>
                 {counts[sev]}
               </div>
-              <div className="text-[10px] text-muted-foreground mt-1">
+              <div className="text-[11px] text-muted-foreground mt-1">
                 {sev === "critical" && ">30d in stage"}
                 {sev === "high" && ">14d in stage"}
                 {sev === "medium" && ">7d in stage"}
@@ -174,7 +174,7 @@ export default function AdminStuckPool() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-[10px] uppercase tracking-wider text-muted-foreground border-b border-border/50">
+                  <tr className="text-[11px] uppercase tracking-wider text-muted-foreground border-b border-border/50">
                     <th className="text-left py-2 px-2">Name</th>
                     <th className="text-left py-2 px-2">Stage</th>
                     <th className="text-right py-2 px-2">Days</th>
@@ -194,12 +194,12 @@ export default function AdminStuckPool() {
                           <Link to={href} className="hover:underline font-medium">
                             {row.first_name ?? "—"} {row.last_name ?? ""}
                           </Link>
-                          <div className="text-[10px] text-muted-foreground capitalize">{row.person_type}</div>
+                          <div className="text-[11px] text-muted-foreground capitalize">{row.person_type}</div>
                         </td>
                         <td className="py-2 px-2">{row.stage_display_name}</td>
                         <td className="py-2 px-2 text-right tabular-nums">{Math.round(row.days_in_stage)}d</td>
                         <td className="py-2 px-2">
-                          <Badge variant="outline" className={cn("text-[10px]", SEVERITY_COLORS[row.severity], SEVERITY_BG[row.severity])}>
+                          <Badge variant="outline" className={cn("text-[11px]", SEVERITY_COLORS[row.severity], SEVERITY_BG[row.severity])}>
                             {row.severity}
                           </Badge>
                         </td>
@@ -214,7 +214,7 @@ export default function AdminStuckPool() {
                 </tbody>
               </table>
               {filtered.length > 200 && (
-                <div className="text-[11px] text-muted-foreground text-center mt-3">
+                <div className="text-[12px] text-muted-foreground text-center mt-3">
                   Showing first 200 of {filtered.length}. Filter to narrow down.
                 </div>
               )}

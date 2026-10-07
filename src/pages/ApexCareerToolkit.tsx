@@ -395,7 +395,7 @@ export default function ApexCareerToolkit() {
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-[1580px] w-full text-left text-xs">
-              <thead className="bg-muted/45 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+              <thead className="bg-muted/45 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th className="sticky left-0 z-10 min-w-52 border-r border-border bg-muted px-4 py-3">Recruit</th>
                   <th className="px-3 py-3">Overall</th>
@@ -482,7 +482,7 @@ export default function ApexCareerToolkit() {
                     <h2 className="text-xl font-bold text-foreground">{fullName(selectedAgent)}</h2>
                     <PathBadge path={path} />
                     {selectedAgent.record_type === "manual_agent" && (
-                      <span className="rounded-sm border border-border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                      <span className="rounded-sm border border-border px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                         Manual agent
                       </span>
                     )}
@@ -498,7 +498,7 @@ export default function ApexCareerToolkit() {
                 </div>
                 <div className="shrink-0 text-left sm:text-right">
                   <div className="text-2xl font-bold tabular-nums">{percentComplete}%</div>
-                  <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Journey complete</div>
+                  <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Journey complete</div>
                 </div>
               </div>
 
@@ -596,7 +596,7 @@ export default function ApexCareerToolkit() {
                       )}
                     </div>
                     <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{step.description}</p>
-                    <p className="mt-3 text-[11px] font-medium text-foreground">{step.successCondition}</p>
+                    <p className="mt-3 text-[12px] font-medium text-foreground">{step.successCondition}</p>
                   </button>
                 );
               })}
@@ -663,7 +663,7 @@ export default function ApexCareerToolkit() {
 function PathBadge({ path }: { path: ApexJourneyPath }) {
   return (
     <span className={cn(
-      "rounded-sm border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
+      "rounded-sm border px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide",
       path === "licensed"
         ? "border-emerald-500/35 text-emerald-600 dark:text-emerald-400"
         : "border-amber-500/35 text-amber-600 dark:text-amber-400",
@@ -687,7 +687,7 @@ function RecruitLifecycleRow({
       <td className="sticky left-0 z-[1] border-r border-border bg-card px-4 py-3">
         <button type="button" onClick={onSelect} className="max-w-48 text-left focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]">
           <span className="block truncate font-semibold text-foreground">{fullName(agent)}</span>
-          <span className="mt-0.5 block truncate text-[10px] text-muted-foreground">{agent.email}</span>
+          <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">{agent.email}</span>
         </button>
       </td>
       <td className="px-3 py-3 text-sm font-bold tabular-nums text-foreground">{snapshot.percentComplete}%</td>
@@ -757,7 +757,7 @@ function JourneyStepButton({
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-semibold text-foreground">{step.label}</span>
         <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">{step.description}</span>
-        <span className="mt-2 block text-[11px] font-medium text-foreground">Done when: {step.successCondition}</span>
+        <span className="mt-2 block text-[12px] font-medium text-foreground">Done when: {step.successCondition}</span>
       </span>
     </button>
   );
@@ -795,7 +795,7 @@ function NumberField({
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg border border-border bg-card p-3">
-      <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{label}</div>
       <div className="mt-1 text-base font-bold tabular-nums text-foreground">{value}</div>
     </div>
   );

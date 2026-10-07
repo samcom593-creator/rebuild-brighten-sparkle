@@ -159,7 +159,7 @@ function AgedLeadDuplicates() {
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-amber-500" />
               <span className="text-sm font-medium">{group.leads.length} records</span>
-              <Badge variant="outline" className="text-[10px]">
+              <Badge variant="outline" className="text-[11px]">
                 {group.matchType === "email" ? "Same Email" : "Same Phone"}
               </Badge>
             </div>

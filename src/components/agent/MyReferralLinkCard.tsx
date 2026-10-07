@@ -70,7 +70,7 @@ export function MyReferralLinkCard() {
       <CardContent className="space-y-3 p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-300">Your link in bio</p>
+            <p className="text-[12px] font-semibold uppercase tracking-wider text-emerald-300">Your link in bio</p>
             <p className="text-xs text-muted-foreground">Put it in Instagram, TikTok, or any bio. Every applicant is credited to you.</p>
           </div>
           <Badge variant="outline" className="border-emerald-500/40 bg-emerald-500/10 text-emerald-300">
@@ -104,7 +104,7 @@ export function MyReferralLinkCard() {
                 </a>
               </Button>
             </div>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-[12px] text-muted-foreground">
               Code: <span className="font-mono text-foreground/80">{code}</span>
               {" · "}every signup through this link is credited to your recruiting pipeline.
             </p>

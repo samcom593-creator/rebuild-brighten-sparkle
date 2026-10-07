@@ -82,13 +82,13 @@ export function UnclaimedLeadsCard() {
               <AlertOctagon className="h-6 w-6 text-rose-400" />
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] uppercase tracking-[0.18em] text-rose-400/80">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-rose-400/80">
                 Money on the floor · auto-detected
               </p>
               <h2 className="text-xl sm:text-2xl font-bold tracking-tight mt-0.5">
                 Unclaimed applicants
               </h2>
-              <p className="text-[12px] text-muted-foreground leading-snug mt-1 max-w-xl">
+              <p className="text-[13px] text-muted-foreground leading-snug mt-1 max-w-xl">
                 Applicants who applied but have no manager / agent owning them. Every hour they sit cold is recruiting revenue walking away.
               </p>
             </div>
@@ -134,7 +134,7 @@ export function UnclaimedLeadsCard() {
 
         {data.sample.length > 0 && (
           <div className="mt-4 pt-4 border-t border-border/50">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-[0.18em] mb-2">
+            <p className="text-[11px] text-muted-foreground uppercase tracking-[0.18em] mb-2">
               Oldest 5 · longest waiting first
             </p>
             <ul className="space-y-1.5">
@@ -143,7 +143,7 @@ export function UnclaimedLeadsCard() {
                   <span className="font-medium">
                     {(row.first_name || "—").toString()}
                   </span>
-                  <span className="text-[11px] text-muted-foreground tabular-nums">
+                  <span className="text-[12px] text-muted-foreground tabular-nums">
                     {row.age_hours < 48
                       ? `${row.age_hours}h cold`
                       : `${Math.round(row.age_hours / 24)}d cold`}
@@ -169,7 +169,7 @@ interface StatProps {
 function Stat({ icon: Icon, label, value, valueClass }: StatProps) {
   return (
     <div className="rounded-lg border border-border/60 bg-card/60 p-3">
-      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+      <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
         <Icon className="h-3 w-3" />
         {label}
       </div>

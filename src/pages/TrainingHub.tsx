@@ -544,7 +544,7 @@ function RecordingsTab({
             </span>
             <span className="text-left leading-tight">
               <span className="block font-semibold">{p.name}</span>
-              <span className="block text-[11px] text-muted-foreground">
+              <span className="block text-[12px] text-muted-foreground">
                 {p.role} · {counts[p.id] ?? 0}
               </span>
             </span>
@@ -580,7 +580,7 @@ function RecordingsTab({
                   <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
                     <Badge
                       variant="outline"
-                      className="border-primary/30 bg-primary/10 px-1.5 py-0 text-[10px] uppercase tracking-wide text-primary"
+                      className="border-primary/30 bg-primary/10 px-1.5 py-0 text-[11px] uppercase tracking-wide text-primary"
                     >
                       {rec.topic}
                     </Badge>
@@ -673,7 +673,7 @@ function TranscriptPanel({ recId }: { recId: string }) {
                 {fmtClock(u.startMs)}
               </span>
               {u.speaker && (
-                <span className="shrink-0 pt-0.5 text-[10px] font-bold uppercase text-primary">
+                <span className="shrink-0 pt-0.5 text-[11px] font-bold uppercase text-primary">
                   {u.speaker}
                 </span>
               )}

@@ -197,7 +197,7 @@ export function ReferralLeaderboard({ currentAgentId, period = "week" }: Referra
             <Handshake className="h-4 w-4 text-primary" />
             <h4 className="font-semibold text-sm">Top Referral Producers</h4>
           </div>
-          <div className="flex items-center gap-1 text-[10px] text-emerald-500">
+          <div className="flex items-center gap-1 text-[11px] text-emerald-500">
             <Radio className="h-2.5 w-2.5 animate-pulse" />
             <span>LIVE</span>
           </div>

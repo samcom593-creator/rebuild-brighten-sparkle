@@ -306,7 +306,7 @@ export default function PreLicensing() {
       <GlassCard className="p-4">
         <div className="flex items-center justify-between mb-3">
           <div>
-            <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Student health</p>
+            <p className="text-[12px] uppercase tracking-widest text-muted-foreground font-semibold">Student health</p>
             <h3 className="text-lg font-bold">Where your enrollees sit right now</h3>
           </div>
           <Badge variant="outline" className="text-xs">
@@ -341,7 +341,7 @@ export default function PreLicensing() {
                     <Icon className="h-4 w-4" />
                     <span className="text-xl font-bold tabular-nums">{n}</span>
                   </div>
-                  <p className="text-[11px] uppercase tracking-wider font-semibold mt-1">{meta.label}</p>
+                  <p className="text-[12px] uppercase tracking-wider font-semibold mt-1">{meta.label}</p>
                 </button>
               );
             })}
@@ -464,17 +464,17 @@ export default function PreLicensing() {
                     {/* Progress + course */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap mb-1.5">
-                        <Badge variant="outline" className={`text-[10px] ${section.color}`}>
+                        <Badge variant="outline" className={`text-[11px] ${section.color}`}>
                           {section.label}
                         </Badge>
-                        <Badge variant="outline" className={`text-[10px] gap-1 ${health.color}`}>
+                        <Badge variant="outline" className={`text-[11px] gap-1 ${health.color}`}>
                           <HealthIcon className="h-2.5 w-2.5" /> {health.label}
                         </Badge>
-                        <Badge variant="outline" className="text-[10px] bg-background/70">
+                        <Badge variant="outline" className="text-[11px] bg-background/70">
                           {producerTypeLabel(s)}
                         </Badge>
                         {s.course_name && (
-                          <span className="text-[11px] text-muted-foreground truncate">{s.course_name}</span>
+                          <span className="text-[12px] text-muted-foreground truncate">{s.course_name}</span>
                         )}
                       </div>
                       <div className="flex items-center gap-3">
@@ -485,7 +485,7 @@ export default function PreLicensing() {
                           {Math.round(pct)}%
                         </span>
                       </div>
-                      <div className="flex items-center gap-3 text-[11px] text-muted-foreground mt-2 flex-wrap">
+                      <div className="flex items-center gap-3 text-[12px] text-muted-foreground mt-2 flex-wrap">
                         <span className="flex items-center gap-1">
                           <Clock className="h-3 w-3" /> {fmtHours(s.time_spent_minutes)}
                         </span>
@@ -557,7 +557,7 @@ function SummaryTile({ icon: Icon, label, value, color, loading }: SummaryTilePr
     <GlassCard className="p-4">
       <div className="flex items-start justify-between">
         <div className="min-w-0">
-          <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">{label}</p>
+          <p className="text-[12px] uppercase tracking-widest text-muted-foreground font-semibold">{label}</p>
           {loading ? (
             <Skeleton className="h-9 w-20 mt-1" />
           ) : (

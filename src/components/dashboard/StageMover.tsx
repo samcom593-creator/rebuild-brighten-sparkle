@@ -107,7 +107,7 @@ export function StageMover({
           >
             {stage.label}
             {stage.key === currentStage && (
-              <span className="ml-auto text-[10px] text-muted-foreground">current</span>
+              <span className="ml-auto text-[11px] text-muted-foreground">current</span>
             )}
           </DropdownMenuItem>
         ))}

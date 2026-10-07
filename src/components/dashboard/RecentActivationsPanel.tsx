@@ -79,13 +79,13 @@ export function RecentActivationsPanel() {
                 </span>
                 <div className="flex-1 min-w-0">
                   <div className="truncate font-medium">{row.display_name}</div>
-                  <div className="text-[10px] text-muted-foreground truncate">
+                  <div className="text-[11px] text-muted-foreground truncate">
                     Activated {formatDistanceToNowStrict(new Date(row.first_deal_at), { addSuffix: true })}
                   </div>
                 </div>
                 <div className="text-right">
                   <div className="text-xs font-mono text-emerald-300">{fmtMoney(Number(row.first_30d_alp))}</div>
-                  <div className="text-[10px] text-muted-foreground">{row.first_30d_deals} deal{row.first_30d_deals === 1 ? "" : "s"}</div>
+                  <div className="text-[11px] text-muted-foreground">{row.first_30d_deals} deal{row.first_30d_deals === 1 ? "" : "s"}</div>
                 </div>
               </li>
             ))}

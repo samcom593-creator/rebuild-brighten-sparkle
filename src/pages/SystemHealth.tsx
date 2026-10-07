@@ -270,7 +270,7 @@ export default function SystemHealth() {
                           {meta?.label ?? r.issue}
                         </div>
                         {r.detail && (
-                          <div className="mt-0.5 truncate text-[11px] tabular-nums text-muted-foreground">
+                          <div className="mt-0.5 truncate text-[12px] tabular-nums text-muted-foreground">
                             {r.detail}
                           </div>
                         )}
@@ -320,7 +320,7 @@ export default function SystemHealth() {
                  warningCount > 0 ? `${warningCount} Warning${warningCount > 1 ? "s" : ""}` :
                  "All Systems Operational"}
               </div>
-              <div className="mt-0.5 text-[11px] tabular-nums text-muted-foreground">
+              <div className="mt-0.5 text-[12px] tabular-nums text-muted-foreground">
                 Last checked: {lastCheck ? format(new Date(lastCheck.checked_at), "MMM d, h:mm a") : "Never"}
               </div>
             </div>
@@ -384,7 +384,7 @@ export default function SystemHealth() {
                     <span className="min-w-0 truncate text-sm font-medium text-foreground">{result.service}</span>
                     <Badge
                       variant={result.status === "healthy" ? "default" : result.status === "degraded" ? "secondary" : "destructive"}
-                      className="h-5 shrink-0 text-[10px]"
+                      className="h-5 shrink-0 text-[11px]"
                     >
                       {result.status === "healthy" ? <CheckCircle className="mr-1 h-3 w-3" /> :
                        result.status === "degraded" ? <AlertTriangle className="mr-1 h-3 w-3" /> :
@@ -394,22 +394,22 @@ export default function SystemHealth() {
                     {result.autoFixed && (
                       <Badge
                         variant="outline"
-                        className={cn("h-5 shrink-0 border-emerald-500/30 text-[10px]", SEV_TEXT.good)}
+                        className={cn("h-5 shrink-0 border-emerald-500/30 text-[11px]", SEV_TEXT.good)}
                       >
                         auto-fixed
                       </Badge>
                     )}
                   </div>
-                  <div className="mt-1 break-words text-[11px] leading-relaxed text-muted-foreground">
+                  <div className="mt-1 break-words text-[12px] leading-relaxed text-muted-foreground">
                     {result.message}
                   </div>
                   {result.responseTime > 0 && (
-                    <div className="mt-0.5 text-[11px] tabular-nums text-muted-foreground">
+                    <div className="mt-0.5 text-[12px] tabular-nums text-muted-foreground">
                       Response: {result.responseTime}ms
                     </div>
                   )}
                   {result.requiresAction && result.actionRequired && (
-                    <div className={cn("mt-1.5 flex items-start gap-2 text-[11px] leading-relaxed", SEV_TEXT.bad)}>
+                    <div className={cn("mt-1.5 flex items-start gap-2 text-[12px] leading-relaxed", SEV_TEXT.bad)}>
                       <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                       <span className="min-w-0 break-words">{result.actionRequired}</span>
                     </div>
@@ -437,7 +437,7 @@ export default function SystemHealth() {
           <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                <tr className="border-b border-border text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                   <th className="px-2 py-2 text-left">Time</th>
                   <th className="px-2 py-2 text-left">Status</th>
                   <th className="px-2 py-2 text-right">Critical</th>

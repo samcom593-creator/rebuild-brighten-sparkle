@@ -315,7 +315,7 @@ export default function BookReconciliation() {
         <GlassCard className="p-4 lg:col-span-2">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Live premium by carrier</p>
+              <p className="text-[12px] uppercase tracking-widest text-muted-foreground font-semibold">Live premium by carrier</p>
               <h3 className="text-lg font-bold">Where the book sits</h3>
             </div>
             <Badge variant="outline" className="text-xs">{carrierMix.length} carriers</Badge>
@@ -351,7 +351,7 @@ export default function BookReconciliation() {
         <GlassCard className="p-4">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Lost-commission leaderboard</p>
+              <p className="text-[12px] uppercase tracking-widest text-muted-foreground font-semibold">Lost-commission leaderboard</p>
               <h3 className="text-lg font-bold">By agent · unsupported writes</h3>
             </div>
             <TrendingDown className="h-5 w-5 text-rose-500 dark:text-rose-400" />
@@ -366,7 +366,7 @@ export default function BookReconciliation() {
                 <li key={`${l.agent_key}-${l.carrier_name}`} className="flex items-center justify-between rounded-md border border-border/40 px-2.5 py-1.5">
                   <div className="min-w-0">
                     <p className="text-sm font-semibold truncate">{l.agent_name}</p>
-                    <p className="text-[11px] text-muted-foreground">{l.carrier_name} · {l.policy_count} policies</p>
+                    <p className="text-[12px] text-muted-foreground">{l.carrier_name} · {l.policy_count} policies</p>
                   </div>
                   <p className="text-sm font-bold tabular-nums text-rose-500 dark:text-rose-400">
                     {fmtUsd(l.approx_lost_commission_usd, true)}
@@ -446,7 +446,7 @@ export default function BookReconciliation() {
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold capitalize truncate">{d.fn_lc} {d.ln_lc}</p>
                   <p className="text-xs text-muted-foreground">{d.carrier_name} · {d.dup_count}× policies</p>
-                  <p className="text-[11px] text-muted-foreground font-mono mt-0.5 truncate">
+                  <p className="text-[12px] text-muted-foreground font-mono mt-0.5 truncate">
                     {d.policy_nums.join(" · ")}
                   </p>
                 </div>
@@ -487,7 +487,7 @@ export default function BookReconciliation() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="font-semibold truncate">{q.agent_name ?? "—"}</p>
-                    <Badge variant="outline" className="text-[10px]">{q.agent_code ?? "—"}</Badge>
+                    <Badge variant="outline" className="text-[11px]">{q.agent_code ?? "—"}</Badge>
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {q.deal_count} deals · {q.no_policy_num_count} no-#  · {q.ghost_deal_count} ghost · {q.dead_deal_count} dead
@@ -499,7 +499,7 @@ export default function BookReconciliation() {
                     q.quality_score >= 50 ? "text-amber-500 dark:text-amber-400" :
                     "text-rose-500 dark:text-rose-400"
                   }`}>{q.quality_score}</p>
-                  <p className="text-[10px] uppercase text-muted-foreground">score</p>
+                  <p className="text-[11px] uppercase text-muted-foreground">score</p>
                 </div>
               </RowCard>
             ))
@@ -555,7 +555,7 @@ function BigStat({ icon: Icon, label, value, sub, color, loading }: {
     <GlassCard className="p-5">
       <div className="flex items-start justify-between">
         <div className="min-w-0">
-          <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">{label}</p>
+          <p className="text-[12px] uppercase tracking-widest text-muted-foreground font-semibold">{label}</p>
           {loading ? <Skeleton className="h-10 w-32 mt-1" /> : (
             <p className={`text-4xl font-bold tabular-nums mt-1 ${color}`}>{value}</p>
           )}
@@ -595,11 +595,11 @@ function RowMain({ title, meta, age, badges }: {
       <div className="flex items-center gap-2 flex-wrap mb-0.5">
         <p className="font-semibold truncate">{title}</p>
         {badges?.map((b) => (
-          <Badge key={b.label} variant="outline" className={`text-[10px] ${b.color}`}>{b.label}</Badge>
+          <Badge key={b.label} variant="outline" className={`text-[11px] ${b.color}`}>{b.label}</Badge>
         ))}
       </div>
       <p className="text-xs text-muted-foreground truncate">{meta}</p>
-      {age && <p className="text-[11px] text-muted-foreground mt-0.5">{age}</p>}
+      {age && <p className="text-[12px] text-muted-foreground mt-0.5">{age}</p>}
     </div>
   );
 }
@@ -608,7 +608,7 @@ function RowMoney({ label, value, color }: { label: string; value: string; color
   return (
     <div className="text-right shrink-0 min-w-[90px]">
       <p className={`text-base font-bold tabular-nums ${color}`}>{value}</p>
-      <p className="text-[10px] uppercase text-muted-foreground">{label}</p>
+      <p className="text-[11px] uppercase text-muted-foreground">{label}</p>
     </div>
   );
 }

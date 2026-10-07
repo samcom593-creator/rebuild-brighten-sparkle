@@ -83,7 +83,7 @@ export function TopBar() {
       <div className="flex shrink-0 items-center gap-1.5">
         <button type="button" onClick={() => setSearchOpen(true)} className="hidden h-8 w-[210px] items-center gap-2 rounded-md border border-border bg-card px-2.5 text-xs text-muted-foreground hover:border-primary/40 md:flex">
           <Search className="h-3.5 w-3.5" /><span>Search</span>
-          <span className="ml-auto flex items-center gap-0.5 rounded border border-border px-1 py-0.5 text-[9px]"><Command className="h-2.5 w-2.5" />K</span>
+          <span className="ml-auto flex items-center gap-0.5 rounded border border-border px-1 py-0.5 text-[10px]"><Command className="h-2.5 w-2.5" />K</span>
         </button>
         <Button
           variant="ghost"
@@ -118,7 +118,7 @@ export function TopBar() {
         )}
         <SubmitDealDialog trigger={<Button size="sm" className="h-8 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground shadow-none hover:bg-primary/90">Post a Deal</Button>} />
         <Avatar className="ml-1 h-8 w-8 border border-border">
-          <AvatarFallback className="bg-card text-[10px] font-semibold text-foreground">{initials}</AvatarFallback>
+          <AvatarFallback className="bg-card text-[11px] font-semibold text-foreground">{initials}</AvatarFallback>
         </Avatar>
       </div>
     </header>

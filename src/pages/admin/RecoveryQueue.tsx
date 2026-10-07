@@ -347,7 +347,7 @@ function relTime(iso: string | null): string {
 function PriorityBadge({ p }: { p: Priority }) {
   const m = PRIORITY_META[p];
   return (
-    <span className={cn("inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide", m.tone)}>
+    <span className={cn("inline-flex items-center rounded-md border px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide", m.tone)}>
       {m.label}
     </span>
   );
@@ -357,7 +357,7 @@ function CohortBadge({ cohort }: { cohort: CohortKey }) {
   const meta = COHORT_META[cohort];
   const Icon = meta.icon;
   return (
-    <span className={cn("inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/[0.04] px-1.5 py-0.5 text-[10px] font-medium", meta.accent)}>
+    <span className={cn("inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/[0.04] px-1.5 py-0.5 text-[11px] font-medium", meta.accent)}>
       <Icon className="h-2.5 w-2.5" />
       {meta.short}
     </span>
@@ -370,7 +370,7 @@ function MilestoneChip({ date, label, done }: { date: string | null; label: stri
     <Tooltip>
       <TooltipTrigger asChild>
         <span className={cn(
-          "inline-flex items-center gap-1 rounded border px-1 py-0.5 text-[10px]",
+          "inline-flex items-center gap-1 rounded border px-1 py-0.5 text-[11px]",
           done ? "border-teal-500/40 bg-teal-500/10 text-teal-300" : "border-slate-500/30 bg-slate-500/10 text-muted-foreground"
         )}>
           <span className={cn("h-1.5 w-1.5 rounded-full", done ? "bg-teal-400" : "bg-slate-500")} />
@@ -482,7 +482,7 @@ function RowActions({ row, onOpen, onMarkContacted, onMarkPhoneBad, onSetStage, 
         </Tooltip>
         {/* palette-allow:apex-panel-dark — matches AppShell popover surface tone */}
         <PopoverContent align="end" className="w-56 p-1 bg-[#0B1118] border-white/10" onClick={stop}>
-          <div className="px-2 py-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">Set license stage</div>
+          <div className="px-2 py-1.5 text-[11px] uppercase tracking-wide text-muted-foreground">Set license stage</div>
           {LICENSE_STAGES.map((s) => (
             <button
               key={s.key}
@@ -560,7 +560,7 @@ function ManagerAvatar({ profile }: { profile?: Profile }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <div className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-border bg-white/[0.06] text-[10px] font-semibold text-foreground">
+        <div className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-border bg-white/[0.06] text-[11px] font-semibold text-foreground">
           {initials || "?"}
         </div>
       </TooltipTrigger>
@@ -1138,14 +1138,14 @@ export default function RecoveryQueue() {
                   <div className={cn("inline-flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-black/30", meta.accent)}>
                     <Icon className="h-3.5 w-3.5" />
                   </div>
-                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{meta.short}</span>
+                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground">{meta.short}</span>
                 </div>
                 <div className="mt-2">
                   <div className="text-2xl font-semibold text-foreground">
                     <AnimatedCounter value={count} duration={0.4} />
                   </div>
-                  <div className="mt-0.5 text-[11px] font-medium text-muted-foreground">{meta.label}</div>
-                  <div className="mt-1 text-[10px] leading-tight text-muted-foreground">{meta.help}</div>
+                  <div className="mt-0.5 text-[12px] font-medium text-muted-foreground">{meta.label}</div>
+                  <div className="mt-1 text-[11px] leading-tight text-muted-foreground">{meta.help}</div>
                 </div>
               </button>
             );
@@ -1230,7 +1230,7 @@ export default function RecoveryQueue() {
 
             <div className="ml-auto text-xs text-muted-foreground">
               {filtered.length} of {rows.length}
-              {powerHour && <span className="ml-2 rounded bg-teal-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-teal-300">POWER HOUR</span>}
+              {powerHour && <span className="ml-2 rounded bg-teal-500/15 px-1.5 py-0.5 text-[11px] font-semibold text-teal-300">POWER HOUR</span>}
             </div>
           </div>
           {selectedIds.size > 0 && (
@@ -1238,7 +1238,7 @@ export default function RecoveryQueue() {
               <span className="text-xs font-semibold text-teal-100">
                 {selectedIds.size} selected
               </span>
-              <span className="text-[11px] text-teal-300/70">
+              <span className="text-[12px] text-teal-300/70">
                 {selectedIds.size < filtered.length && (
                   <button type="button" onClick={selectAllVisible} className="underline decoration-dotted hover:text-teal-200">
                     Select all {filtered.length}
@@ -1363,7 +1363,7 @@ export default function RecoveryQueue() {
                       <div className="flex items-center gap-2">
                         <div className="truncate text-sm font-semibold text-foreground">{r.name}</div>
                         {r.state && (
-                          <span className="inline-flex items-center gap-0.5 text-[11px] text-muted-foreground">
+                          <span className="inline-flex items-center gap-0.5 text-[12px] text-muted-foreground">
                             <MapPin className="h-3 w-3" />
                             {r.state}
                           </span>
@@ -1374,7 +1374,7 @@ export default function RecoveryQueue() {
                         <CohortBadge cohort={cohort} />
                         <PriorityBadge p={priority} />
                         <span className={cn(
-                          "inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px]",
+                          "inline-flex items-center rounded-md border px-1.5 py-0.5 text-[11px]",
                           stale >= 30 ? "border-rose-500/40 bg-rose-500/10 text-rose-300"
                             : stale >= 7 ? "border-amber-500/40 bg-amber-500/10 text-amber-300"
                             : "border-white/10 bg-white/[0.04] text-muted-foreground"
@@ -1382,7 +1382,7 @@ export default function RecoveryQueue() {
                           Stale {stale}d
                         </span>
                         {untilExam !== null && cohort === "C_TEST_SCHEDULED" && (
-                          <span className="inline-flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-200">
+                          <span className="inline-flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[11px] text-amber-200">
                             <Calendar className="h-2.5 w-2.5" />
                             Exam {untilExam >= 0 ? `in ${untilExam}d` : `${Math.abs(untilExam)}d ago`}
                           </span>
@@ -1557,7 +1557,7 @@ function PowerHourBar({
           {/* Left: progress + timer */}
           <div className="flex min-w-0 flex-1 items-center gap-3">
             <div className="min-w-0">
-              <div className="flex items-center gap-2 text-[11px] uppercase tracking-wide text-teal-300">
+              <div className="flex items-center gap-2 text-[12px] uppercase tracking-wide text-teal-300">
                 <Timer className="h-3 w-3" />
                 Power Hour · {Math.min(session.index + 1, session.total)} / {session.total}
                 <span className="text-muted-foreground">·</span>
@@ -1641,7 +1641,7 @@ function PowerHourBar({
                   >
                     <Icon className="h-3.5 w-3.5" />
                     <span>{o.short}</span>
-                    <span className="ml-1 rounded bg-black/30 px-1 text-[10px] font-mono text-muted-foreground">{o.shortcut}</span>
+                    <span className="ml-1 rounded bg-black/30 px-1 text-[11px] font-mono text-muted-foreground">{o.shortcut}</span>
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>{o.label}</TooltipContent>

@@ -163,7 +163,7 @@ export function TeamEngagementPanel() {
                   }`}
                 >
                   <div className="text-xl font-bold tabular-nums leading-none">{counts[f.key]}</div>
-                  <div className="text-[11px] text-muted-foreground mt-1 leading-tight">{f.label}</div>
+                  <div className="text-[12px] text-muted-foreground mt-1 leading-tight">{f.label}</div>
                 </button>
               ))}
             </div>

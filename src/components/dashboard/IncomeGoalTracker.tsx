@@ -335,25 +335,25 @@ export function IncomeGoalTracker({ agentId }: IncomeGoalTrackerProps) {
                   <p className="text-xl sm:text-2xl font-bold text-primary">
                     ${incomeGoal.toLocaleString()}
                   </p>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide">Goal</p>
+                  <p className="text-[11px] sm:text-xs text-muted-foreground uppercase tracking-wide">Goal</p>
                 </div>
                 <div className="text-center p-3 rounded-md bg-white dark:bg-card border border-violet-500/10">
                   <p className="text-xl sm:text-2xl font-bold text-primary">
                     ${requiredALP.toLocaleString()}
                   </p>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide">ALP Needed</p>
+                  <p className="text-[11px] sm:text-xs text-muted-foreground uppercase tracking-wide">ALP Needed</p>
                 </div>
                 <div className="text-center p-3 rounded-md bg-white dark:bg-card border border-amber-500/10">
                   <p className="text-xl sm:text-2xl font-bold text-amber-400">
                     {Math.ceil(dealsNeeded)}
                   </p>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide">Deals</p>
+                  <p className="text-[11px] sm:text-xs text-muted-foreground uppercase tracking-wide">Deals</p>
                 </div>
                 <div className="text-center p-3 rounded-md bg-white dark:bg-card border border-emerald-500/10">
                   <p className="text-xl sm:text-2xl font-bold text-emerald-400">
                     {Math.ceil(presentationsNeeded)}
                   </p>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide">Presentations</p>
+                  <p className="text-[11px] sm:text-xs text-muted-foreground uppercase tracking-wide">Presentations</p>
                 </div>
               </div>
 

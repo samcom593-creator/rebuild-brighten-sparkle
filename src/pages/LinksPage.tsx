@@ -138,7 +138,7 @@ export default function LinksPage() {
 
         {/* Offer Pathway Cards */}
         <div className="w-full space-y-3 mb-6">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-widest text-center mb-2">What Are You Looking For?</p>
+          <p className="text-[11px] text-muted-foreground uppercase tracking-widest text-center mb-2">What Are You Looking For?</p>
           {offerCards.map((card, i) => {
             const content = (
               <motion.div
@@ -246,7 +246,7 @@ export default function LinksPage() {
 
         {/* Footer */}
         <div className="mt-auto pt-8 text-center">
-          <p className="text-[10px] text-muted-foreground/60 uppercase tracking-widest">
+          <p className="text-[11px] text-muted-foreground/60 uppercase tracking-widest">
             Powered by <span className="text-primary/70 font-semibold">Apex Financial</span>
           </p>
         </div>

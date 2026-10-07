@@ -100,15 +100,15 @@ export default function AdminMissingAlLink() {
                       {r.display_name || r.full_name || "unnamed agent"}
                     </div>
                     <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
-                      {r.license_status && <Badge variant="outline" className="text-[10px]">{r.license_status}</Badge>}
-                      {r.onboarding_stage && <span className="text-[11px]">{r.onboarding_stage}</span>}
-                      {r.days_since_created !== null && <span className="text-[11px] text-amber-500">{r.days_since_created}d</span>}
-                      {r.manager_name && <span className="text-[11px]">mgr: {r.manager_name}</span>}
+                      {r.license_status && <Badge variant="outline" className="text-[11px]">{r.license_status}</Badge>}
+                      {r.onboarding_stage && <span className="text-[12px]">{r.onboarding_stage}</span>}
+                      {r.days_since_created !== null && <span className="text-[12px] text-amber-500">{r.days_since_created}d</span>}
+                      {r.manager_name && <span className="text-[12px]">mgr: {r.manager_name}</span>}
                     </div>
-                    {r.email && <div className="text-[11px] text-muted-foreground truncate">{r.email}</div>}
+                    {r.email && <div className="text-[12px] text-muted-foreground truncate">{r.email}</div>}
                   </div>
                   {matches.length === 0 && (
-                    <Badge variant="outline" className="text-[10px] border-rose-500/40 text-rose-400">
+                    <Badge variant="outline" className="text-[11px] border-rose-500/40 text-rose-400">
                       <AlertCircle className="h-3 w-3 mr-1" /> no match
                     </Badge>
                   )}
@@ -120,14 +120,14 @@ export default function AdminMissingAlLink() {
                       <div key={m.al_user_id} className="flex items-center gap-2 text-xs bg-background/60 rounded-md p-2">
                         <div className="flex-1 min-w-0">
                           <div className="font-medium truncate">{m.al_name}</div>
-                          <div className="text-[10px] text-muted-foreground truncate">
+                          <div className="text-[11px] text-muted-foreground truncate">
                             AL #{m.al_user_id} · sim {Math.round((m.similarity || 0) * 100)}%
                             {m.al_email && ` · ${m.al_email}`}
                           </div>
                         </div>
                         <Button
                           size="sm"
-                          className="h-7 px-2 text-[11px]"
+                          className="h-7 px-2 text-[12px]"
                           disabled={link.isPending && linking}
                           onClick={() => {
                             setLinkingId(r.agent_id);

@@ -33,7 +33,7 @@ export function NextStepFunnelStrip() {
           <div>
             <div className="flex items-center gap-2">
               <Route className="h-4 w-4 text-primary" />
-              <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
                 18-stage pipeline · auto-recomputed nightly
               </p>
             </div>
@@ -41,7 +41,7 @@ export function NextStepFunnelStrip() {
               Next Step funnel
             </h2>
           </div>
-          <p className="text-[11px] text-muted-foreground hidden sm:block">
+          <p className="text-[12px] text-muted-foreground hidden sm:block">
             Bars: in stage · red sliver: stalled · % above bar: conversion to next stage
           </p>
         </div>
@@ -56,7 +56,7 @@ export function NextStepFunnelStrip() {
               <Tooltip key={s.stage_key}>
                 <TooltipTrigger asChild>
                   <div className="flex flex-col items-center min-w-[2.25rem] shrink-0">
-                    <span className="text-[9px] text-muted-foreground tabular-nums leading-none mb-0.5">
+                    <span className="text-[10px] text-muted-foreground tabular-nums leading-none mb-0.5">
                       {s.conversion_to_next_pct !== null
                         ? `${Math.round(Number(s.conversion_to_next_pct))}%`
                         : "—"}
@@ -81,18 +81,18 @@ export function NextStepFunnelStrip() {
                         />
                       )}
                     </div>
-                    <span className={cn("text-[9px] mt-1 tabular-nums leading-none", s.stalled > 0 ? "text-rose-300" : "text-foreground")}>
+                    <span className={cn("text-[10px] mt-1 tabular-nums leading-none", s.stalled > 0 ? "text-rose-300" : "text-foreground")}>
                       {s.in_stage}
                     </span>
                   </div>
                 </TooltipTrigger>
                 <TooltipContent side="top">
                   <p className="text-xs font-semibold">{s.display_name}</p>
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-[12px] text-muted-foreground">
                     {s.in_stage} in stage · {s.stalled} stalled · median {s.median_days !== null ? `${Number(s.median_days).toFixed(1)}d` : "—"}
                   </p>
                   {s.conversion_to_next_pct !== null && (
-                    <p className="text-[11px] text-muted-foreground">
+                    <p className="text-[12px] text-muted-foreground">
                       {Math.round(Number(s.conversion_to_next_pct))}% advance to next stage
                     </p>
                   )}

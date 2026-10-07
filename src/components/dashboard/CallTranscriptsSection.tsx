@@ -71,7 +71,7 @@ export function CallTranscriptsSection({ applicationId, agentId }: Props) {
       <Label className="flex items-center gap-2">
         <Mic className="h-4 w-4 text-primary" />
         Call Transcripts
-        <Badge variant="outline" className="ml-auto text-[10px] gap-1">
+        <Badge variant="outline" className="ml-auto text-[11px] gap-1">
           <Sparkles className="h-2.5 w-2.5" /> AI Analyzed
         </Badge>
       </Label>
@@ -117,7 +117,7 @@ export function CallTranscriptsSection({ applicationId, agentId }: Props) {
                     <Badge
                       variant="outline"
                       className={cn(
-                        "text-[10px] shrink-0",
+                        "text-[11px] shrink-0",
                         t.sentiment === "positive" && "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
                         t.sentiment === "negative" && "bg-red-500/10 text-red-400 border-red-500/30",
                         t.sentiment === "neutral" && "bg-muted text-muted-foreground"
@@ -126,7 +126,7 @@ export function CallTranscriptsSection({ applicationId, agentId }: Props) {
                       {t.sentiment || "—"}
                     </Badge>
                     {t.call_outcome && (
-                      <Badge variant="outline" className="text-[10px] shrink-0">{t.call_outcome}</Badge>
+                      <Badge variant="outline" className="text-[11px] shrink-0">{t.call_outcome}</Badge>
                     )}
                     <span className="text-xs text-muted-foreground truncate">
                       {format(new Date(t.created_at), "MMM d, h:mm a")}
@@ -138,13 +138,13 @@ export function CallTranscriptsSection({ applicationId, agentId }: Props) {
                   <div className="p-3 pt-0 space-y-2 border-t border-border">
                     {t.summary && (
                       <div>
-                        <div className="text-[10px] uppercase text-muted-foreground mb-1">AI Summary</div>
+                        <div className="text-[11px] uppercase text-muted-foreground mb-1">AI Summary</div>
                         <p className="text-xs">{t.summary}</p>
                       </div>
                     )}
                     {t.transcript && (
                       <div>
-                        <div className="text-[10px] uppercase text-muted-foreground mb-1">Transcript</div>
+                        <div className="text-[11px] uppercase text-muted-foreground mb-1">Transcript</div>
                         <p className="text-xs text-muted-foreground whitespace-pre-wrap max-h-48 overflow-y-auto">
                           {t.transcript}
                         </p>

@@ -450,7 +450,7 @@ function YouTubePlayer({
                 try { playerRef.current?.setPlaybackRate?.(s); } catch {} // empty-catch-allow:media-api-optional
               }}
               className={cn(
-                "px-2 py-0.5 rounded text-[10px] font-bold transition-all",
+                "px-2 py-0.5 rounded text-[11px] font-bold transition-all",
                 (playbackRate || 1) === s
                   ? "bg-primary text-primary-foreground"
                   : "bg-white dark:bg-black/60 text-white/70 hover:bg-white dark:bg-black/80"
@@ -635,7 +635,7 @@ function SegmentedVideoPlayer({
                 </span>
                 <span className="min-w-0">
                   <span className="block truncate text-sm font-bold">{part.title}</span>
-                  <span className="block text-[11px] text-muted-foreground">
+                  <span className="block text-[12px] text-muted-foreground">
                     {Math.max(1, Math.round(part.duration_seconds / 60))} min {isActive ? "· Now playing" : isComplete ? "· Complete" : ""}
                   </span>
                 </span>
@@ -782,7 +782,7 @@ function NativeVideoPlayer({
           preload="metadata"
           className="h-full w-full object-contain native-video-no-seek"
         />
-        <div className="pointer-events-none absolute left-3 top-3 rounded-full border border-white/15 bg-black/70 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white/90 backdrop-blur-sm">
+        <div className="pointer-events-none absolute left-3 top-3 rounded-full border border-white/15 bg-black/70 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-white/90 backdrop-blur-sm">
           {resolveBrand().shortName} lesson
         </div>
       </div>
@@ -811,7 +811,7 @@ function NativeVideoPlayer({
         </div>
         <Progress value={localProgress} className="mt-3 h-2" />
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-border/70 pt-3">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Playback speed</span>
+          <span className="text-[12px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Playback speed</span>
           <div className="flex flex-wrap gap-1.5">
             {SPEEDS.map((speed) => (
               <button

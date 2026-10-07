@@ -189,7 +189,7 @@ function ColumnHeader({
       </div>
       <div className="flex items-center gap-1 shrink-0">
         {atRisk > 0 && !isLicensedCol && !isDormantCol && (
-          <Badge className="text-[9px] px-1 py-0 h-4 bg-red-500/15 text-red-400 border-red-500/20">
+          <Badge className="text-[10px] px-1 py-0 h-4 bg-red-500/15 text-red-400 border-red-500/20">
             <Flame className="h-2.5 w-2.5 mr-0.5" />
             {atRisk}
           </Badge>
@@ -197,7 +197,7 @@ function ColumnHeader({
         <Badge
           variant="outline"
           className={cn(
-            "text-[10px] bg-muted border-border text-muted-foreground",
+            "text-[11px] bg-muted border-border text-muted-foreground",
             isOver && "border-primary/60 text-primary"
           )}
         >

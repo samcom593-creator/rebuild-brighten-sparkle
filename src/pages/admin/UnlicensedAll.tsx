@@ -625,7 +625,7 @@ export default function UnlicensedAll() {
       <GlassCard className="p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
           <div className="min-w-0 flex-1">
-            <div className="mb-2 inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+            <div className="mb-2 inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
               <Filter className="h-3.5 w-3.5 shrink-0" /> Filter
             </div>
             <div className="-mx-4 overflow-x-auto pb-1 sm:mx-0">
@@ -652,7 +652,7 @@ export default function UnlicensedAll() {
           </div>
 
           <div className="min-w-0 lg:shrink-0">
-            <div className="mb-2 inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+            <div className="mb-2 inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
               <ArrowUpDown className="h-3.5 w-3.5 shrink-0" /> Sort
             </div>
             <Select value={sort} onValueChange={(v) => setSort(v as SortKey)}>
@@ -676,14 +676,14 @@ export default function UnlicensedAll() {
             <span className="text-sm font-bold tabular-nums text-foreground">
               {selectedIds.size.toLocaleString()}
             </span>
-            <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+            <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
               selected
             </span>
             {selectedIds.size < filtered.length && (
               <button
                 type="button"
                 onClick={selectAllVisible}
-                className="inline-flex h-10 items-center rounded-sm px-1 text-[11px] font-semibold text-muted-foreground underline decoration-dotted underline-offset-2 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)] sm:h-9"
+                className="inline-flex h-10 items-center rounded-sm px-1 text-[12px] font-semibold text-muted-foreground underline decoration-dotted underline-offset-2 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)] sm:h-9"
               >
                 Select all {filtered.length.toLocaleString()}
               </button>
@@ -701,7 +701,7 @@ export default function UnlicensedAll() {
                   {vas.map((v) => (
                     <SelectItem key={v.user_id} value={v.user_id}>
                       <span className="inline-flex items-center gap-1.5">
-                        <span className="rounded-sm border border-border px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide text-muted-foreground">
+                        <span className="rounded-sm border border-border px-1 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
                           {v.role}
                         </span>
                         {v.display_name || v.email || v.user_id.slice(0, 8)}
@@ -724,7 +724,7 @@ export default function UnlicensedAll() {
                 variant="outline"
                 disabled={bulkRunning}
                 onClick={() => runBulk("mark_contacted")}
-                className="h-10 gap-1.5 px-2.5 text-[11px] hover:border-emerald-500/50 hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400 sm:h-9"
+                className="h-10 gap-1.5 px-2.5 text-[12px] hover:border-emerald-500/50 hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400 sm:h-9"
                 aria-label="Mark selected records contacted"
               >
                 <CheckCircle2 className="h-3.5 w-3.5 shrink-0" /> Mark contacted
@@ -735,7 +735,7 @@ export default function UnlicensedAll() {
                     size="sm"
                     variant="outline"
                     disabled={bulkRunning}
-                    className="h-10 gap-1.5 px-2.5 text-[11px] sm:h-9"
+                    className="h-10 gap-1.5 px-2.5 text-[12px] sm:h-9"
                     aria-label="Pick bulk follow-up date"
                   >
                     <CalendarClock className="h-3.5 w-3.5 shrink-0" />
@@ -767,7 +767,7 @@ export default function UnlicensedAll() {
                 variant="outline"
                 disabled={bulkRunning}
                 onClick={() => runBulk("suppress")}
-                className="h-10 gap-1.5 px-2.5 text-[11px] hover:border-rose-500/50 hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-400 sm:h-9"
+                className="h-10 gap-1.5 px-2.5 text-[12px] hover:border-rose-500/50 hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-400 sm:h-9"
                 aria-label="Suppress selected records"
               >
                 <ShieldOff className="h-3.5 w-3.5 shrink-0" /> Suppress
@@ -777,7 +777,7 @@ export default function UnlicensedAll() {
                 variant="outline"
                 disabled={bulkRunning}
                 onClick={workSelectedInBatch}
-                className="h-10 gap-1.5 px-2.5 text-[11px] sm:h-9"
+                className="h-10 gap-1.5 px-2.5 text-[12px] sm:h-9"
                 aria-label="Work selected records in recovery batch"
               >
                 <Play className="h-3.5 w-3.5 shrink-0" /> Work in batch
@@ -786,7 +786,7 @@ export default function UnlicensedAll() {
                 size="sm"
                 variant="ghost"
                 onClick={clearSelection}
-                className="h-10 gap-1.5 px-2.5 text-[11px] text-muted-foreground sm:h-9"
+                className="h-10 gap-1.5 px-2.5 text-[12px] text-muted-foreground sm:h-9"
                 aria-label="Clear selection"
               >
                 <X className="h-3.5 w-3.5 shrink-0" />
@@ -863,17 +863,17 @@ export default function UnlicensedAll() {
                       <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                         <span className="min-w-0 truncate text-sm font-medium text-foreground">{fullName(r)}</span>
                         {r.state && (
-                          <span className="inline-flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground">
+                          <span className="inline-flex shrink-0 items-center gap-1 text-[12px] text-muted-foreground">
                             <MapPin className="h-3 w-3 shrink-0" />{r.state}
                           </span>
                         )}
                         {r.source === "aged_lead" && (
-                          <span title="Imported from Excel — hasn't formally applied yet" className="inline-flex shrink-0 items-center gap-1 rounded-sm border border-border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                          <span title="Imported from Excel — hasn't formally applied yet" className="inline-flex shrink-0 items-center gap-1 rounded-sm border border-border px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                             <FileSpreadsheet className="h-3 w-3 shrink-0" /> excel
                           </span>
                         )}
                         {r.source === "applied" && (
-                          <span title="Filled out the public application" className="inline-flex shrink-0 items-center gap-1 rounded-sm border border-border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                          <span title="Filled out the public application" className="inline-flex shrink-0 items-center gap-1 rounded-sm border border-border px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                             <ClipboardCheck className="h-3 w-3 shrink-0" /> applied
                           </span>
                         )}
@@ -882,7 +882,7 @@ export default function UnlicensedAll() {
                         {/* XCEL course progress — merged in by email from v_xcel_person_progress */}
                         {(r.xcel_overall_pct != null || r.xcel_final_exam_score != null || r.xcel_state_license_number) && (
                           <>
-                            <span className="inline-flex shrink-0 items-center gap-1 rounded-sm border border-border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                            <span className="inline-flex shrink-0 items-center gap-1 rounded-sm border border-border px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                               <span className="tabular-nums">XCEL {r.xcel_overall_pct ?? 0}%</span>
                               {(r.xcel_final_exam_score ?? 0) >= 70 ? (
                                 <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-600 dark:text-emerald-400" />
@@ -896,7 +896,7 @@ export default function UnlicensedAll() {
                               r.license_progress !== "waiting_on_license" && (
                                 <span
                                   title="XCEL says they passed — advance the stage"
-                                  className="inline-flex shrink-0 items-center gap-1 rounded-sm border border-amber-500/35 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400"
+                                  className="inline-flex shrink-0 items-center gap-1 rounded-sm border border-amber-500/35 px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400"
                                 >
                                   sync ready
                                 </span>
@@ -911,7 +911,7 @@ export default function UnlicensedAll() {
                           <SelectTrigger
                             aria-label={`Licensing stage for ${fullName(r)}`}
                             className={cn(
-                              "h-10 w-auto min-w-[150px] shrink-0 px-2 text-[10px] font-bold uppercase tracking-wide sm:h-9",
+                              "h-10 w-auto min-w-[150px] shrink-0 px-2 text-[11px] font-bold uppercase tracking-wide sm:h-9",
                               stg.tone,
                               busyStage && "opacity-60",
                             )}
@@ -927,12 +927,12 @@ export default function UnlicensedAll() {
                           </SelectContent>
                         </Select>
                         {isBadPhone && (
-                          <span className="inline-flex shrink-0 items-center gap-1 rounded-sm border border-rose-500/35 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-rose-600 dark:text-rose-400">
+                          <span className="inline-flex shrink-0 items-center gap-1 rounded-sm border border-rose-500/35 px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-rose-600 dark:text-rose-400">
                             <PhoneOff className="h-3 w-3 shrink-0" /> bad #
                           </span>
                         )}
                         {r.assigned_va_email && (
-                          <span className="min-w-0 max-w-[220px] truncate text-[11px] text-muted-foreground">→ {r.assigned_va_email}</span>
+                          <span className="min-w-0 max-w-[220px] truncate text-[12px] text-muted-foreground">→ {r.assigned_va_email}</span>
                         )}
                       </div>
                     </div>
@@ -943,7 +943,7 @@ export default function UnlicensedAll() {
                         {days >= 30 && <Flame aria-hidden className="h-3.5 w-3.5 shrink-0" />}
                         <span>{days}d</span>
                       </div>
-                      <div className="mt-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                      <div className="mt-0.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                         ghosted
                       </div>
                     </div>
@@ -1037,7 +1037,7 @@ export default function UnlicensedAll() {
                         {vas.map((v) => (
                           <SelectItem key={v.user_id} value={v.user_id}>
                             <span className="inline-flex items-center gap-1.5">
-                              <span className="rounded-sm border border-border px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide text-muted-foreground">
+                              <span className="rounded-sm border border-border px-1 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
                                 {v.role}
                               </span>
                               {v.display_name || v.email || v.user_id.slice(0, 8)}
@@ -1050,7 +1050,7 @@ export default function UnlicensedAll() {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="h-10 gap-1.5 px-2.5 text-[11px] hover:border-emerald-500/50 hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400 sm:h-9"
+                      className="h-10 gap-1.5 px-2.5 text-[12px] hover:border-emerald-500/50 hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400 sm:h-9"
                       onClick={() => markContacted.mutate(r)}
                       disabled={markContacted.isPending}
                     >
@@ -1058,7 +1058,7 @@ export default function UnlicensedAll() {
                     </Button>
 
                     <Button size="sm" variant="outline"
-                      className="h-10 gap-1.5 px-2.5 text-[11px] hover:border-emerald-500/50 hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400 sm:h-9"
+                      className="h-10 gap-1.5 px-2.5 text-[12px] hover:border-emerald-500/50 hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400 sm:h-9"
                       onClick={() => passedTest.mutate(r)}
                       disabled={passedTest.isPending}
                       aria-label="Mark applicant as passed their test"
@@ -1070,7 +1070,7 @@ export default function UnlicensedAll() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="h-10 gap-1.5 px-2.5 text-[11px] sm:h-9"
+                        className="h-10 gap-1.5 px-2.5 text-[12px] sm:h-9"
                         onClick={() => promoteAged.mutate(r.id)}
                         disabled={busyPromote}
                         title="Turn this Excel-imported lead into a real applicant record"
@@ -1134,7 +1134,7 @@ export default function UnlicensedAll() {
         target={suppressTarget}
       />
 
-      <div className="pb-2 pt-6 text-center text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+      <div className="pb-2 pt-6 text-center text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
         Hold the Standard · Average is the disease
       </div>
     </div>
@@ -1166,7 +1166,7 @@ function TotalTile({
       title={hint}
     >
       <div className="flex items-start justify-between gap-2">
-        <span className="min-w-0 truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</span>
+        <span className="min-w-0 truncate text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{label}</span>
         <span className="shrink-0 text-muted-foreground">{icon}</span>
       </div>
       <div className={cn("mt-2 text-2xl font-bold leading-none tabular-nums", tone)}>{value.toLocaleString()}</div>

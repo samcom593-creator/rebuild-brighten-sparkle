@@ -186,7 +186,7 @@ export function CandidateGoalsNotesPanel({
               <ul className="max-h-52 space-y-2 overflow-y-auto pr-1">
                 {notesQuery.data!.map((row) => (
                   <li key={row.id} className="rounded-lg border border-border/60 bg-background/40 p-2.5 text-xs">
-                    <div className="flex justify-between gap-2 text-[10px] text-muted-foreground">
+                    <div className="flex justify-between gap-2 text-[11px] text-muted-foreground">
                       <span>{row.author_name} · {row.note_type.replaceAll("_", " ")}</span>
                       <span>{new Date(row.created_at).toLocaleDateString()}</span>
                     </div>

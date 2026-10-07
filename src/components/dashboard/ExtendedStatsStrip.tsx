@@ -186,7 +186,7 @@ export function ExtendedStatsStrip({ agentId, title = "More numbers" }: Props) {
   return (
     <section className="mb-6 space-y-3">
       <div className="flex items-center gap-2">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">{title}</p>
+        <p className="text-[12px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">{title}</p>
         <div className="h-px flex-1 bg-border/30" />
       </div>
 

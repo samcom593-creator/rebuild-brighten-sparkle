@@ -291,7 +291,7 @@ export default function HallOfFame() {
       <GlassCard className="p-5 sm:p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">All-time leaders</p>
+            <p className="text-[12px] uppercase tracking-widest text-muted-foreground font-semibold">All-time leaders</p>
             <h2 className="text-2xl font-bold flex items-center gap-2">
               <Crown className="h-6 w-6 text-amber-500" /> The Top 3
             </h2>
@@ -334,7 +334,7 @@ export default function HallOfFame() {
                 >
                   {/* Rank badge */}
                   <span className={cn(
-                    "absolute -top-3 left-1/2 -translate-x-1/2 text-foreground text-[11px] font-bold px-3 py-1 rounded-full shadow-lg",
+                    "absolute -top-3 left-1/2 -translate-x-1/2 text-foreground text-[12px] font-bold px-3 py-1 rounded-full shadow-lg",
                     medal.badge,
                   )}>
                     {medal.label}
@@ -359,14 +359,14 @@ export default function HallOfFame() {
                     <div className="flex items-center justify-center gap-4 pt-2 border-t border-border/40 w-full">
                       <div>
                         <p className="text-2xl font-bold tabular-nums">{e.plaque_count}</p>
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Plaques</p>
+                        <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Plaques</p>
                       </div>
                       <span className="h-8 w-px bg-border" />
                       <div>
                         <p className="text-2xl font-bold tabular-nums text-emerald-500 dark:text-emerald-400">
                           {fmtUsd(e.total_amount)}
                         </p>
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Total $</p>
+                        <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Total $</p>
                       </div>
                     </div>
                   </div>
@@ -379,7 +379,7 @@ export default function HallOfFame() {
         {/* Honorable mentions */}
         {honorableMentions.length > 0 && (
           <div className="mt-5 pt-4 border-t border-border/40">
-            <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold mb-3">
+            <p className="text-[12px] uppercase tracking-widest text-muted-foreground font-semibold mb-3">
               Honorable mentions
             </p>
             <div className="flex gap-2 overflow-x-auto scrollbar-custom pb-2">
@@ -388,11 +388,11 @@ export default function HallOfFame() {
                   key={e.agent_id}
                   className="flex items-center gap-2 rounded-full border border-border/50 bg-card/60 px-2.5 py-1.5 shrink-0 hover:border-primary/40 transition-colors"
                 >
-                  <span className="text-[10px] font-bold text-muted-foreground w-5 text-right">#{i + 4}</span>
+                  <span className="text-[11px] font-bold text-muted-foreground w-5 text-right">#{i + 4}</span>
                   {e.avatar_url ? (
                     <img src={e.avatar_url} alt="" className="h-6 w-6 rounded-full object-cover" />
                   ) : (
-                    <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold">
+                    <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-[11px] font-bold">
                       {e.agent_name.split(" ").map((s) => s[0]).slice(0, 2).join("")}
                     </div>
                   )}
@@ -488,7 +488,7 @@ function StatTile({ icon: Icon, label, value, loading, color, formatter }: StatT
     <GlassCard className="p-4">
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">{label}</p>
+          <p className="text-[12px] uppercase tracking-widest text-muted-foreground font-semibold">{label}</p>
           {loading ? (
             <Skeleton className="h-9 w-24 mt-1" />
           ) : (
@@ -537,7 +537,7 @@ function PlaqueCard({ plaque, onClick, delay }: PlaqueCardProps) {
         )}
         {catMeta && (
           <div className="absolute top-2 left-2">
-            <Badge variant="outline" className={cn("text-[10px] gap-1", catMeta.chipClass, "")}>
+            <Badge variant="outline" className={cn("text-[11px] gap-1", catMeta.chipClass, "")}>
               <catMeta.icon className="h-2.5 w-2.5" /> {catMeta.label}
             </Badge>
           </div>
@@ -549,16 +549,16 @@ function PlaqueCard({ plaque, onClick, delay }: PlaqueCardProps) {
           {plaque.agent_photo ? (
             <img src={plaque.agent_photo} alt="" className="h-6 w-6 rounded-full object-cover ring-1 ring-border" />
           ) : (
-            <div className="h-6 w-6 rounded-full bg-primary/15 text-primary text-[10px] font-bold flex items-center justify-center">
+            <div className="h-6 w-6 rounded-full bg-primary/15 text-primary text-[11px] font-bold flex items-center justify-center">
               {plaque.agent_name.split(" ").map((s) => s[0]).slice(0, 2).join("")}
             </div>
           )}
           <p className="font-semibold text-sm truncate">{plaque.agent_name}</p>
         </div>
-        <p className="text-[11px] text-muted-foreground truncate">
+        <p className="text-[12px] text-muted-foreground truncate">
           {plaque.badge_label || prettyMilestone(plaque.milestone_type)}
         </p>
-        <p className="text-[10px] text-muted-foreground">
+        <p className="text-[11px] text-muted-foreground">
           {plaque.milestone_date ? format(new Date(plaque.milestone_date), "MMM d, yyyy") : ""}
         </p>
       </div>

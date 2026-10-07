@@ -46,12 +46,12 @@ export function NextStepCandidateCard({ applicationId, agentId, compact = false 
           <div className="flex items-center gap-3">
             <Compass className={cn("h-4 w-4 shrink-0", t.accent)} />
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground leading-none">Next step</p>
+              <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground leading-none">Next step</p>
               <p className="text-sm font-semibold truncate mt-0.5">{data.stage_display_name}</p>
-              <p className="text-[11px] text-muted-foreground truncate">{data.next_action_label}</p>
+              <p className="text-[12px] text-muted-foreground truncate">{data.next_action_label}</p>
             </div>
             {data.next_action_url && (
-              <a href={data.next_action_url} className={cn("rounded-md border px-2 py-1.5 text-[11px] font-medium inline-flex items-center gap-1", t.border, t.accent)}>
+              <a href={data.next_action_url} className={cn("rounded-md border px-2 py-1.5 text-[12px] font-medium inline-flex items-center gap-1", t.border, t.accent)}>
                 Go <ArrowRight className="h-3 w-3" />
               </a>
             )}
@@ -70,7 +70,7 @@ export function NextStepCandidateCard({ applicationId, agentId, compact = false 
               <Compass className={cn("h-6 w-6", t.accent)} />
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Your next step</p>
+              <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Your next step</p>
               <h2 className="text-xl sm:text-2xl font-bold tracking-tight mt-0.5">{data.stage_display_name}</h2>
               {data.next_action_label && (
                 <p className="text-sm text-muted-foreground leading-snug mt-1">{data.next_action_label}</p>
@@ -83,9 +83,9 @@ export function NextStepCandidateCard({ applicationId, agentId, compact = false 
               <Clock className="h-4 w-4 inline-block mr-0.5 -mt-0.5" />
               {daysLabel}
             </div>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">in stage</p>
+            <p className="text-[11px] text-muted-foreground uppercase tracking-wider">in stage</p>
             {stalled && data.sla_hours && (
-              <p className="text-[10px] text-rose-300 mt-1">past SLA · {data.sla_hours}h</p>
+              <p className="text-[11px] text-rose-300 mt-1">past SLA · {data.sla_hours}h</p>
             )}
           </div>
         </div>
@@ -113,7 +113,7 @@ export function NextStepCandidateCard({ applicationId, agentId, compact = false 
         )}
 
         {data.failure_label && stalled && (
-          <p className="text-[11px] text-rose-300/90 mt-3 italic">
+          <p className="text-[12px] text-rose-300/90 mt-3 italic">
             Stall consequence: {data.failure_label}
           </p>
         )}

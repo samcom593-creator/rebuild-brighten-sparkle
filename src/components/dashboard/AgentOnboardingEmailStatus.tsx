@@ -145,7 +145,7 @@ export function AgentOnboardingEmailStatus({ agentId }: Props) {
   return (
     <div className="rounded-3xl border border-border bg-card/40 px-4 py-3 space-y-2">
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <Badge variant="outline" className={`gap-1.5 text-[11px] ${pillClass}`}>
+        <Badge variant="outline" className={`gap-1.5 text-[12px] ${pillClass}`}>
           {icon}
           {label}
         </Badge>
@@ -153,7 +153,7 @@ export function AgentOnboardingEmailStatus({ agentId }: Props) {
           <Button
             variant="outline"
             size="sm"
-            className="h-7 gap-1.5 text-[11px]"
+            className="h-7 gap-1.5 text-[12px]"
             disabled={firing}
             onClick={resendCourse}
             title="Re-queue + send course + Discord emails for this agent now"
@@ -164,12 +164,12 @@ export function AgentOnboardingEmailStatus({ agentId }: Props) {
         )}
       </div>
       {data.discord_sent_at && state === "sent" && (
-        <p className="text-[10px] text-muted-foreground">
+        <p className="text-[11px] text-muted-foreground">
           Discord invite sent · {fmtTime(data.discord_sent_at)}
         </p>
       )}
       {data.course_last_error && state === "gap" && (
-        <p className="text-[10px] text-rose-500 truncate">last error: {data.course_last_error}</p>
+        <p className="text-[11px] text-rose-500 truncate">last error: {data.course_last_error}</p>
       )}
     </div>
   );

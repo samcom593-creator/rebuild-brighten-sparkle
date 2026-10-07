@@ -44,9 +44,9 @@ export function TeamCommissionsCard() {
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <h3 className="text-sm font-semibold">My agency earnings</h3>
-                <Badge className="text-[10px] uppercase tracking-wide" variant="outline">Unified ledger · Live</Badge>
+                <Badge className="text-[11px] uppercase tracking-wide" variant="outline">Unified ledger · Live</Badge>
               </div>
-              <p className="text-[11px] text-muted-foreground">Direct plus comp-spread overrides from valid posted production</p>
+              <p className="text-[12px] text-muted-foreground">Direct plus comp-spread overrides from valid posted production</p>
             </div>
           </div>
           <Button aria-label="Refresh agency earnings" className="h-8 w-8 p-0" disabled={query.isFetching} onClick={() => void query.refetch()} size="sm" variant="outline">
@@ -69,7 +69,7 @@ export function TeamCommissionsCard() {
               <Stat icon={TrendingUp} label="90-day production" value={fmt(data.kpis.forecast_90d)} />
               <Stat icon={Users} label="Unified policies" muted value={data.production.policies.toLocaleString()} />
             </div>
-            <p className="mt-3 text-[11px] text-muted-foreground">
+            <p className="mt-3 text-[12px] text-muted-foreground">
               Team gross MTD: <span className="font-semibold tabular-nums text-foreground">{fmt(data.team_kpis.mtd)}</span> · {data.production.producers.toLocaleString()} producers
             </p>
           </>
@@ -94,7 +94,7 @@ function Stat({
 }) {
   return (
     <div className={accent ? "rounded-lg bg-primary/10 p-3 ring-1 ring-primary/30" : muted ? "rounded-lg bg-muted/20 p-3" : "rounded-lg bg-muted/30 p-3"}>
-      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+      <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-muted-foreground">
         <Icon className="h-3 w-3" /> {label}
       </div>
       <div className="mt-1 text-lg font-bold tabular-nums">{value}</div>

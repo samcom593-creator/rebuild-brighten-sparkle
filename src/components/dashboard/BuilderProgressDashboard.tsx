@@ -203,7 +203,7 @@ function Counter({ label, value, tone }: { label: string; value: number; tone: s
   return (
     <div className="rounded-md border border-border/40 bg-white dark:bg-card/40 px-3 py-2">
       <div className={cn("text-xl font-bold leading-none", tone)}>{value}</div>
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">{label}</div>
+      <div className="text-[11px] uppercase tracking-wider text-muted-foreground mt-1">{label}</div>
     </div>
   );
 }
@@ -226,7 +226,7 @@ function BuilderRowItem({ row, muted = false }: { row: BuilderRow; muted?: boole
         <div className="flex items-center gap-2">
           <div className="text-sm font-medium truncate">{row.name}</div>
           {row.actively_producing && (
-            <span className="inline-flex items-center gap-1 text-[10px] text-emerald-300">
+            <span className="inline-flex items-center gap-1 text-[11px] text-emerald-300">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> producing
             </span>
           )}
@@ -241,7 +241,7 @@ function BuilderRowItem({ row, muted = false }: { row: BuilderRow; muted?: boole
       </div>
       <div className="text-right shrink-0">
         <div className="text-sm font-semibold tabular-nums">{fmtUSD(row.team_ap_mtd)}</div>
-        <div className="text-[10px] text-muted-foreground tabular-nums">
+        <div className="text-[11px] text-muted-foreground tabular-nums">
           own {fmtUSD(row.own_ap_mtd)} • team {fmtUSD(row.downline_ap_mtd)}
         </div>
       </div>

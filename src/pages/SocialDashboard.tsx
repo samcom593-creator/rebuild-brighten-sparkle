@@ -124,7 +124,7 @@ export default function SocialDashboard() {
                     <span className="text-12 font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
                   </div>
                   {connected && (
-                    <Badge variant="outline" className="text-[10px] border-emerald-500/40 text-emerald-700 dark:text-emerald-300">
+                    <Badge variant="outline" className="text-[11px] border-emerald-500/40 text-emerald-700 dark:text-emerald-300">
                       Metricool
                     </Badge>
                   )}

@@ -1059,17 +1059,17 @@ export default function DashboardAgedLeads() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <div className="w-8 h-8 rounded-full bg-white dark:bg-card border border-primary/20 flex items-center justify-center shrink-0">
-                            <span className="text-[10px] font-semibold text-primary">
+                            <span className="text-[11px] font-semibold text-primary">
                               {getInitials(lead.firstName, lead.lastName)}
                             </span>
                           </div>
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-semibold truncate">{lead.firstName} {lead.lastName || ""}</p>
-                            {lead.motivation && <p className="text-[10px] text-muted-foreground truncate">{lead.motivation}</p>}
+                            {lead.motivation && <p className="text-[11px] text-muted-foreground truncate">{lead.motivation}</p>}
                           </div>
                         </div>
                       </div>
-                      <Badge variant="outline" title="Days in our system since import (original lead date not available)" className={cn("text-[9px] h-5 px-1.5 shrink-0", ageColor.badge)}>
+                      <Badge variant="outline" title="Days in our system since import (original lead date not available)" className={cn("text-[10px] h-5 px-1.5 shrink-0", ageColor.badge)}>
                         {ageDays}d held
                       </Badge>
                     </div>
@@ -1092,19 +1092,19 @@ export default function DashboardAgedLeads() {
                     </div>
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <Badge variant="outline" className={cn("text-[9px] h-5 px-1.5", config.color)}>
+                        <Badge variant="outline" className={cn("text-[10px] h-5 px-1.5", config.color)}>
                           {config.label}
                         </Badge>
-                        <Badge variant="outline" className={cn("text-[9px] h-5 px-1.5",
+                        <Badge variant="outline" className={cn("text-[10px] h-5 px-1.5",
                           lead.licenseStatus === "licensed" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-muted/50 text-muted-foreground border-border/50"
                         )}>
                           {lead.licenseStatus === "licensed" ? "Licensed" : "Unlicensed"}
                         </Badge>
                         {isDuplicate && (
-                          <Badge variant="outline" className="text-[9px] h-4 px-1 bg-amber-500/10 text-amber-500 border-amber-500/20">Dupe</Badge>
+                          <Badge variant="outline" className="text-[10px] h-4 px-1 bg-amber-500/10 text-amber-500 border-amber-500/20">Dupe</Badge>
                         )}
                         {lead.leadSource === "new_drip" && (
-                          <Badge variant="outline" className="text-[9px] h-4 px-1 bg-slate-500/10 text-foreground border-info/30">Drip</Badge>
+                          <Badge variant="outline" className="text-[10px] h-4 px-1 bg-slate-500/10 text-foreground border-info/30">Drip</Badge>
                         )}
                       </div>
                       <div className="flex items-center gap-0.5" onClick={e => e.stopPropagation()}>

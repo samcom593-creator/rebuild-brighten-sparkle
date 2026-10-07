@@ -280,13 +280,13 @@ function formatPhoneDisplay(phone: string): string {
                        </h3>
                        {currentLead.assignedManagerName && (
                          <p className="text-sm text-info mt-1 flex items-center gap-1.5">
-                           <span className="inline-block w-3 h-3 rounded-full bg-info/20 text-center text-[10px] leading-3">🏢</span>
+                           <span className="inline-block w-3 h-3 rounded-full bg-info/20 text-center text-[11px] leading-3">🏢</span>
                            Manager: {currentLead.assignedManagerName}
                          </p>
                        )}
                        {currentLead.referredBy && (
                          <p className="text-sm text-purple-400 mt-1 flex items-center gap-1.5">
-                           <span className="inline-block w-3 h-3 rounded-full bg-purple-500/20 text-center text-[10px] leading-3">👤</span>
+                           <span className="inline-block w-3 h-3 rounded-full bg-purple-500/20 text-center text-[11px] leading-3">👤</span>
                            Referred by: {currentLead.referredBy}
                          </p>
                        )}
@@ -357,7 +357,7 @@ function formatPhoneDisplay(phone: string): string {
                      >
                        <action.icon className="h-5 w-5" />
                        {action.label}
-                       <span className="text-[10px] opacity-60 ml-auto hidden sm:inline">
+                       <span className="text-[11px] opacity-60 ml-auto hidden sm:inline">
                          [{index + 1}]
                        </span>
                      </Button>

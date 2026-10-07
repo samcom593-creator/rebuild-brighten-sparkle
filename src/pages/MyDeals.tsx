@@ -339,14 +339,14 @@ export default function MyDeals() {
                   <div className="flex items-center justify-between text-sm">
                     <span className="flex items-center gap-2 font-medium">
                       {a.agency}
-                      {a.is_primary && <Badge variant="outline" className="border-primary/30 bg-primary/15 text-primary text-[10px]">PRIMARY</Badge>}
+                      {a.is_primary && <Badge variant="outline" className="border-primary/30 bg-primary/15 text-primary text-[11px]">PRIMARY</Badge>}
                     </span>
                     <span className="font-semibold tabular-nums">{fmtMoney(a.alp)}</span>
                   </div>
                   <div className="mt-1 h-2 overflow-hidden rounded-full bg-muted">
                     <div className="h-full rounded-full bg-primary" style={{ width: `${(a.alp / imoMax) * 100}%` }} />
                   </div>
-                  <div className="mt-0.5 text-[11px] text-muted-foreground">
+                  <div className="mt-0.5 text-[12px] text-muted-foreground">
                     <p>{a.policies_30d.toLocaleString()} policies · {fmtMoney(a.alp_30d)} last 30 days</p>
                     <p>{a.policies_mtd.toLocaleString()} policies · {fmtMoney(a.alp_mtd)} calendar MTD</p>
                   </div>
@@ -420,18 +420,18 @@ export default function MyDeals() {
                             {d.carrier || "—"} · {d.product || "Product not on file"} · #{d.policy_number || "no policy #"}
                           </p>
                           {teamView && (
-                            <p className="text-[10px] text-muted-foreground">
+                            <p className="text-[11px] text-muted-foreground">
                               Writing agent: {d.agent_name || "Unassigned"}
                             </p>
                           )}
                         </div>
                         <div className="text-xs text-muted-foreground">
                           {d.posted_date ? format(new Date(`${d.posted_date}T12:00:00`), "MMM d, yyyy") : "not on file"}
-                          <span className="block text-[10px] opacity-70">posted</span>
+                          <span className="block text-[11px] opacity-70">posted</span>
                         </div>
                         <div className="text-right">
                           <p className="font-semibold text-sm">{fmtMoney(d.annual_premium)}</p>
-                          <p className="text-[10px] text-muted-foreground">annual premium</p>
+                          <p className="text-[11px] text-muted-foreground">annual premium</p>
                         </div>
                         <div className="flex flex-col items-end gap-1">
                           <Badge variant="outline" className={statusColor(d.status)}>{d.status || "unknown"}</Badge>
@@ -440,31 +440,31 @@ export default function MyDeals() {
                       {isOpen && (
                         <div className="px-4 pb-4 pt-1 grid grid-cols-2 md:grid-cols-4 gap-3 text-xs bg-muted/10">
                           <div>
-                            <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Producer</p>
+                            <p className="text-muted-foreground uppercase tracking-wider text-[11px]">Producer</p>
                             <p className="font-semibold">{d.agent_name || "Unassigned"}</p>
                           </div>
                           <div>
-                            <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Policy</p>
+                            <p className="text-muted-foreground uppercase tracking-wider text-[11px]">Policy</p>
                             <p className="font-semibold">{d.policy_number || "—"}</p>
                           </div>
                           <div>
-                            <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Product</p>
+                            <p className="text-muted-foreground uppercase tracking-wider text-[11px]">Product</p>
                             <p className="font-semibold">{d.product || "—"}</p>
                           </div>
                           <div>
-                            <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Effective</p>
+                            <p className="text-muted-foreground uppercase tracking-wider text-[11px]">Effective</p>
                             <p className="font-semibold">{d.effective_date ? format(new Date(`${d.effective_date}T12:00:00`), "MMM d, yyyy") : "not on file"}</p>
                           </div>
                           <div>
-                            <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Source</p>
+                            <p className="text-muted-foreground uppercase tracking-wider text-[11px]">Source</p>
                             <p className="font-semibold">{d.origin === "apex_native" ? "APEX native" : "Live production feed"}</p>
                           </div>
                           <div>
-                            <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Last synced</p>
+                            <p className="text-muted-foreground uppercase tracking-wider text-[11px]">Last synced</p>
                             <p className="font-semibold">{d.synced_at ? format(new Date(d.synced_at), "MMM d, h:mm a") : "—"}</p>
                           </div>
                           <div>
-                            <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Row ID</p>
+                            <p className="text-muted-foreground uppercase tracking-wider text-[11px]">Row ID</p>
                             <p className="font-semibold truncate">{d.row_key}</p>
                           </div>
                         </div>

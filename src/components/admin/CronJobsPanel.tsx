@@ -146,8 +146,8 @@ export function CronJobsPanel() {
               ) : (
                 filtered.map((j) => (
                   <tr key={j.jobname} className="border-t border-border/50 hover:bg-muted/30">
-                    <td className="p-2 font-mono text-[11px] max-w-[260px] truncate" title={j.jobname}>
-                      {!j.active && <Badge variant="outline" className="mr-1 text-[9px] h-4">off</Badge>}
+                    <td className="p-2 font-mono text-[12px] max-w-[260px] truncate" title={j.jobname}>
+                      {!j.active && <Badge variant="outline" className="mr-1 text-[10px] h-4">off</Badge>}
                       {j.jobname}
                     </td>
                     <td className="p-2 text-muted-foreground">

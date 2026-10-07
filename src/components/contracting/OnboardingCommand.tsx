@@ -208,7 +208,7 @@ export function OnboardingCommand() {
               <div key={s.stage_key} className="flex items-center gap-3">
                 <div className="w-52 shrink-0 text-xs">
                   <span className="text-foreground">{s.label}</span>
-                  <Badge variant="outline" className={cn("ml-1.5 px-1 py-0 text-[10px]", OWNER_BADGE[s.owner] ?? "border-border")}>{s.owner}</Badge>
+                  <Badge variant="outline" className={cn("ml-1.5 px-1 py-0 text-[11px]", OWNER_BADGE[s.owner] ?? "border-border")}>{s.owner}</Badge>
                 </div>
                 <div className="relative h-5 flex-1 overflow-hidden rounded-sm bg-muted/30">
                   <div
@@ -280,7 +280,7 @@ export function OnboardingCommand() {
                     <tr key={r.agent_id} className="border-t border-border/50">
                       <td className="py-1.5 pr-3">
                         <div className="font-medium">{r.agent_name ?? "—"}</div>
-                        <div className="text-[11px] text-muted-foreground">{r.deals_30d} deal{r.deals_30d === 1 ? "" : "s"}{gapNote ? ` · ${gapNote}` : ""}</div>
+                        <div className="text-[12px] text-muted-foreground">{r.deals_30d} deal{r.deals_30d === 1 ? "" : "s"}{gapNote ? ` · ${gapNote}` : ""}</div>
                       </td>
                       <td className="py-1.5 pr-3 text-right tabular-nums">{money(r.production_30d)}</td>
                       <td className="py-1.5 pr-3 text-right tabular-nums">{money(r.ipd_verified_30d)}</td>
@@ -354,26 +354,26 @@ export function OnboardingCommand() {
                         </button>
                         <div className="min-w-0 flex-1">
                           <div className="truncate text-sm font-medium">{it.display_name}</div>
-                          <div className="truncate text-[11px] text-muted-foreground">
+                          <div className="truncate text-[12px] text-muted-foreground">
                             {it.manager_name ? `↑ ${it.manager_name}` : "no manager"}{it.npn_db ? ` · NPN ${it.npn_db}` : ""}
                           </div>
                         </div>
                         {meta.kind === "cases" && (
                           <Link
                             to={casesHref(it.display_name)}
-                            className="inline-flex shrink-0 items-center gap-1 text-[11px] text-sky-300 hover:underline"
+                            className="inline-flex shrink-0 items-center gap-1 text-[12px] text-sky-300 hover:underline"
                             aria-label={`Open carrier cases for ${it.display_name}`}
                           >
                             Carrier cases
                           </Link>
                         )}
                         {meta.kind === "ethos" && (
-                          <span className="inline-flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground">
+                          <span className="inline-flex shrink-0 items-center gap-1 text-[12px] text-muted-foreground">
                             <ClipboardCopy className="h-3 w-3" /> Copy Ethos rows above
                           </span>
                         )}
                         {meta.kind === "merge" && (
-                          <span className="shrink-0 text-[11px] text-muted-foreground">Dedupe tool</span>
+                          <span className="shrink-0 text-[12px] text-muted-foreground">Dedupe tool</span>
                         )}
                       </div>
                     );
@@ -385,7 +385,7 @@ export function OnboardingCommand() {
               <div className="py-6 text-center text-sm text-emerald-400">Nothing waiting on you. Every Sam-owned contract step is handled.</div>
             )}
             {workDone.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2 border-t border-border/40 pt-2 text-[11px] text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-2 border-t border-border/40 pt-2 text-[12px] text-muted-foreground">
                 <span>{workDone.length} handled:</span>
                 {workDone.slice(0, 14).map((it) => (
                   <button
@@ -412,7 +412,7 @@ export function OnboardingCommand() {
 function Stat({ label, value, tone, icon }: { label: string; value: number; tone: string; icon?: ReactNode }) {
   return (
     <div className="rounded-md border border-border/50 bg-muted/20 p-2">
-      <div className="flex items-center gap-1 text-[11px] text-muted-foreground">{icon}{label}</div>
+      <div className="flex items-center gap-1 text-[12px] text-muted-foreground">{icon}{label}</div>
       <div className={cn("text-xl font-semibold tabular-nums", tone)}>{value}</div>
     </div>
   );

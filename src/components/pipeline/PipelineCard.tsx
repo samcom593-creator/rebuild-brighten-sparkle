@@ -99,8 +99,8 @@ function StageProgressBar({ stage }: { stage: string | null | undefined }) {
   return (
     <div className="mt-1.5 mb-2">
       <div className="flex items-center justify-between mb-0.5">
-        <span className="text-[9px] text-muted-foreground/60">Progress</span>
-        <span className="text-[9px] text-muted-foreground/60">{pct}%</span>
+        <span className="text-[10px] text-muted-foreground/60">Progress</span>
+        <span className="text-[10px] text-muted-foreground/60">{pct}%</span>
       </div>
       <div className="h-1 bg-muted/40 rounded-full overflow-hidden">
         <div
@@ -167,7 +167,7 @@ export const PipelineCard = memo(function PipelineCard({ app, onClick, onSchedul
               </span>
             )}
             {app.lead_score != null && (
-              <Badge variant="outline" className={cn("text-[9px] px-1.5 py-0", getScoreColor(app.lead_score))}>
+              <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0", getScoreColor(app.lead_score))}>
                 <Target className="h-2.5 w-2.5 mr-0.5" />
                 {app.lead_score}
               </Badge>
@@ -177,17 +177,17 @@ export const PipelineCard = memo(function PipelineCard({ app, onClick, onSchedul
 
         {/* ── Contact freshness + stage badge ───────────────────────────── */}
         <div className="flex items-center gap-1.5 flex-wrap mb-1">
-          <Badge variant="outline" className={cn("text-[10px]", contactBadge.color)}>
+          <Badge variant="outline" className={cn("text-[11px]", contactBadge.color)}>
             <Clock className="h-2.5 w-2.5 mr-1" />
             {contactBadge.label}
           </Badge>
           {app.license_progress && !isLicensed && (
-            <Badge variant="outline" className="text-[10px] bg-muted/50 text-muted-foreground border-border">
+            <Badge variant="outline" className="text-[11px] bg-muted/50 text-muted-foreground border-border">
               {STAGE_LABELS[app.license_progress] || app.license_progress}
             </Badge>
           )}
           {isLicensed && (
-            <Badge className="text-[10px] bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
+            <Badge className="text-[11px] bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
               🏆 Licensed
             </Badge>
           )}
@@ -212,12 +212,12 @@ export const PipelineCard = memo(function PipelineCard({ app, onClick, onSchedul
 
         {/* ── Days in pipeline + manager ────────────────────────────────── */}
         <div className="flex items-center gap-2 mb-1.5">
-          <span className="text-[9px] text-muted-foreground/50 flex items-center gap-0.5">
+          <span className="text-[10px] text-muted-foreground/50 flex items-center gap-0.5">
             <TrendingUp className="h-2.5 w-2.5" />
             {daysInStage}d in pipeline
           </span>
           {app.assigned_manager_name && (
-            <span className="text-[9px] text-muted-foreground/50 truncate">
+            <span className="text-[10px] text-muted-foreground/50 truncate">
               👤 {app.assigned_manager_name}
             </span>
           )}
@@ -225,14 +225,14 @@ export const PipelineCard = memo(function PipelineCard({ app, onClick, onSchedul
 
         {/* ── Next recommended action ───────────────────────────────────── */}
         {nextAction && !isLicensed && (
-          <div className="flex items-center gap-1 text-[10px] text-info mb-2 truncate">
+          <div className="flex items-center gap-1 text-[11px] text-info mb-2 truncate">
             <span>{nextAction}</span>
           </div>
         )}
 
         {/* ── Last activity ─────────────────────────────────────────────── */}
         {app.last_activity_title && (
-          <div className="text-[9px] text-muted-foreground/50 truncate mb-2 italic">
+          <div className="text-[10px] text-muted-foreground/50 truncate mb-2 italic">
             {app.last_activity_title}
           </div>
         )}
@@ -240,7 +240,7 @@ export const PipelineCard = memo(function PipelineCard({ app, onClick, onSchedul
         {/* ── Actions ───────────────────────────────────────────────────── */}
         <div className="flex items-center gap-1 flex-wrap">
           <Button variant="ghost" size="sm"
-            className="h-7 text-[11px] flex-1 min-w-[40px] text-muted-foreground hover:text-foreground"
+            className="h-7 text-[12px] flex-1 min-w-[40px] text-muted-foreground hover:text-foreground"
             onClick={(e) => { e.stopPropagation(); onClick(app); }}
           >
             View

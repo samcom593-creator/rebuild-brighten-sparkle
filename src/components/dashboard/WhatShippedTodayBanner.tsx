@@ -78,7 +78,7 @@ export function WhatShippedTodayBanner() {
           <Rocket className="h-5 w-5 text-zinc-950" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-300">
+          <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-300">
             <Sparkles className="h-3 w-3" /> Shipped — build receipts
           </div>
           <h2 className="text-base sm:text-lg font-bold text-foreground leading-tight">
@@ -126,13 +126,13 @@ export function WhatShippedTodayBanner() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-semibold text-foreground">{item.label}</span>
-                          <span className="text-[10px] uppercase tracking-wider text-emerald-300/80">{item.ts}</span>
+                          <span className="text-[11px] uppercase tracking-wider text-emerald-300/80">{item.ts}</span>
                           {item.commit && (
                             <a
                               href={`https://github.com/samcom593-creator/rebuild-brighten-sparkle/commit/${item.commit}`}
                               target="_blank"
                               rel="noreferrer"
-                              className="text-[10px] font-mono text-muted-foreground hover:text-foreground"
+                              className="text-[11px] font-mono text-muted-foreground hover:text-foreground"
                             >
                               {item.commit}
                             </a>

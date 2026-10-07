@@ -305,12 +305,12 @@ export default function ProducerDetailsDrawer({
         <SheetHeader className="text-left space-y-1">
           <div className="flex items-center gap-2">
             {priorityBadge && (
-              <Badge className={cn("text-[10px] font-semibold", priorityBadge.className)}>
+              <Badge className={cn("text-[11px] font-semibold", priorityBadge.className)}>
                 {priorityBadge.text}
               </Badge>
             )}
             {producer.currently_dropping && (
-              <Badge className="bg-rose-500/15 text-rose-300 border border-rose-500/30 text-[10px] font-semibold">
+              <Badge className="bg-rose-500/15 text-rose-300 border border-rose-500/30 text-[11px] font-semibold">
                 DROPPING 3W
               </Badge>
             )}
@@ -346,7 +346,7 @@ export default function ProducerDetailsDrawer({
                   {compQ.data?.pct != null ? `${compQ.data.pct}%` : "—"}
                 </span>
                 {compQ.data?.provenance && compQ.data.provenance !== "unknown" && (
-                  <span className="text-[9px] uppercase tracking-wider text-muted-foreground normal-case">
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground normal-case">
                     {compQ.data.provenance.replace(/_/g, " ")}
                   </span>
                 )}
@@ -389,7 +389,7 @@ export default function ProducerDetailsDrawer({
 
         {/* 5 · Weekly ALP mini-chart */}
         <section className="mt-4 rounded-lg border border-white/[0.08] bg-muted/30 p-4">
-          <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground mb-2">
+          <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground mb-2">
             Weekly ALP · last 12 weeks
           </div>
           <MiniChart
@@ -427,7 +427,7 @@ export default function ProducerDetailsDrawer({
         {/* 10 · Next Best Action */}
         {nba && (
           <section className="mt-4 rounded-lg border border-teal-500/30 bg-teal-500/10 p-4">
-            <div className="text-[10px] uppercase tracking-[0.18em] text-teal-300 mb-1">
+            <div className="text-[11px] uppercase tracking-[0.18em] text-teal-300 mb-1">
               Next best action
             </div>
             <div className="text-sm font-semibold text-foreground">{nba.action}</div>
@@ -447,7 +447,7 @@ export default function ProducerDetailsDrawer({
 
         {/* 11 · Notes composer */}
         <section className="mt-4 rounded-lg border border-white/[0.08] bg-muted/30 p-4">
-          <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground mb-2 flex items-center gap-1.5">
+          <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground mb-2 flex items-center gap-1.5">
             <MessageSquarePlus className="h-3.5 w-3.5" /> Log coaching note
           </div>
           <textarea
@@ -471,7 +471,7 @@ export default function ProducerDetailsDrawer({
 
         {/* 13 · Assign follow-up */}
         <section className="mt-4 rounded-lg border border-white/[0.08] bg-muted/30 p-4">
-          <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground mb-2 flex items-center gap-1.5">
+          <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground mb-2 flex items-center gap-1.5">
             <CalendarClock className="h-3.5 w-3.5" /> Assign follow-up
           </div>
           <div className="flex items-center gap-2">
@@ -515,7 +515,7 @@ export default function ProducerDetailsDrawer({
 
         {/* 12 · Coaching history */}
         <section className="mt-4 rounded-lg border border-white/[0.08] bg-muted/30 p-4">
-          <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground mb-2">
+          <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground mb-2">
             Coaching history
           </div>
           {notesQ.isLoading ? (
@@ -529,7 +529,7 @@ export default function ProducerDetailsDrawer({
                   key={n.id}
                   className="rounded border border-white/[0.05] bg-card p-2 text-xs"
                 >
-                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
                     {fmtDate(n.created_at)}
                   </div>
                   <div className="text-foreground whitespace-pre-wrap mt-0.5">{n.note}</div>
@@ -559,7 +559,7 @@ export default function ProducerDetailsDrawer({
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{label}</span>
+      <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{label}</span>
       <span className="text-sm text-foreground tabular-nums text-right">{value}</span>
     </div>
   );

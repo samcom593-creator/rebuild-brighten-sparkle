@@ -62,7 +62,7 @@ export function FreeLeadsStatusCard({ agentId }: { agentId: string }) {
           </div>
           <div className="shrink-0 text-right">
             <p className="text-lg font-bold tabular-nums text-foreground">${money(alp)}</p>
-            <p className="text-[10px] text-muted-foreground">Trailing 30d ALP</p>
+            <p className="text-[11px] text-muted-foreground">Trailing 30d ALP</p>
           </div>
         </div>
 
@@ -75,7 +75,7 @@ export function FreeLeadsStatusCard({ agentId }: { agentId: string }) {
             <div className="h-2 overflow-hidden rounded-full bg-muted">
               <div className="h-full rounded-full bg-sky-500 transition-all" style={{ width: `${progress}%` }} />
             </div>
-            <p className="mt-1.5 text-[11px] text-sky-400">
+            <p className="mt-1.5 text-[12px] text-sky-400">
               Write ${money(status.needed_for_qual)} more in ALP to unlock weekly lead drops.
             </p>
           </div>

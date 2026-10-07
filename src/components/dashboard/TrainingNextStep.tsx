@@ -107,7 +107,7 @@ export function TrainingNextStep() {
       <CardContent className="p-4 sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
-            <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               <GraduationCap className="h-3 w-3" />
               {isPre ? "Get licensed" : "Your training"}
             </p>
@@ -122,7 +122,7 @@ export function TrainingNextStep() {
             )}
 
             {!isPre && total > 0 && (
-              <p className="mt-1 text-[11px] text-muted-foreground">
+              <p className="mt-1 text-[12px] text-muted-foreground">
                 {passed} of {total} modules passed
               </p>
             )}
@@ -133,7 +133,7 @@ export function TrainingNextStep() {
                   <span
                     key={s.key}
                     className={
-                      "rounded px-1.5 py-0.5 text-[10px] " +
+                      "rounded px-1.5 py-0.5 text-[11px] " +
                       (i <= stageIdx
                         ? "bg-primary/15 text-primary font-medium"
                         : "bg-muted/40 text-muted-foreground")
@@ -148,7 +148,7 @@ export function TrainingNextStep() {
             {pct !== null && (
               <div className="mt-2 max-w-xs">
                 <Progress value={pct} className="h-1.5" />
-                <p className="mt-1 text-[11px] text-muted-foreground">{pct}% complete</p>
+                <p className="mt-1 text-[12px] text-muted-foreground">{pct}% complete</p>
               </div>
             )}
 
@@ -160,7 +160,7 @@ export function TrainingNextStep() {
                 <Lightbulb className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />
                 <div className="min-w-0">
                   <p className="text-xs font-medium">Recommended: {data.recommended_title}</p>
-                  <p className="text-[11px] text-muted-foreground">{data.recommended_reason}</p>
+                  <p className="text-[12px] text-muted-foreground">{data.recommended_reason}</p>
                 </div>
               </div>
             )}

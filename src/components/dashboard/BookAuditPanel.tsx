@@ -175,7 +175,7 @@ export function BookAuditPanel() {
               onClick={() => { setCategory("all"); setCarrier("all"); }}
               className={cn("rounded-lg border p-3 text-left transition", category === "all" ? "border-primary bg-primary/10" : "border-border hover:bg-muted/40")}
             >
-              <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Flagged (of {t?.live_policies ?? 0} live)</div>
+              <div className="text-[12px] uppercase tracking-wider text-muted-foreground">Flagged (of {t?.live_policies ?? 0} live)</div>
               <div className="text-2xl font-bold tabular-nums">{t?.flagged_n ?? 0}</div>
             </button>
             <button
@@ -183,7 +183,7 @@ export function BookAuditPanel() {
               onClick={() => { setCategory("no_policy_number"); setCarrier("all"); }}
               className={cn("rounded-lg border p-3 text-left transition", category === "no_policy_number" ? "border-primary bg-primary/10" : "border-border hover:bg-muted/40")}
             >
-              <div className="flex items-center gap-1 text-[11px] uppercase tracking-wider text-muted-foreground"><FileWarning className="h-3 w-3" /> No policy number</div>
+              <div className="flex items-center gap-1 text-[12px] uppercase tracking-wider text-muted-foreground"><FileWarning className="h-3 w-3" /> No policy number</div>
               <div className="text-2xl font-bold tabular-nums">{t?.no_policy_number_n ?? 0}</div>
               <div className="text-xs text-muted-foreground">{money(t?.no_policy_number_alp)} ALP</div>
             </button>
@@ -192,12 +192,12 @@ export function BookAuditPanel() {
               onClick={() => { setCategory("unused_carrier"); setCarrier("all"); }}
               className={cn("rounded-lg border p-3 text-left transition", category === "unused_carrier" ? "border-primary bg-primary/10" : "border-border hover:bg-muted/40")}
             >
-              <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Carriers we don&apos;t use</div>
+              <div className="text-[12px] uppercase tracking-wider text-muted-foreground">Carriers we don&apos;t use</div>
               <div className="text-2xl font-bold tabular-nums">{t?.unused_carrier_n ?? 0}</div>
               <div className="text-xs text-muted-foreground">{money(t?.unused_carrier_alp)} ALP</div>
             </button>
             <div className="rounded-lg border border-border p-3">
-              <div className="text-[11px] uppercase tracking-wider text-muted-foreground">By carrier</div>
+              <div className="text-[12px] uppercase tracking-wider text-muted-foreground">By carrier</div>
               <div className="mt-1 flex flex-wrap gap-1">
                 {Object.entries(t?.unused_by_carrier ?? {}).sort((a, b) => b[1] - a[1]).map(([c, n]) => (
                   <Badge
@@ -285,7 +285,7 @@ export function BookAuditPanel() {
                   {visible.map((i) => (
                     <tr key={i.item_key} className="border-t border-border/50">
                       <td className="py-1 pr-3">
-                        <Badge variant={i.category === "both" ? "destructive" : "outline"} className="text-[10px]">
+                        <Badge variant={i.category === "both" ? "destructive" : "outline"} className="text-[11px]">
                           {CATEGORY_LABEL[i.category] ?? i.category}
                         </Badge>
                       </td>

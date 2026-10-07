@@ -271,7 +271,7 @@ export function PersonPanel({ row, userId, backendReady, canAssign, staff, staff
           </Button>
         )}
       </div>
-      <p className="-mt-2 text-[11px] text-muted-foreground">
+      <p className="-mt-2 text-[12px] text-muted-foreground">
         Opening a call, text or email records nothing. Record what actually happened below.
       </p>
 
@@ -414,7 +414,7 @@ export function PersonPanel({ row, userId, backendReady, canAssign, staff, staff
               );
             })}
           </div>
-          <p className="mt-1 text-[11px] text-muted-foreground">Recorded as a manual outcome.</p>
+          <p className="mt-1 text-[12px] text-muted-foreground">Recorded as a manual outcome.</p>
         </div>
 
         <div>

@@ -197,7 +197,7 @@ function EventChip({ item, onClick }: { item: CalendarItem; onClick: () => void 
       onClick={onClick}
       title={item.title}
       className={cn(
-        "flex w-full items-center gap-1 rounded px-1 py-[1px] text-left text-[10px] leading-tight transition-colors hover:bg-muted",
+        "flex w-full items-center gap-1 rounded px-1 py-[1px] text-left text-[11px] leading-tight transition-colors hover:bg-muted",
         item.status === "canceled" && "text-muted-foreground line-through",
       )}
     >
@@ -866,7 +866,7 @@ export default function CalendarPage() {
                           {format(day, "d")}
                         </span>
                         {rows.length > 0 && (
-                          <span className="text-[10px] tabular-nums text-muted-foreground">{rows.length}</span>
+                          <span className="text-[11px] tabular-nums text-muted-foreground">{rows.length}</span>
                         )}
                       </div>
                       <div className="space-y-0.5">
@@ -874,7 +874,7 @@ export default function CalendarPage() {
                           <EventChip key={item.key} item={item} onClick={() => pickDay(key)} />
                         ))}
                         {rows.length > cap && (
-                          <span className="block px-1 text-[10px] text-muted-foreground">+{rows.length - cap} more</span>
+                          <span className="block px-1 text-[11px] text-muted-foreground">+{rows.length - cap} more</span>
                         )}
                       </div>
                     </div>
@@ -915,7 +915,7 @@ export default function CalendarPage() {
         </Card>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-3 text-[11px] text-muted-foreground">
+      <div className="flex flex-wrap items-center justify-between gap-3 text-[12px] text-muted-foreground">
         <p>
           No feed yet: {UNFED_KINDS.join(" · ")} — no table publishes those dates, so the calendar does not invent them.
         </p>
@@ -1057,7 +1057,7 @@ export default function CalendarPage() {
                       <p className="truncate text-sm font-medium">{lead.first_name} {lead.last_name}</p>
                       <p className="truncate text-xs text-muted-foreground">{lead.email}</p>
                     </div>
-                    <Badge variant="outline" className="shrink-0 text-[10px]">{lead.status}</Badge>
+                    <Badge variant="outline" className="shrink-0 text-[11px]">{lead.status}</Badge>
                   </button>
                 ))}
               </div>

@@ -91,7 +91,7 @@ function PodiumCard({ entry, position, maxALP }: { entry: LeaderboardEntry; posi
     >
       {/* Rank badge */}
       <div className={cn(
-        "absolute -top-2 px-2 py-0.5 rounded-full text-[9px] font-black",
+        "absolute -top-2 px-2 py-0.5 rounded-full text-[10px] font-black",
         ` ${config.gradient} text-white shadow-sm`
       )}>
         {config.label}
@@ -120,7 +120,7 @@ function PodiumCard({ entry, position, maxALP }: { entry: LeaderboardEntry; posi
       
       {/* Stats */}
       <div className="flex items-center gap-1 mt-0.5">
-        <span className="text-[10px] text-muted-foreground">{entry.deals}×</span>
+        <span className="text-[11px] text-muted-foreground">{entry.deals}×</span>
         <span className={cn(
           "text-sm font-bold",
           position === 1 && "text-amber-500",
@@ -162,7 +162,7 @@ function LeaderboardRow({ entry, index, maxALP }: { entry: LeaderboardEntry; ind
       {/* Avatar + Name */}
       <div className="col-span-5 flex items-center gap-2 min-w-0">
         <div className={cn(
-          "h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-bold text-foreground shrink-0",
+          "h-7 w-7 rounded-full flex items-center justify-center text-[11px] font-bold text-foreground shrink-0",
           ` ${getAvatarColor(entry.name)}`
         )}>
           {entry.avatarUrl ? (
@@ -186,7 +186,7 @@ function LeaderboardRow({ entry, index, maxALP }: { entry: LeaderboardEntry; ind
           <span key={i} className="text-primary text-[8px]">●</span>
         ))}
         {entry.deals > 5 && (
-          <span className="text-[9px] text-muted-foreground ml-0.5">+{entry.deals - 5}</span>
+          <span className="text-[10px] text-muted-foreground ml-0.5">+{entry.deals - 5}</span>
         )}
       </div>
       
@@ -199,7 +199,7 @@ function LeaderboardRow({ entry, index, maxALP }: { entry: LeaderboardEntry; ind
           )}>
             ${entry.alp.toLocaleString()}
           </span>
-          <span className="text-[9px] text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+          <span className="text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
             {progressPercent}%
           </span>
         </div>
@@ -349,7 +349,7 @@ export function CompactLeaderboard({ currentAgentId, className, refreshKey }: Co
           Leaderboard
           {/* Live indicator */}
           <span className={cn(
-            "flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-full",
+            "flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full",
             isConnected 
               ? "bg-emerald-500/20 text-emerald-400" 
               : "bg-muted text-muted-foreground"
@@ -364,16 +364,16 @@ export function CompactLeaderboard({ currentAgentId, className, refreshKey }: Co
         <div className="flex items-center gap-1">
           <Tabs value={period} onValueChange={(v) => setPeriod(v as Period)} className="w-auto">
             <TabsList className="h-7 p-0.5 bg-muted/50">
-              <TabsTrigger value="day" className="text-[10px] px-2 h-6 data-[state=active]:bg-background">Day</TabsTrigger>
-              <TabsTrigger value="week" className="text-[10px] px-2 h-6 data-[state=active]:bg-background">Week</TabsTrigger>
-              <TabsTrigger value="month" className="text-[10px] px-2 h-6 data-[state=active]:bg-background">Month</TabsTrigger>
-              <TabsTrigger value="last_month" className="text-[10px] px-2 h-6 data-[state=active]:bg-background">Last Mo</TabsTrigger>
-              <TabsTrigger value="ytd" className="text-[10px] px-2 h-6 data-[state=active]:bg-background">YTD</TabsTrigger>
+              <TabsTrigger value="day" className="text-[11px] px-2 h-6 data-[state=active]:bg-background">Day</TabsTrigger>
+              <TabsTrigger value="week" className="text-[11px] px-2 h-6 data-[state=active]:bg-background">Week</TabsTrigger>
+              <TabsTrigger value="month" className="text-[11px] px-2 h-6 data-[state=active]:bg-background">Month</TabsTrigger>
+              <TabsTrigger value="last_month" className="text-[11px] px-2 h-6 data-[state=active]:bg-background">Last Mo</TabsTrigger>
+              <TabsTrigger value="ytd" className="text-[11px] px-2 h-6 data-[state=active]:bg-background">YTD</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
       </div>
-      <p className="mb-3 text-[11px] text-muted-foreground">
+      <p className="mb-3 text-[12px] text-muted-foreground">
         {formatMetricSource(METRIC_REGISTRY.leaderboards, lastUpdatedAt)}
       </p>
 

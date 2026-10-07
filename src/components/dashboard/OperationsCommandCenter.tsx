@@ -56,9 +56,9 @@ function MetricLink({
             <Icon className={cn("h-4 w-4 text-muted-foreground", danger && "text-rose-400")} />
             <ArrowRight className="h-3.5 w-3.5 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
           </div>
-          <p className="mt-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+          <p className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
           <p className={cn("mt-0.5 text-2xl font-bold tabular-nums", danger && "text-rose-400")}>{value}</p>
-          <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{detail}</p>
+          <p className="mt-0.5 truncate text-[12px] text-muted-foreground">{detail}</p>
         </CardContent>
       </Card>
     </Link>
@@ -152,7 +152,7 @@ export function OperationsCommandCenter() {
         <div>
           <div className="flex items-center gap-2">
             <h2 id="operations-command-title" className="text-sm font-semibold">Run the business</h2>
-            <Badge variant="outline" className="text-[10px]">Live workflow</Badge>
+            <Badge variant="outline" className="text-[11px]">Live workflow</Badge>
           </div>
           <p className="mt-0.5 text-xs text-muted-foreground">Recruit, onboard, contract, sell, and fix problems from one truthful queue.</p>
         </div>

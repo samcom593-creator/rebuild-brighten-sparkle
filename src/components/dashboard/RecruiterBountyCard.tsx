@@ -103,7 +103,7 @@ export function RecruiterBountyCard({ agentId, className }: { agentId?: string |
           href={bioUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-3 block select-all break-all rounded-md border border-border bg-muted/40 px-3 py-2 text-[11px] text-muted-foreground underline-offset-2 hover:border-primary/50 hover:text-primary hover:underline"
+          className="mt-3 block select-all break-all rounded-md border border-border bg-muted/40 px-3 py-2 text-[12px] text-muted-foreground underline-offset-2 hover:border-primary/50 hover:text-primary hover:underline"
         >
           {bioUrl}
         </a>
@@ -123,15 +123,15 @@ export function RecruiterBountyCard({ agentId, className }: { agentId?: string |
             <>
               <div>
                 <p className="text-xl font-bold tabular-nums text-primary">{dollars(earned)}</p>
-                <p className="text-[11px] text-muted-foreground">Paid to you · {paid.length} {paid.length === 1 ? "bounty" : "bounties"}</p>
+                <p className="text-[12px] text-muted-foreground">Paid to you · {paid.length} {paid.length === 1 ? "bounty" : "bounties"}</p>
               </div>
               <div>
                 <p className="text-xl font-bold tabular-nums">{dollars(inFlight)}</p>
-                <p className="text-[11px] text-muted-foreground">Qualified, awaiting payout · {pending.length}</p>
+                <p className="text-[12px] text-muted-foreground">Qualified, awaiting payout · {pending.length}</p>
               </div>
               <div>
                 <p className="text-xl font-bold tabular-nums">{live.length}</p>
-                <p className="text-[11px] text-muted-foreground">Recruits who hit 2 policies</p>
+                <p className="text-[12px] text-muted-foreground">Recruits who hit 2 policies</p>
               </div>
             </>
           )}

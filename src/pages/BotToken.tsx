@@ -139,7 +139,7 @@ export default function BotToken() {
                 Rotate
               </Button>
             </div>
-            <p className="text-[11px] text-muted-foreground mt-3 leading-relaxed">
+            <p className="text-[12px] text-muted-foreground mt-3 leading-relaxed">
               Anyone holding this token can run SQL against your database. Rotate if shared in the wrong chat.
             </p>
           </>
@@ -156,11 +156,11 @@ export default function BotToken() {
 
       <GlassCard className="w-full max-w-2xl p-5 text-xs text-muted-foreground">
         <p className="font-semibold text-foreground mb-2">Endpoint</p>
-        <code className="block bg-background/60 border border-border/40 rounded p-2 font-mono text-[11px] break-all">
+        <code className="block bg-background/60 border border-border/40 rounded p-2 font-mono text-[12px] break-all">
           https://xrzweoneiieddzxogewk.supabase.co/functions/v1/bot-sql
         </code>
         <p className="font-semibold text-foreground mt-4 mb-2">Usage</p>
-        <code className="block bg-background/60 border border-border/40 rounded p-2 font-mono text-[11px] leading-relaxed whitespace-pre">{`POST ${"${endpoint}"}
+        <code className="block bg-background/60 border border-border/40 rounded p-2 font-mono text-[12px] leading-relaxed whitespace-pre">{`POST ${"${endpoint}"}
 Authorization: Bearer <token above>
 Content-Type: application/json
 Body: { "query": "SELECT 1" }`}</code>

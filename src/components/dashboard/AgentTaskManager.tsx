@@ -308,7 +308,7 @@ export function AgentTaskManager({
                   <p className="truncate text-sm font-semibold">{task.title}</p>
                   {task.description && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{task.description}</p>}
                 </div>
-                <Badge variant={priorityColor(task.priority)} className="shrink-0 text-[10px]">{task.priority}</Badge>
+                <Badge variant={priorityColor(task.priority)} className="shrink-0 text-[11px]">{task.priority}</Badge>
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                 <span className="inline-flex items-center gap-1">{statusIcon(task.status)} {columnLabels[task.status] ?? task.status}</span>
@@ -343,7 +343,7 @@ export function AgentTaskManager({
                     <GlassCard key={task.id} className="p-3 space-y-2">
                       <div className="flex items-start justify-between gap-2">
                         <span className="text-sm font-medium leading-tight">{task.title}</span>
-                        <Badge variant={priorityColor(task.priority)} className="text-[10px] shrink-0">
+                        <Badge variant={priorityColor(task.priority)} className="text-[11px] shrink-0">
                           {task.priority}
                         </Badge>
                       </div>
@@ -404,7 +404,7 @@ export function AgentTaskManager({
                     {task.due_date ? new Date(task.due_date).toLocaleDateString() : "—"}
                   </td>
                   <td className="p-3">
-                    <Badge variant={priorityColor(task.priority)} className="text-[10px]">
+                    <Badge variant={priorityColor(task.priority)} className="text-[11px]">
                       {task.priority}
                     </Badge>
                   </td>

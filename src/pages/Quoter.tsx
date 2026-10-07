@@ -167,31 +167,31 @@ export default function Quoter() {
                 <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
                 <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
               </span>
-              <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-emerald-300">QUOTER · LIVE</p>
+              <p className="text-[12px] uppercase tracking-[0.32em] font-bold text-emerald-300">QUOTER · LIVE</p>
             </div>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">PRODUCTS</p>
+              <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">PRODUCTS</p>
               <p className="text-[28px] leading-none font-black tabular-nums text-foreground">{PRODUCTS.length}</p>
-              <p className="text-[10px] text-white/40 tabular-nums">FE · WL · Term 20</p>
+              <p className="text-[11px] text-white/40 tabular-nums">FE · WL · Term 20</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">HEALTH TIERS</p>
+              <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">HEALTH TIERS</p>
               <p className="text-[28px] leading-none font-black tabular-nums text-foreground">{HEALTH_TIERS.length}</p>
-              <p className="text-[10px] text-white/40 tabular-nums">Preferred → GI</p>
+              <p className="text-[11px] text-white/40 tabular-nums">Preferred → GI</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">AGE RANGE</p>
+              <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">AGE RANGE</p>
               <p className="text-[28px] leading-none font-black tabular-nums text-foreground">18–89</p>
-              <p className="text-[10px] text-white/40 tabular-nums">5 bands per product</p>
+              <p className="text-[11px] text-white/40 tabular-nums">5 bands per product</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">LAST QUOTE TOTAL</p>
+              <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">LAST QUOTE TOTAL</p>
               <p className="text-[28px] leading-none font-black tabular-nums text-foreground">
                 {lastQuoteTotal > 0 ? `$${lastQuoteTotal.toFixed(0)}` : "—"}
               </p>
-              <p className="text-[10px] text-white/40 tabular-nums">
+              <p className="text-[11px] text-white/40 tabular-nums">
                 {results.length > 0 ? `${results.length} product${results.length === 1 ? "" : "s"} priced` : "Enter age to price"}
               </p>
             </div>

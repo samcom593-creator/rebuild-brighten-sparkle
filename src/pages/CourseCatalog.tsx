@@ -362,7 +362,7 @@ export default function CourseCatalog() {
               return (
                 <li key={module.id}>
                   {phaseChanged && (
-                    <p className="mb-2 mt-4 px-1 text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground first:mt-0">
+                    <p className="mb-2 mt-4 px-1 text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground first:mt-0">
                       {module.phase_key === "systems" ? "Phase 2 · Systems" : "Phase 1 · Foundation"}
                     </p>
                   )}
@@ -389,7 +389,7 @@ export default function CourseCatalog() {
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="line-clamp-2 text-sm font-bold leading-5">{module.title}</span>
-                      <span className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                      <span className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground">
                         <span>{formatDuration(module.duration_seconds)}</span>
                         {complete && <span className="font-semibold text-success">Passed {moduleProgress.score ?? 100}%</span>}
                         {!complete && (moduleProgress?.video_watched_percent ?? 0) > 0 && (
@@ -595,7 +595,7 @@ function CourseStat({ value, label }: { value: string; label: string }) {
   return (
     <div className="rounded-xl border border-border bg-muted/30 px-3 py-3 text-center">
       <p className="text-xl font-extrabold tabular-nums text-primary sm:text-2xl">{value}</p>
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
     </div>
   );
 }

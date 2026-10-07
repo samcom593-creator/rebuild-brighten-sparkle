@@ -73,7 +73,7 @@ export function AyroProductionPanel() {
         <div className="flex gap-4">
           <div className="text-right">
             <div className="text-2xl font-bold tabular-nums text-accent-green">{money(t?.production)}</div>
-            <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{t?.deals ?? 0} deals · {t?.agents ?? 0} agents</div>
+            <div className="text-[12px] uppercase tracking-wider text-muted-foreground">{t?.deals ?? 0} deals · {t?.agents ?? 0} agents</div>
           </div>
         </div>
       </div>
@@ -99,7 +99,7 @@ export function AyroProductionPanel() {
                   <td className="py-1.5 pr-3 tabular-nums text-muted-foreground">{i + 1}</td>
                   <td className="py-1.5 pr-3 font-medium">
                     {r.agent_name}
-                    {!r.agent_id && <Badge variant="outline" className="ml-2 text-[10px]">not linked</Badge>}
+                    {!r.agent_id && <Badge variant="outline" className="ml-2 text-[11px]">not linked</Badge>}
                   </td>
                   <td className="py-1.5 pr-3 text-right font-bold tabular-nums text-accent-green">{money(r.all_time_production)}</td>
                   <td className="py-1.5 pr-3 text-right tabular-nums">{r.deals}</td>

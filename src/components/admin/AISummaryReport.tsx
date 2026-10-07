@@ -123,7 +123,7 @@ export function AISummaryReport() {
           <button className="flex items-center gap-2 w-full px-4 py-3 text-sm font-semibold hover:bg-accent/30 transition-colors">
             <Brain className="h-4 w-4 text-primary" />
             <span className="gradient-text font-bold">AI Summary Report</span>
-            <Badge className="text-[9px] bg-primary/20 text-primary border-primary/30 ml-1">
+            <Badge className="text-[10px] bg-primary/20 text-primary border-primary/30 ml-1">
               Weekly Digest
             </Badge>
             {open ? <ChevronUp className="h-3.5 w-3.5 ml-auto text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 ml-auto text-muted-foreground" />}
@@ -138,7 +138,7 @@ export function AISummaryReport() {
                 {quickStats.map((s) => (
                   <div key={s.label} className="flex items-center gap-1.5 rounded-full border border-border/60 bg-card px-3 py-1.5">
                     <s.icon className={cn("h-3 w-3", s.color)} />
-                    <span className="text-[10px] text-muted-foreground">{s.label}</span>
+                    <span className="text-[11px] text-muted-foreground">{s.label}</span>
                     <span className={cn("text-xs font-bold", s.color)}>{s.value}</span>
                   </div>
                 ))}

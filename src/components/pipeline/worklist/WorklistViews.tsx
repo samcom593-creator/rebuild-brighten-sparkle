@@ -54,7 +54,7 @@ export function WorklistTable({ rows, selectedId, onSelect, staff, staffAvailabl
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[980px] text-left text-xs">
-        <thead className="sticky top-0 z-10 bg-card text-[11px] uppercase tracking-wide text-muted-foreground">
+        <thead className="sticky top-0 z-10 bg-card text-[12px] uppercase tracking-wide text-muted-foreground">
           <tr className="border-b border-border">
             <th scope="col" className="px-3 py-2 font-semibold">Name</th>
             <th scope="col" className="px-2 py-2 font-semibold">Phone</th>
@@ -94,7 +94,7 @@ export function WorklistTable({ rows, selectedId, onSelect, staff, staffAvailabl
               >
                 <td className="px-3 py-2">
                   <div className="font-medium text-foreground">{fullName(row)}</div>
-                  {needsPlan && <div className="text-[10px] font-medium text-muted-foreground">Needs a plan</div>}
+                  {needsPlan && <div className="text-[11px] font-medium text-muted-foreground">Needs a plan</div>}
                 </td>
                 <td className="whitespace-nowrap px-2 py-2 tabular-nums text-foreground">{row.phone ? formatPhoneDisplay(row.phone) : "—"}</td>
                 <td className="px-2 py-2 text-foreground">{row.state ?? "—"}</td>

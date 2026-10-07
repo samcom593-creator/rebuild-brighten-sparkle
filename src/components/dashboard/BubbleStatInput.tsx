@@ -38,7 +38,7 @@ export function BubbleStatInput({
         )}
       >
         {/* Label */}
-        <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold block mb-2">
+        <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold block mb-2">
           {label}
         </label>
         

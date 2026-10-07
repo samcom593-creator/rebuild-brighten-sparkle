@@ -301,7 +301,7 @@ export function BuildingLeaderboard({ currentAgentId, period }: BuildingLeaderbo
         />
       )}
       {/* Table Header */}
-      <div className="grid grid-cols-12 gap-2 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border/50">
+      <div className="grid grid-cols-12 gap-2 px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border/50">
         <div className="col-span-3">Builder</div>
         <div className="col-span-2 text-center">Apps</div>
         <div className="col-span-2 text-center">Hired</div>
@@ -352,7 +352,7 @@ export function BuildingLeaderboard({ currentAgentId, period }: BuildingLeaderbo
                 <div className="col-span-3 flex items-center gap-2 min-w-0">
                   {renderRankBadge(entry.rank, entry.isCurrentUser)}
                   <div className={cn(
-                    "h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 ",
+                    "h-7 w-7 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0 ",
                     entry.avatarUrl ? "" : getAvatarColor(entry.name)
                   )}>
                     {entry.avatarUrl ? (
@@ -408,7 +408,7 @@ export function BuildingLeaderboard({ currentAgentId, period }: BuildingLeaderbo
                 <div className="col-span-1 text-center">
                   {entry.growthPercent !== 0 ? (
                     <div className={cn(
-                      "inline-flex items-center gap-0.5 text-[10px] font-semibold",
+                      "inline-flex items-center gap-0.5 text-[11px] font-semibold",
                       entry.growthPercent > 0 ? "text-emerald-400" : "text-red-400"
                     )}>
                       {entry.growthPercent > 0 ? (
@@ -419,7 +419,7 @@ export function BuildingLeaderboard({ currentAgentId, period }: BuildingLeaderbo
                       <span>{entry.growthPercent > 0 ? "+" : ""}{entry.growthPercent}%</span>
                     </div>
                   ) : (
-                    <span className="text-[10px] text-muted-foreground">-</span>
+                    <span className="text-[11px] text-muted-foreground">-</span>
                   )}
                 </div>
               </motion.div>

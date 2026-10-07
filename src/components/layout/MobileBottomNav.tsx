@@ -112,7 +112,7 @@ export function MobileBottomNav() {
                   <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary" />
                 )}
               </div>
-              <span className="text-[10px] font-medium leading-none">{item.label}</span>
+              <span className="text-[11px] font-medium leading-none">{item.label}</span>
             </button>
           );
         })}

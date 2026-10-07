@@ -74,7 +74,7 @@ export function ProductionForecast({ agentId }: ProductionForecastProps) {
         <Badge
           variant="outline"
           className={cn(
-            "text-[10px]",
+            "text-[11px]",
             production.projection.confidence === "high" ? "border-emerald-500/30 text-emerald-400" :
             production.projection.confidence === "medium" ? "border-amber-500/30 text-amber-400" :
             "text-muted-foreground"
@@ -86,15 +86,15 @@ export function ProductionForecast({ agentId }: ProductionForecastProps) {
 
       <div className="grid grid-cols-3 gap-3">
         <div className="text-center">
-          <p className="text-[10px] text-muted-foreground">This Month</p>
+          <p className="text-[11px] text-muted-foreground">This Month</p>
           <p className="text-lg font-bold">${production.totalAlp.toLocaleString()}</p>
         </div>
         <div className="text-center">
-          <p className="text-[10px] text-muted-foreground">Posted Sales Days</p>
+          <p className="text-[11px] text-muted-foreground">Posted Sales Days</p>
           <p className="text-lg font-bold">{production.activeDays}</p>
         </div>
         <div className="text-center">
-          <p className="text-[10px] text-muted-foreground">Projected Month</p>
+          <p className="text-[11px] text-muted-foreground">Projected Month</p>
           <div className="flex items-center justify-center gap-1">
             <p className="text-lg font-bold">${production.projection.projection.toLocaleString()}</p>
             <TrendIcon className={cn("h-4 w-4", trendColor)} />
@@ -102,7 +102,7 @@ export function ProductionForecast({ agentId }: ProductionForecastProps) {
         </div>
       </div>
 
-      <p className="mt-3 text-[11px] text-muted-foreground">
+      <p className="mt-3 text-[12px] text-muted-foreground">
         {production.projection.activeDays < 3
           ? "Projection stays pinned to current MTD until at least 3 posted-sales days exist."
           : `${production.deals} deals written this month · ${production.presentations} presentations logged.`}

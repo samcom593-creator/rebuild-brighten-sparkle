@@ -73,7 +73,7 @@ export function CourseTranscript({ module }: { module: OnboardingModule }) {
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <h3 className="font-bold">Transcript &amp; notes</h3>
-                <Badge variant="outline" className="text-[10px]">
+                <Badge variant="outline" className="text-[11px]">
                   {KIND_LABEL[module.transcript_kind]}
                 </Badge>
               </div>
@@ -121,7 +121,7 @@ export function CourseTranscript({ module }: { module: OnboardingModule }) {
                 className="grid gap-2 p-4 sm:grid-cols-[4.5rem_1fr] sm:gap-4"
               >
                 <span className={cn(
-                  "w-fit rounded-full bg-muted px-2 py-1 text-[11px] font-semibold tabular-nums text-muted-foreground",
+                  "w-fit rounded-full bg-muted px-2 py-1 text-[12px] font-semibold tabular-nums text-muted-foreground",
                   !segment.time && "invisible",
                 )}>
                   {segment.time || "Notes"}

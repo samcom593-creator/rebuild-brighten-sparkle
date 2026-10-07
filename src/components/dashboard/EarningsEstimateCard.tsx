@@ -62,7 +62,7 @@ export function EarningsEstimateCard() {
     <GlassCard className="p-4">
       <div className="flex items-center gap-2">
         <DollarSign className="h-4 w-4 shrink-0 text-muted-foreground" />
-        <p className="min-w-0 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+        <p className="min-w-0 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
           Estimated commission
         </p>
       </div>
@@ -90,24 +90,24 @@ export function EarningsEstimateCard() {
         <>
           <div className="mt-3 grid grid-cols-2 gap-3">
             <div className="min-w-0">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                 In force
               </p>
               <p className="mt-1 break-words text-3xl font-bold leading-none tabular-nums text-emerald-600 dark:text-emerald-400">
                 {money(earned)}
               </p>
-              <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+              <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
                 Carrier can pay on this
               </p>
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                 Pending if issued
               </p>
               <p className="mt-1 break-words text-3xl font-bold leading-none tabular-nums text-amber-600 dark:text-amber-400">
                 {money(pending)}
               </p>
-              <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+              <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
                 Submitted, not issued yet
               </p>
             </div>
@@ -115,7 +115,7 @@ export function EarningsEstimateCard() {
 
           {topPending.length > 0 && (
             <div className="mt-3 border-t border-border pt-3">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                 Most pending
               </p>
               <ul className="mt-1.5 space-y-1">
@@ -136,7 +136,7 @@ export function EarningsEstimateCard() {
 
           <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-2.5">
             <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
-            <p className="min-w-0 text-[11px] leading-relaxed text-muted-foreground">
+            <p className="min-w-0 text-[12px] leading-relaxed text-muted-foreground">
               <span className="font-semibold text-amber-600 dark:text-amber-400">Estimate.</span>{" "}
               Premium x contract %. No payout feed exists yet, so this is not settled money.
             </p>

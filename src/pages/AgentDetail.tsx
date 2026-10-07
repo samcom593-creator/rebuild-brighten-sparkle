@@ -159,7 +159,7 @@ export default function AgentDetail() {
             {agent.email && <span className="inline-flex items-center gap-1"><Mail className="h-3 w-3" />{agent.email}</span>}
             {agent.phone && <span className="inline-flex items-center gap-1"><Phone className="h-3 w-3" />{agent.phone}</span>}
             {agent.manager_name && <span>Manager: {agent.manager_name}</span>}
-            {agent.insuracloud_user_id && <Badge variant="outline" className="text-[10px]">AL ID {agent.insuracloud_user_id}</Badge>}
+            {agent.insuracloud_user_id && <Badge variant="outline" className="text-[11px]">AL ID {agent.insuracloud_user_id}</Badge>}
           </div>
           <div className="flex gap-2 mt-2">
             {agent.status && <Badge variant="outline">{formatEnumLabel(agent.status, "—")}</Badge>}

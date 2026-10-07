@@ -151,7 +151,7 @@ export function LeadInsightsPanel({ applicationId, agentId, className }: LeadIns
                 {insights.next_actions.map((a) => (
                   <li key={a.action} className="text-sm border border-border/50 rounded-md p-2 space-y-1">
                     <div className="flex items-start gap-2">
-                      <Badge className={cn("text-[10px] uppercase", PRIORITY_COLORS[a.priority])} variant="secondary">
+                      <Badge className={cn("text-[11px] uppercase", PRIORITY_COLORS[a.priority])} variant="secondary">
                         {a.priority}
                       </Badge>
                       <span className="font-medium flex-1">{a.action}</span>

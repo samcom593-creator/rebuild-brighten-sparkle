@@ -69,7 +69,7 @@ export default function ManagerNextStepBoard() {
     <div className="container mx-auto px-4 py-8 space-y-6 max-w-7xl">
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-muted-foreground mb-1">
+          <div className="flex items-center gap-2 text-[12px] uppercase tracking-[0.18em] text-muted-foreground mb-1">
             <Compass className="h-3.5 w-3.5" /> Next-step board
           </div>
           <h1 className="text-3xl font-bold">My Team — Next Step Board</h1>
@@ -110,7 +110,7 @@ export default function ManagerNextStepBoard() {
                 <CardTitle className="flex items-center justify-between text-sm">
                   <span className="truncate">{r.order_index}. {r.stage_display_name}</span>
                   {r.stalled_count > 0 && (
-                    <Badge variant="destructive" className="text-[10px] shrink-0">
+                    <Badge variant="destructive" className="text-[11px] shrink-0">
                       <AlertTriangle className="h-3 w-3 mr-1" />{r.stalled_count}
                     </Badge>
                   )}
@@ -119,7 +119,7 @@ export default function ManagerNextStepBoard() {
               <CardContent className="space-y-2">
                 <div className="flex items-baseline gap-2">
                   <span className="text-3xl font-bold tabular-nums">{r.person_count}</span>
-                  <span className="text-[11px] text-muted-foreground">
+                  <span className="text-[12px] text-muted-foreground">
                     avg {Math.round(r.avg_days_in_stage ?? 0)}d · max {Math.round(r.max_days_in_stage ?? 0)}d
                   </span>
                 </div>
@@ -142,7 +142,7 @@ export default function ManagerNextStepBoard() {
                         </Link>
                         <span
                           className={cn(
-                            "text-[10px] tabular-nums shrink-0",
+                            "text-[11px] tabular-nums shrink-0",
                             p.is_stalled ? "text-rose-300" : "text-muted-foreground",
                           )}
                         >
@@ -152,7 +152,7 @@ export default function ManagerNextStepBoard() {
                     );
                   })}
                   {r.persons.length > 12 && (
-                    <li className="text-[10px] text-muted-foreground italic">
+                    <li className="text-[11px] text-muted-foreground italic">
                       + {r.persons.length - 12} more
                     </li>
                   )}

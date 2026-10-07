@@ -146,7 +146,7 @@ export function SuppressionDialog({ open, onOpenChange, target, onSuppressed }: 
 
           {reason === "other" && (
             <div>
-              <Label htmlFor="mp257-suppress-other" className="text-[10px] uppercase tracking-widest text-muted-foreground">
+              <Label htmlFor="mp257-suppress-other" className="text-[11px] uppercase tracking-widest text-muted-foreground">
                 Describe the reason
               </Label>
               <Textarea

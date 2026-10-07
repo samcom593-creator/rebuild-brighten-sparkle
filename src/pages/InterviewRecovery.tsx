@@ -141,7 +141,7 @@ const NEUTRAL = "text-muted-foreground";
 // A category chip carries meaning in its label, not its hue — tinting it would
 // collide with the severity vocabulary above.
 const CATEGORY_CHIP =
-  "border-border bg-muted/40 text-[10px] font-bold uppercase tracking-wide text-muted-foreground";
+  "border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wide text-muted-foreground";
 
 // ---------------------------------------------------------------------------
 // Bucket presentation — colour is never the only signal, every chip has a label
@@ -641,7 +641,7 @@ export default function InterviewRecovery() {
             </p>
 
             {reasons.length > 0 && (
-              <p className="mb-3 text-[11px] text-muted-foreground">{reasons.join(" · ")}</p>
+              <p className="mb-3 text-[12px] text-muted-foreground">{reasons.join(" · ")}</p>
             )}
 
             {/* contact actions */}
@@ -699,7 +699,7 @@ export default function InterviewRecovery() {
 
             {current.prep_notes && (
               <div className="mt-3 rounded-lg border border-border bg-card p-3 sm:p-4">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">They wrote</p>
+                <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">They wrote</p>
                 <p className="mt-1 break-words text-sm text-foreground">{current.prep_notes}</p>
               </div>
             )}
@@ -808,7 +808,7 @@ export default function InterviewRecovery() {
                   >
                     <d.icon className="mr-1.5 h-4 w-4 shrink-0" />
                     <span className="truncate">{d.label}</span>
-                    <kbd className="ml-auto hidden shrink-0 text-[10px] font-bold tabular-nums text-muted-foreground sm:inline">
+                    <kbd className="ml-auto hidden shrink-0 text-[11px] font-bold tabular-nums text-muted-foreground sm:inline">
                       {d.hotkey}
                     </kbd>
                   </Button>
@@ -1132,7 +1132,7 @@ function Fact({ label, value }: { label: string; value: React.ReactNode }) {
   if (value === null || value === undefined || value === "") return null;
   return (
     <div className="min-w-0">
-      <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
       <p className="truncate text-sm font-medium tabular-nums text-foreground">{value}</p>
     </div>
   );
@@ -1143,7 +1143,7 @@ function ApplicationFacts({ row, onOpenFull }: { row: PipelineRow; onOpenFull: (
   return (
     <div className="rounded-lg border border-border bg-card p-3 sm:p-4">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <p className="min-w-0 truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+        <p className="min-w-0 truncate text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
           Application
         </p>
         <Button size="sm" variant="ghost" className="h-10 shrink-0 sm:h-9" onClick={onOpenFull}
@@ -1251,7 +1251,7 @@ function InterviewRow({
           <div className="flex flex-wrap items-center gap-2">
             <span className="truncate text-sm font-medium text-foreground">{row.display_name}</span>
             {bucketMeta && (
-              <Badge variant="outline" className={cn("shrink-0 border-border bg-muted/40 text-[10px] font-bold uppercase tracking-wide", bucketMeta.tone)}>
+              <Badge variant="outline" className={cn("shrink-0 border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wide", bucketMeta.tone)}>
                 {bucketMeta.label}
               </Badge>
             )}
@@ -1261,7 +1261,7 @@ function InterviewRow({
               </Badge>
             )}
           </div>
-          <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+          <p className="mt-0.5 truncate text-[12px] text-muted-foreground">
             {fmtChicago(row.scheduled_at)}
             {row.best_phone ? ` · ${row.best_phone}` : ""}
             {reasons.length ? ` · ${reasons.join(" · ")}` : ""}
@@ -1271,7 +1271,7 @@ function InterviewRow({
         {row.days_overdue > 0 && (
           <div className="shrink-0 text-right">
             <div className={cn("text-sm font-bold tabular-nums", BAD)}>{row.days_overdue}d</div>
-            <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">late</div>
+            <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">late</div>
           </div>
         )}
 
@@ -1304,7 +1304,7 @@ function InterviewRow({
 
           {row.prep_notes && (
             <div className="mt-3 rounded-lg border border-border bg-card p-3 sm:p-4">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">They wrote</p>
+              <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">They wrote</p>
               <p className="mt-1 break-words text-sm text-foreground">{row.prep_notes}</p>
             </div>
           )}
@@ -1496,16 +1496,16 @@ function ProspectRowCard({
             <Badge variant="outline" className={cn("shrink-0", CATEGORY_CHIP)}>
               {TRACK_LABEL[track] ?? "Other"}
             </Badge>
-            <Badge variant="outline" className={cn("shrink-0 border-border bg-muted/40 text-[10px] font-bold uppercase tracking-wide", WARN)}>
+            <Badge variant="outline" className={cn("shrink-0 border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wide", WARN)}>
               {matches > 0 ? `No application · ${matches} possible match` : "No application"}
             </Badge>
             {isUpcoming(row) && (
-              <Badge variant="outline" className={cn("shrink-0 border-border bg-muted/40 text-[10px] font-bold uppercase tracking-wide", GOOD)}>
+              <Badge variant="outline" className={cn("shrink-0 border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wide", GOOD)}>
                 Upcoming
               </Badge>
             )}
           </div>
-          <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+          <p className="mt-0.5 truncate text-[12px] text-muted-foreground">
             {fmtChicago(row.scheduled_at)}
             {` · ${prospectUrgency(row)}`}
             {row.invitee_phone ? ` · ${row.invitee_phone}` : handle ? ` · @${handle}` : ""}
@@ -1515,7 +1515,7 @@ function ProspectRowCard({
         {!isUpcoming(row) && !row.outcome && (
           <div className="shrink-0 text-right">
             <div className={cn("text-sm font-bold tabular-nums", WARN)}>{stuck}d</div>
-            <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">stuck</div>
+            <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">stuck</div>
           </div>
         )}
 
@@ -1565,7 +1565,7 @@ function ProspectRowCard({
 
           {row.va_notes && (
             <div className="mt-3 rounded-lg border border-border bg-card p-3 sm:p-4">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">VA notes</p>
+              <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">VA notes</p>
               <p className="mt-1 break-words text-sm text-foreground">{row.va_notes}</p>
             </div>
           )}

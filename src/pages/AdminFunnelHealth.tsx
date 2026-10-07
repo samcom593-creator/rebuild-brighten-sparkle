@@ -95,7 +95,7 @@ export default function AdminFunnelHealth() {
   return (
     <div className="container mx-auto px-4 py-8 space-y-6 max-w-7xl">
       <div>
-        <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-muted-foreground mb-1">
+        <div className="flex items-center gap-2 text-[12px] uppercase tracking-[0.18em] text-muted-foreground mb-1">
           <Compass className="h-3.5 w-3.5" /> Pipeline · Funnel Health
         </div>
         <h1 className="text-3xl font-bold">Next-Step Funnel Health</h1>
@@ -120,7 +120,7 @@ export default function AdminFunnelHealth() {
                 <TrendingDown className="h-5 w-5 text-rose-300" />
               </div>
               <div className="min-w-0">
-                <div className="text-[10px] uppercase tracking-[0.18em] text-rose-400/80">Biggest concentrated leak</div>
+                <div className="text-[11px] uppercase tracking-[0.18em] text-rose-400/80">Biggest concentrated leak</div>
                 <div className="text-lg font-bold mt-0.5">
                   {biggestLeak.loss} people stalled at "{biggestLeak.row.display_name}"
                 </div>
@@ -150,7 +150,7 @@ export default function AdminFunnelHealth() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-[10px] uppercase tracking-wider text-muted-foreground border-b border-border/50">
+                  <tr className="text-[11px] uppercase tracking-wider text-muted-foreground border-b border-border/50">
                     <th className="text-left py-2 px-2">#</th>
                     <th className="text-left py-2 px-2">Stage</th>
                     <th className="text-right py-2 px-2">People</th>
@@ -179,7 +179,7 @@ export default function AdminFunnelHealth() {
                         <td className="py-2 px-2 text-right tabular-nums">{r.in_stage}</td>
                         <td className="py-2 px-2 text-right tabular-nums">
                           {r.stalled > 0 ? (
-                            <Badge variant="destructive" className="text-[10px]">
+                            <Badge variant="destructive" className="text-[11px]">
                               {r.stalled}
                             </Badge>
                           ) : (
@@ -214,9 +214,9 @@ export default function AdminFunnelHealth() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {msgStats.map((s) => (
                 <div key={s.channel} className="rounded-lg border border-border/50 p-4">
-                  <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{s.channel}</div>
+                  <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{s.channel}</div>
                   <div className="text-2xl font-bold tabular-nums mt-1">{s.sent}</div>
-                  <div className="text-[11px] text-muted-foreground mt-1">
+                  <div className="text-[12px] text-muted-foreground mt-1">
                     sent · {s.failed > 0 && <span className="text-rose-400">{s.failed} failed</span>}
                     {s.failed === 0 && <span className="text-emerald-400">0 failed</span>}
                   </div>
@@ -232,7 +232,7 @@ export default function AdminFunnelHealth() {
           <AlertTriangle className="h-4 w-4 text-amber-400 mt-0.5 shrink-0" />
           <div>
             <div className="font-medium">Engine is live · 3 cron jobs running forever</div>
-            <div className="text-muted-foreground text-[11px] mt-1">
+            <div className="text-muted-foreground text-[12px] mt-1">
               Stall sweep every 15min · Nudge sweep hourly · Full recompute nightly 03:00 CT · Auto-dispatch fires on every queue insert
             </div>
           </div>
@@ -258,7 +258,7 @@ function KpiTile({ label, value, tone }: { label: string; value: number; tone: "
   } as const;
   return (
     <div className={cn("rounded-lg border bg-card p-3", toneClass[tone])}>
-      <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{label}</div>
+      <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{label}</div>
       <div className="text-2xl font-bold tabular-nums leading-none mt-1.5">{value.toLocaleString()}</div>
     </div>
   );

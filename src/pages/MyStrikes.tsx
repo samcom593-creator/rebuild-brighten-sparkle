@@ -236,7 +236,7 @@ export default function MyStrikes() {
                               href={url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-[11px] text-primary hover:underline truncate max-w-[260px] inline-flex items-center gap-1"
+                              className="text-[12px] text-primary hover:underline truncate max-w-[260px] inline-flex items-center gap-1"
                             >
                               <LinkIcon className="h-3 w-3" /> {(() => { try { return new URL(url).hostname; } catch { return "link"; } })()}
                             </a>
@@ -248,7 +248,7 @@ export default function MyStrikes() {
                           Resolved: {s.resolution_note}
                         </p>
                       )}
-                      <p className="text-[11px] text-muted-foreground mt-2">
+                      <p className="text-[12px] text-muted-foreground mt-2">
                         Issued {format(new Date(s.issued_at), "PPp")}
                         {s.issued_by_name && <> by {s.issued_by_name}</>}
                       </p>

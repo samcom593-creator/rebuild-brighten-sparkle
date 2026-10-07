@@ -114,7 +114,7 @@ export default function Rewards() {
                 <div className="flex items-center gap-2 text-sm">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                   <span className="font-semibold">{periodLabel(first.period)}</span>
-                  <Badge variant="outline" className="font-mono text-[10px]">{first.period_key}</Badge>
+                  <Badge variant="outline" className="font-mono text-[11px]">{first.period_key}</Badge>
                   <span className="text-xs text-muted-foreground">{list.length} reward{list.length === 1 ? "" : "s"}</span>
                 </div>
                 <GlassCard className="p-0 overflow-hidden">

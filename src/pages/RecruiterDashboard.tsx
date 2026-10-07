@@ -295,7 +295,7 @@ function StatBubble({
     >
       <Icon className="h-4 w-4 shrink-0" />
       <span className="text-base font-bold leading-none">{value}</span>
-      <span className="text-[10px] text-muted-foreground leading-tight truncate">{label}</span>
+      <span className="text-[11px] text-muted-foreground leading-tight truncate">{label}</span>
     </motion.div>
   );
 }
@@ -329,7 +329,7 @@ function MetricsStrip({ leads }: { leads: Lead[] }) {
               className="flex items-center gap-1.5 rounded-full border border-border/60 bg-card px-3 py-1.5"
             >
               <p.icon className={cn("h-3 w-3", p.color)} />
-              <span className="text-[10px] text-muted-foreground">{p.label}</span>
+              <span className="text-[11px] text-muted-foreground">{p.label}</span>
               <span className={cn("text-xs font-bold", p.color)}>{p.value}</span>
             </div>
           ))}
@@ -456,7 +456,7 @@ const LeadCard = memo(function LeadCard({
             <div className="min-w-0 flex-1">
               <p className="font-semibold text-sm leading-tight truncate cursor-pointer hover:text-primary transition-colors" title={fullName} onClick={() => onDetailClick?.(lead)}>{fullName}</p>
               {lead.instagram_handle && (
-                <span className="text-[10px] text-muted-foreground truncate block">@{lead.instagram_handle.replace(/^@/, "")}</span>
+                <span className="text-[11px] text-muted-foreground truncate block">@{lead.instagram_handle.replace(/^@/, "")}</span>
               )}
             </div>
             <div className="flex items-center gap-1 shrink-0">
@@ -464,12 +464,12 @@ const LeadCard = memo(function LeadCard({
               {isFeatureEnabled("leadScoring") && (
                 <Popover>
                   <PopoverTrigger asChild>
-                    <button className={cn("inline-flex items-center rounded-full border px-1.5 py-0 text-[9px] font-bold cursor-pointer hover:opacity-80 transition-opacity", scoreBadge.className)}>
+                    <button className={cn("inline-flex items-center rounded-full border px-1.5 py-0 text-[10px] font-bold cursor-pointer hover:opacity-80 transition-opacity", scoreBadge.className)}>
                       {scoreBadge.label}
                     </button>
                   </PopoverTrigger>
                   <PopoverContent className="w-40 p-2" side="bottom" align="end">
-                    <p className="text-[10px] font-medium text-muted-foreground mb-1">Update Score</p>
+                    <p className="text-[11px] font-medium text-muted-foreground mb-1">Update Score</p>
                     <form onSubmit={async (e) => {
                       e.preventDefault();
                       const val = parseInt((e.currentTarget.elements.namedItem("score") as HTMLInputElement).value);
@@ -490,13 +490,13 @@ const LeadCard = memo(function LeadCard({
           {/* ── Row 2: Location + contact freshness ── */}
           <div className="flex items-center justify-between gap-1">
             {location && (
-              <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground truncate min-w-0">
+              <span className="inline-flex items-center gap-0.5 text-[11px] text-muted-foreground truncate min-w-0">
                 <MapPin className="h-2.5 w-2.5 shrink-0" />
                 <span className="truncate">{location}</span>
               </span>
             )}
             <div className="flex items-center gap-1 shrink-0">
-              <Badge className={cn("text-[9px] border shrink-0 whitespace-nowrap px-1.5 py-0", contactColor)}>
+              <Badge className={cn("text-[10px] border shrink-0 whitespace-nowrap px-1.5 py-0", contactColor)}>
                 <Clock className="h-2 w-2 mr-0.5" />
                 {contactLabel}
               </Badge>
@@ -523,14 +523,14 @@ const LeadCard = memo(function LeadCard({
           <div className="space-y-0.5">
             {lead.phone && (
               <span
-                className="block text-[11px] text-emerald-400 font-medium truncate select-all cursor-text"
+                className="block text-[12px] text-emerald-400 font-medium truncate select-all cursor-text"
                 title="Phone number — copy to dial"
               >
                 {lead.phone}
               </span>
             )}
             {lead.email && (
-              <span className="block text-[11px] text-muted-foreground truncate select-all cursor-text">{lead.email}</span>
+              <span className="block text-[12px] text-muted-foreground truncate select-all cursor-text">{lead.email}</span>
             )}
           </div>
 
@@ -540,7 +540,7 @@ const LeadCard = memo(function LeadCard({
             currentProgress={lead.license_progress as any}
             testScheduledDate={lead.test_scheduled_date}
             onProgressUpdated={() => handleProgressUpdated()}
-            className="text-[10px] h-6"
+            className="text-[11px] h-6"
           />
 
           {/* ── Row 3: Icon-only action buttons ── */}
@@ -560,7 +560,7 @@ const LeadCard = memo(function LeadCard({
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-48 p-1" side="bottom" align="start">
-                <p className="text-[10px] font-medium text-muted-foreground px-2 py-1">Call Outcome</p>
+                <p className="text-[11px] font-medium text-muted-foreground px-2 py-1">Call Outcome</p>
                 {CALL_OUTCOMES.map((o) => (
                   <button
                     key={o.key}
@@ -611,7 +611,7 @@ const LeadCard = memo(function LeadCard({
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-44 p-1" side="bottom" align="start">
-                <p className="text-[10px] font-medium text-muted-foreground px-2 py-1">Send Notification</p>
+                <p className="text-[11px] font-medium text-muted-foreground px-2 py-1">Send Notification</p>
                 <button
                   onClick={async () => {
                     try {
@@ -813,11 +813,11 @@ const LeadCard = memo(function LeadCard({
                       toast.error("Failed to apply suggestion");
                     }
                   }}
-                  className="flex items-center gap-1.5 w-full rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[10px] font-medium text-amber-400 hover:bg-amber-500/20 transition-colors"
+                  className="flex items-center gap-1.5 w-full rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[11px] font-medium text-amber-400 hover:bg-amber-500/20 transition-colors"
                 >
                   <Lightbulb className="h-3 w-3 shrink-0" />
                   <span>Suggested: {suggestion.label}</span>
-                  <span className="ml-auto text-[9px] bg-amber-500/20 rounded px-1.5 py-0.5">Apply</span>
+                  <span className="ml-auto text-[10px] bg-amber-500/20 rounded px-1.5 py-0.5">Apply</span>
                 </button>
               </div>
             );
@@ -863,7 +863,7 @@ const LeadCard = memo(function LeadCard({
               className="overflow-hidden"
             >
               <div className="px-2.5 pb-2.5 border-t border-border/50 pt-2.5">
-                <p className="text-[10px] font-medium text-muted-foreground mb-1.5 flex items-center gap-1">
+                <p className="text-[11px] font-medium text-muted-foreground mb-1.5 flex items-center gap-1">
                   <Activity className="h-3 w-3" /> Recent Activity
                 </p>
                 <ActivityTimeline leadId={lead.id} limit={3} compact />
@@ -1384,11 +1384,11 @@ function RecruiterDashboardInner() {
             >
               <span>{col.emoji}</span>
               <span className="hidden sm:inline">{col.label}</span>
-              <Badge variant="outline" className="text-[9px] ml-0.5 h-4 px-1 border-current">
+              <Badge variant="outline" className="text-[10px] ml-0.5 h-4 px-1 border-current">
                 {col.leads.length}
               </Badge>
               {col.needsAttention > 0 && (
-                <span className="flex items-center justify-center h-4 w-4 rounded-full bg-rose-500/20 text-rose-400 text-[9px] font-bold">
+                <span className="flex items-center justify-center h-4 w-4 rounded-full bg-rose-500/20 text-rose-400 text-[10px] font-bold">
                   {col.needsAttention}
                 </span>
               )}
@@ -1479,13 +1479,13 @@ function RecruiterDashboardInner() {
                                 </a>
                               )}
                               {showScore && (
-                                <Badge className={cn("text-[9px] border px-1 py-0 font-bold ml-0.5", badge.className)}>
+                                <Badge className={cn("text-[10px] border px-1 py-0 font-bold ml-0.5", badge.className)}>
                                   {badge.label}
                                 </Badge>
                               )}
                             </div>
                             {(lead as any).motivation && (
-                              <p className="text-[10px] text-muted-foreground truncate max-w-[180px]">{(lead as any).motivation}</p>
+                              <p className="text-[11px] text-muted-foreground truncate max-w-[180px]">{(lead as any).motivation}</p>
                             )}
                           </div>
                         </div>
@@ -1512,7 +1512,7 @@ function RecruiterDashboardInner() {
                       <td className="px-3 py-2">
                         <div className="flex flex-col">
                           <span className="text-xs font-medium">{fmtDate(new Date(lead.created_at), "MMM d")}</span>
-                          <span className="text-[10px] text-muted-foreground">{formatDistanceToNow(new Date(lead.created_at), { addSuffix: true })}</span>
+                          <span className="text-[11px] text-muted-foreground">{formatDistanceToNow(new Date(lead.created_at), { addSuffix: true })}</span>
                         </div>
                       </td>
                       <td className="px-3 py-2" onClick={e => e.stopPropagation()}>
@@ -1525,17 +1525,17 @@ function RecruiterDashboardInner() {
                               playSound("success");
                               fetchLeads(true);
                             }}
-                            className="text-[10px] h-6"
+                            className="text-[11px] h-6"
                           />
                           {lead.test_scheduled_date && (
-                            <span className="text-[9px] bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded px-1 py-0.5 whitespace-nowrap">
+                            <span className="text-[10px] bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded px-1 py-0.5 whitespace-nowrap">
                               📅 {new Date(lead.test_scheduled_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                             </span>
                           )}
                         </div>
                       </td>
                       <td className="px-3 py-2">
-                        <Badge className={cn("text-[10px] border whitespace-nowrap px-1.5 py-0", cColor)}>
+                        <Badge className={cn("text-[11px] border whitespace-nowrap px-1.5 py-0", cColor)}>
                           <Clock className="h-2 w-2 mr-0.5" />
                           {cLabel}
                         </Badge>

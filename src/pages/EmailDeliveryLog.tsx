@@ -183,35 +183,35 @@ export default function EmailDeliveryLog() {
           onClick={() => setStatusFilter("all")}
           className={`p-3 rounded-lg border text-left transition ${statusFilter === "all" ? "ring-2 ring-primary border-primary" : "border-border bg-card"}`}
         >
-          <p className="text-[10px] uppercase text-muted-foreground">Total</p>
+          <p className="text-[11px] uppercase text-muted-foreground">Total</p>
           <p className="text-2xl font-bold">{stats.total}</p>
         </button>
         <button
           onClick={() => setStatusFilter("sent")}
           className={`p-3 rounded-lg border text-left transition ${STATUS_META.sent.color} ${statusFilter === "sent" ? "ring-2 ring-emerald-500" : ""}`}
         >
-          <p className="text-[10px] uppercase opacity-70">Sent</p>
+          <p className="text-[11px] uppercase opacity-70">Sent</p>
           <p className="text-2xl font-bold">{stats.sent}</p>
         </button>
         <button
           onClick={() => setStatusFilter("queued")}
           className={`p-3 rounded-lg border text-left transition ${STATUS_META.queued.color} ${statusFilter === "queued" ? "ring-2 ring-primary" : ""}`}
         >
-          <p className="text-[10px] uppercase opacity-70">Queued</p>
+          <p className="text-[11px] uppercase opacity-70">Queued</p>
           <p className="text-2xl font-bold">{stats.queued}</p>
         </button>
         <button
           onClick={() => setStatusFilter("bounced")}
           className={`p-3 rounded-lg border text-left transition ${STATUS_META.bounced.color} ${statusFilter === "bounced" ? "ring-2 ring-red-500" : ""}`}
         >
-          <p className="text-[10px] uppercase opacity-70">Bounced</p>
+          <p className="text-[11px] uppercase opacity-70">Bounced</p>
           <p className="text-2xl font-bold">{stats.bounced}</p>
         </button>
         <button
           onClick={() => setStatusFilter("failed")}
           className={`p-3 rounded-lg border text-left transition ${STATUS_META.failed.color} ${statusFilter === "failed" ? "ring-2 ring-red-500" : ""}`}
         >
-          <p className="text-[10px] uppercase opacity-70">Failed</p>
+          <p className="text-[11px] uppercase opacity-70">Failed</p>
           <p className="text-2xl font-bold">{stats.failed}</p>
         </button>
       </div>
@@ -274,17 +274,17 @@ export default function EmailDeliveryLog() {
                   </div>
                   <div className="flex-1 min-w-[200px]">
                     <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                      <Badge variant="outline" className={meta.color + " text-[10px]"}>
+                      <Badge variant="outline" className={meta.color + " text-[11px]"}>
                         {meta.label}
                       </Badge>
-                      <Badge variant="outline" className="text-[10px]">
+                      <Badge variant="outline" className="text-[11px]">
                         {entry.template}
                       </Badge>
                       <span className="text-sm font-medium truncate">
                         {entry.recipient_email}
                       </span>
                       {entry.retries > 0 && (
-                        <Badge variant="outline" className="text-[10px]">
+                        <Badge variant="outline" className="text-[11px]">
                           ×{entry.retries} retries
                         </Badge>
                       )}
@@ -293,12 +293,12 @@ export default function EmailDeliveryLog() {
                       {entry.subject || "(no subject)"}
                     </p>
                     {entry.error && (
-                      <p className="text-[10px] text-red-400 truncate mt-0.5">
+                      <p className="text-[11px] text-red-400 truncate mt-0.5">
                         ⚠ {entry.error}
                       </p>
                     )}
                   </div>
-                  <div className="text-right text-[10px] text-muted-foreground whitespace-nowrap">
+                  <div className="text-right text-[11px] text-muted-foreground whitespace-nowrap">
                     {entry.sent_at ? (
                       <>Sent {formatDistanceToNow(new Date(entry.sent_at), { addSuffix: true })}</>
                     ) : (

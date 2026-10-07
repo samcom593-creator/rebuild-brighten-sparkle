@@ -87,10 +87,10 @@ export function RecruitingIncomeEstimateCard({ agentId }: { agentId?: string | n
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-3 border-t border-border pt-4 sm:grid-cols-4">
-          <div><p className="text-lg font-bold tabular-nums">{money(d.estimated_override)}</p><p className="text-[11px] text-muted-foreground">Estimated overrides</p></div>
-          <div><p className="text-lg font-bold tabular-nums">{money(d.qualified_bounties)}</p><p className="text-[11px] text-muted-foreground">Qualified bounties</p></div>
-          <div><p className="text-lg font-bold tabular-nums">{money(d.recruited_ap)}</p><p className="text-[11px] text-muted-foreground">Recruited AP · {d.recruited_policies} policies</p></div>
-          <div><p className="flex items-center gap-1 text-lg font-bold tabular-nums"><Users className="h-4 w-4 text-primary" />{d.recruited_producers}</p><p className="text-[11px] text-muted-foreground">Producing recruits</p></div>
+          <div><p className="text-lg font-bold tabular-nums">{money(d.estimated_override)}</p><p className="text-[12px] text-muted-foreground">Estimated overrides</p></div>
+          <div><p className="text-lg font-bold tabular-nums">{money(d.qualified_bounties)}</p><p className="text-[12px] text-muted-foreground">Qualified bounties</p></div>
+          <div><p className="text-lg font-bold tabular-nums">{money(d.recruited_ap)}</p><p className="text-[12px] text-muted-foreground">Recruited AP · {d.recruited_policies} policies</p></div>
+          <div><p className="flex items-center gap-1 text-lg font-bold tabular-nums"><Users className="h-4 w-4 text-primary" />{d.recruited_producers}</p><p className="text-[12px] text-muted-foreground">Producing recruits</p></div>
         </div>
       </CardContent>
     </Card>

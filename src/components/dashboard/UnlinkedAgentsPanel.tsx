@@ -127,7 +127,7 @@ export function UnlinkedAgentsPanel() {
     <Card>
       <CardContent className="p-4">
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+          <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
             <ShieldAlert className="h-3 w-3" />Agents · AgentLink history link
           </p>
           {unlinked.length > 0 && (
@@ -135,7 +135,7 @@ export function UnlinkedAgentsPanel() {
               {unlinked.length} without AgentLink ID
             </Badge>
           )}
-          <span className="ml-auto text-[11px] text-muted-foreground">{data.length} recent agents</span>
+          <span className="ml-auto text-[12px] text-muted-foreground">{data.length} recent agents</span>
         </div>
 
         <div className="space-y-1.5">
@@ -149,8 +149,8 @@ export function UnlinkedAgentsPanel() {
             >
               <span className="min-w-0 truncate text-sm font-medium text-foreground">{row.display_name}</span>
               {!row.al_user_id && <Link2Off className="h-3.5 w-3.5 shrink-0 text-amber-500" />}
-              <Badge variant="outline" className="text-[10px] capitalize">{row.status}</Badge>
-              <span className="text-[11px] text-muted-foreground">{row.blocker}</span>
+              <Badge variant="outline" className="text-[11px] capitalize">{row.status}</Badge>
+              <span className="text-[12px] text-muted-foreground">{row.blocker}</span>
               {(() => {
                 const g = integrity?.get(row.agent_id);
                 if (!g) return null;
@@ -166,7 +166,7 @@ export function UnlinkedAgentsPanel() {
                 return (
                   <span className="flex flex-wrap gap-1">
                     {flags.map((f) => (
-                      <Badge key={f} variant="outline" className="border-rose-500/40 text-[10px] text-rose-500">{f}</Badge>
+                      <Badge key={f} variant="outline" className="border-rose-500/40 text-[11px] text-rose-500">{f}</Badge>
                     ))}
                   </span>
                 );
@@ -211,7 +211,7 @@ export function UnlinkedAgentsPanel() {
                         onSelect={(e) => { e.preventDefault(); setStatus.mutate({ id: row.agent_id, status: s.key }); }}
                       >
                         {s.label}
-                        {s.key === row.status && <span className="ml-auto text-[10px] text-muted-foreground">current</span>}
+                        {s.key === row.status && <span className="ml-auto text-[11px] text-muted-foreground">current</span>}
                       </DropdownMenuItem>
                     ))}
                   </DropdownMenuContent>
@@ -222,7 +222,7 @@ export function UnlinkedAgentsPanel() {
         </div>
 
         {unlinked.length > 0 && (
-          <p className="mt-3 text-[11px] text-muted-foreground">
+          <p className="mt-3 text-[12px] text-muted-foreground">
             An AgentLink ID only attributes older imported AgentLink deals. Deals posted in Apex and the Discord
             feed credit these {unlinked.length} agents without one.
           </p>

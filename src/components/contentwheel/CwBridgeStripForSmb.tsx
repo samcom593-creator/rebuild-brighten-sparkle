@@ -66,9 +66,9 @@ export function CwBridgeStripForSmb() {
             <Crown className="h-4 w-4 text-amber-400" />
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] uppercase tracking-[0.18em] text-amber-400/80">From ContentWheel · the BRAIN</p>
+            <p className="text-[11px] uppercase tracking-[0.18em] text-amber-400/80">From ContentWheel · the BRAIN</p>
             <h3 className="text-sm font-semibold tracking-tight">How is what you're shipping actually performing?</h3>
-            <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">
+            <p className="text-[12px] text-muted-foreground leading-snug mt-0.5">
               Doctrine + the wheel. Every shipped SMB draft auto-flows into cw_posts → outlier detection + audience tracking + 90-day deal cycle.
             </p>
           </div>
@@ -120,7 +120,7 @@ export function CwBridgeStripForSmb() {
       </div>
 
       {data.shot_vs_posted?.bottom_of_barrel_warning && (
-        <div className="mt-3 rounded-md bg-rose-500/10 border border-rose-500/30 px-3 py-2 text-[11px] text-rose-300 leading-snug">
+        <div className="mt-3 rounded-md bg-rose-500/10 border border-rose-500/30 px-3 py-2 text-[12px] text-rose-300 leading-snug">
           ContentWheel: posting more than half of what you shoot. Shoot 2× what you post.
         </div>
       )}
@@ -151,12 +151,12 @@ function Stat({ icon: Icon, label, value, sub, tone }: StatProps) {
   };
   return (
     <div className={cn("rounded-lg border p-3", ring[tone])}>
-      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+      <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
         <Icon className="h-3 w-3" />
         {label}
       </div>
       <div className={cn("mt-1.5 text-lg font-bold tabular-nums leading-none", accent[tone])}>{value}</div>
-      <p className="mt-1 text-[10px] text-muted-foreground leading-snug">{sub}</p>
+      <p className="mt-1 text-[11px] text-muted-foreground leading-snug">{sub}</p>
     </div>
   );
 }

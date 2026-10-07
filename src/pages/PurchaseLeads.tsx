@@ -380,7 +380,7 @@ export default function PurchaseLeads() {
                   <span className="text-2xl font-bold text-foreground">
                     {String(item.value).padStart(2, "0")}
                   </span>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                  <p className="text-[11px] text-muted-foreground uppercase tracking-wider">
                     {item.label}
                   </p>
                 </div>

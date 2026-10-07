@@ -206,7 +206,7 @@ export function ContractingIntakeAdmin({ showEmptyState = false }: { showEmptySt
                   <span className="ml-2 font-mono text-xs text-muted-foreground">NPN {head.npn}</span>
                 </p>
                 {head.status === "needs_review" && (
-                  <span className="rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-300">
+                  <span className="rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[12px] font-medium text-amber-700 dark:text-amber-300">
                     Needs review: {reviewReasonLabel(head.review_reason)}
                   </span>
                 )}
@@ -227,13 +227,13 @@ export function ContractingIntakeAdmin({ showEmptyState = false }: { showEmptySt
                         <span>{copy.label}</span>
                       </div>
                       {receiptSummary(row) && (
-                        <p className="mt-0.5 font-mono text-[10px] opacity-80">{receiptSummary(row)}</p>
+                        <p className="mt-0.5 font-mono text-[11px] opacity-80">{receiptSummary(row)}</p>
                       )}
                       {row.last_error_redacted && (
-                        <p className="mt-0.5 text-[10px] opacity-90">{row.last_error_redacted}</p>
+                        <p className="mt-0.5 text-[11px] opacity-90">{row.last_error_redacted}</p>
                       )}
                       {row.state === "failed" && row.next_retry_at && (
-                        <p className="mt-0.5 text-[10px] opacity-80">
+                        <p className="mt-0.5 text-[11px] opacity-80">
                           Attempt {row.attempts ?? 0} · retry {new Date(row.next_retry_at).toLocaleTimeString()}
                         </p>
                       )}

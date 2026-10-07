@@ -446,8 +446,8 @@ export default function GetLicensed() {
                         <span
                           className={
                             done
-                              ? "text-[10px] text-emerald-400/70 uppercase tracking-wider"
-                              : "text-[10px] text-muted-foreground uppercase tracking-wider"
+                              ? "text-[11px] text-emerald-400/70 uppercase tracking-wider"
+                              : "text-[11px] text-muted-foreground uppercase tracking-wider"
                           }
                         >
                           {loading
@@ -458,11 +458,11 @@ export default function GetLicensed() {
                         </span>
                       </div>
                       {done && ts ? (
-                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
                           {new Date(ts).toLocaleDateString()}
                         </p>
                       ) : (
-                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
                           {item.hint}
                         </p>
                       )}
@@ -501,7 +501,7 @@ export default function GetLicensed() {
                 </a>
               </GradientButton>
               <div className="rounded-md border border-border/40 bg-muted/20 p-3">
-                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">
+                <p className="text-[12px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">
                   Included
                 </p>
                 <ul className="text-xs text-muted-foreground space-y-1">
@@ -543,7 +543,7 @@ export default function GetLicensed() {
                   <p className="text-xs sm:text-sm font-semibold leading-tight">
                     {card.title}
                   </p>
-                  <p className="text-[11px] text-muted-foreground mt-1 leading-snug">
+                  <p className="text-[12px] text-muted-foreground mt-1 leading-snug">
                     {card.detail}
                   </p>
                 </div>

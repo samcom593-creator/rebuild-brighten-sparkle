@@ -104,23 +104,23 @@ export function ProductionAnalyticsCard() {
         </div>
         <div className="grid grid-cols-3 gap-2">
           <div>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">This week</p>
+            <p className="text-[11px] text-muted-foreground uppercase tracking-wider">This week</p>
             <p className="text-lg font-bold tabular-nums leading-tight">{show(stats?.week)}</p>
-            {stats && stats.weekDeals > 0 && <p className="text-[10px] text-muted-foreground">{stats.weekDeals} deals</p>}
+            {stats && stats.weekDeals > 0 && <p className="text-[11px] text-muted-foreground">{stats.weekDeals} deals</p>}
           </div>
           <div className="border-l border-border/60 pl-2">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">MTD ({monthLabel})</p>
+            <p className="text-[11px] text-muted-foreground uppercase tracking-wider">MTD ({monthLabel})</p>
             <p className="text-lg font-bold tabular-nums leading-tight">{show(stats?.month)}</p>
-            {stats && stats.monthDeals > 0 && <p className="text-[10px] text-muted-foreground">{stats.monthDeals} deals · calendar month</p>}
+            {stats && stats.monthDeals > 0 && <p className="text-[11px] text-muted-foreground">{stats.monthDeals} deals · calendar month</p>}
           </div>
           <div className="border-l border-border/60 pl-2">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">YTD ({yearLabel})</p>
+            <p className="text-[11px] text-muted-foreground uppercase tracking-wider">YTD ({yearLabel})</p>
             <p className="text-lg font-bold tabular-nums leading-tight">{show(stats?.year)}</p>
-            {stats && stats.yearDeals > 0 && <p className="text-[10px] text-muted-foreground">{stats.yearDeals} deals</p>}
+            {stats && stats.yearDeals > 0 && <p className="text-[11px] text-muted-foreground">{stats.yearDeals} deals</p>}
           </div>
         </div>
         {failed && (
-          <p className="mt-2 text-[10px] text-muted-foreground">
+          <p className="mt-2 text-[11px] text-muted-foreground">
             Production figures unavailable — the read failed. This is not a zero.
           </p>
         )}

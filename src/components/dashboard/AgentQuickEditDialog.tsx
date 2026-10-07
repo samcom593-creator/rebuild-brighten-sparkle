@@ -808,7 +808,7 @@ export function AgentQuickEditDialog({
                 </p>
               </div>
               {hasExistingLogin && (
-                <Badge variant="secondary" className="ml-auto text-[10px]">
+                <Badge variant="secondary" className="ml-auto text-[11px]">
                   Has Login
                 </Badge>
               )}
@@ -819,11 +819,11 @@ export function AgentQuickEditDialog({
                   📋 Imported as: <span className="font-semibold">{linkedProfile.full_name}</span>
                 </p>
                 {linkedProfile.email && (
-                  <p className="text-[10px] text-muted-foreground mt-0.5">{linkedProfile.email}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">{linkedProfile.email}</p>
                 )}
               </div>
             )}
-            <p className="text-[10px] text-muted-foreground mt-2 font-mono">
+            <p className="text-[11px] text-muted-foreground mt-2 font-mono">
               ID: {agentId.slice(0, 8)}...
             </p>
           </div>
@@ -853,7 +853,7 @@ export function AgentQuickEditDialog({
                   <SelectItem value="va_manager">VA Manager</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-[12px] text-muted-foreground">
                 Switches this person&rsquo;s role immediately and syncs their login role. Pure Recruiter = recruits only, no production book or sales team.
               </p>
             </div>
@@ -908,7 +908,7 @@ export function AgentQuickEditDialog({
               <div className="space-y-1.5">
                 <Label htmlFor="agent-edit-npn">NPN {licenseStatus === "licensed" ? "*" : ""}</Label>
                 <Input id="agent-edit-npn" inputMode="numeric" value={npn} onChange={(event) => setNpn(event.target.value)} placeholder="5–10 digit NPN" />
-                <p className="text-[11px] text-muted-foreground">Saving Licensed automatically queues the contracting spreadsheet and Discord workflow.</p>
+                <p className="text-[12px] text-muted-foreground">Saving Licensed automatically queues the contracting spreadsheet and Discord workflow.</p>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="agent-edit-comp">Comp percentage</Label>
@@ -1084,7 +1084,7 @@ export function AgentQuickEditDialog({
             <div className="space-y-1 p-3 rounded-lg bg-muted/40 border border-border">
               <Label className="text-xs text-muted-foreground">Production ({period && period !== "day" ? "range" : "today"})</Label>
               <p className="text-sm font-semibold">${production.toLocaleString()} · {deals} {deals === 1 ? "deal" : "deals"}</p>
-              <p className="text-[10px] text-muted-foreground">
+              <p className="text-[11px] text-muted-foreground">
                 Counted from canonical deals only. To correct a number, fix the deal in Book of Business — manual production edits were retired so every dollar has a source.
               </p>
             </div>
@@ -1177,11 +1177,11 @@ export function AgentQuickEditDialog({
                       <RadioGroupItem value={match.id} id={match.id} />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{match.name}</p>
-                        <p className="text-[10px] text-muted-foreground">
+                        <p className="text-[11px] text-muted-foreground">
                           {match.email || "No email"} • {formatCurrency(match.production)}
                         </p>
                       </div>
-                      <Badge variant="outline" className="text-[9px] shrink-0">
+                      <Badge variant="outline" className="text-[10px] shrink-0">
                         {match.deals} deals
                       </Badge>
                     </motion.div>

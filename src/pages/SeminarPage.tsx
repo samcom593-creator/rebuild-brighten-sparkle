@@ -399,7 +399,7 @@ export default function SeminarPage() {
               )}
             </GradientButton>
 
-            <p className="text-[11px] text-muted-foreground text-center">
+            <p className="text-[12px] text-muted-foreground text-center">
               Reply STOP to opt out of SMS reminders.
             </p>
           </form>

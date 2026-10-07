@@ -91,7 +91,7 @@ function ExceptionLine({
         <span className={cn(days !== null && days >= 14 ? "font-medium text-destructive" : days === null ? "text-muted-foreground" : "text-foreground")}>
           {waitingText(exception, now)}
         </span>
-        <span className="block text-[11px] text-muted-foreground">{exception.waitingBasis}</span>
+        <span className="block text-[12px] text-muted-foreground">{exception.waitingBasis}</span>
       </div>
       <div className="min-w-0 text-xs text-muted-foreground">
         {facts.last_outreach_at ? (
@@ -229,7 +229,7 @@ export function OnboardingExceptionQueue({
         </p>
       ) : (
         <div className="overflow-hidden rounded-lg border border-border bg-card">
-          <div className="hidden border-b border-border bg-muted/40 px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground sm:grid sm:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)_8rem_6rem_minmax(0,1fr)_auto] sm:gap-x-4">
+          <div className="hidden border-b border-border bg-muted/40 px-3 py-2 text-[12px] font-medium uppercase tracking-wide text-muted-foreground sm:grid sm:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)_8rem_6rem_minmax(0,1fr)_auto] sm:gap-x-4">
             <span>Hire</span><span>Missing requirement</span><span>Owner</span><span>Waiting</span><span>Last outreach</span><span className="text-right">Next action</span>
           </div>
           <div className="divide-y divide-border">

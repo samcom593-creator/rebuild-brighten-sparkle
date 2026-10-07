@@ -189,7 +189,7 @@ export default function ReferralPipeline() {
                 <Clock className="h-4 w-4 text-muted-foreground" />
               )}
               {BUCKET_LABELS[bucket] ?? bucket}
-              <Badge variant="outline" className="text-[10px]">{rows.length}</Badge>
+              <Badge variant="outline" className="text-[11px]">{rows.length}</Badge>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-0 divide-y divide-border/50 p-0">
@@ -198,10 +198,10 @@ export default function ReferralPipeline() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-medium truncate">{r.referred_name}</span>
-                    <Badge variant="outline" className="text-[10px]">{r.status}</Badge>
-                    {r.is_duplicate && <Badge variant="destructive" className="text-[10px]">dup</Badge>}
+                    <Badge variant="outline" className="text-[11px]">{r.status}</Badge>
+                    {r.is_duplicate && <Badge variant="destructive" className="text-[11px]">dup</Badge>}
                     {r.referred_license && (
-                      <Badge variant="secondary" className="text-[10px]">{r.referred_license}</Badge>
+                      <Badge variant="secondary" className="text-[11px]">{r.referred_license}</Badge>
                     )}
                   </div>
                   <div className="text-xs text-muted-foreground truncate">
@@ -236,7 +236,7 @@ export default function ReferralPipeline() {
       ))}
 
       {!isAdmin && (
-        <p className="text-[11px] text-muted-foreground text-center">
+        <p className="text-[12px] text-muted-foreground text-center">
           You see referrals from agents you manage. Admins see all.
         </p>
       )}

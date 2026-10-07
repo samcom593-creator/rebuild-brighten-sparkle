@@ -170,7 +170,7 @@ function StatCard({ label, value, note, tone }: { label: string; value: string |
         ) : (
           <p className="mt-1"><NotOnFile /></p>
         )}
-        {note && <p className="mt-0.5 truncate text-[11px] text-muted-foreground/70">{note}</p>}
+        {note && <p className="mt-0.5 truncate text-[12px] text-muted-foreground/70">{note}</p>}
       </CardContent>
     </Card>
   );
@@ -265,17 +265,17 @@ function AgentProducerView({ agentId }: { agentId: string }) {
           <div className="min-w-0 flex-1 space-y-1.5">
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="outline" className={cn(
-                "text-[10px] font-bold uppercase tracking-wide",
+                "text-[11px] font-bold uppercase tracking-wide",
                 a.status === "active" ? "border-success/30 bg-success/15 text-success"
                   : a.status === "terminated" ? "border-destructive/30 bg-destructive/10 text-destructive"
                   : "bg-muted text-muted-foreground",
               )}>{a.status ?? "status unknown"}</Badge>
               <Badge variant="outline" className={cn(
-                "text-[10px] font-bold uppercase tracking-wide",
+                "text-[11px] font-bold uppercase tracking-wide",
                 a.license_status === "licensed" ? "border-success/30 bg-success/15 text-success" : "bg-muted text-muted-foreground",
               )}>{a.license_status ?? "license unknown"}</Badge>
-              {a.training_stage && <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-wide">{a.training_stage}</Badge>}
-              {a.is_sync_only && <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-wide">sync only</Badge>}
+              {a.training_stage && <Badge variant="outline" className="text-[11px] font-bold uppercase tracking-wide">{a.training_stage}</Badge>}
+              {a.is_sync_only && <Badge variant="outline" className="text-[11px] font-bold uppercase tracking-wide">sync only</Badge>}
               <AccountRoleControl agentId={a.agent_id} agentName={a.full_name ?? "This agent"} />
             </div>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
@@ -330,7 +330,7 @@ function AgentProducerView({ agentId }: { agentId: string }) {
                         <div className="h-full rounded-full bg-primary" style={{ width: peakMonth > 0 ? `${Math.max(2, (Number(m.alp) / peakMonth) * 100)}%` : "0%" }} />
                       </div>
                       <span className="w-20 shrink-0 text-right text-xs font-semibold tabular-nums">{usdOrNull(m.alp) ?? "—"}</span>
-                      <span className="w-10 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground">×{m.deals}</span>
+                      <span className="w-10 shrink-0 text-right text-[12px] tabular-nums text-muted-foreground">×{m.deals}</span>
                     </div>
                   ))}
                 </div>
@@ -348,7 +348,7 @@ function AgentProducerView({ agentId }: { agentId: string }) {
                 <div className="-mx-5 overflow-x-auto px-5 sm:mx-0 sm:px-0">
                   <Table className="min-w-[560px]">
                     <TableHeader>
-                      <TableRow className="border-b border-border hover:bg-transparent [&_th]:h-9 [&_th]:text-[10px] [&_th]:font-bold [&_th]:uppercase [&_th]:tracking-wide [&_th]:text-muted-foreground">
+                      <TableRow className="border-b border-border hover:bg-transparent [&_th]:h-9 [&_th]:text-[11px] [&_th]:font-bold [&_th]:uppercase [&_th]:tracking-wide [&_th]:text-muted-foreground">
                         <TableHead className="px-2">Posted</TableHead>
                         <TableHead className="px-2">Carrier</TableHead>
                         <TableHead className="px-2">Product</TableHead>
@@ -362,7 +362,7 @@ function AgentProducerView({ agentId }: { agentId: string }) {
                           <TableCell className="px-2 py-2 text-xs tabular-nums">{dl.posted_date ?? "—"}</TableCell>
                           <TableCell className="px-2 py-2 text-xs">{dl.carrier ?? "—"}</TableCell>
                           <TableCell className="max-w-[220px] truncate px-2 py-2 text-xs">{dl.product ?? "—"}</TableCell>
-                          <TableCell className="px-2 py-2"><Badge variant="outline" className="text-[10px] uppercase tracking-wide">{dl.status ?? "unknown"}</Badge></TableCell>
+                          <TableCell className="px-2 py-2"><Badge variant="outline" className="text-[11px] uppercase tracking-wide">{dl.status ?? "unknown"}</Badge></TableCell>
                           <TableCell className="px-2 py-2 text-right text-xs font-semibold tabular-nums">{usdOrNull(dl.annual_premium) ?? "—"}</TableCell>
                         </TableRow>
                       ))}
@@ -416,7 +416,7 @@ function AgentProducerView({ agentId }: { agentId: string }) {
                         <Link key={dn.agent_id} to={`/dashboard/profile?agentId=${dn.agent_id}`}
                           className="flex items-center justify-between gap-2 rounded-md px-1.5 py-1 hover:bg-muted/40">
                           <span className="min-w-0 truncate">{dn.name ?? "—"}</span>
-                          <Badge variant="outline" className="shrink-0 text-[10px] uppercase">{dn.status ?? "—"}</Badge>
+                          <Badge variant="outline" className="shrink-0 text-[11px] uppercase">{dn.status ?? "—"}</Badge>
                         </Link>
                       ))}
                     </div>
@@ -437,7 +437,7 @@ function AgentProducerView({ agentId }: { agentId: string }) {
                 {contracts.length > 0 && (
                   <div className="flex flex-wrap gap-1 pt-1">
                     {contracts.slice(0, 12).map((c, i) => (
-                      <Badge key={`${String(c.carrier ?? "carrier")}-${i}`} variant="outline" className="text-[10px]">
+                      <Badge key={`${String(c.carrier ?? "carrier")}-${i}`} variant="outline" className="text-[11px]">
                         {String(c.carrier ?? "—")}{c.status ? ` · ${String(c.status)}` : ""}
                       </Badge>
                     ))}

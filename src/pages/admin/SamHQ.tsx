@@ -304,7 +304,7 @@ function ThisWeekSection({ today }: { today: string }) {
                 "rounded-md p-2.5 text-center border transition-colors",
                 isToday ? "border-amber-400 bg-amber-400/10" : "border-white/10 bg-white/[0.02]"
               )}>
-                <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">{dowLabel(d.date)}</div>
+                <div className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">{dowLabel(d.date)}</div>
                 <div className="text-xl font-bold mt-1">{new Date(d.date + "T12:00:00").getDate()}</div>
                 <div className="text-xs mt-1.5 text-slate-600 dark:text-slate-300">
                   {total > 0 ? `${done}/${total}` : <span className="text-muted-foreground">—</span>}

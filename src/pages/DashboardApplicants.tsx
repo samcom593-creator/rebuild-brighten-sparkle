@@ -1272,19 +1272,19 @@ function ApplicantsClassicView() {
             <span className="text-sm font-bold tabular-nums text-muted-foreground">
               / {counterTotal.toLocaleString()}
             </span>
-            <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+            <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
               {counterLabel}
             </span>
             {todayCount > 0 && (
-              <Badge variant="outline" className="text-[10px] tabular-nums">{todayCount.toLocaleString()} today</Badge>
+              <Badge variant="outline" className="text-[11px] tabular-nums">{todayCount.toLocaleString()} today</Badge>
             )}
             {(activeHiresThisMonth ?? 0) > 0 && (
-              <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-[10px] tabular-nums text-emerald-600 dark:text-emerald-400">
+              <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-[11px] tabular-nums text-emerald-600 dark:text-emerald-400">
                 {activeHiresThisMonth?.toLocaleString()} active hires MTD
               </Badge>
             )}
             {terminatedApplications.length > 0 && (
-              <Badge variant="outline" className="text-[10px] tabular-nums">{terminatedApplications.length.toLocaleString()} terminated</Badge>
+              <Badge variant="outline" className="text-[11px] tabular-nums">{terminatedApplications.length.toLocaleString()} terminated</Badge>
             )}
           </div>
           <div className="flex shrink-0 items-center gap-1 rounded-md bg-muted p-1">
@@ -1566,13 +1566,13 @@ function ApplicantsClassicView() {
 
         {activeFilterChips.length > 0 && (
           <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/60 pt-3">
-            <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Active</span>
+            <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Active</span>
             {activeFilterChips.map((chip) => (
               <button
                 key={chip.key}
                 type="button"
                 onClick={chip.clear}
-                className="inline-flex h-8 min-w-0 items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2.5 text-[11px] font-medium text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
+                className="inline-flex h-8 min-w-0 items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2.5 text-[12px] font-medium text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
                 aria-label={`Clear filter: ${chip.label}`}
               >
                 <span className="truncate">{chip.label}</span>
@@ -1649,7 +1649,7 @@ function ApplicantsClassicView() {
               <div className="-mx-4 max-h-[calc(100vh-170px)] overflow-auto px-4 sm:mx-0 sm:px-0">
                 <table className="w-full min-w-[1100px] text-sm">
                   <thead className="sticky top-0 z-10">
-                    <tr className="border-b border-border text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                    <tr className="border-b border-border text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                       <th className="bg-card px-2 py-2 text-left">Name</th>
                       <th className="bg-card px-2 py-2 text-left">Score</th>
                       <th className="bg-card px-2 py-2 text-left">Email</th>
@@ -1743,12 +1743,12 @@ function ApplicantsClassicView() {
                                     field="last_name"
                                     value={app.last_name}
                                     placeholder="Last name"
-                                    className="text-[11px] text-muted-foreground"
+                                    className="text-[12px] text-muted-foreground"
                                     onSaved={fetchApplications}
                                   />
                                 </div>
-                                {app.is_duplicate && <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 px-1 text-[9px] font-bold text-amber-600 dark:text-amber-400">DUP</Badge>}
-                                {app.is_ghosted && <Badge variant="outline" className="border-rose-500/30 bg-rose-500/10 px-1 text-[9px] text-rose-600 dark:text-rose-400">👻</Badge>}
+                                {app.is_duplicate && <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 px-1 text-[10px] font-bold text-amber-600 dark:text-amber-400">DUP</Badge>}
+                                {app.is_ghosted && <Badge variant="outline" className="border-rose-500/30 bg-rose-500/10 px-1 text-[10px] text-rose-600 dark:text-rose-400">👻</Badge>}
                               </div>
                             </div>
                             <div className="ml-11 mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -1758,7 +1758,7 @@ function ApplicantsClassicView() {
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   onClick={(e) => e.stopPropagation()}
-                                  className="inline-flex min-w-0 items-center gap-1 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground hover:underline focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
+                                  className="inline-flex min-w-0 items-center gap-1 text-[12px] font-medium text-muted-foreground transition-colors hover:text-foreground hover:underline focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
                                   title={`Open @${app.instagram_handle.replace(/^@+/, "")} on Instagram`}
                                 >
                                   <Instagram className="h-3 w-3 shrink-0" />
@@ -1768,7 +1768,7 @@ function ApplicantsClassicView() {
                               {app.phone_bad_at && (
                                 <Badge
                                   variant="outline"
-                                  className="gap-1 border-rose-500/30 bg-rose-500/10 text-[10px] text-rose-600 dark:text-rose-400"
+                                  className="gap-1 border-rose-500/30 bg-rose-500/10 text-[11px] text-rose-600 dark:text-rose-400"
                                   title={
                                     app.couldnt_reach_email_sent_at
                                       ? `Bad number since ${new Date(app.phone_bad_at).toLocaleDateString()} · we emailed them ${new Date(app.couldnt_reach_email_sent_at).toLocaleDateString()}`
@@ -1781,14 +1781,14 @@ function ApplicantsClassicView() {
                               )}
                             </div>
                             {/* 2026-07-07 Sam: compact Next Best Action row. */}
-                            <div className="ml-11 mt-1 flex min-w-0 items-center gap-1.5 text-[11px]">
+                            <div className="ml-11 mt-1 flex min-w-0 items-center gap-1.5 text-[12px]">
                               <span className={cn('h-2 w-2 shrink-0 rounded-full', nbaDotClasses)} />
                               <span className="truncate text-muted-foreground">{nba.action}</span>
                             </div>
                           </td>
                           <td className="px-2 py-2 align-middle">
                             {app.ai_score_tier ? (
-                              <Badge variant="outline" className={cn("text-[10px] font-bold uppercase tabular-nums",
+                              <Badge variant="outline" className={cn("text-[11px] font-bold uppercase tabular-nums",
                                 app.ai_score_tier === "hot" && "border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400",
                                 app.ai_score_tier === "warm" && "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
                                 app.ai_score_tier === "cool" && "border-border bg-muted/50 text-muted-foreground",
@@ -1800,7 +1800,7 @@ function ApplicantsClassicView() {
                               <span className="text-xs text-muted-foreground">—</span>
                             )}
                           </td>
-                          <td className="max-w-[220px] px-2 py-2 align-middle text-[11px] text-muted-foreground">
+                          <td className="max-w-[220px] px-2 py-2 align-middle text-[12px] text-muted-foreground">
                             {/* 2026-06-17 Sam: inline-edit any applicant field. */}
                             <InlineEditApplicantField
                               applicationId={app.id}
@@ -1810,7 +1810,7 @@ function ApplicantsClassicView() {
                               onSaved={fetchApplications}
                             />
                           </td>
-                          <td className="max-w-[160px] px-2 py-2 align-middle text-[11px] tabular-nums text-muted-foreground">
+                          <td className="max-w-[160px] px-2 py-2 align-middle text-[12px] tabular-nums text-muted-foreground">
                             <InlineEditApplicantField
                               applicationId={app.id}
                               field="phone"
@@ -1821,7 +1821,7 @@ function ApplicantsClassicView() {
                           </td>
                           <td className="px-2 py-2 align-middle">
                             <div className="flex flex-col items-start gap-1">
-                              <Badge variant="outline" className={cn("text-[10px] capitalize", statusColors[status])}>
+                              <Badge variant="outline" className={cn("text-[11px] capitalize", statusColors[status])}>
                                 {status}
                               </Badge>
                               {/* MP-343: full pipeline control, forwards AND back. The
@@ -1846,14 +1846,14 @@ function ApplicantsClassicView() {
                               />
                             ) : (
                               <div className="flex flex-col items-start gap-0.5">
-                                <Badge variant="outline" className={cn("text-[10px] capitalize", licenseColors[app.license_status])}>
+                                <Badge variant="outline" className={cn("text-[11px] capitalize", licenseColors[app.license_status])}>
                                   {app.license_status}
                                 </Badge>
                                 {(() => {
                                   const t = licenseTrust(app);
                                   if (t.level === "none" || t.level === "verified") return null;
                                   return (
-                                    <span title={t.title} className={cn("text-[9px] leading-none", t.tint)}>
+                                    <span title={t.title} className={cn("text-[10px] leading-none", t.tint)}>
                                       {t.label}
                                     </span>
                                   );
@@ -1861,13 +1861,13 @@ function ApplicantsClassicView() {
                               </div>
                             )}
                           </td>
-                          <td className="max-w-[160px] px-2 py-2 align-middle text-[11px] text-muted-foreground">
+                          <td className="max-w-[160px] px-2 py-2 align-middle text-[12px] text-muted-foreground">
                             <div className="truncate">{app.city && app.state ? `${app.city}, ${app.state}` : "—"}</div>
                           </td>
-                          <td className="max-w-[160px] px-2 py-2 align-middle text-[11px]">
+                          <td className="max-w-[160px] px-2 py-2 align-middle text-[12px]">
                             {app.assigned_agent_id ? (
                               <AgentNameLink agentId={app.assigned_agent_id} variant="bare">
-                                <Badge variant="outline" className="cursor-pointer border-primary/30 bg-primary/10 text-[10px] text-primary transition-colors hover:bg-primary/20">
+                                <Badge variant="outline" className="cursor-pointer border-primary/30 bg-primary/10 text-[11px] text-primary transition-colors hover:bg-primary/20">
                                   {managerNames.get(app.assigned_agent_id) || "Manager"}
                                 </Badge>
                               </AgentNameLink>
@@ -1875,7 +1875,7 @@ function ApplicantsClassicView() {
                               <span className="text-muted-foreground">Unassigned</span>
                             )}
                           </td>
-                          <td className="max-w-[160px] px-2 py-2 align-middle text-[11px]">
+                          <td className="max-w-[160px] px-2 py-2 align-middle text-[12px]">
                             {(() => {
                               const recruiter = app.recruiter_id
                                 ? recruiterDirectory.get(app.recruiter_id)
@@ -1901,7 +1901,7 @@ function ApplicantsClassicView() {
                                   <AgentNameLink agentId={recruiter.uplineId} variant="bare">
                                     <Badge
                                       variant="outline"
-                                      className="cursor-pointer border-border bg-muted/50 text-[10px] text-foreground transition-colors hover:bg-muted"
+                                      className="cursor-pointer border-border bg-muted/50 text-[11px] text-foreground transition-colors hover:bg-muted"
                                       title={`Referred by ${recruiter.name} — under ${uplineName}`}
                                     >
                                       {uplineName}
@@ -1910,7 +1910,7 @@ function ApplicantsClassicView() {
                                 ) : (
                                   <Badge
                                     variant="outline"
-                                    className="border-border bg-muted/50 text-[10px] text-foreground"
+                                    className="border-border bg-muted/50 text-[11px] text-foreground"
                                     title={`Referred by ${recruiter.name} — under ${uplineName}`}
                                   >
                                     {uplineName}
@@ -1919,7 +1919,7 @@ function ApplicantsClassicView() {
                               );
                             })()}
                           </td>
-                          <td className="whitespace-nowrap px-2 py-2 align-middle text-[11px] tabular-nums text-muted-foreground">
+                          <td className="whitespace-nowrap px-2 py-2 align-middle text-[12px] tabular-nums text-muted-foreground">
                             {getTimeAgo(app.created_at)}
                           </td>
                           <td className="px-2 py-2 align-middle text-right">
@@ -2310,19 +2310,19 @@ function DuplicateReviewPanel({ pairs, onMarkDup, onKeepBoth, onOpen }: Duplicat
             <div key={key} className="grid grid-cols-1 gap-3 rounded-lg border border-border bg-card p-3 sm:p-4 md:grid-cols-[1fr_auto_1fr]">
               <DupMiniCard app={left} onOpen={() => onOpen(left.id)} onMarkDup={() => onMarkDup(left.id)} />
               <div className="flex flex-col items-center justify-center gap-2 self-center">
-                <Button size="sm" variant="outline" className="h-10 w-full whitespace-nowrap text-[11px] sm:h-9 sm:w-auto" onClick={() => onKeepBoth(left.id, right.id)}>
+                <Button size="sm" variant="outline" className="h-10 w-full whitespace-nowrap text-[12px] sm:h-9 sm:w-auto" onClick={() => onKeepBoth(left.id, right.id)}>
                   Keep both
                 </Button>
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-10 w-full whitespace-nowrap text-[11px] text-muted-foreground sm:h-9 sm:w-auto"
+                  className="h-10 w-full whitespace-nowrap text-[12px] text-muted-foreground sm:h-9 sm:w-auto"
                   disabled
                   title="Merge coming next wave"
                 >
                   Merge into left
                 </Button>
-                <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">vs</span>
+                <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">vs</span>
               </div>
               <DupMiniCard app={right} onOpen={() => onOpen(right.id)} onMarkDup={() => onMarkDup(right.id)} />
             </div>
@@ -2346,10 +2346,10 @@ function DupMiniCard({ app, onOpen, onMarkDup }: { app: Application; onOpen: () 
           <div className="truncate text-sm font-medium text-foreground">
             {app.first_name} {app.last_name}
           </div>
-          <div className="mt-0.5 truncate text-[11px] text-muted-foreground">{app.email || "no email"} · {app.phone || "no phone"}</div>
-          <div className="text-[10px] tabular-nums text-muted-foreground">Applied {new Date(app.created_at).toLocaleDateString()}</div>
+          <div className="mt-0.5 truncate text-[12px] text-muted-foreground">{app.email || "no email"} · {app.phone || "no phone"}</div>
+          <div className="text-[11px] tabular-nums text-muted-foreground">Applied {new Date(app.created_at).toLocaleDateString()}</div>
         </button>
-        <Button size="sm" variant="outline" className="h-10 shrink-0 text-[11px] sm:h-9" onClick={onMarkDup} aria-label={`Mark ${app.first_name} as duplicate`}>
+        <Button size="sm" variant="outline" className="h-10 shrink-0 text-[12px] sm:h-9" onClick={onMarkDup} aria-label={`Mark ${app.first_name} as duplicate`}>
           Mark dup
         </Button>
       </div>
@@ -2404,7 +2404,7 @@ function PipelineView({ applications, getStatus, interviews, onCardClick }: Pipe
         {buckets.map((col) => (
           <div key={col.key} className="w-64 shrink-0 rounded-lg border border-border bg-card/60">
             <div className="sticky top-0 flex items-center justify-between gap-2 rounded-t-lg border-b border-border bg-card px-3 py-2">
-              <span className="min-w-0 truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{col.label}</span>
+              <span className="min-w-0 truncate text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{col.label}</span>
               <span className="shrink-0 text-sm font-bold tabular-nums text-muted-foreground">{col.apps.length.toLocaleString()}</span>
             </div>
             <div className="max-h-[70vh] space-y-2 overflow-y-auto p-2">
@@ -2444,14 +2444,14 @@ function PipelineView({ applications, getStatus, interviews, onCardClick }: Pipe
                         {a.first_name} {a.last_name}
                       </span>
                     </div>
-                    <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                    <div className="mt-0.5 truncate text-[12px] text-muted-foreground">
                       {a.phone || a.email || "—"}
                     </div>
                   </button>
                 );
               })}
               {col.apps.length === 0 && (
-                <div className="rounded-lg border border-dashed border-border/60 p-3 text-center text-[11px] text-muted-foreground">
+                <div className="rounded-lg border border-dashed border-border/60 p-3 text-center text-[12px] text-muted-foreground">
                   Nobody sits here
                 </div>
               )}
@@ -2482,7 +2482,7 @@ function SpeedToLeadBar({ index, total, current, onSkip, onExit, onLogCall, onLo
         <div className="flex min-w-0 items-center gap-2">
           <Rocket className="h-4 w-4 shrink-0 text-muted-foreground" />
           <div className="min-w-0">
-            <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+            <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
               Speed-to-Lead · <span className="tabular-nums">{index + 1} of {total}</span>
             </div>
             <div className="truncate text-sm font-medium text-foreground">
@@ -2567,7 +2567,7 @@ function ReferralLinkBanner({ agentId }: { agentId: string }) {
         <div className="flex min-w-0 flex-1 items-start gap-3">
           <Award className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
           <div className="min-w-0 flex-1">
-            <p className="mb-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Your referral link · paste anywhere</p>
+            <p className="mb-0.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Your referral link · paste anywhere</p>
             <p className="truncate font-mono text-xs text-foreground">{url}</p>
           </div>
         </div>

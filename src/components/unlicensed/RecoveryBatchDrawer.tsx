@@ -366,7 +366,7 @@ export function RecoveryBatchDrawer({
               <Sparkles className="h-4 w-4 text-teal-300" />
               VA Recovery Batch
             </SheetTitle>
-            <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
+            <span className="text-[11px] uppercase tracking-widest text-muted-foreground">
               {queue.length === 0 ? "empty" : `${index + 1} of ${queue.length}`}
             </span>
           </div>
@@ -400,16 +400,16 @@ export function RecoveryBatchDrawer({
                   </div>
                 </div>
                 {row.assigned_va_email && (
-                  <span className="text-[10px] text-emerald-300/80 max-w-[140px] truncate">→ {row.assigned_va_email}</span>
+                  <span className="text-[11px] text-emerald-300/80 max-w-[140px] truncate">→ {row.assigned_va_email}</span>
                 )}
               </div>
             </div>
 
             {/* Script */}
             <div className="rounded-xl border border-teal-500/25 bg-teal-500/[0.06] p-4">
-              <div className="text-[10px] uppercase tracking-widest text-teal-300/80">Recovery script · {script.title}</div>
+              <div className="text-[11px] uppercase tracking-widest text-teal-300/80">Recovery script · {script.title}</div>
               <p className="mt-2 text-sm text-foreground leading-relaxed">{script.body}</p>
-              <p className="mt-2 text-[11px] text-muted-foreground italic">Coach: {script.hint}</p>
+              <p className="mt-2 text-[12px] text-muted-foreground italic">Coach: {script.hint}</p>
             </div>
 
             {/* Contact block */}
@@ -454,7 +454,7 @@ export function RecoveryBatchDrawer({
 
             {/* Notes composer */}
             <div>
-              <label htmlFor="mp257-notes" className="text-[10px] uppercase tracking-widest text-muted-foreground">
+              <label htmlFor="mp257-notes" className="text-[11px] uppercase tracking-widest text-muted-foreground">
                 Notes (optional — logged with the outcome)
               </label>
               <Textarea
@@ -468,7 +468,7 @@ export function RecoveryBatchDrawer({
 
             {/* Outcome pills */}
             <div>
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Outcome</div>
+              <div className="text-[11px] uppercase tracking-widest text-muted-foreground mb-2">Outcome</div>
               <div className="flex flex-wrap gap-1.5">
                 {OUTCOMES.map((o) => (
                   <button
@@ -498,7 +498,7 @@ export function RecoveryBatchDrawer({
 
             {/* Follow-up scheduler */}
             <div className="rounded-xl border border-border bg-white/[0.03] p-3">
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Schedule follow-up</div>
+              <div className="text-[11px] uppercase tracking-widest text-muted-foreground mb-2">Schedule follow-up</div>
               <div className="flex flex-wrap items-center gap-2">
                 <Popover>
                   <PopoverTrigger asChild>

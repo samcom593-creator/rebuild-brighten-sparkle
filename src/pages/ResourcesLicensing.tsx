@@ -372,7 +372,7 @@ export default function ResourcesLicensing() {
                 className="p-4 rounded-lg bg-muted/40 border border-border/60 flex flex-col"
               >
                 <div className="flex items-center gap-2 mb-2">
-                  <Badge variant="secondary" className="text-[10px] uppercase tracking-wide">
+                  <Badge variant="secondary" className="text-[11px] uppercase tracking-wide">
                     {course.category}
                   </Badge>
                 </div>
@@ -421,15 +421,15 @@ export default function ResourcesLicensing() {
                 className="p-4 rounded-lg bg-muted/40 border border-border/60 hover:border-primary/40 transition-colors flex flex-col group"
               >
                 <div className="flex items-center gap-2 mb-2">
-                  <Badge variant="secondary" className="text-[10px]">
+                  <Badge variant="secondary" className="text-[11px]">
                     PDF
                   </Badge>
                   {pdf.isNew && (
-                    <Badge className="text-[10px] bg-primary text-primary-foreground">
+                    <Badge className="text-[11px] bg-primary text-primary-foreground">
                       NEW
                     </Badge>
                   )}
-                  <span className="text-[10px] text-muted-foreground ml-auto">
+                  <span className="text-[11px] text-muted-foreground ml-auto">
                     {pdf.date}
                   </span>
                 </div>
@@ -463,10 +463,10 @@ export default function ResourcesLicensing() {
                 className="p-4 rounded-lg bg-muted/40 border border-border/60 hover:border-primary/40 transition-colors flex flex-col group"
               >
                 <div className="flex items-center gap-2 mb-2">
-                  <Badge variant="secondary" className="text-[10px]">
+                  <Badge variant="secondary" className="text-[11px]">
                     GUIDE
                   </Badge>
-                  <span className="text-[10px] text-muted-foreground ml-auto">
+                  <span className="text-[11px] text-muted-foreground ml-auto">
                     {script.date}
                   </span>
                 </div>
@@ -498,12 +498,12 @@ export default function ResourcesLicensing() {
                 key={presenter.name}
                 className="px-3 py-1.5 rounded-full bg-muted/50 border border-border/60 text-xs flex items-center gap-2"
               >
-                <span className="h-6 w-6 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary">
+                <span className="h-6 w-6 rounded-full bg-primary/20 flex items-center justify-center text-[11px] font-bold text-primary">
                   {presenter.initial}
                 </span>
                 <span className="font-semibold">{presenter.name}</span>
                 <span className="text-muted-foreground">{presenter.role}</span>
-                <Badge variant="secondary" className="text-[10px] ml-1">
+                <Badge variant="secondary" className="text-[11px] ml-1">
                   {presenter.count}
                 </Badge>
               </div>
@@ -526,10 +526,10 @@ export default function ResourcesLicensing() {
                   <div className="flex items-center gap-2 mb-1">
                     <h4 className="font-semibold text-sm truncate">{rec.title}</h4>
                   </div>
-                  <p className="text-[11px] text-muted-foreground uppercase tracking-wide mb-1">
+                  <p className="text-[12px] text-muted-foreground uppercase tracking-wide mb-1">
                     {rec.category}
                   </p>
-                  <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                  <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
                     <span className="font-semibold text-foreground">
                       {rec.presenter}
                     </span>

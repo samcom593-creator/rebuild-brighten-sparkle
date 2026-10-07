@@ -47,7 +47,7 @@ export function RecruitingWorkspaceNav() {
               </span>
               <span className="min-w-0 flex-1 text-left">
                 <span className="block truncate leading-tight">{view.label}</span>
-                <span className="mt-0.5 block truncate text-[10px] font-medium text-muted-foreground">{view.detail}</span>
+                <span className="mt-0.5 block truncate text-[11px] font-medium text-muted-foreground">{view.detail}</span>
               </span>
               <ChevronRight className={cn("h-3.5 w-3.5 shrink-0 opacity-0 transition-opacity group-hover:opacity-50", active && "opacity-50")} />
             </Link>

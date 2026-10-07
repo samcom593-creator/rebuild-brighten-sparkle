@@ -373,7 +373,7 @@ export function PersonalStatsCard({ agentId, todayProduction }: PersonalStatsCar
                           {stat.suffix}
                         </span>
                       </div>
-                      <span className="text-[10px] text-muted-foreground">
+                      <span className="text-[11px] text-muted-foreground">
                         vs {stat.comparison.toFixed(0)}{stat.suffix} avg
                       </span>
                     </div>

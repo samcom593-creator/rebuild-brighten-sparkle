@@ -212,7 +212,7 @@ export function XcelIngestDialog({ trigger }: Props) {
                           <span className="text-muted-foreground">{s.email ?? "no email"}</span>
                         </span>
                         <span className="shrink-0 flex items-center gap-2">
-                          <Badge variant="outline" className="text-[10px]">
+                          <Badge variant="outline" className="text-[11px]">
                             {SECTION_LABEL[s.course_section] ?? s.course_section}
                           </Badge>
                           <span className={`tabular-nums font-bold ${
@@ -254,7 +254,7 @@ export function XcelIngestDialog({ trigger }: Props) {
 function Stat({ label, value }: { label: string; value: number | string | null }) {
   return (
     <div>
-      <p className="text-[10px] uppercase text-muted-foreground">{label}</p>
+      <p className="text-[11px] uppercase text-muted-foreground">{label}</p>
       <p className="text-xl font-bold tabular-nums">{value ?? "—"}</p>
     </div>
   );

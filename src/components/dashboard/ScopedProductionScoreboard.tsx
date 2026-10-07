@@ -210,8 +210,8 @@ function ProvenanceChip({ value }: { value: string | null | undefined }) {
     <span
       className={
         meta.tone === "assumed"
-          ? "rounded border border-amber-500/50 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-600 dark:text-amber-400"
-          : "rounded border border-border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+          ? "rounded border border-amber-500/50 px-1.5 py-0.5 text-[11px] font-medium uppercase tracking-wide text-amber-600 dark:text-amber-400"
+          : "rounded border border-border px-1.5 py-0.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
       }
     >
       {meta.label}
@@ -273,7 +273,7 @@ function SectionEye({ on, onToggle, label }: { on: boolean; onToggle: () => void
 function AgencyChip({ agency }: { agency: string }) {
   const vantage = /vantage/i.test(agency);
   return (
-    <Badge className="whitespace-nowrap text-[10px]" variant={vantage ? "outline" : "secondary"}>
+    <Badge className="whitespace-nowrap text-[11px]" variant={vantage ? "outline" : "secondary"}>
       {vantage ? "Vantage" : BRAND.shortName}
     </Badge>
   );
@@ -294,7 +294,7 @@ function ScoreTile({
 }) {
   return (
     <div className="min-w-0 border-b border-border p-4 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0">
-      <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+      <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
         <Icon className="h-3.5 w-3.5" /> {label}
       </p>
       <p className={accent ? "mt-2 truncate text-3xl font-bold tabular-nums text-primary" : "mt-2 truncate text-3xl font-bold tabular-nums text-foreground"}>
@@ -590,13 +590,13 @@ export function ScopedProductionScoreboard() {
               <div className="border-t border-border bg-background/40 p-4">
                 <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
                   <div>
-                    <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                    <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                       <Sparkles className="h-3.5 w-3.5 text-primary" /> Projected month-end production
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">Live MTD pace · Phoenix time · {projectionData.scope_label}</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <p className="text-[11px] text-muted-foreground">Day {projectionData.elapsed_calendar_days} of {projectionData.days_in_month}</p>
+                    <p className="text-[12px] text-muted-foreground">Day {projectionData.elapsed_calendar_days} of {projectionData.days_in_month}</p>
                     <SectionEye on={blur.projection} onToggle={() => toggleBlur("projection")} label="projection" />
                   </div>
                 </div>
@@ -609,7 +609,7 @@ export function ScopedProductionScoreboard() {
                   ].map(({ key, label, metric }) => (
                     <div className="rounded-lg border border-border/70 bg-card p-3" key={key}>
                       <div className="flex items-center justify-between gap-2">
-                        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
                         <Badge variant={metric.confidence === "low" ? "outline" : "secondary"}>{metric.confidence} confidence</Badge>
                       </div>
                       <p className="mt-2 text-2xl font-bold tabular-nums text-primary"><Reveal on={blur.projection}>{money(metric.projected_ap)}</Reveal></p>
@@ -620,17 +620,17 @@ export function ScopedProductionScoreboard() {
 
                 {projectionData.agencies.length > 0 && (
                   <div className="mt-3 rounded-lg border border-border/70 bg-card p-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Agency projections</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Agency projections</p>
                     <div className="mt-2 divide-y divide-border/70">
                       {projectionData.agencies.map((agency) => (
                         <div className="flex items-center justify-between gap-3 py-2 first:pt-0 last:pb-0" key={agency.agency}>
                           <div className="min-w-0">
                             <p className="truncate text-sm font-medium text-foreground">{agency.agency}</p>
-                            <p className="text-[11px] text-muted-foreground">MTD {money(agency.mtd_ap)} · {policies(agency.policies)}</p>
+                            <p className="text-[12px] text-muted-foreground">MTD {money(agency.mtd_ap)} · {policies(agency.policies)}</p>
                           </div>
                           <div className="shrink-0 text-right">
                             <p className="font-bold tabular-nums text-foreground"><Reveal on={blur.projection}>{money(agency.projected_ap)}</Reveal></p>
-                            <p className="text-[10px] uppercase text-muted-foreground">projected · {agency.confidence}</p>
+                            <p className="text-[11px] uppercase text-muted-foreground">projected · {agency.confidence}</p>
                           </div>
                         </div>
                       ))}
@@ -638,20 +638,20 @@ export function ScopedProductionScoreboard() {
                   </div>
                 )}
 
-                <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">{projectionData.basis}</p>
+                <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">{projectionData.basis}</p>
               </div>
             )}
 
             <div className="grid border-t border-border lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
               <div className="border-b border-border p-4 lg:border-b-0 lg:border-r">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                     <CircleDollarSign className="h-3.5 w-3.5" /> My estimated earnings
                   </p>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[9px] uppercase tracking-wide text-muted-foreground">comp %</span>
+                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground">comp %</span>
                     <SectionEye on={blur.comp} onToggle={() => toggleBlur("comp")} label="comp %" />
-                    <span className="text-[9px] uppercase tracking-wide text-muted-foreground">$</span>
+                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground">$</span>
                     <SectionEye on={blur.earnings} onToggle={() => toggleBlur("earnings")} label="earnings" />
                   </div>
                 </div>
@@ -678,12 +678,12 @@ export function ScopedProductionScoreboard() {
                     {money(data.reconciliation.unlinked_ap ?? 0)} of production is earning you 0% override. Set their manager in the roster.
                   </p>
                 )}
-                <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">{data.earnings.basis}</p>
+                <p className="mt-3 text-[12px] leading-relaxed text-muted-foreground">{data.earnings.basis}</p>
               </div>
 
               <div className="p-4">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                     <Building2 className="h-3.5 w-3.5" /> Production by hierarchy
                   </p>
                   <SectionEye on={blur.split} onToggle={() => toggleBlur("split")} label="agency split" />
@@ -728,7 +728,7 @@ export function ScopedProductionScoreboard() {
                 </div>
               )}
               <div className="flex items-center justify-between gap-2 px-4 pt-3">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Who sold · by agency</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Who sold · by agency</p>
                 <div className="flex items-center gap-2">
                   <p className="hidden text-xs text-muted-foreground sm:block">{data.by_agent.length} producers · {agentGroups.length} agencies</p>
                   <SectionEye on={blur.names} onToggle={() => toggleBlur("names")} label="names" />
@@ -795,7 +795,7 @@ export function ScopedProductionScoreboard() {
                         <TableRow data-testid="who-sold-row" key={row.agent_id}>
                           <TableCell className="whitespace-nowrap pl-8 font-medium text-foreground">
                             <Reveal on={blur.names}>{row.name}</Reveal>
-                            {row.is_self && <span className="ml-1.5 text-[10px] uppercase tracking-wide text-primary">you</span>}
+                            {row.is_self && <span className="ml-1.5 text-[11px] uppercase tracking-wide text-primary">you</span>}
                           </TableCell>
                           <TableCell><AgencyChip agency={row.agency} /></TableCell>
                           <TableCell className="text-right tabular-nums">{row.policies.toLocaleString()}</TableCell>
@@ -805,7 +805,7 @@ export function ScopedProductionScoreboard() {
                               <span className="tabular-nums"><Reveal on={blur.comp}>{pct(row.seller_pct)}</Reveal></span>
                               <ProvenanceChip value={row.seller_pct_provenance} />
                               {row.external ? (
-                                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">reported</span>
+                                <span className="text-[11px] uppercase tracking-wide text-muted-foreground">reported</span>
                               ) : null}
                               {canEditComp && !row.external && !(isManager && !isAdmin && row.is_self) && (
                                 <CompLevelEditor
@@ -820,9 +820,9 @@ export function ScopedProductionScoreboard() {
                           <TableCell className="text-right tabular-nums">
                             <Reveal on={blur.comp}>{pct(row.override_pct_for_viewer)}</Reveal>
                             {row.is_self ? (
-                              <span className="ml-1 text-[10px] text-muted-foreground">direct</span>
+                              <span className="ml-1 text-[11px] text-muted-foreground">direct</span>
                             ) : row.first_hop_name && row.first_hop_id !== row.agent_id ? (
-                              <span className="ml-1 whitespace-nowrap text-[10px] text-muted-foreground">via <Reveal on={blur.names}>{row.first_hop_name}</Reveal> <Reveal on={blur.comp}>{pct(row.first_hop_pct)}</Reveal></span>
+                              <span className="ml-1 whitespace-nowrap text-[11px] text-muted-foreground">via <Reveal on={blur.names}>{row.first_hop_name}</Reveal> <Reveal on={blur.comp}>{pct(row.first_hop_pct)}</Reveal></span>
                             ) : null}
                           </TableCell>
                           <TableCell className="text-right tabular-nums text-foreground">{money(row.est_override)}</TableCell>

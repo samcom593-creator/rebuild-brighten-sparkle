@@ -65,21 +65,21 @@ export function NextStepCard({ application_id, agent_id, compact = false }: Prop
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <Badge variant={isUrgent ? "destructive" : "secondary"} className="text-[10px] uppercase tracking-wider">
+                <Badge variant={isUrgent ? "destructive" : "secondary"} className="text-[11px] uppercase tracking-wider">
                   Stage {row.order_index} / {row.total_stages}
                 </Badge>
                 {isUrgent && <AlertTriangle className="h-3.5 w-3.5 text-rose-400" />}
-                <span className="text-[11px] text-muted-foreground uppercase tracking-wider">{row.stage_display_name}</span>
+                <span className="text-[12px] text-muted-foreground uppercase tracking-wider">{row.stage_display_name}</span>
               </div>
               <h2 className="text-xl sm:text-2xl font-bold tracking-tight mt-1">{row.next_action_label}</h2>
-              <p className="text-[12px] text-muted-foreground mt-1 flex items-center gap-1.5">
+              <p className="text-[13px] text-muted-foreground mt-1 flex items-center gap-1.5">
                 <Clock className="h-3 w-3" />{slaLabel} · in stage {Math.round(row.days_in_stage)}d
               </p>
             </div>
           </div>
           <div className="text-right shrink-0">
             <div className={cn("text-3xl font-bold tabular-nums leading-none", accent)}>{row.percent_complete}%</div>
-            <div className="text-[10px] text-muted-foreground uppercase tracking-wider mt-1">progress</div>
+            <div className="text-[11px] text-muted-foreground uppercase tracking-wider mt-1">progress</div>
           </div>
         </div>
 
@@ -99,7 +99,7 @@ export function NextStepCard({ application_id, agent_id, compact = false }: Prop
 
         {!compact && (row.completed_stages || row.upcoming_stages) && (
           <details className="mt-4 pt-4 border-t border-border/40 group">
-            <summary className="cursor-pointer text-[11px] text-muted-foreground uppercase tracking-[0.18em] hover:text-foreground transition-colors">
+            <summary className="cursor-pointer text-[12px] text-muted-foreground uppercase tracking-[0.18em] hover:text-foreground transition-colors">
               See the full path · {row.completed_stages?.length ?? 0} done · {(row.upcoming_stages?.length ?? 1) - 1} ahead
             </summary>
             <ol className="mt-3 space-y-1.5 text-sm">

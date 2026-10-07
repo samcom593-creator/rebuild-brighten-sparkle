@@ -273,14 +273,14 @@ export function ProductionHistoryChart({
               formatAsCurrency
               className="text-lg font-bold block"
             />
-            <span className="text-[10px] text-muted-foreground">{selectedWeeks}-Week Total</span>
+            <span className="text-[11px] text-muted-foreground">{selectedWeeks}-Week Total</span>
           </div>
           <div className="text-center p-3 rounded-lg bg-muted/30">
             <AnimatedNumber
               value={summary.totalDeals}
               className="text-lg font-bold block"
             />
-            <span className="text-[10px] text-muted-foreground">Total Deals</span>
+            <span className="text-[11px] text-muted-foreground">Total Deals</span>
           </div>
           <div className="text-center p-3 rounded-lg bg-muted/30">
             <AnimatedNumber
@@ -288,7 +288,7 @@ export function ProductionHistoryChart({
               formatAsCurrency
               className="text-lg font-bold block"
             />
-            <span className="text-[10px] text-muted-foreground">Avg/Day</span>
+            <span className="text-[11px] text-muted-foreground">Avg/Day</span>
           </div>
           <div className="text-center p-3 rounded-lg bg-primary/10 border border-primary/30">
             <AnimatedNumber
@@ -296,7 +296,7 @@ export function ProductionHistoryChart({
               formatAsCurrency
               className="text-lg font-bold block text-primary"
             />
-            <span className="text-[10px] text-muted-foreground">Best Day</span>
+            <span className="text-[11px] text-muted-foreground">Best Day</span>
           </div>
         </div>
       </GlassCard>

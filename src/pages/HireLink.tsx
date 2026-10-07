@@ -299,7 +299,7 @@ export default function HireLink() {
               ))}
             </dl>
             {offerComp != null && (
-              <p className="mt-2 text-[11px] text-muted-foreground">
+              <p className="mt-2 text-[12px] text-muted-foreground">
                 Offered level. Each carrier confirms your final contract level during contracting.
               </p>
             )}
@@ -355,7 +355,7 @@ export default function HireLink() {
                 className="mt-1 h-11 text-base"
               />
               {recipientLocked && (
-                <p id="hire-email-locked" className="mt-1 text-[11px] text-muted-foreground">
+                <p id="hire-email-locked" className="mt-1 text-[12px] text-muted-foreground">
                   This invitation is for this address only.
                 </p>
               )}
@@ -370,7 +370,7 @@ export default function HireLink() {
                   <span className="block text-sm font-semibold">
                     {lockedLicenseStatus === "licensed" ? "Licensed agent" : "Unlicensed recruit"}
                   </span>
-                  <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                  <span className="mt-0.5 block text-[12px] text-muted-foreground">
                     {lockedLicenseStatus === "licensed"
                       ? "Your manager selected the fast-track contracting path."
                       : "Your manager selected the course → exam → fingerprints roadmap."}
@@ -386,7 +386,7 @@ export default function HireLink() {
                   className={`rounded-lg border p-3 text-left transition-colors ${licensedHire === true ? "border-primary bg-primary/10" : "border-border hover:bg-muted/40"}`}
                 >
                   <span className="block text-sm font-semibold">Yes, licensed</span>
-                  <span className="mt-0.5 block text-[11px] text-muted-foreground">Start contracting now</span>
+                  <span className="mt-0.5 block text-[12px] text-muted-foreground">Start contracting now</span>
                 </button>
                 <button
                   type="button"
@@ -396,7 +396,7 @@ export default function HireLink() {
                   className={`rounded-lg border p-3 text-left transition-colors ${licensedHire === false ? "border-primary bg-primary/10" : "border-border hover:bg-muted/40"}`}
                 >
                   <span className="block text-sm font-semibold">Not yet</span>
-                  <span className="mt-0.5 block text-[11px] text-muted-foreground">Start licensing roadmap</span>
+                  <span className="mt-0.5 block text-[12px] text-muted-foreground">Start licensing roadmap</span>
                 </button>
               </div>
               )}
@@ -415,7 +415,7 @@ export default function HireLink() {
                   placeholder="National Producer Number"
                   className="mt-1 h-11 text-base"
                 />
-                <p className="mt-1 text-[11px] text-muted-foreground">
+                <p className="mt-1 text-[12px] text-muted-foreground">
                   Required. Submission starts the contracting spreadsheet and private support desk automatically.
                 </p>
               </div>
@@ -439,7 +439,7 @@ export default function HireLink() {
               )}
             </GradientButton>
 
-            <div className="flex items-center justify-center gap-1.5 pt-1 text-[11px] text-muted-foreground">
+            <div className="flex items-center justify-center gap-1.5 pt-1 text-[12px] text-muted-foreground">
               <ShieldCheck className="h-3 w-3" />
               <span>
                 One-use link

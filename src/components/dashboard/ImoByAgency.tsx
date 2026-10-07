@@ -174,7 +174,7 @@ export function ImoByAgency({
               <div className="flex items-center justify-between text-sm">
                 <span className="flex items-center gap-2 font-medium">
                   {a.agency}
-                  {a.is_primary && <Badge variant="outline" className="border-primary/30 bg-primary/15 text-primary text-[10px]">MINE</Badge>}
+                  {a.is_primary && <Badge variant="outline" className="border-primary/30 bg-primary/15 text-primary text-[11px]">MINE</Badge>}
                 </span>
                 <span className="font-semibold tabular-nums">{fmt(a.alp)}</span>
               </div>
@@ -182,17 +182,17 @@ export function ImoByAgency({
                 <div className="h-full rounded-full bg-primary" style={{ width: `${(a.alp / max) * 100}%` }} />
               </div>
               {exactWindow ? (
-                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                <p className="mt-0.5 text-[12px] text-muted-foreground">
                   {a.policies.toLocaleString()} policies · {(windowLabel ?? "selected period").toLowerCase()}
                 </p>
               ) : (
-                <div className="mt-0.5 text-[11px] text-muted-foreground">
+                <div className="mt-0.5 text-[12px] text-muted-foreground">
                   <p>{(a.policies_30d ?? 0).toLocaleString()} policies · {fmt(a.alp_30d)} last 30 days</p>
                   <p>{(a.policies_mtd ?? 0).toLocaleString()} policies · {fmt(a.alp_mtd)} calendar MTD</p>
                 </div>
               )}
               {(a.owner_override_pct ?? 0) > 0 && (
-                <p className="mt-0.5 text-[11px] font-medium text-primary">
+                <p className="mt-0.5 text-[12px] font-medium text-primary">
                   Your override: {a.owner_override_pct}% · {fmt(ovrOf(a))} {exactWindow ? "this window" : "MTD"}
                 </p>
               )}

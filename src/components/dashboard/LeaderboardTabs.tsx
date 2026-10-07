@@ -345,27 +345,27 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
     if (rank === 1) {
       return (
         <div className="flex items-center justify-center h-5 w-5 rounded-full bg-white dark:bg-card animate-rank-glow">
-          <span className="text-[10px] font-bold text-foreground">1</span>
+          <span className="text-[11px] font-bold text-foreground">1</span>
         </div>
       );
     }
     if (rank === 2) {
       return (
         <div className="flex items-center justify-center h-5 w-5 rounded-full bg-white dark:bg-card">
-          <span className="text-[10px] font-bold text-slate-700">2</span>
+          <span className="text-[11px] font-bold text-slate-700">2</span>
         </div>
       );
     }
     if (rank === 3) {
       return (
         <div className="flex items-center justify-center h-5 w-5 rounded-full bg-white dark:bg-card">
-          <span className="text-[10px] font-bold text-foreground">3</span>
+          <span className="text-[11px] font-bold text-foreground">3</span>
         </div>
       );
     }
     return (
       <span className={cn(
-        "text-[11px] font-medium w-5 text-center",
+        "text-[12px] font-medium w-5 text-center",
         isCurrentUser ? "text-primary" : "text-muted-foreground"
       )}>
         {rank}
@@ -417,7 +417,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
                 <motion.button
                   onClick={() => setLeaderboardMode(mode => mode === "production" ? "building" : "production")}
                   className={cn(
-                    "relative px-2 sm:px-3 py-1 rounded-full text-[10px] font-bold transition-all shrink-0",
+                    "relative px-2 sm:px-3 py-1 rounded-full text-[11px] font-bold transition-all shrink-0",
                     "bg-white dark:bg-card",
                     "text-foreground shadow-md shadow-amber-500/20",
                     "hover:shadow-amber-500/40 active:scale-95",
@@ -453,7 +453,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
               <div className="flex items-center gap-2 shrink-0">
                 <div className="flex items-center gap-1">
                   <Circle className="h-2 w-2 fill-emerald-500 text-emerald-500 animate-live-pulse" />
-                  <span className="text-[10px] text-muted-foreground hidden sm:inline">Live</span>
+                  <span className="text-[11px] text-muted-foreground hidden sm:inline">Live</span>
                 </div>
                 
                 {/* My Rank Button - hidden on very small screens */}
@@ -489,10 +489,10 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
               )}
               <Tabs value={period} onValueChange={(v) => setPeriod(v as Period)} className="flex-1">
                 <TabsList className="h-8 p-0.5 w-full grid grid-cols-4">
-                  <TabsTrigger value="day" className="text-[10px] px-1 sm:px-2 h-7">Day</TabsTrigger>
-                  <TabsTrigger value="week" className="text-[10px] px-1 sm:px-2 h-7">Week</TabsTrigger>
-                  <TabsTrigger value="month" className="text-[10px] px-1 sm:px-2 h-7">Month</TabsTrigger>
-                  <TabsTrigger value="custom" className="text-[10px] px-1 sm:px-2 h-7">Custom</TabsTrigger>
+                  <TabsTrigger value="day" className="text-[11px] px-1 sm:px-2 h-7">Day</TabsTrigger>
+                  <TabsTrigger value="week" className="text-[11px] px-1 sm:px-2 h-7">Week</TabsTrigger>
+                  <TabsTrigger value="month" className="text-[11px] px-1 sm:px-2 h-7">Month</TabsTrigger>
+                  <TabsTrigger value="custom" className="text-[11px] px-1 sm:px-2 h-7">Custom</TabsTrigger>
                 </TabsList>
               </Tabs>
             </div>
@@ -509,7 +509,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
             </div>
           )}
           </div>
-          <p className="mb-3 text-[11px] text-muted-foreground">
+          <p className="mb-3 text-[12px] text-muted-foreground">
             {formatMetricSource(METRIC_REGISTRY.leaderboards, lastUpdatedAt)}
           </p>
 
@@ -602,7 +602,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
                 ) : (
                   <>
                     {/* Desktop Table Header */}
-                    <div className="grid grid-cols-12 gap-1 px-2 py-2 text-[10px] font-semibold text-muted-foreground border-b border-border/50 mb-1.5">
+                    <div className="grid grid-cols-12 gap-1 px-2 py-2 text-[11px] font-semibold text-muted-foreground border-b border-border/50 mb-1.5">
                       <div className="col-span-1">#</div>
                       <div className="col-span-3">Agent</div>
                       <div className="col-span-1 text-center">Hours</div>
@@ -686,7 +686,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
                               {/* Agent */}
                               <div className="col-span-3 flex items-center gap-1.5 min-w-0">
                                 <div className={cn(
-                                  "h-6 w-6 rounded-full flex items-center justify-center text-[9px] font-bold text-primary-foreground shrink-0 ",
+                                  "h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold text-primary-foreground shrink-0 ",
                                   entry.avatarUrl ? "" : getAvatarColor(entry.name)
                                 )}>
                                   {entry.avatarUrl ? (
@@ -718,28 +718,28 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
 
                               {/* Hours Called */}
                               <div className="col-span-1 text-center">
-                                <span className="text-[10px] text-muted-foreground">{entry.hoursCalled}</span>
+                                <span className="text-[11px] text-muted-foreground">{entry.hoursCalled}</span>
                               </div>
 
                               {/* Presentations */}
                               <div className={cn("col-span-1 text-center", sortBy === "presentations" && "text-primary")}>
-                                <span className="text-[10px]">{entry.presentations}</span>
+                                <span className="text-[11px]">{entry.presentations}</span>
                               </div>
 
                               {/* Closes */}
                               <div className={cn("col-span-1 text-center", sortBy === "deals" && "text-primary")}>
-                                <span className="text-[10px] font-semibold">{entry.deals}</span>
+                                <span className="text-[11px] font-semibold">{entry.deals}</span>
                               </div>
 
                               {/* Referrals */}
                               <div className="col-span-1 text-center">
-                                <span className="text-[10px] text-muted-foreground">{entry.referrals}</span>
+                                <span className="text-[11px] text-muted-foreground">{entry.referrals}</span>
                               </div>
 
                               {/* Close % */}
                               <div className={cn("col-span-1 text-center", sortBy === "closingRate" && "text-primary")}>
                                 <span className={cn(
-                                  "text-[10px] font-medium",
+                                  "text-[11px] font-medium",
                                   getClosingRateColor(entry.closingRate).textClass
                                 )}>
                                   {entry.closingRate.toFixed(0)}%
@@ -771,7 +771,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
                 {/* Footer with Totals */}
                 {sortedEntries.length > 0 && (
                   <div className="mt-3 pt-3 border-t border-border/50">
-                    <div className="flex flex-wrap justify-between gap-2 text-[10px] text-muted-foreground">
+                    <div className="flex flex-wrap justify-between gap-2 text-[11px] text-muted-foreground">
                       <span>
                         <span className="font-semibold text-foreground">{sortedEntries.length}</span> ranked
                       </span>

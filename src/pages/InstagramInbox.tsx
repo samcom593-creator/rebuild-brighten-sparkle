@@ -222,7 +222,7 @@ export default function InstagramInbox() {
       <div className="flex flex-wrap items-center gap-3">
         <MessageCircle className="h-6 w-6 text-primary" />
         <h1 className="apex-headline text-2xl md:text-3xl font-bold">Instagram Inbox</h1>
-        <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">
+        <Badge variant="outline" className="text-[11px] border-primary/40 text-primary">
           @{connection.instagram_username ?? connection.instagram_user_id}
         </Badge>
         <Button variant="outline" size="sm" onClick={syncFromInstagram} disabled={syncing} className="ml-auto gap-1.5">
@@ -279,14 +279,14 @@ export default function InstagramInbox() {
                 <div className="flex items-center gap-2 mb-0.5">
                   <span className="text-sm font-semibold truncate flex-1">@{t.username ?? t.ig_user_id.slice(0, 8)}</span>
                   <span className={cn(
-                    "text-[9px] px-1.5 py-0.5 rounded-full uppercase tracking-wider font-bold",
+                    "text-[10px] px-1.5 py-0.5 rounded-full uppercase tracking-wider font-bold",
                     t.bucket === "fresh"  && "bg-emerald-500/20 text-emerald-300",
                     t.bucket === "recent" && "bg-amber-500/20 text-amber-300",
                     t.bucket === "stale"  && "bg-rose-500/20 text-rose-300",
                   )}>{t.bucket}</span>
                 </div>
-                <div className="text-[11px] text-muted-foreground truncate">{t.last_msg_preview || "—"}</div>
-                <div className="text-[10px] text-muted-foreground/60 mt-0.5">
+                <div className="text-[12px] text-muted-foreground truncate">{t.last_msg_preview || "—"}</div>
+                <div className="text-[11px] text-muted-foreground/60 mt-0.5">
                   {t.last_msg_at ? formatDistanceToNowStrict(new Date(t.last_msg_at), { addSuffix: true }) : "—"}
                   {t.outreach_status === "contacted" && " · sent"}
                 </div>
@@ -317,13 +317,13 @@ export default function InstagramInbox() {
                   </p>
                 </div>
                 {selected.last_sent_at && (
-                  <Badge variant="outline" className="text-[10px]">last sent {formatDistanceToNowStrict(new Date(selected.last_sent_at), { addSuffix: true })}</Badge>
+                  <Badge variant="outline" className="text-[11px]">last sent {formatDistanceToNowStrict(new Date(selected.last_sent_at), { addSuffix: true })}</Badge>
                 )}
               </div>
 
               {selected.last_msg_preview && (
                 <div className="rounded-lg bg-muted/30 border border-border/40 p-3 text-sm">
-                  <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
+                  <div className="text-[11px] text-muted-foreground uppercase tracking-wider mb-1">
                     Last message {selected.last_sender === "me" ? "(you)" : "(them)"}
                   </div>
                   <div>{selected.last_msg_preview}</div>
@@ -345,7 +345,7 @@ export default function InstagramInbox() {
                 <div className="flex gap-2 flex-wrap">
                   {templates.map(t => (
                     <button key={t.id} onClick={() => applyTemplate(t)}
-                      className="text-[11px] px-2.5 py-1 rounded-md border border-border/60 hover:border-primary/50 hover:bg-primary/5 transition-colors">
+                      className="text-[12px] px-2.5 py-1 rounded-md border border-border/60 hover:border-primary/50 hover:bg-primary/5 transition-colors">
                       {t.name}
                     </button>
                   ))}

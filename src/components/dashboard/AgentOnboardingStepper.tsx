@@ -460,11 +460,11 @@ export function AgentOnboardingStepper({ agentId }: { agentId: string }) {
                   {complete ? <Check className="h-4 w-4" /> : step.status === "locked" ? <LockKeyhole className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
                 </span>
                 <div className="min-w-0">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Step {index + 1}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Step {index + 1}</p>
                   <p className="text-sm font-bold">{step.label}</p>
                   <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{step.detail}</p>
                   {step.status === "locked" && (
-                    <p className="mt-2 text-[11px] font-medium text-muted-foreground">Unlocks after the earlier required milestones.</p>
+                    <p className="mt-2 text-[12px] font-medium text-muted-foreground">Unlocks after the earlier required milestones.</p>
                   )}
                   <StepAction step={step} />
                 </div>

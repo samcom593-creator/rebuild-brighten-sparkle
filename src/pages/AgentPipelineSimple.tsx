@@ -328,7 +328,7 @@ export default function AgentPipelineSimple() {
                             <p className="text-xs text-muted-foreground">{agent.email}</p>
                           </div>
                         </div>
-                        <Badge className={`text-[10px] ${stageMap[agent.stage]?.color || ""}`}>
+                        <Badge className={`text-[11px] ${stageMap[agent.stage]?.color || ""}`}>
                           {stageMap[agent.stage]?.label || agent.stage}
                         </Badge>
                       </div>
@@ -352,7 +352,7 @@ export default function AgentPipelineSimple() {
                           <Crown className="h-3 w-3 text-amber-400" />
                           <span className="text-foreground">{agent.managerName}</span>
                           {agent.hasPendingSwitchRequest && (
-                            <Badge variant="outline" className="text-[9px] text-amber-400 border-amber-400/30">
+                            <Badge variant="outline" className="text-[10px] text-amber-400 border-amber-400/30">
                               Switch pending
                             </Badge>
                           )}
@@ -360,7 +360,7 @@ export default function AgentPipelineSimple() {
                         {!agent.hasPendingSwitchRequest && (
                           <button
                             onClick={() => openSwitchDialog(agent.id, agent.name)}
-                            className="text-[10px] text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
+                            className="text-[11px] text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
                           >
                             <ArrowRightLeft className="h-3 w-3" />
                             Request switch

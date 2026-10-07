@@ -433,7 +433,7 @@ export default function XcelImport() {
             <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
               <table className="w-full min-w-[680px] text-sm">
                 <thead>
-                  <tr className="border-b border-border text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                  <tr className="border-b border-border text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                     <th className="px-2 py-2 text-left">Name</th>
                     <th className="px-2 py-2 text-left">Email</th>
                     <th className="px-2 py-2 text-right">NPN</th>
@@ -455,7 +455,7 @@ export default function XcelImport() {
                         </div>
                       </td>
                       <td className="max-w-[220px] px-2 py-2">
-                        <div className="truncate text-[11px] text-muted-foreground">{r.email ?? "—"}</div>
+                        <div className="truncate text-[12px] text-muted-foreground">{r.email ?? "—"}</div>
                       </td>
                       <td className="px-2 py-2 text-right tabular-nums text-muted-foreground">
                         {r.national_producer_number ?? "—"}
@@ -476,7 +476,7 @@ export default function XcelImport() {
             </div>
 
             {rows.length > 25 && (
-              <p className="mt-3 text-[11px] tabular-nums text-muted-foreground">
+              <p className="mt-3 text-[12px] tabular-nums text-muted-foreground">
                 Showing first 25 of {rows.length} rows — all will be sent on confirm.
               </p>
             )}
@@ -488,7 +488,7 @@ export default function XcelImport() {
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-foreground">Ready to import</p>
-                  <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
+                  <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
                     Sends <span className="font-bold tabular-nums text-foreground">{rows.length}</span> row
                     {rows.length === 1 ? "" : "s"} to <span className="font-mono">xcel-csv-ingest</span>.
                   </p>
@@ -533,13 +533,13 @@ export default function XcelImport() {
                 /* stable-key-allow:static-string-list — server-returned error slice, no reorder */
                 <p
                   key={`${i}|${e.slice(0, 40)}`}
-                  className="break-words font-mono text-[11px] text-rose-600 dark:text-rose-400"
+                  className="break-words font-mono text-[12px] text-rose-600 dark:text-rose-400"
                 >
                   {e}
                 </p>
               ))}
               {result.errors.length > 5 && (
-                <p className="text-[11px] tabular-nums text-muted-foreground">
+                <p className="text-[12px] tabular-nums text-muted-foreground">
                   …and {result.errors.length - 5} more
                 </p>
               )}
@@ -596,7 +596,7 @@ function StatTile({
 }) {
   return (
     <div className={cn("rounded-lg border border-border bg-card p-3", className)}>
-      <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
       <p
         className={cn(
           "mt-1 text-2xl font-bold leading-none tabular-nums",

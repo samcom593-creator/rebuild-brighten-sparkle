@@ -408,7 +408,7 @@ export function ControlTerminal() {
               </div>
               <div className="max-h-72 overflow-auto rounded-md border border-emerald-500/20">
                 <table className="w-full text-xs">
-                  <thead className="sticky top-0 bg-white dark:bg-card text-[10px] uppercase tracking-wider text-emerald-300">
+                  <thead className="sticky top-0 bg-white dark:bg-card text-[11px] uppercase tracking-wider text-emerald-300">
                     <tr>{headers.map((header) => <th key={header} className="border-b border-emerald-500/20 px-3 py-2 text-left">{header}</th>)}</tr>
                   </thead>
                   <tbody className="font-mono text-slate-700 dark:text-slate-200">

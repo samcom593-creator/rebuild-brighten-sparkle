@@ -322,11 +322,11 @@ export function AgentProfileEditor({ agent, open, onClose, onUpdate }: AgentProf
           <div className="grid grid-cols-3 gap-2">
             <div className="text-center p-2 bg-muted rounded-lg">
               <p className="text-sm font-bold">${Math.round(agent.totalAlp).toLocaleString()}</p>
-              <p className="text-[10px] text-muted-foreground">ALP</p>
+              <p className="text-[11px] text-muted-foreground">ALP</p>
             </div>
             <div className="text-center p-2 bg-muted rounded-lg">
               <p className="text-sm font-bold">{agent.totalDeals}</p>
-              <p className="text-[10px] text-muted-foreground">Deals</p>
+              <p className="text-[11px] text-muted-foreground">Deals</p>
             </div>
             <div className={cn(
               "text-center p-2 rounded-lg",
@@ -335,7 +335,7 @@ export function AgentProfileEditor({ agent, open, onClose, onUpdate }: AgentProf
               "bg-amber-500/10"
             )}>
               <p className="text-sm font-bold">{agent.closingRate}%</p>
-              <p className="text-[10px] text-muted-foreground">Close</p>
+              <p className="text-[11px] text-muted-foreground">Close</p>
             </div>
           </div>
 
@@ -346,11 +346,11 @@ export function AgentProfileEditor({ agent, open, onClose, onUpdate }: AgentProf
               <span className="text-xs">CRM Status</span>
             </div>
             {agent.hasCrmLink ? (
-              <Badge className="text-[10px] bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
+              <Badge className="text-[11px] bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
                 Linked
               </Badge>
             ) : (
-              <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/30">
+              <Badge variant="outline" className="text-[11px] bg-amber-500/10 text-amber-600 border-amber-500/30">
                 Not Linked
               </Badge>
             )}
@@ -373,7 +373,7 @@ export function AgentProfileEditor({ agent, open, onClose, onUpdate }: AgentProf
                 className="h-8 text-sm"
               />
               {!fullName.trim() && (
-                <p className="text-[10px] text-destructive flex items-center gap-1">
+                <p className="text-[11px] text-destructive flex items-center gap-1">
                   <AlertTriangle className="h-2.5 w-2.5" />
                   Required
                 </p>
@@ -513,7 +513,7 @@ export function AgentProfileEditor({ agent, open, onClose, onUpdate }: AgentProf
             <div className="grid grid-cols-2 gap-2">
               <Button
                 variant="outline"
-                className="gap-1 h-7 text-[10px]"
+                className="gap-1 h-7 text-[11px]"
                 onClick={() => sendPortalLink.mutate()}
                 disabled={sendPortalLink.isPending || !email}
               >
@@ -527,7 +527,7 @@ export function AgentProfileEditor({ agent, open, onClose, onUpdate }: AgentProf
 
               <Button
                 variant="outline"
-                className="gap-1 h-7 text-[10px]"
+                className="gap-1 h-7 text-[11px]"
                 onClick={() => sendPasswordReset.mutate()}
                 disabled={sendPasswordReset.isPending || !email}
               >
@@ -543,7 +543,7 @@ export function AgentProfileEditor({ agent, open, onClose, onUpdate }: AgentProf
             {/* Direct Password Set */}
             {agentDetails?.user_id && (
               <div className="space-y-1.5">
-                <Label className="text-[10px] text-muted-foreground">Set New Password</Label>
+                <Label className="text-[11px] text-muted-foreground">Set New Password</Label>
                 <div className="flex gap-1.5">
                   <Input
                     type="password"
@@ -554,7 +554,7 @@ export function AgentProfileEditor({ agent, open, onClose, onUpdate }: AgentProf
                   />
                   <Button
                     variant="outline"
-                    className="gap-1 h-7 text-[10px] shrink-0"
+                    className="gap-1 h-7 text-[11px] shrink-0"
                     onClick={handleSetPassword}
                     disabled={settingPassword || !newPassword.trim()}
                   >
@@ -570,7 +570,7 @@ export function AgentProfileEditor({ agent, open, onClose, onUpdate }: AgentProf
             )}
 
             {agent.lastActivity && (
-              <p className="text-[10px] text-center text-muted-foreground">
+              <p className="text-[11px] text-center text-muted-foreground">
                 Last activity: {agent.lastActivity}
               </p>
             )}

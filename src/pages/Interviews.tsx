@@ -462,7 +462,7 @@ export default function Interviews() {
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold">{name}</p>
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                        <Badge variant="outline" className="text-[10px]">Onboarding call</Badge>
+                        <Badge variant="outline" className="text-[11px]">Onboarding call</Badge>
                         {row.agent_id && row.agent_display_name && <span>Agent · {row.agent_display_name}</span>}
                         {!row.agent_id && <span className="text-warning">No agent row matched</span>}
                         <span className={receipt.tone} title={receipt.detail ?? undefined}>{receipt.label}</span>
@@ -633,15 +633,15 @@ export default function Interviews() {
         <section aria-labelledby="priority-candidate" className="overflow-hidden rounded-2xl border border-[#C9A961]/35 bg-card text-foreground dark:bg-[#0A0A0A] dark:text-white shadow-[0_20px_55px_rgba(0,0,0,0.2)]">
           <div className="p-5">
             <div className="flex items-center justify-between gap-3">
-              <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#C9A961]"><Zap className="h-3.5 w-3.5 fill-[#C9A961]" /> Work next</p>
-              {priorityPool.length > 1 && <div className="flex items-center gap-1"><span className="mr-1 text-[10px] text-white/35">{safeFocusIndex + 1}/{priorityPool.length}</span><Button size="icon" variant="ghost" className="h-8 w-8 text-foreground hover:bg-white/10 hover:text-white" aria-label="Previous priority candidate" onClick={() => setFocusIndex((safeFocusIndex - 1 + priorityPool.length) % priorityPool.length)}><ArrowLeft className="h-4 w-4" /></Button><Button size="icon" variant="ghost" className="h-8 w-8 text-foreground hover:bg-white/10 hover:text-white" aria-label="Next priority candidate" onClick={() => setFocusIndex((safeFocusIndex + 1) % priorityPool.length)}><ArrowRight className="h-4 w-4" /></Button></div>}
+              <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-[#C9A961]"><Zap className="h-3.5 w-3.5 fill-[#C9A961]" /> Work next</p>
+              {priorityPool.length > 1 && <div className="flex items-center gap-1"><span className="mr-1 text-[11px] text-white/35">{safeFocusIndex + 1}/{priorityPool.length}</span><Button size="icon" variant="ghost" className="h-8 w-8 text-foreground hover:bg-white/10 hover:text-white" aria-label="Previous priority candidate" onClick={() => setFocusIndex((safeFocusIndex - 1 + priorityPool.length) % priorityPool.length)}><ArrowLeft className="h-4 w-4" /></Button><Button size="icon" variant="ghost" className="h-8 w-8 text-foreground hover:bg-white/10 hover:text-white" aria-label="Next priority candidate" onClick={() => setFocusIndex((safeFocusIndex + 1) % priorityPool.length)}><ArrowRight className="h-4 w-4" /></Button></div>}
             </div>
             <div className="mt-4 flex min-w-0 items-center gap-3">
               <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[#C9A961]/30 bg-[#C9A961]/10 text-base font-black text-[#C9A961]">{initials(priorityCandidate.name)}</span>
               <div className="min-w-0"><h2 id="priority-candidate" className="truncate text-lg font-black">{priorityCandidate.name || "Unnamed candidate"}</h2><p className="mt-0.5 truncate text-xs text-white/45">{priorityCandidate.phone || priorityCandidate.email || "Contact details missing"}</p></div>
             </div>
             <div className="mt-4 rounded-xl border border-border bg-white/[0.04] p-3">
-              <p className="text-xs font-bold">{statusOf(priorityCandidate, now).label}</p><p className="mt-0.5 text-[11px] text-white/45">{statusOf(priorityCandidate, now).timing}</p>
+              <p className="text-xs font-bold">{statusOf(priorityCandidate, now).label}</p><p className="mt-0.5 text-[12px] text-white/45">{statusOf(priorityCandidate, now).timing}</p>
               <div className="mt-3 grid grid-cols-4 gap-1" aria-label={`Interview progress: ${INTERVIEW_RAIL[interviewRailStep(priorityCandidate)]}`}>
                 {INTERVIEW_RAIL.map((label, index) => <div key={label}><div className={`h-1 rounded-full ${index <= interviewRailStep(priorityCandidate) ? "bg-[#C9A961]" : "bg-foreground/10"}`} /><p className={`mt-1 truncate text-[8px] font-bold uppercase ${index <= interviewRailStep(priorityCandidate) ? "text-foreground/65" : "text-foreground/20"}`}>{label}</p></div>)}
               </div>
@@ -651,7 +651,7 @@ export default function Interviews() {
               {smsHref(priorityCandidate.phone) && <Button asChild variant="outline" className="h-11 border-border bg-foreground/5 text-foreground hover:bg-white/10 hover:text-white"><a href={smsHref(priorityCandidate.phone)!} {...contactLinkProps(smsHref(priorityCandidate.phone))}><MessageSquare className="h-4 w-4" /> Text</a></Button>}
               {availableActions(priorityCandidate, pipeline.data?.role).length > 0 && <Button className="col-span-2 h-11 bg-card font-bold text-foreground hover:bg-white/90" onClick={() => chooseAction(priorityCandidate, availableActions(priorityCandidate, pipeline.data?.role)[0])}>{ACTION_LABEL[availableActions(priorityCandidate, pipeline.data?.role)[0]]} <ArrowRight className="h-4 w-4" /></Button>}
             </div>
-            <p className="mt-3 text-center text-[9px] uppercase tracking-wide text-white/25">J / K moves through priority candidates</p>
+            <p className="mt-3 text-center text-[10px] uppercase tracking-wide text-white/25">J / K moves through priority candidates</p>
           </div>
         </section>
       )}
@@ -659,15 +659,15 @@ export default function Interviews() {
       <section aria-labelledby="live-funnel-heading" className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm">
         <div>
           <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">Live recruiting pulse</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Live recruiting pulse</p>
             <h2 id="live-funnel-heading" className="mt-1 text-lg font-black">Where the work is now</h2>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Tap a stage to open the exact people behind it.</p>
           </div>
           <div className="mt-4 grid min-w-0 grid-cols-2 gap-2">
             {operatingFunnel.map((item, index) => <button key={item.label} type="button" className="group rounded-xl border border-border/70 bg-muted/20 p-3 text-left transition-colors hover:border-primary/35 hover:bg-primary/5" onClick={() => switchTab(item.target)}>
-              <div className="flex items-center justify-between gap-2"><span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{item.label}</span><span className="text-xl font-black tabular-nums">{pipeline.data ? item.value : "—"}</span></div>
+              <div className="flex items-center justify-between gap-2"><span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{item.label}</span><span className="text-xl font-black tabular-nums">{pipeline.data ? item.value : "—"}</span></div>
               <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted"><div className={`h-full rounded-full ${index === operatingFunnel.length - 1 ? "bg-success" : "bg-primary"}`} style={{ width: pipeline.data ? `${Math.max(item.value ? 8 : 0, Math.round((item.value / funnelPeak) * 100))}%` : "0%" }} /></div>
-              <p className="mt-1.5 text-[10px] text-muted-foreground">{item.detail}</p>
+              <p className="mt-1.5 text-[11px] text-muted-foreground">{item.detail}</p>
             </button>)}
           </div>
         </div>
@@ -679,7 +679,7 @@ export default function Interviews() {
             <div className="min-w-0">
               <p className="flex items-center gap-2 text-sm font-black"><Link2 className="h-4 w-4 text-primary" /> One-link candidate intake</p>
               <p className="mt-1 text-xs text-muted-foreground">Send it once. Their details, interview booking, and follow-up record land in this control room automatically.</p>
-              <p className="mt-2 truncate font-mono text-[11px] text-muted-foreground">{shareUrl}</p>
+              <p className="mt-2 truncate font-mono text-[12px] text-muted-foreground">{shareUrl}</p>
             </div>
             <div className="flex shrink-0 gap-2">
               <Button variant="outline" onClick={async () => {
@@ -704,7 +704,7 @@ export default function Interviews() {
         <div className="relative w-full lg:w-96">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input ref={searchRef} value={query} onChange={(event) => setQuery(event.target.value)} placeholder={tab === "onboarding" || tab === "hired" ? "Search agent, phone, email, license, or stage" : "Search every candidate, phone, email, or Instagram"} className="h-11 rounded-xl border-border/80 bg-card pl-9 pr-10" aria-label="Search interviews" />
-          <kbd className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded border border-border bg-muted px-1.5 py-0.5 text-[9px] font-bold text-muted-foreground">/</kbd>
+          <kbd className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">/</kbd>
         </div>
         {/* Wrap, never scroll: at 1500px the main column is ~800px wide and a scrolling strip hid Active hires / Onboarding / History with no affordance. */}
         <div className="flex max-w-full flex-wrap items-center gap-1.5">
@@ -715,7 +715,7 @@ export default function Interviews() {
           {TABS.map(([key, label]) => (
             <Button key={key} type="button" size="sm" variant={tab === key ? "default" : "ghost"} onClick={() => switchTab(key)} aria-pressed={tab === key} className={`h-11 shrink-0 rounded-xl px-3 ${tab === key ? "shadow-md" : "text-muted-foreground"}`}>
               {label}
-              <span className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] tabular-nums ${tab === key ? "bg-black/15" : "bg-muted"}`}>
+              <span className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[11px] tabular-nums ${tab === key ? "bg-black/15" : "bg-muted"}`}>
                 {key === "open" ? openAll.length : key === "overdue" ? overdue.length : key === "upcoming" ? upcoming.length : key === "hired" ? activeHires.length : key === "onboarding" ? onboardingWork : applicants.length}
               </span>
             </Button>
@@ -767,14 +767,14 @@ export default function Interviews() {
                         <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border text-sm font-black ${group.danger ? "border-destructive/20 bg-destructive/10 text-destructive" : "border-primary/20 bg-primary/10 text-primary"}`}>{initials(row.name)}</span>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0"><p className="truncate text-base font-black">{personName}</p><p className="mt-0.5 truncate text-[11px] text-muted-foreground">{row.email || row.phone || "Contact details missing"}</p></div>
+                            <div className="min-w-0"><p className="truncate text-base font-black">{personName}</p><p className="mt-0.5 truncate text-[12px] text-muted-foreground">{row.email || row.phone || "Contact details missing"}</p></div>
                             <Badge variant="outline" className={`shrink-0 ${group.danger ? "border-destructive/30 bg-destructive/5 text-destructive" : `${status.tone} border-border`}`}><span className={`mr-1.5 h-1.5 w-1.5 rounded-full ${status.dot}`} />{status.label}</Badge>
                           </div>
                           <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                             {row.company && <span className="inline-flex items-center gap-1"><Building2 className="h-3 w-3" />{row.company}</span>}
                             {instagram && <a href={instagram.href} target="_blank" rel="noopener noreferrer" onClick={(event) => event.stopPropagation()} aria-label={`Open @${instagram.handle} on Instagram`} title={`Open @${instagram.handle} on Instagram`} className="inline-flex items-center gap-1 rounded-full border border-pink-500/30 bg-pink-500/10 px-2 py-0.5 font-semibold text-pink-400 transition-colors hover:bg-pink-500/20 hover:underline"><Instagram className="h-3 w-3 shrink-0" />@{instagram.handle}</a>}
                             {(row.recruiter_name || row.va_name) && <span>Owner · {row.recruiter_name || row.va_name}</span>}
-                            {row.identity_conflict && <Badge variant="outline" className="border-destructive/30 text-[10px] text-destructive">Identity conflict</Badge>}
+                            {row.identity_conflict && <Badge variant="outline" className="border-destructive/30 text-[11px] text-destructive">Identity conflict</Badge>}
                           </div>
                         </div>
                       </div>
@@ -782,9 +782,9 @@ export default function Interviews() {
                       {row.notes && <div className="mt-3 rounded-lg border border-border/60 bg-background/35 px-3 py-2"><p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground"><span className="font-bold text-foreground">Latest context · </span>{row.notes}</p></div>}
 
                       <div className="mt-4 rounded-xl border border-border/70 bg-muted/20 p-3">
-                        <div className="flex items-center justify-between gap-3"><p className="text-[9px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Current mission</p><p className={`text-xs font-bold ${status.tone}`}>{status.timing}</p></div>
+                        <div className="flex items-center justify-between gap-3"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Current mission</p><p className={`text-xs font-bold ${status.tone}`}>{status.timing}</p></div>
                         <div className="mt-3 grid grid-cols-4 gap-1.5" aria-label={`Interview progress: ${INTERVIEW_RAIL[railStep]}`}>
-                          {INTERVIEW_RAIL.map((label, index) => <div key={label}><div className={`h-1.5 rounded-full ${index <= railStep ? group.danger ? "bg-destructive" : "bg-[#C9A961]" : "bg-muted"}`} /><p className={`mt-1.5 truncate text-[9px] font-bold uppercase tracking-wide ${index <= railStep ? "text-foreground" : "text-muted-foreground/55"}`}>{label}</p></div>)}
+                          {INTERVIEW_RAIL.map((label, index) => <div key={label}><div className={`h-1.5 rounded-full ${index <= railStep ? group.danger ? "bg-destructive" : "bg-[#C9A961]" : "bg-muted"}`} /><p className={`mt-1.5 truncate text-[10px] font-bold uppercase tracking-wide ${index <= railStep ? "text-foreground" : "text-muted-foreground/55"}`}>{label}</p></div>)}
                         </div>
                       </div>
 

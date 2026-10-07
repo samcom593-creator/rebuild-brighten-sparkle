@@ -243,7 +243,7 @@ export default function AwardProfilesPanel() {
                 <s.icon className={cn("h-4 w-4", s.color)} />
                 <div>
                   <p className="text-sm font-bold">{s.value}</p>
-                  <p className="text-[10px] text-muted-foreground leading-none">{s.label}</p>
+                  <p className="text-[11px] text-muted-foreground leading-none">{s.label}</p>
                 </div>
               </div>
             ))}
@@ -352,17 +352,17 @@ export default function AwardProfilesPanel() {
                       <div className="flex-1 min-w-0 pt-0.5">
                         <p className="text-sm font-bold truncate leading-tight">{name}</p>
                         {ig ? (
-                          <Badge variant="outline" className="mt-1.5 text-[10px] px-1.5 py-0 h-5 gap-0.5 border-pink-500/30 text-pink-500 bg-pink-500/5">
+                          <Badge variant="outline" className="mt-1.5 text-[11px] px-1.5 py-0 h-5 gap-0.5 border-pink-500/30 text-pink-500 bg-pink-500/5">
                             <Instagram className="h-2.5 w-2.5" />@{ig}
                           </Badge>
                         ) : (
-                          <p className="mt-1.5 text-[10px] text-muted-foreground/60 italic">No IG handle</p>
+                          <p className="mt-1.5 text-[11px] text-muted-foreground/60 italic">No IG handle</p>
                         )}
                         <div className="flex items-center gap-3 mt-2">
-                          <span className="flex items-center gap-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                          <span className="flex items-center gap-1 text-[12px] font-semibold text-amber-600 dark:text-amber-400">
                             <TrendingUp className="h-3 w-3" />${agent.total_alp.toLocaleString()}
                           </span>
-                          <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                          <span className="flex items-center gap-1 text-[12px] text-muted-foreground">
                             <Hash className="h-3 w-3" />{agent.total_deals}
                           </span>
                         </div>
@@ -372,11 +372,11 @@ export default function AwardProfilesPanel() {
                     {/* Status badge */}
                     <div className="mb-3">
                       {complete ? (
-                        <Badge className="text-[10px] h-5 bg-emerald-500/10 text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/15 gap-1">
+                        <Badge className="text-[11px] h-5 bg-emerald-500/10 text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/15 gap-1">
                           <CheckCircle2 className="h-2.5 w-2.5" />Ready for Awards
                         </Badge>
                       ) : (
-                        <Badge className="text-[10px] h-5 bg-amber-500/10 text-amber-600 border-amber-500/20 hover:bg-amber-500/15 gap-1">
+                        <Badge className="text-[11px] h-5 bg-amber-500/10 text-amber-600 border-amber-500/20 hover:bg-amber-500/15 gap-1">
                           <AlertCircle className="h-2.5 w-2.5" />
                           Needs {!agent.award_photo_url && !ig ? "Photo & IG" : !agent.award_photo_url ? "Photo" : "IG"}
                         </Badge>
@@ -439,7 +439,7 @@ export default function AwardProfilesPanel() {
 
                     {/* Updated timestamp */}
                     {agent.updated_at && (
-                      <p className="text-[9px] text-muted-foreground/50 mt-2.5 text-center">
+                      <p className="text-[10px] text-muted-foreground/50 mt-2.5 text-center">
                         Updated {new Date(agent.updated_at).toLocaleDateString()}
                       </p>
                     )}

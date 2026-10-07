@@ -126,7 +126,7 @@ export function CallCenterProgressRing({
               >
                 {current}
               </motion.span>
-              <span className="text-[10px] text-muted-foreground">of {total}</span>
+              <span className="text-[11px] text-muted-foreground">of {total}</span>
             </motion.div>
           )}
         </AnimatePresence>

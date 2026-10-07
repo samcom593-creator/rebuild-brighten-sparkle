@@ -339,7 +339,7 @@ function Stat({ icon: Icon, label, value }: { icon: LucideIcon; label: string; v
     <Card className="border-border/60 bg-card/80">
       <CardContent className="flex items-center justify-between gap-3 p-4">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+          <p className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
           <p className="mt-1 text-2xl font-bold tabular-nums">{value}</p>
         </div>
         <div className="flex h-9 w-9 items-center justify-center rounded-md border border-primary/20 bg-primary/10 text-primary">

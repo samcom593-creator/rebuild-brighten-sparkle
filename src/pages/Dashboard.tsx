@@ -627,12 +627,12 @@ function StatTile({
     <GlassCard className="p-4">
       <div className="flex items-center gap-2">
         <Icon className={cn("h-4 w-4 shrink-0", iconTone)} />
-        <p className="min-w-0 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
+        <p className="min-w-0 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
       </div>
       {/* text-3xl, not the text-2xl contract scale. Sam reads these five tiles from across
           the room; the redesign shrank them and that read as the number being taken away. */}
       <p className="mt-2 break-words text-3xl font-bold leading-none tabular-nums text-foreground">{value}</p>
-      <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">{detail}</p>
+      <p className="mt-1.5 text-[12px] leading-relaxed text-muted-foreground">{detail}</p>
     </GlassCard>
   );
 }
@@ -662,7 +662,7 @@ function IntegrationCard({
         <StateBadge state={state} />
       </div>
       <p className="text-sm font-bold tabular-nums text-foreground">{value}</p>
-      <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-muted-foreground">{detail}</p>
+      <p className="mt-1 line-clamp-2 text-[12px] leading-relaxed text-muted-foreground">{detail}</p>
       {href ? (
         <Button asChild variant="ghost" size="sm" className="mt-2 h-10 justify-start px-0 text-xs sm:h-9">
           <Link to={href}>
@@ -707,7 +707,7 @@ function RecruitingGrid({ stats }: { stats: DashboardSnapshot["recruiting"] }) {
         <LazyPanel minHeight="h-16"><LicensedHiresRange /></LazyPanel>
         {rows.map(([label, value]) => (
           <div key={label} className="rounded-lg border border-border bg-card p-3">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
+            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
             <p className="mt-1.5 text-2xl font-bold leading-none tabular-nums text-foreground">{number(Number(value))}</p>
           </div>
         ))}
@@ -736,19 +736,19 @@ function WeekProductionCard({ snapshot }: { snapshot: DashboardSnapshot }) {
       {hasWeekProduction ? (
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">ALP posted this week</p>
+            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">ALP posted this week</p>
             <p className="mt-1.5 break-words text-2xl font-bold leading-none tabular-nums text-foreground">{money(snapshot.production.weekAlp)}</p>
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Deals posted</p>
+            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Deals posted</p>
             <p className="mt-1.5 text-2xl font-bold leading-none tabular-nums text-foreground">{number(snapshot.production.weekDeals)}</p>
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Presentations logged</p>
+            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Presentations logged</p>
             <p className="mt-1.5 text-2xl font-bold leading-none tabular-nums text-foreground">{number(snapshot.production.presentationsWeek)}</p>
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Vs prior matched week</p>
+            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Vs prior matched week</p>
             <p
               className={cn(
                 "mt-1.5 text-2xl font-bold leading-none tabular-nums",
@@ -776,7 +776,7 @@ function WeekProductionCard({ snapshot }: { snapshot: DashboardSnapshot }) {
           </div>
         </div>
       )}
-      <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
+      <p className="mt-3 text-[12px] leading-relaxed text-muted-foreground">
         Source: deals.status in submitted/active filters, posted_at in America/Chicago business windows. Presentations remain manual `daily_production` input.
       </p>
     </GlassCard>

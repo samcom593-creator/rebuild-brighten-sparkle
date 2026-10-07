@@ -428,7 +428,7 @@ export default function LicensedInbox() {
             <div className="text-2xl font-bold leading-none tabular-nums text-foreground">
               {filtered.length.toLocaleString()}
             </div>
-            <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+            <div className="mt-1 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
               Waiting to call
             </div>
           </div>
@@ -514,30 +514,30 @@ export default function LicensedInbox() {
                         {name}
                       </span>
                       {r.origin === "toolkit_agent" ? (
-                        <span title="Added by APEX staff; NPN is self-reported until verified against NIPR" className="shrink-0 rounded-sm border border-info/30 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-info dark:text-info">
+                        <span title="Added by APEX staff; NPN is self-reported until verified against NIPR" className="shrink-0 rounded-sm border border-info/30 px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-info dark:text-info">
                           Added agent
                         </span>
                       ) : r.nipr_verified === true ? (
-                        <span className="shrink-0 rounded-sm border border-emerald-500/35 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
+                        <span className="shrink-0 rounded-sm border border-emerald-500/35 px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
                           Licensed ✓
                         </span>
                       ) : (
-                        <span title="Self-reported on the apply form — not verified against NIPR" className="shrink-0 rounded-sm border border-amber-500/35 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400">
+                        <span title="Self-reported on the apply form — not verified against NIPR" className="shrink-0 rounded-sm border border-amber-500/35 px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400">
                           Self-reported
                         </span>
                       )}
                       {r.state && (
-                        <span className="shrink-0 rounded-sm border border-border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                        <span className="shrink-0 rounded-sm border border-border px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                           {r.state}
                         </span>
                       )}
                       {r.npn && (
-                        <span className="shrink-0 rounded-sm border border-border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                        <span className="shrink-0 rounded-sm border border-border px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                           NPN {r.npn}
                         </span>
                       )}
                       {!r.npn && r.pa_number && (
-                        <span title="Legacy identifier retained during the NPN migration" className="shrink-0 rounded-sm border border-border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                        <span title="Legacy identifier retained during the NPN migration" className="shrink-0 rounded-sm border border-border px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                           Legacy PA {r.pa_number}
                         </span>
                       )}
@@ -547,7 +547,7 @@ export default function LicensedInbox() {
                     <div className="text-sm font-bold tabular-nums text-foreground">
                       {applied}
                     </div>
-                    <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                    <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                       {r.origin === "toolkit_agent" ? "Added" : "Applied"}
                     </div>
                   </div>
@@ -568,14 +568,14 @@ export default function LicensedInbox() {
                       <span className="truncate">{r.phone}</span>
                     </button>
                   ) : (
-                    <span className="text-[11px] text-muted-foreground">
+                    <span className="text-[12px] text-muted-foreground">
                       No phone on file
                     </span>
                   )}
                   {r.email && (
                     <button
                       type="button"
-                      className="min-w-0 flex-1 truncate text-left text-[11px] text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
+                      className="min-w-0 flex-1 truncate text-left text-[12px] text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
                       aria-label={`Email ${name} at ${r.email}`}
                       onClick={() => openComposer(r, "email")}
                     >
@@ -639,7 +639,7 @@ export default function LicensedInbox() {
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="h-10 gap-1.5 px-2.5 text-[11px] hover:border-amber-500/50 hover:bg-amber-500/10 sm:h-9"
+                    className="h-10 gap-1.5 px-2.5 text-[12px] hover:border-amber-500/50 hover:bg-amber-500/10 sm:h-9"
                   >
                     <Link to={`/admin/apex-toolkit?agent=${encodeURIComponent(r.id)}&source=${r.origin}`}>
                       <Route className="h-3.5 w-3.5 shrink-0" />
@@ -793,7 +793,7 @@ function DispBtn({
       aria-label={label}
       data-cc-action={slug}
       disabled={busy}
-      className={cn("h-10 gap-1.5 px-2.5 text-[11px] sm:h-9", toneMap[tone])}
+      className={cn("h-10 gap-1.5 px-2.5 text-[12px] sm:h-9", toneMap[tone])}
       onClick={(e) => {
         e.stopPropagation();
         onClick();

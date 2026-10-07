@@ -290,7 +290,7 @@ export default function AutomationHealth() {
             >
               <div className="flex items-center gap-1.5 mb-1">
                 <Icon className="h-3.5 w-3.5" />
-                <p className="text-[10px] uppercase font-semibold opacity-80">{meta.label}</p>
+                <p className="text-[11px] uppercase font-semibold opacity-80">{meta.label}</p>
               </div>
               <p className="text-2xl font-bold">{stats[s]}</p>
             </button>
@@ -340,11 +340,11 @@ export default function AutomationHealth() {
                       <div className="flex-1 min-w-[240px]">
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <p className="font-mono text-sm font-semibold">{j.job_name}</p>
-                          <Badge variant="outline" className={meta.color + " text-[10px]"}>{meta.label}</Badge>
-                          {j.registry && <span className="text-[10px] text-muted-foreground">→ {j.registry.fn}</span>}
+                          <Badge variant="outline" className={meta.color + " text-[11px]"}>{meta.label}</Badge>
+                          {j.registry && <span className="text-[11px] text-muted-foreground">→ {j.registry.fn}</span>}
                         </div>
                         {j.registry && <p className="text-xs text-muted-foreground mb-1">{j.registry.description}</p>}
-                        <div className="flex items-center gap-3 text-[10px] text-muted-foreground flex-wrap">
+                        <div className="flex items-center gap-3 text-[11px] text-muted-foreground flex-wrap">
                           {/* The real cron expression, never the registry's prose. When there
                               is no cron row the claim is shown AS a claim -- struck through and
                               labelled -- because printing it plainly is what made this page lie. */}
@@ -362,7 +362,7 @@ export default function AutomationHealth() {
                               : <span>never logged a run</span>}
                         </div>
                         {j.last_error && (
-                          <p className="text-[10px] text-red-400 mt-1 font-mono truncate">⚠ {j.last_error}</p>
+                          <p className="text-[11px] text-red-400 mt-1 font-mono truncate">⚠ {j.last_error}</p>
                         )}
                       </div>
                       {j.registry && j.registry.fn !== "(db)" && (
@@ -396,9 +396,9 @@ export default function AutomationHealth() {
                   <Activity className={`h-4 w-4 ${r.status === "success" ? "text-emerald-400" : r.status === "error" ? "text-red-400" : "text-muted-foreground"}`} />
                   <div className="flex-1 min-w-[200px]">
                     <p className="font-mono text-sm">{r.job_name}</p>
-                    {r.error && <p className="text-[10px] text-red-400 font-mono truncate">{r.error}</p>}
+                    {r.error && <p className="text-[11px] text-red-400 font-mono truncate">{r.error}</p>}
                   </div>
-                  <div className="text-right text-[10px] text-muted-foreground whitespace-nowrap">
+                  <div className="text-right text-[11px] text-muted-foreground whitespace-nowrap">
                     <p>{format(new Date(r.triggered_at), "MMM d, h:mm:ss a")}</p>
                     {r.duration_ms !== null && <p>{r.duration_ms}ms</p>}
                   </div>

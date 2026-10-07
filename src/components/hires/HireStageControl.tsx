@@ -237,7 +237,7 @@ export function HireStageStepper({ agentId, name, stage, licenseStatus, email, c
             >
               <div className={cn("h-1.5 rounded-full transition-colors", done ? "bg-primary" : "bg-muted")} />
               <p className={cn(
-                "mt-1.5 truncate text-[9px] font-bold uppercase tracking-wide",
+                "mt-1.5 truncate text-[10px] font-bold uppercase tracking-wide",
                 current ? "text-primary" : done ? "text-foreground" : "text-muted-foreground/60",
               )}>
                 {rung.short}
@@ -246,7 +246,7 @@ export function HireStageStepper({ agentId, name, stage, licenseStatus, email, c
           );
         })}
       </div>
-      <div className="mt-2 flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
+      <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
         <span className="truncate">
           {offLadder
             ? <>Flagged <span className="font-bold text-foreground">{stageLabel(stage)}</span> · click a step to put them back on the ladder</>
@@ -254,7 +254,7 @@ export function HireStageStepper({ agentId, name, stage, licenseStatus, email, c
         </span>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button type="button" variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]" disabled={busy} aria-label="Flag this hire">
+            <Button type="button" variant="ghost" size="sm" className="h-6 px-1.5 text-[11px]" disabled={busy} aria-label="Flag this hire">
               <Flag className="mr-1 h-3 w-3" aria-hidden="true" /> Flag <ChevronDown className="ml-0.5 h-3 w-3" aria-hidden="true" />
             </Button>
           </DropdownMenuTrigger>

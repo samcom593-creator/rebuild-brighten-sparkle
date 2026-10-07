@@ -145,7 +145,7 @@ function dateInput(value: string | null | undefined): string {
 }
 
 function Field({ label, value, hint }: { label: string; value: React.ReactNode; hint?: string }) {
-  return <div className="space-y-0.5"><dt className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</dt><dd className="break-words text-sm font-medium">{value ?? "—"}</dd>{hint && <p className="text-[10px] text-muted-foreground">{hint}</p>}</div>;
+  return <div className="space-y-0.5"><dt className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</dt><dd className="break-words text-sm font-medium">{value ?? "—"}</dd>{hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}</div>;
 }
 
 function Panel({ title, children }: { title: string; children: React.ReactNode }) {
@@ -315,7 +315,7 @@ export default function ClientDetail() {
 
         <div className="grid grid-cols-4 gap-1 border-b border-border px-4 py-3">
           {STAGES.map((item, index) => (
-            <button key={item.value} type="button" onClick={() => saveStage(item.value)} disabled={action.isPending} className={cn("min-h-10 rounded-full border px-2 py-1 text-[11px] font-semibold leading-tight transition-colors sm:text-xs", index === activeStage ? "border-primary bg-primary text-primary-foreground" : index < activeStage ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground")}>{item.label}</button>
+            <button key={item.value} type="button" onClick={() => saveStage(item.value)} disabled={action.isPending} className={cn("min-h-10 rounded-full border px-2 py-1 text-[12px] font-semibold leading-tight transition-colors sm:text-xs", index === activeStage ? "border-primary bg-primary text-primary-foreground" : index < activeStage ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground")}>{item.label}</button>
           ))}
         </div>
 
@@ -326,12 +326,12 @@ export default function ClientDetail() {
             <details className="rounded-md border border-border bg-card p-4">
               <summary className="cursor-pointer text-sm font-semibold">History and imported records</summary>
               <div className="mt-4 grid gap-3 xl:grid-cols-2">
-                <Panel title="Timeline">{activity.isLoading ? <Skeleton className="h-40 w-full" /> : (activity.data?.length ?? 0) === 0 ? <p className="py-8 text-center text-sm text-muted-foreground">No activity yet.</p> : <ol className="space-y-3">{activity.data!.slice(0, 25).map((item) => <li key={item.id} className="flex gap-3 border-b border-border pb-3 last:border-0"><span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" /><div><p className="text-sm font-medium capitalize">{item.activity_type.replaceAll("_", " ")}</p>{item.body && <p className="text-sm text-muted-foreground">{item.body}</p>}<p className="mt-1 text-[11px] text-muted-foreground">{formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}</p></div></li>)}</ol>}</Panel>
+                <Panel title="Timeline">{activity.isLoading ? <Skeleton className="h-40 w-full" /> : (activity.data?.length ?? 0) === 0 ? <p className="py-8 text-center text-sm text-muted-foreground">No activity yet.</p> : <ol className="space-y-3">{activity.data!.slice(0, 25).map((item) => <li key={item.id} className="flex gap-3 border-b border-border pb-3 last:border-0"><span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" /><div><p className="text-sm font-medium capitalize">{item.activity_type.replaceAll("_", " ")}</p>{item.body && <p className="text-sm text-muted-foreground">{item.body}</p>}<p className="mt-1 text-[12px] text-muted-foreground">{formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}</p></div></li>)}</ol>}</Panel>
                 <div className="space-y-3">
                   <Panel title="Lead source"><dl className="grid gap-3 sm:grid-cols-2"><Field label="Referred by" value={[c.referred_from_client_first_name, c.referred_from_client_last_name].filter(Boolean).join(" ") || "Direct lead"} /><Field label="Lead vendor" value={c.lead_vendor_name} /><Field label="Lead product" value={c.lead_product_name} /><Field label="Source" value={c.external_source} /></dl></Panel>
                   {(beneficiaries.data?.length ?? 0) > 0 && <Panel title="Imported beneficiaries"><div className="space-y-2">{beneficiaries.data!.map((beneficiary) => <div key={beneficiary.id} className="rounded-md border border-border p-3"><p className="text-sm font-semibold">{[beneficiary.first_name, beneficiary.last_name].filter(Boolean).join(" ") || "—"}</p><p className="text-xs text-muted-foreground">{beneficiary.relationship ?? "—"}{beneficiary.percentage ? ` · ${beneficiary.percentage}%` : ""}{beneficiary.date_of_birth ? ` · DOB ${fmtDate(beneficiary.date_of_birth)}` : ""}</p></div>)}</div></Panel>}
                   {(contracts.data?.length ?? 0) > 0 && <Panel title="Imported policies"><div className="space-y-2">{contracts.data!.map((contract) => <div key={contract.id} className="flex items-center justify-between rounded-md border border-border p-3 text-sm"><div><p className="font-semibold">{contract.carrier_name ?? "—"} · {contract.product_name ?? "—"}</p><p className="text-xs text-muted-foreground">{contract.status ?? "—"} · {fmtDate(contract.effective_date)}</p></div><div className="text-right"><p className="font-semibold">{fmtMoney(contract.face_amount)}</p><p className="text-xs text-muted-foreground">{fmtMoney(contract.monthly_premium)}/mo</p></div></div>)}</div></Panel>}
-                  {isAdmin && c.raw_payload && <details><summary className="cursor-pointer text-xs text-muted-foreground">Raw imported payload (admin)</summary><pre className="mt-2 max-h-64 overflow-auto rounded-md bg-muted p-3 text-[10px]">{JSON.stringify(c.raw_payload, null, 2)}</pre></details>}
+                  {isAdmin && c.raw_payload && <details><summary className="cursor-pointer text-xs text-muted-foreground">Raw imported payload (admin)</summary><pre className="mt-2 max-h-64 overflow-auto rounded-md bg-muted p-3 text-[11px]">{JSON.stringify(c.raw_payload, null, 2)}</pre></details>}
                 </div>
               </div>
             </details>

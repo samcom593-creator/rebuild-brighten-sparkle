@@ -300,7 +300,7 @@ export default function SeminarControl() {
                 ["Producing", funnel.producing],
               ].map(([label, n]) => (
                 <div key={label as string} className="rounded-lg border border-border/60 bg-background p-3">
-                  <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</div>
+                  <div className="text-[12px] uppercase tracking-wide text-muted-foreground">{label}</div>
                   <div className="text-xl font-bold tabular-nums">{n as number}</div>
                   {funnel.registered ? (
                     <div className="mt-2 space-y-1">
@@ -310,7 +310,7 @@ export default function SeminarControl() {
                           style={{ width: `${Math.min(100, (((n as number) / funnel.registered) * 100) || 0)}%` }}
                         />
                       </div>
-                      <div className="text-[10px] text-muted-foreground">
+                      <div className="text-[11px] text-muted-foreground">
                         {((((n as number) / funnel.registered) * 100) || 0).toFixed(0)}%
                       </div>
                     </div>
@@ -344,7 +344,7 @@ export default function SeminarControl() {
                 <h3 className="font-semibold">
                   {date === "unscheduled" ? "Unscheduled" : format(new Date(date), "EEE, MMM d")}
                 </h3>
-                <Badge variant="outline" className="text-[10px]">{rows.length}</Badge>
+                <Badge variant="outline" className="text-[11px]">{rows.length}</Badge>
               </div>
               <div className="overflow-hidden rounded-lg border border-border/60 bg-background divide-y divide-border/50">
                 {rows.map((r) => {
@@ -359,7 +359,7 @@ export default function SeminarControl() {
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="font-medium truncate">{r.attendee_name}</span>
-                          <Badge className={`text-[10px] border ${TONE_CLS[meta.tone]}`} variant="outline">
+                          <Badge className={`text-[11px] border ${TONE_CLS[meta.tone]}`} variant="outline">
                             <Icon className="h-3 w-3 mr-1" />
                             {meta.label}
                           </Badge>
@@ -368,23 +368,23 @@ export default function SeminarControl() {
                           {r.email ?? "No email"} · {r.phone ?? "No phone"} · {r.license_status ?? "License unknown"}
                         </div>
                         <div className="mt-2 flex flex-wrap gap-1.5">
-                          <Badge variant="outline" className={r.reminder_opt_in ? "text-[10px] border-emerald-500/30 text-emerald-500" : "text-[10px] border-amber-500/30 text-amber-500"}>
+                          <Badge variant="outline" className={r.reminder_opt_in ? "text-[11px] border-emerald-500/30 text-emerald-500" : "text-[11px] border-amber-500/30 text-amber-500"}>
                             <MessageSquare className="mr-1 h-3 w-3" />
                             {r.reminder_opt_in ? "Opted in" : "No SMS opt-in"}
                           </Badge>
-                          <Badge variant="outline" className={r.confirmation_email_queued_at ? "text-[10px] border-emerald-500/30 text-emerald-500" : "text-[10px] border-amber-500/30 text-amber-500"}>
+                          <Badge variant="outline" className={r.confirmation_email_queued_at ? "text-[11px] border-emerald-500/30 text-emerald-500" : "text-[11px] border-amber-500/30 text-amber-500"}>
                             <Mail className="mr-1 h-3 w-3" />
                             {r.confirmation_email_queued_at ? "Email queued" : "Email missing"}
                           </Badge>
-                          <Badge variant="outline" className={r.manager_alert_queued_at ? "text-[10px] border-emerald-500/30 text-emerald-500" : "text-[10px] border-amber-500/30 text-amber-500"}>
+                          <Badge variant="outline" className={r.manager_alert_queued_at ? "text-[11px] border-emerald-500/30 text-emerald-500" : "text-[11px] border-amber-500/30 text-amber-500"}>
                             <Bell className="mr-1 h-3 w-3" />
                             {r.manager_alert_queued_at ? "Manager alerted" : "Manager alert missing"}
                           </Badge>
-                          <Badge variant="outline" className={r.discord_alert_queued_at ? "text-[10px] border-emerald-500/30 text-emerald-500" : "text-[10px] border-amber-500/30 text-amber-500"}>
+                          <Badge variant="outline" className={r.discord_alert_queued_at ? "text-[11px] border-emerald-500/30 text-emerald-500" : "text-[11px] border-amber-500/30 text-amber-500"}>
                             Discord {r.discord_alert_queued_at ? "queued" : "missing"}
                           </Badge>
                         </div>
-                        <div className="mt-1 text-[11px] text-muted-foreground">
+                        <div className="mt-1 text-[12px] text-muted-foreground">
                           App: {r.app_status ?? "none"} · Licensing: {r.app_license_progress ?? r.license_status ?? "unknown"} · Source: {r.source ?? "unknown"}
                         </div>
                       </div>
@@ -420,7 +420,7 @@ export default function SeminarControl() {
       </Card>
 
       {!isAdmin && (
-        <p className="text-[11px] text-muted-foreground text-center">
+        <p className="text-[12px] text-muted-foreground text-center">
           You see this page because you're flagged as a seminar presenter or manager.
         </p>
       )}

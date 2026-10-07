@@ -110,7 +110,7 @@ export function ActivityFeedWidget({
         <CardTitle className="text-sm flex items-center gap-2">
           <Activity className="h-4 w-4 text-primary" />
           {title}
-          <Badge variant="outline" className="ml-auto text-[10px] h-5">
+          <Badge variant="outline" className="ml-auto text-[11px] h-5">
             {items.length}
           </Badge>
         </CardTitle>
@@ -142,15 +142,15 @@ export function ActivityFeedWidget({
                     <div className="flex items-center gap-2 text-xs">
                       <span className="font-semibold truncate">{prettyAction(e.action)}</span>
                       {e.actor_role && (
-                        <Badge variant="outline" className="h-4 text-[9px] px-1.5">
+                        <Badge variant="outline" className="h-4 text-[10px] px-1.5">
                           {e.actor_role}
                         </Badge>
                       )}
-                      <span className="ml-auto text-[10px] text-muted-foreground shrink-0">
+                      <span className="ml-auto text-[11px] text-muted-foreground shrink-0">
                         {formatDistanceToNow(new Date(e.created_at), { addSuffix: true })}
                       </span>
                     </div>
-                    <div className="text-[11px] text-muted-foreground truncate">
+                    <div className="text-[12px] text-muted-foreground truncate">
                       {e.actor_name && <span>{e.actor_name}</span>}
                       {e.actor_name && e.entity_type && <span> · </span>}
                       {e.entity_type && (

@@ -156,7 +156,7 @@ export function RescheduleInterviewDialog({
             <Textarea id="resched-reason" rows={2} className="mt-1" value={reason} onChange={(e) => setReason(e.target.value)}
               placeholder="e.g. Candidate asked for a later slot" />
           </div>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-[12px] text-muted-foreground">
             Pending reminders for the old time are retired; the next reminder follows the new time.
           </p>
         </div>

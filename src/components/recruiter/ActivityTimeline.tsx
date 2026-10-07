@@ -102,7 +102,7 @@ export function ActivityTimeline({
 
   if (!activities || activities.length === 0) {
     return (
-      <p className="text-[10px] text-muted-foreground py-1.5">
+      <p className="text-[11px] text-muted-foreground py-1.5">
         No activity yet
       </p>
     );
@@ -133,12 +133,12 @@ export function ActivityTimeline({
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
                     <Icon className="h-3 w-3 text-muted-foreground shrink-0" />
-                    <span className="text-[11px] font-medium truncate">
+                    <span className="text-[12px] font-medium truncate">
                       {item.title}
                     </span>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <span className="text-[10px] text-muted-foreground shrink-0 cursor-default">
+                        <span className="text-[11px] text-muted-foreground shrink-0 cursor-default">
                           {formatDistanceToNow(createdAt, { addSuffix: true })}
                         </span>
                       </TooltipTrigger>
@@ -148,7 +148,7 @@ export function ActivityTimeline({
                     </Tooltip>
                   </div>
                   {item.actor_name && (
-                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
                       by {item.actor_name}
                       {item.actor_role && <span className="opacity-60"> ({item.actor_role})</span>}
                     </p>

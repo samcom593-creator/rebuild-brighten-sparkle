@@ -687,7 +687,7 @@ export default function ContentLibrary() {
             <TabsTrigger value="duplicates" className="relative">
               <Copy className="h-4 w-4 mr-1" /> Duplicates
               {duplicateCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[10px] rounded-full h-4 w-4 flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[11px] rounded-full h-4 w-4 flex items-center justify-center">
                   {duplicateCount}
                 </span>
               )}
@@ -696,7 +696,7 @@ export default function ContentLibrary() {
               <TabsTrigger value="sensitive" className="relative">
                 <ShieldAlert className="h-4 w-4 mr-1" /> Sensitive
                 {sensitiveCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] rounded-full h-4 w-4 flex items-center justify-center">
+                  <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[11px] rounded-full h-4 w-4 flex items-center justify-center">
                     {sensitiveCount}
                   </span>
                 )}
@@ -1094,9 +1094,9 @@ function ContentCard({
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium truncate">{item.title}</p>
           <div className="flex items-center gap-1 mt-1 flex-wrap">
-            {item.ai_analyzed && <Badge variant="secondary" className="text-[9px] gap-0.5"><Sparkles className="h-2 w-2" /> AI</Badge>}
-            {item.duplicate_flagged && <Badge variant="destructive" className="text-[9px]">Duplicate</Badge>}
-            {combinedTags.slice(0, 3).map(t => <Badge key={t} variant="outline" className="text-[9px] capitalize">{t}</Badge>)}
+            {item.ai_analyzed && <Badge variant="secondary" className="text-[10px] gap-0.5"><Sparkles className="h-2 w-2" /> AI</Badge>}
+            {item.duplicate_flagged && <Badge variant="destructive" className="text-[10px]">Duplicate</Badge>}
+            {combinedTags.slice(0, 3).map(t => <Badge key={t} variant="outline" className="text-[10px] capitalize">{t}</Badge>)}
           </div>
         </div>
         <div className="flex gap-1">
@@ -1131,12 +1131,12 @@ function ContentCard({
         {/* Badges overlay */}
         <div className="absolute top-1.5 left-1.5 flex gap-1">
           {item.ai_analyzed && (
-            <span className="bg-primary/80 text-primary-foreground text-[9px] px-1.5 py-0.5 rounded-full flex items-center gap-0.5 ">
+            <span className="bg-primary/80 text-primary-foreground text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-0.5 ">
               <Sparkles className="h-2 w-2" /> AI
             </span>
           )}
           {item.duplicate_flagged && (
-            <span className="bg-destructive/80 text-destructive-foreground text-[9px] px-1.5 py-0.5 rounded-full flex items-center gap-0.5 ">
+            <span className="bg-destructive/80 text-destructive-foreground text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-0.5 ">
               <AlertTriangle className="h-2 w-2" /> Dup
             </span>
           )}
@@ -1160,15 +1160,15 @@ function ContentCard({
       <p className="text-xs font-medium truncate px-0.5">{item.title}</p>
       <div className="flex items-center gap-0.5 px-0.5 flex-wrap">
         {combinedTags.slice(0, 3).map(t => (
-          <Badge key={t} variant="outline" className="text-[9px] capitalize h-4 px-1">{t}</Badge>
+          <Badge key={t} variant="outline" className="text-[10px] capitalize h-4 px-1">{t}</Badge>
         ))}
         {combinedTags.length > 3 && (
-          <span className="text-[9px] text-muted-foreground">+{combinedTags.length - 3}</span>
+          <span className="text-[10px] text-muted-foreground">+{combinedTags.length - 3}</span>
         )}
       </div>
 
       {item.duplicate_flagged && duplicateOriginal && (
-        <p className="text-[9px] text-amber-500 px-0.5 truncate">
+        <p className="text-[10px] text-amber-500 px-0.5 truncate">
           ↳ Duplicate of: {duplicateOriginal.title}
         </p>
       )}
@@ -1225,7 +1225,7 @@ function SensitiveContentCard({
 
         {/* Flag badge */}
         <div className="absolute top-1.5 left-1.5">
-          <span className="bg-red-600/90 text-white text-[9px] px-1.5 py-0.5 rounded-full flex items-center gap-0.5 ">
+          <span className="bg-red-600/90 text-white text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-0.5 ">
             <ShieldAlert className="h-2 w-2" /> Flagged
           </span>
         </div>
@@ -1233,7 +1233,7 @@ function SensitiveContentCard({
 
       {/* Reason */}
       {item.sensitive_reason && (
-        <p className="text-[10px] text-red-400 px-0.5 line-clamp-2">{item.sensitive_reason}</p>
+        <p className="text-[11px] text-red-400 px-0.5 line-clamp-2">{item.sensitive_reason}</p>
       )}
 
       {/* Flags */}
@@ -1247,10 +1247,10 @@ function SensitiveContentCard({
 
       {/* Actions */}
       <div className="flex gap-1">
-        <Button variant="outline" size="sm" className="flex-1 text-[10px] h-7 gap-1" onClick={onMarkSafe}>
+        <Button variant="outline" size="sm" className="flex-1 text-[11px] h-7 gap-1" onClick={onMarkSafe}>
           <ShieldCheck className="h-3 w-3" /> Mark Safe
         </Button>
-        <Button variant="destructive" size="sm" className="flex-1 text-[10px] h-7 gap-1" onClick={onDelete}>
+        <Button variant="destructive" size="sm" className="flex-1 text-[11px] h-7 gap-1" onClick={onDelete}>
           <Trash2 className="h-3 w-3" /> Delete
         </Button>
       </div>

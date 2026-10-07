@@ -256,7 +256,7 @@ function BotSqlSection() {
             </div>
             <div>
               <CardTitle className="text-xl">🤖 Bot SQL Access</CardTitle>
-              <p className="text-[11px] text-muted-foreground mt-0.5">For Claude assistants — run SQL remotely</p>
+              <p className="text-[12px] text-muted-foreground mt-0.5">For Claude assistants — run SQL remotely</p>
             </div>
           </div>
           <Badge variant="outline" className={cn(
@@ -301,7 +301,7 @@ function BotSqlSection() {
                 <Copy className="h-3 w-3" />
               </Button>
             </div>
-            <p className="text-[11px] text-muted-foreground/70">
+            <p className="text-[12px] text-muted-foreground/70">
               Anyone with this token can run arbitrary SQL. Rotate if leaked.
             </p>
           </div>
@@ -552,7 +552,7 @@ export default function IntegrationsSettings() {
         </CardHeader>
         <CardContent>
           <div className="relative">
-            <pre className="text-[10px] bg-muted/40 rounded-lg p-3 overflow-auto max-h-56 text-muted-foreground font-mono whitespace-pre-wrap">
+            <pre className="text-[11px] bg-muted/40 rounded-lg p-3 overflow-auto max-h-56 text-muted-foreground font-mono whitespace-pre-wrap">
               {SETUP_SQL}
             </pre>
             <Button

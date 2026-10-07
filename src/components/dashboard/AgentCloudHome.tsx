@@ -116,9 +116,9 @@ const STATUS_TILES: Array<{ key: string; label: string; tone: string }> = [
 function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div className="border-b border-border p-4 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
       <p className="mt-1.5 text-2xl font-bold tabular-nums text-foreground">{value}</p>
-      {sub && <p className="mt-0.5 text-[11px] text-muted-foreground">{sub}</p>}
+      {sub && <p className="mt-0.5 text-[12px] text-muted-foreground">{sub}</p>}
     </div>
   );
 }
@@ -277,19 +277,19 @@ export function AgentCloudHome() {
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
             <Card><CardContent className="p-4">
-              <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"><Users className="h-3 w-3" />Roster</p>
+              <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"><Users className="h-3 w-3" />Roster</p>
               <p className="mt-1.5 text-2xl font-bold tabular-nums">{roster.total}</p>
-              <p className="text-[11px] text-muted-foreground">agents on the team</p>
+              <p className="text-[12px] text-muted-foreground">agents on the team</p>
             </CardContent></Card>
             <Card><CardContent className="p-4">
-              <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"><TrendingUp className="h-3 w-3" />Producing</p>
+              <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"><TrendingUp className="h-3 w-3" />Producing</p>
               <p className="mt-1.5 text-2xl font-bold tabular-nums text-emerald-500">{roster.producing}</p>
-              <p className="text-[11px] text-muted-foreground">wrote business in 120d</p>
+              <p className="text-[12px] text-muted-foreground">wrote business in 120d</p>
             </CardContent></Card>
             <Card><CardContent className="p-4">
-              <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"><UserPlus className="h-3 w-3" />In onboarding</p>
+              <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"><UserPlus className="h-3 w-3" />In onboarding</p>
               <p className="mt-1.5 text-2xl font-bold tabular-nums text-amber-500">{roster.in_onboarding}</p>
-              <p className="text-[11px] text-muted-foreground">active, no production yet</p>
+              <p className="text-[12px] text-muted-foreground">active, no production yet</p>
             </CardContent></Card>
           </div>
           <ImoByAgency start={win.start} end={win.end} windowLabel={win.label} />
@@ -315,7 +315,7 @@ export function AgentCloudHome() {
           screen-reader-operable. The chart also stops mounting on first paint,
           which is the single heaviest thing on this route. */}
       <details className="group [&[open]_.chev]:rotate-180">
-        <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg border border-border bg-card px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground hover:text-foreground">
+        <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg border border-border bg-card px-4 py-3 text-[12px] font-semibold uppercase tracking-[0.15em] text-muted-foreground hover:text-foreground">
           <LineChartIcon className="h-3.5 w-3.5" />
           Trend and policy status
           <ChevronDown className="chev ml-auto h-4 w-4 transition-transform" />
@@ -325,7 +325,7 @@ export function AgentCloudHome() {
       {/* PRODUCTION TREND */}
       <Card>
         <CardContent className="p-4">
-          <p className="mb-3 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+          <p className="mb-3 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
             <LineChartIcon className="h-3 w-3" />Production trend · 12 months
           </p>
           <div className="h-56">
@@ -349,21 +349,21 @@ export function AgentCloudHome() {
       <Card>
         <CardContent className="p-4">
           <div className="mb-3 flex items-baseline justify-between">
-            <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+            <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
               <Shield className="h-3 w-3" />Policy status
             </p>
-            <span className="text-[11px] text-muted-foreground">{data.lifetime.policies.toLocaleString()} policies · {money(data.lifetime.ap)} book</span>
+            <span className="text-[12px] text-muted-foreground">{data.lifetime.policies.toLocaleString()} policies · {money(data.lifetime.ap)} book</span>
           </div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
             {STATUS_TILES.map((t) => (
               <div key={t.key} className="rounded-lg border border-border bg-background/40 p-3">
-                <p className="truncate text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t.label}</p>
+                <p className="truncate text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t.label}</p>
                 <p className={cn("mt-1 text-xl font-bold tabular-nums", t.tone)}>{(policy_status?.[t.key] ?? 0).toLocaleString()}</p>
               </div>
             ))}
           </div>
           {(policy_status?.status_not_reported ?? 0) > 0 && (
-            <p className="mt-3 text-[11px] text-muted-foreground">
+            <p className="mt-3 text-[12px] text-muted-foreground">
               <Badge variant="outline" className="mr-1.5 border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400">Upstream gap</Badge>
               The legacy book does not report a policy status for {(policy_status.status_not_reported).toLocaleString()} of these historical policies, so lapse and chargeback tracking is blind on them.
             </p>

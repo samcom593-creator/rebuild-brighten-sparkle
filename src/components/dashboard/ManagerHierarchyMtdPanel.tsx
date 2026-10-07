@@ -84,7 +84,7 @@ export function ManagerHierarchyMtdPanel() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* MANAGER HIERARCHY */}
           <div>
-            <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
+            <div className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
               <TrendingUp className="h-3 w-3" /> Team production share
             </div>
             {mgrLoading ? (
@@ -103,7 +103,7 @@ export function ManagerHierarchyMtdPanel() {
                         <span className="text-sm font-medium truncate flex-1">{m.manager_name}</span>
                         <span className="text-xs font-mono text-emerald-300 ml-2">{fmtMoney(Number(m.team_alp_mtd))}</span>
                       </div>
-                      <div className="text-[10px] text-muted-foreground flex items-center justify-between">
+                      <div className="text-[11px] text-muted-foreground flex items-center justify-between">
                         <span>{m.team_size} team · {m.producing_team_mtd}/{m.team_size} producing · {m.team_deals_mtd} deals</span>
                         <span className="font-mono">{pct.toFixed(1)}%</span>
                       </div>
@@ -122,7 +122,7 @@ export function ManagerHierarchyMtdPanel() {
 
           {/* TOP PRODUCERS */}
           <div>
-            <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
+            <div className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
               <Trophy className="h-3 w-3" /> Top producers MTD
             </div>
             {prodLoading ? (
@@ -141,11 +141,11 @@ export function ManagerHierarchyMtdPanel() {
                     </span>
                     <div className="flex-1 min-w-0">
                       <div className="truncate">{p.display_name}</div>
-                      <div className="text-[10px] text-muted-foreground truncate">{p.manager_name}</div>
+                      <div className="text-[11px] text-muted-foreground truncate">{p.manager_name}</div>
                     </div>
                     <div className="text-right">
                       <div className="text-xs font-mono text-emerald-300">{fmtMoney(Number(p.alp_mtd))}</div>
-                      <div className="text-[10px] text-muted-foreground">{p.deals_mtd} deals</div>
+                      <div className="text-[11px] text-muted-foreground">{p.deals_mtd} deals</div>
                     </div>
                   </li>
                 ))}

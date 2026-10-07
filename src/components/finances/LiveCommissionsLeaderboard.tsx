@@ -72,7 +72,7 @@ export function LiveCommissionsLeaderboard() {
             <TabsTrigger value="ytd" className="text-xs px-3">YTD</TabsTrigger>
           </TabsList>
         </Tabs>
-        <Badge variant="outline" className="text-[10px]">
+        <Badge variant="outline" className="text-[11px]">
           {rows.length} producers · {fmt(totalLive)} estimated
         </Badge>
       </div>
@@ -128,17 +128,17 @@ export function LiveCommissionsLeaderboard() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-medium truncate">{r.agent_name}</span>
                     {r.isYou && (
-                      <Badge className="text-[10px] bg-primary text-primary-foreground">YOU</Badge>
+                      <Badge className="text-[11px] bg-primary text-primary-foreground">YOU</Badge>
                     )}
                   </div>
-                  <div className="text-[11px] text-muted-foreground tabular-nums">
+                  <div className="text-[12px] text-muted-foreground tabular-nums">
                     Unified production estimate
                   </div>
                 </div>
 
                 <div className="text-right shrink-0">
                   <div className="font-bold text-base tabular-nums">{fmt(r.amount)}</div>
-                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
                     {period}
                   </div>
                 </div>

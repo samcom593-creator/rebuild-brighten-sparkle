@@ -157,7 +157,7 @@ export default function Agencies() {
                 <div>
                   <div className="flex items-center gap-2 text-lg font-bold text-foreground">
                     <Building2 className="h-4 w-4 text-primary" /> {name}
-                    {t?.is_primary && <Badge variant="outline" className="border-primary/30 bg-primary/15 text-[10px] text-primary">MINE</Badge>}
+                    {t?.is_primary && <Badge variant="outline" className="border-primary/30 bg-primary/15 text-[11px] text-primary">MINE</Badge>}
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {producers.length} {producers.length === 1 ? "producer" : "producers"} in this window
@@ -168,12 +168,12 @@ export default function Agencies() {
                 <div className="flex flex-wrap gap-4 text-right">
                   <div>
                     <div className="text-xl font-extrabold tabular-nums text-foreground">{money(windowAp)}</div>
-                    <div className="text-[10.5px] uppercase tracking-[0.09em] text-muted-foreground">{window.label} · {windowPolicies} policies</div>
+                    <div className="text-[11.5px] uppercase tracking-[0.09em] text-muted-foreground">{window.label} · {windowPolicies} policies</div>
                   </div>
                   {(t?.owner_override_pct ?? 0) > 0 && (
                     <div>
                       <div className="text-xl font-extrabold tabular-nums text-primary">{money(Number(ovr ?? 0))}</div>
-                      <div className="text-[10.5px] uppercase tracking-[0.09em] text-muted-foreground">your override · {t?.owner_override_pct}%</div>
+                      <div className="text-[11.5px] uppercase tracking-[0.09em] text-muted-foreground">your override · {t?.owner_override_pct}%</div>
                     </div>
                   )}
                 </div>
@@ -207,8 +207,8 @@ export default function Agencies() {
                         <TableCell className="text-muted-foreground">{r.first_hop_name ?? "—"}</TableCell>
                         <TableCell>
                           {r.has_login
-                            ? <Badge variant="outline" className="border-border text-[10px] text-muted-foreground">has login</Badge>
-                            : <Badge variant="outline" className="border-amber-400/40 bg-amber-400/10 text-[10px] text-amber-300">never logs in</Badge>}
+                            ? <Badge variant="outline" className="border-border text-[11px] text-muted-foreground">has login</Badge>
+                            : <Badge variant="outline" className="border-amber-400/40 bg-amber-400/10 text-[11px] text-amber-300">never logs in</Badge>}
                         </TableCell>
                       </TableRow>
                     ))}

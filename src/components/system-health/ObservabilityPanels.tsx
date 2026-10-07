@@ -38,7 +38,7 @@ export function FunctionErrorsPanel() {
       <h3 className="font-bold text-sm mb-3 flex items-center gap-2">
         <AlertTriangle className="h-4 w-4 text-red-400" />
         Recent Function Errors
-        <Badge variant="outline" className="ml-auto text-[10px] h-5">
+        <Badge variant="outline" className="ml-auto text-[11px] h-5">
           {errors.length}
         </Badge>
       </h3>
@@ -59,7 +59,7 @@ export function FunctionErrorsPanel() {
                 <span className="font-mono font-semibold text-red-300 truncate">
                   {err.function_name}
                 </span>
-                <span className="text-[10px] text-muted-foreground shrink-0">
+                <span className="text-[11px] text-muted-foreground shrink-0">
                   {formatDistanceToNow(new Date(err.created_at), { addSuffix: true })}
                 </span>
               </div>
@@ -131,8 +131,8 @@ export function ClientErrorsPanel() {
       <h3 className="font-bold text-sm mb-3 flex items-center gap-2">
         <AlertTriangle className={crashes.length ? "h-4 w-4 text-red-400" : "h-4 w-4 text-emerald-400"} />
         Front-End Crashes
-        <span className="text-[11px] font-normal text-muted-foreground">last 30 days</span>
-        <Badge variant="outline" className="ml-auto text-[10px] h-5">
+        <span className="text-[12px] font-normal text-muted-foreground">last 30 days</span>
+        <Badge variant="outline" className="ml-auto text-[11px] h-5">
           {crashes.length}
         </Badge>
       </h3>
@@ -160,13 +160,13 @@ export function ClientErrorsPanel() {
                     <span className="font-semibold text-red-300">
                       {r.hits}× · {r.affected_users} user{r.affected_users === 1 ? "" : "s"}
                     </span>
-                    <span className="text-[11px] text-muted-foreground shrink-0">
+                    <span className="text-[12px] text-muted-foreground shrink-0">
                       {formatDistanceToNow(new Date(r.last_seen), { addSuffix: true })}
                     </span>
                   </div>
                   <div className="text-muted-foreground mt-0.5 line-clamp-2">{r.error_message}</div>
                   {r.latest_url && (
-                    <div className="text-[11px] text-muted-foreground/70 mt-0.5 truncate">
+                    <div className="text-[12px] text-muted-foreground/70 mt-0.5 truncate">
                       {r.latest_url}
                     </div>
                   )}
@@ -176,7 +176,7 @@ export function ClientErrorsPanel() {
           )}
 
           {stale.length > 0 && (
-            <div className="mt-3 border-t border-border/50 pt-2 text-[11px] text-muted-foreground">
+            <div className="mt-3 border-t border-border/50 pt-2 text-[12px] text-muted-foreground">
               {staleHits} stale-deploy chunk miss{staleHits === 1 ? "" : "es"} across {stale.length} asset
               {stale.length === 1 ? "" : "s"} — clients on a previous build. Self-healed by chunk recovery; not an incident.
             </div>
@@ -221,7 +221,7 @@ export function AuditLogPanel() {
       <h3 className="font-bold text-sm mb-3 flex items-center gap-2">
         <FileText className="h-4 w-4 text-emerald-400" />
         Recent Audit Activity
-        <Badge variant="outline" className="ml-auto text-[10px] h-5">
+        <Badge variant="outline" className="ml-auto text-[11px] h-5">
           {entries.length}
         </Badge>
       </h3>
@@ -242,7 +242,7 @@ export function AuditLogPanel() {
                 <span className="font-mono font-semibold text-emerald-300 truncate">
                   {e.action}
                 </span>
-                <span className="text-[10px] text-muted-foreground shrink-0">
+                <span className="text-[11px] text-muted-foreground shrink-0">
                   {formatDistanceToNow(new Date(e.created_at), { addSuffix: true })}
                 </span>
               </div>

@@ -537,7 +537,7 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-[12px] text-muted-foreground">
               This assignment is locked into the link and becomes their team hierarchy when they finish signup.
             </p>
           </div>
@@ -575,7 +575,7 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
                     )}
                   </div>
                   {pathLink && (
-                    <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+                    <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
                       Copy welcome email gives the assigned manager a ready-to-send message with the recruit’s private link, portal login, Slack, Discord, and exact next steps.
                     </p>
                   )}
@@ -583,7 +583,7 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
               </div>
           </div>
 
-          <div className="flex items-center gap-3 text-[11px] uppercase tracking-wider text-muted-foreground">
+          <div className="flex items-center gap-3 text-[12px] uppercase tracking-wider text-muted-foreground">
             <span className="h-px flex-1 bg-border" />
             Or add manually
             <span className="h-px flex-1 bg-border" />
@@ -656,7 +656,7 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
                 onChange={(e) => setNpn(e.target.value)}
                 placeholder="National Producer Number"
               />
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-[12px] text-muted-foreground">
                 Required — this is the proof of licensure. Free lookup at nipr.com.
               </p>
             </div>
@@ -706,7 +706,7 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
                   if (Number(event.target.value) <= 100) setSamApprovalRequested(false);
                 }}
               />
-              <p className="text-[11px] text-muted-foreground">50–100% is approved automatically. Default is 60%.</p>
+              <p className="text-[12px] text-muted-foreground">50–100% is approved automatically. Default is 60%.</p>
             </div>
 
             {Number(compPercentage) > 100 ? (
@@ -748,7 +748,7 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
                       >
                         <Icon className="h-5 w-5" />
                       </span>
-                      <span className="text-[11px] font-medium leading-tight text-muted-foreground">
+                      <span className="text-[12px] font-medium leading-tight text-muted-foreground">
                         {option.label}
                       </span>
                     </button>

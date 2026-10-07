@@ -42,7 +42,7 @@ const BAD = "text-rose-600 dark:text-rose-400";
 const NEUTRAL = "text-muted-foreground";
 
 /** A chip carries its meaning in the label; the surface stays neutral. */
-const CHIP_BASE = "shrink-0 border-border bg-muted/40 text-[10px] font-bold uppercase tracking-wide";
+const CHIP_BASE = "shrink-0 border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wide";
 
 /** Contact actions are the point of this page — full touch target on phones. */
 // The stale-applicant recovery script. Named so the SMS template is written
@@ -53,7 +53,7 @@ function recoveryScript(firstName: string): string {
 
 const CONTACT_CHIP =
   "inline-flex h-10 max-w-full items-center gap-1.5 rounded-md border border-border bg-card px-2.5 " +
-  "text-[11px] font-medium text-foreground transition-colors hover:bg-muted/30 " +
+  "text-[12px] font-medium text-foreground transition-colors hover:bg-muted/30 " +
   "focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)] sm:h-8";
 
 type Staleness = "fresh" | "stale" | "icy" | "cold";
@@ -249,7 +249,7 @@ function RecoveryRowCard({
     <li className="rounded-lg border border-border/60 bg-card/60 px-3 py-2.5 transition-colors hover:border-border hover:bg-card">
       <div className="flex items-start gap-3">
         <Avatar className="h-10 w-10 shrink-0 ring-1 ring-border/60" aria-label={fullName || "Applicant"}>
-          <AvatarFallback className="text-[11px] font-bold">
+          <AvatarFallback className="text-[12px] font-bold">
             {(row.firstName?.[0] ?? "?")}{(row.lastName?.[0] ?? "")}
           </AvatarFallback>
         </Avatar>
@@ -281,7 +281,7 @@ function RecoveryRowCard({
                 ) : null}
               </div>
 
-              <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] leading-relaxed text-muted-foreground">
+              <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px] leading-relaxed text-muted-foreground">
                 {row.city || row.state ? <span>{[row.city, row.state].filter(Boolean).join(", ")}</span> : null}
                 {row.managerName ? (
                   <span>Mgr: <span className="font-medium text-foreground">{row.managerName}</span></span>
@@ -290,7 +290,7 @@ function RecoveryRowCard({
               </p>
 
               {row.nextAction ? (
-                <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
+                <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
                   Next: <span className="font-medium text-foreground">{row.nextAction}</span>
                 </p>
               ) : null}
@@ -557,7 +557,7 @@ export default function StaleRecovery() {
             { label: "Open Stale", value: funnel?.stale_open_total ?? rows?.length ?? 0, tone: WARN },
           ].map((s) => (
             <div key={s.label} className="rounded-lg border border-border bg-card p-3 sm:p-4">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{s.label}</p>
+              <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{s.label}</p>
               <p className={cn("mt-2 text-2xl font-bold leading-none tabular-nums", s.tone)}>{s.value}</p>
             </div>
           ))}
@@ -597,15 +597,15 @@ export default function StaleRecovery() {
           <>
             <div className="mb-3 grid grid-cols-3 gap-3">
               <div className="rounded-lg border border-border bg-card p-3 sm:p-4">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Stalled total</p>
+                <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Stalled total</p>
                 <p className="mt-2 text-2xl font-bold leading-none tabular-nums">{queueTotal.toLocaleString()}</p>
               </div>
               <div className="rounded-lg border border-border bg-card p-3 sm:p-4">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Already in your list</p>
+                <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Already in your list</p>
                 <p className="mt-2 text-2xl font-bold leading-none tabular-nums">{overlapCount.toLocaleString()}</p>
               </div>
               <div className="rounded-lg border border-amber-500/35 bg-card p-3 sm:p-4">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Hidden until now</p>
+                <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Hidden until now</p>
                 <p className={cn("mt-2 text-2xl font-bold leading-none tabular-nums", WARN)}>
                   {surfacedRows.length.toLocaleString()}
                 </p>

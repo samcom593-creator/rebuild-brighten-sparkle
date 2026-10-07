@@ -203,7 +203,7 @@ export function ApplicationDispositionCluster({
             size="sm"
             aria-label="Log outreach"
             data-cc-action="log-outreach"
-            className="h-8 gap-1 px-2 text-[11px] text-muted-foreground hover:bg-primary/10 hover:text-primary"
+            className="h-8 gap-1 px-2 text-[12px] text-muted-foreground hover:bg-primary/10 hover:text-primary"
             onClick={(e) => e.stopPropagation()}
           >
             <ClipboardList className="h-3.5 w-3.5" />
@@ -215,7 +215,7 @@ export function ApplicationDispositionCluster({
           className="w-auto max-w-[min(92vw,28rem)] p-2"
           onClick={(e) => e.stopPropagation()}
         >
-          <p className="mb-2 px-1 text-[10px] uppercase tracking-widest text-muted-foreground">
+          <p className="mb-2 px-1 text-[11px] uppercase tracking-widest text-muted-foreground">
             Log outreach
           </p>
           <div className="flex flex-wrap items-center gap-1">
@@ -273,7 +273,7 @@ function DispositionButton({
       aria-label={label}
       data-cc-action={slug}
       className={cn(
-        "min-h-[44px] h-11 gap-1 px-2 text-[11px] sm:text-xs",
+        "min-h-[44px] h-11 gap-1 px-2 text-[12px] sm:text-xs",
         active && activeTone[tone],
       )}
       onClick={(e) => {
@@ -395,7 +395,7 @@ function EmailPopover({
           aria-label="Emailed"
           aria-pressed={!!externalBusy}
           data-cc-action="emailed"
-          className="min-h-[44px] h-11 gap-1 px-2 text-[11px] sm:text-xs border-emerald-500/30 hover:bg-emerald-500/10"
+          className="min-h-[44px] h-11 gap-1 px-2 text-[12px] sm:text-xs border-emerald-500/30 hover:bg-emerald-500/10"
           onClick={(e) => e.stopPropagation()}
         >
           <Mail className="h-3.5 w-3.5 shrink-0" />
@@ -407,7 +407,7 @@ function EmailPopover({
         className="w-72 space-y-2"
         onClick={(e) => e.stopPropagation()}
       >
-        <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
+        <p className="text-[11px] uppercase tracking-widest text-muted-foreground">
           Send email · {applicantEmail || "no email"}
         </p>
         <Button

@@ -14,7 +14,7 @@ export function ContentWheelSubNav({ active, onSelect }: Props) {
   return (
     <nav className="rounded-md border border-border bg-card/40  p-2 sticky top-4">
       <div className="px-3 py-2 border-b border-border/60 mb-2">
-        <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">The Wheel</p>
+        <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">The Wheel</p>
         <p className="text-sm font-semibold text-foreground">Working Modules</p>
       </div>
       <ul className="space-y-0.5">
@@ -33,13 +33,13 @@ export function ContentWheelSubNav({ active, onSelect }: Props) {
                     : "hover:bg-muted/40 text-muted-foreground border border-transparent",
                 )}
               >
-                <span className="font-mono text-[10px] mt-1 w-7 shrink-0 opacity-60">{m.number}</span>
+                <span className="font-mono text-[11px] mt-1 w-7 shrink-0 opacity-60">{m.number}</span>
                 <Icon className={cn("h-4 w-4 mt-0.5 shrink-0", isActive ? "text-primary" : "")} />
                 <span className="flex-1 min-w-0">
                   <span className={cn("block text-sm font-medium leading-tight", isActive ? "text-foreground" : "")}>
                     {m.label}
                   </span>
-                  <span className="block text-[11px] leading-snug text-muted-foreground/80 mt-0.5 truncate">
+                  <span className="block text-[12px] leading-snug text-muted-foreground/80 mt-0.5 truncate">
                     {m.short}
                   </span>
                 </span>
@@ -48,7 +48,7 @@ export function ContentWheelSubNav({ active, onSelect }: Props) {
           );
         })}
       </ul>
-      <div className="px-3 pt-3 mt-2 border-t border-border/60 text-[10px] uppercase tracking-[0.18em] text-muted-foreground/70 leading-snug">
+      <div className="px-3 pt-3 mt-2 border-t border-border/60 text-[11px] uppercase tracking-[0.18em] text-muted-foreground/70 leading-snug">
         Hold the Standard.<br />Average is the disease.
       </div>
     </nav>

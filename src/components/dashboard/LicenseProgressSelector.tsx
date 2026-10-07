@@ -177,7 +177,7 @@ export function LicenseProgressSelector({
             )}
             <span>{currentStep.label}</span>
             {progress === "test_scheduled" && selectedTestDate && (
-              <span className="text-[10px] opacity-70">
+              <span className="text-[11px] opacity-70">
                 ({format(selectedTestDate, "M/d")})
               </span>
             )}

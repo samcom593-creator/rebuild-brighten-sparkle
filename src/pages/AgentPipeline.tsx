@@ -82,7 +82,7 @@ function StatCard({
           <div>
             <p className={cn("text-2xl font-bold tabular-nums", color)}>{value}</p>
             <p className="text-xs text-muted-foreground leading-tight">{label}</p>
-            {sub && <p className="text-[10px] text-muted-foreground/60">{sub}</p>}
+            {sub && <p className="text-[11px] text-muted-foreground/60">{sub}</p>}
           </div>
         </div>
       </GlassCard>
@@ -102,7 +102,7 @@ function FunnelBar({ stages }: { stages: { label: string; count: number; color: 
       <div className="space-y-1.5">
         {stages.map((s) => (
           <div key={s.label} className="flex items-center gap-2">
-            <span className="text-[10px] text-muted-foreground w-24 truncate shrink-0">{s.label}</span>
+            <span className="text-[11px] text-muted-foreground w-24 truncate shrink-0">{s.label}</span>
             <div className="flex-1 h-2 bg-muted/40 rounded-full overflow-hidden">
               <motion.div
                 className={cn("h-full rounded-full", s.color)}
@@ -111,7 +111,7 @@ function FunnelBar({ stages }: { stages: { label: string; count: number; color: 
                 transition={{ duration: 0.6, ease: "easeOut" }}
               />
             </div>
-            <span className="text-[10px] text-muted-foreground w-5 text-right shrink-0">{s.count}</span>
+            <span className="text-[11px] text-muted-foreground w-5 text-right shrink-0">{s.count}</span>
           </div>
         ))}
       </div>
@@ -505,18 +505,18 @@ export default function AgentPipeline() {
               >
                 {app.first_name} {app.last_name}
               </h3>
-              <Badge variant="outline" className={cn("text-[10px]", badgeStyle)}>
+              <Badge variant="outline" className={cn("text-[11px]", badgeStyle)}>
                 <Clock className="h-2.5 w-2.5 mr-1" />
                 {contactLabel}
               </Badge>
               {atRisk && (
-                <Badge className="bg-red-500/15 text-red-400 border-red-500/30 text-[10px]">
+                <Badge className="bg-red-500/15 text-red-400 border-red-500/30 text-[11px]">
                   <Flame className="h-2.5 w-2.5 mr-1" />
                   At Risk
                 </Badge>
               )}
               {app.lead_score != null && app.lead_score >= 70 && (
-                <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 text-[10px]">
+                <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 text-[11px]">
                   <Zap className="h-2.5 w-2.5 mr-1" />
                   Hot Lead
                 </Badge>
@@ -802,7 +802,7 @@ export default function AgentPipeline() {
                           {apps.length}
                         </Badge>
                         {hasRisk && (
-                          <Badge className="bg-red-500/15 text-red-400 border-red-500/30 text-[10px]">
+                          <Badge className="bg-red-500/15 text-red-400 border-red-500/30 text-[11px]">
                             <Flame className="h-2.5 w-2.5 mr-0.5" />
                             {apps.filter(isAtRisk).length}
                           </Badge>

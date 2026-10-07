@@ -227,7 +227,7 @@ export function LeadDetailSheet({ lead, open, onOpenChange, onRefresh }: LeadDet
                 <MapPin className="h-3 w-3" /> {location}
               </span>
             )}
-            <Badge variant="outline" className="text-[10px]">
+            <Badge variant="outline" className="text-[11px]">
               {lead.license_progress || "unlicensed"}
             </Badge>
           </SheetDescription>
@@ -300,9 +300,9 @@ export function LeadDetailSheet({ lead, open, onOpenChange, onRefresh }: LeadDet
                           <p className="text-xs font-medium leading-tight">{a.title}</p>
                           <div className="flex items-center gap-2 mt-0.5">
                             {a.actor_name && (
-                              <span className="text-[10px] text-muted-foreground">{a.actor_name}</span>
+                              <span className="text-[11px] text-muted-foreground">{a.actor_name}</span>
                             )}
-                            <span className="text-[10px] text-muted-foreground">
+                            <span className="text-[11px] text-muted-foreground">
                               {formatDistanceToNow(new Date(a.created_at), { addSuffix: true })}
                             </span>
                           </div>

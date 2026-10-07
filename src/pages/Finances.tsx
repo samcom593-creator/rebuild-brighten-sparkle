@@ -176,7 +176,7 @@ function KpiCard({ label, value, sub, accent }: { label: string; value: string; 
   return (
     <Card>
       <CardContent className="p-5">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+        <p className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
         <p className={cn("mt-2 text-3xl font-bold tabular-nums", accent ? "text-primary" : "text-foreground")}>{value}</p>
         <p className="mt-1.5 text-xs text-muted-foreground">{sub}</p>
       </CardContent>
@@ -187,7 +187,7 @@ function KpiCard({ label, value, sub, accent }: { label: string; value: string; 
 function TypeCard({ icon: Icon, label, value, sub, tone }: { icon: React.ElementType; label: string; value: string; sub: string; tone: string }) {
   return (
     <div className="rounded-lg border border-border bg-background/40 p-4">
-      <p className={cn("flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide", tone)}>
+      <p className={cn("flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-wide", tone)}>
         <Icon className="h-3.5 w-3.5" /> {label}
       </p>
       <p className="mt-2 text-2xl font-bold tabular-nums text-foreground">{value}</p>
@@ -279,7 +279,7 @@ function OverviewTab({ scope }: { scope: FinScope }) {
       {/* Commission types quad */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Commission types</CardTitle>
+          <CardTitle className="text-[12px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Commission types</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-3 grid-cols-2 lg:grid-cols-4">
           <TypeCard icon={DollarSign} label="Direct YTD" value={money(q.direct_ytd)} sub="Advance + trail, estimated" tone="text-primary" />
@@ -292,7 +292,7 @@ function OverviewTab({ scope }: { scope: FinScope }) {
       {/* 12-month rolling forecast */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">12-month rolling forecast</CardTitle>
+          <CardTitle className="text-[12px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">12-month rolling forecast</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="h-64">
@@ -331,7 +331,7 @@ function OverviewTab({ scope }: { scope: FinScope }) {
       <Card>
         <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
           <div>
-            <CardTitle className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Estimated commission activity</CardTitle>
+            <CardTitle className="text-[12px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Estimated commission activity</CardTitle>
             <p className="mt-1 text-xs text-muted-foreground">Posted production for this scope; not a carrier-paid receipt</p>
           </div>
           <Button variant="outline" size="sm" onClick={exportCsv} disabled={payoutRows.length === 0}>
@@ -359,7 +359,7 @@ function OverviewTab({ scope }: { scope: FinScope }) {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-border text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  <tr className="border-b border-border text-left text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
                     <th className="py-2 pr-3">Date</th><th className="py-2 pr-3">Agent</th><th className="py-2 pr-3">Client</th>
                     <th className="py-2 pr-3">Carrier</th><th className="hidden py-2 pr-3 md:table-cell">Product</th>
                     <th className="py-2 pr-3 text-right">AP</th><th className="py-2 text-right">Est. payout</th>
@@ -371,7 +371,7 @@ function OverviewTab({ scope }: { scope: FinScope }) {
                       <td className="py-2 pr-3 tabular-nums text-muted-foreground">{r.date}</td>
                       <td className="max-w-36 py-2 pr-3">
                         <span className="block truncate">{r.agent ?? "—"}</span>
-                        <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{r.component.replace("team_", "")}</span>
+                        <span className="text-[11px] uppercase tracking-wide text-muted-foreground">{r.component.replace("team_", "")}</span>
                       </td>
                       <td className="max-w-36 truncate py-2 pr-3">{r.client ?? "—"}</td>
                       <td className="max-w-28 truncate py-2 pr-3 text-muted-foreground">{r.carrier ?? "—"}</td>
@@ -390,7 +390,7 @@ function OverviewTab({ scope }: { scope: FinScope }) {
       {/* Breakdown */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Breakdown</CardTitle>
+          <CardTitle className="text-[12px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Breakdown</CardTitle>
         </CardHeader>
         <CardContent>
           <Tabs value={breakTab} onValueChange={setBreakTab}>
@@ -410,7 +410,7 @@ function OverviewTab({ scope }: { scope: FinScope }) {
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="border-b border-border text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        <tr className="border-b border-border text-left text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
                           <th className="py-2 pr-3">{key === "by_month" ? "Month" : key === "by_agent_overrides" ? "Agent" : key === "by_product" ? "Product" : "Carrier"}</th>
                           <th className="py-2 pr-3 text-right">Deals</th>
                           <th className="py-2 pr-3 text-right">Annual premium</th>

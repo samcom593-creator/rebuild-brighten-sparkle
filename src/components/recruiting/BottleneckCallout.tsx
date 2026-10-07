@@ -17,7 +17,7 @@ export function BottleneckCallout({
 }: BottleneckCalloutProps) {
   return (
     <div className="rounded-3xl bg-amber-500/10 border border-amber-500/20 px-5 py-4">
-      <div className="text-[11px] uppercase tracking-wider text-amber-300/80 font-semibold">
+      <div className="text-[12px] uppercase tracking-wider text-amber-300/80 font-semibold">
         Biggest drop this week
       </div>
       <div className="text-lg font-bold text-amber-100 mt-1">{headline}</div>

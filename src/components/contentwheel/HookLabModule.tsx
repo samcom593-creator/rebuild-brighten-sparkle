@@ -110,7 +110,7 @@ export function HookLabModule() {
       <Card className="p-5 bg-white dark:bg-card border-amber-500/20">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <p className="text-[10px] uppercase tracking-[0.18em] text-amber-400/80">Module 03 · the 3 C's gate</p>
+            <p className="text-[11px] uppercase tracking-[0.18em] text-amber-400/80">Module 03 · the 3 C's gate</p>
             <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
               <Hash className="h-6 w-6 text-amber-300" /> Hook Lab
             </h2>
@@ -202,7 +202,7 @@ export function HookLabModule() {
               <div className="font-mono text-xs text-amber-300 mt-0.5 shrink-0">{h.variant_label}</div>
               <div className="flex-1 min-w-0">
                 <div className="text-sm leading-snug">{h.text}</div>
-                <div className="flex flex-wrap items-center gap-1.5 mt-2 text-[10px] uppercase tracking-[0.1em]">
+                <div className="flex flex-wrap items-center gap-1.5 mt-2 text-[11px] uppercase tracking-[0.1em]">
                   {h.cw_ideas?.cw_pillars && (
                     <Badge variant="outline" className="border-amber-500/30 text-amber-300/90">
                       {h.cw_ideas.cw_pillars.code}

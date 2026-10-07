@@ -46,7 +46,7 @@ function ownerText(item: CalendarItem, viewerUserId: string | null, ownerNames: 
 
 function KindLabel({ kind }: { kind: string }) {
   const label = kind === "onboarding_call" ? "Onboarding" : kind.replace(/_/g, " ");
-  return <Badge variant="outline" className="shrink-0 text-[10px] capitalize">{label}</Badge>;
+  return <Badge variant="outline" className="shrink-0 text-[11px] capitalize">{label}</Badge>;
 }
 
 /**
@@ -103,10 +103,10 @@ export function AgendaList({
                       <>
                         <span className="font-medium text-foreground">{t.eventLabel}</span>
                         {t.zoneUnknown && item.agenda?.source_table === "interview_events" && (
-                          <span className="block text-[10px] text-muted-foreground">zone not recorded</span>
+                          <span className="block text-[11px] text-muted-foreground">zone not recorded</span>
                         )}
                         {t.viewerLabel && (
-                          <span className="block text-[11px] text-muted-foreground">
+                          <span className="block text-[12px] text-muted-foreground">
                             {t.viewerLabel} your time{t.viewerDay ? ` · ${t.viewerDay}` : ""}
                           </span>
                         )}
@@ -125,12 +125,12 @@ export function AgendaList({
                         <span className="truncate text-sm font-medium text-foreground">{item.title}</span>
                       )}
                       {item.status && STATUS_CLASS[item.status] && (
-                        <Badge variant="outline" className={cn("text-[10px] capitalize", STATUS_CLASS[item.status])}>
+                        <Badge variant="outline" className={cn("text-[11px] capitalize", STATUS_CLASS[item.status])}>
                           {item.status.replace(/_/g, " ")}
                         </Badge>
                       )}
                     </div>
-                    <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+                    <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[12px] text-muted-foreground">
                       {item.subtitle && <span className="capitalize">{item.subtitle}</span>}
                       {owner && <span>Owner: {owner}</span>}
                       {reminder && <span className={REMINDER_TONE[reminder.tone]}>{reminder.label}</span>}

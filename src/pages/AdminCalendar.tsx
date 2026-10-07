@@ -166,11 +166,11 @@ function DraggableBlock({ block, isMobile, onToggle, onDelete, onEdit, onGoogle,
           </Button>
         </div>
       </div>
-      <div className="flex items-center gap-1 mt-0.5 text-[10px] text-muted-foreground">
+      <div className="flex items-center gap-1 mt-0.5 text-[11px] text-muted-foreground">
         <Clock className="h-2.5 w-2.5" />
         {formatHour(block.start_hour)} – {formatHour(block.end_hour)}
       </div>
-      {block.notes && <p className="text-[10px] text-muted-foreground/70 mt-0.5 truncate">{block.notes}</p>}
+      {block.notes && <p className="text-[11px] text-muted-foreground/70 mt-0.5 truncate">{block.notes}</p>}
     </motion.div>
   );
 }
@@ -627,7 +627,7 @@ export default function AdminCalendar() {
                     <div className={cn("w-2 h-2 rounded-full", cat.color)} />
                     <span className="text-sm font-medium">{activeBlock.title}</span>
                   </div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">
+                  <div className="text-[11px] text-muted-foreground mt-0.5">
                     {formatHour(activeBlock.start_hour)} – {formatHour(activeBlock.end_hour)}
                   </div>
                 </div>
@@ -672,7 +672,7 @@ export default function AdminCalendar() {
                     <div className={cn("w-2 h-2 rounded-full flex-shrink-0", cat.color)} />
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">{b.title}</p>
-                      <p className="text-[10px] text-muted-foreground">{formatHour(b.start_hour)} – {formatHour(b.end_hour)} · {cat.label}</p>
+                      <p className="text-[11px] text-muted-foreground">{formatHour(b.start_hour)} – {formatHour(b.end_hour)} · {cat.label}</p>
                     </div>
                   </div>
                   <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-red-400" onClick={() => removeParsedBlock(i)}>
@@ -795,7 +795,7 @@ export default function AdminCalendar() {
                     <div className={cn("w-2 h-2 rounded-full flex-shrink-0", cat.color)} />
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">{rb.title}</p>
-                      <p className="text-[10px] text-muted-foreground">
+                      <p className="text-[11px] text-muted-foreground">
                         {formatHour(rb.start_hour)} – {formatHour(rb.end_hour)} · {rb.recurrence_type === "daily" ? "Every day" : `Every ${DAY_NAMES[rb.day_of_week ?? 0]}`}
                       </p>
                     </div>

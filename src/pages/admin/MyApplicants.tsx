@@ -227,7 +227,7 @@ export default function MyApplicants() {
                           <div className="font-medium flex items-center gap-2 flex-wrap">
                             {r.first_name} {r.last_name}
                             {overdue ? (
-                              <Badge variant="outline" className="border-rose-600/40 text-rose-300 text-[10px]">
+                              <Badge variant="outline" className="border-rose-600/40 text-rose-300 text-[11px]">
                                 <AlertTriangle className="h-3 w-3 mr-1" /> {hrs}h, no call
                               </Badge>
                             ) : null}
@@ -244,7 +244,7 @@ export default function MyApplicants() {
                               </a>
                             ) : null}
                             {r.state ? <span>{r.state}</span> : null}
-                            <span className="uppercase text-[10px] tracking-wider">{r.license_status}</span>
+                            <span className="uppercase text-[11px] tracking-wider">{r.license_status}</span>
                           </div>
                         </td>
                         <td className="p-3">

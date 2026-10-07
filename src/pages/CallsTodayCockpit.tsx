@@ -316,9 +316,9 @@ function CallsTodayHero({ calls, todayCalls }: { calls: ScheduledCall[]; todayCa
             <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
             <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
           </span>
-          <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-emerald-300">DIAL SHEET · LIVE</p>
+          <p className="text-[12px] uppercase tracking-[0.32em] font-bold text-emerald-300">DIAL SHEET · LIVE</p>
           {nextCall && (
-            <p className="text-[11px] text-white/50 ml-auto tabular-nums">
+            <p className="text-[12px] text-white/50 ml-auto tabular-nums">
               Next up · {formatDistanceToNowStrict(new Date(nextCall.start_at))} · {nextCall.prospect_name ?? "Untitled"}
             </p>
           )}
@@ -329,67 +329,67 @@ function CallsTodayHero({ calls, todayCalls }: { calls: ScheduledCall[]; todayCa
           <div>
             <div className="flex items-center gap-1.5 mb-1.5">
               <PhoneCall className="h-3 w-3 text-amber-400" />
-              <p className="text-[10px] uppercase tracking-widest text-white/50 font-bold">TODAY</p>
+              <p className="text-[11px] uppercase tracking-widest text-white/50 font-bold">TODAY</p>
             </div>
             <p className="text-[32px] sm:text-[40px] leading-none font-black tabular-nums text-foreground">{stats.total}</p>
-            <p className="text-[10px] text-white/50 mt-1 tabular-nums">{stats.total === 1 ? "call scheduled" : "calls scheduled"}</p>
+            <p className="text-[11px] text-white/50 mt-1 tabular-nums">{stats.total === 1 ? "call scheduled" : "calls scheduled"}</p>
           </div>
           <div>
             <div className="flex items-center gap-1.5 mb-1.5">
               <CheckCircle2 className="h-3 w-3 text-emerald-400" />
-              <p className="text-[10px] uppercase tracking-widest text-white/50 font-bold">CONNECTED</p>
+              <p className="text-[11px] uppercase tracking-widest text-white/50 font-bold">CONNECTED</p>
             </div>
             <p className="text-[32px] sm:text-[40px] leading-none font-black tabular-nums text-emerald-300">{stats.connected}</p>
-            <p className="text-[10px] text-white/50 mt-1 tabular-nums">
+            <p className="text-[11px] text-white/50 mt-1 tabular-nums">
               {stats.total > 0 ? `${Math.round((stats.connected / stats.total) * 100)}% contact rate` : "—"}
             </p>
           </div>
           <div>
             <div className="flex items-center gap-1.5 mb-1.5">
               <Timer className="h-3 w-3 text-amber-400" />
-              <p className="text-[10px] uppercase tracking-widest text-white/50 font-bold">AVG DURATION</p>
+              <p className="text-[11px] uppercase tracking-widest text-white/50 font-bold">AVG DURATION</p>
             </div>
             <p className="text-[32px] sm:text-[40px] leading-none font-black tabular-nums text-amber-300">
               {stats.avgDuration ?? "—"}
               {stats.avgDuration !== null && <span className="text-[16px] font-bold text-white/60 ml-1">m</span>}
             </p>
-            <p className="text-[10px] text-white/50 mt-1 tabular-nums">per connected call</p>
+            <p className="text-[11px] text-white/50 mt-1 tabular-nums">per connected call</p>
           </div>
           <div>
             <div className="flex items-center gap-1.5 mb-1.5">
               <CalendarPlus className="h-3 w-3 text-emerald-400" />
-              <p className="text-[10px] uppercase tracking-widest text-white/50 font-bold">BOOKED</p>
+              <p className="text-[11px] uppercase tracking-widest text-white/50 font-bold">BOOKED</p>
             </div>
             <p className="text-[32px] sm:text-[40px] leading-none font-black tabular-nums text-emerald-300">{stats.booked}</p>
-            <p className="text-[10px] text-white/50 mt-1 tabular-nums">appointments set</p>
+            <p className="text-[11px] text-white/50 mt-1 tabular-nums">appointments set</p>
           </div>
         </div>
 
         {/* inner glass band · sub-stats */}
         <div className="grid gap-3 grid-cols-2 sm:grid-cols-4 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
           <div>
-            <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">QUEUE</p>
+            <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">QUEUE</p>
             <p className="text-[22px] leading-none font-bold tabular-nums text-foreground">{calls.length}</p>
-            <p className="text-[10px] text-white/40 tabular-nums">total upcoming</p>
+            <p className="text-[11px] text-white/40 tabular-nums">total upcoming</p>
           </div>
           <div>
-            <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">REMAINING</p>
+            <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">REMAINING</p>
             <p className="text-[22px] leading-none font-bold tabular-nums text-foreground">{Math.max(0, stats.total - stats.connected)}</p>
-            <p className="text-[10px] text-white/40 tabular-nums">still to dial</p>
+            <p className="text-[11px] text-white/40 tabular-nums">still to dial</p>
           </div>
           <div>
-            <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">CLOSE RATE</p>
+            <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">CLOSE RATE</p>
             <p className="text-[22px] leading-none font-bold tabular-nums text-foreground">
               {stats.connected > 0 ? `${Math.round((stats.booked / stats.connected) * 100)}%` : "—"}
             </p>
-            <p className="text-[10px] text-foreground/40 tabular-nums">booked / connected</p>
+            <p className="text-[11px] text-foreground/40 tabular-nums">booked / connected</p>
           </div>
           <div>
-            <p className="text-[10px] uppercase tracking-widest text-foreground/40 mb-1">NEXT UP</p>
+            <p className="text-[11px] uppercase tracking-widest text-foreground/40 mb-1">NEXT UP</p>
             <p className="text-[22px] leading-none font-bold tabular-nums text-foreground">
               {nextCall ? formatDistanceToNowStrict(new Date(nextCall.start_at)) : "—"}
             </p>
-            <p className="text-[10px] text-foreground/40 tabular-nums truncate">{nextCall?.prospect_name ?? "no call yet"}</p>
+            <p className="text-[11px] text-foreground/40 tabular-nums truncate">{nextCall?.prospect_name ?? "no call yet"}</p>
           </div>
         </div>
       </div>

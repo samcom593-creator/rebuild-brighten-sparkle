@@ -42,7 +42,7 @@ export function IPhoneShortcutsSection() {
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-semibold">{s.name}</div>
                 <div className="text-xs text-muted-foreground truncate">{s.description}</div>
-                <code className="text-[11px] text-muted-foreground truncate block">{url}</code>
+                <code className="text-[12px] text-muted-foreground truncate block">{url}</code>
               </div>
               <Button size="sm" variant="outline" onClick={() => copy(s.name, url)} className="shrink-0" aria-label={`Copy ${s.name} link`} title="Copy link">
                 <Copy className="h-3.5 w-3.5" aria-hidden="true" />
@@ -52,7 +52,7 @@ export function IPhoneShortcutsSection() {
         })}
       </div>
 
-      <p className="text-[11px] text-muted-foreground mt-4 leading-relaxed">
+      <p className="text-[12px] text-muted-foreground mt-4 leading-relaxed">
         <strong>How to add:</strong> Open <em>Shortcuts</em> → + → <em>Add Action</em> → search "Open URL" →
         paste link → name it → share to Home Screen.
       </p>

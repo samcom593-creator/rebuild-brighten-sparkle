@@ -61,7 +61,7 @@ export function AddPhotoPrompt() {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <h3 className="text-base font-bold">Add your photo</h3>
-            <span className="text-[10px] uppercase tracking-widest text-primary bg-primary/15 px-2 py-0.5 rounded-full border border-primary/30">Unlocks plaques</span>
+            <span className="text-[11px] uppercase tracking-widest text-primary bg-primary/15 px-2 py-0.5 rounded-full border border-primary/30">Unlocks plaques</span>
           </div>
           <p className="text-xs md:text-sm text-muted-foreground">
             Every APEX plaque you earn gets rendered with your photo. Right now yours shows just your initials — takes 15 seconds to fix.

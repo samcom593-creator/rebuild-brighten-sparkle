@@ -118,22 +118,22 @@ const calledToday = (r: Row) =>
 function StatusBadges({ r }: { r: Row }) {
   return (
     <>
-      <Badge variant="outline" className={cn("text-[11px]", STAGE_TONE[r.stage])}>{STAGE_LABEL[r.stage]}</Badge>
-      {r.agent_status === "terminated" && <Badge variant="outline" className="border-rose-500/50 text-[11px] text-rose-300">Terminated in system</Badge>}
-      {r.agent_status === "inactive" && <Badge variant="outline" className="border-amber-500/50 text-[11px] text-amber-300">Inactive in system</Badge>}
-      {!r.is_agent && <Badge variant="outline" className="text-[11px]">Not an agent yet · {r.source}</Badge>}
+      <Badge variant="outline" className={cn("text-[12px]", STAGE_TONE[r.stage])}>{STAGE_LABEL[r.stage]}</Badge>
+      {r.agent_status === "terminated" && <Badge variant="outline" className="border-rose-500/50 text-[12px] text-rose-300">Terminated in system</Badge>}
+      {r.agent_status === "inactive" && <Badge variant="outline" className="border-amber-500/50 text-[12px] text-amber-300">Inactive in system</Badge>}
+      {!r.is_agent && <Badge variant="outline" className="text-[12px]">Not an agent yet · {r.source}</Badge>}
       {r.license_status === "licensed" ? (
-        <Badge variant="outline" className="text-[11px]">Licensed</Badge>
+        <Badge variant="outline" className="text-[12px]">Licensed</Badge>
       ) : r.license_status ? (
-        <Badge variant="outline" className="text-[11px] text-muted-foreground">Not licensed</Badge>
+        <Badge variant="outline" className="text-[12px] text-muted-foreground">Not licensed</Badge>
       ) : null}
       {r.npn ? (
-        <span className="text-[11px] text-muted-foreground">NPN {r.npn}</span>
+        <span className="text-[12px] text-muted-foreground">NPN {r.npn}</span>
       ) : (
-        <Badge variant="outline" className="border-rose-500/40 text-[11px] text-rose-300">No NPN</Badge>
+        <Badge variant="outline" className="border-rose-500/40 text-[12px] text-rose-300">No NPN</Badge>
       )}
       {r.producing && (
-        <span className="text-[11px] text-emerald-300">{r.deals_30d} deal{r.deals_30d === 1 ? "" : "s"} in 30 days</span>
+        <span className="text-[12px] text-emerald-300">{r.deals_30d} deal{r.deals_30d === 1 ? "" : "s"} in 30 days</span>
       )}
     </>
   );
@@ -300,7 +300,7 @@ export function ContractingCheckinPanel() {
             { label: "Ready for training", value: `${flaggedReady}/${flagged.length}` },
           ].map((s) => (
             <div key={s.label} className="rounded-lg border border-border bg-background/40 px-3 py-2">
-              <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{s.label}</div>
+              <div className="text-[12px] uppercase tracking-wider text-muted-foreground">{s.label}</div>
               <div className="text-xl font-semibold tabular-nums">{s.value}</div>
             </div>
           ))}
@@ -410,7 +410,7 @@ export function ContractingCheckinPanel() {
                           disabled={busy}
                           onClick={() => save(r, s.step, !on)}
                           className={cn(
-                            "rounded-md border px-2 py-1 text-[11px] transition",
+                            "rounded-md border px-2 py-1 text-[12px] transition",
                             on ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-300" : "border-border text-muted-foreground hover:text-foreground",
                           )}
                         >
@@ -512,7 +512,7 @@ function CallCard(props: {
           )}
 
           <div>
-            <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">How did the call go?</div>
+            <div className="mb-2 text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">How did the call go?</div>
             <div className="flex flex-wrap gap-2">
               {OUTCOMES.map((o) => (
                 <button
@@ -523,7 +523,7 @@ function CallCard(props: {
                   className={cn("inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition disabled:opacity-50", o.tone)}
                 >
                   <o.icon className="h-4 w-4" /> {o.label}
-                  <span className="ml-1 rounded bg-black/20 px-1 text-[10px] opacity-70">{o.hotkey}</span>
+                  <span className="ml-1 rounded bg-black/20 px-1 text-[11px] opacity-70">{o.hotkey}</span>
                 </button>
               ))}
             </div>
@@ -538,7 +538,7 @@ function CallCard(props: {
 
         <div className="space-y-4">
           <div>
-            <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Contracts</div>
+            <div className="mb-2 text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">Contracts</div>
             <div className="space-y-2">
               {STEPS.map((s) => {
                 const at = r[s.field];
@@ -557,14 +557,14 @@ function CallCard(props: {
                       {at && <Check className="h-3.5 w-3.5" />}
                     </span>
                     <span className="flex-1 text-sm font-medium">{s.label}</span>
-                    {at && <span className="text-[11px] text-muted-foreground">{formatTimeAgo(at)}</span>}
+                    {at && <span className="text-[12px] text-muted-foreground">{formatTimeAgo(at)}</span>}
                   </button>
                 );
               })}
             </div>
           </div>
           <div>
-            <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Notes</div>
+            <div className="mb-2 text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">Notes</div>
             <textarea
               key={`${r.agent_id ?? r.checkin_id}-${r.note ?? ""}`}
               defaultValue={r.note ?? ""}

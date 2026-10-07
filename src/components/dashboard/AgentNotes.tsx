@@ -198,7 +198,7 @@ export function AgentNotes({ agentId, onNoteAdded, readOnly = false }: AgentNote
             >
               <p className="text-foreground leading-relaxed">{note.note}</p>
               <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-                <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-medium text-primary">
+                <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-[11px] font-medium text-primary">
                   {note.createdBy.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
                 </div>
                 <span>{note.createdBy}</span>

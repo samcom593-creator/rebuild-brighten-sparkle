@@ -175,7 +175,7 @@ export default function AgentLinkSync() {
             Run now
           </Button>
         </div>
-        <div className="text-[10px] text-muted-foreground">
+        <div className="text-[11px] text-muted-foreground">
           Cookie is stored in your project's <span className="font-mono">system_settings</span> (service-role only).
           Live pull runs through the secure Edge sync and writes one audit row per run.
         </div>

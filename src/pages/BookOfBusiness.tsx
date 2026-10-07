@@ -1334,7 +1334,7 @@ export default function BookOfBusiness() {
               {kpi.chargebackWatch > 0 && (
                 <Badge
                   variant="outline"
-                  className="ml-2 border-destructive-foreground/30 bg-destructive-foreground/15 text-[10px] font-bold tabular-nums text-destructive-foreground"
+                  className="ml-2 border-destructive-foreground/30 bg-destructive-foreground/15 text-[11px] font-bold tabular-nums text-destructive-foreground"
                 >
                   {kpi.chargebackWatch}
                 </Badge>
@@ -1400,7 +1400,7 @@ export default function BookOfBusiness() {
                     inForce ? "border-emerald-500/35" : "border-border",
                   )}
                 >
-                  <div className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                  <div className="truncate text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                     {label}
                   </div>
                   <div
@@ -1415,14 +1415,14 @@ export default function BookOfBusiness() {
                   >
                     {fmt$(Number(seg.annual_premium ?? 0))}
                   </div>
-                  <div className="mt-1 text-[11px] tabular-nums text-muted-foreground">
+                  <div className="mt-1 text-[12px] tabular-nums text-muted-foreground">
                     {Number(seg.policies ?? 0).toLocaleString()} policies
                     {seg.producers != null
                       ? ` · ${Number(seg.producers).toLocaleString()} producers`
                       : ""}
                   </div>
                   {note && (
-                    <div className="mt-1 text-[10px] leading-relaxed text-muted-foreground">
+                    <div className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
                       {note}
                     </div>
                   )}
@@ -1486,7 +1486,7 @@ export default function BookOfBusiness() {
                             >
                               {overall ? "All carriers" : row.carrier}
                             </div>
-                            <div className="mt-0.5 truncate text-[11px] tabular-nums text-muted-foreground">
+                            <div className="mt-0.5 truncate text-[12px] tabular-nums text-muted-foreground">
                               {Number(row.in_force ?? 0).toLocaleString()} in
                               force · {Number(row.lapsed ?? 0).toLocaleString()}{" "}
                               lapsed
@@ -1503,7 +1503,7 @@ export default function BookOfBusiness() {
                             >
                               {pct.toFixed(1)}%
                             </div>
-                            <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                            <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                               still paying
                             </div>
                           </div>
@@ -1549,7 +1549,7 @@ export default function BookOfBusiness() {
                             <div className="truncate text-sm font-medium text-foreground">
                               {row.name}
                             </div>
-                            <div className="mt-0.5 truncate text-[11px] tabular-nums text-muted-foreground">
+                            <div className="mt-0.5 truncate text-[12px] tabular-nums text-muted-foreground">
                               {fmt$(Number(row.in_force_alp ?? 0))} in force
                             </div>
                           </div>
@@ -1564,7 +1564,7 @@ export default function BookOfBusiness() {
                             >
                               {pct.toFixed(1)}%
                             </div>
-                            <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                            <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                               of book
                             </div>
                           </div>
@@ -1669,7 +1669,7 @@ export default function BookOfBusiness() {
                 {activeFilterCount > 0 && (
                   <Badge
                     variant="outline"
-                    className="ml-2 border-primary/30 bg-primary/10 text-[10px] font-bold tabular-nums text-primary"
+                    className="ml-2 border-primary/30 bg-primary/10 text-[11px] font-bold tabular-nums text-primary"
                   >
                     {activeFilterCount}
                   </Badge>
@@ -1850,7 +1850,7 @@ export default function BookOfBusiness() {
                 {dealsSourceCount != null &&
                   dealsSourceCount > deals.length && (
                     <span
-                      className="ml-2 text-[10px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400"
+                      className="ml-2 text-[11px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400"
                       title={`Client fetch is capped at ${AGENTLINK_SNAPSHOT_ROW_CAP.toLocaleString()} rows per load. ${(dealsSourceCount - deals.length).toLocaleString()} rows exist in the database but are not in the table below. Narrow filters to see the rest.`}
                     >
                       · capped (
@@ -1862,7 +1862,7 @@ export default function BookOfBusiness() {
             )}
           </div>
           {truth?.last_synced_at && (
-            <span className="shrink-0 text-[11px] text-muted-foreground">
+            <span className="shrink-0 text-[12px] text-muted-foreground">
               AgentLink history imported{" "}
               {formatDistanceToNowStrict(new Date(truth.last_synced_at), {
                 addSuffix: true,
@@ -1877,7 +1877,7 @@ export default function BookOfBusiness() {
         <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
           <table className="w-full min-w-[920px] text-sm">
             <thead>
-              <tr className="border-b border-border text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+              <tr className="border-b border-border text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                 <th className="px-2 py-2 text-left">Client</th>
                 <th className="px-2 py-2 text-left">Agent</th>
                 <th className="px-2 py-2 text-left">Policy #</th>
@@ -1980,7 +1980,7 @@ export default function BookOfBusiness() {
                           {inCbWindow && (
                             <Badge
                               variant="outline"
-                              className="shrink-0 gap-0.5 border-rose-500/35 bg-rose-500/10 px-1.5 py-0 text-[10px] font-bold tabular-nums text-rose-600 dark:text-rose-400"
+                              className="shrink-0 gap-0.5 border-rose-500/35 bg-rose-500/10 px-1.5 py-0 text-[11px] font-bold tabular-nums text-rose-600 dark:text-rose-400"
                             >
                               <AlertTriangle className="h-2.5 w-2.5" />
                               {daysEff}d
@@ -2006,7 +2006,7 @@ export default function BookOfBusiness() {
                         )}
                       </td>
                       <td className="max-w-[140px] px-2 py-2">
-                        <div className="truncate font-mono text-[11px] tabular-nums text-muted-foreground">
+                        <div className="truncate font-mono text-[12px] tabular-nums text-muted-foreground">
                           {d.policy_number}
                         </div>
                       </td>
@@ -2030,7 +2030,7 @@ export default function BookOfBusiness() {
                           ? fmt$(Number(d.annual_premium))
                           : "—"}
                       </td>
-                      <td className="px-2 py-2 text-[11px] text-muted-foreground">
+                      <td className="px-2 py-2 text-[12px] text-muted-foreground">
                         {posted ? (
                           <div className="min-w-0">
                             <div className="truncate tabular-nums">
@@ -2038,7 +2038,7 @@ export default function BookOfBusiness() {
                                 addSuffix: true,
                               })}
                             </div>
-                            <div className="mt-0.5 truncate text-[10px] tabular-nums">
+                            <div className="mt-0.5 truncate text-[11px] tabular-nums">
                               {postedIsFallback ? "Synced " : ""}
                               {format(new Date(posted), "MMM d, yyyy")}
                             </div>
@@ -2051,14 +2051,14 @@ export default function BookOfBusiness() {
                         <Badge
                           variant="outline"
                           className={cn(
-                            "px-2 py-0 text-[10px] font-bold",
+                            "px-2 py-0 text-[11px] font-bold",
                             STAGE_COLORS[pipelineStageKey(d)] ?? STAGE_NEUTRAL,
                           )}
                         >
                           {stageDisplayLabel(d)}
                         </Badge>
                         {d.insuracloud_sync_error && (
-                          <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400">
+                          <div className="mt-1 text-[11px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400">
                             sync issue
                           </div>
                         )}
@@ -2076,7 +2076,7 @@ export default function BookOfBusiness() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-48">
-                            <DropdownMenuLabel className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                            <DropdownMenuLabel className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                               Actions
                             </DropdownMenuLabel>
                             <DropdownMenuItem
@@ -2185,7 +2185,7 @@ function KpiCard({
     <>
       <div className="mb-2 flex items-center gap-2">
         <span className="shrink-0 text-muted-foreground">{icon}</span>
-        <span className="min-w-0 truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+        <span className="min-w-0 truncate text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
           {label}
         </span>
       </div>
@@ -2198,7 +2198,7 @@ function KpiCard({
         {value}
       </div>
       {sub && (
-        <div className="mt-1 truncate text-[11px] tabular-nums text-muted-foreground">
+        <div className="mt-1 truncate text-[12px] tabular-nums text-muted-foreground">
           {sub}
         </div>
       )}
@@ -2231,7 +2231,7 @@ function FilterField({
 }) {
   return (
     <div className="space-y-1">
-      <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+      <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
         {label}
       </p>
       {children}
@@ -2311,21 +2311,21 @@ function PolicyDetailDrawer({
             <Badge
               variant="outline"
               className={cn(
-                "px-2 py-0 text-[10px] font-bold",
+                "px-2 py-0 text-[11px] font-bold",
                 STAGE_COLORS[pipelineStageKey(deal)] ?? STAGE_NEUTRAL,
               )}
             >
               {stageDisplayLabel(deal)}
             </Badge>
             {deal.policy_number && (
-              <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
+              <span className="font-mono text-[12px] tabular-nums text-muted-foreground">
                 #{deal.policy_number}
               </span>
             )}
             {deal.carrier_name && (
               <>
                 <span className="text-muted-foreground">·</span>
-                <span className="min-w-0 truncate text-[11px] text-muted-foreground">
+                <span className="min-w-0 truncate text-[12px] text-muted-foreground">
                   {deal.carrier_name}
                 </span>
               </>
@@ -2496,19 +2496,19 @@ function PolicyDetailDrawer({
                       <span className="min-w-0 truncate text-sm font-medium text-foreground">
                         {t.channel ?? "log"}
                       </span>
-                      <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
+                      <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
                         {t.logged_at
                           ? format(new Date(t.logged_at), "MMM d, yyyy HH:mm")
                           : "—"}
                       </span>
                     </div>
                     {t.outcome && (
-                      <div className="mt-0.5 text-[11px] text-muted-foreground">
+                      <div className="mt-0.5 text-[12px] text-muted-foreground">
                         {t.outcome}
                       </div>
                     )}
                     {t.notes && (
-                      <div className="mt-1 break-words text-[11px] leading-relaxed text-foreground">
+                      <div className="mt-1 break-words text-[12px] leading-relaxed text-foreground">
                         {t.notes}
                       </div>
                     )}
@@ -2545,7 +2545,7 @@ function PolicyDetailDrawer({
 
           {clientLoading && (
             <div className="space-y-2">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                 Loading full client profile
               </p>
               <div className="h-[76px] animate-pulse rounded-lg bg-muted/30" />
@@ -2616,7 +2616,7 @@ function DrawerSection({
 }) {
   return (
     <div className="space-y-2">
-      <h3 className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+      <h3 className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
         {title}
       </h3>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">{children}</div>
@@ -2635,7 +2635,7 @@ function DrawerRow({
     return null;
   return (
     <div className="min-w-0 rounded-lg border border-border/60 bg-card/60 px-3 py-2.5">
-      <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+      <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
         {label}
       </p>
       <p className="mt-0.5 break-words text-sm font-medium tabular-nums text-foreground">
@@ -2727,7 +2727,7 @@ function ChargebackWatchDrawer({
         <div className="mt-4 space-y-5">
           {/* Active risk window */}
           <div className="space-y-2">
-            <h3 className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+            <h3 className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
               {atRisk
                 ? "Closest to chargeback"
                 : `Active ${CHARGEBACK_WINDOW_DAYS}-day window`}
@@ -2739,13 +2739,13 @@ function ChargebackWatchDrawer({
                   <div className="text-2xl font-bold leading-none tabular-nums text-rose-600 dark:text-rose-400">
                     {activeWatch.toLocaleString()}
                   </div>
-                  <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                  <div className="mt-1 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                     {atRisk
                       ? "Policies signalling lapse"
                       : "Policies still in cliff window"}
                   </div>
                   {atRisk && exposure > 0 && (
-                    <div className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
+                    <div className="mt-1.5 text-[12px] leading-relaxed text-muted-foreground">
                       <span className="font-semibold text-rose-600 dark:text-rose-400">
                         {fmt$(exposure)}
                       </span>{" "}
@@ -2768,12 +2768,12 @@ function ChargebackWatchDrawer({
                         <div className="truncate text-sm font-medium text-foreground">
                           {c.client_name || "—"}
                           {c.policy_number && (
-                            <span className="ml-2 font-mono text-[10px] tabular-nums text-muted-foreground">
+                            <span className="ml-2 font-mono text-[11px] tabular-nums text-muted-foreground">
                               #{c.policy_number}
                             </span>
                           )}
                         </div>
-                        <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                        <div className="mt-0.5 truncate text-[12px] text-muted-foreground">
                           {c.agent_name || "—"} · {c.carrier || "—"} ·{" "}
                           {c.status || "—"}
                         </div>
@@ -2782,7 +2782,7 @@ function ChargebackWatchDrawer({
                         <div className="text-sm font-bold tabular-nums text-rose-600 dark:text-rose-400">
                           {fmt$(Number(c.est_clawback_exposure ?? 0))}
                         </div>
-                        <div className="text-[10px] font-bold uppercase tracking-wide tabular-nums text-muted-foreground">
+                        <div className="text-[11px] font-bold uppercase tracking-wide tabular-nums text-muted-foreground">
                           {Number(c.months_in_force ?? 0).toFixed(1)}mo in force
                         </div>
                       </div>
@@ -2813,12 +2813,12 @@ function ChargebackWatchDrawer({
                           <div className="truncate text-sm font-medium text-foreground">
                             {d.client_first_name} {d.client_last_name}
                             {d.policy_number && (
-                              <span className="ml-2 font-mono text-[10px] tabular-nums text-muted-foreground">
+                              <span className="ml-2 font-mono text-[11px] tabular-nums text-muted-foreground">
                                 #{d.policy_number}
                               </span>
                             )}
                           </div>
-                          <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                          <div className="mt-0.5 truncate text-[12px] text-muted-foreground">
                             {d.agent_name} · {d.carrier_name || "—"} · Eff{" "}
                             {d.effective_date
                               ? format(new Date(d.effective_date), "MMM d")
@@ -2829,7 +2829,7 @@ function ChargebackWatchDrawer({
                           <div className="text-sm font-bold tabular-nums text-rose-600 dark:text-rose-400">
                             {daysEff}d in
                           </div>
-                          <div className="text-[10px] font-bold uppercase tracking-wide tabular-nums text-muted-foreground">
+                          <div className="text-[11px] font-bold uppercase tracking-wide tabular-nums text-muted-foreground">
                             {d.annual_premium
                               ? fmt$(Number(d.annual_premium))
                               : "—"}{" "}
@@ -2852,7 +2852,7 @@ function ChargebackWatchDrawer({
               </ul>
             )}
             {!atRisk && (
-              <p className="text-[11px] leading-relaxed text-amber-600 dark:text-amber-400">
+              <p className="text-[12px] leading-relaxed text-amber-600 dark:text-amber-400">
                 Showing the effective-date window because the chargeback-watch
                 view did not load. That list counts healthy new business too —
                 treat it as a rough proxy, not the real risk list.
@@ -2862,7 +2862,7 @@ function ChargebackWatchDrawer({
 
           {/* Historical chargebacks */}
           <div className="space-y-2">
-            <h3 className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+            <h3 className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
               Historical chargebacks
             </h3>
             <div className="flex flex-wrap items-center gap-2">
@@ -2921,7 +2921,7 @@ function ChargebackWatchDrawer({
 
             <div className="grid grid-cols-3 gap-3">
               <div className="min-w-0 rounded-lg border border-border bg-card p-3">
-                <div className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                <div className="truncate text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                   Count
                 </div>
                 <div className="mt-1 text-2xl font-bold leading-none tabular-nums text-rose-600 dark:text-rose-400">
@@ -2929,7 +2929,7 @@ function ChargebackWatchDrawer({
                 </div>
               </div>
               <div className="min-w-0 rounded-lg border border-border bg-card p-3">
-                <div className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                <div className="truncate text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                   Monthly
                 </div>
                 <div className="mt-1 text-2xl font-bold leading-none tabular-nums text-rose-600 dark:text-rose-400">
@@ -2937,7 +2937,7 @@ function ChargebackWatchDrawer({
                 </div>
               </div>
               <div className="min-w-0 rounded-lg border border-border bg-card p-3">
-                <div className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                <div className="truncate text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                   ALP
                 </div>
                 <div className="mt-1 text-2xl font-bold leading-none tabular-nums text-rose-600 dark:text-rose-400">
@@ -2963,12 +2963,12 @@ function ChargebackWatchDrawer({
                       <div className="truncate text-sm font-medium text-foreground">
                         {c.client_first_name} {c.client_last_name}
                         {c.policy_number && (
-                          <span className="ml-2 font-mono text-[10px] tabular-nums text-muted-foreground">
+                          <span className="ml-2 font-mono text-[11px] tabular-nums text-muted-foreground">
                             #{c.policy_number}
                           </span>
                         )}
                       </div>
-                      <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                      <div className="mt-0.5 truncate text-[12px] text-muted-foreground">
                         {c.agent_name} · {c.carrier_name || "—"} ·{" "}
                         {c.status_updated_at
                           ? format(new Date(c.status_updated_at), "MMM d, yyyy")
@@ -2982,7 +2982,7 @@ function ChargebackWatchDrawer({
                           : "—"}
                         /mo
                       </div>
-                      <div className="text-[10px] font-bold uppercase tracking-wide tabular-nums text-muted-foreground">
+                      <div className="text-[11px] font-bold uppercase tracking-wide tabular-nums text-muted-foreground">
                         {c.annual_premium
                           ? fmt$(Number(c.annual_premium))
                           : "—"}{" "}

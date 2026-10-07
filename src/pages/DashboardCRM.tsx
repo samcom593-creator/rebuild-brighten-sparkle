@@ -341,7 +341,7 @@ function CompactExpandedRow({ agent, onRefresh, onDeactivate, onViewApp, onEditL
       <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" className={cn("text-[10px] font-bold uppercase tracking-wide", agent.agentLicenseStatus === "licensed" ? "border-success/30 bg-success/15 text-success" : "bg-muted text-muted-foreground")}>
+            <Badge variant="outline" className={cn("text-[11px] font-bold uppercase tracking-wide", agent.agentLicenseStatus === "licensed" ? "border-success/30 bg-success/15 text-success" : "bg-muted text-muted-foreground")}>
               {agent.agentLicenseStatus === "licensed" ? "Licensed" : "Unlicensed"}
             </Badge>
             {agent.agentLicenseStatus !== "licensed" && (
@@ -360,7 +360,7 @@ function CompactExpandedRow({ agent, onRefresh, onDeactivate, onViewApp, onEditL
           </div>
           {agent.userId && <AgentTrainingStageBar agentId={agent.id} />}
           <details className="group">
-            <summary className="flex min-h-10 cursor-pointer select-none items-center gap-2 rounded-md py-2 text-[10px] font-bold uppercase tracking-wide text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)] sm:min-h-0">
+            <summary className="flex min-h-10 cursor-pointer select-none items-center gap-2 rounded-md py-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)] sm:min-h-0">
               <KeyRound className="h-4 w-4 shrink-0 text-muted-foreground" />
               Access &amp; Credentials
               <ChevronRight className="h-4 w-4 shrink-0 transition-base group-open:rotate-90" />
@@ -595,8 +595,8 @@ function OnboardingProgress({ row }: { row: RosterRow }) {
   return (
     <div className="min-w-[120px]">
       <div className="flex items-center gap-1.5">
-        <span className={cn("text-[11px] font-semibold", done ? "text-success" : "text-foreground")}>{label}</span>
-        <span className="text-[10px] tabular-nums text-muted-foreground">{step + 1}/5</span>
+        <span className={cn("text-[12px] font-semibold", done ? "text-success" : "text-foreground")}>{label}</span>
+        <span className="text-[11px] tabular-nums text-muted-foreground">{step + 1}/5</span>
       </div>
       <div className="mt-1 flex gap-0.5" aria-label={`Onboarding step ${step + 1} of 5: ${label}`}>
         {ONBOARDING_LADDER.map((name, i) => (
@@ -621,7 +621,7 @@ function RosterStatusBadge({ row }: { row: RosterRow }) {
     : s === "terminated" ? "border-destructive/30 bg-destructive/10 text-destructive"
     : "bg-muted text-muted-foreground";
   return (
-    <Badge variant="outline" className={cn("text-[10px] font-bold uppercase tracking-wide", tone)}>
+    <Badge variant="outline" className={cn("text-[11px] font-bold uppercase tracking-wide", tone)}>
       {s}
     </Badge>
   );
@@ -773,7 +773,7 @@ function RosterPanel({ rows, isLoading, isError, onRetry }: {
               >
                 <Icon className="h-4 w-4 shrink-0" />
                 {seg.label}
-                <Badge variant="outline" className="h-4 px-1.5 text-[10px] font-bold tabular-nums">{count}</Badge>
+                <Badge variant="outline" className="h-4 px-1.5 text-[11px] font-bold tabular-nums">{count}</Badge>
               </button>
             );
           })}
@@ -814,7 +814,7 @@ function RosterPanel({ rows, isLoading, isError, onRetry }: {
           <div className="-mx-4 overflow-x-auto sm:mx-0">
             <Table className="min-w-[1300px]">
               <TableHeader>
-                <TableRow className="border-b border-border hover:bg-transparent [&_th]:h-9 [&_th]:text-[10px] [&_th]:font-bold [&_th]:uppercase [&_th]:tracking-wide [&_th]:text-muted-foreground">
+                <TableRow className="border-b border-border hover:bg-transparent [&_th]:h-9 [&_th]:text-[11px] [&_th]:font-bold [&_th]:uppercase [&_th]:tracking-wide [&_th]:text-muted-foreground">
                   <TableHead className="w-[270px] px-2">Agent &amp; contact</TableHead>
                   <TableHead className="w-[120px] px-2">Upline</TableHead>
                   <TableHead className="w-[100px] px-2">Status</TableHead>
@@ -852,7 +852,7 @@ function RosterPanel({ rows, isLoading, isError, onRetry }: {
                               {isSyncOnly(r) && (
                                 <Badge
                                   variant="outline"
-                                  className="h-4 shrink-0 border-amber-500/50 bg-amber-500/10 px-1.5 text-[9px] font-bold uppercase tracking-wide text-amber-500 ring-1 ring-amber-500/20"
+                                  className="h-4 shrink-0 border-amber-500/50 bg-amber-500/10 px-1.5 text-[10px] font-bold uppercase tracking-wide text-amber-500 ring-1 ring-amber-500/20"
                                   title="Placeholder seat, not a person. Minted by the Discord deal ingest to hold production it could not match to an agent — no login, no onboarding path, nothing to chase."
                                 >
                                   <Link2 className="mr-1 h-2.5 w-2.5 shrink-0" />
@@ -862,7 +862,7 @@ function RosterPanel({ rows, isLoading, isError, onRetry }: {
                               {r.free_leads_qualified && (
                                 <Badge
                                   variant="outline"
-                                  className="h-4 shrink-0 border-sky-500/50 bg-sky-500/10 px-1.5 text-[9px] font-bold uppercase tracking-wide text-sky-400 ring-1 ring-sky-500/20"
+                                  className="h-4 shrink-0 border-sky-500/50 bg-sky-500/10 px-1.5 text-[10px] font-bold uppercase tracking-wide text-sky-400 ring-1 ring-sky-500/20"
                                   title={r.free_leads_reason ?? "Free Leads active"}
                                 >
                                   <span className="mr-1 h-1.5 w-1.5 rounded-full bg-sky-400" />
@@ -871,30 +871,30 @@ function RosterPanel({ rows, isLoading, isError, onRetry }: {
                               )}
                             </div>
                             {r.email ? (
-                              <a href={`mailto:${r.email}`} className="block truncate text-[11px] text-muted-foreground hover:text-primary hover:underline">
+                              <a href={`mailto:${r.email}`} className="block truncate text-[12px] text-muted-foreground hover:text-primary hover:underline">
                                 <Mail className="mr-1 inline h-3 w-3" />{r.email}
                               </a>
-                            ) : <p className="truncate text-[11px] italic text-muted-foreground">No email on file</p>}
+                            ) : <p className="truncate text-[12px] italic text-muted-foreground">No email on file</p>}
                             {r.phone ? (
-                              <a href={phoneHref(r.phone) ?? `tel:${r.phone}`} {...contactLinkProps(phoneHref(r.phone))} className="block truncate text-[11px] tabular-nums text-muted-foreground hover:text-primary hover:underline">
+                              <a href={phoneHref(r.phone) ?? `tel:${r.phone}`} {...contactLinkProps(phoneHref(r.phone))} className="block truncate text-[12px] tabular-nums text-muted-foreground hover:text-primary hover:underline">
                                 <Phone className="mr-1 inline h-3 w-3" />{r.phone}
                               </a>
-                            ) : <p className="truncate text-[11px] italic text-muted-foreground">No phone on file</p>}
+                            ) : <p className="truncate text-[12px] italic text-muted-foreground">No phone on file</p>}
                             {r.agent_code && (
-                              <p className="truncate text-[11px] tabular-nums text-muted-foreground/70">{r.agent_code}</p>
+                              <p className="truncate text-[12px] tabular-nums text-muted-foreground/70">{r.agent_code}</p>
                             )}
                           </div>
                         </div>
                       </TableCell>
                       <TableCell className="px-2 py-2">
-                        <span className="inline-block max-w-[112px] truncate text-[11px] text-muted-foreground">
+                        <span className="inline-block max-w-[112px] truncate text-[12px] text-muted-foreground">
                           {r.manager_name ?? "—"}
                         </span>
                       </TableCell>
                       <TableCell className="px-2 py-2"><RosterStatusBadge row={r} /></TableCell>
                       <TableCell className="px-2 py-2">
                         <Badge variant="outline" className={cn(
-                          "text-[10px] font-bold uppercase tracking-wide",
+                          "text-[11px] font-bold uppercase tracking-wide",
                           r.license_status === "licensed" ? "border-success/30 bg-success/15 text-success" : "bg-muted text-muted-foreground",
                         )}>
                           {r.license_status ?? "unknown"}
@@ -904,26 +904,26 @@ function RosterPanel({ rows, isLoading, isError, onRetry }: {
                       <TableCell className="px-2 py-2">
                         {(r.today_deals ?? 0) > 0 ? (
                           <div>
-                            <Badge variant="outline" className="border-success/30 bg-success/15 text-[10px] font-bold uppercase tracking-wide text-success">
+                            <Badge variant="outline" className="border-success/30 bg-success/15 text-[11px] font-bold uppercase tracking-wide text-success">
                               Sold today
                             </Badge>
-                            <p className="mt-0.5 text-[10px] tabular-nums text-muted-foreground">
+                            <p className="mt-0.5 text-[11px] tabular-nums text-muted-foreground">
                               {usdOrNull(r.today_alp) ?? "$0"} · {r.today_deals} {r.today_deals === 1 ? "deal" : "deals"}
                             </p>
                           </div>
                         ) : (
-                          <Badge variant="outline" className="bg-muted text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                          <Badge variant="outline" className="bg-muted text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                             No sale today
                           </Badge>
                         )}
                       </TableCell>
                       <TableCell className="px-2 py-2 text-center">
                         {(r.selling_streak_days ?? 0) > 0 ? (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-warning/30 bg-warning/10 px-2 py-1 text-[11px] font-bold tabular-nums text-warning">
+                          <span className="inline-flex items-center gap-1 rounded-full border border-warning/30 bg-warning/10 px-2 py-1 text-[12px] font-bold tabular-nums text-warning">
                             <Flame className="h-3.5 w-3.5" /> {r.selling_streak_days}d
                           </span>
                         ) : (
-                          <span className="text-[11px] text-muted-foreground">—</span>
+                          <span className="text-[12px] text-muted-foreground">—</span>
                         )}
                       </TableCell>
                       <TableCell className="px-2 py-2 text-right">
@@ -931,7 +931,7 @@ function RosterPanel({ rows, isLoading, isError, onRetry }: {
                           {mtd ?? "—"}
                         </span>
                         {(r.mtd_deals ?? 0) > 0 && (
-                          <span className="ml-1 text-[10px] tabular-nums text-muted-foreground">×{r.mtd_deals}</span>
+                          <span className="ml-1 text-[11px] tabular-nums text-muted-foreground">×{r.mtd_deals}</span>
                         )}
                       </TableCell>
                       <TableCell className="px-2 py-2 text-right">
@@ -940,13 +940,13 @@ function RosterPanel({ rows, isLoading, isError, onRetry }: {
                       <TableCell className="px-2 py-2 text-right">
                         <span className={cn("text-sm tabular-nums", life ? "text-foreground" : "text-muted-foreground")}>{life ?? "—"}</span>
                         {(r.lifetime_deals ?? 0) > 0 && (
-                          <span className="ml-1 text-[10px] tabular-nums text-muted-foreground">×{r.lifetime_deals}</span>
+                          <span className="ml-1 text-[11px] tabular-nums text-muted-foreground">×{r.lifetime_deals}</span>
                         )}
                       </TableCell>
                       <TableCell className="px-2 py-2">
                         {r.last_posted_date ? (
                           <span className={cn(
-                            "text-[11px] font-medium tabular-nums",
+                            "text-[12px] font-medium tabular-nums",
                             sinceSale !== null && sinceSale >= 60 ? "text-rose-600 dark:text-rose-400"
                               : sinceSale !== null && sinceSale >= 14 ? "text-amber-600 dark:text-amber-400"
                               : "text-emerald-600 dark:text-emerald-400",
@@ -954,11 +954,11 @@ function RosterPanel({ rows, isLoading, isError, onRetry }: {
                             {r.last_posted_date}{sinceSale !== null && <span className="ml-1 text-muted-foreground">· {sinceSale}d</span>}
                           </span>
                         ) : (
-                          <span className="text-[11px] italic text-muted-foreground">never sold</span>
+                          <span className="text-[12px] italic text-muted-foreground">never sold</span>
                         )}
                       </TableCell>
                       <TableCell className="px-2 py-2 text-right">
-                        <span className="text-[11px] tabular-nums text-muted-foreground">
+                        <span className="text-[12px] tabular-nums text-muted-foreground">
                           {r.tenure_days === null || r.tenure_days === undefined ? "—" : `${r.tenure_days}d`}
                         </span>
                       </TableCell>
@@ -1857,10 +1857,10 @@ export default function DashboardCRM() {
     return (
       <TableCell className="px-2 py-2">
         <div className="flex min-w-0 max-w-[200px] flex-col gap-1">
-          <Badge variant="outline" className={cn("w-fit text-[10px] font-bold uppercase tracking-wide", badge.className)}>
+          <Badge variant="outline" className={cn("w-fit text-[11px] font-bold uppercase tracking-wide", badge.className)}>
             {badge.text}
           </Badge>
-          <span className="truncate text-[11px] font-medium text-foreground" title={nba.reason}>{nba.action}</span>
+          <span className="truncate text-[12px] font-medium text-foreground" title={nba.reason}>{nba.action}</span>
         </div>
       </TableCell>
     );
@@ -1883,7 +1883,7 @@ export default function DashboardCRM() {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-52">
-          <DropdownMenuLabel className="truncate text-[11px]">{agent.name}</DropdownMenuLabel>
+          <DropdownMenuLabel className="truncate text-[12px]">{agent.name}</DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => setViewAppTarget({ agentId: agent.id, applicationId: agent.applicationId })}>
             <FileText className="h-3.5 w-3.5 mr-2" /> View application
@@ -1997,18 +1997,18 @@ export default function DashboardCRM() {
     return (
       <>
         <TableCell className="px-2 py-2">
-          <span className="inline-block max-w-[110px] truncate text-[11px] text-muted-foreground">
+          <span className="inline-block max-w-[110px] truncate text-[12px] text-muted-foreground">
             {agent.managerName?.split(" ")[0] || "—"}
           </span>
         </TableCell>
         <TableCell className="px-2 py-2">
-          <Badge variant="outline" className="max-w-[104px] truncate text-[10px] font-bold uppercase tracking-wide">{stageLabel}</Badge>
+          <Badge variant="outline" className="max-w-[104px] truncate text-[11px] font-bold uppercase tracking-wide">{stageLabel}</Badge>
         </TableCell>
         <TableCell className="px-2 py-2">
           <Badge
             variant="outline"
             className={cn(
-              "text-[10px] font-bold uppercase tracking-wide",
+              "text-[11px] font-bold uppercase tracking-wide",
               isLicensed
                 ? "border-success/30 bg-success/15 text-success"
                 : "bg-muted text-muted-foreground",
@@ -2067,7 +2067,7 @@ export default function DashboardCRM() {
           </span>
         </TableCell>
         <TableCell className="px-2 py-2">
-          <span className={cn("text-[11px] font-medium tabular-nums", activityColor)}>{lastActivityLabel}</span>
+          <span className={cn("text-[12px] font-medium tabular-nums", activityColor)}>{lastActivityLabel}</span>
         </TableCell>
         {renderNBACell(agent)}
         {renderKebabActions(agent)}
@@ -2157,7 +2157,7 @@ export default function DashboardCRM() {
             Open by default because it is the working list during a check-in. */}
         {(isAdmin || isManager || isVaManager || isVa) && (
           <details open className="group rounded-lg border border-border bg-card [&[open]_.chev]:rotate-180">
-            <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground hover:text-foreground">
+            <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-[12px] font-semibold uppercase tracking-[0.15em] text-muted-foreground hover:text-foreground">
               Contracting call list · call, log it, tick contracts off
               <ChevronDown className="chev ml-auto h-4 w-4 transition-transform" />
             </summary>
@@ -2178,7 +2178,7 @@ export default function DashboardCRM() {
             first thing on screen; the surfaces are kept, not deleted. */}
         {(isAdmin || isManager) && (
           <details className="group rounded-lg border border-border bg-card [&[open]_.chev]:rotate-180">
-            <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground hover:text-foreground">
+            <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-[12px] font-semibold uppercase tracking-[0.15em] text-muted-foreground hover:text-foreground">
               Roster health · just hired, onboarding roll call, AgentLink history links
               <ChevronDown className="chev ml-auto h-4 w-4 transition-transform" />
             </summary>
@@ -2191,7 +2191,7 @@ export default function DashboardCRM() {
         )}
         {isAdmin && (
           <details className="group rounded-lg border border-border bg-card [&[open]_.chev]:rotate-180">
-            <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground hover:text-foreground">
+            <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-[12px] font-semibold uppercase tracking-[0.15em] text-muted-foreground hover:text-foreground">
               Engagement · who logged in, emails sent, course progress
               <ChevronDown className="chev ml-auto h-4 w-4 transition-transform" />
             </summary>
@@ -2200,7 +2200,7 @@ export default function DashboardCRM() {
         )}
         {isAdmin && (
           <details className="group rounded-lg border border-border bg-card [&[open]_.chev]:rotate-180">
-            <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground hover:text-foreground">
+            <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-[12px] font-semibold uppercase tracking-[0.15em] text-muted-foreground hover:text-foreground">
               Brand funnel leads · mentorship, fitness, rentals, collabs
               <ChevronDown className="chev ml-auto h-4 w-4 transition-transform" />
             </summary>
@@ -2243,13 +2243,13 @@ export default function DashboardCRM() {
                   <Icon className="h-4 w-4 shrink-0" />
                   {m.label}
                   {m.count !== null && (
-                    <Badge variant="outline" className="h-4 px-1.5 text-[10px] font-bold tabular-nums">{m.count}</Badge>
+                    <Badge variant="outline" className="h-4 px-1.5 text-[11px] font-bold tabular-nums">{m.count}</Badge>
                   )}
                 </button>
               );
             })}
           </div>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-[12px] text-muted-foreground">
             {crmView === "roster"
               ? "Canonical roster — every hired agent, segmented by what they are actually doing."
               : "Recruiting funnel — hired agents plus open applications, so counts here exceed team size by design."}
@@ -2275,7 +2275,7 @@ export default function DashboardCRM() {
             />
             {selectedAgents.size > 0 && (
               <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card p-3 sm:p-4">
-                <span className="mr-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">More actions</span>
+                <span className="mr-1 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">More actions</span>
                 <Button
                   size="sm"
                   variant="outline"
@@ -2373,7 +2373,7 @@ export default function DashboardCRM() {
               >
                 <X className="h-4 w-4 shrink-0" />
                 Clear filters
-                <Badge variant="secondary" className="ml-1 h-4 px-1.5 text-[10px] font-bold tabular-nums">
+                <Badge variant="secondary" className="ml-1 h-4 px-1.5 text-[11px] font-bold tabular-nums">
                   {activeFilterCount}
                 </Badge>
               </Button>
@@ -2416,7 +2416,7 @@ export default function DashboardCRM() {
                       {section.label}
                       <Badge
                         variant="outline"
-                        className="h-4 px-1.5 text-[10px] font-bold tabular-nums"
+                        className="h-4 px-1.5 text-[11px] font-bold tabular-nums"
                       >
                         {count}
                       </Badge>
@@ -2468,7 +2468,7 @@ export default function DashboardCRM() {
                     <div className="-mx-4 sm:mx-0">
                       <Table className="min-w-[900px]">
                         <TableHeader>
-                          <TableRow className="border-b border-border hover:bg-transparent [&_th]:h-9 [&_th]:text-[10px] [&_th]:font-bold [&_th]:uppercase [&_th]:tracking-wide [&_th]:text-muted-foreground">
+                          <TableRow className="border-b border-border hover:bg-transparent [&_th]:h-9 [&_th]:text-[11px] [&_th]:font-bold [&_th]:uppercase [&_th]:tracking-wide [&_th]:text-muted-foreground">
                             {bulkMode && <TableHead className="w-8 px-2" />}
                             {getTableHeaders(section.key)}
                           </TableRow>
@@ -2514,10 +2514,10 @@ export default function DashboardCRM() {
                                           <AgentNameLink agentId={agent.id}>{agent.name}</AgentNameLink>
                                         </p>
                                         <div className="mt-0.5 flex flex-wrap items-center gap-1">
-                                          {duplicateAgentIds.has(agent.id) && <Badge variant="outline" className="h-4 border-amber-500/20 bg-amber-500/10 px-1 text-[10px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400">Dupe</Badge>}
-                                          {!agent.avatarUrl && <Badge variant="outline" className="h-4 border-rose-500/20 bg-rose-500/10 px-1 text-[10px] font-bold uppercase tracking-wide text-rose-600 dark:text-rose-400">📷 Photo</Badge>}
+                                          {duplicateAgentIds.has(agent.id) && <Badge variant="outline" className="h-4 border-amber-500/20 bg-amber-500/10 px-1 text-[11px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400">Dupe</Badge>}
+                                          {!agent.avatarUrl && <Badge variant="outline" className="h-4 border-rose-500/20 bg-rose-500/10 px-1 text-[11px] font-bold uppercase tracking-wide text-rose-600 dark:text-rose-400">📷 Photo</Badge>}
                                           {agent.aiScoreTier && (
-                                            <Badge variant="outline" className={cn("h-4 px-1 text-[10px] font-bold uppercase tracking-wide", {
+                                            <Badge variant="outline" className={cn("h-4 px-1 text-[11px] font-bold uppercase tracking-wide", {
                                               "border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-400": agent.aiScoreTier === "hot",
                                               "border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400": agent.aiScoreTier === "warm",
                                               "bg-muted text-muted-foreground": agent.aiScoreTier === "cool" || agent.aiScoreTier === "cold",
@@ -2526,11 +2526,11 @@ export default function DashboardCRM() {
                                             </Badge>
                                           )}
                                           {agent.managerId && agent.managerName && agent.managerId !== currentAgentId && (
-                                            <Badge variant="outline" className="h-4 max-w-[96px] truncate px-1.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{agent.managerName.split(" ")[0]}</Badge>
+                                            <Badge variant="outline" className="h-4 max-w-[96px] truncate px-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{agent.managerName.split(" ")[0]}</Badge>
                                           )}
                                         </div>
-                                        <p className="truncate text-[11px] text-muted-foreground">{agent.email}</p>
-                                        {agent.phone && <p className="cursor-text select-all truncate text-[11px] tabular-nums text-muted-foreground" onClick={e => e.stopPropagation()}>{agent.phone}</p>}
+                                        <p className="truncate text-[12px] text-muted-foreground">{agent.email}</p>
+                                        {agent.phone && <p className="cursor-text select-all truncate text-[12px] tabular-nums text-muted-foreground" onClick={e => e.stopPropagation()}>{agent.phone}</p>}
                                       </div>
                                     </div>
                                   </TableCell>

@@ -292,9 +292,9 @@ function PreviewTile({ label, value, hint, tone = "slate" }: PreviewTileProps) {
       "rounded-md border p-3 bg-background/60",
       toneMap[tone],
     )}>
-      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</div>
       <div className="mt-1 text-lg font-semibold">{value}</div>
-      {hint && <div className="text-[11px] text-muted-foreground truncate" title={hint}>{hint}</div>}
+      {hint && <div className="text-[12px] text-muted-foreground truncate" title={hint}>{hint}</div>}
     </div>
   );
 }
@@ -518,7 +518,7 @@ export function CallCenterFilters({
                 <Eye className="h-4 w-4 text-teal-300" />
                 Queue Preview
                 {previewQ.isFetching && (
-                  <span className="text-[11px] text-muted-foreground font-normal">Refreshing…</span>
+                  <span className="text-[12px] text-muted-foreground font-normal">Refreshing…</span>
                 )}
               </div>
               <Button

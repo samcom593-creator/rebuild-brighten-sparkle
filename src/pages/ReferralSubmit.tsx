@@ -128,7 +128,7 @@ export default function ReferralSubmit() {
       </Button>
 
       <div className="mb-5 rounded-md border border-primary/40 bg-white dark:bg-card p-4">
-        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Referral bonus</p>
+        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-primary">Referral bonus</p>
         <h2 className="text-lg font-bold mt-1">$300 when your referral hits their first $10k in production.</h2>
         <p className="text-sm text-muted-foreground mt-1">
           Paid automatically when the agent you sent crosses $10k AP. We track it for you in <span className="text-foreground">My Referrals</span>.
@@ -167,7 +167,7 @@ export default function ReferralSubmit() {
             <div className="space-y-1.5">
               <Label htmlFor="email">Email</Label>
               <Input id="email" type="email" autoComplete="email" {...form.register("email")} />
-              <p className="text-[11px] text-muted-foreground">Phone or email — at least one.</p>
+              <p className="text-[12px] text-muted-foreground">Phone or email — at least one.</p>
               {form.formState.errors.email && (
                 <p className="text-xs text-destructive">{form.formState.errors.email.message}</p>
               )}

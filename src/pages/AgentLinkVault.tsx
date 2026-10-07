@@ -182,7 +182,7 @@ function OverviewPanel() {
             <CardContent className="p-4 sm:p-5">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{c.label}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{c.label}</p>
                   <p className="mt-2 text-2xl font-bold tracking-tight tabular-nums">{c.value}</p>
                 </div>
                 <div className={`rounded-lg p-2 ring-1 shrink-0 ${c.iconColor}`}>
@@ -246,7 +246,7 @@ function AgentsPanel() {
                 <td className="p-2 text-xs">{String(r.phone_number ?? "—")}</td>
                 <td className="p-2 text-xs font-mono">{String(r.npn_number ?? "—")}</td>
                 <td className="p-2 text-xs">{String(r.state ?? "—")}</td>
-                <td className="p-2"><Badge variant={r.is_producer_active ? "default" : "secondary"} className="text-[10px]">{String(r.account_status ?? "—")}</Badge></td>
+                <td className="p-2"><Badge variant={r.is_producer_active ? "default" : "secondary"} className="text-[11px]">{String(r.account_status ?? "—")}</Badge></td>
                 <td className="p-2 text-right">{String(r.contract_count ?? 0)}</td>
                 <td className="p-2 text-right">{String(r.team_size ?? 0)}</td>
                 <td className="p-2 text-xs">{fmtDate(r.joined_date)}</td>
@@ -306,7 +306,7 @@ function ClientsPanel() {
                 <td className="p-2 text-xs font-mono">{String(r.phone ?? "—")}</td>
                 <td className="p-2 text-xs">{String(r.email ?? "—")}</td>
                 <td className="p-2 text-xs">{fmtDate(r.date_of_birth)}</td>
-                <td className="p-2"><Badge variant="outline" className="text-[10px]">{String(r.pipeline_stage ?? "—")}</Badge></td>
+                <td className="p-2"><Badge variant="outline" className="text-[11px]">{String(r.pipeline_stage ?? "—")}</Badge></td>
                 <td className="p-2 text-xs">{String(r.insuracloud_user_id ?? "—")}</td>
               </tr>
             ))}
@@ -367,7 +367,7 @@ function ContractsPanel() {
                 <td className="p-2 text-xs font-mono">{String(r.writing_number ?? "—")}</td>
                 <td className="p-2 text-xs font-mono">{String(r.secondary_writing_number ?? "—")}</td>
                 <td className="p-2 text-xs font-mono">{String(r.contract_number ?? "—")}</td>
-                <td className="p-2"><Badge variant={r.status === "active" ? "default" : "secondary"} className="text-[10px]">{String(r.status ?? "—")}</Badge></td>
+                <td className="p-2"><Badge variant={r.status === "active" ? "default" : "secondary"} className="text-[11px]">{String(r.status ?? "—")}</Badge></td>
                 <td className="p-2 text-xs">{String(r.commission_level ?? "—")}</td>
                 <td className="p-2 text-xs">{fmtDate(r.activated_date)}</td>
                 <td className="p-2 text-xs">{String(r.insuracloud_user_id ?? "—")}</td>

@@ -56,7 +56,7 @@ export function JoinYourTeam() {
       <CardContent className="flex flex-wrap items-center gap-x-4 gap-y-3 p-4">
         <div className="min-w-0">
           <p className="text-sm font-semibold text-foreground">Join your team</p>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-[12px] text-muted-foreground">
             Slack is the team hub: questions, wins, contracting support and the daily huddle.
           </p>
         </div>

@@ -211,7 +211,7 @@ export default function DashboardToday() {
 }
 
 function Section({ title, icon, badge, children }: { title: string; icon: React.ReactNode; badge?: string; children: React.ReactNode }) {
-  return <section className="space-y-2"><div className="flex items-center gap-2">{icon}<h2 className="text-sm font-black tracking-[0.16em]">{title}</h2>{badge && <Badge variant="outline" className="text-[10px]">{badge}</Badge>}</div>{children}</section>;
+  return <section className="space-y-2"><div className="flex items-center gap-2">{icon}<h2 className="text-sm font-black tracking-[0.16em]">{title}</h2>{badge && <Badge variant="outline" className="text-[11px]">{badge}</Badge>}</div>{children}</section>;
 }
 
 function TaskCard({ task, onToggle }: { task: Task; onToggle: () => void }) {
@@ -220,7 +220,7 @@ function TaskCard({ task, onToggle }: { task: Task; onToggle: () => void }) {
 
 function MeetingCard({ call }: { call: Call }) {
   const label = call.prospect_name || call.summary || "Meeting";
-  return <Card className="border-amber-500/30 bg-amber-500/5"><CardContent className="p-4 flex items-center gap-3"><div className="w-16 text-center"><p className="font-black tabular-nums">{format(new Date(call.start_at), "h:mm")}</p><p className="text-[10px] text-muted-foreground">{format(new Date(call.start_at), "a")}</p></div><div className="min-w-0 flex-1"><p className="text-sm font-semibold truncate">{label}</p><p className="text-xs text-muted-foreground">{call.call_type}</p></div>{call.location?.startsWith("http") && <Button asChild size="sm"><a href={call.location} target="_blank" rel="noopener noreferrer">Join</a></Button>}</CardContent></Card>;
+  return <Card className="border-amber-500/30 bg-amber-500/5"><CardContent className="p-4 flex items-center gap-3"><div className="w-16 text-center"><p className="font-black tabular-nums">{format(new Date(call.start_at), "h:mm")}</p><p className="text-[11px] text-muted-foreground">{format(new Date(call.start_at), "a")}</p></div><div className="min-w-0 flex-1"><p className="text-sm font-semibold truncate">{label}</p><p className="text-xs text-muted-foreground">{call.call_type}</p></div>{call.location?.startsWith("http") && <Button asChild size="sm"><a href={call.location} target="_blank" rel="noopener noreferrer">Join</a></Button>}</CardContent></Card>;
 }
 
 function ActionCard({ href, title, detail }: { href: string; title: string; detail: string }) {

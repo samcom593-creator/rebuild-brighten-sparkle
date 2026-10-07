@@ -256,7 +256,7 @@ export function TeamGoalsTracker({ className }: TeamGoalsTrackerProps) {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.5 + index * 0.1 }}
-                    className={`absolute -top-0.5 text-[10px] font-bold ${
+                    className={`absolute -top-0.5 text-[11px] font-bold ${
                       isComplete ? "text-emerald-500" : "text-muted-foreground"
                     }`}
                     style={{ left: `${Math.min(percentage, 95)}%` }}

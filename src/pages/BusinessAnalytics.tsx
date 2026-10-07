@@ -330,17 +330,17 @@ export default function BusinessAnalytics() {
             <div className="rounded-md border border-border bg-card p-4">
               <p className="text-2xl font-bold tabular-nums text-success">{fmtUsd(totalPremium, true)}</p>
               <p className="mt-1 text-xs text-muted-foreground">Production · MTD premium</p>
-              <p className="mt-1 text-[11px] tabular-nums text-muted-foreground">{fmtUsd(totalPremium)}</p>
+              <p className="mt-1 text-[12px] tabular-nums text-muted-foreground">{fmtUsd(totalPremium)}</p>
             </div>
             <div className="rounded-md border border-border bg-card p-4">
               <p className="text-2xl font-bold tabular-nums text-foreground">{fmtNum(s?.total_deals_mtd)}</p>
               <p className="mt-1 text-xs text-muted-foreground">Policies · deals MTD</p>
-              <p className="mt-1 text-[11px] tabular-nums text-muted-foreground">avg {fmtUsd(Number(s?.avg_deal_size ?? 0))}</p>
+              <p className="mt-1 text-[12px] tabular-nums text-muted-foreground">avg {fmtUsd(Number(s?.avg_deal_size ?? 0))}</p>
             </div>
             <div className="rounded-md border border-border bg-card p-4">
               <p className="text-2xl font-bold tabular-nums text-foreground">{fmtNum(s?.active_producers_30d)}</p>
               <p className="mt-1 text-xs text-muted-foreground">Active producers · 30d</p>
-              <p className="mt-1 text-[11px] tabular-nums text-muted-foreground">wrote {fmtNum(s?.total_deals_mtd)} deals</p>
+              <p className="mt-1 text-[12px] tabular-nums text-muted-foreground">wrote {fmtNum(s?.total_deals_mtd)} deals</p>
             </div>
             <div className="rounded-md border border-border bg-card p-4">
               <p className={cn(
@@ -350,7 +350,7 @@ export default function BusinessAnalytics() {
                 {growthPositive ? "+" : ""}{growth}%
               </p>
               <p className="mt-1 text-xs text-muted-foreground">MoM growth</p>
-              <p className="mt-1 text-[11px] tabular-nums text-muted-foreground">vs {fmtUsd(Number(s?.premium_last_month ?? 0), true)}</p>
+              <p className="mt-1 text-[12px] tabular-nums text-muted-foreground">vs {fmtUsd(Number(s?.premium_last_month ?? 0), true)}</p>
             </div>
           </>
         )}
@@ -388,7 +388,7 @@ export default function BusinessAnalytics() {
                 <p className="mt-1 text-2xl font-bold leading-none tabular-nums text-foreground">
                   {fmtNum(tc?.total_wins ?? 0)}
                 </p>
-                <p className="mt-1 truncate text-[11px] tabular-nums text-muted-foreground">
+                <p className="mt-1 truncate text-[12px] tabular-nums text-muted-foreground">
                   {fmtNum(tc?.daily_wins ?? 0)}D · {fmtNum(tc?.weekly_wins ?? 0)}W · {fmtNum(tc?.monthly_wins ?? 0)}M · {fmtNum(tc?.quarterly_wins ?? 0)}Q
                 </p>
               </div>
@@ -401,7 +401,7 @@ export default function BusinessAnalytics() {
                 <p className="mt-1 text-2xl font-bold leading-none tabular-nums text-foreground">
                   {fmtNum(challenges.data?.length ?? 0)}
                 </p>
-                <p className="mt-1 truncate text-[11px] tabular-nums text-muted-foreground">
+                <p className="mt-1 truncate text-[12px] tabular-nums text-muted-foreground">
                   {ins
                     ? `${ins.streak_days}/${ins.days_in_month_elapsed} day streak`
                     : insights.isError
@@ -421,7 +421,7 @@ export default function BusinessAnalytics() {
                 )}>
                   {fmtNum(needsAttention.data?.length ?? 0)}
                 </p>
-                <p className="mt-1 truncate text-[11px] text-muted-foreground">
+                <p className="mt-1 truncate text-[12px] text-muted-foreground">
                   {(needsAttention.data?.length ?? 0) > 0 ? "agents below team avg" : "Roster healthy"}
                 </p>
               </div>
@@ -437,7 +437,7 @@ export default function BusinessAnalytics() {
                 )}>
                   {fmtNum(learnFrom.data?.length ?? 0)}
                 </p>
-                <p className="mt-1 truncate text-[11px] text-muted-foreground">
+                <p className="mt-1 truncate text-[12px] text-muted-foreground">
                   {(learnFrom.data?.length ?? 0) > 0 ? "top performers · share playbook" : "Coach to exam"}
                 </p>
               </div>
@@ -477,7 +477,7 @@ export default function BusinessAnalytics() {
                     </div>
                     <p className={cn("text-2xl font-bold leading-none tabular-nums", SEV_TEXT[tone])}>
                       {c ? fmtUsd(cur, true) : "—"}
-                      <span className="ml-1 text-[11px] font-medium tabular-nums text-muted-foreground">
+                      <span className="ml-1 text-[12px] font-medium tabular-nums text-muted-foreground">
                         / {c ? fmtUsd(tgt, true) : "—"}
                       </span>
                     </p>
@@ -491,11 +491,11 @@ export default function BusinessAnalytics() {
                       <p className={cn("min-w-0 truncate text-xs font-semibold uppercase tracking-wide", SEV_TEXT[tone])}>
                         {status}
                       </p>
-                      <p className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
+                      <p className="shrink-0 text-[12px] tabular-nums text-muted-foreground">
                         {c ? `${c.current_deals}/${c.target_deals} deals` : "—"}
                       </p>
                     </div>
-                    <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">{coaching}</p>
+                    <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">{coaching}</p>
                   </div>
                 );
               })}
@@ -597,7 +597,7 @@ export default function BusinessAnalytics() {
                       <p className={cn("mt-1 text-2xl font-bold leading-none tabular-nums", SEV_TEXT.good)}>
                         +{agent.pct_above_avg}%
                       </p>
-                      <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+                      <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
                         Above team average · {agent.deals_30d} deals · {fmtUsd(Number(agent.premium_30d))} in 30d.
                         Schedule a team best-practices session with them.
                       </p>
@@ -624,7 +624,7 @@ export default function BusinessAnalytics() {
                 <span className="text-sm font-medium text-foreground">Licensed agents inactive 30d</span>
               </div>
               {inactive.data.sample_names && inactive.data.sample_names.length > 0 && (
-                <p className="mt-2 break-words text-[11px] leading-relaxed text-muted-foreground">
+                <p className="mt-2 break-words text-[12px] leading-relaxed text-muted-foreground">
                   {inactive.data.sample_names.slice(0, 10).join(" · ")}
                   {Number(inactive.data.inactive_count) > 10 && ` · +${Number(inactive.data.inactive_count) - 10} more`}
                 </p>
@@ -652,10 +652,10 @@ export default function BusinessAnalytics() {
                 )}>
                   {growthPositive ? "+" : ""}{growth}%
                 </span>
-                <span className="text-[11px] text-muted-foreground">vs last month</span>
+                <span className="text-[12px] text-muted-foreground">vs last month</span>
               </div>
             )}
-            <p className="mt-2 text-[11px] tabular-nums text-muted-foreground">
+            <p className="mt-2 text-[12px] tabular-nums text-muted-foreground">
               Last month: {fmtUsd(Number(s?.premium_last_month ?? 0), true)}
             </p>
           </CardContent>
@@ -672,11 +672,11 @@ export default function BusinessAnalytics() {
               return (
                 <div className="mt-2 flex flex-wrap items-baseline gap-2">
                   <span className="text-2xl font-bold leading-none tabular-nums text-foreground">{fmtUsd(per, true)}</span>
-                  <span className="text-[11px] text-muted-foreground">/ producer · 30d</span>
+                  <span className="text-[12px] text-muted-foreground">/ producer · 30d</span>
                 </div>
               );
             })()}
-            <p className="mt-2 text-[11px] tabular-nums text-muted-foreground">
+            <p className="mt-2 text-[12px] tabular-nums text-muted-foreground">
               {fmtNum(s?.active_producers_30d)} producers wrote {fmtNum(s?.total_deals_mtd)} deals
             </p>
           </CardContent>
@@ -730,7 +730,7 @@ export default function BusinessAnalytics() {
                       <span className="w-5 shrink-0 text-right text-xs font-bold tabular-nums text-muted-foreground">{i + 1}</span>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium text-foreground">{c.carrier_name}</p>
-                        <p className="mt-0.5 truncate text-[11px] tabular-nums text-muted-foreground">
+                        <p className="mt-0.5 truncate text-[12px] tabular-nums text-muted-foreground">
                           {fmtNum(c.deal_count)} deals · avg {fmtUsd(Number(c.avg_deal_size))}
                         </p>
                       </div>
@@ -738,7 +738,7 @@ export default function BusinessAnalytics() {
                         <p className={cn("text-sm font-semibold tabular-nums", SEV_TEXT.good)}>
                           {fmtUsd(Number(c.total_premium))}
                         </p>
-                        <p className="mt-0.5 text-[11px] tabular-nums text-muted-foreground">{pct.toFixed(1)}% share</p>
+                        <p className="mt-0.5 text-[12px] tabular-nums text-muted-foreground">{pct.toFixed(1)}% share</p>
                       </div>
                     </div>
                     <div className="mt-2 ml-8 h-1 overflow-hidden rounded-full bg-muted">
@@ -836,7 +836,7 @@ function InsightCard({
           <p className={cn("mt-1 text-2xl font-bold leading-none tabular-nums", sev === "none" ? "text-foreground" : toneText)}>
             {metric}
           </p>
-          <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">{body}</p>
+          <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">{body}</p>
         </div>
       </div>
     </div>

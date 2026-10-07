@@ -178,7 +178,7 @@ export function AttendanceGrid({
   return (
     <TooltipProvider delayDuration={200}>
       <div className="flex items-center gap-1.5">
-        <span className="text-[10px] text-muted-foreground w-10 shrink-0 font-medium">{label}:</span>
+        <span className="text-[11px] text-muted-foreground w-10 shrink-0 font-medium">{label}:</span>
         <div className="flex flex-col gap-0.5">
           {/* Day letter headers */}
           <div className="flex gap-0.5">
@@ -204,7 +204,7 @@ export function AttendanceGrid({
                     onClick={() => handleToggle(index)}
                     disabled={readOnly || updating === index}
                     className={cn(
-                      "w-5 h-5 rounded flex items-center justify-center border text-[9px] font-medium transition-all",
+                      "w-5 h-5 rounded flex items-center justify-center border text-[10px] font-medium transition-all",
                       getStatusClass(record.status, day),
                       !readOnly && "hover:bg-slate-50 dark:hover:bg-muted/50 cursor-pointer",
                       updating === index && "opacity-50 animate-pulse",
@@ -221,7 +221,7 @@ export function AttendanceGrid({
                   <div className="text-xs space-y-0.5">
                     <p className="font-semibold">{format(day, "EEEE, MMM d")}</p>
                     <p className="text-muted-foreground">{getStatusLabel(record.status)}</p>
-                    {!readOnly && <p className="text-[10px] text-muted-foreground/70">Click to toggle</p>}
+                    {!readOnly && <p className="text-[11px] text-muted-foreground/70">Click to toggle</p>}
                   </div>
                 </TooltipContent>
               </Tooltip>

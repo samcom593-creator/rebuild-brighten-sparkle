@@ -92,12 +92,12 @@ export function LicensedHiresRange() {
   return (
     <div className="rounded-lg border border-border/70 p-3 col-span-2 sm:col-span-1">
       <div className="flex items-center justify-between gap-2 mb-1.5">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+        <p className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
           <GraduationCap className="h-3 w-3" /> Licensed
         </p>
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px] gap-1 text-muted-foreground hover:text-foreground">
+            <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[11px] gap-1 text-muted-foreground hover:text-foreground">
               <CalendarRange className="h-3 w-3" />
               {labelFor(preset, range)}
               <ChevronDown className="h-3 w-3" />
@@ -119,7 +119,7 @@ export function LicensedHiresRange() {
                 </button>
               ))}
               <div className="pt-2 mt-2 border-t border-border/50 space-y-1.5">
-                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Custom range</div>
+                <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Custom range</div>
                 <input
                   type="date"
                   className="w-full rounded border border-border/60 bg-background px-2 py-1 text-xs"

@@ -265,7 +265,7 @@ export function ALPCalculator({ onALPChange, onDealsChange, initialALP = 0, init
       )}
 
       {/* Tip */}
-      <p className="text-[10px] text-muted-foreground text-center">
+      <p className="text-[11px] text-muted-foreground text-center">
         💡 Press Enter or click "+ Add" after entering premium to add another deal
       </p>
     </div>

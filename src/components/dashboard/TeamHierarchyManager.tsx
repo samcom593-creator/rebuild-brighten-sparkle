@@ -713,26 +713,26 @@ export function TeamHierarchyManager() {
                         <span className="font-medium text-sm">{agent.name}</span>
                         {/* In Field Badge - shown for in_field_training or evaluated */}
                         {(agent.onboardingStage === "in_field_training" || agent.onboardingStage === "evaluated") && (
-                          <Badge className="text-[10px] px-1 py-0 bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30">
+                          <Badge className="text-[11px] px-1 py-0 bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30">
                             ✓ In Field
                           </Badge>
                         )}
                         {agent.isManager && (
-                          <Badge variant="secondary" className="text-[10px] px-1 py-0 bg-teal-500/20 text-teal-600 dark:text-teal-400 border-teal-500/30">
+                          <Badge variant="secondary" className="text-[11px] px-1 py-0 bg-teal-500/20 text-teal-600 dark:text-teal-400 border-teal-500/30">
                             Manager
                           </Badge>
                         )}
                         {agent.id === adminAgentId && (
-                          <Badge className="text-[10px] px-1 py-0 bg-primary/20 text-primary border-primary/30">You</Badge>
+                          <Badge className="text-[11px] px-1 py-0 bg-primary/20 text-primary border-primary/30">You</Badge>
                         )}
                         {/* Show which manager for indirect reports */}
                         {agent.managerId && agent.managerId !== adminAgentId && agent.id !== adminAgentId && (
-                          <span className="text-[10px] text-muted-foreground">
+                          <span className="text-[11px] text-muted-foreground">
                             → {agent.managerName?.split(" ")[0]}
                           </span>
                         )}
                       </div>
-                      <span className="text-[10px] text-muted-foreground">{agent.email}</span>
+                      <span className="text-[11px] text-muted-foreground">{agent.email}</span>
                     </TableCell>
                     
                     {/* Weekly ALP - Highlighted */}
@@ -775,7 +775,7 @@ export function TeamHierarchyManager() {
                           onValueChange={(value) => handleStageChange(agent.id, value)}
                           disabled={updatingStage === agent.id}
                         >
-                          <SelectTrigger aria-label="Onboarding stage" className="h-6 text-[10px] w-full">
+                          <SelectTrigger aria-label="Onboarding stage" className="h-6 text-[11px] w-full">
                             {updatingStage === agent.id ? (
                               <Loader2 className="h-3 w-3 animate-spin" />
                             ) : (
@@ -798,13 +798,13 @@ export function TeamHierarchyManager() {
                       {agent.id === adminAgentId ? (
                         <span className="text-xs text-muted-foreground">—</span>
                       ) : agent.courseProgress === 100 ? (
-                        <Badge className="text-[10px] px-1 py-0 bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30">
+                        <Badge className="text-[11px] px-1 py-0 bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30">
                           ✓ Done
                         </Badge>
                       ) : agent.hasProgress ? (
                         <div className="flex items-center gap-1.5">
                           <Progress value={agent.courseProgress} className="h-1.5 w-12" />
-                          <span className="text-[10px] text-muted-foreground">{agent.courseProgress}%</span>
+                          <span className="text-[11px] text-muted-foreground">{agent.courseProgress}%</span>
                         </div>
                       ) : (
                         <AddToCourseButton
@@ -870,7 +870,7 @@ export function TeamHierarchyManager() {
         </div>
 
         {/* Summary */}
-        <div className="mt-3 flex items-center justify-between text-[10px] text-muted-foreground">
+        <div className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground">
           <span>{agents.length} total • {managers.length} managers</span>
         </div>
       </GlassCard>

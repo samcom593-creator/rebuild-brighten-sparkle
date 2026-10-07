@@ -151,7 +151,7 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
         {!collapsed && open && (
           <div className="ml-[20px] space-y-0.5 border-l border-border pl-2">
             {group.kicker && (
-              <div className="px-3 pb-1 pt-2 text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              <div className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                 {group.kicker}
               </div>
             )}
@@ -196,7 +196,7 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
           {favorites.length > 0 && (
             <div className="mb-3">
               {!collapsed && (
-                <div className="px-3 pb-1.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                   Favorites
                 </div>
               )}
@@ -212,13 +212,13 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
           )}
           <div className="space-y-0.5">{renderEntries(primary)}</div>
           <div className="my-3 border-t border-border" />
-          {!collapsed && <div className="px-3 pb-1.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Account</div>}
+          {!collapsed && <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Account</div>}
           <div className="space-y-0.5">{renderEntries(account)}</div>
         </nav>
 
         {mobile && (
           <div className="shrink-0 space-y-2 border-t border-border p-2">
-            <div className="px-2 pt-1 text-[9px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+            <div className="px-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
               Quick actions
             </div>
             <SubmitDealDialog

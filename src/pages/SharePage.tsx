@@ -71,7 +71,7 @@ export default function SharePage() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <header className="mb-6">
-        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Shared clips</p>
+        <p className="text-[12px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Shared clips</p>
         <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-foreground">{state.label || "Clips for you"}</h1>
         <p className="mt-1 text-sm text-muted-foreground">Hover to preview. Download gives you the original file.</p>
       </header>
@@ -84,11 +84,11 @@ export default function SharePage() {
             <div className={`relative bg-muted/40 ${k.kind === "vertical" ? "aspect-[9/16] max-h-72" : "aspect-video"}`}>
               {k.thumb_url ? <img src={k.thumb_url} alt="" loading="lazy" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-muted-foreground"><Film className="h-6 w-6" /></div>}
               {k.preview_url && <video src={k.preview_url} muted loop playsInline preload="none" onMouseEnter={(e) => { void e.currentTarget.play(); }} onMouseLeave={(e) => { e.currentTarget.pause(); }} className="absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity group-hover:opacity-100" />}
-              {k.duration_s ? <span className="absolute bottom-1.5 right-1.5 rounded bg-background/80 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-foreground">{fmtDur(k.duration_s)}</span> : null}
+              {k.duration_s ? <span className="absolute bottom-1.5 right-1.5 rounded bg-background/80 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-foreground">{fmtDur(k.duration_s)}</span> : null}
             </div>
             <div className="flex flex-1 flex-col gap-1.5 p-3">
               <div className="line-clamp-2 text-sm font-semibold text-foreground">{k.title || k.name}</div>
-              <div className="text-[11px] text-muted-foreground">{k.folder} · {fmtSize(k.size_bytes)}{k.tags?.length ? ` · ${k.tags.slice(0, 3).join(", ")}` : ""}</div>
+              <div className="text-[12px] text-muted-foreground">{k.folder} · {fmtSize(k.size_bytes)}{k.tags?.length ? ` · ${k.tags.slice(0, 3).join(", ")}` : ""}</div>
               <div className="mt-auto pt-1">
                 {(k.download_url || k.phone_url)
                   ? <Button size="sm" disabled={mobile && !!pull[k.id] && pull[k.id].pct !== null && pull[k.id].pct! < 100 && !pull[k.id].error} onClick={() => void save(k)} className={`w-full ${pull[k.id]?.file ? "bg-gold text-zinc-950 hover:bg-gold/90" : "bg-primary text-primary-foreground hover:bg-primary/90"}`} title={mobile ? "Tap to pull, tap again to save to camera roll" : "Download the original file"}>

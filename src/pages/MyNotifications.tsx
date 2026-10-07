@@ -96,16 +96,16 @@ export default function MyNotifications() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-medium">{n.title ?? "Notification"}</span>
-                    {!n.read_at && <Badge variant="default" className="text-[10px]">new</Badge>}
+                    {!n.read_at && <Badge variant="default" className="text-[11px]">new</Badge>}
                     {n.priority === "high" && (
-                      <Badge variant="destructive" className="text-[10px]">high</Badge>
+                      <Badge variant="destructive" className="text-[11px]">high</Badge>
                     )}
-                    {n.type && <Badge variant="outline" className="text-[10px]">{n.type}</Badge>}
+                    {n.type && <Badge variant="outline" className="text-[11px]">{n.type}</Badge>}
                   </div>
                   {n.body && (
                     <p className="text-sm text-muted-foreground mt-1">{n.body}</p>
                   )}
-                  <p className="text-[11px] text-muted-foreground mt-1">
+                  <p className="text-[12px] text-muted-foreground mt-1">
                     {n.created_at ? formatDistanceToNow(new Date(n.created_at), { addSuffix: true }) : "recently"}
                   </p>
                 </div>
@@ -120,7 +120,7 @@ export default function MyNotifications() {
         </Card>
       )}
 
-      <p className="text-[11px] text-muted-foreground text-center">
+      <p className="text-[12px] text-muted-foreground text-center">
         <CheckCircle2 className="inline h-3 w-3 mr-1" />
         Items mark read automatically when viewed.
       </p>

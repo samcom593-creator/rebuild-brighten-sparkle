@@ -326,7 +326,7 @@ export default function InactiveAgents() {
             <AlertTriangle className="h-3 w-3" /> Warning
           </p>
           <p className="text-2xl font-bold">{stats.warning}</p>
-          <p className="text-[10px] opacity-70">7-13 days inactive</p>
+          <p className="text-[11px] opacity-70">7-13 days inactive</p>
         </button>
         <button
           onClick={() => setSeverityFilter(severityFilter === "critical" ? "all" : "critical")}
@@ -338,7 +338,7 @@ export default function InactiveAgents() {
             <Flame className="h-3 w-3" /> Critical
           </p>
           <p className="text-2xl font-bold">{stats.critical}</p>
-          <p className="text-[10px] opacity-70">14-30 days inactive</p>
+          <p className="text-[11px] opacity-70">14-30 days inactive</p>
         </button>
         <button
           onClick={() => setSeverityFilter(severityFilter === "abandoned" ? "all" : "abandoned")}
@@ -350,12 +350,12 @@ export default function InactiveAgents() {
             <UserX className="h-3 w-3" /> Abandoned
           </p>
           <p className="text-2xl font-bold">{stats.abandoned}</p>
-          <p className="text-[10px] opacity-70">30+ days inactive</p>
+          <p className="text-[11px] opacity-70">30+ days inactive</p>
         </button>
         <div className="p-4 rounded-md border bg-muted/30 text-left">
           <p className="text-xs uppercase text-muted-foreground">Total in Queue</p>
           <p className="text-2xl font-bold">{stats.total}</p>
-          <p className="text-[10px] text-muted-foreground">Showing: {statusFilter}</p>
+          <p className="text-[11px] text-muted-foreground">Showing: {statusFilter}</p>
         </div>
       </div>
 

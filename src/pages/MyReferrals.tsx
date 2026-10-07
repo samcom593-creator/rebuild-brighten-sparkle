@@ -121,7 +121,7 @@ export default function MyReferrals() {
               <p className="text-2xl font-bold tabular-nums text-emerald-400 mt-1">
                 ${(earnings.bonus_pending_cents / 100).toFixed(0)}
               </p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Owed, not paid yet</p>
+              <p className="text-[12px] text-muted-foreground mt-0.5">Owed, not paid yet</p>
             </CardContent>
           </Card>
           <Card>
@@ -133,7 +133,7 @@ export default function MyReferrals() {
               <p className="text-2xl font-bold tabular-nums mt-1">
                 ${(earnings.bonus_paid_cents / 100).toFixed(0)}
               </p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Lifetime</p>
+              <p className="text-[12px] text-muted-foreground mt-0.5">Lifetime</p>
             </CardContent>
           </Card>
           <Card>
@@ -143,7 +143,7 @@ export default function MyReferrals() {
                 Sent
               </div>
               <p className="text-2xl font-bold tabular-nums mt-1">{earnings.total_referrals}</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">{earnings.won_count} won · {earnings.open_count} open</p>
+              <p className="text-[12px] text-muted-foreground mt-0.5">{earnings.won_count} won · {earnings.open_count} open</p>
             </CardContent>
           </Card>
           <Card>
@@ -157,7 +157,7 @@ export default function MyReferrals() {
                   ? Math.round((earnings.won_count / (earnings.total_referrals - earnings.open_count)) * 100)
                   : 0}%
               </p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Closed-won / closed</p>
+              <p className="text-[12px] text-muted-foreground mt-0.5">Closed-won / closed</p>
             </CardContent>
           </Card>
         </div>
@@ -171,7 +171,7 @@ export default function MyReferrals() {
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 {LIFECYCLE_LABEL[bucket]}
-                <Badge variant="outline" className="text-[10px]">{rows.length}</Badge>
+                <Badge variant="outline" className="text-[11px]">{rows.length}</Badge>
               </CardTitle>
             </CardHeader>
             <CardContent className="divide-y divide-border/50 p-0">
@@ -180,7 +180,7 @@ export default function MyReferrals() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="font-medium truncate">{r.referred_name}</span>
-                      <Badge variant="outline" className="text-[10px]">{r.status}</Badge>
+                      <Badge variant="outline" className="text-[11px]">{r.status}</Badge>
                     </div>
                     <div className="text-xs text-muted-foreground truncate">
                       {r.referred_email ?? r.referred_phone ?? ""} · {format(new Date(r.created_at), "MMM d")}

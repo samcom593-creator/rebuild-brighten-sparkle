@@ -152,7 +152,7 @@ export function ManagerPostCounter({ className }: { className?: string }) {
           <Flame className="h-4 w-4 text-primary shrink-0" aria-hidden="true" />
           <h3 className="text-sm font-semibold truncate">Manager Post Board</h3>
         </div>
-        <span className="text-[10px] uppercase tracking-widest text-muted-foreground shrink-0">
+        <span className="text-[11px] uppercase tracking-widest text-muted-foreground shrink-0">
           This week
         </span>
       </div>
@@ -242,7 +242,7 @@ export function ManagerPostCounter({ className }: { className?: string }) {
                   {row.manager_name}
                 </span>
                 {row.posts_today > 0 ? (
-                  <span className="relative text-[10px] tabular-nums text-primary shrink-0">
+                  <span className="relative text-[11px] tabular-nums text-primary shrink-0">
                     +{row.posts_today} today
                   </span>
                 ) : null}

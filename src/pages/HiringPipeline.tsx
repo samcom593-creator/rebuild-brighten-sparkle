@@ -566,7 +566,7 @@ export default function HiringPipeline() {
             >
               <span>{stage.label}</span>
               <span className={cn(
-                "text-[10px] font-bold px-1.5 py-0.5 rounded-full",
+                "text-[11px] font-bold px-1.5 py-0.5 rounded-full",
                 mobileStage === stage.key ? "bg-primary-foreground/20" : "bg-muted",
               )}>
                 {grouped[stage.key].length}
@@ -603,14 +603,14 @@ export default function HiringPipeline() {
                       return (
                         <li key={a.id} className="flex items-center justify-between text-xs">
                           <span className="font-medium truncate">{a.first_name} {a.last_name}</span>
-                          <span className={cn("text-[10px] tabular-nums shrink-0 ml-2", days >= 7 ? "text-destructive" : "text-muted-foreground")}>
+                          <span className={cn("text-[11px] tabular-nums shrink-0 ml-2", days >= 7 ? "text-destructive" : "text-muted-foreground")}>
                             {days}d
                           </span>
                         </li>
                       );
                     })}
                     {items.length > 3 && (
-                      <li className="text-[10px] text-muted-foreground/70 pt-1">
+                      <li className="text-[11px] text-muted-foreground/70 pt-1">
                         +{items.length - 3} more
                       </li>
                     )}
@@ -618,7 +618,7 @@ export default function HiringPipeline() {
                 )}
                 <button
                   onClick={() => setViewMode("kanban")}
-                  className="mt-2 text-[10px] text-primary hover:underline"
+                  className="mt-2 text-[11px] text-primary hover:underline"
                 >
                   open stage →
                 </button>
@@ -710,7 +710,7 @@ function FilterPill({
     <button
       onClick={onToggle}
       className={cn(
-        "inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[11px] font-medium transition",
+        "inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[12px] font-medium transition",
         active
           ? (danger
               ? "bg-destructive/15 border-destructive/40 text-destructive"
@@ -746,7 +746,7 @@ function MetricTile({
         </span>
       </div>
       <div className="mt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</div>
-      {hint && <div className="mt-0.5 text-[10px] text-muted-foreground/80">{hint}</div>}
+      {hint && <div className="mt-0.5 text-[11px] text-muted-foreground/80">{hint}</div>}
     </motion.button>
   );
 }
@@ -805,14 +805,14 @@ function ApplicantCard({
           <div className="font-semibold text-sm text-foreground truncate leading-tight">
             {app.first_name} {app.last_name}
           </div>
-          <div className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1.5">
+          <div className="text-[12px] text-muted-foreground mt-0.5 flex items-center gap-1.5">
             <span>{app.state || "??"}</span>
             <span>·</span>
             <span>applied {format(new Date(app.created_at), "MMM d")}</span>
           </div>
         </div>
         {app.ai_score_tier && (
-          <span className={cn("shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded border", tierColor)}>
+          <span className={cn("shrink-0 text-[11px] font-bold px-1.5 py-0.5 rounded border", tierColor)}>
             {app.ai_score_tier}
           </span>
         )}
@@ -821,7 +821,7 @@ function ApplicantCard({
       {/* Stalled badge - always visible when >= 7 days */}
       {stalled && (
         <div className={cn(
-          "text-[10px] font-semibold px-1.5 py-0.5 rounded mb-2 inline-flex items-center gap-1",
+          "text-[11px] font-semibold px-1.5 py-0.5 rounded mb-2 inline-flex items-center gap-1",
           veryStalled ? "bg-destructive/20 text-destructive" : "bg-amber-500/20 text-amber-500"
         )}>
           <AlertTriangle className="h-3 w-3" /> Stalled {days}d
@@ -845,7 +845,7 @@ function ApplicantCard({
         <a
           href={`mailto:${app.email}`}
           onClick={(e) => e.stopPropagation()}
-          className="block text-[11px] text-muted-foreground hover:text-primary truncate mb-2"
+          className="block text-[12px] text-muted-foreground hover:text-primary truncate mb-2"
           title={app.email}
         >
           <Mail className="mr-1 inline h-3 w-3" />{app.email}
@@ -855,7 +855,7 @@ function ApplicantCard({
       {/* Next-action badge — tells the caller exactly what to say */}
       <div
         className={cn(
-          "flex items-start gap-1.5 rounded-md px-2 py-1.5 mb-2 text-[11px] leading-snug",
+          "flex items-start gap-1.5 rounded-md px-2 py-1.5 mb-2 text-[12px] leading-snug",
           cta.urgency === "hot"  && "bg-destructive/10 text-destructive border border-destructive/30",
           cta.urgency === "warm" && "bg-amber-500/10 text-amber-500 border border-amber-500/30",
           cta.urgency === "cold" && "bg-muted text-muted-foreground border border-border/40",
@@ -874,7 +874,7 @@ function ApplicantCard({
             <DropdownMenuTrigger asChild>
               <Button
                 size="sm" variant="default"
-                className="flex-1 h-7 text-[11px]"
+                className="flex-1 h-7 text-[12px]"
                 onClick={(e) => e.stopPropagation()}
               >
                 <PhoneCall className="h-3 w-3 mr-1" /> Call
@@ -909,7 +909,7 @@ function ApplicantCard({
         {app.phone && (
           <Button
             size="sm" variant="outline"
-            className="h-7 px-2 text-[11px]"
+            className="h-7 px-2 text-[12px]"
             asChild
             onClick={(e) => e.stopPropagation()}
             title="Text"
@@ -919,7 +919,7 @@ function ApplicantCard({
         )}
         <Button
           size="sm" variant="outline"
-          className="h-7 px-2 text-[11px]"
+          className="h-7 px-2 text-[12px]"
           onClick={(e) => { e.stopPropagation(); onMarkContacted(); }}
           title="Mark contacted"
         >

@@ -1072,7 +1072,7 @@ function KpiTile({
         active && "ring-2 ring-primary/60",
       )}
     >
-      <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+      <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
         {label}
       </span>
       <span className={cn("mt-2 text-2xl font-bold leading-none tabular-nums", KPI_TONE[tone])}>
@@ -1113,7 +1113,7 @@ function ProducerAlertCard({
       <div className="flex min-w-0 items-start gap-3">
         {icon}
         <div className="min-w-0">
-          <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+          <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
             {eyebrow}
           </div>
           <p className="mt-0.5 text-sm font-semibold text-foreground">{title}</p>
@@ -1266,7 +1266,7 @@ function ManagerScorecardCard({ row }: { row: ManagerScorecardRow }) {
       {/* Header — name opens the agent drawer, roster counts sit underneath. */}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+          <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
             Manager · downline health
           </div>
           <div className="mt-0.5 min-w-0">
@@ -1276,7 +1276,7 @@ function ManagerScorecardCard({ row }: { row: ManagerScorecardRow }) {
               </span>
             </AgentNameLink>
           </div>
-          <div className="mt-0.5 text-[11px] tabular-nums text-muted-foreground">
+          <div className="mt-0.5 text-[12px] tabular-nums text-muted-foreground">
             {fmtInt(row.reports_activeroster)} on active roster · {fmtInt(row.reports_total)} total
             reports
           </div>
@@ -1284,7 +1284,7 @@ function ManagerScorecardCard({ row }: { row: ManagerScorecardRow }) {
         {row.manager_deactivated && (
           <Badge
             variant="outline"
-            className="shrink-0 border-rose-500/40 text-[10px] text-rose-600 dark:text-rose-400"
+            className="shrink-0 border-rose-500/40 text-[11px] text-rose-600 dark:text-rose-400"
           >
             <UserX className="mr-1 h-3 w-3 shrink-0" />
             deactivated
@@ -1341,13 +1341,13 @@ function ScorecardHeroStat({
 }) {
   return (
     <div className={cn("min-w-0 rounded-lg border bg-background p-3", SCORE_EDGE_BORDER[tone])}>
-      <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+      <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
         {label}
       </div>
       <div className={cn("mt-1.5 text-2xl font-bold leading-none tabular-nums", SCORE_TEXT_TONE[tone])}>
         {value}
       </div>
-      <div className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">{sub}</div>
+      <div className="mt-1.5 text-[12px] leading-relaxed text-muted-foreground">{sub}</div>
     </div>
   );
 }
@@ -1368,7 +1368,7 @@ function ScorecardChip({
       title={title}
       className="inline-flex min-w-0 items-baseline gap-1.5 rounded-md border border-border bg-background px-2 py-1"
     >
-      <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+      <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
         {label}
       </span>
       <span className={cn("text-xs font-bold tabular-nums", SCORE_TEXT_TONE[tone])}>{value}</span>
@@ -1394,7 +1394,7 @@ function ProducerRiskTable({
     <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
       <table className="w-full min-w-[1120px] text-sm">
         <thead>
-          <tr className="border-b border-border text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+          <tr className="border-b border-border text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
             <th className="px-2 py-2 text-left">Producer</th>
             <th className="px-2 py-2 text-left">Manager</th>
             <th className="px-2 py-2 text-right">Latest Week</th>
@@ -1442,7 +1442,7 @@ function ProducerRiskTable({
                   </AgentNameLink>
                 </td>
                 <td className="max-w-[140px] px-2 py-2">
-                  <div className="truncate text-[11px] text-muted-foreground">{r.manager_name}</div>
+                  <div className="truncate text-[12px] text-muted-foreground">{r.manager_name}</div>
                 </td>
                 <td className="px-2 py-2 text-right text-sm font-bold tabular-nums text-foreground">
                   {fmtUSDCompact(r.current_week_alp)}
@@ -1462,26 +1462,26 @@ function ProducerRiskTable({
                   {r.total_policies ?? "—"}
                 </td>
                 <td className="max-w-[120px] px-2 py-2">
-                  <div className="truncate text-[11px] text-muted-foreground">{r.stage ?? "—"}</div>
+                  <div className="truncate text-[12px] text-muted-foreground">{r.stage ?? "—"}</div>
                 </td>
                 <td className="px-2 py-2">
                   {r.agentlink_linked ? (
                     <Badge
                       variant="outline"
-                      className="border-emerald-500/40 text-[10px] text-emerald-600 dark:text-emerald-400"
+                      className="border-emerald-500/40 text-[11px] text-emerald-600 dark:text-emerald-400"
                     >
                       <Link2 className="mr-1 h-3 w-3 shrink-0" /> linked
                     </Badge>
                   ) : (
                     <Badge
                       variant="outline"
-                      className="text-[10px] text-muted-foreground"
+                      className="text-[11px] text-muted-foreground"
                     >
                       <Link2Off className="mr-1 h-3 w-3 shrink-0" /> unlinked
                     </Badge>
                   )}
                 </td>
-                <td className="px-2 py-2 text-right text-[11px] tabular-nums text-muted-foreground">
+                <td className="px-2 py-2 text-right text-[12px] tabular-nums text-muted-foreground">
                   {fmtDate(r.last_contact)}
                 </td>
                 <td className="px-2 py-2">
@@ -1489,11 +1489,11 @@ function ProducerRiskTable({
                       micro-label so one cell never stacks two competing hues. */}
                   <Badge
                     variant="outline"
-                    className={cn("text-[10px] font-bold", riskBadge.className)}
+                    className={cn("text-[11px] font-bold", riskBadge.className)}
                   >
                     {riskBadge.label}
                   </Badge>
-                  <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                  <div className="mt-1 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                     {priorityBadge.text}
                   </div>
                 </td>
@@ -1504,7 +1504,7 @@ function ProducerRiskTable({
                   >
                     {nba.action}
                   </div>
-                  <div className="mt-0.5 truncate text-[11px] text-muted-foreground" title={nba.reason}>
+                  <div className="mt-0.5 truncate text-[12px] text-muted-foreground" title={nba.reason}>
                     {nba.reason}
                   </div>
                 </td>
@@ -1594,7 +1594,7 @@ function NeverActivatedTable({ rows }: { rows: NewHireActivationRow[] }) {
     <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
       <table className="w-full min-w-[880px] text-sm">
         <thead>
-          <tr className="border-b border-border text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+          <tr className="border-b border-border text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
             <th className="px-2 py-2 text-left">Producer</th>
             <th className="px-2 py-2 text-right">Days Since Hire</th>
             <th className="px-2 py-2 text-left">Stage</th>
@@ -1629,12 +1629,12 @@ function NeverActivatedTable({ rows }: { rows: NewHireActivationRow[] }) {
                 {r.days_since_hire}d
               </td>
               <td className="max-w-[140px] px-2 py-2">
-                <div className="truncate text-[11px] text-muted-foreground">
+                <div className="truncate text-[12px] text-muted-foreground">
                   {r.onboarding_stage ?? "—"}
                 </div>
               </td>
               <td className="max-w-[140px] px-2 py-2">
-                <div className="truncate text-[11px] text-muted-foreground">
+                <div className="truncate text-[12px] text-muted-foreground">
                   {r.manager_name ?? "—"}
                 </div>
               </td>
@@ -1642,7 +1642,7 @@ function NeverActivatedTable({ rows }: { rows: NewHireActivationRow[] }) {
                 {r.agentlink_linked ? (
                   <Badge
                     variant="outline"
-                    className="border-emerald-500/40 text-[10px] text-emerald-600 dark:text-emerald-400"
+                    className="border-emerald-500/40 text-[11px] text-emerald-600 dark:text-emerald-400"
                   >
                     <Link2 className="mr-1 h-3 w-3 shrink-0" />
                     linked
@@ -1650,14 +1650,14 @@ function NeverActivatedTable({ rows }: { rows: NewHireActivationRow[] }) {
                 ) : (
                   <Badge
                     variant="outline"
-                    className="text-[10px] text-muted-foreground"
+                    className="text-[11px] text-muted-foreground"
                   >
                     <Link2Off className="mr-1 h-3 w-3 shrink-0" />
                     unlinked
                   </Badge>
                 )}
               </td>
-              <td className="px-2 py-2 text-right text-[11px] tabular-nums text-muted-foreground">
+              <td className="px-2 py-2 text-right text-[12px] tabular-nums text-muted-foreground">
                 {fmtDate(r.hire_date)}
               </td>
               <td className="max-w-[220px] px-2 py-2">
@@ -1668,7 +1668,7 @@ function NeverActivatedTable({ rows }: { rows: NewHireActivationRow[] }) {
                   {r.next_action_text ?? "Activation check + first-deal push"}
                 </div>
                 {r.next_action_due_at && (
-                  <div className="mt-0.5 truncate text-[11px] tabular-nums text-muted-foreground">
+                  <div className="mt-0.5 truncate text-[12px] tabular-nums text-muted-foreground">
                     Due {fmtDate(r.next_action_due_at)}
                   </div>
                 )}

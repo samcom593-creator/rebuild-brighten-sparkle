@@ -486,13 +486,13 @@ export default function RecruitPipeline() {
                           <div className="flex flex-wrap items-center gap-1.5">
                             <span className="truncate font-medium">{r.display_name}</span>
                             {r.person_type === "agent" && (r.license_status === "licensed" ? (
-                              <Badge variant="outline" className="text-[10px] text-primary">Licensed</Badge>
+                              <Badge variant="outline" className="text-[11px] text-primary">Licensed</Badge>
                             ) : (
                               <LicenseProgressSelector
                                 agentId={r.agent_id ?? undefined}
                                 currentProgress={(r.license_progress || "unlicensed") as never}
                                 onProgressUpdated={() => void refresh()}
-                                className="h-6 text-[10px]"
+                                className="h-6 text-[11px]"
                               />
                             ))}
                           </div>

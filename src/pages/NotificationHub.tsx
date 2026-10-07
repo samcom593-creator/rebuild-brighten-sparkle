@@ -130,7 +130,7 @@ function CarrierIndicator({ log }: { log: any }) {
   const carrierLabel = CARRIER_OPTIONS.find(c => c.value === carrierId)?.label || carrierId;
   
   return (
-    <span className="inline-flex items-center gap-1 text-[10px] text-purple-500">
+    <span className="inline-flex items-center gap-1 text-[11px] text-purple-500">
       <CheckCircle className="h-3 w-3" />
       {carrierLabel}
     </span>
@@ -1219,15 +1219,15 @@ function BulkBlastSection({ onBoostLockChange }: { onBoostLockChange?: (locked: 
             <div className="grid grid-cols-3 gap-2 text-center mb-4">
               <div className="rounded-lg bg-info/10 p-2">
                 <p className="text-lg font-bold text-info">{savedProgress.stats.push_sent}</p>
-                <p className="text-[10px] text-muted-foreground">Push</p>
+                <p className="text-[11px] text-muted-foreground">Push</p>
               </div>
               <div className="rounded-lg bg-emerald-500/10 p-2">
                 <p className="text-lg font-bold text-emerald-400">{savedProgress.stats.sms_sent}</p>
-                <p className="text-[10px] text-muted-foreground">SMS</p>
+                <p className="text-[11px] text-muted-foreground">SMS</p>
               </div>
               <div className="rounded-lg bg-amber-500/10 p-2">
                 <p className="text-lg font-bold text-amber-400">{savedProgress.stats.emailed}</p>
-                <p className="text-[10px] text-muted-foreground">Email</p>
+                <p className="text-[11px] text-muted-foreground">Email</p>
               </div>
             </div>
 
@@ -1293,15 +1293,15 @@ function BulkBlastSection({ onBoostLockChange }: { onBoostLockChange?: (locked: 
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div className="rounded-lg bg-info/10 p-2">
                     <p className="text-lg font-bold text-info">{stats.push_sent}</p>
-                    <p className="text-[10px] text-muted-foreground">Push</p>
+                    <p className="text-[11px] text-muted-foreground">Push</p>
                   </div>
                   <div className="rounded-lg bg-emerald-500/10 p-2">
                     <p className="text-lg font-bold text-emerald-400">{stats.sms_sent}</p>
-                    <p className="text-[10px] text-muted-foreground">SMS</p>
+                    <p className="text-[11px] text-muted-foreground">SMS</p>
                   </div>
                   <div className="rounded-lg bg-amber-500/10 p-2">
                     <p className="text-lg font-bold text-amber-400">{stats.emailed}</p>
-                    <p className="text-[10px] text-muted-foreground">Email</p>
+                    <p className="text-[11px] text-muted-foreground">Email</p>
                   </div>
                 </div>
               </motion.div>
@@ -1349,7 +1349,7 @@ function BulkBlastSection({ onBoostLockChange }: { onBoostLockChange?: (locked: 
                 ].map(r => (
                   <div key={r.label} className="rounded-lg bg-muted/50 p-3 text-center">
                     <p className={cn("text-xl font-bold", r.color)}><AnimatedCounter value={r.value} /></p>
-                    <p className="text-[10px] text-muted-foreground">{r.label}</p>
+                    <p className="text-[11px] text-muted-foreground">{r.label}</p>
                   </div>
                 ))}
               </motion.div>
@@ -1514,7 +1514,7 @@ export default function NotificationHub() {
           <TabsTrigger value="logs" className="gap-1">
             Notification Log
             {tabCounts.logs > 0 && (
-              <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">{tabCounts.logs}</Badge>
+              <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[11px]">{tabCounts.logs}</Badge>
             )}
           </TabsTrigger>
           <TabsTrigger value="carriers">Carrier Assignment</TabsTrigger>

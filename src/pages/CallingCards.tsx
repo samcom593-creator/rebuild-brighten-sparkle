@@ -102,29 +102,29 @@ export default function CallingCards() {
                 <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75 animate-ping" />
                 <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" />
               </span>
-              <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-amber-300">CALLING CARD · LIVE</p>
+              <p className="text-[12px] uppercase tracking-[0.32em] font-bold text-amber-300">CALLING CARD · LIVE</p>
             </div>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">STYLE OPTIONS</p>
+              <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">STYLE OPTIONS</p>
               <p className="text-[28px] leading-none font-black tabular-nums text-foreground">{styleOptions}</p>
-              <p className="text-[10px] text-white/40 tabular-nums">templates to pick</p>
+              <p className="text-[11px] text-white/40 tabular-nums">templates to pick</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">SHARE URL</p>
+              <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">SHARE URL</p>
               <p className="text-[28px] leading-none font-black tabular-nums text-foreground">{shareReady ? "Ready" : "—"}</p>
-              <p className="text-[10px] text-white/40 tabular-nums">{shareReady ? "link is live" : "sign in to generate"}</p>
+              <p className="text-[11px] text-white/40 tabular-nums">{shareReady ? "link is live" : "sign in to generate"}</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">QR SCANNABLE</p>
+              <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">QR SCANNABLE</p>
               <p className="text-[28px] leading-none font-black tabular-nums text-foreground">{qrScannable ? "Yes" : "—"}</p>
-              <p className="text-[10px] text-white/40 tabular-nums">{qrScannable ? "tap Show QR" : "link required"}</p>
+              <p className="text-[11px] text-white/40 tabular-nums">{qrScannable ? "tap Show QR" : "link required"}</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">PROFILE FILLED</p>
+              <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">PROFILE FILLED</p>
               <p className="text-[28px] leading-none font-black tabular-nums text-foreground">{fieldsPct}%</p>
-              <p className="text-[10px] text-white/40 tabular-nums">{filledCount}/{profileFields.length} fields</p>
+              <p className="text-[11px] text-white/40 tabular-nums">{filledCount}/{profileFields.length} fields</p>
             </div>
           </div>
         </div>

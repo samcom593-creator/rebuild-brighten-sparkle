@@ -118,7 +118,7 @@ export function RecordsAndBounties() {
                   <p className="truncate text-sm font-medium">{r.agent_name ?? "Agent"}</p>
                   <p className="text-xs text-muted-foreground">{recordLabel(r)}{previousLabel(r) ? ` · ${previousLabel(r)}` : ""}</p>
                 </div>
-                <span className="shrink-0 text-[11px] text-muted-foreground">{r.achieved_on}</span>
+                <span className="shrink-0 text-[12px] text-muted-foreground">{r.achieved_on}</span>
               </div>
             ))
           )}

@@ -174,33 +174,33 @@ export default function AnnuityTraining() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2.5">
               <span className="h-2.5 w-2.5 rounded-full bg-primary" />
-              <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">ANNUITY TRAINING · LIVE</p>
+              <p className="text-[12px] font-bold uppercase tracking-[0.22em] text-primary">ANNUITY TRAINING · LIVE</p>
             </div>
-            <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-muted-foreground">
+            <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-muted-foreground">
               <Clock className="h-3 w-3" />
               <span>~{READ_TIME_MIN} min read</span>
             </div>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <p className="mb-1 text-[10px] uppercase tracking-widest text-muted-foreground">TOTAL MODULES</p>
+              <p className="mb-1 text-[11px] uppercase tracking-widest text-muted-foreground">TOTAL MODULES</p>
               <p className="text-[28px] font-black leading-none tabular-nums">{MODULES.length}</p>
-              <p className="text-[10px] tabular-nums text-muted-foreground">curated curriculum</p>
+              <p className="text-[11px] tabular-nums text-muted-foreground">curated curriculum</p>
             </div>
             <div>
-              <p className="mb-1 text-[10px] uppercase tracking-widest text-muted-foreground">COMPLETED</p>
+              <p className="mb-1 text-[11px] uppercase tracking-widest text-muted-foreground">COMPLETED</p>
               <p className="text-[28px] font-black leading-none tabular-nums">{completed.size}<span className="text-muted-foreground">/{MODULES.length}</span></p>
-              <p className="text-[10px] tabular-nums text-muted-foreground">{allDone ? "training complete" : "keep going"}</p>
+              <p className="text-[11px] tabular-nums text-muted-foreground">{allDone ? "training complete" : "keep going"}</p>
             </div>
             <div>
-              <p className="mb-1 text-[10px] uppercase tracking-widest text-muted-foreground">READ TIME</p>
+              <p className="mb-1 text-[11px] uppercase tracking-widest text-muted-foreground">READ TIME</p>
               <p className="text-[28px] font-black leading-none tabular-nums">{READ_TIME_MIN}<span className="ml-1 text-[14px] text-muted-foreground">min</span></p>
-              <p className="text-[10px] tabular-nums text-muted-foreground">end to end</p>
+              <p className="text-[11px] tabular-nums text-muted-foreground">end to end</p>
             </div>
             <div>
-              <p className="mb-1 text-[10px] uppercase tracking-widest text-muted-foreground">PRODUCTS COVERED</p>
+              <p className="mb-1 text-[11px] uppercase tracking-widest text-muted-foreground">PRODUCTS COVERED</p>
               <p className="text-[28px] font-black leading-none tabular-nums">{ANNUITY_PRODUCTS.length}</p>
-              <p className="text-[10px] tabular-nums text-muted-foreground">FA · FIA · VA · SPIA</p>
+              <p className="text-[11px] tabular-nums text-muted-foreground">FA · FIA · VA · SPIA</p>
             </div>
           </div>
         </div>

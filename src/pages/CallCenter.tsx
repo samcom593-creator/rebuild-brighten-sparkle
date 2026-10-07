@@ -1167,7 +1167,7 @@ export default function CallCenter() {
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className={cn(
-                          "inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
+                          "inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide",
                           currentBadge.className,
                         )}>
                           {currentBadge.text}
@@ -1176,7 +1176,7 @@ export default function CallCenter() {
                           Next best action: {currentNba.action}
                         </span>
                       </div>
-                      <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                      <p className="mt-0.5 truncate text-[12px] text-muted-foreground">
                         {currentNba.reason}
                       </p>
                     </div>
@@ -1296,7 +1296,7 @@ export default function CallCenter() {
                 </h3>
                 <span className="shrink-0 text-sm font-bold tabular-nums text-muted-foreground">
                   {Math.max(0, leads.length - currentIndex - 1)}{" "}
-                  <span className="text-[10px] font-bold uppercase tracking-wide">ahead</span>
+                  <span className="text-[11px] font-bold uppercase tracking-wide">ahead</span>
                 </span>
               </div>
               <p className="text-xs leading-relaxed text-muted-foreground">
@@ -1323,7 +1323,7 @@ export default function CallCenter() {
                     <div className="flex items-center justify-between gap-2">
                       <div className="min-w-0 truncate text-sm font-medium text-foreground">{name}</div>
                       <span className={cn(
-                        "shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide",
+                        "shrink-0 rounded-full border px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide",
                         isLicensed
                           ? "border-emerald-500/35 text-emerald-600 dark:text-emerald-400"
                           : "border-rose-500/35 text-rose-600 dark:text-rose-400",
@@ -1331,7 +1331,7 @@ export default function CallCenter() {
                         {isLicensed ? "Lic" : "Unlic"}
                       </span>
                     </div>
-                    <div className="mt-0.5 flex min-w-0 items-center gap-2 text-[11px] text-muted-foreground">
+                    <div className="mt-0.5 flex min-w-0 items-center gap-2 text-[12px] text-muted-foreground">
                       <span className="shrink-0">
                         <span className="tabular-nums">{ageDays}d</span> old
                       </span>
@@ -1348,7 +1348,7 @@ export default function CallCenter() {
                           <Mail className="h-3 w-3" /> email
                         </span>
                       )}
-                      <span className="min-w-0 truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                      <span className="min-w-0 truncate text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                         {l.source === "aged_leads" ? "aged" : "applied"}
                       </span>
                     </div>

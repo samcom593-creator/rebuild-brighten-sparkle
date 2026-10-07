@@ -175,9 +175,9 @@ export function InsuraCloudOutbox() {
                 <div key={d.id} className="p-3 text-xs">
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-medium">{d.client_first_name} {d.client_last_name} — #{d.policy_number}</span>
-                    <Badge variant="outline" className="text-[10px]">{format(new Date(d.created_at), "MMM d HH:mm")}</Badge>
+                    <Badge variant="outline" className="text-[11px]">{format(new Date(d.created_at), "MMM d HH:mm")}</Badge>
                   </div>
-                  <div className="text-orange-400 font-mono text-[11px]">{d.insuracloud_sync_error}</div>
+                  <div className="text-orange-400 font-mono text-[12px]">{d.insuracloud_sync_error}</div>
                 </div>
               ))}
             </div>

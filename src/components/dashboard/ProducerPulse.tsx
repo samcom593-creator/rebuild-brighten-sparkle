@@ -61,7 +61,7 @@ export function ProducerPulse() {
     <Card>
       <CardContent className="p-4">
         <div className="mb-3 flex items-baseline justify-between">
-          <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+          <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
             <Activity className="h-3 w-3" /> Producer pulse by leg
           </p>
           <Link to="/dashboard/team" className="text-xs text-primary hover:underline">Team</Link>
@@ -105,7 +105,7 @@ export function ProducerPulse() {
                                 <tr key={p.agent_id}>
                                   <td className="max-w-44 truncate py-2 pl-9 pr-2">{p.agent_name}</td>
                                   <td className="py-2 pr-2">
-                                    <Badge variant="outline" className={cn("text-[10px]", st.cls)}>{st.label}</Badge>
+                                    <Badge variant="outline" className={cn("text-[11px]", st.cls)}>{st.label}</Badge>
                                   </td>
                                   <td className="py-2 pr-2 text-xs tabular-nums text-muted-foreground">
                                     {p.pulse === "sold_today" ? "today"

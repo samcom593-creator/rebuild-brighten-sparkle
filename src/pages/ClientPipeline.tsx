@@ -859,7 +859,7 @@ export default function ClientPipeline() {
             <h3 className="text-lg font-bold">Renters vs homeowners</h3>
           </div>
           {!housingDataAvailable && (
-            <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/40">
+            <Badge variant="outline" className="text-[11px] bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/40">
               <HelpCircle className="h-3 w-3 mr-1" /> Housing data pending
             </Badge>
           )}
@@ -1062,7 +1062,7 @@ export default function ClientPipeline() {
                           {c.callback_date ? format(new Date(c.callback_date), "MMM d") : "—"}
                           {c.callback_time ? ` · ${c.callback_time}` : ""}
                         </p>
-                        <p className="text-[11px] text-muted-foreground">
+                        <p className="text-[12px] text-muted-foreground">
                           {c.callback_date ? formatDistanceToNow(new Date(c.callback_date), { addSuffix: true }) : ""}
                         </p>
                       </div>
@@ -1111,8 +1111,8 @@ export default function ClientPipeline() {
                         </div>
                       </div>
                       <div className="text-right shrink-0">
-                        <Badge variant="outline" className={`text-[10px]  ${stage.tint}`}>{stage.label}</Badge>
-                        <p className="text-[11px] text-muted-foreground mt-1">
+                        <Badge variant="outline" className={`text-[11px]  ${stage.tint}`}>{stage.label}</Badge>
+                        <p className="text-[12px] text-muted-foreground mt-1">
                           {formatDistanceToNow(new Date(c.created_at), { addSuffix: true })}
                         </p>
                       </div>
@@ -1142,7 +1142,7 @@ export default function ClientPipeline() {
             <GlassCard className="p-4">
               <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                 <div>
-                  <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Full directory</p>
+                  <p className="text-[12px] uppercase tracking-widest text-muted-foreground font-semibold">Full directory</p>
                   <h3 className="text-lg font-bold">All clients</h3>
                 </div>
                 <Badge variant="outline" className="text-xs">
@@ -1242,27 +1242,27 @@ export default function ClientPipeline() {
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
                             <p className="font-semibold truncate">{fullName(c)}</p>
-                            <Badge variant="outline" className={`text-[10px]  ${stage.tint}`}>{stage.label}</Badge>
+                            <Badge variant="outline" className={`text-[11px]  ${stage.tint}`}>{stage.label}</Badge>
                             {housing === "homeowner" && (
-                              <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/40">
+                              <Badge variant="outline" className="text-[11px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/40">
                                 <Home className="h-2.5 w-2.5 mr-0.5" /> Owner
                               </Badge>
                             )}
                             {housing === "renter" && (
-                              <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/40">
+                              <Badge variant="outline" className="text-[11px] bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/40">
                                 <Building2 className="h-2.5 w-2.5 mr-0.5" /> Renter
                               </Badge>
                             )}
                             {c.do_not_call && (
-                              <Badge variant="outline" className="text-[10px] bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/40">DNC</Badge>
+                              <Badge variant="outline" className="text-[11px] bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/40">DNC</Badge>
                             )}
                             {c.hostile_language_detected && (
-                              <Badge variant="outline" className="text-[10px] bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/40">
+                              <Badge variant="outline" className="text-[11px] bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/40">
                                 <AlertTriangle className="h-2.5 w-2.5 mr-0.5" /> Hostile
                               </Badge>
                             )}
                             {isStale && (
-                              <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/40">
+                              <Badge variant="outline" className="text-[11px] bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/40">
                                 <Clock className="h-2.5 w-2.5 mr-0.5" /> {lastContactDays}d cold
                               </Badge>
                             )}
@@ -1348,7 +1348,7 @@ function PriorityMetric({ label, value, tone, active, onClick }: PriorityMetricP
     : "text-foreground";
   return (
     <button type="button" aria-pressed={active} onClick={onClick} className={`min-h-20 rounded-xl border p-3 text-left transition-colors ${active ? "border-primary bg-primary/10" : "border-border/70 bg-background/70 hover:border-primary/40"}`}>
-      <span className="block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</span>
+      <span className="block text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</span>
       <span className={`mt-1 block text-2xl font-black tabular-nums ${valueTone}`}>{value.toLocaleString()}</span>
     </button>
   );
@@ -1378,8 +1378,8 @@ function CockpitClientCard({ client, priority, onOpen }: CockpitClientCardProps)
             <p className="mt-0.5 truncate text-xs text-muted-foreground">{fmtPhone(client.phone)}{client.state ? ` · ${client.state}` : ""}</p>
           </div>
           <div className="flex shrink-0 flex-col items-end gap-1">
-            {priority && <Badge variant="outline" className={`text-[10px] ${priorityTone}`}>{priority.label}</Badge>}
-            <Badge variant="outline" className={`text-[10px] ${stage.tint}`}>{stage.label}</Badge>
+            {priority && <Badge variant="outline" className={`text-[11px] ${priorityTone}`}>{priority.label}</Badge>}
+            <Badge variant="outline" className={`text-[11px] ${stage.tint}`}>{stage.label}</Badge>
           </div>
         </div>
         <div className={`mt-3 rounded-lg px-3 py-2 text-xs ${priority?.code === "overdue" ? "bg-rose-500/10 text-rose-700 dark:text-rose-300" : priority?.code === "today" ? "bg-amber-500/10 text-amber-700 dark:text-amber-300" : "bg-muted text-muted-foreground"}`}>

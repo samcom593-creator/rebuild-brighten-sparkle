@@ -118,7 +118,7 @@ export function TeamHierarchyWidget() {
                   <td className="p-2">
                     <div className="font-medium">{r.name}</div>
                     {r.email && (
-                      <div className="text-[10px] text-muted-foreground">{r.email}</div>
+                      <div className="text-[11px] text-muted-foreground">{r.email}</div>
                     )}
                   </td>
                   <td className="p-2 text-right tabular-nums hidden sm:table-cell">

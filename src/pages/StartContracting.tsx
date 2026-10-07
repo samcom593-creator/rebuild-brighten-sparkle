@@ -343,7 +343,7 @@ export default function StartContracting() {
                 <div className="flex items-center justify-between gap-2">
                   <Label htmlFor={field.name}>{field.label}</Label>
                   {showAllFields && prefilledFields.has(field.name) && (
-                    <span className="text-[11px] font-medium text-primary">Saved</span>
+                    <span className="text-[12px] font-medium text-primary">Saved</span>
                   )}
                 </div>
                 <Input

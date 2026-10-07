@@ -402,7 +402,7 @@ export default function ReadyModeIntegration() {
           <GlassCard className="p-5 border-l-4 border-rose-500/60">
             <div className="flex items-start justify-between gap-3 flex-wrap">
               <div className="min-w-0">
-                <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">
+                <p className="text-[12px] uppercase tracking-widest text-muted-foreground font-semibold">
                   Cancel immediately ({terminatedDormants.length})
                 </p>
                 <p className="text-sm text-muted-foreground mt-1">
@@ -433,12 +433,12 @@ export default function ReadyModeIntegration() {
                         <p className="text-xs text-muted-foreground truncate">{s.email ?? "(no email)"} · status: {s.status ?? "—"}</p>
                       </div>
                       {strike && strike.active_count > 0 && (
-                        <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-500 border-amber-500/40">
+                        <Badge variant="outline" className="text-[11px] bg-amber-500/10 text-amber-500 border-amber-500/40">
                           <ShieldAlert className="h-3 w-3 mr-1" />
                           {strike.active_count} active strike{strike.active_count > 1 ? "s" : ""}
                         </Badge>
                       )}
-                      <Badge variant="outline" className="text-[10px]">
+                      <Badge variant="outline" className="text-[11px]">
                         last call: {s.last_call_at ? formatDistanceToNow(parseISO(s.last_call_at), { addSuffix: true }) : "never"}
                       </Badge>
                     </div>
@@ -450,7 +450,7 @@ export default function ReadyModeIntegration() {
 
           {inactiveDormants.length > 0 && (
             <GlassCard className="p-5 border-l-4 border-amber-500/60">
-              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold mb-3">
+              <p className="text-[12px] uppercase tracking-widest text-muted-foreground font-semibold mb-3">
                 Verify before cancelling ({inactiveDormants.length}) — inactive but not terminated
               </p>
               <div className="space-y-2">
@@ -461,7 +461,7 @@ export default function ReadyModeIntegration() {
                       <p className="font-semibold truncate">{s.agent_name}</p>
                       <p className="text-xs text-muted-foreground truncate">{s.email ?? "(no email)"} · marked inactive</p>
                     </div>
-                    <Badge variant="outline" className="text-[10px]">
+                    <Badge variant="outline" className="text-[11px]">
                       {s.calls_last_30d} calls / 30d
                     </Badge>
                   </div>
@@ -472,7 +472,7 @@ export default function ReadyModeIntegration() {
 
           {activeDormants.length > 0 && ingestHealth.data?.ingest_total ? (
             <GlassCard className="p-5 border-l-4 border-orange-500/60">
-              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold mb-3">
+              <p className="text-[12px] uppercase tracking-widest text-muted-foreground font-semibold mb-3">
                 Paying but not dialing ({activeDormants.length}) — active agents, 0 calls / 30d
               </p>
               <p className="text-xs text-muted-foreground mb-3">
@@ -489,7 +489,7 @@ export default function ReadyModeIntegration() {
                         <p className="text-xs text-muted-foreground truncate">{s.email ?? "(no email)"}</p>
                       </div>
                       {strike && (
-                        <Badge variant="outline" className="text-[10px]">
+                        <Badge variant="outline" className="text-[11px]">
                           {strike.standing}
                         </Badge>
                       )}
@@ -511,7 +511,7 @@ export default function ReadyModeIntegration() {
         <TabsContent value="settings" className="mt-4 space-y-3">
           {/* Setup steps — exact path for Sam to wire creds */}
           <GlassCard className="p-5 mb-3">
-            <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold mb-3">
+            <p className="text-[12px] uppercase tracking-widest text-muted-foreground font-semibold mb-3">
               How to wire this up (one time)
             </p>
             <ol className="space-y-2.5 text-sm">
@@ -546,7 +546,7 @@ export default function ReadyModeIntegration() {
           <GlassCard className="p-5 border-l-4 border-info/30">
             <div className="flex items-start justify-between gap-3 flex-wrap">
               <div className="min-w-0">
-                <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold flex items-center gap-1.5">
+                <p className="text-[12px] uppercase tracking-widest text-muted-foreground font-semibold flex items-center gap-1.5">
                   <Webhook className="h-3 w-3" /> Webhook URL (preferred — real-time)
                 </p>
                 <p className="text-sm text-muted-foreground mt-1">
@@ -558,7 +558,7 @@ export default function ReadyModeIntegration() {
                 Copy URL
               </Button>
             </div>
-            <div className="mt-3 p-2.5 rounded bg-background/60 border border-border/40 font-mono text-[11px] break-all">
+            <div className="mt-3 p-2.5 rounded bg-background/60 border border-border/40 font-mono text-[12px] break-all">
               {webhookUrl || <span className="text-muted-foreground">Webhook secret not generated yet — apply <span className="bg-muted px-1 rounded">~/business-ops/readymode-bot/sql/02-bot-state.sql</span> via bot-sql first.</span>}
             </div>
             {ingestHealth.data && (
@@ -584,7 +584,7 @@ export default function ReadyModeIntegration() {
                     className="mt-1 font-mono text-sm"
                   />
                   {settingsByKey[k]?.updated_at && (
-                    <p className="text-[10px] text-muted-foreground mt-1">
+                    <p className="text-[11px] text-muted-foreground mt-1">
                       updated {formatDistanceToNow(parseISO(settingsByKey[k].updated_at), { addSuffix: true })}
                     </p>
                   )}
@@ -628,13 +628,13 @@ export default function ReadyModeIntegration() {
                     <p className="font-semibold truncate">
                       {[c.lead_first_name, c.lead_last_name].filter(Boolean).join(" ") || c.lead_phone || "(unknown)"}
                     </p>
-                    {c.disposition && <Badge variant="outline" className="text-[10px]">{c.disposition}</Badge>}
-                    {c.matched_application_id && <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 border-emerald-500/40">App linked</Badge>}
+                    {c.disposition && <Badge variant="outline" className="text-[11px]">{c.disposition}</Badge>}
+                    {c.matched_application_id && <Badge variant="outline" className="text-[11px] bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 border-emerald-500/40">App linked</Badge>}
                   </div>
                   <p className="text-xs text-muted-foreground truncate">
                     {c.agent_name ?? "(unassigned)"} · {c.campaign_name ?? "—"} · {c.lead_phone ?? "—"}
                   </p>
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-[12px] text-muted-foreground">
                     {c.call_started_at ? format(parseISO(c.call_started_at), "h:mm a") : "—"}
                     {c.duration_seconds != null && <> · {Math.floor(c.duration_seconds / 60)}m {c.duration_seconds % 60}s</>}
                   </p>
@@ -665,7 +665,7 @@ export default function ReadyModeIntegration() {
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-semibold truncate">{a.agent_name}</p>
                         {strike && strike.active_count > 0 && (
-                          <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-500 border-amber-500/40">
+                          <Badge variant="outline" className="text-[11px] bg-amber-500/10 text-amber-500 border-amber-500/40">
                             <ShieldAlert className="h-3 w-3 mr-1" />
                             {strike.active_count} {strike.standing}
                           </Badge>
@@ -677,7 +677,7 @@ export default function ReadyModeIntegration() {
                     </div>
                     <div className="text-right shrink-0">
                       <p className="text-2xl font-bold tabular-nums text-primary">{a.hours_called}</p>
-                      <p className="text-[10px] uppercase text-muted-foreground">pages called</p>
+                      <p className="text-[11px] uppercase text-muted-foreground">pages called</p>
                     </div>
                   </GlassCard>
                 </motion.div>
@@ -704,7 +704,7 @@ export default function ReadyModeIntegration() {
                           ? `Synced ${l.pulled_count ?? 0} pulled · ${l.inserted_count ?? 0} inserted · ${l.matched_count ?? 0} matched`
                           : l.error_message ?? "running…"}
                       </p>
-                      <p className="text-[11px] text-muted-foreground">
+                      <p className="text-[12px] text-muted-foreground">
                         {format(parseISO(l.started_at), "PPp")}
                         {l.finished_at && <> · took {Math.round((parseISO(l.finished_at).getTime() - parseISO(l.started_at).getTime()) / 1000)}s</>}
                       </p>
@@ -731,7 +731,7 @@ function StatusTile({ label, status, okText, errText }: {
   return (
     <GlassCard className="p-4 flex items-center justify-between">
       <div>
-        <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">{label}</p>
+        <p className="text-[12px] uppercase tracking-widest text-muted-foreground font-semibold">{label}</p>
         <p className={`text-xl font-bold mt-1 ${isOk ? "text-emerald-500 dark:text-emerald-400" : "text-rose-500 dark:text-rose-400"}`}>
           {isOk ? okText : errText}
         </p>

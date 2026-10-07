@@ -146,7 +146,7 @@ function ProgressRing({ percent, size = 40, strokeWidth = 4, className }: { perc
           className="transition-all duration-700 ease-out"
         />
       </svg>
-      <span className="absolute text-[10px] font-bold">{percent}%</span>
+      <span className="absolute text-[11px] font-bold">{percent}%</span>
     </div>
   );
 }
@@ -448,7 +448,7 @@ export default function CourseProgress() {
                   scope", not "nobody has started", and the two are only
                   distinguishable if the scope is stated. */}
               {scoped && (
-                <p className="mt-1 text-[11px] text-muted-foreground">
+                <p className="mt-1 text-[12px] text-muted-foreground">
                   {scoped.scope === "none"
                     ? scoped.scopeLabel
                     : `${scoped.scopeLabel} · ${scoped.agents.length} on the course`}
@@ -493,7 +493,7 @@ export default function CourseProgress() {
                 )
               ))}
             </div>
-            <div className="flex gap-4 text-[10px] text-muted-foreground">
+            <div className="flex gap-4 text-[11px] text-muted-foreground">
               {progressBarSegments.map((seg) => (
                 <div key={seg.label} className="flex items-center gap-1">
                   <div className={cn("w-2 h-2 rounded-full", seg.color)} />
@@ -520,7 +520,7 @@ export default function CourseProgress() {
               </div>
               <div>
                 <p className="text-lg font-bold">{stats.inProgress + stats.stalled}</p>
-                <p className="text-[10px] text-muted-foreground">In Progress</p>
+                <p className="text-[11px] text-muted-foreground">In Progress</p>
               </div>
             </div>
           </button>
@@ -539,7 +539,7 @@ export default function CourseProgress() {
               </div>
               <div>
                 <p className="text-lg font-bold">{stats.complete}</p>
-                <p className="text-[10px] text-muted-foreground">Completed</p>
+                <p className="text-[11px] text-muted-foreground">Completed</p>
               </div>
             </div>
           </button>
@@ -558,7 +558,7 @@ export default function CourseProgress() {
               </div>
               <div>
                 <p className="text-lg font-bold">{stats.notStarted}</p>
-                <p className="text-[10px] text-muted-foreground">Not Started</p>
+                <p className="text-[11px] text-muted-foreground">Not Started</p>
               </div>
             </div>
           </button>
@@ -621,17 +621,17 @@ export default function CourseProgress() {
                                 <div className="flex items-center gap-2">
                                   <span className="font-medium text-sm">{agent.agentName}</span>
                                   {agent.isAtRisk && (
-                                    <Badge className="bg-red-500/20 text-red-400 border-red-500/30 text-[9px]">
+                                    <Badge className="bg-red-500/20 text-red-400 border-red-500/30 text-[10px]">
                                       At Risk
                                     </Badge>
                                   )}
                                   {agent.isStalled && !agent.isAtRisk && (
-                                    <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 text-[9px]">
+                                    <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 text-[10px]">
                                       Stalled
                                     </Badge>
                                   )}
                                   {agent.percentComplete >= 100 && (
-                                    <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-[9px]">
+                                    <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-[10px]">
                                       <CheckCircle className="h-2.5 w-2.5 mr-0.5" />
                                       Done
                                     </Badge>
@@ -644,7 +644,7 @@ export default function CourseProgress() {
                               <span className="text-sm">{agent.managerName}</span>
                             </TableCell>
                             <TableCell>
-                              <Badge variant="outline" className="text-[10px]">
+                              <Badge variant="outline" className="text-[11px]">
                                 {agent.onboardingStage === "training_online" ? "In Course" 
                                   : agent.onboardingStage === "in_field_training" ? "Field Training"
                                   : agent.onboardingStage === "evaluated" ? "Evaluated"
@@ -672,7 +672,7 @@ export default function CourseProgress() {
                                     <div className="flex flex-col items-center">
                                       <CheckCircle className="h-4 w-4 text-emerald-500" />
                                       {progress.quizScore !== null && (
-                                        <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-medium">
+                                        <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
                                           {progress.quizScore}%
                                         </span>
                                       )}
@@ -680,7 +680,7 @@ export default function CourseProgress() {
                                   ) : progress?.watchedPercent > 0 ? (
                                     <div className="flex flex-col items-center">
                                       <Clock className="h-3.5 w-3.5 text-info" />
-                                      <span className="text-[9px] text-muted-foreground">{progress.watchedPercent}%</span>
+                                      <span className="text-[10px] text-muted-foreground">{progress.watchedPercent}%</span>
                                     </div>
                                   ) : (
                                     <span className="text-muted-foreground">—</span>
@@ -691,7 +691,7 @@ export default function CourseProgress() {
                             <TableCell>
                               <div className="flex items-center gap-2">
                                 <ProgressRing percent={agent.percentComplete} size={36} strokeWidth={3} />
-                                <span className="text-[10px] text-muted-foreground">
+                                <span className="text-[11px] text-muted-foreground">
                                   {agent.completedCount}/{agent.totalModules}
                                 </span>
                               </div>
@@ -747,7 +747,7 @@ export default function CourseProgress() {
                                 
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1">
+                                    <Button variant="ghost" size="sm" className="h-6 text-[11px] gap-1">
                                       Actions
                                     </Button>
                                   </DropdownMenuTrigger>

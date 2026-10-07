@@ -507,17 +507,17 @@ export default function AwardGraphics() {
                     <TableRow key={batch.id} className="hover:bg-muted/20 transition-colors">
                       <TableCell className="text-xs text-muted-foreground">{format(new Date(batch.created_at), "MMM d, yyyy h:mm a")}</TableCell>
                       <TableCell>
-                        <Badge variant="secondary" className="text-[10px]">{getAwardLabel(batch.award_type)}</Badge>
+                        <Badge variant="secondary" className="text-[11px]">{getAwardLabel(batch.award_type)}</Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="text-[10px] capitalize">{batch.time_period?.replace(/_/g, " ")}</Badge>
+                        <Badge variant="outline" className="text-[11px] capitalize">{batch.time_period?.replace(/_/g, " ")}</Badge>
                       </TableCell>
                       <TableCell className="font-bold text-sm">{batch.winner_name}</TableCell>
                       <TableCell className="text-emerald-600 font-bold text-sm">
                         {batch.award_type?.includes("hires") ? `${batch.winner_amount} hires` : `$${Math.round(batch.winner_amount || 0).toLocaleString()}`}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={cn("text-[10px]", getStatusColor(batch.status))}>
+                        <Badge variant="outline" className={cn("text-[11px]", getStatusColor(batch.status))}>
                           {batch.status?.replace(/_/g, " ")}
                         </Badge>
                       </TableCell>

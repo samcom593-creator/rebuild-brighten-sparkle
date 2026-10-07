@@ -103,7 +103,7 @@ export default function CompTiersSettings() {
                   <p className="text-xs text-muted-foreground capitalize">{agent.role}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] text-muted-foreground">Contract %</p>
+                  <p className="text-[11px] text-muted-foreground">Contract %</p>
                   <Input
                     type="number" step="1" min="0" max="200"
                     className="h-8 w-24 text-sm"
@@ -112,7 +112,7 @@ export default function CompTiersSettings() {
                   />
                 </div>
                 <div>
-                  <p className="text-[10px] text-muted-foreground">Override (0–1)</p>
+                  <p className="text-[11px] text-muted-foreground">Override (0–1)</p>
                   <Input
                     type="number" step="0.01" min="0" max="1"
                     className="h-8 w-24 text-sm"
@@ -121,7 +121,7 @@ export default function CompTiersSettings() {
                   />
                 </div>
                 <div>
-                  <p className="text-[10px] text-muted-foreground">InsuraCloud ID</p>
+                  <p className="text-[11px] text-muted-foreground">InsuraCloud ID</p>
                   <Input
                     type="number"
                     className="h-8 w-28 text-sm"

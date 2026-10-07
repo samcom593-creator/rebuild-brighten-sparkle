@@ -61,20 +61,20 @@ export function NextStepStuckPool({ ownerUserId, limit = 8, heading, subheading 
               <AlertTriangle className="h-6 w-6 text-amber-400" />
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] uppercase tracking-[0.18em] text-amber-400/80">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-amber-400/80">
                 {ownerUserId ? "Your downline · stuck" : "Stuck pipeline · auto-detected via SLA + stall thresholds"}
               </p>
               <h2 className="text-xl sm:text-2xl font-bold tracking-tight mt-0.5">
                 {heading ?? "Longest-stuck candidates"}
               </h2>
-              <p className="text-[12px] text-muted-foreground leading-snug mt-1 max-w-2xl">
+              <p className="text-[13px] text-muted-foreground leading-snug mt-1 max-w-2xl">
                 {subheading ?? "Each row is a real applicant or agent stalled past their stage SLA. Critical = blew past 2× the stall threshold. Cron sweep runs every 15 min — call them today, not tomorrow."}
               </p>
             </div>
           </div>
           <div className="text-right shrink-0">
             <div className="text-3xl font-bold text-rose-300 tabular-nums">{criticalCount}</div>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">critical</p>
+            <p className="text-[11px] text-muted-foreground uppercase tracking-wider">critical</p>
           </div>
         </div>
 
@@ -89,12 +89,12 @@ export function NextStepStuckPool({ ownerUserId, limit = 8, heading, subheading 
             return (
               <li key={row.application_id} className="py-3 flex flex-col sm:flex-row sm:items-center gap-3">
                 <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <Badge variant="outline" className={cn("font-mono text-[10px] uppercase shrink-0", sev.chip)}>
+                  <Badge variant="outline" className={cn("font-mono text-[11px] uppercase shrink-0", sev.chip)}>
                     {row.severity ?? "—"}
                   </Badge>
                   <div className="min-w-0">
                     <p className="text-sm font-semibold leading-tight truncate">{fullName}</p>
-                    <p className="text-[11px] text-muted-foreground leading-tight truncate">
+                    <p className="text-[12px] text-muted-foreground leading-tight truncate">
                       {row.stage_display_name} · {row.next_action_label ?? "next step pending"}
                     </p>
                   </div>
@@ -106,7 +106,7 @@ export function NextStepStuckPool({ ownerUserId, limit = 8, heading, subheading 
                       <Clock className="h-3 w-3 inline-block mr-0.5 -mt-0.5" />
                       {daysLabel}
                     </div>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">in stage</p>
+                    <p className="text-[11px] text-muted-foreground uppercase tracking-wider">in stage</p>
                   </div>
 
                   <div className="flex items-center gap-1">

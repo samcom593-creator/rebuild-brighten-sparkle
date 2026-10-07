@@ -167,29 +167,29 @@ export default function HelpCenter() {
                 <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75 animate-ping" />
                 <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" />
               </span>
-              <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-amber-300">KNOWLEDGE BASE</p>
+              <p className="text-[12px] uppercase tracking-[0.32em] font-bold text-amber-300">KNOWLEDGE BASE</p>
             </div>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">TOTAL FAQ</p>
+              <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">TOTAL FAQ</p>
               <p className="text-[28px] leading-none font-black tabular-nums text-foreground">{FAQ.length}</p>
-              <p className="text-[10px] text-white/40 tabular-nums">questions answered</p>
+              <p className="text-[11px] text-white/40 tabular-nums">questions answered</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">CATEGORIES</p>
+              <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">CATEGORIES</p>
               <p className="text-[28px] leading-none font-black tabular-nums text-foreground">{CATEGORIES.length}</p>
-              <p className="text-[10px] text-white/40 tabular-nums">topic clusters</p>
+              <p className="text-[11px] text-white/40 tabular-nums">topic clusters</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">READ TIME</p>
+              <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">READ TIME</p>
               <p className="text-[28px] leading-none font-black tabular-nums text-foreground">{READ_TIME_MIN}<span className="text-[16px] text-white/60"> min</span></p>
-              <p className="text-[10px] text-white/40 tabular-nums">full library scan</p>
+              <p className="text-[11px] text-white/40 tabular-nums">full library scan</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">LAST UPDATED</p>
+              <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">LAST UPDATED</p>
               <p className="text-[28px] leading-none font-black tabular-nums text-foreground">{LAST_UPDATED}</p>
-              <p className="text-[10px] text-white/40 tabular-nums">content date</p>
+              <p className="text-[11px] text-white/40 tabular-nums">content date</p>
             </div>
           </div>
         </div>

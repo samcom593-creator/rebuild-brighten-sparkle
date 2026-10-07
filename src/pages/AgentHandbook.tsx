@@ -170,29 +170,29 @@ export default function AgentHandbook() {
                 <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75 animate-ping" />
                 <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" />
               </span>
-              <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-amber-300">HANDBOOK · LIVE</p>
+              <p className="text-[12px] uppercase tracking-[0.32em] font-bold text-amber-300">HANDBOOK · LIVE</p>
             </div>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">TOTAL CHAPTERS</p>
+              <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">TOTAL CHAPTERS</p>
               <p className="text-[28px] leading-none font-black tabular-nums text-foreground">{totalChapters}</p>
-              <p className="text-[10px] text-white/40 tabular-nums">cover-to-cover</p>
+              <p className="text-[11px] text-white/40 tabular-nums">cover-to-cover</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">READ TIME</p>
+              <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">READ TIME</p>
               <p className="text-[28px] leading-none font-black tabular-nums text-foreground">{readMinutes}<span className="text-[14px] text-white/50"> min</span></p>
-              <p className="text-[10px] text-white/40 tabular-nums">est. full read</p>
+              <p className="text-[11px] text-white/40 tabular-nums">est. full read</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">COMPLETED</p>
+              <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">COMPLETED</p>
               <p className="text-[28px] leading-none font-black tabular-nums text-foreground">{chaptersCompleted}<span className="text-[14px] text-white/50">/{totalChapters}</span></p>
-              <p className="text-[10px] text-white/40 tabular-nums">this session</p>
+              <p className="text-[11px] text-white/40 tabular-nums">this session</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">LAST OPENED</p>
+              <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">LAST OPENED</p>
               <p className="text-[16px] leading-tight font-black text-foreground truncate">{lastOpenedTitle}</p>
-              <p className="text-[10px] text-white/40 tabular-nums">{lastOpened ? "active chapter" : "pick one to start"}</p>
+              <p className="text-[11px] text-white/40 tabular-nums">{lastOpened ? "active chapter" : "pick one to start"}</p>
             </div>
           </div>
         </div>

@@ -282,10 +282,10 @@ function StatTile({
     )}>
       <div className="flex items-center gap-2 mb-1">
         <Icon className="h-4 w-4" />
-        <span className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">{label}</span>
+        <span className="text-[12px] uppercase tracking-wide text-muted-foreground font-medium">{label}</span>
       </div>
       <div className="text-lg md:text-xl font-bold text-foreground leading-tight">{value}</div>
-      {sub && <div className="text-[11px] text-muted-foreground mt-0.5">{sub}</div>}
+      {sub && <div className="text-[12px] text-muted-foreground mt-0.5">{sub}</div>}
     </div>
   );
 }

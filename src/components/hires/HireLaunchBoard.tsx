@@ -215,7 +215,7 @@ export function HireLaunchBoard({ searchTerm }: { searchTerm: string }) {
       <div className="overflow-hidden rounded-2xl border border-primary/25 bg-card">
         <div className="grid gap-5 p-5 sm:p-6 lg:grid-cols-[1.35fr_1fr] lg:items-center">
           <div>
-            <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
+            <div className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-primary">
               <Sparkles className="h-3.5 w-3.5" /> New-hire launch board
             </div>
             <h2 id="hire-launch-heading" className="text-2xl font-black tracking-tight sm:text-3xl">Move every hire forward from here.</h2>
@@ -231,7 +231,7 @@ export function HireLaunchBoard({ searchTerm }: { searchTerm: string }) {
             ].map((item) => (
               <div key={item.label} className="rounded-xl border border-border bg-muted/20 p-3 text-center">
                 <p className="text-2xl font-black tabular-nums">{item.value}</p>
-                <p className="mt-1 text-[9px] font-bold uppercase tracking-wide text-muted-foreground">{item.label}</p>
+                <p className="mt-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{item.label}</p>
               </div>
             ))}
           </div>
@@ -262,7 +262,7 @@ export function HireLaunchBoard({ searchTerm }: { searchTerm: string }) {
             title={description}
           >
             {label}
-            <span className="ml-1 rounded-full bg-black/10 px-1.5 text-[10px] tabular-nums">{counts[key]}</span>
+            <span className="ml-1 rounded-full bg-black/10 px-1.5 text-[11px] tabular-nums">{counts[key]}</span>
           </Button>
         ))}
       </div>
@@ -317,7 +317,7 @@ function HireCard({
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <p className="truncate text-base font-black">{row.display_name}</p>
-                <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                <p className="mt-0.5 truncate text-[12px] text-muted-foreground">
                   Hired {format(new Date(row.hired_at), "MMM d")} · {row.email_missing ? "no email on file" : row.email}
                   {row.manager_name ? ` · ${row.manager_name}` : ""}
                 </p>
@@ -328,7 +328,7 @@ function HireCard({
                 onClick={() => onMove(row, "license", licensed ? "unlicensed" : "licensed", row.license_status)}
                 title={licensed ? "Recorded as licensed — click to correct it" : "Mark this hire licensed"}
                 className={cn(
-                  "shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-bold transition-colors disabled:opacity-50",
+                  "shrink-0 rounded-full border px-2.5 py-1 text-[12px] font-bold transition-colors disabled:opacity-50",
                   licensed
                     ? "border-success/30 bg-success/5 text-success hover:bg-success/10"
                     : "border-warning/40 bg-warning/10 text-warning hover:bg-warning/20",
@@ -375,7 +375,7 @@ function HireCard({
                       !current && !busy && "group-hover:opacity-100",
                     )} />
                     <p className={cn(
-                      "mt-1.5 truncate text-[9px] font-bold uppercase tracking-wide",
+                      "mt-1.5 truncate text-[10px] font-bold uppercase tracking-wide",
                       current ? "text-primary" : done ? "text-foreground" : "text-muted-foreground/60",
                     )}>
                       {rung.short}
@@ -384,7 +384,7 @@ function HireCard({
                 );
               })}
             </div>
-            <p className="mt-2 text-[10px] text-muted-foreground">
+            <p className="mt-2 text-[11px] text-muted-foreground">
               {stageLabel(row.onboarding_stage)} for {row.days_in_stage} day{row.days_in_stage === 1 ? "" : "s"}
               {row.is_stalled ? " · not moved in over two weeks" : ""}
               {" · click any step to move them"}
@@ -392,7 +392,7 @@ function HireCard({
           </div>
         )}
 
-        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-muted-foreground">
           {deals > 0 && (
             <span className="inline-flex items-center gap-1 font-semibold text-foreground">
               <TrendingUp className="h-3 w-3 text-success" /> {deals} deal{deals === 1 ? "" : "s"} · {money(ap)}
@@ -416,7 +416,7 @@ function HireCard({
 
         <div className="mt-4 flex flex-col gap-3 rounded-xl border border-border/70 bg-muted/25 p-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
-            <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Next action</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Next action</p>
             <p className="text-sm font-bold leading-snug">{row.next_action_label}</p>
           </div>
           <div className="flex shrink-0 flex-wrap gap-2">

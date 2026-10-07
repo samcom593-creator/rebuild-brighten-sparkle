@@ -89,7 +89,7 @@ export function StreakFlameCard({ agentId }: Props) {
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-            <span className="text-[10px] uppercase tracking-widest font-bold" style={{ color: tier.color }}>{tier.label}</span>
+            <span className="text-[11px] uppercase tracking-widest font-bold" style={{ color: tier.color }}>{tier.label}</span>
           </div>
           <div className="flex items-baseline gap-3">
             <span className="text-4xl font-bold tabular-nums" style={{ color: tier.color }}>{streak}</span>

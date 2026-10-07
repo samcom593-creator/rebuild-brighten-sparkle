@@ -149,29 +149,29 @@ export default function Scripts() {
                 <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75 animate-ping" />
                 <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" />
               </span>
-              <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-amber-300">SCRIPTS LIBRARY · LIVE</p>
+              <p className="text-[12px] uppercase tracking-[0.32em] font-bold text-amber-300">SCRIPTS LIBRARY · LIVE</p>
             </div>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">TOTAL SCRIPTS</p>
+              <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">TOTAL SCRIPTS</p>
               <p className="text-[28px] leading-none font-black tabular-nums text-foreground">{scripts.data?.length ?? 0}</p>
-              <p className="text-[10px] text-white/40 tabular-nums">active in library</p>
+              <p className="text-[11px] text-white/40 tabular-nums">active in library</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">CATEGORIES</p>
+              <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">CATEGORIES</p>
               <p className="text-[28px] leading-none font-black tabular-nums text-foreground">{CATEGORIES.length - 1}</p>
-              <p className="text-[10px] text-white/40 tabular-nums">inbound · objections · recruiting · brand</p>
+              <p className="text-[11px] text-white/40 tabular-nums">inbound · objections · recruiting · brand</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">INBOUND</p>
+              <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">INBOUND</p>
               <p className="text-[28px] leading-none font-black tabular-nums text-foreground">{countByCat("inbound")}</p>
-              <p className="text-[10px] text-white/40 tabular-nums">switch center opens</p>
+              <p className="text-[11px] text-white/40 tabular-nums">switch center opens</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">OBJECTIONS</p>
+              <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">OBJECTIONS</p>
               <p className="text-[28px] leading-none font-black tabular-nums text-foreground">{countByCat("objections")}</p>
-              <p className="text-[10px] text-white/40 tabular-nums">rebuttals ready</p>
+              <p className="text-[11px] text-white/40 tabular-nums">rebuttals ready</p>
             </div>
           </div>
         </div>

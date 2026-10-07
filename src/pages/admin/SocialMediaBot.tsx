@@ -325,7 +325,7 @@ export default function SocialMediaBot() {
             transition={{ delay: i * 0.05 }}
           >
             <GlassCard className="p-5 md:p-6 border-amber-500/20 bg-gradient-to-br from-amber-500/[0.03] via-zinc-900/40 to-zinc-900/60 hover:border-amber-500/40 transition-colors">
-              <div className="flex items-center gap-2 text-[11px] text-amber-300/90 uppercase tracking-[0.14em] font-semibold">
+              <div className="flex items-center gap-2 text-[12px] text-amber-300/90 uppercase tracking-[0.14em] font-semibold">
                 <k.icon className="h-4 w-4" />
                 {k.label}
               </div>
@@ -375,7 +375,7 @@ export default function SocialMediaBot() {
                         style={{ width: `${pct.toFixed(1)}%` }}
                       />
                     </div>
-                    <div className="flex items-center justify-between text-[11px] text-muted-foreground font-mono">
+                    <div className="flex items-center justify-between text-[12px] text-muted-foreground font-mono">
                       <span>{pct.toFixed(1)}% complete</span>
                       <span>
                         {daysLeft}d left
@@ -532,7 +532,7 @@ export default function SocialMediaBot() {
                     <div className="mt-1.5 font-semibold text-sm">{p.name}</div>
                     {p.description && <div className="mt-1 text-xs text-muted-foreground leading-snug">{p.description}</div>}
                     {p.monetization_tie && (
-                      <div className="mt-2 text-[11px] text-emerald-300/80 italic">→ {p.monetization_tie}</div>
+                      <div className="mt-2 text-[12px] text-emerald-300/80 italic">→ {p.monetization_tie}</div>
                     )}
                   </button>
                 );

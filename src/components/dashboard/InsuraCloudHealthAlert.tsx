@@ -60,13 +60,13 @@ export function InsuraCloudHealthAlert() {
               <AlertOctagon className="h-6 w-6 text-rose-300" />
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] uppercase tracking-[0.18em] text-rose-300 font-bold">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-rose-300 font-bold">
                 Revenue pipeline · auth broken
               </p>
               <h2 className="text-xl sm:text-2xl font-bold tracking-tight mt-0.5">
                 InsuraCloud commissions are flying blind
               </h2>
-              <p className="text-[12px] text-muted-foreground leading-snug mt-1.5 max-w-2xl">
+              <p className="text-[13px] text-muted-foreground leading-snug mt-1.5 max-w-2xl">
                 {data.status}
               </p>
             </div>
@@ -93,8 +93,8 @@ export function InsuraCloudHealthAlert() {
         </div>
 
         <div className="relative mt-4 pt-4 border-t border-rose-500/30">
-          <p className="text-[11px] text-muted-foreground mb-3">
-            Single action to fix: drop the real <code className="px-1 py-0.5 rounded bg-card/60 text-amber-300 text-[10px]">SAMUEL_JAMES_API_TOKEN</code> at <code className="px-1 py-0.5 rounded bg-card/60 text-amber-300 text-[10px]">~/.config/apex-creds/insuracloud.token</code>. Edge fn now writes <code className="px-1 py-0.5 rounded bg-card/60 text-amber-300 text-[10px]">auth_failed</code> instead of fake success — once the token is real, sync_log starts logging the truth.
+          <p className="text-[12px] text-muted-foreground mb-3">
+            Single action to fix: drop the real <code className="px-1 py-0.5 rounded bg-card/60 text-amber-300 text-[11px]">SAMUEL_JAMES_API_TOKEN</code> at <code className="px-1 py-0.5 rounded bg-card/60 text-amber-300 text-[11px]">~/.config/apex-creds/insuracloud.token</code>. Edge fn now writes <code className="px-1 py-0.5 rounded bg-card/60 text-amber-300 text-[11px]">auth_failed</code> instead of fake success — once the token is real, sync_log starts logging the truth.
           </p>
           <div className="flex flex-wrap gap-2">
             <a
@@ -124,7 +124,7 @@ export function InsuraCloudHealthAlert() {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg border border-rose-500/30 bg-card/60 p-3">
-      <div className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">{label}</div>
+      <div className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">{label}</div>
       <div className="mt-1.5 text-xl font-bold tabular-nums leading-none text-rose-200">{value}</div>
     </div>
   );

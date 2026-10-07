@@ -157,7 +157,7 @@ export function UnclaimedLeadsCommandCard() {
             </div>
           </div>
           <div>
-            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-300 flex items-center gap-1.5">
+            <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-amber-300 flex items-center gap-1.5">
               <Sparkles className="h-3 w-3" /> Unclaimed leads · Money on the floor
             </div>
             <h2 className="text-xl sm:text-2xl font-bold text-foreground leading-tight">
@@ -203,19 +203,19 @@ export function UnclaimedLeadsCommandCard() {
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-semibold text-sm truncate">{display}</span>
-                    <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 h-4", heatStyle.pill)}>
+                    <Badge variant="outline" className={cn("text-[11px] px-1.5 py-0 h-4", heatStyle.pill)}>
                       {heatStyle.label} · {row.days_in_queue}d
                     </Badge>
                     {row.state && (
-                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{row.state}</span>
+                      <span className="text-[11px] uppercase tracking-wider text-muted-foreground">{row.state}</span>
                     )}
                     {row.license_progress && row.license_progress !== "unlicensed" && (
-                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-primary/40 text-primary">
+                      <Badge variant="outline" className="text-[11px] px-1.5 py-0 h-4 border-primary/40 text-primary">
                         {row.license_progress.replace(/_/g, " ")}
                       </Badge>
                     )}
                   </div>
-                  <div className="flex items-center gap-3 mt-0.5 text-[11px] text-muted-foreground">
+                  <div className="flex items-center gap-3 mt-0.5 text-[12px] text-muted-foreground">
                     {row.phone && (
                       <a href={phoneHref(row.phone) ?? `tel:${row.phone}`} {...contactLinkProps(phoneHref(row.phone))} className="flex items-center gap-1 hover:text-foreground" onClick={e => e.stopPropagation()}>
                         <Phone className="h-3 w-3" /> {row.phone}
@@ -284,7 +284,7 @@ function HeatPill({
     <div className={cn("rounded-md border px-3 py-2 flex items-center gap-2", toneClasses[tone])}>
       <Icon className="h-4 w-4 flex-shrink-0" />
       <div className="flex-1">
-        <div className="text-[10px] uppercase tracking-wider opacity-80">{label}</div>
+        <div className="text-[11px] uppercase tracking-wider opacity-80">{label}</div>
         <div className="text-lg font-bold tabular-nums leading-tight">{value}</div>
       </div>
     </div>

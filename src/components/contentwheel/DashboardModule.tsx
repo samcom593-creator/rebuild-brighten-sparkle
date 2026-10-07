@@ -114,7 +114,7 @@ export function DashboardModule() {
       <Card className="p-5">
         <div className="flex items-baseline justify-between mb-3">
           <h3 className="text-sm font-semibold tracking-tight">Quota streak — last 30 days</h3>
-          <span className="text-[11px] text-muted-foreground">2 posts/day minimum · green = hit · gray = missed</span>
+          <span className="text-[12px] text-muted-foreground">2 posts/day minimum · green = hit · gray = missed</span>
         </div>
         <QuotaHeatmap days={data?.streak ?? []} />
       </Card>
@@ -127,7 +127,7 @@ export function DashboardModule() {
               <Flame className="h-4 w-4 text-amber-400" />
               Active iteration veins
             </h3>
-            <span className="text-[11px] text-muted-foreground">Sorted by multiple × baseline. Mine these.</span>
+            <span className="text-[12px] text-muted-foreground">Sorted by multiple × baseline. Mine these.</span>
           </div>
           {outliers.length === 0 ? (
             <div className="text-sm text-muted-foreground py-4">
@@ -140,7 +140,7 @@ export function DashboardModule() {
                   <span className="text-xl font-mono tabular-nums w-14 text-amber-400">{Number(o.multiple).toFixed(1)}×</span>
                   <span className="flex-1 min-w-0">
                     <span className="block text-sm font-medium truncate">{o.idea_title ?? "(no linked idea)"}</span>
-                    <span className="block text-[11px] text-muted-foreground">
+                    <span className="block text-[12px] text-muted-foreground">
                       {o.platform} · {fmt(o.views)} views · baseline {fmt(o.baseline_avg)} · {o.iterations_logged} iterations logged
                     </span>
                   </span>
@@ -165,15 +165,15 @@ export function DashboardModule() {
             <h3 className="text-sm font-semibold tracking-tight mb-3">Shot → Posted ratio</h3>
             <div className="flex items-baseline gap-2">
               <span className="text-3xl font-bold tabular-nums">{fmt((shotVsPosted?.ratio ?? 0) * 100, 0)}%</span>
-              <span className="text-[11px] text-muted-foreground">posted of shot (14d)</span>
+              <span className="text-[12px] text-muted-foreground">posted of shot (14d)</span>
             </div>
-            <p className="text-[11px] text-muted-foreground mt-2">
+            <p className="text-[12px] text-muted-foreground mt-2">
               {shotVsPosted?.shot_pool ?? 0} shot · {shotVsPosted?.posted_pool ?? 0} posted
             </p>
             {shotVsPosted?.bottom_of_barrel_warning && (
               <div className="mt-3 flex items-start gap-2 rounded-md bg-rose-500/10 border border-rose-500/30 px-3 py-2">
                 <AlertTriangle className="h-4 w-4 text-rose-400 mt-0.5 shrink-0" />
-                <p className="text-[11px] text-rose-300 leading-snug">
+                <p className="text-[12px] text-rose-300 leading-snug">
                   You're posting from the bottom of the barrel. Shoot 2× what you post.
                 </p>
               </div>
@@ -184,9 +184,9 @@ export function DashboardModule() {
             <h3 className="text-sm font-semibold tracking-tight mb-3">Audience split (ICP / Nurture)</h3>
             <div className="flex items-baseline gap-2">
               <span className="text-3xl font-bold tabular-nums">{fmt(split?.icp_pct ?? 0, 0)}%</span>
-              <span className="text-[11px] text-muted-foreground">ICP · target ~20%</span>
+              <span className="text-[12px] text-muted-foreground">ICP · target ~20%</span>
             </div>
-            <p className="text-[11px] text-muted-foreground mt-2">
+            <p className="text-[12px] text-muted-foreground mt-2">
               {split?.icp_count ?? 0} ICP · {split?.nurture_count ?? 0} nurture · {split?.total ?? 0} active ideas
             </p>
           </Card>
@@ -200,12 +200,12 @@ export function DashboardModule() {
             <Sparkles className="h-4 w-4 text-amber-400" />
             Public challenge
           </h3>
-          <span className="text-[11px] text-muted-foreground">Credibility = stacked proof</span>
+          <span className="text-[12px] text-muted-foreground">Credibility = stacked proof</span>
         </div>
         {challenge ? (
           <div>
             <p className="text-sm font-medium">{challenge.goal}</p>
-            <p className="text-[11px] text-muted-foreground mt-1">
+            <p className="text-[12px] text-muted-foreground mt-1">
               Deadline {challenge.deadline} · {challenge.days_left} days left · {challenge.logs_count} logs
             </p>
           </div>
@@ -246,12 +246,12 @@ function KpiCard({ icon: Icon, label, value, sub, tone }: KpiCardProps) {
   };
   return (
     <Card className={cn("p-5 transition-colors", toneStyles[tone])}>
-      <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+      <div className="flex items-center gap-2 text-[12px] uppercase tracking-[0.14em] text-muted-foreground">
         <Icon className="h-3.5 w-3.5" />
         {label}
       </div>
       <div className={cn("mt-3 text-3xl font-bold tabular-nums leading-none", valueColor[tone])}>{value}</div>
-      <p className="mt-2 text-[11px] text-muted-foreground leading-snug">{sub}</p>
+      <p className="mt-2 text-[12px] text-muted-foreground leading-snug">{sub}</p>
     </Card>
   );
 }

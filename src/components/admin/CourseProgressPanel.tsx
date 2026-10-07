@@ -287,12 +287,12 @@ export function CourseProgressPanel() {
                       </Badge>
                     )}
                     {agent.isAtRisk && (
-                      <Badge variant="destructive" className="text-[10px]">
+                      <Badge variant="destructive" className="text-[11px]">
                         At Risk
                       </Badge>
                     )}
                     {agent.isStalled && !agent.isAtRisk && (
-                      <Badge variant="secondary" className="text-[10px]">
+                      <Badge variant="secondary" className="text-[11px]">
                         Stalled
                       </Badge>
                     )}

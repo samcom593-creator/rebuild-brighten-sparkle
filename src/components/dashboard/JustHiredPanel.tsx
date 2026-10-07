@@ -117,7 +117,7 @@ export function JustHiredPanel() {
                       <span className="font-medium truncate">{h.display_name ?? "(unnamed agent)"}</span>
                       {isDirect && <Crown className="h-3 w-3 text-amber-300 flex-shrink-0" />}
                     </div>
-                    <div className="text-[10px] text-muted-foreground mt-0.5 flex items-center justify-between">
+                    <div className="text-[11px] text-muted-foreground mt-0.5 flex items-center justify-between">
                       <span>→ {h.routed_to}</span>
                       <span>{formatDistanceToNow(new Date(h.created_at), { addSuffix: true })}</span>
                     </div>

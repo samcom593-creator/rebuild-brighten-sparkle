@@ -409,7 +409,7 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
                   <h2 className="text-lg sm:text-xl font-bold text-primary">
                     Log Production
                   </h2>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Enter numbers for the selected date</p>
+                  <p className="text-[11px] sm:text-xs text-muted-foreground truncate">Enter numbers for the selected date</p>
                 </div>
                 
                 {hasProduction && (
@@ -544,7 +544,7 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
                   </div>
                   <div>
                     <h3 className="text-sm font-bold">Deals & ALP</h3>
-                    <p className="text-[10px] text-muted-foreground">Enter monthly premiums for automatic ALP calculation</p>
+                    <p className="text-[11px] text-muted-foreground">Enter monthly premiums for automatic ALP calculation</p>
                   </div>
                 </div>
                 
@@ -564,7 +564,7 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
                   </div>
                   <div>
                     <h3 className="text-sm font-bold">Activity Metrics</h3>
-                    <p className="text-[10px] text-muted-foreground">Track presentations, calls, and referrals</p>
+                    <p className="text-[11px] text-muted-foreground">Track presentations, calls, and referrals</p>
                   </div>
                 </div>
 
@@ -592,7 +592,7 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
                         >
                           <Label 
                             htmlFor={field.key} 
-                            className="text-[10px] uppercase tracking-wider text-muted-foreground mb-3 block font-semibold"
+                            className="text-[11px] uppercase tracking-wider text-muted-foreground mb-3 block font-semibold"
                           >
                             {field.label}
                           </Label>

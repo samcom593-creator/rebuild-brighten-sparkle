@@ -56,12 +56,12 @@ export function RecruitingCommandHero({
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0 max-w-3xl">
             <div className="mb-3 flex flex-wrap items-center gap-2">
-              <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#C9A961]">{eyebrow}</span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-300">
+              <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#C9A961]">{eyebrow}</span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-emerald-300">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300" />
                 {statusLabel}
               </span>
-              {updatedLabel && <span className="text-[11px] text-foreground/45">Updated {updatedLabel}</span>}
+              {updatedLabel && <span className="text-[12px] text-foreground/45">Updated {updatedLabel}</span>}
             </div>
             <h1 className="text-balance text-2xl font-black tracking-tight sm:text-3xl lg:text-4xl">{title}</h1>
             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-foreground/60 sm:text-base">{subtitle}</p>
@@ -83,8 +83,8 @@ export function RecruitingCommandHero({
                 <p className={cn("mt-3 text-2xl font-black leading-none tabular-nums sm:text-3xl", TONE[metric.tone ?? "neutral"])}>
                   {metric.value === null ? "—" : typeof metric.value === "number" ? metric.value.toLocaleString() : metric.value}
                 </p>
-                <p className="mt-1.5 text-[11px] font-bold uppercase tracking-wide text-foreground/75">{metric.label}</p>
-                <p className="mt-0.5 line-clamp-2 text-[10px] leading-relaxed text-foreground/40">{metric.detail}</p>
+                <p className="mt-1.5 text-[12px] font-bold uppercase tracking-wide text-foreground/75">{metric.label}</p>
+                <p className="mt-0.5 line-clamp-2 text-[11px] leading-relaxed text-foreground/40">{metric.detail}</p>
               </>
             );
             const classes = cn(
@@ -105,7 +105,7 @@ export function RecruitingCommandHero({
           })}
         </div>
 
-        <div className="mt-4 flex items-center gap-2 border-t border-border pt-3 text-[11px] text-foreground/45">
+        <div className="mt-4 flex items-center gap-2 border-t border-border pt-3 text-[12px] text-foreground/45">
           <Activity className="h-3.5 w-3.5 text-[#C9A961]" />
           Every number opens the people behind it. No vanity metrics and no dead-end cards.
         </div>

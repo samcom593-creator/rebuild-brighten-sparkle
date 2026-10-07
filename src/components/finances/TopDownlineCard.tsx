@@ -30,7 +30,7 @@ export function TopDownlineCard({ agentId }: { agentId?: string | null }) {
                   <span className="text-xs font-bold text-primary tabular-nums">#{i + 1}</span>
                   <div>
                     <div className="text-sm font-medium">{d.downline_name}</div>
-                    <div className="text-[11px] text-muted-foreground">
+                    <div className="text-[12px] text-muted-foreground">
                       {d.policy_count ?? 0} policies
                     </div>
                   </div>

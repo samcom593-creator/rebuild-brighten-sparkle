@@ -538,7 +538,7 @@ function StatPill({ label, value, color = "primary", icon, onClick }: {
       disabled={!onClick}
       className={`p-3 rounded-md border text-left transition ${colors[color]} ${onClick ? "hover:ring-2 ring-current/30 cursor-pointer" : "cursor-default"}`}
     >
-      <div className="flex items-center gap-1.5 mb-0.5 opacity-80">{icon}<span className="text-[10px] uppercase tracking-wide font-semibold">{label}</span></div>
+      <div className="flex items-center gap-1.5 mb-0.5 opacity-80">{icon}<span className="text-[11px] uppercase tracking-wide font-semibold">{label}</span></div>
       <p className="text-2xl font-bold">{value}</p>
     </button>
   );
@@ -583,13 +583,13 @@ function BoardView({ rows, selectedIds, onToggleSelect, onQuickEdit }: {
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-sm truncate">{r.name}</p>
                   <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                    <Badge variant="outline" className="text-[10px] capitalize">{r.role}</Badge>
+                    <Badge variant="outline" className="text-[11px] capitalize">{r.role}</Badge>
                     {/* MP-392: admins/managers move the hire right here; everyone else sees the badge. */}
                     <span onClick={(e) => e.stopPropagation()}>
-                      <HireStageSelect agentId={r.id} name={r.name} stage={r.onboardingStage} licenseStatus={r.licenseStatus} email={r.email} readOnly={r.isDeactivated} className="h-6 min-w-[8rem] text-[10px]" />
+                      <HireStageSelect agentId={r.id} name={r.name} stage={r.onboardingStage} licenseStatus={r.licenseStatus} email={r.email} readOnly={r.isDeactivated} className="h-6 min-w-[8rem] text-[11px]" />
                     </span>
                     {r.licenseStatus === "licensed" && (
-                      <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-400 border-emerald-500/30">Licensed</Badge>
+                      <Badge variant="outline" className="text-[11px] bg-emerald-500/10 text-emerald-400 border-emerald-500/30">Licensed</Badge>
                     )}
                   </div>
                 </div>
@@ -597,20 +597,20 @@ function BoardView({ rows, selectedIds, onToggleSelect, onQuickEdit }: {
 
               <div className="grid grid-cols-3 gap-1 text-center">
                 <div>
-                  <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Week</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Week</p>
                   <p className="text-sm font-semibold">${r.weekAlp.toLocaleString()}</p>
                 </div>
                 <div>
-                  <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Month</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Month</p>
                   <p className="text-sm font-semibold">${r.monthAlp.toLocaleString()}</p>
                 </div>
                 <div>
-                  <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Lifetime</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Lifetime</p>
                   <p className="text-sm font-semibold">${r.lifetimeAlp.toLocaleString()}</p>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-1 border-t border-border/50">
+              <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1 border-t border-border/50">
                 <span>
                   {r.lastProductionDate
                     ? `Logged ${formatDistanceToNow(new Date(r.lastProductionDate), { addSuffix: true })}`
@@ -700,15 +700,15 @@ function TableView({ rows, selectedIds, onToggleSelect, onQuickEdit }: {
                   <td className="p-2">
                     <div className="flex items-center gap-2">
                       <div className={`h-1.5 w-1.5 rounded-full ${hs.dot} shrink-0`} title={hs.label} />
-                      <Avatar className="h-6 w-6 shrink-0"><AvatarImage src={r.avatarUrl || undefined} /><AvatarFallback className="text-[10px]">{r.name[0]}</AvatarFallback></Avatar>
+                      <Avatar className="h-6 w-6 shrink-0"><AvatarImage src={r.avatarUrl || undefined} /><AvatarFallback className="text-[11px]">{r.name[0]}</AvatarFallback></Avatar>
                       <div className="min-w-0">
                         <p className="font-medium truncate">{r.name}</p>
-                        <p className="text-[10px] text-muted-foreground truncate">{r.email}</p>
+                        <p className="text-[11px] text-muted-foreground truncate">{r.email}</p>
                       </div>
                     </div>
                   </td>
                   <td className="p-2 text-xs" onClick={(e) => e.stopPropagation()}>
-                    <HireStageSelect agentId={r.id} name={r.name} stage={r.onboardingStage} licenseStatus={r.licenseStatus} email={r.email} readOnly={r.isDeactivated} className="h-7 min-w-[8.5rem] text-[11px]" />
+                    <HireStageSelect agentId={r.id} name={r.name} stage={r.onboardingStage} licenseStatus={r.licenseStatus} email={r.email} readOnly={r.isDeactivated} className="h-7 min-w-[8.5rem] text-[12px]" />
                   </td>
                   <td className="p-2 text-right font-semibold">${r.weekAlp.toLocaleString()}</td>
                   <td className="p-2 text-right">${r.monthAlp.toLocaleString()}</td>

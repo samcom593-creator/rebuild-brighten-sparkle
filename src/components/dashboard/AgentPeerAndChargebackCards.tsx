@@ -84,7 +84,7 @@ export function RegionPeerCard({ agentId }: { agentId: string | null }) {
     <GlassCard className="p-4">
       <div className="flex items-center justify-between mb-3">
         <div>
-          <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold flex items-center gap-1.5">
+          <p className="text-[12px] uppercase tracking-widest text-muted-foreground font-semibold flex items-center gap-1.5">
             <Users className="h-3 w-3" /> Your region · MTD
           </p>
           <h3 className="text-lg font-bold">
@@ -129,7 +129,7 @@ export function RegionPeerCard({ agentId }: { agentId: string | null }) {
                     <p className={cn("font-semibold truncate", isMe && "text-primary")}>
                       {r.display_name ?? r.agent_code ?? "—"}{isMe ? " · you" : ""}
                     </p>
-                    <p className="text-[11px] text-muted-foreground">
+                    <p className="text-[12px] text-muted-foreground">
                       {r.deals_mtd ?? 0} deal{r.deals_mtd === 1 ? "" : "s"} MTD
                     </p>
                   </div>
@@ -185,7 +185,7 @@ export function UpcomingChargebackCard({ agentId }: { agentId: string | null }) 
     )}>
       <div className="flex items-start justify-between mb-3">
         <div>
-          <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold flex items-center gap-1.5">
+          <p className="text-[12px] uppercase tracking-widest text-muted-foreground font-semibold flex items-center gap-1.5">
             {isClean ? <ShieldCheck className="h-3 w-3 text-emerald-400" /> : <ShieldAlert className="h-3 w-3 text-rose-400" />}
             Chargeback ledger
           </p>
@@ -204,28 +204,28 @@ export function UpcomingChargebackCard({ agentId }: { agentId: string | null }) 
       ) : (
         <dl className="grid grid-cols-2 gap-2 text-sm">
           <div>
-            <dt className="text-[10px] uppercase text-muted-foreground">Total charges</dt>
+            <dt className="text-[11px] uppercase text-muted-foreground">Total charges</dt>
             <dd className="font-semibold tabular-nums">{data?.total_charges ?? 0}</dd>
           </div>
           <div>
-            <dt className="text-[10px] uppercase text-muted-foreground">Billed total</dt>
+            <dt className="text-[11px] uppercase text-muted-foreground">Billed total</dt>
             <dd className="font-semibold tabular-nums">{fmtUsdCompact(billed)}</dd>
           </div>
           {flagged > 0 && (
             <div className="col-span-2 rounded border border-rose-500/30 bg-rose-500/5 p-2">
-              <dt className="text-[10px] uppercase text-rose-400">Flagged at risk</dt>
+              <dt className="text-[11px] uppercase text-rose-400">Flagged at risk</dt>
               <dd className="font-semibold tabular-nums text-rose-300">{flagged} · review with your manager</dd>
             </div>
           )}
           {dupes > 0 && (
             <div className="col-span-2 rounded border border-amber-500/30 bg-amber-500/5 p-2">
-              <dt className="text-[10px] uppercase text-amber-400">Duplicate charges</dt>
+              <dt className="text-[11px] uppercase text-amber-400">Duplicate charges</dt>
               <dd className="font-semibold tabular-nums text-amber-200">{dupes} · {fmtUsdCompact(Number(data?.duplicate_amount_usd ?? 0))}</dd>
             </div>
           )}
           {data?.last_charged_at && (
             <div className="col-span-2">
-              <dt className="text-[10px] uppercase text-muted-foreground">Last charge</dt>
+              <dt className="text-[11px] uppercase text-muted-foreground">Last charge</dt>
               <dd className="text-sm text-muted-foreground tabular-nums">
                 {new Date(data.last_charged_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
               </dd>

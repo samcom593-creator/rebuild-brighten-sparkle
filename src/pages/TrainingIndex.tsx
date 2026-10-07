@@ -176,7 +176,7 @@ export default function TrainingIndex() {
                   <div className="w-12 h-12 rounded-lg bg-primary/15 flex items-center justify-center">
                     <Icon className="h-6 w-6 text-primary" />
                   </div>
-                  <Badge variant="secondary" className="text-[10px]">
+                  <Badge variant="secondary" className="text-[11px]">
                     {dest.badge}
                   </Badge>
                 </div>

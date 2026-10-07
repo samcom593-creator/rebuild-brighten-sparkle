@@ -128,14 +128,14 @@ export function AgentTrainingStageBar({ agentId, compact = false }: Props) {
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Training stage</span>
           {stage === "unknown" ? (
-            <Badge variant="outline" className="text-[10px] bg-muted/50">Stage pending</Badge>
+            <Badge variant="outline" className="text-[11px] bg-muted/50">Stage pending</Badge>
           ) : (
-            <Badge variant="outline" className={cn("text-[10px] font-bold", META[stage].color)}>
+            <Badge variant="outline" className={cn("text-[11px] font-bold", META[stage].color)}>
               {META[stage].label}
             </Badge>
           )}
           {data?.training_stage_override && (
-            <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/20">manual</Badge>
+            <Badge variant="outline" className="text-[11px] bg-amber-500/10 text-amber-600 border-amber-500/20">manual</Badge>
           )}
         </div>
         {(isAdmin || isManager) && (
@@ -196,8 +196,8 @@ export function AgentTrainingStageBar({ agentId, compact = false }: Props) {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 pt-1">
           {ORDERED.map((s) => (
             <div key={s} className="flex flex-col">
-              <span className={cn("text-[10px] font-semibold uppercase tracking-wide", META[s].color)}>{META[s].label}</span>
-              <span className="text-[11px] tabular-nums text-foreground/80">{fmtDate(stamps[s])}</span>
+              <span className={cn("text-[11px] font-semibold uppercase tracking-wide", META[s].color)}>{META[s].label}</span>
+              <span className="text-[12px] tabular-nums text-foreground/80">{fmtDate(stamps[s])}</span>
             </div>
           ))}
         </div>

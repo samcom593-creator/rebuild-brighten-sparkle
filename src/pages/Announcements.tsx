@@ -342,13 +342,13 @@ export default function Announcements() {
                       <Badge
                         variant="outline"
                         className={cn(
-                          "text-[10px] uppercase tracking-wide",
+                          "text-[11px] uppercase tracking-wide",
                           priorityBadge(a.priority),
                         )}
                       >
                         {a.priority ?? "normal"}
                       </Badge>
-                      <span className="text-[11px] tabular-nums text-muted-foreground">
+                      <span className="text-[12px] tabular-nums text-muted-foreground">
                         {relativeTime(a.published_at ?? a.created_at)}
                       </span>
                     </div>
@@ -412,7 +412,7 @@ export default function Announcements() {
                         className="h-9 w-9 shrink-0 rounded-full object-cover ring-1 ring-border"
                       />
                     ) : (
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-[11px] font-bold text-muted-foreground">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-[12px] font-bold text-muted-foreground">
                         {(ev.agent_name ?? "?").split(" ").map((s) => s[0]).slice(0, 2).join("")}
                       </div>
                     )}
@@ -420,12 +420,12 @@ export default function Announcements() {
                       <div className="truncate text-sm font-medium text-foreground">
                         {ev.agent_name ?? "Someone"}
                       </div>
-                      <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                      <div className="mt-0.5 truncate text-[12px] text-muted-foreground">
                         closed
                         {ev.product_sold && <> · {ev.product_sold}</>}
                       </div>
                       {ev.draft_hook && (
-                        <p className="mt-0.5 truncate text-[11px] italic text-muted-foreground">
+                        <p className="mt-0.5 truncate text-[12px] italic text-muted-foreground">
                           "{ev.draft_hook}"
                         </p>
                       )}
@@ -434,7 +434,7 @@ export default function Announcements() {
                       <div className="text-sm font-bold tabular-nums text-success">
                         {fmtUsd(ev.annual_premium)}
                       </div>
-                      <div className="mt-0.5 text-[10px] font-bold uppercase tracking-wide tabular-nums text-muted-foreground">
+                      <div className="mt-0.5 text-[11px] font-bold uppercase tracking-wide tabular-nums text-muted-foreground">
                         {relativeTime(ev.created_at)}
                       </div>
                     </div>

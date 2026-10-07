@@ -83,7 +83,7 @@ export function AgentLinkBookTruthCard() {
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-300">
+              <p className="text-[12px] font-semibold uppercase tracking-wider text-amber-300">
                 AgentLink book — total truth
               </p>
               {stale ? (
@@ -108,15 +108,15 @@ export function AgentLinkBookTruthCard() {
         </div>
         <div className="mt-3 grid grid-cols-2 gap-3 border-t border-amber-500/20 pt-3">
           <div>
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">MTD ({mtdRangeLabel()})</p>
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">MTD ({mtdRangeLabel()})</p>
             <p className="text-base font-bold tabular-nums">{money(d.premium_this_month)}</p>
-            <p className="text-[11px] text-muted-foreground">{d.deals_this_month} deals</p>
+            <p className="text-[12px] text-muted-foreground">{d.deals_this_month} deals</p>
           </div>
           {syncAgo && (
             <div>
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Last sync</p>
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Last sync</p>
               <p className="text-sm font-medium">{syncAgo}</p>
-              <p className="text-[11px] text-muted-foreground">Auto every 30 min</p>
+              <p className="text-[12px] text-muted-foreground">Auto every 30 min</p>
             </div>
           )}
         </div>

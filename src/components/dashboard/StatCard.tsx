@@ -68,7 +68,7 @@ export function StatCard({
             </div>
           )}
           {hint && (
-            <p className="text-[10px] text-muted-foreground/70 mt-1">{hint}</p>
+            <p className="text-[11px] text-muted-foreground/70 mt-1">{hint}</p>
           )}
         </div>
         <div className="p-2 rounded-lg bg-primary/10">

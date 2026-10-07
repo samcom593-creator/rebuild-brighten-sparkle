@@ -74,7 +74,7 @@ export function AccountRoleControl({ agentId, agentName }: { agentId: string; ag
 
   if (!isAdmin) {
     return isManagerLike ? (
-      <Badge variant="outline" className="border-primary/40 bg-primary/10 text-[10px] font-bold uppercase tracking-wide text-primary">
+      <Badge variant="outline" className="border-primary/40 bg-primary/10 text-[11px] font-bold uppercase tracking-wide text-primary">
         <Shield className="mr-1 h-3 w-3" /> {ACCOUNT_MODE_LABELS[current ?? "manager"] ?? "Manager"}
       </Badge>
     ) : null;
@@ -83,7 +83,7 @@ export function AccountRoleControl({ agentId, agentName }: { agentId: string; ag
   return (
     <div className="flex items-center gap-2">
       {isManagerLike && (
-        <Badge variant="outline" className="border-primary/40 bg-primary/10 text-[10px] font-bold uppercase tracking-wide text-primary">
+        <Badge variant="outline" className="border-primary/40 bg-primary/10 text-[11px] font-bold uppercase tracking-wide text-primary">
           <Shield className="mr-1 h-3 w-3" /> {ACCOUNT_MODE_LABELS[current ?? "manager"] ?? "Manager"}
         </Badge>
       )}

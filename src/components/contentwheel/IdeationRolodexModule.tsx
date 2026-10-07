@@ -107,7 +107,7 @@ export function IdeationRolodexModule() {
       <Card className="p-5 bg-white dark:bg-card border-amber-500/20">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <p className="text-[10px] uppercase tracking-[0.18em] text-amber-400/80">Module 02 · the BRAIN ideating</p>
+            <p className="text-[11px] uppercase tracking-[0.18em] text-amber-400/80">Module 02 · the BRAIN ideating</p>
             <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
               <Lightbulb className="h-6 w-6 text-amber-300" /> Ideation Rolodex
             </h2>
@@ -163,7 +163,7 @@ export function IdeationRolodexModule() {
             <Card key={idea.id} className="p-4 hover:border-amber-500/40 transition-colors">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
-                  <div className="flex flex-wrap items-center gap-1.5 text-[10px] uppercase tracking-[0.12em] mb-2">
+                  <div className="flex flex-wrap items-center gap-1.5 text-[11px] uppercase tracking-[0.12em] mb-2">
                     {idea.cw_pillars && <Badge variant="outline" className="text-amber-300 border-amber-500/40">{idea.cw_pillars.code} {idea.cw_pillars.name}</Badge>}
                     <Badge variant="outline" className={idea.audience === "icp" ? "border-emerald-500/40 text-emerald-300" : "border-zinc-600 text-muted-foreground"}>{idea.audience}</Badge>
                     <Badge className={STATUS_COLORS[idea.status] ?? "bg-zinc-700/40 text-zinc-300"}>{idea.status}</Badge>
@@ -173,7 +173,7 @@ export function IdeationRolodexModule() {
                   <div className="font-semibold leading-snug">{idea.title}</div>
                   {idea.body && <div className="text-sm text-muted-foreground mt-1 line-clamp-2">{idea.body}</div>}
                   {idea.demand_evidence && (
-                    <div className="text-[11px] text-muted-foreground/70 italic mt-1.5">evidence: {idea.demand_evidence}</div>
+                    <div className="text-[12px] text-muted-foreground/70 italic mt-1.5">evidence: {idea.demand_evidence}</div>
                   )}
                 </div>
                 <div className="flex flex-col items-end gap-1.5 shrink-0">

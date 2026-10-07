@@ -533,7 +533,7 @@ export default function Leaderboard() {
             <Activity className="h-4 w-4 shrink-0 text-muted-foreground" />
             <span className="truncate">Agency production</span>
           </h3>
-          <span className="flex shrink-0 items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+          <span className="flex shrink-0 items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
             <span aria-hidden className="h-2 w-2 rounded-full bg-emerald-500" />
             Live
           </span>
@@ -546,15 +546,15 @@ export default function Leaderboard() {
           <div className="min-w-0 rounded-lg border border-border bg-card p-3 sm:p-4">
             <div className="mb-1.5 flex items-center gap-2">
               <DollarSign className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <p className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Month-to-date AP</p>
+              <p className="truncate text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Month-to-date AP</p>
             </div>
             <p className="truncate text-2xl font-bold leading-none tabular-nums text-emerald-600 dark:text-emerald-400">
               {heroData.isLoading ? "—" : formatMoney(heroData.data?.totalAp ?? 0)}
             </p>
-            <p className="mt-1.5 truncate text-[11px] tabular-nums text-muted-foreground">
+            <p className="mt-1.5 truncate text-[12px] tabular-nums text-muted-foreground">
               {heroData.data?.dealCount ?? 0} deals · day {heroData.data?.dayOfMonth ?? "—"}/{heroData.data?.daysInMonth ?? "—"}
             </p>
-            <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+            <p className="mt-1 text-[12px] leading-snug text-muted-foreground">
               {(heroData.data?.externalGapAp ?? 0) > 0
                 ? `+ ${formatMoney(heroData.data!.externalGapAp)} reported by an outside agency and not yet attributed to a producer — not in the figure above, and not on the board below.`
                 : "Every dollar here is on the board below."}
@@ -564,12 +564,12 @@ export default function Leaderboard() {
           <div className="min-w-0 rounded-lg border border-border bg-card p-3 sm:p-4">
             <div className="mb-1.5 flex items-center gap-2">
               <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <p className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Producers</p>
+              <p className="truncate text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Producers</p>
             </div>
             <p className="truncate text-2xl font-bold leading-none tabular-nums text-foreground">
               {heroData.isLoading ? "—" : (heroData.data?.producers ?? 0).toLocaleString()}
             </p>
-            <p className="mt-1.5 truncate text-[11px] text-muted-foreground">
+            <p className="mt-1.5 truncate text-[12px] text-muted-foreground">
               {heroData.data?.producers === 1 ? "agent posting deals" : "agents posting deals"}
             </p>
           </div>
@@ -577,12 +577,12 @@ export default function Leaderboard() {
           <div className="min-w-0 rounded-lg border border-border bg-card p-3 sm:p-4">
             <div className="mb-1.5 flex items-center gap-2">
               <Target className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <p className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Avg / producer</p>
+              <p className="truncate text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Avg / producer</p>
             </div>
             <p className="truncate text-2xl font-bold leading-none tabular-nums text-foreground">
               {heroData.isLoading ? "—" : formatMoney(heroData.data?.avgPerProducer ?? 0)}
             </p>
-            <p className="mt-1.5 truncate text-[11px] text-muted-foreground">
+            <p className="mt-1.5 truncate text-[12px] text-muted-foreground">
               month-to-date per active producer
             </p>
           </div>
@@ -606,7 +606,7 @@ export default function Leaderboard() {
                   ) : (
                     <TrendingDown className="h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400" />
                   )}
-                  <p className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                  <p className="truncate text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                     {tooEarly ? "Last month" : "Pace vs prior mo"}
                   </p>
                 </div>
@@ -624,7 +624,7 @@ export default function Leaderboard() {
                       ? formatMoney(heroData.data?.priorAp ?? 0)
                       : `${pace >= 0 ? "+" : ""}${pace.toFixed(0)}%`}
                 </p>
-                <p className="mt-1.5 truncate text-[11px] tabular-nums text-muted-foreground">
+                <p className="mt-1.5 truncate text-[12px] tabular-nums text-muted-foreground">
                   {tooEarly
                     ? `day ${day} — building`
                     : `proj ${formatMoney(heroData.data?.projected ?? 0)} · prior ${formatMoney(heroData.data?.priorAp ?? 0)}`}
@@ -713,21 +713,21 @@ export default function Leaderboard() {
         {productionFinancials && !loading && rows.length > 0 && (
           <div className="mt-3 grid grid-cols-3 gap-2 sm:gap-3">
             <GlassCard className="min-w-0 p-3 sm:p-4">
-              <p className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Est. income</p>
+              <p className="truncate text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Est. income</p>
               <p className="mt-1 truncate text-lg font-bold tabular-nums text-emerald-600 dark:text-emerald-400 sm:text-2xl">
                 {formatMoney(productionFinancials.estimatedIncome)}
               </p>
-              <p className="mt-1 hidden text-[11px] text-muted-foreground sm:block">Contract-level estimate</p>
+              <p className="mt-1 hidden text-[12px] text-muted-foreground sm:block">Contract-level estimate</p>
             </GlassCard>
             <GlassCard className="min-w-0 p-3 sm:p-4">
-              <p className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Lead spend</p>
+              <p className="truncate text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Lead spend</p>
               <p className="mt-1 truncate text-lg font-bold tabular-nums text-foreground sm:text-2xl">
                 {formatMoney(productionFinancials.leadSpend)}
               </p>
-              <p className="mt-1 hidden text-[11px] text-muted-foreground sm:block">No agent lead deduction</p>
+              <p className="mt-1 hidden text-[12px] text-muted-foreground sm:block">No agent lead deduction</p>
             </GlassCard>
             <GlassCard className="min-w-0 p-3 sm:p-4">
-              <p className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">After leads</p>
+              <p className="truncate text-[11px] font-bold uppercase tracking-wide text-muted-foreground">After leads</p>
               <p className={cn(
                 "mt-1 truncate text-lg font-bold tabular-nums sm:text-2xl",
                 productionFinancials.afterLeadSpend >= 0
@@ -736,7 +736,7 @@ export default function Leaderboard() {
               )}>
                 {formatMoney(productionFinancials.afterLeadSpend)}
               </p>
-              <p className="mt-1 hidden text-[11px] text-muted-foreground sm:block">Est. income − lead spend</p>
+              <p className="mt-1 hidden text-[12px] text-muted-foreground sm:block">Est. income − lead spend</p>
             </GlassCard>
           </div>
         )}
@@ -801,17 +801,17 @@ export default function Leaderboard() {
                     Empty here means the board fetched nothing — treat the number as missing, not as zero, until one of these is ruled out.
                   </p>
                   <ul className="space-y-2">
-                    <li className="rounded-lg border border-border/60 bg-card/60 px-3 py-2.5 text-[11px] leading-relaxed text-muted-foreground">
+                    <li className="rounded-lg border border-border/60 bg-card/60 px-3 py-2.5 text-[12px] leading-relaxed text-muted-foreground">
                       The current {period} window genuinely has no {BOARD_META[tab].label.toLowerCase()} yet
                     </li>
-                    <li className="rounded-lg border border-border/60 bg-card/60 px-3 py-2.5 text-[11px] leading-relaxed text-muted-foreground">
+                    <li className="rounded-lg border border-border/60 bg-card/60 px-3 py-2.5 text-[12px] leading-relaxed text-muted-foreground">
                       Source ({BOARD_META[tab].source}) is dark or RLS-restricted
                     </li>
-                    <li className="rounded-lg border border-border/60 bg-card/60 px-3 py-2.5 text-[11px] leading-relaxed text-muted-foreground">
+                    <li className="rounded-lg border border-border/60 bg-card/60 px-3 py-2.5 text-[12px] leading-relaxed text-muted-foreground">
                       Your role can't see other agents' rows on this view
                     </li>
                   </ul>
-                  <p className="mt-3 text-[11px] font-semibold text-muted-foreground">Hold the Standard.</p>
+                  <p className="mt-3 text-[12px] font-semibold text-muted-foreground">Hold the Standard.</p>
                 </GlassCard>
               </div>
             ) : (
@@ -819,12 +819,12 @@ export default function Leaderboard() {
                 {agencyNames.length > 1 && (
                   <div className="mb-3 flex flex-wrap items-center gap-1.5">
                     <button type="button" onClick={() => setAgencyFilter(null)}
-                      className={cn("rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors", agencyFilter === null ? "border-primary/40 bg-primary/15 text-primary" : "border-border text-muted-foreground hover:text-foreground")}>
+                      className={cn("rounded-full border px-2.5 py-1 text-[12px] font-semibold transition-colors", agencyFilter === null ? "border-primary/40 bg-primary/15 text-primary" : "border-border text-muted-foreground hover:text-foreground")}>
                       All agencies
                     </button>
                     {agencyNames.map((name) => (
                       <button key={name} type="button" onClick={() => setAgencyFilter(name)}
-                        className={cn("rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors", agencyFilter === name ? "border-primary/40 bg-primary/15 text-primary" : "border-border text-muted-foreground hover:text-foreground")}>
+                        className={cn("rounded-full border px-2.5 py-1 text-[12px] font-semibold transition-colors", agencyFilter === name ? "border-primary/40 bg-primary/15 text-primary" : "border-border text-muted-foreground hover:text-foreground")}>
                         {name}
                       </button>
                     ))}
@@ -867,7 +867,7 @@ export default function Leaderboard() {
                           {row.avatar_url ? (
                             <img src={row.avatar_url} alt="" className={cn("h-8 w-8 shrink-0 rounded-full ring-2", row.rank === 1 ? "ring-amber-500/50" : "ring-border/40")} />
                           ) : (
-                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted/50 text-[10px] font-bold text-muted-foreground">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted/50 text-[11px] font-bold text-muted-foreground">
                               {(row.agent_name ?? "?").split(" ").map((part) => part[0]).slice(0, 2).join("")}
                             </div>
                           )}
@@ -884,9 +884,9 @@ export default function Leaderboard() {
                               <div className="truncate text-sm font-medium text-foreground">{row.agent_name ?? "—"}</div>
                             )}
                             {row.agency && agencyNames.length > 1 && row.agency !== primaryAgency && (
-                              <span className="mt-0.5 inline-block rounded-full border border-border bg-muted/40 px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wide text-muted-foreground">{row.agency}</span>
+                              <span className="mt-0.5 inline-block rounded-full border border-border bg-muted/40 px-1.5 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">{row.agency}</span>
                             )}
-                            <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                            <div className="mt-0.5 truncate text-[12px] text-muted-foreground">
                               {subValue(row)}
                               {tab === "production" && productionMode === "individuals" && row.tenure_label
                                 ? ` · ${row.tenure_label}`
@@ -898,11 +898,11 @@ export default function Leaderboard() {
                         {tab === "production" && productionMode === "individuals" ? (
                           <div className="grid w-full grid-cols-3 gap-2 border-t border-border/50 pt-2 sm:w-auto sm:min-w-[320px] sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0">
                             <div className="min-w-0 sm:text-right">
-                              <div className="text-[9px] font-bold uppercase tracking-wide text-muted-foreground">Production</div>
+                              <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Production</div>
                               <div className="truncate text-sm font-bold tabular-nums text-foreground">{formatMoney(row.primary)}</div>
                             </div>
                             <div className="min-w-0 sm:text-right">
-                              <div className="text-[9px] font-bold uppercase tracking-wide text-muted-foreground">Est. income</div>
+                              <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Est. income</div>
                               <button
                                 type="button"
                                 onClick={() => setSelectedProductionRow(row)}
@@ -913,7 +913,7 @@ export default function Leaderboard() {
                               </button>
                             </div>
                             <div className="min-w-0 sm:text-right">
-                              <div className="text-[9px] font-bold uppercase tracking-wide text-muted-foreground">Lead spend</div>
+                              <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Lead spend</div>
                               <div className="truncate text-sm font-bold tabular-nums text-foreground">{formatMoney(leadCostPerProducer)}</div>
                             </div>
                           </div>
@@ -922,7 +922,7 @@ export default function Leaderboard() {
                             <div className="text-sm font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
                               {primaryValue(row)}
                             </div>
-                            <div className="mt-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                            <div className="mt-0.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                               {BOARD_META[tab].label}
                             </div>
                           </div>
@@ -955,24 +955,24 @@ export default function Leaderboard() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-lg border border-border bg-card p-3">
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Production</p>
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Production</p>
                   <p className="mt-1 text-xl font-bold tabular-nums text-foreground">{formatMoney(selectedProductionRow.primary)}</p>
-                  <p className="mt-1 text-[11px] text-muted-foreground">{selectedProductionRow.secondary} policies</p>
+                  <p className="mt-1 text-[12px] text-muted-foreground">{selectedProductionRow.secondary} policies</p>
                 </div>
                 <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Est. income</p>
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Est. income</p>
                   <p className="mt-1 text-xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
                     {formatMoney(selectedProductionRow.est_earnings ?? 0)}
                   </p>
-                  <p className="mt-1 text-[11px] text-muted-foreground">Before deductions</p>
+                  <p className="mt-1 text-[12px] text-muted-foreground">Before deductions</p>
                 </div>
                 <div className="rounded-lg border border-border bg-card p-3">
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Lead spend</p>
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Lead spend</p>
                   <p className="mt-1 text-xl font-bold tabular-nums text-foreground">{formatMoney(leadCostPerProducer)}</p>
-                  <p className="mt-1 text-[11px] text-muted-foreground">No agent lead deduction</p>
+                  <p className="mt-1 text-[12px] text-muted-foreground">No agent lead deduction</p>
                 </div>
                 <div className="rounded-lg border border-border bg-card p-3">
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">After leads</p>
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">After leads</p>
                   <p className={cn(
                     "mt-1 text-xl font-bold tabular-nums",
                     (selectedProductionRow.est_earnings ?? 0) - leadCostPerProducer >= 0
@@ -981,7 +981,7 @@ export default function Leaderboard() {
                   )}>
                     {formatMoney((selectedProductionRow.est_earnings ?? 0) - leadCostPerProducer)}
                   </p>
-                  <p className="mt-1 text-[11px] text-muted-foreground">Estimated net shown here</p>
+                  <p className="mt-1 text-[12px] text-muted-foreground">Estimated net shown here</p>
                 </div>
               </div>
 

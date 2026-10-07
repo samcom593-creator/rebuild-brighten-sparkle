@@ -77,7 +77,7 @@ export function ProductionMetricsCard({
         ) : (
           <>
             <div>
-              <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
+              <p className="flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.16em] text-primary">
                 <Radio className="h-3.5 w-3.5" aria-hidden /> Live Phoenix day
               </p>
               <p className="mt-1 text-xl font-bold tabular-nums text-foreground sm:text-2xl">
@@ -107,7 +107,7 @@ export function ProductionMetricsCard({
           <div key={tile.label} className="rounded-md border border-border bg-card p-4">
             <p className={cn("truncate text-2xl font-bold tabular-nums", tile.tone)}>{tile.value}</p>
             <p className="text-xs text-muted-foreground">{tile.label}</p>
-            <p className="mt-0.5 truncate text-[11px] text-muted-foreground/70">{tile.note}</p>
+            <p className="mt-0.5 truncate text-[12px] text-muted-foreground/70">{tile.note}</p>
           </div>
         ))}
       </div>

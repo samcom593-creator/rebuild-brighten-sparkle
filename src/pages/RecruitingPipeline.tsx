@@ -238,7 +238,7 @@ export default function RecruitingPipeline() {
                     <button
                       title="Click to set intent (hot → warm → cold → none)"
                       onClick={() => cycleIntent(r)}
-                      className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold border ${r.intent_level && INTENT_STYLE[r.intent_level] ? INTENT_STYLE[r.intent_level].cls : "text-muted-foreground border-dashed"}`}>
+                      className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold border ${r.intent_level && INTENT_STYLE[r.intent_level] ? INTENT_STYLE[r.intent_level].cls : "text-muted-foreground border-dashed"}`}>
                       {r.intent_level && INTENT_STYLE[r.intent_level] ? INTENT_STYLE[r.intent_level].label : "Intent"}
                     </button>
                     {r.person_type === "agent" ? (

@@ -194,7 +194,7 @@ function CultureFeed({ onApproveDraft }: { onApproveDraft: (id: number) => void 
           <TrendingUp className="h-4 w-4 text-emerald-400" />
           Deal Win Feed
           {pending.length > 0 && (
-            <Badge variant="outline" className="text-[10px] text-amber-300 border-amber-500/30 bg-amber-500/10 ml-1">
+            <Badge variant="outline" className="text-[11px] text-amber-300 border-amber-500/30 bg-amber-500/10 ml-1">
               {pending.length} draft{pending.length > 1 ? "s" : ""} awaiting approval
             </Badge>
           )}
@@ -209,7 +209,7 @@ function CultureFeed({ onApproveDraft }: { onApproveDraft: (id: number) => void 
             >
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-medium text-slate-700 dark:text-slate-200 truncate">{ev.agent_name ?? "—"}</span>
-                <span className="text-[10px] text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                <span className="text-[11px] text-slate-600 dark:text-slate-300 whitespace-nowrap">
                   {formatDistanceToNow(new Date(ev.created_at), { addSuffix: true })}
                 </span>
               </div>
@@ -218,24 +218,24 @@ function CultureFeed({ onApproveDraft }: { onApproveDraft: (id: number) => void 
                 <span className="text-sm font-bold text-emerald-300">
                   ${Number(ev.annual_premium ?? 0).toLocaleString()}
                 </span>
-                <span className="text-[10px] text-slate-600 dark:text-slate-300 truncate">{ev.product_sold ?? "Life"}</span>
+                <span className="text-[11px] text-slate-600 dark:text-slate-300 truncate">{ev.product_sold ?? "Life"}</span>
               </div>
               {ev.draft_hook && (
-                <p className="text-[10px] text-muted-foreground leading-snug line-clamp-2">{ev.draft_hook}</p>
+                <p className="text-[11px] text-muted-foreground leading-snug line-clamp-2">{ev.draft_hook}</p>
               )}
               {ev.draft_id && ev.draft_status === "awaiting_approval" ? (
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-6 text-[10px] border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10 mt-0.5"
+                  className="h-6 text-[11px] border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10 mt-0.5"
                   onClick={() => onApproveDraft(ev.draft_id!)}
                 >
                   Approve draft
                 </Button>
               ) : ev.draft_status === "approved" ? (
-                <Badge variant="outline" className="text-[10px] text-amber-300 border-amber-500/30 w-fit">approved</Badge>
+                <Badge variant="outline" className="text-[11px] text-amber-300 border-amber-500/30 w-fit">approved</Badge>
               ) : ev.draft_status === "shipped" ? (
-                <Badge variant="outline" className="text-[10px] text-muted-foreground border-slate-600 w-fit">shipped</Badge>
+                <Badge variant="outline" className="text-[11px] text-muted-foreground border-slate-600 w-fit">shipped</Badge>
               ) : null}
             </div>
           ))}
@@ -611,7 +611,7 @@ export default function ContentCommand() {
                 <Button size="sm" variant="ghost" disabled={bulkBusy} onClick={() => setSelectedIds(new Set())}>
                   Clear
                 </Button>
-                <span className="text-[11px] text-muted-foreground">
+                <span className="text-[12px] text-muted-foreground">
                   Nothing is posted — this only sets the review state.
                 </span>
               </div>
@@ -807,7 +807,7 @@ function DraftRow({
           </div>
           <div className="mt-2 font-medium leading-snug">{draft.title ?? "Untitled draft"}</div>
           {draft.hook ? <div className="mt-1 text-sm text-slate-600 dark:text-slate-300 italic line-clamp-2">"{draft.hook}"</div> : null}
-          {draft.file_path ? <div className="mt-2 text-[11px] text-slate-600 dark:text-slate-300 font-mono truncate">{draft.file_path}</div> : null}
+          {draft.file_path ? <div className="mt-2 text-[12px] text-slate-600 dark:text-slate-300 font-mono truncate">{draft.file_path}</div> : null}
         </div>
         <div className="flex flex-wrap lg:justify-end gap-1.5 shrink-0">
           {draft.status !== "approved" && draft.status !== "shipped" ? (
@@ -920,20 +920,20 @@ function PoolOverview({
     <Card className="ops-card-depth border-border bg-white/[0.02]">
       <CardContent className="p-3 md:p-4">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-[10px] font-mono uppercase tracking-wider text-slate-600 dark:text-slate-300">Full content flow</span>
-          <span className="text-[10px] text-muted-foreground">read-only · pulls live</span>
+          <span className="text-[11px] font-mono uppercase tracking-wider text-slate-600 dark:text-slate-300">Full content flow</span>
+          <span className="text-[11px] text-muted-foreground">read-only · pulls live</span>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
           {pools.map((p, i) => (
             <div key={p.label} className="rounded-md border border-border bg-white/[0.02] p-2.5">
               <div className="flex items-center gap-1.5 mb-1">
-                <span className={cn("text-[9px] font-mono", p.tone)}>{i + 1}</span>
-                <span className="text-[10px] text-muted-foreground truncate">{p.label}</span>
+                <span className={cn("text-[10px] font-mono", p.tone)}>{i + 1}</span>
+                <span className="text-[11px] text-muted-foreground truncate">{p.label}</span>
               </div>
               <div className={cn("text-xl font-bold tabular-nums leading-tight", p.tone)}>
                 {p.value === null || p.value === undefined ? <span className="text-muted-foreground">—</span> : p.value}
               </div>
-              <div className="text-[9px] text-muted-foreground font-mono mt-0.5 truncate" title={p.hint}>{p.hint}</div>
+              <div className="text-[10px] text-muted-foreground font-mono mt-0.5 truncate" title={p.hint}>{p.hint}</div>
             </div>
           ))}
         </div>

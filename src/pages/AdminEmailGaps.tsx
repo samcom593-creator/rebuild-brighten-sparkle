@@ -154,7 +154,7 @@ export default function AdminEmailGaps() {
             >
               <div className="flex items-center gap-1.5 text-muted-foreground">
                 <Icon className="h-3.5 w-3.5" />
-                <span className="text-[10px] uppercase tracking-wider font-semibold">{m.label}</span>
+                <span className="text-[11px] uppercase tracking-wider font-semibold">{m.label}</span>
               </div>
               <p className="mt-1 text-2xl font-black tabular-nums">{n}</p>
             </button>
@@ -204,23 +204,23 @@ export default function AdminEmailGaps() {
                       <Mail className="h-3 w-3" /> {r.email || "(no email)"}
                     </p>
                     {r.course_sent_at && (
-                      <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-0.5">
+                      <p className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-0.5">
                         Sent · {fmtTime(r.course_sent_at)}
                       </p>
                     )}
                     {r.course_last_error && (
-                      <p className="text-[10px] text-rose-500 mt-0.5 truncate">last error: {r.course_last_error}</p>
+                      <p className="text-[11px] text-rose-500 mt-0.5 truncate">last error: {r.course_last_error}</p>
                     )}
                   </button>
                   <div className="flex items-center gap-2 shrink-0">
-                    <Badge variant="outline" className={`gap-1 text-[10px] ${m.pill}`}>
+                    <Badge variant="outline" className={`gap-1 text-[11px] ${m.pill}`}>
                       <Icon className="h-3 w-3" /> {m.label}
                     </Badge>
                     {(r.course_state === "gap" || r.course_state === "sent" || r.course_state === "queued") && (
                       <Button
                         size="sm"
                         variant="outline"
-                        className="h-7 gap-1 text-[11px]"
+                        className="h-7 gap-1 text-[12px]"
                         disabled={firingId === r.agent_id || firingId === "__all__"}
                         onClick={() => resend(r.agent_id)}
                       >

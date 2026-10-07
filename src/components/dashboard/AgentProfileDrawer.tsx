@@ -656,7 +656,7 @@ const qnum = (v: number | string | null | undefined): number | null => {
                       <Copy className="h-3 w-3" />
                     </button>
                   )}
-                  <Badge variant="outline" className={cn("text-[10px]", statusBadgeColor(agent.status))}>
+                  <Badge variant="outline" className={cn("text-[11px]", statusBadgeColor(agent.status))}>
                     {formatEnumLabel(agent.status, "—")}
                   </Badge>
                   {/* 2026-06-18 Sam directive 'make sure their license to go ahead
@@ -689,7 +689,7 @@ const qnum = (v: number | string | null | undefined): number | null => {
                           qc.invalidateQueries({ queryKey: ["agent-profile-drawer"] });
                         }
                       }}
-                      className="inline-flex items-center text-[10px] px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
+                      className="inline-flex items-center text-[11px] px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
                       title="Tap to flip back to unlicensed"
                     >
                       <ShieldCheck className="h-3 w-3 mr-0.5" /> licensed
@@ -700,14 +700,14 @@ const qnum = (v: number | string | null | undefined): number | null => {
                         setQuickEditOpen(true);
                         toast.info("Enter or verify the NPN, choose Licensed, then save. Contracting and onboarding will start automatically.");
                       }}
-                      className="inline-flex items-center text-[10px] px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition-colors"
+                      className="inline-flex items-center text-[11px] px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition-colors"
                       title="Open license and onboarding controls"
                     >
                       <ShieldAlert className="h-3 w-3 mr-0.5" /> {formatEnumLabel(agent.license_status, "Unlicensed")} <span className="ml-1 opacity-60">→ verify NPN</span>
                     </button>
                   )}
                   {agent.is_deactivated && (
-                    <Badge variant="outline" className="text-[10px] bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20">deactivated</Badge>
+                    <Badge variant="outline" className="text-[11px] bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20">deactivated</Badge>
                   )}
                   {/* 2026-08-06: the add-agent transfer block stamps
                       agents.notes with "[NEEDS TRANSFER] …". Until now the
@@ -717,7 +717,7 @@ const qnum = (v: number | string | null | undefined): number | null => {
                   {agent.notes?.startsWith("[NEEDS TRANSFER]") && (
                     <Badge
                       variant="outline"
-                      className="text-[10px] bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                      className="text-[11px] bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
                       title={agent.notes}
                     >
                       needs transfer
@@ -811,31 +811,31 @@ const qnum = (v: number | string | null | undefined): number | null => {
                 items vs money vs downline instantly. */}
             <div className="rounded-3xl border border-border bg-card/40 grid grid-cols-3 divide-x divide-border overflow-hidden">
               <div className="min-w-0 px-3 py-4">
-                <p className="text-[10px] uppercase tracking-wider text-emerald-500/80 font-semibold flex items-center gap-1">
+                <p className="text-[11px] uppercase tracking-wider text-emerald-500/80 font-semibold flex items-center gap-1">
                   <Calendar className="h-2.5 w-2.5" /> IT
                 </p>
                 <p className="mt-1 text-3xl font-black tabular-nums leading-none text-emerald-500 dark:text-emerald-400">
                   {(monthly?.items_this_month ?? 0).toLocaleString()}
                 </p>
-                <p className="mt-1 text-[10px] text-muted-foreground">items · this month</p>
+                <p className="mt-1 text-[11px] text-muted-foreground">items · this month</p>
               </div>
               <div className="min-w-0 px-3 py-4">
-                <p className="text-[10px] uppercase tracking-wider text-amber-500/80 font-semibold flex items-center gap-1">
+                <p className="text-[11px] uppercase tracking-wider text-amber-500/80 font-semibold flex items-center gap-1">
                   <TrendingUp className="h-2.5 w-2.5" /> AV
                 </p>
                 <p className="mt-1 text-3xl font-black tabular-nums leading-none text-amber-500 dark:text-amber-400">
                   {fmtUSDCompact(monthly?.annual_volume_this_month ?? 0)}
                 </p>
-                <p className="mt-1 text-[10px] text-muted-foreground">premium · this month</p>
+                <p className="mt-1 text-[11px] text-muted-foreground">premium · this month</p>
               </div>
               <div className="min-w-0 px-3 py-4">
-                <p className="text-[10px] uppercase tracking-wider text-info/80 font-semibold flex items-center gap-1">
+                <p className="text-[11px] uppercase tracking-wider text-info/80 font-semibold flex items-center gap-1">
                   <Users className="h-2.5 w-2.5" /> Legs
                 </p>
                 <p className="mt-1 text-3xl font-black tabular-nums leading-none text-info dark:text-info">
                   {(monthly?.legs ?? 0).toLocaleString()}
                 </p>
-                <p className="mt-1 text-[10px] text-muted-foreground">downline</p>
+                <p className="mt-1 text-[11px] text-muted-foreground">downline</p>
               </div>
             </div>
 
@@ -930,7 +930,7 @@ const qnum = (v: number | string | null | undefined): number | null => {
                 inline manager reassign on every agent. */}
             <div className="flex items-center justify-between rounded-3xl border border-border bg-card/40 px-4 py-3">
               <div className="min-w-0">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Manager</p>
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Manager</p>
                 <p className="text-sm font-medium truncate">
                   {agent.manager?.profile?.full_name || "—"}
                 </p>
@@ -1144,21 +1144,21 @@ const qnum = (v: number | string | null | undefined): number | null => {
               <div className="rounded-lg border border-border bg-card/60 p-2.5">
                 <div className="flex items-center gap-1.5 mb-1">
                   <TrendingUp className="h-3 w-3 text-emerald-500" />
-                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Lifetime ALP</span>
+                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Lifetime ALP</span>
                 </div>
                 <p className="text-sm font-bold tabular-nums">{fmtUSD(activity?.lifetime_alp ?? null)}</p>
               </div>
               <div className="rounded-lg border border-border bg-card/60 p-2.5">
                 <div className="flex items-center gap-1.5 mb-1">
                   <Calendar className="h-3 w-3 text-info" />
-                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Deals</span>
+                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Deals</span>
                 </div>
                 <p className="text-sm font-bold tabular-nums">{(activity?.lifetime_deals ?? 0).toLocaleString()}</p>
               </div>
               <div className="rounded-lg border border-border bg-card/60 p-2.5">
                 <div className="flex items-center gap-1.5 mb-1">
                   <Users className="h-3 w-3 text-violet-500" />
-                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Downline</span>
+                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Downline</span>
                 </div>
                 <p className="text-sm font-bold tabular-nums">{(activity?.downline_count ?? 0).toLocaleString()}</p>
               </div>
@@ -1173,17 +1173,17 @@ const qnum = (v: number | string | null | undefined): number | null => {
               <div className="rounded-lg border border-border bg-card/60 p-3">
                 <div className="mb-1 flex items-baseline justify-between gap-2">
                   <h3 className="text-xs font-bold uppercase tracking-wide">Book quality</h3>
-                  <span className="text-[10px] text-muted-foreground tabular-nums">
+                  <span className="text-[11px] text-muted-foreground tabular-nums">
                     {qnum(quality.deals_total)?.toLocaleString()} deals
                   </span>
                 </div>
-                <p className="mb-3 text-[11px] leading-relaxed text-muted-foreground">
+                <p className="mb-3 text-[12px] leading-relaxed text-muted-foreground">
                   What this agent's book is made of — how much of it sticks, and how much never issued.
                 </p>
 
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                   <div className="min-w-0 rounded-lg border border-border bg-background p-2.5">
-                    <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Persistency</div>
+                    <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Persistency</div>
                     <p className={
                       "mt-1 text-lg font-bold leading-none tabular-nums " +
                       ((qnum(quality.persistency_pct) ?? 0) >= 70
@@ -1194,23 +1194,23 @@ const qnum = (v: number | string | null | undefined): number | null => {
                     }>
                       {qnum(quality.persistency_pct) !== null ? `${qnum(quality.persistency_pct)}%` : "—"}
                     </p>
-                    <div className="mt-0.5 text-[10px] text-muted-foreground tabular-nums">
+                    <div className="mt-0.5 text-[11px] text-muted-foreground tabular-nums">
                       {qnum(quality.in_force) ?? 0} in force · {qnum(quality.lapsed) ?? 0} lapsed
                     </div>
                   </div>
 
                   <div className="min-w-0 rounded-lg border border-border bg-background p-2.5">
-                    <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Avg deal</div>
+                    <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Avg deal</div>
                     <p className="mt-1 text-lg font-bold leading-none tabular-nums text-foreground">
                       {qnum(quality.avg_deal_alp) !== null ? fmtUSD(qnum(quality.avg_deal_alp)) : "—"}
                     </p>
-                    <div className="mt-0.5 text-[10px] text-muted-foreground tabular-nums">
+                    <div className="mt-0.5 text-[11px] text-muted-foreground tabular-nums">
                       {qnum(quality.deals_30d) ?? 0} in 30d
                     </div>
                   </div>
 
                   <div className="min-w-0 rounded-lg border border-border bg-background p-2.5">
-                    <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Never issued</div>
+                    <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Never issued</div>
                     <p className={
                       "mt-1 text-lg font-bold leading-none tabular-nums " +
                       ((qnum(quality.pct_never_issued) ?? 0) >= 15
@@ -1219,16 +1219,16 @@ const qnum = (v: number | string | null | undefined): number | null => {
                     }>
                       {qnum(quality.pct_never_issued) !== null ? `${qnum(quality.pct_never_issued)}%` : "—"}
                     </p>
-                    <div className="mt-0.5 text-[10px] text-muted-foreground">declined · withdrawn · NTO</div>
+                    <div className="mt-0.5 text-[11px] text-muted-foreground">declined · withdrawn · NTO</div>
                   </div>
 
                   <div className="min-w-0 rounded-lg border border-border bg-background p-2.5">
-                    <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Top carrier</div>
+                    <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Top carrier</div>
                     <p className="mt-1 truncate text-sm font-bold leading-tight text-foreground">
                       {quality.top_carrier ?? "—"}
                     </p>
                     <div className={
-                      "mt-0.5 text-[10px] tabular-nums " +
+                      "mt-0.5 text-[11px] tabular-nums " +
                       ((qnum(quality.top_carrier_share_pct) ?? 0) >= 60
                         ? "text-amber-600 dark:text-amber-400"
                         : "text-muted-foreground")
@@ -1248,7 +1248,7 @@ const qnum = (v: number | string | null | undefined): number | null => {
                     policies, $37.5K ALP, 0 in force). */}
                 {carrierMix && carrierMix.length > 0 && (
                   <div className="mt-3 rounded-lg border border-border bg-background p-2.5">
-                    <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                    <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                       Carrier mix
                     </div>
                     <ul className="mt-1.5 space-y-1">
@@ -1274,7 +1274,7 @@ const qnum = (v: number | string | null | undefined): number | null => {
                               </div>
                               <span
                                 className={
-                                  "shrink-0 text-[10px] tabular-nums " +
+                                  "shrink-0 text-[11px] tabular-nums " +
                                   (noneIssued
                                     ? "text-rose-600 dark:text-rose-400"
                                     : "text-muted-foreground")
@@ -1293,10 +1293,10 @@ const qnum = (v: number | string | null | undefined): number | null => {
                 {earnings && (
                   <div className="mt-3 rounded-lg border border-border bg-background p-2.5">
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
-                      <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                      <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                         Estimated earnings
                       </span>
-                      <span className="text-[10px] text-muted-foreground tabular-nums">
+                      <span className="text-[11px] text-muted-foreground tabular-nums">
                         contract {qnum(earnings.contract_pct) ?? "—"}%
                       </span>
                     </div>
@@ -1304,13 +1304,13 @@ const qnum = (v: number | string | null | undefined): number | null => {
                       <span className="text-lg font-bold leading-none tabular-nums text-foreground">
                         {fmtUSD(qnum(earnings.est_earned_in_force))}
                       </span>
-                      <span className="text-[11px] text-muted-foreground">earned on in-force</span>
+                      <span className="text-[12px] text-muted-foreground">earned on in-force</span>
                       <span className="text-sm font-bold leading-none tabular-nums text-amber-600 dark:text-amber-400">
                         {fmtUSD(qnum(earnings.est_pending_if_issued))}
                       </span>
-                      <span className="text-[11px] text-muted-foreground">pending if it issues</span>
+                      <span className="text-[12px] text-muted-foreground">pending if it issues</span>
                     </div>
-                    <p className="mt-1.5 text-[10px] leading-snug text-muted-foreground">
+                    <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground">
                       Estimate — annual premium x contract %. There is no payout feed, so this is not settled money.
                     </p>
                   </div>
@@ -1327,7 +1327,7 @@ const qnum = (v: number | string | null | undefined): number | null => {
                 <MessageCircle className="h-3.5 w-3.5 text-amber-500" />
                 <h3 className="text-xs font-bold uppercase tracking-wide">Call notes timeline</h3>
                 {(timeline?.length ?? 0) > 0 && (
-                  <Badge variant="outline" className="text-[10px] ml-auto">
+                  <Badge variant="outline" className="text-[11px] ml-auto">
                     {timeline?.length ?? 0}
                   </Badge>
                 )}
@@ -1348,7 +1348,7 @@ const qnum = (v: number | string | null | undefined): number | null => {
                           <Badge
                             variant="outline"
                             className={cn(
-                              "text-[9px] uppercase tracking-wide shrink-0",
+                              "text-[10px] uppercase tracking-wide shrink-0",
                               row.source === "call"
                                 ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                                 : "border-info/30 bg-info/10 text-info dark:text-info",
@@ -1357,17 +1357,17 @@ const qnum = (v: number | string | null | undefined): number | null => {
                             {row.source === "call" ? "call" : "note"}
                           </Badge>
                           {row.outcome && (
-                            <span className="text-[10px] font-semibold truncate">{row.outcome}</span>
+                            <span className="text-[11px] font-semibold truncate">{row.outcome}</span>
                           )}
                         </div>
-                        <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">
+                        <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">
                           {fmtRelative(row.occurred_at)}
                         </span>
                       </div>
                       {row.notes && (
-                        <p className="mt-1 text-[11px] text-muted-foreground line-clamp-3">{row.notes}</p>
+                        <p className="mt-1 text-[12px] text-muted-foreground line-clamp-3">{row.notes}</p>
                       )}
-                      <p className="mt-1 text-[10px] text-muted-foreground/70">
+                      <p className="mt-1 text-[11px] text-muted-foreground/70">
                         by {row.logged_by_name ?? "—"}
                       </p>
                     </li>
@@ -1458,7 +1458,7 @@ const qnum = (v: number | string | null | undefined): number | null => {
                     <Trash2 className="h-3.5 w-3.5" /> Delete SQL
                   </Button>
                 </div>
-                <p className="text-[10px] text-muted-foreground leading-tight">
+                <p className="text-[11px] text-muted-foreground leading-tight">
                   Deactivate = soft (reversible). Delete = hard (bot-sql only, irreversible). SQL copied to clipboard for Sam to run via admin RPC.
                 </p>
               </div>

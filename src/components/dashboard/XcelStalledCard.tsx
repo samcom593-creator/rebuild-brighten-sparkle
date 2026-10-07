@@ -104,7 +104,7 @@ export function XcelStalledCard() {
             <GraduationCap className="h-5 w-5 text-zinc-950" />
           </div>
           <div>
-            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-purple-300 flex items-center gap-1.5">
+            <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-purple-300 flex items-center gap-1.5">
               <Sparkles className="h-3 w-3" /> Pre-licensing · Bottleneck
             </div>
             <h2 className="text-xl sm:text-2xl font-bold text-foreground leading-tight">
@@ -147,7 +147,7 @@ export function XcelStalledCard() {
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-semibold text-sm truncate">{name}</span>
                   <Badge variant="outline" className={cn(
-                    "text-[10px] px-1.5 py-0 h-4",
+                    "text-[11px] px-1.5 py-0 h-4",
                     isStalled
                       ? "border-rose-500/50 bg-rose-500/10 text-rose-200"
                       : "border-amber-500/50 bg-amber-500/10 text-amber-200",
@@ -155,12 +155,12 @@ export function XcelStalledCard() {
                     {isStalled ? `${row.days_since_login ?? "—"}d idle` : "never started"}
                   </Badge>
                   {row.manager_name && (
-                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    <span className="text-[11px] uppercase tracking-wider text-muted-foreground">
                       mgr: {row.manager_name}
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-3 mt-0.5 text-[11px] text-muted-foreground">
+                <div className="flex items-center gap-3 mt-0.5 text-[12px] text-muted-foreground">
                   {row.app_phone && (
                     <a href={phoneHref(row.app_phone) ?? `tel:${row.app_phone}`} {...contactLinkProps(phoneHref(row.app_phone))} className="flex items-center gap-1 hover:text-foreground" onClick={e => e.stopPropagation()}>
                       <Phone className="h-3 w-3" /> {row.app_phone}
@@ -208,7 +208,7 @@ function BreakdownPill({
     <div className={cn("rounded-md border px-3 py-2 flex items-center gap-2", toneClasses[tone])}>
       <Icon className="h-4 w-4 flex-shrink-0" />
       <div className="flex-1">
-        <div className="text-[10px] uppercase tracking-wider opacity-80">{label}</div>
+        <div className="text-[11px] uppercase tracking-wider opacity-80">{label}</div>
         <div className="text-lg font-bold tabular-nums leading-tight">{value}</div>
       </div>
     </div>

@@ -83,15 +83,15 @@ export function OffersTiles() {
             <div className="relative space-y-2">
               <div className="flex items-center gap-2">
                 <sku.Icon className="h-5 w-5 text-emerald-400" />
-                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{sku.category}</span>
+                <span className="text-[11px] uppercase tracking-wider text-muted-foreground">{sku.category}</span>
               </div>
               <div className="font-bold text-sm text-foreground leading-tight">{sku.name}</div>
-              <div className="text-[11px] text-muted-foreground leading-snug min-h-[28px]">{sku.blurb}</div>
+              <div className="text-[12px] text-muted-foreground leading-snug min-h-[28px]">{sku.blurb}</div>
               <div className="flex items-baseline justify-between pt-1">
                 <span className="font-black text-xl text-foreground">{fmt$(sku.amount)}</span>
-                <span className="text-[10px] text-muted-foreground uppercase">{sku.cadence}</span>
+                <span className="text-[11px] text-muted-foreground uppercase">{sku.cadence}</span>
               </div>
-              <div className="text-[10px] text-emerald-300 font-bold uppercase tracking-wider pt-1">
+              <div className="text-[11px] text-emerald-300 font-bold uppercase tracking-wider pt-1">
                 {busy === sku.id ? <Loader2 className="h-3 w-3 inline animate-spin" /> : "tap to pay →"}
               </div>
             </div>

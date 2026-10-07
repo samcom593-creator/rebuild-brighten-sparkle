@@ -242,7 +242,7 @@ export default function AdminStrikes() {
           >
             <GlassCard variant="subtle" className="p-4 flex items-center justify-between">
               <div>
-                <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">{s.label}</p>
+                <p className="text-[12px] uppercase tracking-widest text-muted-foreground font-semibold">{s.label}</p>
                 <p className={`text-3xl font-bold tabular-nums ${s.color} mt-1`}>{s.value}</p>
               </div>
               <s.icon className={`h-8 w-8 ${s.color} opacity-60`} />
@@ -256,7 +256,7 @@ export default function AdminStrikes() {
         <GlassCard variant="subtle" className="p-4 lg:col-span-2">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">30-day trend</p>
+              <p className="text-[12px] uppercase tracking-widest text-muted-foreground font-semibold">30-day trend</p>
               <h3 className="text-lg font-bold">Strikes by severity</h3>
             </div>
             <BarChart3 className="h-5 w-5 text-muted-foreground" />
@@ -282,7 +282,7 @@ export default function AdminStrikes() {
         <GlassCard variant="subtle" className="p-4 lg:col-span-1">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Reverse leaderboard</p>
+              <p className="text-[12px] uppercase tracking-widest text-muted-foreground font-semibold">Reverse leaderboard</p>
               <h3 className="text-lg font-bold">Most active strikes</h3>
             </div>
             <Flame className="h-5 w-5 text-rose-400 opacity-70" />
@@ -304,7 +304,7 @@ export default function AdminStrikes() {
                       </span>
                       <span className="text-sm font-medium truncate">{s.agent_name}</span>
                     </div>
-                    <Badge variant="outline" className="text-[10px]">{s.active_count} active</Badge>
+                    <Badge variant="outline" className="text-[11px]">{s.active_count} active</Badge>
                   </button>
                 </li>
               ))}
@@ -428,7 +428,7 @@ export default function AdminStrikes() {
                                 href={url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-[11px] text-primary hover:underline truncate max-w-[260px] inline-flex items-center gap-1"
+                                className="text-[12px] text-primary hover:underline truncate max-w-[260px] inline-flex items-center gap-1"
                               >
                                 <LinkIcon className="h-3 w-3" /> {new URL(url).hostname}
                               </a>
@@ -440,7 +440,7 @@ export default function AdminStrikes() {
                             {s.resolution_note}
                           </p>
                         )}
-                        <p className="text-[11px] text-muted-foreground mt-2">
+                        <p className="text-[12px] text-muted-foreground mt-2">
                           Issued by {s.issued_by_name ?? "system"} · {format(new Date(s.issued_at), "PPp")}
                           {s.resolved_by_name && <> · Resolved by {s.resolved_by_name}</>}
                         </p>
@@ -699,7 +699,7 @@ function IssueStrikeDialog({ open, onOpenChange }: IssueDialogProps) {
                     <span className="text-xs text-muted-foreground ml-2">{a.agent_code ?? "—"}</span>
                   </span>
                   {a.active_count > 0 && (
-                    <Badge variant="outline" className="text-[10px]">
+                    <Badge variant="outline" className="text-[11px]">
                       {a.active_count} active
                     </Badge>
                   )}
@@ -763,7 +763,7 @@ function IssueStrikeDialog({ open, onOpenChange }: IssueDialogProps) {
             {evidenceUrls.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-1">
                 {evidenceUrls.map((u) => (
-                  <Badge key={u} variant="outline" className="text-[11px] gap-1 pr-1">
+                  <Badge key={u} variant="outline" className="text-[12px] gap-1 pr-1">
                     <span className="truncate max-w-[180px]">{new URL(u).hostname}</span>
                     <button
                       type="button"
@@ -831,19 +831,19 @@ function AgentDrillSheet({ agentId, summary, onClose }: DrillProps) {
         {summary && (
           <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
             <div className="rounded-md border border-border/40 p-2">
-              <p className="text-[10px] uppercase text-muted-foreground">Active</p>
+              <p className="text-[11px] uppercase text-muted-foreground">Active</p>
               <p className="text-xl font-bold text-rose-400">{summary.active_count}</p>
             </div>
             <div className="rounded-md border border-border/40 p-2">
-              <p className="text-[10px] uppercase text-muted-foreground">Major+</p>
+              <p className="text-[11px] uppercase text-muted-foreground">Major+</p>
               <p className="text-xl font-bold text-red-400">{summary.active_major + summary.active_terminal}</p>
             </div>
             <div className="rounded-md border border-border/40 p-2">
-              <p className="text-[10px] uppercase text-muted-foreground">Resolved</p>
+              <p className="text-[11px] uppercase text-muted-foreground">Resolved</p>
               <p className="text-xl font-bold text-emerald-400">{summary.resolved_count}</p>
             </div>
             <div className="rounded-md border border-border/40 p-2">
-              <p className="text-[10px] uppercase text-muted-foreground">Total</p>
+              <p className="text-[11px] uppercase text-muted-foreground">Total</p>
               <p className="text-xl font-bold">{summary.total_count}</p>
             </div>
           </div>
@@ -862,9 +862,9 @@ function AgentDrillSheet({ agentId, summary, onClose }: DrillProps) {
                   <span className={`h-7 w-7 rounded-md flex items-center justify-center border ${sev.color}`}>
                     <SevIcon className="h-3.5 w-3.5" />
                   </span>
-                  <Badge variant="outline" className={`${sev.color} text-[10px]`}>{sev.label}</Badge>
-                  <Badge variant="outline" className="text-[10px]">{labelReason(s.reason_code)}</Badge>
-                  <span className="ml-auto text-[11px] text-muted-foreground">
+                  <Badge variant="outline" className={`${sev.color} text-[11px]`}>{sev.label}</Badge>
+                  <Badge variant="outline" className="text-[11px]">{labelReason(s.reason_code)}</Badge>
+                  <span className="ml-auto text-[12px] text-muted-foreground">
                     {formatDistanceToNow(new Date(s.issued_at))} ago
                   </span>
                 </div>

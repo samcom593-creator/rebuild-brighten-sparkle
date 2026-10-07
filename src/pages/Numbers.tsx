@@ -149,28 +149,28 @@ export default function Numbers() {
 
         {/* Weekly Summary */}
         <GlassCard className="p-4">
-          <div className="text-[10px] text-muted-foreground uppercase tracking-widest mb-3">This Week</div>
+          <div className="text-[11px] text-muted-foreground uppercase tracking-widest mb-3">This Week</div>
           <div className="grid grid-cols-3 gap-4 text-center">
             <div>
               <div className="text-xl font-bold text-primary">
                 ${(weeklyStats.alp / 1000).toFixed(1)}k
               </div>
-              <div className="text-[10px] text-muted-foreground">ALP</div>
+              <div className="text-[11px] text-muted-foreground">ALP</div>
               {weeklyStats.alp > 0 && (
-                <div className="text-[10px] text-muted-foreground mt-0.5">
+                <div className="text-[11px] text-muted-foreground mt-0.5">
                   ~${Math.round(weeklyStats.alp * 0.55).toLocaleString()} est.
                 </div>
               )}
             </div>
             <div>
               <div className="text-xl font-bold">{weeklyStats.deals}</div>
-              <div className="text-[10px] text-muted-foreground">Deals</div>
+              <div className="text-[11px] text-muted-foreground">Deals</div>
             </div>
             <div>
               <div className="text-xl font-bold">
                 {weeklyStats.rank > 0 ? `#${weeklyStats.rank}` : "—"}
               </div>
-              <div className="text-[10px] text-muted-foreground">Rank</div>
+              <div className="text-[11px] text-muted-foreground">Rank</div>
             </div>
           </div>
         </GlassCard>

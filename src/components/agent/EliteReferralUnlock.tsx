@@ -117,7 +117,7 @@ export function EliteReferralUnlock({ agentId, threshold = 10_000 }: Props) {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <h3 className="font-semibold text-sm">Elite Referral Link</h3>
-              <span className="text-[10px] uppercase tracking-wider bg-muted px-1.5 py-0.5 rounded text-muted-foreground">Locked</span>
+              <span className="text-[11px] uppercase tracking-wider bg-muted px-1.5 py-0.5 rounded text-muted-foreground">Locked</span>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
               Hit <span className="font-semibold text-foreground">$10K MTD</span> to unlock your premium referral link & share kit.
@@ -129,7 +129,7 @@ export function EliteReferralUnlock({ agentId, threshold = 10_000 }: Props) {
                   style={{ width: `${pct}%` }}
                 />
               </div>
-              <div className="flex justify-between text-[11px] text-muted-foreground mt-1">
+              <div className="flex justify-between text-[12px] text-muted-foreground mt-1">
                 <span>{fmt$(mtd)} MTD</span>
                 <span>{fmt$(Math.max(0, threshold - mtd))} to unlock</span>
               </div>
@@ -156,7 +156,7 @@ export function EliteReferralUnlock({ agentId, threshold = 10_000 }: Props) {
           <div className="flex items-center gap-2 mb-1">
             <Crown className="h-5 w-5 text-amber-400" />
             <h3 className="font-bold">Elite Referral Link</h3>
-            <span className="text-[10px] uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-full font-semibold">
+            <span className="text-[11px] uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-full font-semibold">
               Unlocked
             </span>
           </div>

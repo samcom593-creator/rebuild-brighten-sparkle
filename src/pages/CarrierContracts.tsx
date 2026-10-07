@@ -208,7 +208,7 @@ function CarrierDirectory({ carriersQ }: {
         Contracting is recorded through the shared spreadsheet and then posted to the private contracting Discord. No invite link is used.
       </div>
 
-      <div className="hidden grid-cols-[minmax(0,1fr)_140px_120px] border-b border-border bg-muted/40 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground sm:grid">
+      <div className="hidden grid-cols-[minmax(0,1fr)_140px_120px] border-b border-border bg-muted/40 px-4 py-2 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground sm:grid">
         <span>Carrier</span><span>Contracting</span><span>Access</span>
       </div>
 
@@ -289,7 +289,7 @@ function ContractingOps({ canInvite, isAdmin }: { canInvite: boolean; isAdmin: b
           {stats.map(([label, value, note, queueKey]) => (
             <Link key={label} to={`/dashboard/contracting/cases?queue=${queueKey}`} className="block rounded-lg focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]">
               <GlassCard className="h-full p-4 transition-colors hover:border-primary/40">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{label}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{label}</p>
                 {digestQ.isLoading ? <Skeleton className="mt-1 h-8 w-14" /> : <p className="mt-0.5 text-3xl font-bold tabular-nums">{value}</p>}
                 <p className="mt-1 text-xs text-muted-foreground">{note}</p>
               </GlassCard>
@@ -424,7 +424,7 @@ function ContractDocuments() {
         </p>
       </div>
 
-      <div className="hidden grid-cols-[minmax(0,1fr)_minmax(0,1fr)_120px_minmax(0,1fr)] border-b border-border bg-muted/40 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground sm:grid">
+      <div className="hidden grid-cols-[minmax(0,1fr)_minmax(0,1fr)_120px_minmax(0,1fr)] border-b border-border bg-muted/40 px-4 py-2 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground sm:grid">
         <span>Carrier</span><span>Producer</span><span>Status</span><span>Contract record</span>
       </div>
 

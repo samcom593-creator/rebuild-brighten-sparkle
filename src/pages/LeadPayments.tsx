@@ -455,7 +455,7 @@ export default function LeadPayments() {
             <div className="grid gap-2 sm:grid-cols-4">
               {summary.byType.map((item) => (
                 <div key={item.type} className="rounded-md border border-border/50 bg-background/60 px-3 py-2">
-                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Type {item.type}</p>
+                  <p className="text-[12px] uppercase tracking-wide text-muted-foreground">Type {item.type}</p>
                   <p className="text-sm font-semibold">{item.count} · {money(item.total)}</p>
                 </div>
               ))}
@@ -564,7 +564,7 @@ function SummaryCard({
     <Card className="border-border/60 bg-card/80">
       <CardContent className="flex items-start justify-between gap-3 p-4">
         <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+          <p className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
           <p className="mt-1 truncate text-2xl font-bold">{value}</p>
           <p className="mt-1 truncate text-xs text-muted-foreground">{sub}</p>
         </div>

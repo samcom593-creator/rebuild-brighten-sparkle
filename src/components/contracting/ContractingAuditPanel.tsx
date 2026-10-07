@@ -224,7 +224,7 @@ export function ContractingAuditPanel() {
                     {r.dup_npn_with && <div className="text-xs text-destructive">shares NPN with {r.dup_npn_with}</div>}
                   </td>
                   <td className="py-1.5 pr-3">
-                    <Badge variant="outline" className={cn("whitespace-nowrap text-[11px]", ACTION_TONE[r.next_action] ?? "border-amber-500/40 text-amber-300")}>
+                    <Badge variant="outline" className={cn("whitespace-nowrap text-[12px]", ACTION_TONE[r.next_action] ?? "border-amber-500/40 text-amber-300")}>
                       {ACTION_LABEL[r.next_action] ?? r.next_action}
                     </Badge>
                   </td>
@@ -232,12 +232,12 @@ export function ContractingAuditPanel() {
                   <td className="py-1.5 pr-3 font-mono text-xs">
                     <span className={cn(r.npn_verdict === "valid" ? "text-emerald-400" : r.npn_verdict.startsWith("valid") ? "" : "text-amber-300")}>{r.npn_db ?? "∅"}</span>
                     {" / "}{r.npn_al ?? "∅"}{" / "}{r.npn_ethos ?? "∅"}
-                    <div className="text-[10px] text-muted-foreground">{r.npn_verdict.replace(/_/g, " ")}</div>
+                    <div className="text-[11px] text-muted-foreground">{r.npn_verdict.replace(/_/g, " ")}</div>
                   </td>
                   <td className="py-1.5 pr-3 text-xs">
                     <div>{r.ethos_status.replace(/_/g, " ")}</div>
                     {r.ethos_status !== "not_on_sheet" && (
-                      <div className={cn("text-[11px]", r.ethos_level_verdict === "ok" ? "text-muted-foreground" : "text-amber-300")}>
+                      <div className={cn("text-[12px]", r.ethos_level_verdict === "ok" ? "text-muted-foreground" : "text-amber-300")}>
                         sheet: {r.ethos_level ?? "blank"} · expected {r.ethos_level_expected} ({r.comp_pct}%)
                       </div>
                     )}

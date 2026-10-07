@@ -195,16 +195,16 @@ function PlaqueFace({ row }: { row: PlaqueRow }) {
 
       <div className="relative flex h-full flex-col">
         <div className="flex items-baseline gap-1.5">
-          <span className="text-[11px] font-extrabold tracking-[0.18em] text-primary">APEX</span>
-          <span className="text-[11px] font-medium tracking-[0.18em] text-foreground/80">FINANCIAL</span>
+          <span className="text-[12px] font-extrabold tracking-[0.18em] text-primary">APEX</span>
+          <span className="text-[12px] font-medium tracking-[0.18em] text-foreground/80">FINANCIAL</span>
         </div>
         <div className="mt-1 h-px w-10 bg-primary/60" />
 
-        <Badge className={cn("mt-2.5 w-fit border text-[9px] tracking-[0.14em]", meta.accent)}>
+        <Badge className={cn("mt-2.5 w-fit border text-[10px] tracking-[0.14em]", meta.accent)}>
           {meta.emoji} {meta.label.toUpperCase()}
         </Badge>
 
-        <div className="mt-2.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+        <div className="mt-2.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
           Winner&apos;s Circle
         </div>
 
@@ -213,7 +213,7 @@ function PlaqueFace({ row }: { row: PlaqueRow }) {
           {amount ? (
             <div className="text-3xl font-black leading-none tracking-tight text-primary tabular-nums">{amount}</div>
           ) : (
-            <div className="py-1 text-[11px] font-semibold leading-tight text-muted-foreground">
+            <div className="py-1 text-[12px] font-semibold leading-tight text-muted-foreground">
               Premium not on file
             </div>
           )}
@@ -234,7 +234,7 @@ function PlaqueFace({ row }: { row: PlaqueRow }) {
             </div>
           )}
           <div className="min-w-0">
-            <div className="text-[9px] uppercase tracking-[0.14em] text-muted-foreground">Agent</div>
+            <div className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">Agent</div>
             <div className="truncate text-xs font-bold text-foreground">{displayName(row.agent_name)}</div>
           </div>
         </div>
@@ -451,28 +451,28 @@ export default function AwardsGallery() {
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <GlassCard className="p-3">
-          <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Total Plaques</div>
+          <div className="text-[12px] uppercase tracking-wide text-muted-foreground">Total Plaques</div>
           <div className="text-2xl font-bold tabular-nums">{filtered.length}</div>
         </GlassCard>
         <GlassCard className="p-3">
-          <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Total Value</div>
+          <div className="text-[12px] uppercase tracking-wide text-muted-foreground">Total Value</div>
           <div className="text-2xl font-bold tabular-nums text-primary">{usdCompact(totalValue)}</div>
           {missingAmount > 0 && (
-            <div className="mt-0.5 text-[10px] text-muted-foreground">
+            <div className="mt-0.5 text-[11px] text-muted-foreground">
               excludes {missingAmount} with no premium on file
             </div>
           )}
         </GlassCard>
         <GlassCard className="p-3">
-          <div className="text-[11px] uppercase tracking-wide text-muted-foreground">💎 Platinum</div>
+          <div className="text-[12px] uppercase tracking-wide text-muted-foreground">💎 Platinum</div>
           <div className="text-2xl font-bold tabular-nums text-primary">{counts.single_day_platinum ?? 0}</div>
         </GlassCard>
         <GlassCard className="p-3">
-          <div className="text-[11px] uppercase tracking-wide text-muted-foreground">🥇 Gold</div>
+          <div className="text-[12px] uppercase tracking-wide text-muted-foreground">🥇 Gold</div>
           <div className="text-2xl font-bold tabular-nums text-primary">{counts.single_day ?? 0}</div>
         </GlassCard>
         <GlassCard className="p-3">
-          <div className="text-[11px] uppercase tracking-wide text-muted-foreground">🥉 Bronze</div>
+          <div className="text-[12px] uppercase tracking-wide text-muted-foreground">🥉 Bronze</div>
           <div className="text-2xl font-bold tabular-nums text-orange-700 dark:text-orange-300">{counts.single_day_bronze ?? 0}</div>
         </GlassCard>
       </div>
@@ -550,21 +550,21 @@ export default function AwardsGallery() {
                   <div className="shrink-0 text-right">
                     {amount
                       ? <span className="text-sm font-bold tabular-nums text-primary">{amount}</span>
-                      : <span className="text-[11px] text-muted-foreground">no premium on file</span>}
+                      : <span className="text-[12px] text-muted-foreground">no premium on file</span>}
                     {p.email_sent_at ? (
-                      <div className="mt-0.5 text-[9px] uppercase tracking-wide text-muted-foreground">emailed</div>
+                      <div className="mt-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">emailed</div>
                     ) : null}
                   </div>
                 </div>
 
                 <div className="mt-2.5 flex items-center gap-2">
                   {hasArt ? (
-                    <Button variant="outline" size="sm" className="h-7 gap-1.5 text-[11px]"
+                    <Button variant="outline" size="sm" className="h-7 gap-1.5 text-[12px]"
                       onClick={() => setArtOf(p)}>
                       <ImageIcon className="h-3 w-3" /> Original art
                     </Button>
                   ) : (
-                    <span className="text-[11px] text-muted-foreground">No artwork rendered yet</span>
+                    <span className="text-[12px] text-muted-foreground">No artwork rendered yet</span>
                   )}
                 </div>
               </GlassCard>
@@ -594,7 +594,7 @@ export default function AwardsGallery() {
                 className="w-full rounded-lg border border-border"
               />
               {!usdOrNull(artOf.amount) && (
-                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                <p className="text-[12px] leading-relaxed text-muted-foreground">
                   This artwork was rendered before a premium was recorded against the award, so any
                   figure printed on it is not backed by the row. The plaque record itself carries no
                   premium.
@@ -638,12 +638,12 @@ export default function AwardsGallery() {
                   </label>
                 </div>
                 {editing.custom_photo_url && !photoFile && (
-                  <p className="text-[11px] text-muted-foreground mt-1">
+                  <p className="text-[12px] text-muted-foreground mt-1">
                     Current custom photo set. Pick a file to replace.
                   </p>
                 )}
                 {!editing.custom_photo_url && !photoFile && (
-                  <p className="text-[11px] text-muted-foreground mt-1">
+                  <p className="text-[12px] text-muted-foreground mt-1">
                     Falls back to agent profile photo if empty.
                   </p>
                 )}

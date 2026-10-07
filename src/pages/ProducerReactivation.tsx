@@ -245,7 +245,7 @@ export default function ProducerReactivation() {
                           <Badge
                             variant="outline"
                             className={cn(
-                              "shrink-0 px-2 py-0 text-[10px] font-bold uppercase tracking-wide",
+                              "shrink-0 px-2 py-0 text-[11px] font-bold uppercase tracking-wide",
                               meta.badge,
                             )}
                           >
@@ -256,7 +256,7 @@ export default function ProducerReactivation() {
                           <Badge
                             variant="outline"
                             className={cn(
-                              "shrink-0 px-2 py-0 text-[10px] font-bold uppercase tracking-wide",
+                              "shrink-0 px-2 py-0 text-[11px] font-bold uppercase tracking-wide",
                               NEUTRAL_BADGE,
                             )}
                           >
@@ -264,7 +264,7 @@ export default function ProducerReactivation() {
                           </Badge>
                         )}
                       </div>
-                      <p className="mt-1 truncate text-[11px] tabular-nums text-muted-foreground">
+                      <p className="mt-1 truncate text-[12px] tabular-nums text-muted-foreground">
                         {r.deals} deals · {usd(r.lifetime_alp)} lifetime · {usd(r.avg_alp_per_deal)}/deal
                         {r.last_deal_at ? ` · last ${r.last_deal_at}` : ""}
                       </p>
@@ -279,7 +279,7 @@ export default function ProducerReactivation() {
                       >
                         {r.days_dark}
                       </div>
-                      <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                      <div className="mt-1 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                         days dark
                       </div>
                     </div>
@@ -290,7 +290,7 @@ export default function ProducerReactivation() {
                       <span className="font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
                         {usd(r.alp_per_month_when_active)}
                       </span>
-                      <span className="text-[11px] text-muted-foreground">/mo while active</span>
+                      <span className="text-[12px] text-muted-foreground">/mo while active</span>
                     </p>
 
                     {r.agent_phone ? (
@@ -303,7 +303,7 @@ export default function ProducerReactivation() {
                         </a>
                       </Button>
                     ) : (
-                      <span className="shrink-0 text-[11px] text-muted-foreground">no phone on file</span>
+                      <span className="shrink-0 text-[12px] text-muted-foreground">no phone on file</span>
                     )}
                   </div>
                 </li>
@@ -337,7 +337,7 @@ function Kpi({ label, value, icon: Icon, tone }: {
     <div className="min-w-0 rounded-lg border border-border bg-card p-3 sm:p-4">
       <div className="mb-1.5 flex items-center gap-2">
         <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
-        <p className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+        <p className="truncate text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
           {label}
         </p>
       </div>

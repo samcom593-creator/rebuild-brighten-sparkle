@@ -409,7 +409,7 @@ export default function LogNumbers() {
                         </div>
                         <div>
                           <h3 className="text-sm font-bold">📊 Activity Stats</h3>
-                          <p className="text-[10px] text-muted-foreground">Track your daily activity</p>
+                          <p className="text-[11px] text-muted-foreground">Track your daily activity</p>
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-3">
@@ -485,19 +485,19 @@ export default function LogNumbers() {
                         <div className="text-lg font-bold text-primary">
                           ${agentStats.weeklyALP.toLocaleString()}
                         </div>
-                        <div className="text-[10px] text-muted-foreground">Weekly ALP</div>
+                        <div className="text-[11px] text-muted-foreground">Weekly ALP</div>
                       </div>
                       <div className="bg-background/50 rounded-lg p-2">
                         <div className="text-lg font-bold">
                           {agentStats.weeklyPresentations}
                         </div>
-                        <div className="text-[10px] text-muted-foreground">Presentations</div>
+                        <div className="text-[11px] text-muted-foreground">Presentations</div>
                       </div>
                       <div className="bg-background/50 rounded-lg p-2">
                         <div className="text-lg font-bold text-emerald-400">
                           {agentStats.closingRate}%
                         </div>
-                        <div className="text-[10px] text-muted-foreground">Close Rate</div>
+                        <div className="text-[11px] text-muted-foreground">Close Rate</div>
                       </div>
                     </div>
                   </motion.div>

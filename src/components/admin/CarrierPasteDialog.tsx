@@ -231,7 +231,7 @@ export function CarrierPasteDialog({ onDone }: Props) {
 function Tile({ label, value, color }: { label: string; value: number | string; color?: string }) {
   return (
     <div className="rounded-md border border-border/40 p-2">
-      <p className="text-[10px] uppercase text-muted-foreground">{label}</p>
+      <p className="text-[11px] uppercase text-muted-foreground">{label}</p>
       <p className={`text-xl font-bold tabular-nums ${color ?? ""}`}>{value}</p>
     </div>
   );

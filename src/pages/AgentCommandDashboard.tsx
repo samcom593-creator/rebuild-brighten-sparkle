@@ -462,7 +462,7 @@ export default function AgentCommandDashboard() {
         <GlassCard className="p-4 lg:col-span-2">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">30-day production</p>
+              <p className="text-[12px] uppercase tracking-widest text-muted-foreground font-semibold">30-day production</p>
               <h3 className="text-lg font-bold">Annual premium by day</h3>
             </div>
             <Badge variant="outline" className="text-xs">{fmtUsd(ap30, true)} · last 30d</Badge>
@@ -503,7 +503,7 @@ export default function AgentCommandDashboard() {
         <GlassCard className="p-4">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Your pipeline</p>
+              <p className="text-[12px] uppercase tracking-widest text-muted-foreground font-semibold">Your pipeline</p>
               <h3 className="text-lg font-bold">Applicants</h3>
             </div>
             <Briefcase className="h-5 w-5 text-muted-foreground" />
@@ -532,7 +532,7 @@ export default function AgentCommandDashboard() {
         {/* Activity */}
         <GlassCard className="p-4">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Activity</p>
+            <p className="text-[12px] uppercase tracking-widest text-muted-foreground font-semibold">Activity</p>
             <Activity className="h-5 w-5 text-muted-foreground" />
           </div>
           <div className="space-y-3">
@@ -559,7 +559,7 @@ export default function AgentCommandDashboard() {
         {/* Goal Pace */}
         <GlassCard className="p-4">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Income goal · {format(today, "MMMM")}</p>
+            <p className="text-[12px] uppercase tracking-widest text-muted-foreground font-semibold">Income goal · {format(today, "MMMM")}</p>
             <Target className="h-5 w-5 text-muted-foreground" />
           </div>
           {incomeGoal > 0 ? (
@@ -596,7 +596,7 @@ export default function AgentCommandDashboard() {
         {/* Standing */}
         <GlassCard className="p-4">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Team standing</p>
+            <p className="text-[12px] uppercase tracking-widest text-muted-foreground font-semibold">Team standing</p>
             <Trophy className="h-5 w-5 text-muted-foreground" />
           </div>
           <div className="grid grid-cols-3 gap-2">
@@ -628,7 +628,7 @@ export default function AgentCommandDashboard() {
         <GlassCard className="p-4 lg:col-span-2">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Recent deals</p>
+              <p className="text-[12px] uppercase tracking-widest text-muted-foreground font-semibold">Recent deals</p>
               <h3 className="text-lg font-bold">Last 8 closed</h3>
             </div>
             <Button asChild size="sm" variant="ghost">
@@ -660,7 +660,7 @@ export default function AgentCommandDashboard() {
                     <p className="font-bold tabular-nums text-emerald-500 dark:text-emerald-400">
                       {fmtUsd(Number(d.annual_premium ?? 0), true)}
                     </p>
-                    <p className="text-[11px] text-muted-foreground">
+                    <p className="text-[12px] text-muted-foreground">
                       {d.posted_at ? formatDistanceToNow(new Date(d.posted_at), { addSuffix: true }) : "—"}
                     </p>
                   </div>
@@ -674,7 +674,7 @@ export default function AgentCommandDashboard() {
         <GlassCard className="p-4">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Daily deals · 30d</p>
+              <p className="text-[12px] uppercase tracking-widest text-muted-foreground font-semibold">Daily deals · 30d</p>
               <h3 className="text-lg font-bold">{fmtNum(stats?.deals_30d ?? 0)} total</h3>
             </div>
             <Flame className="h-5 w-5 text-rose-500 dark:text-rose-400" />
@@ -727,7 +727,7 @@ function KpiTile({ icon: Icon, label, value, subValue, trendPct, color, loading 
     <GlassCard className="p-4">
       <div className="flex items-start justify-between">
         <div className="min-w-0">
-          <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">{label}</p>
+          <p className="text-[12px] uppercase tracking-widest text-muted-foreground font-semibold">{label}</p>
           {loading ? <Skeleton className="h-9 w-32 mt-1" /> : (
             <p className={`text-3xl font-bold tabular-nums mt-1 ${color}`}>{value}</p>
           )}
@@ -736,7 +736,7 @@ function KpiTile({ icon: Icon, label, value, subValue, trendPct, color, loading 
         <div className="flex flex-col items-end gap-2">
           <Icon className={`h-7 w-7 ${color} opacity-70`} />
           {trendPct != null && Number.isFinite(trendPct) && (
-            <Badge variant="outline" className={`text-[10px] gap-0.5 ${
+            <Badge variant="outline" className={`text-[11px] gap-0.5 ${
               trendPct >= 0
                 ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/40"
                 : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/40"
@@ -779,7 +779,7 @@ function RankCell({ label, rank }: RankCellProps) {
   const isTop = rank != null && rank <= 10;
   return (
     <div className="rounded-md border border-border/40 p-2 text-center">
-      <p className="text-[10px] uppercase text-muted-foreground">{label}</p>
+      <p className="text-[11px] uppercase text-muted-foreground">{label}</p>
       <p className={`text-xl font-bold tabular-nums mt-0.5 ${isTop ? "text-amber-500 dark:text-amber-400" : ""}`}>
         {rank != null ? `#${rank}` : "—"}
       </p>
@@ -808,7 +808,7 @@ function QuickAction({ icon: Icon, to, label, desc }: QuickActionProps) {
           </span>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold">{label}</p>
-            <p className="text-[11px] text-muted-foreground truncate">{desc}</p>
+            <p className="text-[12px] text-muted-foreground truncate">{desc}</p>
           </div>
           <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
         </div>
@@ -1925,15 +1925,15 @@ function AgencyCommandView() {
                 className="group rounded-[10px] border border-border bg-card p-3.5 hover:bg-secondary transition-colors"
               >
                 <div className="flex items-start justify-between gap-2 mb-1.5">
-                  <p className="text-[10px] uppercase tracking-[0.07em] font-bold text-muted-foreground leading-tight">{t.label}</p>
+                  <p className="text-[11px] uppercase tracking-[0.07em] font-bold text-muted-foreground leading-tight">{t.label}</p>
                   <span className="rounded-md p-1 border border-border text-muted-foreground">
                     <Ic className="h-3 w-3" />
                   </span>
                 </div>
                 <p className={`text-[26px] leading-none font-bold tabular-nums ${t.tone.split(" ").filter((c) => c.startsWith("text-")).join(" ")}`}>{t.value}</p>
-                <p className="mt-1 text-[11px] text-muted-foreground leading-snug truncate">{t.sub}</p>
+                <p className="mt-1 text-[12px] text-muted-foreground leading-snug truncate">{t.sub}</p>
                 {deltaLabel && (
-                  <p className={`mt-0.5 text-[10px] tabular-nums ${t.delta! >= 0 ? "text-emerald-400" : "text-rose-500"}`}>{deltaLabel}</p>
+                  <p className={`mt-0.5 text-[11px] tabular-nums ${t.delta! >= 0 ? "text-emerald-400" : "text-rose-500"}`}>{deltaLabel}</p>
                 )}
               </Link>
             );
@@ -2055,14 +2055,14 @@ function AgencyCommandView() {
             {/* ── TODAY'S FOCUS stepper ── */}
             <div className="rounded-lg border border-border bg-card p-4 sm:p-5">
               <div className="flex items-center justify-between gap-3">
-                <p className="text-[11px] uppercase tracking-[0.12em] font-bold text-muted-foreground">Clear today's queue</p>
+                <p className="text-[12px] uppercase tracking-[0.12em] font-bold text-muted-foreground">Clear today's queue</p>
                 <p className="text-13 text-muted-foreground tabular-nums">1 of {todayItems.filter((t) => t.count > 0).length || 1}</p>
               </div>
               <div className="mt-2 h-1.5 rounded-full bg-secondary overflow-hidden">
                 <div className="h-full bg-primary" style={{ width: `${todayTotal > 0 ? Math.max(6, 100 / Math.max(1, todayItems.filter((t) => t.count > 0).length)) : 100}%` }} />
               </div>
               <div className="mt-4 rounded-lg border border-border p-4">
-                <p className="text-[10px] uppercase tracking-[0.12em] font-bold text-muted-foreground">Next</p>
+                <p className="text-[11px] uppercase tracking-[0.12em] font-bold text-muted-foreground">Next</p>
                 <p className="mt-1 text-[16px] font-bold">{topItem.count > 0 ? `${topItem.label} — ${fmtNum(topItem.count)} waiting` : "Queue is clear"}</p>
                 <p className="mt-0.5 text-13 text-muted-foreground">
                   {topItem.count > 0
@@ -2102,20 +2102,20 @@ function AgencyCommandView() {
                   <div className="grid sm:grid-cols-[220px_1fr]">
                     <div className="grid grid-cols-2 sm:grid-cols-1 divide-x sm:divide-x-0 sm:divide-y divide-border border-b sm:border-b-0 sm:border-r border-border">
                       <div className="p-4">
-                        <p className="text-[10px] uppercase tracking-[0.1em] font-bold text-muted-foreground">Personal production</p>
+                        <p className="text-[11px] uppercase tracking-[0.1em] font-bold text-muted-foreground">Personal production</p>
                         <p className="mt-1.5 text-[22px] font-bold tabular-nums">{fmtUsd(personalAp, true)}</p>
-                        <p className="text-[11px] text-muted-foreground">{fmtNum(personalDeals)} deals · {periodBounds.label}</p>
+                        <p className="text-[12px] text-muted-foreground">{fmtNum(personalDeals)} deals · {periodBounds.label}</p>
                       </div>
                       <div className="p-4">
-                        <p className="text-[10px] uppercase tracking-[0.1em] font-bold text-muted-foreground">Team production</p>
+                        <p className="text-[11px] uppercase tracking-[0.1em] font-bold text-muted-foreground">Team production</p>
                         <p className="mt-1.5 text-[22px] font-bold tabular-nums text-primary">{fmtUsd(apDisplay, true)}</p>
-                        <p className="text-[11px] text-muted-foreground">{fmtNum(apDealsDisplay)} deals · {fmtNum(periodSummary.producingAgents)} producing</p>
+                        <p className="text-[12px] text-muted-foreground">{fmtNum(apDealsDisplay)} deals · {fmtNum(periodSummary.producingAgents)} producing</p>
                       </div>
                     </div>
                     <div className="p-4 sm:p-5">
                       <div className="flex items-start justify-between gap-3">
-                        <p className="text-[11px] uppercase tracking-[0.12em] font-bold text-muted-foreground">Month-to-date ALP</p>
-                        <span className="text-[11px] text-muted-foreground">{periodBounds.label}</span>
+                        <p className="text-[12px] uppercase tracking-[0.12em] font-bold text-muted-foreground">Month-to-date ALP</p>
+                        <span className="text-[12px] text-muted-foreground">{periodBounds.label}</span>
                       </div>
                       <p className="mt-1 text-[40px] leading-none font-bold tabular-nums text-primary">{fmtUsd(apDisplay, true)}</p>
                       <p className="mt-2 text-13 text-muted-foreground">
@@ -2204,8 +2204,8 @@ function AgencyCommandView() {
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="rounded-lg border border-border bg-card p-4">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-[11px] uppercase tracking-[0.12em] font-bold text-muted-foreground">Leaderboard</p>
-                      <span className="text-[11px] rounded-full border border-primary/50 bg-primary/10 text-primary px-2 py-0.5 font-semibold">My agency</span>
+                      <p className="text-[12px] uppercase tracking-[0.12em] font-bold text-muted-foreground">Leaderboard</p>
+                      <span className="text-[12px] rounded-full border border-primary/50 bg-primary/10 text-primary px-2 py-0.5 font-semibold">My agency</span>
                     </div>
                     {periodSummary.producers.length === 0 ? (
                       <p className="mt-6 mb-2 text-13 text-muted-foreground text-center">No production yet this period.</p>
@@ -2223,20 +2223,20 @@ function AgencyCommandView() {
                   </div>
                   <div className="rounded-lg border border-border bg-card p-4">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-[11px] uppercase tracking-[0.12em] font-bold text-muted-foreground">Commission</p>
-                      <Link to="/dashboard/finances" className="text-[11px] font-semibold text-primary hover:underline">Finances →</Link>
+                      <p className="text-[12px] uppercase tracking-[0.12em] font-bold text-muted-foreground">Commission</p>
+                      <Link to="/dashboard/finances" className="text-[12px] font-semibold text-primary hover:underline">Finances →</Link>
                     </div>
                     <div className="mt-3 grid grid-cols-2 gap-3">
                       <div className="rounded-md border border-border p-3">
-                        <p className="text-[10px] uppercase tracking-[0.1em] font-bold text-muted-foreground">Advance paid</p>
+                        <p className="text-[11px] uppercase tracking-[0.1em] font-bold text-muted-foreground">Advance paid</p>
                         <p className="mt-1 text-[18px] font-bold text-muted-foreground">—</p>
                       </div>
                       <div className="rounded-md border border-border p-3">
-                        <p className="text-[10px] uppercase tracking-[0.1em] font-bold text-muted-foreground">Trail + renewal</p>
+                        <p className="text-[11px] uppercase tracking-[0.1em] font-bold text-muted-foreground">Trail + renewal</p>
                         <p className="mt-1 text-[18px] font-bold text-muted-foreground">—</p>
                       </div>
                     </div>
-                    <p className="mt-2.5 text-[11px] text-muted-foreground leading-snug">
+                    <p className="mt-2.5 text-[12px] text-muted-foreground leading-snug">
                       Carrier commission statements are not connected yet — this card fills in when Finance reconciliation lands. No invented numbers.
                     </p>
                   </div>
@@ -2249,8 +2249,8 @@ function AgencyCommandView() {
               <div className="space-y-4 min-w-0">
                 <div className="rounded-lg border border-border bg-card p-4">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-[11px] uppercase tracking-[0.12em] font-bold text-rose-400">Needs attention</p>
-                    <Link to="/admin/producer-trends" className="text-[11px] font-semibold text-primary hover:underline">View all</Link>
+                    <p className="text-[12px] uppercase tracking-[0.12em] font-bold text-rose-400">Needs attention</p>
+                    <Link to="/admin/producer-trends" className="text-[12px] font-semibold text-primary hover:underline">View all</Link>
                   </div>
                   {attention.length === 0 ? (
                     <div className="mt-3 flex items-center gap-2 text-13 text-muted-foreground">
@@ -2269,7 +2269,7 @@ function AgencyCommandView() {
                   )}
                 </div>
                 <div className="rounded-lg border border-border bg-card p-4">
-                  <p className="text-[11px] uppercase tracking-[0.12em] font-bold text-muted-foreground">{APEX_BRAND.shortName} briefing</p>
+                  <p className="text-[12px] uppercase tracking-[0.12em] font-bold text-muted-foreground">{APEX_BRAND.shortName} briefing</p>
                   <ul className="mt-2.5 space-y-2 text-13 leading-snug">
                     <li className="flex gap-2"><span className="text-primary">·</span><span>{fmtUsd(apDisplay, true)} ALP this month across {fmtNum(apDealsDisplay)} deals — {periodTrendPct != null && Number.isFinite(periodTrendPct) ? `${periodTrendPct > 0 ? "up" : "down"} ${Math.abs(periodTrendPct).toFixed(1)}% vs prior` : "no prior-period comparison yet"}.</span></li>
                     <li className="flex gap-2"><span className="text-primary">·</span><span>{fmtNum(activeAgentsCount)} active agents in Skool of {fmtNum(contractedCount)} contracted — {fmtNum(periodSummary.producingAgents)} produced this period.</span></li>
@@ -2305,10 +2305,10 @@ function AgencyCommandView() {
                 <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
                 <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
               </span>
-              <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-emerald-300">APEX AGENCY · LIVE</p>
+              <p className="text-[12px] uppercase tracking-[0.32em] font-bold text-emerald-300">APEX AGENCY · LIVE</p>
             </div>
             {periodSummary.totalAp > 0 && (
-              <Badge variant="outline" className="text-[10px] uppercase tracking-widest border-amber-400/40 bg-amber-400/10 text-amber-200">
+              <Badge variant="outline" className="text-[11px] uppercase tracking-widest border-amber-400/40 bg-amber-400/10 text-amber-200">
                 {periodBounds.label}
               </Badge>
             )}
@@ -2317,34 +2317,34 @@ function AgencyCommandView() {
           {/* The numbers · 4 big metrics */}
           <div className="grid gap-5 grid-cols-2 sm:grid-cols-4 mb-5">
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/45 mb-1.5">Annual Premium</p>
+              <p className="text-[11px] uppercase tracking-widest text-white/45 mb-1.5">Annual Premium</p>
               <p className="text-[32px] sm:text-[40px] leading-none font-black tabular-nums text-white">
                 {fmtUsd(periodSummary.totalAp, true)}
               </p>
-              <p className="text-[10px] text-white/50 mt-1 tabular-nums">{periodBounds.label}</p>
+              <p className="text-[11px] text-white/50 mt-1 tabular-nums">{periodBounds.label}</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/45 mb-1.5">Deals</p>
+              <p className="text-[11px] uppercase tracking-widest text-white/45 mb-1.5">Deals</p>
               <p className="text-[32px] sm:text-[40px] leading-none font-black tabular-nums text-emerald-300">
                 {fmtNum(periodSummary.dealCount)}
               </p>
-              <p className="text-[10px] text-white/50 mt-1 tabular-nums">
+              <p className="text-[11px] text-white/50 mt-1 tabular-nums">
                 {fmtUsd(periodSummary.dealCount ? periodSummary.totalAp / periodSummary.dealCount : 0, true)} avg
               </p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/45 mb-1.5">Producers</p>
+              <p className="text-[11px] uppercase tracking-widest text-white/45 mb-1.5">Producers</p>
               <p className="text-[32px] sm:text-[40px] leading-none font-black tabular-nums text-amber-300">
                 {fmtNum(periodSummary.producingAgents)}
               </p>
-              <p className="text-[10px] text-white/50 mt-1 tabular-nums">{fmtNum(tight.data?.active10d ?? 0)} active 10d</p>
+              <p className="text-[11px] text-white/50 mt-1 tabular-nums">{fmtNum(tight.data?.active10d ?? 0)} active 10d</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/45 mb-1.5">Licensed · MTD</p>
+              <p className="text-[11px] uppercase tracking-widest text-white/45 mb-1.5">Licensed · MTD</p>
               <p className="text-[32px] sm:text-[40px] leading-none font-black tabular-nums text-white">
                 {fmtNum(tight.data?.licensedMtd ?? 0)}
               </p>
-              <p className="text-[10px] text-white/50 mt-1 tabular-nums">
+              <p className="text-[11px] text-white/50 mt-1 tabular-nums">
                 {fmtNum(tight.data?.contractedMtd ?? 0)} contracted
               </p>
             </div>
@@ -2353,42 +2353,42 @@ function AgencyCommandView() {
           {/* Month-level supplement · Sam: 'this month apps · this month hires · per agent · per manager' */}
           <div className="grid gap-3 grid-cols-2 sm:grid-cols-4 mb-4 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Apps · MTD</p>
+              <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">Apps · MTD</p>
               <p className="text-[22px] leading-none font-bold tabular-nums text-white">{fmtNum(depth?.apps_mtd ?? 0)}</p>
-              <p className="text-[10px] text-white/40 tabular-nums">+{fmtNum(depth?.apps_7d ?? 0)} last 7d</p>
+              <p className="text-[11px] text-white/40 tabular-nums">+{fmtNum(depth?.apps_7d ?? 0)} last 7d</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Hires · MTD</p>
+              <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">Hires · MTD</p>
               <p className="text-[22px] leading-none font-bold tabular-nums text-emerald-300">{fmtNum(depth?.hires_mtd ?? 0)}</p>
-              <p className="text-[10px] text-white/40 tabular-nums">{fmtNum(tight.data?.licensedMtd ?? 0)} licensed</p>
+              <p className="text-[11px] text-white/40 tabular-nums">{fmtNum(tight.data?.licensedMtd ?? 0)} licensed</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Uncontacted</p>
+              <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">Uncontacted</p>
               <p className={`text-[22px] leading-none font-bold tabular-nums ${(depth?.uncontacted_48h ?? 0) > 50 ? "text-rose-400" : "text-amber-300"}`}>
                 {fmtNum(depth?.uncontacted_total ?? 0)}
               </p>
-              <p className="text-[10px] text-rose-300/80 tabular-nums">{fmtNum(depth?.uncontacted_48h ?? 0)} stale 48h+</p>
+              <p className="text-[11px] text-rose-300/80 tabular-nums">{fmtNum(depth?.uncontacted_48h ?? 0)} stale 48h+</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Idle producers</p>
+              <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">Idle producers</p>
               <p className="text-[22px] leading-none font-bold tabular-nums text-amber-300">{fmtNum((leak?.idle_active_agents ?? 0) as number)}</p>
-              <p className="text-[10px] text-white/40 tabular-nums">no deal 10d+</p>
+              <p className="text-[11px] text-white/40 tabular-nums">no deal 10d+</p>
             </div>
           </div>
 
           {/* Pre-license pipeline mini-bar */}
-          <div className="flex items-center gap-3 text-[11px] flex-wrap">
-            <p className="text-white/50 uppercase tracking-widest text-[10px]">License Pipeline</p>
+          <div className="flex items-center gap-3 text-[12px] flex-wrap">
+            <p className="text-white/50 uppercase tracking-widest text-[11px]">License Pipeline</p>
             <div className="flex items-center gap-1.5 flex-wrap">
-              <Badge variant="outline" className="text-[10px] border-rose-400/40 bg-rose-400/10 text-rose-200">
+              <Badge variant="outline" className="text-[11px] border-rose-400/40 bg-rose-400/10 text-rose-200">
                 {fmtNum(tight.data?.pleInCourse ?? 0)} in course
               </Badge>
               <span className="text-white/30">→</span>
-              <Badge variant="outline" className="text-[10px] border-amber-400/40 bg-amber-400/10 text-amber-200">
+              <Badge variant="outline" className="text-[11px] border-amber-400/40 bg-amber-400/10 text-amber-200">
                 {fmtNum(tight.data?.pleExamScheduled ?? 0)} exam scheduled
               </Badge>
               <span className="text-white/30">→</span>
-              <Badge variant="outline" className="text-[10px] border-emerald-400/40 bg-emerald-400/10 text-emerald-200">
+              <Badge variant="outline" className="text-[11px] border-emerald-400/40 bg-emerald-400/10 text-emerald-200">
                 {fmtNum(tight.data?.pleFinished ?? 0)} finished
               </Badge>
             </div>
@@ -2441,7 +2441,7 @@ function AgencyCommandView() {
                 </span>
               )}
               <div className="flex items-center justify-between mb-2">
-                <p className={`text-[10px] uppercase tracking-widest font-bold ${t.text}`}>{title}</p>
+                <p className={`text-[11px] uppercase tracking-widest font-bold ${t.text}`}>{title}</p>
                 <span className={`text-13 tabular-nums font-bold ${t.text} ${isUrgent ? "text-[15px]" : ""}`}>{count}</span>
               </div>
               {items.length === 0 ? (
@@ -2464,11 +2464,11 @@ function AgencyCommandView() {
                         to={`/dashboard/applicants?lead=${a.id}`}
                         className="flex items-center gap-2 text-12 group hover:bg-white/30 dark:hover:bg-black/20 rounded-lg px-1.5 py-1 transition-colors"
                       >
-                        <span className={`h-6 w-6 rounded-full text-[10px] font-bold flex items-center justify-center ${t.chip}`}>
+                        <span className={`h-6 w-6 rounded-full text-[11px] font-bold flex items-center justify-center ${t.chip}`}>
                           {initials.toUpperCase()}
                         </span>
                         <span className="flex-1 truncate font-medium">{name}</span>
-                        {a.state && <span className="text-[10px] text-muted-foreground tabular-nums">{a.state}</span>}
+                        {a.state && <span className="text-[11px] text-muted-foreground tabular-nums">{a.state}</span>}
                       </Link>
                     );
                   })}
@@ -2541,15 +2541,15 @@ function AgencyCommandView() {
                   key={s.stage_key}
                   className={`rounded-lg border p-3 transition-colors ${isBottleneck ? "border-amber-500/50 bg-amber-500/10" : "border-border bg-background hover:bg-muted/60"}`}
                 >
-                  <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground truncate">{s.display_name}</p>
+                  <p className="text-[11px] uppercase tracking-widest font-bold text-muted-foreground truncate">{s.display_name}</p>
                   <p className={`mt-1 text-2xl font-black tabular-nums ${isBottleneck ? "text-amber-400" : "text-slate-100"}`}>{fmtNum(s.in_stage)}</p>
-                  <div className="mt-1 flex items-center gap-1 text-[10px] tabular-nums">
+                  <div className="mt-1 flex items-center gap-1 text-[11px] tabular-nums">
                     {conv !== null && conv !== undefined && (
                       <span className={isBottleneck ? "text-amber-400" : "text-emerald-400"}>{fmtPct(conv)} →</span>
                     )}
                     {s.stalled > 0 && <span className="text-rose-500">{fmtNum(s.stalled)} stall</span>}
                   </div>
-                  <p className="mt-0.5 text-[10px] text-muted-foreground tabular-nums">
+                  <p className="mt-0.5 text-[11px] text-muted-foreground tabular-nums">
                     {median !== null && median !== undefined ? `${median}d median` : "—"}
                   </p>
                 </div>
@@ -2571,9 +2571,9 @@ function AgencyCommandView() {
                 <span className="absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75 animate-ping" />
                 <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-rose-500" />
               </span>
-              <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-rose-300">LIVE LEAKS · CFO BOT</p>
+              <p className="text-[12px] uppercase tracking-[0.32em] font-bold text-rose-300">LIVE LEAKS · CFO BOT</p>
             </div>
-            <Link to="/dashboard/finances" className="text-[10px] text-rose-200/80 hover:text-rose-100 uppercase tracking-widest font-bold">
+            <Link to="/dashboard/finances" className="text-[11px] text-rose-200/80 hover:text-rose-100 uppercase tracking-widest font-bold">
               Full CFO →
             </Link>
           </div>
@@ -2590,7 +2590,7 @@ function AgencyCommandView() {
               <div className="group relative p-3 rounded-xl bg-rose-500/[0.08] border border-rose-500/20 hover:border-rose-400/50 transition-all">
                 <div className="flex items-center gap-1.5 mb-1.5">
                   <AlertTriangle className="h-3 w-3 text-rose-400" />
-                  <p className="text-[9px] uppercase tracking-widest text-white/50 font-bold">Ghost AP at risk</p>
+                  <p className="text-[10px] uppercase tracking-widest text-white/50 font-bold">Ghost AP at risk</p>
                 </div>
                 <p className="text-[22px] leading-none font-black tabular-nums text-rose-300">{fmtUsd(Number(leak.ghost_ap_at_risk ?? 0), true)}</p>
               </div>
@@ -2599,7 +2599,7 @@ function AgencyCommandView() {
               <div className="group p-3 rounded-xl bg-rose-500/[0.08] border border-rose-500/20 hover:border-rose-400/50 transition-all">
                 <div className="flex items-center gap-1.5 mb-1.5">
                   <TrendingDown className="h-3 w-3 text-rose-400" />
-                  <p className="text-[9px] uppercase tracking-widest text-white/50 font-bold">Walked commission</p>
+                  <p className="text-[10px] uppercase tracking-widest text-white/50 font-bold">Walked commission</p>
                 </div>
                 <p className="text-[22px] leading-none font-black tabular-nums text-rose-300">{fmtUsd(Number(leak.lapsed_walked_commission ?? 0), true)}</p>
               </div>
@@ -2608,7 +2608,7 @@ function AgencyCommandView() {
               <div className="group p-3 rounded-xl bg-white/[0.04] border border-white/[0.08] hover:border-white/20 transition-all">
                 <div className="flex items-center gap-1.5 mb-1.5">
                   <Activity className="h-3 w-3 text-white/60" />
-                  <p className="text-[9px] uppercase tracking-widest text-white/50 font-bold">Legacy imports</p>
+                  <p className="text-[10px] uppercase tracking-widest text-white/50 font-bold">Legacy imports</p>
                 </div>
                 <div className="space-y-0.5">
                   <p className={`text-[13px] font-bold leading-tight flex items-center gap-1 ${String(leak.agentlink_sync ?? "").includes("🟢") ? "text-emerald-300" : "text-rose-300"}`}>
@@ -2647,9 +2647,9 @@ function AgencyCommandView() {
                   <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
                   <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
                 </span>
-                <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-emerald-300">{periodBounds.label} · ANNUAL PREMIUM</p>
+                <p className="text-[12px] uppercase tracking-[0.32em] font-bold text-emerald-300">{periodBounds.label} · ANNUAL PREMIUM</p>
               </div>
-              <Badge variant="outline" className="text-[10px] uppercase tracking-widest border-emerald-400/40 bg-emerald-400/10 text-emerald-200">
+              <Badge variant="outline" className="text-[11px] uppercase tracking-widest border-emerald-400/40 bg-emerald-400/10 text-emerald-200">
                 Daily run-rate
               </Badge>
             </div>
@@ -2657,19 +2657,19 @@ function AgencyCommandView() {
             {/* 4 inner glass tiles · the "more inner layer graphs" Sam asked for */}
             <div className="grid gap-3 grid-cols-2 sm:grid-cols-4 mb-4">
               <div className="p-3 rounded-xl bg-white/[0.04] border border-white/[0.06]">
-                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Total AP</p>
+                <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">Total AP</p>
                 <p className="text-[24px] leading-none font-black tabular-nums text-emerald-300">{fmtUsd(periodSummary.totalAp, true)}</p>
               </div>
               <div className="p-3 rounded-xl bg-white/[0.04] border border-white/[0.06]">
-                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Deals</p>
+                <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">Deals</p>
                 <p className="text-[24px] leading-none font-black tabular-nums text-white">{fmtNum(periodSummary.dealCount)}</p>
               </div>
               <div className="p-3 rounded-xl bg-white/[0.04] border border-white/[0.06]">
-                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Avg / deal</p>
+                <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">Avg / deal</p>
                 <p className="text-[24px] leading-none font-black tabular-nums text-white">{fmtUsd(periodSummary.dealCount ? periodSummary.totalAp / periodSummary.dealCount : 0, true)}</p>
               </div>
               <div className="p-3 rounded-xl bg-amber-500/[0.08] border border-amber-500/20">
-                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Daily pace</p>
+                <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">Daily pace</p>
                 <p className="text-[24px] leading-none font-black tabular-nums text-amber-300">{fmtUsd(periodSummary.totalAp / Math.max(1, (Math.ceil((new Date(periodBounds.endIso).getTime() - new Date(periodBounds.startIso).getTime()) / 86400000))), true)}</p>
               </div>
             </div>
@@ -2705,8 +2705,8 @@ function AgencyCommandView() {
             {trend.data && trend.data.length > 0 && (
               <>
                 <div className="mt-4 pt-3 border-t border-white/[0.06] flex items-center justify-between">
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-bold">DAILY DEAL COUNT</p>
-                  <span className="text-[10px] tabular-nums text-white/40">
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-white/40 font-bold">DAILY DEAL COUNT</p>
+                  <span className="text-[11px] tabular-nums text-white/40">
                     peak day: {Math.max(...trend.data.map((t: any) => t.deals ?? 0))} deals
                   </span>
                 </div>
@@ -2737,7 +2737,7 @@ function AgencyCommandView() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2.5">
                 <Crown className="h-4 w-4 text-amber-400" />
-                <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-amber-300">TOP PRODUCERS · {periodBounds.label.toUpperCase()}</p>
+                <p className="text-[12px] uppercase tracking-[0.32em] font-bold text-amber-300">TOP PRODUCERS · {periodBounds.label.toUpperCase()}</p>
               </div>
             </div>
 
@@ -2760,7 +2760,7 @@ function AgencyCommandView() {
                         : "border-white/[0.06] bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]"
                     }`}
                   >
-                    <span className={`h-7 w-7 rounded-lg text-[12px] font-black flex items-center justify-center shrink-0 ${
+                    <span className={`h-7 w-7 rounded-lg text-[13px] font-black flex items-center justify-center shrink-0 ${
                       i === 0 ? "bg-amber-500/20 text-amber-300 ring-1 ring-amber-400/40" :
                       i === 1 ? "bg-slate-400/15 text-slate-200" :
                       i === 2 ? "bg-amber-700/20 text-amber-400" :
@@ -2771,13 +2771,13 @@ function AgencyCommandView() {
                     {a.avatar_url ? (
                       <img src={a.avatar_url} alt="" className="h-7 w-7 rounded-full object-cover ring-1 ring-white/10" />
                     ) : (
-                      <div className="h-7 w-7 rounded-full bg-white/[0.06] text-white text-[10px] font-bold flex items-center justify-center">
+                      <div className="h-7 w-7 rounded-full bg-white/[0.06] text-white text-[11px] font-bold flex items-center justify-center">
                         {(a.display_name ?? "?").split(" ").map(s => s[0]).slice(0, 2).join("")}
                       </div>
                     )}
                     <div className="min-w-0 flex-1">
                       <p className="text-13 font-semibold truncate text-white">{a.display_name ?? "—"}</p>
-                      <p className="text-[10px] text-white/50">{a.agent_code ?? "—"} · {fmtNum(a.deals)} deals</p>
+                      <p className="text-[11px] text-white/50">{a.agent_code ?? "—"} · {fmtNum(a.deals)} deals</p>
                     </div>
                     <p className="text-14 font-black tabular-nums text-emerald-300 shrink-0">
                       {fmtUsd(a.ap, true)}
@@ -2816,7 +2816,7 @@ function AgencyCommandView() {
           <TabsContent value="pipeline" className="mt-4 space-y-4">
             <div className="grid gap-4 lg:grid-cols-3">
               <div className="lg:col-span-1">
-                <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold mb-2">Agency funnel</p>
+                <p className="text-[12px] uppercase tracking-widest text-muted-foreground font-semibold mb-2">Agency funnel</p>
                 <FunnelStrip
                   steps={[
                     { label: "Active applications", value: c?.total_applications ?? 0, color: "bg-slate-500" },
@@ -2834,7 +2834,7 @@ function AgencyCommandView() {
                 </div>
               </div>
               <div className="lg:col-span-2">
-                <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold mb-2">Production · {periodBounds.label}</p>
+                <p className="text-[12px] uppercase tracking-widest text-muted-foreground font-semibold mb-2">Production · {periodBounds.label}</p>
                 {periodDeals.isLoading ? (
                   <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                     {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} /* stable-key-allow:skeleton */ className="h-20 w-full" />)}
@@ -2858,7 +2858,7 @@ function AgencyCommandView() {
               <EmptyState icon={<Users className="h-6 w-6" />} title={`No manager production in ${periodBounds.label.toLowerCase()}`} />
             ) : (
               <>
-                <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold mb-2">Manager production share · {fmtUsd(periodSummary.totalAp, true)} total</p>
+                <p className="text-[12px] uppercase tracking-widest text-muted-foreground font-semibold mb-2">Manager production share · {fmtUsd(periodSummary.totalAp, true)} total</p>
                 <div className="space-y-2">
                   {periodSummary.managers.map((m, i) => (
                     <div key={m.name} className="flex items-center gap-3">
@@ -2870,9 +2870,9 @@ function AgencyCommandView() {
                       </div>
                       <div className="text-right shrink-0 min-w-[4rem]">
                         <span className="text-sm font-bold tabular-nums text-emerald-500 dark:text-emerald-400">{fmtUsd(m.ap, true)}</span>
-                        <span className="text-[10px] text-muted-foreground ml-1.5">{m.pct.toFixed(0)}%</span>
+                        <span className="text-[11px] text-muted-foreground ml-1.5">{m.pct.toFixed(0)}%</span>
                       </div>
-                      <div className="text-[10px] text-muted-foreground w-14 text-right tabular-nums shrink-0">
+                      <div className="text-[11px] text-muted-foreground w-14 text-right tabular-nums shrink-0">
                         {fmtNum(m.deals)} deal{m.deals !== 1 ? "s" : ""}
                       </div>
                     </div>
@@ -2890,7 +2890,7 @@ function AgencyCommandView() {
             ) : (
               <>
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Most recent {(recentHires.data ?? []).length} hires</p>
+                  <p className="text-[12px] uppercase tracking-widest text-muted-foreground font-semibold">Most recent {(recentHires.data ?? []).length} hires</p>
                   <Button asChild size="sm" variant="ghost">
                     <Link to="/dashboard/team-hierarchy">All agents <ArrowRight className="h-3 w-3 ml-1" /></Link>
                   </Button>
@@ -2900,7 +2900,7 @@ function AgencyCommandView() {
                     <li key={h.id} className="flex items-center justify-between gap-3 rounded-lg border border-border/40 bg-muted/20 px-3 py-2">
                       <div className="min-w-0">
                         <p className="font-semibold text-sm truncate">{h.display_name}</p>
-                        <p className="text-[11px] text-muted-foreground truncate">
+                        <p className="text-[12px] text-muted-foreground truncate">
                           {h.agent_code ?? "—"}{h.manager_name ? ` · mgr ${h.manager_name}` : ""}
                         </p>
                       </div>
@@ -3006,7 +3006,7 @@ function AgencyCommandView() {
           <div className="overflow-x-auto">
             <table className="w-full text-12">
               <thead>
-                <tr className="text-[10px] uppercase tracking-widest text-muted-foreground border-b border-border/60">
+                <tr className="text-[11px] uppercase tracking-widest text-muted-foreground border-b border-border/60">
                   <th className="text-left font-semibold py-2 px-2">Producer</th>
                   <th className="text-left font-semibold py-2 px-2 hidden sm:table-cell">Manager</th>
                   <th className="text-left font-semibold py-2 px-2">Risk</th>
@@ -3042,7 +3042,7 @@ function AgencyCommandView() {
                       </td>
                       <td className="py-2 px-2 hidden sm:table-cell text-muted-foreground truncate max-w-[8rem]">{r.manager_name}</td>
                       <td className="py-2 px-2">
-                        <span className={`inline-block text-[10px] font-bold rounded-md px-1.5 py-0.5 ring-1 ${badge.className}`}>
+                        <span className={`inline-block text-[11px] font-bold rounded-md px-1.5 py-0.5 ring-1 ${badge.className}`}>
                           {riskLabel}
                         </span>
                       </td>
@@ -3062,7 +3062,7 @@ function AgencyCommandView() {
                       </td>
                       <td className="py-2 px-2 hidden lg:table-cell text-muted-foreground truncate max-w-[14rem]">{nba.action}</td>
                       <td className="py-2 px-2 text-right">
-                        <Button asChild variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]">
+                        <Button asChild variant="ghost" size="sm" className="h-6 px-1.5 text-[11px]">
                           <Link to={`/dashboard/agents/${r.producer_id}`}>Open</Link>
                         </Button>
                       </td>
@@ -3093,7 +3093,7 @@ function AgencyCommandView() {
           <ul className="space-y-1">
             {periodSummary.producers.slice(0, 5).map((a, i) => (
               <li key={a.agent_id} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted/60">
-                <span className={`h-6 w-6 rounded-md text-[11px] font-black flex items-center justify-center shrink-0 ${
+                <span className={`h-6 w-6 rounded-md text-[12px] font-black flex items-center justify-center shrink-0 ${
                   i === 0 ? "bg-amber-500/20 text-amber-400 border border-amber-500/50"
                     : i === 1 ? "bg-slate-400/20 text-muted-foreground"
                     : i === 2 ? "bg-amber-500/10 text-amber-400"
@@ -3103,7 +3103,7 @@ function AgencyCommandView() {
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="text-13 font-semibold text-slate-100 truncate">{a.display_name}</p>
-                  <p className="text-[10px] text-muted-foreground">{a.agent_code ?? "—"} · {fmtNum(a.deals)} deals</p>
+                  <p className="text-[11px] text-muted-foreground">{a.agent_code ?? "—"} · {fmtNum(a.deals)} deals</p>
                 </div>
                 <span className="text-13 font-bold tabular-nums text-emerald-400">{fmtUsd(a.ap, true)}</span>
               </li>
@@ -3136,7 +3136,7 @@ function AgencyCommandView() {
           <div className="overflow-x-auto">
             <table className="w-full text-12">
               <thead>
-                <tr className="text-[10px] uppercase tracking-widest text-muted-foreground border-b border-border/60">
+                <tr className="text-[11px] uppercase tracking-widest text-muted-foreground border-b border-border/60">
                   <th className="text-left font-semibold py-2 px-2">Manager</th>
                   <th className="text-right font-semibold py-2 px-2">Team</th>
                   <th className="text-right font-semibold py-2 px-2 hidden sm:table-cell" title="Requires manager_activity_daily view">Calls</th>
@@ -3168,7 +3168,7 @@ function AgencyCommandView() {
                 })}
               </tbody>
             </table>
-            <p className="mt-2 text-[10px] text-muted-foreground">
+            <p className="mt-2 text-[11px] text-muted-foreground">
               Calls / Follow-ups / Licenses-pushed columns require manager_activity_daily view (deferred).
             </p>
           </div>
@@ -3265,7 +3265,7 @@ function AgencyCommandView() {
                       <p className="text-13 font-bold text-slate-100">{step.title}</p>
                       <p className="text-11 text-muted-foreground mt-0.5">{step.metric}</p>
                     </div>
-                    <Button asChild variant="ghost" size="sm" className="h-7 text-[10px] text-teal-400">
+                    <Button asChild variant="ghost" size="sm" className="h-7 text-[11px] text-teal-400">
                       <Link to={step.href} onClick={() => setDailyReviewOpen(false)}>Handle now <ArrowRight className="h-3 w-3 ml-1" /></Link>
                     </Button>
                   </div>
@@ -3330,10 +3330,10 @@ function CarrierMixPanel({ data, loading }: {
               <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
             </span>
-            <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-emerald-300">CARRIER MIX · MTD</p>
+            <p className="text-[12px] uppercase tracking-[0.32em] font-bold text-emerald-300">CARRIER MIX · MTD</p>
           </div>
           {data && data.totalAp > 0 && (
-            <Badge variant="outline" className="text-[10px] uppercase tracking-widest border-emerald-400/40 bg-emerald-400/10 text-emerald-200">
+            <Badge variant="outline" className="text-[11px] uppercase tracking-widest border-emerald-400/40 bg-emerald-400/10 text-emerald-200">
               {fmtUsd(data.totalAp, true)} AP
             </Badge>
           )}
@@ -3344,7 +3344,7 @@ function CarrierMixPanel({ data, loading }: {
         ) : !data || chartData.length === 0 ? (
           <div className="py-6 text-center">
             <p className="text-[26px] font-black text-white/90">First deal opens the board</p>
-            <p className="text-[11px] text-white/50 mt-1">No carrier production this month yet.</p>
+            <p className="text-[12px] text-white/50 mt-1">No carrier production this month yet.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 items-center">
@@ -3377,7 +3377,7 @@ function CarrierMixPanel({ data, loading }: {
                 <Link
                   key={row.name}
                   to="/dashboard/book-of-business"
-                  className="flex items-center justify-between gap-2 text-[11px] hover:bg-white/[0.04] rounded-md px-1.5 py-1 transition-colors group"
+                  className="flex items-center justify-between gap-2 text-[12px] hover:bg-white/[0.04] rounded-md px-1.5 py-1 transition-colors group"
                   title={`Open Book of Business for ${row.name}`}
                 >
                   <div className="flex items-center gap-2 min-w-0">
@@ -3392,7 +3392,7 @@ function CarrierMixPanel({ data, loading }: {
                 </Link>
               ))}
               {topConcentration && topConcentration.pct >= 50 && (
-                <p className="text-[10px] text-amber-300/80 mt-2 flex items-center gap-1">
+                <p className="text-[11px] text-amber-300/80 mt-2 flex items-center gap-1">
                   <AlertTriangle className="h-3 w-3" /> {topConcentration.name} = {topConcentration.pct.toFixed(0)}% concentration risk
                 </p>
               )}
@@ -3420,9 +3420,9 @@ function TopMoversPanel({ data, loading }: {
               <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75 animate-ping" />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" />
             </span>
-            <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-amber-300">TOP MOVERS · WoW</p>
+            <p className="text-[12px] uppercase tracking-[0.32em] font-bold text-amber-300">TOP MOVERS · WoW</p>
           </div>
-          <Badge variant="outline" className="text-[10px] uppercase tracking-widest border-amber-400/40 bg-amber-400/10 text-amber-200">
+          <Badge variant="outline" className="text-[11px] uppercase tracking-widest border-amber-400/40 bg-amber-400/10 text-amber-200">
             Week vs prior week
           </Badge>
         </div>
@@ -3432,7 +3432,7 @@ function TopMoversPanel({ data, loading }: {
         ) : data.length === 0 ? (
           <div className="py-6 text-center">
             <p className="text-[26px] font-black text-white/90">Momentum starts Monday</p>
-            <p className="text-[11px] text-white/50 mt-1">No production deltas to surface yet this week.</p>
+            <p className="text-[12px] text-white/50 mt-1">No production deltas to surface yet this week.</p>
           </div>
         ) : (
           <ol className="space-y-1.5">
@@ -3445,22 +3445,22 @@ function TopMoversPanel({ data, loading }: {
               return (
                 <li key={m.agentId} className="flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1.5">
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-[10px] w-4 text-white/40 tabular-nums">{i + 1}</span>
-                    <span className="h-7 w-7 rounded-full bg-amber-500/20 border border-amber-400/30 grid place-items-center text-[10px] font-bold text-amber-200 shrink-0">
+                    <span className="text-[11px] w-4 text-white/40 tabular-nums">{i + 1}</span>
+                    <span className="h-7 w-7 rounded-full bg-amber-500/20 border border-amber-400/30 grid place-items-center text-[11px] font-bold text-amber-200 shrink-0">
                       {initials || "—"}
                     </span>
                     <div className="min-w-0">
-                      <p className="text-[12px] font-semibold text-white truncate">{m.name}</p>
-                      <p className="text-[10px] text-white/45 tabular-nums">
+                      <p className="text-[13px] font-semibold text-white truncate">{m.name}</p>
+                      <p className="text-[11px] text-white/45 tabular-nums">
                         {fmtUsd(m.lastWk, true)} → <span className="text-white/85">{fmtUsd(m.thisWk, true)}</span>
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
-                    <span className="text-[11px] font-bold text-white tabular-nums">
+                    <span className="text-[12px] font-bold text-white tabular-nums">
                       {m.delta >= 0 ? "+" : ""}{fmtUsd(m.delta, true)}
                     </span>
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border tabular-nums ${pctClass}`}>
+                    <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded border tabular-nums ${pctClass}`}>
                       {pctText}
                     </span>
                   </div>
@@ -3510,10 +3510,10 @@ function ConversionFunnelPanel({ data, loading }: {
               <span className="absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75 animate-ping" />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-rose-500" />
             </span>
-            <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-rose-300">CONVERSION FUNNEL · 90d</p>
+            <p className="text-[12px] uppercase tracking-[0.32em] font-bold text-rose-300">CONVERSION FUNNEL · 90d</p>
           </div>
           {data && data.created > 0 && (
-            <Badge variant="outline" className="text-[10px] uppercase tracking-widest border-rose-400/40 bg-rose-400/10 text-rose-200">
+            <Badge variant="outline" className="text-[11px] uppercase tracking-widest border-rose-400/40 bg-rose-400/10 text-rose-200">
               {data.created} apps in
             </Badge>
           )}
@@ -3524,7 +3524,7 @@ function ConversionFunnelPanel({ data, loading }: {
         ) : !data || data.created === 0 ? (
           <div className="py-6 text-center">
             <p className="text-[26px] font-black text-white/90">Funnel boots on first application</p>
-            <p className="text-[11px] text-white/50 mt-1">No new applications in the last 90 days.</p>
+            <p className="text-[12px] text-white/50 mt-1">No new applications in the last 90 days.</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -3532,7 +3532,7 @@ function ConversionFunnelPanel({ data, loading }: {
               const dropOff = s.pctOfPrior == null ? null : 100 - s.pctOfPrior;
               return (
                 <div key={s.key}>
-                  <div className="flex items-center justify-between text-[11px] mb-1">
+                  <div className="flex items-center justify-between text-[12px] mb-1">
                     <span className="text-white/85 font-semibold">{s.label}</span>
                     <span className="tabular-nums text-white/70">
                       <span className="text-white font-bold">{fmtNum(s.count)}</span>
@@ -3553,7 +3553,7 @@ function ConversionFunnelPanel({ data, loading }: {
                 </div>
               );
             })}
-            <p className="text-[10px] text-white/40 mt-3 flex items-center gap-1.5">
+            <p className="text-[11px] text-white/40 mt-3 flex items-center gap-1.5">
               <AlertTriangle className="h-3 w-3 text-amber-400" />
               Licensed-stage data thin — backfill licensed_at to trust the bottom.
             </p>
@@ -3580,9 +3580,9 @@ function ActivityFeedPanel({ data, loading }: {
               <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
             </span>
-            <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-emerald-300">LIVE ACTIVITY · CULTURE FEED</p>
+            <p className="text-[12px] uppercase tracking-[0.32em] font-bold text-emerald-300">LIVE ACTIVITY · CULTURE FEED</p>
           </div>
-          <Badge variant="outline" className="text-[10px] uppercase tracking-widest border-emerald-400/40 bg-emerald-400/10 text-emerald-200">
+          <Badge variant="outline" className="text-[11px] uppercase tracking-widest border-emerald-400/40 bg-emerald-400/10 text-emerald-200">
             <Radio className="h-2.5 w-2.5 mr-1" /> 60s refresh
           </Badge>
         </div>
@@ -3592,7 +3592,7 @@ function ActivityFeedPanel({ data, loading }: {
         ) : data.length === 0 ? (
           <div className="py-6 text-center">
             <p className="text-[26px] font-black text-white/90">Inbox zero. Hold the Standard.</p>
-            <p className="text-[11px] text-white/50 mt-1">No culture events posted yet.</p>
+            <p className="text-[12px] text-white/50 mt-1">No culture events posted yet.</p>
           </div>
         ) : (
           <ul className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
@@ -3603,19 +3603,19 @@ function ActivityFeedPanel({ data, loading }: {
               const verb = e.event_type === "deal_posted" ? "posted" : (e.event_type ?? "event")?.replaceAll("_", " ");
               return (
                 <li key={e.id} className="flex items-center gap-2.5 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1.5">
-                  <span className="h-7 w-7 rounded-full bg-emerald-500/20 border border-emerald-400/30 grid place-items-center text-[10px] font-bold text-emerald-200 shrink-0">
+                  <span className="h-7 w-7 rounded-full bg-emerald-500/20 border border-emerald-400/30 grid place-items-center text-[11px] font-bold text-emerald-200 shrink-0">
                     {initials || "—"}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[12px] text-white truncate">
+                    <p className="text-[13px] text-white truncate">
                       <span className="font-semibold">{e.agent_name}</span>
                       <span className="text-white/55"> {verb} </span>
                       <span className="text-white/85">{e.product_sold ?? "deal"}</span>
                     </p>
-                    <p className="text-[10px] text-white/40">{when}</p>
+                    <p className="text-[11px] text-white/40">{when}</p>
                   </div>
                   {ap > 0 && (
-                    <span className="text-[11px] font-bold text-emerald-300 tabular-nums shrink-0">
+                    <span className="text-[12px] font-bold text-emerald-300 tabular-nums shrink-0">
                       {fmtUsd(ap, true)}
                     </span>
                   )}
@@ -3651,9 +3651,9 @@ function SourceRoiPanel({ data, loading }: {
               <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75 animate-ping" />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" />
             </span>
-            <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-amber-300">SOURCE ATTRIBUTION · 180d</p>
+            <p className="text-[12px] uppercase tracking-[0.32em] font-bold text-amber-300">SOURCE ATTRIBUTION · 180d</p>
           </div>
-          <Badge variant="outline" className="text-[10px] uppercase tracking-widest border-amber-400/40 bg-amber-400/10 text-amber-200">
+          <Badge variant="outline" className="text-[11px] uppercase tracking-widest border-amber-400/40 bg-amber-400/10 text-amber-200">
             ROI by source
           </Badge>
         </div>
@@ -3663,7 +3663,7 @@ function SourceRoiPanel({ data, loading }: {
         ) : data.length === 0 ? (
           <div className="py-6 text-center">
             <p className="text-[26px] font-black text-white/90">Tag your sources, win the funnel</p>
-            <p className="text-[11px] text-white/50 mt-1">No attribution data in the last 180 days.</p>
+            <p className="text-[12px] text-white/50 mt-1">No attribution data in the last 180 days.</p>
           </div>
         ) : (
           <div className="space-y-1.5">
@@ -3671,7 +3671,7 @@ function SourceRoiPanel({ data, loading }: {
               const widthPct = (r.apps / maxApps) * 100;
               const isWinner = topSource && r.source === topSource.source;
               return (
-                <div key={r.source} className="grid grid-cols-12 items-center gap-2 text-[11px]">
+                <div key={r.source} className="grid grid-cols-12 items-center gap-2 text-[12px]">
                   <div className="col-span-3 truncate text-white/80 font-medium">{TITLE_CASE(r.source)}</div>
                   <div className="col-span-5 h-2 rounded-full bg-white/5 overflow-hidden">
                     <div
@@ -3689,7 +3689,7 @@ function SourceRoiPanel({ data, loading }: {
               );
             })}
             {topSource && (
-              <p className="text-[10px] text-emerald-300/80 mt-2 flex items-center gap-1.5">
+              <p className="text-[11px] text-emerald-300/80 mt-2 flex items-center gap-1.5">
                 <Zap className="h-3 w-3" /> {TITLE_CASE(topSource.source)} converts {topSource.coursePct.toFixed(1)}% — double down here.
               </p>
             )}
@@ -3716,10 +3716,10 @@ function MoneyFlowPanel({ data, loading }: {
               <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
             </span>
-            <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-emerald-300">MONEY FLOW · MTD</p>
+            <p className="text-[12px] uppercase tracking-[0.32em] font-bold text-emerald-300">MONEY FLOW · MTD</p>
           </div>
           {data && (
-            <Badge variant="outline" className="text-[10px] uppercase tracking-widest border-emerald-400/40 bg-emerald-400/10 text-emerald-200">
+            <Badge variant="outline" className="text-[11px] uppercase tracking-widest border-emerald-400/40 bg-emerald-400/10 text-emerald-200">
               {fmtNum(data.count)} ledger rows
             </Badge>
           )}
@@ -3730,39 +3730,39 @@ function MoneyFlowPanel({ data, loading }: {
         ) : !data || data.count === 0 ? (
           <div className="py-6 text-center">
             <p className="text-[26px] font-black text-white/90">Wire the ledger, watch it flow</p>
-            <p className="text-[11px] text-white/50 mt-1">commission_ledger is unpopulated for this month.</p>
+            <p className="text-[12px] text-white/50 mt-1">commission_ledger is unpopulated for this month.</p>
           </div>
         ) : (
           <>
             <div className="grid grid-cols-3 gap-3">
               <div>
-                <p className="text-[10px] uppercase tracking-widest text-white/45 mb-1.5">Pending</p>
+                <p className="text-[11px] uppercase tracking-widest text-white/45 mb-1.5">Pending</p>
                 <p className="text-[26px] sm:text-[32px] leading-none font-black tabular-nums text-amber-300">
                   {fmtUsd(data.pending, true)}
                 </p>
-                <p className="text-[10px] text-white/50 mt-1">Awaiting carrier pay</p>
+                <p className="text-[11px] text-white/50 mt-1">Awaiting carrier pay</p>
               </div>
               <div>
-                <p className="text-[10px] uppercase tracking-widest text-white/45 mb-1.5">Paid</p>
+                <p className="text-[11px] uppercase tracking-widest text-white/45 mb-1.5">Paid</p>
                 <p className="text-[26px] sm:text-[32px] leading-none font-black tabular-nums text-emerald-300">
                   {fmtUsd(data.paid, true)}
                 </p>
-                <p className="text-[10px] text-white/50 mt-1">Cash in hand</p>
+                <p className="text-[11px] text-white/50 mt-1">Cash in hand</p>
               </div>
               <div>
-                <p className="text-[10px] uppercase tracking-widest text-white/45 mb-1.5">Voided</p>
+                <p className="text-[11px] uppercase tracking-widest text-white/45 mb-1.5">Voided</p>
                 <p className="text-[26px] sm:text-[32px] leading-none font-black tabular-nums text-rose-300">
                   {fmtUsd(data.voided, true)}
                 </p>
-                <p className="text-[10px] text-white/50 mt-1">Charged back</p>
+                <p className="text-[11px] text-white/50 mt-1">Charged back</p>
               </div>
             </div>
-            <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-[11px]">
+            <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-[12px]">
               <span className="text-white/55">Total written MTD</span>
               <span className="text-white font-bold tabular-nums">{fmtUsd(data.total)}</span>
             </div>
             {data.count < 20 && (
-              <p className="text-[10px] text-amber-300/80 mt-2 flex items-center gap-1">
+              <p className="text-[11px] text-amber-300/80 mt-2 flex items-center gap-1">
                 <AlertTriangle className="h-3 w-3" /> Ledger thin ({data.count} rows) — pipeline reconciliation needed.
               </p>
             )}
@@ -3791,9 +3791,9 @@ function PipelineStat({
     "text-foreground";
   return (
     <div className="rounded-lg border border-border/40 bg-muted/20 p-3">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
       <p className={`mt-1 text-2xl font-bold tabular-nums ${valueColor}`}>{value}</p>
-      <p className="mt-1 text-[11px] leading-snug text-muted-foreground">{detail}</p>
+      <p className="mt-1 text-[12px] leading-snug text-muted-foreground">{detail}</p>
     </div>
   );
 }
@@ -3804,7 +3804,7 @@ function StatRowCard({ icon: Icon, label, value, color, onClick }: StatRowCardPr
   const inner = (
     <>
       <div className="min-w-0">
-        <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">{label}</p>
+        <p className="text-[12px] uppercase tracking-widest text-muted-foreground font-semibold">{label}</p>
         <p className={`text-2xl font-bold tabular-nums mt-1 ${color}`}>{value}</p>
       </div>
       <Icon className={`h-6 w-6 ${color} opacity-70`} />
@@ -3945,10 +3945,10 @@ function PersonalPacePanel() {
               <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
             </span>
-            <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-emerald-300">MY PACE · MTD vs LMTD</p>
+            <p className="text-[12px] uppercase tracking-[0.32em] font-bold text-emerald-300">MY PACE · MTD vs LMTD</p>
           </div>
           {p && (
-            <Badge variant="outline" className={`text-[10px] uppercase tracking-widest ${apDeltaPct >= 0 ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-200" : "border-rose-400/40 bg-rose-400/10 text-rose-200"}`}>
+            <Badge variant="outline" className={`text-[11px] uppercase tracking-widest ${apDeltaPct >= 0 ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-200" : "border-rose-400/40 bg-rose-400/10 text-rose-200"}`}>
               {apDeltaPct >= 0 ? "▲" : "▼"} {Math.abs(apDeltaPct).toFixed(1)}%
             </Badge>
           )}
@@ -3963,30 +3963,30 @@ function PersonalPacePanel() {
           <>
             <div className="grid gap-4 grid-cols-1 sm:grid-cols-3 mb-4">
               <div>
-                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">MTD · AP</p>
+                <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">MTD · AP</p>
                 <p className="text-[28px] leading-none font-black tabular-nums text-emerald-300">{fmtUsd(p.mtdAp, true)}</p>
-                <p className="text-[10px] text-white/40 tabular-nums">{p.mtdDeals} deals · day {p.daysIntoMonth}/{p.daysInMonth}</p>
+                <p className="text-[11px] text-white/40 tabular-nums">{p.mtdDeals} deals · day {p.daysIntoMonth}/{p.daysInMonth}</p>
               </div>
               <div>
-                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">LMTD · same period</p>
+                <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">LMTD · same period</p>
                 <p className="text-[28px] leading-none font-black tabular-nums text-white">{fmtUsd(p.lmtdSameDayAp, true)}</p>
-                <p className="text-[10px] text-white/40 tabular-nums">{p.lmtdSameDayDeals} deals · {dealsDelta >= 0 ? "+" : ""}{dealsDelta} vs now</p>
+                <p className="text-[11px] text-white/40 tabular-nums">{p.lmtdSameDayDeals} deals · {dealsDelta >= 0 ? "+" : ""}{dealsDelta} vs now</p>
               </div>
               <div>
-                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">PROJECTED · EOM</p>
+                <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">PROJECTED · EOM</p>
                 <p className="text-[28px] leading-none font-black tabular-nums text-amber-300">{fmtUsd(p.projectedAp, true)}</p>
-                <p className="text-[10px] text-white/40 tabular-nums">last month full: {fmtUsd(p.lmtdFullAp, true)}</p>
+                <p className="text-[11px] text-white/40 tabular-nums">last month full: {fmtUsd(p.lmtdFullAp, true)}</p>
               </div>
             </div>
             <div className="pt-3 border-t border-white/[0.06]">
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1.5">PACE BAR</p>
+              <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1.5">PACE BAR</p>
               <div className="relative h-2 rounded-full bg-white/[0.04] overflow-hidden">
                 <div
                   className="h-full bg-emerald-400/60 transition-all"
                   style={{ width: `${Math.min(100, p.lmtdFullAp > 0 ? (p.projectedAp / p.lmtdFullAp) * 100 : 0).toFixed(1)}%` }}
                 />
               </div>
-              <p className="text-[10px] text-white/40 mt-1 tabular-nums">
+              <p className="text-[11px] text-white/40 mt-1 tabular-nums">
                 {p.lmtdFullAp > 0 ? `${((p.projectedAp / p.lmtdFullAp) * 100).toFixed(0)}% of last month's full month` : "First full month coming up"}
               </p>
             </div>
@@ -4043,10 +4043,10 @@ function ProductMixPanel() {
               <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
             </span>
-            <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-emerald-300">PRODUCT MIX · MTD</p>
+            <p className="text-[12px] uppercase tracking-[0.32em] font-bold text-emerald-300">PRODUCT MIX · MTD</p>
           </div>
           {data && (
-            <Badge variant="outline" className="text-[10px] uppercase tracking-widest border-emerald-400/40 bg-emerald-400/10 text-emerald-200">
+            <Badge variant="outline" className="text-[11px] uppercase tracking-widest border-emerald-400/40 bg-emerald-400/10 text-emerald-200">
               {fmtUsd(data.totalAp, true)} total
             </Badge>
           )}
@@ -4062,7 +4062,7 @@ function ProductMixPanel() {
               const totalPct = data.totalAp > 0 ? (r.ap / data.totalAp) * 100 : 0;
               return (
                 <div key={r.product} className="space-y-0.5">
-                  <div className="flex items-center justify-between text-[11px]">
+                  <div className="flex items-center justify-between text-[12px]">
                     <span className="font-medium truncate flex-1 text-white/85">{r.product}</span>
                     <span className="tabular-nums font-bold text-emerald-300 shrink-0 ml-2">{fmtUsd(r.ap, true)}</span>
                     <span className="tabular-nums text-white/40 shrink-0 ml-2 w-12 text-right">{r.count} · {totalPct.toFixed(0)}%</span>
@@ -4136,21 +4136,21 @@ function WeekOverWeekPanel() {
               <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
             </span>
-            <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-emerald-300">WEEK OVER WEEK · DAILY AP</p>
+            <p className="text-[12px] uppercase tracking-[0.32em] font-bold text-emerald-300">WEEK OVER WEEK · DAILY AP</p>
           </div>
           {d && (
-            <Badge variant="outline" className={`text-[10px] uppercase tracking-widest ${d.deltaPct >= 0 ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-200" : "border-rose-400/40 bg-rose-400/10 text-rose-200"}`}>
+            <Badge variant="outline" className={`text-[11px] uppercase tracking-widest ${d.deltaPct >= 0 ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-200" : "border-rose-400/40 bg-rose-400/10 text-rose-200"}`}>
               {d.deltaPct >= 0 ? "▲" : "▼"} {Math.abs(d.deltaPct).toFixed(1)}%
             </Badge>
           )}
         </div>
         <div className="grid grid-cols-2 gap-3 mb-4">
           <div className="p-3 rounded-xl bg-emerald-500/[0.08] border border-emerald-500/20">
-            <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">THIS WEEK</p>
+            <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">THIS WEEK</p>
             <p className="text-[24px] leading-none font-black tabular-nums text-emerald-300">{fmtUsd(d?.thisWeekTotal ?? 0, true)}</p>
           </div>
           <div className="p-3 rounded-xl bg-white/[0.04] border border-white/[0.06]">
-            <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">LAST WEEK</p>
+            <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">LAST WEEK</p>
             <p className="text-[24px] leading-none font-black tabular-nums text-white">{fmtUsd(d?.lastWeekTotal ?? 0, true)}</p>
           </div>
         </div>
@@ -4262,13 +4262,13 @@ function RecruiterContactSlaPanel() {
               <span className="absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75 animate-ping" />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-rose-500" />
             </span>
-            <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-rose-300">RECRUITER CONTACT SLA · LEAK</p>
+            <p className="text-[12px] uppercase tracking-[0.32em] font-bold text-rose-300">RECRUITER CONTACT SLA · LEAK</p>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-[10px] uppercase tracking-widest border-rose-400/40 bg-rose-400/10 text-rose-200">
+            <Badge variant="outline" className="text-[11px] uppercase tracking-widest border-rose-400/40 bg-rose-400/10 text-rose-200">
               {d?.totalStale48 ?? 0} stale 48h+
             </Badge>
-            <Link to="/dashboard/applicants" className="text-[10px] text-rose-200/80 hover:text-rose-100 uppercase tracking-widest font-bold">
+            <Link to="/dashboard/applicants" className="text-[11px] text-rose-200/80 hover:text-rose-100 uppercase tracking-widest font-bold">
               Inbox →
             </Link>
           </div>
@@ -4281,7 +4281,7 @@ function RecruiterContactSlaPanel() {
           <div className="overflow-auto">
             <table className="w-full text-12">
               <thead>
-                <tr className="text-[10px] uppercase tracking-widest text-white/40 border-b border-white/[0.06]">
+                <tr className="text-[11px] uppercase tracking-widest text-white/40 border-b border-white/[0.06]">
                   <th className="text-left pb-2 font-bold">Recruiter</th>
                   <th className="text-right pb-2 font-bold">Total</th>
                   <th className="text-right pb-2 font-bold">Uncontacted</th>
@@ -4297,7 +4297,7 @@ function RecruiterContactSlaPanel() {
                     <tr key={r.id} className="hover:bg-white/[0.02]">
                       <td className="py-2">
                         <p className="font-medium truncate text-white">{r.name}</p>
-                        <p className="text-[10px] text-white/40 tabular-nums">{r.code}</p>
+                        <p className="text-[11px] text-white/40 tabular-nums">{r.code}</p>
                       </td>
                       <td className="text-right tabular-nums font-bold text-white">{r.total}</td>
                       <td className="text-right tabular-nums font-bold text-amber-300">{r.uncontacted}</td>
@@ -4411,10 +4411,10 @@ function StateProductionPanel() {
               <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
             </span>
-            <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-emerald-300">STATE PRODUCTION · 30d</p>
+            <p className="text-[12px] uppercase tracking-[0.32em] font-bold text-emerald-300">STATE PRODUCTION · 30d</p>
           </div>
           {d && (
-            <Badge variant="outline" className="text-[10px] uppercase tracking-widest border-emerald-400/40 bg-emerald-400/10 text-emerald-200">
+            <Badge variant="outline" className="text-[11px] uppercase tracking-widest border-emerald-400/40 bg-emerald-400/10 text-emerald-200">
               {fmtUsd(d.totalAp, true)} · {d.list.length} states
             </Badge>
           )}
@@ -4430,7 +4430,7 @@ function StateProductionPanel() {
               const totalPct = d.totalAp > 0 ? (r.ap / d.totalAp) * 100 : 0;
               return (
                 <div key={r.state} className="space-y-0.5">
-                  <div className="flex items-center justify-between text-[11px]">
+                  <div className="flex items-center justify-between text-[12px]">
                     <span className="font-bold tabular-nums text-white/85 w-8">{r.state}</span>
                     <span className="tabular-nums font-bold text-emerald-300 ml-auto">{fmtUsd(r.ap, true)}</span>
                     <span className="tabular-nums text-white/40 ml-2 w-16 text-right">{r.deals} · {totalPct.toFixed(0)}%</span>
@@ -4501,10 +4501,10 @@ function TimeOfDayProductionPanel() {
               <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75 animate-ping" />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" />
             </span>
-            <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-amber-300">TIME-OF-DAY HEAT · 30d</p>
+            <p className="text-[12px] uppercase tracking-[0.32em] font-bold text-amber-300">TIME-OF-DAY HEAT · 30d</p>
           </div>
           {h && h.totalDeals > 0 && (
-            <Badge variant="outline" className="text-[10px] uppercase tracking-widest border-amber-400/40 bg-amber-400/10 text-amber-200">
+            <Badge variant="outline" className="text-[11px] uppercase tracking-widest border-amber-400/40 bg-amber-400/10 text-amber-200">
               peak: {h.peakLabel}
             </Badge>
           )}
@@ -4515,19 +4515,19 @@ function TimeOfDayProductionPanel() {
           <p className="text-12 text-white/60 italic">First deal heats the grid.</p>
         ) : (
           <div className="space-y-1.5">
-            <div className="grid grid-cols-7 gap-0.5 text-[9px] uppercase text-white/40 mb-1">
+            <div className="grid grid-cols-7 gap-0.5 text-[10px] uppercase text-white/40 mb-1">
               <span></span>
               {h.binLabel.map((b) => <span key={b} className="text-center tabular-nums">{b}</span>)}
             </div>
             {h.grid.map((row, dow) => (
               <div key={dow} className="grid grid-cols-7 gap-0.5 items-center">
-                <span className="text-[10px] uppercase text-white/40 font-bold">{h.dayLabel[dow]}</span>
+                <span className="text-[11px] uppercase text-white/40 font-bold">{h.dayLabel[dow]}</span>
                 {row.map((count, bin) => {
                   const intensity = h.maxCount > 0 ? count / h.maxCount : 0;
                   return (
                     <div
                       key={bin}
-                      className="h-6 rounded flex items-center justify-center text-[10px] font-bold tabular-nums transition-colors"
+                      className="h-6 rounded flex items-center justify-center text-[11px] font-bold tabular-nums transition-colors"
                       style={{
                         backgroundColor: count === 0
                           ? "rgba(255,255,255,0.02)"
@@ -4543,7 +4543,7 @@ function TimeOfDayProductionPanel() {
                 })}
               </div>
             ))}
-            <p className="text-[10px] text-white/40 mt-2 tabular-nums">{h.totalDeals} deal posts · derived from snapshot_at hour-of-day</p>
+            <p className="text-[11px] text-white/40 mt-2 tabular-nums">{h.totalDeals} deal posts · derived from snapshot_at hour-of-day</p>
           </div>
         )}
       </div>
@@ -4620,10 +4620,10 @@ function CommissionProjectionPanel() {
               <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
             </span>
-            <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-emerald-300">COMMISSION · PROJECTED MTD</p>
+            <p className="text-[12px] uppercase tracking-[0.32em] font-bold text-emerald-300">COMMISSION · PROJECTED MTD</p>
           </div>
           {p && (
-            <Badge variant="outline" className="text-[10px] uppercase tracking-widest border-emerald-400/40 bg-emerald-400/10 text-emerald-200">
+            <Badge variant="outline" className="text-[11px] uppercase tracking-widest border-emerald-400/40 bg-emerald-400/10 text-emerald-200">
               {p.avgFyPct.toFixed(0)}% avg FY rate
             </Badge>
           )}
@@ -4636,14 +4636,14 @@ function CommissionProjectionPanel() {
           <>
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div className="p-3 rounded-xl bg-emerald-500/[0.08] border border-emerald-500/20">
-                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">MTD PROJECTED</p>
+                <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">MTD PROJECTED</p>
                 <p className="text-[26px] leading-none font-black tabular-nums text-emerald-300">{fmtUsd(p.projectedMtd, true)}</p>
-                <p className="text-[10px] text-white/40 tabular-nums">from {fmtUsd(p.mtdAp, true)} AP</p>
+                <p className="text-[11px] text-white/40 tabular-nums">from {fmtUsd(p.mtdAp, true)} AP</p>
               </div>
               <div className="p-3 rounded-xl bg-amber-500/[0.08] border border-amber-500/20">
-                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">EOM PROJECTION</p>
+                <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">EOM PROJECTION</p>
                 <p className="text-[26px] leading-none font-black tabular-nums text-amber-300">{fmtUsd(p.eomProjection, true)}</p>
-                <p className="text-[10px] text-white/40 tabular-nums">
+                <p className="text-[11px] text-white/40 tabular-nums">
                   vs LMTD {fmtUsd(p.projectedLmtd, true)} ·
                   <span className={p.variancePct >= 0 ? "text-emerald-300" : "text-rose-300"}>
                     {" "}{p.variancePct >= 0 ? "+" : ""}{p.variancePct.toFixed(0)}%
@@ -4651,8 +4651,8 @@ function CommissionProjectionPanel() {
                 </p>
               </div>
             </div>
-            <div className="pt-3 border-t border-white/[0.06] text-[11px] flex items-center justify-between">
-              <span className="text-white/40 uppercase tracking-widest text-[10px]">Ledger actual</span>
+            <div className="pt-3 border-t border-white/[0.06] text-[12px] flex items-center justify-between">
+              <span className="text-white/40 uppercase tracking-widest text-[11px]">Ledger actual</span>
               <span className="tabular-nums">
                 <span className="text-emerald-300 font-bold">{fmtUsd(p.actualPaid)}</span>
                 <span className="text-white/40 mx-1">paid</span>
@@ -4724,10 +4724,10 @@ function HirePace12WPanel() {
               <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75 animate-ping" />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" />
             </span>
-            <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-amber-300">HIRE PACE · 12 WEEKS</p>
+            <p className="text-[12px] uppercase tracking-[0.32em] font-bold text-amber-300">HIRE PACE · 12 WEEKS</p>
           </div>
           {d && (
-            <Badge variant="outline" className={`text-[10px] uppercase tracking-widest ${d.wow >= 0 ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-200" : "border-rose-400/40 bg-rose-400/10 text-rose-200"}`}>
+            <Badge variant="outline" className={`text-[11px] uppercase tracking-widest ${d.wow >= 0 ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-200" : "border-rose-400/40 bg-rose-400/10 text-rose-200"}`}>
               {d.wow >= 0 ? "▲" : "▼"} {Math.abs(d.wow).toFixed(0)}% WoW
             </Badge>
           )}
@@ -4740,17 +4740,17 @@ function HirePace12WPanel() {
           <>
             <div className="grid grid-cols-3 gap-3 mb-3">
               <div>
-                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">TOTAL · 12W</p>
+                <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">TOTAL · 12W</p>
                 <p className="text-[24px] leading-none font-black tabular-nums text-white">{d.total}</p>
               </div>
               <div>
-                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">AVG / WEEK</p>
+                <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">AVG / WEEK</p>
                 <p className="text-[24px] leading-none font-black tabular-nums text-amber-300">{d.avg.toFixed(1)}</p>
               </div>
               <div>
-                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">THIS WEEK</p>
+                <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">THIS WEEK</p>
                 <p className="text-[24px] leading-none font-black tabular-nums text-emerald-300">{d.thisWeek}</p>
-                <p className="text-[10px] text-white/40 tabular-nums">last: {d.lastWeek}</p>
+                <p className="text-[11px] text-white/40 tabular-nums">last: {d.lastWeek}</p>
               </div>
             </div>
             <ResponsiveContainer width="100%" height={120}>
@@ -4828,10 +4828,10 @@ function AgedLeadsPanel() {
               <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75 animate-ping" />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" />
             </span>
-            <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-amber-300">LICENSED RECRUIT BANK · LIVE</p>
+            <p className="text-[12px] uppercase tracking-[0.32em] font-bold text-amber-300">LICENSED RECRUIT BANK · LIVE</p>
           </div>
           {d && (
-            <Badge variant="outline" className="text-[10px] uppercase tracking-widest border-emerald-400/40 bg-emerald-400/10 text-emerald-200">
+            <Badge variant="outline" className="text-[11px] uppercase tracking-widest border-emerald-400/40 bg-emerald-400/10 text-emerald-200">
               {d.licensed} licensed · {d.total} total
             </Badge>
           )}
@@ -4846,29 +4846,29 @@ function AgedLeadsPanel() {
             {/* Left · 4 KPI tiles */}
             <div className="lg:col-span-1 grid grid-cols-2 gap-2 content-start">
               <div className="p-3 rounded-xl bg-emerald-500/[0.10] border border-emerald-500/30">
-                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">LICENSED</p>
+                <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">LICENSED</p>
                 <p className="text-[24px] leading-none font-black tabular-nums text-emerald-300">{d.licensed}</p>
-                <p className="text-[10px] text-white/40 tabular-nums">already licensed</p>
+                <p className="text-[11px] text-white/40 tabular-nums">already licensed</p>
               </div>
               <div className="p-3 rounded-xl bg-amber-500/[0.08] border border-amber-500/20">
-                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">UNWORKED</p>
+                <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">UNWORKED</p>
                 <p className="text-[24px] leading-none font-black tabular-nums text-amber-300">{d.unworkedLicensed}</p>
-                <p className="text-[10px] text-white/40 tabular-nums">licensed · untouched</p>
+                <p className="text-[11px] text-white/40 tabular-nums">licensed · untouched</p>
               </div>
               <div className="p-3 rounded-xl bg-white/[0.04] border border-white/[0.06]">
-                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">DIALED</p>
+                <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">DIALED</p>
                 <p className="text-[24px] leading-none font-black tabular-nums text-white">{d.dialed}</p>
-                <p className="text-[10px] text-white/40 tabular-nums">all leads · touched 1+</p>
+                <p className="text-[11px] text-white/40 tabular-nums">all leads · touched 1+</p>
               </div>
               <div className="p-3 rounded-xl bg-rose-500/[0.06] border border-rose-500/20">
-                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">DNC</p>
+                <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">DNC</p>
                 <p className="text-[24px] leading-none font-black tabular-nums text-rose-300">{d.dnc}</p>
-                <p className="text-[10px] text-white/40 tabular-nums">do-not-call</p>
+                <p className="text-[11px] text-white/40 tabular-nums">do-not-call</p>
               </div>
             </div>
             {/* Right · top 8 LICENSED + clickable */}
             <div className="lg:col-span-2 space-y-1.5">
-              <p className="text-[10px] uppercase tracking-widest text-emerald-300 font-bold mb-1">
+              <p className="text-[11px] uppercase tracking-widest text-emerald-300 font-bold mb-1">
                 Top 8 licensed · click to dial
               </p>
               {d.licensedTop.length === 0 ? (
@@ -4905,13 +4905,13 @@ function AgedLeadRowClickable({ l }: { l: AgedLeadRow }) {
     <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.04] hover:border-emerald-400/40 hover:bg-emerald-500/[0.04] transition-colors group">
       <div className="flex-1 min-w-0">
         <p className="text-13 font-bold truncate text-white">{name}</p>
-        <p className="text-[10px] text-white/40 truncate">
+        <p className="text-[11px] text-white/40 truncate">
           {l.phone ?? "—"} · {l.lead_source ?? "aged"}{l.license_status ? ` · ${l.license_status}` : ""}
         </p>
       </div>
       <div className="text-right shrink-0 tabular-nums">
         <p className={`text-11 font-bold uppercase ${tone}`}>{stat}</p>
-        <p className="text-[10px] text-white/40">{l.dial_count ?? 0} dials</p>
+        <p className="text-[11px] text-white/40">{l.dial_count ?? 0} dials</p>
       </div>
       {canDial ? (
         <a
@@ -4988,10 +4988,10 @@ function LowProducersPanel() {
               <span className="absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75 animate-ping" />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-rose-500" />
             </span>
-            <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-rose-300">LOW PRODUCERS · UNDER $5K · 7d</p>
+            <p className="text-[12px] uppercase tracking-[0.32em] font-bold text-rose-300">LOW PRODUCERS · UNDER $5K · 7d</p>
           </div>
           {d && (
-            <Badge variant="outline" className="text-[10px] uppercase tracking-widest border-rose-400/40 bg-rose-400/10 text-rose-200">
+            <Badge variant="outline" className="text-[11px] uppercase tracking-widest border-rose-400/40 bg-rose-400/10 text-rose-200">
               {d.total} agents · soft
             </Badge>
           )}
@@ -5013,17 +5013,17 @@ function LowProducersPanel() {
                   <div className="flex items-center justify-between mb-2">
                     <div className="min-w-0 flex-1">
                       <p className="text-13 font-bold truncate text-white">{a.name}</p>
-                      <p className="text-[10px] text-white/40 tabular-nums">{a.code} · {a.deals} deal{a.deals !== 1 ? "s" : ""}</p>
+                      <p className="text-[11px] text-white/40 tabular-nums">{a.code} · {a.deals} deal{a.deals !== 1 ? "s" : ""}</p>
                     </div>
                     <div className="text-right shrink-0 tabular-nums">
                       <p className="text-[20px] leading-none font-black text-rose-300">{fmtUsd(a.ap, true)}</p>
-                      <p className="text-[10px] text-white/40">target $5K</p>
+                      <p className="text-[11px] text-white/40">target $5K</p>
                     </div>
                   </div>
                   <div className="relative h-1.5 rounded-full bg-white/[0.04] overflow-hidden">
                     <div className="h-full bg-rose-400/60 transition-all" style={{ width: `${Math.min(100, pct)}%` }} />
                   </div>
-                  <p className="text-[10px] text-rose-200/60 mt-1 tabular-nums">{pct.toFixed(0)}% to target · {fmtUsd(5000 - a.ap, true)} gap</p>
+                  <p className="text-[11px] text-rose-200/60 mt-1 tabular-nums">{pct.toFixed(0)}% to target · {fmtUsd(5000 - a.ap, true)} gap</p>
                 </div>
               );
             })}

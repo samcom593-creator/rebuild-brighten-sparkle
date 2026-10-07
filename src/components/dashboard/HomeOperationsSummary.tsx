@@ -147,7 +147,7 @@ export function HomeOperationsSummary() {
               if (!q) return null;
               return <Row key={k} to="/dashboard/contracting/cases" label={q.label} value={q.cases} tone={k === "verified" ? "good" : "attention"} />;
             })}
-            <p className="px-2 text-[11px] text-muted-foreground">Carrier cases (one agent × one carrier); queues overlap.</p>
+            <p className="px-2 text-[12px] text-muted-foreground">Carrier cases (one agent × one carrier); queues overlap.</p>
           </>
         )}
       </Panel>
@@ -174,7 +174,7 @@ export function HomeOperationsSummary() {
               <li key={a.key}>
                 <Link to={a.to} className="block rounded-md px-2 py-1.5 hover:bg-muted/60">
                   <span className="block text-sm">{a.text}</span>
-                  <span className="block text-[11px] text-muted-foreground">{a.detail}</span>
+                  <span className="block text-[12px] text-muted-foreground">{a.detail}</span>
                 </Link>
               </li>
             ))}

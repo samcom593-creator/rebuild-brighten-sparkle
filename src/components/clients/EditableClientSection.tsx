@@ -103,7 +103,7 @@ export function EditableClientSection({
         <dl className="grid gap-4 sm:grid-cols-2">
           {fields.map((f) => (
             <div key={f.key}>
-              <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">{f.label}</dt>
+              <dt className="text-[12px] uppercase tracking-wide text-muted-foreground">{f.label}</dt>
               <dd className="mt-0.5 text-sm text-foreground">
                 {asInput(values[f.key], f.type) || <span className="text-muted-foreground">—</span>}
               </dd>
@@ -129,7 +129,7 @@ export function EditableClientSection({
               value={draft[f.key] ?? ""}
               onChange={(event) => setDraft((d) => ({ ...d, [f.key]: event.target.value }))}
             />
-            {f.hint && <p className="text-[11px] text-muted-foreground">{f.hint}</p>}
+            {f.hint && <p className="text-[12px] text-muted-foreground">{f.hint}</p>}
           </div>
         ))}
       </div>

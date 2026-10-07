@@ -270,7 +270,7 @@ export function AgentLicensingEditor({ agentId }: { agentId?: string | null }) {
               value={form.nipr_number}
               onChange={(e) => set("nipr_number")(e.target.value)}
             />
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-[12px] text-muted-foreground">
               Your NPN is the key carriers use to appoint you. It must match NIPR exactly.
             </p>
           </div>
@@ -328,7 +328,7 @@ export function AgentLicensingEditor({ agentId }: { agentId?: string | null }) {
                 <Badge variant="outline" className="capitalize">
                   {data.license_status ?? "unknown"}
                 </Badge>
-                <span className="text-[11px] text-muted-foreground ml-2">
+                <span className="text-[12px] text-muted-foreground ml-2">
                   set by your manager
                 </span>
               </div>
@@ -386,7 +386,7 @@ export function AgentLicensingEditor({ agentId }: { agentId?: string | null }) {
         </div>
 
         <div className="flex items-center justify-between gap-3 flex-wrap">
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-[12px] text-muted-foreground">
             {dirtyKeys.length === 0
               ? "No unsaved changes"
               : `Unsaved: ${dirtyKeys.map((k) => FIELD_LABELS[k]).join(", ")}`}

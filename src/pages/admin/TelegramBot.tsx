@@ -371,7 +371,7 @@ export default function TelegramBot() {
                 <Stat label="Queue depth" value={proof?.queueDepth ?? 0} tone={proof?.queueDepth ? "warn" : "ok"} />
                 <Stat label="Failed sends" value={proof?.failedSends ?? 0} tone={proof?.failedSends ? "warn" : "ok"} />
                 <div className="rounded-lg border border-border/40 bg-muted/20 p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Last sent</p>
+                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Last sent</p>
                   <p className="text-sm font-medium mt-2">
                     {proof?.lastSentAt ? formatDistanceToNow(parseISO(proof.lastSentAt), { addSuffix: true }) : "no sent proof"}
                   </p>
@@ -525,7 +525,7 @@ function Stat({ label, value, loading, tone }: { label: string; value: number | 
     "text-foreground";
   return (
     <div className="rounded-lg border border-border/40 bg-muted/20 p-3">
-      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</p>
       {loading ? <Skeleton className="h-6 w-12 mt-1" /> : <p className={`text-2xl font-bold mt-1 ${toneCls}`}>{value}</p>}
     </div>
   );
@@ -670,7 +670,7 @@ function BroadcastPanel({ templates }: { templates: Template[] }) {
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-[12px] text-muted-foreground">
               <span className="font-mono">{audienceCount ?? "…"}</span> users match (excl. opted-out)
             </p>
           </div>
@@ -685,7 +685,7 @@ function BroadcastPanel({ templates }: { templates: Template[] }) {
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-[11px] text-muted-foreground">{templates.find((t) => t.key === templateKey)?.description ?? "Pick a template to preview"}</p>
+            <p className="text-[12px] text-muted-foreground">{templates.find((t) => t.key === templateKey)?.description ?? "Pick a template to preview"}</p>
           </div>
         </div>
 
@@ -808,7 +808,7 @@ function PreAgentHqPanel({ groups, faqs }: { groups: Group[]; faqs: PreAgentHqFa
                 >
                   <div className="min-w-0">
                     <p className="text-sm font-medium">{g.title}</p>
-                    <p className="text-[11px] text-muted-foreground font-mono">
+                    <p className="text-[12px] text-muted-foreground font-mono">
                       type=<span className="text-foreground">{g.type}</span> · chat_id={g.chat_id}{" "}
                       {isSentinel ? <span className="text-amber-400">(sentinel — not bound yet)</span> : null}
                     </p>
@@ -867,7 +867,7 @@ function PreAgentHqPanel({ groups, faqs }: { groups: Group[]; faqs: PreAgentHqFa
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium">{f.question_pattern.replace(/^\[PRE-AGENT HQ\]\s*/, "")}</p>
-                    <p className="text-[11px] text-muted-foreground">
+                    <p className="text-[12px] text-muted-foreground">
                       id {f.id} · {f.category} · used {f.use_count}× · {f.active ? "active" : "disabled"}
                     </p>
                   </div>

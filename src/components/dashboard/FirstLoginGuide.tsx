@@ -153,7 +153,7 @@ export function FirstLoginGuide({ agentId }: { agentId: string }) {
             <Icon className="h-5 w-5 text-primary" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">Start here · step {stepIndex} of {phases.length}</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Start here · step {stepIndex} of {phases.length}</p>
             <p className="text-base font-bold leading-tight text-foreground">{current.label}</p>
             <p className="text-xs text-muted-foreground">{current.detail}</p>
           </div>
@@ -190,7 +190,7 @@ export function FirstLoginGuide({ agentId }: { agentId: string }) {
                     !ph.done && !isCurrent && "border-border/60 opacity-70",
                   )}
                 >
-                  <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-[11px] font-bold">
+                  <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-[12px] font-bold">
                     {ph.done ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : isCurrent ? i + 1 : <Circle className="h-3 w-3 text-muted-foreground" />}
                   </span>
                   <div className="min-w-0 flex-1">
@@ -199,7 +199,7 @@ export function FirstLoginGuide({ agentId }: { agentId: string }) {
                     </p>
                     <p className="text-xs text-muted-foreground">{ph.detail}</p>
                   </div>
-                  {isCurrent && <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary-foreground">now</span>}
+                  {isCurrent && <span className="rounded-full bg-primary px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-primary-foreground">now</span>}
                 </li>
               );
             })}

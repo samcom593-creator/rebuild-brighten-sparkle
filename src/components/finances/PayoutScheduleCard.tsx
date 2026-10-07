@@ -44,12 +44,12 @@ export function PayoutScheduleCard({ agentId }: { agentId?: string | null }) {
                       day: "numeric",
                     })}
                     {isToday(p.payout_date) && (
-                      <span className="ml-2 text-[10px] font-semibold uppercase text-primary">
+                      <span className="ml-2 text-[11px] font-semibold uppercase text-primary">
                         Today
                       </span>
                     )}
                   </div>
-                  <div className="text-[11px] text-muted-foreground">
+                  <div className="text-[12px] text-muted-foreground">
                     {p.policy_count ?? 0} policies
                   </div>
                 </div>

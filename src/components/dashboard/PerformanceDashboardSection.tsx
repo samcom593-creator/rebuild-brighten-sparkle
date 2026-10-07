@@ -90,7 +90,7 @@ export function PerformanceDashboardSection({
     >
       <GlassCard className="p-8 relative overflow-hidden">
         {/* Powered by Apex - subtle branding */}
-        <span className="absolute top-3 right-4 text-[10px] text-muted-foreground/40 font-medium tracking-wider uppercase">
+        <span className="absolute top-3 right-4 text-[11px] text-muted-foreground/40 font-medium tracking-wider uppercase">
           Powered by Apex
         </span>
         

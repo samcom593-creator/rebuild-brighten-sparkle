@@ -122,7 +122,7 @@ export function AgentActionsMenu({
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-64 p-2">
-        <p className="px-2 py-1 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+        <p className="px-2 py-1 text-[12px] uppercase tracking-[0.18em] text-muted-foreground">
           Next Apex seminars
         </p>
         <div className="mt-1 flex flex-col gap-1">
@@ -146,7 +146,7 @@ export function AgentActionsMenu({
           ) : null}
         </div>
         {!hasIdentity ? (
-          <p className="mt-2 rounded-md bg-rose-500/10 px-2 py-1 text-[11px] text-rose-300">
+          <p className="mt-2 rounded-md bg-rose-500/10 px-2 py-1 text-[12px] text-rose-300">
             Missing email — add one to enable.
           </p>
         ) : null}

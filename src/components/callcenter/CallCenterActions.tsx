@@ -229,7 +229,7 @@ export function CallCenterActions({
               <div className="flex flex-col items-center gap-1 relative z-10 px-2">
                 <action.icon className="h-5 w-5" />
                 <span className="text-sm font-semibold leading-tight text-center">{action.label}</span>
-                <span className="text-[10px] opacity-60 leading-tight text-center hidden sm:block">
+                <span className="text-[11px] opacity-60 leading-tight text-center hidden sm:block">
                   {action.description}
                 </span>
               </div>
@@ -237,7 +237,7 @@ export function CallCenterActions({
               {/* Keyboard hint */}
               <span
                 className={cn(
-                  "absolute bottom-1 right-1.5 text-[10px] px-1.5 py-0.5 rounded transition-all bg-black/30",
+                  "absolute bottom-1 right-1.5 text-[11px] px-1.5 py-0.5 rounded transition-all bg-black/30",
                   activeKey === action.key ? "opacity-100" : "opacity-40"
                 )}
               >
@@ -270,7 +270,7 @@ export function CallCenterActions({
           >
             <ChevronLeft className="h-4 w-4 mr-1.5" />
             <span>Previous</span>
-            <span className="text-[10px] opacity-40 ml-3 hidden sm:inline">[P]</span>
+            <span className="text-[11px] opacity-40 ml-3 hidden sm:inline">[P]</span>
           </Button>
         )}
         <Button
@@ -287,7 +287,7 @@ export function CallCenterActions({
         >
           <span>Skip to Next</span>
           <ChevronRight className="h-4 w-4 ml-1.5" />
-          <span className="text-[10px] opacity-40 ml-3 hidden sm:inline">[N]</span>
+          <span className="text-[11px] opacity-40 ml-3 hidden sm:inline">[N]</span>
         </Button>
       </motion.div>
     </motion.div>

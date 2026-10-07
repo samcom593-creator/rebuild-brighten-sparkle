@@ -90,7 +90,7 @@ export default function TeamChat() {
           <h1 className="apex-headline text-2xl md:text-3xl font-bold">APEX Team Chat</h1>
           <p className="text-xs text-muted-foreground">Live · everyone on the roster sees this.</p>
         </div>
-        <Badge variant="outline" className="text-[10px] border-emerald-500/40 text-emerald-300"><span className="radar-pulse inline-block h-1.5 w-1.5 rounded-full bg-emerald-400 mr-1.5 align-middle" />LIVE</Badge>
+        <Badge variant="outline" className="text-[11px] border-emerald-500/40 text-emerald-300"><span className="radar-pulse inline-block h-1.5 w-1.5 rounded-full bg-emerald-400 mr-1.5 align-middle" />LIVE</Badge>
       </div>
 
       <GlassCard className="flex-1 flex flex-col overflow-hidden">
@@ -120,7 +120,7 @@ export default function TeamChat() {
                 </div>
                 <div className={cn("flex flex-col max-w-[70%]", mine && "items-end")}>
                   {!grouped && (
-                    <div className={cn("text-[10px] text-muted-foreground mb-0.5 px-2", mine && "text-right")}>
+                    <div className={cn("text-[11px] text-muted-foreground mb-0.5 px-2", mine && "text-right")}>
                       <span className="font-semibold text-foreground/80">{m.author_name}</span>
                       <span className="ml-1.5">{formatDistanceToNowStrict(new Date(m.created_at), { addSuffix: true })}</span>
                     </div>

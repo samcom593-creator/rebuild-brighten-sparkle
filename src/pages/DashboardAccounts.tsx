@@ -759,7 +759,7 @@ export default function DashboardAccounts() {
                         <p className="text-muted-foreground">Onboarding</p>
                         {account.hasAgentRecord ? (
                           <div className="mt-1" onClick={(e) => e.stopPropagation()}>
-                            <HireStageSelect agentId={account.id} name={account.name} stage={account.onboardingStage} licenseStatus={account.licenseStatus} email={account.email} className="h-7 text-[11px]" />
+                            <HireStageSelect agentId={account.id} name={account.name} stage={account.onboardingStage} licenseStatus={account.licenseStatus} email={account.email} className="h-7 text-[12px]" />
                           </div>
                         ) : (
                           <p className="mt-1 truncate capitalize">{account.onboardingStage.replaceAll("_", " ")}</p>
@@ -819,7 +819,7 @@ export default function DashboardAccounts() {
                           </Badge>
                           {account.hasAgentRecord ? (
                             <div onClick={(e) => e.stopPropagation()}>
-                              <HireStageSelect agentId={account.id} name={account.name} stage={account.onboardingStage} licenseStatus={account.licenseStatus} email={account.email} className="h-7 max-w-40 text-[11px]" />
+                              <HireStageSelect agentId={account.id} name={account.name} stage={account.onboardingStage} licenseStatus={account.licenseStatus} email={account.email} className="h-7 max-w-40 text-[12px]" />
                             </div>
                           ) : (
                             <p className="max-w-40 truncate text-xs capitalize text-muted-foreground">{account.onboardingStage.replaceAll("_", " ")}</p>

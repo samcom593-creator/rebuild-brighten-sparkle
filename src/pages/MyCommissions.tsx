@@ -193,7 +193,7 @@ export default function MyCommissions() {
                 ["Trail", commissionTypes.data?.trail_pending, "as-earned tail"],
                 ["Renewal", commissionTypes.data?.renewal_pending, "renewal estimate"],
                 ["Chargebacks", totalClawed, `${clawed.length} ledger row${clawed.length === 1 ? "" : "s"}`],
-              ].map(([label, value, detail]) => <GlassCard key={String(label)} className="p-4"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-xl font-bold tabular-nums">{value === null || value === undefined ? "—" : `$${Number(value).toLocaleString(undefined,{maximumFractionDigits:0})}`}</p><p className="mt-1 text-[10px] text-muted-foreground">{detail}</p></GlassCard>)}
+              ].map(([label, value, detail]) => <GlassCard key={String(label)} className="p-4"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-xl font-bold tabular-nums">{value === null || value === undefined ? "—" : `$${Number(value).toLocaleString(undefined,{maximumFractionDigits:0})}`}</p><p className="mt-1 text-[11px] text-muted-foreground">{detail}</p></GlassCard>)}
             </div>
           </div>
 

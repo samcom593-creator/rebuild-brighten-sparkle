@@ -1012,7 +1012,7 @@ export default function BuildersDashboard({ mode = "builders" }: { mode?: Dashbo
 function MiniStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md border border-border/50 bg-background/60 p-3">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="text-[12px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
       <p className="mt-1 truncate text-sm font-semibold">{value}</p>
     </div>
   );

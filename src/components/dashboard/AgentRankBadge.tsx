@@ -115,7 +115,7 @@ export function AgentRankBadge({
   const isNew = previousRank === null && showChange;
 
   const sizeClasses = {
-    sm: "h-5 px-1.5 text-[10px] gap-0.5",
+    sm: "h-5 px-1.5 text-[11px] gap-0.5",
     md: "h-6 px-2 text-xs gap-1",
     lg: "h-8 px-3 text-sm gap-1.5"
   };

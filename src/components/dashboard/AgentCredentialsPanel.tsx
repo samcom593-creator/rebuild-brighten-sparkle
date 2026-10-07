@@ -102,7 +102,7 @@ export function AgentCredentialsPanel({ agentId, agentName, agentEmail }: AgentC
         <Button
           variant="ghost"
           size="sm"
-          className="h-7 px-2 text-[11px] gap-1"
+          className="h-7 px-2 text-[12px] gap-1"
           onClick={() => metaQuery.refetch()}
           disabled={metaQuery.isFetching}
         >
@@ -252,22 +252,22 @@ function CredentialRow({ service, agentId, agentName, agentEmail, meta, onSaved 
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-xs font-semibold">{service.label}</span>
           {meta?.has_password ? (
-            <Badge variant="outline" className="h-4 px-1.5 text-[10px] gap-1 border-emerald-500/30 text-emerald-600 dark:text-emerald-400">
+            <Badge variant="outline" className="h-4 px-1.5 text-[11px] gap-1 border-emerald-500/30 text-emerald-600 dark:text-emerald-400">
               <CheckCircle2 className="h-2.5 w-2.5" /> Saved
             </Badge>
           ) : (
-            <Badge variant="outline" className="h-4 px-1.5 text-[10px] text-muted-foreground">Empty</Badge>
+            <Badge variant="outline" className="h-4 px-1.5 text-[11px] text-muted-foreground">Empty</Badge>
           )}
         </div>
-        <span className="text-[10px] text-muted-foreground">
+        <span className="text-[11px] text-muted-foreground">
           {meta ? `Updated ${new Date(meta.updated_at).toLocaleDateString()}` : "—"}
         </span>
       </div>
-      <p className="text-[11px] text-muted-foreground">{service.hint}</p>
+      <p className="text-[12px] text-muted-foreground">{service.hint}</p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <div>
-          <label className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Username</label>
+          <label className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">Username</label>
           <Input
             value={username}
             onChange={(e) => setUsername(e.target.value)}
@@ -277,7 +277,7 @@ function CredentialRow({ service, agentId, agentName, agentEmail, meta, onSaved 
           />
         </div>
         <div>
-          <label className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
+          <label className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">
             {meta?.has_password ? "Change password" : "Password"}
           </label>
           <div className="flex gap-1">
@@ -321,7 +321,7 @@ function CredentialRow({ service, agentId, agentName, agentEmail, meta, onSaved 
       </div>
 
       <div>
-        <label className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Notes</label>
+        <label className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">Notes</label>
         <Input
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
@@ -336,7 +336,7 @@ function CredentialRow({ service, agentId, agentName, agentEmail, meta, onSaved 
           type="button"
           size="sm"
           variant="default"
-          className="h-7 gap-1.5 text-[11px]"
+          className="h-7 gap-1.5 text-[12px]"
           onClick={() => saveMutation.mutate()}
           disabled={saveMutation.isPending || (!username && !password && !notes)}
         >
@@ -348,7 +348,7 @@ function CredentialRow({ service, agentId, agentName, agentEmail, meta, onSaved 
             type="button"
             size="sm"
             variant="outline"
-            className="h-7 gap-1.5 text-[11px]"
+            className="h-7 gap-1.5 text-[12px]"
             onClick={handleSendResetEmail}
             disabled={sendingReset || !agentEmail}
             title={agentEmail ? "Send Supabase reset email to the agent" : "No email on file"}

@@ -300,7 +300,7 @@ export function EthosContractingHealth() {
               ))}
             </div>
           )}
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-[12px] text-muted-foreground">
             Counts below are distinct producers (licensed agents plus unlinked licensed intakes), not sheet rows. "Ready to submit" is an internal gate, not Ethos approval and not authorization to sell.
           </p>
         </CardContent>
@@ -345,7 +345,7 @@ export function EthosContractingHealth() {
                       </div>
                     </td>
                     <td className="py-2 pr-3 text-xs">
-                      <Badge variant="outline" className="whitespace-nowrap text-[11px]">{PIPELINE_STAGE_LABELS[p.stage].split(" (")[0]}</Badge>
+                      <Badge variant="outline" className="whitespace-nowrap text-[12px]">{PIPELINE_STAGE_LABELS[p.stage].split(" (")[0]}</Badge>
                       {p.sheetRow && <div className="mt-1 text-muted-foreground">sheet: {p.sheetRow.comp_level ?? "no level"} · {p.sheetRow.advance_tier ?? "no tier"}</div>}
                       {p.approval?.approved_comp_level && <div className="text-muted-foreground">approved: {p.approval.approved_comp_level}</div>}
                     </td>

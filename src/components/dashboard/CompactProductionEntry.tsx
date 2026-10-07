@@ -281,7 +281,7 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
                 <CalendarIcon className="mr-3 h-5 w-5 text-primary" />
                 <span className="flex-1">{format(selectedDate, "EEEE, MMM d, yyyy")}</span>
                 {selectedDate.toDateString() !== new Date().toDateString() && (
-                  <span className="text-[10px] text-amber-600 font-bold uppercase bg-amber-500/10 px-2 py-1 rounded">Past Date</span>
+                  <span className="text-[11px] text-amber-600 font-bold uppercase bg-amber-500/10 px-2 py-1 rounded">Past Date</span>
                 )}
               </Button>
             </PopoverTrigger>
@@ -331,7 +331,7 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
                   </div>
                   <div>
                     <h3 className="text-sm font-bold">📊 Activity Stats</h3>
-                    <p className="text-[10px] text-muted-foreground">Track your daily activity</p>
+                    <p className="text-[11px] text-muted-foreground">Track your daily activity</p>
                   </div>
                 </div>
 

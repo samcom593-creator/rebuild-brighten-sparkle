@@ -272,23 +272,23 @@ export default function GettingStarted() {
                     {step.label}
                   </p>
                   {"href" in step && !p[step.key] && (
-                    <Link to={step.href} className="text-[11px] font-medium text-primary underline-offset-2 hover:underline">Do it →</Link>
+                    <Link to={step.href} className="text-[12px] font-medium text-primary underline-offset-2 hover:underline">Do it →</Link>
                   )}
                   {"settingKey" in step && !p[step.key] && (
                     <div className="mt-1 flex flex-wrap gap-3">
                       {communityLinks.slack && (
-                        <a className="text-[11px] font-medium text-primary underline-offset-2 hover:underline"
+                        <a className="text-[12px] font-medium text-primary underline-offset-2 hover:underline"
                            href={communityLinks.slack} target="_blank" rel="noopener noreferrer">Open Slack invite</a>
                       )}
                     </div>
                   )}
                   {p[step.key] && (
-                    <p className="text-[10px] text-muted-foreground">
+                    <p className="text-[11px] text-muted-foreground">
                       {formatDistanceToNow(new Date(p[step.key]), { addSuffix: true })}
                     </p>
                   )}
                 </div>
-                <Badge variant="outline" className={STAGE_META[step.stage as Stage].color + " text-[10px]"}>
+                <Badge variant="outline" className={STAGE_META[step.stage as Stage].color + " text-[11px]"}>
                   {STAGE_META[step.stage as Stage].label}
                 </Badge>
               </div>
@@ -318,7 +318,7 @@ export default function GettingStarted() {
                 stageFilter === s ? "ring-2 ring-primary" : ""
               }`}
             >
-              <p className="text-[10px] uppercase opacity-70">{STAGE_META[s].label}</p>
+              <p className="text-[11px] uppercase opacity-70">{STAGE_META[s].label}</p>
               <p className="text-xl font-bold">{stats[s] || 0}</p>
             </button>
           ),
@@ -329,7 +329,7 @@ export default function GettingStarted() {
             stageFilter === "stalled" ? "ring-2 ring-red-500" : ""
           }`}
         >
-          <p className="text-[10px] uppercase opacity-70 text-red-400 flex items-center gap-1">
+          <p className="text-[11px] uppercase opacity-70 text-red-400 flex items-center gap-1">
             <AlertCircle className="h-3 w-3" /> Stalled 5d+
           </p>
           <p className="text-xl font-bold text-red-400">{stats.stalled}</p>
@@ -407,7 +407,7 @@ export default function GettingStarted() {
                       <span className="text-xs text-muted-foreground">
                         {completed}/{CHECKLIST_STEPS.length} steps
                       </span>
-                      <span className="text-[10px] text-muted-foreground">
+                      <span className="text-[11px] text-muted-foreground">
                         <Clock className="h-3 w-3 inline" />{" "}
                         {formatDistanceToNow(lastActivity, { addSuffix: true })}
                       </span>

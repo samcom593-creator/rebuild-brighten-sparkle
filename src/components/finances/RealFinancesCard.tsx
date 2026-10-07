@@ -41,7 +41,7 @@ export function RealFinancesCard({ agentId }: { agentId?: string | null }) {
         <div className="flex items-center gap-2">
           <DollarSign className="h-4 w-4 text-primary" />
           <CardTitle className="text-sm font-medium">Real Finances</CardTitle>
-          <Badge variant="outline" className="text-[10px]">Live · InsuraCloud</Badge>
+          <Badge variant="outline" className="text-[11px]">Live · InsuraCloud</Badge>
         </div>
         <Button size="sm" variant="ghost" onClick={onSync} disabled={syncing}>
           <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} />
@@ -60,7 +60,7 @@ export function RealFinancesCard({ agentId }: { agentId?: string | null }) {
             <Stat label="Override" value={fmt(Number(data.override_commissions))} />
           </div>
         )}
-        <div className="mt-3 text-[10px] text-muted-foreground">
+        <div className="mt-3 text-[11px] text-muted-foreground">
           {lastSyncedLabel}
         </div>
       </CardContent>
@@ -71,7 +71,7 @@ export function RealFinancesCard({ agentId }: { agentId?: string | null }) {
 function Stat({ label, value, icon }: { label: string; value: string; icon?: boolean }) {
   return (
     <div className="rounded-md bg-muted/30 p-3">
-      <div className="flex items-center gap-1 text-[11px] uppercase tracking-wide text-muted-foreground">
+      <div className="flex items-center gap-1 text-[12px] uppercase tracking-wide text-muted-foreground">
         {icon && <TrendingUp className="h-3 w-3" />} {label}
       </div>
       <div className="mt-1 text-lg font-semibold tabular-nums">{value}</div>

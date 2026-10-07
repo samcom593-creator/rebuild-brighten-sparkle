@@ -153,7 +153,7 @@ export default function ScheduleCall() {
                     <p className="text-xs text-muted-foreground">
                       Booking with: <span className="text-foreground font-medium">{resolved.hostName}</span>
                     </p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                    <p className="text-[12px] text-muted-foreground mt-0.5">
                       {leaderQualified
                         ? "Reserved for 5+ agents or $50K+ monthly production"
                         : "15-minute interview with Sam James. Your onboarding call is booked separately once you're hired."}

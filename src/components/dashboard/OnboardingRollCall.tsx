@@ -89,7 +89,7 @@ export function OnboardingRollCall() {
     <Card>
       <CardContent className="p-4">
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+          <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
             <CalendarCheck className="h-3 w-3" />Joining today · new hires
           </p>
           {noInvite.length > 0 && (
@@ -118,8 +118,8 @@ export function OnboardingRollCall() {
               <span className="min-w-0 truncate text-sm font-medium text-foreground">{row.display_name}</span>
               {!row.reachable && <PhoneOff className="h-3.5 w-3.5 shrink-0 text-rose-500" />}
               {row.reachable && !row.email_deliverable && <TriangleAlert className="h-3.5 w-3.5 shrink-0 text-amber-500" />}
-              <span className="text-[11px] text-muted-foreground">{row.blocker}</span>
-              <span className="ml-auto whitespace-nowrap text-[11px] text-muted-foreground">
+              <span className="text-[12px] text-muted-foreground">{row.blocker}</span>
+              <span className="ml-auto whitespace-nowrap text-[12px] text-muted-foreground">
                 {row.manager_name} · {formatTimeAgo(row.hired_on)}
               </span>
             </div>
@@ -127,7 +127,7 @@ export function OnboardingRollCall() {
         </div>
 
         {unreachable.length > 0 && (
-          <p className="mt-3 text-[11px] text-muted-foreground">
+          <p className="mt-3 text-[12px] text-muted-foreground">
             No email or phone is on file for {unreachable.length} of these hires, so no send can reach them — their
             manager has to. Fix the contact details on{" "}
             <Link className="text-primary underline-offset-2 hover:underline" to="/dashboard/team">the team page</Link>{" "}

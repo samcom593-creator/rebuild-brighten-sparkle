@@ -318,7 +318,7 @@ export default function HiringManagerAssignments() {
                   </div>
                   <div>
                     <CardTitle className="text-sm">{meta.label}</CardTitle>
-                    <p className="text-[11px] text-muted-foreground">{meta.description}</p>
+                    <p className="text-[12px] text-muted-foreground">{meta.description}</p>
                   </div>
                 </div>
               </CardHeader>
@@ -335,7 +335,7 @@ export default function HiringManagerAssignments() {
                     </Badge>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{a.manager_display_name}</p>
-                      {a.notes && <p className="text-[10px] text-muted-foreground truncate">{a.notes}</p>}
+                      {a.notes && <p className="text-[11px] text-muted-foreground truncate">{a.notes}</p>}
                     </div>
                     <Switch checked={a.is_active} onCheckedChange={(v) => handleToggle(a.id, v)} />
                     <Button size="sm" variant="ghost" onClick={() => handleRemove(a.id, a.manager_display_name)}>

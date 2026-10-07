@@ -15,6 +15,7 @@
 
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { type LicenseAnswer, parseLicenseAnswer } from "../_shared/license-answer.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -28,6 +29,9 @@ const APPLY_URL = "https://apex-financial.org/apply?utm_source=telegram&utm_medi
 const ICA_URL = "https://apex-financial.org/start-contracting";
 const LICENSE_URL = "https://apex-financial.org/get-licensed";
 const LICENSED_CALL_URL = "https://calendly.com/apexfinancialempire/1on1-call-clone";
+
+const LICENSE_PATH_TEXT =
+  `Pre-license course (life insurance):\n\n1. Enroll: ${LICENSE_URL}\n2. Daily 30 min minimum. Cohort moves with or without you.\n3. Get stuck → reply with the question and I'll route or answer.\n\nState-specific quirks? Tell me your state.`;
 
 const PUBLIC_GROUP_COMMANDS = new Set([
   "/help",
@@ -412,6 +416,27 @@ ${faqContext}`;
   }
 }
 
+// welcome.start asks "Reply LICENSED or UNLICENSED". Until 2026-10-07 nothing
+// read the reply and it fell through to aiAnswer's fallback. See
+// _shared/license-answer.ts. Shows the next step only; never writes license
+// status. An unlinked chat still has the Share contact buttons from
+// welcome.start, so it is pointed back at them.
+async function answerLicense(chat_id: number, answer: LicenseAnswer, linked: boolean) {
+  let text = answer === "licensed"
+    ? `Good. Next step is the licensed call.\n\nBook it here: ${LICENSED_CALL_URL}`
+    : `No problem. Here's the path.\n\n${LICENSE_PATH_TEXT}`;
+  if (!linked) text += `\n\nTap 📱 Share contact above so I can pull up your application.`;
+  const ok = await tgSend({ chat_id, text });
+  if (ok) {
+    await ingest(chat_id, null, {
+      direction: "outbound",
+      message_type: "license_answer",
+      text,
+      context: { reply_to: "welcome.start", answer, linked },
+    });
+  }
+}
+
 // ============================================================================
 // STATUS LOOKUP / IDENTITY
 // ============================================================================
@@ -618,10 +643,7 @@ async function handleCommand(chat_id: number, fromUser: any, command: string, ar
       await statusCommand(chat_id);
       break;
     case "/license":
-      await tgSend({
-        chat_id,
-        text: `Pre-license course (life insurance):\n\n1. Enroll: https://apex-financial.org/get-licensed\n2. Daily 30 min minimum. Cohort moves with or without you.\n3. Get stuck → reply with the question and I'll route or answer.\n\nState-specific quirks? Tell me your state.`,
-      });
+      await tgSend({ chat_id, text: LICENSE_PATH_TEXT });
       break;
     case "/exam":
       await tgSend({
@@ -953,10 +975,15 @@ Deno.serve(async (req) => {
       }
 
       // private free-text — advance flow_state or AI
-      const { data: user } = await sb.from("telegram_users").select("flow_state").eq("chat_id", chatId).maybeSingle();
+      const { data: user } = await sb.from("telegram_users").select("flow_state, applicant_id, agent_id").eq("chat_id", chatId).maybeSingle();
       const step = (user?.flow_state as any)?.step;
       if (step === "awaiting_email" && /.+@.+\..+/.test(text)) {
         await matchByContact(chatId, undefined, text.trim());
+        return new Response("ok", { headers: corsHeaders });
+      }
+      const licenseAnswer = parseLicenseAnswer(text);
+      if (licenseAnswer) {
+        await answerLicense(chatId, licenseAnswer, Boolean(user?.applicant_id || user?.agent_id));
         return new Response("ok", { headers: corsHeaders });
       }
       if (text.trim().length > 2) {

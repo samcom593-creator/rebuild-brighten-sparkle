@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "The Telegram bot now understands the answer to its own first question. The welcome asks applicants to reply LICENSED or UNLICENSED, and until today that reply got \"Don't know that one for sure, tap /manager\". It now sends the licensed call link or the pre-license course path.",
+    detail: "Found on a real applicant from Oct 5 who replied UNLICENSED, got the fallback twice, and gave up to /manager. Questions that only mention a license (\"how do I get licensed?\") still go to the normal answer path. The reply never changes anyone's license status; that still comes from NIPR.",
+    commit: "PL-WIB-TG-LICENSE-REPLY",
+  },
+  {
+    ts: "today",
     label: "Fixes from a full review of this week's work: the Leaderboard hero showed $1.87M for October (a stranger's $1.82M was still counted; real is about $44K), Sunday starter reminders could never find anyone (they now read Recruit Pipeline's Expected start), and Launch Board drag and drop now works on phones.",
     detail: "Also: My Day is yours only (agents were getting your routine), never saves a tap to yesterday after midnight, and can't lose or undo a tap on bad signal. Week plans reset each Monday instead of sitting there forever. Analytics counts each Short once, uses Phoenix days, and only scores videos against their own format. Recruiting stops listing people who already joined and stops letting automation stamps hide 90+ day leads. The call list hides the people you locked out on Sep 7. Managers can no longer read or delete your content data.",
     commit: "session-review-fixes-2026-10-07",

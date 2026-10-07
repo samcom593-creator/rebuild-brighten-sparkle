@@ -44,8 +44,8 @@ import {
   STAGE_LABEL, STAGE_ORDER, WORKFLOW, checkPublishUrl, fourQuestions, nextAction, nextStatus, phoenixDate, previousStatus,
   scheduleLabel, stageOf, todayQueue, type Stage, type WorkflowStatus,
 } from "@/lib/contentWorkflow";
-import { DndContext, PointerSensor, TouchSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
-import { DAY_THEMES, THEME_TONE, WEEKLY_TARGETS, phoenixDateKey, phoenixWeekday, piecesByDay } from "@/lib/contentWeek";
+import { DndContext, DragOverlay, MouseSensor, TouchSensor, pointerWithin, rectIntersection, useDraggable, useDroppable, useSensor, useSensors, type CollisionDetection, type DragEndEvent, type DragStartEvent } from "@dnd-kit/core";
+import { DAY_THEMES, THEME_TONE, WEEKLY_TARGETS, phoenixDateKey, phoenixWeekStart, phoenixWeekday, piecesByDay } from "@/lib/contentWeek";
 import { canShareFiles, pullFile, saveMedia, shareFiles } from "@/lib/saveMedia";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -73,6 +73,7 @@ interface Card {
   approved_at?: string | null; approved_by?: string | null;
   scheduled_for?: string | null; schedule_kind?: string | null; schedule_job_ref?: string | null;
   published_url?: string | null; publish_evidence?: string | null; published_confirmed_at?: string | null;
+  planned_week?: string | null;   // Phoenix Monday of the week the card sits on a day (set by trigger)
 }
 interface Clip {
   id: string; path: string; name: string; folder: string; kind: string; size_bytes: number; modified_at: string | null; used_by_card: string | null;
@@ -195,7 +196,7 @@ type MixInfo = { pct: number | null; core: number; flex: number; blank: number; 
 const cardIsLong = (c: Card) => c.brand === "YT" || c.content_type === "long";
 const DAY_OPTIONS = [{ v: 0, label: "Unplanned" }, ...[1, 2, 3, 4, 5, 6, 7].map((d) => ({ v: d, label: DAY_THEMES[d].short }))];
 
-function WeekCard({ c, onOpen, onMove }: { c: Card; onOpen: (c: Card) => void; onMove: (c: Card, day: number) => void }) {
+function WeekCard({ c, planned, onOpen, onMove }: { c: Card; planned: boolean; onOpen: (c: Card) => void; onMove: (c: Card, day: number) => void }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: c.id });
   const stage = stageOf(c);
   return (
@@ -206,7 +207,7 @@ function WeekCard({ c, onOpen, onMove }: { c: Card; onOpen: (c: Card) => void; o
         <StageChip stage={stage} />
         <span className="rounded-full border border-border px-2 py-0.5 text-[12px] font-semibold text-muted-foreground">{cardIsLong(c) ? "Long" : "Short"}</span>
       </div>
-      <select value={c.day} aria-label={`Move ${c.title}`} onChange={(e) => onMove(c, Number(e.target.value))}
+      <select value={planned ? c.day : 0} aria-label={`Move ${c.title}`} onChange={(e) => onMove(c, Number(e.target.value))}
         className="mt-2 h-8 w-full rounded-md border border-border bg-card px-1.5 text-[13px] text-muted-foreground">
         {DAY_OPTIONS.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}
       </select>
@@ -222,12 +223,18 @@ function DropZone({ id, className, children }: { id: string; className: string; 
 function WeekTab({ cards, mix, onOpen, onMove, onAdd }: { cards: Card[]; mix: MixInfo; onOpen: (c: Card) => void; onMove: (c: Card, day: number) => void; onAdd: (day: number) => void }) {
   const todayDow = phoenixWeekday();
   const [shortsByDay, setShortsByDay] = useState<Record<number, number> | null>(null);
+  const [shortsFailed, setShortsFailed] = useState(false);
   const [showAllIdeas, setShowAllIdeas] = useState(false);
   const [showMix, setShowMix] = useState(false);
+  // Mouse + touch, not Pointer: dnd-kit's PointerSensor also claims touches and then loses
+  // them to page scrolling, so on a phone a drag never started. Touch = press and hold.
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 220, tolerance: 8 } }),
   );
+  // Drop where the pointer is, not where the (wide) card's rectangle overlaps most.
+  const collision: CollisionDetection = (args) => { const hits = pointerWithin(args); return hits.length ? hits : rectIntersection(args); };
+  const [activeId, setActiveId] = useState<string | null>(null);
   const dayKeys = useMemo(() => {
     const [y, m, d] = phoenixDateKey().split("-").map(Number);
     const base = Date.UTC(y, m - 1, d) - (todayDow - 1) * 86400_000;
@@ -237,7 +244,8 @@ function WeekTab({ cards, mix, onOpen, onMove, onAdd }: { cards: Card[]; mix: Mi
     let off = false;
     void (async () => {
       const { data, error } = await supabase.from("content_posts").select("posted_at, format, platform").gte("posted_at", `${dayKeys[0]}T00:00:00-07:00`);
-      if (off || error) { if (!off) setShortsByDay({}); return; }
+      // A failed load shows "—", never a confident 0.
+      if (off || error) { if (!off) setShortsFailed(true); return; }
       // Repurpose sends one Short to every platform, so a day's Shorts = its busiest platform, not the sum.
       const byDate = piecesByDay((data ?? []) as { posted_at: string | null; format: string | null; platform: string | null }[], "short");
       const m: Record<number, number> = {};
@@ -247,27 +255,35 @@ function WeekTab({ cards, mix, onOpen, onMove, onAdd }: { cards: Card[]; mix: Mi
     return () => { off = true; };
   }, [dayKeys]);
   const shortsTotal = Object.values(shortsByDay ?? {}).reduce((a, b) => a + b, 0);
-  const longPlanned = cards.filter((c) => c.day > 0 && cardIsLong(c)).length;
-  const ideas = useMemo(() => cards.filter((c) => !c.day).sort((a, b) => b.sort - a.sort), [cards]);
+  // A card belongs to THIS week only if it was put on a day this week. Older plans go back
+  // to the tray (or drop off once published), so last week's videos never fill this week.
+  const thisWeek = dayKeys[0];
+  const plannedNow = (c: Card) => c.day > 0 && c.planned_week === thisWeek;
+  const isPublished = (c: Card) => { const st = stageOf(c); return st === "published" || st === "published_unconfirmed"; };
+  const longPlanned = cards.filter((c) => plannedNow(c) && cardIsLong(c)).length;
+  const ideas = cards.filter((c) => !plannedNow(c) && !isPublished(c)).sort((a, b) => b.sort - a.sort);
+  const activeCard = activeId ? cards.find((c) => c.id === activeId) ?? null : null;
+  const onDragStart = (e: DragStartEvent) => setActiveId(String(e.active.id));
   const onDragEnd = (e: DragEndEvent) => {
+    setActiveId(null);
     if (!e.over) return;
     const day = Number(String(e.over.id).replace("day-", ""));
     const c = cards.find((x) => x.id === String(e.active.id));
-    if (c && Number.isFinite(day) && c.day !== day) onMove(c, day);
+    if (c && Number.isFinite(day) && !(plannedNow(c) && c.day === day) && !(day === 0 && !plannedNow(c))) onMove(c, day);
   };
   return (
-    <DndContext sensors={sensors} onDragEnd={onDragEnd}>
+    <DndContext sensors={sensors} collisionDetection={collision} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={() => setActiveId(null)}>
       <div className="space-y-5">
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-2xl border border-border bg-card px-4 py-3">
           <h2 className="text-base font-extrabold text-foreground">This week</h2>
           <span className="text-sm text-muted-foreground">Long-form planned <b className="tabular-nums text-foreground">{longPlanned}/{WEEKLY_TARGETS.long}</b></span>
-          <span className="text-sm text-muted-foreground">Shorts posted <b className="tabular-nums text-foreground">{shortsByDay ? shortsTotal : "…"}</b> <span className="text-[13px]">(goal {WEEKLY_TARGETS.shortsMin}–{WEEKLY_TARGETS.shortsMax})</span></span>
+          <span className="text-sm text-muted-foreground">Shorts posted <b className="tabular-nums text-foreground">{shortsFailed ? "—" : shortsByDay ? shortsTotal : "…"}</b> <span className="text-[13px]">(goal {WEEKLY_TARGETS.shortsMin}–{WEEKLY_TARGETS.shortsMax})</span></span>
         </div>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-7">
           {Array.from({ length: 7 }, (_, i) => i + 1).map((d) => {
             const t = DAY_THEMES[d];
             const tone = THEME_TONE[t.theme];
-            const items = cards.filter((c) => c.day === d);
+            const items = cards.filter((c) => plannedNow(c) && c.day === d);
             const posted = shortsByDay?.[d] ?? 0;
             const isToday = d === todayDow;
             return (
@@ -281,13 +297,13 @@ function WeekTab({ cards, mix, onOpen, onMove, onAdd }: { cards: Card[]; mix: Mi
                 </div>
                 <DropZone id={`day-${d}`} className="flex min-h-[96px] flex-1 flex-col gap-2 rounded-xl border border-dashed border-border p-2">
                   <div className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">{t.longTarget > 0 ? "Long-form" : d === 7 ? "Plan & batch" : "Long-form (bonus)"}</div>
-                  {items.map((c) => <WeekCard key={c.id} c={c} onOpen={onOpen} onMove={onMove} />)}
+                  {items.map((c) => <WeekCard key={c.id} c={c} planned onOpen={onOpen} onMove={onMove} />)}
                   {items.length === 0 && <div className="py-2 text-center text-[13px] text-muted-foreground">Drop a video here</div>}
                   <button type="button" onClick={() => onAdd(d)} className="mt-auto rounded-lg border border-dashed border-border px-2 py-1.5 text-[13px] text-muted-foreground hover:border-primary/50 hover:text-primary">+ Add</button>
                 </DropZone>
                 {t.shortsTarget > 0 && (
                   <div>
-                    <div className="flex justify-between text-[13px] text-muted-foreground"><span>Shorts</span><span className="tabular-nums">{posted}/{t.shortsTarget}</span></div>
+                    <div className="flex justify-between text-[13px] text-muted-foreground"><span>Shorts</span><span className="tabular-nums">{shortsFailed ? "—" : shortsByDay ? `${posted}/${t.shortsTarget}` : "…"}</span></div>
                     <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted"><div className={`h-full ${tone.bar}`} style={{ width: `${Math.min(100, Math.round((posted / t.shortsTarget) * 100))}%` }} /></div>
                   </div>
                 )}
@@ -298,11 +314,11 @@ function WeekTab({ cards, mix, onOpen, onMove, onAdd }: { cards: Card[]; mix: Mi
         <DropZone id="day-0" className="rounded-2xl border border-dashed border-border bg-card/50 p-3">
           <div className="mb-2 flex items-center justify-between">
             <h3 className="text-sm font-bold text-foreground">Ideas (not planned) <span className="font-normal text-muted-foreground">{ideas.length}</span></h3>
-            <span className="text-[13px] text-muted-foreground">Drag onto a day, or use Move</span>
+            <span className="text-[13px] text-muted-foreground">Drag onto a day (on a phone, hold first), or use Move</span>
           </div>
           {ideas.length === 0 ? <div className="py-2 text-sm text-muted-foreground">Everything is planned.</div> : (
             <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-              {(showAllIdeas ? ideas : ideas.slice(0, 8)).map((c) => <WeekCard key={c.id} c={c} onOpen={onOpen} onMove={onMove} />)}
+              {(showAllIdeas ? ideas : ideas.slice(0, 8)).map((c) => <WeekCard key={c.id} c={c} planned={false} onOpen={onOpen} onMove={onMove} />)}
             </div>
           )}
           {ideas.length > 8 && <button type="button" onClick={() => setShowAllIdeas(!showAllIdeas)} className="mt-3 rounded-full border border-border px-3 py-1 text-[13px] font-semibold text-foreground hover:border-primary/60">{showAllIdeas ? "Show fewer" : `Show all (${ideas.length})`}</button>}
@@ -324,6 +340,13 @@ function WeekTab({ cards, mix, onOpen, onMove, onAdd }: { cards: Card[]; mix: Mi
           )}
         </div>
       </div>
+      <DragOverlay>
+        {activeCard ? (
+          <div className="w-56 rounded-xl border border-primary/60 bg-card p-2.5 text-sm font-semibold text-foreground shadow-lg">
+            {activeCard.title.replace(/^Story · /, "")}
+          </div>
+        ) : null}
+      </DragOverlay>
     </DndContext>
   );
 }
@@ -563,11 +586,13 @@ export default function LaunchBoard() {
 
 
   const patch = useCallback(async (id: string, changes: Partial<Card>) => {
-    const prev = cards;
+    // Roll back only this card on failure; a whole-board snapshot would also undo other moves that saved.
+    const before = cards.find((c) => c.id === id);
+    const undo = () => { if (before) setCards((cs) => cs.map((c) => (c.id === id ? before : c))); };
     setCards((cs) => cs.map((c) => (c.id === id ? { ...c, ...changes } : c)));
     const { data, error } = await supabase.from("content_cards").update(changes as never).eq("id", id).select("*").maybeSingle();
-    if (error) { setCards(prev); toast.error(`Save failed: ${error.message.slice(0, 160)}`); return false; }
-    if (!data) { setCards(prev); toast.error("Save failed: the card was not updated (no access, or it was deleted). Reload the board."); return false; }
+    if (error) { undo(); toast.error(`Save failed: ${error.message.slice(0, 160)}`); return false; }
+    if (!data) { undo(); toast.error("Save failed: the card was not updated (no access, or it was deleted). Reload the board."); return false; }
     // The server is the truth: the workflow trigger stamps approval / confirmation and may map legacy values.
     setCards((cs) => cs.map((c) => (c.id === id ? (data as Card) : c)));
     return true;
@@ -967,7 +992,7 @@ export default function LaunchBoard() {
 
       {tab === "week" && (
         <WeekTab cards={cards} mix={mix} onOpen={openEdit}
-          onMove={(c, day) => { void patch(c.id, { day }).then((ok) => { if (ok) toast.success(day ? `Moved to ${DAY_THEMES[day].name}` : "Moved to Ideas"); }); }}
+          onMove={(c, day) => { void patch(c.id, { day, planned_week: day ? phoenixWeekStart() : null }).then((ok) => { if (ok) toast.success(day ? `Moved to ${DAY_THEMES[day].name}` : "Moved to Ideas"); }); }}
           onAdd={(d) => { const long = DAY_THEMES[d].longTarget > 0; setDraft({ ...emptyDraft, day: d, brand: long ? "YT" : "SH", content_type: long ? "long" : "short" }); setEditing(null); setEditorOpen(true); }} />
       )}
 

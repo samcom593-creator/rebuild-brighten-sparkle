@@ -99,6 +99,8 @@ export interface WorklistRow {
   next_action: string | null;
   next_action_due_at: string | null;
   next_action_set_at: string | null;
+  /** Already has an agent row (computed column has_agent); absent on the legacy select. */
+  has_agent?: boolean | null;
   waiting_reason: string | null;
   next_review_at: string | null;
   next_step_due_at: string | null;
@@ -207,8 +209,15 @@ export function fullName(row: Pick<WorklistRow, "first_name" | "last_name">): st
 }
 
 /** Closed = no further outreach expected. Everything else is an open item. */
+// Statuses that mean the person already said yes and moved on to contracting/onboarding.
+const CONVERTED_STATUSES = new Set(["contracting", "onboarding", "paid", "approved", "producing", "hired"]);
+
 export function isClosed(row: WorklistRow): boolean {
   if (row.do_not_contact_at) return true;
+  // Already joined: an agent row exists, or the application moved past recruiting.
+  // "Likely to join" used to rank people who had already joined first.
+  if (row.has_agent) return true;
+  if (CONVERTED_STATUSES.has((row.status ?? "").toLowerCase())) return true;
   if (row.last_contact_outcome === "not_interested") return true;
   const status = (row.status ?? "").toLowerCase();
   // "lapsed" is what Recruit Stages writes when someone is moved to Closed/Lost
@@ -317,7 +326,11 @@ const strongSignal = (row: WorklistRow): boolean =>
 /** 90+ days old and nobody set a follow-up by hand: kept out of every queue except "old" (and "mine"). */
 export function isStale(row: WorklistRow, nowMs: number): boolean {
   const age = ageDays(row, nowMs);
-  return age !== null && age >= OLD_AFTER_DAYS && !row.next_action_due_at;
+  // A follow-up only keeps an old lead in the main lists when a PERSON set it
+  // (next_action_set_at is written only by record_recruiting_outcome / set_recruiting_plan).
+  // Automation stamps next_action_due_at on everyone, so it can't count.
+  const personFollowUp = !!row.next_action_set_at && !!(row.next_action_due_at || row.next_review_at);
+  return age !== null && age >= OLD_AFTER_DAYS && !personFollowUp;
 }
 
 /** Queue membership. Every queue is a subset of the open items. */

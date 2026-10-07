@@ -1509,6 +1509,14 @@
         "raw": ""
       }
     ],
+    "content_cards_set_planned_week": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "content_cards_touch_updated_at": [
       {
         "all": [],
@@ -2747,6 +2755,18 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "fn_book_agent_name_known": [
+      {
+        "all": [
+          "p_name"
+        ],
+        "required": [
+          "p_name"
+        ],
+        "unnamed": false,
+        "raw": "p_name text"
       }
     ],
     "fn_book_audit_run": [
@@ -4825,6 +4845,18 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "has_agent": [
+      {
+        "all": [
+          "app"
+        ],
+        "required": [
+          "app"
+        ],
+        "unnamed": false,
+        "raw": "app applications"
       }
     ],
     "has_board_access": [

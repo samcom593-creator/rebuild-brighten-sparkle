@@ -40361,6 +40361,7 @@ export type Database = {
           id: string
           job: string
           owner: string
+          planned_week: string | null
           posted_at: string | null
           publish_evidence: string | null
           published_confirmed_at: string | null
@@ -40393,6 +40394,7 @@ export type Database = {
           id?: string
           job?: string
           owner?: string
+          planned_week?: string | null
           posted_at?: string | null
           publish_evidence?: string | null
           published_confirmed_at?: string | null
@@ -40425,6 +40427,7 @@ export type Database = {
           id?: string
           job?: string
           owner?: string
+          planned_week?: string | null
           posted_at?: string | null
           publish_evidence?: string | null
           published_confirmed_at?: string | null
@@ -141267,6 +141270,11 @@ export type Database = {
       }
       apex_is_admin: { Args: never; Returns: boolean }
       day_plan_ensure_seeded: { Args: never; Returns: number }
+      fn_book_agent_name_known: { Args: { p_name: string }; Returns: boolean }
+      has_agent: {
+        Args: { app: Database["public"]["Tables"]["applications"]["Row"] }
+        Returns: boolean
+      }
       book_flip_client_key: {
         Args: { p_client_name: string; p_deal_key: string; p_pipeline_client_id: number }
         Returns: string

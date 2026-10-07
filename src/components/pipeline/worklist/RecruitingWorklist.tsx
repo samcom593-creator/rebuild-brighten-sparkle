@@ -97,9 +97,14 @@ export function RecruitingWorklist() {
 
   const queueParam = params.get("queue");
   const legacyQueue = queueFromLegacyParams(params);
+  // The default is decided once, from the first load. Re-deciding on every render made the
+  // page jump from "Likely to join" to a one-person "My queue" after Sam's first save
+  // (saving makes him the owner, so counts.mine went 0 -> 1).
+  const defaultQueue = useRef<QueueKey | null>(null);
+  if (defaultQueue.current === null && rows.length > 0) defaultQueue.current = counts.mine > 0 ? "mine" : "likely";
   const queue: QueueKey = isQueueKey(queueParam)
     ? queueParam
-    : legacyQueue ?? (counts.mine > 0 ? "mine" : "likely");
+    : legacyQueue ?? defaultQueue.current ?? "likely";
   const view = params.get("view") === "board" ? "board" : "list";
   const search = params.get("q") ?? "";
   const license = params.get("license") ?? "all";

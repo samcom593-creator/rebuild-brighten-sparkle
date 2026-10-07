@@ -74,6 +74,7 @@ function caseKey(r: Pick<CarrierCaseRow, "agent_id" | "carrier_name">): string {
 // Sam 2026-10-06: the page listed every agent x carrier, mostly finished "Verified Ready to Write" rows,
 // so the few cases that need something were buried. Default to those; "All cases" is one tap away.
 const NEEDS = "__needs__";
+const TERMINAL = new Set(["verified_ready_to_write", "declined", "closed"]);
 
 export function CarrierCasesWorkspace() {
   const [searchParams] = useSearchParams();
@@ -93,7 +94,8 @@ export function CarrierCasesWorkspace() {
 
   const rows = useMemo(() => casesQ.data ?? [], [casesQ.data]);
   const queueCounts = useMemo(() => summarizeQueues(rows), [rows]);
-  const needsRows = useMemo(() => rows.filter((r) => r.lifecycle !== "verified_ready_to_write"), [rows]);
+  // Same terminal set as v_contracting_carrier_cases.is_terminal: declined and closed cases need nothing either.
+  const needsRows = useMemo(() => rows.filter((r) => !TERMINAL.has(r.lifecycle)), [rows]);
   const lastSync = useMemo(
     () => rows.reduce<string | null>((max, r) => (r.al_synced_at && (!max || r.al_synced_at > max) ? r.al_synced_at : max), null),
     [rows],
@@ -104,7 +106,7 @@ export function CarrierCasesWorkspace() {
     const q = CASE_QUEUES.find((x) => x.key === queue);
     const needle = search.trim().toLowerCase();
     return rows.filter((r) => {
-      if (queue === NEEDS && r.lifecycle === "verified_ready_to_write") return false;
+      if (queue === NEEDS && TERMINAL.has(r.lifecycle)) return false;
       if (q && r[q.column] !== true) return false;
       if (lifecycle !== ALL && r.lifecycle !== lifecycle) return false;
       if (!needle) return true;

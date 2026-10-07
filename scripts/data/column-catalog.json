@@ -2642,6 +2642,7 @@
       "id",
       "job",
       "owner",
+      "planned_week",
       "posted_at",
       "publish_evidence",
       "published_confirmed_at",

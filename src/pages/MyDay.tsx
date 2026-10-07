@@ -85,14 +85,18 @@ function fmtDur(min: number): string {
 function toTimeValue(min: number): string {
   return `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
 }
-function fromTimeValue(v: string): number {
-  const [h, m] = v.split(":").map(Number);
-  return (Number.isFinite(h) ? h : 0) * 60 + (Number.isFinite(m) ? m : 0);
+/** Minutes from an <input type="time"> value; null while the field is cleared or half-typed. */
+function fromTimeValue(v: string): number | null {
+  const m = /^(\d{1,2}):(\d{2})/.exec(v);
+  if (!m) return null;
+  const mins = Number(m[1]) * 60 + Number(m[2]);
+  return mins >= 0 && mins < 1440 ? mins : null;
 }
 
 export default function MyDay() {
-  const todayKey = phoenixDateKey();
+  const [todayKey, setTodayKey] = useState(phoenixDateKey);
   const [selected, setSelected] = useState(todayKey);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [done, setDone] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -102,6 +106,11 @@ export default function MyDay() {
   const [draft, setDraft] = useState<Draft[]>([]);
   const [savingEdit, setSavingEdit] = useState(false);
   const seeded = useRef(false);
+  const selectedRef = useRef(selected);
+  selectedRef.current = selected;
+  const flushing = useRef<Promise<void> | null>(null);
+  const flushAgain = useRef(false);
+  const lastWriteAt = useRef(0);
   const scrolledFor = useRef<string>("");
   const nowRef = useRef<HTMLDivElement | null>(null);
 
@@ -110,26 +119,53 @@ export default function MyDay() {
   const tone = THEME_TONE[theme.theme];
   const isToday = selected === todayKey;
 
-  // Minute clock for the "Now" highlight.
+  // Minute clock for the "Now" highlight. It also rolls the page over at midnight
+  // (Phoenix): if Sam was looking at "today", he moves to the new today, so a tap at
+  // 12:05 AM never lands on yesterday. Re-checked whenever the app comes back to the front.
   useEffect(() => {
-    const t = setInterval(() => setNowMin(phoenixMinutes()), 60_000);
-    return () => clearInterval(t);
+    const tick = () => {
+      setNowMin(phoenixMinutes());
+      const nextToday = phoenixDateKey();
+      setTodayKey((prev) => {
+        if (prev !== nextToday) setSelected((sel) => (sel === prev ? nextToday : sel));
+        return nextToday;
+      });
+    };
+    const t = setInterval(tick, 60_000);
+    const onVisible = () => { if (document.visibilityState === "visible") tick(); };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", tick);
+    return () => { clearInterval(t); document.removeEventListener("visibilitychange", onVisible); window.removeEventListener("focus", tick); };
   }, []);
 
-  // Push queued check changes; anything that fails stays queued.
-  const flushPending = useCallback(async () => {
-    const queue = readJson<Pending[]>(PENDING_KEY, []);
-    if (!queue.length) return;
-    setSave("saving");
-    const remaining: Pending[] = [];
-    for (const p of queue) {
-      const res = p.done
-        ? await supabase.from("day_plan_checks").upsert({ task_id: p.task_id, day: p.day }, { onConflict: "user_id,task_id,day" })
-        : await supabase.from("day_plan_checks").delete().eq("task_id", p.task_id).eq("day", p.day);
-      if (res.error) remaining.push(p);
-    }
-    lsSet(PENDING_KEY, JSON.stringify(remaining));
-    setSave(remaining.length ? "offline" : "saved");
+  // Push queued check changes; anything that fails stays queued. Only one push runs at
+  // a time (a call during a push asks for one more pass), and afterwards only the
+  // entries that were actually sent are removed, re-read from storage, so a tap made
+  // while a slow request was in flight can never be overwritten by an older copy.
+  const flushPending = useCallback((): Promise<void> => {
+    if (flushing.current) { flushAgain.current = true; return flushing.current; }
+    const run = async () => {
+      do {
+        flushAgain.current = false;
+        const queue = readJson<Pending[]>(PENDING_KEY, []);
+        if (!queue.length) break;
+        setSave("saving");
+        const sent: Pending[] = [];
+        for (const p of queue) {
+          const res = p.done
+            ? await supabase.from("day_plan_checks").upsert({ task_id: p.task_id, day: p.day }, { onConflict: "user_id,task_id,day" })
+            : await supabase.from("day_plan_checks").delete().eq("task_id", p.task_id).eq("day", p.day);
+          if (!res.error) { sent.push(p); lastWriteAt.current = Date.now(); }
+        }
+        const latest = readJson<Pending[]>(PENDING_KEY, []);
+        const left = latest.filter((q) => !sent.some((x) => x.task_id === q.task_id && x.day === q.day && x.done === q.done));
+        lsSet(PENDING_KEY, JSON.stringify(left));
+        setSave(left.length ? (sent.length < queue.length ? "offline" : "saving") : "saved");
+        if (sent.length < queue.length) break; // offline: the 30 s timer or 'online' retries
+      } while (flushAgain.current);
+    };
+    flushing.current = run().finally(() => { flushing.current = null; });
+    return flushing.current;
   }, []);
 
   useEffect(() => {
@@ -149,13 +185,17 @@ export default function MyDay() {
   }, []);
 
   const load = useCallback(async () => {
-    const wd = weekdayOf(selected);
+    const day = selected;
+    const startedAt = Date.now();
+    const wd = weekdayOf(day);
     const cachedTasks = readJson<Task[] | null>(`myday:tasks:${wd}`, null);
     if (cachedTasks) {
       setTasks(cachedTasks);
-      setDone(applyPendingTo(new Set(readJson<string[]>(`myday:checks:${selected}`, [])), selected));
+      setDone(applyPendingTo(new Set(readJson<string[]>(`myday:checks:${day}`, [])), day));
       setLoading(false);
     } else {
+      setTasks([]);
+      setDone(new Set());
       setLoading(true);
     }
     try {
@@ -166,28 +206,43 @@ export default function MyDay() {
       const [t, c] = await Promise.all([
         supabase.from("day_plan_tasks").select("id,weekday,start_min,duration_min,title,detail,category,sort")
           .eq("weekday", wd).eq("active", true).order("start_min", { ascending: true }).order("sort", { ascending: true }),
-        supabase.from("day_plan_checks").select("task_id").eq("day", selected),
+        supabase.from("day_plan_checks").select("task_id").eq("day", day),
       ]);
       if (t.error) throw t.error;
+      // Sam switched days while this was loading: this answer belongs to another day.
+      if (selectedRef.current !== day) return;
       const rows = (t.data ?? []) as Task[];
       setTasks(rows);
+      setLoadFailed(false);
       lsSet(`myday:tasks:${wd}`, JSON.stringify(rows));
-      if (!c.error) {
+      // Skip a checks answer that started before a tap was saved; it would undo the tap.
+      if (!c.error && lastWriteAt.current < startedAt) {
         const ids = (c.data ?? []).map((r) => r.task_id);
-        lsSet(`myday:checks:${selected}`, JSON.stringify(ids));
-        setDone(applyPendingTo(new Set(ids), selected));
+        lsSet(`myday:checks:${day}`, JSON.stringify(ids));
+        setDone(applyPendingTo(new Set(ids), day));
       }
     } catch { // empty-catch-allow:offline-uses-cache
+      if (selectedRef.current === day && !cachedTasks) setLoadFailed(true);
       setSave((s) => (s === "saving" ? s : "offline"));
     } finally {
-      setLoading(false);
+      if (selectedRef.current === day) setLoading(false);
     }
     void flushPending();
   }, [selected, applyPendingTo, flushPending]);
 
+  // A load that failed with nothing cached retries as soon as the phone is back online.
+  useEffect(() => {
+    if (!loadFailed) return;
+    const retry = () => { void load(); };
+    window.addEventListener("online", retry);
+    return () => window.removeEventListener("online", retry);
+  }, [loadFailed, load]);
+
   useEffect(() => { void load(); }, [load]);
 
   const toggle = useCallback(async (task: Task) => {
+    // Checking off a day that hasn't happened yet would record work that wasn't done.
+    if (selected > todayKey) { toast("You can check these off on the day."); return; }
     const nextDone = !done.has(task.id);
     setDone((prev) => {
       const next = new Set(prev);
@@ -199,7 +254,7 @@ export default function MyDay() {
     queue.push({ task_id: task.id, day: selected, done: nextDone });
     lsSet(PENDING_KEY, JSON.stringify(queue));
     await flushPending();
-  }, [done, selected, flushPending]);
+  }, [done, selected, todayKey, flushPending]);
 
   // Scroll to the current task once per opened day.
   const currentId = useMemo(() => {
@@ -220,11 +275,10 @@ export default function MyDay() {
       { key: todayKey, label: "Today" },
       { key: addDays(todayKey, 1), label: "Tomorrow" },
     ];
-    const todayWd = weekdayOf(todayKey);
-    for (let wd = 1; wd <= 7; wd++) {
-      const offset = (wd - todayWd + 7) % 7;
-      if (offset <= 1) continue;
-      list.push({ key: addDays(todayKey, offset), label: WEEKDAY_SHORT[wd - 1] });
+    // The rest of the coming week, in date order.
+    for (let offset = 2; offset <= 6; offset++) {
+      const key = addDays(todayKey, offset);
+      list.push({ key, label: WEEKDAY_SHORT[weekdayOf(key) - 1] });
     }
     return list;
   }, [todayKey]);
@@ -249,11 +303,14 @@ export default function MyDay() {
       for (const r of draft) {
         if (r.isNew) {
           if (r.hidden) continue;
-          const { error } = await supabase.from("day_plan_tasks").insert({
+          const { data, error } = await supabase.from("day_plan_tasks").insert({
             weekday, start_min: r.start_min, duration_min: r.duration_min, title: r.title.trim(),
             detail: r.detail, category: r.category, sort: r.sort, active: true,
-          });
+          }).select("id").single();
           if (error) throw error;
+          // Saved: from now on it is an existing task, so a retry after a later failure
+          // updates it instead of inserting a second copy.
+          patchDraft(r.id, { id: data.id, isNew: false });
         } else {
           const { error } = await supabase.from("day_plan_tasks").update({
             start_min: r.start_min, duration_min: r.duration_min, title: r.title.trim(), active: !r.hidden,
@@ -343,7 +400,7 @@ export default function MyDay() {
                   <input
                     type="time"
                     value={toTimeValue(r.start_min)}
-                    onChange={(e) => patchDraft(r.id, { start_min: fromTimeValue(e.target.value) })}
+                    onChange={(e) => { const v = fromTimeValue(e.target.value); if (v !== null) patchDraft(r.id, { start_min: v }); }}
                     className="mt-1 min-h-[48px] w-full rounded-lg border border-border bg-background px-3 text-base text-foreground"
                   />
                 </label>
@@ -373,6 +430,11 @@ export default function MyDay() {
               {savingEdit ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Save day
             </Button>
           </div>
+        </div>
+      ) : tasks.length === 0 && loadFailed ? (
+        <div className="rounded-2xl border border-dashed border-border p-8 text-center text-muted-foreground">
+          <p>Couldn't load your day. Check your signal.</p>
+          <Button variant="outline" className="mt-3 min-h-[44px]" onClick={() => void load()}>Try again</Button>
         </div>
       ) : tasks.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border p-8 text-center text-muted-foreground">

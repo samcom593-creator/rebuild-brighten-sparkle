@@ -120,7 +120,7 @@ const trainingLabel = `${BRAND.platformName} Training`;
  */
 export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
   { label: "Home", href: "/dashboard", icon: LayoutGrid },
-  { label: "My Day", href: "/dashboard/my-day", icon: ListChecks },
+  { label: "My Day", href: "/dashboard/my-day", icon: ListChecks, adminOnly: true }, // Sam's own schedule; agents must not get his routine
 
   {
     label: "Sell",
@@ -227,7 +227,6 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
  */
 export const APPLICANT_NAV: AgentCloudNavEntry[] = [
   { label: "Home", href: "/dashboard", icon: LayoutGrid },
-  { label: "My Day", href: "/dashboard/my-day", icon: ListChecks },
   { label: "Get licensed", href: "/get-licensed", icon: GraduationCap },
   { label: "Training", href: "/dashboard/training/library", icon: BookOpenCheck },
   { label: "Support desk", href: "/dashboard/help?tab=desk", icon: HelpCircle },

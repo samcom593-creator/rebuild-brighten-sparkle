@@ -28,10 +28,24 @@ describe("Likely to join / Older than 90 days (conversion-history priority)", ()
     expect(inQueue(stale, "mine", ctx)).toBe(true);
   });
   it("an old applicant with a follow-up someone set stays in the working queues", () => {
-    const planned = row("planned", 120, { next_action: "Call", next_action_due_at: daysAgo(1) });
+    const planned = row("planned", 120, { next_action: "Call", next_action_due_at: daysAgo(1), next_action_set_at: daysAgo(3) });
     expect(inQueue(planned, "old", ctx)).toBe(false);
     expect(inQueue(planned, "all_open", ctx)).toBe(true);
     expect(inQueue(planned, "overdue", ctx)).toBe(true);
+  });
+  it("an automation stamp alone does not keep a 90+ day lead in the working queues", () => {
+    const stamped = row("stamped", 120, { next_action: "MANAGER_CALL_72H_ESCALATION", next_action_due_at: daysAgo(30), next_action_set_at: null });
+    expect(inQueue(stamped, "old", ctx)).toBe(true);
+    expect(inQueue(stamped, "all_open", ctx)).toBe(false);
+  });
+  it("a waiting plan with a review date set by a person keeps an old lead active", () => {
+    const waiting = row("waiting", 120, { next_action_due_at: null, next_review_at: daysAgo(-1), next_action_set_at: daysAgo(1) });
+    expect(inQueue(waiting, "old", ctx)).toBe(false);
+  });
+  it("people who already joined are not recruiting leads", () => {
+    expect(inQueue(row("agent", 5, { license_status: "licensed", has_agent: true }), "likely", ctx)).toBe(false);
+    expect(inQueue(row("contracting", 5, { license_status: "licensed", status: "contracting" }), "likely", ctx)).toBe(false);
+    expect(inQueue(row("open", 5, { license_status: "licensed" }), "likely", ctx)).toBe(true);
   });
   it("likely is ranked licensed/hot/warm first, then newest", () => {
     const out = sortForQueue([row("new-unlic", 2), row("lic-old", 30, { license_status: "licensed" }), row("hot", 10, { ai_score_tier: "hot" })], "likely");

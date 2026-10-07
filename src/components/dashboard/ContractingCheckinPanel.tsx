@@ -121,6 +121,7 @@ function StatusBadges({ r }: { r: Row }) {
       <Badge variant="outline" className={cn("text-[12px]", STAGE_TONE[r.stage])}>{STAGE_LABEL[r.stage]}</Badge>
       {r.agent_status === "terminated" && <Badge variant="outline" className="border-rose-500/50 text-[12px] text-rose-300">Terminated in system</Badge>}
       {r.agent_status === "inactive" && <Badge variant="outline" className="border-amber-500/50 text-[12px] text-amber-300">Inactive in system</Badge>}
+      {r.agent_status === "suspended" && <Badge variant="outline" className="border-rose-500/50 text-[12px] text-rose-300">Locked out</Badge>}
       {!r.is_agent && <Badge variant="outline" className="text-[12px]">Not an agent yet · {r.source}</Badge>}
       {r.license_status === "licensed" ? (
         <Badge variant="outline" className="text-[12px]">Licensed</Badge>
@@ -138,6 +139,9 @@ function StatusBadges({ r }: { r: Row }) {
     </>
   );
 }
+
+/** Terminated, inactive, or locked out (agent_access_suspensions keeps the agent row active on purpose). */
+const isGone = (r: { agent_status: string }) => r.agent_status === "terminated" || r.agent_status === "inactive" || r.agent_status === "suspended";
 
 export function ContractingCheckinPanel() {
   const qc = useQueryClient();
@@ -163,8 +167,9 @@ export function ContractingCheckinPanel() {
   // Sam 2026-10-06: stop holding on to old agents. People terminated/inactive in the system leave this
   // call list (and its counts) unless you ask to see them.
   const [showGone, setShowGone] = useState(false);
-  const goneCount = useMemo(() => (data ?? []).filter((r) => r.agent_status === "terminated" || r.agent_status === "inactive").length, [data]);
-  const all = useMemo(() => (data ?? []).filter((r) => showGone || (r.agent_status !== "terminated" && r.agent_status !== "inactive")), [data, showGone]);
+  // "Gone" = terminated, inactive, or locked out (agent_access_suspensions; the rows stay active on purpose).
+  const goneCount = useMemo(() => (data ?? []).filter(isGone).length, [data]);
+  const all = useMemo(() => (data ?? []).filter((r) => showGone || !isGone(r)), [data, showGone]);
   const activeTab = TABS.find((t) => t.key === tab) ?? TABS[0];
 
   const rows = useMemo(() => {

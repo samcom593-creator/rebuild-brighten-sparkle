@@ -23,23 +23,32 @@ export const CATEGORIES = [
 const SUGGESTED_ACCOUNTS = ["Samuel James", "Fit for Daddy"];
 const catLabel = (k: string | null) => CATEGORIES.find((c) => c.k === k)?.label ?? "Untagged";
 const platLabel = (k: string) => PLATFORMS.find((p) => p.k === k)?.label ?? k;
-const dayKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-const localDay = (iso: string) => dayKey(new Date(iso));
+// Days are Phoenix days everywhere, so Analytics, Today and the Week tab agree on any device.
+const dayKey = (d: Date) => phoenixDateKey(d);
+const localDay = (iso: string) => phoenixDateKey(new Date(iso));
 const acct = (p: { platform: string; account: string | null }) => `${p.platform}|${(p.account ?? "").trim()}`;
 // Many Shorts are literally titled "unknown" on YouTube (vidIQ flagged it); show that plainly.
 const showTitle = (t: string | null) => (!t || t.trim().toLowerCase() === "unknown" ? "Untitled Short (no title on YouTube)" : t);
 const thumbOf = (p: { platform: string; external_id: string | null; thumb_url?: string | null }) =>
   p.thumb_url || (p.platform === "youtube" && p.external_id ? `https://i.ytimg.com/vi/${p.external_id}/hqdefault.jpg` : null);
-// Score 0-100: 50 = this account's normal (its median views over 30 days), 75 = 2x, 100 = 4x or better, 25 = half.
-function scorer(posts: { platform: string; account: string | null; views: number | null; posted_at: string }[]) {
+// Score 0-100: 50 = this account's normal for this FORMAT (median views over 30 days), 75 = 2x,
+// 100 = 4x or better, 25 = half. Long-form is only compared with long-form (a Short-heavy
+// baseline scored every long video 0-37), a baseline needs 5+ posts, and a post younger
+// than a day has no score yet (hours-old views against a 30-day median always look bad).
+type Scored = { platform: string; account: string | null; format: string; views: number | null; posted_at: string };
+const scoreKey = (p: Scored) => `${acct(p)}|${p.format}`;
+function scorer(posts: Scored[]) {
   const by = new Map<string, number[]>();
-  posts.forEach((p) => { if (p.views != null && Date.now() - new Date(p.posted_at).getTime() < 30 * 86400_000) { const k = acct(p); by.set(k, [...(by.get(k) ?? []), p.views]); } });
-  const med = new Map([...by].map(([k, v]) => { const s = [...v].sort((a, b) => a - b); return [k, s[Math.floor(s.length / 2)] || 1]; }));
-  return (p: { platform: string; account: string | null; views: number | null }) => (p.views == null ? null
-    : Math.max(0, Math.min(100, Math.round(50 + 25 * Math.log2(Math.max(p.views, 1) / (med.get(acct(p)) ?? 1))))));
+  posts.forEach((p) => { if (p.views != null && Date.now() - new Date(p.posted_at).getTime() < 30 * 86400_000) { const k = scoreKey(p); by.set(k, [...(by.get(k) ?? []), p.views]); } });
+  const med = new Map([...by].filter(([, v]) => v.length >= 5).map(([k, v]) => { const s = [...v].sort((a, b) => a - b); return [k, s[Math.floor(s.length / 2)] || 1]; }));
+  return (p: Scored) => {
+    const base = med.get(scoreKey(p));
+    if (p.views == null || base == null || Date.now() - new Date(p.posted_at).getTime() < 86400_000) return null;
+    return Math.max(0, Math.min(100, Math.round(50 + 25 * Math.log2(Math.max(p.views, 1) / base))));
+  };
 }
 const scoreTone = (n: number) => (n >= 80 ? "bg-emerald-500 text-emerald-950" : n >= 50 ? "bg-primary text-primary-foreground" : "bg-muted text-foreground");
-const fmtNum = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : String(n));
+const fmtNum = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1)}M` : n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : String(n));
 
 function Pill({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
@@ -62,17 +71,31 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
 function usePosts() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
   const load = useCallback(async () => {
-    const since = new Date(Date.now() - 60 * 86400_000).toISOString();
-    const { data, error } = await supabase.from("content_posts")
-      .select("id, platform, account, format, category, title, url, posted_at, views, likes, purposeful, source, external_id, thumb_url, watched_pct, duration_s")
-      .gte("posted_at", since).order("posted_at", { ascending: false }).limit(2000);
-    if (error) toast.error(`Couldn't load posts: ${error.message.slice(0, 100)}`);
-    setPosts((data ?? []) as Post[]);
+    // Everything on these pages looks back 30 days. PostgREST answers at most 1000 rows a
+    // request, so page until a short page instead of trusting a .limit() it silently caps.
+    const since = new Date(Date.now() - 30 * 86400_000).toISOString();
+    const all: Post[] = [];
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await supabase.from("content_posts")
+        .select("id, platform, account, format, category, title, url, posted_at, views, likes, purposeful, source, external_id, thumb_url, watched_pct, duration_s")
+        .gte("posted_at", since).order("posted_at", { ascending: false }).order("id", { ascending: false }).range(from, from + 999);
+      if (error) {
+        toast.error(`Couldn't load posts: ${error.message.slice(0, 100)}`);
+        setFailed(true);
+        setLoading(false);
+        return;
+      }
+      all.push(...((data ?? []) as Post[]));
+      if (!data || data.length < 1000) break;
+    }
+    setPosts(all);
+    setFailed(false);
     setLoading(false);
   }, []);
   useEffect(() => { void load(); }, [load]);
-  return { posts, setPosts, loading, load };
+  return { posts, setPosts, loading, failed, load };
 }
 
 type Source = { title?: string; channel?: string; views?: number; video_id?: string; url?: string } | null;
@@ -88,11 +111,21 @@ type Insights = {
 function useInsights() {
   const [ins, setIns] = useState<Insights | null>(null);
   useEffect(() => {
-    void supabase.from("system_settings").select("value").eq("key", "vidiq_insights").maybeSingle()
-      .then(({ data }) => { try { setIns(data?.value ? JSON.parse(data.value) : null); } catch { setIns(null); } });
+    void supabase.from("system_settings").select("value, updated_at").eq("key", "vidiq_insights").maybeSingle()
+      .then(({ data, error }) => {
+        if (error) { console.warn("vidiq_insights load failed", error.message); return; }
+        try {
+          const v = data?.value ? JSON.parse(data.value) as Insights : null;
+          // Fall back to the row's updated_at so the page can always say how old the snapshot is.
+          setIns(v ? { ...v, generated_at: v.generated_at ?? (data as { updated_at?: string } | null)?.updated_at } : null);
+        } catch { setIns(null); }
+      });
   }, []);
   return ins;
 }
+
+/** "as of Oct 7" for a snapshot, in Phoenix. */
+const asOf = (iso?: string) => (iso ? `as of ${new Date(iso).toLocaleDateString("en-US", { timeZone: "America/Phoenix", month: "short", day: "numeric" })}` : "");
 
 /** Where an idea came from: a small thumbnail + "Inspired by channel · views". */
 function SourceLink({ source }: { source?: Source }) {
@@ -188,7 +221,7 @@ export function PostedTodayStrip({ onOpen }: { onOpen: () => void }) {
 }
 
 export default function AccountsAnalytics() {
-  const { posts, setPosts, loading } = usePosts();
+  const { posts, setPosts, loading, failed, load: reloadPosts } = usePosts();
   const ins = useInsights();
   const [logOpen, setLogOpen] = useState(false);
   const [platform, setPlatform] = useState<string>("instagram");
@@ -220,16 +253,24 @@ export default function AccountsAnalytics() {
   const week = shown.filter((p) => Date.now() - new Date(p.posted_at).getTime() < 7 * 86400_000);
   const month = shown.filter((p) => Date.now() - new Date(p.posted_at).getTime() < 30 * 86400_000);
   const views30 = month.reduce((n, p) => n + (p.views ?? 0), 0);
-  const grid = useMemo(() => {
+  const [gridLimit, setGridLimit] = useState(24);
+  const recent30 = useMemo(() => {
     const recent = shown.filter((p) => Date.now() - new Date(p.posted_at).getTime() < 30 * 86400_000);
-    return (sort === "views" ? [...recent].sort((a, b) => (b.views ?? 0) - (a.views ?? 0)) : recent).slice(0, 24);
+    return sort === "views" ? [...recent].sort((a, b) => (b.views ?? 0) - (a.views ?? 0)) : recent;
   }, [shown, sort]);
+  const grid = useMemo(() => recent30.slice(0, gridLimit), [recent30, gridLimit]);
 
-  const days = useMemo(() => Array.from({ length: 14 }, (_, i) => {
-    const d = new Date(); d.setDate(d.getDate() - (13 - i)); const k = dayKey(d);
-    const ps = shown.filter((p) => localDay(p.posted_at) === k);
-    return { k, label: d.toLocaleDateString("en-US", { weekday: "short", day: "numeric" }), short: ps.filter((p) => p.format === "short").length, long: ps.filter((p) => p.format === "long").length };
-  }), [shown]);
+  // 14 Phoenix days. A Short counts once per day (busiest platform), like every other count here.
+  const days = useMemo(() => {
+    const shortBy = piecesByDay(shown, "short");
+    const longBy = piecesByDay(shown, "long");
+    const [y, m, d] = phoenixDateKey().split("-").map(Number);
+    return Array.from({ length: 14 }, (_, i) => {
+      const k = new Date(Date.UTC(y, m - 1, d) - (13 - i) * 86400_000).toISOString().slice(0, 10);
+      const label = new Date(`${k}T12:00:00Z`).toLocaleDateString("en-US", { timeZone: "UTC", weekday: "short", day: "numeric" });
+      return { k, label, short: shortBy[k] ?? 0, long: longBy[k] ?? 0 };
+    });
+  }, [shown]);
   const maxDay = Math.max(1, ...days.map((d) => d.short + d.long));
 
   const logPost = async () => {
@@ -289,10 +330,16 @@ export default function AccountsAnalytics() {
 
   return (
     <div className="flex flex-col gap-6">
+      {failed && (
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-foreground">
+          Couldn't load your posts, so the numbers below are not real yet.
+          <button type="button" onClick={() => void reloadPosts()} className="rounded-full border border-border px-3 py-1 font-semibold hover:border-primary/60">Retry</button>
+        </div>
+      )}
       <section aria-label="Totals" className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <Stat label="Posted today" value={String(countPieces(todayPosts, "short") + countPieces(todayPosts, "long"))} sub={`${countPieces(todayPosts, "short")} short · ${countPieces(todayPosts, "long")} long · ${todayPosts.length} platform posts`} />
-        <Stat label="Last 7 days" value={String(countPieces(week, "short") + countPieces(week, "long"))} sub={`${countPieces(week, "short")} short · ${countPieces(week, "long")} long · ${week.length} platform posts`} />
-        <Stat label="Views, 30 days" value={fmtNum(views30)} sub={`${month.length} posts`} />
+        <Stat label="Posted today" value={loading || failed ? "…" : String(countPieces(todayPosts, "short") + countPieces(todayPosts, "long"))} sub={`${countPieces(todayPosts, "short")} short · ${countPieces(todayPosts, "long")} long · ${todayPosts.length} platform posts`} />
+        <Stat label="Last 7 days" value={loading || failed ? "…" : String(countPieces(week, "short") + countPieces(week, "long"))} sub={`${countPieces(week, "short")} short · ${countPieces(week, "long")} long · ${week.length} platform posts`} />
+        <Stat label="Views, 30 days" value={loading || failed ? "…" : fmtNum(views30)} sub={`${month.length} posts`} />
         <Stat label="YouTube subs" value={yt?.subscribers != null ? fmtNum(yt.subscribers) : "—"} sub="updates every 3 hours" />
       </section>
 
@@ -310,11 +357,11 @@ export default function AccountsAnalytics() {
           <h2 className="text-lg font-bold text-foreground">Winners this week</h2>
           <span className="text-sm text-muted-foreground">score 50 = your normal, 75 = double, 100 = 4x</span>
         </div>
-        {winnersWeek.length === 0 ? <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">No posts with views this week yet.</div> : (
+        {winnersWeek.length === 0 ? <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">{loading ? "Loading…" : "No posts with views this week yet."}</div> : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             {winnersWeek.map((p, rank) => { const tb = thumb(p); const sc = score(p); return (
               <a key={p.id} href={p.url ?? undefined} target="_blank" rel="noopener noreferrer" className="block rounded-lg p-1 hover:bg-muted/40">
-                <div className="relative aspect-[9/16] overflow-hidden rounded-lg bg-muted">
+                <div className={`relative overflow-hidden rounded-lg bg-muted ${p.format === "long" ? "aspect-video" : "aspect-[9/16]"}`}>
                   {tb ? <img src={tb} alt="" loading="lazy" className="h-full w-full object-cover" /> : null}
                   <span className="absolute left-2 top-2 rounded bg-background/85 px-1.5 py-0.5 text-[12px] font-bold text-foreground">#{rank + 1} · {platLabel(p.platform)}</span>
                   {sc != null && <span className={`absolute right-2 top-2 rounded-full px-2 py-0.5 text-[13px] font-bold ${scoreTone(sc)}`}>{sc}</span>}
@@ -329,7 +376,7 @@ export default function AccountsAnalytics() {
 
       {coach && (
         <section aria-label="Coach" className="flex flex-col gap-3">
-          <h2 className="text-lg font-bold text-foreground">Coach</h2>
+          <h2 className="text-lg font-bold text-foreground">Coach <span className="text-sm font-normal text-muted-foreground">{asOf(ins?.generated_at)}</span></h2>
           <div className="grid gap-3 md:grid-cols-3">
             {coachCols.map((c) => (
               <div key={c.k} className="rounded-lg border border-border bg-card p-4">
@@ -356,7 +403,7 @@ export default function AccountsAnalytics() {
 
       {ideasByDay.length > 0 && (
         <section aria-label="Ideas for this week" className="flex flex-col gap-3">
-          <h2 className="text-lg font-bold text-foreground">Ideas for this week</h2>
+          <h2 className="text-lg font-bold text-foreground">Ideas for this week <span className="text-sm font-normal text-muted-foreground">{asOf(ins?.generated_at)}</span></h2>
           {ideasByDay.map(({ d, items }) => { const dt = DAY_THEMES[d]; return (
             <div key={d} className="flex flex-col gap-2">
               <div className="flex flex-wrap items-center gap-2">
@@ -437,14 +484,14 @@ export default function AccountsAnalytics() {
               <div className="flex w-full flex-col justify-end overflow-hidden rounded-sm" style={{ height: Math.max(2, Math.round(((d.short + d.long) / maxDay) * 96)) }}>
                 <div className="bg-sky-400" style={{ flex: d.long }} /><div className="bg-primary" style={{ flex: d.short }} />
               </div>
-              <span className="text-[12px] text-muted-foreground">{d.label.split(" ")[0]}</span>
+              <span className="text-[12px] text-muted-foreground">{new Date(`${d.k}T12:00:00Z`).toLocaleDateString("en-US", { timeZone: "UTC", weekday: "short" })}</span>
             </div>
           ))}
         </div>
       </section>
 
       <details aria-label="Your videos" className="group flex flex-col gap-3">
-        <summary className="cursor-pointer text-base font-bold text-foreground">Show all posts ({grid.length})</summary>
+        <summary className="cursor-pointer text-base font-bold text-foreground">Recent posts ({grid.length} of {recent30.length}, last 30 days)</summary>
         <div className="mt-3 flex flex-col gap-3">
         <div className="flex items-center gap-2">
           <h2 className="text-base font-bold text-foreground">Your posts, last 30 days</h2>
@@ -475,6 +522,11 @@ export default function AccountsAnalytics() {
               : <div key={p.id} className="rounded-lg p-1">{inner}</div>;
           })}
         </div>
+        {grid.length < recent30.length && (
+          <button type="button" onClick={() => setGridLimit((n) => n + 24)} className="mt-3 rounded-full border border-border px-4 py-1.5 text-sm font-semibold text-foreground hover:border-primary/60">
+            Show {Math.min(24, recent30.length - grid.length)} more
+          </button>
+        )}
         </div>
       </details>
     </div>

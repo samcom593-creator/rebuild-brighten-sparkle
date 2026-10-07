@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-rpc-column-vocabulary.sh (bot_sql -> pg_proc + pg_rewrite)",
- "_generated_at": "2026-10-07T15:20:23Z",
+ "_generated_at": "2026-10-07T15:42:49Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "check-enum-filter-literals.mjs grades literals inside supabase.from().eq() chains. This is the other half of the same class: a status word that arrives from an RPC and is compared in JavaScript, where the return type is text and every wrong word type-checks. Per (function, returned column) this records the relation columns of that name reachable from the function body and the literals the function synthesises itself. It deliberately records CANDIDATES rather than one resolved source: provenance from a body regex is a guess, so check-rpc-status-literals.mjs refuses a literal only when NO candidate vocabulary and no body literal accepts it.",
  "_vocabulary_source": "scripts/data/enum-catalog.json (check_vocab + column_enum + enums). Not copied here on purpose, so the two guards read one snapshot and cannot drift.",
@@ -121,6 +121,7 @@
   "client_birthday_wisher": "jsonb",
   "commission_ledger_reconcile": "jsonb",
   "content_can_access": "boolean",
+  "content_cards_set_planned_week": "trigger",
   "content_cards_touch_updated_at": "trigger",
   "content_cards_workflow_guard": "trigger",
   "content_clips_canon_tags": "text[]",
@@ -217,6 +218,7 @@
   "fn_block_new_agent_identity_dup": "trigger",
   "fn_block_profile_email_dup": "trigger",
   "fn_block_retired_cloud_outbox": "trigger",
+  "fn_book_agent_name_known": "boolean",
   "fn_book_audit_run": "jsonb",
   "fn_book_parity_anchor": "timestamp with time zone",
   "fn_book_policy_identity_ok": "boolean",
@@ -397,6 +399,7 @@
   "gtrgm_same": "internal",
   "gtrgm_union": "gtrgm",
   "handle_new_user": "trigger",
+  "has_agent": "boolean",
   "has_board_access": "boolean",
   "has_role": "boolean",
   "hh_activity_append_only": "trigger",
@@ -2873,6 +2876,7 @@
     "producing",
     "public",
     "ready_for_training",
+    "suspended",
     "terminated"
    ]
   },
@@ -2892,6 +2896,7 @@
     "producing",
     "public",
     "ready_for_training",
+    "suspended",
     "terminated"
    ]
   },
@@ -2913,6 +2918,7 @@
     "producing",
     "public",
     "ready_for_training",
+    "suspended",
     "terminated"
    ]
   },
@@ -2932,6 +2938,7 @@
     "producing",
     "public",
     "ready_for_training",
+    "suspended",
     "terminated"
    ]
   },
@@ -2953,6 +2960,7 @@
     "producing",
     "public",
     "ready_for_training",
+    "suspended",
     "terminated"
    ]
   },
@@ -2974,6 +2982,7 @@
     "producing",
     "public",
     "ready_for_training",
+    "suspended",
     "terminated"
    ]
   },
@@ -2993,6 +3002,7 @@
     "producing",
     "public",
     "ready_for_training",
+    "suspended",
     "terminated"
    ]
   },
@@ -3015,6 +3025,7 @@
     "producing",
     "public",
     "ready_for_training",
+    "suspended",
     "terminated"
    ]
   },
@@ -3039,6 +3050,7 @@
     "producing",
     "public",
     "ready_for_training",
+    "suspended",
     "terminated"
    ]
   },
@@ -3058,6 +3070,7 @@
     "producing",
     "public",
     "ready_for_training",
+    "suspended",
     "terminated"
    ]
   },
@@ -3077,6 +3090,7 @@
     "producing",
     "public",
     "ready_for_training",
+    "suspended",
     "terminated"
    ]
   },
@@ -3096,6 +3110,7 @@
     "producing",
     "public",
     "ready_for_training",
+    "suspended",
     "terminated"
    ]
   },
@@ -3117,6 +3132,7 @@
     "producing",
     "public",
     "ready_for_training",
+    "suspended",
     "terminated"
    ]
   },
@@ -3138,6 +3154,7 @@
     "producing",
     "public",
     "ready_for_training",
+    "suspended",
     "terminated"
    ]
   },
@@ -3159,6 +3176,7 @@
     "producing",
     "public",
     "ready_for_training",
+    "suspended",
     "terminated"
    ]
   },
@@ -3182,6 +3200,7 @@
     "producing",
     "public",
     "ready_for_training",
+    "suspended",
     "terminated"
    ]
   },
@@ -3201,6 +3220,7 @@
     "producing",
     "public",
     "ready_for_training",
+    "suspended",
     "terminated"
    ]
   },
@@ -3222,6 +3242,7 @@
     "producing",
     "public",
     "ready_for_training",
+    "suspended",
     "terminated"
    ]
   },
@@ -3243,6 +3264,7 @@
     "producing",
     "public",
     "ready_for_training",
+    "suspended",
     "terminated"
    ]
   },
@@ -3267,6 +3289,7 @@
     "producing",
     "public",
     "ready_for_training",
+    "suspended",
     "terminated"
    ]
   },
@@ -3286,6 +3309,7 @@
     "producing",
     "public",
     "ready_for_training",
+    "suspended",
     "terminated"
    ]
   },
@@ -3312,6 +3336,7 @@
     "producing",
     "public",
     "ready_for_training",
+    "suspended",
     "terminated"
    ]
   },
@@ -3331,6 +3356,7 @@
     "producing",
     "public",
     "ready_for_training",
+    "suspended",
     "terminated"
    ]
   },
@@ -3352,6 +3378,7 @@
     "producing",
     "public",
     "ready_for_training",
+    "suspended",
     "terminated"
    ]
   },
@@ -7287,15 +7314,27 @@
     "public"
    ]
   },
+  "monday_starters.application_id": {
+   "candidates": [],
+   "body_literals": [
+    "awaiting_response",
+    "confirmed",
+    "inactive",
+    "likely",
+    "public",
+    "terminated"
+   ]
+  },
   "monday_starters.email": {
    "candidates": [
     "applications.email",
     "profiles.email"
    ],
    "body_literals": [
-    "agent",
-    "application",
+    "awaiting_response",
+    "confirmed",
     "inactive",
+    "likely",
     "public",
     "terminated"
    ]
@@ -7303,9 +7342,10 @@
   "monday_starters.manager": {
    "candidates": [],
    "body_literals": [
-    "agent",
-    "application",
+    "awaiting_response",
+    "confirmed",
     "inactive",
+    "likely",
     "public",
     "terminated"
    ]
@@ -7313,9 +7353,10 @@
   "monday_starters.name": {
    "candidates": [],
    "body_literals": [
-    "agent",
-    "application",
+    "awaiting_response",
+    "confirmed",
     "inactive",
+    "likely",
     "public",
     "terminated"
    ]
@@ -7326,9 +7367,10 @@
     "profiles.phone"
    ],
    "body_literals": [
-    "agent",
-    "application",
+    "awaiting_response",
+    "confirmed",
     "inactive",
+    "likely",
     "public",
     "terminated"
    ]
@@ -7338,9 +7380,10 @@
     "applications.source"
    ],
    "body_literals": [
-    "agent",
-    "application",
+    "awaiting_response",
+    "confirmed",
     "inactive",
+    "likely",
     "public",
     "terminated"
    ]

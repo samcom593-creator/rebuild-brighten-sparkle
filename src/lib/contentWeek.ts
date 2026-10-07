@@ -80,3 +80,9 @@ export function piecesByDay(posts: PostLike[], format: string): Record<string, n
 export function countPieces(posts: PostLike[], format: string): number {
   return Object.values(piecesByDay(posts, format)).reduce((sum, n) => sum + n, 0);
 }
+
+/** YYYY-MM-DD of this week's Monday in Phoenix (matches content_cards.planned_week). */
+export function phoenixWeekStart(now: Date = new Date()): string {
+  const [y, m, d] = phoenixDateKey(now).split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d) - (phoenixWeekday(now) - 1) * 86400_000).toISOString().slice(0, 10);
+}

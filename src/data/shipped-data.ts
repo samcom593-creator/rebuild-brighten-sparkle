@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Fixes from a full review of this week's work: the Leaderboard hero showed $1.87M for October (a stranger's $1.82M was still counted; real is about $44K), Sunday starter reminders could never find anyone (they now read Recruit Pipeline's Expected start), and Launch Board drag and drop now works on phones.",
+    detail: "Also: My Day is yours only (agents were getting your routine), never saves a tap to yesterday after midnight, and can't lose or undo a tap on bad signal. Week plans reset each Monday instead of sitting there forever. Analytics counts each Short once, uses Phoenix days, and only scores videos against their own format. Recruiting stops listing people who already joined and stops letting automation stamps hide 90+ day leads. The call list hides the people you locked out on Sep 7. Managers can no longer read or delete your content data.",
+    commit: "session-review-fixes-2026-10-07",
+  },
+  {
+    ts: "today",
     label: "New Book Flips page (sidebar, My Business): every policy in a carrier's book with the client's number, ready to call. Combined and American Home Life first, then Royal Neighbors and Transamerica. One tap logs No answer, Callback, Appointment, Not interested, Bad number or Do not call, and Resold posts the new deal so it counts in production.",
     detail: "793 policies across the four books, each with its own row even when carriers reused a placeholder policy number for different people. Phones come from the client record, or from a posted deal only when the client's name matches too, so a call never goes to a stranger. Statuses are from the Sep 4 book import; Combined has no known statuses, so the page says to confirm on the call.",
     commit: "book-flips-2026-10-07",

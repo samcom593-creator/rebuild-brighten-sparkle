@@ -55,6 +55,8 @@ const BASE_COLUMNS = [
 const WORKSPACE_COLUMNS = [
   "time_zone", "time_zone_source", "recruiting_owner_user_id", "last_contact_outcome", "last_contact_outcome_at",
   "last_contact_channel", "next_action_set_at", "waiting_reason", "next_review_at", "do_not_contact_at",
+  // Computed column (20261007120000): this applicant already has an agent row.
+  "has_agent",
 ] as const;
 
 export const WORKLIST_SELECT = [...BASE_COLUMNS, ...WORKSPACE_COLUMNS].join(",");

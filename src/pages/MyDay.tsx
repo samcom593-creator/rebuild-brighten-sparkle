@@ -411,7 +411,7 @@ export default function MyDay() {
                     <p className={cn("mt-1 text-base font-bold leading-snug", isDone && "line-through decoration-2 decoration-foreground dark:decoration-white")}>
                       {t.title}
                     </p>
-                    {t.category === "content" ? <p className="mt-0.5 text-sm font-medium text-primary">{theme.angle}</p> : null}
+                    {t.category === "content" ? <p className="mt-0.5 text-sm font-medium text-primary">{/tomorrow/i.test(t.title) ? `Tomorrow: ${DAY_THEMES[(weekday % 7) + 1].angle}` : theme.angle}</p> : null}
                     {t.detail ? <p className="mt-1 text-sm text-muted-foreground">{t.detail}</p> : null}
                   </div>
                 </div>

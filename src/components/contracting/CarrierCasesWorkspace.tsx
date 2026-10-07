@@ -71,11 +71,15 @@ function caseKey(r: Pick<CarrierCaseRow, "agent_id" | "carrier_name">): string {
   return `${r.agent_id}::${r.carrier_name}`;
 }
 
+// Sam 2026-10-06: the page listed every agent x carrier, mostly finished "Verified Ready to Write" rows,
+// so the few cases that need something were buried. Default to those; "All cases" is one tap away.
+const NEEDS = "__needs__";
+
 export function CarrierCasesWorkspace() {
   const [searchParams] = useSearchParams();
   const [queue, setQueue] = useState<string>(() => {
     const requested = searchParams.get("queue");
-    return requested && CASE_QUEUES.some((q) => q.key === requested) ? requested : ALL;
+    return requested && CASE_QUEUES.some((q) => q.key === requested) ? requested : requested === ALL ? ALL : NEEDS;
   });
   const [lifecycle, setLifecycle] = useState<string>(ALL);
   const [search, setSearch] = useState(() => searchParams.get("q") ?? "");
@@ -89,6 +93,7 @@ export function CarrierCasesWorkspace() {
 
   const rows = useMemo(() => casesQ.data ?? [], [casesQ.data]);
   const queueCounts = useMemo(() => summarizeQueues(rows), [rows]);
+  const needsRows = useMemo(() => rows.filter((r) => r.lifecycle !== "verified_ready_to_write"), [rows]);
   const lastSync = useMemo(
     () => rows.reduce<string | null>((max, r) => (r.al_synced_at && (!max || r.al_synced_at > max) ? r.al_synced_at : max), null),
     [rows],
@@ -99,6 +104,7 @@ export function CarrierCasesWorkspace() {
     const q = CASE_QUEUES.find((x) => x.key === queue);
     const needle = search.trim().toLowerCase();
     return rows.filter((r) => {
+      if (queue === NEEDS && r.lifecycle === "verified_ready_to_write") return false;
       if (q && r[q.column] !== true) return false;
       if (lifecycle !== ALL && r.lifecycle !== lifecycle) return false;
       if (!needle) return true;
@@ -149,6 +155,7 @@ export function CarrierCasesWorkspace() {
       )}
 
       <div className="flex gap-1 overflow-x-auto border-b border-border" role="tablist" aria-label="Carrier case queues">
+        <QueueTab active={queue === NEEDS} onClick={() => setQueue(NEEDS)} label="Needs something" cases={needsRows.length} people={distinctPeople(needsRows)} />
         <QueueTab active={queue === ALL} onClick={() => setQueue(ALL)} label="All cases" cases={rows.length} people={distinctPeople(rows)} />
         {CASE_QUEUES.map((q) => (
           <QueueTab

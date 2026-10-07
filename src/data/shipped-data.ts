@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "No more strangers on the boards: production drops AgentLink rows that match none of your agents (the $1.8M 'Willard Herald' was one), and Contracting opens on the cases that still need something instead of every finished carrier.",
+    detail: "8 unmatched AgentLink rows excluded at the single production view, so home, leaderboard and hero agree. Your agents' own pre-August history (1,087 rows) is kept. 'All cases' is still one tap away.",
+    commit: "no-strangers-contracting-needs-2026-10-06",
+  },
+  {
+    ts: "today",
     label: "Recruiting opens on 'Likely to join': licensed or hot/warm applicants from the last 47 days plus anyone from the last 14, licensed first. Applicants older than 90 days with no follow-up set move to their own 'Older than 90 days' list, so All open drops from 684 to 280.",
     detail: "Built from 854 applications and 71 joins: licensed join 37% vs 2% unlicensed, hot/warm tiers ~50% vs ~4%, 80% of joins within 47 days. Launch Board ideas now come from your 967-video Watch Later plus vidIQ breakouts, tagged Long or Short.",
     commit: "recruiting-likely-to-join-2026-10-06",

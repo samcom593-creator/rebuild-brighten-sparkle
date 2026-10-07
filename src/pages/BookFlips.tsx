@@ -9,11 +9,12 @@ import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
 import { SubmitDealDialog, type PostedDealReceipt } from "@/components/deals/SubmitDealDialog";
 import { formatTimeAgo } from "@/lib/dateUtils";
+import { contactLinkProps, formatPhoneDisplay, phoneHref } from "@/lib/phone";
 import { cn } from "@/lib/utils";
 import {
   BOOK_FILTERS, FLIP_FILTERS, FLIP_LABEL, FLIP_TONE, GROUP_TONE, PRIORITY_CARRIERS, SORTS,
-  displayName, formatPhone, matchesBook, matchesFlip, matchesSearch, money, monthsInForceText, phoenixTime,
-  shortDate, sortPolicies, splitName, telHref,
+  displayName, matchesBook, matchesFlip, matchesSearch, money, monthsInForceText, phoenixTime,
+  shortDate, sortPolicies, splitName,
   type BookFilter, type BookPolicy, type FlipFilter, type FlipStatus, type SortKey,
 } from "@/lib/bookFlips";
 
@@ -363,14 +364,15 @@ function PolicyCard({ p, busy, onSet }: { p: BookPolicy; busy: boolean; onSet: (
   const [panel, setPanel] = useState<"none" | "callback" | "note">("none");
   const [cb, setCb] = useState(defaultCallbackLocal);
   const [note, setNote] = useState("");
-  const tel = p.do_not_call ? null : telHref(p.phone);
+  // Phone: native dialer; laptop: Google Voice (the site-wide rule in @/lib/phone).
+  const tel = p.do_not_call ? null : phoneHref(p.phone);
   const name = displayName(p.client_name) || "Name missing";
   const { firstName, lastName } = splitName(p);
   const meta = [p.age_years ? `${p.age_years} yrs` : "", p.state ?? "", p.best_time_to_call ? `best time ${p.best_time_to_call}` : ""].filter(Boolean).join(" · ");
 
   const copyPhone = async () => {
     try {
-      await navigator.clipboard.writeText(formatPhone(p.phone));
+      await navigator.clipboard.writeText(formatPhoneDisplay(p.phone));
       toast.success("Phone copied.");
     } catch {
       toast.error("Could not copy. Long-press the number instead.");
@@ -395,8 +397,8 @@ function PolicyCard({ p, busy, onSet }: { p: BookPolicy; busy: boolean; onSet: (
             <PhoneOff className="h-4 w-4" aria-hidden /> Do not call
           </span>
         ) : tel ? (
-          <a href={tel} className="inline-flex h-11 items-center gap-2 rounded-md bg-primary px-4 text-base font-bold text-primary-foreground">
-            <Phone className="h-4 w-4" aria-hidden /> {formatPhone(p.phone)}
+          <a href={tel} {...contactLinkProps(tel)} className="inline-flex h-11 items-center gap-2 rounded-md bg-primary px-4 text-base font-bold text-primary-foreground">
+            <Phone className="h-4 w-4" aria-hidden /> {formatPhoneDisplay(p.phone)}
           </a>
         ) : (
           <span className="text-sm text-muted-foreground">No phone on file</span>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  formatPhone, isCallbackDue, matchesBook, matchesFlip, matchesSearch, monthsInForceText, sortPolicies, splitName, telHref,
+  isCallbackDue, matchesBook, matchesFlip, matchesSearch, monthsInForceText, sortPolicies, splitName,
   type BookPolicy,
 } from "@/lib/bookFlips";
 
@@ -52,11 +52,7 @@ describe("book flip rules", () => {
     expect(sortPolicies(list, "name").map((p) => p.client_name)).toEqual(["Al", "Amy", "Bob", "Zed"]);
   });
 
-  it("formats phones and builds dialable links", () => {
-    expect(telHref("(602) 555-0101")).toBe("tel:+16025550101");
-    expect(telHref("1-602-555-0101")).toBe("tel:+16025550101");
-    expect(telHref("555")).toBeNull();
-    expect(formatPhone("6025550101")).toBe("(602) 555-0101");
+  it("months in force and name splitting", () => {
     expect(monthsInForceText(14)).toBe("1 yr 2 mo in force");
     expect(monthsInForceText(0)).toBe("under 1 mo in force");
     expect(splitName(base({ client_name: "Mary Ann Smith" }))).toEqual({ firstName: "Mary", lastName: "Ann Smith" });

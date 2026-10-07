@@ -176,20 +176,7 @@ export function sortPolicies<T extends Pick<BookPolicy, "months_in_force" | "mon
   return out;
 }
 
-/** tel: link for a US number; null when there is nothing dialable. */
-export function telHref(phone: string | null | undefined): string | null {
-  const d = digits(phone);
-  if (d.length === 10) return `tel:+1${d}`;
-  if (d.length === 11 && d.startsWith("1")) return `tel:+${d}`;
-  return d.length >= 7 ? `tel:${d}` : null;
-}
-
-export function formatPhone(phone: string | null | undefined): string {
-  const d = digits(phone);
-  const ten = d.length === 11 && d.startsWith("1") ? d.slice(1) : d;
-  if (ten.length === 10) return `(${ten.slice(0, 3)}) ${ten.slice(3, 6)}-${ten.slice(6)}`;
-  return (phone ?? "").trim();
-}
+// Phone display and dial links come from @/lib/phone (formatPhoneDisplay, phoneHref), the site's one home for them.
 
 export function monthsInForceText(m: number | null | undefined): string {
   if (m === null || m === undefined) return "";

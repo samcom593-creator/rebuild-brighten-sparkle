@@ -7,6 +7,8 @@
 // Every real send is claimed in monday_starter_notifications first, so a double fire
 // can never double-send; a claim that ended "failed" may be retried by a later run.
 // {"dry_run":true} sends the emails to test_to only and sends no texts or pushes.
+import { postNtfyGraded } from "../_shared/ntfy-post.ts";
+
 const SB = Deno.env.get("SUPABASE_URL")!;
 const KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const H = { apikey: KEY, Authorization: `Bearer ${KEY}`, "Content-Type": "application/json" };
@@ -165,11 +167,10 @@ Deno.serve(async (req) => {
   const summary = starters.length
     ? `${starters.length} starting ${when}. Emails sent ${count("emailed", "sent")}, texts sent ${count("texted", "sent")}, texts skipped (no carrier) ${count("texted", "skipped")}, failed ${count("emailed", "failed") + count("texted", "failed")}. Digest to ${recipients.size} inbox(es).`
     : `Nobody has an Expected start of ${when}. Set it in Recruit Pipeline.`;
-  if (!dry) {
-    await fetch(SAM_NTFY, { method: "POST", headers: { Title: "Sunday starter reminders", Tags: "calendar" }, body: summary })
-      .catch((e) => console.error("ntfy push failed", e));
-  }
-  return new Response(JSON.stringify({ ok: true, monday, dry_run: dry, starters: starters.length, managers: managers.length, summary, results: out }), {
+  // Graded: a refused push (ntfy answers 429 as a normal response) is reported, not assumed delivered.
+  const push = dry ? null : await postNtfyGraded(SAM_NTFY, { title: "Sunday starter reminders", body: summary, tags: "calendar" });
+  if (push && !push.ok) console.error("ntfy push refused", push.receipt);
+  return new Response(JSON.stringify({ ok: true, monday, dry_run: dry, starters: starters.length, managers: managers.length, summary, push: push?.receipt ?? null, results: out }), {
     headers: { "Content-Type": "application/json" },
   });
 });

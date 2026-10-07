@@ -16,6 +16,16 @@ interface VitalEntry {
    * another route and the metric is filed against a page that never produced it.
    */
   url: string | null;
+  /** INP only: which interaction this was and where its time went. See describeInteraction(). */
+  attribution?: InteractionAttribution;
+}
+
+interface InteractionAttribution {
+  event: string;
+  target: string | null;
+  input_delay: number;
+  processing: number;
+  presentation: number;
 }
 
 interface LayoutShiftEntry extends PerformanceEntry {
@@ -25,6 +35,11 @@ interface LayoutShiftEntry extends PerformanceEntry {
 
 interface EventTimingEntry extends PerformanceEntry {
   readonly duration: number;
+  /** 0 (or absent) for events that are not part of a user interaction: hover, pointer enter/leave, mouse moves. */
+  readonly interactionId?: number;
+  readonly processingStart?: number;
+  readonly processingEnd?: number;
+  readonly target?: EventTarget | null;
 }
 
 interface EventTimingObserverInit extends PerformanceObserverInit {
@@ -94,12 +109,52 @@ function telemetrySessionId(): string | null {
   }
 }
 
+/**
+ * Where an interaction landed, without reading anything a visitor typed or
+ * anything rendered about them: tag plus id, else data-testid, else the first
+ * two classes. analytics_events accepts anonymous inserts, so text content is
+ * never read. null when the element was already gone from the DOM, which React
+ * re-renders make common.
+ */
+function describeTarget(target: EventTarget | null | undefined): string | null {
+  if (!target || typeof (target as Element).tagName !== "string") return null;
+  const el = target as Element;
+  let out = el.tagName.toLowerCase();
+  const testId = el.getAttribute?.("data-testid");
+  if (el.id) out += `#${el.id}`;
+  else if (testId) out += `[data-testid=${testId}]`;
+  else if (typeof el.className === "string" && el.className.trim()) {
+    out += `.${el.className.trim().split(/\s+/).slice(0, 2).join(".")}`;
+  }
+  return out.slice(0, 80);
+}
+
+/**
+ * The three phases INP is made of, so a slow row says what to fix: a long
+ * input_delay means the main thread was busy before the handler ran (hydration,
+ * a long task), processing is the handler itself, presentation is the render
+ * and paint after it. duration is rounded to 8ms by the browser, so phases are
+ * clamped at 0 rather than reported as small negatives.
+ */
+function describeInteraction(entry: EventTimingEntry): InteractionAttribution {
+  const start = entry.startTime;
+  const pStart = entry.processingStart ?? start;
+  const pEnd = entry.processingEnd ?? pStart;
+  return {
+    event: entry.name,
+    target: describeTarget(entry.target),
+    input_delay: Math.max(0, Math.round(pStart - start)),
+    processing: Math.max(0, Math.round(pEnd - pStart)),
+    presentation: Math.max(0, Math.round(start + entry.duration - pEnd)),
+  };
+}
+
 function buildRows(batch: VitalEntry[]) {
   const sessionId = telemetrySessionId();
   return batch.map((v) => ({
     event_name: `web_vital.${v.name}`,
     event_category: "performance",
-    properties: { value: v.value, rating: v.rating },
+    properties: v.attribution ? { value: v.value, rating: v.rating, ...v.attribution } : { value: v.value, rating: v.rating },
     url: v.url,
     user_agent: typeof navigator !== "undefined" ? navigator.userAgent : null,
     session_id: sessionId,
@@ -201,8 +256,27 @@ export function initWebVitals() {
         // discarding it post-hide costs nothing; INP accumulates over the whole
         // visit. Buying a 0.34% cleanup with an unmeasured share of real
         // interactions is the trade this repo keeps calling a fix.
-        if (entry.duration > 40) {
-          enqueue({ name: "INP", value: entry.duration, rating: entry.duration < 200 ? "good" : entry.duration < 500 ? "needs-improvement" : "poor" });
+        //
+        // Only entries with an interactionId are interactions. The "event" type
+        // also delivers pointerover / pointerenter / mouseover / pointerout as a
+        // cursor crosses the page, each with interactionId 0, and while the page
+        // is still hydrating they report the same long frame a click would. INP
+        // as Chrome and the web-vitals library define it ignores them; this
+        // observer did not. Measured against prod / on 2026-10-07 (Playwright,
+        // 1440x900, cursor moving during load, one click): 367 of the 370
+        // entries over 40ms were hover events, and the worst value written was
+        // a pointerover at 408ms (real click 368ms) at 1x CPU and 784ms (real
+        // click 464ms) at 4x. Phones do not hover, which is why only desktop
+        // read over the bar. It also made "has an INP row" true for a visitor
+        // who never clicked or typed, which applyFieldProgress.ts reads as
+        // proof of engagement.
+        if (entry.interactionId && entry.duration > 40) {
+          enqueue({
+            name: "INP",
+            value: entry.duration,
+            rating: entry.duration < 200 ? "good" : entry.duration < 500 ? "needs-improvement" : "poor",
+            attribution: describeInteraction(entry),
+          });
         }
       }
     }).observe({ type: "event", buffered: true, durationThreshold: 40 } as EventTimingObserverInit);

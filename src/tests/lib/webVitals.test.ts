@@ -18,6 +18,9 @@
  * replacement arms a NEW timer with a fresh vital, which is what makes the
  * leftover batch observable.
  *
+ *   ✅ hover events (interactionId 0) never become INP, however slow (2026-10-07)
+ *   ✅ the INP row names its event, target and phases
+ *
  * Missing / not yet tested:
  *   ❌ a batch over MAX_BEACON_BYTES (beacon refuses on size, not on network)
  *   ❌ url stamping across a route change between enqueue() and flush()
@@ -155,10 +158,10 @@ describe("web-vitals telemetry", () => {
     initWebVitals();
 
     FakePerformanceObserver.emit("event", [
-      { duration: 80 },
-      { duration: 420 },
-      { duration: 160 },
-      { duration: 20 },
+      { duration: 80, interactionId: 1 },
+      { duration: 420, interactionId: 2 },
+      { duration: 160, interactionId: 3 },
+      { duration: 20, interactionId: 4 },
     ]);
     FakePerformanceObserver.emit("largest-contentful-paint", [
       { startTime: 900 },
@@ -179,10 +182,49 @@ describe("web-vitals telemetry", () => {
     });
     expect(rows.every((row) => typeof row.session_id === "string")).toBe(true);
 
-    FakePerformanceObserver.emit("event", [{ duration: 900 }]);
+    FakePerformanceObserver.emit("event", [{ duration: 900, interactionId: 5 }]);
     FakePerformanceObserver.emit("layout-shift", [{ value: 0.3, hadRecentInput: false }]);
     await vi.advanceTimersByTimeAsync(5_000);
     expect(insert).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("web-vitals INP counts interactions only (2026-10-07)", () => {
+  it("ignores a slower hover entry and records the click that was the real interaction", async () => {
+    const { initWebVitals } = await import("@/shared/lib/webVitals");
+    initWebVitals();
+    const button = document.createElement("button");
+    button.id = "hero-cta";
+    FakePerformanceObserver.emit("event", [
+      // what prod / delivered at 4x CPU: the cursor crossing the hero during hydration
+      { name: "pointerover", duration: 784, interactionId: 0, startTime: 100, processingStart: 700, processingEnd: 710, target: button },
+      { name: "mouseover", duration: 784, startTime: 100, processingStart: 700, processingEnd: 710, target: button },
+      { name: "click", duration: 464, interactionId: 7, startTime: 2_000, processingStart: 2_300, processingEnd: 2_340, target: button },
+    ]);
+    await vi.advanceTimersByTimeAsync(5_000);
+    const rows = insert.mock.calls.at(-1)?.[0] as Array<Record<string, unknown>>;
+    const inp = rows.find((row) => row.event_name === "web_vital.INP");
+    expect(inp).toMatchObject({
+      properties: {
+        value: 464,
+        rating: "needs-improvement",
+        event: "click",
+        target: "button#hero-cta",
+        input_delay: 300,
+        processing: 40,
+        presentation: 124,
+      },
+    });
+  });
+
+  it("writes no INP row at all for a visit that only hovered", async () => {
+    const { initWebVitals } = await import("@/shared/lib/webVitals");
+    initWebVitals();
+    FakePerformanceObserver.emit("event", [{ name: "pointerover", duration: 900, interactionId: 0, startTime: 50 }]);
+    FakePerformanceObserver.emit("largest-contentful-paint", [{ startTime: 1_234 }]);
+    await vi.advanceTimersByTimeAsync(5_000);
+    const rows = insert.mock.calls.at(-1)?.[0] as Array<Record<string, unknown>>;
+    expect(rows.map((row) => row.event_name)).toEqual(["web_vital.LCP"]);
   });
 });
 
@@ -291,7 +333,7 @@ describe("web-vitals terminal flush (MP-514)", () => {
     // CANCELS that timer, so the fire never happens and the assertion holds
     // even when `pending.clear()` is deleted. A fresh vital is what arms a new
     // timer and exposes the leftover batch.
-    FakePerformanceObserver.emit("event", [{ duration: 300 }]);
+    FakePerformanceObserver.emit("event", [{ duration: 300, interactionId: 1 }]);
     await vi.advanceTimersByTimeAsync(5_000);
 
     const late = insertedRows();

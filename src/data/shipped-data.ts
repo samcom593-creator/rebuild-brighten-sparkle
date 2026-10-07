@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "The site's click-speed number now counts real clicks and taps only. It was also counting the mouse just passing over the page while it loaded, which is why the homepage looked slow on computers (314 ms) while phones were fine.",
+    detail: "Tested in a real browser on the live homepage: the old method reported 784 ms for a mouse hover while the actual click took 464 ms. Each slow click now also records what was clicked and where the time went, so the next fix goes after the real cause. The homepage computer number shows 'not enough data' until about 30 new visits come in.",
+    commit: "PL-WIB-INP-INTERACTIONS",
+  },
+  {
+    ts: "today",
     label: "New My Day page (sidebar, under Home): your whole day from 5:30 wake-up to 10 pm, every task with a time and a length you can change. Tap a task and a line goes through it. Built for your phone, and a tap still saves if the signal drops.",
     detail: "Weekdays follow your content rubric: Mon to Wed sales, Thu to Sat mindset, Sunday reset, with record, post and approve blocks built in. The Launch Board week starts empty and videos drag between days. Analytics now leads with what's working, a coach (start, keep, stop) and ideas that show the video that inspired them. Shorts count once per day even though Repurpose posts each one to every platform.",
     commit: "my-day-and-content-week-2026-10-06",

@@ -7,7 +7,28 @@
 //   warn     → NEVER sent standalone. Rolled into the 7am morning digest.
 //   info     → never emailed or SMSed. Stays in bot_alerts for posterity.
 //
-// Shared-secret auth for ad-hoc alerts via x-alert-dispatch-secret header.
+// Auth (PL-WIB-ALERT-DISPATCH-AUTH, 2026-10-07). This header used to promise
+// "shared-secret auth via x-alert-dispatch-secret" and no line of code ever read
+// that header: with verify_jwt = false, any POST carrying event_type inserted a
+// bot_alerts row, and at severity critical it paged Sam on email + SMS + Discord
+// + ntfy with a caller-chosen subject and action_link. That makes it a phishing
+// route through Sam's most trusted channel. Now, per path:
+//   ad-hoc (body.event_type)  service key only. The two callers seen in 30 days
+//                             of bot_alerts + 24h of edge logs are
+//                             _shared/alert-raise.ts (env service key) and
+//                             fn_agent_license_returned_alert (moved off the
+//                             public anon key to system_settings.service_role_key
+//                             in the same change). The anon key is refused: it
+//                             ships in the browser bundle.
+//   selftest_ntfy             open ONLY toward apex-doctor's probe topic prefix,
+//                             so the doctor (anon key) keeps working and the path
+//                             can no longer push a stranger's text to Sam's phone
+//                             or relay to an arbitrary ntfy topic.
+//   flush (empty body)        left open on purpose. It only delivers rows trusted
+//                             writers already queued, behind the staleness guard,
+//                             and cron 'apex-alert-dispatch-flush' authenticates
+//                             with apex_bot_token, which is not a Supabase key.
+//                             Calling it early sends nothing new.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { postNtfyGraded } from "../_shared/ntfy-post.ts";
@@ -27,6 +48,28 @@ const supabase = createClient(
   { auth: { persistSession: false } },
 );
 const resend = new Resend(Deno.env.get("RESEND_API_KEY") ?? "");
+
+const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+// apex-doctor Check #21 posts its selftest here (scripts/apex-doctor.sh,
+// NTFY_PROBE_TOPIC). Nothing at this prefix reaches Sam's phone.
+const PROBE_TOPIC_PREFIX = "https://ntfy.sh/apex-doctor-probe-";
+
+// Same constant-time compare as _shared/require-send-auth.ts, which accepts the
+// system_settings sb_secret key and the env key alike (probed 2026-10-07:
+// send-email answered 400 from body validation, not 401, to the sb_secret bearer).
+function isServiceCaller(req: Request): boolean {
+  const token = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+  if (!SERVICE_KEY || !token || token.length !== SERVICE_KEY.length) return false;
+  let diff = 0;
+  for (let i = 0; i < token.length; i++) diff |= token.charCodeAt(i) ^ SERVICE_KEY.charCodeAt(i);
+  return diff === 0;
+}
+
+function refuse(status: number, error: string) {
+  return new Response(JSON.stringify({ ok: false, error }), {
+    status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
 
 // Only these severities trigger a standalone email/SMS. Everything else waits.
 const STANDALONE = new Set(["critical", "celebrate"]);
@@ -328,12 +371,15 @@ Deno.serve(async (req) => {
 
   let body: any = {};
   try { body = await req.json(); } catch { /* empty */ }
+  const service = isServiceCaller(req);
 
   // Live liveness probe for apex-doctor. Exercises the REAL encoder + POST path
   // in the deployed function, but takes a topic override so the weekly check
   // never pushes to Sam's phone. Writes no row. Emoji subject is the point:
   // an unencoded one throws while constructing the Request.
   if (body.selftest_ntfy) {
+    const probeTopic = typeof body.ntfy_topic === "string" && body.ntfy_topic.startsWith(PROBE_TOPIC_PREFIX);
+    if (!service && !probeTopic) return refuse(403, "selftest_ntfy without the service key must target the apex-doctor probe topic");
     const n = await postNtfy(
       { subject: body.subject ?? "🎓 apex-doctor ntfy selftest", sms_body: "selftest", severity: "info" },
       body.ntfy_topic || undefined,
@@ -347,6 +393,9 @@ Deno.serve(async (req) => {
 
   // Ad-hoc alert: inserts + dispatches if severity is standalone
   if (body.event_type) {
+    // Never fail OPEN on a misconfigured environment.
+    if (!SERVICE_KEY) return refuse(503, "alert auth unavailable");
+    if (!service) return refuse(401, "unauthorized");
     const severity = body.severity ?? "warn";
     const alert = {
       source: body.source ?? "manual",

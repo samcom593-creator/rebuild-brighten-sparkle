@@ -770,3 +770,6 @@ verify_jwt = false
 
 [functions.instagram-dm-replay]
 verify_jwt = false
+
+[functions.monday-starter-reminders]
+verify_jwt = false

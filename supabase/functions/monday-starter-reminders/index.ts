@@ -61,15 +61,22 @@ Deno.serve(async (req) => {
     const id = await claim(kind, to);
     if (id === null) return out.push({ kind, to, status: "already_sent" });
     const realTo = dry ? testTo : to;
-    const r = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from, to: [realTo], subject: dry ? `[TEST for ${to}] ${subject}` : subject, html }),
-    });
-    const j = await r.json().catch(() => ({}));
-    const status = r.ok && j.id ? "sent" : "failed";
-    await finish(id, status, r.ok ? `resend:${j.id}` : `${r.status} ${JSON.stringify(j)}`);
-    out.push({ kind, to: realTo, status, id: j.id ?? null, error: r.ok ? undefined : j });
+    // One failed send must not stop the rest of the list, and the claimed row must
+    // say what happened instead of sitting at its default forever.
+    try {
+      const r = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ from, to: [realTo], subject: dry ? `[TEST for ${to}] ${subject}` : subject, html }),
+      });
+      const j = await r.json().catch(() => ({}));
+      const status = r.ok && j.id ? "sent" : "failed";
+      await finish(id, status, r.ok ? `resend:${j.id}` : `${r.status} ${JSON.stringify(j)}`);
+      out.push({ kind, to: realTo, status, id: j.id ?? null, error: r.ok ? undefined : j });
+    } catch (e) {
+      await finish(id, "failed", `exception: ${String(e)}`).catch((err) => console.error("finish failed", err));
+      out.push({ kind, to: realTo, status: "failed", error: String(e) });
+    }
   }
 
   const starters: { name: string; email: string | null; phone: string | null; manager: string | null }[] = await rpc("monday_starters", { p_monday: monday });
@@ -103,14 +110,19 @@ Deno.serve(async (req) => {
     if (s.phone && !dry) {
       const id = await claim("starter_sms", s.phone);
       if (id === null) { out.push({ kind: "starter_sms", to: s.phone, status: "already_sent" }); continue; }
-      const r = await fetch(`${SB}/functions/v1/send-sms-auto-detect`, {
-        method: "POST", headers: H,
-        body: JSON.stringify({ to: s.phone, message: `Hi ${msgName}, it's Sam from APEX Financial. Reminder: you start tomorrow, ${when}. ${s.manager ?? "Your manager"} will check in with you today.` }),
-      });
-      const j = await r.json().catch(() => ({}));
-      const status = j.success === true && j.status !== "skipped" ? "sent" : (j.status === "skipped" ? "skipped" : "failed");
-      await finish(id, status, JSON.stringify(j));
-      out.push({ kind: "starter_sms", to: s.phone, status });
+      try {
+        const r = await fetch(`${SB}/functions/v1/send-sms-auto-detect`, {
+          method: "POST", headers: H,
+          body: JSON.stringify({ to: s.phone, message: `Hi ${msgName}, it's Sam from APEX Financial. Reminder: you start tomorrow, ${when}. ${s.manager ?? "Your manager"} will check in with you today.` }),
+        });
+        const j = await r.json().catch(() => ({}));
+        const status = j.success === true && j.status !== "skipped" ? "sent" : (j.status === "skipped" ? "skipped" : "failed");
+        await finish(id, status, JSON.stringify(j));
+        out.push({ kind: "starter_sms", to: s.phone, status });
+      } catch (e) {
+        await finish(id, "failed", `exception: ${String(e)}`).catch((err) => console.error("finish failed", err));
+        out.push({ kind: "starter_sms", to: s.phone, status: "failed", error: String(e) });
+      }
     }
   }
   return new Response(JSON.stringify({ ok: true, monday, dry_run: dry, starters: starters.length, managers: managers.length, results: out }), {

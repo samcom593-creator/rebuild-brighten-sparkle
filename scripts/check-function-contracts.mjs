@@ -296,6 +296,15 @@ const PUBLIC_ALLOWLIST = new Set([
   "brand-collab",
   "brand-photo-upload",
   "cron-inbound-brain-health",
+  // monday-starter-reminders (2026-10-07): its Sunday pg_cron caller presents a
+  // 48-char hex vault secret, which the gateway refuses as
+  // UNAUTHORIZED_INVALID_JWT_FORMAT when verify_jwt = true. It was deployed that
+  // way by CI on 2026-10-06, so the first Sunday run would have sent nothing while
+  // cron.job_run_details said "succeeded" (the agentlink-clients-sync failure
+  // above, again). The handler's first statement refuses any bearer that is not
+  // the service role and does not pass check_monday_reminder_secret(); probed
+  // live: a garbage bearer gets the handler's own {"ok":false,"error":"unauthorized"}.
+  "monday-starter-reminders",
   "cron-newhire-portal-login",
   "instagram-comments-backfill",
   "instagram-token-keepalive",
@@ -368,6 +377,7 @@ const PUBLIC_CONTRACT = {
   // live 401 on a bare POST and on a wrong secret (MP-413).
   "cron-newhire-portal-login": "in_handler_gate",
   "cron-inbound-brain-health": "in_handler_gate",
+  "monday-starter-reminders": "in_handler_gate",
   "instagram-comments-backfill": "in_handler_gate",
   "instagram-token-keepalive": "in_handler_gate",
   "instagram-dm-replay": "in_handler_gate",

@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Recruiting opens on 'Likely to join': licensed or hot/warm applicants from the last 47 days plus anyone from the last 14, licensed first. Applicants older than 90 days with no follow-up set move to their own 'Older than 90 days' list, so All open drops from 684 to 280.",
+    detail: "Built from 854 applications and 71 joins: licensed join 37% vs 2% unlicensed, hot/warm tiers ~50% vs ~4%, 80% of joins within 47 days. Launch Board ideas now come from your 967-video Watch Later plus vidIQ breakouts, tagged Long or Short.",
+    commit: "recruiting-likely-to-join-2026-10-06",
+  },
+  {
+    ts: "today",
     label: "Launch Board Today is video-first: your top 5 posts this week across YouTube and Instagram with a score (50 = your normal), plus five vidIQ ideas for what to make next and a plain-English read on your niche. Every page has bigger text, and the sidebar pages got more breathing room with helper text tucked behind Show details.",
     detail: "Instagram @sell4daddy reels come in through vidIQ owner insights (refreshed on request); YouTube syncs every 3 hours. Declutter pass reviewed by the council: presentational only, no data logic touched.",
     commit: "launch-board-home-and-declutter-2026-10-06",

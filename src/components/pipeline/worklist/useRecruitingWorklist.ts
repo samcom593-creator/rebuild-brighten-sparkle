@@ -46,7 +46,7 @@ const db = supabase as unknown as UntypedClient;
 export const WORKLIST_PAGE_SIZE = 1000;
 
 const BASE_COLUMNS = [
-  "id", "first_name", "last_name", "email", "phone", "state", "license_status", "license_progress", "status",
+  "id", "first_name", "last_name", "email", "phone", "state", "license_status", "license_progress", "ai_score_tier", "status",
   "next_step_stage_key", "created_at", "assigned_agent_id", "last_contacted_at", "next_action", "next_action_due_at",
   "next_step_due_at", "phone_bad_at", "email_bad_at", "sms_consent_given", "email_consent_given",
 ] as const;

@@ -99,7 +99,7 @@ export function RecruitingWorklist() {
   const legacyQueue = queueFromLegacyParams(params);
   const queue: QueueKey = isQueueKey(queueParam)
     ? queueParam
-    : legacyQueue ?? (counts.mine > 0 ? "mine" : "all_open");
+    : legacyQueue ?? (counts.mine > 0 ? "mine" : "likely");
   const view = params.get("view") === "board" ? "board" : "list";
   const search = params.get("q") ?? "";
   const license = params.get("license") ?? "all";
@@ -139,7 +139,7 @@ export function RecruitingWorklist() {
       inQueue(r, queue, ctx)
       && matchesSearch(r, search.trim())
       && (license === "all" || (r.license_status ?? "unknown") === license));
-    return sortForQueue(list);
+    return sortForQueue(list, queue);
   }, [rows, queue, ctx, search, license]);
 
   const selected = useMemo(

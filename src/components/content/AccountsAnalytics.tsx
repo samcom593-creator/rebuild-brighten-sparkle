@@ -74,7 +74,7 @@ function usePosts() {
   return { posts, setPosts, loading, load };
 }
 
-type Insights = { niche: string; rules: string[]; ideas: { title: string; why: string; score: number; example?: string }[]; generated_at: string };
+type Insights = { niche: string; rules: string[]; inspiration?: string[]; ideas: { title: string; why: string; score: number; example?: string; format?: string }[]; generated_at: string };
 
 /** Today tab, video-first: this week's winners across accounts + what to make next (vidIQ). */
 export function ContentHome({ onOpenAnalytics }: { onOpenAnalytics: () => void }) {
@@ -120,20 +120,22 @@ export function ContentHome({ onOpenAnalytics }: { onOpenAnalytics: () => void }
             <span className="text-sm text-muted-foreground">from vidIQ · {new Date(ins.generated_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
           </div>
           <ol className="flex flex-col gap-3">
-            {ins.ideas.slice(0, 5).map((idea) => (
+            {ins.ideas.slice(0, 7).map((idea) => (
               <li key={idea.title} className="flex items-start gap-3">
                 <span className={`mt-0.5 shrink-0 rounded-full px-2.5 py-0.5 text-sm font-bold ${scoreTone(idea.score)}`} title="How likely this idea is to break out for you, 0-100">{idea.score}</span>
                 <div className="min-w-0">
-                  <div className="font-semibold text-foreground">{idea.title}</div>
+                  <div className="font-semibold text-foreground">{idea.format && <span className="mr-2 rounded border border-border px-1.5 py-0.5 text-[12px] font-semibold text-muted-foreground">{idea.format}</span>}{idea.title}</div>
                   <div className="text-[13px] text-muted-foreground">{idea.why}{idea.example && <> · <a href={idea.example} target="_blank" rel="noopener noreferrer" className="font-semibold text-primary hover:underline">see example</a></>}</div>
                 </div>
               </li>
             ))}
           </ol>
           <details className="text-sm">
-            <summary className="cursor-pointer font-semibold text-foreground">Why these? Your niche in one paragraph</summary>
+            <summary className="cursor-pointer font-semibold text-foreground">Why these? Your niche and what you save for inspiration</summary>
             <p className="mt-2 text-muted-foreground">{ins.niche}</p>
-            <ul className="mt-2 list-disc pl-5 text-muted-foreground">{ins.rules.map((r) => <li key={r}>{r}</li>)}</ul>
+            {ins.inspiration && <ul className="mt-2 list-disc pl-5 text-muted-foreground">{ins.inspiration.map((r) => <li key={r}>{r}</li>)}</ul>}
+            <div className="mt-3 font-semibold text-foreground">Rules from your numbers</div>
+            <ul className="mt-1 list-disc pl-5 text-muted-foreground">{ins.rules.map((r) => <li key={r}>{r}</li>)}</ul>
           </details>
         </section>
       )}

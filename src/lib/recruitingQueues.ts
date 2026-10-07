@@ -85,6 +85,7 @@ export interface WorklistRow {
   time_zone_source: string | null;
   license_status: string | null;
   license_progress: string | null;
+  ai_score_tier?: string | null;
   status: string | null;
   next_step_stage_key: string | null;
   created_at: string;
@@ -112,6 +113,7 @@ export interface WorklistRow {
 }
 
 export const QUEUE_KEYS = [
+  "likely",
   "all_open",
   "new",
   "uncontacted",
@@ -121,6 +123,7 @@ export const QUEUE_KEYS = [
   "unassigned",
   "mine",
   "needs_plan",
+  "old",
 ] as const;
 export type QueueKey = (typeof QUEUE_KEYS)[number];
 
@@ -133,6 +136,7 @@ export interface QueueDefinition {
 }
 
 export const QUEUE_DEFINITIONS: readonly QueueDefinition[] = [
+  { key: "likely", label: "Likely to join", description: "Licensed or rated hot/warm and applied in the last 47 days, or anyone who applied in the last 14 days. From the conversion history: licensed applicants join 37% of the time vs 2% unlicensed, and 80% of joins happen within 47 days", scope: "organization" },
   { key: "all_open", label: "All open", description: "Every open recruit you can see", scope: "organization" },
   { key: "new", label: "New", description: "Applied in the last 7 days and not yet worked", scope: "organization" },
   { key: "uncontacted", label: "Uncontacted", description: "No recorded contact, ever (bulk-stamped contacted_at ignored)", scope: "organization" },
@@ -142,6 +146,7 @@ export const QUEUE_DEFINITIONS: readonly QueueDefinition[] = [
   { key: "unassigned", label: "Unassigned", description: "No accountable owner yet", scope: "organization" },
   { key: "mine", label: "My queue", description: "Open recruits where you are the accountable owner", scope: "personal" },
   { key: "needs_plan", label: "Needs a plan", description: "Open but missing an owner, or a next action and due time, or a waiting reason and review date", scope: "organization" },
+  { key: "old", label: "Older than 90 days", description: "Applied 90+ days ago with no follow-up set by a person. Only ~5% of joins ever come this late, so they stay out of the other queues", scope: "organization" },
 ] as const;
 
 export function isQueueKey(value: string | null | undefined): value is QueueKey {
@@ -298,11 +303,35 @@ export interface QueueContext {
   userId: string | null;
 }
 
+// Conversion history (2026-10-06, 854 applications, 71 joined): median 5 days to join, 80% within 47,
+// 95% within 97. Licensed 37% vs unlicensed 2%; ai_score_tier hot/warm ~50% vs cool/none ~4%.
+export const LIKELY_WINDOW_DAYS = 47;
+export const FRESH_WINDOW_DAYS = 14;
+export const OLD_AFTER_DAYS = 90;
+const ageDays = (row: WorklistRow, nowMs: number): number | null => {
+  const created = parseTs(row.created_at);
+  return created === null || Number.isNaN(created) ? null : (nowMs - created) / DAY_MS;
+};
+const strongSignal = (row: WorklistRow): boolean =>
+  row.license_status === "licensed" || row.ai_score_tier === "hot" || row.ai_score_tier === "warm";
+/** 90+ days old and nobody set a follow-up by hand: kept out of every queue except "old" (and "mine"). */
+export function isStale(row: WorklistRow, nowMs: number): boolean {
+  const age = ageDays(row, nowMs);
+  return age !== null && age >= OLD_AFTER_DAYS && !row.next_action_due_at;
+}
+
 /** Queue membership. Every queue is a subset of the open items. */
 export function inQueue(row: WorklistRow, queue: QueueKey, ctx: QueueContext): boolean {
   if (!isOpen(row)) return false;
   const nowMs = ctx.now.getTime();
+  if (queue === "old") return isStale(row, nowMs);
+  if (queue !== "mine" && isStale(row, nowMs)) return false;
   switch (queue) {
+    case "likely": {
+      const age = ageDays(row, nowMs);
+      if (age === null) return false;
+      return (strongSignal(row) && age <= LIKELY_WINDOW_DAYS) || age <= FRESH_WINDOW_DAYS;
+    }
     case "all_open":
       return true;
     case "new": {
@@ -352,8 +381,13 @@ export function computeQueueCounts(rows: readonly WorklistRow[], ctx: QueueConte
   return counts;
 }
 
-/** Order inside a queue: most urgent first, unknown dates last, then oldest applicant. */
-export function sortForQueue(rows: readonly WorklistRow[]): WorklistRow[] {
+/** Order inside a queue: most urgent first, unknown dates last, then newest applicant.
+ *  "Likely to join" ranks by who converts: licensed / hot / warm first, then newest. */
+export function sortForQueue(rows: readonly WorklistRow[], queue?: QueueKey): WorklistRow[] {
+  if (queue === "likely") {
+    return [...rows].sort((a, b) => Number(strongSignal(b)) - Number(strongSignal(a))
+      || (parseTs(b.created_at) ?? 0) - (parseTs(a.created_at) ?? 0) || a.id.localeCompare(b.id));
+  }
   return [...rows].sort((a, b) => {
     const da = effectiveDueMs(a);
     const db = effectiveDueMs(b);

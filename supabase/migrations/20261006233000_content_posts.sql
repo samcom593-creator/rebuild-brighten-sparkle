@@ -40,3 +40,14 @@ grant select, insert, update, delete on public.content_posts to authenticated;
 grant usage, select on sequence public.content_posts_id_seq to authenticated;
 grant all on public.content_posts to service_role;
 grant usage, select on sequence public.content_posts_id_seq to service_role;
+
+-- Thumbnails, watch %, and vidIQ as a source (applied live 2026-10-07; kept idempotent so a replay is safe).
+alter table public.content_posts add column if not exists thumb_url text;
+alter table public.content_posts add column if not exists watched_pct numeric;
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'content_posts_source_check_v2') then
+    alter table public.content_posts add constraint content_posts_source_check_v2
+      check (source in ('manual','youtube_sync','board','vidiq'));
+  end if;
+end $$;
+alter table public.content_posts drop constraint if exists content_posts_source_check;

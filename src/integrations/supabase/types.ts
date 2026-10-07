@@ -40071,6 +40071,108 @@ export type Database = {
         }
         Relationships: []
       }
+      day_plan_checks: {
+        Row: {
+          day: string
+          done_at: string
+          id: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          day: string
+          done_at?: string
+          id?: string
+          task_id: string
+          user_id?: string
+        }
+        Update: {
+          day?: string
+          done_at?: string
+          id?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      day_plan_defaults: {
+        Row: {
+          category: string
+          detail: string | null
+          duration_min: number
+          id: number
+          sort: number
+          start_min: number
+          title: string
+          weekday: number
+        }
+        Insert: {
+          category: string
+          detail?: string | null
+          duration_min: number
+          id?: number
+          sort?: number
+          start_min: number
+          title: string
+          weekday: number
+        }
+        Update: {
+          category?: string
+          detail?: string | null
+          duration_min?: number
+          id?: number
+          sort?: number
+          start_min?: number
+          title?: string
+          weekday?: number
+        }
+        Relationships: []
+      }
+      day_plan_tasks: {
+        Row: {
+          active: boolean
+          category: string
+          created_at: string
+          detail: string | null
+          duration_min: number
+          id: string
+          sort: number
+          start_min: number
+          title: string
+          updated_at: string
+          user_id: string
+          weekday: number
+        }
+        Insert: {
+          active?: boolean
+          category?: string
+          created_at?: string
+          detail?: string | null
+          duration_min: number
+          id?: string
+          sort?: number
+          start_min: number
+          title: string
+          updated_at?: string
+          user_id?: string
+          weekday: number
+        }
+        Update: {
+          active?: boolean
+          category?: string
+          created_at?: string
+          detail?: string | null
+          duration_min?: number
+          id?: string
+          sort?: number
+          start_min?: number
+          title?: string
+          updated_at?: string
+          user_id?: string
+          weekday?: number
+        }
+        Relationships: []
+      }
       content_posts: {
         Row: {
           account: string | null
@@ -140994,6 +141096,7 @@ export type Database = {
         Returns: Json
       }
       apex_is_admin: { Args: never; Returns: boolean }
+      day_plan_ensure_seeded: { Args: never; Returns: number }
       apex_provision_licensed_applicant: {
         Args: { p_application_id: string }
         Returns: Json

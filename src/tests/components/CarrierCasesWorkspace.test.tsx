@@ -55,7 +55,8 @@ describe("CarrierCasesWorkspace", () => {
       base({ agent_id: "a2", agent_name: "Test Agent Two", carrier_name: "Carrier A", al_status: "brand_new_status",
         al_lifecycle: "unknown", lifecycle: "unknown", q_carrier_review: false, q_support: true, waiting_on: "staff" }),
     ]);
-    wrap(<CarrierCasesWorkspace />);
+    // The page opens on "Needs something", which hides finished carriers; All cases lists every row.
+    wrap(<CarrierCasesWorkspace />, "/dashboard/contracting/cases?queue=all");
     await waitFor(() => expect(screen.getByText(/carrier cases across/)).toBeTruthy());
     expect(screen.getByText(/Counts are carrier cases/)).toBeTruthy();
     expect(screen.getAllByRole("row")).toHaveLength(4); // header + 3 cases
@@ -82,7 +83,19 @@ describe("CarrierCasesWorkspace", () => {
     fetchMock.mockResolvedValue([base({ carrier_name: "Carrier A" })]);
     wrap(<CarrierCasesWorkspace />, "/dashboard/contracting/cases?queue=not_a_queue");
     await waitFor(() => expect(screen.getByText(/carrier cases across/)).toBeTruthy());
-    expect(screen.getByRole("tab", { name: /All cases/ }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("tab", { name: /Needs something/ }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getAllByRole("row")).toHaveLength(2); // header + the open case
+  });
+
+  it("opens on 'Needs something' and hides carriers that are ready to write", async () => {
+    fetchMock.mockResolvedValue([
+      base({ carrier_name: "Carrier A" }),
+      base({ carrier_name: "Carrier B", lifecycle: "verified_ready_to_write", al_lifecycle: "verified_ready_to_write", q_carrier_review: false, q_verified: true, waiting_on: null }),
+    ]);
+    wrap(<CarrierCasesWorkspace />);
+    await waitFor(() => expect(screen.getByText(/carrier cases across/)).toBeTruthy());
+    expect(screen.getByRole("tab", { name: /Needs something/ }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getAllByRole("row")).toHaveLength(2); // header + Carrier A only
   });
 });
 

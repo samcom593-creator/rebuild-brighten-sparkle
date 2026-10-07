@@ -44,6 +44,8 @@ import {
   STAGE_LABEL, STAGE_ORDER, WORKFLOW, checkPublishUrl, fourQuestions, nextAction, nextStatus, phoenixDate, previousStatus,
   scheduleLabel, stageOf, todayQueue, type Stage, type WorkflowStatus,
 } from "@/lib/contentWorkflow";
+import { DndContext, PointerSensor, TouchSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { DAY_THEMES, THEME_TONE, WEEKLY_TARGETS, phoenixDateKey, phoenixWeekday } from "@/lib/contentWeek";
 import { canShareFiles, pullFile, saveMedia, shareFiles } from "@/lib/saveMedia";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -142,16 +144,6 @@ const hasCta = (s: string) => /apex-financial\.org/i.test(s);
 const brandHandle = (b: string) => (b === "SH" ? "YouTube Shorts → Repurpose" : b === "YT" ? "YouTube" : b === "IMS" ? "@imakesystems · retired" : b === "SFD" ? "@sellfordaddy · retired" : b);
 const brandClass = (b: string) => (b === "SH" ? "text-sky-300 border-sky-400/30 bg-sky-400/10" : b === "YT" ? "text-red-300 border-red-400/30 bg-red-400/10" : "text-zinc-400 border-zinc-500/30 bg-zinc-500/10");
 const WEEKDAY = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-// The 80/20 weekly template: 6 of 7 slots are core, one is fitness-for-closers.
-const WEEK_PLAN: Record<number, { slot: string; pillar: PillarKey }> = {
-  1: { slot: "Short · insurance sales", pillar: "sales" },
-  2: { slot: "Short · money at 20", pillar: "money" },
-  3: { slot: "Long-form · search how-to (8–12 min)", pillar: "sales" },
-  4: { slot: "Short · recruiting / team proof", pillar: "recruiting" },
-  5: { slot: "Short · fitness for closers", pillar: "fitness" },
-  6: { slot: "Short · real numbers", pillar: "money" },
-  7: { slot: "Long-form · day in the life", pillar: "recruiting" },
-};
 const cleanName = (n: string) => n.replace(/\.[a-z0-9]+$/i, "").replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
 const fmtSize = (b: number) => (b >= 1e9 ? `${(b / 1e9).toFixed(1)} GB` : `${Math.max(1, Math.round(b / 1e6))} MB`);
 const fmtDate = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—");
@@ -196,6 +188,153 @@ const editTemplate = (d: Record<string, unknown>) => {
   return `Cut "${title}" per MP-234 (~/business-ops/master-prompts/234-apex-video-editor.md).\nFormat: ${fmt}. Sources: the clip(s) attached to this Launch Board card${d.clip ? ` (${String(d.clip)})` : ""}, plus any clip from the same date with his voice on it.\nHook: "${hook}".\nExclude: slurs, sexual lines, beef, client PII, phone screens. music: [].\nPackage: title "${title}", description = hook + the channel description block + chapters, tags TAGS_CORE. Deliver 4K + 1080p to ~/Desktop/YouTube-Ready/, attach the 1080p to this card, write the YouTube chapters, ntfy me when done.`;
 };
 const FORMAT_LINE = "Long-form: 3840×2160 16:9 30 fps, −14 LUFS, no music, chapters in the description, end card over the last shot. Shorts: 1080×1920 9:16 ≤ 45 s, burned captions, apply card last 3 s.";
+
+// ── Week tab (2026-10-06): 7 themed days driven by src/lib/contentWeek.ts. Drag a card between days (or tap the
+// Move select on a phone). Long-form planned vs 5/week, Shorts posted vs 30–60/week.
+type MixInfo = { pct: number | null; core: number; flex: number; blank: number; noCta: number };
+const cardIsLong = (c: Card) => c.brand === "YT" || c.content_type === "long";
+const DAY_OPTIONS = [{ v: 0, label: "Unplanned" }, ...[1, 2, 3, 4, 5, 6, 7].map((d) => ({ v: d, label: DAY_THEMES[d].short }))];
+
+function WeekCard({ c, onOpen, onMove }: { c: Card; onOpen: (c: Card) => void; onMove: (c: Card, day: number) => void }) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: c.id });
+  const stage = stageOf(c);
+  return (
+    <div ref={setNodeRef} {...attributes} {...listeners}
+      className={`touch-manipulation rounded-xl border border-l-[3px] border-border bg-background/60 p-2.5 ${STAGE_BAR[stage]} ${isDragging ? "opacity-40" : ""}`}>
+      <button type="button" onClick={() => onOpen(c)} className="line-clamp-2 w-full text-left text-sm font-semibold leading-snug text-foreground hover:text-primary">{c.title.replace(/^Story · /, "")}</button>
+      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        <StageChip stage={stage} />
+        <span className="rounded-full border border-border px-2 py-0.5 text-[12px] font-semibold text-muted-foreground">{cardIsLong(c) ? "Long" : "Short"}</span>
+      </div>
+      <select value={c.day} aria-label={`Move ${c.title}`} onChange={(e) => onMove(c, Number(e.target.value))}
+        className="mt-2 h-8 w-full rounded-md border border-border bg-card px-1.5 text-[13px] text-muted-foreground">
+        {DAY_OPTIONS.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}
+      </select>
+    </div>
+  );
+}
+
+function DropZone({ id, className, children }: { id: string; className: string; children: React.ReactNode }) {
+  const { setNodeRef, isOver } = useDroppable({ id });
+  return <div ref={setNodeRef} className={`${className} ${isOver ? "ring-2 ring-primary/60" : ""}`}>{children}</div>;
+}
+
+function WeekTab({ cards, mix, onOpen, onMove, onAdd }: { cards: Card[]; mix: MixInfo; onOpen: (c: Card) => void; onMove: (c: Card, day: number) => void; onAdd: (day: number) => void }) {
+  const todayDow = phoenixWeekday();
+  const [shortsByDay, setShortsByDay] = useState<Record<number, number> | null>(null);
+  const [showAllIdeas, setShowAllIdeas] = useState(false);
+  const [showMix, setShowMix] = useState(false);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 220, tolerance: 8 } }),
+  );
+  const dayKeys = useMemo(() => {
+    const [y, m, d] = phoenixDateKey().split("-").map(Number);
+    const base = Date.UTC(y, m - 1, d) - (todayDow - 1) * 86400_000;
+    return Array.from({ length: 7 }, (_, i) => new Date(base + i * 86400_000).toISOString().slice(0, 10));
+  }, [todayDow]);
+  useEffect(() => {
+    let off = false;
+    void (async () => {
+      const { data, error } = await supabase.from("content_posts").select("posted_at, format, platform").gte("posted_at", `${dayKeys[0]}T00:00:00-07:00`);
+      if (off || error) { if (!off) setShortsByDay({}); return; }
+      // Repurpose sends one Short to every platform, so a day's Shorts = its busiest platform, not the sum.
+      const per: Record<number, Record<string, number>> = {};
+      for (const r of (data ?? []) as { posted_at: string | null; format: string | null; platform: string | null }[]) {
+        if (r.format !== "short" || !r.posted_at) continue;
+        const idx = dayKeys.indexOf(phoenixDateKey(new Date(r.posted_at)));
+        if (idx < 0) continue;
+        const day = (per[idx + 1] ??= {});
+        const pl = r.platform ?? "other";
+        day[pl] = (day[pl] ?? 0) + 1;
+      }
+      const m: Record<number, number> = {};
+      for (const [k, v] of Object.entries(per)) m[Number(k)] = Math.max(...Object.values(v));
+      setShortsByDay(m);
+    })();
+    return () => { off = true; };
+  }, [dayKeys]);
+  const shortsTotal = Object.values(shortsByDay ?? {}).reduce((a, b) => a + b, 0);
+  const longPlanned = cards.filter((c) => c.day > 0 && cardIsLong(c)).length;
+  const ideas = useMemo(() => cards.filter((c) => !c.day).sort((a, b) => b.sort - a.sort), [cards]);
+  const onDragEnd = (e: DragEndEvent) => {
+    if (!e.over) return;
+    const day = Number(String(e.over.id).replace("day-", ""));
+    const c = cards.find((x) => x.id === String(e.active.id));
+    if (c && Number.isFinite(day) && c.day !== day) onMove(c, day);
+  };
+  return (
+    <DndContext sensors={sensors} onDragEnd={onDragEnd}>
+      <div className="space-y-5">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-2xl border border-border bg-card px-4 py-3">
+          <h2 className="text-base font-extrabold text-foreground">This week</h2>
+          <span className="text-sm text-muted-foreground">Long-form planned <b className="tabular-nums text-foreground">{longPlanned}/{WEEKLY_TARGETS.long}</b></span>
+          <span className="text-sm text-muted-foreground">Shorts posted <b className="tabular-nums text-foreground">{shortsByDay ? shortsTotal : "…"}</b> <span className="text-[13px]">(goal {WEEKLY_TARGETS.shortsMin}–{WEEKLY_TARGETS.shortsMax})</span></span>
+        </div>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-7">
+          {Array.from({ length: 7 }, (_, i) => i + 1).map((d) => {
+            const t = DAY_THEMES[d];
+            const tone = THEME_TONE[t.theme];
+            const items = cards.filter((c) => c.day === d);
+            const posted = shortsByDay?.[d] ?? 0;
+            const isToday = d === todayDow;
+            return (
+              <div key={d} className={`flex flex-col gap-2.5 rounded-2xl border bg-card p-3 ${isToday ? `${tone.ring} ring-1 ring-primary/40` : "border-border"}`}>
+                <div>
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="text-base font-extrabold text-foreground">{t.name}</span>
+                    {isToday && <span className="text-[12px] font-bold uppercase tracking-wide text-primary">Today</span>}
+                  </div>
+                  <span className={`mt-1.5 inline-flex max-w-full items-center rounded-full border px-2 py-0.5 text-[12px] font-semibold ${tone.chip}`}>{t.themeLabel} · {t.angle}</span>
+                </div>
+                <DropZone id={`day-${d}`} className="flex min-h-[96px] flex-1 flex-col gap-2 rounded-xl border border-dashed border-border p-2">
+                  <div className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">{t.longTarget > 0 ? "Long-form" : d === 7 ? "Plan & batch" : "Long-form (bonus)"}</div>
+                  {items.map((c) => <WeekCard key={c.id} c={c} onOpen={onOpen} onMove={onMove} />)}
+                  {items.length === 0 && <div className="py-2 text-center text-[13px] text-muted-foreground">Drop a video here</div>}
+                  <button type="button" onClick={() => onAdd(d)} className="mt-auto rounded-lg border border-dashed border-border px-2 py-1.5 text-[13px] text-muted-foreground hover:border-primary/50 hover:text-primary">+ Add</button>
+                </DropZone>
+                {t.shortsTarget > 0 && (
+                  <div>
+                    <div className="flex justify-between text-[13px] text-muted-foreground"><span>Shorts</span><span className="tabular-nums">{posted}/{t.shortsTarget}</span></div>
+                    <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted"><div className={`h-full ${tone.bar}`} style={{ width: `${Math.min(100, Math.round((posted / t.shortsTarget) * 100))}%` }} /></div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <DropZone id="day-0" className="rounded-2xl border border-dashed border-border bg-card/50 p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <h3 className="text-sm font-bold text-foreground">Ideas (not planned) <span className="font-normal text-muted-foreground">{ideas.length}</span></h3>
+            <span className="text-[13px] text-muted-foreground">Drag onto a day, or use Move</span>
+          </div>
+          {ideas.length === 0 ? <div className="py-2 text-sm text-muted-foreground">Everything is planned.</div> : (
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+              {(showAllIdeas ? ideas : ideas.slice(0, 8)).map((c) => <WeekCard key={c.id} c={c} onOpen={onOpen} onMove={onMove} />)}
+            </div>
+          )}
+          {ideas.length > 8 && <button type="button" onClick={() => setShowAllIdeas(!showAllIdeas)} className="mt-3 rounded-full border border-border px-3 py-1 text-[13px] font-semibold text-foreground hover:border-primary/60">{showAllIdeas ? "Show fewer" : `Show all (${ideas.length})`}</button>}
+        </DropZone>
+        <div>
+          <button type="button" onClick={() => setShowMix(!showMix)} aria-expanded={showMix} className="rounded-full border border-border px-3 py-1 text-[13px] font-semibold text-foreground hover:border-primary/60">{showMix ? "Hide details" : "Show details"}</button>
+          {showMix && (
+            <div className="mt-3 space-y-3 rounded-2xl border border-border bg-card px-4 py-3 text-sm">
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+                <span className="text-[12px] font-bold uppercase tracking-[0.12em] text-muted-foreground">80/20 mix</span>
+                <span className={`text-lg font-extrabold tabular-nums ${mix.pct === null ? "text-muted-foreground" : mix.pct >= 75 ? "text-emerald-400" : "text-amber-400"}`}>{mix.pct === null ? "—" : `${mix.pct}%`}</span>
+                <span className="text-xs text-muted-foreground">core · target 80%</span>
+                <div className="h-2 w-40 overflow-hidden rounded-full bg-muted"><div className="h-full bg-emerald-400" style={{ width: `${mix.pct ?? 0}%` }} /></div>
+                <span className="text-xs text-muted-foreground">{mix.core} insurance / money / recruiting · {mix.flex} fitness / lifestyle · {mix.blank} untagged</span>
+                {mix.noCta > 0 && <span className="text-xs font-semibold text-amber-400">{mix.noCta} caption{mix.noCta === 1 ? "" : "s"} missing the apex-financial.org/apply CTA</span>}
+              </div>
+              <p className="text-xs text-muted-foreground"><span className="font-bold uppercase tracking-[0.12em] text-foreground">Delivery format</span> · {FORMAT_LINE} Every card carries a script to record and an edit prompt: open the card, copy, paste.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </DndContext>
+  );
+}
 
 export default function LaunchBoard() {
   usePageTitle("Launch Board");
@@ -383,6 +522,9 @@ export default function LaunchBoard() {
   const [scheduleTarget, setScheduleTarget] = useState<Card | null>(null);
   const [scheduleAt, setScheduleAt] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [boardDetails, setBoardDetails] = useState(false);   // Board: destination / source media / owner hide behind "Show details"
+  const [todayAll, setTodayAll] = useState(false);
+  const [todayDetails, setTodayDetails] = useState(false);
   const [stageFilter, setStageFilter] = useState<"open" | "all" | Stage>("open");
   // null = not probed yet; false = the §11 migration is not on this database, so new stages cannot be written.
   const [workflowReady, setWorkflowReady] = useState<boolean | null>(null);
@@ -724,24 +866,8 @@ export default function LaunchBoard() {
       {tab === "today" && (
         <div className="space-y-8">
           <ContentHome onOpenAnalytics={() => setTab("analytics")} />
-          <section aria-label="Four questions" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {questions.map((qq) => (
-              <div key={qq.key} className="flex flex-col gap-2 rounded-lg border border-border bg-card p-4">
-                <div className="text-[13px] font-semibold text-muted-foreground">{qq.q}</div>
-                <button onClick={() => { setStageFilter(qq.go); setTab("board"); }} className="self-start text-2xl font-extrabold tabular-nums text-foreground hover:text-primary" aria-label={`${qq.q} ${qq.count} — open on the board`}>{qq.count}</button>
-                {qq.note && <div className={`text-[12.5px] ${qq.noteTone ?? "text-muted-foreground"}`}>{qq.note}</div>}
-                <ul className="mt-auto space-y-1">
-                  {qq.items.slice(0, 3).map((c) => (
-                    <li key={c.id}><button onClick={() => openEdit(c)} className="w-full line-clamp-2 text-left text-[13.5px] text-foreground hover:text-primary" title={c.title}>{c.title}</button></li>
-                  ))}
-                  {qq.items.length === 0 && <li className="text-[13px] text-muted-foreground">None</li>}
-                </ul>
-              </div>
-            ))}
-          </section>
-
           <section>
-            <Head title="Today" hint={today.length ? `${today.length} to work, most urgent first` : "nothing urgent"} />
+            <Head title="Your work today" hint={today.length ? `${today.length} to work, most urgent first` : "nothing urgent"} />
             {today.length === 0 ? (
               <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">Nothing is due, ready or waiting on approval. Plan a recording from an idea, or add one.</div>
             ) : (
@@ -751,7 +877,7 @@ export default function LaunchBoard() {
                     <tr><th className="w-8 px-3 py-2">#</th><th className="px-3 py-2">Item</th><th className="px-3 py-2">Stage</th><th className="px-3 py-2">Next action</th><th className="px-3 py-2">Due</th><th className="px-3 py-2 text-right">Do it</th></tr>
                   </thead>
                   <tbody>
-                    {today.map((t, i) => (
+                    {(todayAll ? today : today.slice(0, 5)).map((t, i) => (
                       <tr key={t.card.id} className="border-t border-border align-top">
                         <td className="px-3 py-2.5 font-bold tabular-nums text-muted-foreground">{i + 1}</td>
                         <td className="px-3 py-2.5">
@@ -768,15 +894,38 @@ export default function LaunchBoard() {
                 </table>
               </div>
             )}
+            {today.length > 5 && <button type="button" onClick={() => setTodayAll(!todayAll)} className="mt-3 rounded-full border border-border px-3 py-1 text-[13px] font-semibold text-foreground hover:border-primary/60">{todayAll ? "Show fewer" : `Show all (${today.length})`}</button>}
           </section>
 
-          <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card px-4 py-3">
-            <MessageSquareQuote className="h-5 w-5 text-primary" aria-hidden />
-            <div className="flex-1 text-sm">
-              <b className="text-foreground">{testimonialClips.length.toLocaleString()} testimonials in the library</b>
-              <span className="text-muted-foreground"> · {testimonialClips.filter((k) => k.media !== "image").length} calls &amp; videos · {testimonialClips.filter((k) => k.media === "image").length} screenshots &amp; texts{health && health.waiting > 0 ? ` · ${health.waiting.toLocaleString()} clips still being judged` : ""}</span>
+          <div className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2">
+            <MessageSquareQuote className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+            <div className="min-w-0 flex-1 truncate text-sm" title={health && health.waiting > 0 ? `${health.waiting.toLocaleString()} clips still being judged` : undefined}>
+              <b className="text-foreground">{testimonialClips.length.toLocaleString()} testimonials</b>
+              <span className="text-muted-foreground"> · {testimonialClips.filter((k) => k.media !== "image").length} calls &amp; videos · {testimonialClips.filter((k) => k.media === "image").length} screenshots</span>
             </div>
-            <Button size="sm" variant="outline" onClick={() => { chooseProof("testimonials"); setTab("library"); }} className="h-8"><Download className="mr-1.5 h-3.5 w-3.5" aria-hidden />Open the pack</Button>
+            <Button size="sm" variant="outline" onClick={() => { chooseProof("testimonials"); setTab("library"); }} className="h-8 shrink-0"><Download className="mr-1.5 h-3.5 w-3.5" aria-hidden />Open pack</Button>
+          </div>
+
+          <div>
+            <button type="button" onClick={() => setTodayDetails(!todayDetails)} aria-expanded={todayDetails} className="rounded-full border border-border px-3 py-1 text-[13px] font-semibold text-foreground hover:border-primary/60">{todayDetails ? "Hide details" : "Show details"}</button>
+            {todayDetails && (
+          <section aria-label="Four questions" className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {questions.map((qq) => (
+              <div key={qq.key} className="flex flex-col gap-2 rounded-lg border border-border bg-card p-4">
+                <div className="text-[13px] font-semibold text-muted-foreground">{qq.q}</div>
+                <button onClick={() => { setStageFilter(qq.go); setTab("board"); }} className="self-start text-2xl font-extrabold tabular-nums text-foreground hover:text-primary" aria-label={`${qq.q} ${qq.count} — open on the board`}>{qq.count}</button>
+                {qq.note && <div className={`text-[12.5px] ${qq.noteTone ?? "text-muted-foreground"}`}>{qq.note}</div>}
+                <ul className="mt-auto space-y-1">
+                  {qq.items.slice(0, 3).map((c) => (
+                    <li key={c.id}><button onClick={() => openEdit(c)} className="w-full line-clamp-2 text-left text-[13.5px] text-foreground hover:text-primary" title={c.title}>{c.title}</button></li>
+                  ))}
+                  {qq.items.length === 0 && <li className="text-[13px] text-muted-foreground">None</li>}
+                </ul>
+              </div>
+            ))}
+          </section>
+
+            )}
           </div>
         </div>
       )}
@@ -792,30 +941,30 @@ export default function LaunchBoard() {
                 </button>
               ))}
           </div>
+          <div className="flex justify-end"><button type="button" onClick={() => setBoardDetails(!boardDetails)} aria-pressed={boardDetails} className="rounded-full border border-border px-3 py-1 text-[13px] font-semibold text-foreground hover:border-primary/60">{boardDetails ? "Hide details" : "Show details"}</button></div>
           <div className="overflow-x-auto rounded-lg border border-border">
-            <table className="w-full min-w-[880px] text-sm">
+            <table className={`w-full text-sm ${boardDetails ? "min-w-[880px]" : "min-w-[560px]"}`}>
               <thead className="bg-muted/50 text-left text-[12px] uppercase tracking-wide text-muted-foreground">
                 <tr>
-                  <th className="px-3 py-2">Item</th><th className="px-3 py-2">Stage</th><th className="px-3 py-2">Destination</th><th className="px-3 py-2">Source media</th>
-                  <th className="px-3 py-2">Owner</th><th className="px-3 py-2">Due</th><th className="px-3 py-2">Next action</th><th className="px-3 py-2 text-right">Actions</th>
+                  <th className="px-3 py-2">Item</th><th className="px-3 py-2">Stage</th>{boardDetails && <><th className="px-3 py-2">Destination</th><th className="px-3 py-2">Source media</th><th className="px-3 py-2">Owner</th></>}<th className="px-3 py-2">Due</th><th className="px-3 py-2">Next action</th><th className="px-3 py-2 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {boardRows.length === 0 && <tr><td colSpan={8} className="px-3 py-6 text-center text-sm text-muted-foreground">No cards in this stage.</td></tr>}
+                {boardRows.length === 0 && <tr><td colSpan={boardDetails ? 8 : 5} className="px-3 py-6 text-center text-sm text-muted-foreground">No cards in this stage.</td></tr>}
                 {boardRows.map((c) => (
                   <tr key={c.id} className="border-t border-border align-top">
-                    <td className="max-w-[280px] px-3 py-2.5">
+                    <td className="max-w-[280px] px-3 py-3.5">
                       <button onClick={() => openEdit(c)} className="text-left font-semibold leading-snug text-foreground hover:text-primary">{c.title}</button>
                       {c.hook && <div className="line-clamp-2 text-[12.5px] text-muted-foreground">{c.hook}</div>}
                       {scheduleNote(c)}
                     </td>
-                    <td className="px-3 py-2.5"><StageChip stage={stageOf(c)} /></td>
-                    <td className="px-3 py-2.5"><Chip className={brandClass(c.brand)}>{brandHandle(c.brand)}</Chip>{c.day > 0 && <div className="mt-1 text-[12px] text-muted-foreground">{WEEKDAY[c.day]} slot</div>}</td>
-                    <td className="max-w-[180px] px-3 py-2.5">{clipLine(c)}</td>
-                    <td className="px-3 py-2.5 text-[13px] text-foreground">{c.owner || <span className="text-muted-foreground">—</span>}</td>
-                    <td className={`px-3 py-2.5 text-[13px] ${dueTone(c.due_date)}`}>{fmtDue(c.due_date) || "—"}</td>
-                    <td className="max-w-[220px] px-3 py-2.5 text-[13px] text-foreground">{nextAction(c)}</td>
-                    <td className="px-3 py-2.5"><div className="flex flex-wrap items-center justify-end gap-1">{primaryAction(c)}{secondaryActions(c)}</div></td>
+                    <td className="px-3 py-3.5"><StageChip stage={stageOf(c)} /></td>
+                    {boardDetails && <><td className="px-3 py-3.5"><Chip className={brandClass(c.brand)}>{brandHandle(c.brand)}</Chip>{c.day > 0 && <div className="mt-1 text-[12px] text-muted-foreground">{WEEKDAY[c.day]} slot</div>}</td>
+                    <td className="max-w-[180px] px-3 py-3.5">{clipLine(c)}</td>
+                    <td className="px-3 py-3.5 text-[13px] text-foreground">{c.owner || <span className="text-muted-foreground">—</span>}</td></>}
+                    <td className={`px-3 py-3.5 text-[13px] ${dueTone(c.due_date)}`}>{fmtDue(c.due_date) || "—"}</td>
+                    <td className="max-w-[220px] px-3 py-3.5 text-[13px] text-foreground">{nextAction(c)}</td>
+                    <td className="px-3 py-3.5"><div className="flex flex-wrap items-center justify-end gap-1">{primaryAction(c)}{secondaryActions(c)}</div></td>
                   </tr>
                 ))}
               </tbody>
@@ -825,37 +974,9 @@ export default function LaunchBoard() {
       )}
 
       {tab === "week" && (
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-2xl border border-border bg-card px-4 py-3 text-sm">
-            <div className="flex items-center gap-2"><span className="text-[12px] font-bold uppercase tracking-[0.12em] text-muted-foreground">80/20 mix</span>
-              <span className={`text-lg font-extrabold tabular-nums ${mix.pct === null ? "text-muted-foreground" : mix.pct >= 75 ? "text-emerald-400" : "text-amber-400"}`}>{mix.pct === null ? "—" : `${mix.pct}%`}</span>
-              <span className="text-xs text-muted-foreground">core · target 80%</span></div>
-            <div className="h-2 w-40 overflow-hidden rounded-full bg-muted"><div className="h-full bg-emerald-400" style={{ width: `${mix.pct ?? 0}%` }} /></div>
-            <span className="text-xs text-muted-foreground">{mix.core} insurance / money / recruiting · {mix.flex} fitness / lifestyle · {mix.blank} untagged</span>
-            {mix.noCta > 0 && <span className="text-xs font-semibold text-amber-400">{mix.noCta} caption{mix.noCta === 1 ? "" : "s"} missing the apex-financial.org/apply CTA</span>}
-          </div>
-          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 lg:grid-cols-7">
-            {Array.from({ length: 7 }, (_, i) => i + 1).map((d) => {
-              const items = cards.filter((c) => c.day === d);
-              const plan = WEEK_PLAN[d];
-              const onPlan = items.some((c) => cardPillars(c).includes(plan.pillar));
-              return (
-                <div key={d} className={`flex min-h-[160px] flex-col gap-1.5 rounded-xl border bg-card p-2.5 ${d === 3 || d === 7 ? "border-gold/40" : "border-border"}`}>
-                  <div className="flex items-baseline justify-between"><span className="text-[13px] font-extrabold tracking-wide text-foreground">{WEEKDAY[d]}</span><span className="text-[9px] uppercase tracking-wide text-muted-foreground">{items.length ? `${items.length} card${items.length === 1 ? "" : "s"}` : "open"}</span></div>
-                  <div className={`rounded-md border border-dashed px-1.5 py-1 text-[11px] leading-tight ${onPlan ? "border-emerald-400/40 text-emerald-300" : "border-border text-muted-foreground"}`}>{plan.slot}</div>
-                  {items.length === 0 ? <button onClick={() => { setDraft({ ...emptyDraft, day: d, brand: d === 3 || d === 7 ? "YT" : "SH", content_type: d === 3 || d === 7 ? "long" : "short" }); setEditing(null); setEditorOpen(true); }} className="mt-auto rounded-lg border border-dashed border-border px-2 py-1.5 text-[11.5px] text-muted-foreground hover:border-gold/50 hover:text-gold">+ fill this slot</button> : items.map((c) => (
-                    <button key={c.id} onClick={() => openEdit(c)} className={`rounded-lg border border-l-[3px] border-border bg-background/50 p-2 text-left ${STAGE_BAR[stageOf(c)]}`}>
-                      <div className="text-[12.5px] font-semibold leading-tight text-foreground">{c.title.replace(/^Story · /, "")}</div>
-                      <div className="mt-1 flex items-center gap-1.5"><Chip className={brandClass(c.brand)}>{c.brand}</Chip><span className="text-[9px] uppercase text-muted-foreground">{STAGE_LABEL[stageOf(c)]}</span>{isCoreCard(c) === false && <span className="text-[9px] uppercase text-amber-400">20%</span>}</div>
-                    </button>
-                  ))}
-                </div>
-              );
-            })}
-          </div>
-          <p className="text-xs text-muted-foreground">Wed and Sun are long-form (8–12 min search how-tos, day-in-the-life). Every other day is a Short; Repurpose.io republishes Shorts to TikTok. Every caption ends with the website CTA — Instagram is retired.</p>
-          <div className="rounded-2xl border border-border bg-card px-4 py-3 text-xs text-muted-foreground"><span className="font-bold uppercase tracking-[0.12em] text-foreground">Delivery format</span> · {FORMAT_LINE} Every card carries a 🎥 script to record and a ✂️ edit prompt — open the card, copy, paste.</div>
-        </div>
+        <WeekTab cards={cards} mix={mix} onOpen={openEdit}
+          onMove={(c, day) => { void patch(c.id, { day }).then((ok) => { if (ok) toast.success(day ? `Moved to ${DAY_THEMES[day].name}` : "Moved to Ideas"); }); }}
+          onAdd={(d) => { const long = DAY_THEMES[d].longTarget > 0; setDraft({ ...emptyDraft, day: d, brand: long ? "YT" : "SH", content_type: long ? "long" : "short" }); setEditing(null); setEditorOpen(true); }} />
       )}
 
       {tab === "library" && (
@@ -1147,7 +1268,7 @@ export default function LaunchBoard() {
               <div className="grid gap-1.5"><Label className="text-[12px] uppercase tracking-wide text-muted-foreground">Job</Label>
                 <Select value={draftStr("job")} onValueChange={(v) => setDraftField("job", v)}><SelectTrigger aria-label="Content job"><SelectValue /></SelectTrigger><SelectContent>{JOBS.map((j) => <SelectItem key={j.k} value={j.k}>{j.label}</SelectItem>)}</SelectContent></Select></div>
               <div className="grid gap-1.5"><Label className="text-[12px] uppercase tracking-wide text-muted-foreground">Week slot</Label>
-                <Select value={draftStr("day")} onValueChange={(v) => setDraftField("day", Number(v))}><SelectTrigger aria-label="Week slot"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="0">—</SelectItem>{[1, 2, 3, 4, 5, 6, 7].map((d) => <SelectItem key={d} value={String(d)}>{WEEKDAY[d]} · {WEEK_PLAN[d].slot.split(" · ")[1]}</SelectItem>)}</SelectContent></Select></div>
+                <Select value={draftStr("day")} onValueChange={(v) => setDraftField("day", Number(v))}><SelectTrigger aria-label="Week slot"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="0">—</SelectItem>{[1, 2, 3, 4, 5, 6, 7].map((d) => <SelectItem key={d} value={String(d)}>{WEEKDAY[d]} · {DAY_THEMES[d].angle}</SelectItem>)}</SelectContent></Select></div>
               <div className="grid gap-1.5"><Label htmlFor="lb-owner" className="text-[12px] uppercase tracking-wide text-muted-foreground">Owner</Label>
                 <Input id="lb-owner" value={draftStr("owner")} disabled={!workflowReady} onChange={(e) => setDraftField("owner", e.target.value)} placeholder="Who does the next step" /></div>
               <div className="grid gap-1.5"><Label htmlFor="lb-due" className="text-[12px] uppercase tracking-wide text-muted-foreground">Deadline</Label>

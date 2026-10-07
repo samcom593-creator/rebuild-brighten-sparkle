@@ -23,6 +23,14 @@
         "raw": "p_strike_id uuid"
       }
     ],
+    "active_manager_emails": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "admin_configure_integration": [
       {
         "all": [
@@ -1317,6 +1325,18 @@
         "raw": "p_email text DEFAULT NULL::text, p_phone text DEFAULT NULL::text, p_first_name text DEFAULT NULL::text, p_last_name text DEFAULT NULL::text"
       }
     ],
+    "check_monday_reminder_secret": [
+      {
+        "all": [
+          "p"
+        ],
+        "required": [
+          "p"
+        ],
+        "unnamed": false,
+        "raw": "p text"
+      }
+    ],
     "check_rate_limit": [
       {
         "all": [
@@ -1996,6 +2016,14 @@
       }
     ],
     "data_quality_audit": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "day_plan_ensure_seeded": [
       {
         "all": [],
         "required": [],
@@ -5486,6 +5514,18 @@
         "raw": ""
       }
     ],
+    "monday_starters": [
+      {
+        "all": [
+          "p_monday"
+        ],
+        "required": [
+          "p_monday"
+        ],
+        "unnamed": false,
+        "raw": "p_monday date"
+      }
+    ],
     "mp264_capture_stall_check": [
       {
         "all": [],
@@ -7702,6 +7742,14 @@
       }
     ],
     "trg_fn_suppress_noop_update": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "trg_fn_worklist_outcome_sync_stage": [
       {
         "all": [],
         "required": [],

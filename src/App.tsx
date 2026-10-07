@@ -173,6 +173,7 @@ const CallCenter = lazy(() => import("./pages/CallCenter"));
 const RecruiterDashboard = lazy(() => import("./pages/RecruiterDashboard"));
 const AgentPipeline = lazy(() => import("./pages/AgentPipeline"));
 const CalendarPage = lazy(() => import("./pages/CalendarPage"));
+const MyDay = lazy(() => import("./pages/MyDay"));
 const NotificationHub = lazy(() => import("./pages/NotificationHub"));
 const LinksPage = lazy(() => import("./pages/LinksPage"));
 const AdminCalendar = lazy(() => import("./pages/AdminCalendar"));
@@ -713,6 +714,7 @@ const App = () => (
                      <Route path="/dashboard/inbound-leads" element={<Navigate to="/dashboard/command" replace />} />
                      <Route path="/dashboard/inbound" element={<Navigate to="/dashboard/command" replace />} />
                      <Route path="/dashboard/calendar" element={<CalendarPage />} />
+                     <Route path="/dashboard/my-day" element={<MyDay />} />
                      <Route path="/dashboard/notifications" element={<ProtectedRoute requireAdmin><NotificationHub /></ProtectedRoute>} />
                      <Route path="/dashboard/planner" element={<ProtectedRoute requireAdmin><AdminCalendar /></ProtectedRoute>} />
                      <Route path="/dashboard/headhunters-calendar" element={<Navigate to="/dashboard/command" replace />} />

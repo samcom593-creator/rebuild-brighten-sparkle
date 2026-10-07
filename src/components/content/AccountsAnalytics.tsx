@@ -7,10 +7,11 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatTimeAgo } from "@/lib/dateUtils";
+import { DAY_THEMES, THEME_TONE, phoenixDateKey, phoenixWeekday } from "@/lib/contentWeek";
 
 type Post = {
   id: number; platform: string; account: string | null; format: string; category: string | null; title: string | null;
-  url: string | null; posted_at: string; views: number | null; likes: number | null; purposeful: boolean | null; source: string; external_id: string | null; thumb_url: string | null; watched_pct: number | null;
+  url: string | null; posted_at: string; views: number | null; likes: number | null; purposeful: boolean | null; source: string; external_id: string | null; thumb_url: string | null; watched_pct: number | null; duration_s: number | null;
 };
 const PLATFORMS = [
   { k: "youtube", label: "YouTube" }, { k: "instagram", label: "Instagram" }, { k: "tiktok", label: "TikTok" }, { k: "facebook", label: "Facebook" },
@@ -64,7 +65,7 @@ function usePosts() {
   const load = useCallback(async () => {
     const since = new Date(Date.now() - 60 * 86400_000).toISOString();
     const { data, error } = await supabase.from("content_posts")
-      .select("id, platform, account, format, category, title, url, posted_at, views, likes, purposeful, source, external_id, thumb_url, watched_pct")
+      .select("id, platform, account, format, category, title, url, posted_at, views, likes, purposeful, source, external_id, thumb_url, watched_pct, duration_s")
       .gte("posted_at", since).order("posted_at", { ascending: false }).limit(2000);
     if (error) toast.error(`Couldn't load posts: ${error.message.slice(0, 100)}`);
     setPosts((data ?? []) as Post[]);
@@ -74,71 +75,103 @@ function usePosts() {
   return { posts, setPosts, loading, load };
 }
 
-type Insights = { niche: string; rules: string[]; inspiration?: string[]; ideas: { title: string; why: string; score: number; example?: string; format?: string }[]; generated_at: string };
+type Source = { title?: string; channel?: string; views?: number; video_id?: string; url?: string } | null;
+type Idea = { day: number; theme?: string; format?: string; score: number; title: string; why: string; source?: Source };
+type Insights = {
+  niche?: string; generated_at?: string; rules?: string[]; inspiration?: string[];
+  audience?: { summary?: string; segments?: { label: string; pct: number }[]; wants?: string[]; pains?: string[] };
+  strategy?: { summary?: string; weekly?: string[] };
+  coach?: { start?: string[]; keep?: string[]; stop?: string[]; trends?: { title: string; why?: string; url?: string }[] };
+  ideas?: Idea[];
+};
 
-/** Today tab, video-first: this week's winners across accounts + what to make next (vidIQ). */
-export function ContentHome({ onOpenAnalytics }: { onOpenAnalytics: () => void }) {
-  const { posts } = usePosts();
+function useInsights() {
   const [ins, setIns] = useState<Insights | null>(null);
   useEffect(() => {
     void supabase.from("system_settings").select("value").eq("key", "vidiq_insights").maybeSingle()
       .then(({ data }) => { try { setIns(data?.value ? JSON.parse(data.value) : null); } catch { setIns(null); } });
   }, []);
-  const score = useMemo(() => scorer(posts), [posts]);
-  const today = dayKey(new Date());
-  const todayN = posts.filter((p) => localDay(p.posted_at) === today).length;
-  const winners = useMemo(() => posts.filter((p) => Date.now() - new Date(p.posted_at).getTime() < 7 * 86400_000 && p.views != null)
-    .sort((a, b) => (score(b) ?? 0) - (score(a) ?? 0) || (b.views ?? 0) - (a.views ?? 0)).slice(0, 5), [posts, score]);
+  return ins;
+}
+
+/** Where an idea came from: a small thumbnail + "Inspired by channel · views". */
+function SourceLink({ source }: { source?: Source }) {
+  if (!source || (!source.title && !source.channel)) return null;
+  const inner = (
+    <>
+      {source.video_id && <img src={`https://i.ytimg.com/vi/${source.video_id}/mqdefault.jpg`} alt="" loading="lazy" className="h-10 w-[72px] shrink-0 rounded object-cover bg-muted" />}
+      <span className="min-w-0 text-[13px] leading-snug text-muted-foreground">
+        <span className="block truncate">Inspired by <b className="text-foreground">{source.channel ?? "a top video"}</b>{source.views != null ? ` · ${fmtNum(source.views)} views` : ""}</span>
+        {source.title && <span className="block truncate">{source.title}</span>}
+      </span>
+    </>
+  );
+  return source.url
+    ? <a href={source.url} target="_blank" rel="noopener noreferrer" className="mt-2 flex items-center gap-2 rounded-md bg-muted/40 p-1.5 hover:bg-muted/70">{inner}</a>
+    : <div className="mt-2 flex items-center gap-2 rounded-md bg-muted/40 p-1.5">{inner}</div>;
+}
+
+function IdeaRow({ idea }: { idea: Idea }) {
   return (
-    <div className="flex flex-col gap-6">
-      <section aria-label="Your winners this week" className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-baseline gap-3">
-          <h2 className="text-lg font-bold text-foreground">Your winners this week</h2>
-          <span className="text-sm text-muted-foreground">{todayN} posted today · score 50 = your normal, 75 = double, 100 = 4x</span>
-          <button onClick={onOpenAnalytics} className="ml-auto text-sm font-semibold text-primary hover:underline">All posts & accounts →</button>
+    <li className="rounded-lg border border-border bg-background/40 p-3">
+      <div className="flex items-start gap-3">
+        <span className={`mt-0.5 shrink-0 rounded-full px-2.5 py-0.5 text-sm font-bold tabular-nums ${scoreTone(idea.score)}`} title="How likely this idea is to break out for you, 0-100">{idea.score}</span>
+        <div className="min-w-0">
+          <div className="text-base font-semibold leading-snug text-foreground">
+            {idea.format && <span className="mr-2 rounded border border-border px-1.5 py-0.5 align-middle text-[12px] font-semibold text-muted-foreground">{idea.format}</span>}{idea.title}
+          </div>
+          <div className="mt-1 text-sm text-muted-foreground">{idea.why}</div>
         </div>
-        {winners.length === 0 ? <div className="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground">No posts with views this week yet.</div> : (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-            {winners.map((p, i) => { const t = thumbOf(p); const sc = score(p); return (
-              <a key={p.id} href={p.url ?? undefined} target="_blank" rel="noopener noreferrer" className="block rounded-lg p-1 hover:bg-muted/40">
-                <div className="relative aspect-[9/16] overflow-hidden rounded-lg bg-muted">
-                  {t ? <img src={t} alt="" loading="lazy" className="h-full w-full object-cover" /> : null}
-                  <span className="absolute left-2 top-2 rounded bg-background/85 px-1.5 py-0.5 text-[12px] font-bold text-foreground">#{i + 1} · {platLabel(p.platform)}</span>
-                  {sc != null && <span className={`absolute right-2 top-2 rounded-full px-2 py-0.5 text-[13px] font-bold ${scoreTone(sc)}`}>{sc}</span>}
-                </div>
-                <div className="mt-2 text-lg font-bold tabular-nums text-foreground">{fmtNum(p.views ?? 0)} <span className="text-[13px] font-normal text-muted-foreground">views</span></div>
-                <div className="text-[13px] text-muted-foreground">{p.account?.trim()}{p.watched_pct != null ? ` · ${Math.round(p.watched_pct)}% watched` : ""}</div>
-              </a>
-            ); })}
+      </div>
+      <SourceLink source={idea.source} />
+    </li>
+  );
+}
+
+const sortIdeas = (a: Idea, b: Idea) => (a.format === b.format ? 0 : a.format === "Long" ? -1 : 1) || b.score - a.score;
+
+/** Today tab: what today is for, and exactly what to make (with where each idea came from). */
+export function ContentHome({ onOpenAnalytics }: { onOpenAnalytics: () => void }) {
+  const { posts } = usePosts();
+  const ins = useInsights();
+  const wd = phoenixWeekday();
+  const t = DAY_THEMES[wd];
+  const tone = THEME_TONE[t.theme];
+  const todayKey = phoenixDateKey();
+  // Repurpose posts one Short to every platform: count pieces as the busiest platform today, not the sum.
+  const shortsToday = useMemo(() => {
+    const per: Record<string, number> = {};
+    posts.forEach((p) => { if (p.format === "short" && phoenixDateKey(new Date(p.posted_at)) === todayKey) per[p.platform] = (per[p.platform] ?? 0) + 1; });
+    return Math.max(0, ...Object.values(per));
+  }, [posts, todayKey]);
+  const showDay = wd === 7 ? 1 : wd;
+  const ideas = useMemo(() => (ins?.ideas ?? []).filter((i) => i.day === showDay).sort(sortIdeas), [ins, showDay]);
+  const pct = t.shortsTarget > 0 ? Math.min(100, Math.round((shortsToday / t.shortsTarget) * 100)) : 0;
+  return (
+    <div className="flex flex-col gap-4">
+      <section aria-label="Today's plan" className={`rounded-xl border bg-card p-4 ${tone.ring}`}>
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="text-lg font-bold text-foreground">Today · {t.name}</h2>
+          <span className={`rounded-full border px-2.5 py-0.5 text-[13px] font-semibold ${tone.chip}`}>{t.themeLabel}: {t.angle}</span>
+        </div>
+        {t.longForm && <p className="mt-2 text-sm text-foreground"><b>Long-form:</b> <span className="text-muted-foreground">{t.longForm}</span></p>}
+        {t.shortsTarget > 0 ? (
+          <div className="mt-3">
+            <div className="flex items-baseline justify-between text-sm"><span className="font-semibold text-foreground">{shortsToday}/{t.shortsTarget} Shorts posted</span><span className="text-[13px] text-muted-foreground">{t.shorts}</span></div>
+            <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-muted"><div className={`h-full rounded-full ${tone.bar}`} style={{ width: `${pct}%` }} /></div>
           </div>
-        )}
+        ) : <p className="mt-2 text-sm text-muted-foreground">{t.shorts}</p>}
       </section>
-      {ins && (
-        <section aria-label="What to make next" className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
-          <div className="flex flex-wrap items-baseline gap-3">
-            <h2 className="text-lg font-bold text-foreground">What to make next</h2>
-            <span className="text-sm text-muted-foreground">from vidIQ · {new Date(ins.generated_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
-          </div>
-          <ol className="flex flex-col gap-3">
-            {ins.ideas.slice(0, 7).map((idea) => (
-              <li key={idea.title} className="flex items-start gap-3">
-                <span className={`mt-0.5 shrink-0 rounded-full px-2.5 py-0.5 text-sm font-bold ${scoreTone(idea.score)}`} title="How likely this idea is to break out for you, 0-100">{idea.score}</span>
-                <div className="min-w-0">
-                  <div className="font-semibold text-foreground">{idea.format && <span className="mr-2 rounded border border-border px-1.5 py-0.5 text-[12px] font-semibold text-muted-foreground">{idea.format}</span>}{idea.title}</div>
-                  <div className="text-[13px] text-muted-foreground">{idea.why}{idea.example && <> · <a href={idea.example} target="_blank" rel="noopener noreferrer" className="font-semibold text-primary hover:underline">see example</a></>}</div>
-                </div>
-              </li>
-            ))}
-          </ol>
-          <details className="text-sm">
-            <summary className="cursor-pointer font-semibold text-foreground">Why these? Your niche and what you save for inspiration</summary>
-            <p className="mt-2 text-muted-foreground">{ins.niche}</p>
-            {ins.inspiration && <ul className="mt-2 list-disc pl-5 text-muted-foreground">{ins.inspiration.map((r) => <li key={r}>{r}</li>)}</ul>}
-            <div className="mt-3 font-semibold text-foreground">Rules from your numbers</div>
-            <ul className="mt-1 list-disc pl-5 text-muted-foreground">{ins.rules.map((r) => <li key={r}>{r}</li>)}</ul>
-          </details>
-        </section>
-      )}
+
+      <section aria-label="Make today" className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-baseline gap-3">
+          <h2 className="text-lg font-bold text-foreground">{wd === 7 ? `Next up: ${DAY_THEMES[1].name}` : "Make today"}</h2>
+          <button type="button" onClick={onOpenAnalytics} className="ml-auto text-sm font-semibold text-primary hover:underline">See what's working →</button>
+        </div>
+        {ideas.length === 0
+          ? <div className="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground">No ideas queued for this day yet.</div>
+          : <ol className="flex flex-col gap-3">{ideas.map((idea) => <IdeaRow key={`${idea.format}-${idea.title}`} idea={idea} />)}</ol>}
+      </section>
     </div>
   );
 }
@@ -160,6 +193,7 @@ export function PostedTodayStrip({ onOpen }: { onOpen: () => void }) {
 
 export default function AccountsAnalytics() {
   const { posts, setPosts, loading } = usePosts();
+  const ins = useInsights();
   const [logOpen, setLogOpen] = useState(false);
   const [platform, setPlatform] = useState<string>("instagram");
   const [account, setAccount] = useState<string>("Fit for Daddy");
@@ -207,7 +241,7 @@ export default function AccountsAnalytics() {
     setSaving(true);
     const { data, error } = await supabase.from("content_posts")
       .insert({ platform, account: account.trim(), format, category, purposeful, title: title.trim() || null, source: "manual" })
-      .select("id, platform, account, format, category, title, url, posted_at, views, likes, purposeful, source, external_id, thumb_url, watched_pct").single();
+      .select("id, platform, account, format, category, title, url, posted_at, views, likes, purposeful, source, external_id, thumb_url, watched_pct, duration_s").single();
     setSaving(false);
     if (error || !data) { toast.error(`Couldn't log it: ${error?.message.slice(0, 100) ?? "not saved"}`); return; }
     setPosts((ps) => [data as Post, ...ps]); setTitle(""); setLogOpen(false);
@@ -219,14 +253,154 @@ export default function AccountsAnalytics() {
   const ago = (iso: string) => formatTimeAgo(iso);
   const realTitle = (t: string | null) => (t && t.trim().toLowerCase() !== "unknown" ? t : null);
 
+  // "What's working": plain-sentence comparisons of medians over the last 30 days (only when both groups have 5+ posts).
+  const insightCards = useMemo(() => {
+    const rows = posts.filter((p) => p.views != null && Date.now() - new Date(p.posted_at).getTime() < 30 * 86400_000);
+    const med = (xs: Post[]) => { const s = xs.map((p) => p.views ?? 0).sort((a, b) => a - b); return s.length ? s[Math.floor(s.length / 2)] : 0; };
+    const cards: { ratio: number; text: string }[] = [];
+    const cmp = (a: Post[], b: Post[], text: (r: number, ma: number, mb: number) => string) => {
+      if (a.length < 5 || b.length < 5) return;
+      const ma = med(a), mb = med(b);
+      if (ma <= 0 || mb <= 0) return;
+      const r = ma / mb;
+      if (r >= 1.3) cards.push({ ratio: r, text: text(r, ma, mb) });
+      else if (r <= 1 / 1.3) cards.push({ ratio: 1 / r, text: text(r, ma, mb) });
+    };
+    const x = (r: number) => `${(r >= 1 ? r : 1 / r).toFixed(1)}x`;
+    const reels = rows.filter((p) => p.format === "short" && p.duration_s != null);
+    cmp(reels.filter((p) => (p.duration_s ?? 0) <= 12), reels.filter((p) => (p.duration_s ?? 0) > 12),
+      (r) => r >= 1 ? `Shorts 12 seconds or under get ${x(r)} the views of longer ones.` : `Shorts over 12 seconds get ${x(r)} the views of the very short ones.`);
+    const shorts = rows.filter((p) => p.format === "short");
+    const untitled = (p: Post) => !p.title || p.title.trim().toLowerCase() === "unknown";
+    cmp(shorts.filter((p) => !untitled(p)), shorts.filter(untitled),
+      (r) => r >= 1 ? `Shorts with a real title get ${x(r)} the views of untitled ones.` : `Untitled Shorts are beating titled ones by ${x(r)}.`);
+    const hourOf = (iso: string) => Number(new Intl.DateTimeFormat("en-US", { timeZone: "America/Phoenix", hour: "numeric", hour12: false }).format(new Date(iso))) % 24;
+    const eve = rows.filter((p) => { const h = hourOf(p.posted_at); return h >= 18 && h < 22; });
+    cmp(eve, rows.filter((p) => { const h = hourOf(p.posted_at); return h < 18 || h >= 22; }),
+      (r) => r >= 1 ? `Evening posts (6 to 10 pm) get ${x(r)} the views of other times.` : `Posts outside 6 to 10 pm get ${x(r)} the views of evening posts.`);
+    cmp(rows.filter((p) => p.platform === "instagram" && p.format === "short"), rows.filter((p) => p.platform === "youtube" && p.format === "short"),
+      (r) => r >= 1 ? `Instagram reels average ${x(r)} the views of your YouTube Shorts.` : `YouTube Shorts average ${x(r)} the views of your Instagram reels.`);
+    return cards.sort((a, b) => b.ratio - a.ratio).slice(0, 5);
+  }, [posts]);
+  const winnersWeek = useMemo(() => posts.filter((p) => Date.now() - new Date(p.posted_at).getTime() < 7 * 86400_000 && p.views != null)
+    .sort((a, b) => (score(b) ?? 0) - (score(a) ?? 0) || (b.views ?? 0) - (a.views ?? 0)).slice(0, 5), [posts, score]);
+  const ideasByDay = useMemo(() => [1, 2, 3, 4, 5, 6].map((d) => ({ d, items: (ins?.ideas ?? []).filter((i) => i.day === d).sort(sortIdeas) })).filter((g) => g.items.length > 0), [ins]);
+  const coach = ins?.coach;
+  const coachCols: { k: "start" | "keep" | "stop"; label: string; tone: string }[] = [
+    { k: "start", label: "Start", tone: "text-emerald-400" }, { k: "keep", label: "Keep", tone: "text-primary" }, { k: "stop", label: "Stop", tone: "text-red-400" },
+  ];
+  const aud = ins?.audience;
+
   return (
     <div className="flex flex-col gap-6">
-      <section aria-label="Totals" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section aria-label="Totals" className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <Stat label="Posted today" value={String(todayPosts.length)} sub={`${todayPosts.filter((p) => p.format === "short").length} short · ${todayPosts.filter((p) => p.format === "long").length} long`} />
         <Stat label="Last 7 days" value={String(week.length)} sub={`${week.filter((p) => p.format === "short").length} short · ${week.filter((p) => p.format === "long").length} long`} />
-        <Stat label="Views, last 30 days" value={fmtNum(views30)} sub={`${month.length} posts`} />
-        <Stat label="YouTube subscribers" value={yt?.subscribers != null ? fmtNum(yt.subscribers) : "—"} sub="updates every 3 hours" />
+        <Stat label="Views, 30 days" value={fmtNum(views30)} sub={`${month.length} posts`} />
+        <Stat label="YouTube subs" value={yt?.subscribers != null ? fmtNum(yt.subscribers) : "—"} sub="updates every 3 hours" />
       </section>
+
+      <section aria-label="What's working" className="flex flex-col gap-3">
+        <h2 className="text-lg font-bold text-foreground">What's working</h2>
+        {insightCards.length === 0
+          ? <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">{loading ? "Loading…" : "Not enough posts yet to compare. Keep posting; patterns show up at about 5 posts per group."}</div>
+          : <div className="grid gap-3 sm:grid-cols-2">{insightCards.map((c) => (
+              <div key={c.text} className="rounded-lg border border-primary/30 bg-card p-4 text-base font-semibold leading-snug text-foreground">{c.text}</div>
+            ))}</div>}
+      </section>
+
+      <section aria-label="Winners this week" className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-baseline gap-3">
+          <h2 className="text-lg font-bold text-foreground">Winners this week</h2>
+          <span className="text-sm text-muted-foreground">score 50 = your normal, 75 = double, 100 = 4x</span>
+        </div>
+        {winnersWeek.length === 0 ? <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">No posts with views this week yet.</div> : (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            {winnersWeek.map((p, rank) => { const tb = thumb(p); const sc = score(p); return (
+              <a key={p.id} href={p.url ?? undefined} target="_blank" rel="noopener noreferrer" className="block rounded-lg p-1 hover:bg-muted/40">
+                <div className="relative aspect-[9/16] overflow-hidden rounded-lg bg-muted">
+                  {tb ? <img src={tb} alt="" loading="lazy" className="h-full w-full object-cover" /> : null}
+                  <span className="absolute left-2 top-2 rounded bg-background/85 px-1.5 py-0.5 text-[12px] font-bold text-foreground">#{rank + 1} · {platLabel(p.platform)}</span>
+                  {sc != null && <span className={`absolute right-2 top-2 rounded-full px-2 py-0.5 text-[13px] font-bold ${scoreTone(sc)}`}>{sc}</span>}
+                </div>
+                <div className="mt-2 text-lg font-bold tabular-nums text-foreground">{fmtNum(p.views ?? 0)} <span className="text-[13px] font-normal text-muted-foreground">views</span></div>
+                <div className="text-[13px] text-muted-foreground">{p.account?.trim()}{p.watched_pct != null ? ` · ${Math.round(p.watched_pct)}% watched` : ""}</div>
+              </a>
+            ); })}
+          </div>
+        )}
+      </section>
+
+      {coach && (
+        <section aria-label="Coach" className="flex flex-col gap-3">
+          <h2 className="text-lg font-bold text-foreground">Coach</h2>
+          <div className="grid gap-3 md:grid-cols-3">
+            {coachCols.map((c) => (
+              <div key={c.k} className="rounded-lg border border-border bg-card p-4">
+                <div className={`text-sm font-bold uppercase tracking-wide ${c.tone}`}>{c.label}</div>
+                <ul className="mt-2 flex list-disc flex-col gap-1.5 pl-5 text-sm text-foreground">{(coach[c.k] ?? []).map((l) => <li key={l}>{l}</li>)}</ul>
+              </div>
+            ))}
+          </div>
+          {(coach.trends?.length ?? 0) > 0 && (
+            <div className="rounded-lg border border-border bg-card p-4">
+              <div className="text-sm font-bold text-foreground">Trends in your niche</div>
+              <ul className="mt-2 flex flex-col gap-2.5">
+                {coach.trends!.map((tr) => (
+                  <li key={tr.title} className="text-sm">
+                    {tr.url ? <a href={tr.url} target="_blank" rel="noopener noreferrer" className="font-semibold text-primary hover:underline">{tr.title}</a> : <span className="font-semibold text-foreground">{tr.title}</span>}
+                    {tr.why && <span className="block text-muted-foreground">{tr.why}</span>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </section>
+      )}
+
+      {ideasByDay.length > 0 && (
+        <section aria-label="Ideas for this week" className="flex flex-col gap-3">
+          <h2 className="text-lg font-bold text-foreground">Ideas for this week</h2>
+          {ideasByDay.map(({ d, items }) => { const dt = DAY_THEMES[d]; return (
+            <div key={d} className="flex flex-col gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-base font-bold text-foreground">{dt.name}</span>
+                <span className={`rounded-full border px-2.5 py-0.5 text-[13px] font-semibold ${THEME_TONE[dt.theme].chip}`}>{dt.themeLabel}: {dt.angle}</span>
+              </div>
+              <ol className="grid gap-3 lg:grid-cols-2">{items.map((idea) => <IdeaRow key={`${idea.format}-${idea.title}`} idea={idea} />)}</ol>
+            </div>
+          ); })}
+        </section>
+      )}
+
+      {ins && (ins.niche || aud || ins.strategy) && (
+        <section aria-label="Your niche and audience" className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
+          <h2 className="text-lg font-bold text-foreground">Your niche & audience</h2>
+          {ins.niche && <p className="text-sm text-foreground">{ins.niche}</p>}
+          {aud?.summary && <p className="text-sm text-muted-foreground">{aud.summary}</p>}
+          {(aud?.segments?.length ?? 0) > 0 && (
+            <div className="flex flex-col gap-2">
+              {aud!.segments!.map((s) => (
+                <div key={s.label}>
+                  <div className="flex justify-between text-sm"><span className="text-foreground">{s.label}</span><span className="tabular-nums text-muted-foreground">{s.pct}%</span></div>
+                  <div className="mt-1 h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${Math.max(0, Math.min(100, s.pct))}%` }} /></div>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="grid gap-4 sm:grid-cols-2">
+            {(aud?.wants?.length ?? 0) > 0 && <div><div className="text-sm font-bold text-foreground">They want</div><ul className="mt-1 list-disc pl-5 text-sm text-muted-foreground">{aud!.wants!.map((w) => <li key={w}>{w}</li>)}</ul></div>}
+            {(aud?.pains?.length ?? 0) > 0 && <div><div className="text-sm font-bold text-foreground">They struggle with</div><ul className="mt-1 list-disc pl-5 text-sm text-muted-foreground">{aud!.pains!.map((w) => <li key={w}>{w}</li>)}</ul></div>}
+          </div>
+          {ins.strategy && (
+            <div>
+              <div className="text-sm font-bold text-foreground">Strategy</div>
+              {ins.strategy.summary && <p className="mt-1 text-sm text-muted-foreground">{ins.strategy.summary}</p>}
+              {(ins.strategy.weekly?.length ?? 0) > 0 && <ul className="mt-1 list-disc pl-5 text-sm text-muted-foreground">{ins.strategy.weekly!.map((w) => <li key={w}>{w}</li>)}</ul>}
+            </div>
+          )}
+        </section>
+      )}
 
       <div className="flex flex-wrap items-center gap-2">
         <Pill on={filterAccount === "all"} onClick={() => setFilterAccount("all")}>All accounts</Pill>
@@ -273,7 +447,9 @@ export default function AccountsAnalytics() {
         </div>
       </section>
 
-      <section aria-label="Your videos" className="flex flex-col gap-3">
+      <details aria-label="Your videos" className="group flex flex-col gap-3">
+        <summary className="cursor-pointer text-base font-bold text-foreground">Show all posts ({grid.length})</summary>
+        <div className="mt-3 flex flex-col gap-3">
         <div className="flex items-center gap-2">
           <h2 className="text-base font-bold text-foreground">Your posts, last 30 days</h2>
           <span className="ml-auto" />
@@ -303,7 +479,8 @@ export default function AccountsAnalytics() {
               : <div key={p.id} className="rounded-lg p-1">{inner}</div>;
           })}
         </div>
-      </section>
+        </div>
+      </details>
     </div>
   );
 }

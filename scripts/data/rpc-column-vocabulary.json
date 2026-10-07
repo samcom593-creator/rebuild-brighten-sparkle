@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-rpc-column-vocabulary.sh (bot_sql -> pg_proc + pg_rewrite)",
- "_generated_at": "2026-10-06T17:08:43Z",
+ "_generated_at": "2026-10-07T03:29:32Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "check-enum-filter-literals.mjs grades literals inside supabase.from().eq() chains. This is the other half of the same class: a status word that arrives from an RPC and is compared in JavaScript, where the return type is text and every wrong word type-checks. Per (function, returned column) this records the relation columns of that name reachable from the function body and the literals the function synthesises itself. It deliberately records CANDIDATES rather than one resolved source: provenance from a body regex is a guess, so check-rpc-status-literals.mjs refuses a literal only when NO candidate vocabulary and no body literal accepts it.",
  "_vocabulary_source": "scripts/data/enum-catalog.json (check_vocab + column_enum + enums). Not copied here on purpose, so the two guards read one snapshot and cannot drift.",
@@ -106,6 +106,7 @@
   "cc_dispose": "jsonb",
   "cc_dispose_interview": "interview_events",
   "check_banned_prospect": "boolean",
+  "check_monday_reminder_secret": "boolean",
   "check_rate_limit": "boolean",
   "check_speed_to_lead": "jsonb",
   "churn_calc": "jsonb",
@@ -158,6 +159,7 @@
   "cw_winner_schedule_ig": "trigger",
   "dashboard_paid_today_summary": "jsonb",
   "data_quality_audit": "jsonb",
+  "day_plan_ensure_seeded": "integer",
   "deal_sync_queue_promote_dead": "integer",
   "deals_ensure_posted_at": "trigger",
   "deals_rollup_to_daily_production": "trigger",
@@ -609,6 +611,7 @@
   "trg_fn_siri_notify": "trigger",
   "trg_fn_streak_7day_discord": "trigger",
   "trg_fn_suppress_noop_update": "trigger",
+  "trg_fn_worklist_outcome_sync_stage": "trigger",
   "trg_mark_truth_dirty": "trigger",
   "trg_scripts_packet_on_agent": "trigger",
   "trg_scripts_packet_on_progress": "trigger",
@@ -634,6 +637,22 @@
   "zz_money": "numeric"
  },
  "columns": {
+  "active_manager_emails.email": {
+   "candidates": [
+    "profiles.email"
+   ],
+   "body_literals": [
+    "active",
+    "public"
+   ]
+  },
+  "active_manager_emails.name": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "public"
+   ]
+  },
   "admin_recruiting_links.account_mode": {
    "candidates": [
     "agents.account_mode"
@@ -7264,6 +7283,64 @@
     "Only admins may merge agent duplicates",
     "admin",
     "public"
+   ]
+  },
+  "monday_starters.email": {
+   "candidates": [
+    "applications.email",
+    "profiles.email"
+   ],
+   "body_literals": [
+    "agent",
+    "application",
+    "inactive",
+    "public",
+    "terminated"
+   ]
+  },
+  "monday_starters.manager": {
+   "candidates": [],
+   "body_literals": [
+    "agent",
+    "application",
+    "inactive",
+    "public",
+    "terminated"
+   ]
+  },
+  "monday_starters.name": {
+   "candidates": [],
+   "body_literals": [
+    "agent",
+    "application",
+    "inactive",
+    "public",
+    "terminated"
+   ]
+  },
+  "monday_starters.phone": {
+   "candidates": [
+    "applications.phone",
+    "profiles.phone"
+   ],
+   "body_literals": [
+    "agent",
+    "application",
+    "inactive",
+    "public",
+    "terminated"
+   ]
+  },
+  "monday_starters.source": {
+   "candidates": [
+    "applications.source"
+   ],
+   "body_literals": [
+    "agent",
+    "application",
+    "inactive",
+    "public",
+    "terminated"
    ]
   },
   "my_agents_missing_comp_level.agent_id": {

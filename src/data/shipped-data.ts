@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "New My Day page (sidebar, under Home): your whole day from 5:30 wake-up to 10 pm, every task with a time and a length you can change. Tap a task and a line goes through it. Built for your phone, and a tap still saves if the signal drops.",
+    detail: "Weekdays follow your content rubric: Mon to Wed sales, Thu to Sat mindset, Sunday reset, with record, post and approve blocks built in. The Launch Board week starts empty and videos drag between days. Analytics now leads with what's working, a coach (start, keep, stop) and ideas that show the video that inspired them. Shorts count once per day even though Repurpose posts each one to every platform.",
+    commit: "my-day-and-content-week-2026-10-06",
+  },
+  {
+    ts: "today",
     label: "Agents who left stop cluttering the Team call list: anyone terminated or inactive in the system is out of the list and its counts, with one 'Show people who left' chip if you need them.",
     detail: "The list used to open on a terminated agent.",
     commit: "team-call-list-no-gone-2026-10-06",

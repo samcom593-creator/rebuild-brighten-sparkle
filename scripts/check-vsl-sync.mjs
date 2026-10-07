@@ -36,7 +36,7 @@ const posterUrl = `${mediaBase}/apex-vsl-poster.jpg`;
 const checks = [
   ["homepage video source", hero, "VSL_VIDEO.src"],
   ["homepage video poster", hero, "VSL_VIDEO.poster"],
-  ["poster preload", index, `href="${posterUrl}"`],
+  ["poster preload", index, `l.href = "${posterUrl}"`],
   ["VideoObject thumbnailUrl", index, `"thumbnailUrl":"${posterUrl}"`],
   ["VideoObject contentUrl", index, `"contentUrl":"${videoUrl}"`],
   ["VideoObject embedUrl", index, '"embedUrl":"https://apex-financial.org/vsl"'],
@@ -45,6 +45,25 @@ const checks = [
 const drift = checks
   .filter(([, source, expected]) => !source.includes(expected))
   .map(([label, , expected]) => `  - ${label}: missing ${expected}`);
+
+// Route scope. index.html is the shell for EVERY route, so a static poster
+// preload taxes /apply, /login and the dashboard with 77 KB at High priority
+// for an image only / and /vsl render. And the preload must not be CORS:
+// <video poster> is a no-cors fetch, so a crossorigin preload is never
+// consumed and the poster is requested twice.
+const markup = index.replace(/<!--[\s\S]*?-->/g, "");
+if (/<link\b[^>]*apex-vsl-poster/i.test(markup)) {
+  drift.push("  - poster preload: static <link> for the poster found; it must be route-scoped (/ and /vsl only)");
+}
+const preloadScript = (markup.match(/<script>[\s\S]*?<\/script>/g) || []).find((s) => s.includes(posterUrl));
+if (preloadScript) {
+  if (!preloadScript.includes("p !== '/' && p !== '/vsl'")) {
+    drift.push("  - poster preload: script no longer gates on p !== '/' && p !== '/vsl'");
+  }
+  if (/crossorigin/i.test(preloadScript)) {
+    drift.push("  - poster preload: sets crossorigin; <video poster> is no-cors, so the preload would never be consumed");
+  }
+}
 
 const bumpMatch = index.match(/var\s+BUMP_VERSION\s*=\s*"([^"]+)"/);
 if (!bumpMatch) {

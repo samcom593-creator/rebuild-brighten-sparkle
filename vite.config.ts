@@ -36,7 +36,9 @@ function vslSyncCheckPlugin() {
       const checks: Array<{ label: string; source: string; expected: string }> = [
         { label: "homepage video source", source: hero, expected: "VSL_VIDEO.src" },
         { label: "homepage video poster", source: hero, expected: "VSL_VIDEO.poster" },
-        { label: "poster preload", source: index, expected: `href="${posterUrl}"` },
+        // Route-scoped preload script; scope + no-crossorigin are asserted by
+        // scripts/check-vsl-sync.mjs (pre-commit + verify:core).
+        { label: "poster preload", source: index, expected: `l.href = "${posterUrl}"` },
         { label: "VideoObject thumbnailUrl", source: index, expected: `"thumbnailUrl":"${posterUrl}"` },
         { label: "VideoObject contentUrl", source: index, expected: `"contentUrl":"${videoUrl}"` },
         { label: "VideoObject embedUrl", source: index, expected: '"embedUrl":"https://apex-financial.org/vsl"' },

@@ -160,7 +160,11 @@ export function ContractingCheckinPanel() {
     },
   });
 
-  const all = useMemo(() => data ?? [], [data]);
+  // Sam 2026-10-06: stop holding on to old agents. People terminated/inactive in the system leave this
+  // call list (and its counts) unless you ask to see them.
+  const [showGone, setShowGone] = useState(false);
+  const goneCount = useMemo(() => (data ?? []).filter((r) => r.agent_status === "terminated" || r.agent_status === "inactive").length, [data]);
+  const all = useMemo(() => (data ?? []).filter((r) => showGone || (r.agent_status !== "terminated" && r.agent_status !== "inactive")), [data, showGone]);
   const activeTab = TABS.find((t) => t.key === tab) ?? TABS[0];
 
   const rows = useMemo(() => {
@@ -326,6 +330,12 @@ export function ContractingCheckinPanel() {
               </button>
             );
           })}
+          {goneCount > 0 && (
+            <button type="button" onClick={() => setShowGone(!showGone)} aria-pressed={showGone}
+              className="rounded-full border border-dashed border-border px-3 py-1 text-[12px] text-muted-foreground hover:text-foreground">
+              {showGone ? "Hide people who left" : `Show people who left (${goneCount})`}
+            </button>
+          )}
         </div>
         <div className="ml-auto flex items-center gap-2">
           <div className="relative w-44 sm:w-56">

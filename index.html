@@ -150,8 +150,29 @@
     <link rel="preconnect" href="https://xrzweoneiieddzxogewk.supabase.co" />
     <link rel="dns-prefetch" href="https://xrzweoneiieddzxogewk.supabase.co" />
 
-    <!-- Canonical final VSL poster, shared by the homepage and /vsl. -->
-    <link rel="preload" as="image" href="https://xrzweoneiieddzxogewk.supabase.co/storage/v1/object/public/training-videos/vsl/2026-09-02/apex-vsl-poster.jpg" fetchpriority="high" crossorigin="anonymous" />
+    <!-- Canonical final VSL poster, preloaded ONLY on the two routes that
+         render it (/ and /vsl). This shell is served for every route, so a
+         static <link rel=preload> here made /apply, /login, /status and every
+         dashboard page fetch 77 KB at High priority, ahead of the JS that
+         paints them, for an image they never show.
+         No crossorigin: <video poster> is a no-cors fetch, and a CORS preload
+         does not match it. With crossorigin="anonymous" the preload was never
+         consumed, even on the homepage; the video requested the poster again.
+         Inserted from an inline script in <head>, so on / and /vsl the request
+         still starts during head parsing. scripts/check-vsl-sync.mjs guards
+         the URL, the route scope, and the missing crossorigin. -->
+    <script>
+      (function() {
+        var p = location.pathname.replace(/\/+$/, '') || '/';
+        if (p !== '/' && p !== '/vsl') return;
+        var l = document.createElement('link');
+        l.rel = 'preload';
+        l.as = 'image';
+        l.setAttribute('fetchpriority', 'high');
+        l.href = "https://xrzweoneiieddzxogewk.supabase.co/storage/v1/object/public/training-videos/vsl/2026-09-02/apex-vsl-poster.jpg";
+        document.head.appendChild(l);
+      })();
+    </script>
 
     <!-- Analytics: GA4 + PostHog + Meta Pixel are all env-gated in src/lib/analyticsBoot.ts
          (imported from main.tsx). If a vendor's env var is missing at build,

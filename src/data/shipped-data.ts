@@ -13,6 +13,18 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Agents who left stop cluttering the Team call list: anyone terminated or inactive in the system is out of the list and its counts, with one 'Show people who left' chip if you need them.",
+    detail: "The list used to open on a terminated agent.",
+    commit: "team-call-list-no-gone-2026-10-06",
+  },
+  {
+    ts: "today",
+    label: "The application page loads about 0.2s faster on phones: every page was downloading the homepage video's 77 KB cover image, first in line, even pages that never show it. Now only the homepage and /vsl fetch it.",
+    detail: "Same-server Lighthouse mobile test, 4 of 4 runs faster on /apply (median 5.07s to 4.86s, 78 KB less). The homepage was also fetching that image twice because the preload and the video asked for it in two incompatible ways; it now fetches once. Homepage speed unchanged (within run-to-run noise).",
+    commit: "PL-WIB-POSTER-PRELOAD",
+  },
+  {
+    ts: "today",
     label: "No more strangers on the boards: production drops AgentLink rows that match none of your agents (the $1.8M 'Willard Herald' was one), and Contracting opens on the cases that still need something instead of every finished carrier.",
     detail: "8 unmatched AgentLink rows excluded at the single production view, so home, leaderboard and hero agree. Your agents' own pre-August history (1,087 rows) is kept. 'All cases' is still one tap away.",
     commit: "no-strangers-contracting-needs-2026-10-06",

@@ -40041,6 +40041,96 @@ export type Database = {
         }
         Relationships: []
       }
+      monday_starter_notifications: {
+        Row: {
+          created_at: string
+          detail: string | null
+          id: number
+          kind: string
+          monday: string
+          recipient: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          detail?: string | null
+          id?: number
+          kind: string
+          monday: string
+          recipient: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          detail?: string | null
+          id?: number
+          kind?: string
+          monday?: string
+          recipient?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      content_posts: {
+        Row: {
+          account: string | null
+          category: string | null
+          comments: number | null
+          created_at: string
+          duration_s: number | null
+          external_id: string | null
+          format: string
+          id: number
+          likes: number | null
+          platform: string
+          posted_at: string
+          purposeful: boolean | null
+          source: string
+          stats_at: string | null
+          title: string | null
+          url: string | null
+          views: number | null
+        }
+        Insert: {
+          account?: string | null
+          category?: string | null
+          comments?: number | null
+          created_at?: string
+          duration_s?: number | null
+          external_id?: string | null
+          format: string
+          id?: number
+          likes?: number | null
+          platform: string
+          posted_at?: string
+          purposeful?: boolean | null
+          source?: string
+          stats_at?: string | null
+          title?: string | null
+          url?: string | null
+          views?: number | null
+        }
+        Update: {
+          account?: string | null
+          category?: string | null
+          comments?: number | null
+          created_at?: string
+          duration_s?: number | null
+          external_id?: string | null
+          format?: string
+          id?: number
+          likes?: number | null
+          platform?: string
+          posted_at?: string
+          purposeful?: boolean | null
+          source?: string
+          stats_at?: string | null
+          title?: string | null
+          url?: string | null
+          views?: number | null
+        }
+        Relationships: []
+      }
       content_cards: {
         Row: {
           approved_at: string | null

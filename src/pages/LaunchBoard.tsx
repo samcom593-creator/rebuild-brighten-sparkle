@@ -39,6 +39,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { toast } from "sonner";
 import { useSearchParams } from "react-router-dom";
 import { PageSkeleton } from "@/components/ui/page-skeleton";
+import { PostedTodayStrip } from "@/components/content/AccountsAnalytics";
 import {
   STAGE_LABEL, STAGE_ORDER, WORKFLOW, checkPublishUrl, fourQuestions, nextAction, nextStatus, phoenixDate, previousStatus,
   scheduleLabel, stageOf, todayQueue, type Stage, type WorkflowStatus,
@@ -56,9 +57,10 @@ import {
 
 // The content-ops approval queue + invite list (formerly /dashboard/content) renders as the Queue tab.
 const ContentQueue = lazy(() => import("./ContentQueue"));
+const AccountsAnalytics = lazy(() => import("@/components/content/AccountsAnalytics"));
 
 type Job = "REACH" | "AUTHORITY" | "PROOF" | "CONVERT";
-type Tab = "today" | "board" | "week" | "library" | "queue";
+type Tab = "today" | "board" | "week" | "library" | "queue" | "analytics";
 
 interface Card {
   id: string; title: string; brand: string; content_type: string; job: string; hook: string; caption: string;
@@ -111,7 +113,7 @@ const JOBS: { k: Job; label: string; desc: string; accent: string; border: strin
   { k: "CONVERT", label: "Convert", desc: "One clear ask — apply.", accent: "text-emerald-400", border: "border-t-emerald-400/70" },
 ];
 const TABS: { k: Tab; label: string }[] = [
-  { k: "today", label: "Today" }, { k: "board", label: "Board" }, { k: "week", label: "Week" }, { k: "library", label: "Library" }, { k: "queue", label: "Queue" },
+  { k: "today", label: "Today" }, { k: "board", label: "Board" }, { k: "week", label: "Week" }, { k: "library", label: "Library" }, { k: "queue", label: "Queue" }, { k: "analytics", label: "Analytics" },
 ];
 const TAB_KEYS = new Set<Tab>(TABS.map((t) => t.k));
 
@@ -715,6 +717,7 @@ export default function LaunchBoard() {
 
       {tab === "today" && (
         <div className="space-y-8">
+          <PostedTodayStrip onOpen={() => setTab("analytics")} />
           <section aria-label="Four questions" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {questions.map((qq) => (
               <div key={qq.key} className="flex flex-col gap-2 rounded-lg border border-border bg-card p-4">
@@ -1012,6 +1015,11 @@ export default function LaunchBoard() {
         </div>
       )}
 
+      {tab === "analytics" && (
+        <Suspense fallback={<PageSkeleton />}>
+          <AccountsAnalytics />
+        </Suspense>
+      )}
       {tab === "queue" && (
         <Suspense fallback={<PageSkeleton />}>
           <ContentQueue embedded />

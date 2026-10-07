@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Launch Board has an Analytics tab: posts today, this week and 30-day views per account, a 14-day posts-per-day chart split short vs long, and one-tap logging for Instagram, TikTok and Facebook with a content category (Fitness, Cars, My Life, Insurance, Top of Funnel, Education) and a purposeful-or-not tag.",
+    detail: "YouTube fills itself every 3 hours from public data (356 videos found, 768 subscribers); Today shows a posted-today counter.",
+    commit: "launch-board-analytics-2026-10-06",
+  },
+  {
+    ts: "today",
     label: "Launch Board is easier to read and use: brighter gray text and borders in dark mode site-wide, bigger labels, Today titles wrap instead of cutting off, clip titles rename with a tap, and on a phone the first tap plays a clip's preview.",
     detail: "The Library had been frozen at Sep 22 because the Mac mini indexer is offline; the MacBook classifier now adds new Dropbox YouTube/Reels videos every run (37 added, incl. the Oct 6 SD card) and gave 873 untitled clips their readable labels. Reviewed by the four-lens council.",
     commit: "launch-board-readability-2026-10-06",

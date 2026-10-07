@@ -285,7 +285,7 @@ function ContractingOps({ canInvite, isAdmin }: { canInvite: boolean; isAdmin: b
           Couldn't load contracting cases: {(digestQ.error as Error).message}
         </GlassCard>
       ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {stats.map(([label, value, note, queueKey]) => (
             <Link key={label} to={`/dashboard/contracting/cases?queue=${queueKey}`} className="block rounded-lg focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]">
               <GlassCard className="h-full p-4 transition-colors hover:border-primary/40">

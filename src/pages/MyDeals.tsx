@@ -270,7 +270,7 @@ export default function MyDeals() {
       />
 
       {teamView && book && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
           <div className="rounded-md border border-border p-4">
             <p className="text-xs text-muted-foreground uppercase tracking-wider">Last 30 days</p>
             <p className="text-2xl font-bold tabular-nums mt-0.5">{fmtMoney(book.premium_30d)}</p>
@@ -465,7 +465,7 @@ export default function MyDeals() {
                           </div>
                           <div>
                             <p className="text-muted-foreground uppercase tracking-wider text-[11px]">Row ID</p>
-                            <p className="font-semibold truncate">{d.row_key}</p>
+                            <p className="font-semibold line-clamp-2">{d.row_key}</p>
                           </div>
                         </div>
                       )}

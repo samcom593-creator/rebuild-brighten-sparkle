@@ -703,7 +703,7 @@ function RecruitingGrid({ stats }: { stats: DashboardSnapshot["recruiting"] }) {
       <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
         Every stage of the hire funnel as an all-time count; a wide gap between two neighbouring stages is where applicants are dying.
       </p>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
         <LazyPanel minHeight="h-16"><LicensedHiresRange /></LazyPanel>
         {rows.map(([label, value]) => (
           <div key={label} className="rounded-lg border border-border bg-card p-3">
@@ -734,7 +734,7 @@ function WeekProductionCard({ snapshot }: { snapshot: DashboardSnapshot }) {
         Posted ALP, deal count and presentations for the current business week, measured against the matched prior week.
       </p>
       {hasWeekProduction ? (
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
           <div className="min-w-0">
             <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">ALP posted this week</p>
             <p className="mt-1.5 break-words text-2xl font-bold leading-none tabular-nums text-foreground">{money(snapshot.production.weekAlp)}</p>
@@ -865,7 +865,7 @@ function ExecutiveDashboard({
       {/* Funnel-leak command row — biggest two leaks live in one strip
           at the top of every admin dashboard load: unclaimed applicants
           (recruiting side) + stalled XCEL students (licensing side). */}
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <LazyPanel minHeight="h-32"><UnclaimedLeadsCommandCard /></LazyPanel>
         <LazyPanel minHeight="h-32"><XcelStalledCard /></LazyPanel>
       </div>
@@ -874,7 +874,7 @@ function ExecutiveDashboard({
           not income — this is the only honest income answer the data supports. */}
       
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
         <StatTile
           icon={DollarSign}
           label="Today ALP"
@@ -899,7 +899,7 @@ function ExecutiveDashboard({
         <StatTile icon={CheckCircle2} label="Close rate" value={percent(snapshot.production.closeRate)} detail={`${number(snapshot.production.presentationsWeek)} presentations logged`} tone="success" />
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <IntegrationCard
           icon={Database}
           title="AgentLink history import"
@@ -952,7 +952,7 @@ function ExecutiveDashboard({
       {/* PL-026: removed "Activity And Referrals" 30-day widget per Sam.
           Recruiting block now spans full width. */}
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Button asChild variant="outline" className="h-10 justify-between sm:h-9">
           <Link to="/dashboard/leaderboard"><span className="truncate">Leaderboard</span> <ArrowRight className="ml-2 h-4 w-4 shrink-0" /></Link>
         </Button>

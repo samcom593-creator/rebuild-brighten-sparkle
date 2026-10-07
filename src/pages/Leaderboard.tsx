@@ -527,8 +527,8 @@ export default function Leaderboard() {
           reported on its own line, never inside these figures.
           Month-to-date AP is the one number Sam reads first, so it is the only
           emerald figure in the strip; every other tile stays neutral. */}
-      <GlassCard className="p-4">
-        <div className="mb-1 flex items-baseline justify-between gap-2">
+      <GlassCard className="p-5">
+        <div className="mb-2 flex items-baseline justify-between gap-2">
           <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
             <Activity className="h-4 w-4 shrink-0 text-muted-foreground" />
             <span className="truncate">Agency production</span>
@@ -538,11 +538,14 @@ export default function Leaderboard() {
             Live
           </span>
         </div>
-        <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+        <details className="mb-4 text-xs text-muted-foreground">
+          <summary className="cursor-pointer select-none font-medium">Show details</summary>
+        <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
           Source · v_production_comp_truth (deals posted in-app + Discord-reported + historical AgentLink imports, de-duplicated) · posted date · America/Phoenix month window · same rows as the board below
         </p>
+        </details>
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 sm:gap-5 xl:grid-cols-4">
           <div className="min-w-0 rounded-lg border border-border bg-card p-3 sm:p-4">
             <div className="mb-1.5 flex items-center gap-2">
               <DollarSign className="h-4 w-4 shrink-0 text-muted-foreground" />

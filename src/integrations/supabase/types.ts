@@ -40087,9 +40087,11 @@ export type Database = {
           purposeful: boolean | null
           source: string
           stats_at: string | null
+          thumb_url: string | null
           title: string | null
           url: string | null
           views: number | null
+          watched_pct: number | null
         }
         Insert: {
           account?: string | null
@@ -40106,9 +40108,11 @@ export type Database = {
           purposeful?: boolean | null
           source?: string
           stats_at?: string | null
+          thumb_url?: string | null
           title?: string | null
           url?: string | null
           views?: number | null
+          watched_pct?: number | null
         }
         Update: {
           account?: string | null
@@ -40125,9 +40129,11 @@ export type Database = {
           purposeful?: boolean | null
           source?: string
           stats_at?: string | null
+          thumb_url?: string | null
           title?: string | null
           url?: string | null
           views?: number | null
+          watched_pct?: number | null
         }
         Relationships: []
       }

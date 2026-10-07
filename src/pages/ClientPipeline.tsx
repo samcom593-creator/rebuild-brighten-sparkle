@@ -725,7 +725,7 @@ export default function ClientPipeline() {
             </Button>
           </div>
 
-          <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
+          <div className="mt-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
             <PriorityMetric label="Overdue" value={prioritySummary.counts.overdue} tone="rose" active={cockpitView === "priority" && priorityFilter === "overdue"} onClick={() => { setCockpitView("priority"); setPriorityFilter("overdue"); }} />
             <PriorityMetric label="Due today" value={prioritySummary.counts.today} tone="amber" active={cockpitView === "priority" && priorityFilter === "today"} onClick={() => { setCockpitView("priority"); setPriorityFilter("today"); }} />
             <PriorityMetric label="Never touched" value={prioritySummary.counts.new} tone="default" active={cockpitView === "priority" && priorityFilter === "new"} onClick={() => { setCockpitView("priority"); setPriorityFilter("new"); }} />
@@ -821,7 +821,7 @@ export default function ClientPipeline() {
       {/* PUNCHLINE HERO — 4 huge numbers, phone-first. Matches the recruiting
           /dashboard/recruiting redesign (4e5c515e). text-5xl font-black
           tabular-nums leading-none — readable on a phone at arm's length. */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         <PunchTile
           label="Total clients"
           value={isLoading ? null : stats.total}
@@ -901,7 +901,7 @@ export default function ClientPipeline() {
       {/* BOOK-FALLOUT TRACKERS — the two cards Sam asked for. Hasn't-bought
           and Missing each open a preview list inline; full list lives in the
           Full directory disclosure. */}
-      <div className="grid gap-3 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         <FalloutCard
           icon={MailX}
           title="Hasn't bought a policy yet"
@@ -1052,7 +1052,7 @@ export default function ClientPipeline() {
                   return (
                     <li key={c.id} className="py-2.5 flex items-center justify-between gap-3 hover:bg-primary/[0.04] rounded px-2 -mx-2 transition-colors">
                       <div className="min-w-0">
-                        <p className="font-semibold truncate">{fullName(c)}</p>
+                        <p className="font-semibold line-clamp-2">{fullName(c)}</p>
                         <p className="text-xs text-muted-foreground truncate">
                           {fmtPhone(c.phone)} · {c.state ?? "—"}
                         </p>
@@ -1104,7 +1104,7 @@ export default function ClientPipeline() {
                           {(c.first_name?.[0] ?? "?") + (c.last_name?.[0] ?? "")}
                         </div>
                         <div className="min-w-0">
-                          <p className="font-semibold truncate">{fullName(c)}</p>
+                          <p className="font-semibold line-clamp-2">{fullName(c)}</p>
                           <p className="text-xs text-muted-foreground truncate">
                             {c.city ? `${c.city}, ${c.state}` : c.state ?? "—"}
                           </p>
@@ -1241,7 +1241,7 @@ export default function ClientPipeline() {
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-semibold truncate">{fullName(c)}</p>
+                            <p className="font-semibold line-clamp-2">{fullName(c)}</p>
                             <Badge variant="outline" className={`text-[11px]  ${stage.tint}`}>{stage.label}</Badge>
                             {housing === "homeowner" && (
                               <Badge variant="outline" className="text-[11px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/40">

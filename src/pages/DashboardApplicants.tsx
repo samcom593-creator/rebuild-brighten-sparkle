@@ -289,6 +289,22 @@ function ApplicantsClassicView() {
   const contactedParam = searchParams.get("contacted");
 
   const queryClient = useQueryClient();
+  const [showDetails, setShowDetails] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("applicants-show-details") === "1";
+    } catch { // empty-catch-allow:localStorage unavailable, default collapsed
+    }
+    return false;
+  });
+  const toggleDetails = () => {
+    setShowDetails((v) => {
+      try {
+        localStorage.setItem("applicants-show-details", v ? "0" : "1");
+      } catch { // empty-catch-allow:localStorage unavailable, toggle is session-only
+      }
+      return !v;
+    });
+  };
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>(statusParam || "all");
   const [licenseFilter, setLicenseFilter] = useState<string>(licenseParam || "all");
@@ -1288,6 +1304,9 @@ function ApplicantsClassicView() {
             )}
           </div>
           <div className="flex shrink-0 items-center gap-1 rounded-md bg-muted p-1">
+            <Button variant="ghost" size="sm" aria-pressed={showDetails} className="h-10 px-2.5 text-muted-foreground sm:h-9" onClick={toggleDetails}>
+              {showDetails ? "Hide details" : "Show details"}
+            </Button>
             <Button variant={viewMode === "list" ? "default" : "ghost"} size="sm" aria-pressed={viewMode === "list"} className="h-10 gap-1.5 px-2.5 sm:h-9" onClick={() => setViewMode("list")}>
               <List className="h-4 w-4 shrink-0" />
               List
@@ -1336,9 +1355,11 @@ function ApplicantsClassicView() {
             {activeApplications.length.toLocaleString()}
           </span>
         </div>
+        {showDetails && (
         <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
           Every active applicant sits on exactly one rung. Pick a rung to work just that group.
         </p>
+        )}
         <div className="flex flex-wrap gap-2">
           {[{ key: null, label: "All stages", count: activeApplications.length }, ...PIPELINE_STAGES.map((s) => ({
             key: s.key as PipelineStageKey | null,
@@ -1381,9 +1402,11 @@ function ApplicantsClassicView() {
             {activeFilterChips.length.toLocaleString()}
           </span>
         </div>
+        {showDetails && (
         <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
           Narrow the feed down to the applicants you are actually going to work in the next hour.
         </p>
+        )}
 
         <div className="relative mb-3">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -1395,7 +1418,7 @@ function ApplicantsClassicView() {
           />
         </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="h-10 w-full bg-input sm:h-9">
             <Filter className="mr-2 h-4 w-4 shrink-0" />
@@ -1642,9 +1665,11 @@ function ApplicantsClassicView() {
                 {filteredApplications.length.toLocaleString()}
               </span>
             </div>
+            {showDetails && (
             <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
               Every applicant in scope with their next best action — a row sitting here uncontacted is a lead going cold.
             </p>
+            )}
             {filteredApplications.length > 0 ? (
               <div className="-mx-4 max-h-[calc(100vh-170px)] overflow-auto px-4 sm:mx-0 sm:px-0">
                 <table className="w-full min-w-[1100px] text-sm">

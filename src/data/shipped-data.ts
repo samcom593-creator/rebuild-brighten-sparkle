@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Launch Board Today is video-first: your top 5 posts this week across YouTube and Instagram with a score (50 = your normal), plus five vidIQ ideas for what to make next and a plain-English read on your niche. Every page has bigger text, and the sidebar pages got more breathing room with helper text tucked behind Show details.",
+    detail: "Instagram @sell4daddy reels come in through vidIQ owner insights (refreshed on request); YouTube syncs every 3 hours. Declutter pass reviewed by the council: presentational only, no data logic touched.",
+    commit: "launch-board-home-and-declutter-2026-10-06",
+  },
+  {
+    ts: "today",
     label: "Easier on the eyes everywhere: the dark theme is now a warm charcoal with off-white text instead of pure black. On the Launch Board, Analytics shows your actual videos with their views, Library cards show just the video, title, hook and buttons (details behind one switch), and the empty Queue tab is hidden.",
     detail: "Logging an Instagram/TikTok post is one button that opens the form; no tagging chores in the list. Queue is still reachable at ?tab=queue while its Mac mini feed is offline.",
     commit: "launch-board-calm-2026-10-06",

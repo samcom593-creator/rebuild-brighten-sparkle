@@ -88,7 +88,7 @@ export default function CallLab() {
             <li key={s.id}>
               <Link to={report ? `/dashboard/call-lab/report/${s.id}` : `/dashboard/call-lab/live/${s.id}`} className="flex items-center gap-4 px-4 py-3 hover:bg-accent">
                 <span className={cn("grid h-11 w-11 shrink-0 place-items-center rounded-full border text-sm font-semibold tabular-nums", score !== null && (s.scorecard?.passState === "pass" ? "border-success text-success" : "border-destructive text-destructive"))}>{score ?? "—"}</span>
-                <span className="min-w-0 flex-1"><span className="block truncate font-medium">{s.scenario_snapshot?.title ?? s.scenario_id}</span><span className="block text-xs text-muted-foreground">{new Date(s.created_at).toLocaleString()} · {s.provider === "demo" ? "demo" : "live"} · {s.mode}</span></span>
+                <span className="min-w-0 flex-1"><span className="block line-clamp-2 font-medium">{s.scenario_snapshot?.title ?? s.scenario_id}</span><span className="block text-xs text-muted-foreground">{new Date(s.created_at).toLocaleString()} · {s.provider === "demo" ? "demo" : "live"} · {s.mode}</span></span>
                 <Badge variant={done ? "secondary" : "outline"}>{done ? (s.scorecard?.passState ?? "scored").replace("_", " ") : s.status}</Badge>
                 <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden />
               </Link>

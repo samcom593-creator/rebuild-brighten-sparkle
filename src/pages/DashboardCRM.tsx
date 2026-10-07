@@ -2098,7 +2098,7 @@ export default function DashboardCRM() {
       {/* max-w-[1400px] (not max-w-6xl) — the primary content is an 11-column
           table, the one width exception the visual contract allows. px-4 sm:px-6
           is required so PageHeader's -mx-4 sm:-mx-6 cancels exactly. */}
-      <div className="page-enter mx-auto w-full max-w-[1400px] space-y-5 px-4 pb-24 sm:px-6">
+      <div className="page-enter mx-auto w-full max-w-[1400px] space-y-8 px-4 pb-24 sm:px-6">
         <PageHeader
           accent="cyan"
           eyebrow="Team"

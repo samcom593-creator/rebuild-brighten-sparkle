@@ -318,7 +318,7 @@ export default function CourseCatalog() {
               </Button>
             )}
           </div>
-          <div className="grid grid-cols-3 gap-2 lg:min-w-80">
+          <div className="grid grid-cols-3 gap-3 lg:min-w-80">
             <CourseStat value={`${overallProgress}%`} label="complete" />
             <CourseStat value={`${completedCount}/${modules.length}`} label="lessons" />
             <CourseStat value={totalMinutes > 0 ? `${totalMinutes}m` : "—"} label="total" />
@@ -432,7 +432,7 @@ export default function CourseCatalog() {
                 )}
 
                 {currentModule.learning_objectives.length > 0 && (
-                  <div className="mt-5 grid gap-2 sm:grid-cols-3">
+                  <div className="mt-5 grid gap-3 sm:grid-cols-3">
                     {currentModule.learning_objectives.map((objective, index) => (
                       <div key={objective} className="flex gap-2 rounded-lg border border-border bg-muted/25 p-3 text-xs leading-5">
                         <span className="font-bold text-primary">{index + 1}</span>

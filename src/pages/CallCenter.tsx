@@ -1155,7 +1155,7 @@ export default function CallCenter() {
           }
         />
       ) : (
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
           {/* CALL PANEL — left column on desktop, stacked on mobile */}
           <div className="flex min-w-0 flex-col gap-3">
             {/* Priority + NBA strip */}
@@ -1172,11 +1172,11 @@ export default function CallCenter() {
                         )}>
                           {currentBadge.text}
                         </span>
-                        <span className="min-w-0 truncate text-sm font-medium text-foreground">
+                        <span className="min-w-0 line-clamp-2 text-sm font-medium text-foreground">
                           Next best action: {currentNba.action}
                         </span>
                       </div>
-                      <p className="mt-0.5 truncate text-[12px] text-muted-foreground">
+                      <p className="mt-0.5 line-clamp-2 text-[12px] text-muted-foreground">
                         {currentNba.reason}
                       </p>
                     </div>

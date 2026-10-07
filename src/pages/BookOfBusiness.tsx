@@ -372,6 +372,22 @@ export default function BookOfBusiness() {
   const [concentration, setConcentration] = useState<
     BookConcentrationRow[] | null
   >(null);
+  const [showDetails, setShowDetails] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("bob-show-details") === "1";
+    } catch { // empty-catch-allow:localStorage unavailable, default collapsed
+    }
+    return false;
+  });
+  const toggleDetails = () => {
+    setShowDetails((v) => {
+      try {
+        localStorage.setItem("bob-show-details", v ? "0" : "1");
+      } catch { // empty-catch-allow:localStorage unavailable, toggle still works in memory
+      }
+      return !v;
+    });
+  };
   const [loading, setLoading] = useState(true);
   const [agentScopeIds, setAgentScopeIds] = useState<string[] | null>(null);
   const [agentLinkScopeUserIds, setAgentLinkScopeUserIds] = useState<
@@ -1350,6 +1366,12 @@ export default function BookOfBusiness() {
       {/* Sam 2026-09-24: the book audit bot — tallies at the top, flagged policies below. */}
       <BookAuditPanel />
 
+      <div className="flex justify-end">
+        <Button variant="ghost" size="sm" onClick={toggleDetails}>
+          {showDetails ? "Hide details" : "Show details"}
+        </Button>
+      </div>
+
       {/* MP-268 — Book truth by status.
           "Annual Premium" above sums EVERY status together, so submitted-but-not-
           adjudicated business, declined/withdrawn policies that never issued, and
@@ -1363,12 +1385,12 @@ export default function BookOfBusiness() {
               <span className="truncate">Book by status</span>
             </h3>
           </div>
-          <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+          {showDetails && <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
             In-force is what is actually paying; the headline premium above sums
             every status together, so pending and never-issued business inflates
             it.
-          </p>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          </p>}
+          <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
             {segments.map((seg) => {
               const inForce = seg.segment === "in_force";
               const dead = seg.segment === "never_issued";
@@ -1440,7 +1462,7 @@ export default function BookOfBusiness() {
           lapse. Concentration answers "how much of the paying book sits with one
           carrier", which is the risk that an appointment loss is existential. */}
       {isAdmin && (persistency?.length || concentration?.length) ? (
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           {persistency && persistency.length > 0 && (
             <GlassCard className="p-4">
               <div className="mb-1 flex items-baseline justify-between gap-2">
@@ -1452,11 +1474,11 @@ export default function BookOfBusiness() {
                   {persistency.length}
                 </span>
               </div>
-              <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+              {showDetails && <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
                 Still in force, of policies that reached a decision — pending
                 and never-issued are excluded because they never had a chance to
                 lapse.
-              </p>
+              </p>}
               <ul className="max-h-64 space-y-2 overflow-y-auto" tabIndex={0} aria-label="Scrollable list">
                 {[...persistency]
                   .sort(
@@ -1526,10 +1548,10 @@ export default function BookOfBusiness() {
                   {concentration.length}
                 </span>
               </div>
-              <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+              {showDetails && <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
                 Share of the in-force book — a high share means losing one
                 appointment takes that much of the paying book with it.
-              </p>
+              </p>}
               <ul className="max-h-64 space-y-2 overflow-y-auto" tabIndex={0} aria-label="Scrollable list">
                 {[...concentration]
                   .sort(
@@ -1590,7 +1612,7 @@ export default function BookOfBusiness() {
       ) : null}
 
       {/* KPI cards — 6 metrics, per Sam brief */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-6">
         <KpiCard
           icon={<Award className="h-4 w-4" />}
           label="Total Deals"

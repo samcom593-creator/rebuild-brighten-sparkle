@@ -317,7 +317,7 @@ export default function BusinessAnalytics() {
       {/* KPI STAT ROW · Production · Policies · Producers · Growth. Leads the page
           per the AC Reports composition; every value is live from
           v_business_analytics_summary. */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         {summary.isLoading ? (
           Array.from({ length: 4 }).map((_, i) => (
             <div key={`kpi-skel-${i}`} className="rounded-md border border-border bg-card p-4">
@@ -379,7 +379,7 @@ export default function BusinessAnalytics() {
           </CardHeader>
           <CardContent className="space-y-3">
             {/* 4 operational metrics */}
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
               <div className="min-w-0">
                 <div className="flex min-w-0 items-center gap-2">
                   <Trophy className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -532,7 +532,7 @@ export default function BusinessAnalytics() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {/* Up to 3 "Needs Attention" cards · names with action recommendation */}
               {(needsAttention.data ?? []).slice(0, 3).map((agent, i) => (
                 <InsightCard
@@ -584,7 +584,7 @@ export default function BusinessAnalytics() {
             </Badge>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {learnFrom.data!.map((agent) => (
                 <div
                   key={`lf-${agent.user_id}`}

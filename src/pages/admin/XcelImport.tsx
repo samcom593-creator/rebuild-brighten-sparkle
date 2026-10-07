@@ -450,7 +450,7 @@ export default function XcelImport() {
                       className="border-b border-border/60 transition-colors hover:bg-muted/30"
                     >
                       <td className="max-w-[180px] px-2 py-2">
-                        <div className="truncate text-sm font-medium text-foreground">
+                        <div className="line-clamp-2 text-sm font-medium text-foreground">
                           {[r.first_name, r.last_name].filter(Boolean).join(" ") || "—"}
                         </div>
                       </td>

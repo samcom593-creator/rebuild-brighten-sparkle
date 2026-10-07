@@ -357,7 +357,7 @@ export default function TrainingHub() {
             </span>
             <div className="h-px flex-1 bg-border" />
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {quickLinks.map((l) => (
               <a
                 key={l.id ?? l.href}
@@ -576,7 +576,7 @@ function RecordingsTab({
                   <Play className="h-4 w-4 text-primary" />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-semibold">{rec.title}</span>
+                  <span className="block line-clamp-2 text-sm font-semibold">{rec.title}</span>
                   <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
                     <Badge
                       variant="outline"

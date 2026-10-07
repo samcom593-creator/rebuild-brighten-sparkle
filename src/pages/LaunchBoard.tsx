@@ -39,7 +39,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { toast } from "sonner";
 import { useSearchParams } from "react-router-dom";
 import { PageSkeleton } from "@/components/ui/page-skeleton";
-import { PostedTodayStrip } from "@/components/content/AccountsAnalytics";
+import { ContentHome } from "@/components/content/AccountsAnalytics";
 import {
   STAGE_LABEL, STAGE_ORDER, WORKFLOW, checkPublishUrl, fourQuestions, nextAction, nextStatus, phoenixDate, previousStatus,
   scheduleLabel, stageOf, todayQueue, type Stage, type WorkflowStatus,
@@ -723,7 +723,7 @@ export default function LaunchBoard() {
 
       {tab === "today" && (
         <div className="space-y-8">
-          <PostedTodayStrip onOpen={() => setTab("analytics")} />
+          <ContentHome onOpenAnalytics={() => setTab("analytics")} />
           <section aria-label="Four questions" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {questions.map((qq) => (
               <div key={qq.key} className="flex flex-col gap-2 rounded-lg border border-border bg-card p-4">

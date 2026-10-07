@@ -246,7 +246,7 @@ function OverviewTab({ scope }: { scope: FinScope }) {
   if (isLoading || !data) {
     return (
       <div className="space-y-5">
-        <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 grid-cols-2 xl:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => <Skeleton key={/* stable-key-allow:skeleton-static-array */ i} className="h-28 rounded-lg" />)}
         </div>
         <Skeleton className="h-40 rounded-lg" />
@@ -260,7 +260,7 @@ function OverviewTab({ scope }: { scope: FinScope }) {
   return (
     <div className="space-y-5">
       {/* KPI row — AC: Today / Forecast 90-day / MTD / YTD */}
-      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 xl:grid-cols-4">
         <KpiCard label="Today" value={money(k.today)} sub={new Date().toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })} accent />
         <KpiCard label="Forecast 90-day" value={money(k.forecast_90d)} sub="Run rate of the last 90 days" accent />
         <KpiCard label="Month-to-date (MTD)" value={money(k.mtd)} sub={new Date().toLocaleDateString(undefined, { month: "long", year: "numeric" })} />
@@ -281,7 +281,7 @@ function OverviewTab({ scope }: { scope: FinScope }) {
         <CardHeader className="pb-2">
           <CardTitle className="text-[12px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Commission types</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+        <CardContent className="grid gap-4 grid-cols-2 xl:grid-cols-4">
           <TypeCard icon={DollarSign} label="Direct YTD" value={money(q.direct_ytd)} sub="Advance + trail, estimated" tone="text-primary" />
           <TypeCard icon={Users} label="Override pending" value={money(q.override_pending)} sub="From downline production" tone="text-success" />
           <TypeCard icon={Clock} label="Trail pending" value={money(q.trail_pending)} sub="Months 10–12 deferred" tone="text-info" />
@@ -528,14 +528,14 @@ const snapshot = useQuery({
       </div>
       {/* KPI stat row — the money numbers lead */}
       {snapshot.isLoading ? (
-        <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 xl:grid-cols-4">
           {Array.from({ length: 7 }).map((_, i) => (
             <Skeleton key={/* stable-key-allow:skeleton-static-array */ i} className="h-24 rounded-md" />
           ))}
         </div>
       ) : snap ? (
         <div className="space-y-4">
-          <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+          <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 xl:grid-cols-4">
             <StatTile icon={AlertTriangle} label="Ghost AP at risk" value={fmtUsd(snap.ghost_ap_at_risk)} tone="danger" sub="unreconciled advance exposure" />
             <StatTile icon={TrendingDown} label="Walked commission" value={fmtUsd(snap.lapsed_walked_commission)} tone="danger" sub="lapsed / withdrawn" />
             <StatTile icon={TrendingUp} label="Mentorship revenue" value={fmtUsd(snap.mentorship_revenue_usd)} tone="success" />
@@ -693,7 +693,7 @@ const snapshot = useQuery({
                     <div key={c.id} className="flex items-center gap-3 px-4 py-3 text-sm">
                       <DollarSign className="h-4 w-4 text-success shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">
+                        <p className="font-medium line-clamp-2">
                           {c.annual_premium ? `${fmtUsd(c.annual_premium)} AP` : "Commission"}{c.rate_source ? ` · ${c.rate_source}` : ""}
                         </p>
                         <p className="text-xs text-muted-foreground">{relativeTime(c.created_at)} · {c.status ?? "—"}</p>
@@ -723,7 +723,7 @@ const snapshot = useQuery({
                   {(approvals.data ?? []).map((a) => (
                     <div key={a.id} className="px-4 py-3">
                       <div className="flex items-center justify-between gap-3 mb-1">
-                        <p className="text-sm font-bold truncate">{a.subject ?? "—"}</p>
+                        <p className="text-sm font-bold line-clamp-2">{a.subject ?? "—"}</p>
                         {a.amount_cents != null && (
                           <Badge variant="outline" className="bg-warning/15 text-warning border-warning/30 shrink-0">{fmtUsd(a.amount_cents / 100)}</Badge>
                         )}

@@ -299,7 +299,7 @@ function AgentProducerView({ agentId }: { agentId: string }) {
           non-admin who reaches this route still cannot write. */}
       {isAdmin && <AgentLicensingEditor agentId={agentId} />}
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         <StatCard label="Month to date" value={usdOrNull(a.mtd_alp)} note={`${a.mtd_deals ?? 0} deals posted`} tone="text-success" />
         <StatCard label="Last 30 days" value={usdOrNull(a.l30_alp)} note={`${a.l30_deals ?? 0} deals posted`} />
         <StatCard label="Lifetime ALP" value={usdOrNull(a.lifetime_alp)} note={`${a.lifetime_deals ?? 0} deals · ${a.first_posted_date ? `since ${a.first_posted_date}` : "never sold"}`} />
@@ -313,8 +313,8 @@ function AgentProducerView({ agentId }: { agentId: string }) {
       <ContractingReadinessCard />
       <ReadyToWriteCard agentId={agentId} />
 
-      <div className="grid gap-5 lg:grid-cols-3">
-        <div className="space-y-5 lg:col-span-2">
+      <div className="grid gap-6 xl:grid-cols-3">
+        <div className="space-y-6 xl:col-span-2">
           <Card>
             <CardContent className="p-5">
               <h3 className="mb-1 flex items-center gap-1.5 text-sm font-semibold"><TrendingUp className="h-4 w-4 text-muted-foreground" /> Production by month</h3>

@@ -484,7 +484,7 @@ export default function RecruitPipeline() {
                         </div>
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-1.5">
-                            <span className="truncate font-medium">{r.display_name}</span>
+                            <span className="line-clamp-2 font-medium">{r.display_name}</span>
                             {r.person_type === "agent" && (r.license_status === "licensed" ? (
                               <Badge variant="outline" className="text-[11px] text-primary">Licensed</Badge>
                             ) : (

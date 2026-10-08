@@ -52,6 +52,12 @@ const SENDS = [
   // not violations, not even notices. send-admin-email (caller-chosen to, from
   // and html, no credential read) printed "0 of 239" here for its whole life.
   /\.emails\s*\.\s*(send|batch\s*\.\s*send)\s*\(/,
+  // PL-WIB-SEND-INSTAGRAM-DM-AUTH (2026-10-08). Instagram / Meta Graph sends: a
+  // DM (/messages) or a public comment reply (/replies) posted as Sam's account.
+  // send-instagram-dm took the text and the target off the body with no
+  // credential read and printed "0 of 239" here, because this list only knew
+  // email and SMS. Graph READS (comments, insights) are not sends and stay out.
+  /graph\.(instagram|facebook)\.com[^"'`\n]*\/(messages|replies)\b/,
 ];
 // Recipient chosen by the CALLER. The recipient must be SYNTACTICALLY bound to
 // the request body — a mere mention of body.email elsewhere is not enough.
@@ -74,6 +80,11 @@ const BODY_RECIPIENT = [
   // Measured 2026-10-08 against all 239 functions: flags send-admin-email
   // before its gate and nothing after it.
   /\{[^{}]*\b(to|recipients|recipient)\b[^{}]*\}\s*=\s*(await\s+req\s*\.\s*json\s*\(\s*\)|(body|payload|input)\b)/,
+  // Instagram targets: an IGSID or a comment id taken off the body
+  // (`const recipientId = body.recipient_id ?? ...`, `commentId = body.comment_id`).
+  // A comment id IS a recipient: a private reply DMs its author, a public one
+  // posts under it.
+  /\b(recipient_?[Ii]d|comment_?[Ii]d|igsid)\s*[:=]\s*[^;\n]*\b(body|payload|input)\s*\.\s*(recipient_id|comment_id|igsid|to)\b/,
 ];
 // Reads a credential off the request.
 const READS_CRED = [

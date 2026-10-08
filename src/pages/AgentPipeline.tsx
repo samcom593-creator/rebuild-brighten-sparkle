@@ -371,7 +371,11 @@ export default function AgentPipeline() {
     setBulkSending(true);
     const targets = applications.filter((a) => selectedIds.has(a.id));
     try {
-      await supabase.functions.invoke("bulk-agent-message", {
+      // invoke() resolves with {error} on a non-2xx instead of throwing, so the
+      // old bare await toasted "Blast sent" on every click. bulk-agent-message
+      // takes agent_ids/channel/message and has always answered this body with
+      // a 400: this button has never sent anything to a recruit. Say so.
+      const { error } = await supabase.functions.invoke("bulk-agent-message", {
         body: {
           agentId,
           applicationIds: [...selectedIds],
@@ -379,6 +383,7 @@ export default function AgentPipeline() {
           recipientCount: targets.length,
         },
       });
+      if (error) throw error;
       toast.success(`Blast sent to ${targets.length} recruits`);
       setSelectedIds(new Set());
     } catch {

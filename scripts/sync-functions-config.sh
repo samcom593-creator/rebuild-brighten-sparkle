@@ -150,6 +150,10 @@ PUBLIC_ALLOWLIST=(
   # send-aged-lead-email (2026-10-08): same gate (any_authenticated floor).
   # send-batch-blast calls it with the sb_secret service key, which is not a JWT.
   "send-aged-lead-email"
+  # bulk-agent-message, send-batch-blast (2026-10-08): same gate, admin_or_manager
+  # floor. The gateway accepts the public anon key, so the gate is in the handler.
+  "bulk-agent-message"
+  "send-batch-blast"
   "cron-newhire-portal-login"
   "instagram-comments-backfill"
   "instagram-token-keepalive"

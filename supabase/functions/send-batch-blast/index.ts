@@ -10,6 +10,7 @@ import { Resend } from "https://esm.sh/resend@2.0.0";
 import { emailPattern } from "../_shared/like-escape.ts";
 import { resolveOne } from "../_shared/resolve-one.ts";
 import { nanpTenDigits } from "../_shared/nanp-phone.ts";
+import { requireSendAuth } from "../_shared/require-send-auth.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -94,6 +95,25 @@ async function trySendPush(supabaseUrl: string, serviceRoleKey: string, supabase
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // PL-WIB-BULK-SENDERS-AUTH (2026-10-08). verify_jwt = false and, until this
+  // commit, no credential read: a bare POST {} with no Authorization header
+  // reached the body validation (400, nothing sent). Each lead id fans out to a
+  // push, an email (send-licensing-instructions or send-aged-lead-email, both on
+  // the service key) and a text, with no cap on the array, so anyone holding
+  // applicant or aged-lead ids could re-blast those people as often as they liked
+  // on Apex's sending reputation.
+  //
+  // Floor is admin_or_manager. The one caller is NotificationHub
+  // (/dashboard/notifications, requireAdmin) on the admin's JWT. No pg, cron or
+  // edge caller; 0 POSTs in 24h of function_edge_logs.
+  const auth = await requireSendAuth(req);
+  if (!auth.ok) {
+    return new Response(JSON.stringify({ error: auth.error }), {
+      status: auth.status,
+      headers: { "Content-Type": "application/json", ...corsHeaders },
+    });
   }
 
   try {

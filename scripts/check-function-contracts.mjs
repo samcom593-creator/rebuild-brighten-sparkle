@@ -332,6 +332,12 @@ const PUBLIC_ALLOWLIST = new Set([
   // pitch, cc Sam and an optional manager, no credential read. requireSendAuth
   // (any_authenticated) now. No pg or cron caller.
   "send-aged-lead-email",
+  // bulk-agent-message and send-batch-blast (2026-10-08): caller-chosen agent
+  // ids + unescaped HTML message, and an uncapped lead-id fan-out to push, email
+  // and text, both with no credential read. requireSendAuth (admin_or_manager)
+  // now. Only callers are admin pages on the user's JWT; no pg, cron or edge.
+  "bulk-agent-message",
+  "send-batch-blast",
 ]);
 
 // ---------------------------------------------------------------------------
@@ -432,6 +438,10 @@ const PUBLIC_CONTRACT = {
   // send-aged-lead-email: requireSendAuth, floor any_authenticated. Callers:
   // AgedLeadImporter (user JWT) and send-batch-blast (service key).
   "send-aged-lead-email": "in_handler_gate",
+  // bulk-agent-message: requireSendAuth, admin_or_manager. Caller AgentManagement.
+  "bulk-agent-message": "in_handler_gate",
+  // send-batch-blast: requireSendAuth, admin_or_manager. Caller NotificationHub.
+  "send-batch-blast": "in_handler_gate",
 
   // --- the credential is the token in the URL ----------------------------
   "content-share": "url_token",

@@ -1,7 +1,10 @@
 // Sam's weekly content system (2026-10-06). One source of truth for the Launch Board week,
 // the Today view and the My Day schedule, so the three can never disagree.
 //
-// Rubric from Sam: Mon–Wed sales-focused, Thu–Sat mindset/self-improvement, Sunday reset.
+// Rubric (Sam, repositioned 2026-10-07): content he actually enjoys making — self-improvement,
+// the come-up, day-in-the-life of building young — not insurance-sales talking-head. Mon the build,
+// Tue money, Wed get-better, Thu mindset/faith, Fri fitness, Sat story, Sun reset. The business is
+// the backdrop; recruiting, the mentorship and the fitness course are where it quietly points.
 // Volume: 4–5 long-form a week, 30–60 Shorts a week (Repurpose pushes each Short to every platform).
 // Built as: one long-form each weekday (5/week) + 7 Shorts a day Mon–Sat (42/week). Each long-form
 // is cut into 5+ Shorts, so only ~2 fresh Shorts need filming a day.
@@ -23,18 +26,18 @@ export interface DayTheme {
 }
 
 export const DAY_THEMES: Record<number, DayTheme> = {
-  1: { day: 1, short: "Mon", name: "Monday", theme: "sales", themeLabel: "Sales", angle: "Sales skills",
-       longForm: "One sales lesson people can use today: a line, a script, an objection.", shorts: "Live call moments, one-liners, objection replies.", longTarget: 1, shortsTarget: 7 },
-  2: { day: 2, short: "Tue", name: "Tuesday", theme: "sales", themeLabel: "Sales", angle: "Money & proof",
-       longForm: "How you built it: the system, the numbers, what it pays.", shorts: "Proof: deals, paydays, the lifestyle it bought.", longTarget: 1, shortsTarget: 7 },
-  3: { day: 3, short: "Wed", name: "Wednesday", theme: "sales", themeLabel: "Sales", angle: "Team & the 9–5 exit",
-       longForm: "Leaving a 9–5 for sales, building a team at 20.", shorts: "Team wins, 'POV you joined a sales team', recruiting moments.", longTarget: 1, shortsTarget: 7 },
-  4: { day: 4, short: "Thu", name: "Thursday", theme: "mindset", themeLabel: "Mindset", angle: "Habits & discipline",
-       longForm: "Habits and rules that changed your life.", shorts: "One habit, one rule, discipline one-liners.", longTarget: 1, shortsTarget: 7 },
-  5: { day: 5, short: "Fri", name: "Friday", theme: "mindset", themeLabel: "Mindset", angle: "Fitness & health",
-       longForm: "How getting fit changed your life (and your money).", shorts: "Gym clips, what you train and eat.", longTarget: 1, shortsTarget: 7 },
-  6: { day: 6, short: "Sat", name: "Saturday", theme: "mindset", themeLabel: "Mindset", angle: "Story & life",
-       longForm: "Bonus only if a weekday was missed: your story, every detail.", shorts: "Day-in-the-life, story beats, 'if you're broke, watch this'.", longTarget: 0, shortsTarget: 7 },
+  1: { day: 1, short: "Mon", name: "Monday", theme: "sales", themeLabel: "The Build", angle: "Day in the life",
+       longForm: "A real day building the agency at 20: the calls, the team, the grind, the wins. No script, no set.", shorts: "POV day-in-the-life moments, the office, team wins, the reality of building young.", longTarget: 1, shortsTarget: 7 },
+  2: { day: 2, short: "Tue", name: "Tuesday", theme: "sales", themeLabel: "Money", angle: "Money moves",
+       longForm: "Getting money moving young: the first $10k, money after the 9–5, the truths nobody tells you.", shorts: "Real numbers, what a day actually pays, money one-liners.", longTarget: 1, shortsTarget: 7 },
+  3: { day: 3, short: "Wed", name: "Wednesday", theme: "mindset", themeLabel: "Get better", angle: "Self-improvement",
+       longForm: "The self-improvement essay you'd watch yourself: discipline, the boring routine, killing limiting beliefs.", shorts: "One reframe, one habit, 'do this instead' one-liners.", longTarget: 1, shortsTarget: 7 },
+  4: { day: 4, short: "Thu", name: "Thursday", theme: "mindset", themeLabel: "Mindset & faith", angle: "Identity & faith",
+       longForm: "Who you had to become: identity, the standard, God gave you the vision, what you cut off to protect it.", shorts: "Conviction lines, faith moments, 'I cut off everyone' beats.", longTarget: 1, shortsTarget: 7 },
+  5: { day: 5, short: "Fri", name: "Friday", theme: "mindset", themeLabel: "Fitness", angle: "Body & discipline",
+       longForm: "How getting in shape fixed the rest of your life. Gym discipline bleeding into the business.", shorts: "Gym clips, what you train and eat, discipline one-liners.", longTarget: 1, shortsTarget: 7 },
+  6: { day: 6, short: "Sat", name: "Saturday", theme: "mindset", themeLabel: "Story", angle: "The come-up",
+       longForm: "Your story, every detail: homeless at 18 to a 7-figure agency, the rock bottom that changed it.", shorts: "Story beats, 'if you're broke and ambitious watch this', rock-bottom hooks.", longTarget: 0, shortsTarget: 7 },
   7: { day: 7, short: "Sun", name: "Sunday", theme: "reset", themeLabel: "Reset", angle: "Plan & batch",
        longForm: "", shorts: "Optional: schedule a few in Repurpose. Plan next week's 5 long-forms.", longTarget: 0, shortsTarget: 0 },
 };

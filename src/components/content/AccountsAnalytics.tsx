@@ -99,7 +99,7 @@ function usePosts() {
 }
 
 type Source = { title?: string; channel?: string; views?: number; video_id?: string; url?: string } | null;
-type Idea = { day: number; theme?: string; format?: string; score: number; title: string; why: string; source?: Source };
+export type Idea = { day: number; theme?: string; format?: string; score: number; title: string; why: string; source?: Source };
 type Insights = {
   niche?: string; generated_at?: string; rules?: string[]; inspiration?: string[];
   audience?: { summary?: string; segments?: { label: string; pct: number }[]; wants?: string[]; pains?: string[] };
@@ -144,11 +144,11 @@ function SourceLink({ source }: { source?: Source }) {
     : <div className="mt-2 flex items-center gap-2 rounded-md bg-muted/40 p-1.5">{inner}</div>;
 }
 
-function IdeaRow({ idea }: { idea: Idea }) {
+function IdeaRow({ idea, onPick, busy }: { idea: Idea; onPick?: (idea: Idea) => void; busy?: boolean }) {
   return (
     <li className="rounded-lg border border-border bg-background/40 p-3">
       <div className="flex items-start gap-3">
-        <span className={`mt-0.5 shrink-0 rounded-full px-2.5 py-0.5 text-sm font-bold tabular-nums ${scoreTone(idea.score)}`} title="How likely this idea is to break out for you, 0-100">{idea.score}</span>
+        <span className={`mt-0.5 shrink-0 rounded-full px-2.5 py-0.5 text-sm font-bold tabular-nums ${scoreTone(idea.score)}`} title="Editorial priority, 0–100; not a prediction of views">{idea.score}</span>
         <div className="min-w-0">
           <div className="text-base font-semibold leading-snug text-foreground">
             {idea.format && <span className="mr-2 rounded border border-border px-1.5 py-0.5 align-middle text-[12px] font-semibold text-muted-foreground">{idea.format}</span>}{idea.title}
@@ -157,6 +157,7 @@ function IdeaRow({ idea }: { idea: Idea }) {
         </div>
       </div>
       <SourceLink source={idea.source} />
+      {onPick && <Button className="mt-3" disabled={busy} onClick={() => onPick(idea)}>Film this</Button>}
     </li>
   );
 }
@@ -164,7 +165,8 @@ function IdeaRow({ idea }: { idea: Idea }) {
 const sortIdeas = (a: Idea, b: Idea) => (a.format === b.format ? 0 : a.format === "Long" ? -1 : 1) || b.score - a.score;
 
 /** Today tab: what today is for, and exactly what to make (with where each idea came from). */
-export function ContentHome({ onOpenAnalytics }: { onOpenAnalytics: () => void }) {
+export function ContentHome({ onOpenAnalytics, onPick, picking }: { onOpenAnalytics: () => void; onPick?: (idea: Idea) => void; picking?: boolean }) {
+  const [showAll, setShowAll] = useState(false);
   const { posts } = usePosts();
   const ins = useInsights();
   const wd = phoenixWeekday();
@@ -174,7 +176,7 @@ export function ContentHome({ onOpenAnalytics }: { onOpenAnalytics: () => void }
   // Repurpose posts one Short to every platform: count pieces as the busiest platform today, not the sum.
   const shortsToday = useMemo(() => piecesByDay(posts, "short")[todayKey] ?? 0, [posts, todayKey]);
   const showDay = wd === 7 ? 1 : wd;
-  const ideas = useMemo(() => (ins?.ideas ?? []).filter((i) => i.day === showDay).sort(sortIdeas), [ins, showDay]);
+  const ideas = useMemo(() => [...(ins?.ideas ?? [])].sort((a, b) => (a.format === b.format ? 0 : a.format === "Long" ? -1 : 1) || Number(b.day === showDay) - Number(a.day === showDay) || b.score - a.score), [ins, showDay]);
   const pct = t.shortsTarget > 0 ? Math.min(100, Math.round((shortsToday / t.shortsTarget) * 100)) : 0;
   return (
     <div className="flex flex-col gap-4">
@@ -194,12 +196,13 @@ export function ContentHome({ onOpenAnalytics }: { onOpenAnalytics: () => void }
 
       <section aria-label="Make today" className="flex flex-col gap-3">
         <div className="flex flex-wrap items-baseline gap-3">
-          <h2 className="text-lg font-bold text-foreground">{wd === 7 ? `Next up: ${DAY_THEMES[1].name}` : "Make today"}</h2>
+          <h2 className="text-lg font-bold text-foreground">{showAll ? "All video ideas" : "Pick a video to film"}</h2>
           <button type="button" onClick={onOpenAnalytics} className="ml-auto text-sm font-semibold text-primary hover:underline">See what's working →</button>
         </div>
         {ideas.length === 0
           ? <div className="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground">No ideas queued for this day yet.</div>
-          : <ol className="flex flex-col gap-3">{ideas.map((idea) => <IdeaRow key={`${idea.format}-${idea.title}`} idea={idea} />)}</ol>}
+          : <ol className="flex flex-col gap-3">{(showAll ? ideas : ideas.slice(0, 3)).map((idea) => <IdeaRow key={`${idea.format}-${idea.title}`} idea={idea} onPick={onPick} busy={picking} />)}</ol>}
+        {ideas.length > 3 && <Button variant="outline" onClick={() => setShowAll(!showAll)}>{showAll ? "Back to three choices" : `See all ${ideas.length} ideas`}</Button>}
       </section>
     </div>
   );

@@ -39,7 +39,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { toast } from "sonner";
 import { useSearchParams } from "react-router-dom";
 import { PageSkeleton } from "@/components/ui/page-skeleton";
-import { ContentHome } from "@/components/content/AccountsAnalytics";
+import { ContentHome, type Idea } from "@/components/content/AccountsAnalytics";
 import {
   STAGE_LABEL, STAGE_ORDER, WORKFLOW, checkPublishUrl, fourQuestions, nextAction, nextStatus, phoenixDate, previousStatus,
   scheduleLabel, stageOf, todayQueue, type Stage, type WorkflowStatus,
@@ -179,16 +179,15 @@ const WORKFLOW_FIELDS = ["cta", "owner", "due_date"] as const;
 const isLongForm = (d: Record<string, unknown>) => String(d.brand) === "YT" || String(d.content_type) === "long";
 const recordTemplate = (d: Record<string, unknown>) => {
   const title = String(d.title ?? "").trim() || "<title>"; const hook = String(d.hook ?? "").split(/[.!?]\s/)[0].trim() || "<the hook line>";
-  return isLongForm(d)
-    ? `RECORD: ${title}\nCamera: DJI or phone HORIZONTAL   Where: desk / car / gym   Length to shoot: 20-30 min of talking\n1. HOOK to camera, one sentence, say it twice: "${hook}"\n2. CHAPTER 1 — open on camera mid-energy, then show the thing (whiteboard, not a screen)\n3. CHAPTER 2 — the numbers, said out loud (every $ gets a card in the edit)\n4. CHAPTER 3 — a second voice: an agent, a friend, a real call (client names cut)\n5. CHAPTER 4 — the mistake most people make\n6. LESSON to camera, 30-45 s uncut, the last thing you say\nCTA to camera: "If you want to sell life insurance with my team, apply at apex-financial.org/apply."\nDo NOT: read a script, film a phone screen, name a client, mention anyone you have beef with.`
-    : `RECORD: ${title}\nCamera: phone VERTICAL   Where: car / desk / gym   Length to shoot: 3 takes of 30 s\n1. HOOK in the first 1.5 s: "${hook}"\n2. ONE idea, ONE payoff — say the number or the line, then stop\n3. Last line: "Apply at apex-financial.org/apply" (the edit adds the text card)\nDo NOT: read a script, film a phone screen, name a client, mention anyone you have beef with.`;
+  const ending = String(d.cta ?? "").trim() || "End on the lesson; invite viewers to follow the journey if it fits.";
+  return `RECORD: ${title}\nCamera: ${isLongForm(d) ? "HORIZONTAL, aim for an 8–12 minute finished story" : "VERTICAL, one 20–45 second idea"}\n1. Open with the real moment or tension: "${hook}"\n2. Show what happened: capture the place, the work, and the detail the viewer needs.\n3. Tell the turning point in your own words. Use only numbers and events you can substantiate.\n4. Share one useful lesson. Pick up natural B-roll between short takes.\nEnding: ${ending}\nKeep private conversations and client information off camera. Use your own experience, not promises about viewers' results.`;
 };
 const editTemplate = (d: Record<string, unknown>) => {
   const title = String(d.title ?? "").trim() || "<title>"; const hook = String(d.hook ?? "").split(/[.!?]\s/)[0].trim() || "<the hook line>";
-  const fmt = isLongForm(d) ? "long-form 16:9, 8-12 min, 1080p30 render then 4K upscale, 5-7 chapters, NumberCards on every stated figure, lesson → CTA → end card over the last shot" : "Short 9:16 1080x1920, 20-45 s, burned word captions ≤ 6 words per page, apply text card over the last 3 s";
+  const fmt = isLongForm(d) ? "long-form 16:9, 8-12 min, 1080p30 render then 4K upscale, 5-7 chapters, NumberCards on every stated figure, lesson → CTA → end card over the last shot" : "Short 9:16 1080x1920, 20-45 s, burned word captions ≤ 6 words per page, end on the lesson; use the card CTA only if supplied";
   return `Cut "${title}" per MP-234 (~/business-ops/master-prompts/234-apex-video-editor.md).\nFormat: ${fmt}. Sources: the clip(s) attached to this Launch Board card${d.clip ? ` (${String(d.clip)})` : ""}, plus any clip from the same date with his voice on it.\nHook: "${hook}".\nExclude: slurs, sexual lines, beef, client PII, phone screens. music: [].\nPackage: title "${title}", description = hook + the channel description block + chapters, tags TAGS_CORE. Deliver 4K + 1080p to ~/Desktop/YouTube-Ready/, attach the 1080p to this card, write the YouTube chapters, ntfy me when done.`;
 };
-const FORMAT_LINE = "Long-form: 3840×2160 16:9 30 fps, −14 LUFS, no music, chapters in the description, end card over the last shot. Shorts: 1080×1920 9:16 ≤ 45 s, burned captions, apply card last 3 s.";
+const FORMAT_LINE = "Long-form: 3840×2160 16:9 30 fps, −14 LUFS, no music, chapters in the description, end card over the last shot. Shorts: 1080×1920 9:16 ≤ 45 s, burned captions, optional CTA over the last shot.";
 
 // ── Week tab (2026-10-06): 7 themed days driven by src/lib/contentWeek.ts. Drag a card between days (or tap the
 // Move select on a phone). Long-form planned vs 5/week, Shorts posted vs 30–60/week.
@@ -357,6 +356,9 @@ export default function LaunchBoard() {
   const { isAdmin } = useAuth();
   const [tab, setTabState] = useState<Tab>("today");
   const [cards, setCards] = useState<Card[]>([]);
+  const [archivedCards, setArchivedCards] = useState<Card[]>([]);
+  const [archiveBusy, setArchiveBusy] = useState(false);
+  const [picking, setPicking] = useState(false);
   const [clips, setClips] = useState<Clip[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
@@ -549,7 +551,9 @@ export default function LaunchBoard() {
     try {
       const c = await supabase.from("content_cards").select("*").order("day", { ascending: true }).order("sort", { ascending: true });
       if (c.error) throw c.error;
-      setCards((c.data as Card[]) ?? []);
+      const loaded = (c.data ?? []) as (Card & { archived_at?: string | null })[];
+      setCards(loaded.filter((card) => !card.archived_at));
+      setArchivedCards(loaded.filter((card) => card.archived_at));
       // Probe the §11 columns once. A missing column (42703) means the migration has not reached this database:
       // the board still reads, and says plainly that stage moves are unavailable rather than failing on every tap.
       const probe = await supabase.from("content_cards").select("published_url" as never).limit(1);
@@ -700,6 +704,61 @@ export default function LaunchBoard() {
     if (link.error) toast.error(`Card created, but the library link did not save: ${link.error.message.slice(0, 100)}`);
     else setClips((ks) => ks.map((k) => (k.id === clip.id ? { ...k, used_by_card: (data as Card).id } : k)));
     toast.success("Card created in Edit with the footage attached — write the edit instructions and caption next");
+  };
+
+  // Only untouched idea cards can be cleared. Footage and work in progress stay visible.
+  const unusedIdeas = cards.filter((c) => c.status === "idea" && !(c.clip ?? "").trim());
+  const archiveIdeas = async (restore = false) => {
+    if (archiveBusy) return;
+    const targets = restore ? archivedCards : unusedIdeas;
+    if (!targets.length) return;
+    setArchiveBusy(true);
+    try {
+      let query = supabase.from("content_cards").update({ archived_at: restore ? null : new Date().toISOString() } as never).in("id", targets.map((c) => c.id));
+      if (!restore) query = query.eq("status", "idea").or("clip.is.null,clip.eq.");
+      const { data, error } = await query.select("*");
+      if (error) throw error;
+      if (!data?.length) throw new Error("No cards changed. Reload the board and try again.");
+      const changed = data as Card[];
+      const ids = new Set(changed.map((c) => c.id));
+      if (restore) {
+        setArchivedCards((prev) => prev.filter((c) => !ids.has(c.id)));
+        setCards((prev) => [...prev.filter((c) => !ids.has(c.id)), ...changed]);
+      } else {
+        setCards((prev) => prev.filter((c) => !ids.has(c.id)));
+        setArchivedCards((prev) => [...prev.filter((c) => !ids.has(c.id)), ...changed]);
+      }
+      toast.success(`${changed.length} idea${changed.length === 1 ? "" : "s"} ${restore ? "restored" : "cleared — you can restore them here"}`);
+    } catch (e) { toast.error(`Couldn't ${restore ? "restore" : "clear"} ideas: ${e instanceof Error ? e.message : "save failed"}`); }
+    finally { setArchiveBusy(false); }
+  };
+
+  const pickIdea = async (idea: Idea) => {
+    if (picking || workflowReady !== true) return;
+    setPicking(true);
+    try {
+      const existing = [...cards, ...archivedCards].find((c) => c.title === idea.title);
+      if (existing) {
+        const recording = { record_script: existing.record_script || recordTemplate({ ...existing }), edit_prompt: existing.edit_prompt || editTemplate({ ...existing }), day: phoenixWeekday(), planned_week: phoenixWeekStart() };
+        if (archivedCards.some((c) => c.id === existing.id)) {
+          const { data, error } = await supabase.from("content_cards").update({ archived_at: null, status: "record", ...recording } as never).eq("id", existing.id).eq("status", "idea").select("*").single();
+          if (error) throw error;
+          setArchivedCards((prev) => prev.filter((c) => c.id !== existing.id));
+          setCards((prev) => [...prev, data as Card]);
+          openEdit(data as Card);
+        } else if (existing.status === "idea") {
+          if (await move(existing, "record", recording)) openEdit({ ...existing, ...recording, status: "record" });
+        } else openEdit(existing);
+        return;
+      }
+      const base = { ...emptyDraft, title: idea.title, brand: idea.format === "Short" ? "SH" : "YT", content_type: idea.format === "Short" ? "short" : "long", status: "record", day: phoenixWeekday(), planned_week: phoenixWeekStart(), hook: "", cta: "Follow for the next part of the journey.", sort: Math.max(0, ...cards.map((c) => c.sort)) + 10 };
+      const { data, error } = await supabase.from("content_cards").insert({ ...base, record_script: recordTemplate(base), edit_prompt: editTemplate(base) } as never).select("*").single();
+      if (error) throw error;
+      setCards((prev) => [...prev, data as Card]);
+      openEdit(data as Card);
+      toast.success("Picked for filming — your shot list is ready");
+    } catch (e) { toast.error(`Couldn't pick this video: ${e instanceof Error ? e.message : "save failed"}`); }
+    finally { setPicking(false); }
   };
 
   const openNew = () => { setEditing(null); setDraft({ ...emptyDraft }); setEditorOpen(true); };
@@ -882,7 +941,12 @@ export default function LaunchBoard() {
 
       {tab === "today" && (
         <div className="space-y-8">
-          <ContentHome onOpenAnalytics={() => setTab("analytics")} />
+          <ContentHome onOpenAnalytics={() => setTab("analytics")} onPick={pickIdea} picking={picking || workflowReady !== true} />
+          <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border p-3">
+            <span className="text-sm text-muted-foreground">Clear unused ideas. Videos with footage and work in progress stay on the board.</span>
+            <Button variant="outline" disabled={archiveBusy || !unusedIdeas.length} onClick={() => void archiveIdeas()}>Clear unused ideas ({unusedIdeas.length})</Button>
+            {archivedCards.length > 0 && <Button variant="ghost" disabled={archiveBusy} onClick={() => void archiveIdeas(true)}>Restore cleared ideas ({archivedCards.length})</Button>}
+          </div>
           <section>
             <Head title="Your work today" hint={today.length ? `${today.length} to work, most urgent first` : "nothing urgent"} />
             {today.length === 0 ? (

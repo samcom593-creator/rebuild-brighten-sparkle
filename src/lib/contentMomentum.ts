@@ -18,19 +18,26 @@ const DAY = 86400_000; // Phoenix has no DST, so subtracting whole days keeps th
 /** Consecutive Phoenix days ending today (or yesterday) with at least one post.
  *  alive  = today already has a post.
  *  atRisk = the run is still live but today is empty — the chain is on the line.
- *  A gap of a full day with no post resets days to 0. */
-export function streak(posts: MomentumPost[], now: Date = new Date()): { days: number; alive: boolean; atRisk: boolean } {
+ *  missed = when the chain is broken (days === 0), the number of days in a row with NO post
+ *           ending today — shown as a negative streak so a slip is loud, not silent.
+ *  Pass a pre-filtered array (e.g. YouTube-only) to get a per-platform streak. */
+export function streak(posts: MomentumPost[], now: Date = new Date()): { days: number; alive: boolean; atRisk: boolean; missed: number } {
   const daySet = new Set<string>();
   for (const p of posts) if (p.posted_at) daySet.add(phoenixDateKey(new Date(p.posted_at)));
-  const todayKey = phoenixDateKey(now);
-  const hasToday = daySet.has(todayKey);
+  const hasToday = daySet.has(phoenixDateKey(now));
   const hasYesterday = daySet.has(phoenixDateKey(new Date(now.getTime() - DAY)));
   // Start the walk from today if it has a post, else yesterday if it does; otherwise the chain is broken.
   const start = hasToday ? now : hasYesterday ? new Date(now.getTime() - DAY) : null;
-  if (!start) return { days: 0, alive: false, atRisk: false };
+  if (!start) {
+    if (daySet.size === 0) return { days: 0, alive: false, atRisk: false, missed: 0 };
+    // Count the empty days from today back to the most recent post (capped so a dead channel can't loop forever).
+    let missed = 0;
+    for (let c = now; !daySet.has(phoenixDateKey(c)) && missed < 3650; c = new Date(c.getTime() - DAY)) missed++;
+    return { days: 0, alive: false, atRisk: false, missed };
+  }
   let days = 0;
   for (let c = start; daySet.has(phoenixDateKey(c)); c = new Date(c.getTime() - DAY)) days++;
-  return { days, alive: hasToday, atRisk: !hasToday };
+  return { days, alive: hasToday, atRisk: !hasToday, missed: 0 };
 }
 
 // A creator level that ticks up satisfyingly: fast early wins, then wider gaps.
@@ -69,19 +76,27 @@ const inWindow = (p: MomentumPost, now: Date, fromDaysAgo: number, toDaysAgo: nu
   return age >= toDaysAgo * DAY && age < fromDaysAgo * DAY;
 };
 
-/** This 7 days vs the previous 7 days, for uploads (pieces, de-duped per platform) and total views.
- *  deltaPct is null when the prior window is empty (no honest percentage against zero). */
+type WoW = { now: number; prev: number; deltaPct: number | null };
+
+/** This 7 days vs the previous 7 days, split into long-form, Shorts, all uploads, and total views
+ *  (pieces de-duped per platform per day). deltaPct is null when the prior window is empty
+ *  (no honest percentage against zero). */
 export function weekOverWeek(posts: MomentumPost[], now: Date = new Date()): {
-  uploads: { now: number; prev: number; deltaPct: number | null };
-  views: { now: number; prev: number; deltaPct: number | null };
+  uploads: WoW; long: WoW; short: WoW; views: WoW;
 } {
   const thisWk = posts.filter((p) => inWindow(p, now, 7, 0));
   const prevWk = posts.filter((p) => inWindow(p, now, 14, 7));
-  const pieces = (xs: MomentumPost[]) => countPieces(xs, "short") + countPieces(xs, "long");
   const sumViews = (xs: MomentumPost[]) => xs.reduce((n, p) => n + (p.views ?? 0), 0);
   const delta = (a: number, b: number) => (b > 0 ? Math.round(((a - b) / b) * 100) : null);
-  const un = pieces(thisWk), up = pieces(prevWk), vn = sumViews(thisWk), vp = sumViews(prevWk);
-  return { uploads: { now: un, prev: up, deltaPct: delta(un, up) }, views: { now: vn, prev: vp, deltaPct: delta(vn, vp) } };
+  const pair = (a: number, b: number): WoW => ({ now: a, prev: b, deltaPct: delta(a, b) });
+  const ln = countPieces(thisWk, "long"), lp = countPieces(prevWk, "long");
+  const sn = countPieces(thisWk, "short"), sp = countPieces(prevWk, "short");
+  return {
+    uploads: pair(ln + sn, lp + sp),
+    long: pair(ln, lp),
+    short: pair(sn, sp),
+    views: pair(sumViews(thisWk), sumViews(prevWk)),
+  };
 }
 
 /** Total pieces ever (short + long), de-duped per platform per day — the creator-level input. */

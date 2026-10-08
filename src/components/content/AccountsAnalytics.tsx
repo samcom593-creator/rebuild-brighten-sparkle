@@ -15,7 +15,7 @@ type Post = {
   url: string | null; posted_at: string; views: number | null; likes: number | null; purposeful: boolean | null; source: string; external_id: string | null; thumb_url: string | null; watched_pct: number | null; duration_s: number | null;
 };
 const PLATFORMS = [
-  { k: "youtube", label: "YouTube" }, { k: "instagram", label: "Instagram" }, { k: "tiktok", label: "TikTok" }, { k: "facebook", label: "Facebook" },
+  { k: "youtube", label: "YouTube" }, { k: "instagram", label: "Instagram" }, { k: "tiktok", label: "TikTok" }, { k: "snapchat", label: "Snapchat" }, { k: "facebook", label: "Facebook" },
 ] as const;
 export const CATEGORIES = [
   { k: "fitness", label: "Fitness" }, { k: "cars", label: "Cars" }, { k: "my_life", label: "My Life" },
@@ -62,9 +62,9 @@ function Pill({ on, onClick, children }: { on: boolean; onClick: () => void; chi
 function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div className="rounded-lg border border-border bg-card p-4">
-      <div className="text-[13px] font-semibold text-muted-foreground">{label}</div>
+      <div className="text-sm font-semibold text-muted-foreground">{label}</div>
       <div className="mt-1 text-3xl font-bold tabular-nums text-foreground">{value}</div>
-      {sub && <div className="mt-1 text-[13px] text-muted-foreground">{sub}</div>}
+      {sub && <div className="mt-1 text-sm text-muted-foreground">{sub}</div>}
     </div>
   );
 }
@@ -134,7 +134,7 @@ function SourceLink({ source }: { source?: Source }) {
   const inner = (
     <>
       {source.video_id && <img src={`https://i.ytimg.com/vi/${source.video_id}/mqdefault.jpg`} alt="" loading="lazy" className="h-10 w-[72px] shrink-0 rounded object-cover bg-muted" />}
-      <span className="min-w-0 text-[13px] leading-snug text-muted-foreground">
+      <span className="min-w-0 text-sm leading-snug text-muted-foreground">
         <span className="block truncate">Inspired by <b className="text-foreground">{source.channel ?? "a top video"}</b>{source.views != null ? ` · ${fmtNum(source.views)} views` : ""}</span>
         {source.title && <span className="block truncate">{source.title}</span>}
       </span>
@@ -148,12 +148,12 @@ function SourceLink({ source }: { source?: Source }) {
 function IdeaRow({ idea, onPick, busy, top }: { idea: Idea; onPick?: (idea: Idea) => void; busy?: boolean; top?: boolean }) {
   return (
     <li className={`rounded-lg border bg-background/40 p-3 ${top ? "border-primary/60 bg-primary/5" : "border-border"}`}>
-      {top && <div className="mb-2 text-[12px] font-bold uppercase tracking-[0.12em] text-primary">★ Top pick — film this next</div>}
+      {top && <div className="mb-2 text-[13px] font-bold uppercase tracking-[0.12em] text-primary">★ Top pick — film this next</div>}
       <div className="flex items-start gap-3">
         <span className={`mt-0.5 shrink-0 rounded-full px-2.5 py-0.5 text-sm font-bold tabular-nums ${scoreTone(idea.score)}`} title="Editorial priority, 0–100; not a prediction of views">{idea.score}</span>
         <div className="min-w-0">
           <div className="text-base font-semibold leading-snug text-foreground">
-            {idea.format && <span className="mr-2 rounded border border-border px-1.5 py-0.5 align-middle text-[12px] font-semibold text-muted-foreground">{idea.format}</span>}{idea.title}
+            {idea.format && <span className="mr-2 rounded border border-border px-1.5 py-0.5 align-middle text-[13px] font-semibold text-muted-foreground">{idea.format}</span>}{idea.title}
           </div>
           <div className="mt-1 text-sm text-muted-foreground">{idea.why}</div>
         </div>
@@ -180,7 +180,7 @@ function useYtSubs() {
 function Delta({ pct }: { pct: number | null }) {
   if (pct == null) return null;
   const tone = pct > 0 ? "text-emerald-400" : pct < 0 ? "text-red-400" : "text-muted-foreground";
-  return <span className={`text-[13px] font-bold tabular-nums ${tone}`}>{pct > 0 ? "↑" : pct < 0 ? "↓" : "→"} {Math.abs(pct)}%</span>;
+  return <span className={`text-sm font-bold tabular-nums ${tone}`}>{pct > 0 ? "↑" : pct < 0 ? "↓" : "→"} {Math.abs(pct)}%</span>;
 }
 
 /** The momentum header for the Today tab: the streak you don't want to break, the climb to the next
@@ -189,48 +189,56 @@ function Delta({ pct }: { pct: number | null }) {
  *  compute honestly is hidden rather than faked. */
 export function MomentumStrip({ posts, subs }: { posts: Post[]; subs: number | null }) {
   const s = useMemo(() => streak(posts), [posts]);
+  const ytS = useMemo(() => streak(posts.filter((p) => p.platform === "youtube")), [posts]);
   const lv = useMemo(() => level(totalPieces(posts)), [posts]);
   const ms = useMemo(() => nextMilestone(subs), [subs]);
   const wow = useMemo(() => weekOverWeek(posts), [posts]);
-  const weekGoal = WEEKLY_TARGETS.shortsMin;
+  const broken = s.days === 0 && s.missed > 0;
+  const bannerTone = broken ? "border-red-400/50 bg-red-400/10" : s.atRisk ? "border-amber-400/50 bg-amber-400/10" : s.days > 0 ? "border-primary/40 bg-primary/5" : "border-border bg-card";
+  const statusLine = broken ? `You haven't posted in ${s.missed} day${s.missed === 1 ? "" : "s"}. Post one to reset it to zero.`
+    : s.days === 0 ? "Post one video today and start the streak."
+    : s.alive ? "Posted today — don't break the chain."
+    : "Post today to keep the streak alive.";
+  // A streak that is live shows its length; a broken one shows the days-not-posted as a negative.
+  const streakNum = (x: { days: number; missed: number }) => (x.days > 0 ? String(x.days) : x.missed > 0 ? `−${x.missed}` : "0");
+  const bar = (frac: number) => <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, Math.round(frac * 100))}%` }} /></div>;
   return (
     <section aria-label="Your momentum" className="flex flex-col gap-3">
-      <div className={`flex items-center gap-4 rounded-2xl border p-4 ${s.atRisk ? "border-amber-400/50 bg-amber-400/10" : s.days > 0 ? "border-primary/40 bg-primary/5" : "border-border bg-card"}`}>
-        <div className="text-4xl leading-none" aria-hidden>🔥</div>
-        <div className="min-w-0">
-          <div className="text-3xl font-extrabold tabular-nums leading-none text-foreground">{s.days}<span className="ml-1.5 text-base font-bold text-muted-foreground">day{s.days === 1 ? "" : "s"} in a row</span></div>
-          <div className={`mt-1 text-sm font-semibold ${s.atRisk ? "text-amber-400" : "text-primary"}`}>
-            {s.days === 0 ? "Post one video today and start the streak." : s.alive ? "Posted today — don't break the chain." : "Post today to keep the streak alive."}
+      <div className={`flex flex-wrap items-center gap-x-6 gap-y-3 rounded-2xl border p-4 ${bannerTone}`}>
+        <div className="flex items-center gap-4">
+          <div className="text-4xl leading-none" aria-hidden>{broken ? "❄️" : "🔥"}</div>
+          <div className="min-w-0">
+            <div className={`text-3xl font-extrabold tabular-nums leading-none ${broken ? "text-red-400" : "text-foreground"}`}>{broken ? `−${s.missed}` : s.days}<span className="ml-1.5 text-base font-bold text-muted-foreground">{broken ? `day${s.missed === 1 ? "" : "s"} no post` : `day${s.days === 1 ? "" : "s"} in a row`}</span></div>
+            <div className={`mt-1 text-sm font-semibold ${broken ? "text-red-400" : s.atRisk ? "text-amber-400" : "text-primary"}`}>{statusLine}</div>
           </div>
+        </div>
+        <div className="ml-auto flex items-center gap-2">
+          <span className="rounded-xl border border-border bg-background/50 px-3 py-1.5 text-center"><span className="block text-lg font-extrabold tabular-nums text-foreground">{streakNum(ytS)}</span><span className="block text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">YouTube in a row</span></span>
+          <span className="rounded-xl border border-border bg-background/50 px-3 py-1.5 text-center"><span className="block text-lg font-extrabold tabular-nums text-foreground">Lvl {lv.level}</span><span className="block text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">{lv.next == null ? "max" : `${lv.span - lv.into} to next`}</span></span>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <div className="rounded-2xl border border-border bg-card p-4">
-          <div className="text-[13px] font-semibold text-muted-foreground">Subscribers</div>
+          <div className="text-sm font-semibold text-muted-foreground">Subscribers</div>
           <div className="mt-0.5 text-2xl font-extrabold tabular-nums text-foreground">{subs != null ? fmtNum(subs) : "—"}</div>
-          {ms ? (
-            <>
-              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${ms.pct}%` }} /></div>
-              <div className="mt-1 text-[12px] font-semibold text-primary">{fmtNum(ms.remaining)} to {fmtNum(ms.next)}</div>
-            </>
-          ) : <div className="mt-2 text-[12px] text-muted-foreground">updates every 3 hours</div>}
+          {ms ? (<>{bar(ms.pct / 100)}<div className="mt-1 text-[13px] font-semibold text-primary">{fmtNum(ms.remaining)} to {fmtNum(ms.next)}</div></>) : <div className="mt-2 text-[13px] text-muted-foreground">updates every 3 hours</div>}
         </div>
         <div className="rounded-2xl border border-border bg-card p-4">
-          <div className="flex items-center justify-between gap-2"><span className="text-[13px] font-semibold text-muted-foreground">Uploads this week</span><Delta pct={wow.uploads.deltaPct} /></div>
-          <div className="mt-0.5 text-2xl font-extrabold tabular-nums text-foreground">{wow.uploads.now}</div>
-          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, Math.round((wow.uploads.now / weekGoal) * 100))}%` }} /></div>
-          <div className="mt-1 text-[12px] text-muted-foreground">goal {weekGoal}/wk · last week {wow.uploads.prev}</div>
+          <div className="flex items-center justify-between gap-2"><span className="text-sm font-semibold text-muted-foreground">Long-form this week</span><Delta pct={wow.long.deltaPct} /></div>
+          <div className="mt-0.5 text-2xl font-extrabold tabular-nums text-foreground">{wow.long.now}</div>
+          {bar(wow.long.now / WEEKLY_TARGETS.long)}
+          <div className="mt-1 text-[13px] text-muted-foreground">goal {WEEKLY_TARGETS.long}/wk · last week {wow.long.prev}</div>
         </div>
         <div className="rounded-2xl border border-border bg-card p-4">
-          <div className="flex items-center justify-between gap-2"><span className="text-[13px] font-semibold text-muted-foreground">Views this week</span><Delta pct={wow.views.deltaPct} /></div>
+          <div className="flex items-center justify-between gap-2"><span className="text-sm font-semibold text-muted-foreground">Shorts this week</span><Delta pct={wow.short.deltaPct} /></div>
+          <div className="mt-0.5 text-2xl font-extrabold tabular-nums text-foreground">{wow.short.now}</div>
+          {bar(wow.short.now / WEEKLY_TARGETS.shortsMin)}
+          <div className="mt-1 text-[13px] text-muted-foreground">goal {WEEKLY_TARGETS.shortsMin}–{WEEKLY_TARGETS.shortsMax}/wk · last week {wow.short.prev}</div>
+        </div>
+        <div className="rounded-2xl border border-border bg-card p-4">
+          <div className="flex items-center justify-between gap-2"><span className="text-sm font-semibold text-muted-foreground">Views this week</span><Delta pct={wow.views.deltaPct} /></div>
           <div className="mt-0.5 text-2xl font-extrabold tabular-nums text-foreground">{fmtNum(wow.views.now)}</div>
-          <div className="mt-1 text-[12px] text-muted-foreground">last week {fmtNum(wow.views.prev)}</div>
-        </div>
-        <div className="rounded-2xl border border-border bg-card p-4">
-          <div className="text-[13px] font-semibold text-muted-foreground">Creator level</div>
-          <div className="mt-0.5 text-2xl font-extrabold tabular-nums text-foreground">Lvl {lv.level}</div>
-          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${lv.pct}%` }} /></div>
-          <div className="mt-1 text-[12px] text-muted-foreground">{lv.next == null ? "max level" : `${lv.span - lv.into} more post${lv.span - lv.into === 1 ? "" : "s"} to Lvl ${lv.level + 1}`}</div>
+          <div className="mt-1 text-[13px] text-muted-foreground">last week {fmtNum(wow.views.prev)}</div>
         </div>
       </div>
     </section>
@@ -258,12 +266,12 @@ export function ContentHome({ onOpenAnalytics, onPick, picking }: { onOpenAnalyt
       <section aria-label="Today's plan" className={`rounded-xl border bg-card p-4 ${tone.ring}`}>
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="text-lg font-bold text-foreground">Today · {t.name}</h2>
-          <span className={`rounded-full border px-2.5 py-0.5 text-[13px] font-semibold ${tone.chip}`}>{t.themeLabel}: {t.angle}</span>
+          <span className={`rounded-full border px-2.5 py-0.5 text-sm font-semibold ${tone.chip}`}>{t.themeLabel}: {t.angle}</span>
         </div>
         {t.longForm && <p className="mt-2 text-sm text-foreground"><b>Long-form:</b> <span className="text-muted-foreground">{t.longForm}</span></p>}
         {t.shortsTarget > 0 ? (
           <div className="mt-3">
-            <div className="flex items-baseline justify-between text-sm"><span className="font-semibold text-foreground">{shortsToday}/{t.shortsTarget} Shorts posted</span><span className="text-[13px] text-muted-foreground">{t.shorts}</span></div>
+            <div className="flex items-baseline justify-between text-sm"><span className="font-semibold text-foreground">{shortsToday}/{t.shortsTarget} Shorts posted</span><span className="text-sm text-muted-foreground">{t.shorts}</span></div>
             <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-muted"><div className={`h-full rounded-full ${tone.bar}`} style={{ width: `${pct}%` }} /></div>
           </div>
         ) : <p className="mt-2 text-sm text-muted-foreground">{t.shorts}</p>}
@@ -397,14 +405,26 @@ export default function AccountsAnalytics() {
       (r) => r >= 1 ? `Instagram reels average ${x(r)} the views of your YouTube Shorts.` : `YouTube Shorts average ${x(r)} the views of your Instagram reels.`);
     return cards.sort((a, b) => b.ratio - a.ratio).slice(0, 5);
   }, [posts]);
-  const winnersWeek = useMemo(() => posts.filter((p) => Date.now() - new Date(p.posted_at).getTime() < 7 * 86400_000 && p.views != null)
-    .sort((a, b) => (score(b) ?? 0) - (score(a) ?? 0) || (b.views ?? 0) - (a.views ?? 0)).slice(0, 5), [posts, score]);
+  const weekScored = useMemo(() => posts.filter((p) => Date.now() - new Date(p.posted_at).getTime() < 7 * 86400_000 && p.views != null), [posts]);
+  const winnersShort = useMemo(() => weekScored.filter((p) => p.format === "short").sort((a, b) => (score(b) ?? 0) - (score(a) ?? 0) || (b.views ?? 0) - (a.views ?? 0)).slice(0, 5), [weekScored, score]);
+  const winnersLong = useMemo(() => weekScored.filter((p) => p.format === "long").sort((a, b) => (score(b) ?? 0) - (score(a) ?? 0) || (b.views ?? 0) - (a.views ?? 0)).slice(0, 5), [weekScored, score]);
   const ideasByDay = useMemo(() => [1, 2, 3, 4, 5, 6].map((d) => ({ d, items: (ins?.ideas ?? []).filter((i) => i.day === d).sort(sortIdeas) })).filter((g) => g.items.length > 0), [ins]);
   const coach = ins?.coach;
   const coachCols: { k: "start" | "keep" | "stop"; label: string; tone: string }[] = [
     { k: "start", label: "Start", tone: "text-emerald-400" }, { k: "keep", label: "Keep", tone: "text-primary" }, { k: "stop", label: "Stop", tone: "text-red-400" },
   ];
   const aud = ins?.audience;
+  const winnerCard = (p: Post, rank: number) => { const tb = thumb(p); const sc = score(p); return (
+    <a key={p.id} href={p.url ?? undefined} target="_blank" rel="noopener noreferrer" className="block rounded-lg p-1 hover:bg-muted/40">
+      <div className={`relative overflow-hidden rounded-lg bg-muted ${p.format === "long" ? "aspect-video" : "aspect-[9/16]"}`}>
+        {tb ? <img src={tb} alt="" loading="lazy" className="h-full w-full object-cover" /> : null}
+        <span className="absolute left-2 top-2 rounded bg-background/85 px-1.5 py-0.5 text-[13px] font-bold text-foreground">#{rank + 1} · {platLabel(p.platform)}</span>
+        {sc != null && <span className={`absolute right-2 top-2 rounded-full px-2 py-0.5 text-sm font-bold ${scoreTone(sc)}`}>{sc}</span>}
+      </div>
+      <div className="mt-2 text-lg font-bold tabular-nums text-foreground">{fmtNum(p.views ?? 0)} <span className="text-sm font-normal text-muted-foreground">views</span></div>
+      <div className="text-sm text-muted-foreground">{p.account?.trim()}{p.watched_pct != null ? ` · ${Math.round(p.watched_pct)}% watched` : ""}</div>
+    </a>
+  ); };
 
   return (
     <div className="flex flex-col gap-6">
@@ -435,19 +455,18 @@ export default function AccountsAnalytics() {
           <h2 className="text-lg font-bold text-foreground">Winners this week</h2>
           <span className="text-sm text-muted-foreground">score 50 = your normal, 75 = double, 100 = 4x</span>
         </div>
-        {winnersWeek.length === 0 ? <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">{loading ? "Loading…" : "No posts with views this week yet."}</div> : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-            {winnersWeek.map((p, rank) => { const tb = thumb(p); const sc = score(p); return (
-              <a key={p.id} href={p.url ?? undefined} target="_blank" rel="noopener noreferrer" className="block rounded-lg p-1 hover:bg-muted/40">
-                <div className={`relative overflow-hidden rounded-lg bg-muted ${p.format === "long" ? "aspect-video" : "aspect-[9/16]"}`}>
-                  {tb ? <img src={tb} alt="" loading="lazy" className="h-full w-full object-cover" /> : null}
-                  <span className="absolute left-2 top-2 rounded bg-background/85 px-1.5 py-0.5 text-[12px] font-bold text-foreground">#{rank + 1} · {platLabel(p.platform)}</span>
-                  {sc != null && <span className={`absolute right-2 top-2 rounded-full px-2 py-0.5 text-[13px] font-bold ${scoreTone(sc)}`}>{sc}</span>}
-                </div>
-                <div className="mt-2 text-lg font-bold tabular-nums text-foreground">{fmtNum(p.views ?? 0)} <span className="text-[13px] font-normal text-muted-foreground">views</span></div>
-                <div className="text-[13px] text-muted-foreground">{p.account?.trim()}{p.watched_pct != null ? ` · ${Math.round(p.watched_pct)}% watched` : ""}</div>
-              </a>
-            ); })}
+        {weekScored.length === 0 ? <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">{loading ? "Loading…" : "No posts with views this week yet."}</div> : (
+          <div className="flex flex-col gap-4">
+            <div>
+              <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-muted-foreground">Shorts</h3>
+              {winnersShort.length === 0 ? <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">No Shorts with views this week yet.</div>
+                : <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">{winnersShort.map(winnerCard)}</div>}
+            </div>
+            <div>
+              <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-muted-foreground">Long-form</h3>
+              {winnersLong.length === 0 ? <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">No long-form with views this week yet.</div>
+                : <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">{winnersLong.map(winnerCard)}</div>}
+            </div>
           </div>
         )}
       </section>
@@ -486,7 +505,7 @@ export default function AccountsAnalytics() {
             <div key={d} className="flex flex-col gap-2">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-base font-bold text-foreground">{dt.name}</span>
-                <span className={`rounded-full border px-2.5 py-0.5 text-[13px] font-semibold ${THEME_TONE[dt.theme].chip}`}>{dt.themeLabel}: {dt.angle}</span>
+                <span className={`rounded-full border px-2.5 py-0.5 text-sm font-semibold ${THEME_TONE[dt.theme].chip}`}>{dt.themeLabel}: {dt.angle}</span>
               </div>
               <ol className="grid gap-3 lg:grid-cols-2">{items.map((idea) => <IdeaRow key={`${idea.format}-${idea.title}`} idea={idea} />)}</ol>
             </div>
@@ -558,11 +577,11 @@ export default function AccountsAnalytics() {
         <div className="flex h-40 items-end gap-1.5">
           {days.map((d) => (
             <div key={d.k} className="flex flex-1 flex-col items-center gap-1" title={`${d.label}: ${d.short} short, ${d.long} long`}>
-              <span className="text-[13px] tabular-nums text-foreground">{d.short + d.long || ""}</span>
+              <span className="text-sm tabular-nums text-foreground">{d.short + d.long || ""}</span>
               <div className="flex w-full flex-col justify-end overflow-hidden rounded-sm" style={{ height: Math.max(2, Math.round(((d.short + d.long) / maxDay) * 96)) }}>
                 <div className="bg-sky-400" style={{ flex: d.long }} /><div className="bg-primary" style={{ flex: d.short }} />
               </div>
-              <span className="text-[12px] text-muted-foreground">{new Date(`${d.k}T12:00:00Z`).toLocaleDateString("en-US", { timeZone: "UTC", weekday: "short" })}</span>
+              <span className="text-[13px] text-muted-foreground">{new Date(`${d.k}T12:00:00Z`).toLocaleDateString("en-US", { timeZone: "UTC", weekday: "short" })}</span>
             </div>
           ))}
         </div>
@@ -585,14 +604,14 @@ export default function AccountsAnalytics() {
               <>
                 <div className={`relative overflow-hidden rounded-lg bg-muted ${p.format === "short" ? "aspect-[9/16]" : "aspect-video"}`}>
                   {t ? <img src={t} alt="" loading="lazy" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-sm text-muted-foreground">{platLabel(p.platform)}</div>}
-                  <span className="absolute left-2 top-2 rounded bg-background/85 px-1.5 py-0.5 text-[12px] font-semibold text-foreground">{platLabel(p.platform)} · {p.format === "short" ? "Short" : "Long"}</span>
-                  {score(p) != null && <span className={`absolute right-2 top-2 rounded-full px-2 py-0.5 text-[12px] font-bold ${scoreTone(score(p)!)}`} title="50 = your normal, 75 = double, 100 = 4x or better">{score(p)}</span>}
+                  <span className="absolute left-2 top-2 rounded bg-background/85 px-1.5 py-0.5 text-[13px] font-semibold text-foreground">{platLabel(p.platform)} · {p.format === "short" ? "Short" : "Long"}</span>
+                  {score(p) != null && <span className={`absolute right-2 top-2 rounded-full px-2 py-0.5 text-[13px] font-bold ${scoreTone(score(p)!)}`} title="50 = your normal, 75 = double, 100 = 4x or better">{score(p)}</span>}
                 </div>
                 <div className="mt-2 flex items-baseline justify-between gap-2">
-                  <span className="text-lg font-bold tabular-nums text-foreground">{p.views != null ? fmtNum(p.views) : "—"}<span className="ml-1 text-[13px] font-normal text-muted-foreground">views</span></span>
-                  <span className="text-[13px] text-muted-foreground">{ago(p.posted_at)}</span>
+                  <span className="text-lg font-bold tabular-nums text-foreground">{p.views != null ? fmtNum(p.views) : "—"}<span className="ml-1 text-sm font-normal text-muted-foreground">views</span></span>
+                  <span className="text-sm text-muted-foreground">{ago(p.posted_at)}</span>
                 </div>
-                {realTitle(p.title) && <div className="line-clamp-2 text-[13px] text-foreground">{realTitle(p.title)}</div>}
+                {realTitle(p.title) && <div className="line-clamp-2 text-sm text-foreground">{realTitle(p.title)}</div>}
               </>
             );
             return p.url

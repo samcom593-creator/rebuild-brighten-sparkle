@@ -11,19 +11,25 @@ describe("streak", () => {
     expect(s.days).toBe(3);
     expect(s.alive).toBe(true);
     expect(s.atRisk).toBe(false);
+    expect(s.missed).toBe(0);
   });
   it("is at risk when the last post was yesterday", () => {
     const s = streak([ago(1), ago(2), ago(3)], NOW);
     expect(s.days).toBe(3);
     expect(s.alive).toBe(false);
     expect(s.atRisk).toBe(true);
+    expect(s.missed).toBe(0);
   });
-  it("is zero when the chain broke (nothing today or yesterday)", () => {
-    const s = streak([ago(3), ago(4)], NOW);
-    expect(s).toEqual({ days: 0, alive: false, atRisk: false });
+  it("goes negative when the chain broke — days in a row with no post", () => {
+    const s = streak([ago(3), ago(4)], NOW); // last post 3 days ago
+    expect(s).toEqual({ days: 0, alive: false, atRisk: false, missed: 3 });
   });
   it("is zero with no posts", () => {
-    expect(streak([], NOW).days).toBe(0);
+    expect(streak([], NOW)).toEqual({ days: 0, alive: false, atRisk: false, missed: 0 });
+  });
+  it("tracks a platform-specific streak when the posts are pre-filtered", () => {
+    const mixed = [ago(0, { platform: "instagram" }), ago(0, { platform: "youtube" }), ago(1, { platform: "youtube" }), ago(2, { platform: "instagram" })];
+    expect(streak(mixed.filter((p) => p.platform === "youtube"), NOW).days).toBe(2); // YouTube today + yesterday only
   });
 });
 
@@ -68,15 +74,21 @@ describe("nextMilestone", () => {
 });
 
 describe("weekOverWeek", () => {
-  it("compares the last 7 days with the prior 7 days", () => {
+  it("compares the last 7 days with the prior 7 days and splits long vs short", () => {
     const posts = [
-      ago(1, { views: 100 }), ago(2, { views: 50 }), ago(3, { views: 50 }), // this week: 3 pieces, 200 views
-      ago(8, { views: 100 }), ago(9, { views: 100 }),                        // prior week: 2 pieces, 200 views
+      ago(1, { views: 100, format: "long" }), ago(2, { views: 50 }), ago(3, { views: 50 }), // this week: 1 long + 2 short, 200 views
+      ago(8, { views: 100 }), ago(9, { views: 100 }),                                        // prior week: 2 short, 200 views
     ];
     const w = weekOverWeek(posts, NOW);
     expect(w.uploads.now).toBe(3);
     expect(w.uploads.prev).toBe(2);
     expect(w.uploads.deltaPct).toBe(50);
+    expect(w.long.now).toBe(1);
+    expect(w.long.prev).toBe(0);
+    expect(w.long.deltaPct).toBeNull(); // no honest % against an empty prior long-form week
+    expect(w.short.now).toBe(2);
+    expect(w.short.prev).toBe(2);
+    expect(w.short.deltaPct).toBe(0);
     expect(w.views.now).toBe(200);
     expect(w.views.deltaPct).toBe(0);
   });

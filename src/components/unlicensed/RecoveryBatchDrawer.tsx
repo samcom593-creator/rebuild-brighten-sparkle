@@ -72,6 +72,18 @@ export type RecoveryOutcome =
   | "licensed"
   | "suppress";
 
+/**
+ * application_contact_log.channel is CHECK-constrained to call / sms / email /
+ * note / in_person / manual. This drawer used to send "recovery_batch", which
+ * the CHECK rejects, so no outcome logged here ever reached the timeline.
+ */
+function outcomeChannel(o: RecoveryOutcome): "call" | "sms" | "email" | "note" {
+  if (o === "text_sent") return "sms";
+  if (o === "email_sent") return "email";
+  if (o === "contacted" || o === "left_vm" || o === "no_answer" || o === "wrong_number") return "call";
+  return "note";
+}
+
 interface OutcomePill {
   key: RecoveryOutcome;
   label: string;
@@ -223,13 +235,21 @@ export function RecoveryBatchDrawer({
       if (!row) return;
       const notesPayload = [notes.trim(), extraNotes?.trim()].filter(Boolean).join(" | ") || null;
 
+      // supabase-js resolves with { error } instead of throwing, so every call
+      // below reads its error. Before this, a refused write still toasted
+      // "Logged: contacted" and advanced to the next applicant.
+      const must = (step: string, error: { message: string } | null) => {
+        if (error) throw new Error(`${step}: ${error.message}`);
+      };
+
       // Wrong number = mark bad phone via the existing unified RPC
       if (outcome === "wrong_number") {
-        await supabase.rpc("unified_mark_phone_bad" as any, {
+        const { error } = await supabase.rpc("unified_mark_phone_bad" as any, {
           p_id: row.id,
           p_source: row.source,
           p_reason: "wrong_number",
         });
+        must("Mark phone bad", error);
       }
 
       // Passed test / Licensed / Exam scheduled / Course restarted → advance stage
@@ -241,11 +261,12 @@ export function RecoveryBatchDrawer({
       };
       const targetStage = stageMap[outcome];
       if (targetStage) {
-        await supabase.rpc("unified_set_license_progress" as any, {
+        const { error } = await supabase.rpc("unified_set_license_progress" as any, {
           p_id: row.id,
           p_progress: targetStage,
           p_source: row.source,
         });
+        must("Set license stage", error);
       }
 
       // Any real contact touch → bump last_contacted_at via unified_mark_contacted.
@@ -253,44 +274,46 @@ export function RecoveryBatchDrawer({
         "contacted", "left_vm", "text_sent", "email_sent", "no_answer",
       ];
       if (contactedOutcomes.includes(outcome)) {
-        await supabase.rpc("unified_mark_contacted" as any, {
+        const { error } = await supabase.rpc("unified_mark_contacted" as any, {
           p_id: row.id,
           p_source: row.source,
         });
+        must("Mark contacted", error);
       }
 
       // If licensed, stamp licensed_at + license_status on applications (aged_leads have no licensed_at).
       if (outcome === "licensed" && row.source === "applied") {
-        await supabase
+        const { error } = await supabase
           .from("applications")
           .update({
             license_status: "licensed",
             licensed_at: new Date().toISOString(),
           } as any)
           .eq("id", row.id);
+        must("Stamp licensed", error);
       }
 
-      // Log every outcome (skips silently for aged_lead — RPC only accepts application_id).
+      // Log every outcome (aged_lead has no application_id, so it has no timeline).
+      // A failed timeline entry does not undo the state change above, but it is
+      // shown rather than swallowed.
       if (row.source === "applied") {
-        try {
-          await supabase.rpc("log_contact_attempt" as any, {
-            p_application_id: row.id,
-            p_channel: "recovery_batch",
-            p_outcome: outcome,
-            p_notes: notesPayload,
-          });
-        } catch { // empty-catch-allow:fire-and-forget-telemetry
-          // outcome log must not block state changes.
-        }
+        const { error: logError } = await supabase.rpc("log_contact_attempt" as any, {
+          p_application_id: row.id,
+          p_channel: outcomeChannel(outcome),
+          p_outcome: outcome,
+          p_notes: notesPayload,
+        });
+        if (logError) toast.error(`Saved, but the timeline entry failed: ${logError.message}`);
       }
 
       // Persist notes to the source row when we have content.
       if (notesPayload) {
         const table = row.source === "applied" ? "applications" : "aged_leads";
-        await supabase
+        const { error } = await supabase
           .from(table as any)
           .update({ notes: notesPayload } as any)
           .eq("id", row.id);
+        must("Save notes", error);
       }
     },
     onSuccess: (_v, vars) => {
@@ -319,16 +342,14 @@ export function RecoveryBatchDrawer({
       if (error) throw error;
       // Log the follow-up as a contact attempt so the timeline reflects it.
       if (row.source === "applied") {
-        try {
-          await supabase.rpc("log_contact_attempt" as any, {
-            p_application_id: row.id,
-            p_channel: "recovery_batch",
-            p_outcome: "follow_up_scheduled",
-            p_notes: `Follow up: ${format(followUp, "PPP")}`,
-          });
-        } catch { // empty-catch-allow:fire-and-forget-telemetry
-          // follow-up log must not block the update.
-        }
+        // The follow-up is already saved; a failed timeline entry is shown, not swallowed.
+        const { error: logError } = await supabase.rpc("log_contact_attempt" as any, {
+          p_application_id: row.id,
+          p_channel: "note",
+          p_outcome: "follow_up_scheduled",
+          p_notes: `Follow up: ${format(followUp, "PPP")}`,
+        });
+        if (logError) toast.error(`Follow-up saved, but the timeline entry failed: ${logError.message}`);
       }
     },
     onSuccess: () => {

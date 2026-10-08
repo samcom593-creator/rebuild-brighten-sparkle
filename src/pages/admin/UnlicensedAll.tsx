@@ -298,14 +298,15 @@ export default function UnlicensedAll() {
       });
       if (error) throw error;
       if (row.source === 'applied') {
-        // MP-547: Promise.resolve() is load-bearing. supabase.rpc() returns a
-        // lazy PostgrestFilterBuilder, which is a thenable with NO .catch — so
-        // `.catch()` on it threw before .then() ever fired and the RPC was
-        // never sent. channel='stage' held 0 rows for its whole life.
-        await Promise.resolve(supabase.rpc("log_contact_attempt" as any, {
-          p_application_id: row.id, p_channel: 'stage', p_outcome: 'passed_test', p_notes: null,
-          // empty-catch-allow:fire-and-forget stage-transition telemetry
-        })).catch(() => {});
+        // MP-547 made this call leave the browser (supabase.rpc() is a thenable
+        // with no .catch). It still never landed: channel 'stage' is not in
+        // application_contact_log's CHECK, and the error came back RESOLVED in
+        // { error }, which .catch() cannot see. The stage change above is
+        // already saved; a failed timeline entry is shown, not swallowed.
+        const { error: logError } = await supabase.rpc("log_contact_attempt" as any, {
+          p_application_id: row.id, p_channel: 'note', p_outcome: 'passed_test', p_notes: null,
+        });
+        if (logError) toast.error(`Saved, but the timeline entry failed: ${logError.message}`);
       }
     },
     onSuccess: () => { toast.success('Marked passed test'); qc.invalidateQueries({ queryKey: ['v_unlicensed_all'] }); },
@@ -958,13 +959,14 @@ export default function UnlicensedAll() {
                         className="inline-flex h-10 min-w-0 items-center gap-2 rounded-sm border border-border bg-background px-3 text-xs font-semibold tabular-nums text-foreground transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)] sm:h-9"
                         onClick={() => {
                           if (r.source === 'applied') {
-                            // MP-547: Promise.resolve() is load-bearing — see the
-                            // stage-transition site above. Without it this threw
-                            // synchronously and the RPC never left the browser.
-                            void Promise.resolve(supabase.rpc("log_contact_attempt" as any, {
-                              p_application_id: r.id, p_channel: 'phone', p_outcome: 'attempted', p_notes: null,
-                              // empty-catch-allow:fire-and-forget tel-click telemetry — must not block navigation
-                            })).catch(() => {});
+                            // Never blocks the dial. 'phone' is not an admitted
+                            // channel (the CHECK says 'call'), so every tap was
+                            // refused; a refusal now surfaces instead of vanishing.
+                            void supabase.rpc("log_contact_attempt" as any, {
+                              p_application_id: r.id, p_channel: 'call', p_outcome: 'attempted', p_notes: null,
+                            }).then(({ error }) => {
+                              if (error) toast.error(`Call not logged: ${error.message}`);
+                            });
                           }
                         }}
                       >
@@ -979,13 +981,13 @@ export default function UnlicensedAll() {
                         title={r.email}
                         onClick={() => {
                           if (r.source === 'applied') {
-                            // MP-547: Promise.resolve() is load-bearing — see the
-                            // stage-transition site above. Without it this threw
-                            // synchronously and the RPC never left the browser.
-                            void Promise.resolve(supabase.rpc("log_contact_attempt" as any, {
+                            // Never blocks the mail client; a refusal surfaces
+                            // instead of vanishing (see the call link above).
+                            void supabase.rpc("log_contact_attempt" as any, {
                               p_application_id: r.id, p_channel: 'email', p_outcome: 'attempted', p_notes: null,
-                              // empty-catch-allow:fire-and-forget mailto-click telemetry — must not block navigation
-                            })).catch(() => {});
+                            }).then(({ error }) => {
+                              if (error) toast.error(`Email not logged: ${error.message}`);
+                            });
                           }
                         }}
                       >

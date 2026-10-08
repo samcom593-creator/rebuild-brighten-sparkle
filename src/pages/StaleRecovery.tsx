@@ -504,6 +504,7 @@ export default function StaleRecovery() {
       return;
     }
     toast.success(`Marked ${action.replace("_", " ")}`);
+    if (data.logged === false) toast.error(`Saved, but the timeline entry failed: ${data.log_error ?? "unknown error"}`);
     qc.invalidateQueries({ queryKey: ["stale-applicants"] });
     qc.invalidateQueries({ queryKey: ["application-conversion-funnel"] });
     qc.invalidateQueries({ queryKey: ["queue-stalled-applications"] });

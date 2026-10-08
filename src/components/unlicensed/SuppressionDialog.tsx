@@ -81,17 +81,17 @@ export function SuppressionDialog({ open, onOpenChange, target, onSuppressed }: 
           .eq("id", target.id);
         if (error) throw error;
 
-        // Log the suppress outcome for the timeline.
-        try {
-          await supabase.rpc("log_contact_attempt" as any, {
-            p_application_id: target.id,
-            p_channel: "recovery_batch",
-            p_outcome: "suppress",
-            p_notes: finalReason,
-          });
-        } catch { // empty-catch-allow:fire-and-forget-telemetry
-          // suppress log must not block termination.
-        }
+        // Log the suppress outcome for the timeline. "recovery_batch" was sent
+        // here before and application_contact_log's channel CHECK rejects it, so
+        // no suppression ever reached the timeline. The termination above is
+        // already saved; a failed entry is shown, not swallowed.
+        const { error: logError } = await supabase.rpc("log_contact_attempt" as any, {
+          p_application_id: target.id,
+          p_channel: "note",
+          p_outcome: "suppress",
+          p_notes: finalReason,
+        });
+        if (logError) toast.error(`Suppressed, but the timeline entry failed: ${logError.message}`);
       } else {
         const { error } = await supabase
           .from("aged_leads")

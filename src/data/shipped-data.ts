@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "\"Mark contacted\" on License Push and the Unlicensed queue now saves. On an applied lead it had failed every time since July, because the database refused the word it was logging, and the Recovery Batch walkthrough said \"Logged\" while nothing was saved.",
+    detail: "Five places wrote a channel name the contact log does not accept (contact, recovery_batch, stage, phone, recovery_panel), so those touches never reached an applicant's timeline: Mark contacted, every Recovery Batch outcome, Suppress, Passed test, tapping a phone number on the Unlicensed queue, and every Stale Recovery action. All five now use the accepted names. The walkthrough now stops and shows the error if a save fails, and a failed timeline entry shows a message instead of disappearing. A new test reads the database's list of accepted names and fails the build if any writer sends one outside it.",
+    commit: "PL-WIB-CONTACT-LOG-CHANNEL",
+  },
+  {
+    ts: "today",
     label: "The Launch Board now opens on your momentum: a posting streak you don't want to break (plus a separate YouTube streak, and both go negative — \"−3 days no post\" — the moment you slip), your climb to the next subscriber milestone (769 → 1,000), a creator level that ticks up with every upload, and long-form-per-week and Shorts-per-week each vs their goal and last week. Under it, the top-ranked video to film next is marked and one tap writes its script.",
     detail: "Winners this week now show long-form and Shorts separately, so your best long video surfaces too. Tracks every platform — YouTube (auto), Instagram, TikTok, Snapchat, Facebook. Killed the old \"80/20 insurance\" grading you didn't care about; every number is real (from your posts + live sub count), and anything not computable honestly is hidden, never faked. Also bumped the small fonts up across the board so it's easier to read and less cluttered. Built on a tested momentum engine.",
     commit: "PL-LAUNCHBOARD-MOMENTUM",

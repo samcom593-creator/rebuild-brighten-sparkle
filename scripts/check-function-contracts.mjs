@@ -310,6 +310,9 @@ const PUBLIC_ALLOWLIST = new Set([
   "instagram-token-keepalive",
   "youtube-auth",
   "youtube-comments",
+  // test-email-flows (2026-10-07): was open to anyone; requireSendAuth now
+  // refuses a bare POST and the anon key. Probed live after deploy.
+  "test-email-flows",
 ]);
 
 // ---------------------------------------------------------------------------
@@ -394,6 +397,9 @@ const PUBLIC_CONTRACT = {
   // forced fast. Refuses with json(body, 401) — a positional argument, which
   // is why the detector had to learn that shape (MP-415).
   "brand-photo-upload": "in_handler_gate",
+  // test-email-flows: requireSendAuth (service key or admin/manager JWT), the
+  // send-email gate. Its fan-out flows mail every manager.
+  "test-email-flows": "in_handler_gate",
 
   // --- the credential is the token in the URL ----------------------------
   "content-share": "url_token",

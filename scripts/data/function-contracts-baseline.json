@@ -183,7 +183,6 @@
       "system-health-autopilot",
       "system-health-check",
       "telegram-drain",
-      "test-email-flows",
       "transcribe-call",
       "trigger-new-hire-flow",
       "update-user-email",

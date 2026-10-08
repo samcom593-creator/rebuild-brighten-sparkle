@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { requireSendAuth } from "../_shared/require-send-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -26,6 +27,21 @@ const testApplicant = {
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // verify_jwt = false and, until 2026-10-07, no credential check at all: a
+  // bare POST reached the handler (probed: 400 from body validation, not 401).
+  // flowType "retroactive-leaderboard" loops every active application (832)
+  // through notify-all-managers-leaderboard with the service key and returns
+  // each applicant's full name; "instagram-reminder" mails every manager and
+  // admin; the default "all" sends 11 Apex-branded emails to any address the
+  // caller names. No code, cron, pg function or setting calls this, so the
+  // gate is the same one send-email uses: service key or admin/manager JWT.
+  const auth = await requireSendAuth(req);
+  if (!auth.ok) {
+    return new Response(JSON.stringify({ ok: false, error: auth.error }), {
+      status: auth.status, headers: { "Content-Type": "application/json", ...corsHeaders },
+    });
   }
 
   try {
@@ -937,7 +953,7 @@ const handler = async (req: Request): Promise<Response> => {
                       </div>
 
                       <div style="text-align: center; margin: 25px 0;">
-                        <a href="${DASHBOARD_URL}/settings" style="display: inline-block; background: linear-gradient(135deg, #D4AF37, #C5A028); color: #000000; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">
+                        <a href="${DASHBOARD_URL}/dashboard/settings" style="display: inline-block; background: linear-gradient(135deg, #D4AF37, #C5A028); color: #000000; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">
                           ⚙️ Update Your Profile Now
                         </a>
                       </div>

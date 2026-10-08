@@ -144,6 +144,9 @@ PUBLIC_ALLOWLIST=(
   # send-instagram-dm (2026-10-08): same gate, same reason. Every caller presents
   # the sb_secret service key, which is not a JWT.
   "send-instagram-dm"
+  # send-notification (2026-10-08): same gate (any_authenticated floor). Its
+  # service-key callers present sb_secret, which is not a JWT.
+  "send-notification"
   "cron-newhire-portal-login"
   "instagram-comments-backfill"
   "instagram-token-keepalive"

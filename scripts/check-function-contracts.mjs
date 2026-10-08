@@ -322,6 +322,12 @@ const PUBLIC_ALLOWLIST = new Set([
   // one pg caller (dm_send_retry) was moved to the service key first
   // (migration 20261008062000).
   "send-instagram-dm",
+  // send-notification (2026-10-08): caller-chosen email, title, raw-HTML message
+  // and url sent from notifications@apex-financial.org with no credential read.
+  // requireSendAuth (any_authenticated) now. Its four anon-key pg callers are
+  // unscheduled and uncalled and were left on the anon key on purpose (see the
+  // function header); every live caller presents the service key or a user JWT.
+  "send-notification",
 ]);
 
 // ---------------------------------------------------------------------------
@@ -415,6 +421,10 @@ const PUBLIC_CONTRACT = {
   // send-instagram-dm: requireSendAuth, same gate. Live callers are three edge
   // functions on the service key (instagram-webhook, -comments-backfill, -dm-replay).
   "send-instagram-dm": "in_handler_gate",
+  // send-notification: requireSendAuth, floor any_authenticated. Live callers:
+  // system-health-check (service key), two pg fns on the service key, and six
+  // src/ sites on the signed-in user's JWT.
+  "send-notification": "in_handler_gate",
 
   // --- the credential is the token in the URL ----------------------------
   "content-share": "url_token",

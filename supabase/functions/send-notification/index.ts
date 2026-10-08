@@ -11,6 +11,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { logFunctionError, writeAudit } from "../_shared/audit.ts";
 import { checkRateLimit, RateLimitError } from "../_shared/rateLimit.ts";
 import { nanpTenDigits } from "../_shared/nanp-phone.ts";
+import { requireSendAuth } from "../_shared/require-send-auth.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -50,6 +51,35 @@ async function logNotification(supabase: any, data: any) {
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // PL-WIB-SEND-NOTIFICATION-AUTH (2026-10-08). verify_jwt = false and, until
+  // this commit, no credential read: a bare POST {} with no Authorization header
+  // reached the body validation (400, nothing sent). The caller chose `email`,
+  // `title`, `message` (interpolated into the HTML unescaped) and `url`, so anyone
+  // could mail any address from notifications@apex-financial.org with a link of
+  // their choosing, and text or push any userId on file.
+  //
+  // Floor is any_authenticated, not admin_or_manager. AgentPipelineSimple
+  // (/dashboard/pipeline-simple, any signed-in user) sends agents' manager-switch
+  // requests to Sam through here and ignores the result, then toasts "Sam will
+  // review it"; an admin floor would drop those with nothing on screen.
+  // RecruiterDashboard sits on the same bare route. Service-key callers:
+  // system-health-check, applicant_login_send, send_reapply_email_blast.
+  //
+  // Four pg fns still post here with the anon key and now get a 401:
+  // nudge_day2_not_enrolled, nudge_day4_not_enrolled, weekly_xcel_progress_emails,
+  // send_completion_contracting_handoff. None is scheduled, triggered or called
+  // by another fn, and none has a cron run on record. They were NOT moved to the
+  // service key: all four are SECURITY DEFINER with EXECUTE granted to anon, so
+  // that move would hand any stranger a one-call mail blast to real applicants.
+  // Reviving one means the key move and the anon REVOKE in the same change.
+  const auth = await requireSendAuth(req, { floor: "any_authenticated" });
+  if (!auth.ok) {
+    return new Response(JSON.stringify({ error: auth.error }), {
+      status: auth.status,
+      headers: { "Content-Type": "application/json", ...corsHeaders },
+    });
   }
 
   const requestId = req.headers.get("x-request-id") ?? crypto.randomUUID();

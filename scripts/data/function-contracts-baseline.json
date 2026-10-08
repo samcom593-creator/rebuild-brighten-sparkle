@@ -157,7 +157,6 @@
       "send-licensing-instructions",
       "send-licensing-sequence",
       "send-login-to-manager",
-      "send-notification",
       "send-numbers-reminder",
       "send-outstanding-performance",
       "send-password-reset",

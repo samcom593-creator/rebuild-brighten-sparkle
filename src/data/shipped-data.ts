@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Two buttons on the Leads page said \"Get Started\" and \"Apply Now\" but sent everyone to the licensing course, so an agent who is already licensed got pushed toward a license they already hold. Both now open the application, which asks whether you're licensed and only routes you to the course if you aren't.",
+    detail: "Same pass cleaned up Settings: producers and VAs no longer see the Agency and Billing tabs, which only the owner can act on and did nothing for anyone else, and a dead \"Add sample data\" switch (it saved a setting nothing read) is gone. Signing in now returns you to the page you were trying to open instead of always dropping you on the dashboard. Finishes the website declutter started in the filming-picker work.",
+    commit: "PL-CODEX-WEB-DECLUTTER",
+  },
+  {
+    ts: "today",
     label: "The Telegram bot now understands the answer to its own first question. The welcome asks applicants to reply LICENSED or UNLICENSED, and until today that reply got \"Don't know that one for sure, tap /manager\". It now sends the licensed call link or the pre-license course path.",
     detail: "Found on a real applicant from Oct 5 who replied UNLICENSED, got the fallback twice, and gave up to /manager. Questions that only mention a license (\"how do I get licensed?\") still go to the normal answer path. The reply never changes anyone's license status; that still comes from NIPR.",
     commit: "PL-WIB-TG-LICENSE-REPLY",

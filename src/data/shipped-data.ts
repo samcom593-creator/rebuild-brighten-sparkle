@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "The Launch Board now opens on your momentum: a posting streak you don't want to break, your climb to the next subscriber milestone (769 → 1,000), a creator level that ticks up with every upload, and this-week-vs-last-week on uploads and views. Under it, the top-ranked video to film next is marked and one tap writes its script.",
+    detail: "Killed the old \"80/20 insurance\" grading you didn't care about — the only scores left are the ones that make you want to post again, and every number is real (from your posts and live sub count; anything that can't be computed honestly is hidden, never faked). The Week tab lost its clutter too. Built on a tested momentum engine (streak / level / milestone / week-over-week).",
+    commit: "PL-LAUNCHBOARD-MOMENTUM",
+  },
+  {
+    ts: "today",
     label: "Two buttons on the Leads page said \"Get Started\" and \"Apply Now\" but sent everyone to the licensing course, so an agent who is already licensed got pushed toward a license they already hold. Both now open the application, which asks whether you're licensed and only routes you to the course if you aren't.",
     detail: "Same pass cleaned up Settings: producers and VAs no longer see the Agency and Billing tabs, which only the owner can act on and did nothing for anyone else, and a dead \"Add sample data\" switch (it saved a setting nothing read) is gone. Signing in now returns you to the page you were trying to open instead of always dropping you on the dashboard. Finishes the website declutter started in the filming-picker work.",
     commit: "PL-CODEX-WEB-DECLUTTER",

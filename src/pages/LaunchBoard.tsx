@@ -25,10 +25,13 @@
 //
 // v3 (2026-09-15, vidIQ channel audit): Instagram is retired — every card
 // funnels to apex-financial.org/apply. Brands are now channels (YouTube
-// long-form / Shorts auto-republished by Repurpose.io). Pillars follow the
-// 80/20 rule: 80% insurance sales · money at 20 · recruiting, 20% fitness
-// framed for closers; cars/AZ are b-roll only. The Week tab is a real
-// Mon–Sun calendar with a slot per day and a live 80/20 mix meter.
+// long-form / Shorts auto-republished by Repurpose.io). The Week tab is a real
+// Mon–Sun calendar with a slot per day.
+//
+// v5 (2026-10-08): repositioned off insurance-sales talking-head to the come-up /
+// self-improvement lane (src/lib/contentWeek.ts themes). The old "80/20 insurance
+// mix" grading is gone; Today leads with a momentum header (streak, subscriber
+// milestone, creator level, week-over-week) and a ranked "film this next" pick.
 
 import { useRef, Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
 import { externalHref } from "@/lib/externalHref";
@@ -122,21 +125,18 @@ const TABS: { k: Tab; label: string }[] = [
 // ?tab=queue and /dashboard/content still open it.
 const TAB_KEYS = new Set<Tab>([...TABS.map((t) => t.k), "queue"]);
 
-// The 80/20 pillars (2026-09-15, from the vidIQ channel audit). CORE = 80% of posts: insurance sales, money at 20,
-// recruiting/team proof. FLEX = 20%: fitness framed for closers. Cars / Arizona are b-roll, never the subject.
-// A clip's pillar is read off its existing AI tags/title/description, so nothing needs re-tagging; a tap on a chip pins it by writing the pillar word into tags.
+// Library footage filters — a way to find clips in the archive, not a grading system. A clip's
+// category is read off its existing AI tags / title / description, so nothing needs re-tagging.
 type PillarKey = "sales" | "money" | "recruiting" | "fitness" | "lifestyle";
-const PILLARS: { k: PillarKey; label: string; core: boolean; re: RegExp }[] = [
-  { k: "sales", label: "Insurance sales", core: true, re: /\b(sales?|insurance|closing|close|calls?|dialer|policy|policies|pitch|objection|license|licensed|carrier|ethos|leads?)\b/i },
-  { k: "money", label: "Money at 20", core: true, re: /\b(money|income|deposit|paid|pay|\$[\d,]+k?|production|revenue|rich|millionaire|cash|commission)\b/i },
-  { k: "recruiting", label: "Recruiting / team", core: true, re: /\b(recruit(?:ing)?|apply|application|hiring|hired|join|team|agents?|agency|onboard(?:ing)?|cta)\b/i },
-  { k: "fitness", label: "Fitness for closers", core: false, re: /\b(gym|workout|lift(?:ing)?|physique|training|fitness|bench|squat|deadlift|cardio|abs|muscle|shirtless|run(?:ning)?)\b/i },
-  { k: "lifestyle", label: "Lifestyle b-roll", core: false, re: /\b(cars?|corvette|vette|c8|lambo|lamborghini|porsche|exotic|rental|driving|garage|arizona|tempe|rooftop|pool|sunset)\b/i },
+const PILLARS: { k: PillarKey; label: string; re: RegExp }[] = [
+  { k: "sales", label: "Sales", re: /\b(sales?|insurance|closing|close|calls?|dialer|policy|policies|pitch|objection|license|licensed|carrier|ethos|leads?)\b/i },
+  { k: "money", label: "Money", re: /\b(money|income|deposit|paid|pay|\$[\d,]+k?|production|revenue|rich|millionaire|cash|commission)\b/i },
+  { k: "recruiting", label: "Team", re: /\b(recruit(?:ing)?|apply|application|hiring|hired|join|team|agents?|agency|onboard(?:ing)?|cta)\b/i },
+  { k: "fitness", label: "Fitness", re: /\b(gym|workout|lift(?:ing)?|physique|training|fitness|bench|squat|deadlift|cardio|abs|muscle|shirtless|run(?:ning)?)\b/i },
+  { k: "lifestyle", label: "Lifestyle", re: /\b(cars?|corvette|vette|c8|lambo|lamborghini|porsche|exotic|rental|driving|garage|arizona|tempe|rooftop|pool|sunset)\b/i },
 ];
 const clipHay = (k: Clip) => `${k.title ?? ""} ${k.description ?? ""} ${(k.tags ?? []).join(" ")} ${k.name}`;
 const pillarsOf = (k: Clip): PillarKey[] => PILLARS.filter((p) => p.re.test(clipHay(k))).map((p) => p.k);
-const cardPillars = (c: Card): PillarKey[] => { const hay = `${c.title} ${c.hook} ${c.caption}`; return PILLARS.filter((p) => p.re.test(hay)).map((p) => p.k); };
-const isCoreCard = (c: Card) => { const ps = cardPillars(c); return ps.length === 0 ? null : ps.some((k) => PILLARS.find((p) => p.k === k)?.core); };
 
 // Channels (Instagram retired 2026-09-15). YT = YouTube long-form, SH = Shorts (Repurpose.io republishes to TikTok).
 // Legacy SFD / IMS cards were the two Instagram handles; they render as retired so old rows still make sense.
@@ -174,7 +174,7 @@ const emptyDraft = { title: "", brand: "SH", job: "REACH", content_type: "short"
 const WORKFLOW_FIELDS = ["cta", "owner", "due_date"] as const;
 
 // MP-233 video kit (2026-09-15): two copy-paste blocks per card. "Fill from template" writes these from the
-// title + hook + channel so a brand-new idea is recordable and hand-off-able in one tap; the seeded 80/20
+// title + hook + channel so a brand-new idea is recordable and hand-off-able in one tap; the seeded
 // cards carry hand-written versions. Delivery format lives in master-prompts/233-video-format-and-prompt-kit.md.
 const isLongForm = (d: Record<string, unknown>) => String(d.brand) === "YT" || String(d.content_type) === "long";
 const recordTemplate = (d: Record<string, unknown>) => {
@@ -191,7 +191,6 @@ const FORMAT_LINE = "Long-form: 3840×2160 16:9 30 fps, −14 LUFS, no music, ch
 
 // ── Week tab (2026-10-06): 7 themed days driven by src/lib/contentWeek.ts. Drag a card between days (or tap the
 // Move select on a phone). Long-form planned vs 5/week, Shorts posted vs 30–60/week.
-type MixInfo = { pct: number | null; core: number; flex: number; blank: number; noCta: number };
 const cardIsLong = (c: Card) => c.brand === "YT" || c.content_type === "long";
 const DAY_OPTIONS = [{ v: 0, label: "Unplanned" }, ...[1, 2, 3, 4, 5, 6, 7].map((d) => ({ v: d, label: DAY_THEMES[d].short }))];
 
@@ -219,12 +218,11 @@ function DropZone({ id, className, children }: { id: string; className: string; 
   return <div ref={setNodeRef} className={`${className} ${isOver ? "ring-2 ring-primary/60" : ""}`}>{children}</div>;
 }
 
-function WeekTab({ cards, mix, onOpen, onMove, onAdd }: { cards: Card[]; mix: MixInfo; onOpen: (c: Card) => void; onMove: (c: Card, day: number) => void; onAdd: (day: number) => void }) {
+function WeekTab({ cards, onOpen, onMove, onAdd }: { cards: Card[]; onOpen: (c: Card) => void; onMove: (c: Card, day: number) => void; onAdd: (day: number) => void }) {
   const todayDow = phoenixWeekday();
   const [shortsByDay, setShortsByDay] = useState<Record<number, number> | null>(null);
   const [shortsFailed, setShortsFailed] = useState(false);
   const [showAllIdeas, setShowAllIdeas] = useState(false);
-  const [showMix, setShowMix] = useState(false);
   // Mouse + touch, not Pointer: dnd-kit's PointerSensor also claims touches and then loses
   // them to page scrolling, so on a phone a drag never started. Touch = press and hold.
   const sensors = useSensors(
@@ -322,22 +320,7 @@ function WeekTab({ cards, mix, onOpen, onMove, onAdd }: { cards: Card[]; mix: Mi
           )}
           {ideas.length > 8 && <button type="button" onClick={() => setShowAllIdeas(!showAllIdeas)} className="mt-3 rounded-full border border-border px-3 py-1 text-[13px] font-semibold text-foreground hover:border-primary/60">{showAllIdeas ? "Show fewer" : `Show all (${ideas.length})`}</button>}
         </DropZone>
-        <div>
-          <button type="button" onClick={() => setShowMix(!showMix)} aria-expanded={showMix} className="rounded-full border border-border px-3 py-1 text-[13px] font-semibold text-foreground hover:border-primary/60">{showMix ? "Hide details" : "Show details"}</button>
-          {showMix && (
-            <div className="mt-3 space-y-3 rounded-2xl border border-border bg-card px-4 py-3 text-sm">
-              <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-                <span className="text-[12px] font-bold uppercase tracking-[0.12em] text-muted-foreground">80/20 mix</span>
-                <span className={`text-lg font-extrabold tabular-nums ${mix.pct === null ? "text-muted-foreground" : mix.pct >= 75 ? "text-emerald-400" : "text-amber-400"}`}>{mix.pct === null ? "—" : `${mix.pct}%`}</span>
-                <span className="text-xs text-muted-foreground">core · target 80%</span>
-                <div className="h-2 w-40 overflow-hidden rounded-full bg-muted"><div className="h-full bg-emerald-400" style={{ width: `${mix.pct ?? 0}%` }} /></div>
-                <span className="text-xs text-muted-foreground">{mix.core} insurance / money / recruiting · {mix.flex} fitness / lifestyle · {mix.blank} untagged</span>
-                {mix.noCta > 0 && <span className="text-xs font-semibold text-amber-400">{mix.noCta} caption{mix.noCta === 1 ? "" : "s"} missing the apex-financial.org/apply CTA</span>}
-              </div>
-              <p className="text-xs text-muted-foreground"><span className="font-bold uppercase tracking-[0.12em] text-foreground">Delivery format</span> · {FORMAT_LINE} Every card carries a script to record and an edit prompt: open the card, copy, paste.</p>
-            </div>
-          )}
-        </div>
+        <p className="rounded-2xl border border-border bg-card px-4 py-3 text-xs text-muted-foreground"><span className="font-bold uppercase tracking-[0.12em] text-foreground">Delivery format</span> · {FORMAT_LINE} Every card carries a script to record and an edit prompt: open the card, copy, paste.</p>
       </div>
       <DragOverlay>
         {activeCard ? (
@@ -824,14 +807,6 @@ export default function LaunchBoard() {
   const testimonialClips = useMemo(() => clips.filter(isTestimonial), [clips]);
   const bangerColor = (s?: number | null) => (s == null ? "bg-zinc-600" : s >= 70 ? "bg-emerald-400" : s >= 45 ? "bg-gold" : "bg-zinc-500");
   const fmtDur = (s?: number | null) => (s ? `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}` : "");
-  // 80/20 mix over every open card (posted excluded): core pillars vs fitness/lifestyle. Untagged cards don't vote.
-  const mix = useMemo(() => {
-    const open = cards.filter(isOpen);
-    let core = 0, flex = 0, blank = 0;
-    for (const c of open) { const v = isCoreCard(c); if (v === null) blank++; else if (v) core++; else flex++; }
-    const voted = core + flex;
-    return { core, flex, blank, pct: voted ? Math.round((core / voted) * 100) : null, noCta: open.filter((c) => c.caption && !hasCta(c.caption) && !hasCta(c.cta ?? "")).length };
-  }, [cards]);
 
   if (loading) return <PageSkeleton />;
 
@@ -1055,7 +1030,7 @@ export default function LaunchBoard() {
       )}
 
       {tab === "week" && (
-        <WeekTab cards={cards} mix={mix} onOpen={openEdit}
+        <WeekTab cards={cards} onOpen={openEdit}
           onMove={(c, day) => { void patch(c.id, { day, planned_week: day ? phoenixWeekStart() : null }).then((ok) => { if (ok) toast.success(day ? `Moved to ${DAY_THEMES[day].name}` : "Moved to Ideas"); }); }}
           onAdd={(d) => { const long = DAY_THEMES[d].longTarget > 0; setDraft({ ...emptyDraft, day: d, brand: long ? "YT" : "SH", content_type: long ? "long" : "short" }); setEditing(null); setEditorOpen(true); }} />
       )}

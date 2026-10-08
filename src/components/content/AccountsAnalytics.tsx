@@ -7,7 +7,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatTimeAgo } from "@/lib/dateUtils";
-import { DAY_THEMES, THEME_TONE, countPieces, phoenixDateKey, phoenixWeekday, piecesByDay } from "@/lib/contentWeek";
+import { DAY_THEMES, THEME_TONE, WEEKLY_TARGETS, countPieces, phoenixDateKey, phoenixWeekday, piecesByDay } from "@/lib/contentWeek";
+import { level, nextMilestone, streak, totalPieces, weekOverWeek } from "@/lib/contentMomentum";
 
 type Post = {
   id: number; platform: string; account: string | null; format: string; category: string | null; title: string | null;
@@ -144,9 +145,10 @@ function SourceLink({ source }: { source?: Source }) {
     : <div className="mt-2 flex items-center gap-2 rounded-md bg-muted/40 p-1.5">{inner}</div>;
 }
 
-function IdeaRow({ idea, onPick, busy }: { idea: Idea; onPick?: (idea: Idea) => void; busy?: boolean }) {
+function IdeaRow({ idea, onPick, busy, top }: { idea: Idea; onPick?: (idea: Idea) => void; busy?: boolean; top?: boolean }) {
   return (
-    <li className="rounded-lg border border-border bg-background/40 p-3">
+    <li className={`rounded-lg border bg-background/40 p-3 ${top ? "border-primary/60 bg-primary/5" : "border-border"}`}>
+      {top && <div className="mb-2 text-[12px] font-bold uppercase tracking-[0.12em] text-primary">★ Top pick — film this next</div>}
       <div className="flex items-start gap-3">
         <span className={`mt-0.5 shrink-0 rounded-full px-2.5 py-0.5 text-sm font-bold tabular-nums ${scoreTone(idea.score)}`} title="Editorial priority, 0–100; not a prediction of views">{idea.score}</span>
         <div className="min-w-0">
@@ -164,10 +166,82 @@ function IdeaRow({ idea, onPick, busy }: { idea: Idea; onPick?: (idea: Idea) => 
 
 const sortIdeas = (a: Idea, b: Idea) => (a.format === b.format ? 0 : a.format === "Long" ? -1 : 1) || b.score - a.score;
 
+/** Live YouTube subscriber count from the 3-hourly sync. Null until it loads or if it fails (never a fake 0). */
+function useYtSubs() {
+  const [subs, setSubs] = useState<number | null>(null);
+  useEffect(() => {
+    void supabase.from("system_settings").select("value").eq("key", "youtube_channel_stats").maybeSingle()
+      .then(({ data }) => { try { const v = data?.value ? JSON.parse(data.value) : null; setSubs(typeof v?.subscribers === "number" ? v.subscribers : null); } catch { setSubs(null); } });
+  }, []);
+  return subs;
+}
+
+/** A small up/down/flat delta chip. Hidden when there's no honest comparison (prior window empty). */
+function Delta({ pct }: { pct: number | null }) {
+  if (pct == null) return null;
+  const tone = pct > 0 ? "text-emerald-400" : pct < 0 ? "text-red-400" : "text-muted-foreground";
+  return <span className={`text-[13px] font-bold tabular-nums ${tone}`}>{pct > 0 ? "↑" : pct < 0 ? "↓" : "→"} {Math.abs(pct)}%</span>;
+}
+
+/** The momentum header for the Today tab: the streak you don't want to break, the climb to the next
+ *  subscriber milestone, a creator level that ticks up with every upload, and honest week-over-week.
+ *  Every number is real (from the posts already loaded + the live sub count); anything we can't
+ *  compute honestly is hidden rather than faked. */
+export function MomentumStrip({ posts, subs }: { posts: Post[]; subs: number | null }) {
+  const s = useMemo(() => streak(posts), [posts]);
+  const lv = useMemo(() => level(totalPieces(posts)), [posts]);
+  const ms = useMemo(() => nextMilestone(subs), [subs]);
+  const wow = useMemo(() => weekOverWeek(posts), [posts]);
+  const weekGoal = WEEKLY_TARGETS.shortsMin;
+  return (
+    <section aria-label="Your momentum" className="flex flex-col gap-3">
+      <div className={`flex items-center gap-4 rounded-2xl border p-4 ${s.atRisk ? "border-amber-400/50 bg-amber-400/10" : s.days > 0 ? "border-primary/40 bg-primary/5" : "border-border bg-card"}`}>
+        <div className="text-4xl leading-none" aria-hidden>🔥</div>
+        <div className="min-w-0">
+          <div className="text-3xl font-extrabold tabular-nums leading-none text-foreground">{s.days}<span className="ml-1.5 text-base font-bold text-muted-foreground">day{s.days === 1 ? "" : "s"} in a row</span></div>
+          <div className={`mt-1 text-sm font-semibold ${s.atRisk ? "text-amber-400" : "text-primary"}`}>
+            {s.days === 0 ? "Post one video today and start the streak." : s.alive ? "Posted today — don't break the chain." : "Post today to keep the streak alive."}
+          </div>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="rounded-2xl border border-border bg-card p-4">
+          <div className="text-[13px] font-semibold text-muted-foreground">Subscribers</div>
+          <div className="mt-0.5 text-2xl font-extrabold tabular-nums text-foreground">{subs != null ? fmtNum(subs) : "—"}</div>
+          {ms ? (
+            <>
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${ms.pct}%` }} /></div>
+              <div className="mt-1 text-[12px] font-semibold text-primary">{fmtNum(ms.remaining)} to {fmtNum(ms.next)}</div>
+            </>
+          ) : <div className="mt-2 text-[12px] text-muted-foreground">updates every 3 hours</div>}
+        </div>
+        <div className="rounded-2xl border border-border bg-card p-4">
+          <div className="flex items-center justify-between gap-2"><span className="text-[13px] font-semibold text-muted-foreground">Uploads this week</span><Delta pct={wow.uploads.deltaPct} /></div>
+          <div className="mt-0.5 text-2xl font-extrabold tabular-nums text-foreground">{wow.uploads.now}</div>
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, Math.round((wow.uploads.now / weekGoal) * 100))}%` }} /></div>
+          <div className="mt-1 text-[12px] text-muted-foreground">goal {weekGoal}/wk · last week {wow.uploads.prev}</div>
+        </div>
+        <div className="rounded-2xl border border-border bg-card p-4">
+          <div className="flex items-center justify-between gap-2"><span className="text-[13px] font-semibold text-muted-foreground">Views this week</span><Delta pct={wow.views.deltaPct} /></div>
+          <div className="mt-0.5 text-2xl font-extrabold tabular-nums text-foreground">{fmtNum(wow.views.now)}</div>
+          <div className="mt-1 text-[12px] text-muted-foreground">last week {fmtNum(wow.views.prev)}</div>
+        </div>
+        <div className="rounded-2xl border border-border bg-card p-4">
+          <div className="text-[13px] font-semibold text-muted-foreground">Creator level</div>
+          <div className="mt-0.5 text-2xl font-extrabold tabular-nums text-foreground">Lvl {lv.level}</div>
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${lv.pct}%` }} /></div>
+          <div className="mt-1 text-[12px] text-muted-foreground">{lv.next == null ? "max level" : `${lv.span - lv.into} more post${lv.span - lv.into === 1 ? "" : "s"} to Lvl ${lv.level + 1}`}</div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /** Today tab: what today is for, and exactly what to make (with where each idea came from). */
 export function ContentHome({ onOpenAnalytics, onPick, picking }: { onOpenAnalytics: () => void; onPick?: (idea: Idea) => void; picking?: boolean }) {
   const [showAll, setShowAll] = useState(false);
   const { posts } = usePosts();
+  const subs = useYtSubs();
   const ins = useInsights();
   const wd = phoenixWeekday();
   const t = DAY_THEMES[wd];
@@ -180,6 +254,7 @@ export function ContentHome({ onOpenAnalytics, onPick, picking }: { onOpenAnalyt
   const pct = t.shortsTarget > 0 ? Math.min(100, Math.round((shortsToday / t.shortsTarget) * 100)) : 0;
   return (
     <div className="flex flex-col gap-4">
+      <MomentumStrip posts={posts} subs={subs} />
       <section aria-label="Today's plan" className={`rounded-xl border bg-card p-4 ${tone.ring}`}>
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="text-lg font-bold text-foreground">Today · {t.name}</h2>
@@ -201,7 +276,7 @@ export function ContentHome({ onOpenAnalytics, onPick, picking }: { onOpenAnalyt
         </div>
         {ideas.length === 0
           ? <div className="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground">No ideas queued for this day yet.</div>
-          : <ol className="flex flex-col gap-3">{(showAll ? ideas : ideas.slice(0, 3)).map((idea) => <IdeaRow key={`${idea.format}-${idea.title}`} idea={idea} onPick={onPick} busy={picking} />)}</ol>}
+          : <ol className="flex flex-col gap-3">{(showAll ? ideas : ideas.slice(0, 3)).map((idea, i) => <IdeaRow key={`${idea.format}-${idea.title}`} idea={idea} onPick={onPick} busy={picking} top={!showAll && i === 0} />)}</ol>}
         {ideas.length > 3 && <Button variant="outline" onClick={() => setShowAll(!showAll)}>{showAll ? "Back to three choices" : `See all ${ideas.length} ideas`}</Button>}
       </section>
     </div>

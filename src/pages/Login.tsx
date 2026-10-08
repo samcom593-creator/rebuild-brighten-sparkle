@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { motion } from "framer-motion";
 import { useForm } from "react-hook-form";
@@ -25,6 +25,12 @@ type LoginFormData = z.infer<typeof loginSchema>;
 export default function Login() {
   usePageTitle("Sign in · APEX Financial");
   const navigate = useNavigate();
+  const location = useLocation();
+  // Return to the page the visitor was trying to open (ProtectedRoute passes it as state.from),
+  // instead of always dumping them on /dashboard. Only honor a safe internal path.
+  const fromRaw = (location.state as { from?: { pathname?: string; search?: string } } | null)?.from;
+  const safeFrom = fromRaw?.pathname && /^\/(?!\/)/.test(fromRaw.pathname) && !/^\/(login|agent-login)\b/.test(fromRaw.pathname)
+    ? `${fromRaw.pathname}${fromRaw.search ?? ""}` : null;
   const [isLoading, setIsLoading] = useState(false);
   const { playSound } = useSoundEffects();
   const [showPhoneLogin, setShowPhoneLogin] = useState(false);
@@ -89,7 +95,7 @@ export default function Login() {
         if (isVaManager) {
           navigate("/va-team");
         } else if (isAdmin || isManager) {
-          navigate("/dashboard");
+          navigate(safeFrom ?? "/dashboard");
         } else if (isVa) {
           // Sub-VAs work the calling/recovery queue, not the agent portal.
           navigate("/admin/recovery-queue");
@@ -101,7 +107,7 @@ export default function Login() {
 
       playSound("success");
       toast.success("Welcome back!");
-      navigate("/dashboard");
+      navigate(safeFrom ?? "/dashboard");
     } catch (error: any) {
       console.error("Login error:", error);
       playSound("error");

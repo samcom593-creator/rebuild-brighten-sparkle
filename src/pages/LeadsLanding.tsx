@@ -48,7 +48,7 @@ export default function LeadsLanding() {
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center pt-8">
               <Button asChild size="lg" className="bg-white dark:bg-card hover:from-teal-600 hover:to-teal-700 text-white border-0">
-                <Link to="/get-licensed" className="gap-2">
+                <Link to="/apply" className="gap-2">
                   Get Started <ArrowRight className="h-5 w-5" />
                 </Link>
               </Button>
@@ -181,7 +181,7 @@ export default function LeadsLanding() {
             Apply now to join the team and start receiving daily warm leads. Get licensed first if you aren't yet — APEX covers the cost when you finish the course.
           </p>
           <Button asChild size="lg" className="bg-white dark:bg-card hover:from-teal-600 hover:to-teal-700 text-white border-0">
-            <Link to="/get-licensed" className="gap-2">
+            <Link to="/apply" className="gap-2">
               Apply Now <ArrowRight className="h-5 w-5" />
             </Link>
           </Button>

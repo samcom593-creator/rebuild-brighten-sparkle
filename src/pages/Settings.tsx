@@ -31,9 +31,14 @@ const nav: Array<{ key: SettingMode; label: string; icon: typeof Building2 }> = 
   { key: "nova-pro", label: "Assistant", icon: Bot },
 ];
 
-function SettingsNav({ mode }: { mode: SettingMode }) {
+// Agency (white-label branding/subdomain) and Billing are owner-level controls.
+// Regular producers/VAs got these tabs with nothing they could do in them.
+const ADMIN_MODES: SettingMode[] = ["agency", "billing"];
+
+function SettingsNav({ mode, isAdmin }: { mode: SettingMode; isAdmin: boolean }) {
+  const visible = isAdmin ? nav : nav.filter(({ key }) => !ADMIN_MODES.includes(key));
   return <nav className="flex gap-1 overflow-x-auto border-b border-border" aria-label="Settings sections">
-    {nav.map(({ key, label, icon: Icon }) => <Button key={key} asChild variant="ghost" className={cn("rounded-none border-b-2 px-3", mode === key ? "border-primary text-foreground" : "border-transparent text-muted-foreground")}><Link to={`/dashboard/settings/${key}`}><Icon className="mr-2 h-4 w-4" />{label}</Link></Button>)}
+    {visible.map(({ key, label, icon: Icon }) => <Button key={key} asChild variant="ghost" className={cn("rounded-none border-b-2 px-3", mode === key ? "border-primary text-foreground" : "border-transparent text-muted-foreground")}><Link to={`/dashboard/settings/${key}`}><Icon className="mr-2 h-4 w-4" />{label}</Link></Button>)}
   </nav>;
 }
 
@@ -50,7 +55,6 @@ function AgencySettings() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [form, setForm] = useState<AgencyState>({ name: brand.legalName, subdomain: "apex", accent: "#d4a900", personalDeals: true, leaderboard: true, recruiting: true });
-  const [samplePreview, setSamplePreview] = useState(() => window.localStorage.getItem("agentcloud_sample_preview") === "true");
   const settings = useQuery({
     queryKey: ["agency-branding", user?.id],
     enabled: Boolean(user?.id),
@@ -79,7 +83,7 @@ function AgencySettings() {
       </Section>
       <Button onClick={() => save.mutate()} disabled={!settings.data?.can_edit || save.isPending || settings.isLoading}><Save className="mr-2 h-4 w-4" />{save.isPending ? "Saving…" : "Save agency settings"}</Button>
     </div>
-    <div className="space-y-4"><Section title="White-label readiness" description="Agency-level branding controls are connected. Custom domains and outbound email branding require DNS verification."><div className="grid h-28 place-items-center rounded-md border border-dashed border-border" style={{ borderTopColor: form.accent, borderTopWidth: 4 }}><div className="text-center"><Palette className="mx-auto h-5 w-5 text-muted-foreground" /><p className="mt-2 text-sm font-semibold">{form.name || brand.legalName}</p><p className="text-xs text-muted-foreground">{form.subdomain || "workspace"}.agency</p></div></div><Button variant="outline" className="w-full" disabled>Connect custom domain</Button></Section><Section title="Add sample data" description="Preview a labelled example workspace without writing fake policies, applicants, or revenue to production."><ToggleRow label="Sample preview" description={samplePreview ? "Labelled sample preview is on for this browser." : "Production data remains unchanged."} checked={samplePreview} onCheckedChange={(value) => { setSamplePreview(value); window.localStorage.setItem("agentcloud_sample_preview", String(value)); toast.success(value ? "Sample preview enabled" : "Sample preview disabled"); }} /></Section></div>
+    <div className="space-y-4"><Section title="White-label readiness" description="Agency-level branding controls are connected. Custom domains and outbound email branding require DNS verification."><div className="grid h-28 place-items-center rounded-md border border-dashed border-border" style={{ borderTopColor: form.accent, borderTopWidth: 4 }}><div className="text-center"><Palette className="mx-auto h-5 w-5 text-muted-foreground" /><p className="mt-2 text-sm font-semibold">{form.name || brand.legalName}</p><p className="text-xs text-muted-foreground">{form.subdomain || "workspace"}.agency</p></div></div><Button variant="outline" className="w-full" disabled>Connect custom domain</Button></Section></div>
   </div>;
 }
 
@@ -133,9 +137,12 @@ function BillingSettings() { const brand = resolveBrand(); return <div className
 function AssistantSettings() { return <div className="max-w-3xl"><Section title="AI assistant" description="Use the assistant for daily priorities, recruiting follow-up, sales execution, and operational questions."><div className="flex items-start gap-3 rounded-md border border-border p-4"><ShieldCheck className="mt-0.5 h-5 w-5 text-emerald-500" /><div><p className="text-sm font-semibold">Workspace assistant enabled</p><p className="mt-1 text-xs text-muted-foreground">Answers use the permissions of the signed-in account. Sensitive actions still require confirmation.</p></div></div><Button asChild><Link to="/dashboard/nova"><Bot className="mr-2 h-4 w-4" />Open assistant</Link></Button></Section></div>; }
 
 export default function Settings() {
+  const { isAdmin } = useAuth();
   const path = useLocation().pathname;
-  const mode = useMemo<SettingMode>(() => nav.find(({ key }) => path.endsWith(`/${key}`))?.key ?? "profile", [path]);
+  const requested = useMemo<SettingMode>(() => nav.find(({ key }) => path.endsWith(`/${key}`))?.key ?? "profile", [path]);
+  // A non-admin landing on an owner-only tab (old link, direct URL) falls back to their profile.
+  const mode: SettingMode = !isAdmin && ADMIN_MODES.includes(requested) ? "profile" : requested;
   usePageTitle(`${mode === "nova-pro" ? "Assistant" : mode.charAt(0).toUpperCase() + mode.slice(1)} Settings`);
   const body = mode === "agency" ? <AgencySettings /> : mode === "notifications" ? <NotificationSettings /> : mode === "security" ? <SecuritySettings /> : mode === "billing" ? <BillingSettings /> : mode === "nova-pro" ? <AssistantSettings /> : <div className="space-y-4"><ProfileSettings /><div className="max-w-4xl space-y-4"><CalendarSyncSection /><IPhoneShortcutsSection /></div></div>;
-  return <div className="space-y-5"><PageHeader eyebrow="Settings" title={mode === "profile" ? "Account settings" : mode === "nova-pro" ? "AI assistant" : `${mode.charAt(0).toUpperCase() + mode.slice(1)} settings`} subtitle="Configure your workspace without leaving the operating system." /><SettingsNav mode={mode} />{body}</div>;
+  return <div className="space-y-5"><PageHeader eyebrow="Settings" title={mode === "profile" ? "Account settings" : mode === "nova-pro" ? "AI assistant" : `${mode.charAt(0).toUpperCase() + mode.slice(1)} settings`} subtitle="Configure your workspace without leaving the operating system." /><SettingsNav mode={mode} isAdmin={isAdmin} />{body}</div>;
 }

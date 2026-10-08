@@ -1,10 +1,29 @@
-// Generic admin email sender — accepts { to, subject, html } and sends
-// via Resend. Restricted to the admin principal (anyone with admin role)
-// so it can't be abused as a spam relay.
-// Deploy trigger: commit ab299ce
+// Generic admin email sender — accepts { to, subject, html, text, from } and
+// sends via Resend from Sam's verified domain.
+//
+// PL-WIB-SEND-ADMIN-EMAIL-AUTH (2026-10-08). This header used to say the
+// function was "restricted to the admin principal so it can't be abused as a
+// spam relay". Nothing enforced that: verify_jwt = false and the handler read
+// no credential, so a bare POST with no Authorization header reached the Resend
+// call (probed 2026-10-08 04:5xZ: 400 from body validation, not 401). The
+// caller chose the recipient, the HTML AND the From line, so any stranger could
+// send mail as sam@apex-financial.org to any address.
+//
+// Callers, inventoried before gating: no src/ invoke, no other edge function,
+// no business-ops script, 0 edge hits in 24h. Four pg functions post here:
+// notify_sam_on_licensing_milestone (trigger trg_notify_sam_licensing on
+// applications, live) and three digests no cron job schedules
+// (stuck_applicants_daily_digest, manager_daily_accountability,
+// dm_overnight_digest). All four sent the anon key; they were switched to
+// system_settings.service_role_key for this call first (migration
+// 20261008050000), so the gate never refused a real caller.
+//
+// Gate = requireSendAuth, the send-email gate: service key or an
+// admin/manager JWT. The anon key is refused explicitly.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { requireSendAuth } from "../_shared/require-send-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -20,6 +39,13 @@ const supabase = createClient(
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  const auth = await requireSendAuth(req);
+  if (!auth.ok) {
+    return new Response(JSON.stringify({ ok: false, error: auth.error }), {
+      status: auth.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
   try {
     const { to, subject, html, text, from } = await req.json();

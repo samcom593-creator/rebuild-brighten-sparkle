@@ -138,6 +138,9 @@ PUBLIC_ALLOWLIST=(
   # check-function-contracts.mjs, but not here — so parity failed. verify_jwt stays false;
   # the gateway would refuse the service-key/bot caller before the handler's own auth runs.
   "test-email-flows"
+  # send-admin-email (2026-10-08): same gate, same reason. Its pg callers present
+  # an sb_secret service key, which is not a JWT; verify_jwt = true would refuse it.
+  "send-admin-email"
   "cron-newhire-portal-login"
   "instagram-comments-backfill"
   "instagram-token-keepalive"

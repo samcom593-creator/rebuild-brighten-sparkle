@@ -313,6 +313,10 @@ const PUBLIC_ALLOWLIST = new Set([
   // test-email-flows (2026-10-07): was open to anyone; requireSendAuth now
   // refuses a bare POST and the anon key. Probed live after deploy.
   "test-email-flows",
+  // send-admin-email (2026-10-08): caller-chosen to/from/html on Sam's domain
+  // and no credential read. requireSendAuth now; its four pg callers were moved
+  // to the service key first (migration 20261008050000).
+  "send-admin-email",
 ]);
 
 // ---------------------------------------------------------------------------
@@ -400,6 +404,9 @@ const PUBLIC_CONTRACT = {
   // test-email-flows: requireSendAuth (service key or admin/manager JWT), the
   // send-email gate. Its fan-out flows mail every manager.
   "test-email-flows": "in_handler_gate",
+  // send-admin-email: requireSendAuth, same gate. The only live caller is the
+  // trg_notify_sam_licensing trigger, which presents the service key.
+  "send-admin-email": "in_handler_gate",
 
   // --- the credential is the token in the URL ----------------------------
   "content-share": "url_token",

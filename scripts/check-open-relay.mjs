@@ -47,6 +47,11 @@ const SENDS = [
   /api\.resend\.com/,
   /api\.twilio\.com/,
   /\bsendEmail\s*\(/,
+  // PL-WIB-SEND-ADMIN-EMAIL-AUTH (2026-10-08). The Resend SDK. Without this the
+  // 51 functions that call resend.emails.send() were outside the population:
+  // not violations, not even notices. send-admin-email (caller-chosen to, from
+  // and html, no credential read) printed "0 of 239" here for its whole life.
+  /\.emails\s*\.\s*(send|batch\s*\.\s*send)\s*\(/,
 ];
 // Recipient chosen by the CALLER. The recipient must be SYNTACTICALLY bound to
 // the request body — a mere mention of body.email elsewhere is not enough.
@@ -62,6 +67,13 @@ const BODY_RECIPIENT = [
   /\b(to|recipients|recipient|emails)\s*:\s*(\[\s*)?(body|payload|input)\s*\./,
   /\b(to|recipients|recipient|emails)\s*=\s*[^;\n]*\b(body|payload|input)\s*\./,
   /Array\s*\.\s*isArray\s*\(\s*(body|payload|input)\s*\.\s*(recipients|to|emails)\s*\)/,
+  // Destructured off the body: `const { to, subject, html } = await req.json()`
+  // then `to,` shorthand. No `body.` ever appears, so the three above cannot
+  // see it. Only to/recipients/recipient: a destructured `email` is usually the
+  // applicant being looked up, which is the false positive described above.
+  // Measured 2026-10-08 against all 239 functions: flags send-admin-email
+  // before its gate and nothing after it.
+  /\{[^{}]*\b(to|recipients|recipient)\b[^{}]*\}\s*=\s*(await\s+req\s*\.\s*json\s*\(\s*\)|(body|payload|input)\b)/,
 ];
 // Reads a credential off the request.
 const READS_CRED = [

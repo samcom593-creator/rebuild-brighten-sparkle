@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { requireSendAuth } from "../_shared/require-send-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,6 +14,25 @@ serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  // PL-WIB-BLAST-SENDERS-AUTH (2026-10-08). verify_jwt = false and, until this
+  // commit, no credential read, so a bare POST from anyone ran the send.
+  // It reads no body: every POST emails every non-licensed, non-terminated
+  // applicant (693 on 2026-10-08) and writes no log row, so a send leaves no
+  // trace in the DB. Floor admin_or_manager: the one caller is InboxPage
+  // (/dashboard/inbox, requireAdmin).
+  const auth = await requireSendAuth(req);
+  if (!auth.ok) {
+    return new Response(JSON.stringify({ error: auth.error }), {
+      status: auth.status,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  // Same dry-run lie as send-seminar-invite-blast: InboxPage sends { dryRun: true }
+  // by default and this function sent live anyway. Only an explicit true skips.
+  const reqBody = await req.json().catch(() => ({}));
+  const dryRun = reqBody?.dryRun === true;
 
   try {
     const supabase = createClient(
@@ -38,6 +58,13 @@ serve(async (req) => {
     if (error) throw error;
 
     console.log(`[Bulk Outreach] Found ${applicants?.length || 0} unlicensed applicants`);
+
+    if (dryRun) {
+      return new Response(
+        JSON.stringify({ dryRun: true, total: (applicants ?? []).filter((a) => !!a.email).length }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     let sentCount = 0;
     let failedCount = 0;

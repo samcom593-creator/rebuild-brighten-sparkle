@@ -338,6 +338,14 @@ const PUBLIC_ALLOWLIST = new Set([
   // now. Only callers are admin pages on the user's JWT; no pg, cron or edge.
   "bulk-agent-message",
   "send-batch-blast",
+  // send-reapply-blast, send-seminar-invite-blast, send-bulk-unlicensed-outreach,
+  // bulk-send-licensing (2026-10-08): a bare POST mailed every matching applicant
+  // (38 / 647 / 693 / 693) with no credential read. requireSendAuth
+  // (admin_or_manager) now. Only callers are admin pages on the user's JWT.
+  "send-reapply-blast",
+  "send-seminar-invite-blast",
+  "send-bulk-unlicensed-outreach",
+  "bulk-send-licensing",
 ]);
 
 // ---------------------------------------------------------------------------
@@ -442,6 +450,12 @@ const PUBLIC_CONTRACT = {
   "bulk-agent-message": "in_handler_gate",
   // send-batch-blast: requireSendAuth, admin_or_manager. Caller NotificationHub.
   "send-batch-blast": "in_handler_gate",
+  // The four applicant blasts: requireSendAuth, admin_or_manager. Callers
+  // InboxPage + NotificationHub (seminar) and ControlTerminal (licensing).
+  "send-reapply-blast": "in_handler_gate",
+  "send-seminar-invite-blast": "in_handler_gate",
+  "send-bulk-unlicensed-outreach": "in_handler_gate",
+  "bulk-send-licensing": "in_handler_gate",
 
   // --- the credential is the token in the URL ----------------------------
   "content-share": "url_token",

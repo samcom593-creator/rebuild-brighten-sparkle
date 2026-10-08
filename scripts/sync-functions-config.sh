@@ -154,6 +154,11 @@ PUBLIC_ALLOWLIST=(
   # floor. The gateway accepts the public anon key, so the gate is in the handler.
   "bulk-agent-message"
   "send-batch-blast"
+  # The four applicant blasts (2026-10-08): same gate, admin_or_manager floor.
+  "send-reapply-blast"
+  "send-seminar-invite-blast"
+  "send-bulk-unlicensed-outreach"
+  "bulk-send-licensing"
   "cron-newhire-portal-login"
   "instagram-comments-backfill"
   "instagram-token-keepalive"

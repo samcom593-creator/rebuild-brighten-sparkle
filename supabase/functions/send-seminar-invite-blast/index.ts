@@ -8,6 +8,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { nanpTenDigits } from "../_shared/nanp-phone.ts";
+import { requireSendAuth } from "../_shared/require-send-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -117,6 +118,27 @@ serve(async (req: Request) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // PL-WIB-BLAST-SENDERS-AUTH (2026-10-08). verify_jwt = false and, until this
+  // commit, no credential read, so a bare POST from anyone ran the send.
+  // It reads no body and keeps no campaign dedupe: every POST emails every
+  // unlicensed, non-terminated applicant (647 on 2026-10-08), sends a text through
+  // every carrier gateway when the carrier is unknown, and pushes. Floor
+  // admin_or_manager: callers are InboxPage and NotificationHub, both requireAdmin.
+  const auth = await requireSendAuth(req);
+  if (!auth.ok) {
+    return new Response(JSON.stringify({ error: auth.error }), {
+      status: auth.status,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  // InboxPage's "Push out to all" dialog defaults to a dry run and sends
+  // { dryRun: true }. This function never read it, so "Dry run" sent live to the
+  // whole list and the page then said "Dry run complete". Only an explicit true
+  // skips the send; NotificationHub's {} stays a live send, as it always was.
+  const reqBody = await req.json().catch(() => ({}));
+  const dryRun = reqBody?.dryRun === true;
+
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -138,6 +160,14 @@ serve(async (req: Request) => {
       return new Response(JSON.stringify({ success: true, total: 0, message: "No unlicensed applicants found" }), {
         headers: { "Content-Type": "application/json", ...corsHeaders },
       });
+    }
+
+    if (dryRun) {
+      return new Response(JSON.stringify({
+        dryRun: true,
+        total: apps.length,
+        with_phone: apps.filter((a) => !!a.phone).length,
+      }), { headers: { "Content-Type": "application/json", ...corsHeaders } });
     }
 
     let emailsSent = 0, smsSent = 0, pushSent = 0;

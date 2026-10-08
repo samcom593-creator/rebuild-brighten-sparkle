@@ -15,6 +15,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { requireSendAuth } from "../_shared/require-send-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -80,6 +81,20 @@ function buildSms(firstName: string, licensed: boolean): string {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  // PL-WIB-BLAST-SENDERS-AUTH (2026-10-08). verify_jwt = false and, until this
+  // commit, no credential read, so a bare POST from anyone ran the send.
+  // body.dryRun defaults to false and limit to 999, so an empty POST mailed and
+  // texted the 30-day cohort (38 people on 2026-10-08) once per campaign.
+  // Floor admin_or_manager: the one caller is InboxPage (/dashboard/inbox,
+  // requireAdmin) on the admin's JWT. No pg, cron or edge caller.
+  const auth = await requireSendAuth(req);
+  if (!auth.ok) {
+    return new Response(JSON.stringify({ error: auth.error }), {
+      status: auth.status,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
   const sb = createClient(SB_URL, SB_SRV, { auth: { persistSession: false } });
   const body = await req.json().catch(() => ({} as any));

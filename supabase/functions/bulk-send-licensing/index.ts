@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { requireSendAuth } from "../_shared/require-send-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,6 +13,25 @@ const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
+
+  // PL-WIB-BLAST-SENDERS-AUTH (2026-10-08). verify_jwt = false and, until this
+  // commit, no credential read, so a bare POST from anyone ran the send.
+  // Every POST mails licensing instructions to every unlicensed or pending,
+  // non-terminated applicant (693 on 2026-10-08). Floor admin_or_manager: the one
+  // caller is ControlTerminal on /dashboard/admin (requireAdmin).
+  const auth = await requireSendAuth(req);
+  if (!auth.ok) {
+    return new Response(JSON.stringify({ error: auth.error }), {
+      status: auth.status,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  // dryRun returns the audience size and sends nothing. ControlTerminal sends no
+  // body and stays a live send. Added so the gate can be probed with the service
+  // key without mailing 693 people.
+  const reqBody = await req.json().catch(() => ({}));
+  const dryRun = reqBody?.dryRun === true;
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -30,6 +50,13 @@ const handler = async (req: Request): Promise<Response> => {
     if (queryError) throw queryError;
 
     console.log(`[bulk-send-licensing] Found ${applications?.length || 0} unlicensed/pending applicants`);
+
+    if (dryRun) {
+      return new Response(
+        JSON.stringify({ dryRun: true, total: applications?.length ?? 0 }),
+        { headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
 
     const results: { sent: string[]; failed: { email: string; error: string }[] } = {
       sent: [],

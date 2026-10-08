@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Anyone who signed up for an account could read every producer's production for the year (67 producers, $2,095,184) and the agency's month-to-date numbers. The leaderboard already hid that from them; two older database functions did not.",
+    detail: "Signup is open and every new account starts as an agent, so being signed in is not the same as working here. The production-stats function behind the Year Performance card sent the whole roster to every caller and the card picked out your own row in the browser. It now returns only the rows the leaderboard would show you: your own and your downline's, or everyone for admins and VAs, so every card shows the same number it did before. The agency summary on the admin dashboard now answers admins only. Proven as a real self-signup, agent, manager, VA and admin account; the weekly health check goes red if either protection is removed.",
+    commit: "PL-WIB-PROD-STATS-SCOPE",
+  },
+  {
+    ts: "today",
     label: "\"Mark contacted\" on License Push and the Unlicensed queue now saves. On an applied lead it had failed every time since July, because the database refused the word it was logging, and the Recovery Batch walkthrough said \"Logged\" while nothing was saved.",
     detail: "Five places wrote a channel name the contact log does not accept (contact, recovery_batch, stage, phone, recovery_panel), so those touches never reached an applicant's timeline: Mark contacted, every Recovery Batch outcome, Suppress, Passed test, tapping a phone number on the Unlicensed queue, and every Stale Recovery action. All five now use the accepted names. The walkthrough now stops and shows the error if a save fails, and a failed timeline entry shows a message instead of disappearing. A new test reads the database's list of accepted names and fails the build if any writer sends one outside it.",
     commit: "PL-WIB-CONTACT-LOG-CHANNEL",

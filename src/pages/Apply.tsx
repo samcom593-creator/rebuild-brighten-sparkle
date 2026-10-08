@@ -293,6 +293,7 @@ export default function Apply() {
     setValue,
     trigger,
     getValues,
+    getFieldState,
     formState: { errors },
   } = useForm<ApplicationFormData>({
     resolver: zodResolver(applicationSchema),
@@ -1588,12 +1589,33 @@ export default function Apply() {
                             // invalid, then falsely told the applicant consent
                             // was required even though the schema allowed false.
                             setSmsConsentError(false);
+                            // PL-WIB-APPLY-SUBMIT-BLOCKED (2026-10-08): both
+                            // refusals on this button were a toast and nothing
+                            // else, so "pressed Submit and was refused" and
+                            // "never pressed Submit" were the same silence in
+                            // analytics_events. 0 applications landed 10-06..08
+                            // and the data could not say which one it was.
+                            // Field NAMES only (MP-512: anon-insertable table).
+                            // getFieldState reads the live state; the `errors`
+                            // destructured above is this render's snapshot.
+                            track("apply_submit_blocked", {
+                              step: currentStep,
+                              stage: "final_step",
+                              invalid_fields: (["availability", "motivation"] as const).filter(
+                                (name) => getFieldState(name).invalid,
+                              ),
+                            });
                             toast.error("Please complete your availability and motivation to continue.");
                             return;
                           }
                           setSmsConsentError(false);
                           handleSubmit(onSubmit, (validationErrors) => {
                             const fieldNames = Object.keys(validationErrors);
+                            track("apply_submit_blocked", {
+                              step: currentStep,
+                              stage: "full_schema",
+                              invalid_fields: fieldNames,
+                            });
                             toast.error(`Please go back and fix: ${fieldNames.join(", ")}`, { duration: 6000 });
                           })();
                         }}

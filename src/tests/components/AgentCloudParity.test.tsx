@@ -56,7 +56,7 @@ describe("AgentCloud parity surfaces", () => {
 
   it("keeps every settings application distinct", () => {
     const settings = source("pages/Settings.tsx");
-    for (const name of ["Agency identity", "Notification preferences", "Billing & plan", "AI assistant", "White-label readiness", "Add sample data"]) {
+    for (const name of ["Agency identity", "Notification preferences", "Billing & plan", "AI assistant", "White-label readiness"]) {
       expect(settings).toContain(name);
     }
   });

@@ -122,13 +122,20 @@ const TEAM_PATTERNS = [
 const FITNESS_PATTERNS = [
   /\b(fitness|gym|workout|work out|training plan|meal plan|diet|nutrition)\b/i,
   /\b(lose weight|weight loss|get in shape|shredded|build muscle|transformation)\b/i,
-  /\b(personal train(er|ing)|coaching|body|physique|bulk|cut|fat loss|abs|six ?pack|ab work ?out|get (big|shredded|lean)|stay (fit|in shape)|your (abs|body|physique))\b/i,
+  // 2026-10-07: dropped bare "cut"/"bulk"/"body"/"coaching" — "cut you a clip", "bulk order",
+  // "business coaching", "body of work" were false fitness hits. A clipper's "cut you one free
+  // clip" routed Silas straight to the fitness funnel. Fitness-specific terms only.
+  /\b(personal train(er|ing)|physique|bulking|cutting|fat loss|abs|six ?pack|ab work ?out|get (big|shredded|lean)|stay (fit|in shape)|your (abs|body|physique)|(fitness|workout|gym|training|nutrition|meal) (plan|coach|coaching|program|routine))\b/i,
 ];
 
 // PARTNERSHIP — brands / collabs / sponsors go to the form, never handled in-thread.
 const PARTNER_PATTERNS = [
   /\b(need (callers|setters|appointment setters|va'?s|virtual assistants|closers|leads)|we (offer|provide|do) (callers|leads|appointment|lead gen|marketing|ads|editing|video editing)|my (agency|team) (does|provides|offers)|lead gen(eration)?|appointment setting|book(ing)? (calls|appointments) for you|work for you|i can help you (scale|grow|get)|(lmk|let me know) if you need)\b/i,
   /\b(partner|partnership|collab|collaborat\w*|sponsor\w*|brand deal|ambassador|affiliate|ugc|work together|feature (you|sam)|podcast|interview (you|sam)|paid promo|promo(te)? (my|our))\b/i,
+  // Content services pitching Sam — clippers, editors, UGC, ghostwriters, social managers,
+  // "grow your account" agencies — are inbound vendor/partnership offers, not recruits and not
+  // fitness. 2026-10-07: Silas ("i run a clipping agency ... cut you one free clip") fell to fitness.
+  /\b(clip(per|ping)|clipped for|we('ve| have)? clipped|cut (you )?(a |one )?(free )?clip|turn (your |them |it )?[a-z ]{0,16}into (shorts?|clips?|reels?)|short[- ]?form (editor|editing)|video edit(or|ing)|thumbnail|ghost ?writ|social media manager|manage your (page|socials|account|ig|content)|grow your (account|page|following|reach|ig|audience)|more reach|(run|have|own)(ing)? an? (clip\w*|edit\w*|media|content|creative|social|marketing) agency|free (clip|edit|sample))\b/i,
 ];
 // "Is this really Sam?" / pushback on talking to a bot — disclose the assistant.
 const ASSISTANT_ASK_PATTERNS = [
@@ -709,6 +716,9 @@ async function socialsReply(text: string): Promise<string | null> {
     /\b(your (phone )?number|your cell|your phone)\b/.test(t) ? "phone" : null;
   if (!which) return null;
   if (which === "phone") return `drop yours and i'll hit you`;
+  // A friend confirming the account ("this your new ig?", "that you?") gets a warm yes, not the
+  // handle re-dumped like a machine (2026-10-07: repeating it with "like i said" got Sam blocked).
+  if (/\b(this|that|it)('?s)?\s+(your|you|u|ur)\b/.test(t) && ["instagram", "tiktok", "youtube", "snapchat"].includes(which)) return `yeah that's me 🙏`;
   const { data } = await supabase.from("system_settings").select("key,value").like("key", "social_%");
   const map: Record<string, string> = { ...SOCIAL_DEFAULTS };
   for (const r of (data ?? []) as Array<{ key: string; value: string }>) { const v = String(r.value ?? "").trim().replace(/^"|"$/g, ""); if (v) map[r.key.replace("social_", "")] = v; }
@@ -1039,6 +1049,10 @@ Deno.serve(async (req) => {
     const last = outs[outs.length - 1] ?? null;
     const secondLast = [...outs].reverse().find((o) => o !== last) ?? null;
     if (last === decision.auto_reply.trim() && decision.intent === "followup") decision.auto_reply = null;
+    // 2026-10-07: "like i said" belongs on funnel repeats only. On casual/social chat it reads
+    // passive-aggressive — re-sending the handle with "like i said" to a friend ("this your new
+    // ig?") got Sam blocked (Sean Mason). There, just go quiet instead of scolding.
+    else if (last === decision.auto_reply.trim() && (decision.intent === "socials" || decision.intent === "casual")) decision.auto_reply = null;
     else if (last === decision.auto_reply.trim()) {
       decision.auto_reply = secondLast === `like i said, ${decision.auto_reply}` || outs.filter((o) => o === last).length >= 2 ? null : `like i said, ${decision.auto_reply}`;
     }

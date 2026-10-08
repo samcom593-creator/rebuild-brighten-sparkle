@@ -343,6 +343,8 @@ export default function AccountsAnalytics() {
   const [category, setCategory] = useState<string | null>(null);
   const [purposeful, setPurposeful] = useState<boolean>(true);
   const [title, setTitle] = useState("");
+  const [views, setViews] = useState("");
+  const [url, setUrl] = useState("");
   const [saving, setSaving] = useState(false);
   const [filterAccount, setFilterAccount] = useState<string>("all");
   const [sort, setSort] = useState<"new" | "views">("new");
@@ -388,14 +390,16 @@ export default function AccountsAnalytics() {
 
   const logPost = async () => {
     if (!account.trim()) { toast.error("Pick or type the account"); return; }
+    const viewsNum = views.trim() ? Math.max(0, Math.round(Number(views.replace(/[,\s]/g, "")))) : null;
+    if (views.trim() && !Number.isFinite(viewsNum)) { toast.error("Views must be a number"); return; }
     setSaving(true);
     const { data, error } = await supabase.from("content_posts")
-      .insert({ platform, account: account.trim(), format, category, purposeful, title: title.trim() || null, source: "manual" })
+      .insert({ platform, account: account.trim(), format, category, purposeful, title: title.trim() || null, url: url.trim() || null, views: viewsNum, stats_at: viewsNum != null ? new Date().toISOString() : null, source: "manual" })
       .select("id, platform, account, format, category, title, url, posted_at, views, likes, purposeful, source, external_id, thumb_url, watched_pct, duration_s").single();
     setSaving(false);
     if (error || !data) { toast.error(`Couldn't log it: ${error?.message.slice(0, 100) ?? "not saved"}`); return; }
-    setPosts((ps) => [data as Post, ...ps]); setTitle(""); setLogOpen(false);
-    toast.success(`Logged: ${platLabel(platform)} ${format} · ${account.trim()}`);
+    setPosts((ps) => [data as Post, ...ps]); setTitle(""); setViews(""); setUrl(""); setLogOpen(false);
+    toast.success(`Logged: ${platLabel(platform)} ${format} · ${account.trim()}${viewsNum != null ? ` · ${fmtNum(viewsNum)} views` : ""}`);
   };
 
   const thumb = (p: Post) => thumbOf(p);
@@ -572,7 +576,7 @@ export default function AccountsAnalytics() {
       <div className="flex flex-wrap items-center gap-2">
         <Pill on={filterAccount === "all"} onClick={() => setFilterAccount("all")}>All accounts</Pill>
         {accountKeys.map(([k, label]) => <Pill key={k} on={filterAccount === k} onClick={() => setFilterAccount(k)}>{label}</Pill>)}
-        <Button size="sm" onClick={() => setLogOpen(!logOpen)} className="ml-auto h-9 bg-primary px-4 text-primary-foreground hover:bg-primary/90">{logOpen ? "Close" : "+ Log an Instagram / TikTok post"}</Button>
+        <Button size="sm" onClick={() => setLogOpen(!logOpen)} className="ml-auto h-9 bg-primary px-4 text-primary-foreground hover:bg-primary/90">{logOpen ? "Close" : "+ Log a post (IG / TikTok / Snapchat / FB)"}</Button>
       </div>
 
       {logOpen && (
@@ -591,7 +595,9 @@ export default function AccountsAnalytics() {
           </div>
           <div className="flex flex-wrap gap-2">{CATEGORIES.map((c) => <Pill key={c.k} on={category === c.k} onClick={() => setCategory(category === c.k ? null : c.k)}>{c.label}</Pill>)}</div>
           <div className="flex flex-wrap gap-2">
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title or hook (optional)" className="h-10 min-w-[220px] flex-1" />
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title or hook (optional)" className="h-10 min-w-[200px] flex-1" />
+            <Input value={views} onChange={(e) => setViews(e.target.value)} inputMode="numeric" placeholder="Views (optional)" className="h-10 w-36" />
+            <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Link (optional)" className="h-10 min-w-[160px] flex-1" />
             <Button onClick={() => void logPost()} disabled={saving} className="h-10 bg-primary px-6 text-primary-foreground hover:bg-primary/90">{saving ? "Saving…" : "Log it"}</Button>
           </div>
         </section>

@@ -133,6 +133,11 @@ PUBLIC_ALLOWLIST=(
   # monday-starter-reminders: Sunday pg_cron caller presents a vault hex secret,
   # gated in-handler (rationale in check-function-contracts.mjs).
   "monday-starter-reminders"
+  # test-email-flows (2026-10-07): PL-WIB-TEST-EMAIL-FLOWS-AUTH added requireSendAuth
+  # (service key or admin/manager JWT) in-handler and registered it reviewed-public in
+  # check-function-contracts.mjs, but not here — so parity failed. verify_jwt stays false;
+  # the gateway would refuse the service-key/bot caller before the handler's own auth runs.
+  "test-email-flows"
   "cron-newhire-portal-login"
   "instagram-comments-backfill"
   "instagram-token-keepalive"

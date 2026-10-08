@@ -166,14 +166,37 @@ function IdeaRow({ idea, onPick, busy, top }: { idea: Idea; onPick?: (idea: Idea
 
 const sortIdeas = (a: Idea, b: Idea) => (a.format === b.format ? 0 : a.format === "Long" ? -1 : 1) || b.score - a.score;
 
-/** Live YouTube subscriber count from the 3-hourly sync. Null until it loads or if it fails (never a fake 0). */
-function useYtSubs() {
-  const [subs, setSubs] = useState<number | null>(null);
+type YtStats = { subs: number | null; long: number | null; short: number | null; weekDelta: number | null };
+/** Live YouTube channel stats from the 3-hourly sync: current subscribers + the whole-channel long-form /
+ *  Shorts counts, plus the subscriber change over the last 7 days read from the daily history snapshot
+ *  (youtube_stats_history). Anything missing stays null — never a fake 0 or a made-up delta. */
+function useYtStats(): YtStats {
+  const [st, setSt] = useState<YtStats>({ subs: null, long: null, short: null, weekDelta: null });
   useEffect(() => {
-    void supabase.from("system_settings").select("value").eq("key", "youtube_channel_stats").maybeSingle()
-      .then(({ data }) => { try { const v = data?.value ? JSON.parse(data.value) : null; setSubs(typeof v?.subscribers === "number" ? v.subscribers : null); } catch { setSubs(null); } });
+    void (async () => {
+      const cur = await supabase.from("system_settings").select("value").eq("key", "youtube_channel_stats").maybeSingle();
+      let subs: number | null = null, long: number | null = null, short: number | null = null;
+      try {
+        const v = cur.data?.value ? JSON.parse(cur.data.value) : null;
+        subs = typeof v?.subscribers === "number" ? v.subscribers : null;
+        long = typeof v?.long_videos === "number" ? v.long_videos : null;
+        short = typeof v?.shorts === "number" ? v.shorts : null;
+      } catch { /* empty-catch-allow:stats-parse — keep the null defaults; the sync rewrites valid stats on its next run */ }
+      let weekDelta: number | null = null;
+      const h = await supabase.from("system_settings").select("value").eq("key", "youtube_stats_history").maybeSingle();
+      try {
+        const hist = h.data?.value ? JSON.parse(h.data.value) : [];
+        if (Array.isArray(hist) && subs != null) {
+          const cutoff = Date.now() - 7 * 86400_000;
+          // The most recent snapshot that is already at least 7 days old; null until the history is that deep.
+          const old = [...hist].reverse().find((x) => x?.d && new Date(`${x.d}T00:00:00Z`).getTime() <= cutoff && typeof x.subscribers === "number");
+          if (old) weekDelta = subs - old.subscribers;
+        }
+      } catch { /* empty-catch-allow:no-history-yet — weekDelta stays null until the history snapshot is readable + deep enough */ }
+      setSt({ subs, long, short, weekDelta });
+    })();
   }, []);
-  return subs;
+  return st;
 }
 
 /** A small up/down/flat delta chip. Hidden when there's no honest comparison (prior window empty). */
@@ -187,11 +210,11 @@ function Delta({ pct }: { pct: number | null }) {
  *  subscriber milestone, a creator level that ticks up with every upload, and honest week-over-week.
  *  Every number is real (from the posts already loaded + the live sub count); anything we can't
  *  compute honestly is hidden rather than faked. */
-export function MomentumStrip({ posts, subs }: { posts: Post[]; subs: number | null }) {
+export function MomentumStrip({ posts, yt }: { posts: Post[]; yt: YtStats }) {
   const s = useMemo(() => streak(posts), [posts]);
   const ytS = useMemo(() => streak(posts.filter((p) => p.platform === "youtube")), [posts]);
   const lv = useMemo(() => level(totalPieces(posts)), [posts]);
-  const ms = useMemo(() => nextMilestone(subs), [subs]);
+  const ms = useMemo(() => nextMilestone(yt.subs), [yt.subs]);
   const wow = useMemo(() => weekOverWeek(posts), [posts]);
   const broken = s.days === 0 && s.missed > 0;
   const bannerTone = broken ? "border-red-400/50 bg-red-400/10" : s.atRisk ? "border-amber-400/50 bg-amber-400/10" : s.days > 0 ? "border-primary/40 bg-primary/5" : "border-border bg-card";
@@ -219,9 +242,13 @@ export function MomentumStrip({ posts, subs }: { posts: Post[]; subs: number | n
       </div>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <div className="rounded-2xl border border-border bg-card p-4">
-          <div className="text-sm font-semibold text-muted-foreground">Subscribers</div>
-          <div className="mt-0.5 text-2xl font-extrabold tabular-nums text-foreground">{subs != null ? fmtNum(subs) : "—"}</div>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm font-semibold text-muted-foreground">YouTube subscribers</span>
+            {yt.weekDelta != null && yt.weekDelta !== 0 && <span className={`text-sm font-bold tabular-nums ${yt.weekDelta > 0 ? "text-emerald-400" : "text-red-400"}`}>{yt.weekDelta > 0 ? "↑" : "↓"} {fmtNum(Math.abs(yt.weekDelta))} / wk</span>}
+          </div>
+          <div className="mt-0.5 text-2xl font-extrabold tabular-nums text-foreground">{yt.subs != null ? fmtNum(yt.subs) : "—"}</div>
           {ms ? (<>{bar(ms.pct / 100)}<div className="mt-1 text-[13px] font-semibold text-primary">{fmtNum(ms.remaining)} to {fmtNum(ms.next)}</div></>) : <div className="mt-2 text-[13px] text-muted-foreground">updates every 3 hours</div>}
+          {(yt.long != null || yt.short != null) && <div className="mt-2 border-t border-border/60 pt-2 text-[13px] text-muted-foreground"><b className="tabular-nums text-foreground">{yt.long ?? "—"}</b> long-form · <b className="tabular-nums text-foreground">{yt.short ?? "—"}</b> Shorts on YouTube</div>}
         </div>
         <div className="rounded-2xl border border-border bg-card p-4">
           <div className="flex items-center justify-between gap-2"><span className="text-sm font-semibold text-muted-foreground">Long-form this week</span><Delta pct={wow.long.deltaPct} /></div>
@@ -249,7 +276,7 @@ export function MomentumStrip({ posts, subs }: { posts: Post[]; subs: number | n
 export function ContentHome({ onOpenAnalytics, onPick, picking }: { onOpenAnalytics: () => void; onPick?: (idea: Idea) => void; picking?: boolean }) {
   const [showAll, setShowAll] = useState(false);
   const { posts } = usePosts();
-  const subs = useYtSubs();
+  const yt = useYtStats();
   const ins = useInsights();
   const wd = phoenixWeekday();
   const t = DAY_THEMES[wd];
@@ -262,7 +289,7 @@ export function ContentHome({ onOpenAnalytics, onPick, picking }: { onOpenAnalyt
   const pct = t.shortsTarget > 0 ? Math.min(100, Math.round((shortsToday / t.shortsTarget) * 100)) : 0;
   return (
     <div className="flex flex-col gap-4">
-      <MomentumStrip posts={posts} subs={subs} />
+      <MomentumStrip posts={posts} yt={yt} />
       <section aria-label="Today's plan" className={`rounded-xl border bg-card p-4 ${tone.ring}`}>
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="text-lg font-bold text-foreground">Today · {t.name}</h2>

@@ -20,7 +20,7 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label: "The Launch Board now opens on your momentum: a posting streak you don't want to break (plus a separate YouTube streak, and both go negative — \"−3 days no post\" — the moment you slip), your climb to the next subscriber milestone (769 → 1,000), a creator level that ticks up with every upload, and long-form-per-week and Shorts-per-week each vs their goal and last week. Under it, the top-ranked video to film next is marked and one tap writes its script.",
-    detail: "Winners this week now show long-form and Shorts separately, so your best long video surfaces too. Tracks every platform — YouTube (auto), Instagram, TikTok, Snapchat, Facebook. Killed the old \"80/20 insurance\" grading you didn't care about; every number is real (from your posts + live sub count), and anything not computable honestly is hidden, never faked. Also bumped the small fonts up across the board so it's easier to read and less cluttered. Built on a tested momentum engine.",
+    detail: "The YouTube tile shows your whole channel at a glance — subscribers, long-form and Shorts totals — and your subscribers now carry a live +N/wk once the daily history fills in (captured every 3 hours, no manual entry). Winners this week show long-form and Shorts separately, so your best long video surfaces too. Tracks every platform — YouTube (auto), Instagram, TikTok, Snapchat, Facebook. Killed the old \"80/20 insurance\" grading; every number is real and anything not computable honestly is hidden, never faked. Bumped the small fonts up so it's easier to read and less cluttered.",
     commit: "PL-LAUNCHBOARD-MOMENTUM",
   },
   {

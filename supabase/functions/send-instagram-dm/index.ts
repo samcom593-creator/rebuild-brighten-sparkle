@@ -14,8 +14,26 @@
 // Returns { ok, id } on success, or { ok: false, error } and bubbles
 // the upstream Meta error (since the token / permissions / 24-hour
 // messaging-window constraint are the most common failure modes).
+//
+// PL-WIB-SEND-INSTAGRAM-DM-AUTH (2026-10-08). verify_jwt = false and, until
+// this commit, no credential read: a bare POST {} with no Authorization header
+// reached the body validation (400, nothing sent). The caller chose the text,
+// the comment_id and `public`, so anyone could post a public reply under a
+// comment on Sam's media, or DM a commenter, as his account. With no token
+// configured, the same caller text went to Sam's Discord instead.
+//
+// Callers inventoried before gating, all presenting the service key:
+// instagram-webhook, instagram-comments-backfill, instagram-dm-replay (24h of
+// function_edge_logs: 6 POSTs, all sb_secret_, all from the edge runtime).
+// dm_send_retry, the only pg caller, sent the anon key; it was switched to
+// system_settings.service_role_key first (migration 20261008062000). No src/
+// invoke, no business-ops script.
+//
+// Gate = requireSendAuth, the send-email gate: service key or an
+// admin/manager JWT. The anon key is refused explicitly.
 
 import { isTokenDeadError, pageTokenDead } from "../_shared/instagram-token-dead.ts";
+import { requireSendAuth } from "../_shared/require-send-auth.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
@@ -62,6 +80,13 @@ async function resolveSecrets(sb: ReturnType<typeof createClient>) {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  const auth = await requireSendAuth(req);
+  if (!auth.ok) {
+    return new Response(JSON.stringify({ ok: false, error: auth.error }), {
+      status: auth.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
   const sb = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",

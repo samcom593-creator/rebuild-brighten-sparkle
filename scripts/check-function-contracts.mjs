@@ -317,6 +317,11 @@ const PUBLIC_ALLOWLIST = new Set([
   // and no credential read. requireSendAuth now; its four pg callers were moved
   // to the service key first (migration 20261008050000).
   "send-admin-email",
+  // send-instagram-dm (2026-10-08): caller-chosen text, comment_id and `public`
+  // posted as Sam's Instagram with no credential read. requireSendAuth now; its
+  // one pg caller (dm_send_retry) was moved to the service key first
+  // (migration 20261008062000).
+  "send-instagram-dm",
 ]);
 
 // ---------------------------------------------------------------------------
@@ -407,6 +412,9 @@ const PUBLIC_CONTRACT = {
   // send-admin-email: requireSendAuth, same gate. The only live caller is the
   // trg_notify_sam_licensing trigger, which presents the service key.
   "send-admin-email": "in_handler_gate",
+  // send-instagram-dm: requireSendAuth, same gate. Live callers are three edge
+  // functions on the service key (instagram-webhook, -comments-backfill, -dm-replay).
+  "send-instagram-dm": "in_handler_gate",
 
   // --- the credential is the token in the URL ----------------------------
   "content-share": "url_token",

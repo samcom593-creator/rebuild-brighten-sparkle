@@ -141,6 +141,9 @@ PUBLIC_ALLOWLIST=(
   # send-admin-email (2026-10-08): same gate, same reason. Its pg callers present
   # an sb_secret service key, which is not a JWT; verify_jwt = true would refuse it.
   "send-admin-email"
+  # send-instagram-dm (2026-10-08): same gate, same reason. Every caller presents
+  # the sb_secret service key, which is not a JWT.
+  "send-instagram-dm"
   "cron-newhire-portal-login"
   "instagram-comments-backfill"
   "instagram-token-keepalive"

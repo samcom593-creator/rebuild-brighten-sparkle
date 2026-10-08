@@ -328,6 +328,10 @@ const PUBLIC_ALLOWLIST = new Set([
   // unscheduled and uncalled and were left on the anon key on purpose (see the
   // function header); every live caller presents the service key or a user JWT.
   "send-notification",
+  // send-aged-lead-email (2026-10-08): caller-chosen recipient for the aged-lead
+  // pitch, cc Sam and an optional manager, no credential read. requireSendAuth
+  // (any_authenticated) now. No pg or cron caller.
+  "send-aged-lead-email",
 ]);
 
 // ---------------------------------------------------------------------------
@@ -425,6 +429,9 @@ const PUBLIC_CONTRACT = {
   // system-health-check (service key), two pg fns on the service key, and six
   // src/ sites on the signed-in user's JWT.
   "send-notification": "in_handler_gate",
+  // send-aged-lead-email: requireSendAuth, floor any_authenticated. Callers:
+  // AgedLeadImporter (user JWT) and send-batch-blast (service key).
+  "send-aged-lead-email": "in_handler_gate",
 
   // --- the credential is the token in the URL ----------------------------
   "content-share": "url_token",

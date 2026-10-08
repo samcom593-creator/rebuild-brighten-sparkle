@@ -86,6 +86,51 @@ const BODY_RECIPIENT = [
   // posts under it.
   /\b(recipient_?[Ii]d|comment_?[Ii]d|igsid)\s*[:=]\s*[^;\n]*\b(body|payload|input)\s*\.\s*(recipient_id|comment_id|igsid|to)\b/,
 ];
+// PL-WIB-OPEN-RELAY-ONE-HOP (2026-10-08). One hop from the body to `to:`.
+// send-notification did `const { userId, title, message, url, email } = await
+// req.json()`, then `const recipientEmail = email || profileData?.email`, then
+// `to: [recipientEmail]`. No `body.` and no destructured `to`, so every pattern
+// above missed it and it printed as a non-voting notice for its whole life while
+// any stranger could mail any address. send-aged-lead-email did the same with no
+// alias at all (`to: [email]`). The destructured-`email` exclusion above is right
+// about a lookup key; it is wrong once that identifier is the thing in `to:`.
+//
+// Alias = `const|let X = NAME` followed only by .trim()/.toLowerCase()/.toString()
+// and then `||`, `??` or end of statement. A comparison (`to = channel === "sms"
+// ? profile.phone : profile.email`, bulk-agent-message) is not an alias: the
+// recipient there is DB-derived. Measured 2026-10-08 over 239 functions with
+// both pre-gate files restored: 6 hits, of which send-notification,
+// send-aged-lead-email and send-password-reset read no credential.
+function bodyAliasRecipient(code) {
+  const names = new Set();
+  for (const m of code.matchAll(/\{([^{}]*)\}\s*=\s*(?:await\s+req\s*\.\s*json\s*\(\s*\)|(?:body|payload|input)\b)/g)) {
+    for (const part of m[1].split(",")) {
+      const n = part.split(":").pop().split("=")[0].trim().replace(/^\.\.\./, "");
+      if (/^[A-Za-z_$][\w$]*$/.test(n)) names.add(n);
+    }
+  }
+  if (names.size === 0) return null;
+  const alias = new Set();
+  for (const m of code.matchAll(/\b(?:const|let)\s+([A-Za-z_$][\w$]*)\s*=\s*([A-Za-z_$][\w$]*)(?:\s*\??\.\s*(?:trim|toLowerCase|toString)\s*\(\s*\))*\s*(?:\|\||\?\?|;|\n)/g)) {
+    if (names.has(m[2])) alias.add(m[1]);
+  }
+  for (const m of code.matchAll(/\bto\s*:\s*\[?\s*([A-Za-z_$][\w$]*)\s*[\],\n}]/g)) {
+    if (names.has(m[1]) || alias.has(m[1])) return m[1];
+  }
+  return null;
+}
+
+// Public BY DESIGN, and only while the reason still holds: each entry names the
+// pattern that makes the body recipient safe. Remove that code and the exemption
+// lapses on its own, so this list cannot outlive the property it records. It
+// exempts from the one-hop detector only, never from BODY_RECIPIENT.
+//   send-password-reset (MP-453): Login.tsx and MagicLogin.tsx call it with no
+//   session. It mails only after auth.admin.generateLink finds the account, and
+//   the body is a fixed reset link, never caller text.
+const ONE_HOP_BY_DESIGN = {
+  "send-password-reset": /auth\s*\.\s*admin\s*\.\s*generateLink\s*\(/,
+};
+
 // Reads a credential off the request.
 const READS_CRED = [
   /requireSendAuth\s*\(/,
@@ -104,6 +149,7 @@ if (!existsSync(ROOT)) {
 
 const violations = [];
 const notices = [];
+const byDesign = [];
 let scanned = 0;
 
 for (const dir of readdirSync(ROOT).sort()) {
@@ -115,6 +161,11 @@ for (const dir of readdirSync(ROOT).sort()) {
   if (!hit(SENDS, code)) continue;
   if (hit(READS_CRED, code)) continue;
   if (hit(BODY_RECIPIENT, code)) violations.push(dir);
+  else if (bodyAliasRecipient(code)) {
+    const proof = ONE_HOP_BY_DESIGN[dir];
+    if (proof && proof.test(code)) byDesign.push(dir);
+    else violations.push(dir);
+  }
   else notices.push(dir);
 }
 
@@ -143,4 +194,5 @@ if (notices.length > 0) {
   console.log(`note open-relay: ${notices.length} function(s) send without reading a credential, but to a DB-derived recipient (not caller-chosen, not graded here):`);
   for (const n of notices) console.log(`  - ${n}`);
 }
+for (const d of byDesign) console.log(`by-design open-relay: ${d} takes its recipient off the body and is public on purpose (see ONE_HOP_BY_DESIGN)`);
 console.log(`ok open-relay: 0 of ${scanned} edge functions send to a body-supplied recipient without reading a credential`);

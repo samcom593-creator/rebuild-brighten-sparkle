@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { requireSendAuth } from "../_shared/require-send-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -143,6 +144,25 @@ const getEmailHtml = (firstName: string, trackingClickUrl: string, trackingPixel
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // PL-WIB-SEND-AGED-LEAD-EMAIL-AUTH (2026-10-08). verify_jwt = false and, until
+  // this commit, no credential read: a bare POST {} reached the body validation
+  // (500 "Missing required field: email", nothing sent). The caller chose the
+  // recipient, so anyone could send any address Apex's recruiting pitch from
+  // notifications@apex-financial.org, cc info@kingofsales.net and, by passing a
+  // managerId, that manager too.
+  //
+  // Floor is any_authenticated: AgedLeadImporter (/dashboard/aged-leads, any
+  // signed-in user) calls this per imported lead and only console.errors the
+  // result, so an admin floor would drop those sends with nothing on screen.
+  // The other caller, send-batch-blast, presents the service key.
+  const auth = await requireSendAuth(req, { floor: "any_authenticated" });
+  if (!auth.ok) {
+    return new Response(JSON.stringify({ error: auth.error }), {
+      status: auth.status,
+      headers: { "Content-Type": "application/json", ...corsHeaders },
+    });
   }
 
   try {

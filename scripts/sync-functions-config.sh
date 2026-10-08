@@ -147,6 +147,9 @@ PUBLIC_ALLOWLIST=(
   # send-notification (2026-10-08): same gate (any_authenticated floor). Its
   # service-key callers present sb_secret, which is not a JWT.
   "send-notification"
+  # send-aged-lead-email (2026-10-08): same gate (any_authenticated floor).
+  # send-batch-blast calls it with the sb_secret service key, which is not a JWT.
+  "send-aged-lead-email"
   "cron-newhire-portal-login"
   "instagram-comments-backfill"
   "instagram-token-keepalive"

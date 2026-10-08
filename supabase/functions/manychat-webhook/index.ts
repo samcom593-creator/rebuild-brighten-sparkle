@@ -1048,13 +1048,15 @@ Deno.serve(async (req) => {
     const outs = hist.filter((h) => h.direction === "outbound").map((h) => (h.body ?? "").trim());
     const last = outs[outs.length - 1] ?? null;
     const secondLast = [...outs].reverse().find((o) => o !== last) ?? null;
-    if (last === decision.auto_reply.trim() && decision.intent === "followup") decision.auto_reply = null;
-    // 2026-10-07: "like i said" belongs on funnel repeats only. On casual/social chat it reads
-    // passive-aggressive — re-sending the handle with "like i said" to a friend ("this your new
-    // ig?") got Sam blocked (Sean Mason). There, just go quiet instead of scolding.
-    else if (last === decision.auto_reply.trim() && (decision.intent === "socials" || decision.intent === "casual")) decision.auto_reply = null;
-    else if (last === decision.auto_reply.trim()) {
-      decision.auto_reply = secondLast === `like i said, ${decision.auto_reply}` || outs.filter((o) => o === last).length >= 2 ? null : `like i said, ${decision.auto_reply}`;
+    // 2026-10-07: "like i said" only makes sense re-sending a LINK ("like i said, it's all on
+    // the link"). Prefixing it to a repeated handle, greeting or question reads passive-aggressive
+    // — "like i said, ig's @sell4daddy" to a friend confirming the account got Sam blocked (Sean
+    // Mason), and the scan showed "like i said, what's good" style sends too. On any non-link
+    // repeat, go quiet instead of scolding.
+    if (last === decision.auto_reply.trim()) {
+      const hasLink = /https?:\/\//.test(decision.auto_reply);
+      const alreadySaid = secondLast === `like i said, ${decision.auto_reply}` || outs.filter((o) => o === last).length >= 2;
+      decision.auto_reply = hasLink && !alreadySaid ? `like i said, ${decision.auto_reply}` : null;
     }
   }
   // The CTA on every reel is "comment apex". A comment that carries the word with

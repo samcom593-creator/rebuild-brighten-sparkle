@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "My Team and Contracts now open on one contracting review: four circles per agent (Combine, AFLAC, GTO, Ethos), a placement level, and the five profile fields.",
+    detail: "Every active agent starts Not yet reviewed on all four circles, whatever the old checklist said; Not yet reviewed is not late. Tap a circle after you have checked the carrier's portal. It saves at once, shows who and when, has an Undo, and a failed save puts it back and says so. Details holds the agent's NPN, first and last name, email and resident state, the carriers, the placement level and the history. AFLAC has an Open portal link; opening a portal marks nothing. The contracting link is now one generic link that opens a signed-in, prefilled form, so staff type no name or email. The old day-three/four/five red flags and Priority 1 panel are gone from My Team. Combine and GTO are not yet matched to carrier-catalog entries; that match is left unset on purpose.",
+    commit: "PL-CONTRACTING-PORTAL-TRACKER-A",
+  },
+  {
+    ts: "today",
     label: "The Launch Board now answers three questions first: what needs finishing, what to film next, and which post to remake.",
     detail: "Needs finishing comes first, with where each video is (Idea, Selected, Filming, Editing, Ready, Published), one next action and a due date you can move without losing any work. Film next shows three distinct picks from your saved ideas. You can filter them by platform, format, topic, time and place, edit one before choosing it, dismiss one with an optional reason and bring it back later, or write your own. Choosing saves exactly one project per idea, even if you tap twice or use two devices, and opens a filming pack you can tick off on your phone: a script outline for talking-head videos, or a story outline and shot list for vlogs. Remake a winner only appears for posts with real recorded views that beat your normal range for that platform and format, and it shows the numbers behind the call. Nothing here uses AI, and nothing is published for you.",
     commit: "PL-LAUNCHBOARD-THREE-DECISIONS",

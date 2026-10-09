@@ -4806,6 +4806,39 @@ export type Database = {
           },
         ]
       }
+      agent_contract_profile: {
+        Row: {
+          agent_id: string
+          email: string | null
+          first_name: string | null
+          last_name: string | null
+          resident_state: string | null
+          source: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          agent_id: string
+          email?: string | null
+          first_name?: string | null
+          last_name?: string | null
+          resident_state?: string | null
+          source?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          agent_id?: string
+          email?: string | null
+          first_name?: string | null
+          last_name?: string | null
+          resident_state?: string | null
+          source?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       agent_contract_status_history: {
         Row: {
           agent_id: string
@@ -40322,6 +40355,114 @@ export type Database = {
           key?: string
           label?: string
           sort?: number
+        }
+        Relationships: []
+      }
+      contract_review_carriers: {
+        Row: {
+          carrier_id: string | null
+          carrier_key: string
+          label: string
+          mapping_note: string | null
+          portal_url: string | null
+          portal_verified: boolean
+          position: number
+        }
+        Insert: {
+          carrier_id?: string | null
+          carrier_key: string
+          label: string
+          mapping_note?: string | null
+          portal_url?: string | null
+          portal_verified?: boolean
+          position: number
+        }
+        Update: {
+          carrier_id?: string | null
+          carrier_key?: string
+          label?: string
+          mapping_note?: string | null
+          portal_url?: string | null
+          portal_verified?: boolean
+          position?: number
+        }
+        Relationships: []
+      }
+      contract_review_config: {
+        Row: {
+          singleton: boolean
+          started_at: string
+          started_by: string | null
+          version: number
+        }
+        Insert: {
+          singleton?: boolean
+          started_at?: string
+          started_by?: string | null
+          version?: number
+        }
+        Update: {
+          singleton?: boolean
+          started_at?: string
+          started_by?: string | null
+          version?: number
+        }
+        Relationships: []
+      }
+      contract_review_events: {
+        Row: {
+          acted_at: string
+          acted_by: string | null
+          agent_id: string
+          carrier_key: string | null
+          detail: Json
+          event_type: string
+          id: number
+          version: number
+        }
+        Insert: {
+          acted_at?: string
+          acted_by?: string | null
+          agent_id: string
+          carrier_key?: string | null
+          detail?: Json
+          event_type: string
+          id?: number
+          version: number
+        }
+        Update: {
+          acted_at?: string
+          acted_by?: string | null
+          agent_id?: string
+          carrier_key?: string | null
+          detail?: Json
+          event_type?: string
+          id?: number
+          version?: number
+        }
+        Relationships: []
+      }
+      contract_review_marks: {
+        Row: {
+          agent_id: string
+          carrier_key: string
+          confirmed_at: string
+          confirmed_by: string | null
+          version: number
+        }
+        Insert: {
+          agent_id: string
+          carrier_key: string
+          confirmed_at?: string
+          confirmed_by?: string | null
+          version: number
+        }
+        Update: {
+          agent_id?: string
+          carrier_key?: string
+          confirmed_at?: string
+          confirmed_by?: string | null
+          version?: number
         }
         Relationships: []
       }
@@ -141642,12 +141783,15 @@ export type Database = {
         Returns: Json
       }
       apex_is_admin: { Args: never; Returns: boolean }
+      contract_review_history: { Args: { p_agent_id: string; p_limit?: number }; Returns: Json }
+      contract_review_roster: { Args: never; Returns: Json }
       day_plan_ensure_seeded: { Args: never; Returns: number }
       fn_book_agent_name_known: { Args: { p_name: string }; Returns: boolean }
       fn_milestone_state: {
         Args: { p_amber: number; p_applicable: boolean; p_deadline: number; p_done: boolean; p_elapsed: number; p_policy_active: boolean; p_start_ok: boolean; p_tracked: boolean }
         Returns: Json
       }
+      get_my_contracting_profile: { Args: never; Returns: Json }
       has_agent: {
         Args: { app: Database["public"]["Tables"]["applications"]["Row"] }
         Returns: boolean
@@ -143991,6 +144135,7 @@ export type Database = {
         Args: { p_idempotency_key: string; p_payload: Json; p_section: string }
         Returns: Json
       }
+      save_contract_review_profile: { Args: { p_agent_id: string; p_email: string; p_first: string; p_last: string; p_npn: string; p_state: string }; Returns: Json }
       save_my_agency_branding: {
         Args: {
           p_accent_color: string
@@ -144002,6 +144147,7 @@ export type Database = {
         }
         Returns: Json
       }
+      save_my_contracting_profile: { Args: { p_email: string; p_first: string; p_last: string; p_npn: string; p_state: string }; Returns: Json }
       save_partial_application: {
         Args: {
           p_city?: string
@@ -144083,6 +144229,7 @@ export type Database = {
         Args: { p_agent_id: string; p_checked: boolean; p_contract_key: string; p_expected?: boolean }
         Returns: Json
       }
+      set_contract_review_mark: { Args: { p_agent_id: string; p_carrier_key: string; p_confirmed: boolean; p_expected?: boolean }; Returns: Json }
       set_contracting_followup: { Args: { p_agent_id: string; p_patch: Json }; Returns: Json }
       set_contracting_followup_config: { Args: { p_basis: string; p_window_days?: number }; Returns: Json }
       set_hire_license_status: {
@@ -144127,6 +144274,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      set_review_placement_level: { Args: { p_agent_id: string; p_expect_unset?: boolean; p_expected?: number; p_note?: string; p_pct: number }; Returns: Json }
       should_post_to_discord: {
         Args: { p_category?: string; p_max_per_hour?: number }
         Returns: boolean

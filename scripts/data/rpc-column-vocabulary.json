@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-rpc-column-vocabulary.sh (bot_sql -> pg_proc + pg_rewrite)",
- "_generated_at": "2026-10-09T06:29:57Z",
+ "_generated_at": "2026-10-09T23:02:36Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "check-enum-filter-literals.mjs grades literals inside supabase.from().eq() chains. This is the other half of the same class: a status word that arrives from an RPC and is compared in JavaScript, where the return type is text and every wrong word type-checks. Per (function, returned column) this records the relation columns of that name reachable from the function body and the literals the function synthesises itself. It deliberately records CANDIDATES rather than one resolved source: provenance from a body regex is a guess, so check-rpc-status-literals.mjs refuses a literal only when NO candidate vocabulary and no body literal accepts it.",
  "_vocabulary_source": "scripts/data/enum-catalog.json (check_vocab + column_enum + enums). Not copied here on purpose, so the two guards read one snapshot and cannot drift.",
@@ -136,6 +136,8 @@
   "content_library_search_update": "trigger",
   "content_publish_url_ok": "boolean",
   "content_queue_guard_update": "trigger",
+  "contract_review_history": "jsonb",
+  "contract_review_roster": "jsonb",
   "contracting_audit_rows": "SETOF v_contracting_audit",
   "contracting_audit_summary_rows": "SETOF v_contracting_audit_summary",
   "contracting_carrier_cases": "SETOF v_contracting_carrier_cases",
@@ -245,6 +247,9 @@
   "fn_client_pipeline_update": "jsonb",
   "fn_close_communication_gaps": "jsonb",
   "fn_contact_log_stamp_application": "trigger",
+  "fn_contract_review_events_append_only": "trigger",
+  "fn_contract_review_my_agent": "uuid",
+  "fn_contract_review_save_profile": "jsonb",
   "fn_contracting_case_events_append_only": "trigger",
   "fn_contracting_is_staff": "boolean",
   "fn_culture_loop_on_deal": "trigger",
@@ -388,6 +393,7 @@
   "get_application_status": "jsonb",
   "get_invite_token_prefill": "jsonb",
   "get_my_agency_branding": "jsonb",
+  "get_my_contracting_profile": "jsonb",
   "get_my_insuracloud_token": "text",
   "get_or_create_ics_token": "text",
   "gin_extract_query_trgm": "internal",
@@ -527,7 +533,9 @@
   "sam_todo_dismiss": "void",
   "sam_todo_snooze": "void",
   "save_apex_deal_draft": "jsonb",
+  "save_contract_review_profile": "jsonb",
   "save_my_agency_branding": "jsonb",
+  "save_my_contracting_profile": "jsonb",
   "save_partial_application": "void",
   "schedule_auto_populate_tick": "void",
   "scoped_production_projection": "jsonb",
@@ -548,6 +556,7 @@
   "set_apex_journey_step": "jsonb",
   "set_applicant_stage": "jsonb",
   "set_contract_checkoff": "jsonb",
+  "set_contract_review_mark": "jsonb",
   "set_contracting_checkin": "jsonb",
   "set_contracting_followup": "jsonb",
   "set_contracting_followup_config": "jsonb",
@@ -561,6 +570,7 @@
   "set_recruit_state": "jsonb",
   "set_recruiter_bounty_status": "recruiter_bounties",
   "set_recruiting_plan": "jsonb",
+  "set_review_placement_level": "jsonb",
   "should_post_to_discord": "boolean",
   "show_limit": "real",
   "show_trgm": "text[]",
@@ -5757,6 +5767,13 @@
   "fn_commission_recovery_next_batch.policy_id": {
    "candidates": [],
    "body_literals": []
+  },
+  "fn_contract_review_population.agent_id": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "public"
+   ]
   },
   "fn_contracting_checkin_scope.agent_id": {
    "candidates": [],

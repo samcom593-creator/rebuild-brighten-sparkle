@@ -235,6 +235,7 @@ const WhaleRecruiting = lazy(() => import("./pages/WhaleRecruiting"));
 const CarrierContracts = lazy(() => import("./pages/CarrierContracts"));
 const AflacOnboarding = lazy(() => import("./pages/AflacOnboarding"));
 const StartContracting = lazy(() => import("./pages/StartContracting"));
+const ContractingProfile = lazy(() => import("./pages/ContractingProfile"));
 const Challenges = lazy(() => import("./pages/Challenges"));
 const Setup = lazy(() => import("./pages/admin/Setup"));
 const SamHQ = lazy(() => import("./pages/admin/SamHQ"));
@@ -551,6 +552,8 @@ const App = () => (
                     <Route path="/dashboard/call-lab/live/:id" element={<ProtectedRoute><CallLabLive /></ProtectedRoute>} />
                     <Route path="/dashboard/call-lab/report/:id" element={<ProtectedRoute><CallLabReport /></ProtectedRoute>} />
                     <Route path="/dashboard/contracting" element={<ProtectedRoute requireAdmin><CarrierContracts /></ProtectedRoute>} />
+                    {/* The page the contracting email and link open: signed-in, prefilled, writes only the caller's own profile. */}
+                    <Route path="/dashboard/contracting-profile" element={<ProtectedRoute><ContractingProfile /></ProtectedRoute>} />
                     <Route path="/dashboard/contracting/contracts" element={<ProtectedRoute requireAdmin><CarrierContracts /></ProtectedRoute>} />
                     <Route path="/dashboard/contracting/carriers" element={<ProtectedRoute requireAdmin><CarrierContracts /></ProtectedRoute>} />
                     <Route path="/dashboard/contracting/ops" element={<ProtectedRoute requireAdmin><CarrierContracts /></ProtectedRoute>} />

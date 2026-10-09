@@ -12,7 +12,7 @@ import {
 } from "@/lib/teamContracting";
 import { daysSince, isSyncOnly, num, usdOrNull, type RosterRow } from "@/lib/teamRoster";
 import { useTeamWorkspace } from "@/hooks/useTeamWorkspace";
-import { ContractingPriorityPanel } from "@/components/team/ContractingPriorityPanel";
+import { ContractingReviewWorkspace } from "@/components/contracting-review/ContractingReviewWorkspace";
 import { RosterToolbar, type ActiveFilter } from "@/components/team/RosterToolbar";
 import { RosterWorkList, RosterProductionList } from "@/components/team/RosterRows";
 import { TeamPersonDrawer } from "@/components/team/TeamPersonDrawer";
@@ -756,11 +756,11 @@ export default function DashboardCRM() {
   const [meetingAttendance, setMeetingAttendance] = useState<Map<string, "present" | "absent" | "unmarked">>(new Map());
   const [searchParams] = useSearchParams();
   const [crmView, setCrmView] = useState<"roster" | "pipeline">(() => {
-    try { return localStorage.getItem("crm.view.v1") === "pipeline" ? "pipeline" : "roster"; }
+    try { return localStorage.getItem("crm.view.v2") === "pipeline" ? "pipeline" : "roster"; }
     catch { return "roster"; } // empty-catch-allow:localstorage-incognito
   });
   useEffect(() => {
-    try { localStorage.setItem("crm.view.v1", crmView); }
+    try { localStorage.setItem("crm.view.v2", crmView); }
     catch { /* ignore quota / disabled storage */ } // empty-catch-allow:localstorage-incognito
   }, [crmView]);
 
@@ -853,12 +853,12 @@ export default function DashboardCRM() {
   // My Team workspace: the one contracting read, the audited checkoff toggle, and the person drawer (?person=).
   const [rosterMode, setRosterMode] = useState<"work" | "production" | "calls">(() => {
     try {
-      const v = localStorage.getItem("crm.mode.v1");
+      const v = localStorage.getItem("crm.mode.v2");
       return v === "production" || v === "calls" ? v : "work";
     } catch { return "work"; } // empty-catch-allow:localstorage-incognito
   });
   useEffect(() => {
-    try { localStorage.setItem("crm.mode.v1", rosterMode); }
+    try { localStorage.setItem("crm.mode.v2", rosterMode); }
     catch { /* ignore quota / disabled storage */ } // empty-catch-allow:localstorage-incognito
   }, [rosterMode]);
   const [cFilter, setCFilter] = useState<ContractingFilter>("all");
@@ -866,13 +866,6 @@ export default function DashboardCRM() {
   const team = useTeamWorkspace(rosterQuery.data ?? [], !rosterQuery.isLoading);
   // Roles with no contracting access only ever see the production view.
   const effectiveMode: "work" | "production" | "calls" = team.contractingEnabled ? rosterMode : "production";
-  const showContractingFilter = useCallback((f: ContractingFilter) => {
-    setCFilter(f);
-    setCMilestone("all");
-    setCrmView("roster");
-    setRosterMode("work");
-    requestAnimationFrame(() => document.getElementById("team-roster")?.scrollIntoView({ block: "start" }));
-  }, []);
 
   const focusAgentId = searchParams.get('focusAgentId');
   useEffect(() => {
@@ -1921,10 +1914,7 @@ export default function DashboardCRM() {
           }
         />
 
-        {/* 1. What needs attention. Rendered above everything else and never narrowed by the roster filters below. */}
-        <ContractingPriorityPanel q={team.tc} contactFor={team.contactFor} onOpenPerson={team.openPerson} onShowFilter={showContractingFilter} />
-
-        {/* 2. One compact summary. Same numbers and definitions as before, presented as one strip. */}
+        {/* 1. One compact summary. Same numbers and definitions as before, presented as one strip. */}
         <ProductionMetricsCard
           snapshot={rosterSegmentsQuery.data ?? null}
           isLoading={rosterSegmentsQuery.isLoading}
@@ -1937,9 +1927,10 @@ export default function DashboardCRM() {
           newHires30dNoSale={((rosterQuery.data ?? []) as RosterRow[]).filter((r) => r.status === "active" && r.is_sync_only !== true && (r.tenure_days ?? 9999) <= 30 && (r.lifetime_deals ?? 0) === 0).length}
         />
 
-        {/* 3. ONE view switch. Contracting is the working view, Production carries the money columns, Call list is the
-            call-mode check-in, and the Recruiting pipeline counts open applications on top of hired agents, which is
-            why its totals exceed team size by design. */}
+        {/* 2. ONE view switch. Contracting (the manual portal review: four carrier circles per agent) is the working view
+            and the default, Production carries the money columns, Call list is the call-mode check-in, and the
+            Recruiting pipeline counts open applications on top of hired agents, which is why its totals exceed team
+            size by design. */}
         <div className="flex flex-wrap items-center gap-2">
           <div className="inline-flex flex-wrap rounded-lg border border-border bg-card p-1" role="group" aria-label="Team view">
             {([
@@ -1977,9 +1968,11 @@ export default function DashboardCRM() {
           ) : null}
         </div>
 
-        {/* 4. The work. */}
+        {/* 3. The work. */}
         {crmView === "roster" ? (
-          effectiveMode === "calls" ? (
+          effectiveMode === "work" ? (
+            <GlassCard className="p-3 sm:p-4"><ContractingReviewWorkspace /></GlassCard>
+          ) : effectiveMode === "calls" ? (
             <GlassCard className="p-3 sm:p-4"><ContractingCheckinPanel /></GlassCard>
           ) : (
             <RosterPanel

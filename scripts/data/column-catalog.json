@@ -239,6 +239,16 @@
       "source",
       "updated_at"
     ],
+    "agent_contract_profile": [
+      "agent_id",
+      "email",
+      "first_name",
+      "last_name",
+      "resident_state",
+      "source",
+      "updated_at",
+      "updated_by"
+    ],
     "agent_contract_status_history": [
       "agent_id",
       "carrier_id",
@@ -2852,6 +2862,38 @@
       "key",
       "label",
       "sort"
+    ],
+    "contract_review_carriers": [
+      "carrier_id",
+      "carrier_key",
+      "label",
+      "mapping_note",
+      "portal_url",
+      "portal_verified",
+      "position"
+    ],
+    "contract_review_config": [
+      "singleton",
+      "started_at",
+      "started_by",
+      "version"
+    ],
+    "contract_review_events": [
+      "acted_at",
+      "acted_by",
+      "agent_id",
+      "carrier_key",
+      "detail",
+      "event_type",
+      "id",
+      "version"
+    ],
+    "contract_review_marks": [
+      "agent_id",
+      "carrier_key",
+      "confirmed_at",
+      "confirmed_by",
+      "version"
     ],
     "contract_sends": [
       "agent_id",

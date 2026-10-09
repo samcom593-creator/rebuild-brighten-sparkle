@@ -18,6 +18,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { ContractingIntakeAdmin } from "@/components/contracting/ContractingIntakeAdmin";
+import { ContractingReviewWorkspace } from "@/components/contracting-review/ContractingReviewWorkspace";
 import { ContractingAuditPanel } from "@/components/contracting/ContractingAuditPanel";
 import { EthosContractingHealth } from "@/components/contracting/EthosContractingHealth";
 import { CarrierCasesWorkspace } from "@/components/contracting/CarrierCasesWorkspace";
@@ -27,29 +28,30 @@ import {
 import { externalHref } from "@/lib/externalHref";
 
 /**
- * Contracting — carrier appointments, commission levels, writing numbers.
+ * Contracting. The front page is the manual portal review: find a person, correct their five profile fields, confirm
+ * the four carriers (Combine, AFLAC, GTO, Ethos) and set their placement level. It is the SAME review My Team shows,
+ * the same component over the same records, so the two cannot disagree.
  *
- * Contracts are APEX-native: full producer profile → Ethos sheet + private
- * contracting Discord → local appointment/checklist records. AgentLink is not
- * a contracting dependency.
+ * Carrier contracting itself happens in each carrier's own portal. Nothing here submits to a carrier.
  *
- * The share-link grid was not deleted — it moved to Requests, where sending a
- * link is the action, instead of standing in for the contracts themselves.
+ * The older tabs (requests, carrier directory, contracts board, cases, operations, documents, audit, Ethos) are kept as
+ * "Earlier records": history and reference, not the working flow.
  */
 
 type Carrier = { id: string; name: string | null; website: string | null };
 
 export default function CarrierContracts() {
   const pathname = useLocation().pathname;
-  const mode = pathname.endsWith("/contracts") ? "contracts"
+  const mode = pathname.endsWith("/requests") ? "requests"
+    : pathname.endsWith("/contracts") ? "contracts"
     : pathname.endsWith("/carriers") ? "carriers"
     : pathname.endsWith("/ops") ? "ops"
     : pathname.endsWith("/documents") ? "documents"
     : pathname.endsWith("/audit") ? "audit"
     : pathname.endsWith("/ethos") ? "ethos"
     : pathname.endsWith("/cases") ? "cases"
-    : "requests";
-  usePageTitle(`${mode.charAt(0).toUpperCase() + mode.slice(1)} · Galaxy`);
+    : "review";
+  usePageTitle(`${mode === "review" ? "Contracting" : mode.charAt(0).toUpperCase() + mode.slice(1)} · Galaxy`);
   const { isAdmin, isManager, isVa, isVaManager } = useAuth();
   const isContractingStaff = !!(isAdmin || isVa || isVaManager);
   const canInvite = !!(isAdmin || isManager);
@@ -83,11 +85,12 @@ export default function CarrierContracts() {
   // Each tab is offered only to the roles its route admits (src/App.tsx):
   // every contracting route is requireAdmin, and only /cases and /ethos also
   // let va_manager and va through. A tab a role cannot open would bounce it.
-  const workspaceNavItems = [
+  const reviewItem = [["review", "/dashboard/contracting", "Review"]] as Array<[string, string, string]>;
+  const earlierItems = [
     ...(isAdmin ? [
-      ["requests", "/dashboard/contracting", "Requests"],
+      ["requests", "/dashboard/contracting/requests", "Requests"],
       ["carriers", "/dashboard/contracting/carriers", "Carriers"],
-      ["contracts", "/dashboard/contracting/contracts", "Contracts"],
+      ["contracts", "/dashboard/contracting/contracts", "Contracts board"],
     ] : []),
     ...(isContractingStaff ? [["cases", "/dashboard/contracting/cases", "Cases"]] : []),
     ...(isAdmin ? [
@@ -98,20 +101,39 @@ export default function CarrierContracts() {
     ...(isContractingStaff ? [["ethos", "/dashboard/contracting/ethos", "Ethos"]] : []),
   ] as Array<[string, string, string]>;
 
+  const navButton = ([key, to, label]: [string, string, string]) => (
+    <Button
+      key={key}
+      asChild
+      variant="ghost"
+      className={cn("rounded-none border-b-2 px-3", mode === key ? "border-primary text-foreground" : "border-transparent text-muted-foreground")}
+    >
+      <Link to={to} aria-current={mode === key ? "page" : undefined}>{label}</Link>
+    </Button>
+  );
   const workspaceNav = (
-    <nav className="flex gap-1 overflow-x-auto border-b border-border" aria-label="Contracting sections">
-      {workspaceNavItems.map(([key, to, label]) => (
-        <Button
-          key={key}
-          asChild
-          variant="ghost"
-          className={cn("rounded-none border-b-2 px-3", mode === key ? "border-primary text-foreground" : "border-transparent text-muted-foreground")}
-        >
-          <Link to={to}>{label}</Link>
-        </Button>
-      ))}
+    <nav className="flex items-center gap-1 overflow-x-auto border-b border-border" aria-label="Contracting sections">
+      {reviewItem.map(navButton)}
+      {earlierItems.length > 0 ? <span className="ml-3 shrink-0 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Earlier records</span> : null}
+      {earlierItems.map(navButton)}
     </nav>
   );
+
+  if (mode === "review") {
+    return (
+      <div className="page-enter mx-auto w-full max-w-6xl space-y-5 px-4 pb-24 sm:px-6">
+        <PageHeader
+          eyebrow="Contracting"
+          eyebrowIcon={<ClipboardList className="h-4 w-4" />}
+          title="Contracting review"
+          subtitle="Find a person, check their profile, confirm Combine, AFLAC, GTO and Ethos, and set their placement level."
+        />
+        {workspaceNav}
+        {canInvite ? <ContractingLinkCard copyLink={copyLink} copiedId={copiedId} /> : null}
+        <GlassCard className="p-3 sm:p-4"><ContractingReviewWorkspace /></GlassCard>
+      </div>
+    );
+  }
 
   if (mode === "contracts") {
     return (
@@ -455,6 +477,31 @@ function ContractDocuments() {
 }
 
 /* ───────────────────────── Shared pieces ───────────────────────── */
+
+/**
+ * The contracting link. One link for everyone: it opens the signed-in "Complete your contracting profile" page, where the
+ * person's own details are prefilled and they add the rest. Staff type no name and no email to make it, and it works the
+ * same for every agent. Copying it sends nothing.
+ */
+function ContractingLinkCard({ copyLink, copiedId }: { copyLink: (id: string, url: string) => Promise<void>; copiedId: string | null }) {
+  const origin = typeof window !== "undefined" ? window.location.origin : "https://apex-financial.org";
+  const url = `${origin}/dashboard/contracting-profile`;
+  return (
+    <GlassCard className="p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <h2 className="text-sm font-semibold text-foreground">Contracting link</h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">Send this to any agent. They sign in, check the details we already have, and add their NPN, name, email and resident state. You type nothing.</p>
+        </div>
+        <Button size="sm" variant="outline" className="h-10" onClick={() => copyLink("contracting-profile-link", url)}>
+          {copiedId === "contracting-profile-link"
+            ? <><Check className="mr-1.5 h-3.5 w-3.5" aria-hidden /> Copied</>
+            : <><Copy className="mr-1.5 h-3.5 w-3.5" aria-hidden /> Copy contracting link</>}
+        </Button>
+      </div>
+    </GlassCard>
+  );
+}
 
 function StartContractingCard({
   copyLink, copiedId, canShare,

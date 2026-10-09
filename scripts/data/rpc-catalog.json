@@ -1701,6 +1701,27 @@
         "raw": ""
       }
     ],
+    "contract_review_history": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_limit"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_limit integer DEFAULT 25"
+      }
+    ],
+    "contract_review_roster": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "contracting_audit_rows": [
       {
         "all": [],
@@ -3113,6 +3134,56 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "fn_contract_review_events_append_only": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_contract_review_my_agent": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_contract_review_population": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_contract_review_save_profile": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_email",
+          "p_first",
+          "p_last",
+          "p_npn",
+          "p_require_all",
+          "p_source",
+          "p_state"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_email",
+          "p_first",
+          "p_last",
+          "p_npn",
+          "p_require_all",
+          "p_source",
+          "p_state"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_npn text, p_first text, p_last text, p_email text, p_state text, p_source text, p_require_all boolean"
       }
     ],
     "fn_contracting_case_events_append_only": [
@@ -4785,6 +4856,14 @@
       }
     ],
     "get_my_agency_branding": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "get_my_contracting_profile": [
       {
         "all": [],
         "required": [],
@@ -6849,6 +6928,28 @@
         "raw": "p_idempotency_key uuid, p_section text, p_payload jsonb"
       }
     ],
+    "save_contract_review_profile": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_email",
+          "p_first",
+          "p_last",
+          "p_npn",
+          "p_state"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_email",
+          "p_first",
+          "p_last",
+          "p_npn",
+          "p_state"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_npn text, p_first text, p_last text, p_email text, p_state text"
+      }
+    ],
     "save_my_agency_branding": [
       {
         "all": [
@@ -6869,6 +6970,26 @@
         ],
         "unnamed": false,
         "raw": "p_display_name text, p_subdomain text, p_accent_color text, p_show_personal_deals boolean, p_show_leaderboard boolean, p_show_recruiting boolean"
+      }
+    ],
+    "save_my_contracting_profile": [
+      {
+        "all": [
+          "p_email",
+          "p_first",
+          "p_last",
+          "p_npn",
+          "p_state"
+        ],
+        "required": [
+          "p_email",
+          "p_first",
+          "p_last",
+          "p_npn",
+          "p_state"
+        ],
+        "unnamed": false,
+        "raw": "p_npn text, p_first text, p_last text, p_email text, p_state text"
       }
     ],
     "save_partial_application": [
@@ -7133,6 +7254,23 @@
         "raw": "p_agent_id uuid, p_contract_key text, p_checked boolean, p_expected boolean DEFAULT NULL::boolean"
       }
     ],
+    "set_contract_review_mark": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_carrier_key",
+          "p_confirmed",
+          "p_expected"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_carrier_key",
+          "p_confirmed"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_carrier_key text, p_confirmed boolean, p_expected boolean DEFAULT NULL::boolean"
+      }
+    ],
     "set_contracting_checkin": [
       {
         "all": [
@@ -7331,6 +7469,23 @@
         ],
         "unnamed": false,
         "raw": "p_application_id uuid, p_update_owner boolean DEFAULT false, p_owner_user_id uuid DEFAULT NULL::uuid, p_update_plan boolean DEFAULT false, p_next_action text DEFAULT NULL::text, p_next_action_due_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_waiting_reason text DEFAULT NULL::text, p_next_review_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_time_zone text DEFAULT NULL::text, p_notes text DEFAULT NULL::text, p_expected_plan_set_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_check_conflict boolean DEFAULT true"
+      }
+    ],
+    "set_review_placement_level": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_expect_unset",
+          "p_expected",
+          "p_note",
+          "p_pct"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_pct"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_pct numeric, p_expected numeric DEFAULT NULL::numeric, p_expect_unset boolean DEFAULT false, p_note text DEFAULT NULL::text"
       }
     ],
     "should_post_to_discord": [

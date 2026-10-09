@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "The public website key could pull a list of 692 account holders, and 446 of those rows showed the person's email address. Most of them were applicants, not agents. The daily and weekly production leaderboards were also open to anyone.",
+    detail: "The function that supplies names and photos to the dashboard leaderboards returned every account on the site, and many accounts store the email address as the name or inside the photo link. It now returns agents only, with no email in any field. Only signed-in pages can call it. Fourteen agents whose leaderboard name was their email now show their real display name. The Discord daily and weekly leaderboard data is now readable only by the server that posts it. Proven with the public key and as a brand-new signup. The weekly health check calls the function and goes red if an email or a non-agent ever comes back.",
+    commit: "PL-WIB-LEADERBOARD-PROFILES-PII",
+  },
+  {
+    ts: "today",
     label: "Anyone who signed up for an account could read every producer's production for the year (67 producers, $2,095,184) and the agency's month-to-date numbers. The leaderboard already hid that from them; two older database functions did not.",
     detail: "Signup is open and every new account starts as an agent, so being signed in is not the same as working here. The production-stats function behind the Year Performance card sent the whole roster to every caller and the card picked out your own row in the browser. It now returns only the rows the leaderboard would show you: your own and your downline's, or everyone for admins and VAs, so every card shows the same number it did before. The agency summary on the admin dashboard now answers admins only. Proven as a real self-signup, agent, manager, VA and admin account; the weekly health check goes red if either protection is removed.",
     commit: "PL-WIB-PROD-STATS-SCOPE",

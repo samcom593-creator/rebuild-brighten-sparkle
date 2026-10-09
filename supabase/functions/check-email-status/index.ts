@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { emailPattern } from "../_shared/like-escape.ts";
+import { phoneCandidatePattern, pickPhoneMatch } from "./phone-lookup.ts";
 
 // check-email-status — MP-448 (2026-09-06)
 //
@@ -93,18 +94,21 @@ const handler = async (req: Request): Promise<Response> => {
     let profileError = null;
 
     if (isPhone) {
-      // Search by phone - try to match last 10 digits
+      // Match the last 10 digits through whatever punctuation the stored copy
+      // carries. 72 of 197 profile phones are saved like "(713) 882-8503", and
+      // the old `phone.ilike.%<digits>%` could never match them, so 63 agents
+      // were told "We couldn't find you". See phone-lookup.ts.
       const last10 = digitsOnly.slice(-10);
       console.log(`Searching by phone, last 10 digits: ${last10}`);
-      
+
       const { data, error } = await supabaseAdmin
         .from("profiles")
-        .select("id, user_id, full_name, email")
-        .or(`phone.ilike.%${last10}%`)
+        .select("id, user_id, full_name, email, phone")
+        .ilike("phone", phoneCandidatePattern(last10) ?? "")
         .order("created_at", { ascending: false })
-        .limit(1);
-      
-      profile = data?.[0] || null;
+        .limit(50);
+
+      profile = pickPhoneMatch(data, last10);
       profileError = error;
     } else {
       // Search by email
@@ -122,8 +126,15 @@ const handler = async (req: Request): Promise<Response> => {
       profileError = error;
     }
 
+    // A failed read is not "no such agent". It used to fall through to
+    // inCRM=false, and the page told an agent on file "We couldn't find you".
+    // A non-2xx makes the page say "Failed to check. Please try again."
     if (profileError) {
       console.error("Error checking profiles:", profileError);
+      return new Response(
+        JSON.stringify({ error: "lookup unavailable" }),
+        { status: 503, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
     }
 
     const inCRM = !!profile;

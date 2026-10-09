@@ -12,12 +12,43 @@ import { logFunctionError, writeAudit } from "../_shared/audit.ts";
 import { checkRateLimit, RateLimitError } from "../_shared/rateLimit.ts";
 import { nanpTenDigits } from "../_shared/nanp-phone.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
+import {
+  classifyCaller,
+  escapeHtml,
+  isStaffInbox,
+  memberRefusal,
+} from "../_shared/notify-caller-policy.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const ADMIN_EMAIL = "info@kingofsales.net";
+const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+
+function json(status: number, body: unknown): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json", ...corsHeaders },
+  });
+}
+
+// Asks the caller's own RLS whether this address is on a row they can already
+// see. Exact match on the stored value: RecruiterDashboard sends lead.email as
+// read. null = could not tell; the caller refuses rather than sends.
+async function recipientVisibleToCaller(token: string, email: string): Promise<boolean | null> {
+  if (!anonKey || !token) return null;
+  const asCaller = createClient(supabaseUrl, anonKey, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+    auth: { persistSession: false },
+  });
+  for (const table of ["applications", "aged_leads"]) {
+    const { data, error } = await asCaller.from(table).select("id").eq("email", email).limit(1);
+    if (error) return null;
+    if ((data ?? []).length > 0) return true;
+  }
+  return false;
+}
 
 const CARRIER_GATEWAYS: Record<string, string> = {
   att: "txt.att.net",
@@ -74,12 +105,16 @@ const handler = async (req: Request): Promise<Response> => {
   // service key: all four are SECURITY DEFINER with EXECUTE granted to anon, so
   // that move would hand any stranger a one-call mail blast to real applicants.
   // Reviving one means the key move and the anon REVOKE in the same change.
+  //
+  // PL-WIB-SEND-NOTIFICATION-RECIPIENT (2026-10-09). any_authenticated was not a
+  // real floor: signup is open (GoTrue disable_signup=false), so a stranger who
+  // confirms an inbox passed it and could still mail any address with raw HTML
+  // and a link. Service and admin/manager keep today's behaviour; every other
+  // signed-in caller is held to _shared/notify-caller-policy.ts (Sam's inboxes or
+  // a person their own RLS shows them, email only, no link, escaped text).
   const auth = await requireSendAuth(req, { floor: "any_authenticated" });
   if (!auth.ok) {
-    return new Response(JSON.stringify({ error: auth.error }), {
-      status: auth.status,
-      headers: { "Content-Type": "application/json", ...corsHeaders },
-    });
+    return json(auth.status, { error: auth.error });
   }
 
   const requestId = req.headers.get("x-request-id") ?? crypto.randomUUID();
@@ -92,7 +127,37 @@ const handler = async (req: Request): Promise<Response> => {
     const ip = req.headers.get("cf-connecting-ip") ?? req.headers.get("x-forwarded-for") ?? "unknown";
     await checkRateLimit(supabase, { bucketKey: `send-notification:${ip}`, maxRequests: 60, windowSeconds: 60 });
 
-    const { userId, title, message, url, email } = await req.json();
+    const body = await req.json();
+    const { userId, title, message, url, email } = body;
+
+    let roles: unknown[] | null = [];
+    if (auth.caller !== "service") {
+      const uid = (auth.caller ?? "").slice("user:".length);
+      const { data: roleRows, error: rolesError } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", uid);
+      roles = rolesError ? null : (roleRows ?? []).map((r: { role: unknown }) => r.role);
+    }
+    const callerClass = classifyCaller(auth.caller, roles);
+    if (callerClass === null) {
+      return json(503, { error: "sender role unavailable" });
+    }
+    const escapeText = callerClass === "member";
+    if (callerClass === "member") {
+      const refusal = memberRefusal(body ?? {});
+      if (refusal) return json(refusal.status, { error: refusal.error });
+      if (!isStaffInbox(email)) {
+        const token = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+        const visible = await recipientVisibleToCaller(token, email);
+        if (visible === null) return json(503, { error: "recipient check unavailable" });
+        if (!visible) {
+          return json(403, { error: "forbidden: you can only notify people on your own pipeline" });
+        }
+      }
+    }
+    const htmlTitle = escapeText ? escapeHtml(title || "Notification") : (title || "Notification");
+    const htmlMessage = escapeText ? escapeHtml(message) : message;
 
     if (!userId && !email) {
       return new Response(
@@ -237,8 +302,8 @@ const handler = async (req: Request): Promise<Response> => {
           subject: title || "Galaxy Financial Notification",
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <h2 style="color: #3b82f6;">${title || "Notification"}</h2>
-              <p>${message}</p>
+              <h2 style="color: #3b82f6;">${htmlTitle}</h2>
+              <p>${htmlMessage}</p>
               ${url ? `<p><a href="${url}" style="color: #3b82f6;">View Details →</a></p>` : ""}
               <br/>
               <p style="color: #9ca3af; font-size: 12px;">Powered by Galaxy Financial</p>

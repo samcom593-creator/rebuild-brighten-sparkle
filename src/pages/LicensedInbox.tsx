@@ -74,6 +74,8 @@ interface LicensedRow {
   pa_number: string | null;
   status: string | null;
   created_at: string;
+  /** Last time anyone reached out. Null = never contacted. Toolkit agents do not carry it. */
+  last_contacted_at?: string | null;
 }
 
 interface ToolkitInboxResult<T> {
@@ -129,6 +131,36 @@ function relTime(iso: string): string {
   return formatTimeAgo(iso);
 }
 
+/**
+ * Lanes for getting licensed recruits going (2026-10-08, Sam: "very clear ... manage my previous licensed
+ * recruits ... and get them going"). One question per person: have we ever reached them?
+ *   never   nobody has contacted them: call first
+ *   quiet   last contact was 14+ days ago: they went cold, call again
+ *   active  contacted in the last 14 days: leave them alone for now
+ * Anyone whose contact time is unknown (toolkit agents carry no contact log) counts as "never", because
+ * hiding someone as "already worked" on no evidence is how a licensed recruit stays uncalled.
+ */
+export type InboxLane = "go" | "never" | "quiet" | "active" | "all";
+const QUIET_DAYS = 14;
+export function laneOf(r: Pick<LicensedRow, "last_contacted_at">, now: number = Date.now()): "never" | "quiet" | "active" {
+  if (!r.last_contacted_at) return "never";
+  const t = Date.parse(r.last_contacted_at);
+  if (!Number.isFinite(t)) return "never";
+  return now - t >= QUIET_DAYS * 86_400_000 ? "quiet" : "active";
+}
+export function inLane(r: Pick<LicensedRow, "last_contacted_at">, lane: InboxLane, now: number = Date.now()): boolean {
+  if (lane === "all") return true;
+  const l = laneOf(r, now);
+  return lane === "go" ? l !== "active" : l === lane;
+}
+const LANES: { key: InboxLane; label: string }[] = [
+  { key: "go", label: "Get going" },
+  { key: "never", label: "Never contacted" },
+  { key: "quiet", label: "Gone quiet 14d+" },
+  { key: "active", label: "Recently worked" },
+  { key: "all", label: "All" },
+];
+
 function fullName(r: LicensedRow): string {
   return `${r.first_name ?? ""} ${r.last_name ?? ""}`.trim() || "Unknown";
 }
@@ -141,6 +173,7 @@ export default function LicensedInbox() {
   usePageTitle("Licensed Inbox · Galaxy Admin");
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
+  const [lane, setLane] = useState<InboxLane>("go");
   const [busy, setBusy] = useState<string | null>(null); // key = `${origin}:${id}:${outcome}`
   const [composer, setComposer] = useState<ContactComposerState | null>(null);
   const [contactSubject, setContactSubject] = useState("");
@@ -155,7 +188,7 @@ export default function LicensedInbox() {
         supabase
           .from("applications")
           .select(
-            "id, first_name, last_name, email, phone, state, city, license_status, nipr_number, nipr_verified, status, created_at",
+            "id, first_name, last_name, email, phone, state, city, license_status, nipr_number, nipr_verified, status, created_at, last_contacted_at",
           )
           .eq("license_status", "licensed")
         // wave-p1k: exclude terminal dispositions so the inbox actually drains.
@@ -215,10 +248,19 @@ export default function LicensedInbox() {
     staleTime: 15_000,
   });
 
+  const laneCounts = useMemo(() => {
+    const out: Record<InboxLane, number> = { go: 0, never: 0, quiet: 0, active: 0, all: 0 };
+    const t = Date.now();
+    for (const r of rows ?? []) for (const k of Object.keys(out) as InboxLane[]) if (inLane(r, k, t)) out[k] += 1;
+    return out;
+  }, [rows]);
+
   const filtered = useMemo(() => {
-    if (!search.trim()) return rows ?? [];
+    const t = Date.now();
+    const inScope = (rows ?? []).filter((r) => inLane(r, lane, t));
+    if (!search.trim()) return inScope;
     const q = search.trim().toLowerCase();
-    return (rows ?? []).filter((r) => {
+    return inScope.filter((r) => {
       const name = fullName(r).toLowerCase();
       return (
         name.includes(q) ||
@@ -229,7 +271,7 @@ export default function LicensedInbox() {
         (r.pa_number ?? "").toLowerCase().includes(q)
       );
     });
-  }, [rows, search]);
+  }, [rows, search, lane]);
 
   function openComposer(row: LicensedRow, channel: "sms" | "email") {
     const firstName = row.first_name?.trim() || "there";
@@ -429,7 +471,7 @@ export default function LicensedInbox() {
               {filtered.length.toLocaleString()}
             </div>
             <div className="mt-1 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-              Waiting to call
+              In this lane
             </div>
           </div>
           <div className="relative min-w-0 flex-1">
@@ -442,6 +484,22 @@ export default function LicensedInbox() {
               className="h-10 pl-9 sm:h-9"
             />
           </div>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Recruit lane">
+          {LANES.map((l) => (
+            <button
+              key={l.key}
+              type="button"
+              onClick={() => setLane(l.key)}
+              aria-pressed={lane === l.key}
+              className={cn(
+                "rounded-full border px-3 py-1.5 text-sm font-medium",
+                lane === l.key ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-foreground hover:bg-muted",
+              )}
+            >
+              {l.label} <span className="tabular-nums opacity-80">{laneCounts[l.key]}</span>
+            </button>
+          ))}
         </div>
       </GlassCard>
 

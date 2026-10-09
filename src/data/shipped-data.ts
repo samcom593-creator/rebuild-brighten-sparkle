@@ -19,6 +19,12 @@ export const SHIPPED: ShippedItem[] = [
   },
   {
     ts: "today",
+    label: "Policies written by agents who left now sit at the top of Book Flips, ranked by what can still be saved, and licensed recruits are split into who to call first.",
+    detail: "Book Flips opens on a new Departed writers view, sorted lapse pending first, then not paid yet, then in force with no agent, then lapsed, then unknown. A policy with no recorded status is never shown as active. Lapsed is kept apart from lapse pending, because a lapsed policy can only be reinstated or rewritten. The licensed recruits page has lanes for never contacted, gone quiet for two weeks, and recently worked, each with a count, and opens on the people nobody has reached. A 5 pm Phoenix phone reminder now fires if the Aflac check-off is not done, and stays silent once it is.",
+    commit: "PL-GALAXY-PRIORITY",
+  },
+  {
+    ts: "today",
     label: "The agency is now Galaxy Financial on every screen and in every email, and there is a daily Aflac check-off that cannot be skipped.",
     detail: "Every hire has to be sent to Aflac, and nothing tracked whether that happened. A new Aflac page lists each licensed hire with their name, email, NPN and phone. You type the commission level by hand for each one, then press Sent to Aflac, and the hire gets an email telling them Aflac is emailing them right away. A hire with a missing or malformed field shows as Blocked with the exact field missing, and the page refuses to send them. The day can only be checked off once every ready hire is sent, and a red banner sits on the home page until it is. The rename covers the site, the browser tab and install name, and the sender name on about 140 email functions. Left under the old name on purpose: the legal pages and legal-entity strings until the company is renamed, the sub-agency name registered with Ethos, and the email addresses and website address, which move when the new domain is bought.",
     commit: "PL-GALAXY-AFLAC",

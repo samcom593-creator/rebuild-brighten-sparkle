@@ -12,9 +12,9 @@ import { formatTimeAgo } from "@/lib/dateUtils";
 import { contactLinkProps, formatPhoneDisplay, phoneHref } from "@/lib/phone";
 import { cn } from "@/lib/utils";
 import {
-  BOOK_FILTERS, FLIP_FILTERS, FLIP_LABEL, FLIP_TONE, GROUP_TONE, PRIORITY_CARRIERS, SORTS,
+  BOOK_FILTERS, FLIP_FILTERS, FLIP_LABEL, FLIP_TONE, GROUP_TONE, PRIORITY_CARRIERS, PRIORITY_LABEL, PRIORITY_TONE, SORTS,
   displayName, matchesBook, matchesFlip, matchesSearch, money, monthsInForceText, phoenixTime,
-  shortDate, sortPolicies, splitName,
+  priorityTier, shortDate, sortPolicies, splitName,
   type BookFilter, type BookPolicy, type FlipFilter, type FlipStatus, type SortKey,
 } from "@/lib/bookFlips";
 
@@ -89,10 +89,10 @@ export default function BookFlips() {
   const counts = useQuery({ queryKey: ["book-flip-counts"], queryFn: fetchCounts, staleTime: 60_000 });
   const rows = useQuery({ queryKey: rowsKey, queryFn: () => fetchCarrier(carrier), staleTime: 60_000 });
 
-  const [bookFilter, setBookFilter] = useState<BookFilter>("workable");
+  const [bookFilter, setBookFilter] = useState<BookFilter>("departed");
   const [flipFilter, setFlipFilter] = useState<FlipFilter>("to_call");
   const [search, setSearch] = useState("");
-  const [sort, setSort] = useState<SortKey>("oldest");
+  const [sort, setSort] = useState<SortKey>("priority");
   const [shown, setShown] = useState(PAGE);
   const [busy, setBusy] = useState<Record<string, boolean>>({});
   const [now, setNow] = useState(() => new Date());
@@ -425,6 +425,9 @@ function PolicyCard({ p, busy, onSet }: { p: BookPolicy; busy: boolean; onSet: (
           <dd className="text-foreground">
             {p.agent_name || "—"}
             {p.agent_gone && <span className="ml-1.5 rounded border border-border px-1.5 text-xs text-muted-foreground">left</span>}
+            {p.agent_gone && priorityTier(p) < 6 && (
+              <span className={cn("ml-1.5 rounded border px-1.5 text-xs font-semibold", PRIORITY_TONE[priorityTier(p)])}>{PRIORITY_LABEL[priorityTier(p)]}</span>
+            )}
           </dd>
         </div>
         <Field label="Attempts" value={`${p.attempts}${p.last_contact_at ? ` · last ${formatTimeAgo(p.last_contact_at)}` : ""}`} />

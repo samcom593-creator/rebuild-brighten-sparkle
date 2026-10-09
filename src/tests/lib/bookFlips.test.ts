@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  isCallbackDue, matchesBook, matchesFlip, matchesSearch, monthsInForceText, sortPolicies, splitName,
+  isCallbackDue, matchesBook, matchesFlip, matchesSearch, monthsInForceText, priorityTier, sortPolicies, splitName,
   type BookPolicy,
 } from "@/lib/bookFlips";
 
@@ -67,5 +67,48 @@ describe("display names", () => {
     expect(displayName("mary-jo o'neil")).toBe("Mary-Jo O'Neil");
     expect(displayName("Samuel lugo puga")).toBe("Samuel lugo puga");
     expect(displayName(null)).toBe("");
+  });
+});
+
+describe("departed-writer priority", () => {
+  const gone = (o: Partial<BookPolicy>) => base({ agent_gone: true, ...o });
+
+  it("ranks lapsing, then pending, then active, then unknown, for writers who left", () => {
+    expect(priorityTier(gone({ status_group: "lapsing" }))).toBe(1);
+    expect(priorityTier(gone({ status_group: "pending" }))).toBe(2);
+    expect(priorityTier(gone({ status_group: "active" }))).toBe(3);
+    expect(priorityTier(gone({ status_group: "unknown" }))).toBe(5);
+  });
+
+  it("splits Lapsed from Lapse Pending: a lapsed policy cannot be saved, only reinstated or rewritten", () => {
+    expect(priorityTier(gone({ status_group: "lapsing", book_status: "Lapse Pending" }))).toBe(1);
+    expect(priorityTier(gone({ status_group: "lapsing", book_status: "Lapsed" }))).toBe(4);
+    expect(priorityTier(gone({ status_group: "lapsing", book_status: "lapsed " }))).toBe(4);
+  });
+
+  it("never ranks a policy ahead because its writer left if it is already dead or the writer is still here", () => {
+    expect(priorityTier(gone({ status_group: "dead" }))).toBe(6);
+    expect(priorityTier(base({ status_group: "lapsing", agent_gone: false }))).toBe(6);
+  });
+
+  it("an unknown status is not treated as active", () => {
+    expect(priorityTier(gone({ status_group: "unknown" }))).toBeGreaterThan(priorityTier(gone({ status_group: "active" })));
+  });
+
+  it("the departed filter keeps unknown and live policies and drops dead ones and current writers", () => {
+    expect(matchesBook(gone({ status_group: "unknown" }), "departed")).toBe(true);
+    expect(matchesBook(gone({ status_group: "dead" }), "departed")).toBe(false);
+    expect(matchesBook(base({ status_group: "active", agent_gone: false }), "departed")).toBe(false);
+  });
+
+  it("priority sort orders by tier, then the biggest annual premium, and is stable on ties", () => {
+    const rows = [
+      gone({ flip_key: "a", status_group: "active", annual_premium: 5000 }),
+      gone({ flip_key: "b", status_group: "lapsing", annual_premium: 100 }),
+      gone({ flip_key: "c", status_group: "lapsing", annual_premium: 900 }),
+      base({ flip_key: "d", status_group: "lapsing", agent_gone: false, annual_premium: 99999 }),
+      gone({ flip_key: "e", status_group: "pending", annual_premium: 50 }),
+    ];
+    expect(sortPolicies(rows, "priority").map((r) => r.flip_key)).toEqual(["c", "b", "e", "a", "d"]);
   });
 });

@@ -1,6 +1,6 @@
 # APEX Function Contract Matrix
 
-Generated: 2026-10-09T03:22:17.630Z
+Generated: 2026-10-09T03:55:37.534Z
 Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 
 ## Inventory Summary
@@ -9,7 +9,7 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 - Configured in `config.toml`: **241**
 - Invoked Edge Functions in Source: **103**
 - Invoked RPC Calls in Source: **213**
-- SQL Functions in Migrations: **637**
+- SQL Functions in Migrations: **638**
 
 ## Edge Function Auth & Verification Contracts
 

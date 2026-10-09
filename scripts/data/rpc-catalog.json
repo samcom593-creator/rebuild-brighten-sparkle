@@ -134,6 +134,16 @@
         "raw": "p_referral_id uuid, p_new_status referral_status, p_note text DEFAULT NULL::text"
       }
     ],
+    "aflac_checkoff_reminder": [
+      {
+        "all": [
+          "p_topic"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_topic text DEFAULT NULL::text"
+      }
+    ],
     "aflac_daily_checkoff": [
       {
         "all": [],

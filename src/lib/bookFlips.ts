@@ -53,11 +53,12 @@ export const PRIORITY_CARRIERS: { carrier: string; priority: "High" | "Good" }[]
   { carrier: "Transamerica", priority: "Good" },
 ];
 
-export type BookFilter = "workable" | "active" | "unknown" | "lapsing" | "all";
+export type BookFilter = "departed" | "workable" | "active" | "unknown" | "lapsing" | "all";
 export type FlipFilter = "to_call" | "callbacks" | "appointments" | "resold" | "closed" | "all";
-export type SortKey = "oldest" | "premium" | "face" | "name";
+export type SortKey = "priority" | "oldest" | "premium" | "face" | "name";
 
 export const BOOK_FILTERS: { key: BookFilter; label: string }[] = [
+  { key: "departed", label: "Departed writers" },
   { key: "workable", label: "Workable" },
   { key: "active", label: "Confirmed active" },
   { key: "unknown", label: "Status unknown" },
@@ -73,6 +74,7 @@ export const FLIP_FILTERS: { key: FlipFilter; label: string }[] = [
   { key: "all", label: "All" },
 ];
 export const SORTS: { key: SortKey; label: string }[] = [
+  { key: "priority", label: "Priority (departed writers first)" },
   { key: "oldest", label: "Longest in force first" },
   { key: "premium", label: "Highest premium" },
   { key: "face", label: "Highest face amount" },
@@ -116,12 +118,53 @@ export const GROUP_TONE: Record<StatusGroup, string> = {
 
 const CLOSED: FlipStatus[] = ["not_interested", "do_not_call", "bad_number"];
 
+/**
+ * Priority for policies whose writing agent has left (2026-10-08, Sam: "prioritize the active deals from
+ * agents who are no longer with us"). A policy nobody services is the one that quietly lapses, so the order
+ * is by what can still be saved and how soon it costs money:
+ *   1  lapse pending   still in force but about to lapse: a call now can keep it
+ *   2  not paid yet    submitted, in review or issued-not-paid: can still fall through
+ *   3  in force        active with nobody servicing it: needs an owner
+ *   4  lapsed          already off the books: reinstate or rewrite, not save
+ *   5  unknown         the book never recorded a status, so it is NOT counted as active
+ *   6  other           writer still here, or the policy is already dead
+ * The view groups "Lapsed" together with "Lapse Pending"; they are split here on the exact book status,
+ * because telling Sam a lapsed policy can be "saved" would send him to the wrong conversation.
+ */
+export type PriorityTier = 1 | 2 | 3 | 4 | 5 | 6;
+export function priorityTier(p: Pick<BookPolicy, "status_group" | "agent_gone"> & { book_status?: string | null }): PriorityTier {
+  if (!p.agent_gone || p.status_group === "dead") return 6;
+  switch (p.status_group) {
+    case "lapsing": return /^\s*lapsed\s*$/i.test(p.book_status ?? "") ? 4 : 1;
+    case "pending": return 2;
+    case "active": return 3;
+    default: return 5;
+  }
+}
+export const PRIORITY_LABEL: Record<PriorityTier, string> = {
+  1: "Save it: lapse pending",
+  2: "Not paid yet",
+  3: "In force, no agent",
+  4: "Lapsed: reinstate or rewrite",
+  5: "Status unknown",
+  6: "",
+};
+export const PRIORITY_TONE: Record<PriorityTier, string> = {
+  1: "border-red-400/40 bg-red-500/15 text-red-700 dark:text-red-300",
+  2: "border-sky-400/40 bg-sky-500/15 text-sky-700 dark:text-sky-300",
+  3: "border-amber-400/40 bg-amber-500/15 text-amber-700 dark:text-amber-300",
+  4: "border-violet-400/40 bg-violet-500/15 text-violet-700 dark:text-violet-300",
+  5: "border-border bg-muted text-muted-foreground",
+  6: "border-border bg-muted text-muted-foreground",
+};
+
 export function isCallbackDue(p: Pick<BookPolicy, "flip_status" | "callback_at">, now: Date = new Date()): boolean {
   return p.flip_status === "callback" && !!p.callback_at && new Date(p.callback_at).getTime() <= now.getTime();
 }
 
-export function matchesBook(p: Pick<BookPolicy, "status_group">, f: BookFilter): boolean {
+export function matchesBook(p: Pick<BookPolicy, "status_group"> & { agent_gone?: boolean }, f: BookFilter): boolean {
   switch (f) {
+    case "departed": return p.agent_gone === true && p.status_group !== "dead";
     case "workable": return p.status_group !== "dead";
     case "active": return p.status_group === "active";
     case "unknown": return p.status_group === "unknown";
@@ -158,7 +201,7 @@ export function matchesSearch(p: Pick<BookPolicy, "client_name" | "phone" | "pol
 
 const num = (n: number | null | undefined) => (typeof n === "number" && Number.isFinite(n) ? n : null);
 
-export function sortPolicies<T extends Pick<BookPolicy, "months_in_force" | "monthly_premium" | "face_amount" | "client_name" | "flip_key">>(
+export function sortPolicies<T extends Pick<BookPolicy, "months_in_force" | "monthly_premium" | "annual_premium" | "face_amount" | "client_name" | "flip_key" | "status_group" | "agent_gone" | "book_status">>(
   list: T[], key: SortKey,
 ): T[] {
   const name = (p: T) => (p.client_name ?? "").toLowerCase();
@@ -167,6 +210,10 @@ export function sortPolicies<T extends Pick<BookPolicy, "months_in_force" | "mon
   const out = [...list];
   out.sort((a, b) => {
     switch (key) {
+      case "priority":
+        return priorityTier(a) - priorityTier(b)
+          || byDesc(num(a.annual_premium), num(b.annual_premium))
+          || byDesc(num(a.months_in_force), num(b.months_in_force)) || tie(a, b);
       case "premium": return byDesc(num(a.monthly_premium), num(b.monthly_premium)) || tie(a, b);
       case "face": return byDesc(num(a.face_amount), num(b.face_amount)) || tie(a, b);
       case "name": return tie(a, b);

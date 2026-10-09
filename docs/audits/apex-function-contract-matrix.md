@@ -1,15 +1,15 @@
 # APEX Function Contract Matrix
 
-Generated: 2026-10-09T03:55:37.534Z
+Generated: 2026-10-09T04:14:46.050Z
 Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 
 ## Inventory Summary
 
-- Total Local Edge Functions: **240**
-- Configured in `config.toml`: **241**
-- Invoked Edge Functions in Source: **103**
-- Invoked RPC Calls in Source: **213**
-- SQL Functions in Migrations: **638**
+- Total Local Edge Functions: **241**
+- Configured in `config.toml`: **242**
+- Invoked Edge Functions in Source: **104**
+- Invoked RPC Calls in Source: **218**
+- SQL Functions in Migrations: **644**
 
 ## Edge Function Auth & Verification Contracts
 
@@ -119,6 +119,7 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 | `mirror-agents-backfill` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `monday-starter-reminders` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `morning-brief` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `myday-todoist` | Yes | Yes | `true` | Authenticated JWT | PASS |
 | `next-step-dispatch` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `notify-aflac-submitted` | Yes | Yes | `true` | Authenticated JWT | PASS |
 | `notify-agent-contracted` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -264,6 +265,6 @@ applied by hand through bot-sql and never round-tripped into
 `supabase/migrations`, so this directory does not model the deployed database.
 `apex-doctor` queries `pg_proc` and is the authority on deployed state.
 
-- Invoked RPCs: **213**
-- Also declared in this commit's migrations: **198**
+- Invoked RPCs: **218**
+- Also declared in this commit's migrations: **203**
 - Declared only in the database: **15**

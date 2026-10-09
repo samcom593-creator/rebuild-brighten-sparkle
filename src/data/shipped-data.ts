@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "My Day is rebuilt around your new schedule, syncs to your Todoist and calendar, texts your phone before each block, and counts your wins.",
+    detail: "Every weekday now runs on one schedule: gym, a clip to record each morning (check-in, lift record, inspiration, production win, transformation), two lead-message hours, the team meeting at 11:30 AM Central which is 9:30 Arizona, two hours of sales calls, recruiting, a three-hour block for three or four videos, a leadership hour, and sleep by 11:30. Wednesday is the pre-licensing push day and Monday, Thursday and Sunday carry the production review. My Day now lets you edit notes, type and the phone alert on every block, and saving pushes the schedule into Todoist and your calendar. Your real Todoist list shows on the page and can be ticked off there. Three plus buttons count long-form videos posted, hires with every contract sent, and unlicensed hires who bought the course. A Pre-licensing check lists everyone who bought the course or is an unlicensed hire, with their XCEL progress, and you tick who is in the Slack and who is done. A phone alert fires five to ten minutes before each block.",
+    commit: "PL-MYDAY-GALAXY",
+  },
+  {
+    ts: "today",
     label: "Shared links now preview as Galaxy Financial. The preview picture still showed the old name after the rename.",
     detail: "The rename changed the words on every page, but the picture that shows when someone shares an apex-financial.org link in a text, DM or Discord was an image with the old name drawn into it, so it showed that name under a Galaxy Financial title. The card is redrawn as Galaxy in the site's own fonts, the button text now fits inside its button, and it is a 61 KB file chat apps will show. It has a new file name so apps that saved the old picture fetch the new one. A new check fails if the card stops matching the brand name in the code, so the next rename cannot leave it behind. The home-screen app icon and the login-page logo still show the old logo; those need new logo artwork.",
     commit: "PL-WIB-SHARE-CARD-BRAND",

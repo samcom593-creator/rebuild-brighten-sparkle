@@ -776,3 +776,6 @@ verify_jwt = false
 
 [functions.notify-aflac-submitted]
 verify_jwt = true
+
+[functions.myday-todoist]
+verify_jwt = true

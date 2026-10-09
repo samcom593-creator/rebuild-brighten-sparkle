@@ -51,6 +51,33 @@
       "updated_at",
       "user_id"
     ],
+    "aflac_daily_checkoffs": [
+      "blocked_carried",
+      "check_date",
+      "completed_at",
+      "completed_by",
+      "submitted_that_day"
+    ],
+    "aflac_gate_config": [
+      "go_live_at",
+      "singleton"
+    ],
+    "aflac_submissions": [
+      "agent_id",
+      "comp_level",
+      "created_at",
+      "email",
+      "first_name",
+      "hire_notified_at",
+      "hire_notify_error",
+      "id",
+      "intake_id",
+      "last_name",
+      "npn",
+      "phone_e164",
+      "submitted_at",
+      "submitted_by"
+    ],
     "aged_leads": [
       "about_me",
       "assigned_agent_id",
@@ -2628,6 +2655,7 @@
     "content_cards": [
       "approved_at",
       "approved_by",
+      "archived_at",
       "brand",
       "caption",
       "clip",
@@ -3312,6 +3340,7 @@
     ],
     "day_plan_tasks": [
       "active",
+      "alert",
       "category",
       "created_at",
       "detail",
@@ -3323,6 +3352,13 @@
       "updated_at",
       "user_id",
       "weekday"
+    ],
+    "day_plan_todoist_map": [
+      "content",
+      "due_string",
+      "key",
+      "synced_at",
+      "todoist_id"
     ],
     "dead_letter_events": [
       "created_at",
@@ -4833,6 +4869,19 @@
       "status",
       "synced_at"
     ],
+    "myday_alerts_sent": [
+      "day",
+      "request_id",
+      "sent_at",
+      "task_id"
+    ],
+    "myday_counter_events": [
+      "id",
+      "kind",
+      "note",
+      "occurred_at",
+      "user_id"
+    ],
     "next_step_events": [
       "actor_user_id",
       "agent_id",
@@ -5276,6 +5325,16 @@
       "resolved_by",
       "source_deal_id",
       "status_updated_at"
+    ],
+    "prelicensing_confirmations": [
+      "confirmed_by",
+      "email_key",
+      "in_slack",
+      "in_slack_at",
+      "note",
+      "prelicensing_done",
+      "prelicensing_done_at",
+      "updated_at"
     ],
     "production_external_daily_snapshots": [
       "agency_name",

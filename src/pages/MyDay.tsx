@@ -5,6 +5,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { DAY_THEMES, THEME_TONE, phoenixDateKey } from "@/lib/contentWeek";
 import { cn } from "@/lib/utils";
+import { MyDayWins } from "@/components/myday/MyDayWins";
+import { MyDayTodoist, pushMyDayToTodoist } from "@/components/myday/MyDayTodoist";
+import { PrelicensingCheck } from "@/components/myday/PrelicensingCheck";
 
 interface Task {
   id: string;
@@ -15,6 +18,7 @@ interface Task {
   detail: string | null;
   category: string;
   sort: number;
+  alert: boolean;
 }
 interface Draft extends Task { hidden?: boolean; isNew?: boolean }
 interface Pending { task_id: string; day: string; done: boolean }
@@ -204,7 +208,7 @@ export default function MyDay() {
         if (!error) seeded.current = true;
       }
       const [t, c] = await Promise.all([
-        supabase.from("day_plan_tasks").select("id,weekday,start_min,duration_min,title,detail,category,sort")
+        supabase.from("day_plan_tasks").select("id,weekday,start_min,duration_min,title,detail,category,sort,alert")
           .eq("weekday", wd).eq("active", true).order("start_min", { ascending: true }).order("sort", { ascending: true }),
         supabase.from("day_plan_checks").select("task_id").eq("day", day),
       ]);
@@ -293,7 +297,7 @@ export default function MyDay() {
     const start = last ? Math.min(last.start_min + last.duration_min, 1410) : 6 * 60;
     setDraft((d) => [...d, {
       id: `new-${Date.now()}`, weekday, start_min: start, duration_min: 30, title: "", detail: null,
-      category: "planning", sort: d.length, isNew: true,
+      category: "planning", sort: d.length, isNew: true, alert: true,
     }]);
   };
   const saveEdit = async () => {
@@ -305,7 +309,7 @@ export default function MyDay() {
           if (r.hidden) continue;
           const { data, error } = await supabase.from("day_plan_tasks").insert({
             weekday, start_min: r.start_min, duration_min: r.duration_min, title: r.title.trim(),
-            detail: r.detail, category: r.category, sort: r.sort, active: true,
+            detail: r.detail, category: r.category, sort: r.sort, active: true, alert: r.alert,
           }).select("id").single();
           if (error) throw error;
           // Saved: from now on it is an existing task, so a retry after a later failure
@@ -314,6 +318,7 @@ export default function MyDay() {
         } else {
           const { error } = await supabase.from("day_plan_tasks").update({
             start_min: r.start_min, duration_min: r.duration_min, title: r.title.trim(), active: !r.hidden,
+            detail: r.detail?.trim() ? r.detail.trim() : null, category: r.category, alert: r.alert,
             updated_at: new Date().toISOString(),
           }).eq("id", r.id);
           if (error) throw error;
@@ -322,6 +327,12 @@ export default function MyDay() {
       toast.success("Day saved");
       setEditing(false);
       await load();
+      // Keep the real to-do list and the calendar in step with what was just edited. A failure is shown,
+      // never swallowed: a schedule that looks synced and is not is worse than one that says it is not.
+      void pushMyDayToTodoist().then((r) => {
+        if (r.ok) toast.success("Todoist and calendar updated");
+        else toast.error(`Saved here, but Todoist did not update: ${r.errors?.[0] ?? r.error ?? "unknown"}`);
+      });
     } catch {
       toast.error("Could not save. Your edits are still here, try again.");
     } finally {
@@ -369,6 +380,8 @@ export default function MyDay() {
         ))}
       </div>
 
+      {!editing ? <MyDayWins /> : null}
+
       <div className="mb-5 rounded-2xl border border-border bg-card p-4">
         <div className="flex items-center justify-between text-sm">
           <span className="font-semibold">{doneCount} of {tasks.length} done</span>
@@ -378,6 +391,13 @@ export default function MyDay() {
           <div className={cn("h-full rounded-full transition-all", tone.bar)} style={{ width: `${pct}%` }} />
         </div>
       </div>
+
+      {!editing ? (
+        <>
+          <MyDayTodoist />
+          <PrelicensingCheck defaultOpen={weekday === 3 && isToday} />
+        </>
+      ) : null}
 
       {loading && !tasks.length ? (
         <div className="space-y-3">
@@ -415,6 +435,32 @@ export default function MyDay() {
                       <option key={n} value={n}>{fmtDur(n)}</option>
                     ))}
                   </select>
+                </label>
+              </div>
+              <label className="block text-sm text-muted-foreground">
+                Notes
+                <textarea
+                  value={r.detail ?? ""}
+                  onChange={(e) => patchDraft(r.id, { detail: e.target.value })}
+                  rows={2}
+                  placeholder="What to do in this block"
+                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-base text-foreground"
+                />
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="text-sm text-muted-foreground">
+                  Type
+                  <select
+                    value={r.category}
+                    onChange={(e) => patchDraft(r.id, { category: e.target.value })}
+                    className="mt-1 min-h-[48px] w-full rounded-lg border border-border bg-background px-3 text-base text-foreground"
+                  >
+                    {Object.keys(CATEGORY_DOT).map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </label>
+                <label className="flex items-end gap-2 pb-3 text-sm text-muted-foreground">
+                  <input type="checkbox" checked={r.alert} onChange={(e) => patchDraft(r.id, { alert: e.target.checked })} className="h-5 w-5" />
+                  Phone alert before it starts
                 </label>
               </div>
               <Button variant="ghost" className="min-h-[44px] text-muted-foreground" onClick={() => patchDraft(r.id, { hidden: true })}>

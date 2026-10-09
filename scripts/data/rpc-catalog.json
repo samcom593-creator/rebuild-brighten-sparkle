@@ -5829,6 +5829,48 @@
         "raw": ""
       }
     ],
+    "myday_alert_tick": [
+      {
+        "all": [
+          "p_topic"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_topic text DEFAULT NULL::text"
+      }
+    ],
+    "myday_counter_add": [
+      {
+        "all": [
+          "p_kind"
+        ],
+        "required": [
+          "p_kind"
+        ],
+        "unnamed": false,
+        "raw": "p_kind text"
+      }
+    ],
+    "myday_counter_undo": [
+      {
+        "all": [
+          "p_kind"
+        ],
+        "required": [
+          "p_kind"
+        ],
+        "unnamed": false,
+        "raw": "p_kind text"
+      }
+    ],
+    "myday_counters": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "next_step_message_stats_24h": [
       {
         "all": [
@@ -6019,6 +6061,31 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "prelicensing_check_list": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "prelicensing_set": [
+      {
+        "all": [
+          "p_done",
+          "p_email_key",
+          "p_in_slack",
+          "p_note"
+        ],
+        "required": [
+          "p_done",
+          "p_email_key",
+          "p_in_slack"
+        ],
+        "unnamed": false,
+        "raw": "p_email_key text, p_in_slack boolean, p_done boolean, p_note text DEFAULT NULL::text"
       }
     ],
     "producer_deep_dive": [

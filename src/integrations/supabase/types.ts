@@ -40250,6 +40250,30 @@ export type Database = {
         }
         Relationships: []
       }
+      day_plan_todoist_map: {
+        Row: {
+          content: string
+          due_string: string
+          key: string
+          synced_at: string
+          todoist_id: string
+        }
+        Insert: {
+          content: string
+          due_string: string
+          key: string
+          synced_at?: string
+          todoist_id: string
+        }
+        Update: {
+          content?: string
+          due_string?: string
+          key?: string
+          synced_at?: string
+          todoist_id?: string
+        }
+        Relationships: []
+      }
       monday_starter_notifications: {
         Row: {
           created_at: string
@@ -40340,6 +40364,7 @@ export type Database = {
       day_plan_tasks: {
         Row: {
           active: boolean
+          alert: boolean
           category: string
           created_at: string
           detail: string | null
@@ -40354,6 +40379,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          alert?: boolean
           category?: string
           created_at?: string
           detail?: string | null
@@ -40368,6 +40394,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          alert?: boolean
           category?: string
           created_at?: string
           detail?: string | null
@@ -72919,6 +72946,51 @@ export type Database = {
         }
         Relationships: []
       }
+      myday_alerts_sent: {
+        Row: {
+          day: string
+          request_id: number | null
+          sent_at: string
+          task_id: string
+        }
+        Insert: {
+          day: string
+          request_id?: number | null
+          sent_at?: string
+          task_id: string
+        }
+        Update: {
+          day?: string
+          request_id?: number | null
+          sent_at?: string
+          task_id?: string
+        }
+        Relationships: []
+      }
+      myday_counter_events: {
+        Row: {
+          id: string
+          kind: string
+          note: string | null
+          occurred_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          kind: string
+          note?: string | null
+          occurred_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          kind?: string
+          note?: string | null
+          occurred_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       next_step_events: {
         Row: {
           actor_user_id: string | null
@@ -78233,6 +78305,39 @@ export type Database = {
           resolved_by?: string | null
           source_deal_id?: string
           status_updated_at?: string | null
+        }
+        Relationships: []
+      }
+      prelicensing_confirmations: {
+        Row: {
+          confirmed_by: string | null
+          email_key: string
+          in_slack: boolean
+          in_slack_at: string | null
+          note: string | null
+          prelicensing_done: boolean
+          prelicensing_done_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          confirmed_by?: string | null
+          email_key: string
+          in_slack?: boolean
+          in_slack_at?: string | null
+          note?: string | null
+          prelicensing_done?: boolean
+          prelicensing_done_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          confirmed_by?: string | null
+          email_key?: string
+          in_slack?: boolean
+          in_slack_at?: string | null
+          note?: string | null
+          prelicensing_done?: boolean
+          prelicensing_done_at?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -141074,6 +141179,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      aflac_checkoff_reminder: { Args: { p_topic?: string }; Returns: Json }
       aflac_daily_checkoff: { Args: never; Returns: Json }
       aflac_gate_state: { Args: never; Returns: Json }
       aflac_intake_missing: {
@@ -143375,6 +143481,10 @@ export type Database = {
           week_start: string
         }[]
       }
+      myday_alert_tick: { Args: { p_topic?: string }; Returns: Json }
+      myday_counter_add: { Args: { p_kind: string }; Returns: Json }
+      myday_counter_undo: { Args: { p_kind: string }; Returns: Json }
+      myday_counters: { Args: never; Returns: Json }
       next_step_message_stats_24h: {
         Args: { since_ts: string }
         Returns: {
@@ -143429,6 +143539,11 @@ export type Database = {
       post_midday_snapshot: { Args: never; Returns: Json }
       post_morning_huddle: { Args: never; Returns: Json }
       post_weekly_recap: { Args: never; Returns: Json }
+      prelicensing_check_list: { Args: never; Returns: Json }
+      prelicensing_set: {
+        Args: { p_done: boolean; p_email_key: string; p_in_slack: boolean; p_note?: string }
+        Returns: Json
+      }
       producer_deep_dive: { Args: { p_user_id: number }; Returns: Json }
       producer_profile_detail: { Args: { p_agent_id: string }; Returns: Json }
       production_book_freshness: {

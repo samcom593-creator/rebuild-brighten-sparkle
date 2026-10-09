@@ -993,16 +993,21 @@ function RosterPanel({ rows, isLoading, isError, onRetry }: {
                       </TableCell>
                       <TableCell className="px-2 py-2">
                         {r.last_posted_date ? (
-                          <span className={cn(
-                            "text-[12px] font-medium tabular-nums",
-                            sinceSale !== null && sinceSale >= 60 ? "text-rose-600 dark:text-rose-400"
-                              : sinceSale !== null && sinceSale >= 14 ? "text-amber-600 dark:text-amber-400"
-                              : "text-emerald-600 dark:text-emerald-400",
-                          )}>
-                            {r.last_posted_date}{sinceSale !== null && <span className="ml-1 text-muted-foreground">· {sinceSale}d</span>}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className={cn("h-2 w-2 shrink-0 rounded-full",
+                              sinceSale !== null && sinceSale >= 60 ? "bg-rose-500"
+                                : sinceSale !== null && sinceSale >= 14 ? "bg-amber-500" : "bg-emerald-500")} aria-hidden />
+                            <div className="leading-tight">
+                              <div className={cn("text-[13px] font-semibold",
+                                sinceSale !== null && sinceSale >= 60 ? "text-rose-600 dark:text-rose-400"
+                                  : sinceSale !== null && sinceSale >= 14 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400")}>
+                                {sinceSale === 0 ? "Today" : sinceSale === 1 ? "Yesterday" : sinceSale !== null ? `${Math.max(0, sinceSale)} days ago` : "—"}
+                              </div>
+                              <div className="text-[11px] text-muted-foreground">{(() => { try { return new Date(`${r.last_posted_date}T12:00:00Z`).toLocaleDateString("en-US", { timeZone: "UTC", month: "short", day: "numeric", year: "numeric" }); } catch { return r.last_posted_date; } })()}</div>
+                            </div>
+                          </div>
                         ) : (
-                          <span className="text-[12px] italic text-muted-foreground">never sold</span>
+                          <span className="inline-flex items-center rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[12px] text-muted-foreground">Never sold</span>
                         )}
                       </TableCell>
                       <TableCell className="px-2 py-2 text-right">
@@ -1024,19 +1029,27 @@ function RosterPanel({ rows, isLoading, isError, onRetry }: {
                     {isOpen && (
                       <TableRow className="border-b border-border/60 bg-muted/20 hover:bg-muted/20">
                         <TableCell colSpan={11} className="px-4 py-3">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="mr-1 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">Contracts</span>
-                            {CONTRACTS.map((c) => {
-                              const on = done?.has(c.key) ?? false;
-                              return (
-                                <button key={c.key} type="button" onClick={() => void toggleContract(r.agent_id, c.key)} aria-pressed={on}
-                                  className={cn("inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[13px] font-semibold transition",
-                                    on ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground")}>
-                                  {on ? <CircleCheck className="h-3.5 w-3.5" /> : <Circle className="h-3.5 w-3.5" />}{c.label}
-                                </button>
-                              );
-                            })}
-                            <span className="ml-auto text-[12px] font-semibold tabular-nums text-muted-foreground">{done?.size ?? 0}/{CONTRACTS.length} done</span>
+                          <div className="flex flex-col gap-3">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="mr-1 w-20 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">Contracts</span>
+                              {CONTRACTS.map((c) => {
+                                const on = done?.has(c.key) ?? false;
+                                return (
+                                  <button key={c.key} type="button" onClick={() => void toggleContract(r.agent_id, c.key)} aria-pressed={on}
+                                    className={cn("inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[13px] font-semibold transition",
+                                      on ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground")}>
+                                    {on ? <CircleCheck className="h-3.5 w-3.5" /> : <Circle className="h-3.5 w-3.5" />}{c.label}
+                                  </button>
+                                );
+                              })}
+                              <span className="ml-auto text-[12px] font-semibold tabular-nums text-muted-foreground">{done?.size ?? 0}/{CONTRACTS.length} done</span>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2 border-t border-border/60 pt-3">
+                              <span className="mr-1 w-20 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">Actions</span>
+                              <Button asChild size="sm" variant="outline" className="h-8 text-[13px]"><Link to={`/dashboard/profile?agentId=${r.agent_id}`}><ArrowUpRight className="mr-1.5 h-3.5 w-3.5" />Open full profile</Link></Button>
+                              {r.email && <Button asChild size="sm" variant="outline" className="h-8 text-[13px]"><a href={`mailto:${r.email}`}><Mail className="mr-1.5 h-3.5 w-3.5" />Email</a></Button>}
+                              {r.phone && <Button asChild size="sm" variant="outline" className="h-8 text-[13px]"><a href={phoneHref(r.phone) ?? `tel:${r.phone}`} {...contactLinkProps(phoneHref(r.phone))}><Phone className="mr-1.5 h-3.5 w-3.5" />Call</a></Button>}
+                            </div>
                           </div>
                         </TableCell>
                       </TableRow>

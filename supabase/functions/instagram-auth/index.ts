@@ -52,7 +52,9 @@ Deno.serve(async (req) => {
     // over two days and nothing could say how to fix it). ?format=json for scripts.
     if (!code && url.searchParams.get("link") === "1") {
       const IG_ID = Deno.env.get("INSTAGRAM_APP_ID") ?? APP_ID;
-      const scopes = "instagram_business_basic,instagram_business_manage_messages,instagram_business_manage_comments";
+      // instagram_business_manage_insights added 2026-10-08 so the token can read reel views/reach
+      // (apex-instagram-sync.py); without it /insights returns 403 and the Launch Board shows likes/comments only.
+      const scopes = "instagram_business_basic,instagram_business_manage_messages,instagram_business_manage_comments,instagram_business_manage_insights";
       const link = `https://www.instagram.com/oauth/authorize?client_id=${encodeURIComponent(IG_ID)}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=${scopes}&force_reauth=true`;
       if (url.searchParams.get("format") === "json") {
         return new Response(JSON.stringify({ ok: true, link, redirect_uri: REDIRECT_URI }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });

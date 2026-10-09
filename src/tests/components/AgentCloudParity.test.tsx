@@ -108,7 +108,8 @@ describe("AgentCloud parity surfaces", () => {
   });
 
   it("shows today's sale state and current streak on every Team roster row", () => {
-    const crm = source("pages/DashboardCRM.tsx");
+    // The data reads stay on the page; the Production rows that draw them moved to RosterRows.tsx.
+    const crm = `${source("pages/DashboardCRM.tsx")}\n${source("components/team/RosterRows.tsx")}`;
     expect(crm).toContain('supabase.rpc("crm_agent_sales_pulse"');
     expect(crm).toContain("Sold today");
     expect(crm).toContain("No sale today");
@@ -116,7 +117,7 @@ describe("AgentCloud parity surfaces", () => {
   });
 
   it("shows direct contacts and keeps Team scoped to the recursive hierarchy", () => {
-    const crm = source("pages/DashboardCRM.tsx");
+    const crm = `${source("pages/DashboardCRM.tsx")}\n${source("components/team/RosterRows.tsx")}`;
     const app = source("App.tsx");
     const migration = source("../supabase/migrations/20260825223500_team_hierarchy_contacts_training.sql");
     expect(crm).toContain('supabase.rpc("crm_agent_contacts"');

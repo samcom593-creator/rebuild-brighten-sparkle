@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "My Team now opens on the people who need a call, and the roster is built for that job.",
+    detail: "Priority 1 sits at the top, then one summary strip, then one toolbar. Each roster row shows the person, what contracting is still open and how late it is, the next action, the owner and the last contact. The money columns moved to a Production view, and the Call list became a view beside it instead of a panel above everything. Details opens one panel per person with the full checklist, who changed what, the follow-up plan and the production numbers, with nothing stacked on top of it. On a phone each row is a card, with no sideways scrolling. Nobody is shown as overdue yet because the day the clock starts is still not confirmed, and a failed read now says so instead of showing an all-clear.",
+    commit: "PL-MYTEAM-CLARITY-OVERHAUL",
+  },
+  {
+    ts: "today",
     label: "People not yet on file at /agent-login get sent to their invite link or to /apply. The old 'Create your account' form there could never work.",
     detail: "Since the invite-link redesign on Oct 6, only a signed-in admin or manager can create an agent account. The /agent-login page still showed a 'Create your account' form to anyone whose email or phone was not on file, and that form called the admin-only step, so every try was refused with a generic error. Last night one person on an iPhone, on the same network as a manager who was onboarding a new agent, tried it 15 times in four minutes and left. That screen now says no account is on file, tells hired agents their login comes from their manager's invite link, and sends everyone else to /apply. A test now fails if any page calls the admin-only account step again.",
     commit: "PL-WIB-AGENT-LOGIN-DEAD-SIGNUP",

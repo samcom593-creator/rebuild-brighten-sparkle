@@ -7,14 +7,16 @@ import { AgentAvatar, getAvatarUrl } from "@/components/ui/AgentAvatar";
 import { useSearchParams, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  matchesContractingFilter, useCheckoffToggle, useTeamContracting,
-  type ContractingFilter, type TeamPerson,
+  CONTRACTING_FILTERS, compareByUrgency, ensureCompleteRead, matchesContractingFilter, plural,
+  type ContractingFilter,
 } from "@/lib/teamContracting";
+import { daysSince, isSyncOnly, num, usdOrNull, type RosterRow } from "@/lib/teamRoster";
+import { useTeamWorkspace } from "@/hooks/useTeamWorkspace";
 import { ContractingPriorityPanel } from "@/components/team/ContractingPriorityPanel";
-import { ContractingFilterBar } from "@/components/team/ContractingFilterBar";
-import { ContractingFollowupDialog } from "@/components/team/ContractingFollowupDialog";
-import { MilestoneChecklist, MilestoneChips, RowBadges } from "@/components/team/ContractingBadges";
-import { Users, Search, RefreshCw, Clock, AlertTriangle, ChevronRight, Mail, Phone, UserX, Filter, GraduationCap, Briefcase, Sparkles, Instagram, X, Send, CheckSquare, EyeOff, Link2, Eye, FileText, KeyRound, Copy, StickyNote, ClipboardCheck, Circle, CircleCheck, MoreHorizontal, TrendingUp, BadgeCheck, ArrowUpRight, Network, UserCheck, Flame, ChevronDown, Download } from "lucide-react";
+import { RosterToolbar, type ActiveFilter } from "@/components/team/RosterToolbar";
+import { RosterWorkList, RosterProductionList } from "@/components/team/RosterRows";
+import { TeamPersonDrawer } from "@/components/team/TeamPersonDrawer";
+import { ShieldCheck, Users, Search, RefreshCw, Clock, AlertTriangle, ChevronRight, Mail, Phone, UserX, Filter, GraduationCap, Briefcase, Sparkles, Instagram, X, Send, CheckSquare, EyeOff, Link2, Eye, FileText, KeyRound, Copy, StickyNote, ClipboardCheck, Circle, CircleCheck, MoreHorizontal, TrendingUp, BadgeCheck, ArrowUpRight, Network, UserCheck, Flame, ChevronDown, Download } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -409,45 +411,6 @@ function InlineNotesButton({ agent }: { agent: AgentCRM }) {
    forgets to copy.
 ──────────────────────────────────────────────────────────────────────────── */
 
-interface RosterRow {
-  agent_id: string;
-  full_name: string | null;
-  email: string | null;
-  phone: string | null;
-  avatar_url: string | null;
-  agent_code: string | null;
-  status: string | null;
-  is_deactivated: boolean | null;
-  is_inactive: boolean | null;
-  is_sync_only: boolean | null;
-  license_status: string | null;
-  license_progress: string | null;
-  onboarding_stage: string | null;
-  training_stage: string | null;
-  manager_id: string | null;
-  manager_name: string | null;
-  downline_count: number | null;
-  contracts_total: number | null;
-  contracts_active: number | null;
-  mtd_alp: number | string | null;
-  mtd_deals: number | null;
-  today_alp: number | string | null;
-  today_deals: number | null;
-  selling_streak_days: number | null;
-  free_leads_qualified: boolean;
-  free_leads_reason: string | null;
-  free_leads_needed_for_qual: number | string | null;
-  l30_alp: number | string | null;
-  l30_deals: number | null;
-  lifetime_alp: number | string | null;
-  lifetime_deals: number | null;
-  first_posted_date: string | null;
-  last_posted_date: string | null;
-  last_contacted_at: string | null;
-  created_at: string | null;
-  tenure_days: number | null;
-}
-
 interface RosterContact {
   agent_id: string;
   full_name: string | null;
@@ -470,24 +433,6 @@ interface TodayProduction {
   business_date: string;
 }
 
-const num = (v: number | string | null | undefined): number => Number(v ?? 0) || 0;
-
-/** Compact USD. Returns null (never "$0") when there is genuinely nothing on file. */
-function usdOrNull(v: number | string | null | undefined): string | null {
-  const n = num(v);
-  if (n <= 0) return null;
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
-  if (n >= 1_000) return `$${(n / 1_000).toFixed(1)}K`;
-  return `$${Math.round(n).toLocaleString()}`;
-}
-
-const daysSince = (iso: string | null): number | null => {
-  if (!iso) return null;
-  const t = new Date(iso).getTime();
-  if (Number.isNaN(t)) return null;
-  return Math.max(0, Math.floor((Date.now() - t) / 86_400_000));
-};
-
 type RosterSegmentKey =
   | "all" | "new_hires" | "producing" | "never_produced"
   | "no_longer_here" | "unlicensed" | "inactive" | "terminated" | "free_leads" | "free_leads_close"
@@ -506,8 +451,6 @@ type RosterSegmentKey =
  * wears. ProducerProfile.tsx:277 badged them; the LIST where the work actually
  * happens did not.
  */
-const isSyncOnly = (r: RosterRow): boolean => r.is_sync_only === true;
-
 /**
  * Honest segmentation — every predicate reads a column the row actually carries,
  * and the chip count is the length of the very list the chip renders, so a chip
@@ -578,96 +521,50 @@ const ROSTER_SEGMENTS: Array<{
 
 type RosterSortKey = "mtd_desc" | "l30_desc" | "lifetime_desc" | "streak_desc" | "name" | "stalest" | "newest";
 
-// Where a hire is in the onboarding journey, as a 5-step ladder Sam can read at
-// a glance from My Team → New hires: Applied → Pre-licensed → Onboarding →
-// Training → Live. Licensed producers are simply "Live". Reads the columns the
-// row already carries (onboarding_stage / license_status / training_stage) — no
-// new query.
-const ONBOARDING_LADDER = ["Applied", "Pre-licensed", "Onboarding", "Training", "Live"] as const;
-function onboardingStep(row: RosterRow): number {
-  if (row.license_status === "licensed") {
-    const s = (row.onboarding_stage ?? "").toLowerCase();
-    if (s.includes("training") || s.includes("in_field")) return 3;
-    return 4; // live / evaluated / producing
-  }
-  const s = (row.onboarding_stage ?? row.license_progress ?? "").toLowerCase();
-  if (s.includes("training")) return 3;
-  if (s.includes("onboard")) return 2;
-  if (s.includes("pre_licens") || s.includes("licens")) return 1;
-  return 0; // applied / brand-new
-}
-function OnboardingProgress({ row }: { row: RosterRow }) {
-  const step = onboardingStep(row);
-  const label = ONBOARDING_LADDER[step];
-  const done = row.license_status === "licensed" && step === 4;
-  return (
-    <div className="min-w-[120px]">
-      <div className="flex items-center gap-1.5">
-        <span className={cn("text-[12px] font-semibold", done ? "text-success" : "text-foreground")}>{label}</span>
-        <span className="text-[11px] tabular-nums text-muted-foreground">{step + 1}/5</span>
-      </div>
-      <div className="mt-1 flex gap-0.5" aria-label={`Onboarding step ${step + 1} of 5: ${label}`}>
-        {ONBOARDING_LADDER.map((name, i) => (
-          <span
-            key={name}
-            title={name}
-            className={cn(
-              "h-1.5 flex-1 rounded-full",
-              i < step ? "bg-primary/50" : i === step ? (done ? "bg-success" : "bg-primary") : "bg-muted",
-            )}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
+type RosterMode = "work" | "production";
 
-function RosterStatusBadge({ row }: { row: RosterRow }) {
-  const s = row.status ?? "unknown";
-  const tone =
-    s === "active" ? "border-success/30 bg-success/15 text-success"
-    : s === "terminated" ? "border-destructive/30 bg-destructive/10 text-destructive"
-    : "bg-muted text-muted-foreground";
-  return (
-    <Badge variant="outline" className={cn("text-[11px] font-bold uppercase tracking-wide", tone)}>
-      {s}
-    </Badge>
-  );
-}
+const WORK_SORTS = [
+  { value: "urgency", label: "Contracting urgency" },
+  { value: "contact_stale", label: "Longest since contact" },
+  { value: "newest", label: "Newest on the roster" },
+  { value: "name", label: "Name (A to Z)" },
+];
+const PRODUCTION_SORTS = [
+  { value: "mtd_desc", label: "Month ALP (high to low)" },
+  { value: "l30_desc", label: "Last 30 days ALP" },
+  { value: "lifetime_desc", label: "Lifetime ALP" },
+  { value: "streak_desc", label: "Current sales streak" },
+  { value: "stalest", label: "Longest since a sale" },
+  { value: "newest", label: "Newest on the roster" },
+  { value: "name", label: "Name (A to Z)" },
+];
 
-function RosterPanel({ rows, isLoading, isError, onRetry }: {
+/** The first sentence of a group's description. The rest is definition detail that does not help anyone decide. */
+const leadSentence = (desc: string): string => {
+  const i = desc.indexOf(". ");
+  return i === -1 ? desc : desc.slice(0, i + 1);
+};
+
+function RosterPanel({ rows, isLoading, isError, onRetry, mode, team, cFilter, onCFilter, cMilestone, onCMilestone }: {
   rows: RosterRow[];
   isLoading: boolean;
   isError: boolean;
   onRetry: () => void;
+  mode: RosterMode;
+  team: ReturnType<typeof useTeamWorkspace>;
+  cFilter: ContractingFilter;
+  onCFilter: (f: ContractingFilter) => void;
+  cMilestone: string;
+  onCMilestone: (m: string) => void;
 }) {
   const [segment, setSegment] = useState<RosterSegmentKey>("new_hires");
   const [q, setQ] = useState("");
   const [managerFilter, setManagerFilter] = useState("all");
-  const [sort, setSort] = useState<RosterSortKey>("mtd_desc");
-  // Contracting follow-up: ONE server calculation (team_contracting_status) drives the urgent section, the row badges,
-  // the filters and the expanded checklist. The old direct table read is gone: it could never succeed (no SELECT
-  // grant), swallowed its own error, and so showed every milestone unchecked.
-  const { isAdmin, isManager, isVaManager, isVa } = useAuth();
-  const queryClient = useQueryClient();
-  const contractingEnabled = isAdmin || isManager || isVaManager || isVa;
-  const canTick = isAdmin || isManager;
-  const tc = useTeamContracting(contractingEnabled);
-  const checkoff = useCheckoffToggle(tc.queryKey);
-  const [cFilter, setCFilter] = useState<ContractingFilter>("all");
-  const [cMilestone, setCMilestone] = useState("all");
-  const [planFor, setPlanFor] = useState<TeamPerson | null>(null);
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  // A tick made in another session arrives as an INSERT on the append-only events table (INSERT-only, scoped by RLS).
-  useRealtimeTable({ table: "agent_contract_checkoff_events", event: "INSERT", channelSuffix: "team-contracting", coalesceMs: 750, enabled: contractingEnabled }, () => {
-    void queryClient.invalidateQueries({ queryKey: tc.queryKey });
-  });
-  const rowById = useMemo(() => new Map(rows.map((r) => [r.agent_id, r] as const)), [rows]);
-  const contactFor = useCallback((id: string) => {
-    const r = rowById.get(id) ?? (tc.byAgent.get(id)?.alias_ids ?? []).map((a) => rowById.get(a)).find(Boolean);
-    return { phone: r?.phone ?? null, email: r?.email ?? null };
-  }, [rowById, tc.byAgent]);
-  const toggleExpand = (id: string) => setExpanded((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const [sortChoice, setSortChoice] = useState<string>("urgency");
+  const { tc } = team;
+  const sortOptions = mode === "work" ? WORK_SORTS : PRODUCTION_SORTS;
+  // Each view has its own sort list; a sort that does not exist in this view falls back to the view's first one.
+  const sort = sortOptions.some((o) => o.value === sortChoice) ? sortChoice : sortOptions[0].value;
 
   const managers = useMemo(() => {
     const m = new Map<string, string>();
@@ -693,25 +590,37 @@ function RosterPanel({ rows, isLoading, isError, onRetry }: {
     });
   }, [rows, q, managerFilter]);
 
-  // Chip counts are computed from the SAME searched list the table renders, so a
-  // chip can never claim a number the rows below contradict.
+  // Group counts come from the SAME searched list the rows are drawn from, so a count can never contradict the list.
   const bySegment = useMemo(() => {
     const m = new Map<RosterSegmentKey, RosterRow[]>();
     for (const seg of ROSTER_SEGMENTS) m.set(seg.key, searched.filter(seg.match));
     return m;
   }, [searched]);
 
+  // The contracting filter only applies while the contracting read has succeeded. If it failed, the rows stay
+  // visible and every contracting cell says "Status unavailable"; nothing is silently hidden by a filter that cannot be evaluated.
+  const contractingFilterActive = mode === "work" && cFilter !== "all" && Boolean(tc.data);
+
   const visible = useMemo(() => {
     const base = bySegment.get(segment) ?? [];
-    const list = cFilter === "all" || !tc.data
+    const list = !contractingFilterActive
       ? [...base]
       : base.filter((r) => { const p = tc.byAgent.get(r.agent_id); return p ? matchesContractingFilter(p, cFilter, cMilestone) : false; });
+    const name = (r: RosterRow) => r.full_name ?? "";
     switch (sort) {
+      case "urgency": list.sort((a, b) => compareByUrgency(tc.byAgent.get(a.agent_id), tc.byAgent.get(b.agent_id)) || name(a).localeCompare(name(b))); break;
+      case "contact_stale": list.sort((a, b) => {
+        const at = tc.byAgent.get(a.agent_id)?.followup.last_at;
+        const bt = tc.byAgent.get(b.agent_id)?.followup.last_at;
+        const av = at ? new Date(at).getTime() : -Infinity; // never contacted sorts first
+        const bv = bt ? new Date(bt).getTime() : -Infinity;
+        return av - bv || name(a).localeCompare(name(b));
+      }); break;
       case "mtd_desc": list.sort((a, b) => num(b.mtd_alp) - num(a.mtd_alp)); break;
       case "l30_desc": list.sort((a, b) => num(b.l30_alp) - num(a.l30_alp)); break;
       case "lifetime_desc": list.sort((a, b) => num(b.lifetime_alp) - num(a.lifetime_alp)); break;
       case "streak_desc": list.sort((a, b) => num(b.selling_streak_days) - num(a.selling_streak_days) || num(b.today_alp) - num(a.today_alp)); break;
-      case "name": list.sort((a, b) => (a.full_name ?? "").localeCompare(b.full_name ?? "")); break;
+      case "name": list.sort((a, b) => name(a).localeCompare(name(b))); break;
       case "newest": list.sort((a, b) => (b.tenure_days ?? -1) === (a.tenure_days ?? -1) ? 0 : (a.tenure_days ?? 1e9) - (b.tenure_days ?? 1e9)); break;
       case "stalest": list.sort((a, b) => {
         const at = a.last_posted_date ? new Date(a.last_posted_date).getTime() : 0;
@@ -720,9 +629,22 @@ function RosterPanel({ rows, isLoading, isError, onRetry }: {
       }); break;
     }
     return list;
-  }, [bySegment, segment, sort, cFilter, cMilestone, tc.data, tc.byAgent]);
+  }, [bySegment, segment, sort, contractingFilterActive, cFilter, cMilestone, tc.byAgent]);
 
   const activeSeg = ROSTER_SEGMENTS.find((s) => s.key === segment)!;
+  const groupRows = bySegment.get(segment) ?? [];
+  const placeholders = visible.filter(isSyncOnly).length;
+
+  const activeFilters: ActiveFilter[] = [
+    ...(q.trim() !== "" ? [{ key: "q", label: `Search: ${q.trim()}`, onRemove: () => setQ("") }] : []),
+    ...(managerFilter !== "all" ? [{ key: "mgr", label: `Upline: ${managers.find(([id]) => id === managerFilter)?.[1] ?? "selected"}`, onRemove: () => setManagerFilter("all") }] : []),
+    ...(contractingFilterActive ? [{
+      key: "c",
+      label: `${CONTRACTING_FILTERS.find((f) => f.key === cFilter)?.label ?? cFilter}${cMilestone !== "all" ? `: ${tc.data?.policy[cMilestone]?.label ?? cMilestone}` : ""}`,
+      onRemove: () => { onCFilter("all"); onCMilestone("all"); },
+    }] : []),
+  ];
+  const clearAll = () => { setQ(""); setManagerFilter("all"); onCFilter("all"); onCMilestone("all"); };
 
   if (isError) {
     return (
@@ -731,7 +653,7 @@ function RosterPanel({ rows, isLoading, isError, onRetry }: {
           icon={<Users className="h-7 w-7" />}
           variant="warning"
           title="The roster could not be read"
-          description="crm_agent_roster() did not answer. Nothing is being guessed at in its place — retry, and if it keeps failing the roster functions need looking at."
+          description="crm_agent_roster() did not answer, or its answer may have been cut short. Nothing is being guessed at in its place. Retry, and if it keeps failing the roster functions need looking at."
           actions={<Button variant="outline" size="sm" onClick={onRetry}>Retry</Button>}
         />
       </GlassCard>
@@ -739,343 +661,67 @@ function RosterPanel({ rows, isLoading, isError, onRetry }: {
   }
 
   return (
-    <div className="space-y-3">
-      <ContractingPriorityPanel q={tc} contactFor={contactFor} />
-      <GlassCard className="p-4">
-        <div className="flex flex-col flex-wrap gap-2 sm:flex-row">
-          <div className="relative min-w-0 flex-1 sm:min-w-[200px]">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 shrink-0 text-muted-foreground" />
-            <Input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Search name, email, phone, code, upline, or status..."
-              aria-label="Search the canonical roster"
-              className="h-10 pl-9 text-sm sm:h-9"
-            />
-          </div>
-          {managers.length > 0 && (
-            <Select value={managerFilter} onValueChange={setManagerFilter}>
-              <SelectTrigger aria-label="Filter roster by upline" className="h-10 w-full text-sm sm:h-9 sm:w-[170px]">
-                <Network className="mr-1.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                <SelectValue placeholder="All uplines" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All uplines</SelectItem>
-                {managers.map(([id, name]) => <SelectItem key={id} value={id}>{name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          )}
-          <Select value={sort} onValueChange={(v) => setSort(v as RosterSortKey)}>
-            <SelectTrigger aria-label="Sort the roster" className="h-10 w-full text-sm sm:h-9 sm:w-[180px]"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="mtd_desc">Month ALP (high → low)</SelectItem>
-              <SelectItem value="l30_desc">Last 30d ALP</SelectItem>
-              <SelectItem value="lifetime_desc">Lifetime ALP</SelectItem>
-              <SelectItem value="streak_desc">Current sales streak</SelectItem>
-              <SelectItem value="stalest">Longest since a sale</SelectItem>
-              <SelectItem value="newest">Newest on the roster</SelectItem>
-              <SelectItem value="name">Name (A → Z)</SelectItem>
-            </SelectContent>
-          </Select>
-          {(q.trim() !== "" || managerFilter !== "all") && (
-            <Button variant="ghost" size="sm" className="h-10 gap-1.5 text-muted-foreground hover:text-foreground sm:ml-auto sm:h-9"
-              onClick={() => { setQ(""); setManagerFilter("all"); }}>
-              <X className="h-4 w-4 shrink-0" /> Clear
-            </Button>
-          )}
-        </div>
-      </GlassCard>
+    <div className="space-y-3" id="team-roster">
+      <RosterToolbar
+        mode={mode}
+        q={q} onQ={setQ}
+        managers={managers} manager={managerFilter} onManager={setManagerFilter}
+        groups={ROSTER_SEGMENTS.map((s) => ({ key: s.key, label: s.label, count: (bySegment.get(s.key) ?? []).length }))}
+        group={segment} onGroup={(v) => setSegment(v as RosterSegmentKey)}
+        sort={sort} onSort={setSortChoice} sortOptions={sortOptions}
+        status={mode === "work" ? tc.data : undefined}
+        cFilter={cFilter} onCFilter={(f) => { onCFilter(f); if (f !== "p1" && f !== "due_soon") onCMilestone("all"); }}
+        cMilestone={cMilestone} onCMilestone={onCMilestone}
+        shown={visible.length} groupTotal={groupRows.length} groupLabel={activeSeg.label}
+        activeFilters={activeFilters} onClearAll={clearAll}
+      />
 
-      <div className="-mx-4 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
-        <div className="flex min-w-max gap-1.5 rounded-lg border border-border bg-card p-1.5">
-          {ROSTER_SEGMENTS.map((seg) => {
-            const Icon = seg.icon;
-            const count = (bySegment.get(seg.key) ?? []).length;
-            const isActive = seg.key === segment;
-            return (
-              <button
-                key={seg.key}
-                type="button"
-                onClick={() => setSegment(seg.key)}
-                aria-pressed={isActive}
-                className={cn(
-                  "inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors",
-                  "focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
-                  isActive
-                    ? "bg-primary/10 text-foreground ring-1 ring-primary/60"
-                    : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
-                )}
-              >
-                <Icon className="h-4 w-4 shrink-0" />
-                {seg.label}
-                <Badge variant="outline" className="h-4 px-1.5 text-[11px] font-bold tabular-nums">{count}</Badge>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {tc.data ? (
-        <ContractingFilterBar
-          status={tc.data}
-          filter={cFilter}
-          onFilter={(f) => { setCFilter(f); if (f !== "p1" && f !== "due_soon") setCMilestone("all"); }}
-          milestone={cMilestone}
-          onMilestone={setCMilestone}
-          shown={visible.length}
-          rosterTotal={rows.length}
-          narrowed={cFilter !== "all" || q.trim() !== "" || managerFilter !== "all"}
-        />
-      ) : null}
-
-      <GlassCard className="overflow-hidden p-4">
-        <div className="mb-1 flex items-baseline justify-between gap-2">
-          <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
-            <activeSeg.icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+      <GlassCard className="p-3 sm:p-4">
+        <div className="flex items-baseline justify-between gap-2">
+          <h3 className="flex min-w-0 items-center gap-2 text-base font-semibold text-foreground">
+            <activeSeg.icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
             <span className="truncate">{activeSeg.label}</span>
           </h3>
-          <span className="shrink-0 text-sm font-bold tabular-nums text-muted-foreground">{visible.length}</span>
+          <span className="shrink-0 text-sm font-semibold tabular-nums text-muted-foreground" aria-label={`${visible.length} people shown`}>{visible.length}</span>
         </div>
-        <p className="mb-3 text-xs leading-relaxed text-muted-foreground">{activeSeg.desc}</p>
+        <p className="mb-2 text-xs text-muted-foreground">
+          {leadSentence(activeSeg.desc)}
+          {placeholders > 0 ? ` Includes ${plural(placeholders, "placeholder seat")} that ${placeholders === 1 ? "is" : "are"} not a person.` : ""}
+        </p>
 
         {isLoading ? (
-          <div className="space-y-2">
-            {[...Array(8)].map((_, i) => (
+          <div className="space-y-2" role="status" aria-label="Loading the roster">
+            {[...Array(6)].map((_, i) => (
               // stable-key-allow:skeleton — static Array(N) decorative loader, no reorder
-              <div key={i} className="h-[56px] animate-pulse rounded-lg bg-muted/30" />
+              <div key={i} className="h-[76px] animate-pulse rounded-md bg-muted/30" />
             ))}
           </div>
         ) : visible.length === 0 ? (
           <EmptyState
             icon={<Users className="h-7 w-7" />}
-            title="No agents sit in this segment"
-            description={
-              q.trim() || managerFilter !== "all"
-                ? "The search or upline filter may be too tight — clear them to see the whole segment."
-                : "Nothing on the roster matches this definition right now. That is the honest answer, not a loading state."
-            }
-            actions={(q.trim() || managerFilter !== "all") ? (
-              <Button variant="outline" size="sm" onClick={() => { setQ(""); setManagerFilter("all"); }}>Clear filters</Button>
-            ) : undefined}
+            title="Nobody matches"
+            description={activeFilters.length > 0
+              ? "A filter may be too tight. Clear them to see the whole group."
+              : "Nothing on the roster fits this group right now. That is the honest answer, not a loading state."}
+            actions={activeFilters.length > 0 ? <Button variant="outline" size="sm" onClick={clearAll}>Clear filters</Button> : undefined}
           />
+        ) : mode === "work" ? (
+          <RosterWorkList rows={visible} byAgent={tc.byAgent} selectedId={team.selectedId} onOpen={team.openPerson} read={team.read} />
         ) : (
-          <div className="-mx-4 overflow-x-auto sm:mx-0">
-            <Table className="min-w-[1300px]">
-              <TableHeader>
-                <TableRow className="border-b border-border hover:bg-transparent [&_th]:h-9 [&_th]:text-[11px] [&_th]:font-bold [&_th]:uppercase [&_th]:tracking-wide [&_th]:text-muted-foreground">
-                  <TableHead className="w-[270px] px-2">Agent &amp; contact</TableHead>
-                  <TableHead className="w-[120px] px-2">Upline</TableHead>
-                  <TableHead className="w-[100px] px-2">Status</TableHead>
-                  <TableHead className="w-[100px] px-2">License</TableHead>
-                  <TableHead className="w-[140px] px-2">Onboarding</TableHead>
-                  <TableHead className="w-[120px] px-2">Today</TableHead>
-                  <TableHead className="w-[90px] px-2 text-center">Streak</TableHead>
-                  <TableHead className="w-[110px] px-2 text-right">Month ALP</TableHead>
-                  <TableHead className="w-[110px] px-2 text-right">Last 30d</TableHead>
-                  <TableHead className="w-[120px] px-2 text-right">Lifetime</TableHead>
-                  <TableHead className="w-[120px] px-2">Last sale</TableHead>
-                  <TableHead className="w-[90px] px-2 text-right">Tenure</TableHead>
-                  <TableHead className="w-[80px] px-2 text-right">Profile</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {visible.map((r) => {
-                  const mtd = usdOrNull(r.mtd_alp);
-                  const l30 = usdOrNull(r.l30_alp);
-                  const life = usdOrNull(r.lifetime_alp);
-                  const sinceSale = daysSince(r.last_posted_date);
-                  const isOpen = expanded.has(r.agent_id);
-                  const person = tc.byAgent.get(r.agent_id);
-                  return (
-                    <React.Fragment key={r.agent_id}>
-                    <TableRow className="border-b border-border/60 transition-colors hover:bg-muted/30">
-                      <TableCell className="px-2 py-2">
-                        <div className="flex min-w-0 items-center gap-2">
-                          <AgentAvatar avatarUrl={getAvatarUrl(r.avatar_url ?? undefined)} name={r.full_name ?? "—"} size="sm" className="shrink-0 shadow-sm ring-2 ring-background" />
-                          <div className="min-w-0">
-                            <div className="flex min-w-0 items-center gap-1.5">
-                              <Link
-                                to={`/dashboard/profile?agentId=${r.agent_id}`}
-                                className="block min-w-0 truncate text-sm font-medium text-foreground underline-offset-2 decoration-dotted hover:text-primary hover:underline"
-                              >
-                                {r.full_name ?? "Name not on file"}
-                              </Link>
-                              {isSyncOnly(r) && (
-                                <Badge
-                                  variant="outline"
-                                  className="h-4 shrink-0 border-amber-500/50 bg-amber-500/10 px-1.5 text-[10px] font-bold uppercase tracking-wide text-amber-500 ring-1 ring-amber-500/20"
-                                  title="Placeholder seat, not a person. Minted by the Discord deal ingest to hold production it could not match to an agent — no login, no onboarding path, nothing to chase."
-                                >
-                                  <Link2 className="mr-1 h-2.5 w-2.5 shrink-0" />
-                                  Sync only
-                                </Badge>
-                              )}
-                              {r.free_leads_qualified && (
-                                <Badge
-                                  variant="outline"
-                                  className="h-4 shrink-0 border-sky-500/50 bg-sky-500/10 px-1.5 text-[10px] font-bold uppercase tracking-wide text-sky-400 ring-1 ring-sky-500/20"
-                                  title={r.free_leads_reason ?? "Free Leads active"}
-                                >
-                                  <span className="mr-1 h-1.5 w-1.5 rounded-full bg-sky-400" />
-                                  Free Leads
-                                </Badge>
-                              )}
-                            </div>
-                            {person ? <RowBadges p={person} className="mt-0.5" /> : null}
-                            {person ? <MilestoneChips p={person} /> : null}
-                            {r.email ? (
-                              <a href={`mailto:${r.email}`} className="block truncate text-[12px] text-muted-foreground hover:text-primary hover:underline">
-                                <Mail className="mr-1 inline h-3 w-3" />{r.email}
-                              </a>
-                            ) : <p className="truncate text-[12px] italic text-muted-foreground">No email on file</p>}
-                            {r.phone ? (
-                              <a href={phoneHref(r.phone) ?? `tel:${r.phone}`} {...contactLinkProps(phoneHref(r.phone))} className="block truncate text-[12px] tabular-nums text-muted-foreground hover:text-primary hover:underline">
-                                <Phone className="mr-1 inline h-3 w-3" />{r.phone}
-                              </a>
-                            ) : <p className="truncate text-[12px] italic text-muted-foreground">No phone on file</p>}
-                            {r.agent_code && (
-                              <p className="truncate text-[12px] tabular-nums text-muted-foreground/70">{r.agent_code}</p>
-                            )}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="px-2 py-2">
-                        <span className="inline-block max-w-[112px] truncate text-[12px] text-muted-foreground">
-                          {r.manager_name ?? "—"}
-                        </span>
-                      </TableCell>
-                      <TableCell className="px-2 py-2"><RosterStatusBadge row={r} /></TableCell>
-                      <TableCell className="px-2 py-2">
-                        <Badge variant="outline" className={cn(
-                          "text-[11px] font-bold uppercase tracking-wide",
-                          r.license_status === "licensed" ? "border-success/30 bg-success/15 text-success" : "bg-muted text-muted-foreground",
-                        )}>
-                          {r.license_status ?? "unknown"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="px-2 py-2"><OnboardingProgress row={r} /></TableCell>
-                      <TableCell className="px-2 py-2">
-                        {(r.today_deals ?? 0) > 0 ? (
-                          <div>
-                            <Badge variant="outline" className="border-success/30 bg-success/15 text-[11px] font-bold uppercase tracking-wide text-success">
-                              Sold today
-                            </Badge>
-                            <p className="mt-0.5 text-[11px] tabular-nums text-muted-foreground">
-                              {usdOrNull(r.today_alp) ?? "$0"} · {r.today_deals} {r.today_deals === 1 ? "deal" : "deals"}
-                            </p>
-                          </div>
-                        ) : (
-                          <Badge variant="outline" className="bg-muted text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                            No sale today
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="px-2 py-2 text-center">
-                        {(r.selling_streak_days ?? 0) > 0 ? (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-warning/30 bg-warning/10 px-2 py-1 text-[12px] font-bold tabular-nums text-warning">
-                            <Flame className="h-3.5 w-3.5" /> {r.selling_streak_days}d
-                          </span>
-                        ) : (
-                          <span className="text-[12px] text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="px-2 py-2 text-right">
-                        <span className={cn("text-sm font-bold tabular-nums", mtd ? "text-success" : "text-muted-foreground")}>
-                          {mtd ?? "—"}
-                        </span>
-                        {(r.mtd_deals ?? 0) > 0 && (
-                          <span className="ml-1 text-[11px] tabular-nums text-muted-foreground">×{r.mtd_deals}</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="px-2 py-2 text-right">
-                        <span className={cn("text-sm tabular-nums", l30 ? "text-foreground" : "text-muted-foreground")}>{l30 ?? "—"}</span>
-                      </TableCell>
-                      <TableCell className="px-2 py-2 text-right">
-                        <span className={cn("text-sm tabular-nums", life ? "text-foreground" : "text-muted-foreground")}>{life ?? "—"}</span>
-                        {(r.lifetime_deals ?? 0) > 0 && (
-                          <span className="ml-1 text-[11px] tabular-nums text-muted-foreground">×{r.lifetime_deals}</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="px-2 py-2">
-                        {r.last_posted_date ? (
-                          <div className="flex items-center gap-2">
-                            <span className={cn("h-2 w-2 shrink-0 rounded-full",
-                              sinceSale !== null && sinceSale >= 60 ? "bg-rose-500"
-                                : sinceSale !== null && sinceSale >= 14 ? "bg-amber-500" : "bg-emerald-500")} aria-hidden />
-                            <div className="leading-tight">
-                              <div className={cn("text-[13px] font-semibold",
-                                sinceSale !== null && sinceSale >= 60 ? "text-rose-600 dark:text-rose-400"
-                                  : sinceSale !== null && sinceSale >= 14 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400")}>
-                                {sinceSale === 0 ? "Today" : sinceSale === 1 ? "Yesterday" : sinceSale !== null ? `${Math.max(0, sinceSale)} days ago` : "—"}
-                              </div>
-                              <div className="text-[11px] text-muted-foreground">{(() => { try { return new Date(`${r.last_posted_date}T12:00:00Z`).toLocaleDateString("en-US", { timeZone: "UTC", month: "short", day: "numeric", year: "numeric" }); } catch { return r.last_posted_date; } })()}</div>
-                            </div>
-                          </div>
-                        ) : (
-                          <span className="inline-flex items-center rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[12px] text-muted-foreground">Never sold</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="px-2 py-2 text-right">
-                        <span className="text-[12px] tabular-nums text-muted-foreground">
-                          {r.tenure_days === null || r.tenure_days === undefined ? "—" : `${r.tenure_days}d`}
-                        </span>
-                      </TableCell>
-                      <TableCell className="px-2 py-2 text-right">
-                        <div className="flex items-center justify-end gap-0.5">
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" aria-expanded={isOpen} aria-label={`${isOpen ? "Hide" : "Show"} contracts for ${r.full_name ?? "this agent"}`} onClick={() => toggleExpand(r.agent_id)}>
-                            {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                          </Button>
-                          <Button asChild variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label={`Open producer profile for ${r.full_name ?? "this agent"}`}>
-                            <Link to={`/dashboard/profile?agentId=${r.agent_id}`}><ArrowUpRight className="h-4 w-4" /></Link>
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                    {isOpen && (
-                      <TableRow className="border-b border-border/60 bg-muted/20 hover:bg-muted/20">
-                        <TableCell colSpan={11} className="px-4 py-3">
-                          <div className="flex flex-col gap-3">
-                            <div className="flex flex-col gap-1.5 sm:flex-row sm:items-start">
-                              <span className="mr-1 w-20 shrink-0 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">Contracts</span>
-                              {tc.isLoading ? (
-                                <span className="text-[13px] text-muted-foreground">Loading contracting status…</span>
-                              ) : tc.isError ? (
-                                <span className="text-[13px] text-amber-600 dark:text-amber-400">
-                                  Contracting status unavailable.{" "}
-                                  <button type="button" className="font-semibold underline" onClick={() => void tc.refetch()}>Retry</button>
-                                </span>
-                              ) : person ? (
-                                <div className="min-w-0 flex-1">
-                                  <MilestoneChecklist p={person} canEdit={canTick} onToggle={(id, key, d, name) => void checkoff.toggle(id, key, d, name)} isPending={checkoff.isPending} />
-                                </div>
-                              ) : (
-                                <span className="text-[13px] text-muted-foreground">
-                                  Contracting milestones do not apply to this person yet{r.license_status !== "licensed" ? " (not licensed)" : ""}.
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex flex-wrap items-center gap-2 border-t border-border/60 pt-3">
-                              <span className="mr-1 w-20 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">Actions</span>
-                              <Button asChild size="sm" variant="outline" className="h-8 text-[13px]"><Link to={`/dashboard/profile?agentId=${r.agent_id}`}><ArrowUpRight className="mr-1.5 h-3.5 w-3.5" />Open full profile</Link></Button>
-                              {person ? <Button size="sm" variant="outline" className="h-8 text-[13px]" onClick={() => setPlanFor(person)}>Follow-up</Button> : null}
-                              {r.email && <Button asChild size="sm" variant="outline" className="h-8 text-[13px]"><a href={`mailto:${r.email}`}><Mail className="mr-1.5 h-3.5 w-3.5" />Email</a></Button>}
-                              {r.phone && <Button asChild size="sm" variant="outline" className="h-8 text-[13px]"><a href={phoneHref(r.phone) ?? `tel:${r.phone}`} {...contactLinkProps(phoneHref(r.phone))}><Phone className="mr-1.5 h-3.5 w-3.5" />Call</a></Button>}
-                            </div>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                    </React.Fragment>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
+          <RosterProductionList rows={visible} selectedId={team.selectedId} onOpen={team.openPerson} />
         )}
       </GlassCard>
-      <ContractingFollowupDialog person={planFor} queryKey={tc.queryKey} onClose={() => setPlanFor(null)} />
     </div>
   );
+}
+
+/**
+ * One action cluster for the page header. PageHeader folds every action after the first into a "More (n)" step on
+ * phones; with Add Agent plus a menu that produced a "More" that only revealed another "More". A single component child
+ * (not a bare div, which PageHeader unwraps) keeps both controls on one row at every width.
+ */
+function HeaderActionRow({ children }: { children: React.ReactNode }) {
+  return <div className="flex w-full items-center gap-2 sm:w-auto [&>*:first-child]:flex-1 sm:[&>*:first-child]:flex-none">{children}</div>;
 }
 
 export default function DashboardCRM() {
@@ -1169,6 +815,11 @@ export default function DashboardCRM() {
       if (pulseResult.error) throw pulseResult.error;
       if (contactResult.error) throw contactResult.error;
       if (freeLeadsResult.error) throw freeLeadsResult.error;
+      // A read that stops exactly at the platform page limit may be cut short: fail it rather than show a roster that quietly ends.
+      ensureCompleteRead("crm_agent_roster", rosterResult.data as unknown as unknown[]);
+      ensureCompleteRead("crm_agent_sales_pulse", pulseResult.data as unknown as unknown[]);
+      ensureCompleteRead("crm_agent_contacts", contactResult.data as unknown as unknown[]);
+      ensureCompleteRead("crm_agent_free_leads_status", freeLeadsResult.data as unknown as unknown[]);
       const pulseByAgent = new Map(
         ((pulseResult.data as unknown as Array<Pick<RosterRow, "agent_id" | "today_alp" | "today_deals" | "selling_streak_days">>) ?? [])
           .map((row) => [row.agent_id, row] as const),
@@ -1198,6 +849,30 @@ export default function DashboardCRM() {
       }));
     },
   });
+
+  // My Team workspace: the one contracting read, the audited checkoff toggle, and the person drawer (?person=).
+  const [rosterMode, setRosterMode] = useState<"work" | "production" | "calls">(() => {
+    try {
+      const v = localStorage.getItem("crm.mode.v1");
+      return v === "production" || v === "calls" ? v : "work";
+    } catch { return "work"; } // empty-catch-allow:localstorage-incognito
+  });
+  useEffect(() => {
+    try { localStorage.setItem("crm.mode.v1", rosterMode); }
+    catch { /* ignore quota / disabled storage */ } // empty-catch-allow:localstorage-incognito
+  }, [rosterMode]);
+  const [cFilter, setCFilter] = useState<ContractingFilter>("all");
+  const [cMilestone, setCMilestone] = useState("all");
+  const team = useTeamWorkspace(rosterQuery.data ?? [], !rosterQuery.isLoading);
+  // Roles with no contracting access only ever see the production view.
+  const effectiveMode: "work" | "production" | "calls" = team.contractingEnabled ? rosterMode : "production";
+  const showContractingFilter = useCallback((f: ContractingFilter) => {
+    setCFilter(f);
+    setCMilestone("all");
+    setCrmView("roster");
+    setRosterMode("work");
+    requestAnimationFrame(() => document.getElementById("team-roster")?.scrollIntoView({ block: "start" }));
+  }, []);
 
   const focusAgentId = searchParams.get('focusAgentId');
   useEffect(() => {
@@ -2194,35 +1869,17 @@ export default function DashboardCRM() {
 
   return (
     <>
-      {/* max-w-[1400px] (not max-w-6xl) — the primary content is an 11-column
-          table, the one width exception the visual contract allows. px-4 sm:px-6
+      {/* max-w-[1400px] (not max-w-6xl) — the Production view is an 8-column grid at
+          xl, the one width exception the visual contract allows. px-4 sm:px-6
           is required so PageHeader's -mx-4 sm:-mx-6 cancels exactly. */}
-      <div className="page-enter mx-auto w-full max-w-[1400px] space-y-8 px-4 pb-24 sm:px-6">
+      <div className="page-enter mx-auto w-full max-w-[1400px] space-y-4 px-4 pb-24 sm:px-6">
         <PageHeader
           accent="cyan"
           eyebrow="Team"
           eyebrowIcon={<Users className="h-3.5 w-3.5" />}
-          title="CRM"
-          subtitle="Every agent, status, production, access, and follow-up in one team view."
+          title="My Team"
           actions={
-            <>
-              {(isAdmin || isManager) && (
-                <Button variant={bulkMode ? "secondary" : "outline"} size="sm" aria-pressed={bulkMode} className="h-10 gap-1.5 sm:h-9" onClick={() => {
-                  const next = !bulkMode;
-                  setBulkMode(next);
-                  setSelectedAgents(new Set());
-                  // The row checkboxes and BulkStageActions live in the
-                  // "pipeline" branch only. The page defaults to "roster", so
-                  // pressing Bulk Actions there entered bulk mode and rendered
-                  // ZERO checkboxes — nothing to select, nothing to deactivate,
-                  // and no way to tell it was the wrong view. Measured live
-                  // before this change: bulkMode true, checkboxes 0.
-                  if (next && crmView === "roster") setCrmView("pipeline");
-                }}>
-                  <CheckSquare className="h-4 w-4 shrink-0" />
- {bulkMode ? "Exit Bulk" : "Bulk Actions"}
-                </Button>
-              )}
+            <HeaderActionRow>
               <AddAgentModal onAgentAdded={fetchAgents} />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -2231,6 +1888,19 @@ export default function DashboardCRM() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  {(isAdmin || isManager) && (
+                    <DropdownMenuItem onClick={() => {
+                      const next = !bulkMode;
+                      setBulkMode(next);
+                      setSelectedAgents(new Set());
+                      // The row checkboxes and BulkStageActions live in the "pipeline" branch only. Pressing Bulk
+                      // Actions on the roster rendered ZERO checkboxes (measured live: bulkMode true, checkboxes 0),
+                      // so entering bulk mode switches to the view where there is something to select.
+                      if (next && crmView === "roster") setCrmView("pipeline");
+                    }}>
+                      <CheckSquare className="mr-2 h-4 w-4" /> {bulkMode ? "Exit bulk actions" : "Bulk actions"}
+                    </DropdownMenuItem>
+                  )}
                   {isAdmin && (
                     <DropdownMenuItem disabled={sendingBulkLogins} onClick={handleBulkSendPortalLogins}>
                       <Mail className="mr-2 h-4 w-4" /> {sendingBulkLogins ? "Sending..." : "Send portal logins (all)"}
@@ -2247,66 +1917,14 @@ export default function DashboardCRM() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-            </>
+            </HeaderActionRow>
           }
         />
 
-        {/* 2026-09-30: contracting check-in. Sam audits every agent on a call:
-            contracts sent -> confirmed -> ready for training, or already producing.
-            Open by default because it is the working list during a check-in. */}
-        {(isAdmin || isManager || isVaManager || isVa) && (
-          <details open className="group rounded-lg border border-border bg-card [&[open]_.chev]:rotate-180">
-            <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-[12px] font-semibold uppercase tracking-[0.15em] text-muted-foreground hover:text-foreground">
-              Contracting call list · call, log it, tick contracts off
-              <ChevronDown className="chev ml-auto h-4 w-4 transition-transform" />
-            </summary>
-            <div className="border-t border-border p-4">
-              <ContractingCheckinPanel />
-            </div>
-          </details>
-        )}
+        {/* 1. What needs attention. Rendered above everything else and never narrowed by the roster filters below. */}
+        <ContractingPriorityPanel q={team.tc} contactFor={team.contactFor} onOpenPerson={team.openPerson} onShowFilter={showContractingFilter} />
 
-        {/* 2026-09-26: login truth + onboarding-email truth per agent, admin-only (RPC returns 0 rows otherwise). */}
-        {/* 2026-09-28 (Sam: "less clutter, head to toe"): everything below the header
-            except the numbers and the table is folded behind one-line summaries. */}
-        {/* MP-430: the roster-health panels moved here from the home page. Sam
-            (2026-09-04): "under agent's production linkage, all those yellow
-            boxes — remove all of them. What am I gonna do with any of those
-            boxes?" They are actions for the person running the roster, which
-            is this page, not the money page. Collapsed so the table stays the
-            first thing on screen; the surfaces are kept, not deleted. */}
-        {(isAdmin || isManager) && (
-          <details className="group rounded-lg border border-border bg-card [&[open]_.chev]:rotate-180">
-            <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-[12px] font-semibold uppercase tracking-[0.15em] text-muted-foreground hover:text-foreground">
-              Roster health · just hired, onboarding roll call, AgentLink history links
-              <ChevronDown className="chev ml-auto h-4 w-4 transition-transform" />
-            </summary>
-            <div className="space-y-4 border-t border-border p-4">
-              <JustHiredPanel />
-              <OnboardingRollCall />
-              <UnlinkedAgentsPanel />
-            </div>
-          </details>
-        )}
-        {isAdmin && (
-          <details className="group rounded-lg border border-border bg-card [&[open]_.chev]:rotate-180">
-            <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-[12px] font-semibold uppercase tracking-[0.15em] text-muted-foreground hover:text-foreground">
-              Engagement · who logged in, emails sent, course progress
-              <ChevronDown className="chev ml-auto h-4 w-4 transition-transform" />
-            </summary>
-            <div className="border-t border-border p-4"><TeamEngagementPanel /></div>
-          </details>
-        )}
-        {isAdmin && (
-          <details className="group rounded-lg border border-border bg-card [&[open]_.chev]:rotate-180">
-            <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-[12px] font-semibold uppercase tracking-[0.15em] text-muted-foreground hover:text-foreground">
-              Brand funnel leads · mentorship, fitness, rentals, collabs
-              <ChevronDown className="chev ml-auto h-4 w-4 transition-transform" />
-            </summary>
-            <div className="border-t border-border p-4"><BrandLeadsPanel /></div>
-          </details>
-        )}
-
+        {/* 2. One compact summary. Same numbers and definitions as before, presented as one strip. */}
         <ProductionMetricsCard
           snapshot={rosterSegmentsQuery.data ?? null}
           isLoading={rosterSegmentsQuery.isLoading}
@@ -2319,54 +1937,62 @@ export default function DashboardCRM() {
           newHires30dNoSale={((rosterQuery.data ?? []) as RosterRow[]).filter((r) => r.status === "active" && r.is_sync_only !== true && (r.tenure_days ?? 9999) <= 30 && (r.lifetime_deals ?? 0) === 0).length}
         />
 
-        {/* Two questions, two views, one set of headline numbers above.
-            Roster answers "who is on this team" from the canonical roster.
-            Pipeline answers "who is moving through recruiting" and therefore
-            legitimately counts open applications alongside hired agents — which
-            is exactly why its row count must never be labelled "team size". */}
+        {/* 3. ONE view switch. Contracting is the working view, Production carries the money columns, Call list is the
+            call-mode check-in, and the Recruiting pipeline counts open applications on top of hired agents, which is
+            why its totals exceed team size by design. */}
         <div className="flex flex-wrap items-center gap-2">
-          <div className="inline-flex rounded-lg border border-border bg-card p-1">
+          <div className="inline-flex flex-wrap rounded-lg border border-border bg-card p-1" role="group" aria-label="Team view">
             {([
-              { key: "roster" as const, label: "Roster", icon: BadgeCheck, count: rosterSegmentsQuery.data?.total ?? null },
-              { key: "pipeline" as const, label: "Recruiting pipeline", icon: Briefcase, count: null },
+              ...(team.contractingEnabled ? [{ key: "work" as const, label: "Contracting", icon: ShieldCheck }] : []),
+              { key: "production" as const, label: "Production", icon: TrendingUp },
+              ...(team.contractingEnabled ? [{ key: "calls" as const, label: "Call list", icon: Phone }] : []),
+              { key: "pipeline" as const, label: "Recruiting pipeline", icon: Briefcase },
             ]).map((m) => {
               const Icon = m.icon;
-              const isActive = crmView === m.key;
+              const isActive = m.key === "pipeline" ? crmView === "pipeline" : crmView === "roster" && effectiveMode === m.key;
               return (
                 <button
                   key={m.key}
                   type="button"
-                  onClick={() => { setCrmView(m.key); playSound("click"); }}
+                  onClick={() => {
+                    if (m.key === "pipeline") setCrmView("pipeline");
+                    else { setCrmView("roster"); setRosterMode(m.key); }
+                    playSound("click");
+                  }}
                   aria-pressed={isActive}
                   className={cn(
-                    "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors",
+                    "inline-flex min-h-[40px] items-center gap-1.5 rounded-md px-3 text-sm font-medium transition-colors",
                     "focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
                     isActive ? "bg-primary/10 text-foreground ring-1 ring-primary/60" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
                   )}
                 >
-                  <Icon className="h-4 w-4 shrink-0" />
+                  <Icon className="h-4 w-4 shrink-0" aria-hidden />
                   {m.label}
-                  {m.count !== null && (
-                    <Badge variant="outline" className="h-4 px-1.5 text-[11px] font-bold tabular-nums">{m.count}</Badge>
-                  )}
                 </button>
               );
             })}
           </div>
-          <p className="text-[12px] text-muted-foreground">
-            {crmView === "roster"
-              ? "Canonical roster — every hired agent, segmented by what they are actually doing."
-              : "Recruiting funnel — hired agents plus open applications, so counts here exceed team size by design."}
-          </p>
+          {crmView === "pipeline" ? (
+            <p className="text-sm text-muted-foreground">Hired agents plus open applications, so counts here exceed team size by design.</p>
+          ) : null}
         </div>
 
+        {/* 4. The work. */}
         {crmView === "roster" ? (
-          <RosterPanel
-            rows={rosterQuery.data ?? []}
-            isLoading={rosterQuery.isLoading}
-            isError={rosterQuery.isError}
-            onRetry={() => { rosterQuery.refetch(); rosterSegmentsQuery.refetch(); }}
-          />
+          effectiveMode === "calls" ? (
+            <GlassCard className="p-3 sm:p-4"><ContractingCheckinPanel /></GlassCard>
+          ) : (
+            <RosterPanel
+              rows={rosterQuery.data ?? []}
+              isLoading={rosterQuery.isLoading}
+              isError={rosterQuery.isError}
+              onRetry={() => { rosterQuery.refetch(); rosterSegmentsQuery.refetch(); }}
+              mode={effectiveMode}
+              team={team}
+              cFilter={cFilter} onCFilter={setCFilter}
+              cMilestone={cMilestone} onCMilestone={setCMilestone}
+            />
+          )
         ) : (
         <>
         {bulkMode && (
@@ -2666,7 +2292,52 @@ export default function DashboardCRM() {
         )}
         </>
         )}
+
+        {/* 5. Secondary tools. Folded away so they never push the people and actions below the fold. None of these holds an
+            overdue item: urgent contracting lives in Priority 1 above and is never moved in here. */}
+        {(isAdmin || isManager) && (
+          <details className="group rounded-lg border border-border bg-card [&[open]_.chev]:rotate-180">
+            <summary className="flex min-h-[44px] cursor-pointer list-none items-center gap-2 px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground">
+              Roster health: just hired, onboarding roll call, AgentLink history links
+              <ChevronDown className="chev ml-auto h-4 w-4 transition-transform" />
+            </summary>
+            <div className="space-y-4 border-t border-border p-4">
+              <JustHiredPanel />
+              <OnboardingRollCall />
+              <UnlinkedAgentsPanel />
+            </div>
+          </details>
+        )}
+        {isAdmin && (
+          <details className="group rounded-lg border border-border bg-card [&[open]_.chev]:rotate-180">
+            <summary className="flex min-h-[44px] cursor-pointer list-none items-center gap-2 px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground">
+              Engagement: who logged in, emails sent, course progress
+              <ChevronDown className="chev ml-auto h-4 w-4 transition-transform" />
+            </summary>
+            <div className="border-t border-border p-4"><TeamEngagementPanel /></div>
+          </details>
+        )}
+        {isAdmin && (
+          <details className="group rounded-lg border border-border bg-card [&[open]_.chev]:rotate-180">
+            <summary className="flex min-h-[44px] cursor-pointer list-none items-center gap-2 px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground">
+              Brand funnel leads: mentorship, fitness, rentals, collabs
+              <ChevronDown className="chev ml-auto h-4 w-4 transition-transform" />
+            </summary>
+            <div className="border-t border-border p-4"><BrandLeadsPanel /></div>
+          </details>
+        )}
       </div>
+
+      <TeamPersonDrawer
+        open={Boolean(team.selectedId) && Boolean(team.person || team.row)}
+        onOpenChange={(o) => { if (!o) team.closePerson(); }}
+        person={team.person}
+        row={team.row}
+        tc={team.tc}
+        checkoff={team.checkoff}
+        canTick={team.canTick}
+        scrollTo={team.scrollTo}
+      />
 
       <ApplicationDetailSheet open={!!viewAppTarget} onOpenChange={(o) => !o && setViewAppTarget(null)} applicationId={viewAppTarget?.applicationId} agentId={viewAppTarget?.agentId} onRefresh={fetchAgents} />
       <DeactivateAgentDialog open={!!deactivateAgent} onOpenChange={(o) => !o && setDeactivateAgent(null)} agentId={deactivateAgent?.id || ""} agentName={deactivateAgent?.name || ""} currentManagerId={deactivateAgent?.managerId} onComplete={fetchAgents} />

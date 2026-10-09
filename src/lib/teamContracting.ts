@@ -177,6 +177,100 @@ export const BLOCKER_LABEL: Record<string, string> = {
 };
 export const OUTCOME_LABEL: Record<string, string> = { talked: "Talked", no_answer: "No answer", voicemail: "Voicemail", texted: "Texted", wrong_number: "Wrong number" };
 
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/**
+ * "2026-10-12" -> "Oct 12". Parsed by hand on purpose: new Date("2026-10-12") is UTC midnight, which is still the
+ * previous evening in Phoenix, so a calendar date would silently shift a day.
+ */
+export function formatDay(ymd: string | null | undefined): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd ?? "");
+  if (!m) return ymd ?? "";
+  const month = MONTHS[Number(m[2]) - 1];
+  return month ? `${month} ${Number(m[3])}` : (ymd ?? "");
+}
+
+function urgencyTier(p: TeamPerson | undefined): number {
+  if (!p) return 5;
+  if (p.p1) return 0;
+  if (p.due_soon) return 1;
+  if (p.needs_review || p.license_review) return 2;
+  const open = p.milestones.some((m) => !m.done && m.state !== "not_applicable");
+  return open ? 3 : 4;
+}
+
+/**
+ * Working order for the roster: Priority 1 in the server's own rank, then due soon (soonest deadline first), then
+ * people whose timing or licence needs a human look, then everyone with contracting still open, then everyone done or
+ * outside contracting. Returns 0 on a tie so the caller can add a name tie-break and keep the order stable.
+ */
+export function compareByUrgency(a: TeamPerson | undefined, b: TeamPerson | undefined): number {
+  const ta = urgencyTier(a);
+  const tb = urgencyTier(b);
+  if (ta !== tb) return ta - tb;
+  if (ta === 0) return (a?.p1_rank ?? 1e9) - (b?.p1_rank ?? 1e9);
+  if (ta === 1) {
+    const soonest = (p: TeamPerson | undefined) => Math.min(99, ...(p?.milestones ?? []).filter((m) => m.state === "due_soon").map((m) => m.days_until_overdue ?? 99));
+    return soonest(a) - soonest(b);
+  }
+  return 0;
+}
+
+export type ContractingSummary =
+  /** Contracting does not apply to this person (not eligible yet, or no person record). */
+  | { kind: "none" }
+  | { kind: "all_done"; total: number }
+  | { kind: "open"; urgent: Milestone[]; quiet: Milestone[]; done: number; total: number };
+
+/**
+ * What the Contracting column shows. `urgent` are the overdue and due-soon milestones, written out with words.
+ * `quiet` are the ones that are simply still open (not due yet, older hire, or no confirmed timing rule); they are
+ * listed plainly rather than as warning chips, so a roster of thirty-five unconfirmed people is not thirty-five red walls.
+ */
+export function contractingSummary(p: TeamPerson | undefined): ContractingSummary {
+  if (!p) return { kind: "none" };
+  const relevant = p.milestones.filter((m) => m.state !== "not_applicable");
+  if (relevant.length === 0) return { kind: "none" };
+  const open = relevant.filter((m) => !m.done);
+  if (open.length === 0) return { kind: "all_done", total: relevant.length };
+  return {
+    kind: "open",
+    urgent: open.filter((m) => m.state === "overdue" || m.state === "due_soon"),
+    quiet: open.filter((m) => m.state !== "overdue" && m.state !== "due_soon"),
+    done: relevant.length - open.length,
+    total: relevant.length,
+  };
+}
+
+export type FollowupLine = { text: string; tone: "urgent" | "warn" | "normal" };
+
+/**
+ * The follow-up status for the Next action column, or null when there is nothing to chase. A future date is shown as
+ * a plan, never as "due", and never replaces an overdue milestone. "No follow-up set" is only raised for people who
+ * are overdue or close to it.
+ */
+export function followupLine(p: TeamPerson | undefined): FollowupLine | null {
+  if (!p) return null;
+  if (contractingSummary(p).kind !== "open") return null;
+  const f = p.followup;
+  if (!f.next_on) {
+    if (p.p1) return { text: "No follow-up set", tone: "urgent" };
+    if (p.due_soon) return { text: "No follow-up set", tone: "warn" };
+    return null;
+  }
+  return f.due_now ? { text: `Follow-up due ${formatDay(f.next_on)}`, tone: "urgent" } : { text: `Follow-up ${formatDay(f.next_on)}`, tone: "normal" };
+}
+
+/**
+ * A read that comes back exactly at the platform's page limit may be cut short. Treat that as a failed read so the
+ * screen shows "could not be read" instead of a roster that quietly stops at row 1,000.
+ */
+export function ensureCompleteRead(label: string, rows: readonly unknown[] | null | undefined, cap = 1000): void {
+  if (rows && rows.length >= cap) {
+    throw new Error(`${label} returned ${rows.length} rows, the platform page limit, so the list may be incomplete`);
+  }
+}
+
 export function msUntilNextPhoenixMidnight(now: Date = new Date()): number {
   const key = phoenixDateKey(now);
   const [y, m, d] = key.split("-").map(Number);

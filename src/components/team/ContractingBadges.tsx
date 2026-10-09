@@ -1,18 +1,18 @@
 import { AlertTriangle, CircleCheck, Circle, Clock, HelpCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatTimeAgo } from "@/lib/dateUtils";
-import type { Milestone, TeamPerson } from "@/lib/teamContracting";
+import { contractingSummary, plural, type Milestone, type TeamPerson } from "@/lib/teamContracting";
 
 /**
  * One badge per person on the roster row, and compact milestone chips. Colour is never the only signal: every state
  * has an icon and words. "Done" here means ticked by hand on the My Team checklist; it never claims a carrier
  * confirmed anything.
  */
-export function RowBadges({ p, className }: { p: TeamPerson; className?: string }) {
-  if (!p.p1 && !p.due_soon && !p.needs_review && !p.license_review) return null;
+export function RowBadges({ p, className, reviewOnly = false }: { p: TeamPerson; className?: string; /** Skip the overdue/due-soon pill when the milestone chips beside it already say so. */ reviewOnly?: boolean }) {
+  if ((reviewOnly || (!p.p1 && !p.due_soon)) && !p.needs_review && !p.license_review) return null;
   return (
     <span className={cn("inline-flex flex-wrap items-center gap-1", className)}>
-      {p.p1 ? (
+      {reviewOnly ? null : p.p1 ? (
         <span className="inline-flex items-center gap-1 rounded-full border border-red-500/60 bg-red-500/15 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-red-700 dark:text-red-300"
           title={`Priority 1: ${p.overdue_labels ?? "contracting"} overdue`}>
           <AlertTriangle className="h-3 w-3" aria-hidden /> P1 · Contracting overdue
@@ -122,8 +122,52 @@ export function MilestoneChecklist({ p, canEdit, onToggle, isPending }: {
             {m.label}: checked by hand{m.checked_by_name ? ` by ${m.checked_by_name}` : ""}{m.checked_at ? `, ${formatTimeAgo(m.checked_at)}` : ""}.
           </li>
         ))}
-        {!canEdit ? <li>You can see this checklist but not change it.</li> : null}
+        {canEdit ? <li>Tap a milestone to mark it done or reopen it. These are manual check-offs; a carrier has not confirmed them.</li> : <li>You can see this checklist but not change it.</li>}
       </ul>
+    </div>
+  );
+}
+
+export type ContractingReadState = "ok" | "loading" | "error";
+
+/**
+ * The Contracting column on the working roster. Overdue and due-soon milestones are written out with their state in
+ * words; milestones that are merely still open are listed plainly; a person with everything ticked says so; and when
+ * the contracting read has not succeeded the cell says that instead, so a failed read can never look like "all done".
+ */
+export function ContractingCell({ p, licensed, read }: { p: TeamPerson | undefined; licensed: boolean; read: ContractingReadState }) {
+  if (read === "loading") return <span className="text-sm text-muted-foreground">Loading…</span>;
+  if (read === "error") return <span className="text-sm text-amber-700 dark:text-amber-400">Status unavailable</span>;
+  const s = contractingSummary(p);
+  if (!p || s.kind === "none") {
+    return <span className="text-sm text-muted-foreground">{licensed ? "Does not apply" : "Starts after licensing"}</span>;
+  }
+  if (s.kind === "all_done") {
+    return (
+      <span className="inline-flex items-center gap-1 text-sm font-medium text-emerald-700 dark:text-emerald-300">
+        <CircleCheck className="h-4 w-4" aria-hidden /> All {s.total} done
+      </span>
+    );
+  }
+  return (
+    <div className="space-y-1">
+      <RowBadges p={p} reviewOnly />
+      {s.urgent.length > 0 ? (
+        <ul className="flex flex-wrap gap-1" aria-label="Overdue and due soon">
+          {s.urgent.map((m) => (
+            <li key={m.key} className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-semibold", chipTone(m.state))}>
+              <Icon state={m.state} /> {m.label} · {stateWord(m)}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {s.quiet.length > 0 ? (
+        <p className="text-xs text-muted-foreground">
+          {s.done > 0 ? `${s.done} of ${s.total} done. ` : ""}Open: {s.quiet.map((m) => m.label).join(", ")}
+        </p>
+      ) : s.done > 0 ? (
+        <p className="text-xs text-muted-foreground">{plural(s.done, "milestone")} done</p>
+      ) : null}
     </div>
   );
 }

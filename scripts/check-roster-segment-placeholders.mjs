@@ -198,7 +198,15 @@ if (!keys.has("sync_only")) {
 // contains that substring. A detector that matches its own neighbours is not a
 // detector. The `{` opener and the absence of a `!` are both load-bearing.
 const BADGE_GUARD = "{isSyncOnly(r) && (";
-if (!src.includes(BADGE_GUARD) || !src.includes("Sync only")) {
+// The rows moved out of the page into the roster row component, so the badge is graded where it is rendered. A
+// missing file fails CLOSED: a guard that cannot read its target must not report that the badge is there.
+let rowSrc = "";
+try {
+  rowSrc = fs.readFileSync(path.join(process.cwd(), "src/components/team/RosterRows.tsx"), "utf8");
+} catch {
+  fail(`src/components/team/RosterRows.tsx could not be read, so the row-level "Sync only" badge cannot be graded.`);
+}
+if (!rowSrc.includes(BADGE_GUARD) || !rowSrc.includes("Sync only")) {
   fail(`the roster row does not render a "Sync only" badge. All agents and Producing admit placeholders on purpose, so a row-level marker is the only thing telling Sam which of them is not a person.`);
 }
 

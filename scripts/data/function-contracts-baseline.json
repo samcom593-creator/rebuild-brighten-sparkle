@@ -162,7 +162,6 @@
       "send-push-notification",
       "send-push-optin-email",
       "send-sam-morning-report",
-      "send-sms-via-email",
       "send-unlicensed-process-update",
       "send-weekly-analytics",
       "send-whatsapp-onboarding-blast",

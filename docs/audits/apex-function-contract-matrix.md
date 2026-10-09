@@ -1,7 +1,7 @@
 # APEX Function Contract Matrix
 
-Generated: 2026-10-09T04:14:46.050Z
-Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
+Generated: 2026-10-09T04:53:05.186Z
+Repository: `/private/tmp/wib-sms`
 
 ## Inventory Summary
 
@@ -9,7 +9,7 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 - Configured in `config.toml`: **242**
 - Invoked Edge Functions in Source: **104**
 - Invoked RPC Calls in Source: **218**
-- SQL Functions in Migrations: **644**
+- SQL Functions in Migrations: **641**
 
 ## Edge Function Auth & Verification Contracts
 
@@ -220,7 +220,7 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 | `send-sam-morning-report` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-seminar-invite-blast` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `send-sms-auto-detect` | Yes | Yes | `true` | Authenticated JWT | PASS |
-| `send-sms-via-email` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `send-sms-via-email` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `send-unlicensed-process-update` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-weekly-analytics` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-whatsapp-onboarding-blast` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |

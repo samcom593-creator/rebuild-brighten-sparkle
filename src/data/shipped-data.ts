@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "The text-message sender now refuses strangers. Anyone could use it to text any US phone number with their own words.",
+    detail: "The function that sends texts through carrier email gateways read no login at all. One request from anyone on the internet, with a phone number and a message, sent that message from the agency's email domain to five carrier gateways at once, and a second form texted any agent by id. It now only answers the two internal callers it has: the bulk agent-message tool and the database queue drain. The logs show no outside use in the last day. The bulk agent-message tool also had a bug that would have made every bulk text fail while counting it as sent: it passed the phone under the wrong name and never checked the answer. It now sends the right field and counts a failure as a failure. That path has never been used, so no texts were lost.",
+    commit: "PL-WIB-SMS-RELAY-AUTH",
+  },
+  {
+    ts: "today",
     label: "Film this works again, the Week tab is readable, the 22 cleared video ideas are back, and long-form self-improvement ideas are added.",
     detail: "Every tap on Film this failed with a save error because the card was sent with an empty date, which the database rejects. It now saves, with a test so it cannot return. The Week tab showed seven cramped columns that cut every title short and used tiny chips. It now shows four wider columns with full titles, larger chips and a bigger move menu. The 22 ideas that had been cleared today are restored. Eight new long-form ideas on discipline, routine, beliefs, the gym and your full story are in the pick list.",
     commit: "PL-LAUNCHBOARD-FIX",

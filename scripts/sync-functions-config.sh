@@ -159,6 +159,9 @@ PUBLIC_ALLOWLIST=(
   "send-seminar-invite-blast"
   "send-bulk-unlicensed-outreach"
   "bulk-send-licensing"
+  # send-sms-via-email (2026-10-09): same gate, admin_or_manager floor. Both
+  # callers present the sb_secret service key, which is not a JWT.
+  "send-sms-via-email"
   "cron-newhire-portal-login"
   "instagram-comments-backfill"
   "instagram-token-keepalive"

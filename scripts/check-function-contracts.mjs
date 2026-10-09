@@ -346,6 +346,11 @@ const PUBLIC_ALLOWLIST = new Set([
   "send-seminar-invite-blast",
   "send-bulk-unlicensed-outreach",
   "bulk-send-licensing",
+  // send-sms-via-email (2026-10-09): a bare POST {phone, body} texted any US
+  // number with caller-chosen words; {agentId, body} texted any agent. No
+  // credential read. requireSendAuth (admin_or_manager) now. Callers:
+  // bulk-agent-message (service key) and pg drain_sms_fallback_queue (service key).
+  "send-sms-via-email",
 ]);
 
 // ---------------------------------------------------------------------------
@@ -456,6 +461,9 @@ const PUBLIC_CONTRACT = {
   "send-seminar-invite-blast": "in_handler_gate",
   "send-bulk-unlicensed-outreach": "in_handler_gate",
   "bulk-send-licensing": "in_handler_gate",
+  // send-sms-via-email: requireSendAuth, admin_or_manager. Callers
+  // bulk-agent-message and drain_sms_fallback_queue(), both on the service key.
+  "send-sms-via-email": "in_handler_gate",
 
   // --- the credential is the token in the URL ----------------------------
   "content-share": "url_token",

@@ -68,17 +68,22 @@ Deno.serve(async (req) => {
       try {
         if (channel === "email") {
           if (!resend) throw new Error("RESEND_API_KEY missing");
-          await resend.emails.send({
+          const { error: emailErr } = await resend.emails.send({
             from: "Galaxy Financial <notifications@apex-financial.org>",
             to: [to],
             subject: "A message from your manager",
             html: `<p>${message.replace(/\n/g, "<br>")}</p>`,
           });
+          if (emailErr) throw new Error(emailErr.message ?? String(emailErr));
         } else {
-          // Use SMS-via-email gateway (Email-to-SMS architecture)
-          await supabase.functions.invoke("send-sms-via-email", {
-            body: { to, message },
+          // Use SMS-via-email gateway (Email-to-SMS architecture). The relay
+          // reads `phone`; this sent `to`, which it answers with a 400. invoke()
+          // resolves with {error} instead of throwing, so the 400 was counted as
+          // sent and logged status='sent'.
+          const { error: smsErr } = await supabase.functions.invoke("send-sms-via-email", {
+            body: { phone: to, message },
           });
+          if (smsErr) throw new Error(smsErr.message ?? String(smsErr));
         }
         sent++;
         await supabase.from("email_delivery_log").insert({

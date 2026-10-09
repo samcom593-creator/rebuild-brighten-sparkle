@@ -22,6 +22,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { nanpTenDigits } from "../_shared/nanp-phone.ts";
+import { requireSendAuth } from "../_shared/require-send-auth.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -83,6 +84,21 @@ async function fireOne(phone: string, body: string, carrier?: string | null): Pr
 
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  // 2026-10-09: verify_jwt is false and this read no credential, so a bare POST
+  // {phone, body} texted any US number with the caller's own words from Sam's
+  // Resend domain, fanned out to five carrier gateways; {agentId, body} texted
+  // any agent. Callers: bulk-agent-message (service-role client) and the pg
+  // function drain_sms_fallback_queue() (service key from system_settings).
+  // No src/ caller, no cron. Floor admin_or_manager.
+  const auth = await requireSendAuth(req);
+  if (!auth.ok) {
+    return new Response(JSON.stringify({ error: auth.error }), {
+      status: auth.status,
+      headers: { "Content-Type": "application/json", ...corsHeaders },
+    });
+  }
+
   const sb = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
 
   try {

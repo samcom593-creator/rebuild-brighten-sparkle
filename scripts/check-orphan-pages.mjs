@@ -129,6 +129,72 @@ for (const rel of pageFiles) {
 // tracked pages are graded always. Findings in uncommittable files are still
 // PRINTED as a non-voting notice — dropping another worker's real orphan
 // silently would be the fake-success disease in a politeness costume.
+// MP-wib 2026-10-09. The page check above scans src/pages only, so a
+// COMPONENT, hook or lib module that lost its last importer was invisible.
+// Measured the day this landed: 43 such modules (~5k lines) in src/components,
+// src/hooks and src/lib, and they were still being edited. 48b7c132 (the
+// site-wide readability pass) and c774b147 (production copy fixes) both changed
+// files no page renders, and check-metric-truth, check-supabase-relation-types
+// and several unit tests grade some of them. That work never reaches a user.
+//
+// Graded BY NAME against a shrink-only baseline, not by count: a count floor
+// is fungible (MP-356), so deleting one old orphan would buy room for a new
+// one. Two ways to fail:
+//   * a module with no importer that is not on the list (a new dead module)
+//   * a listed module that is wired again or deleted (take it off the list,
+//     so the list only ever names files that are really dead)
+const MODULE_DIRS = ["src/components", "src/hooks", "src/lib"];
+const MODULE_BASELINE = "scripts/data/orphan-modules-baseline.json";
+
+const moduleFiles = MODULE_DIRS.flatMap((d) => walk(d))
+  .filter((p) => /\.tsx?$/.test(p) && !p.endsWith(".d.ts"))
+  .filter((p) => !SKIP_FILE.test(p));
+
+const moduleOrphans = [];
+for (const rel of moduleFiles) {
+  const base = path.basename(rel);
+  if (base === "index.ts" || base === "index.tsx") continue;
+  const withoutExt = rel.replace(/\.tsx?$/, "");
+  if (wired.has(withoutExt) || wired.has(rel)) continue;
+  const head = fs.readFileSync(path.join(repoRoot, rel), "utf8").split("\n").slice(0, 30).join("\n");
+  if (MARKER.test(head)) continue;
+  moduleOrphans.push(rel);
+}
+
+const baselineList = JSON.parse(fs.readFileSync(path.join(repoRoot, MODULE_BASELINE), "utf8")).files;
+if (!Array.isArray(baselineList) || baselineList.some((f) => typeof f !== "string")) {
+  console.error(`check:orphan-pages — ${MODULE_BASELINE} has no string array "files"; refusing to grade against it.`);
+  process.exit(1);
+}
+const baselineSet = new Set(baselineList);
+const orphanSet = new Set(moduleOrphans);
+const [newModuleOrphans, moduleNotices] = splitUncommittable(
+  moduleOrphans.filter((rel) => !baselineSet.has(rel)),
+  (rel) => rel,
+);
+const staleBaseline = baselineList.filter((rel) => !orphanSet.has(rel));
+
+if (moduleNotices.length > 0) {
+  console.log(noticeBanner(moduleNotices.length));
+  for (const rel of moduleNotices) console.log("    " + rel);
+}
+
+let moduleFailed = false;
+if (newModuleOrphans.length > 0) {
+  moduleFailed = true;
+  console.error("check:orphan-pages — modules under src/components, src/hooks or src/lib with no importer in src/:");
+  for (const rel of newModuleOrphans) console.error("  " + rel);
+  console.error("  Nothing renders or calls them, so edits to them never reach a user. Import it where it is");
+  console.error("  used, delete it, or add `// intentionally-orphan:<reason>` in its first 30 lines.");
+  console.error(`  Do not add it to ${MODULE_BASELINE}: that list only shrinks.`);
+}
+if (staleBaseline.length > 0) {
+  moduleFailed = true;
+  console.error(`check:orphan-pages — ${MODULE_BASELINE} lists modules that are no longer dead (wired again or deleted):`);
+  for (const rel of staleBaseline) console.error("  " + rel);
+  console.error("  Remove them from the list so it keeps naming only real orphans.");
+}
+
 const [gradedOrphans, orphanNotices] = splitUncommittable(orphans, (rel) => rel);
 
 if (orphanNotices.length > 0) {
@@ -163,6 +229,9 @@ if (gradedOrphans.length > 0) {
   process.exit(1);
 }
 
+if (moduleFailed) process.exit(1);
+
 console.log(
-  `check:orphan-pages OK — ${pageFiles.length} pages scanned, 0 orphaned.`,
+  `check:orphan-pages OK — ${pageFiles.length} pages scanned, 0 orphaned; ` +
+    `${moduleFiles.length} modules scanned, ${moduleOrphans.length} dead and all on the shrink-only list.`,
 );

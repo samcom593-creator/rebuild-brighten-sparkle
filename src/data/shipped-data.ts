@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "42 dashboard components, hooks and helpers that no page uses are now listed, and new ones can no longer slip in unnoticed.",
+    detail: "The dead-page check only looked at pages, so a component that lost its last user stayed in the code and kept getting edited. The site-wide readability pass and a copy-fix wave both changed files nobody sees. The check now covers components, hooks and helpers too. The 42 dead ones are on a list that can only shrink, and the first one, an unused data-freshness banner, is deleted. Proven both ways: a new unused component, or the deleted banner coming back, now blocks the commit.",
+    commit: "PL-WIB-ORPHAN-MODULES",
+  },
+  {
+    ts: "today",
     label: "The public website key could pull a list of 692 account holders, and 446 of those rows showed the person's email address. Most of them were applicants, not agents. The daily and weekly production leaderboards were also open to anyone.",
     detail: "The function that supplies names and photos to the dashboard leaderboards returned every account on the site, and many accounts store the email address as the name or inside the photo link. It now returns agents only, with no email in any field. Only signed-in pages can call it. Fourteen agents whose leaderboard name was their email now show their real display name. The Discord daily and weekly leaderboard data is now readable only by the server that posts it. Proven with the public key and as a brand-new signup. The weekly health check calls the function and goes red if an email or a non-agent ever comes back.",
     commit: "PL-WIB-LEADERBOARD-PROFILES-PII",

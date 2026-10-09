@@ -376,6 +376,11 @@ if match '^(src/App\.tsx|src/components/layout/GlobalSidebar\.tsx|src/pages/)'; 
   node scripts/check-orphan-pages.mjs
   echo "[pre-commit] Route/sidebar/page file staged — running check:sidebar-routes…"
   node scripts/check-sidebar-routes.mjs
+elif match '^(src/components/|src/hooks/|src/lib/|scripts/data/orphan-modules-baseline\.json$|scripts/check-orphan-pages\.mjs$)'; then
+  # A component, hook or lib module losing (or never getting) an importer.
+  # Graded by name against the shrink-only orphan-modules baseline.
+  echo "[pre-commit] Component/hook/lib file staged — running check:orphan-pages…"
+  node scripts/check-orphan-pages.mjs
 fi
 
 # ---------- check-typecheck-authority (2026-08-11) ----------

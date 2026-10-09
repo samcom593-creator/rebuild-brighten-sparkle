@@ -6,15 +6,12 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { AgentAvatar, getAvatarUrl } from "@/components/ui/AgentAvatar";
 import { useSearchParams, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  CONTRACTING_FILTERS, compareByUrgency, ensureCompleteRead, matchesContractingFilter, plural,
-  type ContractingFilter,
-} from "@/lib/teamContracting";
+import { ensureCompleteRead, plural } from "@/lib/teamRoster";
 import { daysSince, isSyncOnly, num, usdOrNull, type RosterRow } from "@/lib/teamRoster";
 import { useTeamWorkspace } from "@/hooks/useTeamWorkspace";
 import { ContractingReviewWorkspace } from "@/components/contracting-review/ContractingReviewWorkspace";
 import { RosterToolbar, type ActiveFilter } from "@/components/team/RosterToolbar";
-import { RosterWorkList, RosterProductionList } from "@/components/team/RosterRows";
+import { RosterProductionList } from "@/components/team/RosterRows";
 import { TeamPersonDrawer } from "@/components/team/TeamPersonDrawer";
 import { ShieldCheck, Users, Search, RefreshCw, Clock, AlertTriangle, ChevronRight, Mail, Phone, UserX, Filter, GraduationCap, Briefcase, Sparkles, Instagram, X, Send, CheckSquare, EyeOff, Link2, Eye, FileText, KeyRound, Copy, StickyNote, ClipboardCheck, Circle, CircleCheck, MoreHorizontal, TrendingUp, BadgeCheck, ArrowUpRight, Network, UserCheck, Flame, ChevronDown, Download } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -521,14 +518,6 @@ const ROSTER_SEGMENTS: Array<{
 
 type RosterSortKey = "mtd_desc" | "l30_desc" | "lifetime_desc" | "streak_desc" | "name" | "stalest" | "newest";
 
-type RosterMode = "work" | "production";
-
-const WORK_SORTS = [
-  { value: "urgency", label: "Contracting urgency" },
-  { value: "contact_stale", label: "Longest since contact" },
-  { value: "newest", label: "Newest on the roster" },
-  { value: "name", label: "Name (A to Z)" },
-];
 const PRODUCTION_SORTS = [
   { value: "mtd_desc", label: "Month ALP (high to low)" },
   { value: "l30_desc", label: "Last 30 days ALP" },
@@ -545,25 +534,18 @@ const leadSentence = (desc: string): string => {
   return i === -1 ? desc : desc.slice(0, i + 1);
 };
 
-function RosterPanel({ rows, isLoading, isError, onRetry, mode, team, cFilter, onCFilter, cMilestone, onCMilestone }: {
+function RosterPanel({ rows, isLoading, isError, onRetry, team }: {
   rows: RosterRow[];
   isLoading: boolean;
   isError: boolean;
   onRetry: () => void;
-  mode: RosterMode;
   team: ReturnType<typeof useTeamWorkspace>;
-  cFilter: ContractingFilter;
-  onCFilter: (f: ContractingFilter) => void;
-  cMilestone: string;
-  onCMilestone: (m: string) => void;
 }) {
   const [segment, setSegment] = useState<RosterSegmentKey>("new_hires");
   const [q, setQ] = useState("");
   const [managerFilter, setManagerFilter] = useState("all");
-  const [sortChoice, setSortChoice] = useState<string>("urgency");
-  const { tc } = team;
-  const sortOptions = mode === "work" ? WORK_SORTS : PRODUCTION_SORTS;
-  // Each view has its own sort list; a sort that does not exist in this view falls back to the view's first one.
+  const [sortChoice, setSortChoice] = useState<string>(PRODUCTION_SORTS[0].value);
+  const sortOptions = PRODUCTION_SORTS;
   const sort = sortOptions.some((o) => o.value === sortChoice) ? sortChoice : sortOptions[0].value;
 
   const managers = useMemo(() => {
@@ -597,25 +579,11 @@ function RosterPanel({ rows, isLoading, isError, onRetry, mode, team, cFilter, o
     return m;
   }, [searched]);
 
-  // The contracting filter only applies while the contracting read has succeeded. If it failed, the rows stay
-  // visible and every contracting cell says "Status unavailable"; nothing is silently hidden by a filter that cannot be evaluated.
-  const contractingFilterActive = mode === "work" && cFilter !== "all" && Boolean(tc.data);
-
   const visible = useMemo(() => {
     const base = bySegment.get(segment) ?? [];
-    const list = !contractingFilterActive
-      ? [...base]
-      : base.filter((r) => { const p = tc.byAgent.get(r.agent_id); return p ? matchesContractingFilter(p, cFilter, cMilestone) : false; });
+    const list = [...base];
     const name = (r: RosterRow) => r.full_name ?? "";
     switch (sort) {
-      case "urgency": list.sort((a, b) => compareByUrgency(tc.byAgent.get(a.agent_id), tc.byAgent.get(b.agent_id)) || name(a).localeCompare(name(b))); break;
-      case "contact_stale": list.sort((a, b) => {
-        const at = tc.byAgent.get(a.agent_id)?.followup.last_at;
-        const bt = tc.byAgent.get(b.agent_id)?.followup.last_at;
-        const av = at ? new Date(at).getTime() : -Infinity; // never contacted sorts first
-        const bv = bt ? new Date(bt).getTime() : -Infinity;
-        return av - bv || name(a).localeCompare(name(b));
-      }); break;
       case "mtd_desc": list.sort((a, b) => num(b.mtd_alp) - num(a.mtd_alp)); break;
       case "l30_desc": list.sort((a, b) => num(b.l30_alp) - num(a.l30_alp)); break;
       case "lifetime_desc": list.sort((a, b) => num(b.lifetime_alp) - num(a.lifetime_alp)); break;
@@ -629,7 +597,7 @@ function RosterPanel({ rows, isLoading, isError, onRetry, mode, team, cFilter, o
       }); break;
     }
     return list;
-  }, [bySegment, segment, sort, contractingFilterActive, cFilter, cMilestone, tc.byAgent]);
+  }, [bySegment, segment, sort]);
 
   const activeSeg = ROSTER_SEGMENTS.find((s) => s.key === segment)!;
   const groupRows = bySegment.get(segment) ?? [];
@@ -638,13 +606,8 @@ function RosterPanel({ rows, isLoading, isError, onRetry, mode, team, cFilter, o
   const activeFilters: ActiveFilter[] = [
     ...(q.trim() !== "" ? [{ key: "q", label: `Search: ${q.trim()}`, onRemove: () => setQ("") }] : []),
     ...(managerFilter !== "all" ? [{ key: "mgr", label: `Upline: ${managers.find(([id]) => id === managerFilter)?.[1] ?? "selected"}`, onRemove: () => setManagerFilter("all") }] : []),
-    ...(contractingFilterActive ? [{
-      key: "c",
-      label: `${CONTRACTING_FILTERS.find((f) => f.key === cFilter)?.label ?? cFilter}${cMilestone !== "all" ? `: ${tc.data?.policy[cMilestone]?.label ?? cMilestone}` : ""}`,
-      onRemove: () => { onCFilter("all"); onCMilestone("all"); },
-    }] : []),
   ];
-  const clearAll = () => { setQ(""); setManagerFilter("all"); onCFilter("all"); onCMilestone("all"); };
+  const clearAll = () => { setQ(""); setManagerFilter("all"); };
 
   if (isError) {
     return (
@@ -663,15 +626,11 @@ function RosterPanel({ rows, isLoading, isError, onRetry, mode, team, cFilter, o
   return (
     <div className="space-y-3" id="team-roster">
       <RosterToolbar
-        mode={mode}
         q={q} onQ={setQ}
         managers={managers} manager={managerFilter} onManager={setManagerFilter}
         groups={ROSTER_SEGMENTS.map((s) => ({ key: s.key, label: s.label, count: (bySegment.get(s.key) ?? []).length }))}
         group={segment} onGroup={(v) => setSegment(v as RosterSegmentKey)}
         sort={sort} onSort={setSortChoice} sortOptions={sortOptions}
-        status={mode === "work" ? tc.data : undefined}
-        cFilter={cFilter} onCFilter={(f) => { onCFilter(f); if (f !== "p1" && f !== "due_soon") onCMilestone("all"); }}
-        cMilestone={cMilestone} onCMilestone={onCMilestone}
         shown={visible.length} groupTotal={groupRows.length} groupLabel={activeSeg.label}
         activeFilters={activeFilters} onClearAll={clearAll}
       />
@@ -705,8 +664,6 @@ function RosterPanel({ rows, isLoading, isError, onRetry, mode, team, cFilter, o
               : "Nothing on the roster fits this group right now. That is the honest answer, not a loading state."}
             actions={activeFilters.length > 0 ? <Button variant="outline" size="sm" onClick={clearAll}>Clear filters</Button> : undefined}
           />
-        ) : mode === "work" ? (
-          <RosterWorkList rows={visible} byAgent={tc.byAgent} selectedId={team.selectedId} onOpen={team.openPerson} read={team.read} />
         ) : (
           <RosterProductionList rows={visible} selectedId={team.selectedId} onOpen={team.openPerson} />
         )}
@@ -861,8 +818,6 @@ export default function DashboardCRM() {
     try { localStorage.setItem("crm.mode.v2", rosterMode); }
     catch { /* ignore quota / disabled storage */ } // empty-catch-allow:localstorage-incognito
   }, [rosterMode]);
-  const [cFilter, setCFilter] = useState<ContractingFilter>("all");
-  const [cMilestone, setCMilestone] = useState("all");
   const team = useTeamWorkspace(rosterQuery.data ?? [], !rosterQuery.isLoading);
   // Roles with no contracting access only ever see the production view.
   const effectiveMode: "work" | "production" | "calls" = team.contractingEnabled ? rosterMode : "production";
@@ -1980,10 +1935,7 @@ export default function DashboardCRM() {
               isLoading={rosterQuery.isLoading}
               isError={rosterQuery.isError}
               onRetry={() => { rosterQuery.refetch(); rosterSegmentsQuery.refetch(); }}
-              mode={effectiveMode}
               team={team}
-              cFilter={cFilter} onCFilter={setCFilter}
-              cMilestone={cMilestone} onCMilestone={setCMilestone}
             />
           )
         ) : (
@@ -2322,14 +2274,10 @@ export default function DashboardCRM() {
       </div>
 
       <TeamPersonDrawer
-        open={Boolean(team.selectedId) && Boolean(team.person || team.row)}
+        open={Boolean(team.selectedId) && Boolean(team.row)}
         onOpenChange={(o) => { if (!o) team.closePerson(); }}
-        person={team.person}
         row={team.row}
-        tc={team.tc}
-        checkoff={team.checkoff}
-        canTick={team.canTick}
-        scrollTo={team.scrollTo}
+        onOpenContracting={(id) => { team.closePerson(); setCrmView("roster"); setRosterMode("work"); requestAnimationFrame(() => document.getElementById(`review-row-${id}`)?.scrollIntoView({ block: "center" })); }}
       />
 
       <ApplicationDetailSheet open={!!viewAppTarget} onOpenChange={(o) => !o && setViewAppTarget(null)} applicationId={viewAppTarget?.applicationId} agentId={viewAppTarget?.agentId} onRefresh={fetchAgents} />

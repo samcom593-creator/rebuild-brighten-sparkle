@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NextStepCard } from "@/components/dashboard/NextStepCard";
 
+import { CONTRACTING_PROFILE_PATH } from "@/lib/contractingLinks";
 interface MyApplication {
   id: string;
   first_name: string | null;
@@ -101,9 +102,9 @@ function stepsFor(app: MyApplication, licensed: boolean): Step[] {
       {
         key: "contracting",
         icon: ShieldCheck,
-        title: "Start contracting",
-        body: "You're licensed, so contracting is the only thing between you and writing business. Takes about ten minutes.",
-        primary: { label: "Start contracting", href: "/start-contracting" },
+        title: "Complete your contracting profile",
+        body: "You're licensed. Add your NPN number, name, email and resident state so your team can coordinate the carrier portal steps with you.",
+        primary: { label: "Complete contracting profile", href: CONTRACTING_PROFILE_PATH },
       },
       community,
       {

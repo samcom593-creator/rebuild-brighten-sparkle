@@ -17,6 +17,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { type LicenseAnswer, parseLicenseAnswer } from "../_shared/license-answer.ts";
 import { raiseApexAlert } from "../_shared/alert-raise.ts";
+import { CONTRACTING_PROFILE_URL, NOT_CONTRACTED_YET } from "../_shared/contracting-profile.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -27,7 +28,7 @@ const ANTHROPIC_KEY = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
 const ANTHROPIC_MODEL = Deno.env.get("ANTHROPIC_MODEL") ?? "claude-haiku-4-5-20251001";
 
 const APPLY_URL = "https://apex-financial.org/apply?utm_source=telegram&utm_medium=bot";
-const ICA_URL = "https://apex-financial.org/start-contracting";
+const PROFILE_URL = CONTRACTING_PROFILE_URL;
 const LICENSE_URL = "https://apex-financial.org/get-licensed";
 const LICENSED_CALL_URL = "https://calendly.com/apexfinancialempire/1on1-call-clone";
 
@@ -49,7 +50,7 @@ const PUBLIC_GROUP_COMMANDS = new Set([
 const RESOURCE_TEXT =
   `GALAXY recruit resources:\n\n` +
   `1. Apply: ${APPLY_URL}\n` +
-  `2. ICA/payment gate: ${ICA_URL}\n` +
+  `2. Contracting profile (after you are hired and licensed): ${PROFILE_URL}\n` +
   `3. Licensing path: ${LICENSE_URL}\n` +
   `4. Exam help: /exam\n` +
   `5. Seminar info: /seminar\n` +
@@ -58,13 +59,10 @@ const RESOURCE_TEXT =
   `Already licensed? Book the licensed call: ${LICENSED_CALL_URL}`;
 
 const CONTRACTING_TEXT =
-  `Contracting checklist:\n\n` +
-  `1. Prelicensing course paid -> contracting packet sent within 24 hours.\n` +
-  `2. Have these ready: license number/state, SSN for background, direct deposit/routing, driver's license photo, monitored email + phone.\n` +
-  `3. Fill carrier forms carefully. Bad direct deposit or missed carrier emails can stall commissions.\n` +
-  `4. Background check usually takes 2-5 days. Carrier appointments usually take 5-10 business days each.\n` +
-  `5. First carrier approved -> writing number issued -> ready to write.\n\n` +
-  `Stuck or missing a packet? Use /manager.`;
+  `Contracting:\n\n` +
+  `Once you are hired and licensed, complete your contracting profile with your NPN number, first name, last name, email address, and resident state:\n${PROFILE_URL}\n\n` +
+  `Our team uses it to coordinate the carrier portal steps and track Combine, AFLAC, GTO, and Ethos on your profile. ${NOT_CONTRACTED_YET}\n\n` +
+  `Stuck? Use /manager.`;
 
 const FAQ_TEXT =
   `Fast commands:\n\n` +
@@ -589,7 +587,6 @@ async function matchByContact(chat_id: number, phone?: string, email?: string, f
     await sendTemplate(chat_id, "welcome.matched_unpaid", {
       first_name: firstName ?? "Friend",
       ica_amount: "$125",
-      ica_link: "https://apex-financial.org/start-contracting",
     });
   }
   await sb.from("telegram_users").update({ flow_state: {} }).eq("chat_id", chat_id);

@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { MyDayWins } from "@/components/myday/MyDayWins";
 import { MyDayTodoist, pushMyDayToTodoist } from "@/components/myday/MyDayTodoist";
 import { PrelicensingCheck } from "@/components/myday/PrelicensingCheck";
-import { ContractingSummaryBanner } from "@/components/team/ContractingSummaryBanner";
+import { ContractingReviewBanner } from "@/components/contracting-review/ContractingReviewBanner";
 
 interface Task {
   id: string;
@@ -381,7 +381,7 @@ export default function MyDay() {
         ))}
       </div>
 
-      {!editing ? <ContractingSummaryBanner className="mb-4" /> : null}
+      {!editing ? <ContractingReviewBanner className="mb-4" /> : null}
 
       {!editing ? <MyDayWins /> : null}
 

@@ -87,6 +87,7 @@ const ALLOWED_REDIRECT_PATHS = new Set<string>([
   "/onboarding-course",
   "/get-licensed",
   "/start-contracting",
+  "/dashboard/contracting-profile",
   "/apex-daily-numbers",
   "/dashboard/clients",
   "/agent-portal",

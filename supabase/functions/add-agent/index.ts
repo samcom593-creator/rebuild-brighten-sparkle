@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { emailPattern } from "../_shared/like-escape.ts";
 import { resolveOne } from "../_shared/resolve-one.ts";
+import { CONTRACTING_PROFILE_URL } from "../_shared/contracting-profile.ts";
 import { findAuthUserByEmail, type AuthUserLister } from "../_shared/find-auth-user.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 
@@ -599,9 +600,9 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // One contracting path only: APEX intake -> Ethos spreadsheet -> private
-    // contracting Discord. Manager-specific AgentLink URLs are retired.
-    const contractingLink = "https://apex-financial.org/start-contracting";
+    // One contracting path only: the signed-in "Complete your contracting profile" page. Carrier contracting itself
+    // is tracked by hand on the agent's profile; there is no manager-specific URL.
+    const contractingLink = CONTRACTING_PROFILE_URL;
 
     // wave-p1j (audit L151): the previous fire-and-forget `.catch(console.log)`
     // pattern silently swallowed welcome + course email failures — the modal
@@ -696,42 +697,20 @@ const handler = async (req: Request): Promise<Response> => {
         ? { ok: false, error: [transferNoteError, transferStampError].filter(Boolean).join("; ") }
         : { ok: true };
 
-    // Licensed direct-adds already contain the exact five contracting fields.
-    // Route them through the same idempotent intake used by the public page so
-    // the real Ethos write and private Discord receipt stay one workflow.
-    //
-    // Unlicensed / pending adds are SKIPPED here with the reason spelled out
-    // (never a bare skipped:true): they have no NPN to contract under yet.
-    // They live on the pre-license track and contracting starts when the
-    // license lands, so this is the correct outcome, not a missing step.
-    let contractingPostStatus: SideEffectStatus = {
+    // No contracting intake is queued here any more. The agent completes their own five-field contracting profile
+    // through the link in their welcome email (signed in, prefilled), and the team tracks the four carriers by hand.
+    // Nothing is queued outside the website, so there is nothing to fail or retry.
+    const contractingPostStatus: SideEffectStatus = {
       ok: true,
       skipped: true,
-      reason: "pre_license_track: NPN not needed until licensed — contracting starts automatically when the license lands",
+      reason: "manual_portal_review: the agent completes their contracting profile themselves; carriers are tracked by hand",
     };
-    if (agentLicenseStatus === "licensed") {
-      const { data: intakeData, error: intakeError } = await supabaseAdmin.rpc("submit_contracting_intake", {
-        p_first_name: firstName,
-        p_last_name: lastName,
-        p_email: normalizedEmail,
-        p_phone: phone,
-        p_npn: normalizedNpn,
-        p_source: "add_agent",
-        p_submitted_by: requestingUserId,
-        p_license_status: "licensed",
-      });
-      const intake = intakeData as { ok?: boolean; error?: string; intake_id?: string } | null;
-      contractingPostStatus = intakeError || !intake?.ok
-        ? { ok: false, error: intakeError?.message ?? intake?.error ?? "contracting intake failed" }
-        : { ok: true };
-    }
 
     const sideEffectFailures: string[] = [];
     if (!welcomeEmailStatus.ok) sideEffectFailures.push("welcome email");
     if (!courseEmailStatus.ok) sideEffectFailures.push("course enrollment email");
     if (!compApprovalEmailStatus.ok) sideEffectFailures.push("Sam comp approval email");
     if (!transferStatus.ok) sideEffectFailures.push("transfer note");
-    if (!contractingPostStatus.ok) sideEffectFailures.push("contracting spreadsheet/Discord queue");
     if (!applicationLinkStatus.ok) sideEffectFailures.push("application promotion receipt");
 
     const message = sideEffectFailures.length

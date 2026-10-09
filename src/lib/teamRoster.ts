@@ -66,3 +66,17 @@ export const daysSince = (iso: string | null): number | null => {
  * onboarding path, so nothing that implies a human action (call, chase, coach) applies to them.
  */
 export const isSyncOnly = (r: RosterRow): boolean => r.is_sync_only === true;
+
+export function plural(n: number, one: string, many = `${one}s`): string {
+  return `${n} ${n === 1 ? one : many}`;
+}
+
+/**
+ * A read that comes back exactly at the platform's page limit may be cut short. Treat that as a failed read so the
+ * screen shows "could not be read" instead of a roster that quietly stops at row 1,000.
+ */
+export function ensureCompleteRead(label: string, rows: readonly unknown[] | null | undefined, cap = 1000): void {
+  if (rows && rows.length >= cap) {
+    throw new Error(`${label} returned ${rows.length} rows, the platform page limit, so the list may be incomplete`);
+  }
+}

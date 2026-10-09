@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { CheckCircle2, Circle, MessageSquare, Hash, KeyRound } from "lucide-react";
+import { CONTRACTING_PROFILE_URL } from "@/lib/contractingLinks";
 
-const CONTRACTING_LINK = "https://apex-financial.org/start-contracting";
+const CONTRACTING_LINK = CONTRACTING_PROFILE_URL;
 
 // Compact agent health for the profile drawer: placement (placing vs falling off),
 // access (Discord / Slack / portal login), and pre-licensing progress. Reads
@@ -88,7 +89,7 @@ export default function AgentHealthPanel({ agentId }: Props) {
   });
 
   const copyLink = () => {
-    const link = access.data?.crm_setup_link || CONTRACTING_LINK;
+    const link = CONTRACTING_LINK; // one generic link for everyone; staff type no name or email
     navigator.clipboard?.writeText(link).then(() => toast.success("Contracting link copied"), () => toast.error("Copy failed"));
   };
   const hasDiscord = access.data?.has_discord_access;

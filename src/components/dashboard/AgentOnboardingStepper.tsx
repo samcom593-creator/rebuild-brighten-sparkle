@@ -30,6 +30,7 @@ import { TRAINING_ROUTES } from "@/lib/trainingRoutes";
 import { cn } from "@/lib/utils";
 import { useRealtimeTable } from "@/shared/realtime/useRealtimeTable";
 
+import { CONTRACTING_PROFILE_PATH } from "@/lib/contractingLinks";
 type StepStatus = "complete" | "current" | "available" | "locked";
 
 interface OnboardingStep {
@@ -177,23 +178,23 @@ function buildCompleteLaunchSteps(
       detail: npnReady
         ? `Licensed producer record confirmed${agent?.nipr_number ? ` · NPN ${agent.nipr_number}` : ""}.`
         : licensed
-          ? "Your license is marked active. Add your NPN through the contracting intake so carrier setup can match your record."
+          ? "Your license is marked active. Add your NPN in your contracting profile so carrier setup can match your record."
           : (originalLicense?.detail ?? "Complete the course, exam, fingerprints, state license, and NPN milestones."),
       status: npnReady ? "complete" : "available",
       action_label: npnReady ? null : (licensed ? "Add NPN" : "Open licensing roadmap"),
-      action_url: npnReady ? null : (licensed ? "/start-contracting" : "/get-licensed"),
+      action_url: npnReady ? null : (licensed ? CONTRACTING_PROFILE_PATH : "/get-licensed"),
     },
     {
       key: "intake",
-      label: "OneLink contracting",
+      label: "Contracting profile",
       detail: intakeReceived
-        ? `Your ${BRAND.shortName} OneLink intake is received and Milver owns the next handoff.`
+        ? `Your ${BRAND.shortName} contracting profile is saved. Your team confirms each carrier with you from here.`
         : licensed
-          ? "Open one secure link, confirm your NPN and profile, and submit everything the contracting desk needs."
-          : "This tile unlocks as soon as your license and NPN are confirmed—no separate internal contracting page is required.",
+          ? "Confirm your NPN number, name, email and resident state. Saving it does not mean carrier contracting is complete."
+          : "This unlocks as soon as your license and NPN are confirmed.",
       status: intakeReceived ? "complete" : licensed ? "available" : "locked",
-      action_label: intakeReceived || !licensed ? null : "Open OneLink contracting",
-      action_url: intakeReceived || !licensed ? null : "/start-contracting",
+      action_label: intakeReceived || !licensed ? null : "Complete contracting profile",
+      action_url: intakeReceived || !licensed ? null : CONTRACTING_PROFILE_PATH,
     },
     {
       key: "call",

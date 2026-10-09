@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 // request time so the pin pinned nothing underneath; same WORKER_ERROR class
 // and same fix as submit-contracting-intake (63fcf739).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
+import { CONTRACTING_PROFILE_URL, NOT_CONTRACTED_YET } from "../_shared/contracting-profile.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -112,7 +113,7 @@ const handler = async (req: Request): Promise<Response> => {
 
       <div class="slack-step">
         <h3 style="color:#D4AF37;"><span class="step-number" style="background:#D4AF37;color:#111;">1</span> Join the Galaxy Slack</h3>
-        <p>This is the primary team workspace for daily huddles, contracting support, training, scripts, and sales wins.</p>
+        <p>This is the primary team workspace for daily huddles, training, scripts, and sales wins.</p>
         <a href="${SLACK_LINK}" class="button" style="background:#D4AF37;color:#111 !important;">Join Team Slack →</a>
       </div>
 
@@ -129,9 +130,9 @@ const handler = async (req: Request): Promise<Response> => {
         <a href="${portalLink || PORTAL_LINK}" class="button">Open My Account &amp; Roadmap →</a>
       </div>
       <div class="step">
-        <h3><span class="step-number">4</span> Complete Native Galaxy Contracting</h3>
-        <p>Submit your NPN and profile once. Galaxy dispatches the contracting desk and spreadsheet automatically.</p>
-        <a href="${contractingLink || "https://apex-financial.org/start-contracting"}" class="button">Complete Contracting →</a>
+        <h3><span class="step-number">4</span> Complete Your Contracting Profile</h3>
+        <p>Add your NPN number, first name, last name, email address, and resident state. Our team uses this to coordinate the carrier portal steps and track Combine, AFLAC, GTO, and Ethos on your profile. ${NOT_CONTRACTED_YET}</p>
+        <a href="${contractingLink || CONTRACTING_PROFILE_URL}" class="button">Complete contracting profile →</a>
       </div>
       ` : `
       <div class="step">

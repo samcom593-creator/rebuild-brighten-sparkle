@@ -27,7 +27,7 @@ const FAQ: FaqItem[] = [
   { category: "Getting Started", q: "I just got hired. What's the very first thing I do?",
     a: "1) Schedule your prelicensing course immediately. 2) Pass your state exam (most people do it in 14 days if serious). 3) The day you're licensed, your manager onboards you, runs your carrier contracts, and gives you your first lead block. Until you're licensed you can't write business, so don't waste days." },
   { category: "Getting Started", q: "Where do I find my carrier contracting links?",
-    a: "Start or update your contracting at /start-contracting. The contracting team tracks your carrier checklist, writing numbers, E&O and EFT readiness from there. If a carrier link is missing, open the Support Desk tab on this page." },
+    a: "Complete your contracting profile at /dashboard/contracting-profile with your NPN number, first and last name, email and resident state. Your team then confirms Combine, AFLAC, GTO and Ethos with you. If a carrier link is missing, open the Support Desk tab on this page." },
   { category: "Getting Started", q: "What's the agent code on my profile?",
     a: "Your agent code is your internal identifier across recruiting, contracting, production, and reporting. You can see it on /dashboard/profile." },
 
@@ -59,7 +59,7 @@ const FAQ: FaqItem[] = [
 
   // Carriers
   { category: "Carriers", q: "How do I request a carrier contract?",
-    a: "Submit the contracting intake at /start-contracting. The contracting team then tracks sent, action-required, submitted, active and issue statuses for each carrier and will reach out for E&O and EFT." },
+    a: "Complete your contracting profile at /dashboard/contracting-profile. Contracting itself happens in each carrier's own portal, and your team confirms each carrier on your profile as it is done. Submitting your profile does not mean carrier contracting is complete." },
   { category: "Carriers", q: "Which carrier is best for diabetic clients?",
     a: "Depends on A1C, age, and other conditions. Generally: American Home Life or Royal Neighbors for milder cases. For guaranteed issue, look at our GI carriers. Ask your manager or open the Support Desk tab on this page for the current carrier underwriting guides." },
 

@@ -40493,6 +40493,39 @@ export type Database = {
         }
         Relationships: []
       }
+      contracting_legacy_retirements: {
+        Row: {
+          expected_state: string
+          item: string
+          kind: string
+          prior_state: string | null
+          reason: string
+          retired_at: string
+          revert_hint: string
+          target: string
+        }
+        Insert: {
+          expected_state: string
+          item: string
+          kind: string
+          prior_state?: string | null
+          reason: string
+          retired_at?: string
+          revert_hint: string
+          target: string
+        }
+        Update: {
+          expected_state?: string
+          item?: string
+          kind?: string
+          prior_state?: string | null
+          reason?: string
+          retired_at?: string
+          revert_hint?: string
+          target?: string
+        }
+        Relationships: []
+      }
       contracting_milestone_policy: {
         Row: {
           amber_day: number
@@ -110494,6 +110527,28 @@ export type Database = {
           review_reason: string | null
           state: string | null
           status: string | null
+        }
+        Relationships: []
+      }
+      v_contracting_legacy_retired: {
+        Row: {
+          expected_items: number | null
+          registered: number | null
+          retired_ok: boolean | null
+          still_off: number | null
+        }
+        Relationships: []
+      }
+      v_contracting_legacy_retirement: {
+        Row: {
+          actual_state: string | null
+          expected_state: string | null
+          item: string | null
+          kind: string | null
+          prior_state: string | null
+          retired_at: string | null
+          revert_hint: string | null
+          target: string | null
         }
         Relationships: []
       }

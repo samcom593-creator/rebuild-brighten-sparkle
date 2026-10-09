@@ -19,13 +19,17 @@ describe("licensed and unlicensed onboarding email policy", () => {
       "Set Up Your Course Account",
       "Open Your Galaxy Roadmap",
       "Finish Online Training",
-      "Complete Galaxy Contracting",
+      "Complete Your Contracting Profile",
     ]) {
       expect(licensing).toContain(expected);
     }
     // Owner directive 2026-10-05: Discord is out of the agent journey; Slack is the one team workspace.
     expect(licensing).not.toMatch(/discord/i);
     expect(licensing).not.toMatch(/whatsapp/i);
+    // Contracting is the five-field profile on a signed-in page, not a spreadsheet or a private desk.
+    expect(licensing).not.toMatch(/spreadsheet|contracting desk|start-contracting/i);
+    expect(licensing).toContain("NOT_CONTRACTED_YET");
+    expect(read("supabase/functions/_shared/contracting-profile.ts")).toContain("Submitting your information does not mean carrier contracting is complete.");
   });
 
   it("routes invite-created agents through the correct licensed or unlicensed welcome branch", () => {

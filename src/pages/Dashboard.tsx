@@ -78,8 +78,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { supabase } from "@/integrations/supabase/client";
 import { ensureCurrentAgentRecord } from "@/lib/ensureCurrentAgentRecord";
 import { useAuth } from "@/hooks/useAuth";
-import { AflacCheckoffBanner } from "@/components/dashboard/AflacCheckoffBanner";
-import { ContractingSummaryBanner } from "@/components/team/ContractingSummaryBanner";
+import { ContractingReviewBanner } from "@/components/contracting-review/ContractingReviewBanner";
 import { useMyDownline } from "@/hooks/useMyDownline";
 import { useRolePreview, type RolePreview } from "@/hooks/useRolePreview";
 import { getBusinessDayBounds, getBusinessMonthBounds, getBusinessWeekBounds, getMatchedPriorWeekBounds } from "@/lib/dateUtils";
@@ -1064,8 +1063,7 @@ export default function Dashboard() {
   if (shouldRenderDefaultAdminCommand) {
     return (
       <div className="mx-auto w-full max-w-7xl space-y-5 p-4 sm:p-6">
-        <AflacCheckoffBanner />
-        <ContractingSummaryBanner />
+        <ContractingReviewBanner />
         <AgentCloudHome />
       </div>
     );

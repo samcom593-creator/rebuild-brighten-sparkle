@@ -602,48 +602,15 @@ serve(async (req) => {
     return json({ ok: false, error: "invitation_terms_failed" }, 500);
   }
 
-  // A licensed hire is not "done" when the profile row exists. Queue the
-  // canonical contracting intake in the same request so the Ethos spreadsheet
-  // and private contracting support routing start automatically. The intake dedupes by
-  // NPN, making browser retries safe; if this leg fails the invite remains
-  // unused and the recruit can retry without creating a second agent.
-  //
-  // An UNLICENSED hire has no NPN by definition, so contracting is skipped
-  // here on purpose and the response says so explicitly. It is not a silent
-  // omission: the recruit is on the pre-license track (agents.onboarding_stage
-  // 'pre_licensed', license_progress 'unlicensed') and contracting starts when
-  // their NPN lands — via set_agent_license_progress or the one-link intake.
-  let contracting: Record<string, unknown> = {
+  // No contracting intake is queued any more. A licensed hire's NPN is already on their agent profile; the hire then
+  // completes the five-field contracting profile themselves (signed in, prefilled) and the team tracks the four
+  // carriers by hand. Nothing is queued anywhere outside the website, so this step can no longer fail the
+  // invite: a hire who has activated an account is never asked to retry because a downstream queue was down.
+  const contracting: Record<string, unknown> = {
     skipped: true,
-    reason: "pre_license_track",
-    detail: "NPN not needed until licensed; contracting starts automatically when the license lands.",
+    reason: "manual_portal_review",
+    detail: "Contracting is tracked by hand on the agent's profile; the agent completes their contracting profile after signing in.",
   };
-  if (licensed) {
-    const nameParts = full_name.split(/\s+/).filter(Boolean);
-    const { data: contractingResult, error: contractingError } = await admin.rpc(
-      "submit_contracting_intake",
-      {
-        p_first_name: nameParts[0],
-        p_last_name: nameParts.slice(1).join(" "),
-        p_email: email,
-        p_phone: phone_digits,
-        p_npn: nipr_number,
-        p_source: "magic_hire_link",
-        p_submitted_by: authUserId,
-        p_license_status: "licensed",
-      },
-    );
-    if (contractingError || contractingResult?.ok !== true) {
-      console.error("licensed_contracting_enqueue_failed", contractingError ?? contractingResult);
-      return json({ ok: false, error: "contracting_enqueue_failed" }, 500);
-    }
-    contracting = {
-      ok: true,
-      intake_id: contractingResult.intake_id ?? null,
-      status: contractingResult.status ?? null,
-      contracting: contractingResult.contracting ?? null,
-    };
-  }
 
   // Slack access is hired-only and provider-exclusion aware. The dispatcher
   // repeats this check immediately before sending, so a stale/manual outbox row

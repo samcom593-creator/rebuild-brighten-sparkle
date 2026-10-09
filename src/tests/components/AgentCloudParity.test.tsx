@@ -95,7 +95,7 @@ describe("AgentCloud parity surfaces", () => {
     expect(addAgent).toContain("Assign to manager / upline");
   });
 
-  it("makes every recruiting invite branch by license and auto-queues licensed contracting", () => {
+  it("makes every recruiting invite branch by license and queues no legacy contracting intake", () => {
     const inviteLinks = source("pages/admin/InviteLinks.tsx");
     const hire = source("pages/HireLink.tsx");
     const consumer = source("../supabase/functions/consume-invite-token/index.ts");
@@ -103,8 +103,9 @@ describe("AgentCloud parity surfaces", () => {
     expect(hire).toContain("License path");
     expect(hire).toContain("hire-license-path-locked");
     expect(hire).toContain("licensed: licensedHire === true");
-    expect(consumer).toContain('"submit_contracting_intake"');
-    expect(consumer).toContain("licensed_contracting_enqueue_failed");
+    expect(consumer).not.toContain('"submit_contracting_intake"');
+    expect(consumer).not.toContain("licensed_contracting_enqueue_failed");
+    expect(consumer).toContain('reason: "manual_portal_review"');
   });
 
   it("shows today's sale state and current streak on every Team roster row", () => {

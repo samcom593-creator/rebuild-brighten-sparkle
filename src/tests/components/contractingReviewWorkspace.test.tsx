@@ -222,6 +222,9 @@ describe("the person you are working on", () => {
     fireEvent.click(screen.getByRole("button", { name: "Next unreviewed" }));
     await waitFor(() => expect(screen.queryByText("Ann Lee")).not.toBeInTheDocument());
     expect(screen.getByText("Bo Chen")).toBeInTheDocument();
+    // The jump scrolls and focuses on a short timer. A DOM without scrollIntoView (every test DOM) must not turn that into an error.
+    await act(async () => { await new Promise((r) => setTimeout(r, 80)); });
+    expect(circlesFor("Bo Chen").getAllByRole("button", { name: /Press to/ })[0]).toHaveFocus();
   });
 
   it("'Next unreviewed' on the toolbar says nothing is left when everyone is done", async () => {

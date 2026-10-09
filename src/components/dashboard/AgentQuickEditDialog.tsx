@@ -421,32 +421,18 @@ export function AgentQuickEditDialog({
       // itself in Book of Business with an audit trail. The manual ALP/deal inputs that
       // used to write daily_production here were removed 2026-08-26.
 
+      // Contracting is no longer queued from here. The NPN above is already saved on the agent's profile; the agent
+      // completes their own contracting profile through the signed-in link, and the team tracks the four carriers by
+      // hand on My Team. Nothing is sent to a spreadsheet or a private channel.
       let contractingWarning: string | null = null;
       const becameLicensed = licenseStatus === "licensed" && agentData?.license_status !== "licensed";
-      if (licenseStatus === "licensed" && cleanedNpn) {
-        const nameParts = displayName.trim().split(/\s+/);
-        const firstName = nameParts.shift() || "";
-        const lastName = nameParts.join(" ");
-        const { data: contracting, error: contractingError } = await supabase.functions.invoke("submit-contracting-intake", {
-          body: {
-            first_name: firstName,
-            last_name: lastName,
-            email: email.trim(),
-            phone: phone.trim(),
-            npn: cleanedNpn,
-          },
-        });
-        if (contractingError || !contracting?.ok) {
-          contractingWarning = "Profile saved, but contracting could not be queued. Check name, email, phone, and NPN.";
-        }
-      }
 
       if (becameLicensed) {
         const { data: onboarding, error: onboardingError } = await supabase.functions.invoke("send-agent-onboarding-email", { body: {} });
         if (onboardingError || onboarding?.ok === false) {
           contractingWarning = contractingWarning
             ? `${contractingWarning} Onboarding email is still queued for retry.`
-            : "Profile and contracting saved. Onboarding email is queued for retry.";
+            : "Profile saved. Onboarding email is queued for retry.";
         }
       }
 

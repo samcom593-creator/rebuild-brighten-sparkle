@@ -136,13 +136,16 @@ describe("consume-invite-token uses the lifecycle RPCs", () => {
     expect(edge).toContain('admin.rpc("invitation_release"');
   });
 
-  it("applies offered terms before the contracting intake and completes last", () => {
+  it("applies offered terms first and completes last, and queues no contracting intake in between", () => {
     const apply = edge.indexOf('admin.rpc("invitation_apply_terms"');
-    const intake = edge.indexOf('"submit_contracting_intake"');
     const complete = edge.lastIndexOf('admin.rpc("invitation_complete"');
     expect(apply).toBeGreaterThan(0);
-    expect(apply).toBeLessThan(intake);
-    expect(intake).toBeLessThan(complete);
+    expect(apply).toBeLessThan(complete);
+    // Contracting is tracked by hand on the agent's profile now. Nothing is queued to a spreadsheet or a private
+    // channel, so a down queue can never fail an invitation that has already created the account.
+    expect(edge).not.toContain('"submit_contracting_intake"');
+    expect(edge).not.toContain("contracting_enqueue_failed");
+    expect(edge).toContain('reason: "manual_portal_review"');
   });
 
   it("never reports success when the single-use stamp did not land", () => {

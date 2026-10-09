@@ -8,6 +8,7 @@ import { CalendlyEmbed } from "@/components/landing/CalendlyEmbed";
 import { SCHEDULING_LINKS, getCalendlyHostName } from "@/lib/apexConfig";
 import { useApplicationStatus } from "@/hooks/useApplicationStatus";
 import { supabase } from "@/integrations/supabase/client";
+import { CONTRACTING_PROFILE_PATH } from "@/lib/contractingLinks";
 import { resolveBrand } from "@/config/brand";
 
 /**
@@ -85,7 +86,7 @@ export function ApplicationConfirmationV2({
     // The edge fn looks up email by applicationId server-side — we don't
     // need to wait for the status snapshot to load.
     const redirectPath =
-      license === "licensed" ? "/start-contracting" : "/get-licensed#licensing-video";
+      license === "licensed" ? CONTRACTING_PROFILE_PATH : "/get-licensed#licensing-video";
 
     (async () => {
       try {

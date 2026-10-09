@@ -19,6 +19,7 @@ import { formatDistanceToNow } from "date-fns";
 import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
 import { contactLinkProps, phoneHref, smsHref } from "@/lib/phone";
 
+import { CONTRACTING_PROFILE_PATH } from "@/lib/contractingLinks";
 type Stage =
   | "signed_up"
   | "onboarding"
@@ -49,12 +50,12 @@ const CHECKLIST_STEPS = [
   { key: "joined_discord", label: "Joined the team Slack", stage: "onboarding", settingKey: "community" },
   { key: "added_phone_number", label: "Added phone number", stage: "onboarding", href: "/dashboard/profile" },
   { key: "uploaded_id", label: "Uploaded ID", stage: "onboarding", href: "/dashboard/profile" },
-  { key: "signed_ica", label: "Signed contract", stage: "onboarding", href: "/start-contracting" },
+  { key: "signed_ica", label: "Signed contract", stage: "onboarding", href: CONTRACTING_PROFILE_PATH },
   { key: "scheduled_license_test", label: "Scheduled license test", stage: "licensing", href: "/get-licensed#licensing-actions" },
   { key: "submitted_fingerprints", label: "Submitted fingerprints", stage: "licensing", href: "/get-licensed#licensing-actions" },
   { key: "passed_license_test", label: "Passed license test", stage: "licensing", href: "/get-licensed#licensing-actions" },
   { key: "received_license", label: "Received state license", stage: "licensing", href: "/get-licensed#licensing-actions" },
-  { key: "contracted_with_carriers", label: "Contracted with carriers", stage: "contracting", href: "/start-contracting" },
+  { key: "contracted_with_carriers", label: "Contracted with carriers", stage: "contracting", href: CONTRACTING_PROFILE_PATH },
   { key: "completed_first_training", label: "Completed first training", stage: "field_training", href: "/dashboard/training/sales-course" },
   { key: "made_first_prospect_call", label: "Made first prospect call", stage: "field_training", href: "/dashboard/call-center" },
   { key: "ran_first_appointment", label: "Ran first appointment", stage: "field_training", href: "/dashboard/call-lab" },

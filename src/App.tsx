@@ -234,7 +234,6 @@ const CallsTodayCockpit = lazy(() => import("./pages/CallsTodayCockpit"));
 const WhaleRecruiting = lazy(() => import("./pages/WhaleRecruiting"));
 const CarrierContracts = lazy(() => import("./pages/CarrierContracts"));
 const AflacOnboarding = lazy(() => import("./pages/AflacOnboarding"));
-const StartContracting = lazy(() => import("./pages/StartContracting"));
 const ContractingProfile = lazy(() => import("./pages/ContractingProfile"));
 const Challenges = lazy(() => import("./pages/Challenges"));
 const Setup = lazy(() => import("./pages/admin/Setup"));
@@ -432,9 +431,10 @@ const App = () => (
                 <Route path="/careers/:state" element={<StateCareerLanding />} />
                   <Route path="/apply" element={<Apply />} />
                   <Route path="/share/:token" element={<SharePage />} />
-                  {/* Public, shareable contracting intake. Unauthenticated on purpose:
-                      producers who have no APEX login use this link. */}
-                  <Route path="/start-contracting" element={<StartContracting />} />
+                  {/* The old public contracting intake is retired (it posted to a spreadsheet and a private channel). Old
+                      emails, bookmarks and shared links still arrive here and are sent to the signed-in contracting
+                      profile; someone who is not signed in is asked to sign in first and then lands on it. */}
+                  <Route path="/start-contracting" element={<Navigate to="/dashboard/contracting-profile" replace />} />
                   <Route path="/apply/success" element={<ApplySuccess />} />
                   <Route path="/apply/success/licensed" element={<ApplySuccessLicensed />} />
                   <Route path="/apply/success/unlicensed" element={<ApplySuccessUnlicensed />} />

@@ -1,28 +1,21 @@
 import { Network, Search, Users, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ContractingFilterBar } from "@/components/team/ContractingFilterBar";
-import type { ContractingFilter, TeamContractingStatus } from "@/lib/teamContracting";
 
 export type ActiveFilter = { key: string; label: string; onRemove: () => void };
 
 /**
- * ONE toolbar for the roster: search, group, upline and sort in a single row, the contracting quick filters beneath,
- * and one status line that says how many of how many are showing and lets each active filter be removed. Counts for
- * the urgent people are never narrowed by anything here; they live in the Priority 1 section.
+ * ONE toolbar for the roster: search, group, upline and sort in a single row, and one status line that says how many of
+ * how many are showing and lets each active filter be removed.
  */
 export function RosterToolbar({
-  mode, q, onQ, managers, manager, onManager, groups, group, onGroup, sort, onSort, sortOptions,
-  status, cFilter, onCFilter, cMilestone, onCMilestone, shown, groupTotal, groupLabel, activeFilters, onClearAll,
+  q, onQ, managers, manager, onManager, groups, group, onGroup, sort, onSort, sortOptions,
+  shown, groupTotal, groupLabel, activeFilters, onClearAll,
 }: {
-  mode: "work" | "production";
   q: string; onQ: (v: string) => void;
   managers: [string, string][]; manager: string; onManager: (v: string) => void;
   groups: { key: string; label: string; count: number }[]; group: string; onGroup: (v: string) => void;
   sort: string; onSort: (v: string) => void; sortOptions: { value: string; label: string }[];
-  status: TeamContractingStatus | undefined;
-  cFilter: ContractingFilter; onCFilter: (f: ContractingFilter) => void;
-  cMilestone: string; onCMilestone: (m: string) => void;
   shown: number; groupTotal: number; groupLabel: string;
   activeFilters: ActiveFilter[]; onClearAll: () => void;
 }) {
@@ -60,10 +53,6 @@ export function RosterToolbar({
         </div>
       </div>
 
-      {mode === "work" && status ? (
-        <ContractingFilterBar status={status} filter={cFilter} onFilter={onCFilter} milestone={cMilestone} onMilestone={onCMilestone} />
-      ) : null}
-
       {activeFilters.length > 0 ? (
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground" role="status">
           <span>Showing <b className="text-foreground">{shown}</b> of {groupTotal} in {groupLabel}.</span>
@@ -74,9 +63,6 @@ export function RosterToolbar({
             </button>
           ))}
           <button type="button" onClick={onClearAll} className="min-h-[32px] px-1 text-xs font-semibold underline underline-offset-2 hover:text-foreground">Clear all</button>
-          {status && status.counts.p1_people > 0 ? (
-            <span>{status.counts.p1_people} {status.counts.p1_people === 1 ? "person needs" : "people need"} contact now across your whole roster, whatever is filtered.</span>
-          ) : null}
         </div>
       ) : null}
     </div>

@@ -4,6 +4,7 @@ import { Banknote, ExternalLink, FileCheck2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { resolveBrand } from "@/config/brand";
+import { CONTRACTING_PROFILE_PATH } from "@/lib/contractingLinks";
 
 export const EO_COVERAGE_URL = "https://app.napa-benefits.org/errors-and-omissions/";
 
@@ -15,17 +16,17 @@ export function ContractingReadinessCard({ compact = false }: { compact?: boolea
         <div>
           <p className="text-sm font-semibold">Contracting readiness</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Complete these once. Banking details stay in the secure carrier portals—not in {brand.shortName} forms or Discord.
+            Complete these once. Banking details stay in the secure carrier portals—not in {brand.shortName} forms.
           </p>
         </div>
         <div className="grid gap-3 md:grid-cols-3">
-          <ReadinessStep icon={FileCheck2} title="1. Review your intake" body="Saved profile and application details fill automatically. Add only what's missing, then submit once." />
+          <ReadinessStep icon={FileCheck2} title="1. Complete your contracting profile" body="Your NPN number, first and last name, email address and resident state. Details we already have are filled in; add only what's missing." />
           <ReadinessStep icon={Banknote} title="2. Prepare EFT" body="Have a voided check or bank letter ready. Enter routing and account numbers only when the carrier portal requests them." />
           <ReadinessStep icon={ShieldCheck} title="3. Confirm E&O" body="Keep an active certificate ready for carrier appointments. Compare the coverage and limits before purchasing." />
         </div>
         <div className="flex flex-wrap gap-2">
           <Button asChild>
-            <Link to="/start-contracting">Start contracting</Link>
+            <Link to={CONTRACTING_PROFILE_PATH}>Complete contracting profile</Link>
           </Button>
           <Button asChild variant="outline">
             <a href={EO_COVERAGE_URL} target="_blank" rel="noopener noreferrer">

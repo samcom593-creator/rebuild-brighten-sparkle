@@ -4,12 +4,13 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { logFunctionError, writeAudit } from "../_shared/audit.ts";
 import { SCHEDULING_LINKS } from "../_shared/apex.ts";
+import { CONTRACTING_PROFILE_URL, NOT_CONTRACTED_YET } from "../_shared/contracting-profile.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const ADMIN_EMAIL = "info@kingofsales.net";
 const SLACK_LINK = "https://join.slack.com/t/apex-financial-co/shared_invite/zt-47rdeq1fr-ETmj8yGBgRcoYVkwfc3DBQ";
 const PORTAL_LINK = "https://apex-financial.org/agent-portal";
-const CONTRACTING_LINK = "https://apex-financial.org/start-contracting";
+const CONTRACTING_LINK = CONTRACTING_PROFILE_URL;
 const TRAINING_LINK = "https://apex-financial.org/dashboard/training/library";
 const PRELICENSING_LINK = "https://partners.xcelsolutions.com/afe";
 
@@ -153,7 +154,7 @@ const handler = async (req: Request): Promise<Response> => {
               ${buildStepCard("1", "Join the Galaxy Slack", "Join the primary team workspace for daily huddles, support, training, scripts, and sales wins.", SLACK_LINK, "Join Team Slack →", "#D4AF37", "212, 175, 55")}
               ${buildStepCard("2", "Book Your Onboarding Call", "Meet with Milver, your Contracting &amp; Onboarding Manager, to lock in your first-week plan.", SCHEDULING_LINKS.licensed, "Book My Call →", "#667eea", "102, 126, 234")}
               ${buildStepCard("3", "Set Up Your Galaxy Account", "Open the portal, sign in with your email, confirm your profile, and use the live roadmap as your source of truth.", PORTAL_LINK, "Open My Account &amp; Roadmap →", "#14b8a6", "20, 184, 166")}
-              ${buildStepCard("4", "Complete Galaxy Contracting", "Submit your NPN and profile once. Galaxy routes the intake to the private contracting desk automatically.", CONTRACTING_LINK, "Complete Contracting →", "#f59e0b", "245, 158, 11")}
+              ${buildStepCard("4", "Complete Your Contracting Profile", `Add your NPN number, first name, last name, email address, and resident state. Our team uses this to coordinate the carrier portal steps and track Combine, AFLAC, GTO, and Ethos on your profile. ${NOT_CONTRACTED_YET}`, CONTRACTING_LINK, "Complete contracting profile →", "#f59e0b", "245, 158, 11")}
               ${buildStepCard("5", "Finish Online Training", "Complete onboarding, scripts, objections, ReadyMode, pipeline, deal-posting, and underwriting training before launch.", TRAINING_LINK, "Start Training →", "#4CAF50", "76, 175, 80")}
             </td>
           </tr>

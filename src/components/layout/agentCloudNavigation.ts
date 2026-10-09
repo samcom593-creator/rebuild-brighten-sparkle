@@ -210,10 +210,9 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
       { label: "Launch Board", href: "/dashboard/launch-board", icon: Megaphone, adminOnly: true },
       { label: "Reports", href: "/dashboard/analytics", icon: BarChart3, adminOnly: true },
       { label: "Finances", href: "/dashboard/finances", icon: WalletCards, adminOnly: true },
-      { label: "Contracting Ops", href: "/dashboard/contracting/ops", icon: Target, adminOnly: true },
-      { label: "Contract Requests", href: "/dashboard/contracting/requests", icon: FileSearch, adminOnly: true },
-      { label: "Ethos Contracting", href: "/dashboard/contracting/ethos", icon: FileSearch, adminOnly: true },
-      { label: "Aflac onboarding", href: "/dashboard/contracting/aflac", icon: FileSearch, adminOnly: true },
+      // One front door. The review is the working view; the older pages (requests, operations, Ethos, Aflac sends,
+      // documents, audit) are reachable from its "Earlier records" row, as history and reference.
+      { label: "Contracting", href: "/dashboard/contracting", icon: FileSearch, adminOnly: true },
       { label: "Import", href: "/dashboard/import", icon: Import, adminOnly: true },
     ],
   },

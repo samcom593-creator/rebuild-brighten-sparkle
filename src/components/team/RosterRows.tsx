@@ -7,23 +7,17 @@ import { contactLinkProps, phoneHref } from "@/lib/phone";
 import { formatTimeAgo } from "@/lib/dateUtils";
 import { cn } from "@/lib/utils";
 import { daysSince, isSyncOnly, usdOrNull, type RosterRow } from "@/lib/teamRoster";
-import {
-  BLOCKER_LABEL, OUTCOME_LABEL, WAITING_ON_LABEL, contractingSummary, followupLine, nextActionFor, type TeamPerson,
-} from "@/lib/teamContracting";
-import { ContractingCell, type ContractingReadState } from "@/components/team/ContractingBadges";
 import { OnboardingProgress } from "@/components/team/OnboardingProgress";
 
 /**
- * The working roster, two views of the same rows. "Contracting" answers who needs attention and what to do next;
- * "Production" carries the money columns that used to crowd every row. Both render the same rows from the same
- * definitions and open the same detail drawer.
+ * The production roster: one row per person with the money columns, opening the detail drawer. Contracting has its own
+ * view (the contracting review); this list carries no contracting status.
  *
  * Layout: at xl and wider a row is one line of aligned columns; below that each row stacks into a card, so a phone
  * never scrolls sideways. Rows are plain div roles (table / row / cell), and the column header row exists only where
  * the columns do.
  */
 
-const WORK_GRID = "xl:grid-cols-[minmax(230px,1.5fr)_minmax(240px,1.6fr)_minmax(190px,1.2fr)_minmax(110px,0.7fr)_minmax(120px,0.8fr)_84px]";
 const PROD_GRID = "xl:grid-cols-[minmax(230px,1.7fr)_130px_120px_100px_90px_110px_120px_84px]";
 
 const ROW = "grid grid-cols-1 gap-x-4 gap-y-2 border-b border-border/60 px-2 py-3 md:grid-cols-2 xl:items-start";
@@ -93,84 +87,6 @@ function DetailsCell({ r, onOpen, selected }: { r: RosterRow; onOpen: (id: strin
         onClick={() => onOpen(r.agent_id)} aria-label={`Open details for ${r.full_name ?? "this person"}`}>
         Details
       </Button>
-    </div>
-  );
-}
-
-const TONE = { urgent: "text-red-700 dark:text-red-300", warn: "text-amber-700 dark:text-amber-300", normal: "text-foreground" } as const;
-
-function NextActionCell({ p, hasPhone, read }: { p: TeamPerson | undefined; hasPhone: boolean; read: ContractingReadState }) {
-  if (read !== "ok" || !p || contractingSummary(p).kind !== "open") return <span className="text-sm text-muted-foreground">—</span>;
-  const f = p.followup;
-  const line = followupLine(p);
-  const act = p.p1 || p.due_soon ? nextActionFor(p, hasPhone).label : null;
-  const blockerBits = [f.waiting_on ? WAITING_ON_LABEL[f.waiting_on] ?? f.waiting_on : null, f.blocker && f.blocker !== "none" ? `Blocker: ${BLOCKER_LABEL[f.blocker] ?? f.blocker}` : null].filter(Boolean);
-  if (!f.next_action && !act && blockerBits.length === 0 && !line) return <span className="text-sm text-muted-foreground">—</span>;
-  return (
-    <div className="space-y-0.5 text-sm">
-      {f.next_action ? <p className="text-foreground">{f.next_action}</p> : act ? <p className="font-medium text-foreground">{act}</p> : null}
-      {blockerBits.length > 0 ? <p className="text-xs text-muted-foreground">{blockerBits.join(" · ")}</p> : null}
-      {line ? <p className={cn("text-xs font-semibold", TONE[line.tone])}>{line.text}</p> : null}
-    </div>
-  );
-}
-
-function OwnerCell({ r, p }: { r: RosterRow; p: TeamPerson | undefined }) {
-  if (!p) return <span className="text-sm text-muted-foreground">{r.manager_name ?? "—"}</span>;
-  return (
-    <div className="text-sm">
-      <p className="text-foreground">{p.owner.name}</p>
-      {p.owner.source === "follow_up_owner" && r.manager_name ? <p className="text-xs text-muted-foreground">Upline {r.manager_name}</p>
-        : p.owner.source === "unassigned" ? <p className="text-xs text-muted-foreground">Nobody assigned</p> : null}
-    </div>
-  );
-}
-
-function LastContactCell({ p, read }: { p: TeamPerson | undefined; read: ContractingReadState }) {
-  if (read !== "ok" || !p || contractingSummary(p).kind === "none") return <span className="text-sm text-muted-foreground">—</span>;
-  const f = p.followup;
-  return f.last_at ? (
-    <p className="text-sm text-foreground">{OUTCOME_LABEL[f.last_outcome ?? ""] ?? "Logged"}<span className="block text-xs text-muted-foreground">{formatTimeAgo(f.last_at)}</span></p>
-  ) : <span className="text-sm text-muted-foreground">Never contacted</span>;
-}
-
-export function RosterWorkList({ rows, byAgent, selectedId, onOpen, read }: {
-  rows: RosterRow[];
-  byAgent: Map<string, TeamPerson>;
-  selectedId: string | null;
-  onOpen: (id: string) => void;
-  read: ContractingReadState;
-}) {
-  return (
-    <div role="table" aria-label="Team contracting roster" className="text-sm">
-      <div role="row" className={cn("hidden gap-x-4 border-b border-border px-2 pb-1.5 text-xs font-semibold text-muted-foreground xl:grid", WORK_GRID)}>
-        <div role="columnheader">Person</div>
-        <div role="columnheader">Contracting</div>
-        <div role="columnheader">Next action</div>
-        <div role="columnheader">Owner</div>
-        <div role="columnheader">Last contact</div>
-        <div role="columnheader"><span className="sr-only">Details</span></div>
-      </div>
-      <div role="rowgroup">
-        {rows.map((r) => {
-          const p = byAgent.get(r.agent_id);
-          const selected = selectedId === r.agent_id || (p ? selectedId === p.agent_id : false);
-          return (
-            <div role="row" key={r.agent_id} className={cn(ROW, "xl:grid", WORK_GRID, selected && "bg-muted/40")}>
-              <PersonCell r={r} selected={selected} onOpen={onOpen} />
-              <div role="cell"><CellLabel>Contracting</CellLabel><ContractingCell p={p} licensed={r.license_status === "licensed"} read={read} /></div>
-              <div role="cell"><CellLabel>Next action</CellLabel><NextActionCell p={p} hasPhone={Boolean(r.phone)} read={read} /></div>
-              {/* Below xl owner and last contact share one cell; from xl up the wrapper disappears (display: contents)
-                  so each is its own grid cell, and at xl its own column. */}
-              <div className="grid grid-cols-2 gap-3 xl:contents">
-                <div role="cell"><CellLabel>Owner</CellLabel><OwnerCell r={r} p={p} /></div>
-                <div role="cell"><CellLabel>Last contact</CellLabel><LastContactCell p={p} read={read} /></div>
-              </div>
-              <DetailsCell r={r} onOpen={onOpen} selected={selected} />
-            </div>
-          );
-        })}
-      </div>
     </div>
   );
 }

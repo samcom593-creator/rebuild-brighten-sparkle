@@ -27,17 +27,6 @@ describe("Slack messaging foundation", () => {
     expect(migration).not.toContain("bot_token text");
   });
 
-  it("keeps contracting on the immediate onboarding result", () => {
-    const page = source("src/pages/StartContracting.tsx");
-    const result = source("src/components/contracting/ContractingSuccessModal.tsx");
-    expect(page).toContain("<ContractingSuccessModal accepted={accepted}");
-    expect(result).toContain("Contracting Initiated — Fast Track Active");
-    expect(result).toContain("Book with {ONBOARDING_CONTACT.name}");
-    expect(result).toContain("Join team Slack");
-    expect(`${page}\n${result}`.toLowerCase()).not.toContain("in a queue");
-    expect(`${page}\n${result}`.toLowerCase()).not.toContain("pending review");
-  });
-
   it("provides an admin-only live Slack and destination health probe", () => {
     const health = source("supabase/functions/slack-integration-health/index.ts");
     expect(health).toContain('callSlack<SlackAuthResult>("auth.test"');

@@ -5,15 +5,6 @@ import { describe, expect, it } from "vitest";
 const source = (file: string) => fs.readFileSync(path.resolve(__dirname, `../../${file}`), "utf8");
 
 describe("P0 repair packet", () => {
-  it("keeps the contracting result operational and provides immediate onboarding", () => {
-    const page = source("pages/StartContracting.tsx");
-    const result = source("components/contracting/ContractingSuccessModal.tsx");
-    expect(page).toContain("ContractingSuccessModal");
-    expect(result).toContain("Contracting Initiated — Fast Track Active");
-    expect(result).toContain("SCHEDULING_LINKS.onboarding");
-    expect(`${page}\n${result}`.toLowerCase()).not.toContain("in a queue");
-  });
-
   it("renders live production skeletons without placeholder money", () => {
     const crm = source("pages/DashboardCRM.tsx");
     const metrics = source("components/dashboard/ProductionMetricsCard.tsx");

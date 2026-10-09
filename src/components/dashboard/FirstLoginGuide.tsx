@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { TRAINING_ROUTES } from "@/lib/trainingRoutes";
 import { cn } from "@/lib/utils";
 
+import { CONTRACTING_PROFILE_PATH } from "@/lib/contractingLinks";
 /**
  * FirstLoginGuide: the thing a brand-new agent sees before anything else.
  *
@@ -108,8 +109,8 @@ export function FirstLoginGuide({ agentId }: { agentId: string }) {
         ? {
             key: "contracting", icon: Building2,
             label: "Get contracted",
-            detail: "One secure link, your NPN, and the contracting desk handles the carriers.",
-            href: "/start-contracting", cta: "Open contracting",
+            detail: "Add your NPN, name, email and resident state once. Your team then confirms each carrier with you.",
+            href: CONTRACTING_PROFILE_PATH, cta: "Complete contracting profile",
             done: data.contracted,
           }
         : {

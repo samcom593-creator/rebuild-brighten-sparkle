@@ -22,8 +22,6 @@ import { formatTimeAgo } from "@/lib/dateUtils";
 import { buildExceptionQueue, type OnboardingFacts } from "@/lib/onboardingExceptions";
 import { ExpectedStartControl } from "@/components/onboarding/ExpectedStartControl";
 import { useOnboardingExceptionFacts } from "@/components/onboarding/useOnboardingExceptionFacts";
-import { RowBadges } from "@/components/team/ContractingBadges";
-import { useTeamContracting } from "@/lib/teamContracting";
 
 /**
  * Recruit Stages (2026-09-30). Sam: "fix the licensing tracking so I can see
@@ -153,8 +151,6 @@ export default function RecruitPipeline() {
   // Contracting flags per hired agent, from the same server calculation as My Team. The server only answers managers
   // and staff; for everyone else this is empty and nothing is drawn.
   const { isAdmin: rpAdmin, isManager: rpManager, isVaManager: rpVaManager, isVa: rpVa } = useAuth();
-  const teamContracting = useTeamContracting(rpAdmin || rpManager || rpVaManager || rpVa);
-  const hireFlagsByAgent = teamContracting.byAgent;
   const agentFloor = useMemo(() => stages.find((s) => s.stage_key === "hired_unlicensed")?.order_index ?? stages.find((s) => s.stage_key === "hired")?.order_index ?? 12, [stages]);
   const linkState = (r: Row): LinkFilter => (r.link_used_at || r.last_sign_in_at ? "clicked" : r.link_sent_at ? "sent" : "not_sent");
 
@@ -577,9 +573,6 @@ export default function RecruitPipeline() {
                               <Instagram className="h-3.5 w-3.5" /> add IG
                             </button>
                           )}
-                          {r.person_type === "agent" && r.agent_id && hireFlagsByAgent.get(r.agent_id) ? (
-                            <RowBadges p={hireFlagsByAgent.get(r.agent_id)!} />
-                          ) : null}
                           {r.person_type === "agent" && r.agent_id && (() => {
                             const info = factsByAgent.get(r.agent_id);
                             if (!info) {

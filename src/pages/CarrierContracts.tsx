@@ -94,6 +94,7 @@ export default function CarrierContracts() {
     ] : []),
     ...(isContractingStaff ? [["cases", "/dashboard/contracting/cases", "Cases"]] : []),
     ...(isAdmin ? [
+      ["aflac", "/dashboard/contracting/aflac", "Aflac sends"],
       ["ops", "/dashboard/contracting/ops", "Operations"],
       ["documents", "/dashboard/contracting/documents", "Documents"],
       ["audit", "/dashboard/contracting/audit", "Audit"],

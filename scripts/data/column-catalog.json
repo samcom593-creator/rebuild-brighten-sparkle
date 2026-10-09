@@ -3089,6 +3089,16 @@
       "submitted_by",
       "updated_at"
     ],
+    "contracting_legacy_retirements": [
+      "expected_state",
+      "item",
+      "kind",
+      "prior_state",
+      "reason",
+      "retired_at",
+      "revert_hint",
+      "target"
+    ],
     "contracting_links": [
       "created_at",
       "id",
@@ -8352,6 +8362,22 @@
       "review_reason",
       "state",
       "status"
+    ],
+    "v_contracting_legacy_retired": [
+      "expected_items",
+      "registered",
+      "retired_ok",
+      "still_off"
+    ],
+    "v_contracting_legacy_retirement": [
+      "actual_state",
+      "expected_state",
+      "item",
+      "kind",
+      "prior_state",
+      "retired_at",
+      "revert_hint",
+      "target"
     ],
     "v_contracting_reconciliation": [
       "agent_id",

@@ -55,7 +55,8 @@ export function ContractingReviewWorkspace({ className }: { className?: string }
     if (at >= shown) setShown(at + 1);
     window.setTimeout(() => {
       const el = document.getElementById(`review-row-${id}`);
-      el?.scrollIntoView({ block: "center", behavior: "auto" });
+      // Not every environment implements scrollIntoView (test DOMs do not); the jump is a convenience, never a failure.
+      if (el && typeof el.scrollIntoView === "function") el.scrollIntoView({ block: "center", behavior: "auto" });
       el?.querySelector<HTMLButtonElement>("button[data-circle]:not(:disabled)")?.focus({ preventScroll: true });
     }, 30);
   }, [agents, filter, search, managerId, n, shown]);

@@ -10,7 +10,6 @@ describe("agent onboarding roadmap", () => {
   const portal = source("src/pages/AgentPortal.tsx");
   const command = source("src/pages/AgentCommandDashboard.tsx");
   const agentLogin = source("src/pages/AgentNumbersLogin.tsx");
-  const contractingSuccess = source("src/components/contracting/ContractingSuccessModal.tsx");
   const welcome = source("supabase/functions/welcome-new-agent/index.ts");
   const resources = source("src/components/training/RequiredOnboardingResources.tsx");
   const trainingMigration = source("supabase/migrations/20260827214500_training_experience_redesign.sql");
@@ -40,7 +39,7 @@ describe("agent onboarding roadmap", () => {
     for (const step of [
       "Confirm your account and profile",
       "Finish licensing and confirm your NPN",
-      "OneLink contracting",
+      "Contracting profile",
       "Book your onboarding call",
       "Upload license and identity documents",
       "Secure and upload E&O coverage",
@@ -53,8 +52,6 @@ describe("agent onboarding roadmap", () => {
       expect(roadmap).toContain(step);
     }
     expect(roadmap).toContain('label: `Join the ${BRAND.shortName} Slack`');
-    expect(contractingSuccess).toContain("Your complete launch path");
-    expect(contractingSuccess).toContain("Continue to your onboarding roadmap");
   });
 
   it("returns trained agents to the launch dashboard instead of skipping the roadmap", () => {

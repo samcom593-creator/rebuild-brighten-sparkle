@@ -27,10 +27,11 @@ describe("one-tap hiring lifecycle", () => {
     expect(edge).toContain('closed_at: new Date().toISOString()');
   });
 
-  it("uses only APEX intake -> spreadsheet -> private Discord for contracting", () => {
+  it("sends a new hire to the signed-in contracting profile and queues nothing for a spreadsheet or private channel", () => {
     const edge = read("supabase/functions/add-agent/index.ts");
-    expect(edge).toContain('const contractingLink = "https://apex-financial.org/start-contracting"');
-    expect(edge).toContain('rpc("submit_contracting_intake"');
+    expect(edge).toContain("const contractingLink = CONTRACTING_PROFILE_URL");
+    expect(edge).not.toContain('rpc("submit_contracting_intake"');
+    expect(edge).not.toContain("start-contracting");
     expect(edge).not.toContain('.from("contracting_links")');
     expect(edge).not.toContain("Ethos sheet — copy the line below");
   });

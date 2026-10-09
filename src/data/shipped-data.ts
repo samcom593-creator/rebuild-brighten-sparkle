@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "The old contracting pipeline is off: new hires no longer post to a private channel, a spreadsheet or Slack, and every contracting email and link now says the same thing.",
+    detail: "Three triggers that turned each contracting intake into a private-channel post, a spreadsheet row and a Slack event are switched off (nothing deleted, each with its way back stored beside it), and the nightly Aflac check-off push is paused. Nothing was waiting to send: all 88 earlier posts were already delivered or parked for a human. The contracting link is now one signed-in, prefilled form (/start-contracting sends people there), Add Agent, the hire link and Quick Edit no longer queue a contracting intake, and the welcome, licensing and Telegram messages use the new wording: NPN number, first and last name, email and resident state, and 'Submitting your information does not mean carrier contracting is complete.' My Team lost the overdue flags, the follow-up plan and the milestone checklist; Home and My Day show one calm line, 'N agents still have a carrier circle to review'. A new check in the weekly doctor goes red if the old pipeline is ever switched back on.",
+    commit: "PL-CONTRACTING-PORTAL-TRACKER-B",
+  },
+  {
+    ts: "today",
     label: "My Team and Contracts now open on one contracting review: four circles per agent (Combine, AFLAC, GTO, Ethos), a placement level, and the five profile fields.",
     detail: "Every active agent starts Not yet reviewed on all four circles, whatever the old checklist said; Not yet reviewed is not late. Tap a circle after you have checked the carrier's portal. It saves at once, shows who and when, has an Undo, and a failed save puts it back and says so. Details holds the agent's NPN, first and last name, email and resident state, the carriers, the placement level and the history. AFLAC has an Open portal link; opening a portal marks nothing. The contracting link is now one generic link that opens a signed-in, prefilled form, so staff type no name or email. The old day-three/four/five red flags and Priority 1 panel are gone from My Team. Combine and GTO are not yet matched to carrier-catalog entries; that match is left unset on purpose.",
     commit: "PL-CONTRACTING-PORTAL-TRACKER-A",

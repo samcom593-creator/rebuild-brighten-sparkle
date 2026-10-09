@@ -120,7 +120,7 @@ serve(async (req) => {
             headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
             body: JSON.stringify({
               email: app.email,
-              title: "Still interested in APEX Financial?",
+              title: "Still interested in Galaxy Financial?",
               message: `Hey ${app.first_name}, we noticed you applied but haven't heard back. Are you still interested in getting licensed? Reply to this email or call us.`,
             })
           });
@@ -341,7 +341,7 @@ serve(async (req) => {
       if (resendKey) {
         const resend = new Resend(resendKey);
         await resend.emails.send({
-          from: "APEX System <alerts@apex-financial.org>",
+          from: "Galaxy System <alerts@apex-financial.org>",
           to: "info@kingofsales.net",
           subject: `🚨 ${criticalIssues.length} Critical System Issue${criticalIssues.length > 1 ? "s" : ""} Detected`,
           html: `
@@ -365,7 +365,7 @@ serve(async (req) => {
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
         body: JSON.stringify({
           phone: Deno.env.get("SAM_PHONE_NUMBER") || "",
-          message: `🚨 APEX ALERT: ${criticalIssues.length} critical issue(s). ${criticalIssues[0]}. Check system health page.`,
+          message: `🚨 GALAXY ALERT: ${criticalIssues.length} critical issue(s). ${criticalIssues[0]}. Check system health page.`,
           carrier: "auto"
         })
       });

@@ -477,7 +477,7 @@ function AgentProducerView({ agentId }: { agentId: string }) {
 }
 
 export default function ProducerProfile() {
-  usePageTitle("Producer Profile · APEX");
+  usePageTitle("Producer Profile · Galaxy");
   const { user, isAdmin } = useAuth();
   const qc = useQueryClient();
   const [searchParams] = useSearchParams();

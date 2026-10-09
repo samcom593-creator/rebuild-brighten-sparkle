@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 
 // MP-430: the setup checklist is a MANAGER onboarding surface. The owner's home
-// is a money page; "Set up APEX · 1 of 11 done" floating over it for months was
+// is a money page; "Set up Galaxy · 1 of 11 done" floating over it for months was
 // the clutter Sam asked to have removed. The mock is a manager so the checklist
 // assertions keep proving the surface exists; a second test proves the owner
 // no longer sees it.
@@ -37,7 +37,7 @@ beforeEach(() => {
 describe("AgentCloud parity surfaces", () => {
   it("ships the persistent 11-step setup checklist", () => {
     render(<AgentCloudSetupChecklist />);
-    fireEvent.click(screen.getByRole("button", { name: /Set up APEX/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Set up Galaxy/i }));
     expect(screen.getAllByRole("checkbox")).toHaveLength(11);
     expect(screen.getByText("Complete producer profile")).toBeTruthy();
   });
@@ -48,7 +48,7 @@ describe("AgentCloud parity surfaces", () => {
     try {
       const { container } = render(<AgentCloudSetupChecklist />);
       expect(container.querySelectorAll('[role="checkbox"]')).toHaveLength(0);
-      expect(container.textContent).not.toContain("Set up APEX");
+      expect(container.textContent).not.toContain("Set up Galaxy");
     } finally {
       Object.assign(authState, prev);
     }
@@ -73,7 +73,7 @@ describe("AgentCloud parity surfaces", () => {
     for (const tab of ["Personal info", "Carriers", "Contracts", "Background", "Documents"]) expect(profile).toContain(tab);
   });
 
-  it("keeps APEX Training recruit lifecycle, active journey, and qualification calculator first-class", () => {
+  it("keeps Galaxy Training recruit lifecycle, active journey, and qualification calculator first-class", () => {
     const toolkit = source("pages/ApexCareerToolkit.tsx");
     for (const phrase of [
       "Master recruit pipeline",

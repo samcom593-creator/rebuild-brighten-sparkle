@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
   if (!code) {
     const provided = (url.searchParams.get("k") ?? "").trim();
     if (!provided || !(await verifyHex(botToken, CONNECT_KEY_CONTEXT, provided))) {
-      return html("<h2>Not your link</h2><p>This connect link needs its key. Ask the APEX operator for the current one.</p>", 401);
+      return html("<h2>Not your link</h2><p>This connect link needs its key. Ask the Galaxy operator for the current one.</p>", 401);
     }
     const issued = Math.floor(Date.now() / 1000).toString();
     const state = `${issued}.${await signHex(botToken, `state:${issued}`)}`;
@@ -123,11 +123,11 @@ Deno.serve(async (req) => {
   const issued = dot > 0 ? state.slice(0, dot) : "";
   const mac = dot > 0 ? state.slice(dot + 1) : "";
   if (!/^\d{1,12}$/.test(issued) || !(await verifyHex(botToken, `state:${issued}`, mac))) {
-    return html("<h2>That connect link didn't come from here</h2><p>Start again from the APEX connect link.</p>", 401);
+    return html("<h2>That connect link didn't come from here</h2><p>Start again from the Galaxy connect link.</p>", 401);
   }
   const ageSeconds = Math.floor(Date.now() / 1000) - Number(issued);
   if (!Number.isFinite(ageSeconds) || ageSeconds < -60 || ageSeconds > STATE_TTL_SECONDS) {
-    return html("<h2>That connect link expired</h2><p>Open the APEX connect link again — it is good for 15 minutes.</p>", 401);
+    return html("<h2>That connect link expired</h2><p>Open the Galaxy connect link again — it is good for 15 minutes.</p>", 401);
   }
 
   const tokenRes = await fetch("https://oauth2.googleapis.com/token", {

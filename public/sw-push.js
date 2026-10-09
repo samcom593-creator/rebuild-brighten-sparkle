@@ -17,7 +17,7 @@ self.addEventListener("push", (event) => {
     };
 
     event.waitUntil(
-      self.registration.showNotification(data.title || "Apex Financial", options)
+      self.registration.showNotification(data.title || "Galaxy Financial", options)
     );
   } catch (err) {
     console.error("Push event error:", err);

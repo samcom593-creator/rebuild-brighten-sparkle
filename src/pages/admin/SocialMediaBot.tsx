@@ -302,7 +302,7 @@ export default function SocialMediaBot() {
         eyebrow="Content engine"
         eyebrowIcon={<Sparkles className="h-3 w-3" />}
         title="Social Media Bot"
-        subtitle="APEX Standard content engine — daemon + chat-session intel · auto-refresh every 30s"
+        subtitle="Galaxy Standard content engine — daemon + chat-session intel · auto-refresh every 30s"
         accent="amber"
         actions={
           <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isRefetching}>

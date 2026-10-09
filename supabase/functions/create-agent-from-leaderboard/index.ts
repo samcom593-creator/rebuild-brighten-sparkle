@@ -215,10 +215,10 @@ const handler = async (req: Request): Promise<Response> => {
     // Send welcome email with magic link
     const resend = new Resend(RESEND_API_KEY);
     const { error: emailError } = await resend.emails.send({
-      from: "APEX Financial <notifications@apex-financial.org>",
+      from: "Galaxy Financial <notifications@apex-financial.org>",
       to: [email],
       cc: ["info@kingofsales.net"],
-      subject: "🎉 Your APEX Portal Access is Ready!",
+      subject: "🎉 Your Galaxy Portal Access is Ready!",
       html: `
 <!DOCTYPE html>
 <html>
@@ -233,7 +233,7 @@ const handler = async (req: Request): Promise<Response> => {
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 600px; background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%); border-radius: 16px; border: 1px solid #333;">
           <tr>
             <td style="padding: 40px; text-align: center;">
-              <h1 style="color: #f59e0b; margin: 0 0 20px 0; font-size: 28px;">Welcome to APEX! 🚀</h1>
+              <h1 style="color: #f59e0b; margin: 0 0 20px 0; font-size: 28px;">Welcome to Galaxy! 🚀</h1>
               <p style="color: #e5e5e5; font-size: 16px; line-height: 1.6; margin: 0 0 30px 0;">
                 Hey ${fullName}! Your agent portal is now live and ready for you.
               </p>

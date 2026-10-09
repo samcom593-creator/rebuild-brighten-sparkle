@@ -64,7 +64,7 @@ interface AgentLite {
  *   purchased → started → exam → licensed → contracted → first_deal
  */
 export default function WhaleRecruiting() {
-  usePageTitle("Whale Recruiting · APEX");
+  usePageTitle("Whale Recruiting · Galaxy");
   const { isAdmin } = useAuth();
 
   // Pull high-value applicants (in progress, not failed)

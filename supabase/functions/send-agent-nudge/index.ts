@@ -60,10 +60,10 @@ Deno.serve(async (req) => {
     }
     const resend = new Resend(resendKey);
     await resend.emails.send({
-      from: "APEX Financial <notifications@apex-financial.org>",
+      from: "Galaxy Financial <notifications@apex-financial.org>",
       to: [email],
       subject: msg.subject,
-      html: `<p>Hi ${profile?.full_name || ""},</p><p>${msg.body}</p><p>— APEX Team</p>`,
+      html: `<p>Hi ${profile?.full_name || ""},</p><p>${msg.body}</p><p>— Galaxy Team</p>`,
     });
 
     await supabase.from("email_delivery_log").insert({

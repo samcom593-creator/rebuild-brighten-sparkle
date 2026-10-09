@@ -212,7 +212,7 @@ function fullName(c: Pick<Client, "first_name" | "last_name">): string {
 }
 
 export default function ClientPipeline() {
-  usePageTitle("Client Pipeline · APEX");
+  usePageTitle("Client Pipeline · Galaxy");
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, isAdmin, isManager } = useAuth();

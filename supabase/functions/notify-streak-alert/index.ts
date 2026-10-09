@@ -194,7 +194,7 @@ serve(async (req) => {
           <tr>
             <td style="padding: 20px; text-align: center; background: rgba(0,0,0,0.3);">
               <p style="color: rgba(255,255,255,0.5); font-size: 12px; margin: 0;">
-                APEX Financial • Consistency Wins 🏆
+                Galaxy Financial • Consistency Wins 🏆
               </p>
             </td>
           </tr>
@@ -209,7 +209,7 @@ serve(async (req) => {
     // Send to all agents
     try {
       await resend.emails.send({
-        from: "APEX Financial <notifications@apex-financial.org>",
+        from: "Galaxy Financial <notifications@apex-financial.org>",
         bcc: recipients,
         to: "info@kingofsales.net",
         subject: `🔥 ${agentName} is on a ${dealStreak}-DAY DEAL STREAK!`,

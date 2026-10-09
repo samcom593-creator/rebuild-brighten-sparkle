@@ -97,7 +97,7 @@ function buildIcs(opts: {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//APEX Financial//Seminar Funnel//EN",
+    "PRODID:-//Galaxy Financial//Seminar Funnel//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:REQUEST",
     "BEGIN:VEVENT",
@@ -198,7 +198,7 @@ async function loadSettings(): Promise<SeminarSettings> {
     zoomMeetingId: map["seminar_zoom_meeting_id"] || "0000000000",
     passcode: map["seminar_passcode"] || "apex2026",
     scheduleCron: map["seminar_schedule_cron"] || "Wed,Fri,Sun @ 19:00 America/Chicago",
-    hostName: map["seminar_host_name"] || "Sam James's Apex team",
+    hostName: map["seminar_host_name"] || "Sam James's Galaxy team",
     fromEmail: map["seminar_from_email"] || "notifications@apex-financial.org",
     telegramDmUrl: map["telegram_bot_dm_url"] || null,
     telegramBotUsername: map["telegram_bot_username"] || null,
@@ -344,17 +344,17 @@ const handler = async (req: Request): Promise<Response> => {
       ? `https://t.me/${settings.telegramBotUsername}?start=apply_${applicationId}`
       : null;
 
-  const eventTitle = "Apex Seminar: Welcome Zoom";
+  const eventTitle = "Galaxy Seminar: Welcome Zoom";
   const eventDescription = [
-    "Welcome to Apex Financial. This is the live recruiting Zoom Sam James's team runs every Wed, Fri, and Sun at 7pm CT.",
+    "Welcome to Galaxy Financial. This is the live recruiting Zoom Sam James's team runs every Wed, Fri, and Sun at 7pm CT.",
     "",
     `Zoom link: ${settings.zoomUrl}`,
     `Meeting ID: ${settings.zoomMeetingId}`,
     `Passcode: ${settings.passcode}`,
     "",
     tgDeepLink
-      ? `Open the Apex Telegram bot before the call: ${tgDeepLink}`
-      : "Apex Telegram bot link arrives once the bot is fully provisioned.",
+      ? `Open the Galaxy Telegram bot before the call: ${tgDeepLink}`
+      : "Galaxy Telegram bot link arrives once the bot is fully provisioned.",
   ].join("\n");
 
   const icsBody = buildIcs({
@@ -391,7 +391,7 @@ const handler = async (req: Request): Promise<Response> => {
     ? `
       <div style="background: #229ED9; padding: 18px 22px; border-radius: 10px; margin: 18px 0; text-align: center;">
         <p style="margin: 0 0 10px; color: white; font-weight: 600; font-size: 15px;">
-          Open the Apex Telegram bot before the call
+          Open the Galaxy Telegram bot before the call
         </p>
         <a href="${tgDeepLink}" style="display: inline-block; background: white; color: #1683b3; padding: 12px 26px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 15px;">
           Open Telegram bot
@@ -421,7 +421,7 @@ const handler = async (req: Request): Promise<Response> => {
           ${safeFirst}, the welcome seminar Zoom is locked.
         </p>
         <p style="color: #374151; margin: 0 0 18px; line-height: 1.55;">
-          This is the room where you meet the team, hear the playbook, and decide if Apex is the right fit. Show up on time. Show up ready.
+          This is the room where you meet the team, hear the playbook, and decide if Galaxy is the right fit. Show up on time. Show up ready.
         </p>
 
         <div style="background: #ecfdf5; border: 2px solid #10b981; border-radius: 10px; padding: 18px 20px; margin: 18px 0; text-align: center;">
@@ -459,7 +459,7 @@ const handler = async (req: Request): Promise<Response> => {
         ${telegramLineHtml}
 
         <p style="color: #374151; margin: 22px 0 0; line-height: 1.55;">
-          Check your spam folder if this is the first email you got from us. Mark Apex as not spam so the rest of the onboarding chain lands in your inbox.
+          Check your spam folder if this is the first email you got from us. Mark Galaxy as not spam so the rest of the onboarding chain lands in your inbox.
         </p>
 
         <p style="color: #111827; margin: 24px 0 0;">
@@ -469,7 +469,7 @@ const handler = async (req: Request): Promise<Response> => {
       </div>
 
       <div style="text-align: center; padding: 16px; color: #9ca3af; font-size: 11px;">
-        Apex Financial · apex-financial.org · Hold the Standard. Average is the disease.
+        Galaxy Financial · apex-financial.org · Hold the Standard. Average is the disease.
       </div>
     </div>
   `;
@@ -480,8 +480,8 @@ const handler = async (req: Request): Promise<Response> => {
   if (resend) {
     try {
       const fromAddr = settings.fromEmail.includes("@apex-financial.org")
-        ? `APEX Seminar <${settings.fromEmail}>`
-        : "APEX Seminar <notifications@apex-financial.org>";
+        ? `Galaxy Seminar <${settings.fromEmail}>`
+        : "Galaxy Seminar <notifications@apex-financial.org>";
       // resend@2.0.0's Attachment type declares only content/filename/path, but
       // content_type is real and load-bearing: without it the .ics arrives as a
       // generic octet-stream and the mail client renders no "add to calendar" card.

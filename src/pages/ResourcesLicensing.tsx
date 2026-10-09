@@ -49,8 +49,8 @@ type Course = {
 
 const COURSES: Course[] = [
   {
-    title: "APEX Financial Release Course",
-    presenter: "APEX Training Team",
+    title: "Galaxy Financial Release Course",
+    presenter: "Galaxy Training Team",
     role: "Recorded Curriculum",
     category: "Core Curriculum",
     description:
@@ -60,12 +60,12 @@ const COURSES: Course[] = [
     url: `${HUB_URL}/#library`,
   },
   {
-    title: "APEX Onboarding Course",
+    title: "Galaxy Onboarding Course",
     presenter: "Sam",
     role: "Agency Owner",
     category: "Onboarding",
     description:
-      "Required before live training. Gets you accustomed to the APEX script and sales process.",
+      "Required before live training. Gets you accustomed to the Galaxy script and sales process.",
     lessons: "4 lessons",
     duration: "self-paced",
     url: `${HUB_URL}/#library`,
@@ -99,9 +99,9 @@ const PDFS: PdfResource[] = [
     url: `${HUB_URL}/#library`,
   },
   {
-    title: "APEX Agent Playbook",
+    title: "Galaxy Agent Playbook",
     subtitle:
-      "The official APEX playbook — start-to-finish guide to onboarding, daily activity, and the systems that drive production.",
+      "The official Galaxy playbook — start-to-finish guide to onboarding, daily activity, and the systems that drive production.",
     date: "May 28, 2026",
     isNew: true,
     url: `${HUB_URL}/#library`,
@@ -125,14 +125,14 @@ type Script = {
 
 const SCRIPTS: Script[] = [
   {
-    title: "APEX Script 3.0 — Senior Benefits",
+    title: "Galaxy Script 3.0 — Senior Benefits",
     subtitle:
       "Current Senior State Benefits / life insurance phone script — intro through the close.",
     date: "May 26, 2026",
     url: `${HUB_URL}/#library`,
   },
   {
-    title: "APEX Script — Veterans (VA Benefits)",
+    title: "Galaxy Script — Veterans (VA Benefits)",
     subtitle:
       "Veteran burial-coverage opener and full call flow for VA-benefit prospects.",
     date: "May 24, 2026",
@@ -153,7 +153,7 @@ const RECORDINGS: Recording[] = [
   {
     title: "Vet Close 3",
     category: "General",
-    presenter: "APEX Training Team",
+    presenter: "Galaxy Training Team",
     role: "Recorded Trainer",
     date: "Jun 22, 2026",
     hasTranscript: true,
@@ -161,7 +161,7 @@ const RECORDINGS: Recording[] = [
   {
     title: "Vet Close 2",
     category: "Vet",
-    presenter: "APEX Training Team",
+    presenter: "Galaxy Training Team",
     role: "Recorded Trainer",
     date: "Jun 18, 2026",
     hasTranscript: true,
@@ -169,7 +169,7 @@ const RECORDINGS: Recording[] = [
   {
     title: "Vet Close 1",
     category: "Vet",
-    presenter: "APEX Training Team",
+    presenter: "Galaxy Training Team",
     role: "Recorded Trainer",
     date: "Jun 17, 2026",
     hasTranscript: true,
@@ -233,7 +233,7 @@ const RECORDINGS: Recording[] = [
   {
     title: "Beating the Price Objection — Version 1",
     category: "Recorded Presentation",
-    presenter: "APEX Training Team",
+    presenter: "Galaxy Training Team",
     role: "Recorded Trainer",
     date: "May 21, 2026",
     hasTranscript: true,
@@ -241,7 +241,7 @@ const RECORDINGS: Recording[] = [
   {
     title: "Beating the Price Objection — Version 2",
     category: "Recorded Presentation",
-    presenter: "APEX Training Team",
+    presenter: "Galaxy Training Team",
     role: "Recorded Trainer",
     date: "May 7, 2026",
     hasTranscript: true,
@@ -249,7 +249,7 @@ const RECORDINGS: Recording[] = [
   {
     title: "Selling More Coverage — Objection Handling",
     category: "Recorded Presentation",
-    presenter: "APEX Training Team",
+    presenter: "Galaxy Training Team",
     role: "Recorded Trainer",
     date: "Apr 12, 2026",
     hasTranscript: true,
@@ -257,7 +257,7 @@ const RECORDINGS: Recording[] = [
 ];
 
 const PRESENTERS = [
-  { initial: "AT", name: "APEX Training Team", role: "Recorded Curriculum", count: 6 },
+  { initial: "AT", name: "Galaxy Training Team", role: "Recorded Curriculum", count: 6 },
   { initial: "O", name: "Obi", role: "Senior Producer", count: 5 },
   { initial: "S", name: "Sam", role: "Agency Owner", count: 3 },
   { initial: "M", name: "Moody", role: "Top Producer", count: 2 },
@@ -277,7 +277,7 @@ const QUICK_LINKS = [
     url: "https://apexfinancial.readymode.com/",
   },
   {
-    label: "APEX Recruits Sheet",
+    label: "Galaxy Recruits Sheet",
     subtitle: "See all applicants",
     url: "https://docs.google.com/spreadsheets/d/1bRk9DAsg0xUvAxWlo9DsGC1WxdDaCwlSQ13JYIN1cO4/edit?usp=sharing",
   },
@@ -313,7 +313,7 @@ function SectionHeader({
 }
 
 export default function ResourcesLicensing() {
-  usePageTitle("APEX Resources · Training + Licensing");
+  usePageTitle("Galaxy Resources · Training + Licensing");
 
   return (
     <div className="min-h-screen bg-background py-8 px-4">
@@ -337,7 +337,7 @@ export default function ResourcesLicensing() {
 
           <div className="flex items-center gap-2 mb-4">
             <Crown className="h-8 w-8 text-primary" />
-            <span className="text-xl font-bold gradient-text">APEX Financial</span>
+            <span className="text-xl font-bold gradient-text">Galaxy Financial</span>
           </div>
 
           <div className="flex items-center gap-2 mb-3">
@@ -353,7 +353,7 @@ export default function ResourcesLicensing() {
           </h1>
           <p className="text-lg text-muted-foreground max-w-3xl">
             Scripts, carrier guides, recorded trainings, courses, and PDFs —
-            curated for APEX applicants and licensed agents. Updated weekly.
+            curated for Galaxy applicants and licensed agents. Updated weekly.
           </p>
         </div>
 

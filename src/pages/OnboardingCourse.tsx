@@ -225,14 +225,14 @@ export default function OnboardingCourse() {
     return (
       <div className="max-w-4xl mx-auto text-center py-20">
         <BookOpen className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-        <h1 className="text-2xl font-bold mb-2">Apex Sales Training Course</h1>
+        <h1 className="text-2xl font-bold mb-2">Galaxy Sales Training Course</h1>
         <p className="text-muted-foreground mb-6">
           Course modules are being prepared. Check back in a few minutes — or
-          watch the master Apex playlist directly on YouTube.
+          watch the master Galaxy playlist directly on YouTube.
         </p>
         <Button asChild className="gap-2">
           <a href="https://www.youtube.com/@SamuelJamesHQ" target="_blank" rel="noopener noreferrer">
-            Open Apex Playlist on YouTube
+            Open Galaxy Playlist on YouTube
           </a>
         </Button>
       </div>

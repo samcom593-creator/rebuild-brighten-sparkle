@@ -234,7 +234,7 @@ const steps = [
 ];
 
 export default function Apply() {
-  usePageTitle("Apply to APEX Financial · Insurance Career Pathway");
+  usePageTitle("Apply to Galaxy Financial · Insurance Career Pathway");
   useRequestRadixFieldsAfterPaint();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -1007,7 +1007,7 @@ export default function Apply() {
           <div className="flex items-center justify-between gap-4">
             <Link to="/" className="flex min-h-11 items-center gap-2">
               <Crown className="h-7 w-7 text-primary" />
-              <span className="text-lg font-bold">APEX Financial</span>
+              <span className="text-lg font-bold">Galaxy Financial</span>
             </Link>
             <div className="hidden md:flex items-center gap-2 text-[11px] uppercase tracking-[0.16em] font-display font-semibold">
               <span className="h-2 w-2 rounded-full bg-emerald-500" />
@@ -1034,7 +1034,7 @@ export default function Apply() {
                 pulled from the public conversion page. Monogram until a
                 professional headshot is provided. */}
             <div
-              aria-label="Samuel James, Founder of APEX Financial"
+              aria-label="Samuel James, Founder of Galaxy Financial"
               className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/15 ring-2 ring-primary/40 text-sm font-bold text-primary"
             >
               SJ
@@ -1371,7 +1371,7 @@ export default function Apply() {
                         <div className="p-6 rounded-lg bg-primary/10 border border-primary/20">
                           <h3 className="font-semibold text-primary mb-2">Not licensed yet? Doesn't matter.</h3>
                           <p className="text-sm text-muted-foreground">
-                            APEX pays for your study materials and exam prep. We reimburse your licensing fees
+                            Galaxy pays for your study materials and exam prep. We reimburse your licensing fees
                             once you're contracted. Most candidates are licensed inside 2–3 weeks.
                           </p>
                         </div>
@@ -1413,7 +1413,7 @@ export default function Apply() {
                       <div className="space-y-2">
                         <Label htmlFor="motivation" className="flex items-center gap-2">
                           <Heart className="h-4 w-4 text-primary" />
-                          What motivates you to join APEX? *
+                          What motivates you to join Galaxy? *
                         </Label>
                         <Textarea
                           id="motivation"
@@ -1430,10 +1430,10 @@ export default function Apply() {
                         <Label>
                           {referrerName
                             ? `Referred by ${referrerName} ✓`
-                            : "Where did you find APEX? (optional)"}
+                            : "Where did you find Galaxy? (optional)"}
                         </Label>
                         <ApplySelect
-                          ariaLabel="Where did you find APEX?"
+                          ariaLabel="Where did you find Galaxy?"
                           value={watch("referralSource") || undefined}
                           onValueChange={(value) => setValue("referralSource", value, { shouldValidate: true })}
                           placeholder="Select source"
@@ -1447,14 +1447,14 @@ export default function Apply() {
                           identified the referrer. */}
                       {!referrerId && (
                         <div className="space-y-2">
-                          <Label>Which APEX agent should get credit?</Label>
+                          <Label>Which Galaxy agent should get credit?</Label>
                           <ApplySelect
                             ariaLabel="Which agent should get credit"
                             value={selectedReferrer}
                             onValueChange={setSelectedReferrer}
                             placeholder="Choose an agent (optional)"
                             options={[
-                              { value: "none", label: "I found APEX on my own" },
+                              { value: "none", label: "I found Galaxy on my own" },
                               ...activeAgents.map((agent) => ({
                                 value: agent.id,
                                 label: (
@@ -1493,7 +1493,7 @@ export default function Apply() {
                         <div ref={smsConsentRef} className="space-y-3">
                           <p id="smsConsentDisclosure" className="text-sm text-muted-foreground leading-relaxed">
                             By checking the box below, you agree to receive SMS/text messages from{" "}
-                            <strong className="text-foreground">Apex Financial</strong> at the number you provide 
+                            <strong className="text-foreground">Galaxy Financial</strong> at the number you provide 
                             regarding application updates, onboarding steps, training instructions, and support. 
                             Message frequency varies. Message & data rates may apply. Reply STOP to cancel, HELP for help. 
                             Consent is not a condition of purchase.
@@ -1508,7 +1508,7 @@ export default function Apply() {
                               className="mt-0.5"
                             />
                             <Label htmlFor="smsConsent" className="text-sm text-foreground cursor-pointer leading-relaxed font-medium">
-                              I agree to receive SMS/text messages from Apex Financial. <span className="text-muted-foreground font-normal">(optional)</span>
+                              I agree to receive SMS/text messages from Galaxy Financial. <span className="text-muted-foreground font-normal">(optional)</span>
                             </Label>
                           </div>
                           {errors.smsConsent && (
@@ -1520,7 +1520,7 @@ export default function Apply() {
                         <div className="space-y-3 pt-2 border-t border-border">
                           <p id="emailConsentDisclosure" className="text-sm text-muted-foreground leading-relaxed">
                             By checking the box below, you agree to receive emails from{" "}
-                            <strong className="text-foreground">Apex Financial</strong> regarding 
+                            <strong className="text-foreground">Galaxy Financial</strong> regarding 
                             application updates and onboarding.
                           </p>
                           <div className="flex items-start gap-3">
@@ -1533,7 +1533,7 @@ export default function Apply() {
                               className="mt-0.5"
                             />
                             <Label htmlFor="emailConsent" className="text-sm text-foreground cursor-pointer leading-relaxed font-medium">
-                              I agree to receive emails from Apex Financial.
+                              I agree to receive emails from Galaxy Financial.
                             </Label>
                           </div>
                         </div>

@@ -134,6 +134,60 @@
         "raw": "p_referral_id uuid, p_new_status referral_status, p_note text DEFAULT NULL::text"
       }
     ],
+    "aflac_daily_checkoff": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "aflac_gate_state": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "aflac_intake_missing": [
+      {
+        "all": [
+          "p_email",
+          "p_first",
+          "p_last",
+          "p_license",
+          "p_npn",
+          "p_phone",
+          "p_status"
+        ],
+        "required": [
+          "p_email",
+          "p_first",
+          "p_last",
+          "p_license",
+          "p_npn",
+          "p_phone",
+          "p_status"
+        ],
+        "unnamed": false,
+        "raw": "p_first text, p_last text, p_email text, p_npn text, p_phone text, p_license text, p_status text"
+      }
+    ],
+    "aflac_mark_submitted": [
+      {
+        "all": [
+          "p_comp_level",
+          "p_intake_id"
+        ],
+        "required": [
+          "p_comp_level",
+          "p_intake_id"
+        ],
+        "unnamed": false,
+        "raw": "p_intake_id uuid, p_comp_level text"
+      }
+    ],
     "agency_roster_production": [
       {
         "all": [
@@ -4210,6 +4264,19 @@
         ],
         "unnamed": false,
         "raw": "p_first_name text, p_cohort text"
+      }
+    ],
+    "fn_require_caller_role": [
+      {
+        "all": [
+          "p_allow_presenter",
+          "p_roles"
+        ],
+        "required": [
+          "p_roles"
+        ],
+        "unnamed": false,
+        "raw": "p_roles app_role[], p_allow_presenter boolean DEFAULT false"
       }
     ],
     "fn_rpc_single_flight": [

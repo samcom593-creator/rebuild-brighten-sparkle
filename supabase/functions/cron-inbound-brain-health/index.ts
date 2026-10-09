@@ -71,9 +71,9 @@ serve(async (req: Request): Promise<Response> => {
       source: "cron-inbound-brain-health",
       eventType: "inbound_brain_down",
       severity: "critical",
-      subject: "APEX DM responder is DOWN",
+      subject: "Galaxy DM responder is DOWN",
       body: `The inbound DM routing brain failed its health check: ${detail}. New DMs may not be getting answered or routed.`,
-      smsBody: `APEX DM responder DOWN: ${detail}`.slice(0, 90),
+      smsBody: `Galaxy DM responder DOWN: ${detail}`.slice(0, 90),
     });
     page_receipt = raised.receipt;
     if (!raised.ok) console.error("[cron-inbound-brain-health] page NOT delivered:", raised.receipt);

@@ -158,10 +158,10 @@ const handler = async (req: Request): Promise<Response> => {
 
     try {
       await resend.emails.send({
-        from: "APEX Financial <notifications@apex-financial.org>",
+        from: "Galaxy Financial <notifications@apex-financial.org>",
         to: [profile.email],
         cc: ccList.length > 0 ? ccList : undefined,
-        subject: "🎓 Your APEX Training Course Is Ready!",
+        subject: "🎓 Your Galaxy Training Course Is Ready!",
         html: `
           <!DOCTYPE html>
           <html>
@@ -186,13 +186,13 @@ const handler = async (req: Request): Promise<Response> => {
                 </h2>
                 
                 <p style="color: #e2e8f0; font-size: 16px; line-height: 1.8; margin: 0 0 24px 0;">
-                  You've been enrolled in the APEX onboarding course. This one-tap link sets up your account session and opens the training — no password needed.
+                  You've been enrolled in the Galaxy onboarding course. This one-tap link sets up your account session and opens the training — no password needed.
                 </p>
 
                 <div style="background: rgba(212,175,55,0.1); border: 1px solid rgba(212,175,55,0.3); border-radius: 12px; padding: 20px; margin: 24px 0;">
                   <h3 style="color: #D4AF37; font-size: 17px; margin: 0 0 12px 0;">Your next-step roadmap</h3>
                   <ol style="color: #e2e8f0; font-size: 14px; line-height: 2; margin: 0; padding-left: 20px;">
-                    <li>Open the one-tap link and confirm your APEX account.</li>
+                    <li>Open the one-tap link and confirm your Galaxy account.</li>
                     <li>Complete every training module and quiz in order.</li>
                     <li>Check your live roadmap for the next unlocked action.</li>
                     <li>Use Slack for team support, training questions, and updates.</li>
@@ -227,7 +227,7 @@ const handler = async (req: Request): Promise<Response> => {
 
                 <div style="background: rgba(74, 21, 75, 0.18); border-radius: 12px; padding: 20px; margin: 24px 0; text-align: center;">
                   <p style="color: #D4AF37; font-size: 14px; font-weight: bold; margin: 0 0 8px 0;">
-                    💬 Join the APEX Slack
+                    💬 Join the Galaxy Slack
                   </p>
                   <p style="color: #94a3b8; font-size: 13px; margin: 0 0 12px 0;">
                     Slack is the team hub for daily huddles, training support, scripts, and updates.
@@ -250,7 +250,7 @@ const handler = async (req: Request): Promise<Response> => {
                 
                 <div style="border-top: 1px solid rgba(148, 163, 184, 0.2); padding-top: 24px; margin-top: 32px;">
                   <p style="color: #64748b; font-size: 12px; margin: 0; text-align: center;">
-                    Powered by APEX Financial
+                    Powered by Galaxy Financial
                   </p>
                 </div>
                 

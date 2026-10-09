@@ -64,7 +64,7 @@ export function AddPhotoPrompt() {
             <span className="text-[11px] uppercase tracking-widest text-primary bg-primary/15 px-2 py-0.5 rounded-full border border-primary/30">Unlocks plaques</span>
           </div>
           <p className="text-xs md:text-sm text-muted-foreground">
-            Every APEX plaque you earn gets rendered with your photo. Right now yours shows just your initials — takes 15 seconds to fix.
+            Every Galaxy plaque you earn gets rendered with your photo. Right now yours shows just your initials — takes 15 seconds to fix.
           </p>
         </div>
         <Button asChild size="sm" className="shrink-0 gap-1.5">

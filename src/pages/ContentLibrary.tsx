@@ -518,7 +518,7 @@ export default function ContentLibrary() {
     ctx.fillStyle = "#ffffff";
     ctx.font = "bold 36px 'Hanken Grotesk', sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("APEX FINANCIAL", 540, 100);
+    ctx.fillText("GALAXY FINANCIAL", 540, 100);
 
     ctx.font = "bold 28px 'Hanken Grotesk', sans-serif";
     ctx.fillStyle = "rgba(255,255,255,0.7)";
@@ -878,7 +878,7 @@ export default function ContentLibrary() {
                 {[
                   { key: "icloudUploaded" as const, label: 'iCloud shows "All items uploaded"' },
                   { key: "verifiedOnline" as const, label: "Verified content visible at icloud.com" },
-                  { key: "apexUploaded" as const, label: "Key content uploaded to APEX library" },
+                  { key: "apexUploaded" as const, label: "Key content uploaded to Galaxy library" },
                   { key: "dropboxBackup" as const, label: "Dropbox backup complete" },
                 ].map(({ key, label }) => (
                   <div key={key} className="flex items-center gap-2">

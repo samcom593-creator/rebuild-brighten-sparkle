@@ -403,13 +403,13 @@ export default function AgentPortal() {
           <div className="relative">
             <img 
               src={apexIcon} 
-              alt="Apex" 
+              alt="Galaxy" 
               className="h-12 w-12 mx-auto mb-4 animate-pulse"
             />
             <div className="absolute inset-0 h-12 w-12 mx-auto rounded-full bg-primary/20 blur-xl animate-pulse" />
           </div>
           <p className="text-muted-foreground font-medium text-sm">
-            Powered by Apex
+            Powered by Galaxy
           </p>
         </motion.div>
       </div>
@@ -429,7 +429,7 @@ export default function AgentPortal() {
             <div className="relative mb-6">
               <img 
                 src={apexIcon} 
-                alt="Apex" 
+                alt="Galaxy" 
                 className="h-16 w-16 mx-auto"
               />
               <div className="absolute inset-0 h-16 w-16 mx-auto rounded-full bg-primary/20 blur-xl" />
@@ -750,7 +750,7 @@ export default function AgentPortal() {
             {/* Direct Portal Link */}
             <GlassCard className="p-4 overflow-hidden">
               <div className="flex items-center gap-3 mb-4">
-                <img src={apexIcon} alt="Apex" className="h-10 w-10 rounded-md shadow-lg shrink-0" />
+                <img src={apexIcon} alt="Galaxy" className="h-10 w-10 rounded-md shadow-lg shrink-0" />
                 <div className="min-w-0">
                   <h3 className="font-semibold">Agent Portal</h3>
                   <p className="text-xs text-muted-foreground truncate">
@@ -762,7 +762,7 @@ export default function AgentPortal() {
               {/* Branded Preview Card */}
               <div className="bg-primary/[0.06] border border-border/50 rounded-md p-4 mb-4">
                 <div className="flex items-center gap-3">
-                  <img src={apexIcon} alt="Apex" className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg shrink-0" />
+                  <img src={apexIcon} alt="Galaxy" className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-sm">Agent Portal</p>
                     <p className="text-xs text-muted-foreground truncate">apex-financial.org/agent-portal</p>

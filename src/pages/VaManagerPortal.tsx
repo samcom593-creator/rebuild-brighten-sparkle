@@ -37,7 +37,7 @@ interface VaRow {
  * the caller manages (profiles.managed_by). list_my_vas() returns only own VAs.
  */
 export default function VaManagerPortal() {
-  usePageTitle("Staff accounts · APEX");
+  usePageTitle("Staff accounts · Galaxy");
   const { isAdmin, isVaManager } = useAuth();
   const askConfirm = useConfirm();
   const qc = useQueryClient();

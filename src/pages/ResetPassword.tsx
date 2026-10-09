@@ -17,7 +17,7 @@ import { toast } from "sonner";
 // and we send them back to /login.
 
 export default function ResetPassword() {
-  usePageTitle("Reset password · APEX Financial");
+  usePageTitle("Reset password · Galaxy Financial");
   const navigate = useNavigate();
   const [sessionReady, setSessionReady] = useState(false);
   const [linkInvalid, setLinkInvalid] = useState(false);
@@ -76,7 +76,7 @@ export default function ResetPassword() {
               <Crown className="h-6 w-6 text-primary" />
             </span>
             <div className="flex flex-col items-start leading-none">
-              <span className="text-2xl font-bold brand-gradient tracking-wider">APEX</span>
+              <span className="text-2xl font-bold brand-gradient tracking-wider">Galaxy</span>
               <span className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground mt-1">Financial</span>
             </div>
           </div>

@@ -70,7 +70,7 @@ function fmtUsd(n: number | null | undefined): string {
 }
 
 export default function Announcements() {
-  usePageTitle("Announcements + News Feed · APEX");
+  usePageTitle("Announcements + News Feed · Galaxy");
   const { user, isAdmin } = useAuth();
   const qc = useQueryClient();
 

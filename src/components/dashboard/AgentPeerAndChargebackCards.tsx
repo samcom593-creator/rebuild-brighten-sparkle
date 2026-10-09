@@ -199,7 +199,7 @@ export function UpcomingChargebackCard({ agentId }: { agentId: string | null }) 
         <div className="space-y-2"><Skeleton className="h-4 w-3/4" /><Skeleton className="h-4 w-1/2" /></div>
       ) : isClean ? (
         <p className="text-sm text-muted-foreground">
-          No chargebacks or duplicate-charge flags against you. Keep producing clean policies — Apex's chargeback rate is your protection.
+          No chargebacks or duplicate-charge flags against you. Keep producing clean policies — Galaxy's chargeback rate is your protection.
         </p>
       ) : (
         <dl className="grid grid-cols-2 gap-2 text-sm">

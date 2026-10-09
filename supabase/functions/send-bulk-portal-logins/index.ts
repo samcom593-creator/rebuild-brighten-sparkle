@@ -252,10 +252,10 @@ const handler = async (req: Request): Promise<Response> => {
         // for every attempt regardless of outcome. A bulk run could report "42 sent" having
         // delivered zero.
         const { data: sendData, error: sendError } = await resend.emails.send({
-          from: "APEX Financial <notifications@apex-financial.org>",
+          from: "Galaxy Financial <notifications@apex-financial.org>",
           to: [profile.email],
           cc: ccList.length > 0 ? ccList : undefined,
-          subject: "🎯 Your APEX Portal Access - One-Tap Login Inside!",
+          subject: "🎯 Your Galaxy Portal Access - One-Tap Login Inside!",
           html: `
             <!DOCTYPE html>
             <html>
@@ -280,7 +280,7 @@ const handler = async (req: Request): Promise<Response> => {
                   </h2>
                   
                   <p style="color: #e2e8f0; font-size: 16px; line-height: 1.8; margin: 0 0 24px 0;">
-                    You can now log your daily numbers and track your performance on the APEX Portal. Just tap the button below - no password needed!
+                    You can now log your daily numbers and track your performance on the Galaxy Portal. Just tap the button below - no password needed!
                   </p>
                   
                   <div style="background: rgba(201, 168, 76, 0.1); border-radius: 12px; padding: 24px; margin: 24px 0;">
@@ -334,7 +334,7 @@ const handler = async (req: Request): Promise<Response> => {
                   
                   <div style="border-top: 1px solid rgba(148, 163, 184, 0.2); padding-top: 24px; margin-top: 32px;">
                     <p style="color: #64748b; font-size: 12px; margin: 0; text-align: center;">
-                      APEX Financial Empire<br>
+                      Galaxy Financial<br>
                       Building Empires, Protecting Families
                     </p>
                   </div>

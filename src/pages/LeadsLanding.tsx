@@ -9,14 +9,14 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 // /leads, /get-leads, and /dialer all crash with React error #306
 // "element type is invalid: undefined."
 export default function LeadsLanding() {
-  usePageTitle("APEX Leads & Dialer · Daily Warm Leads");
+  usePageTitle("Galaxy Leads & Dialer · Daily Warm Leads");
   return (
     <div className="min-h-screen bg-white dark:bg-card">
       {/* Navigation */}
       <nav className="sticky top-0 z-50 backdrop-blur-sm border-b border-slate-200 dark:border-border/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <Link to="/" className="text-2xl font-bold text-foreground">
-            APEX FINANCIAL
+            GALAXY FINANCIAL
           </Link>
           <Button asChild variant="outline">
             <Link to="/dashboard">Dashboard</Link>
@@ -84,7 +84,7 @@ export default function LeadsLanding() {
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-foreground mb-4">
-              Why APEX Agents Win
+              Why Galaxy Agents Win
             </h2>
             <p className="text-xl text-muted-foreground">Everything you need to succeed in one platform</p>
           </div>
@@ -178,7 +178,7 @@ export default function LeadsLanding() {
             Ready to Build Your First $10K Month?
           </h2>
           <p className="text-xl text-slate-600 dark:text-slate-300 mb-8">
-            Apply now to join the team and start receiving daily warm leads. Get licensed first if you aren't yet — APEX covers the cost when you finish the course.
+            Apply now to join the team and start receiving daily warm leads. Get licensed first if you aren't yet — Galaxy covers the cost when you finish the course.
           </p>
           <Button asChild size="lg" className="bg-white dark:bg-card hover:from-teal-600 hover:to-teal-700 text-white border-0">
             <Link to="/apply" className="gap-2">
@@ -194,7 +194,7 @@ export default function LeadsLanding() {
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div>
-              <h3 className="font-bold text-foreground mb-4">APEX Financial</h3>
+              <h3 className="font-bold text-foreground mb-4">Galaxy Financial</h3>
               <p className="text-muted-foreground text-sm">Warm life insurance leads. Built for agents who dial, not browse.</p>
             </div>
             <div>
@@ -221,8 +221,8 @@ export default function LeadsLanding() {
             </div>
           </div>
           <div className="border-t border-slate-200 dark:border-border pt-8 flex justify-between items-center text-muted-foreground text-sm">
-            <p>&copy; 2026 APEX Financial. All rights reserved.</p>
-            <p>APEX — Hold the Standard.</p>
+            <p>&copy; 2026 Galaxy Financial. All rights reserved.</p>
+            <p>Galaxy — Hold the Standard.</p>
           </div>
         </div>
       </footer>

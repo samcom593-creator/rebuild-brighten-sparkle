@@ -143,7 +143,7 @@ function buildConfirmationEmail(
     `If anything changes, you can reschedule here: ${calendlyUrl}`,
     ``,
     `— Sam`,
-    `APEX Financial`,
+    `Galaxy Financial`,
   ].join("\n");
 
   const html = `
@@ -153,7 +153,7 @@ function buildConfirmationEmail(
   <p>Confirmed for <strong>${dayHtml} at ${timeHtml}</strong>. I'll be there. Bring questions.</p>
   <p>If anything changes, you can reschedule here:</p>
   <p><a href="${urlHtml}" style="display:inline-block;padding:12px 20px;background:#0a0a0a;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">Reschedule on Calendly</a></p>
-  <p style="margin-top:24px;">— Sam<br/>APEX Financial</p>
+  <p style="margin-top:24px;">— Sam<br/>Galaxy Financial</p>
 </body></html>`.trim();
 
   return { subject, html, text };

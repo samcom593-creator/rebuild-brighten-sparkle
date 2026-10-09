@@ -96,7 +96,7 @@ const CATEGORY_MAP: Record<string, Exclude<Category, "all">> = {
   "10K CLUB": "personal",
   "25K CRUSHER": "personal",
   "40K ELITE": "personal",
-  "75K APEX": "personal",
+  "75K Galaxy": "personal",
   "7-DAY STREAK": "personal",
   lifetime_100k: "personal",
   march_2026_top6: "personal",
@@ -276,7 +276,7 @@ export default function HallOfFame() {
         eyebrow="Production · Hall of Fame"
         eyebrowIcon={<Crown className="h-3 w-3" />}
         title="Hall of Fame"
-        subtitle="Every plaque earned at APEX. Personal closers, team builders, and the recruiters who built producing teams — all part of the empire."
+        subtitle="Every plaque earned at Galaxy. Personal closers, team builders, and the recruiters who built producing teams — all part of the empire."
       />
 
       {/* ── Stats strip ───────────────────────────────────────────── */}
@@ -619,7 +619,7 @@ function PlaqueDetail({ plaque, onClose }: PlaqueDetailProps) {
     if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
       try {
         await navigator.share({
-          title: plaque.badge_label || "APEX Plaque",
+          title: plaque.badge_label || "Galaxy Plaque",
           text: `${plaque.agent_name} · ${plaque.badge_label ?? prettyMilestone(plaque.milestone_type)}`,
           url,
         });

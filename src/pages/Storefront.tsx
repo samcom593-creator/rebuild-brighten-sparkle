@@ -30,7 +30,7 @@ const SKUS = [
 ];
 
 export default function Storefront() {
-  usePageTitle("APEX Storefront · Subscribe");
+  usePageTitle("Galaxy Storefront · Subscribe");
   const [params] = useSearchParams();
   const paid = params.get("paid") === "1";
   const [showConfetti, setShowConfetti] = useState(false);
@@ -48,7 +48,7 @@ export default function Storefront() {
       <header className="border-b border-slate-200 dark:border-border/60">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2 font-bold">
-            <Crown className="h-6 w-6 text-emerald-400" /> APEX Financial
+            <Crown className="h-6 w-6 text-emerald-400" /> Galaxy Financial
           </Link>
           <Button asChild variant="ghost" size="sm">
             <Link to="/dashboard">Dashboard</Link>
@@ -91,7 +91,7 @@ export default function Storefront() {
         ) : (
           <>
             <div className="text-center mb-10">
-              <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight">APEX Storefront</h1>
+              <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight">Galaxy Storefront</h1>
               <p className="text-muted-foreground mt-3 text-lg">Pick the package that matches your hustle.</p>
             </div>
             <div className="grid gap-5 md:grid-cols-2">

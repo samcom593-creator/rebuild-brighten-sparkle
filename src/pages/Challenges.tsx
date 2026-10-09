@@ -66,7 +66,7 @@ const TIER_META: Record<ChallengeRow["tier"], { label: string; tint: string; rin
  * apex_challenge_unlocks rows + sends ntfy + Telegram on each unlock.
  */
 export default function Challenges() {
-  usePageTitle("Challenges · APEX");
+  usePageTitle("Challenges · Galaxy");
   const { user, isAdmin } = useAuth();
 
   const challenges = useQuery({
@@ -110,7 +110,7 @@ export default function Challenges() {
   return (
     <div className="page-enter px-4 sm:px-6 pb-24 space-y-5">
       <PageHeader
-        eyebrow="Apex · Achievements"
+        eyebrow="Galaxy · Achievements"
         eyebrowIcon={<Trophy className="h-3 w-3" />}
         title="Challenges"
         subtitle={

@@ -7,7 +7,7 @@ import { ApplicationConfirmationV2 as ApplicationConfirmation } from "@/componen
 // success page. Apply.tsx normally routes by license_status; this exists so
 // any stray /apply/success?aid=... link still renders the full confirmation.
 export default function ApplySuccess() {
-  usePageTitle("Application Received · APEX Financial");
+  usePageTitle("Application Received · Galaxy Financial");
   const [search] = useSearchParams();
   const applicationId = search.get("aid") || search.get("application_id") || null;
 

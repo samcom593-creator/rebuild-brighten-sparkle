@@ -31,7 +31,7 @@ interface Row {
 }
 
 export default function AdminMissingAlLink() {
-  usePageTitle("Missing AgentLink · APEX");
+  usePageTitle("Missing AgentLink · Galaxy");
   const qc = useQueryClient();
   const [linkingId, setLinkingId] = useState<string | null>(null);
 
@@ -73,7 +73,7 @@ export default function AdminMissingAlLink() {
         eyebrow="Admin · Data Integrity"
         eyebrowIcon={<Link2 className="h-3 w-3" />}
         title="Missing AgentLink Links"
-        subtitle="Active agents with no AgentLink ID. Linking only attributes historical AgentLink imports. Deals posted in Apex don't need it."
+        subtitle="Active agents with no AgentLink ID. Linking only attributes historical AgentLink imports. Deals posted in Galaxy don't need it."
       />
 
       {isLoading && <div className="text-sm text-muted-foreground">Loading…</div>}

@@ -68,7 +68,7 @@ function renderPlaqueSVG(name: string, tier: string, amount: number, date: strin
   </defs>
   <rect width="1080" height="1920" fill="url(#bg)"/>
   <circle cx="540" cy="880" r="700" fill="url(#glow)"/>
-  <text x="540" y="170" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-weight="800" font-size="44" letter-spacing="14" fill="#22d3a5">APEX FINANCIAL</text>
+  <text x="540" y="170" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-weight="800" font-size="44" letter-spacing="14" fill="#22d3a5">GALAXY FINANCIAL</text>
   <rect x="320" y="230" width="440" height="3" fill="${cfg.accent}"/>
   <text x="540" y="340" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-weight="700" font-size="28" letter-spacing="6" fill="${cfg.accent}">${esc(cfg.badge)}</text>
   <circle cx="540" cy="620" r="200" fill="none" stroke="url(#ring)" stroke-width="6"/>
@@ -99,13 +99,13 @@ function renderEmailHtml(name: string, tier: string, amount: number, date: strin
       <p style="color:#94a3b8;font-size:14px;margin:0 0 24px 0;">You just unlocked a ${esc(cfg.title)} — ${esc(fmt$(amount))} on ${esc(prettyDate(date))}.</p>
     </div>
     <div style="background:${cfg.accent}15;padding:28px 36px;text-align:center;">
-      <img src="${svgDataUri}" alt="APEX Plaque" width="100%" style="max-width:480px;display:block;margin:0 auto;border-radius:12px;"/>
+      <img src="${svgDataUri}" alt="Galaxy Plaque" width="100%" style="max-width:480px;display:block;margin:0 auto;border-radius:12px;"/>
     </div>
     <div style="padding:28px 36px;text-align:center;">
       <p style="color:#e2e8f0;font-size:15px;line-height:1.7;margin:0 0 20px 0;">Save this image. Post it. Tag <strong style="color:#22d3a5;">@apex.financial</strong>. The team is watching.</p>
       <a href="https://apex-financial.org/dashboard" style="display:inline-block;background:#22d3a5;color:#030712;font-weight:700;padding:14px 32px;border-radius:10px;text-decoration:none;letter-spacing:0.5px;">VIEW DASHBOARD →</a>
     </div>
-    <div style="border-top:1px solid #1e293b;padding:20px;text-align:center;color:#475569;font-size:11px;letter-spacing:2px;">APEX FINANCIAL · BUILDING EMPIRES</div>
+    <div style="border-top:1px solid #1e293b;padding:20px;text-align:center;color:#475569;font-size:11px;letter-spacing:2px;">GALAXY FINANCIAL · BUILDING EMPIRES</div>
   </div>
 </body></html>`;
 }
@@ -179,10 +179,10 @@ Deno.serve(async (req) => {
       const digestHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
 <body style="font-family:'DM Sans',Arial,sans-serif;background:#030712;color:#e2e8f0;padding:32px 16px;">
   <div style="max-width:620px;margin:0 auto;background:#0a0f1a;border-radius:16px;padding:32px;">
-    <h1 style="color:#22d3a5;text-align:center;font-size:28px;margin:0 0 6px 0;">APEX Plaque Digest</h1>
+    <h1 style="color:#22d3a5;text-align:center;font-size:28px;margin:0 0 6px 0;">Galaxy Plaque Digest</h1>
     <p style="color:#94a3b8;text-align:center;font-size:13px;margin:0 0 24px 0;">${plaques!.length} plaques · ${esc(new Date().toLocaleDateString("en-US", {dateStyle:"long"}))}</p>
     ${cardsHtml}
-    <p style="color:#475569;font-size:11px;text-align:center;margin-top:28px;letter-spacing:2px;">APEX FINANCIAL · BUILDING EMPIRES</p>
+    <p style="color:#475569;font-size:11px;text-align:center;margin-top:28px;letter-spacing:2px;">GALAXY FINANCIAL · BUILDING EMPIRES</p>
   </div>
 </body></html>`;
 
@@ -193,9 +193,9 @@ Deno.serve(async (req) => {
 
       try {
         await resend.emails.send({
-          from: "APEX Financial <notifications@apex-financial.org>",
+          from: "Galaxy Financial <notifications@apex-financial.org>",
           to: [adminEmail],
-          subject: `🏆 APEX Plaque Digest — ${plaques!.length} awards`,
+          subject: `🏆 Galaxy Plaque Digest — ${plaques!.length} awards`,
           html: digestHtml,
         });
         return new Response(JSON.stringify({ ok: true, mode: "admin_digest", to: adminEmail, sent: plaques!.length }),
@@ -223,9 +223,9 @@ Deno.serve(async (req) => {
 
       try {
         await resend.emails.send({
-          from: "APEX Financial <notifications@apex-financial.org>",
+          from: "Galaxy Financial <notifications@apex-financial.org>",
           to: [email],
-          subject: `${TIER_CONFIG[tier]?.emoji ?? "🏆"} You earned the ${TIER_CONFIG[tier]?.title ?? "APEX"} — ${fmt$(amount)}`,
+          subject: `${TIER_CONFIG[tier]?.emoji ?? "🏆"} You earned the ${TIER_CONFIG[tier]?.title ?? "Galaxy"} — ${fmt$(amount)}`,
           html: renderEmailHtml(fullName, tier, amount, date, dataUri),
         });
         summary.sent++;

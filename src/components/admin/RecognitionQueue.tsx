@@ -296,7 +296,7 @@ export function RecognitionQueue() {
               </div>
               <p className="text-sm text-muted-foreground">{previewCandidate.periodLabel}</p>
               <div className="pt-4 border-t border-border">
-                <p className="text-xs text-muted-foreground">APEX FINANCIAL GROUP</p>
+                <p className="text-xs text-muted-foreground">GALAXY FINANCIAL GROUP</p>
               </div>
             </div>
           )}

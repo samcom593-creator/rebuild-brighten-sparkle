@@ -13,7 +13,7 @@ async function sendEmail(apiKey: string, to: string, subject: string, html: stri
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        from: "Sam · APEX Financial <notifications@apex-financial.org>",
+        from: "Sam · Galaxy Financial <notifications@apex-financial.org>",
         to: [to],
         subject,
         html,
@@ -171,7 +171,7 @@ async function sendStep(supabase: any, resendKey: string, app: any, step: number
     1: {
       subject: `${firstName}, here's your licensing roadmap`,
       html: emailWrap(`
-        <h2 style="font-family:Syne,sans-serif;font-size:22px;margin:0 0 12px;color:#22d3a5">Welcome to APEX, ${firstName}.</h2>
+        <h2 style="font-family:Syne,sans-serif;font-size:22px;margin:0 0 12px;color:#22d3a5">Welcome to Galaxy, ${firstName}.</h2>
         <p>Getting licensed is your first step to building a 6-figure income. Here's the roadmap:</p>
         <ol style="line-height:1.9;color:rgba(255,255,255,0.85)">
           <li>Purchase your pre-licensing course (we recommend ExamFX)</li>
@@ -180,7 +180,7 @@ async function sendStep(supabase: any, resendKey: string, app: any, step: number
           <li>Pass &amp; get your NPN — we handle contracting from there</li>
         </ol>
         <p>Reply if you need help with any step.</p>
-        <p style="margin-top:20px">— Sam, APEX Financial</p>
+        <p style="margin-top:20px">— Sam, Galaxy Financial</p>
       `),
     },
     2: {
@@ -194,7 +194,7 @@ async function sendStep(supabase: any, resendKey: string, app: any, step: number
           <li>Schedule their test ASAP — creates urgency</li>
         </ul>
         <p>Reply with your progress and I'll keep you on track.</p>
-        <p style="margin-top:20px">— Sam, APEX Financial</p>
+        <p style="margin-top:20px">— Sam, Galaxy Financial</p>
       `),
     },
     3: {
@@ -204,7 +204,7 @@ async function sendStep(supabase: any, resendKey: string, app: any, step: number
         <p>You've come this far — every day without your license is money on the table.</p>
         <p>Top-earning agents start making $5,000+/month within 60 days of getting licensed.</p>
         <p>Reply with your test date and I'll make sure you're ready.</p>
-        <p style="margin-top:20px">— Sam, APEX Financial</p>
+        <p style="margin-top:20px">— Sam, Galaxy Financial</p>
       `),
     },
   };

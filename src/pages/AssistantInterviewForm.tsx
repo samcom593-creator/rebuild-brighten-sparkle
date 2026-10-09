@@ -78,7 +78,7 @@ function minimumLocalDateTime(): string {
 }
 
 export default function AssistantInterviewForm() {
-  usePageTitle("APEX Interview Intake");
+  usePageTitle("Galaxy Interview Intake");
   const [searchParams] = useSearchParams();
   const token = searchParams.get("t") ?? "";
   const { toast } = useToast();
@@ -301,7 +301,7 @@ export default function AssistantInterviewForm() {
     <div className="min-h-screen bg-background pb-16">
       <div className="max-w-xl mx-auto px-4 sm:px-6">
         <PageHeader
-          eyebrow="APEX Financial"
+          eyebrow="Galaxy Financial"
           eyebrowIcon={<Calendar className="h-4 w-4" />}
           title="Interview intake"
           subtitle={tokenLabel}

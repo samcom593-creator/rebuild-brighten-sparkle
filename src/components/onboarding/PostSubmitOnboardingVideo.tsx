@@ -137,7 +137,7 @@ export const PostSubmitOnboardingVideo = forwardRef<
             <Crown className="mx-auto mb-5 h-12 w-12 text-primary" />
             <Loader2 className="mx-auto mb-4 h-7 w-7 animate-spin text-primary" />
             <p className="text-xl font-semibold text-white">
-              Securing your APEX spot…
+              Securing your Galaxy spot…
             </p>
             <p className="mt-2 text-sm text-white/60">
               Your onboarding starts automatically when submission is confirmed.

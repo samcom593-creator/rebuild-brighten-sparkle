@@ -73,7 +73,7 @@ const handler = async (req: Request): Promise<Response> => {
 
       try {
         await resend.emails.send({
-          from: "Apex Financial <notifications@apex-financial.org>",
+          from: "Galaxy Financial <notifications@apex-financial.org>",
           to: [profile.email],
           cc: [ADMIN_EMAIL],
           subject: `🌅 Good Morning! Training Reminder - Day ${8 - daysRemaining} of 7`,
@@ -107,7 +107,7 @@ const handler = async (req: Request): Promise<Response> => {
 
               <br/>
               <p>Let's make today a great day!<br/>
-              <strong>Apex Financial Team</strong></p>
+              <strong>Galaxy Financial Team</strong></p>
             </div>
           `,
         });

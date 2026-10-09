@@ -47,7 +47,7 @@ function fmtTime(iso: string | null): string {
 }
 
 export default function AdminEmailGaps() {
-  usePageTitle("Email Gaps · Apex Admin");
+  usePageTitle("Email Gaps · Galaxy Admin");
   const qc = useQueryClient();
   const openAgent = useAgentProfileDrawer((s) => s.openAgent);
   const askConfirm = useConfirm();

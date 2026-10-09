@@ -52,7 +52,7 @@ const CALL_TYPE_TINT: Record<string, string> = {
 };
 
 export default function CallsTodayCockpit() {
-  usePageTitle("Calls Today · APEX");
+  usePageTitle("Calls Today · Galaxy");
 
   const callsQ = useQuery({
     queryKey: ["calls-today-interview-events"],

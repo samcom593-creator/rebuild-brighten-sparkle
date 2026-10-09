@@ -39,7 +39,7 @@ function actionCard(i: number, a: any): string {
 <div style="font-size:11px;color:#64748b;font-weight:600;letter-spacing:0.5px">#${i} &middot; ${String(a.sub_bot).replace(/_/g," ").toUpperCase()} &middot; <span style="background:${tone.bg};color:${tone.fg};padding:2px 7px;border-radius:99px;font-size:10px;letter-spacing:1px">${tone.tag}</span></div>
 <div style="font-size:15px;font-weight:600;margin:6px 0 2px;color:#0f172a">${a.summary}</div>
 ${a.action ? `<div style="color:#334155;font-size:14px;margin-top:4px">&rarr; ${a.action}</div>` : ""}
-${a.action_link ? `<div style="margin-top:10px"><a href="${a.action_link}" style="display:inline-block;background:#0f172a;color:#fff;text-decoration:none;padding:7px 14px;border-radius:6px;font-size:13px;font-weight:600">Open in APEX &rarr;</a></div>` : ""}
+${a.action_link ? `<div style="margin-top:10px"><a href="${a.action_link}" style="display:inline-block;background:#0f172a;color:#fff;text-decoration:none;padding:7px 14px;border-radius:6px;font-size:13px;font-weight:600">Open in Galaxy &rarr;</a></div>` : ""}
 </div>`;
 }
 
@@ -47,7 +47,7 @@ function shell(opts: { subject: string; heroTag: string; heroTitle: string; hero
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${opts.subject}</title></head>
 <body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,Arial,sans-serif;color:#0f172a">
 <div style="max-width:600px;margin:0 auto;padding:24px 16px">
-<div style="padding:4px 0 16px"><table cellpadding="0" cellspacing="0" border="0"><tr><td style="width:32px"><div style="width:28px;height:28px;background:#0f172a;color:#fff;border-radius:6px;text-align:center;line-height:28px;font-weight:800;font-size:13px;letter-spacing:1px">A</div></td><td style="padding-left:10px"><div style="font-weight:700;letter-spacing:0.5px;font-size:13px">APEX</div><div style="font-size:11px;color:#64748b;margin-top:-2px">Autonomous Engine</div></td></tr></table></div>
+<div style="padding:4px 0 16px"><table cellpadding="0" cellspacing="0" border="0"><tr><td style="width:32px"><div style="width:28px;height:28px;background:#0f172a;color:#fff;border-radius:6px;text-align:center;line-height:28px;font-weight:800;font-size:13px;letter-spacing:1px">A</div></td><td style="padding-left:10px"><div style="font-weight:700;letter-spacing:0.5px;font-size:13px">Galaxy</div><div style="font-size:11px;color:#64748b;margin-top:-2px">Autonomous Engine</div></td></tr></table></div>
 <div style="background:#0f172a;color:#fff;padding:20px 22px;border-radius:12px;margin-bottom:18px">
 <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;opacity:0.6;text-transform:uppercase">${opts.heroTag}</div>
 <div style="font-size:26px;font-weight:800;margin-top:4px;color:#10b981">${opts.heroTitle}</div>
@@ -154,19 +154,19 @@ ${top3.map((a, i) => actionCard(i + 1, a)).join("")}
 ${rest.length ? `<p style="color:#64748b;font-size:12px;margin-top:14px">+${rest.length} lower-priority warning${rest.length === 1 ? "" : "s"} (${rest.slice(0, 4).map((r) => r.audit_name.replace(/_/g, " ")).join(", ")}${rest.length > 4 ? "…" : ""}) — won't page you, just logged.</p>` : ""}`;
 
   const html = shell({
-    subject: `APEX morning · ${today}`,
+    subject: `Galaxy morning · ${today}`,
     heroTag, heroTitle, heroSub, body: bodyHtml,
   });
 
   const smsTop = top3[0]?.summary ?? "";
   const sms = clean
-    ? `APEX ☀️ all clear. Today: 30+ calls, 4 videos.`
-    : `APEX ☀️ ${totalActions} action${totalActions === 1 ? "" : "s"} · ${smsTop.slice(0, 72)}`.slice(0, 120);
+    ? `Galaxy ☀️ all clear. Today: 30+ calls, 4 videos.`
+    : `Galaxy ☀️ ${totalActions} action${totalActions === 1 ? "" : "s"} · ${smsTop.slice(0, 72)}`.slice(0, 120);
 
   let email_id: string | null = null;
   try {
     const r = await resend.emails.send({
-      from: "APEX Engine <sam@apex-financial.org>",
+      from: "Galaxy Engine <sam@apex-financial.org>",
       to: SAM_EMAIL,
       subject: humanize(clean ? `☀️ ${today} · all clear` : `☀️ ${today} · ${totalActions} action${totalActions === 1 ? "" : "s"}${criticalCount ? ` · ${criticalCount} critical` : ""}`),
       html: humanize(html),

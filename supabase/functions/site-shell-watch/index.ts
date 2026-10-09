@@ -285,7 +285,7 @@ async function pushNtfy(body: string): Promise<ChannelResult> {
     signal: AbortSignal.timeout(10000),
     headers: {
       // ASCII ONLY - see MP-274 in the header.
-      Title: "APEX site DOWN (off-laptop watcher)",
+      Title: "Galaxy site DOWN (off-laptop watcher)",
       Priority: "5",
       Tags: "rotating_light",
     },
@@ -332,9 +332,9 @@ async function pushDiscord(body: string): Promise<ChannelResult> {
     signal: AbortSignal.timeout(10000),
     headers: { "Content-Type": "application/json", "User-Agent": "apex-site-shell-watch/1.0" },
     body: JSON.stringify({
-      username: "APEX site watcher",
+      username: "Galaxy site watcher",
       content:
-        "**APEX site DOWN (off-laptop watcher)**\n" +
+        "**Galaxy site DOWN (off-laptop watcher)**\n" +
         "_Delivered here because ntfy refused the page. This is the FALLBACK channel._\n\n" +
         body.slice(0, 1600),
     }),

@@ -41,7 +41,7 @@ function shell(opts: { subject: string; heroTag: string; heroTitle: string; hero
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${opts.subject}</title></head>
 <body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,Arial,sans-serif;color:#0f172a">
 <div style="max-width:640px;margin:0 auto;padding:24px 16px">
-<div style="padding:4px 0 16px"><table cellpadding="0" cellspacing="0" border="0"><tr><td style="width:32px"><div style="width:28px;height:28px;background:#0f172a;color:#fff;border-radius:6px;text-align:center;line-height:28px;font-weight:800;font-size:13px;letter-spacing:1px">A</div></td><td style="padding-left:10px"><div style="font-weight:700;letter-spacing:0.5px;font-size:13px">APEX</div><div style="font-size:11px;color:#64748b;margin-top:-2px">Autonomous Engine · Weekly</div></td></tr></table></div>
+<div style="padding:4px 0 16px"><table cellpadding="0" cellspacing="0" border="0"><tr><td style="width:32px"><div style="width:28px;height:28px;background:#0f172a;color:#fff;border-radius:6px;text-align:center;line-height:28px;font-weight:800;font-size:13px;letter-spacing:1px">A</div></td><td style="padding-left:10px"><div style="font-weight:700;letter-spacing:0.5px;font-size:13px">Galaxy</div><div style="font-size:11px;color:#64748b;margin-top:-2px">Autonomous Engine · Weekly</div></td></tr></table></div>
 <div style="background:#0f172a;color:#fff;padding:24px 22px;border-radius:12px;margin-bottom:18px">
 <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;opacity:0.6;text-transform:uppercase">${opts.heroTag}</div>
 <div style="font-size:30px;font-weight:800;margin-top:4px;color:${heroColor}">${opts.heroTitle}</div>
@@ -123,7 +123,7 @@ Deno.serve(async (req) => {
     : `<div style="color:#64748b;font-size:14px">Zero flagged findings. Clean week.</div>`;
 
   const criticalsBlock = (criticals ?? []).length
-    ? `<ol style="padding-left:18px;margin:0">${(criticals ?? []).map((c: any) => `<li style="margin:10px 0;color:#0f172a"><strong>${c.summary}</strong>${c.action ? `<br><span style="color:#334155;font-size:14px">&rarr; ${c.action}</span>` : ""}${c.action_link ? `<br><a href="${c.action_link}" style="color:#0ea5e9;font-size:13px;text-decoration:none">Open in APEX &rarr;</a>` : ""}</li>`).join("")}</ol>`
+    ? `<ol style="padding-left:18px;margin:0">${(criticals ?? []).map((c: any) => `<li style="margin:10px 0;color:#0f172a"><strong>${c.summary}</strong>${c.action ? `<br><span style="color:#334155;font-size:14px">&rarr; ${c.action}</span>` : ""}${c.action_link ? `<br><a href="${c.action_link}" style="color:#0ea5e9;font-size:13px;text-decoration:none">Open in Galaxy &rarr;</a>` : ""}</li>`).join("")}</ol>`
     : `<div style="color:#64748b;font-size:14px">No criticals this week. Good signal.</div>`;
 
   // Narrative lead — pick the week's story in one sentence instead of
@@ -164,7 +164,7 @@ ${criticalsBlock}
 </div>`;
 
   const html = shell({
-    subject: `APEX weekly · ${tw.start} → ${tw.end}`,
+    subject: `Galaxy weekly · ${tw.start} → ${tw.end}`,
     heroTag: `WEEK · ${tw.start} → ${tw.end}`,
     heroTitle: `${fmt$(aopT)}`,
     heroSub: `${wow >= 0 ? "+" : ""}${wow.toFixed(0)}% WoW · ${subbotRanked[0]?.[0]?.replace(/_/g, " ") ?? "clean"} ${subbotRanked[0] ? "needs attention" : "week"}`,
@@ -172,11 +172,11 @@ ${criticalsBlock}
     body: bodyHtml,
   });
 
-  const sms = `APEX 📊 week ${fmt$(aopT)} · ${wow >= 0 ? "+" : ""}${wow.toFixed(0)}% WoW${subbotRanked[0] ? ` · focus: ${subbotRanked[0][0].replace(/_/g, " ")}` : " · clean"}`.slice(0, 120);
+  const sms = `Galaxy 📊 week ${fmt$(aopT)} · ${wow >= 0 ? "+" : ""}${wow.toFixed(0)}% WoW${subbotRanked[0] ? ` · focus: ${subbotRanked[0][0].replace(/_/g, " ")}` : " · clean"}`.slice(0, 120);
 
   try {
     await resend.emails.send({
-      from: "APEX Engine <sam@apex-financial.org>",
+      from: "Galaxy Engine <sam@apex-financial.org>",
       to: SAM_EMAIL,
       subject: humanize(`📊 Week · ${fmt$(aopT)} · ${wow >= 0 ? "+" : ""}${wow.toFixed(0)}% WoW`),
       html: humanize(html),

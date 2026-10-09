@@ -25,7 +25,7 @@ interface NotifRow {
 }
 
 export default function MyNotifications() {
-  usePageTitle("My Notifications · APEX");
+  usePageTitle("My Notifications · Galaxy");
   const { user } = useAuth();
   const qc = useQueryClient();
 

@@ -113,7 +113,7 @@ Deno.serve(
         </table>
       </div>` : ""}
       <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #333; text-align: center;">
-        <p style="color: #666; font-size: 12px; margin: 0;">Keep pushing forward! The Apex Financial team is here to support you.</p>
+        <p style="color: #666; font-size: 12px; margin: 0;">Keep pushing forward! The Galaxy Financial team is here to support you.</p>
       </div>
     </div>
   </div>
@@ -125,7 +125,7 @@ Deno.serve(
       }
 
       const { error: emailError } = await resend.emails.send({
-        from: "APEX Financial <notifications@apex-financial.org>",
+        from: "Galaxy Financial <notifications@apex-financial.org>",
         to: [profile.email],
         cc: ccList,
         subject: `${stageInfo.emoji} ${isPromotion ? "Congratulations!" : "Update:"} You're now ${stageInfo.label}!`,

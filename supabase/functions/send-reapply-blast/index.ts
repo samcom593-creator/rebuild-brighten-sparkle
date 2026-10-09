@@ -25,7 +25,7 @@ const corsHeaders = {
 
 const CAMPAIGN = "reapply_doors_open_2026_04_23";
 const SUBJECT  = "The doors are back open.";
-const FROM     = "Sam @ APEX Financial <sam@apex-financial.org>";
+const FROM     = "Sam @ Galaxy Financial <sam@apex-financial.org>";
 const SB_URL   = Deno.env.get("SUPABASE_URL")!;
 const SB_SRV   = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const RESEND   = new Resend(Deno.env.get("RESEND_API_KEY"));
@@ -40,7 +40,7 @@ function buildEmail(firstName: string, licensed: boolean): { html: string; text:
   const text = [
     `Hey ${firstName},`,
     ``,
-    `When you applied to APEX a few weeks back, we weren't taking anyone new. Doors are back open this week.`,
+    `When you applied to Galaxy a few weeks back, we weren't taking anyone new. Doors are back open this week.`,
     ``,
     `This team is not for people looking for a job. It's for people who want to out-earn everyone they went to high school with. If that's not you, delete this.`,
     ``,
@@ -52,12 +52,12 @@ function buildEmail(firstName: string, licensed: boolean): { html: string; text:
     cta,
     ``,
     `— Sam`,
-    `APEX Financial`,
+    `Galaxy Financial`,
   ].join("\n");
 
   const html = `<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#0b1220;line-height:1.6">
 <p>Hey ${firstName},</p>
-<p>When you applied to APEX a few weeks back, we weren't taking anyone new. <strong>Doors are back open this week.</strong></p>
+<p>When you applied to Galaxy a few weeks back, we weren't taking anyone new. <strong>Doors are back open this week.</strong></p>
 <p>This team is not for people looking for a job. It's for people who want to out-earn everyone they went to high school with. If that's not you, delete this.</p>
 <p>If it <em>is</em> you:</p>
 <table role="presentation" cellpadding="0" cellspacing="0" style="margin:18px 0">
@@ -67,7 +67,7 @@ function buildEmail(firstName: string, licensed: boolean): { html: string; text:
 </table>
 <p style="color:#475569;font-size:14px">Or reply to this email with <strong>"I'm in"</strong></p>
 <p style="margin-top:24px">${cta}</p>
-<p>— Sam<br><span style="color:#64748b;font-size:13px">APEX Financial</span></p>
+<p>— Sam<br><span style="color:#64748b;font-size:13px">Galaxy Financial</span></p>
 </div>`;
 
   return { html, text };
@@ -75,8 +75,8 @@ function buildEmail(firstName: string, licensed: boolean): { html: string; text:
 
 function buildSms(firstName: string, licensed: boolean): string {
   return licensed
-    ? `Sam from APEX. Doors are back open — we're pulling the gloves back on. You're already licensed; we want you carrying our flag. Call (469) 767-6068 or reply YES to reapply.`
-    : `Sam from APEX. Doors are back open — we're hiring again. No license? We fund your course. Call (469) 767-6068 or reply YES and we'll get you on a call today.`;
+    ? `Sam from Galaxy. Doors are back open — we're pulling the gloves back on. You're already licensed; we want you carrying our flag. Call (469) 767-6068 or reply YES to reapply.`
+    : `Sam from Galaxy. Doors are back open — we're hiring again. No license? We fund your course. Call (469) 767-6068 or reply YES and we'll get you on a call today.`;
 }
 
 Deno.serve(async (req) => {

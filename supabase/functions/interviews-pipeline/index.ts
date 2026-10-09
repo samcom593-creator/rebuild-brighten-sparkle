@@ -98,7 +98,7 @@ async function authenticate(req: Request): Promise<Actor | Response> {
   const role = actorRole(new Set((roleRows ?? []).map((row) => row.role as string)));
   if (!role) return json({ error: "forbidden" }, 403);
   if (role === "va" && !hhUser) {
-    return json({ error: "Your APEX account is not linked to an active interview owner." }, 403);
+    return json({ error: "Your Galaxy account is not linked to an active interview owner." }, 403);
   }
   return {
     authUserId: authUser.id,
@@ -175,8 +175,8 @@ async function updateApplicant(req: Request, actor: Actor, body: Record<string, 
     if (!identity.applicationId) {
       return json({
         error: identity.identityConflict
-          ? "Candidate identity conflicts across APEX applications. Resolve the email, phone, or Instagram match before hiring."
-          : "Link an APEX application before hiring so the agent account and onboarding can be created.",
+          ? "Candidate identity conflicts across Galaxy applications. Resolve the email, phone, or Instagram match before hiring."
+          : "Link an Galaxy application before hiring so the agent account and onboarding can be created.",
       }, 422);
     }
   }
@@ -209,7 +209,7 @@ async function updateApplicant(req: Request, actor: Actor, body: Record<string, 
     new_value: String(value ?? ""),
     reason: typeof body.reason === "string" ? body.reason.slice(0, 500) : null,
     ip: (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || null,
-    device: (req.headers.get("user-agent") ?? "APEX").slice(0, 500),
+    device: (req.headers.get("user-agent") ?? "Galaxy").slice(0, 500),
   })));
 
   return json({ applicant: updated, receipt: {

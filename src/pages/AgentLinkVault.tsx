@@ -507,7 +507,7 @@ function VaultPanel() {
 // an in-component admin-check screen — if you're here, you're authorized.
 // RLS on every underlying table is the real server-side guarantee.
 export default function AgentLinkVault() {
-  usePageTitle("AgentLink Vault · APEX");
+  usePageTitle("AgentLink Vault · Galaxy");
   const { isLoading: authLoading } = useAuth();
   if (authLoading) return <PageLoadingSkeleton />;
   return (

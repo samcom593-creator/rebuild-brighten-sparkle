@@ -45,7 +45,7 @@ const ACTION_LABEL: Record<string, string> = {
   fix_rejected_contracts: "Carrier rejected / issue",
   add_to_ethos_sheet: "Add to Ethos sheet (agwnts tab)",
   agent_sends_ethos_reparenting_email: "Agent must email agents@getethos.com (reparenting)",
-  ethos_agent_update_comp_level: "Ethos level differs from the APEX record — leadership decides (never inferred)",
+  ethos_agent_update_comp_level: "Ethos level differs from the Galaxy record — leadership decides (never inferred)",
   waiting_on_ethos_portal: "Waiting on Ethos to create portal",
   no_active_carrier_contracts: "No active carrier contract",
   carrier_contracts_in_flight: "Carrier contracts in flight",

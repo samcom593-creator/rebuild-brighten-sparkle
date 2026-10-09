@@ -229,21 +229,21 @@ const handler = async (req: Request): Promise<Response> => {
         try {
           const adminNote = isAdminChange ? "<p><em>This change was made by an administrator.</em></p>" : "";
           await resend.emails.send({
-             from: "APEX Financial <notifications@apex-financial.org>",
+             from: "Galaxy Financial <notifications@apex-financial.org>",
             to: [oldEmail],
-            subject: "Security Alert: Your APEX Financial email has been changed",
+            subject: "Security Alert: Your Galaxy Financial email has been changed",
             html: `
               <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                 <h1 style="color: #1a1a1a;">Security Alert</h1>
                 <p>Hi ${sanitizedName},</p>
-                <p>Your email address for APEX Financial has been changed.</p>
+                <p>Your email address for Galaxy Financial has been changed.</p>
                 <div style="background-color: #f8f9fa; padding: 16px; border-radius: 8px; margin: 24px 0;">
                   <p style="margin: 0;"><strong>Previous email:</strong> ${sanitizedOldEmail}</p>
                   <p style="margin: 8px 0 0 0;"><strong>New email:</strong> ${sanitizedNewEmail}</p>
                 </div>
                 ${adminNote}
                 <p style="color: #dc2626;"><strong>If you did not make this change, please contact support immediately.</strong></p>
-                <p>Best regards,<br>The APEX Financial Team</p>
+                <p>Best regards,<br>The Galaxy Financial Team</p>
               </div>
             `,
           });
@@ -256,16 +256,16 @@ const handler = async (req: Request): Promise<Response> => {
       // Send confirmation to NEW email
       try {
         await resend.emails.send({
-          from: "APEX Financial <notifications@apex-financial.org>",
+          from: "Galaxy Financial <notifications@apex-financial.org>",
           to: [normalizedEmail],
-          subject: "Welcome! Your APEX Financial email has been updated",
+          subject: "Welcome! Your Galaxy Financial email has been updated",
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <h1 style="color: #1a1a1a;">Email Updated Successfully</h1>
               <p>Hi ${sanitizedName},</p>
               <p>Your email address has been successfully updated to <strong>${sanitizedNewEmail}</strong>.</p>
-              <p>You can now use this email address to log in to your APEX Financial account.</p>
-              <p>Best regards,<br>The APEX Financial Team</p>
+              <p>You can now use this email address to log in to your Galaxy Financial account.</p>
+              <p>Best regards,<br>The Galaxy Financial Team</p>
             </div>
           `,
         });

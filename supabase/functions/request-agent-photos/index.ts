@@ -87,7 +87,7 @@ Deno.serve(async (req) => {
 
       try {
         await resend.emails.send({
-          from: "APEX Financial <notifications@apex-financial.org>",
+          from: "Galaxy Financial <notifications@apex-financial.org>",
           to: [e.email],
           subject: `${first} — add your photo, we're making your plaque`,
           html: `<div style="font-family:'DM Sans',Arial,sans-serif;background:#030712;color:#e2e8f0;padding:40px 20px;">
@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
     <div style="text-align:center;font-size:56px;margin-bottom:8px;">📸</div>
     <h1 style="color:#22d3a5;font-size:28px;margin:0 0 12px 0;text-align:center;">Hey ${first},</h1>
     <p style="color:#e2e8f0;font-size:15px;line-height:1.7;text-align:center;margin:0 0 24px 0;">
-      You've earned plaques in the APEX Hall of Fame. We're building a <strong style="color:#22d3a5;">branded, Instagram-ready award image</strong> for every one of them — but we need your photo to make it look like you.
+      You've earned plaques in the Galaxy Hall of Fame. We're building a <strong style="color:#22d3a5;">branded, Instagram-ready award image</strong> for every one of them — but we need your photo to make it look like you.
     </p>
     <div style="background:#22d3a515;border-radius:12px;padding:20px;text-align:center;margin:24px 0;">
       <p style="color:#94a3b8;font-size:13px;margin:0 0 6px 0;letter-spacing:1px;text-transform:uppercase;">Takes 10 seconds</p>
@@ -104,7 +104,7 @@ Deno.serve(async (req) => {
     <div style="text-align:center;margin:28px 0 8px 0;">
       <a href="${UPLOAD_URL}" style="display:inline-block;background:#22d3a5;color:#030712;font-family:ui-sans-serif,system-ui;font-weight:700;padding:16px 36px;border-radius:10px;text-decoration:none;letter-spacing:1px;font-size:14px;">UPLOAD PHOTO →</a>
     </div>
-    <p style="color:#64748b;font-size:11px;text-align:center;margin:28px 0 0 0;letter-spacing:2px;">APEX FINANCIAL · BUILDING EMPIRES</p>
+    <p style="color:#64748b;font-size:11px;text-align:center;margin:28px 0 0 0;letter-spacing:2px;">GALAXY FINANCIAL · BUILDING EMPIRES</p>
   </div>
 </div>`,
         });
@@ -127,7 +127,7 @@ Deno.serve(async (req) => {
         try {
           const gateway = `${photoTen}@${CARRIER_GATEWAYS[e.carrier]}`;
           await resend.emails.send({
-            from: "Apex <notifications@apex-financial.org>",
+            from: "Galaxy <notifications@apex-financial.org>",
             to: [gateway], subject: "",
             text: `${first} — upload a headshot so we can finish your plaques: ${UPLOAD_URL}`.slice(0, 160),
           });

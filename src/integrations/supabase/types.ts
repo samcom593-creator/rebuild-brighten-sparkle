@@ -799,6 +799,111 @@ export type Database = {
         }
         Relationships: []
       }
+      aflac_daily_checkoffs: {
+        Row: {
+          blocked_carried: number
+          check_date: string
+          completed_at: string
+          completed_by: string | null
+          submitted_that_day: number
+        }
+        Insert: {
+          blocked_carried?: number
+          check_date: string
+          completed_at?: string
+          completed_by?: string | null
+          submitted_that_day?: number
+        }
+        Update: {
+          blocked_carried?: number
+          check_date?: string
+          completed_at?: string
+          completed_by?: string | null
+          submitted_that_day?: number
+        }
+        Relationships: []
+      }
+      aflac_gate_config: {
+        Row: {
+          go_live_at: string
+          singleton: boolean
+        }
+        Insert: {
+          go_live_at: string
+          singleton?: boolean
+        }
+        Update: {
+          go_live_at?: string
+          singleton?: boolean
+        }
+        Relationships: []
+      }
+      aflac_submissions: {
+        Row: {
+          agent_id: string | null
+          comp_level: string
+          created_at: string
+          email: string
+          first_name: string
+          hire_notified_at: string | null
+          hire_notify_error: string | null
+          id: string
+          intake_id: string
+          last_name: string
+          npn: string
+          phone_e164: string
+          submitted_at: string
+          submitted_by: string | null
+        }
+        Insert: {
+          agent_id?: string | null
+          comp_level: string
+          created_at?: string
+          email: string
+          first_name: string
+          hire_notified_at?: string | null
+          hire_notify_error?: string | null
+          id?: string
+          intake_id: string
+          last_name: string
+          npn: string
+          phone_e164: string
+          submitted_at?: string
+          submitted_by?: string | null
+        }
+        Update: {
+          agent_id?: string | null
+          comp_level?: string
+          created_at?: string
+          email?: string
+          first_name?: string
+          hire_notified_at?: string | null
+          hire_notify_error?: string | null
+          id?: string
+          intake_id?: string
+          last_name?: string
+          npn?: string
+          phone_e164?: string
+          submitted_at?: string
+          submitted_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aflac_submissions_intake_id_fkey"
+            columns: ["intake_id"]
+            isOneToOne: true
+            referencedRelation: "contracting_intakes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "aflac_submissions_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       aged_leads: {
         Row: {
           about_me: string | null
@@ -140969,6 +141074,13 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      aflac_daily_checkoff: { Args: never; Returns: Json }
+      aflac_gate_state: { Args: never; Returns: Json }
+      aflac_intake_missing: {
+        Args: { p_email: string; p_first: string; p_last: string; p_license: string; p_npn: string; p_phone: string; p_status: string }
+        Returns: string[]
+      }
+      aflac_mark_submitted: { Args: { p_comp_level: string; p_intake_id: string }; Returns: Json }
       agency_roster_production: {
         Args: { p_end: string; p_start: string }
         Returns: {

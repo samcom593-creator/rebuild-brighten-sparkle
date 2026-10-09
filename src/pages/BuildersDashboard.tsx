@@ -406,7 +406,7 @@ export default function BuildersDashboard({ mode = "builders" }: { mode?: Dashbo
 
   const modeTitle =
     mode === "agencyOwners" ? "Agency Owners" : mode === "managers" ? "Managers" : "Builders";
-  usePageTitle(`${modeTitle} Dashboard · APEX`);
+  usePageTitle(`${modeTitle} Dashboard · Galaxy`);
 
   const buildersQ = useQuery({
     queryKey: ["builder-operating-dashboard"],

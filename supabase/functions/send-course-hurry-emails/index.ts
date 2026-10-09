@@ -51,7 +51,7 @@ const getEmailHtml = (agentName: string, type: EmailType, percentComplete: numbe
         </p>
         <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
         <p style="color: #999; font-size: 12px; text-align: center;">
-          Powered by Apex Financial
+          Powered by Galaxy Financial
         </p>
       </div>
     `;
@@ -81,7 +81,7 @@ const getEmailHtml = (agentName: string, type: EmailType, percentComplete: numbe
         </p>
         <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
         <p style="color: #999; font-size: 12px; text-align: center;">
-          Powered by Apex Financial
+          Powered by Galaxy Financial
         </p>
       </div>
     `;
@@ -106,7 +106,7 @@ const getEmailHtml = (agentName: string, type: EmailType, percentComplete: numbe
         </p>
         <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
         <p style="color: #999; font-size: 12px; text-align: center;">
-          Powered by Apex Financial
+          Powered by Galaxy Financial
         </p>
       </div>
     `;
@@ -255,7 +255,7 @@ serve(async (req) => {
       try {
         const agentName = profile?.full_name || "Agent";
         const { error: emailError } = await resend.emails.send({
-          from: "APEX Financial <notifications@apex-financial.org>",
+          from: "Galaxy Financial <notifications@apex-financial.org>",
           to: [email],
           cc: ["info@kingofsales.net"],
           subject: EMAIL_SUBJECTS[emailType],

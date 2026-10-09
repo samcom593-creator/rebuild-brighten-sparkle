@@ -67,7 +67,7 @@ function buildEmail(firstName: string, email: string, portalMagicLink: string, n
           <div style="text-align: center; margin-bottom: 24px;"><span style="font-size: 64px;">🎯</span></div>
           <h1 style="color: #c9a84c; font-size: 28px; margin: 0 0 16px 0; text-align: center;">Hey ${fn}!</h1>
           <h2 style="color: #ffffff; font-size: 22px; margin: 0 0 24px 0; text-align: center;">Your Portal Access is Ready</h2>
-          <p style="color: #e2e8f0; font-size: 16px; line-height: 1.8; margin: 0 0 24px 0;">You can now log your daily numbers and track your performance on the APEX Portal. Just tap the button below - no password needed!</p>
+          <p style="color: #e2e8f0; font-size: 16px; line-height: 1.8; margin: 0 0 24px 0;">You can now log your daily numbers and track your performance on the Galaxy Portal. Just tap the button below - no password needed!</p>
           <div style="background: rgba(201, 168, 76, 0.1); border-radius: 12px; padding: 24px; margin: 24px 0;">
             <h3 style="color: #c9a84c; font-size: 18px; margin: 0 0 16px 0;">What you can do:</h3>
             <ul style="color: #e2e8f0; font-size: 14px; line-height: 2; margin: 0; padding-left: 20px;">
@@ -97,7 +97,7 @@ function buildEmail(firstName: string, email: string, portalMagicLink: string, n
             </p>
           </div>
           <div style="border-top: 1px solid rgba(148, 163, 184, 0.2); padding-top: 24px; margin-top: 32px;">
-            <p style="color: #64748b; font-size: 12px; margin: 0; text-align: center;">APEX Financial Empire<br>Building Empires, Protecting Families</p>
+            <p style="color: #64748b; font-size: 12px; margin: 0; text-align: center;">Galaxy Financial<br>Building Empires, Protecting Families</p>
           </div>
         </div>
       </div>
@@ -160,10 +160,10 @@ serve(async (req: Request): Promise<Response> => {
           .filter((v: string, i: number, a: string[]) => a.indexOf(v) === i)
           .filter((e: string) => e !== email) as string[];
         const { data: sendData, error: sendError } = await resend.emails.send({
-          from: "APEX Financial <notifications@apex-financial.org>",
+          from: "Galaxy Financial <notifications@apex-financial.org>",
           to: [email],
           cc: ccList.length > 0 ? ccList : undefined,
-          subject: "🎯 Your APEX Portal Access - One-Tap Login Inside!",
+          subject: "🎯 Your Galaxy Portal Access - One-Tap Login Inside!",
           html: buildEmail(firstName, email, portalLink, numbersLink, isLicensed),
         });
         if (sendError || !sendData?.id) {

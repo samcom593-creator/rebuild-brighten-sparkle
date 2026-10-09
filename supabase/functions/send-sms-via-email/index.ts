@@ -26,7 +26,7 @@ import { nanpTenDigits } from "../_shared/nanp-phone.ts";
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const SMS_FROM = Deno.env.get("SMS_FROM") ?? "APEX <notifications@apex-financial.org>";
+const SMS_FROM = Deno.env.get("SMS_FROM") ?? "GALAXY <notifications@apex-financial.org>";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

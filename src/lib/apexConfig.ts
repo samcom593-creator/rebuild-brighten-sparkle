@@ -136,9 +136,9 @@ export function getCalendlyHostName(url: string): string {
   try {
     const parsed = new URL(url);
     const slug = (parsed.pathname.split("/").filter(Boolean)[0] ?? "").toLowerCase();
-    return CALENDLY_HOST_NAMES[slug] ?? "your APEX strategist";
+    return CALENDLY_HOST_NAMES[slug] ?? "your Galaxy strategist";
   } catch {
-    return "your APEX strategist";
+    return "your Galaxy strategist";
   }
 }
 

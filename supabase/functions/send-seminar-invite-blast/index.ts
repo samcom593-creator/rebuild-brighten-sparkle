@@ -50,7 +50,7 @@ function buildSeminarEmail(firstName: string, registrationUrl: string, slackLink
   </p>
   <p style="color:#e2e8f0;font-size:16px;line-height:1.6;margin:0 0 16px;">
     You're invited to our <strong style="color:#a5b4fc;">Weekly Career Seminar</strong> this <strong>Thursday at 7:00 PM CST</strong>. 
-    This is a free, live session where you'll get a full overview of the opportunity at Apex Financial, hear from top producers, 
+    This is a free, live session where you'll get a full overview of the opportunity at Galaxy Financial, hear from top producers, 
     and get all your questions answered.
   </p>
 
@@ -105,7 +105,7 @@ function buildSeminarEmail(firstName: string, registrationUrl: string, slackLink
 
 <!-- Footer -->
 <tr><td style="padding:20px 32px;border-top:1px solid #334155;text-align:center;">
-  <p style="color:#64748b;font-size:11px;margin:0;">Powered by Apex Financial</p>
+  <p style="color:#64748b;font-size:11px;margin:0;">Powered by Galaxy Financial</p>
 </td></tr>
 </table>
 </td></tr>
@@ -178,7 +178,7 @@ serve(async (req: Request) => {
       // --- EMAIL ---
       try {
         await resend.emails.send({
-           from: "APEX Financial Empire <notifications@apex-financial.org>",
+           from: "Galaxy Financial <notifications@apex-financial.org>",
           to: [app.email],
           subject: "📅 You're Invited: Weekly Career Seminar — This Thursday!",
           html: buildSeminarEmail(app.first_name, regUrl, slackLink),
@@ -221,7 +221,7 @@ serve(async (req: Request) => {
           for (const gw of gateways) {
             try {
               await resend.emails.send({
-                from: "APEX Financial Empire <notifications@apex-financial.org>",
+                from: "Galaxy Financial <notifications@apex-financial.org>",
                 to: [`${digits}@${gw}`],
                 subject: "",
                 text: smsText,

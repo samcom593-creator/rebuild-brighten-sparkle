@@ -101,8 +101,8 @@ export function generateAwardSVG(opts: GenerateAwardOptions): string {
   <rect x="${size * 0.86}" y="${size * 0.86}" width="${size * 0.08}" height="2" fill="${cfg.accent}" opacity="0.4"/>
   <rect x="${size * 0.92}" y="${size * 0.86}" width="2" height="${size * 0.08}" fill="${cfg.accent}" opacity="0.4"/>
 
-  <!-- APEX branding top -->
-  <text x="${size/2}" y="${size * 0.1}" text-anchor="middle" font-family="'Hanken Grotesk', Arial Black, sans-serif" font-weight="800" font-size="${size * 0.022}" fill="${cfg.accent}" letter-spacing="${size * 0.008}">APEX FINANCIAL</text>
+  <!-- Galaxy branding top -->
+  <text x="${size/2}" y="${size * 0.1}" text-anchor="middle" font-family="'Hanken Grotesk', Arial Black, sans-serif" font-weight="800" font-size="${size * 0.022}" fill="${cfg.accent}" letter-spacing="${size * 0.008}">GALAXY FINANCIAL</text>
 
   <!-- Agent photo circle or emoji fallback -->
   ${opts.agentPhotoUrl
@@ -184,18 +184,18 @@ export function getAwardCaption(opts: GenerateAwardOptions): string {
   const { agentName, awardType, statValue } = opts;
   const firstName = agentName.split(" ")[0];
   const captions: Record<AwardType, string> = {
-    top_producer:      `🏆 ${agentName} is the TOP PRODUCER at APEX Financial with ${statValue}! This is what elite execution looks like. Ready to build like this? Apply → apex-financial.org/apply #APEXFinancial #TopProducer #InsuranceSales`,
-    leaderboard:       `📊 ${agentName} is leading the leaderboard at APEX Financial — ${statValue}! The grind is real. #APEXFinancial #Leaderboard #Insurance`,
-    first_deal:        `🎯 ${firstName} just closed their FIRST deal at APEX Financial! Every expert started exactly here. The journey begins. #APEXFinancial #FirstDeal #InsuranceSales`,
-    top_producer_week: `🥇 ${agentName} is the WEEKLY CHAMPION at APEX Financial — ${statValue} this week! Consistency builds empires. #APEXFinancial #WeeklyChampion`,
-    most_hires_week:   `👥 ${agentName} is the HIRING CHAMPION this week at APEX Financial! Building a team = multiplying your income. #APEXFinancial #Recruiting`,
-    most_hires_month:  `🤝 ${agentName} is RECRUITER OF THE MONTH at APEX Financial! Leaders build leaders. #APEXFinancial #Leadership`,
-    hot_streak:        `🔥 ${firstName} is on a HOT STREAK — ${statValue} consecutive days closing at APEX Financial! Don't break the chain. #APEXFinancial #HotStreak`,
-    on_fire:           `🔥🔥 ${firstName} is literally ON FIRE — ${statValue} days straight closing deals at APEX Financial! This is what all-in looks like. #APEXFinancial #OnFire`,
-    unstoppable:       `⚡ ${firstName} is UNSTOPPABLE — ${statValue} consecutive closing days at APEX Financial! 20 days. No days off. #APEXFinancial #Unstoppable`,
-    diamond_week:      `💎 ${firstName} just had a DIAMOND WEEK at APEX Financial — ${statValue} ALP in 7 days! This is what $10K weeks look like. Apply → apex-financial.org/apply #APEXFinancial #DiamondWeek`,
-    elite_producer:    `👑 ${agentName} is an ELITE PRODUCER at APEX Financial — ${statValue} this month! Ready to earn like this? apex-financial.org/apply #APEXFinancial #EliteProducer`,
-    comeback:          `📈 ${firstName} just made a COMEBACK at APEX Financial — ${statValue}! Champions don't quit, they reload. #APEXFinancial #Comeback`,
+    top_producer:      `🏆 ${agentName} is the TOP PRODUCER at Galaxy Financial with ${statValue}! This is what elite execution looks like. Ready to build like this? Apply → apex-financial.org/apply #APEXFinancial #TopProducer #InsuranceSales`,
+    leaderboard:       `📊 ${agentName} is leading the leaderboard at Galaxy Financial — ${statValue}! The grind is real. #APEXFinancial #Leaderboard #Insurance`,
+    first_deal:        `🎯 ${firstName} just closed their FIRST deal at Galaxy Financial! Every expert started exactly here. The journey begins. #APEXFinancial #FirstDeal #InsuranceSales`,
+    top_producer_week: `🥇 ${agentName} is the WEEKLY CHAMPION at Galaxy Financial — ${statValue} this week! Consistency builds empires. #APEXFinancial #WeeklyChampion`,
+    most_hires_week:   `👥 ${agentName} is the HIRING CHAMPION this week at Galaxy Financial! Building a team = multiplying your income. #APEXFinancial #Recruiting`,
+    most_hires_month:  `🤝 ${agentName} is RECRUITER OF THE MONTH at Galaxy Financial! Leaders build leaders. #APEXFinancial #Leadership`,
+    hot_streak:        `🔥 ${firstName} is on a HOT STREAK — ${statValue} consecutive days closing at Galaxy Financial! Don't break the chain. #APEXFinancial #HotStreak`,
+    on_fire:           `🔥🔥 ${firstName} is literally ON FIRE — ${statValue} days straight closing deals at Galaxy Financial! This is what all-in looks like. #APEXFinancial #OnFire`,
+    unstoppable:       `⚡ ${firstName} is UNSTOPPABLE — ${statValue} consecutive closing days at Galaxy Financial! 20 days. No days off. #APEXFinancial #Unstoppable`,
+    diamond_week:      `💎 ${firstName} just had a DIAMOND WEEK at Galaxy Financial — ${statValue} ALP in 7 days! This is what $10K weeks look like. Apply → apex-financial.org/apply #APEXFinancial #DiamondWeek`,
+    elite_producer:    `👑 ${agentName} is an ELITE PRODUCER at Galaxy Financial — ${statValue} this month! Ready to earn like this? apex-financial.org/apply #APEXFinancial #EliteProducer`,
+    comeback:          `📈 ${firstName} just made a COMEBACK at Galaxy Financial — ${statValue}! Champions don't quit, they reload. #APEXFinancial #Comeback`,
   };
-  return captions[awardType] || `🏆 ${agentName} just earned a major achievement at APEX Financial — ${statValue}! #APEXFinancial`;
+  return captions[awardType] || `🏆 ${agentName} just earned a major achievement at Galaxy Financial — ${statValue}! #APEXFinancial`;
 }

@@ -77,9 +77,9 @@ export default function LogNumbers() {
 
   // Set document title
   useEffect(() => {
-    document.title = "Apex Daily Numbers";
+    document.title = "Galaxy Daily Numbers";
     return () => {
-      document.title = "Apex";
+      document.title = "Galaxy";
     };
   }, []);
 
@@ -259,13 +259,13 @@ export default function LogNumbers() {
         <div className="text-center mb-6">
           <motion.img 
             src={apexIcon} 
-            alt="Apex" 
+            alt="Galaxy" 
             className="h-16 w-16 mx-auto mb-3 rounded-md shadow-lg"
             initial={{ scale: 0, rotate: -10 }}
             animate={{ scale: 1, rotate: 0 }}
             transition={{ type: "spring", stiffness: 200, delay: 0.1 }}
           />
-          <h1 className="text-3xl font-bold gradient-text">Apex Daily Numbers</h1>
+          <h1 className="text-3xl font-bold gradient-text">Galaxy Daily Numbers</h1>
           <p className="text-muted-foreground mt-1">Daily production entry</p>
         </div>
 
@@ -377,7 +377,7 @@ export default function LogNumbers() {
                 {/* Faint Apex Financial watermark */}
                 <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none select-none -rotate-12 opacity-[0.04]">
                   <span className="text-5xl font-black tracking-tight whitespace-nowrap text-foreground">
-                    APEX FINANCIAL
+                    GALAXY FINANCIAL
                   </span>
                 </div>
                 

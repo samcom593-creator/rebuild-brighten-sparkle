@@ -16,7 +16,7 @@ export const Footer = forwardRef<HTMLElement>((_, ref) => {
           <div className="md:col-span-2 border-b border-[#1e293b]/30 pb-6 md:border-b-0 md:pb-0">
             <Link to="/" className="flex items-center gap-2 mb-4">
               <Crown className="h-8 w-8 text-[#e8bb2b]" />
-              <span className="text-xl font-extrabold text-[#e8bb2b] font-display">APEX Financial</span>
+              <span className="text-xl font-extrabold text-[#e8bb2b] font-display">Galaxy Financial</span>
             </Link>
             <p className="text-sm text-[#94a3b8] max-w-sm mb-4">
               One connected operating system for recruiting, contracting, training,
@@ -60,10 +60,10 @@ export const Footer = forwardRef<HTMLElement>((_, ref) => {
         <div className="border-t border-[#1e293b] mt-8 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex flex-col items-center md:items-start gap-1">
             <p className="text-sm text-[#94a3b8]">
-              © {CURRENT_YEAR} APEX Financial Empire. All rights reserved.
+              © {CURRENT_YEAR} Galaxy Financial. All rights reserved.
             </p>
             <p className="text-xs text-[#e8bb2b] font-bold font-display">
-              Powered by Apex Financial
+              Powered by Galaxy Financial
             </p>
           </div>
           <p className="text-xs text-[#8395ab] max-w-xl text-center md:text-right">

@@ -71,7 +71,7 @@ export default function StateCareerLanding() {
     // Runs before the invalid-slug guard below, so it must tolerate no cfg.
     if (!cfg) return;
     const prevTitle = document.title;
-    document.title = `Life Insurance Agent Jobs in ${cfg.name} | Remote | Apex Financial`;
+    document.title = `Life Insurance Agent Jobs in ${cfg.name} | Remote | Galaxy Financial`;
 
     const setMeta = (name: string, content: string, attr: "name" | "property" = "name") => {
       let el = document.head.querySelector(`meta[${attr}="${name}"]`) as HTMLMetaElement | null;
@@ -101,7 +101,7 @@ export default function StateCareerLanding() {
     const url = `https://apex-financial.org/careers/${cfg.slug}`;
 
     const meta1 = setMeta("description", desc);
-    const meta2 = setMeta("og:title", `Life Insurance Agent Jobs in ${cfg.name} — Apex Financial`, "property");
+    const meta2 = setMeta("og:title", `Life Insurance Agent Jobs in ${cfg.name} — Galaxy Financial`, "property");
     const meta3 = setMeta("og:type", "website", "property");
     const meta4 = setMeta("og:url", url, "property");
     const linkCanonical = setLink("canonical", url);
@@ -130,13 +130,13 @@ export default function StateCareerLanding() {
     "@context": "https://schema.org/",
     "@type": "JobPosting",
     title: `Life Insurance Agent — Remote in ${cfg.name}`,
-    description: `Apex Financial is hiring licensed and unlicensed Life Insurance Agents to work remotely from ${cfg.name}. We provide A-rated carrier appointments, lead supply, dialer, CRM, training, and a clear path from licensing to a producing book. 1099 contractor, commission only — earnings are variable. Top first-year producers have written $120K+ in commissions.`,
+    description: `Galaxy Financial is hiring licensed and unlicensed Life Insurance Agents to work remotely from ${cfg.name}. We provide A-rated carrier appointments, lead supply, dialer, CRM, training, and a clear path from licensing to a producing book. 1099 contractor, commission only — earnings are variable. Top first-year producers have written $120K+ in commissions.`,
     datePosted: today,
     validThrough,
     employmentType: "CONTRACTOR",
     hiringOrganization: {
       "@type": "Organization",
-      name: "Apex Financial",
+      name: "Galaxy Financial",
       sameAs: "https://apex-financial.org",
       logo: "https://apex-financial.org/pwa-512x512.png",
     },
@@ -156,7 +156,7 @@ export default function StateCareerLanding() {
     jobLocationType: "TELECOMMUTE",
     industry: "Insurance",
     occupationalCategory: "41-3021 Insurance Sales Agents",
-    qualifications: "Self-starter. Phone-ready. Coachable. Life insurance license is a plus but not required — we sponsor licensing through the Apex Sales Academy.",
+    qualifications: "Self-starter. Phone-ready. Coachable. Life insurance license is a plus but not required — we sponsor licensing through the Galaxy Sales Academy.",
     skills: "Sales, communication, follow-through, time management, work ethic",
     workHours: "Flexible — set your own schedule. Most full-time agents work 35-50 hours/week.",
     directApply: false,
@@ -178,7 +178,7 @@ export default function StateCareerLanding() {
             Life Insurance Agent Jobs in {cfg.name}
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Apex Financial is hiring licensed and unlicensed agents across {cfg.name}.
+            Galaxy Financial is hiring licensed and unlicensed agents across {cfg.name}.
             Work remotely. Build your book with our lead system, A-rated carrier appointments,
             and Sales Academy training — top first-year producers have written $120K+ in
             commissions. Commission only.
@@ -217,7 +217,7 @@ export default function StateCareerLanding() {
 
         {/* What you get */}
         <GlassCard variant="subtle" className="p-6 mb-8">
-          <h2 className="text-xl font-bold mb-4">What you get with Apex in {cfg.name}</h2>
+          <h2 className="text-xl font-bold mb-4">What you get with Galaxy in {cfg.name}</h2>
           <ul className="space-y-2 text-sm">
             {[
               `A-rated carrier appointments across multiple product lines — write business in ${cfg.name} from day one`,

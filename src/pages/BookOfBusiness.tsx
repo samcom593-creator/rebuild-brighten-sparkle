@@ -272,7 +272,7 @@ function sourceKey(source?: string | null): BookSourceKey {
 function sourceLabel(source?: string | null): string {
   const key = sourceKey(source);
   if (key === "ethos") return "Ethos";
-  return key === "agent_link" ? "AgentLink (imported)" : "APEX";
+  return key === "agent_link" ? "AgentLink (imported)" : "Galaxy";
 }
 
 function pipelineLabel(deal: DealRow): string {
@@ -1769,7 +1769,7 @@ export default function BookOfBusiness() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All</SelectItem>
-                      <SelectItem value="apex">APEX</SelectItem>
+                      <SelectItem value="apex">Galaxy</SelectItem>
                       <SelectItem value="agent_link">AgentLink (imported)</SelectItem>
                       <SelectItem value="ethos">Ethos</SelectItem>
                     </SelectContent>

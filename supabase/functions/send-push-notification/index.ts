@@ -286,7 +286,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log(`[Push] Found ${subscriptions.length} subscription(s)`);
 
     const payload = JSON.stringify({
-      title: title || "Apex Financial",
+      title: title || "Galaxy Financial",
       body: body || "",
       url: url || "/",
       timestamp: Date.now(),

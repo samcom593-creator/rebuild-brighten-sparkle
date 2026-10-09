@@ -133,7 +133,7 @@ export default function Numbers() {
       <div className="space-y-4">
         <div className="text-center py-2">
           <h1 className="text-xl font-bold text-foreground">
-            APEX Daily Numbers
+            Galaxy Daily Numbers
           </h1>
           <div className="flex items-center justify-center gap-2 mt-0.5">
             <p className="text-xs text-muted-foreground">Welcome, {agentName}</p>

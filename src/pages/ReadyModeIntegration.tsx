@@ -116,7 +116,7 @@ const SETTING_KEYS = [
 ];
 
 export default function ReadyModeIntegration() {
-  usePageTitle("ReadyMode · APEX");
+  usePageTitle("ReadyMode · Galaxy");
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
   const [editValues, setEditValues] = useState<Record<string, string>>({});
@@ -252,7 +252,7 @@ export default function ReadyModeIntegration() {
   const cancellationText = useMemo(() => {
     if (terminatedDormants.length === 0) return "";
     const lines = terminatedDormants.map((s, i) => `${i + 1}. ${s.agent_name} — ${s.email ?? "(no email)"}`).join("\n");
-    return `Hey — please remove these ${terminatedDormants.length} dialer licenses from my Apex Financial subscription effective immediately. All are terminated agents who shouldn't have access:\n\n${lines}\n\nConfirm seat count drops to ${(dormantSeats.data ?? []).length - terminatedDormants.length} on the next billing cycle. Thanks.`;
+    return `Hey — please remove these ${terminatedDormants.length} dialer licenses from my Galaxy Financial subscription effective immediately. All are terminated agents who shouldn't have access:\n\n${lines}\n\nConfirm seat count drops to ${(dormantSeats.data ?? []).length - terminatedDormants.length} on the next billing cycle. Thanks.`;
   }, [terminatedDormants, dormantSeats.data]);
 
   function copyCancellationText() {

@@ -223,7 +223,7 @@ export function UnlinkedAgentsPanel() {
 
         {unlinked.length > 0 && (
           <p className="mt-3 text-[12px] text-muted-foreground">
-            An AgentLink ID only attributes older imported AgentLink deals. Deals posted in Apex and the Discord
+            An AgentLink ID only attributes older imported AgentLink deals. Deals posted in Galaxy and the Discord
             feed credit these {unlinked.length} agents without one.
           </p>
         )}

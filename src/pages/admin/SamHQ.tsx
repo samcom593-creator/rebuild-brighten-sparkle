@@ -606,7 +606,7 @@ function BotsSection() {
   });
 
   const bots = [
-    { key: "telegram-bot", icon: Send, label: "Telegram bot", note: "Pre-hire onboarding + Ask Apex AI" },
+    { key: "telegram-bot", icon: Send, label: "Telegram bot", note: "Pre-hire onboarding + Ask Galaxy AI" },
     { key: "social-media-bot", icon: Radio, label: "Social bot", note: "Drafts + stamps + IG/TT/YT" },
     { key: "website-integrity-bot", icon: ShieldAlert, label: "Website integrity", note: "Audit passes hourly" },
     { key: "finance-bot", icon: Wallet, label: "CFO bot", note: "Spending + leaks + greenlights" },

@@ -104,7 +104,7 @@ Deno.serve(async (req) => {
     const html = `<div style="background:#030712;font-family:'DM Sans',sans-serif;max-width:600px;margin:0 auto">
       <div style="height:3px;background:linear-gradient(90deg,#22d3a5,#0ea5e9)"></div>
       <div style="padding:32px 32px 0;text-align:center">
-        <div style="font-size:11px;letter-spacing:4px;color:#22d3a5;text-transform:uppercase;margin-bottom:8px">APEX FINANCIAL · DAILY SPOTLIGHT</div>
+        <div style="font-size:11px;letter-spacing:4px;color:#22d3a5;text-transform:uppercase;margin-bottom:8px">GALAXY FINANCIAL · DAILY SPOTLIGHT</div>
       </div>
       ${photoSection}
       <div style="padding:0 32px 32px">
@@ -141,7 +141,7 @@ Deno.serve(async (req) => {
         method: "POST",
         headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          from: "APEX Financial <spotlight@rebuildbrightenseattle.com>",
+          from: "Galaxy Financial <spotlight@rebuildbrightenseattle.com>",
           to: batch,
           subject: `${achievementIcon} ${agentName} just hit ${alpFormatted} — Daily Spotlight`,
           html,

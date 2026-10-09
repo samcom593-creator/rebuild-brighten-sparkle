@@ -27,7 +27,7 @@ import { Badge } from "@/components/ui/badge";
 
 const DESTINATIONS = [
   {
-    title: "Start Here: APEX Onboarding",
+    title: "Start Here: Galaxy Onboarding",
     subtitle: "The official new-agent briefing for licensing, communication, meetings, and your next steps.",
     href: "/get-licensed#apex-onboarding",
     icon: PlayCircle,
@@ -41,7 +41,7 @@ const DESTINATIONS = [
     // content API — this replaced both the external link and the stale
     // hand-harvested /resources/licensing highlight.
     title: "Training Hub (live)",
-    subtitle: "Recorded trainings, courses, scripts, and PDFs — live from the APEX content library, with progress tracking.",
+    subtitle: "Recorded trainings, courses, scripts, and PDFs — live from the Galaxy content library, with progress tracking.",
     href: "/dashboard/training-hub",
     icon: BookOpen,
     highlight: false,
@@ -50,7 +50,7 @@ const DESTINATIONS = [
   },
   {
     title: "Field Course",
-    subtitle: "APEX Onboarding, Release Course, and live-training replays with progress tracking.",
+    subtitle: "Galaxy Onboarding, Release Course, and live-training replays with progress tracking.",
     href: "/dashboard/training/sales-course",
     icon: GraduationCap,
     highlight: false,
@@ -79,19 +79,19 @@ const DESTINATIONS = [
 
 const QUICK_PICKS = [
   {
-    title: "APEX Script 3.0 — Senior Benefits",
+    title: "Galaxy Script 3.0 — Senior Benefits",
     kind: "Guide",
     href: "/dashboard/training-hub?tab=library",
     icon: FileText,
   },
   {
-    title: "APEX Script — Veterans (VA Benefits)",
+    title: "Galaxy Script — Veterans (VA Benefits)",
     kind: "Guide",
     href: "/dashboard/training-hub?tab=library",
     icon: FileText,
   },
   {
-    title: "APEX Agent Playbook",
+    title: "Galaxy Agent Playbook",
     kind: "PDF",
     href: "/dashboard/training-hub?tab=library",
     icon: FileText,
@@ -117,7 +117,7 @@ const QUICK_PICKS = [
 ];
 
 export default function TrainingIndex() {
-  usePageTitle("Training · APEX Financial");
+  usePageTitle("Training · Galaxy Financial");
 
   return (
     <div className="min-h-screen bg-background py-8 px-4">
@@ -141,7 +141,7 @@ export default function TrainingIndex() {
 
           <div className="flex items-center gap-2 mb-4">
             <Crown className="h-8 w-8 text-primary" />
-            <span className="text-xl font-bold gradient-text">APEX Financial</span>
+            <span className="text-xl font-bold gradient-text">Galaxy Financial</span>
           </div>
 
           <div className="flex items-center gap-2 mb-3">
@@ -265,7 +265,7 @@ export default function TrainingIndex() {
         </GlassCard>
 
         <p className="text-center text-xs text-muted-foreground mt-8">
-          APEX Financial Empire · Internal agent resources · Confidential — do
+          Galaxy Financial · Internal agent resources · Confidential — do
           not distribute.
         </p>
       </motion.div>

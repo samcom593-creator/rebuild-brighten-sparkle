@@ -129,8 +129,8 @@ ${hasPhoto ? `<g clip-path="url(#photoClip)">
   <text x="790" y="1250" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-weight="600" font-size="22" fill="#94a3b8" letter-spacing="3">ADD PHOTO TO UPGRADE</text>
 </g>`}
 
-<!-- APEX brand header -->
-<text x="80" y="120" font-family="ui-sans-serif,system-ui" font-weight="800" font-size="48" fill="#22d3a5" letter-spacing="6">APEX</text>
+<!-- Galaxy brand header -->
+<text x="80" y="120" font-family="ui-sans-serif,system-ui" font-weight="800" font-size="48" fill="#22d3a5" letter-spacing="6">Galaxy</text>
 <text x="80" y="120" font-family="ui-sans-serif,system-ui" font-weight="400" font-size="48" fill="#f8fafc" letter-spacing="6" dx="170">FINANCIAL</text>
 <rect x="80" y="140" width="110" height="3" fill="url(#accentBar)"/>
 

@@ -113,7 +113,7 @@ export default function BoardLive() {
               Live production board
             </div>
             <h1 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">
-              APEX <span className="text-amber-400">{bounds.label}</span>
+              Galaxy <span className="text-amber-400">{bounds.label}</span>
             </h1>
           </div>
           <div className="grid w-full grid-cols-3 gap-3 sm:flex sm:w-auto sm:gap-8">

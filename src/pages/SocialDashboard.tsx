@@ -52,7 +52,7 @@ function fmt(n: number | null | undefined): string {
 }
 
 export default function SocialDashboard() {
-  usePageTitle("Social · APEX");
+  usePageTitle("Social · Galaxy");
 
   const snapshots = useQuery({
     queryKey: ["social-latest"],

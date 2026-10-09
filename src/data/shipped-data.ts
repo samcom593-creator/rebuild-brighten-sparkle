@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "The agency is now Galaxy Financial on every screen and in every email, and there is a daily Aflac check-off that cannot be skipped.",
+    detail: "Every hire has to be sent to Aflac, and nothing tracked whether that happened. A new Aflac page lists each licensed hire with their name, email, NPN and phone. You type the commission level by hand for each one, then press Sent to Aflac, and the hire gets an email telling them Aflac is emailing them right away. A hire with a missing or malformed field shows as Blocked with the exact field missing, and the page refuses to send them. The day can only be checked off once every ready hire is sent, and a red banner sits on the home page until it is. The rename covers the site, the browser tab and install name, and the sender name on about 140 email functions. Left under the old name on purpose: the legal pages and legal-entity strings until the company is renamed, the sub-agency name registered with Ethos, and the email addresses and website address, which move when the new domain is bought.",
+    commit: "PL-GALAXY-AFLAC",
+  },
+  {
+    ts: "today",
     label: "42 dashboard components, hooks and helpers that no page uses are now listed, and new ones can no longer slip in unnoticed.",
     detail: "The dead-page check only looked at pages, so a component that lost its last user stayed in the code and kept getting edited. The site-wide readability pass and a copy-fix wave both changed files nobody sees. The check now covers components, hooks and helpers too. The 42 dead ones are on a list that can only shrink, and the first one, an unused data-freshness banner, is deleted. Proven both ways: a new unused component, or the deleted banner coming back, now blocks the commit.",
     commit: "PL-WIB-ORPHAN-MODULES",

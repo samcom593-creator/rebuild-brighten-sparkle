@@ -138,7 +138,7 @@ function licensedRowKey(row: Pick<LicensedRow, "id" | "origin">): string {
 }
 
 export default function LicensedInbox() {
-  usePageTitle("Licensed Inbox · Apex Admin");
+  usePageTitle("Licensed Inbox · Galaxy Admin");
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState<string | null>(null); // key = `${origin}:${id}:${outcome}`
@@ -234,11 +234,11 @@ export default function LicensedInbox() {
   function openComposer(row: LicensedRow, channel: "sms" | "email") {
     const firstName = row.first_name?.trim() || "there";
     setComposer({ row, channel, idempotencyKey: crypto.randomUUID() });
-    setContactSubject(channel === "email" ? "APEX follow-up" : "");
+    setContactSubject(channel === "email" ? "Galaxy follow-up" : "");
     setContactMessage(
       channel === "email"
-        ? `Hi ${firstName},\n\nFollowing up from APEX Financial. What is the best time to connect?\n\n— Sam`
-        : `Hi ${firstName} — Sam at APEX here. What is the best time to connect? Reply STOP to opt out.`,
+        ? `Hi ${firstName},\n\nFollowing up from Galaxy Financial. What is the best time to connect?\n\n— Sam`
+        : `Hi ${firstName} — Sam at Galaxy here. What is the best time to connect? Reply STOP to opt out.`,
     );
     setContactError(null);
     setContactReceipt(null);
@@ -398,7 +398,7 @@ export default function LicensedInbox() {
             <Button asChild variant="outline" className="h-10 gap-2 sm:h-9">
               <Link to="/admin/apex-toolkit">
                 <Route className="h-4 w-4" />
-                APEX Journey
+                Galaxy Journey
               </Link>
             </Button>
             <QuickAddAgentDialog
@@ -514,7 +514,7 @@ export default function LicensedInbox() {
                         {name}
                       </span>
                       {r.origin === "toolkit_agent" ? (
-                        <span title="Added by APEX staff; NPN is self-reported until verified against NIPR" className="shrink-0 rounded-sm border border-info/30 px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-info dark:text-info">
+                        <span title="Added by Galaxy staff; NPN is self-reported until verified against NIPR" className="shrink-0 rounded-sm border border-info/30 px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-info dark:text-info">
                           Added agent
                         </span>
                       ) : r.nipr_verified === true ? (

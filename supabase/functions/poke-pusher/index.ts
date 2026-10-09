@@ -65,7 +65,7 @@ function shortMessage(row: QueueRow): string {
     case "hard_stop":
       return `⛔ HARD STOP at ${p.priority ?? "?"} — ${p.reason ?? ""}. Action: ${p.action_required ?? "review"}`;
     case "pause":
-      return `⏸ Apex agent paused at ${p.priority ?? "?"}. Resume via CONTINUE.md`;
+      return `⏸ Galaxy agent paused at ${p.priority ?? "?"}. Resume via CONTINUE.md`;
     default:
       return `[${row.kind}] ${JSON.stringify(p).slice(0, 200)}`;
   }

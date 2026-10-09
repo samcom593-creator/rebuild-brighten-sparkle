@@ -63,11 +63,11 @@ serve(async (req) => {
     const lines: string[] = [
       "BEGIN:VCALENDAR",
       "VERSION:2.0",
-      "PRODID:-//APEX Financial//Task Calendar//EN",
+      "PRODID:-//Galaxy Financial//Task Calendar//EN",
       "CALSCALE:GREGORIAN",
       "METHOD:PUBLISH",
-      "X-WR-CALNAME:APEX Tasks",
-      "X-WR-CALDESC:Your APEX Financial tasks and meetings",
+      "X-WR-CALNAME:GALAXY Tasks",
+      "X-WR-CALDESC:Your Galaxy Financial tasks and meetings",
       "REFRESH-INTERVAL;VALUE=DURATION:PT15M",
       "X-PUBLISHED-TTL:PT15M",
     ];
@@ -91,8 +91,8 @@ serve(async (req) => {
           `DTSTAMP:${toIcsDate(new Date())}`,
           `DTSTART:${toIcsDate(due)}`,
           `DTEND:${toIcsDate(end)}`,
-          `SUMMARY:${escapeIcs(task.title || "APEX Task")}`,
-          `DESCRIPTION:${escapeIcs(task.description || "APEX task")}`,
+          `SUMMARY:${escapeIcs(task.title || "Galaxy Task")}`,
+          `DESCRIPTION:${escapeIcs(task.description || "Galaxy task")}`,
           `URL:https://apex-financial.org/dashboard`,
           "END:VEVENT"
         );

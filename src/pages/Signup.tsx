@@ -26,7 +26,7 @@ const signupSchema = z.object({
 type SignupFormData = z.infer<typeof signupSchema>;
 
 export default function Signup() {
-  usePageTitle("Manager Signup · APEX Financial");
+  usePageTitle("Manager Signup · Galaxy Financial");
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
@@ -136,7 +136,7 @@ export default function Signup() {
         return;
       }
 
-      toast.success("Account created! Welcome to APEX Financial.");
+      toast.success("Account created! Welcome to Galaxy Financial.");
       navigate(response?.role === "va_manager" ? "/va-team" : "/dashboard");
     } catch (error: any) {
       console.error("Signup error:", error);
@@ -172,7 +172,7 @@ export default function Signup() {
           <div className="text-center mb-8">
             <Link to="/" className="inline-flex items-center gap-2 mb-6">
               <Crown className="h-10 w-10 text-primary" />
-              <span className="text-2xl font-bold gradient-text">APEX Financial</span>
+              <span className="text-2xl font-bold gradient-text">Galaxy Financial</span>
             </Link>
           </div>
 
@@ -207,7 +207,7 @@ export default function Signup() {
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-2 mb-6">
             <Crown className="h-10 w-10 text-primary" />
-            <span className="text-2xl font-bold gradient-text">APEX Financial</span>
+            <span className="text-2xl font-bold gradient-text">Galaxy Financial</span>
           </Link>
           <h1 className="text-3xl font-bold mb-2">Create Your Account</h1>
           <p className="text-muted-foreground">

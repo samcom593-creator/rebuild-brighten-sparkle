@@ -21,7 +21,7 @@ export function WelcomeToast() {
         <span className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
           <span>
-            <strong className="font-semibold">Apex v3 just landed.</strong>{" "}
+            <strong className="font-semibold">Galaxy v3 just landed.</strong>{" "}
             <span className="text-muted-foreground">
               Aurora background, real-time conduct center, strikes + charges audit.
             </span>

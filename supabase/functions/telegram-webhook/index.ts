@@ -47,7 +47,7 @@ const PUBLIC_GROUP_COMMANDS = new Set([
 ]);
 
 const RESOURCE_TEXT =
-  `APEX recruit resources:\n\n` +
+  `GALAXY recruit resources:\n\n` +
   `1. Apply: ${APPLY_URL}\n` +
   `2. ICA/payment gate: ${ICA_URL}\n` +
   `3. Licensing path: ${LICENSE_URL}\n` +
@@ -345,7 +345,7 @@ async function postManagerAlert(
     subject: `Telegram: ${name} asked for a person`,
     body:
       `${escHtml(name)}${handle ? ` (@${escHtml(handle)})` : ""}, stage ${escHtml(user?.stage ?? "unknown")}, ` +
-      `sent "${escHtml(said)}" to the Apex Telegram bot (${escHtml(reason)}). ` +
+      `sent "${escHtml(said)}" to the Galaxy Telegram bot (${escHtml(reason)}). ` +
       `The bot told them a manager will reply within 12 business hours. ${escHtml(reply)}`,
     smsBody: `Telegram: ${name} asked for a person`.slice(0, 90),
     actionLink: "https://apex-financial.org/dashboard/admin/telegram-bot",
@@ -424,7 +424,7 @@ async function aiAnswer(chat_id: number, question: string) {
     .map((r: any) => `[${r.category}] Q: ${r.question_pattern}\nA: ${r.answer_body}`)
     .join("\n\n");
 
-  const system = `You are the APEX bot answering inside Telegram for a candidate or new agent at Apex Financial — a life insurance recruiting agency.
+  const system = `You are the Galaxy bot answering inside Telegram for a candidate or new agent at Galaxy Financial — a life insurance recruiting agency.
 
 Voice: direct, faith-aware (Christian, never preachy), no corporate hedging. ≤ 60 words.
 
@@ -641,7 +641,7 @@ async function handleCommand(chat_id: number, fromUser: any, command: string, ar
           ]);
           await tgSend({
             chat_id,
-            text: `Welcome ${app.first_name ?? "in"}. Your APEX application is linked. I'll keep you on track — next steps, seminar reminders, exam dates, manager pings, every step. Reply /status to see where you are now.`,
+            text: `Welcome ${app.first_name ?? "in"}. Your Galaxy application is linked. I'll keep you on track — next steps, seminar reminders, exam dates, manager pings, every step. Reply /status to see where you are now.`,
           });
           break;
         }

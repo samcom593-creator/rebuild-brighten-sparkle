@@ -140,7 +140,7 @@ const handler = async (req: Request): Promise<Response> => {
             
             <div style="border-top: 1px solid rgba(148, 163, 184, 0.2); padding-top: 24px; margin-top: 24px;">
               <p style="color: #64748b; font-size: 12px; margin: 0; text-align: center;">
-                APEX Financial Empire<br>
+                Galaxy Financial<br>
                 Building Empires, Protecting Families
               </p>
             </div>
@@ -161,7 +161,7 @@ const handler = async (req: Request): Promise<Response> => {
       const results = await Promise.allSettled(
         batch.map(email => 
           resend.emails.send({
-            from: "APEX Financial <notifications@apex-financial.org>",
+            from: "Galaxy Financial <notifications@apex-financial.org>",
             to: [email],
             cc: ["info@kingofsales.net"],
             subject: `🏆 Today's Top Performer: ${topPerformerName}!`,

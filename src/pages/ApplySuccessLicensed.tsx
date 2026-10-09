@@ -3,7 +3,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { ApplicationConfirmationV2 as ApplicationConfirmation } from "@/components/landing/ApplicationConfirmationV2";
 
 export default function ApplySuccessLicensed() {
-  usePageTitle("Schedule Your Call · APEX Financial");
+  usePageTitle("Schedule Your Call · Galaxy Financial");
   const [search] = useSearchParams();
   const applicationId = search.get("aid") || search.get("application_id") || null;
 

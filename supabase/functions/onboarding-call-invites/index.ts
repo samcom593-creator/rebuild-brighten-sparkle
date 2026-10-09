@@ -151,10 +151,10 @@ function locationOf(b: BookingRow): string {
 function buildIcs(row: InviteRow, b: BookingRow, name: string): { ics: string; summary: string } {
   const startIso = b.scheduled_at;
   const endIso = b.ended_at ?? new Date(new Date(startIso).getTime() + 30 * 60_000).toISOString();
-  const summary = `APEX Onboarding Call · ${name}`;
+  const summary = `Galaxy Onboarding Call · ${name}`;
   const location = locationOf(b);
   const description = [
-    `APEX onboarding call for ${name}.`,
+    `Galaxy onboarding call for ${name}.`,
     `When: ${fmtIn(PHOENIX, startIso)} (${fmtIn(CENTRAL, startIso)})`,
     `Location: ${location}`,
     b.invitee_email ? `Hire email: ${b.invitee_email}` : null,
@@ -162,14 +162,14 @@ function buildIcs(row: InviteRow, b: BookingRow, name: string): { ics: string; s
     b.prep_notes ? `Prep notes: ${b.prep_notes}` : null,
     b.reschedule_url ? `Reschedule: ${b.reschedule_url}` : null,
     b.cancel_url ? `Cancel: ${b.cancel_url}` : null,
-    `Booked via Calendly (${b.event_type_name ?? "APEX Onboarding Call"}). Booking id ${b.id}.`,
+    `Booked via Calendly (${b.event_type_name ?? "Galaxy Onboarding Call"}). Booking id ${b.id}.`,
   ].filter(Boolean).join("\n");
 
   const cancel = row.kind === "cancel";
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//APEX Financial//Onboarding Calls//EN",
+    "PRODID:-//Galaxy Financial//Onboarding Calls//EN",
     "CALSCALE:GREGORIAN",
     `METHOD:${cancel ? "CANCEL" : "REQUEST"}`,
     "BEGIN:VEVENT",
@@ -199,7 +199,7 @@ function buildEmail(row: InviteRow, b: BookingRow, name: string, summary: string
     ? `Canceled: onboarding call with ${name} · ${fmtIn(PHOENIX, b.scheduled_at)}`
     : `Onboarding call with ${name} · ${fmtIn(PHOENIX, b.scheduled_at)}`;
   const text = [
-    cancel ? `The onboarding call below was canceled${b.cancel_reason ? ` (${b.cancel_reason})` : ""}.` : `A new APEX onboarding call is on the calendar. The attached invite adds it to yours.`,
+    cancel ? `The onboarding call below was canceled${b.cancel_reason ? ` (${b.cancel_reason})` : ""}.` : `A new Galaxy onboarding call is on the calendar. The attached invite adds it to yours.`,
     ``,
     `Who:      ${name}`,
     `When:     ${when}`,
@@ -222,7 +222,7 @@ function buildEmail(row: InviteRow, b: BookingRow, name: string, summary: string
   ].filter(Boolean) as string[][];
   const html = `<!doctype html>
 <html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#111;line-height:1.55;">
-  <p style="margin:0 0 4px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#8a6d0b;">APEX Financial · Onboarding</p>
+  <p style="margin:0 0 4px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#8a6d0b;">Galaxy Financial · Onboarding</p>
   <h2 style="margin:0 0 12px;font-size:18px;">${escapeHtml(cancel ? `Canceled: ${summary}` : summary)}</h2>
   <p>${cancel ? `This call was canceled${b.cancel_reason ? ` (${escapeHtml(b.cancel_reason)})` : ""}. The attached update removes it from your calendar.` : `A new onboarding call is on the calendar. Accept the attached invite to add it to yours.`}</p>
   <table style="border-collapse:collapse;width:100%;margin:12px 0;">

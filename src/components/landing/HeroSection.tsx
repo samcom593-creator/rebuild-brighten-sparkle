@@ -280,7 +280,7 @@ export function HeroSection() {
                 removed from the public landing hero. Monogram until a
                 professional headshot is provided. */}
             <div
-              aria-label="Samuel James, Founder of APEX Financial"
+              aria-label="Samuel James, Founder of Galaxy Financial"
               className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/15 ring-2 ring-primary/40 text-sm font-bold text-primary"
             >
               SJ

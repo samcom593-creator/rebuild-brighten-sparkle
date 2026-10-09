@@ -406,7 +406,7 @@ async function sendManagerNotification(
 
   try {
     await resend.emails.send({
-       from: "APEX Financial <notifications@apex-financial.org>",
+       from: "Galaxy Financial <notifications@apex-financial.org>",
       to: [manager.email],
       // 2026-07-29 Sam: same rule as the admin email — a manager must see licensed vs
       // unlicensed BEFORE anything else, because it decides whether they call now or
@@ -597,7 +597,7 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
     
     // Send notification email to APEX team
     const adminEmailResponse = await resend.emails.send({
-      from: "APEX Applications <notifications@apex-financial.org>",
+      from: "Galaxy Applications <notifications@apex-financial.org>",
       to: ["info@kingofsales.net"],
       subject: adminSubject,
       html: `
@@ -808,7 +808,7 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
       ? `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: linear-gradient(135deg, #059669, #047857); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
-            <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to APEX Financial!</h1>
+            <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to Galaxy Financial!</h1>
           </div>
           
           <div style="background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
@@ -825,14 +825,14 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
               <p style="margin: 0; color: #047857; font-weight: 500;">
                 Here's exactly what happens next:<br/>
                 1. A manager will call you within 24 hours to walk you through getting contracted<br/>
-                2. You'll receive your APEX portal login via a separate email<br/>
+                2. You'll receive your Galaxy portal login via a separate email<br/>
                 3. Once contracted, you'll have access to scripts, leads, and the full training system
               </p>
             </div>
 
             ${recruiterContactSection}
 
-            <h3 style="color: #111827; margin-bottom: 15px;">Why Producers Build With APEX</h3>
+            <h3 style="color: #111827; margin-bottom: 15px;">Why Producers Build With Galaxy</h3>
             <p style="color: #4b5563; line-height: 1.6; margin-bottom: 20px;">
               Six minutes on how the agency works, what you get, and what your first 30 days look like:
             </p>
@@ -882,19 +882,19 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
             </p>
             <p style="color: #4b5563; margin-top: 25px;">
               — Sam<br/>
-              <strong style="color: #059669;">Managing Partner, APEX Financial</strong>
+              <strong style="color: #059669;">Managing Partner, Galaxy Financial</strong>
             </p>
           </div>
 
           <div style="text-align: center; padding: 20px; color: #9ca3af; font-size: 12px;">
-            <p style="margin: 0;">APEX Financial | apex-financial.org</p>
+            <p style="margin: 0;">Galaxy Financial | apex-financial.org</p>
           </div>
         </div>
       `
       : `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: linear-gradient(135deg, #059669, #047857); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
-            <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to APEX Financial!</h1>
+            <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to Galaxy Financial!</h1>
           </div>
           
           <div style="background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
@@ -973,7 +973,7 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
             </p>
 
             <div style="background: #f3e8ff; border: 1px solid #d8b4fe; padding: 20px; border-radius: 8px; margin: 25px 0; text-align: center;">
-              <h3 style="color: #4A154B; margin-top: 0; margin-bottom: 10px; font-size: 16px;">📱 Join the APEX Slack, then open #unlicensed</h3>
+              <h3 style="color: #4A154B; margin-top: 0; margin-bottom: 10px; font-size: 16px;">📱 Join the Galaxy Slack, then open #unlicensed</h3>
               <p style="color: #6b216f; font-size: 13px; margin-bottom: 15px;">#unlicensed is your room until you're licensed. Once you've purchased the pre-licensing course, post a screenshot of the purchase confirmation there — that's how we verify it and move you to the next step.</p>
               <a href="${SLACK_LINK}"
                  style="display: inline-block; background: #4A154B; color: white;
@@ -998,13 +998,13 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
 
             <p style="color: #4b5563; margin-top: 25px;">
               — Sam<br/>
-              <strong style="color: #059669;">Managing Partner, APEX Financial</strong>
+              <strong style="color: #059669;">Managing Partner, Galaxy Financial</strong>
             </p>
           </div>
 
           <div style="text-align: center; padding: 20px; color: #9ca3af; font-size: 12px;">
             <p style="margin: 0;">Save this email - it contains your important next steps!</p>
-            <p style="margin-top: 10px;">&copy; ${new Date().getFullYear()} APEX Financial. All rights reserved.</p>
+            <p style="margin-top: 10px;">&copy; ${new Date().getFullYear()} Galaxy Financial. All rights reserved.</p>
           </div>
         </div>
       `;
@@ -1017,14 +1017,14 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
 
     // Send confirmation email to applicant with conditional links
     const applicantEmailResponse = await resend.emails.send({
-      from: "APEX Financial <notifications@apex-financial.org>",
+      from: "Galaxy Financial <notifications@apex-financial.org>",
       to: [data.email],
       cc: ccList,
       subject: sanitized.licenseStatus === 'licensed'
-        ? `Welcome to APEX Financial, ${sanitized.firstName} — Licensed Agent Fast Track`
+        ? `Welcome to Galaxy Financial, ${sanitized.firstName} — Licensed Agent Fast Track`
         : sanitized.licenseStatus === 'pending'
-        ? `Welcome to APEX, ${sanitized.firstName} — You're Almost Ready to Earn`
-        : `Welcome to APEX, ${sanitized.firstName} — Let's Get You Licensed`,
+        ? `Welcome to Galaxy, ${sanitized.firstName} — You're Almost Ready to Earn`
+        : `Welcome to Galaxy, ${sanitized.firstName} — Let's Get You Licensed`,
       html: emailHtml,
     });
     console.log("Applicant confirmation sent:", JSON.stringify(applicantEmailResponse));
@@ -1039,10 +1039,10 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
         recipient_email: data.email,
         subject:
           sanitized.licenseStatus === "licensed"
-            ? `Welcome to APEX Financial, ${sanitized.firstName} — Licensed Agent Fast Track`
+            ? `Welcome to Galaxy Financial, ${sanitized.firstName} — Licensed Agent Fast Track`
             : sanitized.licenseStatus === "pending"
-              ? `Welcome to APEX, ${sanitized.firstName} — You're Almost Ready to Earn`
-              : `Welcome to APEX, ${sanitized.firstName} — Let's Get You Licensed`,
+              ? `Welcome to Galaxy, ${sanitized.firstName} — You're Almost Ready to Earn`
+              : `Welcome to Galaxy, ${sanitized.firstName} — Let's Get You Licensed`,
         provider: "resend",
         provider_message_id: (applicantEmailResponse as { data?: { id?: string } })?.data?.id ?? null,
         status: respErr ? "error" : "sent",
@@ -1145,7 +1145,7 @@ function dispatchFullSubmissionSideEffects(data: SubmitApplicationRequest, appli
           },
           body: JSON.stringify({
             phone: data.phone,
-            message: `Welcome to Apex Financial, ${data.firstName}! 🚀 Your application has been received. Check your email for next steps!`.substring(0, 160),
+            message: `Welcome to Galaxy Financial, ${data.firstName}! 🚀 Your application has been received. Check your email for next steps!`.substring(0, 160),
             applicationId,
           }),
         });
@@ -1681,7 +1681,7 @@ const handler = async (req: Request): Promise<Response> => {
       if (resend) {
         try {
           await resend.emails.send({
-            from: "APEX Financial <notifications@apex-financial.org>",
+            from: "Galaxy Financial <notifications@apex-financial.org>",
             to: ["info@kingofsales.net"],
             subject: `🔄 Duplicate Application: ${data.firstName} ${data.lastName}${referrerAdopted ? " (referrer adopted)" : ""}`,
             html: `<p><strong>${data.firstName} ${data.lastName}</strong> applied again. They're already in your pipeline since ${new Date(existingApp.created_at).toLocaleDateString()}.</p>
@@ -1778,10 +1778,10 @@ const handler = async (req: Request): Promise<Response> => {
         if (mostRecent.contracted_at && resend) {
           try {
             await resend.emails.send({
-              from: "APEX Financial <notifications@apex-financial.org>",
+              from: "Galaxy Financial <notifications@apex-financial.org>",
               to: ["info@kingofsales.net"],
               subject: `🔄 Rehire Application — ${data.firstName} ${data.lastName}`,
-              html: `<p><strong>${data.firstName} ${data.lastName}</strong> previously contracted with APEX and has reapplied.${incomingReferrer ? ` Referrer preserved: ${incomingReferrer}.` : " Assigned directly to you."} Original application: ${mostRecent.id}</p>`,
+              html: `<p><strong>${data.firstName} ${data.lastName}</strong> previously contracted with Galaxy and has reapplied.${incomingReferrer ? ` Referrer preserved: ${incomingReferrer}.` : " Assigned directly to you."} Original application: ${mostRecent.id}</p>`,
             });
           } catch (e) { console.error("Rehire notification failed:", e); }
         }

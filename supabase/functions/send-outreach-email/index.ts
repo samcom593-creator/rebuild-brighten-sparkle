@@ -93,7 +93,7 @@ const emailTemplates = {
 <body style="margin:0;padding:0;font-family:Arial,sans-serif;background-color:#0a0a0a;color:#ffffff;word-break:break-word;">
   <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
     <div style="text-align:center;margin-bottom:32px;">
-      <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">APEX FINANCIAL</h1>
+      <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">GALAXY FINANCIAL</h1>
     </div>
     
     <div style="background:linear-gradient(145deg,#1a1a2e,#16213e);border-radius:16px;padding:32px;border:1px solid rgba(20,184,166,0.2);">
@@ -104,7 +104,7 @@ const emailTemplates = {
       </p>
       
       <p style="font-size:16px;line-height:1.6;color:#d1d5db;margin:0 0 16px 0;">
-        I wanted to reach out because we're building something special at Apex Financial—a team of elite advisors who are tired of the traditional agency model and want to truly own their career.
+        I wanted to reach out because we're building something special at Galaxy Financial—a team of elite advisors who are tired of the traditional agency model and want to truly own their career.
       </p>
       
       <p style="font-size:16px;line-height:1.6;color:#d1d5db;margin:0 0 24px 0;">
@@ -116,12 +116,12 @@ const emailTemplates = {
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         Looking forward to connecting,<br>
         <strong style="color:#ffffff;">${agentName}</strong><br>
-        Apex Financial
+        Galaxy Financial
       </p>
     </div>
     
     <p style="font-size:12px;color:#6b7280;text-align:center;margin-top:32px;">
-      © ${new Date().getFullYear()} Apex Financial. All rights reserved.
+      © ${new Date().getFullYear()} Galaxy Financial. All rights reserved.
     </p>
   </div>
 </body>
@@ -140,7 +140,7 @@ const emailTemplates = {
 <body style="margin:0;padding:0;font-family:Arial,sans-serif;background-color:#0a0a0a;color:#ffffff;word-break:break-word;">
   <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
     <div style="text-align:center;margin-bottom:32px;">
-      <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">APEX FINANCIAL</h1>
+      <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">GALAXY FINANCIAL</h1>
     </div>
     
     <div style="background:linear-gradient(145deg,#1a1a2e,#16213e);border-radius:16px;padding:32px;border:1px solid rgba(20,184,166,0.2);">
@@ -163,12 +163,12 @@ const emailTemplates = {
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         Here whenever you're ready,<br>
         <strong style="color:#ffffff;">${agentName}</strong><br>
-        Apex Financial
+        Galaxy Financial
       </p>
     </div>
     
     <p style="font-size:12px;color:#6b7280;text-align:center;margin-top:32px;">
-      © ${new Date().getFullYear()} Apex Financial. All rights reserved.
+      © ${new Date().getFullYear()} Galaxy Financial. All rights reserved.
     </p>
   </div>
 </body>
@@ -187,7 +187,7 @@ const emailTemplates = {
 <body style="margin:0;padding:0;font-family:Arial,sans-serif;background-color:#0a0a0a;color:#ffffff;word-break:break-word;">
   <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
     <div style="text-align:center;margin-bottom:32px;">
-      <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">APEX FINANCIAL</h1>
+      <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">GALAXY FINANCIAL</h1>
     </div>
     
     <div style="background:linear-gradient(145deg,#1a1a2e,#16213e);border-radius:16px;padding:32px;border:1px solid rgba(20,184,166,0.2);">
@@ -198,7 +198,7 @@ const emailTemplates = {
       </p>
       
       <p style="font-size:16px;line-height:1.6;color:#d1d5db;margin:0 0 16px 0;">
-        I think there's a lot of potential here, and I'd love to dive deeper into how Apex could help you hit your income goals while building a real business.
+        I think there's a lot of potential here, and I'd love to dive deeper into how Galaxy could help you hit your income goals while building a real business.
       </p>
       
       <p style="font-size:16px;line-height:1.6;color:#d1d5db;margin:0 0 24px 0;">
@@ -210,12 +210,12 @@ const emailTemplates = {
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         Talk soon,<br>
         <strong style="color:#ffffff;">${agentName}</strong><br>
-        Apex Financial
+        Galaxy Financial
       </p>
     </div>
     
     <p style="font-size:12px;color:#6b7280;text-align:center;margin-top:32px;">
-      © ${new Date().getFullYear()} Apex Financial. All rights reserved.
+      © ${new Date().getFullYear()} Galaxy Financial. All rights reserved.
     </p>
   </div>
 </body>
@@ -234,7 +234,7 @@ const emailTemplates = {
 <body style="margin:0;padding:0;font-family:Arial,sans-serif;background-color:#0a0a0a;color:#ffffff;word-break:break-word;">
   <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
     <div style="text-align:center;margin-bottom:32px;">
-      <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">APEX FINANCIAL</h1>
+      <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">GALAXY FINANCIAL</h1>
     </div>
     
     <div style="background:linear-gradient(145deg,#1a1a2e,#16213e);border-radius:16px;padding:32px;border:1px solid rgba(20,184,166,0.2);">
@@ -245,7 +245,7 @@ const emailTemplates = {
       </p>
       
       <p style="font-size:16px;line-height:1.6;color:#d1d5db;margin:0 0 16px 0;">
-        That said, I genuinely believe what we're building at Apex is different. Our agents aren't just selling—they're building equity, real income, and a lifestyle that gives them freedom.
+        That said, I genuinely believe what we're building at Galaxy is different. Our agents aren't just selling—they're building equity, real income, and a lifestyle that gives them freedom.
       </p>
       
       <p style="font-size:16px;line-height:1.6;color:#d1d5db;margin:0 0 24px 0;">
@@ -257,12 +257,12 @@ const emailTemplates = {
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         Here when you're ready,<br>
         <strong style="color:#ffffff;">${agentName}</strong><br>
-        Apex Financial
+        Galaxy Financial
       </p>
     </div>
     
     <p style="font-size:12px;color:#6b7280;text-align:center;margin-top:32px;">
-      © ${new Date().getFullYear()} Apex Financial. All rights reserved.
+      © ${new Date().getFullYear()} Galaxy Financial. All rights reserved.
     </p>
   </div>
 </body>
@@ -281,7 +281,7 @@ const emailTemplates = {
 <body style="margin:0;padding:0;font-family:Arial,sans-serif;background-color:#0a0a0a;color:#ffffff;word-break:break-word;">
   <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
     <div style="text-align:center;margin-bottom:32px;">
-      <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">APEX FINANCIAL</h1>
+      <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">GALAXY FINANCIAL</h1>
     </div>
     
     <div style="background:linear-gradient(145deg,#1a1a2e,#16213e);border-radius:16px;padding:32px;border:1px solid rgba(20,184,166,0.2);">
@@ -304,12 +304,12 @@ const emailTemplates = {
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         Rooting for you,<br>
         <strong style="color:#ffffff;">${agentName}</strong><br>
-        Apex Financial
+        Galaxy Financial
       </p>
     </div>
     
     <p style="font-size:12px;color:#6b7280;text-align:center;margin-top:32px;">
-      © ${new Date().getFullYear()} Apex Financial. All rights reserved.
+      © ${new Date().getFullYear()} Galaxy Financial. All rights reserved.
     </p>
   </div>
 </body>
@@ -328,7 +328,7 @@ const emailTemplates = {
 <body style="margin:0;padding:0;font-family:Arial,sans-serif;background-color:#0a0a0a;color:#ffffff;word-break:break-word;">
   <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
     <div style="text-align:center;margin-bottom:32px;">
-      <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">APEX FINANCIAL</h1>
+      <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">GALAXY FINANCIAL</h1>
     </div>
     
     <div style="background:linear-gradient(145deg,#1a1a2e,#16213e);border-radius:16px;padding:32px;border:1px solid rgba(20,184,166,0.2);">
@@ -351,12 +351,12 @@ const emailTemplates = {
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         Believe in you,<br>
         <strong style="color:#ffffff;">${agentName}</strong><br>
-        Apex Financial
+        Galaxy Financial
       </p>
     </div>
     
     <p style="font-size:12px;color:#6b7280;text-align:center;margin-top:32px;">
-      © ${new Date().getFullYear()} Apex Financial. All rights reserved.
+      © ${new Date().getFullYear()} Galaxy Financial. All rights reserved.
     </p>
   </div>
 </body>
@@ -375,14 +375,14 @@ const emailTemplates = {
 <body style="margin:0;padding:0;font-family:Arial,sans-serif;background-color:#0a0a0a;color:#ffffff;word-break:break-word;">
   <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
     <div style="text-align:center;margin-bottom:32px;">
-      <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">APEX FINANCIAL</h1>
+      <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">GALAXY FINANCIAL</h1>
     </div>
     
     <div style="background:linear-gradient(145deg,#1a1a2e,#16213e);border-radius:16px;padding:32px;border:1px solid rgba(20,184,166,0.2);">
       <h2 style="font-size:24px;margin:0 0 16px 0;color:#14b8a6;">Hey ${firstName}!</h2>
       
       <p style="font-size:16px;line-height:1.6;color:#d1d5db;margin:0 0 16px 0;">
-        Just a friendly reminder that your life insurance license is the key that unlocks everything at Apex Financial.
+        Just a friendly reminder that your life insurance license is the key that unlocks everything at Galaxy Financial.
       </p>
       
       <div style="background:rgba(20,184,166,0.1);border-radius:8px;padding:20px;margin:20px 0;">
@@ -405,12 +405,12 @@ const emailTemplates = {
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         Here to help,<br>
         <strong style="color:#ffffff;">${agentName}</strong><br>
-        Apex Financial
+        Galaxy Financial
       </p>
     </div>
     
     <p style="font-size:12px;color:#6b7280;text-align:center;margin-top:32px;">
-      © ${new Date().getFullYear()} Apex Financial. All rights reserved.
+      © ${new Date().getFullYear()} Galaxy Financial. All rights reserved.
     </p>
   </div>
 </body>
@@ -429,7 +429,7 @@ const emailTemplates = {
 <body style="margin:0;padding:0;font-family:Arial,sans-serif;background-color:#0a0a0a;color:#ffffff;word-break:break-word;">
   <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
     <div style="text-align:center;margin-bottom:32px;">
-      <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">APEX FINANCIAL</h1>
+      <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">GALAXY FINANCIAL</h1>
     </div>
     
     <div style="background:linear-gradient(145deg,#1a1a2e,#16213e);border-radius:16px;padding:32px;border:1px solid rgba(20,184,166,0.2);">
@@ -462,12 +462,12 @@ const emailTemplates = {
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         In your corner,<br>
         <strong style="color:#ffffff;">${agentName}</strong><br>
-        Apex Financial
+        Galaxy Financial
       </p>
     </div>
     
     <p style="font-size:12px;color:#6b7280;text-align:center;margin-top:32px;">
-      © ${new Date().getFullYear()} Apex Financial. All rights reserved.
+      © ${new Date().getFullYear()} Galaxy Financial. All rights reserved.
     </p>
   </div>
 </body>
@@ -486,7 +486,7 @@ const emailTemplates = {
 <body style="margin:0;padding:0;font-family:Arial,sans-serif;background-color:#0a0a0a;color:#ffffff;word-break:break-word;">
   <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
     <div style="text-align:center;margin-bottom:32px;">
-      <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">APEX FINANCIAL</h1>
+      <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">GALAXY FINANCIAL</h1>
     </div>
     
     <div style="background:linear-gradient(145deg,#1a1a2e,#16213e);border-radius:16px;padding:32px;border:1px solid rgba(20,184,166,0.2);">
@@ -519,12 +519,12 @@ const emailTemplates = {
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         Here to help you succeed,<br>
         <strong style="color:#ffffff;">${agentName}</strong><br>
-        Apex Financial
+        Galaxy Financial
       </p>
     </div>
     
     <p style="font-size:12px;color:#6b7280;text-align:center;margin-top:32px;">
-      © ${new Date().getFullYear()} Apex Financial. All rights reserved.
+      © ${new Date().getFullYear()} Galaxy Financial. All rights reserved.
     </p>
   </div>
 </body>
@@ -543,14 +543,14 @@ const emailTemplates = {
 <body style="margin:0;padding:0;font-family:Arial,sans-serif;background-color:#0a0a0a;color:#ffffff;word-break:break-word;">
   <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
     <div style="text-align:center;margin-bottom:32px;">
-      <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">APEX FINANCIAL</h1>
+      <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">GALAXY FINANCIAL</h1>
     </div>
     
     <div style="background:linear-gradient(145deg,#1a1a2e,#16213e);border-radius:16px;padding:32px;border:1px solid rgba(20,184,166,0.2);">
       <h2 style="font-size:24px;margin:0 0 16px 0;color:#14b8a6;">Hey ${firstName}!</h2>
       
       <p style="font-size:16px;line-height:1.6;color:#d1d5db;margin:0 0 16px 0;">
-        I'd love to schedule a quick consultation call with you to discuss your career goals and answer any questions you have about joining Apex Financial.
+        I'd love to schedule a quick consultation call with you to discuss your career goals and answer any questions you have about joining Galaxy Financial.
       </p>
       
       <p style="font-size:16px;line-height:1.6;color:#d1d5db;margin:0 0 16px 0;">
@@ -576,12 +576,12 @@ const emailTemplates = {
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         Looking forward to connecting,<br>
         <strong style="color:#ffffff;">${agentName}</strong><br>
-        Apex Financial
+        Galaxy Financial
       </p>
     </div>
     
     <p style="font-size:12px;color:#6b7280;text-align:center;margin-top:32px;">
-      © ${new Date().getFullYear()} Apex Financial. All rights reserved.
+      © ${new Date().getFullYear()} Galaxy Financial. All rights reserved.
     </p>
   </div>
 </body>
@@ -600,14 +600,14 @@ const emailTemplates = {
 <body style="margin:0;padding:0;font-family:Arial,sans-serif;background-color:#0a0a0a;color:#ffffff;word-break:break-word;">
   <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
     <div style="text-align:center;margin-bottom:32px;">
-      <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">APEX FINANCIAL</h1>
+      <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">GALAXY FINANCIAL</h1>
     </div>
     
     <div style="background:linear-gradient(145deg,#1a1a2e,#16213e);border-radius:16px;padding:32px;border:1px solid rgba(20,184,166,0.2);">
       <h2 style="font-size:24px;margin:0 0 16px 0;color:#14b8a6;">Hey ${firstName}! 📞</h2>
       
       <p style="font-size:16px;line-height:1.6;color:#d1d5db;margin:0 0 16px 0;">
-        We tried reaching out to you today about the opportunity at <strong style="color:#ffffff;">Apex Financial</strong>, but we couldn't get through to your number.
+        We tried reaching out to you today about the opportunity at <strong style="color:#ffffff;">Galaxy Financial</strong>, but we couldn't get through to your number.
       </p>
       
       <p style="font-size:16px;line-height:1.6;color:#d1d5db;margin:0 0 16px 0;">
@@ -630,12 +630,12 @@ const emailTemplates = {
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         Talk soon,<br>
         <strong style="color:#ffffff;">${agentName}</strong><br>
-        Apex Financial
+        Galaxy Financial
       </p>
     </div>
     
     <p style="font-size:12px;color:#6b7280;text-align:center;margin-top:32px;">
-      © ${new Date().getFullYear()} Apex Financial. All rights reserved.
+      © ${new Date().getFullYear()} Galaxy Financial. All rights reserved.
     </p>
   </div>
 </body>
@@ -748,7 +748,7 @@ const handler = async (req: Request): Promise<Response> => {
       : (caller.agentIds.includes(requestedAgentId) ? requestedAgentId : caller.agentIds[0] ?? null);
 
     // Fetch agent name
-    let agentName = "Apex Financial Team";
+    let agentName = "Galaxy Financial Team";
     if (agentId) {
       const { data: agent } = await supabase
         .from("agents")
@@ -789,7 +789,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send email
     const { data: emailReceipt, error: emailError } = await resend.emails.send({
-      from: "APEX Financial <notifications@apex-financial.org>",
+      from: "Galaxy Financial <notifications@apex-financial.org>",
       to: [recipientEmail],
       cc: ccList.length > 0 ? ccList : undefined,
       subject,

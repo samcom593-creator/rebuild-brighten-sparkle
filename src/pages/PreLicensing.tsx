@@ -120,7 +120,7 @@ function nextStepLabel(s: XcelStudent): string {
 }
 
 export default function PreLicensing() {
-  usePageTitle("Pre-Licensing · APEX");
+  usePageTitle("Pre-Licensing · Galaxy");
 
   const { isAdmin, isManager } = useAuth();
   const downline = useMyDownline();

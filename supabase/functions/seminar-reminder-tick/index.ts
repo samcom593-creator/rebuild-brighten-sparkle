@@ -82,7 +82,7 @@ function reminderHtml(name: string, when: string, hoursOut: 24 | 1, meetingUrl: 
     <div style="font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#111">
       <h2 style="margin:0 0 16px 0">${headline}</h2>
       <p>Hey ${name},</p>
-      <p>This is your reminder for the Apex Financial career seminar:</p>
+      <p>This is your reminder for the Galaxy Financial career seminar:</p>
       <p style="font-size:18px;font-weight:600">${when}</p>
       <p>Show up locked in. We move fast and we go deep.</p>
       <p><a href="${meetingUrl}" style="display:inline-block;padding:12px 20px;background:#c8a445;color:#fff;text-decoration:none;border-radius:8px;font-weight:600">${meetingLabel}</a></p>
@@ -148,7 +148,7 @@ Deno.serve(async (_req) => {
     try {
       await sendEmail({
         to: r.email,
-        subject: window === 24 ? "Reminder: Apex seminar tomorrow" : "Starting in 1 hour — Apex seminar",
+        subject: window === 24 ? "Reminder: Galaxy seminar tomorrow" : "Starting in 1 hour — Galaxy seminar",
         html: reminderHtml(r.first_name ?? "there", fmtSeminarTime(r.seminar_date), window, meetingCfg.url, meetingCfg.label),
         tagName: "seminar_reminder",
       });

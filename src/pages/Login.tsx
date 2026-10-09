@@ -23,7 +23,7 @@ const loginSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function Login() {
-  usePageTitle("Sign in · APEX Financial");
+  usePageTitle("Sign in · Galaxy Financial");
   const navigate = useNavigate();
   const location = useLocation();
   // Return to the page the visitor was trying to open (ProtectedRoute passes it as state.from),
@@ -286,7 +286,7 @@ export default function Login() {
               <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-primary animate-pulse" />
             </motion.span>
             <div className="flex flex-col items-start leading-none">
-              <span className="text-2xl font-bold brand-gradient tracking-wider">APEX</span>
+              <span className="text-2xl font-bold brand-gradient tracking-wider">Galaxy</span>
               <span className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground mt-1">Financial</span>
             </div>
           </Link>

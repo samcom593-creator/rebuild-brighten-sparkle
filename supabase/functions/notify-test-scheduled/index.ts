@@ -134,7 +134,7 @@ Deno.serve(async (req) => {
           </p>
         </div>
         <div style="padding: 16px; text-align: center; border-top: 1px solid #222; font-size: 11px; color: #666;">
-          Powered by Apex Financial
+          Powered by Galaxy Financial
         </div>
       </div>
     `;
@@ -147,7 +147,7 @@ Deno.serve(async (req) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          from: "APEX Financial <notifications@apex-financial.org>",
+          from: "Galaxy Financial <notifications@apex-financial.org>",
           to: [app.email],
           cc: uniqueCcList,
           subject: `📅 Licensing Exam Scheduled – ${formattedDate}`,

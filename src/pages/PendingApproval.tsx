@@ -9,7 +9,7 @@ import { useNavigate } from "react-router-dom";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function PendingApproval() {
-  usePageTitle("Pending Approval · APEX Financial");
+  usePageTitle("Pending Approval · Galaxy Financial");
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
@@ -29,7 +29,7 @@ export default function PendingApproval() {
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-2 mb-6">
             <Crown className="h-10 w-10 text-primary" />
-            <span className="text-2xl font-bold gradient-text">APEX Financial</span>
+            <span className="text-2xl font-bold gradient-text">Galaxy Financial</span>
           </Link>
         </div>
 

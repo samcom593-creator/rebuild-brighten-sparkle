@@ -44,7 +44,7 @@ const ROUTE_SHORTCUTS: Array<{ test: RegExp; route: string; action: string }> = 
 
 export function buildImplementationPrompt(command: string): string {
   return [
-    "APEX Website task",
+    "Galaxy Website task",
     "",
     `User request: ${command}`,
     "",

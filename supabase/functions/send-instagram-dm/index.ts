@@ -140,7 +140,7 @@ Deno.serve(async (req) => {
       await fetch(webhook, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          username: "APEX 📥 IG queued",
+          username: "Galaxy 📥 IG queued",
           content: `Inbound IG DM needs your reply (no IG token configured yet)\n\`\`\`\n${message.slice(0, 500)}\n\`\`\`\nTap reply on IG when you can — token paste also unblocks this thread.`,
         }),
       }).catch(() => {});

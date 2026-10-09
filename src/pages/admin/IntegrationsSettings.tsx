@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 const DISCORD_KEY = "discord_webhook_url";
 
 const SETUP_SQL = `-- ══════════════════════════════════════════════════════════════════════
--- APEX MASTER ACTIVATION — paste once, run once. Safe to re-run.
+-- GALAXY MASTER ACTIVATION — paste once, run once. Safe to re-run.
 -- Applies every stuck migration: deal sync, plaque photos, avatars,
 -- comp grid, Instagram inbox, team chat, overseer + morning-brief
 -- crons, email-spam kill-list.
@@ -182,7 +182,7 @@ DO $$ DECLARE jn text; BEGIN
 END $$;
 
 -- 11. Done — confirmation row
-SELECT 'APEX ACTIVATED ✅' AS status,
+SELECT 'GALAXY ACTIVATED ✅' AS status,
   (SELECT count(*)::int FROM public.plaque_awards)                AS plaques,
   (SELECT count(*)::int FROM public.profiles WHERE avatar_url IS NOT NULL) AS profiles_with_avatar,
   (SELECT count(*)::int FROM public.agent_carrier_comp)           AS comp_grid_rows,

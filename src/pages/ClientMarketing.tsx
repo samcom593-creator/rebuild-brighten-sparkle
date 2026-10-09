@@ -35,7 +35,7 @@ const TEMPLATES: Template[] = [
     body: `Hi {first_name}, {agent_name} again — I'm holding your quote at the rate we discussed. Carrier locks the rate based on today's health, so the longer we wait, the more your premium could go up. Want me to circle back at {time_slot}?`,
   },
   {
-    title: "Welcome to APEX Coverage", category: "Onboarding", channel: "email",
+    title: "Welcome to Galaxy Coverage", category: "Onboarding", channel: "email",
     body: `Hi {first_name},
 
 Welcome to {carrier_name}. Your coverage is officially in force as of {effective_date}.
@@ -117,7 +117,7 @@ function MarketingTabs({ view, onChange }: { view: "clients" | "funnels"; onChan
 }
 
 export default function ClientMarketing() {
-  usePageTitle("Client Marketing · APEX");
+  usePageTitle("Client Marketing · Galaxy");
   const [view, setView] = useState<"clients" | "funnels">("clients");
   const [search, setSearch] = useState("");
   const [activeCat, setActiveCat] = useState("All");

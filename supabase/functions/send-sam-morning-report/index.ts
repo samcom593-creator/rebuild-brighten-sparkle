@@ -76,12 +76,12 @@ serve(async (req) => {
       const resend = new Resend(resendKey);
 
       await resend.emails.send({
-        from: "APEX System <sam@apex-financial.org>",
+        from: "Galaxy System <sam@apex-financial.org>",
         to: "info@kingofsales.net",
         subject: `📊 Morning Report — $${totalALP.toLocaleString()} ALP Yesterday`,
         html: `
           <div style="font-family:'DM Sans',sans-serif;max-width:600px;margin:0 auto;background:#030712;color:white;padding:32px">
-            <div style="font-size:11px;letter-spacing:4px;color:#22d3a5;text-transform:uppercase;margin-bottom:16px">APEX FINANCIAL · DAILY REPORT</div>
+            <div style="font-size:11px;letter-spacing:4px;color:#22d3a5;text-transform:uppercase;margin-bottom:16px">GALAXY FINANCIAL · DAILY REPORT</div>
             <h1 style="font-family:'Syne',sans-serif;font-size:28px;font-weight:800;margin:0 0 24px">Yesterday's Summary</h1>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px">
               <div style="background:#0f172a;padding:16px;border-radius:12px">

@@ -152,7 +152,7 @@ We provide <strong>free CRM, free dialer, 50+ carrier contracts</strong>, and 72
 <tr><td style="padding:0 30px 20px;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:rgba(74,21,75,0.1);border:1px solid rgba(212,175,55,0.3);border-radius:8px;">
 <tr><td style="padding:16px;text-align:center;">
-<p style="color:#D4AF37;font-weight:bold;font-size:14px;margin:0 0 8px;">💬 Join the APEX Slack</p>
+<p style="color:#D4AF37;font-weight:bold;font-size:14px;margin:0 0 8px;">💬 Join the Galaxy Slack</p>
 <p style="color:#666;font-size:13px;margin:0 0 12px;">Use the primary team workspace for licensing support, training questions, and progress updates.</p>
 <a href="${SLACK_LINK}" style="display:inline-block;background:#4A154B;color:#fff;text-decoration:none;padding:10px 24px;border-radius:6px;font-weight:bold;font-size:14px;">Join Team Slack →</a>
 </td></tr>
@@ -171,7 +171,7 @@ We provide <strong>free CRM, free dialer, 50+ carrier contracts</strong>, and 72
 </td></tr>
 
 <tr><td style="background-color:#1a1a1a;padding:20px;text-align:center;">
-<p style="margin:0;color:#888;font-size:12px;">Apex Financial Enterprises</p>
+<p style="margin:0;color:#888;font-size:12px;">Galaxy Financial Enterprises</p>
 </td></tr>
 
 </table>
@@ -188,7 +188,7 @@ We provide <strong>free CRM, free dialer, 50+ carrier contracts</strong>, and 72
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            from: "APEX Financial <notifications@apex-financial.org>",
+            from: "Galaxy Financial <notifications@apex-financial.org>",
             to: [app.email],
             cc: [ADMIN_EMAIL],
             subject: `${safeFirst}, Your $20K/Month Opportunity Awaits 🚀`,

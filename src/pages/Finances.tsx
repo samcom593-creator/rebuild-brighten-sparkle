@@ -743,7 +743,7 @@ const snapshot = useQuery({
 }
 
 export default function Finances() {
-  usePageTitle("Finances · APEX");
+  usePageTitle("Finances · Galaxy");
   const [scope, setScope] = useState<FinScope>("agency");
   const [mainTab, setMainTab] = useState<"overview" | "reconciliation">("overview");
 

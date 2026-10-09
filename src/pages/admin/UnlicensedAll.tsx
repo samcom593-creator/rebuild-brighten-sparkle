@@ -159,7 +159,7 @@ function prettyProgress(p: string | null): string {
 }
 
 export default function UnlicensedAll() {
-  usePageTitle("Unlicensed Queue · APEX");
+  usePageTitle("Unlicensed Queue · Galaxy");
   const qc = useQueryClient();
 
   const [filter, setFilter] = useState<FilterKey>("all");

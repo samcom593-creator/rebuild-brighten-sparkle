@@ -19,7 +19,7 @@ import { nanpRefusalReason, nanpTenDigits } from "../_shared/nanp-phone.ts";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
-const CONTACT_FROM = Deno.env.get("APEX_CONTACT_FROM") ?? "APEX Financial <notifications@apex-financial.org>";
+const CONTACT_FROM = Deno.env.get("APEX_CONTACT_FROM") ?? "Galaxy Financial <notifications@apex-financial.org>";
 const CONTACT_DRY_RUN = Deno.env.get("APEX_CONTACT_DRY_RUN") === "true";
 const MAX_ATTEMPTS = 5;
 
@@ -362,9 +362,9 @@ async function deliverApplicationSlackInvite(sb: any, event: any): Promise<Dispa
       emailReceipt = await resendEmail({
         from: CONTACT_FROM,
         to: [email],
-        subject: "Join your APEX Financial team in Slack",
-        html: `<div style="font-family:Arial,sans-serif;line-height:1.55;max-width:600px;margin:0 auto"><h2>Welcome to APEX, ${safeName}.</h2><p>Join the team workspace for daily huddles, contracting support, training, scripts, and sales wins.</p><p><a href="${safeInvite}" style="display:inline-block;background:#d4af37;color:#0a0a0a;font-weight:700;text-decoration:none;padding:12px 18px;border-radius:8px">Join APEX Financial Slack</a></p><p style="color:#6b7280;font-size:12px">If the button does not open, paste this into your browser: ${safeInvite}</p></div>`,
-        text: `Welcome to APEX, ${firstName}. Join the team Slack workspace: ${inviteUrl}`,
+        subject: "Join your Galaxy Financial team in Slack",
+        html: `<div style="font-family:Arial,sans-serif;line-height:1.55;max-width:600px;margin:0 auto"><h2>Welcome to Galaxy, ${safeName}.</h2><p>Join the team workspace for daily huddles, contracting support, training, scripts, and sales wins.</p><p><a href="${safeInvite}" style="display:inline-block;background:#d4af37;color:#0a0a0a;font-weight:700;text-decoration:none;padding:12px 18px;border-radius:8px">Join Galaxy Financial Slack</a></p><p style="color:#6b7280;font-size:12px">If the button does not open, paste this into your browser: ${safeInvite}</p></div>`,
+        text: `Welcome to Galaxy, ${firstName}. Join the team Slack workspace: ${inviteUrl}`,
       }, `apex-slack-invite-${event.aggregate_type}-${event.aggregate_id}`);
     }
   }
@@ -435,9 +435,9 @@ async function deliverDiscord(sb: any, event: any): Promise<string | undefined> 
     const response = await callFunction("discord-webhook-notify", {
       event_type: "agent_activated",
       details: {
-        agent_name: profile?.full_name ?? hired.display_name ?? "New APEX agent",
+        agent_name: profile?.full_name ?? hired.display_name ?? "New Galaxy agent",
         instagram: profile?.instagram_handle ?? null,
-        hired_by: manager?.display_name ?? "APEX Financial",
+        hired_by: manager?.display_name ?? "Galaxy Financial",
         start_date: hired.start_date ?? new Date().toISOString().slice(0, 10),
       },
     });
@@ -523,7 +523,7 @@ async function deliverDiscord(sb: any, event: any): Promise<string | undefined> 
   const profile = Array.isArray((agent as any)?.profile)
     ? (agent as any).profile[0]
     : (agent as any)?.profile;
-  const agentName = profile?.full_name ?? (agent as any)?.display_name ?? "APEX agent";
+  const agentName = profile?.full_name ?? (agent as any)?.display_name ?? "Galaxy agent";
 
   const response = await callFunction("discord-webhook-notify", {
     event_type: "deal_closed",
@@ -935,7 +935,7 @@ async function dispatch(sb: any, event: any): Promise<DispatchResult> {
   if (event.destination === "insuracloud") {
     return {
       state: "manual_action_required",
-      manualReason: "Legacy cloud forwarding is retired; APEX is the system of record.",
+      manualReason: "Legacy cloud forwarding is retired; Galaxy is the system of record.",
     };
   }
   if (event.destination === "contact_email" || event.destination === "contact_sms") {

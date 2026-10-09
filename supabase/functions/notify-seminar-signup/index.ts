@@ -58,7 +58,7 @@ async function sendEmail(to: string, subject: string, html: string): Promise<boo
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "Apex Financial <noreply@apex-financial.org>",
+        from: "Galaxy Financial <noreply@apex-financial.org>",
         to: [to],
         subject,
         html,

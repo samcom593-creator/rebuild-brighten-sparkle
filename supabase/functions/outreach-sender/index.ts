@@ -23,7 +23,7 @@ const corsHeaders = {
 };
 
 const DEFAULT_FROM = "Samuel James <info@kingofsales.net>";
-const DEFAULT_SUBJECT = "A quick note from APEX Financial";
+const DEFAULT_SUBJECT = "A quick note from Galaxy Financial";
 const DEFAULT_BATCH = 25;
 const MAX_BATCH = 200;
 const RESEND_SEND_URL = "https://api.resend.com/emails";
@@ -144,7 +144,7 @@ function defaultHtml(firstName: string | null, templateKey: string): string {
   const greeting = firstName ? `Hey ${firstName}` : "Hey there";
   return `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;color:#0a0a0a;">
 <p>${greeting},</p>
-<p>This is APEX Financial. We're following up on your interest. Let's connect.</p>
+<p>This is Galaxy Financial. We're following up on your interest. Let's connect.</p>
 <p><a href="https://calendly.com/apexfinancialempire/licensed-prospect-call-clone">Schedule a call</a></p>
 <p>(template: ${templateKey})</p>
 </body></html>`;

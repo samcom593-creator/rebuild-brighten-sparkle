@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-rpc-column-vocabulary.sh (bot_sql -> pg_proc + pg_rewrite)",
- "_generated_at": "2026-10-07T15:42:49Z",
+ "_generated_at": "2026-10-09T03:15:22Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "check-enum-filter-literals.mjs grades literals inside supabase.from().eq() chains. This is the other half of the same class: a status word that arrives from an RPC and is compared in JavaScript, where the return type is text and every wrong word type-checks. Per (function, returned column) this records the relation columns of that name reachable from the function body and the literals the function synthesises itself. It deliberately records CANDIDATES rather than one resolved source: provenance from a body regex is a guess, so check-rpc-status-literals.mjs refuses a literal only when NO candidate vocabulary and no body literal accepts it.",
  "_vocabulary_source": "scripts/data/enum-catalog.json (check_vocab + column_enum + enums). Not copied here on purpose, so the two guards read one snapshot and cannot drift.",
@@ -14,6 +14,10 @@
   "admin_verify_slack_identity": "jsonb",
   "advance_hire_stage": "jsonb",
   "advance_referral_status": "referrals",
+  "aflac_daily_checkoff": "jsonb",
+  "aflac_gate_state": "jsonb",
+  "aflac_intake_missing": "text[]",
+  "aflac_mark_submitted": "jsonb",
   "agent_claim_state": "text",
   "agent_credentials_upsert": "uuid",
   "agent_inbox_touch_updated_at": "trigger",
@@ -342,6 +346,7 @@
   "fn_recruit_scope_ok": "boolean",
   "fn_reissue_40d_html": "text",
   "fn_reissue_40d_text": "text",
+  "fn_require_caller_role": "void",
   "fn_rpc_single_flight": "jsonb",
   "fn_run_applicant_nudges": "jsonb",
   "fn_seminar_registration_ntfy": "trigger",
@@ -1267,6 +1272,7 @@
     "Mon DD",
     "YYYY-MM-DD",
     "active",
+    "admin",
     "daily",
     "month",
     "monthly",
@@ -1282,6 +1288,7 @@
     "Mon DD",
     "YYYY-MM-DD",
     "active",
+    "admin",
     "daily",
     "month",
     "monthly",
@@ -6334,6 +6341,8 @@
    ],
    "body_literals": [
     "active",
+    "anon",
+    "authenticated",
     "public",
     "submitted"
    ]
@@ -6342,6 +6351,8 @@
    "candidates": [],
    "body_literals": [
     "active",
+    "anon",
+    "authenticated",
     "public",
     "submitted"
    ]
@@ -6350,6 +6361,8 @@
    "candidates": [],
    "body_literals": [
     "active",
+    "anon",
+    "authenticated",
     "public",
     "submitted"
    ]
@@ -6358,6 +6371,8 @@
    "candidates": [],
    "body_literals": [
     "active",
+    "anon",
+    "authenticated",
     "public",
     "submitted"
    ]
@@ -6366,6 +6381,8 @@
    "candidates": [],
    "body_literals": [
     "active",
+    "anon",
+    "authenticated",
     "public",
     "submitted"
    ]
@@ -6624,6 +6641,7 @@
   },
   "get_leaderboard_profiles.user_id": {
    "candidates": [
+    "agents.user_id",
     "profiles.user_id"
    ],
    "body_literals": [
@@ -7267,19 +7285,34 @@
   "mark_phone_bad.id": {
    "candidates": [],
    "body_literals": [
-    "public"
+    "admin",
+    "manager",
+    "public",
+    "recruiter",
+    "va",
+    "va_manager"
    ]
   },
   "mark_phone_bad.phone_bad_at": {
    "candidates": [],
    "body_literals": [
-    "public"
+    "admin",
+    "manager",
+    "public",
+    "recruiter",
+    "va",
+    "va_manager"
    ]
   },
   "mark_phone_bad.phone_bad_reason": {
    "candidates": [],
    "body_literals": [
-    "public"
+    "admin",
+    "manager",
+    "public",
+    "recruiter",
+    "va",
+    "va_manager"
    ]
   },
   "merge_agent_into_canonical.canonical_agent_id": {
@@ -10379,6 +10412,7 @@
     "v_sam_todo_manual_source.created_at"
    ],
    "body_literals": [
+    "admin",
     "public"
    ]
   },
@@ -10389,6 +10423,7 @@
     "v_sam_todo_manual_source.due_at"
    ],
    "body_literals": [
+    "admin",
     "public"
    ]
   },
@@ -10400,6 +10435,7 @@
     "v_sam_todo_manual_source.link"
    ],
    "body_literals": [
+    "admin",
     "public"
    ]
   },
@@ -10412,6 +10448,7 @@
     "v_sam_todo_manual_source.priority"
    ],
    "body_literals": [
+    "admin",
     "public"
    ]
   },
@@ -10425,6 +10462,7 @@
     "v_sam_todo_manual_source.source"
    ],
    "body_literals": [
+    "admin",
     "public"
    ]
   },
@@ -10437,6 +10475,7 @@
     "v_sam_todo_manual_source.source_id"
    ],
    "body_literals": [
+    "admin",
     "public"
    ]
   },
@@ -10448,6 +10487,7 @@
     "v_sam_todo_manual_source.status"
    ],
    "body_literals": [
+    "admin",
     "public"
    ]
   },
@@ -10459,6 +10499,7 @@
     "v_sam_todo_manual_source.text"
    ],
    "body_literals": [
+    "admin",
     "public"
    ]
   },

@@ -70,7 +70,7 @@ function hoursSince(iso: string): number {
 }
 
 export default function MyApplicants() {
-  usePageTitle("My Applicants · APEX Financial");
+  usePageTitle("My Applicants · Galaxy Financial");
   const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [visibleCount, setVisibleCount] = useState(100);

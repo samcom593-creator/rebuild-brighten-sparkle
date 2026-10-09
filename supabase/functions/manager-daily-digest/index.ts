@@ -391,7 +391,7 @@ serve(async (req) => {
                     <tr>
                       <td style="padding: 16px; text-align: center; border-top: 1px solid rgba(255,255,255,0.1);">
                         <p style="color: #666; font-size: 12px; margin: 0;">
-                          Powered by <span style="color: #00d4ff; font-weight: 600;">Apex Financial</span>
+                          Powered by <span style="color: #00d4ff; font-weight: 600;">Galaxy Financial</span>
                         </p>
                       </td>
                     </tr>
@@ -405,7 +405,7 @@ serve(async (req) => {
 
       try {
         await resend.emails.send({
-          from: "APEX Financial <notifications@apex-financial.org>",
+          from: "Galaxy Financial <notifications@apex-financial.org>",
           to: [profile.email],
           cc: ["info@kingofsales.net"],
           subject: `☀️ ${firstName}'s Daily Digest - $${weeklyALP.toLocaleString()} this week`,

@@ -115,14 +115,14 @@ async function postDiscord(alert: any): Promise<boolean> {
   const t = tone[alert.severity] ?? { color: 6710886, tag: alert.severity };
   const stripHtml = (s: string) => String(s ?? "").replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim().slice(0, 1000);
   const body = {
-    username: `APEX ${t.tag}`,
+    username: `Galaxy ${t.tag}`,
     embeds: [
       {
         title: alert.subject,
         description: stripHtml(alert.body),
         color: t.color,
         url: alert.action_link || undefined,
-        footer: { text: `APEX Pulse · ${alert.event_type}` },
+        footer: { text: `Galaxy Pulse · ${alert.event_type}` },
         timestamp: new Date().toISOString(),
       },
     ],
@@ -196,7 +196,7 @@ async function postNtfy(alert: any, topicOverride?: string): Promise<{ ok: boole
   // carrying 23 messages — the cause was ntfy code 42908, a per-visitor-IP daily
   // quota on the shared Supabase egress, readable only from the response body.
   const res = await postNtfyGraded(url, {
-    title: String(alert.subject ?? "APEX alert"),
+    title: String(alert.subject ?? "Galaxy alert"),
     body: String(alert.sms_body || alert.subject || ""),
     tags: alert.severity === "critical" ? "rotating_light" : alert.severity === "celebrate" ? "tada,fire" : "bell",
     priority: alert.severity === "critical" ? "5" : "4",
@@ -230,7 +230,7 @@ async function send(alert: any): Promise<{ email_id: string | null; sent_sms: bo
       // brand_funnel leads also land in Sam's personal Gmail (the inbox on his
       // phone); every other alert keeps the business inbox only.
       const r = await resend.emails.send({
-        from: "APEX Engine <sam@apex-financial.org>",
+        from: "Galaxy Engine <sam@apex-financial.org>",
         to: alert?.source === "brand_funnel" ? [SAM_EMAIL, "sam.com593@gmail.com"] : SAM_EMAIL,
         subject: alert.subject,
         html,

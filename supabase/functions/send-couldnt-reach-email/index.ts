@@ -40,28 +40,28 @@ function buildEmail(first: string, from: string) {
   const subject = "Tried to reach you — got a bad number";
   const text = `Hey ${safeFirst},
 
-We tried calling the number you gave us on your APEX Financial application, but couldn't get through — either it disconnected, wrong number, or no answer.
+We tried calling the number you gave us on your Galaxy Financial application, but couldn't get through — either it disconnected, wrong number, or no answer.
 
 Reply to this email with the best number to reach you and the best time (morning / afternoon / evening in your time zone) and we'll get you back on track. Everything's still open on our side — no strike against your application.
 
-— APEX Financial recruiting`;
+— Galaxy Financial recruiting`;
 
   const html = `<!DOCTYPE html>
 <html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/></head>
 <body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif;background:#0a0a0a;color:#fff;">
 <div style="max-width:560px;margin:0 auto;padding:32px 20px;">
   <div style="text-align:center;margin-bottom:24px;">
-    <h1 style="font-size:22px;font-weight:800;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">APEX FINANCIAL</h1>
+    <h1 style="font-size:22px;font-weight:800;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">GALAXY FINANCIAL</h1>
   </div>
   <div style="background:linear-gradient(145deg,#1a1a2e,#16213e);border-radius:14px;padding:28px;border:1px solid rgba(20,184,166,0.25);">
     <h2 style="font-size:19px;margin:0 0 14px 0;color:#fff;">Hey ${safeFirst},</h2>
     <p style="font-size:15px;line-height:1.6;color:#d1d5db;margin:0 0 14px 0;">
-      We tried calling the number you gave us on your APEX Financial application, but couldn't get through — either it disconnected, wrong number, or no answer.
+      We tried calling the number you gave us on your Galaxy Financial application, but couldn't get through — either it disconnected, wrong number, or no answer.
     </p>
     <p style="font-size:15px;line-height:1.6;color:#d1d5db;margin:0 0 18px 0;">
       Reply with the best number to reach you and a good time window (morning / afternoon / evening) and we'll get you back on track. Everything's still open — no strike against your application.
     </p>
-    <p style="font-size:14px;color:#9ca3af;margin:0;">— APEX Financial recruiting</p>
+    <p style="font-size:14px;color:#9ca3af;margin:0;">— Galaxy Financial recruiting</p>
   </div>
   <div style="text-align:center;margin-top:20px;font-size:12px;color:#6b7280;">
     apex-financial.org
@@ -132,7 +132,7 @@ serve(async (req) => {
     sMap.set(r.key, r.value);
   }
   const resendKey = Deno.env.get("RESEND_API_KEY") ?? sMap.get("resend_api_key") ?? "";
-  const fromRaw = sMap.get("onboarding_email_from_address") ?? "APEX Financial <recruiting@apex-financial.org>";
+  const fromRaw = sMap.get("onboarding_email_from_address") ?? "Galaxy Financial <recruiting@apex-financial.org>";
   const from = fromRaw.replace(/^"|"$/g, "");
 
   if (!resendKey) {

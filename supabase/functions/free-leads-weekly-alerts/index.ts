@@ -107,9 +107,9 @@ Deno.serve(async (request) => {
         : `Your trailing 30-day ALP is $${l30}. Write $${gap} more to unlock the $20K Free Leads tier.`;
       const result = await sendEmail({
         to: email,
-        subject: row.qualifies ? "Your APEX Free Leads status is active" : `You're $${gap} from APEX Free Leads`,
+        subject: row.qualifies ? "Your Galaxy Free Leads status is active" : `You're $${gap} from Galaxy Free Leads`,
         text: `Hey ${name.split(" ")[0]} — ${detail}\n\nTrack your live status: https://apex-financial.org/dashboard`,
-        html: `<p>Hey ${name.split(" ")[0]} —</p><p>${detail}</p><p><a href="https://apex-financial.org/dashboard">Open my APEX dashboard</a></p>`,
+        html: `<p>Hey ${name.split(" ")[0]} —</p><p>${detail}</p><p><a href="https://apex-financial.org/dashboard">Open my Galaxy dashboard</a></p>`,
         unsubscribe_token: row.agent_id,
         tagName: "free-leads-weekly",
       });

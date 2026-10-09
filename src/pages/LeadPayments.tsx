@@ -146,7 +146,7 @@ function rowStatus(row: PaymentRow): PaymentStatus {
 }
 
 export default function LeadPayments() {
-  usePageTitle("Lead Payments · APEX");
+  usePageTitle("Lead Payments · Galaxy");
   const { user, isAdmin } = useAuth();
   const qc = useQueryClient();
   const [search, setSearch] = useState("");

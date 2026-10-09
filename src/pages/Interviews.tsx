@@ -376,7 +376,7 @@ export default function Interviews() {
       // correct licensed/unlicensed onboarding path.
       if (selected.action === "hire") {
         if (!selected.row.application_id) {
-          toast.warning("Hire saved, but no matching APEX application exists. Add the person with Add Agent to start onboarding.");
+          toast.warning("Hire saved, but no matching Galaxy application exists. Add the person with Add Agent to start onboarding.");
         } else {
           try {
             const hire = await promoteApplicationToAgent(selected.row.application_id, { npn: hireNpn });

@@ -47,7 +47,7 @@ serve(async (req: Request) => {
           const checkinUrl = `${buildAppUrl("/checkin")}?id=${app.id}`;
 
           await resend.emails.send({
-            from: "APEX Financial Empire <notifications@apex-financial.org>",
+            from: "Galaxy Financial <notifications@apex-financial.org>",
             to: [app.email],
             cc: ["info@kingofsales.net"],
             subject: "🚀 Important Update — New Licensing Support Process",
@@ -66,7 +66,7 @@ serve(async (req: Request) => {
                     <div style="background: rgba(20,184,166,0.1); border: 1px solid rgba(20,184,166,0.3); border-radius: 8px; padding: 16px; margin: 0 0 20px;">
                       <p style="color: #14b8a6; font-weight: bold; margin: 0 0 8px;">🎉 LICENSE INCENTIVE</p>
                       <p style="color: #e2e8f0; font-size: 14px; margin: 0;">
-                        If you receive your license <strong>within 2 weeks of your application date</strong>, the licensing cost is covered by APEX!
+                        If you receive your license <strong>within 2 weeks of your application date</strong>, the licensing cost is covered by Galaxy!
                       </p>
                     </div>
 
@@ -87,7 +87,7 @@ serve(async (req: Request) => {
                       </table>
                     </div>
 
-                    <h2 style="color: #e2e8f0; font-size: 16px; margin: 16px 0 8px;">💬 Join the APEX Slack</h2>
+                    <h2 style="color: #e2e8f0; font-size: 16px; margin: 16px 0 8px;">💬 Join the Galaxy Slack</h2>
                     <p style="color: #94a3b8; font-size: 14px; line-height: 1.6; margin: 0 0 12px;">
                       Slack is the primary team workspace for licensing questions, progress support, training, and updates.
                     </p>
@@ -98,7 +98,7 @@ serve(async (req: Request) => {
                     </div>
 
                     <div style="border-top: 1px solid rgba(148,163,184,0.2); padding-top: 20px; margin-top: 24px;">
-                      <p style="color: #64748b; font-size: 12px; text-align: center; margin: 0;">APEX Financial Empire</p>
+                      <p style="color: #64748b; font-size: 12px; text-align: center; margin: 0;">Galaxy Financial</p>
                     </div>
                   </div>
                 </div>

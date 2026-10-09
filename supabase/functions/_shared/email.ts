@@ -37,7 +37,7 @@ export interface SendEmailResult {
   error?: string;
 }
 
-const DEFAULT_FROM     = Deno.env.get("EMAIL_FROM")     ?? "Sam at APEX <sam@apex-financial.org>";
+const DEFAULT_FROM     = Deno.env.get("EMAIL_FROM")     ?? "Sam at Galaxy Financial <sam@apex-financial.org>";
 const DEFAULT_REPLY_TO = Deno.env.get("EMAIL_REPLY_TO") ?? "info@kingofsales.net";
 const DOMAIN           = Deno.env.get("APEX_DOMAIN")    ?? "apex-financial.org";
 
@@ -63,8 +63,8 @@ export function ensureUnsubscribeFooter(html: string, unsubscribeUrl: string): s
   if (/unsubscribe/i.test(html)) return html;
   return html + `
 <div style="margin-top:32px;padding-top:16px;border-top:1px solid #e5e7eb;color:#6b7280;font-size:12px;line-height:1.5;font-family:Arial,sans-serif">
-  <p>You received this because you're part of the APEX Financial network.</p>
-  <p><a href="${unsubscribeUrl}" style="color:#6b7280;text-decoration:underline">Unsubscribe</a> · APEX Financial · Dallas, TX</p>
+  <p>You received this because you're part of the Galaxy Financial network.</p>
+  <p><a href="${unsubscribeUrl}" style="color:#6b7280;text-decoration:underline">Unsubscribe</a> · Galaxy Financial · Dallas, TX</p>
 </div>`;
 }
 

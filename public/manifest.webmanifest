@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "APEX Financial OS",
-  "short_name": "APEX OS",
+  "name": "Galaxy Financial OS",
+  "short_name": "Galaxy OS",
   "description": "Run recruiting, contracting, training, production, and agency operations from your phone.",
   "start_url": "/dashboard?source=pwa",
   "scope": "/",

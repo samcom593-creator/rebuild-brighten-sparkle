@@ -100,7 +100,7 @@ const TONE_CLS: Record<"neutral" | "warn" | "success" | "danger", string> = {
 };
 
 export default function SeminarControl() {
-  usePageTitle("Seminar Control · APEX");
+  usePageTitle("Seminar Control · Galaxy");
   const { user, isAdmin, isManager } = useAuth();
 
   // Component-level guard. Admins and managers always allowed. Other users

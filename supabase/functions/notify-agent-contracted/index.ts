@@ -46,7 +46,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Fetch manager details and email
-    let managerName = "Apex Financial Team";
+    let managerName = "Galaxy Financial Team";
     let managerEmail: string | null = null;
     if (agentId) {
       const { data: agent } = await supabase
@@ -83,13 +83,13 @@ const handler = async (req: Request): Promise<Response> => {
     // Unlicensed agents → pre-licensing instructions
     const subject = isLicensed
       ? "🎉 Welcome to the Team! Set Up Your CRM Access"
-      : "🎉 Welcome to Apex Financial! Next Steps to Get Licensed";
+      : "🎉 Welcome to Galaxy Financial! Next Steps to Get Licensed";
 
     const bodyContent = isLicensed
       ? `
       <h2 style="font-size:24px;margin:0 0 16px 0;color:#14b8a6;text-align:center;">Congratulations, ${firstName}!</h2>
       <p style="font-size:16px;line-height:1.6;color:#d1d5db;margin:0 0 16px 0;">
-        Welcome to the Apex Financial family! We're thrilled to have you on board.
+        Welcome to the Galaxy Financial family! We're thrilled to have you on board.
       </p>
       <p style="font-size:16px;line-height:1.6;color:#d1d5db;margin:0 0 16px 0;">
         You've officially been contracted as a licensed agent. The next step is to set up your CRM access so you can start managing your leads and growing your business.
@@ -118,7 +118,7 @@ const handler = async (req: Request): Promise<Response> => {
       : `
       <h2 style="font-size:24px;margin:0 0 16px 0;color:#14b8a6;text-align:center;">Welcome, ${firstName}!</h2>
       <p style="font-size:16px;line-height:1.6;color:#d1d5db;margin:0 0 16px 0;">
-        We're excited to have you join Apex Financial! Before you can start in the field, you'll need to get your insurance license.
+        We're excited to have you join Galaxy Financial! Before you can start in the field, you'll need to get your insurance license.
       </p>
       <p style="font-size:16px;line-height:1.6;color:#d1d5db;margin:0 0 16px 0;">
         Don't worry — we'll guide you through every step of the process.
@@ -151,7 +151,7 @@ const handler = async (req: Request): Promise<Response> => {
       </div>`;
 
     const { error: emailError } = await resend.emails.send({
-      from: "APEX Financial <notifications@apex-financial.org>",
+      from: "Galaxy Financial <notifications@apex-financial.org>",
       to: [application.email],
       cc: ccList.length > 0 ? ccList : undefined,
       subject,
@@ -165,7 +165,7 @@ const handler = async (req: Request): Promise<Response> => {
 <body style="margin:0;padding:0;font-family:Arial,sans-serif;background-color:#0a0a0a;color:#ffffff;">
   <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
     <div style="text-align:center;margin-bottom:32px;">
-      <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">APEX FINANCIAL</h1>
+      <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">GALAXY FINANCIAL</h1>
     </div>
     <div style="background:linear-gradient(145deg,#1a1a2e,#16213e);border-radius:16px;padding:32px;border:1px solid rgba(20,184,166,0.2);">
       <div style="text-align:center;margin-bottom:24px;">
@@ -176,11 +176,11 @@ const handler = async (req: Request): Promise<Response> => {
         If you have any questions, don't hesitate to reach out. We're here to help you succeed!<br><br>
         Welcome aboard,<br>
         <strong style="color:#ffffff;">${managerName}</strong><br>
-        Apex Financial
+        Galaxy Financial
       </p>
     </div>
     <p style="font-size:12px;color:#6b7280;text-align:center;margin-top:32px;">
-      © ${new Date().getFullYear()} Apex Financial. All rights reserved.
+      © ${new Date().getFullYear()} Galaxy Financial. All rights reserved.
     </p>
   </div>
 </body>

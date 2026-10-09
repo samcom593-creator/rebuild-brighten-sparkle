@@ -44,7 +44,7 @@ const handler = async (req: Request): Promise<Response> => {
     for (const app of applicants || []) {
       try {
         await resend.emails.send({
-          from: "Apex Financial <notifications@apex-financial.org>",
+          from: "Galaxy Financial <notifications@apex-financial.org>",
           to: [app.email],
           subject: "📲 Stay in the Loop — Enable Push Notifications!",
           html: `
@@ -55,7 +55,7 @@ const handler = async (req: Request): Promise<Response> => {
               <div style="background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
                 <p style="font-size: 16px; color: #374151;">Hey ${app.first_name}!</p>
                 <p style="font-size: 16px; color: #374151;">
-                  Enable push notifications so you never miss important updates from Apex Financial — 
+                  Enable push notifications so you never miss important updates from Galaxy Financial — 
                   new training resources, team announcements, and opportunities delivered straight to your phone.
                 </p>
                 <div style="text-align: center; margin: 30px 0;">
@@ -70,11 +70,11 @@ const handler = async (req: Request): Promise<Response> => {
                   </table>
                 </div>
                 <p style="font-size: 14px; color: #6b7280;">
-                  Tap the button above to install the Apex Financial app on your phone and enable instant notifications. 
+                  Tap the button above to install the Galaxy Financial app on your phone and enable instant notifications. 
                   It takes less than 30 seconds!
                 </p>
                 <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
-                <p style="color: #9ca3af; font-size: 12px; text-align: center;">Powered by Apex Financial</p>
+                <p style="color: #9ca3af; font-size: 12px; text-align: center;">Powered by Galaxy Financial</p>
               </div>
             </div>
           `,

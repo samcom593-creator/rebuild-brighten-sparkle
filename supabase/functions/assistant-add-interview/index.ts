@@ -320,7 +320,7 @@ Deno.serve(async (req: Request) => {
     .eq("id", tokenRow.id);
 
   // Build Google Calendar TEMPLATE URL
-  const title = `APEX Interview — ${candidateName}`;
+  const title = `Galaxy Interview — ${candidateName}`;
   const descLines = [
     interviewType ? `Type: ${interviewType}` : null,
     notes ? `Notes: ${notes}` : null,
@@ -328,7 +328,7 @@ Deno.serve(async (req: Request) => {
     email ? `Email: ${email}` : null,
     instagramHandle ? `IG: @${instagramHandle}` : null,
     "",
-    "Booked via APEX assistant share link.",
+    "Booked via Galaxy assistant share link.",
   ].filter((s): s is string => s !== null);
   const description = descLines.join("\n");
 

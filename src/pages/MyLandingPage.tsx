@@ -22,7 +22,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
 export default function MyLandingPage() {
-  usePageTitle("My Landing Page · APEX");
+  usePageTitle("My Landing Page · Galaxy");
   const { user } = useAuth();
   const userId = (user as any)?.id ?? null;
   const [copied, setCopied] = useState(false);
@@ -62,7 +62,7 @@ export default function MyLandingPage() {
   const p = profile.data;
   const a = agentStatus.data;
   const isLicensedActive = a?.license_status === "licensed" && a?.status === "active";
-  const name = p?.full_name || (user as any)?.email?.split("@")[0] || "APEX Agent";
+  const name = p?.full_name || (user as any)?.email?.split("@")[0] || "Galaxy Agent";
   const avatar = p?.avatar_url || p?.photo_url;
 
   // Hero metrics. Derived from profile data.
@@ -173,7 +173,7 @@ export default function MyLandingPage() {
                       {name.split(" ").map((s: string) => s[0]).slice(0, 2).join("")}
                     </div>
                   )}
-                  <p className="text-11 uppercase tracking-[0.25em] text-amber-300 mb-1">APEX Financial Producer</p>
+                  <p className="text-11 uppercase tracking-[0.25em] text-amber-300 mb-1">Galaxy Financial Producer</p>
                   <h2 className="text-22 font-bold">{name}</h2>
                   {(p?.city || p?.state) && (
                     <p className="text-12 text-white/70 mt-1">{[p?.city, p?.state].filter(Boolean).join(", ")}</p>

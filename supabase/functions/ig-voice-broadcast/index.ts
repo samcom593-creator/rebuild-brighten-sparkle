@@ -158,7 +158,7 @@ Deno.serve(async (req) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         content: message,
-        username: "APEX",
+        username: "Galaxy",
         // Suppress @everyone / @here parsing as a hardening measure.
         allowed_mentions: { parse: [] },
       }),

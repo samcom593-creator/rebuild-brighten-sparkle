@@ -131,7 +131,7 @@ export function ApplicationConfirmationV2({
             </div>
             <div className="flex items-center justify-center gap-2">
               <Crown className="h-5 w-5 text-primary" />
-              <span className="text-base font-semibold gradient-text">APEX Financial</span>
+              <span className="text-base font-semibold gradient-text">Galaxy Financial</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold leading-tight">
               {firstName ? <>{firstName}, your application is <span className="gradient-text">in.</span></> : <>Application <span className="gradient-text">received.</span></>}

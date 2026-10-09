@@ -178,7 +178,7 @@ async function sendAnalyticsEmail(stats: ManagerStats) {
         `}
         
         <div class="footer">
-          <p>APEX Financial Group • Weekly Analytics</p>
+          <p>Galaxy Financial Group • Weekly Analytics</p>
           <p>Login to your dashboard for more details</p>
         </div>
       </div>
@@ -188,7 +188,7 @@ async function sendAnalyticsEmail(stats: ManagerStats) {
 
   try {
     await resend.emails.send({
-      from: "APEX Financial <notifications@apex-financial.org>",
+      from: "Galaxy Financial <notifications@apex-financial.org>",
       to: [stats.managerEmail],
       subject: `📊 Your Weekly Analytics - ${stats.newThisWeek} new leads, ${stats.closeRate.toFixed(0)}% close rate`,
       html,

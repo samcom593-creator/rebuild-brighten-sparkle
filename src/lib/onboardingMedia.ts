@@ -2,7 +2,7 @@ const ONBOARDING_MEDIA_BASE =
   "https://xrzweoneiieddzxogewk.supabase.co/storage/v1/object/public/training-videos/onboarding/2026-08-31";
 
 export const ONBOARDING_VIDEO = {
-  title: "Welcome to APEX: Your Next Steps",
+  title: "Welcome to Galaxy: Your Next Steps",
   description:
     "Your complete next-step briefing for licensing, communication, meetings, and training.",
   durationLabel: "1:45",

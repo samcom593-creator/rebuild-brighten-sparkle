@@ -95,7 +95,7 @@ Deno.serve(
       );
 
       await resend.emails.send({
-        from: "Apex Financial <notifications@apex-financial.org>",
+        from: "Galaxy Financial <notifications@apex-financial.org>",
         to: [managerProfile.email],
         cc: [ADMIN_EMAIL],
         subject: `New Note Added: ${agentName}`,
@@ -109,7 +109,7 @@ Deno.serve(
             </div>
             <p>Log in to the CRM to view full details and history.</p>
             <br/>
-            <p>Best regards,<br/>Apex Financial</p>
+            <p>Best regards,<br/>Galaxy Financial</p>
           </div>
         `,
       });

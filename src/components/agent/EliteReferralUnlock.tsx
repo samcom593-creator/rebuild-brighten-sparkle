@@ -88,10 +88,10 @@ export function EliteReferralUnlock({ agentId, threshold = 10_000 }: Props) {
 
   const shareNative = async () => {
     if (!link) return;
-    const text = `Join me at APEX Financial — my team is looking for 1-2 sharp, driven people. ${link}`;
+    const text = `Join me at Galaxy Financial — my team is looking for 1-2 sharp, driven people. ${link}`;
     if (navigator.share) {
       try {
-        await navigator.share({ title: "APEX Financial — join my team", text, url: link });
+        await navigator.share({ title: "Galaxy Financial — join my team", text, url: link });
       } catch { /* cancelled */ } // empty-catch-allow:user-cancelled
     } else {
       await navigator.clipboard.writeText(text);

@@ -64,7 +64,9 @@ const PLACEHOLDER_WORD = /(?:\?\?|\|\|)\s*["'`]\s*([A-Za-z][A-Za-z .'-]{1,30})\s
  * why 56 wrong rows looked completely normal. Matching any word instead would
  * flag honest blanks, and a guard that goes red on correct code gets skipped.
  */
-const ROLE_NOUN = /^(?:the\s+|an?\s+|APEX\s+)*(agent|producer|manager|rep|advisor|lead|user|member|apex|team\s*member)$/i;
+// Galaxy is listed beside APEX because the 2026-10-08 rename turned "APEX Agent" fallbacks into "Galaxy Agent"
+// ones, and a guard that only knows the old brand word reads that rename as five fixed sites when it fixed none.
+const ROLE_NOUN = /^(?:the\s+|an?\s+|APEX\s+|Galaxy\s+)*(agent|producer|manager|rep|advisor|lead|user|member|apex|galaxy|team\s*member)$/i;
 
 const BASELINE = 19;
 

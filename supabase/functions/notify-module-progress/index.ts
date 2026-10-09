@@ -142,13 +142,13 @@ const handler = async (req: Request): Promise<Response> => {
         </div>
 
         <p style="color: #999; font-size: 12px; text-align: center; margin-top: 24px;">
-          Powered by Apex Financial
+          Powered by Galaxy Financial
         </p>
       </div>
     `;
 
     const { error: emailError } = await resend.emails.send({
-      from: "Apex Financial <notifications@apex-financial.org>",
+      from: "Galaxy Financial <notifications@apex-financial.org>",
       to: [managerProfile.email],
       subject: isComplete 
         ? `🎉 ${agentName} completed the onboarding course!`

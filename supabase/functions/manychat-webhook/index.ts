@@ -467,7 +467,7 @@ type CalendlyBooking = { event_uri: string; start_at: Date; label: string; exact
 async function bookOnCalendly(name: string, email: string, phone: string, handle: string | null, when: When, tz: string): Promise<CalendlyBooking | null> {
   const key = Deno.env.get("CALENDLY_API_TOKEN");
   if (!key || !when.startAt) return null;
-  const H = { "Authorization": `Bearer ${key}`, "Content-Type": "application/json", "User-Agent": "APEX-DM-Bot/1.0 (+https://apex-financial.org)" };
+  const H = { "Authorization": `Bearer ${key}`, "Content-Type": "application/json", "User-Agent": "Galaxy-DM-Bot/1.0 (+https://apex-financial.org)" };
   try {
     const lo = new Date(Math.max(when.startAt.getTime() - 90 * 60000, Date.now() + 10 * 60000));
     const hi = new Date(when.startAt.getTime() + 90 * 60000);
@@ -511,7 +511,7 @@ async function emailSam(subject: string, text: string): Promise<void> {
     const r = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { "Authorization": `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from: "APEX Alerts <alerts@apex-financial.org>", to: ["sam.com593@gmail.com", "info@kingofsales.net"], subject, text }),
+      body: JSON.stringify({ from: "Galaxy Alerts <alerts@apex-financial.org>", to: ["sam.com593@gmail.com", "info@kingofsales.net"], subject, text }),
     });
     if (!r.ok) console.error("[manychat-webhook] emailSam failed", r.status, (await r.text()).slice(0, 200));
   } catch (e) { console.error("[manychat-webhook] emailSam threw", e); }
@@ -521,7 +521,7 @@ async function llmReply(history: HistoryRow[], text: string, st: ReturnType<type
   const key = Deno.env.get("ANTHROPIC_API_KEY");
   if (!key) return null;
   const system = [
-    "You write Instagram DM replies AS Samuel James (@sell4daddy): managing partner of Apex Financial, a life-insurance agency that recruits, licenses and trains agents. He also offers fitness coaching, a mentorship program, and car rentals in Arizona.",
+    "You write Instagram DM replies AS Samuel James (@sell4daddy): managing partner of Galaxy Financial, a life-insurance agency that recruits, licenses and trains agents. He also offers fitness coaching, a mentorship program, and car rentals in Arizona.",
     "Nobody buys a policy through his DMs. Anyone who mentions life insurance, a policy, or insurance in any form wants to JOIN THE TEAM. Never offer a quote, never mention buying coverage.",
     "Style: first person as Sam, lowercase, SHORT (under 20 words), casual ('yeah', 'say less', 'bet'), no dashes, no hype. Push them to the link: 'it's all on the link'. Only if asked point-blank whether this is a bot: say his assistant runs the DMs with him.",
     "Never invent prices, commission numbers, dates, or guarantees. If you don't know, say you'll go over it on the call.",
@@ -923,7 +923,7 @@ async function fireUrgentLicensedAlert(
   const callUrl = isTeam ? TEAM_CALL_URL : LICENSED_CALL_URL;
   const line = `${kind} lead just DMd (${source}): ${who}. Call to onboard NOW. "${text.slice(0, 140)}"`;
   // ntfy: Sam's phone. Title header is ASCII-safe (RFC-2047 not needed here).
-  const ntfyId = await pushNtfy(`APEX ${kind} lead - call now`, line, "5", "rotating_light");
+  const ntfyId = await pushNtfy(`Galaxy ${kind} lead - call now`, line, "5", "rotating_light");
   // NO Discord. Lead alerts go to Sam's phone only (ntfy) — never the team
   // members chat. Sam: "there's nothing to do with my team at all."
   // Durable audit row (delivered to ntfy above; this is the record, not a pager).

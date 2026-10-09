@@ -49,7 +49,7 @@ export function Navbar() {
               <div className="absolute inset-0 blur-lg bg-[#e8bb2b]/30" />
             </div>
             <span className="text-xl md:text-2xl font-extrabold text-[#e8bb2b] font-display">
-              APEX Financial
+              Galaxy Financial
             </span>
           </Link>
 

@@ -134,7 +134,7 @@ Deno.serve(async (req) => {
                 headers: { Authorization: `Bearer ${supabaseKey}`, "Content-Type": "application/json" },
                 body: JSON.stringify({
                   phone: app.phone,
-                  message: `🎯 ${app.first_name}, your licensing exam is TODAY! Bring your photo ID, arrive early, and stay calm. You've got this! – Apex Financial`,
+                  message: `🎯 ${app.first_name}, your licensing exam is TODAY! Bring your photo ID, arrive early, and stay calm. You've got this! – Galaxy Financial`,
                   applicationId: app.id,
                 }),
               });
@@ -199,7 +199,7 @@ async function sendEmail(apiKey: string, to: string, cc: string[], subject: stri
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      from: "APEX Financial <notifications@apex-financial.org>",
+      from: "Galaxy Financial <notifications@apex-financial.org>",
       to: [to],
       cc,
       subject,
@@ -227,7 +227,7 @@ function buildReminderHtml(firstName: string, formattedDate: string, isToday: bo
         </p>
       </div>
       <div style="padding: 16px; text-align: center; border-top: 1px solid #222; font-size: 11px; color: #666;">
-        Powered by Apex Financial
+        Powered by Galaxy Financial
       </div>
     </div>
   `;
@@ -252,7 +252,7 @@ function buildFollowUpHtml(firstName: string, formattedDate: string): string {
         </p>
       </div>
       <div style="padding: 16px; text-align: center; border-top: 1px solid #222; font-size: 11px; color: #666;">
-        Powered by Apex Financial
+        Powered by Galaxy Financial
       </div>
     </div>
   `;

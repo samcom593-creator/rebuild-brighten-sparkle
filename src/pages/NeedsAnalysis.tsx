@@ -36,7 +36,7 @@ function fmt(v: number): string {
 }
 
 export default function NeedsAnalysis() {
-  usePageTitle("Needs Analysis · APEX");
+  usePageTitle("Needs Analysis · Galaxy");
 
   const [inputs, setInputs] = useState<Inputs>({
     income: "60000", yearsReplacement: "10", mortgage: "180000", otherDebt: "20000",
@@ -61,7 +61,7 @@ export default function NeedsAnalysis() {
   });
 
   const shareSummary = async () => {
-    const text = `APEX Needs Analysis
+    const text = `Galaxy Needs Analysis
 Income replacement (${inputs.yearsReplacement} yrs): ${fmt(calc.incomeNeed)}
 Mortgage: ${fmt(calc.mortgageNeed)}
 Other debt: ${fmt(calc.debtNeed)}

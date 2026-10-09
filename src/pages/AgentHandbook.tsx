@@ -21,7 +21,7 @@ interface Section {
 
 const SECTIONS: Section[] = [
   {
-    key: "mission", title: "The APEX Mission", icon: Crown,
+    key: "mission", title: "The Galaxy Mission", icon: Crown,
     body: `We build the highest-standard insurance agency in America. Carrier-direct, client-first, agent-owned. Every agent who walks in here gets the same shot at six figures regardless of where they came from — but we hold a standard that filters who stays. "Hold the Standard. Average is the disease." is not a slogan. It's the rule.`,
   },
   {
@@ -38,7 +38,7 @@ Violating any of the above = strike. Three strikes = termination.`,
   },
   {
     key: "comp", title: "How You Get Paid", icon: DollarSign,
-    body: `Carrier-direct commission. The carrier writes you the check, not APEX. APEX takes nothing off your top — we make our money on overrides on agents YOU recruit downstream.
+    body: `Carrier-direct commission. The carrier writes you the check, not Galaxy. Galaxy takes nothing off your top — we make our money on overrides on agents YOU recruit downstream.
 
 Commission flows:
 • First-year commission (FY%): paid as advance OR as-earned depending on carrier
@@ -49,7 +49,7 @@ See /dashboard/my-commissions for every product's FY%, renewal%, and advance sch
   },
   {
     key: "selling", title: "How We Sell", icon: Phone,
-    body: `The APEX Sales Method has 4 steps:
+    body: `The Galaxy Sales Method has 4 steps:
 
 1) OPEN — Reset the call. "Hey {first_name}, this is {your_name} returning your call about the protection request. The reason I'm reaching out is to walk you through your options."
 
@@ -87,7 +87,7 @@ You earn override commission on every dollar they write. Your override scales wi
 • Maintain an active resident license
 • Complete continuing education (CE) by the state's deadline (typically 24 hours every 2 years incl. ethics)
 • Update the carrier when you move states
-• Report any disciplinary action immediately to APEX compliance
+• Report any disciplinary action immediately to Galaxy compliance
 
 If your license lapses, your contracts go inactive. You can't write business. We can help you renew but the responsibility is YOURS. Check /dashboard/profile for your license status.`,
   },
@@ -99,7 +99,7 @@ Examples of strike-worthy conduct:
 • Misrepresenting carrier/product to a client
 • Falsifying app information
 • Stealing a teammate's client
-• Public attacks on APEX or your manager
+• Public attacks on Galaxy or your manager
 • No-call/no-show on appointments without notice
 • Tobacco lying on your own applications
 
@@ -119,7 +119,7 @@ These are not titles. They are EARNED milestones. Check /dashboard/business-anal
 const READ_MINUTES_PER_SECTION = 3;
 
 export default function AgentHandbook() {
-  usePageTitle("Agent Handbook · APEX");
+  usePageTitle("Agent Handbook · Galaxy");
   const [search, setSearch] = useState("");
   const [active, setActive] = useState<string | null>(null);
   const [completed, setCompleted] = useState<Set<string>>(new Set());
@@ -156,7 +156,7 @@ export default function AgentHandbook() {
         eyebrow="Resources"
         eyebrowIcon={<BookOpen className="h-3 w-3" />}
         title="Agent Handbook"
-        subtitle="Every APEX agent's reference book. Mission · Code · Comp · Selling · Recruiting · Strikes · Growth path."
+        subtitle="Every Galaxy agent's reference book. Mission · Code · Comp · Selling · Recruiting · Strikes · Growth path."
         actions={<Badge variant="outline" className="text-11">{SECTIONS.length} chapters</Badge>}
       />
 

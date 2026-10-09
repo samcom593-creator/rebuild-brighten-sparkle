@@ -773,3 +773,6 @@ verify_jwt = false
 
 [functions.monday-starter-reminders]
 verify_jwt = false
+
+[functions.notify-aflac-submitted]
+verify_jwt = true

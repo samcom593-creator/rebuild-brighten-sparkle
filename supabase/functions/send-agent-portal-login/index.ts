@@ -222,7 +222,7 @@ const handler = async (req: Request): Promise<Response> => {
       // building. With the provider account currently under review and rejecting every
       // external recipient, this reported 100% delivery while delivering nothing.
       const { data: sendData, error: sendError } = await resend.emails.send({
-        from: "APEX Financial <notifications@apex-financial.org>",
+        from: "Galaxy Financial <notifications@apex-financial.org>",
         to: [profile.email],
         cc: ccList.length > 0 ? ccList : undefined,
         subject: "🎉 Welcome to the Agent Portal - One-Tap Access Inside!",
@@ -313,7 +313,7 @@ const handler = async (req: Request): Promise<Response> => {
                 
                 <div style="border-top: 1px solid rgba(148, 163, 184, 0.2); padding-top: 24px; margin-top: 32px;">
                   <p style="color: #64748b; font-size: 12px; margin: 0; text-align: center;">
-                    APEX Financial Empire<br>
+                    Galaxy Financial<br>
                     Building Empires, Protecting Families
                   </p>
                 </div>

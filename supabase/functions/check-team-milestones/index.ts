@@ -152,7 +152,7 @@ serve(async (req: Request) => {
               
               <!-- Team Name -->
               <h1 style="font-family:'Playfair Display',Georgia,serif;font-size:28px;font-weight:600;color:#ffffff;margin:0 0 8px;letter-spacing:1px;">
-                APEX FINANCIAL TEAM
+                GALAXY FINANCIAL TEAM
               </h1>
               
               <!-- Period -->
@@ -200,7 +200,7 @@ serve(async (req: Request) => {
         for (const email of adminEmails) {
           try {
             await resend.emails.send({
-              from: "APEX Financial <notifications@apex-financial.org>",
+              from: "Galaxy Financial <notifications@apex-financial.org>",
               to: [email],
               subject: `🏆 ${milestone.label}: $${roundedTotal.toLocaleString()}`,
               html: emailHtml,

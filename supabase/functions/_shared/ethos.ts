@@ -172,7 +172,7 @@ export function buildEthosAiRow(
  */
 export function buildEthosComment(config: EthosConfig, value: (EthosIntake & { id?: string }) | string): string {
   const intake = typeof value === "string" ? { id: value } : value;
-  const parts = [`${config.comment_prefix} · APEX Intake ${intake.id ?? "—"}`];
+  const parts = [`${config.comment_prefix} · Galaxy Intake ${intake.id ?? "—"}`];
   if ("eo_certificate_url" in intake && intake.eo_certificate_url) parts.push(`E&O: ${intake.eo_certificate_url}`);
   if ("eo_expires_at" in intake && intake.eo_expires_at) parts.push(`expires ${intake.eo_expires_at}`);
   if ("contracting_contact_name" in intake && intake.contracting_contact_name) parts.push(`contact: ${intake.contracting_contact_name}`);

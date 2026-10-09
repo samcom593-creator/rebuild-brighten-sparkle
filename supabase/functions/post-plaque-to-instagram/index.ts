@@ -103,7 +103,7 @@ serve(async (req) => {
 function buildCaption(p: any): string {
   const amt = p.amount ? `$${Number(p.amount).toLocaleString()}` : "";
   const date = p.milestone_date ? new Date(p.milestone_date).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "";
-  return `${p.badge_label ?? "APEX win"} ${amt ? "· " + amt : ""} ${date ? "· " + date : ""}\n\n#APEXFinancialEmpire #IUL #insurance #closer`.trim();
+  return `${p.badge_label ?? "Galaxy win"} ${amt ? "· " + amt : ""} ${date ? "· " + date : ""}\n\n#APEXFinancialEmpire #IUL #insurance #closer`.trim();
 }
 
 function json(b: unknown, status = 200) {

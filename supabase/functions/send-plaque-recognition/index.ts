@@ -97,7 +97,7 @@ function generatePlaqueSVG(
       : ""
   }
 
-  <text x="${W / 2}" y="${instagram ? 540 : 510}" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="20" fill="#555" letter-spacing="6">APEX FINANCIAL GROUP</text>
+  <text x="${W / 2}" y="${instagram ? 540 : 510}" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="20" fill="#555" letter-spacing="6">GALAXY FINANCIAL GROUP</text>
 
   <text x="${W / 2}" y="780" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="140" font-weight="600" fill="${m.color}" filter="url(#glow)">${esc(formattedAmount)}</text>
 
@@ -107,7 +107,7 @@ function generatePlaqueSVG(
 
   <rect x="${W / 2 - 40}" y="1100" width="80" height="3" fill="#333"/>
 
-  <text x="${W / 2}" y="1200" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="18" fill="#333" letter-spacing="4">POWERED BY APEX FINANCIAL</text>
+  <text x="${W / 2}" y="1200" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="18" fill="#333" letter-spacing="4">POWERED BY GALAXY FINANCIAL</text>
 </svg>`;
 }
 
@@ -151,7 +151,7 @@ function generateEmailHTML(
         <a href="${shareUrl}" style="display:inline-block;background:${m.color};color:#000;font-weight:700;padding:16px 36px;border-radius:4px;text-decoration:none;font-size:14px;letter-spacing:1px;text-transform:uppercase;">View &amp; Share Plaque</a>
       </td></tr>
       <tr><td align="center" style="padding:20px 0;border-top:1px solid #222;">
-        <p style="margin:0;font-size:10px;color:#555;letter-spacing:1px;">APEX FINANCIAL GROUP</p>
+        <p style="margin:0;font-size:10px;color:#555;letter-spacing:1px;">GALAXY FINANCIAL GROUP</p>
       </td></tr>
     </table>
   </td></tr>
@@ -284,7 +284,7 @@ serve(async (req: Request) => {
 
       try {
         const emailResponse = await resend.emails.send({
-          from: "APEX Financial <notifications@apex-financial.org>",
+          from: "Galaxy Financial <notifications@apex-financial.org>",
           to: [agentEmail],
           subject: `${milestone.badge} – Congratulations ${agentName}`,
           html: generateEmailHTML(agentName, milestoneType, amount, pngUrl, shareUrl, false),
@@ -363,7 +363,7 @@ serve(async (req: Request) => {
               .single();
             try {
               const mgrResp = await resend.emails.send({
-                from: "APEX Financial <notifications@apex-financial.org>",
+                from: "Galaxy Financial <notifications@apex-financial.org>",
                 to: [mgrProf.email],
                 subject: `Team Achievement: ${agentName} – ${milestone.badge}`,
                 html: generateEmailHTML(agentName, milestoneType, amount, pngUrl, shareUrl, true),

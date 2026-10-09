@@ -123,7 +123,7 @@ function premiumBg() {
 function apexBranding(y: number) {
   return `
     <rect x="340" y="${y - 50}" width="400" height="1" fill="url(#goldGrad)" opacity="0.4"/>
-    <text x="540" y="${y}" fill="#D4AF37" font-size="28" letter-spacing="12" text-anchor="middle" font-family="Georgia, serif" opacity="0.9">APEX FINANCIAL</text>
+    <text x="540" y="${y}" fill="#D4AF37" font-size="28" letter-spacing="12" text-anchor="middle" font-family="Georgia, serif" opacity="0.9">GALAXY FINANCIAL</text>
     <text x="540" y="${y + 36}" fill="#555555" font-size="16" letter-spacing="4" text-anchor="middle" font-family="Arial, Helvetica, sans-serif">PROTECTING FAMILIES · BUILDING LEGACIES</text>
   `;
 }

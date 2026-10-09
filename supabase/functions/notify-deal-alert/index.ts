@@ -118,7 +118,7 @@ Deno.serve(
           <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto;"><tr><td bgcolor="#fef08a" style="border-radius:12px;"><a href="https://apex-financial.org/numbers" style="display:inline-block;color:#b91c1c;font-size:16px;font-weight:800;text-decoration:none;padding:16px 40px;text-transform:uppercase;letter-spacing:1px;">🎯 LOG MY NUMBERS</a></td></tr></table>
         </td></tr>
         <tr><td style="padding: 20px; text-align: center; background: rgba(0,0,0,0.3);">
-          <p style="color: rgba(255,255,255,0.5); font-size: 12px; margin: 0;">APEX Financial • The Hustle Never Stops 🔥</p>
+          <p style="color: rgba(255,255,255,0.5); font-size: 12px; margin: 0;">Galaxy Financial • The Hustle Never Stops 🔥</p>
         </td></tr>
       </table>
     </td></tr>
@@ -132,7 +132,7 @@ Deno.serve(
         const batch = recipients.slice(i, i + BATCH_SIZE);
         try {
           await resend.emails.send({
-            from: "APEX Financial <notifications@apex-financial.org>",
+            from: "Galaxy Financial <notifications@apex-financial.org>",
             bcc: batch,
             to: "info@kingofsales.net",
             subject: `🚨🔥 DEAL ALERT! ${agentName} just closed! 🔥🚨`,

@@ -154,14 +154,14 @@ Deno.serve(
       </p>
     </div>
     <div style="padding:20px;text-align:center;border-top:1px solid #333;">
-      <p style="color:#666;font-size:12px;margin:0;">Powered by Apex Financial</p>
+      <p style="color:#666;font-size:12px;margin:0;">Powered by Galaxy Financial</p>
     </div>
   </div>
 </body>
 </html>`;
 
           await resend.emails.send({
-            from: "APEX Financial <notifications@apex-financial.org>",
+            from: "Galaxy Financial <notifications@apex-financial.org>",
             to: [email],
             subject: `📊 ${currentMonth} Goals - Set Yours Now!`,
             html: emailHtml,

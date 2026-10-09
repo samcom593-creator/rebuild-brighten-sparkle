@@ -42,7 +42,7 @@ const STATE_META: Record<Row["xcel_state"], { label: string; color: string; Icon
 const STATE_ORDER: Row["xcel_state"][] = ["never_started", "stalled", "recent", "active"];
 
 export default function XcelPipeline() {
-  usePageTitle("Xcel Pipeline · APEX Financial");
+  usePageTitle("Xcel Pipeline · Galaxy Financial");
   const [filter, setFilter] = useState<"all" | Row["xcel_state"]>("all");
   const [search, setSearch] = useState("");
 
@@ -211,7 +211,7 @@ export default function XcelPipeline() {
                   )}
                   {r.student_email && (
                     <Button asChild size="sm" variant="outline" className="h-7 text-[12px] gap-1">
-                      <a href={`mailto:${r.student_email}?subject=${encodeURIComponent("Quick check-in on your APEX licensing course")}`}>
+                      <a href={`mailto:${r.student_email}?subject=${encodeURIComponent("Quick check-in on your Galaxy licensing course")}`}>
                         <Mail className="h-3 w-3" /> Email
                       </a>
                     </Button>

@@ -571,7 +571,7 @@ function ManagerAvatar({ profile }: { profile?: Profile }) {
 
 // ---------- Main page ----------
 export default function RecoveryQueue() {
-  usePageTitle("License Push · APEX");
+  usePageTitle("License Push · Galaxy");
   const qc = useQueryClient();
   const [openId, setOpenId] = useState<string | null>(null);
   const [openAgentId, setOpenAgentId] = useState<string | null>(null);

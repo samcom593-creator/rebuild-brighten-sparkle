@@ -57,12 +57,12 @@ function FlowTimeline({ steps, title, accent }: { steps: typeof licensedSteps; t
 }
 
 export default function AgentFlow() {
-  usePageTitle("Agent Onboarding Flow · APEX Financial");
+  usePageTitle("Agent Onboarding Flow · Galaxy Financial");
   return (
     <div className="min-h-screen bg-background p-4 md:p-8 max-w-5xl mx-auto space-y-8">
       <div className="text-center space-y-2">
         <h1 className="text-3xl md:text-4xl font-display font-extrabold">Agent Onboarding Flow</h1>
-        <p className="text-muted-foreground">Two paths to becoming an APEX elite agent</p>
+        <p className="text-muted-foreground">Two paths to becoming an Galaxy elite agent</p>
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">

@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
     const webhookUrl = Deno.env.get("DISCORD_WEBHOOK_URL");
     if (webhookUrl) {
       const igLine = instagram ? `\n📸 @${String(instagram).replace(/^@/, "")}` : "";
-      const sourceTag = source === "agent_link" ? "🔗 via Agent Link" : "✨ via APEX";
+      const sourceTag = source === "agent_link" ? "🔗 via Agent Link" : "✨ via Galaxy";
       const embed = {
         title: "🎯 DEAL CLOSED!",
         description: `**${agentName}** just slammed one shut!${igLine}\n${sourceTag}`,
@@ -98,7 +98,7 @@ Deno.serve(async (req) => {
           // A win post is agent + carrier + product + money. Never who bought it.
           // Guarded by scripts/check-discord-pii.mjs; do not reintroduce.
         ],
-        footer: { text: "APEX Financial — Who's next?" },
+        footer: { text: "Galaxy Financial — Who's next?" },
         timestamp: new Date().toISOString(),
       };
       await fetch(webhookUrl, {
@@ -152,7 +152,7 @@ Deno.serve(async (req) => {
         } else {
           const result = await sendEmail({
             to:      email,
-            from:    "APEX Financial <notifications@apex-financial.org>",
+            from:    "Galaxy Financial <notifications@apex-financial.org>",
             subject: `🎯 ${agentName} just closed a deal!`,
             html: `<div style="font-family:'DM Sans',Arial,sans-serif;background:#030712;color:#e2e8f0;padding:32px 16px;">
               <div style="max-width:520px;margin:0 auto;background:#0d1526;border:1px solid #22d3a540;border-radius:16px;padding:36px;">
@@ -165,9 +165,9 @@ Deno.serve(async (req) => {
                 </div>
                 <p style="text-align:center;font-size:16px;line-height:1.7;">Hey ${theirFirst} — the board's moving. Who's next? 🔥</p>
                 <div style="text-align:center;margin:28px 0 8px 0;">
-                  <a href="https://apex-financial.org/dashboard" style="display:inline-block;background:#22d3a5;color:#030712;font-family:Syne,sans-serif;font-weight:700;padding:14px 28px;border-radius:8px;text-decoration:none;letter-spacing:0.5px;">VIEW IN APEX →</a>
+                  <a href="https://apex-financial.org/dashboard" style="display:inline-block;background:#22d3a5;color:#030712;font-family:Syne,sans-serif;font-weight:700;padding:14px 28px;border-radius:8px;text-decoration:none;letter-spacing:0.5px;">VIEW IN Galaxy →</a>
                 </div>
-                <p style="text-align:center;color:#64748b;font-size:11px;margin:24px 0 0 0;">APEX Financial · Building Empires</p>
+                <p style="text-align:center;color:#64748b;font-size:11px;margin:24px 0 0 0;">Galaxy Financial · Building Empires</p>
               </div>
             </div>`,
             tagName: "deal-broadcast",
@@ -200,7 +200,7 @@ Deno.serve(async (req) => {
         try {
           const smsAddr = `${smsTen}@${CARRIER_GATEWAYS[carrier]}`;
           await resend.emails.send({
-            from: "Apex <notifications@apex-financial.org>",
+            from: "Galaxy <notifications@apex-financial.org>",
             to: [smsAddr], subject: "",
             text: `🎯 ${agentName} just closed! ${fmt$(monthly)}/mo ${productSold}. Who's next? apex-financial.org`.slice(0, 160),
           });
@@ -234,7 +234,7 @@ Deno.serve(async (req) => {
                 title: `${tier.emoji} ${tier.name} Plaque Unlocked!`,
                 description: `**${agentName}** just earned a **${tier.name} Plaque** for a ${fmt$(monthly)}/mo deal!`,
                 color: tier.color,
-                footer: { text: "APEX Financial · Plaque System" },
+                footer: { text: "Galaxy Financial · Plaque System" },
                 timestamp: new Date().toISOString(),
               }],
             }),

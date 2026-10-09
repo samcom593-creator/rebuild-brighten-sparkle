@@ -53,7 +53,7 @@ function labelFor(bucket: string | null) {
 }
 
 export default function SamInbox() {
-  usePageTitle("Sam Inbox - APEX recruiting triage");
+  usePageTitle("Sam Inbox - Galaxy recruiting triage");
 
   const query = useQuery({
     queryKey: ["sam-inbox"],

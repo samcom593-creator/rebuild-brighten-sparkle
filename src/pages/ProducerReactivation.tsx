@@ -143,7 +143,7 @@ export default function ProducerReactivation() {
           </span>
         </div>
         <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
-          Everyone counted here already closed business at Apex and has since stopped — the ALP figure
+          Everyone counted here already closed business at Galaxy and has since stopped — the ALP figure
           is the run-rate they held while active, not a forecast.
         </p>
 

@@ -48,7 +48,7 @@ const CHIP_BASE = "shrink-0 border-border bg-muted/40 text-[11px] font-bold uppe
 // The stale-applicant recovery script. Named so the SMS template is written
 // once and the href and its fallback cannot drift apart.
 function recoveryScript(firstName: string): string {
-  return `Hey ${firstName}, this is APEX Financial — saw your application. Quick text to confirm: are you still looking to get started with insurance recruiting?`;
+  return `Hey ${firstName}, this is Galaxy Financial — saw your application. Quick text to confirm: are you still looking to get started with insurance recruiting?`;
 }
 
 const CONTACT_CHIP =

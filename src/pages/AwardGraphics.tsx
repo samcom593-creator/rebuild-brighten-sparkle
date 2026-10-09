@@ -77,7 +77,7 @@ async function saveAsPng(svgUrl: string, filename: string) {
     if (navigator.share && navigator.canShare) {
       const file = new File([pngBlob], filename, { type: "image/png" });
       if (navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: "APEX Award" });
+        await navigator.share({ files: [file], title: "Galaxy Award" });
         return;
       }
     }

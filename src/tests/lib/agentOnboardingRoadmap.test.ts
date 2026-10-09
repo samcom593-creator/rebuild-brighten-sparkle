@@ -64,7 +64,7 @@ describe("agent onboarding roadmap", () => {
   });
 
   it("makes Slack and Milver the first post-hire contacts", () => {
-    expect(welcome).toContain("Join the APEX Slack");
+    expect(welcome).toContain("Join the Galaxy Slack");
     expect(welcome).toContain("Milver Taca is your Contracting &amp; Onboarding Manager");
     expect(welcome).toContain("apex-onboarding-call");
     expect(welcome).not.toContain("Join Our Team Discord");

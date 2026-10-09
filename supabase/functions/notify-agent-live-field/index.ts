@@ -101,7 +101,7 @@ const handler = async (req: Request): Promise<Response> => {
 <body style="margin:0;padding:0;font-family:Arial,sans-serif;background-color:#0a0a0a;color:#ffffff;">
   <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
     <div style="text-align:center;margin-bottom:32px;">
-      <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">APEX FINANCIAL</h1>
+      <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">GALAXY FINANCIAL</h1>
     </div>
     
     <div style="background:linear-gradient(145deg,#1a1a2e,#16213e);border-radius:16px;padding:32px;border:1px solid rgba(20,184,166,0.2);">
@@ -147,12 +147,12 @@ const handler = async (req: Request): Promise<Response> => {
       
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;text-align:center;">
         Let's go make it happen!<br>
-        <strong style="color:#ffffff;">— The Apex Team</strong>
+        <strong style="color:#ffffff;">— The Galaxy Team</strong>
       </p>
     </div>
     
     <p style="font-size:12px;color:#6b7280;text-align:center;margin-top:32px;">
-      Powered by Apex Financial
+      Powered by Galaxy Financial
     </p>
   </div>
 </body>
@@ -167,7 +167,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send email to agent
     const { error: emailError } = await resend.emails.send({
-      from: "APEX Financial <notifications@apex-financial.org>",
+      from: "Galaxy Financial <notifications@apex-financial.org>",
       to: [agentEmail],
       cc: agentCcList,
       subject: `🚀 You're Officially LIVE, ${agentName}!`,
@@ -185,7 +185,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     await resend.emails.send({
-      from: "APEX Financial <notifications@apex-financial.org>",
+      from: "Galaxy Financial <notifications@apex-financial.org>",
       to: notifyRecipients,
       subject: `🚀 ${agentName} is Now LIVE in the Field!`,
       html: `
@@ -194,7 +194,7 @@ const handler = async (req: Request): Promise<Response> => {
 <body style="margin:0;padding:0;font-family:Arial,sans-serif;background-color:#0a0a0a;color:#ffffff;">
   <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
     <div style="text-align:center;margin-bottom:32px;">
-      <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">APEX FINANCIAL</h1>
+      <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">GALAXY FINANCIAL</h1>
     </div>
     
     <div style="background:linear-gradient(145deg,#1a1a2e,#16213e);border-radius:16px;padding:32px;border:1px solid rgba(20,184,166,0.2);">
@@ -208,7 +208,7 @@ const handler = async (req: Request): Promise<Response> => {
     </div>
     
     <p style="font-size:12px;color:#6b7280;text-align:center;margin-top:32px;">
-      Powered by Apex Financial
+      Powered by Galaxy Financial
     </p>
   </div>
 </body>

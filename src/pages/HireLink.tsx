@@ -79,7 +79,7 @@ function maskPhone(v: string) {
 }
 
 export default function HireLink() {
-  usePageTitle("Activate your APEX account");
+  usePageTitle("Activate your Galaxy account");
   const { token } = useParams<{ token: string }>();
   const nav = useNavigate();
 
@@ -212,7 +212,7 @@ export default function HireLink() {
         setSubmitting(false);
         return;
       }
-      toast.success("You're in. Welcome to APEX.");
+      toast.success("You're in. Welcome to Galaxy.");
       const redirect = (data as { redirect_url?: string })?.redirect_url;
       // /agent-hub does not exist — a just-hired agent was landing on the
       // NotFound catch-all right after "You're in." Send them to the real
@@ -258,7 +258,7 @@ export default function HireLink() {
         <div className="flex flex-col items-center mb-6">
           <Crown className="h-10 w-10 text-primary mb-3" />
           <h1 className="text-2xl font-bold text-center tracking-tight">
-            You're in. Activate your APEX account.
+            You're in. Activate your Galaxy account.
           </h1>
           <p className="text-sm text-muted-foreground text-center mt-2">
             Confirm your info — your manager will reach out.
@@ -433,7 +433,7 @@ export default function HireLink() {
                 </>
               ) : (
                 <>
-                  Join APEX
+                  Join Galaxy
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </>
               )}

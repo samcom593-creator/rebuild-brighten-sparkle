@@ -119,7 +119,7 @@ function fmtName(f: string | null | undefined, l: string | null | undefined): st
 }
 
 export default function BookReconciliation() {
-  usePageTitle("Book Quality · APEX");
+  usePageTitle("Book Quality · Galaxy");
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
 

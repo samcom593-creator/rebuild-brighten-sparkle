@@ -111,7 +111,7 @@ export function AccountLinkForm({ user, profile, onSuccess, onLogout }: AccountL
           <div className="relative mb-6">
             <img 
               src={apexIcon} 
-              alt="Apex" 
+              alt="Galaxy" 
               className="h-16 w-16 mx-auto"
             />
           </div>

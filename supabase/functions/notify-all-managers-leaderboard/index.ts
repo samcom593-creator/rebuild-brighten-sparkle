@@ -170,7 +170,7 @@ View Lead →
 
 <!-- Footer -->
 <tr><td style="background-color:#1a1a1a;padding:20px;text-align:center;">
-<p style="margin:0;color:#888;font-size:12px;">Apex Financial Enterprises</p>
+<p style="margin:0;color:#888;font-size:12px;">Galaxy Financial Enterprises</p>
 </td></tr>
 
 </table>
@@ -225,7 +225,7 @@ const handler = async (req: Request): Promise<Response> => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            from: "APEX Financial <notifications@apex-financial.org>",
+            from: "Galaxy Financial <notifications@apex-financial.org>",
             to: [manager.email],
             subject,
             html,

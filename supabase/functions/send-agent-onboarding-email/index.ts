@@ -180,11 +180,11 @@ function buildGetLicensedEmail(
   const text = [
     `Hey ${fn},`,
     ``,
-    `Welcome to APEX. One thing stands between you and writing business: your state licence.`,
+    `Welcome to Galaxy. One thing stands between you and writing business: your state licence.`,
     ``,
     `Start here — the walkthrough video and the course link: ${licenseUrl}`,
     ``,
-    `You do NOT need the APEX sales training yet. That unlocks the day your licence lands.`,
+    `You do NOT need the Galaxy sales training yet. That unlocks the day your licence lands.`,
     bookingUrl ? `Questions? Book a call any time: ${bookingUrl}` : `Questions? Reply here and your manager will get you on a call.`,
     ``,
     `Every step you take gets posted to the team — you'll see the whole floor moving with you.`,
@@ -192,9 +192,9 @@ function buildGetLicensedEmail(
 
   const html = `
   <p>Hey ${fn},</p>
-  <p>Welcome to APEX. One thing stands between you and writing business: <strong>your state licence</strong>.</p>
+  <p>Welcome to Galaxy. One thing stands between you and writing business: <strong>your state licence</strong>.</p>
   <p><a href="${escapeHtml(licenseUrl)}" style="display:inline-block;padding:12px 20px;background:#EDB81D;color:#0a0f1a;text-decoration:none;border-radius:6px;font-weight:600;">Start here — how to get licensed</a></p>
-  <p>You do <strong>not</strong> need the APEX sales training yet. That unlocks the day your licence lands.</p>
+  <p>You do <strong>not</strong> need the Galaxy sales training yet. That unlocks the day your licence lands.</p>
   ${bookingUrl ? `<p><a href="${escapeHtml(bookingUrl)}">Questions? Book a call any time</a></p>` : `<p>Questions? Reply here and your manager will get you on a call.</p>`}
   <p style="color:#666;font-size:13px;">Every step you take gets posted to the team — you'll see the whole floor moving with you.</p>`;
 
@@ -207,13 +207,13 @@ function buildCourseEmail(name: string): { subject: string; html: string; text: 
   const roadmapUrl = "https://apex-financial.org/agent-portal";
   const url = escapeHtml(trainingUrl);
   const roadmap = escapeHtml(roadmapUrl);
-  const subject = "Your APEX online training is ready";
+  const subject = "Your Galaxy online training is ready";
   const text = [
     `Hey ${fn},`,
     ``,
-    `You're licensed. Your APEX online training is ready: ${trainingUrl}`,
+    `You're licensed. Your Galaxy online training is ready: ${trainingUrl}`,
     ``,
-    `Step 1 — Sign in and confirm your APEX account and profile.`,
+    `Step 1 — Sign in and confirm your Galaxy account and profile.`,
     `Step 2 — Complete onboarding, scripts, objections, ReadyMode, pipeline, deal-posting, and underwriting modules in order.`,
     `Step 3 — Open your live roadmap for the next unlocked action: ${roadmapUrl}`,
     `Step 4 — Use Slack for training questions and team support.`,
@@ -221,21 +221,21 @@ function buildCourseEmail(name: string): { subject: string; html: string; text: 
     `If you hit a snag, reply here. We move fast.`,
     ``,
     `— Sam`,
-    `APEX Financial`,
+    `Galaxy Financial`,
   ].join("\n");
 
   const html = `
 <!doctype html>
 <html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#111;line-height:1.55;">
   <p>Hey ${fn},</p>
-  <p>You're licensed. Your APEX online training is ready:</p>
+  <p>You're licensed. Your Galaxy online training is ready:</p>
   <p><a href="${url}" style="display:inline-block;padding:12px 20px;background:#0a0a0a;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">Start online training</a></p>
-  <p style="margin-top:24px;"><strong>Step 1.</strong> Sign in and confirm your APEX account and profile.<br/>
+  <p style="margin-top:24px;"><strong>Step 1.</strong> Sign in and confirm your Galaxy account and profile.<br/>
   <strong>Step 2.</strong> Complete onboarding, scripts, objections, ReadyMode, pipeline, deal-posting, and underwriting modules in order.<br/>
   <strong>Step 3.</strong> <a href="${roadmap}">Open your live roadmap</a> for the next unlocked action.<br/>
   <strong>Step 4.</strong> Use Slack for training questions and team support.</p>
   <p>If you hit a snag, reply here. We move fast.</p>
-  <p style="margin-top:24px;">— Sam<br/>APEX Financial</p>
+  <p style="margin-top:24px;">— Sam<br/>Galaxy Financial</p>
 </body></html>`.trim();
 
   return { subject, html, text };
@@ -246,7 +246,7 @@ function buildCourseEmail(name: string): { subject: string; html: string; text: 
 function buildCommunityEmail(name: string, communityUrl: string | null): { subject: string; html: string; text: string } {
   const fn = escapeHtml(firstName(name));
   const url = communityUrl ? escapeHtml(communityUrl) : null;
-  const subject = "Join the APEX Slack — your team access";
+  const subject = "Join the Galaxy Slack — your team access";
 
   const linkLine = url
     ? `Join here: ${communityUrl}`
@@ -259,16 +259,16 @@ function buildCommunityEmail(name: string, communityUrl: string | null): { subje
     ``,
     `Slack is your primary team hub for next steps, contracting support, training, and sales wins.`,
     `Join now so your onboarding team can keep you moving.`,
-    `Then open your APEX account roadmap: https://apex-financial.org/agent-portal`,
+    `Then open your Galaxy account roadmap: https://apex-financial.org/agent-portal`,
     ``,
     `See you there.`,
     ``,
     `— Sam`,
-    `APEX Financial`,
+    `Galaxy Financial`,
   ].join("\n");
 
   const ctaHtml = url
-    ? `<p><a href="${url}" style="display:inline-block;padding:12px 20px;background:#4A154B;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">Join the APEX Slack</a></p>`
+    ? `<p><a href="${url}" style="display:inline-block;padding:12px 20px;background:#4A154B;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">Join the Galaxy Slack</a></p>`
     : `<p>Reply to this email and I'll send you the invite link directly.</p>`;
 
   const html = `
@@ -277,9 +277,9 @@ function buildCommunityEmail(name: string, communityUrl: string | null): { subje
   <p>Hey ${fn},</p>
   ${ctaHtml}
   <p>Slack is your <strong>primary team hub</strong> for next steps, contracting support, training, and sales wins. Join now so your onboarding team can keep you moving.</p>
-  <p><strong>Next:</strong> <a href="https://apex-financial.org/agent-portal">open your APEX account roadmap</a>, confirm your profile, and complete the action shown as current.</p>
+  <p><strong>Next:</strong> <a href="https://apex-financial.org/agent-portal">open your Galaxy account roadmap</a>, confirm your profile, and complete the action shown as current.</p>
   <p>See you there.</p>
-  <p style="margin-top:24px;">— Sam<br/>APEX Financial</p>
+  <p style="margin-top:24px;">— Sam<br/>Galaxy Financial</p>
 </body></html>`.trim();
 
   return { subject, html, text };
@@ -291,7 +291,7 @@ function buildCommunityEmail(name: string, communityUrl: string | null): { subje
 function buildScriptsPacketEmail(name: string): { subject: string; html: string; text: string } {
   const fn = escapeHtml(firstName(name));
   const url = "https://apex-financial.org/dashboard/scripts";
-  const subject = "Your APEX scripts are unlocked";
+  const subject = "Your Galaxy scripts are unlocked";
   const text = [
     `Hey ${firstName(name)},`,
     ``,
@@ -301,7 +301,7 @@ function buildScriptsPacketEmail(name: string): { subject: string; html: string;
     `Run them word for word on your first appointments, then bring questions to your manager.`,
     ``,
     `— Sam`,
-    `APEX Financial`,
+    `Galaxy Financial`,
   ].join("\n");
   const html = `
 <!doctype html>
@@ -310,7 +310,7 @@ function buildScriptsPacketEmail(name: string): { subject: string; html: string;
   <p>You finished your required training, so your approved scripts and call resources are unlocked.</p>
   <p><a href="${url}" style="display:inline-block;padding:12px 20px;background:#111;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">Open my scripts</a></p>
   <p>Run them word for word on your first appointments, then bring questions to your manager.</p>
-  <p style="margin-top:24px;">— Sam<br/>APEX Financial</p>
+  <p style="margin-top:24px;">— Sam<br/>Galaxy Financial</p>
 </body></html>`.trim();
   return { subject, html, text };
 }
@@ -318,7 +318,7 @@ function buildScriptsPacketEmail(name: string): { subject: string; html: string;
 function buildOnboardingCallEmail(name: string, bookingUrl: string): { subject: string; html: string; text: string } {
   const fn = escapeHtml(firstName(name));
   const url = escapeHtml(bookingUrl);
-  const subject = "Book your APEX onboarding call";
+  const subject = "Book your Galaxy onboarding call";
 
   const text = [
     `Hey ${fn},`,
@@ -330,7 +330,7 @@ function buildOnboardingCallEmail(name: string, bookingUrl: string): { subject: 
     `Come with your NPN and your contracting login. We set up your systems, walk your first-week plan, and get you into the 10:00 AM Central huddle.`,
     ``,
     `— Sam`,
-    `APEX Financial`,
+    `Galaxy Financial`,
   ].join("\n");
 
   const html = `
@@ -340,7 +340,7 @@ function buildOnboardingCallEmail(name: string, bookingUrl: string): { subject: 
   <p>You're licensed and you're in. Next step is your <strong>30-minute onboarding call</strong> with Milver, your Onboarding Manager, and me.</p>
   <p><a href="${url}" style="display:inline-block;padding:12px 20px;background:#0a0a0a;color:#EDB81D;text-decoration:none;border-radius:6px;font-weight:600;">Book your onboarding call</a></p>
   <p>Come with your NPN and your contracting login. We set up your systems, walk your first-week plan, and get you into the 10:00 AM Central huddle.</p>
-  <p style="margin-top:24px;">— Sam<br/>APEX Financial</p>
+  <p style="margin-top:24px;">— Sam<br/>Galaxy Financial</p>
 </body></html>`.trim();
 
   return { subject, html, text };

@@ -46,13 +46,13 @@ const NUDGE_SCHEDULE: NudgeScheduleItem[] = [
     emailBody: (name) => `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
         <h2 style="color:#059669;">Hey ${name},</h2>
-        <p>Welcome to the APEX team! Your first step is to purchase and start the pre-licensing course.</p>
+        <p>Welcome to the Galaxy team! Your first step is to purchase and start the pre-licensing course.</p>
         <p>The course takes 2-4 weeks to complete. Agents who start in Week 1 get licensed <strong>3x faster</strong>.</p>
         <p style="margin:24px 0;"><a href="https://apex-financial.org/get-licensed" style="background:#059669;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold;">Start Your Course →</a></p>
         <p>Your first paycheck is closer than you think.</p>
-        <p>— The APEX Team</p>
+        <p>— The Galaxy Team</p>
       </div>`,
-    smsBody: (name) => `APEX: ${name}, your license is the only thing between you and your first paycheck. Step 1: buy the course today → apex-financial.org`,
+    smsBody: (name) => `Galaxy: ${name}, your license is the only thing between you and your first paycheck. Step 1: buy the course today → apex-financial.org`,
   },
   {
     day: 2, type: "course_check", stages: ["unlicensed", "pre_course"],
@@ -62,9 +62,9 @@ const NUDGE_SCHEDULE: NudgeScheduleItem[] = [
         <h2>Hey ${name},</h2>
         <p>Just checking in — did you purchase the pre-licensing course yet?</p>
         <p>If you need help or have questions about the process, reply to this email. We're here for you.</p>
-        <p>— APEX Financial</p>
+        <p>— Galaxy Financial</p>
       </div>`,
-    smsBody: (name) => `APEX: ${name}, did you purchase the course yet? Reply YES and we'll send you the study guide.`,
+    smsBody: (name) => `Galaxy: ${name}, did you purchase the course yet? Reply YES and we'll send you the study guide.`,
   },
   {
     day: 3, type: "day3_checkin", stages: ["unlicensed", "pre_course", "course_purchased"],
@@ -76,9 +76,9 @@ const NUDGE_SCHEDULE: NudgeScheduleItem[] = [
           ? "<p>Great job getting the course! How's studying going? Try to knock out at least 2 hours today.</p>"
           : "<p>It's Day 3 and we haven't seen course activity yet. Don't let the momentum fade — agents who start this week get their license fastest.</p>"}
         <p style="margin:24px 0;"><a href="https://apex-financial.org/get-licensed" style="background:#059669;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold;">Check Your Progress →</a></p>
-        <p>— APEX Financial</p>
+        <p>— Galaxy Financial</p>
       </div>`,
-    smsBody: (name) => `APEX: Day 3 check-in ${name}. How's your progress? Stay consistent — 2-3 hours a day gets you licensed fast.`,
+    smsBody: (name) => `Galaxy: Day 3 check-in ${name}. How's your progress? Stay consistent — 2-3 hours a day gets you licensed fast.`,
   },
   {
     day: 5, type: "urgency_push", stages: ["unlicensed", "pre_course"],
@@ -86,13 +86,13 @@ const NUDGE_SCHEDULE: NudgeScheduleItem[] = [
     emailBody: (name) => `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
         <h2>${name}, let's get moving</h2>
-        <p>It's been 5 days since you joined APEX and we haven't seen course activity yet.</p>
+        <p>It's been 5 days since you joined Galaxy and we haven't seen course activity yet.</p>
         <p>Agents who start the course in Week 1 are licensed <strong>3x faster</strong> than those who wait.</p>
         <p>Every day you wait is a day without income. Let's change that today.</p>
         <p style="margin:24px 0;"><a href="https://apex-financial.org/get-licensed" style="background:#dc2626;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold;">Start Now →</a></p>
-        <p>— Sam James, APEX Financial</p>
+        <p>— Sam James, Galaxy Financial</p>
       </div>`,
-    smsBody: (name) => `APEX: ${name}, agents who start the course in week 1 are licensed 3x faster. Don't wait. Start today.`,
+    smsBody: (name) => `Galaxy: ${name}, agents who start the course in week 1 are licensed 3x faster. Don't wait. Start today.`,
   },
   {
     day: 7, type: "exam_schedule_push", stages: ["course_purchased"],
@@ -102,9 +102,9 @@ const NUDGE_SCHEDULE: NudgeScheduleItem[] = [
         <h2>Week 1 done, ${name}!</h2>
         <p>You should be halfway through the course by now. It's time to <strong>schedule your exam</strong>.</p>
         <p>Pro tip: Don't wait until you feel 100% ready. Having a date forces you to finish. Book it today and study toward the date.</p>
-        <p>— APEX Financial</p>
+        <p>— Galaxy Financial</p>
       </div>`,
-    smsBody: (name) => `APEX: ${name}, week 1 done. Time to book your exam. Don't wait until you finish — schedule it now and study toward the date.`,
+    smsBody: (name) => `Galaxy: ${name}, week 1 done. Time to book your exam. Don't wait until you finish — schedule it now and study toward the date.`,
   },
   {
     day: 10, type: "study_tip", stages: ["course_purchased"],
@@ -117,7 +117,7 @@ const NUDGE_SCHEDULE: NudgeScheduleItem[] = [
         <p>You've got this.</p>
         <p>— Sam James</p>
       </div>`,
-    smsBody: (name) => `APEX study tip from Sam: ${name}, schedule your exam before you feel ready. Having a date forces you to finish. Book it today.`,
+    smsBody: (name) => `Galaxy study tip from Sam: ${name}, schedule your exam before you feel ready. Having a date forces you to finish. Book it today.`,
   },
   {
     day: 14, type: "personal_followup", stages: ["unlicensed", "pre_course", "course_purchased"],
@@ -126,15 +126,15 @@ const NUDGE_SCHEDULE: NudgeScheduleItem[] = [
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
         <h2>Hey ${name},</h2>
         <p>It's been 2 weeks and I want to personally check in.</p>
-        <p>I know life gets busy, but I also know you applied to APEX for a reason. Whatever's blocking you — schedule conflicts, course questions, financial concerns — I want to help remove it.</p>
+        <p>I know life gets busy, but I also know you applied to Galaxy for a reason. Whatever's blocking you — schedule conflicts, course questions, financial concerns — I want to help remove it.</p>
         <p><strong>Reply to this email</strong> and let me know where you're at. I'm here for you.</p>
-        <p>— Sam James<br/>Agency Director, APEX Financial</p>
+        <p>— Sam James<br/>Agency Director, Galaxy Financial</p>
       </div>`,
-    smsBody: (name) => `APEX: ${name}, it's been 2 weeks. Still with us? Reply and let me know what's blocking you. I want to help. -Sam`,
+    smsBody: (name) => `Galaxy: ${name}, it's been 2 weeks. Still with us? Reply and let me know what's blocking you. I want to help. -Sam`,
   },
   {
     day: 21, type: "stall_warning", stages: ["unlicensed", "pre_course", "course_purchased"],
-    emailSubject: "Your APEX journey — what's next?",
+    emailSubject: "Your Galaxy journey — what's next?",
     emailBody: (name) => `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
         <h2>${name},</h2>
@@ -143,7 +143,7 @@ const NUDGE_SCHEDULE: NudgeScheduleItem[] = [
         <p>If your plans have changed, that's okay too — just let me know so we can update our records.</p>
         <p>— Sam James</p>
       </div>`,
-    smsBody: (name) => `APEX: ${name}, day 21. Have you scheduled your exam yet? The agents ahead of you booked before they felt ready. Reply YES or NO -Sam`,
+    smsBody: (name) => `Galaxy: ${name}, day 21. Have you scheduled your exam yet? The agents ahead of you booked before they felt ready. Reply YES or NO -Sam`,
   },
   {
     day: 30, type: "month_checkin", stages: ["unlicensed", "pre_course", "course_purchased"],
@@ -153,9 +153,9 @@ const NUDGE_SCHEDULE: NudgeScheduleItem[] = [
         <h2>${name}, one month in.</h2>
         <p>I still believe in you. But I need you to show me you believe in yourself.</p>
         <p>Reply to this email with your exam date. If you don't have one, reply <strong>"I need help"</strong> and I'll call you personally within 24 hours.</p>
-        <p>— Sam James<br/>Managing Partner, APEX Financial</p>
+        <p>— Sam James<br/>Managing Partner, Galaxy Financial</p>
       </div>`,
-    smsBody: (name) => `APEX: ${name}, 30 days. Reply to Sam's email with your exam date or reply HELP for a personal call. -Sam`,
+    smsBody: (name) => `Galaxy: ${name}, 30 days. Reply to Sam's email with your exam date or reply HELP for a personal call. -Sam`,
   },
   {
     day: 45, type: "last_call", stages: ["unlicensed", "pre_course", "course_purchased"],
@@ -168,7 +168,7 @@ const NUDGE_SCHEDULE: NudgeScheduleItem[] = [
         <p><strong>Reply and let me know.</strong></p>
         <p>— Sam James</p>
       </div>`,
-    smsBody: (name) => `APEX: Last automated message ${name}. Reply YES to continue or we'll close your file. -Sam`,
+    smsBody: (name) => `Galaxy: Last automated message ${name}. Reply YES to continue or we'll close your file. -Sam`,
   },
 ];
 
@@ -239,7 +239,7 @@ serve(async (req: Request) => {
         if (resend && app.email) {
           try {
             await resend.emails.send({
-              from: "Apex Financial <notifications@apex-financial.org>",
+              from: "Galaxy Financial <notifications@apex-financial.org>",
               to: [app.email],
               subject: nudge.emailSubject,
               html: nudge.emailBody(firstName, stage),
@@ -318,7 +318,7 @@ serve(async (req: Request) => {
           // Notify Sam
           if (resend) {
             await resend.emails.send({
-              from: "Apex Financial <notifications@apex-financial.org>",
+              from: "Galaxy Financial <notifications@apex-financial.org>",
               to: ["info@kingofsales.net"],
               subject: `🚨 Stalled Agent: ${firstName} ${app.last_name} — ${daysSinceContracted} days, stage: ${stage}`,
               html: `<p><strong>${firstName} ${app.last_name}</strong> has been contracted for ${daysSinceContracted} days and is still in the "${stage}" stage. Personal follow-up recommended.</p>
@@ -360,7 +360,7 @@ serve(async (req: Request) => {
         if (resend && app.email) {
           try {
             await resend.emails.send({
-              from: "Apex Financial <notifications@apex-financial.org>",
+              from: "Galaxy Financial <notifications@apex-financial.org>",
               to: [app.email],
               cc: ["info@kingofsales.net"],
               subject: `${firstName}, let's remove the blockers`,

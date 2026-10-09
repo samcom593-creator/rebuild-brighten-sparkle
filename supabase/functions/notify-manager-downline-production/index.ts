@@ -201,7 +201,7 @@ serve(async (req: Request) => {
           <!-- Footer -->
           <div style="text-align:center;border-top:1px solid #222;padding-top:20px;">
             <p style="font-size:11px;color:#444;margin:0;letter-spacing:1px;">
-              APEX FINANCIAL GROUP
+              GALAXY FINANCIAL GROUP
             </p>
           </div>
         </div>
@@ -214,7 +214,7 @@ serve(async (req: Request) => {
       const resend = new Resend(resendApiKey);
       
       await resend.emails.send({
-        from: "APEX Financial <notifications@apex-financial.org>",
+        from: "Galaxy Financial <notifications@apex-financial.org>",
         to: [managerProfile.email],
         cc: ["info@kingofsales.net"],
         subject: `${tierLabel}: ${agentName} hit $${roundedAmount.toLocaleString()} today`,

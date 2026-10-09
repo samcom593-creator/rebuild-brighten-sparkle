@@ -62,7 +62,7 @@ function readStoredAcceptance(): ContractingAcceptance | null {
 }
 
 export default function StartContracting() {
-  usePageTitle("Start Contracting · APEX Financial");
+  usePageTitle("Start Contracting · Galaxy Financial");
 
   const [form, setForm] = useState<Record<ContractingField, string>>({
     first_name: "", last_name: "", email: "", phone: "", npn: "",
@@ -274,14 +274,14 @@ export default function StartContracting() {
     // regardless of the viewer's theme, matching /apply.
     <div className="dark min-h-screen bg-[#0A0A0A] text-foreground">
       <header className="border-b border-border px-6 py-4">
-        <p className="text-sm font-bold tracking-[0.2em] text-[#C9A961]">APEX FINANCIAL</p>
+        <p className="text-sm font-bold tracking-[0.2em] text-[#C9A961]">GALAXY FINANCIAL</p>
       </header>
       <div className="mx-auto w-full max-w-lg px-4 py-10 sm:px-6 sm:py-16">
       {accepted ? (
         <ContractingSuccessModal accepted={accepted} />
       ) : (
         <>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">Start contracting with APEX</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">Start contracting with Galaxy</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             We'll use the information already on your profile and ask only for anything that's missing. Then you'll prepare EFT and E&amp;O in the secure carrier portals.
           </p>

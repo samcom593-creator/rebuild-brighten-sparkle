@@ -112,7 +112,7 @@ export function buildDiscordPayload(
         { name: "EFT", value: intake.eft_ready ? "Ready" : "Pending", inline: true },
         ...(intake.contracting_contact_name ? [{ name: "Contracting contact", value: escapeDiscord(intake.contracting_contact_name), inline: true }] : []),
       ],
-      footer: { text: `APEX Intake ${intake.id}` },
+      footer: { text: `Galaxy Intake ${intake.id}` },
     }],
   };
 }

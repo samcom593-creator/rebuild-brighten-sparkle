@@ -269,7 +269,7 @@ serve(async (req) => {
             </div>
             <div style="padding: 24px; text-align: center; border-top: 1px solid rgba(255,255,255,0.1);">
               <p style="color: #666; font-size: 12px; margin: 0;">
-                Powered by <span style="color: #00d4ff; font-weight: 600;">Apex Financial</span>
+                Powered by <span style="color: #00d4ff; font-weight: 600;">Galaxy Financial</span>
               </p>
             </div>
           </div>
@@ -278,7 +278,7 @@ serve(async (req) => {
     `;
 
     const { error: emailError } = await resend.emails.send({
-      from: "APEX Financial <notifications@apex-financial.org>",
+      from: "Galaxy Financial <notifications@apex-financial.org>",
       to: [profile.email],
       cc: ccList.length > 0 ? ccList : undefined,
       subject: `📚 ${firstName}, your course is waiting for you!`,

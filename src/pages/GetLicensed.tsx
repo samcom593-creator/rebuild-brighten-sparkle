@@ -135,7 +135,7 @@ const TRUST_CARDS: Array<{
   {
     icon: DollarSign,
     title: "We Cover Licensing Costs",
-    detail: "No upfront course fee. APEX pays it.",
+    detail: "No upfront course fee. Galaxy pays it.",
     tint: "border-amber-500/25 bg-amber-500/[0.03]",
     iconClass: "text-amber-400",
   },
@@ -177,7 +177,7 @@ const POST_LICENSE_STEPS = [
 ];
 
 export default function GetLicensed() {
-  usePageTitle("How to Get Your Life Insurance License · APEX Financial");
+  usePageTitle("How to Get Your Life Insurance License · Galaxy Financial");
   const [searchParams] = useSearchParams();
   const applicationId = searchParams.get("applicationId");
   const email = searchParams.get("email");
@@ -251,7 +251,7 @@ export default function GetLicensed() {
           <Link to="/" className="inline-flex items-center gap-2 mb-5">
             <Crown className="h-8 w-8 sm:h-10 sm:w-10 text-primary" />
             <span className="text-xl sm:text-2xl font-bold gradient-text">
-              APEX Financial
+              Galaxy Financial
             </span>
           </Link>
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 leading-tight">
@@ -269,7 +269,7 @@ export default function GetLicensed() {
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto">
             Watch the two videos in order, then follow the guide and course
-            steps. APEX keeps the whole path in one place.
+            steps. Galaxy keeps the whole path in one place.
           </p>
           {isLicensed ? (
             <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-300">
@@ -489,7 +489,7 @@ export default function GetLicensed() {
             </h2>
             <p className="text-sm text-muted-foreground mb-4">
               The state requires a pre-licensing course before you can take the
-              exam. APEX covers this cost — no upfront payment from you.
+              exam. Galaxy covers this cost — no upfront payment from you.
             </p>
 
             <div className="mt-auto space-y-3">
@@ -656,7 +656,7 @@ export default function GetLicensed() {
                     Full training resources
                   </h3>
                   <p className="text-xs text-muted-foreground">
-                    Scripts, playbooks, PDFs, and recorded closes from the APEX
+                    Scripts, playbooks, PDFs, and recorded closes from the Galaxy
                     training team.
                   </p>
                 </div>

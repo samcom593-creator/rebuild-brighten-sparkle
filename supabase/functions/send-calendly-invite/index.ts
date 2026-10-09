@@ -80,7 +80,7 @@ function buildHtml(firstName: string): string {
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,0.08);">
           <tr>
             <td style="background:linear-gradient(135deg,#0f172a,#1e293b);padding:28px 24px;text-align:center;">
-              <h1 style="margin:0;font-size:22px;font-weight:700;color:#ffffff;letter-spacing:0.4px;">APEX FINANCIAL</h1>
+              <h1 style="margin:0;font-size:22px;font-weight:700;color:#ffffff;letter-spacing:0.4px;">GALAXY FINANCIAL</h1>
               <p style="margin:6px 0 0;font-size:13px;color:#94a3b8;">Hold the Standard.</p>
             </td>
           </tr>
@@ -90,10 +90,10 @@ function buildHtml(firstName: string): string {
                 Hey ${safeFirst},
               </p>
               <p style="font-size:16px;line-height:1.65;margin:0 0 16px;color:#1a1a1a;">
-                Sam James here, Managing Partner at Apex Financial. I personally read every application that comes through, and yours caught my eye.
+                Sam James here, Managing Partner at Galaxy Financial. I personally read every application that comes through, and yours caught my eye.
               </p>
               <p style="font-size:16px;line-height:1.65;margin:0 0 16px;color:#1a1a1a;">
-                I want to spend 15 minutes with you on a call — no pitch, no pressure. Just a straight conversation about where you are, where you want to go, and whether what we're building at Apex actually fits.
+                I want to spend 15 minutes with you on a call — no pitch, no pressure. Just a straight conversation about where you are, where you want to go, and whether what we're building at Galaxy actually fits.
               </p>
               <p style="font-size:16px;line-height:1.65;margin:0 0 20px;color:#1a1a1a;">
                 Pick a time that works for you and lock it in below:
@@ -128,14 +128,14 @@ function buildHtml(firstName: string): string {
               </p>
               <p style="font-size:15px;line-height:1.55;margin:0;color:#1a1a1a;">
                 <strong>Samuel James</strong><br>
-                <span style="color:#475569;font-size:13px;">Managing Partner, Apex Financial</span>
+                <span style="color:#475569;font-size:13px;">Managing Partner, Galaxy Financial</span>
               </p>
             </td>
           </tr>
           <tr>
             <td style="background:#0f172a;padding:14px 24px;text-align:center;">
               <p style="margin:0;color:#94a3b8;font-size:11px;line-height:1.5;">
-                Apex Financial · info@kingofsales.net<br>
+                Galaxy Financial · info@kingofsales.net<br>
                 You're receiving this because you applied to join our team.
               </p>
             </td>

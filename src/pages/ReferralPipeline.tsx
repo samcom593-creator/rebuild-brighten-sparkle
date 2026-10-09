@@ -81,7 +81,7 @@ const BUCKET_ORDER = [
 ];
 
 export default function ReferralPipeline() {
-  usePageTitle("Referral pipeline · APEX");
+  usePageTitle("Referral pipeline · Galaxy");
   const { isAdmin, isManager } = useAuth();
   const qc = useQueryClient();
 

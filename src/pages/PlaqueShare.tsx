@@ -122,7 +122,7 @@ export default function PlaqueShare() {
         if ((navigator as any).canShare({ files: [file] })) {
           await navigator.share({
             files: [file],
-            title: plaque.badge_label || "APEX Plaque",
+            title: plaque.badge_label || "Galaxy Plaque",
             text: `${plaque.agent_name} just earned ${plaque.badge_label}`,
           });
           return;
@@ -137,7 +137,7 @@ export default function PlaqueShare() {
   const shareTwitter = () => {
     if (!plaque) return;
     const text = encodeURIComponent(
-      `${plaque.agent_name} just earned ${plaque.badge_label} at APEX Financial! ${plaque.amount ? `$${Math.round(plaque.amount).toLocaleString()}` : ""}`,
+      `${plaque.agent_name} just earned ${plaque.badge_label} at Galaxy Financial! ${plaque.amount ? `$${Math.round(plaque.amount).toLocaleString()}` : ""}`,
     );
     window.open(
       `https://twitter.com/intent/tweet?text=${text}&url=${encodeURIComponent(window.location.href)}`,
@@ -172,7 +172,7 @@ export default function PlaqueShare() {
           <h1 className="text-2xl font-bold text-foreground">Plaque not found</h1>
           <p className="text-muted-foreground">{error || "Something went wrong — refresh to try again"}</p>
           <Button asChild variant="outline">
-            <Link to="/">Go to APEX</Link>
+            <Link to="/">Go to Galaxy</Link>
           </Button>
         </div>
       </div>
@@ -247,7 +247,7 @@ export default function PlaqueShare() {
             to="/"
             className="text-xs text-muted-foreground hover:text-white transition inline-flex items-center gap-1"
           >
-            APEX Financial Group <ExternalLink className="h-3 w-3" />
+            Galaxy Financial Group <ExternalLink className="h-3 w-3" />
           </Link>
         </div>
       </div>

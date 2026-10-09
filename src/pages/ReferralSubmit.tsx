@@ -44,7 +44,7 @@ const schema = z
 type FormData = z.infer<typeof schema>;
 
 export default function ReferralSubmit() {
-  usePageTitle("Submit a Referral · APEX");
+  usePageTitle("Submit a Referral · Galaxy");
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
   const [confirmation, setConfirmation] = useState<null | {

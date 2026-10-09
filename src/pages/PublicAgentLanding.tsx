@@ -53,8 +53,8 @@ export default function PublicAgentLanding() {
         setProfile(profileRes.data as unknown as PublicProfile);
         setAgent(agentRes.data as unknown as AgentStatus);
         if (profileRes.data) {
-          const name = (profileRes.data as any).full_name || "APEX Agent";
-          document.title = `${name} · APEX Financial`;
+          const name = (profileRes.data as any).full_name || "Galaxy Agent";
+          document.title = `${name} · Galaxy Financial`;
         }
       } catch {
         setProfile(null);
@@ -78,17 +78,17 @@ export default function PublicAgentLanding() {
       <div className="min-h-screen bg-card flex items-center justify-center p-6">
         <div className="text-center">
           <Shield className="h-12 w-12 text-amber-400 mx-auto mb-4" />
-          <h1 className="text-22 text-foreground font-bold mb-2">APEX Financial</h1>
+          <h1 className="text-22 text-foreground font-bold mb-2">Galaxy Financial</h1>
           <p className="text-13 text-white/70">This producer profile is not available.</p>
           <a href="https://apex-financial.org" className="inline-block mt-4 px-4 py-2 bg-amber-500 text-slate-900 rounded-lg text-13 font-bold">
-            Visit Apex Financial →
+            Visit Galaxy Financial →
           </a>
         </div>
       </div>
     );
   }
 
-  const name = profile.full_name || "APEX Producer";
+  const name = profile.full_name || "Galaxy Producer";
   const avatar = profile.avatar_url || profile.photo_url;
 
   return (
@@ -102,7 +102,7 @@ export default function PublicAgentLanding() {
             {name.split(" ").map((s) => s[0]).slice(0, 2).join("")}
           </div>
         )}
-        <p className="text-11 uppercase tracking-[0.3em] text-amber-300 mb-2">APEX Financial Producer</p>
+        <p className="text-11 uppercase tracking-[0.3em] text-amber-300 mb-2">Galaxy Financial Producer</p>
         <h1 className="text-26 font-bold leading-tight">{name}</h1>
         {(profile.city || profile.state) && (
           <p className="text-13 text-white/60 mt-2 flex items-center justify-center gap-1.5">
@@ -159,7 +159,7 @@ export default function PublicAgentLanding() {
       <div className="border-t border-border px-6 py-8 text-center">
         <p className="text-11 text-foreground/40 uppercase tracking-[0.25em]">Hold the Standard · Average is the disease</p>
         <p className="text-10 text-foreground/30 mt-2">
-          APEX Financial · <a href="https://apex-financial.org" className="text-amber-400 hover:underline">apex-financial.org</a>
+          Galaxy Financial · <a href="https://apex-financial.org" className="text-amber-400 hover:underline">apex-financial.org</a>
         </p>
       </div>
     </div>

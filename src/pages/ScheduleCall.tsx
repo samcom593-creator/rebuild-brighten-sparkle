@@ -20,7 +20,7 @@ import {
 const SAMUEL_JAMES_CALENDLY = SCHEDULING_LINKS.samLicensed;
 
 export default function ScheduleCall() {
-  usePageTitle("Schedule a Call · APEX Financial");
+  usePageTitle("Schedule a Call · Galaxy Financial");
   const [hasLicense, setHasLicense] = useState<boolean | null>(null);
   const [leaderQualified, setLeaderQualified] = useState<boolean | null>(null);
 
@@ -36,7 +36,7 @@ export default function ScheduleCall() {
             <div className="flex justify-between items-center h-16">
               <Link to="/" className="flex items-center gap-2">
                 <Crown className="h-8 w-8 text-primary" />
-                <span className="text-xl font-bold gradient-text">APEX Financial</span>
+                <span className="text-xl font-bold gradient-text">Galaxy Financial</span>
               </Link>
               <Button variant="ghost" size="sm" onClick={() => { setHasLicense(null); setLeaderQualified(null); }} className="gap-2">
                 <ArrowLeft className="h-4 w-4" /> Back
@@ -81,7 +81,7 @@ export default function ScheduleCall() {
             <div className="flex justify-between items-center h-16">
               <Link to="/" className="flex items-center gap-2">
                 <Crown className="h-8 w-8 text-primary" />
-                <span className="text-xl font-bold gradient-text">APEX Financial</span>
+                <span className="text-xl font-bold gradient-text">Galaxy Financial</span>
               </Link>
               <Button variant="ghost" size="sm" onClick={() => { setHasLicense(null); setLeaderQualified(null); }} className="gap-2">
                 <ArrowLeft className="h-4 w-4" /> Back
@@ -100,7 +100,7 @@ export default function ScheduleCall() {
                 <h1 className="text-2xl font-bold mb-3">Choose your call type</h1>
                 <p className="text-muted-foreground mb-6">
                   Pick the lane that matches where you are now. Both calls route
-                  to the active APEX calendar.
+                  to the active Galaxy calendar.
                 </p>
                 <div className="grid gap-3">
                   <Button size="lg" className="w-full gap-2 btn-press" onClick={() => setLeaderQualified(true)}>
@@ -131,7 +131,7 @@ export default function ScheduleCall() {
             <div className="flex justify-between items-center h-16">
               <Link to="/" className="flex items-center gap-2">
                 <Crown className="h-8 w-8 text-primary" />
-                <span className="text-xl font-bold gradient-text">APEX Financial</span>
+                <span className="text-xl font-bold gradient-text">Galaxy Financial</span>
               </Link>
               <Button variant="ghost" size="sm" onClick={() => setLeaderQualified(null)} className="gap-2">
                 <ArrowLeft className="h-4 w-4" /> Back
@@ -178,7 +178,7 @@ export default function ScheduleCall() {
           <div className="flex justify-between items-center h-16">
             <Link to="/" className="flex items-center gap-2">
               <Crown className="h-8 w-8 text-primary" />
-              <span className="text-xl font-bold gradient-text">APEX Financial</span>
+              <span className="text-xl font-bold gradient-text">Galaxy Financial</span>
             </Link>
           </div>
         </div>
@@ -218,7 +218,7 @@ export default function ScheduleCall() {
 
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
             <GlassCard className="mt-8 p-6">
-              <h3 className="font-semibold mb-4 text-center">What You'll Get at Apex:</h3>
+              <h3 className="font-semibold mb-4 text-center">What You'll Get at Galaxy:</h3>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 {["Unlimited warm leads daily", "$10K+ starting income", "Full training program", "Equity partnership", "Work from anywhere", "CRM access included"].map((benefit) => (
                   <div key={benefit} className="flex items-center gap-2">

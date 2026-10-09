@@ -5,14 +5,14 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function Contact() {
-  usePageTitle("Contact APEX Financial");
+  usePageTitle("Contact Galaxy Financial");
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0A0A0A] px-4 py-16 text-white">
       <div className="mx-auto max-w-4xl space-y-8">
         <div className="space-y-3 text-center">
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-teal-300">APEX Financial</p>
-          <h1 className="text-4xl font-bold md:text-5xl">Contact APEX</h1>
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-teal-300">Galaxy Financial</p>
+          <h1 className="text-4xl font-bold md:text-5xl">Contact Galaxy</h1>
           <p className="mx-auto max-w-2xl text-base text-slate-600 dark:text-slate-300 md:text-lg">
             Reach the right person fast. For recruiting, licensing, onboarding, or general questions,
             use the option below that matches what you need.
@@ -74,7 +74,7 @@ export default function Contact() {
             <div>
               <h2 className="text-lg font-semibold">Nationwide Opportunity</h2>
               <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                APEX works with agents across the United States. If you are licensed, unlicensed,
+                Galaxy works with agents across the United States. If you are licensed, unlicensed,
                 brand new, or already producing, we will point you to the right next step quickly.
               </p>
             </div>

@@ -157,7 +157,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send notification email
     const emailResponse = await resend.emails.send({
-      from: "APEX Financial <notifications@apex-financial.org>",
+      from: "Galaxy Financial <notifications@apex-financial.org>",
       to: [managerInfo.email],
       cc: ["info@kingofsales.net"],
       subject: `🎉 New Referral: ${applicantName} named you as their referrer!`,
@@ -178,7 +178,7 @@ const handler = async (req: Request): Promise<Response> => {
                 Hi ${sanitizeHtml(managerInfo.name)},
               </p>
               <p style="color: #a0aec0; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
-                Great news! Someone just applied to APEX Financial and selected you as their referrer. This lead has been automatically assigned to you.
+                Great news! Someone just applied to Galaxy Financial and selected you as their referrer. This lead has been automatically assigned to you.
               </p>
               <div style="background: rgba(212, 175, 55, 0.1); border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 12px; padding: 20px; margin: 20px 0;">
                 <h3 style="color: #d4af37; margin: 0 0 15px 0; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">Applicant Details</h3>
@@ -226,7 +226,7 @@ const handler = async (req: Request): Promise<Response> => {
             </div>
             <div style="background: rgba(0, 0, 0, 0.3); padding: 20px; text-align: center; border-top: 1px solid rgba(212, 175, 55, 0.2);">
               <p style="color: #666; font-size: 12px; margin: 0;">
-                © ${new Date().getFullYear()} APEX Financial. All rights reserved.
+                © ${new Date().getFullYear()} Galaxy Financial. All rights reserved.
               </p>
             </div>
           </div>

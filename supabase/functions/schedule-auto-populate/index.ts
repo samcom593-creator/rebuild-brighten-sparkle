@@ -254,7 +254,7 @@ async function fallbackAdmin(profiles: Map<string, ProfileRow>): Promise<Manager
   return {
     userId: preferred,
     email: profile?.email ?? null,
-    name: profile?.full_name ?? "APEX Admin",
+    name: profile?.full_name ?? "Galaxy Admin",
   };
 }
 
@@ -478,15 +478,15 @@ async function sendManagerSummaries(eventsToEmail: PlannedEvent[], onlyManagerEm
       <html>
         <body style="margin:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;color:#0f172a">
           <div style="max-width:620px;margin:0 auto;padding:28px 22px">
-            <p style="margin:0 0 6px;font-size:12px;font-weight:800;letter-spacing:0.12em;color:#334155">APEX SCHEDULE</p>
+            <p style="margin:0 0 6px;font-size:12px;font-weight:800;letter-spacing:0.12em;color:#334155">GALAXY SCHEDULE</p>
             <h1 style="margin:0 0 14px;font-size:22px;line-height:1.2">Schedule auto-fill added ${events.length} item${events.length === 1 ? "" : "s"}</h1>
-            <p style="margin:0 0 16px;color:#475569">Draft checks and post-test follow-ups are now on your Apex Calendar.</p>
+            <p style="margin:0 0 16px;color:#475569">Draft checks and post-test follow-ups are now on your Galaxy Calendar.</p>
             <div style="display:flex;gap:10px;margin:0 0 18px">
               <div style="border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;background:#fff"><strong>${draftEvents.length}</strong><br><span style="font-size:12px;color:#64748b">Draft dates</span></div>
               <div style="border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;background:#fff"><strong>${followUps.length}</strong><br><span style="font-size:12px;color:#64748b">Post-test follow-ups</span></div>
             </div>
             <ul style="margin:0 0 20px;padding-left:20px;color:#334155;line-height:1.6">${lines}</ul>
-            <p style="margin:0;color:#64748b;font-size:13px">Open Apex Calendar to work the list. Duplicates are blocked by event id, so the daily refresh can run without stacking repeats.</p>
+            <p style="margin:0;color:#64748b;font-size:13px">Open Galaxy Calendar to work the list. Duplicates are blocked by event id, so the daily refresh can run without stacking repeats.</p>
           </div>
         </body>
       </html>`;
@@ -501,9 +501,9 @@ async function sendManagerSummaries(eventsToEmail: PlannedEvent[], onlyManagerEm
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          from: "APEX Schedule <notifications@apex-financial.org>",
+          from: "Galaxy Schedule <notifications@apex-financial.org>",
           to: [email],
-          subject: `APEX schedule auto-fill: ${events.length} item${events.length === 1 ? "" : "s"} added`,
+          subject: `Galaxy schedule auto-fill: ${events.length} item${events.length === 1 ? "" : "s"} added`,
           html,
         }),
       });

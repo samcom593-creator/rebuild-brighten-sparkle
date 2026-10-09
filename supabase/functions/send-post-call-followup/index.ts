@@ -119,7 +119,7 @@ const handler = async (req: Request): Promise<Response> => {
       if (isLicensed) {
         hiredBody = `
         <p style="margin: 0 0 20px 0; font-size: 16px; line-height: 1.7; color: #e5e7eb;">
-          You've been <strong style="color: #10b981;">selected for the APEX program!</strong> We're excited to have you on board.
+          You've been <strong style="color: #10b981;">selected for the Galaxy program!</strong> We're excited to have you on board.
         </p>
         <p style="margin: 0 0 24px 0; font-size: 16px; line-height: 1.7; color: #e5e7eb;">
           With your license already in hand, you're ready to hit the ground running. Let's get you contracted and set up:
@@ -129,7 +129,7 @@ const handler = async (req: Request): Promise<Response> => {
       } else {
         hiredBody = `
         <p style="margin: 0 0 20px 0; font-size: 16px; line-height: 1.7; color: #e5e7eb;">
-          You've been <strong style="color: #10b981;">selected for the APEX program!</strong> We see great potential in you and we're excited to get you started.
+          You've been <strong style="color: #10b981;">selected for the Galaxy program!</strong> We see great potential in you and we're excited to get you started.
         </p>
         
         <div style="background: rgba(16, 185, 129, 0.15); border: 2px solid rgba(16, 185, 129, 0.4); border-radius: 16px; padding: 24px; margin-bottom: 24px; text-align: center;">
@@ -181,7 +181,7 @@ const handler = async (req: Request): Promise<Response> => {
   <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
     <div style="text-align: center; margin-bottom: 40px;">
       <div style="background: linear-gradient(135deg, #10b981 0%, #14b8a6 100%); padding: 16px 32px; border-radius: 12px;">
-        <span style="font-size: 28px; font-weight: 800; color: white; letter-spacing: -0.5px;">APEX</span>
+        <span style="font-size: 28px; font-weight: 800; color: white; letter-spacing: -0.5px;">Galaxy</span>
       </div>
     </div>
     <div style="background: linear-gradient(145deg, rgba(20, 20, 30, 0.9) 0%, rgba(15, 15, 25, 0.95) 100%); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 20px; padding: 40px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);">
@@ -192,7 +192,7 @@ const handler = async (req: Request): Promise<Response> => {
         We just tried giving you a call but couldn't get through! No worries at all — we know life gets busy. 😊
       </p>
       <p style="margin: 0 0 24px 0; font-size: 16px; line-height: 1.7; color: #e5e7eb;">
-        We'd love to connect with you about the opportunity at <strong style="color: #10b981;">Apex Financial</strong>. When you have a moment, feel free to book a time that works best for you:
+        We'd love to connect with you about the opportunity at <strong style="color: #10b981;">Galaxy Financial</strong>. When you have a moment, feel free to book a time that works best for you:
       </p>
       ${ctaButton(finalCalendarLink, "📅 Book a Time That Works for You", "linear-gradient(135deg, #f59e0b 0%, #f97316 100%)")}
       <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.7; color: #9ca3af;">
@@ -200,10 +200,10 @@ const handler = async (req: Request): Promise<Response> => {
       </p>
       <div style="height: 1px; background: linear-gradient(90deg, transparent, rgba(245, 158, 11, 0.3), transparent); margin: 32px 0;"></div>
       <p style="margin: 0 0 8px 0; font-size: 16px; color: #e5e7eb;">Talk soon! 🤙</p>
-      <p style="margin: 0; font-size: 16px; font-weight: 600; color: #10b981;">– The APEX Team</p>
+      <p style="margin: 0; font-size: 16px; font-weight: 600; color: #10b981;">– The Galaxy Team</p>
     </div>
     <div style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid rgba(255, 255, 255, 0.1);">
-      <p style="margin: 0; font-size: 12px; color: #6b7280;">Powered by <span style="color: #10b981; font-weight: 600;">Apex Financial</span></p>
+      <p style="margin: 0; font-size: 12px; color: #6b7280;">Powered by <span style="color: #10b981; font-weight: 600;">Galaxy Financial</span></p>
     </div>
   </div>
 </body>
@@ -222,7 +222,7 @@ const handler = async (req: Request): Promise<Response> => {
   <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
     <div style="text-align: center; margin-bottom: 40px;">
       <div style="background: linear-gradient(135deg, #10b981 0%, #14b8a6 100%); padding: 16px 32px; border-radius: 12px;">
-        <span style="font-size: 28px; font-weight: 800; color: white; letter-spacing: -0.5px;">APEX</span>
+        <span style="font-size: 28px; font-weight: 800; color: white; letter-spacing: -0.5px;">Galaxy</span>
       </div>
     </div>
     <div style="background: linear-gradient(145deg, rgba(20, 20, 30, 0.9) 0%, rgba(15, 15, 25, 0.95) 100%); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 20px; padding: 40px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);">
@@ -232,10 +232,10 @@ const handler = async (req: Request): Promise<Response> => {
       ${hiredBody}
       <div style="height: 1px; background: linear-gradient(90deg, transparent, rgba(16, 185, 129, 0.3), transparent); margin: 32px 0;"></div>
       <p style="margin: 0 0 8px 0; font-size: 16px; color: #e5e7eb;">Let's build something great together! 💪</p>
-      <p style="margin: 0; font-size: 16px; font-weight: 600; color: #10b981;">– The APEX Team</p>
+      <p style="margin: 0; font-size: 16px; font-weight: 600; color: #10b981;">– The Galaxy Team</p>
     </div>
     <div style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid rgba(255, 255, 255, 0.1);">
-      <p style="margin: 0; font-size: 12px; color: #6b7280;">Powered by <span style="color: #10b981; font-weight: 600;">Apex Financial</span></p>
+      <p style="margin: 0; font-size: 12px; color: #6b7280;">Powered by <span style="color: #10b981; font-weight: 600;">Galaxy Financial</span></p>
     </div>
   </div>
 </body>
@@ -254,7 +254,7 @@ const handler = async (req: Request): Promise<Response> => {
     <!-- Logo Header -->
     <div style="text-align: center; margin-bottom: 40px;">
       <div style="background: linear-gradient(135deg, #10b981 0%, #14b8a6 100%); padding: 16px 32px; border-radius: 12px;">
-        <span style="font-size: 28px; font-weight: 800; color: white; letter-spacing: -0.5px;">APEX</span>
+        <span style="font-size: 28px; font-weight: 800; color: white; letter-spacing: -0.5px;">Galaxy</span>
       </div>
     </div>
 
@@ -267,7 +267,7 @@ const handler = async (req: Request): Promise<Response> => {
 
       ${isLicensed ? `
       <p style="margin: 0 0 20px 0; font-size: 16px; line-height: 1.7; color: #e5e7eb;">
-        It was great chatting with you just now! I'm excited about the possibility of having you join the <strong style="color: #10b981;">APEX</strong> team.
+        It was great chatting with you just now! I'm excited about the possibility of having you join the <strong style="color: #10b981;">Galaxy</strong> team.
       </p>
       <p style="margin: 0 0 24px 0; font-size: 16px; line-height: 1.7; color: #e5e7eb;">
         With your experience, I think you'd be a fantastic fit. If you have any questions or want to continue our conversation, feel free to book another call:
@@ -311,13 +311,13 @@ const handler = async (req: Request): Promise<Response> => {
         ${isLicensed ? "Looking forward to working with you!" : "You've got this! 💪"}
       </p>
       <p style="margin: 0; font-size: 16px; font-weight: 600; color: #10b981;">
-        – The APEX Team
+        – The Galaxy Team
       </p>
     </div>
 
     <div style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid rgba(255, 255, 255, 0.1);">
       <p style="margin: 0; font-size: 12px; color: #6b7280;">
-        Powered by <span style="color: #10b981; font-weight: 600;">Apex Financial</span>
+        Powered by <span style="color: #10b981; font-weight: 600;">Galaxy Financial</span>
       </p>
     </div>
   </div>
@@ -326,7 +326,7 @@ const handler = async (req: Request): Promise<Response> => {
     `;
 
     const emailResponse = await resend.emails.send({
-      from: "APEX Financial <notifications@apex-financial.org>",
+      from: "Galaxy Financial <notifications@apex-financial.org>",
       to: [email],
       cc: ccList.length > 0 ? ccList : undefined,
       subject: emailSubject,

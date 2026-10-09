@@ -22,14 +22,14 @@ function getEmailPreviewHtml(firstName: string) {
   return `
     <div style="max-width:600px;margin:0 auto;padding:32px 20px;font-family:Arial,sans-serif;background-color:#0a0a0a;color:#ffffff;border-radius:16px;word-break:break-word;">
       <div style="text-align:center;margin-bottom:24px;">
-        <h1 style="font-size:24px;font-weight:bold;margin:0;background:linear-gradient(135deg,#d9a41a,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">APEX FINANCIAL</h1>
+        <h1 style="font-size:24px;font-weight:bold;margin:0;background:linear-gradient(135deg,#d9a41a,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">GALAXY FINANCIAL</h1>
       </div>
       
       <div style="background:linear-gradient(145deg,#1a1a2e,#16213e);border-radius:16px;padding:28px;border:1px solid rgba(20,184,166,0.2);">
         <h2 style="font-size:20px;margin:0 0 16px 0;color:#ffffff;">Hey ${firstName}, a lot has changed since you applied.</h2>
         
         <p style="font-size:15px;line-height:1.7;color:#d1d5db;margin:0 0 20px 0;">
-          You applied to Apex Financial before — and since then, our team has been on a tear. The results speak for themselves:
+          You applied to Galaxy Financial before — and since then, our team has been on a tear. The results speak for themselves:
         </p>
         
         <!-- Stats Block -->
@@ -82,13 +82,13 @@ function getEmailPreviewHtml(firstName: string) {
         
         <div style="border-top:1px solid rgba(255,255,255,0.1);margin-top:24px;padding-top:16px;">
           <p style="font-size:14px;color:#9ca3af;margin:0;">
-            – The Apex Financial Team
+            – The Galaxy Financial Team
           </p>
         </div>
       </div>
       
       <p style="font-size:12px;color:#6b7280;text-align:center;margin-top:24px;">
-        Powered by Apex Financial · © ${new Date().getFullYear()}
+        Powered by Galaxy Financial · © ${new Date().getFullYear()}
       </p>
     </div>
   `;
@@ -138,7 +138,7 @@ export function AgedLeadEmailPreview({
             <div className="mb-4 p-3 rounded-lg bg-muted/30 border border-border/50 space-y-1.5">
               <div className="flex items-center gap-2 text-sm">
                 <span className="text-muted-foreground">From:</span>
-                <span className="text-foreground">APEX Financial &lt;noreply@apex-financial.org&gt;</span>
+                <span className="text-foreground">Galaxy Financial &lt;noreply@apex-financial.org&gt;</span>
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <span className="text-muted-foreground">Subject:</span>

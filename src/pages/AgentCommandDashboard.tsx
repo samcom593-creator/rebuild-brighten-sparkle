@@ -150,7 +150,7 @@ interface Deal {
 
 // ─── Main ───────────────────────────────────────────────────────────────────
 export default function AgentCommandDashboard() {
-  usePageTitle("Command Center · APEX");
+  usePageTitle("Command Center · Galaxy");
   const { user, isAdmin } = useAuth();
   const queryClient = useQueryClient();
 
@@ -886,7 +886,7 @@ function getAgencyPeriodBounds(period: AgencyPeriod, customStart: string, custom
 }
 
 function AgencyCommandView() {
-  usePageTitle("Apex Financial · APEX");
+  usePageTitle("Galaxy Financial · Galaxy");
   const [period, setPeriod] = useState<AgencyPeriod>("month");
   const [customStart, setCustomStart] = useState(() => dateInputValue(new Date(Date.now() - 6 * 86_400_000)));
   const [customEnd, setCustomEnd] = useState(() => dateInputValue(new Date()));
@@ -1842,7 +1842,7 @@ function AgencyCommandView() {
       <div className="hidden border-b border-border pb-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0">
-            <h1 className="text-[22px] font-bold text-foreground leading-7">Apex Financial</h1>
+            <h1 className="text-[22px] font-bold text-foreground leading-7">Galaxy Financial</h1>
             <p className="mt-0.5 text-13 text-muted-foreground leading-snug">
               Live agency-wide pulse on production, recruiting, licensing, and activity.
               {c?.as_of && <> · As of {format(new Date(c.as_of), "MMM d, h:mm a")}</>}
@@ -2305,7 +2305,7 @@ function AgencyCommandView() {
                 <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
                 <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
               </span>
-              <p className="text-[12px] uppercase tracking-[0.32em] font-bold text-emerald-300">APEX AGENCY · LIVE</p>
+              <p className="text-[12px] uppercase tracking-[0.32em] font-bold text-emerald-300">GALAXY AGENCY · LIVE</p>
             </div>
             {periodSummary.totalAp > 0 && (
               <Badge variant="outline" className="text-[11px] uppercase tracking-widest border-amber-400/40 bg-amber-400/10 text-amber-200">
@@ -3958,7 +3958,7 @@ function PersonalPacePanel() {
         ) : !alUid ? (
           <p className="text-12 text-white/60 italic">Personal pace reads AgentLink history only, and you have none. Your posted deals are on the <Link to="/dashboard/leaderboard" className="underline">Leaderboard</Link>.</p>
         ) : !p ? (
-          <p className="text-12 text-white/60">Personal pace reads AgentLink history only. Deals you post in Apex show on the <Link to="/dashboard/leaderboard" className="underline">Leaderboard</Link>.</p>
+          <p className="text-12 text-white/60">Personal pace reads AgentLink history only. Deals you post in Galaxy show on the <Link to="/dashboard/leaderboard" className="underline">Leaderboard</Link>.</p>
         ) : (
           <>
             <div className="grid gap-4 grid-cols-1 sm:grid-cols-3 mb-4">

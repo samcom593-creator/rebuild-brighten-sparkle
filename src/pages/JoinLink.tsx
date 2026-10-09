@@ -60,7 +60,7 @@ function maskPhone(v: string) {
 }
 
 export default function JoinLink() {
-  usePageTitle("Join APEX");
+  usePageTitle("Join Galaxy");
   const { token } = useParams<{ token: string }>();
   const nav = useNavigate();
 
@@ -220,7 +220,7 @@ export default function JoinLink() {
         <div className="flex flex-col items-center mb-6">
           <Crown className="h-10 w-10 text-primary mb-3" />
           <h1 className="text-2xl font-bold text-center tracking-tight">
-            Join APEX
+            Join Galaxy
           </h1>
           <p className="text-sm text-muted-foreground text-center mt-2 max-w-sm">
             Drop your info. Sam's team will reach out — no filler, no delay.
@@ -344,7 +344,7 @@ export default function JoinLink() {
                 </>
               ) : (
                 <>
-                  Join APEX
+                  Join Galaxy
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </>
               )}
@@ -353,7 +353,7 @@ export default function JoinLink() {
             <div className="flex items-center justify-center gap-1.5 pt-1 text-[12px] text-muted-foreground">
               <ShieldCheck className="h-3 w-3" />
               <span>
-                One-use link · securely attributed to your APEX manager
+                One-use link · securely attributed to your Galaxy manager
                 {expiresAt
                   ? ` · expires ${new Date(expiresAt).toLocaleDateString()}`
                   : ""}

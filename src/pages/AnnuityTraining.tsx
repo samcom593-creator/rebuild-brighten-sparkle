@@ -42,7 +42,7 @@ INDEXED ANNUITY (FIA)
 VARIABLE ANNUITY (VA)
 • Money in subaccounts (essentially mutual funds inside a wrapper)
 • Full market risk
-• Requires series-6 or series-7 license — most APEX agents do NOT sell these
+• Requires series-6 or series-7 license — most Galaxy agents do NOT sell these
 • Best for: high-net-worth investors with risk tolerance
 
 IMMEDIATE ANNUITY (SPIA)
@@ -127,7 +127,7 @@ const READ_TIME_MIN = Math.max(1, Math.round(TOTAL_WORDS / 220));
 const COMPLETION_STORAGE_KEY = "apex-annuity-training-completed";
 
 export default function AnnuityTraining() {
-  usePageTitle("Annuity Training · APEX");
+  usePageTitle("Annuity Training · Galaxy");
   const [active, setActive] = useState(MODULES[0].key);
   const [completed, setCompleted] = useState<Set<string>>(() => {
     try {

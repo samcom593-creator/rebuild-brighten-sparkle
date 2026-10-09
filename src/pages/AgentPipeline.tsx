@@ -307,7 +307,7 @@ export default function AgentPipeline() {
             event_type: "agent_activated",
             details: {
               agent_name:  `${app.first_name} ${app.last_name}`,
-              hired_by:    app.assigned_manager_name ?? "APEX",
+              hired_by:    app.assigned_manager_name ?? "Galaxy",
               referred_by: null,
               instagram_handle: null,
             },

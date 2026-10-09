@@ -186,7 +186,7 @@ async function sendManagerAlert(
 
   const body = `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;padding:24px;color:#111">
-      <h1 style="margin:0 0 14px;color:#c8a445;font-size:22px">New APEX seminar registration</h1>
+      <h1 style="margin:0 0 14px;color:#c8a445;font-size:22px">New Galaxy seminar registration</h1>
       <p>Hi ${html(manager.name)},</p>
       <p><strong>${html(applicantName)}</strong> just locked a seat for:</p>
       <p style="font-size:18px;font-weight:700;background:#f6f3ea;padding:12px 16px;border-radius:8px">${html(seminarPretty)}</p>
@@ -212,7 +212,7 @@ async function sendManagerAlert(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "Apex Financial <notifications@apex-financial.org>",
+        from: "Galaxy Financial <notifications@apex-financial.org>",
         to: [manager.email],
         subject,
         html: body,

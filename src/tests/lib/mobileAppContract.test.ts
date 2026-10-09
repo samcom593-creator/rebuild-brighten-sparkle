@@ -4,10 +4,10 @@ import { resolve } from "node:path";
 
 const source = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
 
-describe("APEX phone app contract", () => {
-  it("launches as a standalone APEX OS app", () => {
+describe("Galaxy phone app contract", () => {
+  it("launches as a standalone Galaxy OS app", () => {
     const manifest = JSON.parse(source("public/manifest.webmanifest"));
-    expect(manifest.name).toBe("APEX Financial OS");
+    expect(manifest.name).toBe("Galaxy Financial OS");
     expect(manifest.display).toBe("standalone");
     expect(manifest.start_url).toContain("/dashboard");
   });

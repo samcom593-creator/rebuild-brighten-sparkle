@@ -79,7 +79,7 @@ function dormancyChip(days: number): { label: string; cls: string } {
 
 export default function OldApplicants({ kind }: { kind: OldApplicantKind }) {
   const title = kind === "managers" ? "Old Manager Applicants" : "Old Licensed Applicants";
-  usePageTitle(`${title} · APEX`);
+  usePageTitle(`${title} · Galaxy`);
 
   const [search, setSearch] = useState("");
   const [dormantMin, setDormantMin] = useState<14 | 30 | 60>(14);

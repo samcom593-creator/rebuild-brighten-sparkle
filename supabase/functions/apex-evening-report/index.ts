@@ -34,7 +34,7 @@ function shell(opts: { subject: string; heroTag: string; heroTitle: string; hero
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${opts.subject}</title></head>
 <body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,Arial,sans-serif;color:#0f172a">
 <div style="max-width:600px;margin:0 auto;padding:24px 16px">
-<div style="padding:4px 0 16px"><table cellpadding="0" cellspacing="0" border="0"><tr><td style="width:32px"><div style="width:28px;height:28px;background:#0f172a;color:#fff;border-radius:6px;text-align:center;line-height:28px;font-weight:800;font-size:13px;letter-spacing:1px">A</div></td><td style="padding-left:10px"><div style="font-weight:700;letter-spacing:0.5px;font-size:13px">APEX</div><div style="font-size:11px;color:#64748b;margin-top:-2px">Autonomous Engine</div></td></tr></table></div>
+<div style="padding:4px 0 16px"><table cellpadding="0" cellspacing="0" border="0"><tr><td style="width:32px"><div style="width:28px;height:28px;background:#0f172a;color:#fff;border-radius:6px;text-align:center;line-height:28px;font-weight:800;font-size:13px;letter-spacing:1px">A</div></td><td style="padding-left:10px"><div style="font-weight:700;letter-spacing:0.5px;font-size:13px">Galaxy</div><div style="font-size:11px;color:#64748b;margin-top:-2px">Autonomous Engine</div></td></tr></table></div>
 <div style="background:#0f172a;color:#fff;padding:20px 22px;border-radius:12px;margin-bottom:18px">
 <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;opacity:0.6;text-transform:uppercase">${opts.heroTag}</div>
 <div style="font-size:28px;font-weight:800;margin-top:4px;color:${heroColor}">${opts.heroTitle}</div>
@@ -96,7 +96,7 @@ ${prep.length ? `<div style="margin-top:18px;padding:14px 16px;background:#f0f9f
 </div>` : ""}`;
 
   const html = shell({
-    subject: `APEX EOD · ${today}`,
+    subject: `GALAXY EOD · ${today}`,
     heroTag: `END OF DAY · ${today}`,
     heroTitle: `${fmt$(aopToday)}`,
     heroSub: `${dealsToday} deal${dealsToday === 1 ? "" : "s"} · ${arrow} ${Math.abs(delta).toFixed(0)}% vs yesterday (${fmt$(aopYest)})`,
@@ -104,11 +104,11 @@ ${prep.length ? `<div style="margin-top:18px;padding:14px 16px;background:#f0f9f
     body: bodyHtml,
   });
 
-  const sms = `APEX 🌙 ${fmt$(aopToday)}${aopToday >= aopYest ? " ▲" : " ▼"} · ${dealsToday} deals · ${appsT.count ?? 0} apps · ${contactedT.count ?? 0} touched${(failT.count ?? 0) > 0 ? ` · ${failT.count} fail` : ""}`.slice(0, 120);
+  const sms = `Galaxy 🌙 ${fmt$(aopToday)}${aopToday >= aopYest ? " ▲" : " ▼"} · ${dealsToday} deals · ${appsT.count ?? 0} apps · ${contactedT.count ?? 0} touched${(failT.count ?? 0) > 0 ? ` · ${failT.count} fail` : ""}`.slice(0, 120);
 
   try {
     await resend.emails.send({
-      from: "APEX Engine <sam@apex-financial.org>",
+      from: "Galaxy Engine <sam@apex-financial.org>",
       to: SAM_EMAIL,
       subject: humanize(`🌙 ${today} · ${fmt$(aopToday)} · ${dealsToday} deals`),
       html: humanize(html),

@@ -42,7 +42,7 @@ type SetPasswordFormData = z.infer<typeof setPasswordSchema>;
 type CreateAccountFormData = z.infer<typeof createAccountSchema>;
 
 export default function AgentNumbersLogin() {
-  usePageTitle("Agent Login · Apex Daily Numbers");
+  usePageTitle("Agent Login · Galaxy Daily Numbers");
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -330,7 +330,7 @@ export default function AgentNumbersLogin() {
               <div className="absolute inset-0 bg-primary/20 rounded-md blur-xl" />
               <img 
                 src={apexIcon} 
-                alt="Apex" 
+                alt="Galaxy" 
                 className="h-16 w-16 rounded-md relative z-10 shadow-lg shadow-primary/20" 
               />
             </div>
@@ -342,7 +342,7 @@ export default function AgentNumbersLogin() {
             transition={{ delay: 0.3 }}
           >
             <h1 className="text-3xl font-bold mb-2 text-foreground">
-              Apex Daily Numbers
+              Galaxy Daily Numbers
             </h1>
             <p className="text-muted-foreground">{getStepTitle()}</p>
           </motion.div>
@@ -604,7 +604,7 @@ export default function AgentNumbersLogin() {
                 <form onSubmit={createAccountForm.handleSubmit(handleCreateAccountSubmit)} className="space-y-4">
                   <div className="p-3 rounded-lg bg-primary/10 text-sm text-center mb-2">
                     <UserPlus className="h-4 w-4 inline mr-2" />
-                    Create your APEX account
+                    Create your Galaxy account
                   </div>
 
                   <div className="p-2 rounded-lg bg-muted/50 text-xs text-center text-muted-foreground">
@@ -716,7 +716,7 @@ export default function AgentNumbersLogin() {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.7 }}
         >
-          APEX Financial • Daily Production Tracker
+          Galaxy Financial • Daily Production Tracker
         </motion.p>
       </motion.div>
     </main>

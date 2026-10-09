@@ -68,11 +68,11 @@ const FAQ: FaqItem[] = [
     a: "Open Call Center (/dashboard/call-center) for your call queue. If dialer access or call data is missing, submit a ReadyMode request in the Support Desk on this page." },
   { category: "Tools", q: "Where's the AI assistant?",
     a: "There is no in-app AI chat right now. Open the Support Desk tab on this page or message your manager, and we will answer." },
-  { category: "Tools", q: "How do I share an APEX win on social?",
+  { category: "Tools", q: "How do I share an Galaxy win on social?",
     a: "Tap 'Post a Deal' in the top bar (or 'Add Deal' on Community, /dashboard/community) → fill in premium + product. It posts to the live News Feed and we'll auto-feed it to the public landing page ticker." },
 
   // Brand + Culture
-  { category: "Brand + Culture", q: "What's the Apex Standard?",
+  { category: "Brand + Culture", q: "What's the Galaxy Standard?",
     a: "Hold the Standard. Average is the disease. Read the full brand voice script under Scripts → Brand once your required training is complete. We don't chase low-rated carriers, we don't compromise client coverage for commission, and we don't work with agents who do." },
   { category: "Brand + Culture", q: "I want to post content but I'm new — what's safe to say?",
     a: "Talk about what you're learning, who you're protecting, and what you're discovering about the industry. Avoid: client names, claim amounts, anything that could be construed as advice without a license, and lying about ratings. When in doubt: ask your manager." },
@@ -123,7 +123,7 @@ function FaqRow({ item, open, onToggle }: { item: FaqItem; open: boolean; onTogg
 }
 
 export default function HelpCenter() {
-  usePageTitle("Help Center · APEX");
+  usePageTitle("Help Center · Galaxy");
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get("tab") === "desk" ? "desk" : "faq";
   const [search, setSearch] = useState("");

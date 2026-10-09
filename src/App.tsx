@@ -233,6 +233,7 @@ const CallsTodayCockpit = lazy(() => import("./pages/CallsTodayCockpit"));
 // two parallel chunks for the same module without losing the role-routed render.
 const WhaleRecruiting = lazy(() => import("./pages/WhaleRecruiting"));
 const CarrierContracts = lazy(() => import("./pages/CarrierContracts"));
+const AflacOnboarding = lazy(() => import("./pages/AflacOnboarding"));
 const StartContracting = lazy(() => import("./pages/StartContracting"));
 const Challenges = lazy(() => import("./pages/Challenges"));
 const Setup = lazy(() => import("./pages/admin/Setup"));
@@ -557,6 +558,7 @@ const App = () => (
                     <Route path="/dashboard/contracting/documents" element={<ProtectedRoute requireAdmin><CarrierContracts /></ProtectedRoute>} />
                     <Route path="/dashboard/contracting/audit" element={<ProtectedRoute requireAdmin><CarrierContracts /></ProtectedRoute>} />
                     <Route path="/dashboard/contracting/ethos" element={<ProtectedRoute requireAdmin allowRoles={["va_manager", "va"]}><CarrierContracts /></ProtectedRoute>} />
+                    <Route path="/dashboard/contracting/aflac" element={<ProtectedRoute requireAdmin><AflacOnboarding /></ProtectedRoute>} />
                     <Route path="/dashboard/contracting/cases" element={<ProtectedRoute requireAdmin allowRoles={["va_manager", "va"]}><CarrierContracts /></ProtectedRoute>} />
                     <Route path="/dashboard/retention" element={<ProtectedRoute><BookOfBusiness /></ProtectedRoute>} />
                     <Route path="/dashboard/production" element={<ProtectedRoute><MyDeals /></ProtectedRoute>} />

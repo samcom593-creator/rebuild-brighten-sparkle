@@ -170,7 +170,7 @@ const handler = async (req: Request): Promise<Response> => {
           try {
             const smsEmail = `${cleanedPhone}@${gateway}`;
             await resend.emails.send({
-               from: "Apex Financial <notifications@apex-financial.org>",
+               from: "Galaxy Financial <notifications@apex-financial.org>",
               to: [smsEmail],
               subject: "",
               text: `${title}: ${message}`.substring(0, 160),
@@ -231,17 +231,17 @@ const handler = async (req: Request): Promise<Response> => {
         // status:"sent" unconditionally. Result: 24,806 rows in July marked "sent" while
         // Resend was returning 429 monthly_quota_exceeded on every call. Inspect `error`.
         const { data: sendData, error: sendError } = await resend.emails.send({
-          from: "Apex Financial <notifications@apex-financial.org>",
+          from: "Galaxy Financial <notifications@apex-financial.org>",
           to: [recipientEmail],
           cc: [ADMIN_EMAIL],
-          subject: title || "Apex Financial Notification",
+          subject: title || "Galaxy Financial Notification",
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <h2 style="color: #3b82f6;">${title || "Notification"}</h2>
               <p>${message}</p>
               ${url ? `<p><a href="${url}" style="color: #3b82f6;">View Details →</a></p>` : ""}
               <br/>
-              <p style="color: #9ca3af; font-size: 12px;">Powered by Apex Financial</p>
+              <p style="color: #9ca3af; font-size: 12px;">Powered by Galaxy Financial</p>
             </div>
           `,
         });

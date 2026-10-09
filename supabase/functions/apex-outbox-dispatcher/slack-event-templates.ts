@@ -93,18 +93,18 @@ export function renderSlackEventText(
     const candidate = text(p.candidateName, "New candidate");
     const licenseTrack = p.isLicensed === true ? "licensed" : "unlicensed";
     const url = safeSlackUrl(p.openUrl, SLACK_DEFAULT_URLS.recruitingPipeline);
-    return `New APEX application: *${candidate}* — ${licenseTrack}${stateSuffix(p.state)}\n<${url}|Open recruiting pipeline>`;
+    return `New Galaxy application: *${candidate}* — ${licenseTrack}${stateSuffix(p.state)}\n<${url}|Open recruiting pipeline>`;
   }
 
   if (eventType === "candidate.licensing_milestone") {
     // reads: candidateName, milestoneType, state, examDate, openUrl
     const milestone = text(p.milestoneType, "licensing milestone", 80).replaceAll("_", " ");
-    const candidate = text(p.candidateName, "APEX candidate");
+    const candidate = text(p.candidateName, "Galaxy candidate");
     const examDate = typeof p.examDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(p.examDate)
       ? ` · ${p.examDate}`
       : "";
     const url = safeSlackUrl(p.openUrl, SLACK_DEFAULT_URLS.recruitingPipeline);
-    return `APEX licensing milestone: *${candidate}* — ${milestone}${stateSuffix(p.state)}${examDate}\n<${url}|Open recruiting pipeline>`;
+    return `Galaxy licensing milestone: *${candidate}* — ${milestone}${stateSuffix(p.state)}${examDate}\n<${url}|Open recruiting pipeline>`;
   }
 
   if (eventType === "candidate.interview_noshow") {
@@ -127,7 +127,7 @@ export function renderSlackEventText(
   if (eventType === "deal.posted") {
     // reads: agentName (the PRODUCER), annualPremium, carrierName, productCategory, openUrl.
     // The policyholder is never read: no clientName / clientFirstName / phone / dob.
-    const agent = text(p.agentName, "APEX producer");
+    const agent = text(p.agentName, "Galaxy producer");
     const carrierText = slackText(p.carrierName, 80);
     const productText = slackText(p.productCategory, 80);
     const carrier = carrierText ? ` · ${carrierText}` : "";
@@ -141,12 +141,12 @@ export function renderSlackEventText(
     if (p.firstOfDay === true) {
       return `:trophy: *FIRST DEAL ON THE BOARD TODAY* — *${agent}* — ${usd(p.annualPremium)}${carrier}${product}\n<${url}|Open production dashboard>`;
     }
-    return `APEX sale posted: *${agent}* — ${usd(p.annualPremium)}${carrier}${product}\n<${url}|Open production dashboard>`;
+    return `Galaxy sale posted: *${agent}* — ${usd(p.annualPremium)}${carrier}${product}\n<${url}|Open production dashboard>`;
   }
 
   if (eventType === "production.personal_record") {
     // reads: agentName (the PRODUCER), recordType, value, previousBest, periodKey, openUrl.
-    const agent = text(p.agentName, "APEX producer");
+    const agent = text(p.agentName, "Galaxy producer");
     const kind = String(p.recordType ?? "");
     const value = Number(p.value ?? 0) || 0;
     const prev = p.previousBest == null ? null : Number(p.previousBest) || 0;
@@ -163,7 +163,7 @@ export function renderSlackEventText(
 
   if (eventType === "recruiting.bounty_qualified") {
     // reads: recruiterName, recruitName (both AGENTS), amountCents, policies, openUrl.
-    const recruiter = text(p.recruiterName, "APEX producer");
+    const recruiter = text(p.recruiterName, "Galaxy producer");
     const recruit = text(p.recruitName, "a new agent");
     const cents = Math.max(0, Number(p.amountCents ?? 50000) || 50000);
     const url = safeSlackUrl(p.openUrl, SLACK_DEFAULT_URLS.teamDashboard);
@@ -172,7 +172,7 @@ export function renderSlackEventText(
 
   if (eventType === "recruiting.bounty_reversed") {
     // reads: recruiterName, recruitName (both AGENTS), reason, openUrl.
-    const recruiter = text(p.recruiterName, "APEX producer");
+    const recruiter = text(p.recruiterName, "Galaxy producer");
     const recruit = text(p.recruitName, "a new agent");
     const reason = slackText(p.reason, 160);
     const url = safeSlackUrl(p.openUrl, SLACK_DEFAULT_URLS.teamDashboard);
@@ -210,7 +210,7 @@ export function renderSlackEventText(
     const near = Math.max(0, Number(p.nearCount ?? 0) || 0);
     const threshold = Math.max(0, Number(p.threshold ?? 20_000) || 20_000);
     const url = safeSlackUrl(p.openUrl, SLACK_DEFAULT_URLS.teamDashboard);
-    return `APEX Free Leads weekly pulse: *${eligible} active* · *${near} within $5K* of the $${threshold.toLocaleString("en-US")} tier\n<${url}|Open team dashboard>`;
+    return `Galaxy Free Leads weekly pulse: *${eligible} active* · *${near} within $5K* of the $${threshold.toLocaleString("en-US")} tier\n<${url}|Open team dashboard>`;
   }
 
   return null;

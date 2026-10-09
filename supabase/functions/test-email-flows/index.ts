@@ -68,13 +68,13 @@ const handler = async (req: Request): Promise<Response> => {
     if (allFlows || flowType === "licensed-confirmation") {
       try {
         await resend.emails.send({
-          from: "APEX Financial <noreply@apex-financial.org>",
+          from: "Galaxy Financial <noreply@apex-financial.org>",
           to: [testEmail],
           subject: "[TEST] 🎉 You're on the Fast Track! - Licensed Agent Welcome",
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <div style="background: linear-gradient(135deg, #059669, #047857); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
-                <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to APEX Financial!</h1>
+                <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to Galaxy Financial!</h1>
                 <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0; font-size: 16px;">You're Already Ahead of the Game 🚀</p>
               </div>
               
@@ -82,7 +82,7 @@ const handler = async (req: Request): Promise<Response> => {
                 <h2 style="color: #111827; margin-top: 0;">Hi ${testApplicant.firstName},</h2>
                 
                 <p style="color: #4b5563; line-height: 1.6;">
-                  Congratulations on taking the first step toward financial freedom! As a licensed agent, you're already on the fast track to success with APEX Financial.
+                  Congratulations on taking the first step toward financial freedom! As a licensed agent, you're already on the fast track to success with Galaxy Financial.
                 </p>
 
                 <div style="background: #d1fae5; border-left: 4px solid #059669; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
@@ -93,7 +93,7 @@ const handler = async (req: Request): Promise<Response> => {
 
                 <h3 style="color: #111827; margin-bottom: 15px;">Watch This Success Story</h3>
                 <p style="color: #4b5563; line-height: 1.6;">
-                  See how other licensed agents have built thriving careers with APEX:
+                  See how other licensed agents have built thriving careers with Galaxy:
                 </p>
                 <a href="https://youtu.be/YmlLSIwfGdE" style="display: inline-block; background: #dc2626; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; margin: 10px 0;">
                   ▶️ Watch Testimonial Video
@@ -109,12 +109,12 @@ const handler = async (req: Request): Promise<Response> => {
 
                 <p style="color: #4b5563; margin-top: 30px;">
                   Best regards,<br>
-                  <strong style="color: #059669;">The APEX Financial Team</strong>
+                  <strong style="color: #059669;">The Galaxy Financial Team</strong>
                 </p>
               </div>
 
               <div style="text-align: center; padding: 20px; color: #9ca3af; font-size: 12px;">
-                <p>&copy; ${new Date().getFullYear()} APEX Financial. All rights reserved.</p>
+                <p>&copy; ${new Date().getFullYear()} Galaxy Financial. All rights reserved.</p>
                 <p style="color: #dc2626; font-weight: bold;">[TEST EMAIL - This is a preview of the licensed applicant confirmation]</p>
               </div>
             </div>
@@ -130,13 +130,13 @@ const handler = async (req: Request): Promise<Response> => {
     if (allFlows || flowType === "unlicensed-confirmation") {
       try {
         await resend.emails.send({
-          from: "APEX Financial <noreply@apex-financial.org>",
+          from: "Galaxy Financial <noreply@apex-financial.org>",
           to: [testEmail],
-          subject: "[TEST] 📋 Your Next Steps to Getting Licensed - APEX Financial",
+          subject: "[TEST] 📋 Your Next Steps to Getting Licensed - Galaxy Financial",
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <div style="background: linear-gradient(135deg, #059669, #047857); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
-                <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to APEX Financial!</h1>
+                <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to Galaxy Financial!</h1>
                 <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0; font-size: 16px;">Your Journey to Financial Freedom Starts Now 🌟</p>
               </div>
               
@@ -144,7 +144,7 @@ const handler = async (req: Request): Promise<Response> => {
                 <h2 style="color: #111827; margin-top: 0;">Hi ${testApplicant.firstName},</h2>
                 
                 <p style="color: #4b5563; line-height: 1.6;">
-                  Thank you for applying to join the APEX Financial team! We're excited to help you start your career in insurance sales.
+                  Thank you for applying to join the Galaxy Financial team! We're excited to help you start your career in insurance sales.
                 </p>
 
                 <div style="background: #d1fae5; border-left: 4px solid #059669; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
@@ -187,12 +187,12 @@ const handler = async (req: Request): Promise<Response> => {
 
                 <p style="color: #4b5563; margin-top: 30px;">
                   Best regards,<br>
-                  <strong style="color: #059669;">The APEX Financial Team</strong>
+                  <strong style="color: #059669;">The Galaxy Financial Team</strong>
                 </p>
               </div>
 
               <div style="text-align: center; padding: 20px; color: #9ca3af; font-size: 12px;">
-                <p>&copy; ${new Date().getFullYear()} APEX Financial. All rights reserved.</p>
+                <p>&copy; ${new Date().getFullYear()} Galaxy Financial. All rights reserved.</p>
                 <p style="color: #dc2626; font-weight: bold;">[TEST EMAIL - This is a preview of the unlicensed applicant confirmation]</p>
               </div>
             </div>
@@ -208,7 +208,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (allFlows || flowType === "admin-hot-lead") {
       try {
         await resend.emails.send({
-          from: "APEX Applications <applications@apex-financial.org>",
+          from: "Galaxy Applications <applications@apex-financial.org>",
           to: [testEmail],
           subject: "[TEST] 🔥 HOT LEAD - CALL NOW: John TestApplicant is LICENSED!",
           html: `
@@ -291,7 +291,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (allFlows || flowType === "admin-standard") {
       try {
         await resend.emails.send({
-          from: "APEX Applications <applications@apex-financial.org>",
+          from: "Galaxy Applications <applications@apex-financial.org>",
           to: [testEmail],
           subject: "[TEST] New Application: John TestApplicant (Not Yet Licensed)",
           html: `
@@ -353,7 +353,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (allFlows || flowType === "manager-referral") {
       try {
         await resend.emails.send({
-          from: "APEX Applications <applications@apex-financial.org>",
+          from: "Galaxy Applications <applications@apex-financial.org>",
           to: [testEmail],
           subject: "[TEST] 🎯 New Team Applicant: John TestApplicant",
           html: `
@@ -414,7 +414,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (allFlows || flowType === "unlicensed-followup") {
       try {
         await resend.emails.send({
-          from: "APEX Financial <noreply@apex-financial.org>",
+          from: "Galaxy Financial <noreply@apex-financial.org>",
           to: [testEmail],
           subject: "[TEST] Need Help Getting Licensed? We're Here For You! 📋",
           html: `
@@ -428,7 +428,7 @@ const handler = async (req: Request): Promise<Response> => {
                 <h2 style="color: #111827; margin-top: 0;">Hi ${testApplicant.firstName},</h2>
                 
                 <p style="color: #4b5563; line-height: 1.6;">
-                  We noticed you applied to join APEX Financial a few days ago. We wanted to check in and see if you have any questions about the licensing process!
+                  We noticed you applied to join Galaxy Financial a few days ago. We wanted to check in and see if you have any questions about the licensing process!
                 </p>
 
                 <div style="background: #d1fae5; border-left: 4px solid #059669; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
@@ -452,7 +452,7 @@ const handler = async (req: Request): Promise<Response> => {
 
                 <p style="color: #4b5563; margin-top: 30px;">
                   Best regards,<br>
-                  <strong style="color: #059669;">The APEX Financial Team</strong>
+                  <strong style="color: #059669;">The Galaxy Financial Team</strong>
                 </p>
               </div>
               <div style="text-align: center; padding: 20px; color: #dc2626; font-weight: bold;">
@@ -471,7 +471,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (allFlows || flowType === "unlicensed-followup-2") {
       try {
         await resend.emails.send({
-          from: "APEX Financial <noreply@apex-financial.org>",
+          from: "Galaxy Financial <noreply@apex-financial.org>",
           to: [testEmail],
           subject: "[TEST] Are You Licensed Yet? 🎓",
           html: `
@@ -484,7 +484,7 @@ const handler = async (req: Request): Promise<Response> => {
                 <h2 style="color: #111827; margin-top: 0;">Hey ${testApplicant.firstName}! 👋</h2>
                 
                 <p style="color: #4b5563; line-height: 1.6; font-size: 16px;">
-                  It's been about a week since you applied to join APEX Financial. We wanted to check in and see how your licensing journey is going!
+                  It's been about a week since you applied to join Galaxy Financial. We wanted to check in and see how your licensing journey is going!
                 </p>
 
                 <div style="background: #d1fae5; border-left: 4px solid #059669; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
@@ -552,7 +552,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (allFlows || flowType === "licensed-followup") {
       try {
         await resend.emails.send({
-          from: "APEX Financial <noreply@apex-financial.org>",
+          from: "Galaxy Financial <noreply@apex-financial.org>",
           to: [testEmail],
           subject: "[TEST] Did We Get to You Yet? Let's Connect! 🚀",
           html: `
@@ -566,7 +566,7 @@ const handler = async (req: Request): Promise<Response> => {
                 <h2 style="color: #111827; margin-top: 0;">Hi ${testApplicant.firstName},</h2>
                 
                 <p style="color: #4b5563; line-height: 1.6;">
-                  We saw that you applied to join APEX Financial and are already licensed - that's amazing! We want to make sure we connected with you.
+                  We saw that you applied to join Galaxy Financial and are already licensed - that's amazing! We want to make sure we connected with you.
                 </p>
 
                 <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
@@ -575,7 +575,7 @@ const handler = async (req: Request): Promise<Response> => {
                   </p>
                 </div>
 
-                <h3 style="color: #111827; margin-bottom: 15px;">Why Join APEX?</h3>
+                <h3 style="color: #111827; margin-bottom: 15px;">Why Join Galaxy?</h3>
                 <ul style="color: #4b5563; line-height: 1.8;">
                   <li>💰 70%–145% commissions, paid weekly</li>
                   <li>📈 Warm leads delivered daily</li>
@@ -591,7 +591,7 @@ const handler = async (req: Request): Promise<Response> => {
 
                 <p style="color: #4b5563; margin-top: 30px;">
                   Best regards,<br>
-                  <strong style="color: #059669;">The APEX Financial Team</strong>
+                  <strong style="color: #059669;">The Galaxy Financial Team</strong>
                 </p>
               </div>
               <div style="text-align: center; padding: 20px; color: #dc2626; font-weight: bold;">
@@ -610,7 +610,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (allFlows || flowType === "abandoned-alert") {
       try {
         await resend.emails.send({
-          from: "APEX Alerts <alerts@apex-financial.org>",
+          from: "Galaxy Alerts <alerts@apex-financial.org>",
           to: [testEmail],
           subject: "[TEST] ⚠️ 3 Abandoned Applications - Follow Up Required",
           html: `
@@ -684,9 +684,9 @@ const handler = async (req: Request): Promise<Response> => {
     if (allFlows || flowType === "weekly-analytics") {
       try {
         await resend.emails.send({
-          from: "APEX Analytics <analytics@apex-financial.org>",
+          from: "Galaxy Analytics <analytics@apex-financial.org>",
           to: [testEmail],
-          subject: "[TEST] 📊 Your Weekly Team Performance - APEX Financial",
+          subject: "[TEST] 📊 Your Weekly Team Performance - Galaxy Financial",
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <div style="background: linear-gradient(135deg, #059669, #047857); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
@@ -748,15 +748,15 @@ const handler = async (req: Request): Promise<Response> => {
     if (allFlows || flowType === "leaderboard") {
       try {
         await resend.emails.send({
-          from: "Apex Financial <notifications@apex-financial.org>",
+          from: "Galaxy Financial <notifications@apex-financial.org>",
           to: [testEmail],
-          subject: "[TEST] 🏆 APEX Manager Scored Another Recruit!",
+          subject: "[TEST] 🏆 GALAXY Manager Scored Another Recruit!",
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <div style="background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%); border-radius: 16px 16px 0 0; padding: 30px; text-align: center;">
                 <div style="font-size: 48px; margin-bottom: 10px;">🏆</div>
                 <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 700;">
-                  An APEX manager just landed a new recruit!
+                  An Galaxy manager just landed a new recruit!
                 </h1>
               </div>
 
@@ -780,7 +780,7 @@ const handler = async (req: Request): Promise<Response> => {
 
                 <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 20px;">
                   <p style="margin: 0; color: #92400e; font-size: 14px;">Referred by</p>
-                  <p style="margin: 5px 0 0 0; color: #78350f; font-size: 20px; font-weight: 700;">⭐ APEX Manager</p>
+                  <p style="margin: 5px 0 0 0; color: #78350f; font-size: 20px; font-weight: 700;">⭐ Galaxy Manager</p>
                 </div>
 
                 <div style="text-align: center; padding-top: 20px; border-top: 1px solid #e2e8f0;">
@@ -791,7 +791,7 @@ const handler = async (req: Request): Promise<Response> => {
               </div>
 
               <div style="text-align: center; padding: 20px; color: #94a3b8; font-size: 12px;">
-                <p style="margin: 0;">Apex Financial Enterprises</p>
+                <p style="margin: 0;">Galaxy Financial Enterprises</p>
                 <p style="color: #dc2626; font-weight: bold; margin-top: 10px;">[TEST EMAIL - Leaderboard notification preview]</p>
               </div>
             </div>
@@ -918,7 +918,7 @@ const handler = async (req: Request): Promise<Response> => {
           // Send reminder email
           try {
             await resend.emails.send({
-              from: "APEX Financial <noreply@apex-financial.org>",
+              from: "Galaxy Financial <noreply@apex-financial.org>",
               to: [authData.user.email],
               subject: hasInstagram 
                 ? "📱 Your Instagram Handle is Set - Thanks!" 
@@ -943,7 +943,7 @@ const handler = async (req: Request): Promise<Response> => {
                       </p>
                     ` : `
                       <p style="color: #4b5563; line-height: 1.6;">
-                        Applicants can now select you as their referrer when applying to APEX! To help them recognize you (especially from Instagram), please update your Instagram handle in your profile settings.
+                        Applicants can now select you as their referrer when applying to Galaxy! To help them recognize you (especially from Instagram), please update your Instagram handle in your profile settings.
                       </p>
                       
                       <div style="background: #fef3c7; border-left: 4px solid #D4AF37; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
@@ -969,12 +969,12 @@ const handler = async (req: Request): Promise<Response> => {
 
                     <p style="color: #4b5563; margin-top: 30px;">
                       Keep scaling up! 🚀<br>
-                      <strong style="color: #D4AF37;">The APEX Team</strong>
+                      <strong style="color: #D4AF37;">The Galaxy Team</strong>
                     </p>
                   </div>
 
                   <div style="text-align: center; padding: 20px; color: #9ca3af; font-size: 12px;">
-                    <p>Apex Financial Enterprises</p>
+                    <p>Galaxy Financial Enterprises</p>
                   </div>
                 </div>
               `,

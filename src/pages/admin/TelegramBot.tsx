@@ -89,13 +89,13 @@ const GROUP_TYPE_LABEL: Record<string, string> = {
   onboarding: "New Agent Onboarding",
   training: "Training Library",
   wins: "Wins Channel",
-  ai_dm: "Ask Apex AI (DM)",
+  ai_dm: "Ask Galaxy AI (DM)",
   manager_alerts: "Manager Alerts (internal)",
   // Pre-Agent HQ types
   licensing_reference: "Licensing Center",
   daily_movement: "Daily Movement",
   seminar_reminders: "Seminar Reminders",
-  ask_apex_ai: "Ask Apex AI (channel)",
+  ask_apex_ai: "Ask Galaxy AI (channel)",
 };
 
 // Was a second, independent copy of the vocabulary — four of its five words are
@@ -296,7 +296,7 @@ export default function TelegramBot() {
           accent="blue"
           eyebrow="Admin · Telegram"
           eyebrowIcon={<Send className="h-3 w-3" />}
-          title="APEX Telegram Bot"
+          title="Galaxy Telegram Bot"
           subtitle="Pre-hire + onboarding + licensing operating layer. Discord owns active production; this owns everything before it."
           actions={
             <Button variant="outline" size="sm" onClick={refreshAll}>
@@ -850,7 +850,7 @@ function PreAgentHqPanel({ groups, faqs }: { groups: Group[]; faqs: PreAgentHqFa
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
             <HelpCircle className="h-4 w-4 text-primary" />
-            Ask Apex AI — 20 seeded FAQs
+            Ask Galaxy AI — 20 seeded FAQs
           </h3>
           <Badge variant="outline">{faqs.length} loaded</Badge>
         </div>

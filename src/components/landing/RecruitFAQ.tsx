@@ -9,7 +9,7 @@ const FAQ = [
   },
   {
     q: "What if I'm already licensed?",
-    a: "Licensed agents move faster. We verify your license, review your carrier fit, and map out the cleanest path to write business through APEX.",
+    a: "Licensed agents move faster. We verify your license, review your carrier fit, and map out the cleanest path to write business through Galaxy.",
   },
   {
     q: "Do I really not pay for leads?",

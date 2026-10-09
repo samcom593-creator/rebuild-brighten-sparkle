@@ -41,14 +41,14 @@ const getEmailHtml = (firstName: string, trackingClickUrl: string, trackingPixel
 <body style="margin:0;padding:0;font-family:Arial,sans-serif;background-color:#0a0a0a;color:#ffffff;word-break:break-word;">
   <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
     <div style="text-align:center;margin-bottom:32px;">
-      <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">APEX FINANCIAL</h1>
+      <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">GALAXY FINANCIAL</h1>
     </div>
     
     <div style="background:linear-gradient(145deg,#1a1a2e,#16213e);border-radius:16px;padding:32px;border:1px solid rgba(20,184,166,0.2);">
       <h2 style="font-size:22px;margin:0 0 20px 0;color:#ffffff;">Hey ${firstName}, a lot has changed since you applied.</h2>
       
       <p style="font-size:16px;line-height:1.7;color:#d1d5db;margin:0 0 24px 0;">
-        You applied to Apex Financial before — and since then, our team has been on a tear. The results speak for themselves:
+        You applied to Galaxy Financial before — and since then, our team has been on a tear. The results speak for themselves:
       </p>
       
       <!-- Stats Block -->
@@ -123,7 +123,7 @@ const getEmailHtml = (firstName: string, trackingClickUrl: string, trackingPixel
       
       <div style="border-top:1px solid rgba(255,255,255,0.1);margin-top:28px;padding-top:20px;">
         <p style="font-size:14px;color:#9ca3af;margin:0;">
-          – The Apex Financial Team
+          – The Galaxy Financial Team
         </p>
       </div>
     </div>
@@ -131,7 +131,7 @@ const getEmailHtml = (firstName: string, trackingClickUrl: string, trackingPixel
     <!-- Footer -->
     <div style="text-align:center;margin-top:32px;">
       <p style="font-size:12px;color:#6b7280;margin:0 0 8px 0;">
-        Powered by Apex Financial · © ${new Date().getFullYear()}
+        Powered by Galaxy Financial · © ${new Date().getFullYear()}
       </p>
       <a href="https://apex-financial.org" style="color:#6b7280;font-size:12px;">Visit our website</a>
     </div>
@@ -201,7 +201,7 @@ const handler = async (req: Request): Promise<Response> => {
     const ccList = [ADMIN_EMAIL, managerEmail].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i) as string[];
 
     const { error: emailError } = await resend.emails.send({
-      from: "APEX Financial <notifications@apex-financial.org>",
+      from: "Galaxy Financial <notifications@apex-financial.org>",
       to: [email],
       cc: ccList.length > 0 ? ccList : undefined,
       subject: "We've Grown Since You Applied — See What's Changed",

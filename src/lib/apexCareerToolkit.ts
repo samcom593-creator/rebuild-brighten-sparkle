@@ -50,7 +50,7 @@ const SHARED_ACTIVATION_STEPS: ApexJourneyStep[] = [
   {
     key: "agentlink",
     label: "Profile & documents",
-    description: "Complete the APEX profile, EFT details, E&O coverage, and required documents.",
+    description: "Complete the Galaxy profile, EFT details, E&O coverage, and required documents.",
     successCondition: "Required profile and document fields confirmed",
   },
   {
@@ -62,7 +62,7 @@ const SHARED_ACTIVATION_STEPS: ApexJourneyStep[] = [
   {
     key: "contracting",
     label: "Contracting",
-    description: "Track carrier requirements and contracting status from your APEX profile.",
+    description: "Track carrier requirements and contracting status from your Galaxy profile.",
     successCondition: "Every required carrier is active, submitted, or has a recorded next action",
   },
   {

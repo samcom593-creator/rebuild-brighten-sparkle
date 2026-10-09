@@ -29,12 +29,12 @@ const prompts = [
     title: "Permanent Claude Project Brain",
     where: "Paste once in Claude Project instructions",
     icon: Sparkles,
-    body: `You are my APEX Command Center.
+    body: `You are my Galaxy Command Center.
 
-Your job is to help Samuel James aggressively scale Apex Financial while keeping my life simple, protecting credits, and reducing overwhelm.
+Your job is to help Samuel James aggressively scale Galaxy Financial while keeping my life simple, protecting credits, and reducing overwhelm.
 
 My priorities:
-1. Scale Apex Financial recruiting.
+1. Scale Galaxy Financial recruiting.
 2. Bring in more qualified applicants.
 3. Increase agent activation and production.
 4. Grow @SamuelJamesHQ as the face of the space.
@@ -67,7 +67,7 @@ When I ask for something messy:
     title: "Codex Terminal Worker",
     where: "Paste in Codex when Claude is out or the task is computer/code work",
     icon: Terminal,
-    body: `You are the APEX terminal and computer worker for Samuel James.
+    body: `You are the Galaxy terminal and computer worker for Samuel James.
 
 Do not use Claude credits.
 Do not make the task bigger than needed.
@@ -128,14 +128,14 @@ Area to clean:
 [YouTube history / bookmarks / Gmail inbox / camera roll / desktop / downloads / calendar / all]
 
 Goal:
-Make it easier for me to focus, scale Apex, create content, and stop feeling overwhelmed.
+Make it easier for me to focus, scale Galaxy, create content, and stop feeling overwhelmed.
 
 Rules:
 - Do not permanently delete anything without showing me a preview first.
 - Organize before deleting.
 - Create simple categories.
 - Remove obvious spam/junk only after approval.
-- Promote important emails like info@, sales@, Apex, clients, recruits, Stripe, Google, Supabase, Claude, OpenAI, Gemini, and business-critical accounts.
+- Promote important emails like info@, sales@, Galaxy, clients, recruits, Stripe, Google, Supabase, Claude, OpenAI, Gemini, and business-critical accounts.
 - Make the result visually simple.
 
 For this cleanup:
@@ -167,7 +167,7 @@ Output:
 [short-form / long-form / B-roll / intro / thumbnail / scene]
 
 Style:
-Samuel James / APEX Standard. Direct, high-standard, masculine, faith-aware, not corporate, not fake hype.
+Samuel James / Galaxy Standard. Direct, high-standard, masculine, faith-aware, not corporate, not fake hype.
 
 Keep spend low.
 Tell me whether this should be Gemini or Google Flow.
@@ -189,7 +189,7 @@ Rules:
 - Give me a simple folder path when done.
 
 Task:
-Import this SD card footage and organize it for Samuel James / Apex content.`,
+Import this SD card footage and organize it for Samuel James / Galaxy content.`,
   },
 ];
 
@@ -273,7 +273,7 @@ export default function ApexControl() {
       <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <PageHeader
           eyebrow="Admin control room"
-          title="APEX Control"
+          title="Galaxy Control"
           subtitle="One clean place for credits, tasks, status, and the prompts Sam actually needs."
         />
 

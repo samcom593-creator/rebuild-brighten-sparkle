@@ -23,7 +23,7 @@ import { Label } from "@/components/ui/label";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function Join() {
-  usePageTitle("Join APEX");
+  usePageTitle("Join Galaxy");
   const nav = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -67,7 +67,7 @@ export default function Join() {
       }
 
       if (signUp.data.session) {
-        toast.success("Account created — welcome to APEX");
+        toast.success("Account created — welcome to Galaxy");
         nav("/dashboard");
       } else {
         toast.success("Check your email to confirm your account");
@@ -91,7 +91,7 @@ export default function Join() {
             <div className="inline-flex h-14 w-14 items-center justify-center rounded-md bg-white dark:bg-card">
               <Crown className="h-7 w-7 text-primary" />
             </div>
-            <h1 className="text-2xl font-bold">Welcome to APEX</h1>
+            <h1 className="text-2xl font-bold">Welcome to Galaxy</h1>
             <p className="text-sm text-muted-foreground">
               Enter your email and password. First time? We'll create your account automatically.
             </p>

@@ -78,6 +78,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { supabase } from "@/integrations/supabase/client";
 import { ensureCurrentAgentRecord } from "@/lib/ensureCurrentAgentRecord";
 import { useAuth } from "@/hooks/useAuth";
+import { AflacCheckoffBanner } from "@/components/dashboard/AflacCheckoffBanner";
 import { useMyDownline } from "@/hooks/useMyDownline";
 import { useRolePreview, type RolePreview } from "@/hooks/useRolePreview";
 import { getBusinessDayBounds, getBusinessMonthBounds, getBusinessWeekBounds, getMatchedPriorWeekBounds } from "@/lib/dateUtils";
@@ -794,7 +795,7 @@ function ExecutiveDashboard({
   onRunSystemCheck: () => Promise<void>;
   runningSystemCheck: boolean;
 }) {
-  const title = role === "admin" ? "Apex Financial" : "Manager Command";
+  const title = role === "admin" ? "Galaxy Financial" : "Manager Command";
   const readyValue = snapshot.readyMode.available === null ? "Unavailable" : number(snapshot.readyMode.available);
   const readyDetail = snapshot.readyMode.available === null
     ? snapshot.readyMode.manualCounter === null
@@ -825,7 +826,7 @@ function ExecutiveDashboard({
     <div className="page-enter mx-auto w-full max-w-6xl space-y-5 px-4 pb-24 sm:px-6">
       <PageHeader
         accent="primary"
-        eyebrow={role === "admin" ? "Apex Financial · CEO Command" : "Manager · Command"}
+        eyebrow={role === "admin" ? "Galaxy Financial · CEO Command" : "Manager · Command"}
         eyebrowIcon={<ShieldCheck className="h-3 w-3" />}
         title={title}
         subtitle="Production, recruiting, lead inventory, Venmo lead payments, and integration state — every number sourced from live tables, with explicit unavailable states instead of filler."
@@ -1062,6 +1063,7 @@ export default function Dashboard() {
   if (shouldRenderDefaultAdminCommand) {
     return (
       <div className="mx-auto w-full max-w-7xl space-y-5 p-4 sm:p-6">
+        <AflacCheckoffBanner />
         <AgentCloudHome />
       </div>
     );

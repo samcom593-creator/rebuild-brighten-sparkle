@@ -106,13 +106,13 @@ const buildPhases = (carriers: number): Phase[] => [
       {
         icon: Users,
         title: "Join Our Onboarding Process",
-        description: "Get plugged into the APEX training stack, agent CRM, and contracting paperwork on day one.",
+        description: "Get plugged into the Galaxy training stack, agent CRM, and contracting paperwork on day one.",
         benefit: "✓ Full platform access",
       },
       {
         icon: FileSignature,
         title: "Receive & Submit Carrier Contracts",
-        description: `Sign contracts with top carriers for the products you want to sell. Contract with up to ${carriers} carriers through APEX — Final Expense, Mortgage Protection, and IUL.`,
+        description: `Sign contracts with top carriers for the products you want to sell. Contract with up to ${carriers} carriers through Galaxy — Final Expense, Mortgage Protection, and IUL.`,
         benefit: `✓ ${carriers} carrier partners`,
       },
       {
@@ -124,7 +124,7 @@ const buildPhases = (carriers: number): Phase[] => [
       {
         icon: Smartphone,
         title: "Access Your Free CRM Platform",
-        description: "APEX CRM tracks every lead, follow-up, and policy you write. Free for every agent on contract.",
+        description: "GALAXY CRM tracks every lead, follow-up, and policy you write. Free for every agent on contract.",
         benefit: "✓ Completely free",
       },
       {
@@ -202,7 +202,7 @@ const buildPhases = (carriers: number): Phase[] => [
       {
         icon: Building2,
         title: "Establish Your Own Agency Brand",
-        description: "Run your own name on top of APEX's infrastructure. Same payouts, same systems, your brand on the door.",
+        description: "Run your own name on top of Galaxy's infrastructure. Same payouts, same systems, your brand on the door.",
         benefit: "✓ Your name, our rails",
       },
     ],
@@ -226,7 +226,7 @@ const whyAgentsChoose = [
   {
     icon: Target,
     title: "Warm Leads From Day One",
-    description: "Pull from the APEX lead pool the week you contract. Already paid for — no upfront lead bill while you ramp.",
+    description: "Pull from the Galaxy lead pool the week you contract. Already paid for — no upfront lead bill while you ramp.",
   },
   {
     icon: GraduationCap,
@@ -568,7 +568,7 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
         {/* Why Agents Choose Us */}
         <div className="reveal mt-24">
           <SectionHeading
-            title="Why Agents Choose APEX"
+            title="Why Agents Choose Galaxy"
             subtitle="Carriers, leads, training, weekly pay. Bring the work — the system handles the rest."
           />
 
@@ -599,7 +599,7 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
             <Crown className="h-5 w-5 text-primary" />
             <span className="text-sm font-medium">
               <Sparkles className="h-4 w-4 inline-block text-primary mr-1" />
-              Powered by <span className="gradient-text font-bold">APEX</span>
+              Powered by <span className="gradient-text font-bold">Galaxy</span>
             </span>
           </div>
         </div>

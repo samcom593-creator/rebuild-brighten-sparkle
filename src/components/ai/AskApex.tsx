@@ -160,7 +160,7 @@ export function AskApex() {
       <div className="flex items-center justify-between p-3 border-b border-border">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-amber-500" />
-          <span className="text-13 font-bold">Ask Apex</span>
+          <span className="text-13 font-bold">Ask Galaxy</span>
           <span className="text-11 text-muted-foreground">live data · instant</span>
         </div>
         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setOpen(false)} aria-label="Close">

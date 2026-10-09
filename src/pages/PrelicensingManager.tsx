@@ -203,9 +203,9 @@ export default function PrelicensingManager() {
     // label says instead of opening a blank compose window. Recipients go on BCC
     // so they don't see each other's addresses.
     const emails = picks.map((a: any) => a.email).join(",");
-    const subject = encodeURIComponent("Your APEX pre-licensing next steps");
+    const subject = encodeURIComponent("Your Galaxy pre-licensing next steps");
     const body = encodeURIComponent(
-      "Hey,\n\nTo move forward with APEX you need your life insurance license. Here's the path:\n\n" +
+      "Hey,\n\nTo move forward with Galaxy you need your life insurance license. Here's the path:\n\n" +
       "1. Start your pre-licensing course (we'll send the link).\n" +
       "2. Finish the course and pass the state exam.\n" +
       "3. Book your onboarding call once you're licensed.\n\n" +

@@ -19,13 +19,13 @@ import { toast } from "sonner";
 
 const TEMPLATES = [
   { key: "classic",  label: "Classic Black",  bg: "bg-card",                 accent: "text-amber-400" },
-  { key: "amber",    label: "APEX Amber",     bg: "bg-gradient-to-br from-amber-500 to-amber-700", accent: "text-foreground" },
+  { key: "amber",    label: "Galaxy Amber",     bg: "bg-gradient-to-br from-amber-500 to-amber-700", accent: "text-foreground" },
   { key: "emerald",  label: "Producer Green", bg: "bg-gradient-to-br from-emerald-600 to-emerald-800", accent: "text-foreground" },
   { key: "white",    label: "Clean White",    bg: "bg-card text-slate-900 border border-slate-200", accent: "text-amber-600" },
 ] as const;
 
 export default function CallingCards() {
-  usePageTitle("Calling Cards · APEX");
+  usePageTitle("Calling Cards · Galaxy");
   const { user } = useAuth();
   const userId = (user as any)?.id ?? null;
   const [template, setTemplate] = useState<typeof TEMPLATES[number]["key"]>("classic");
@@ -51,7 +51,7 @@ export default function CallingCards() {
 
   const t = TEMPLATES.find((x) => x.key === template)!;
   const p = profile.data;
-  const name = p?.full_name || (user as any)?.email?.split("@")[0] || "APEX Agent";
+  const name = p?.full_name || (user as any)?.email?.split("@")[0] || "Galaxy Agent";
   const avatar = p?.avatar_url || p?.photo_url;
 
   // Hero metrics
@@ -72,7 +72,7 @@ export default function CallingCards() {
   const shareCard = async () => {
     if (navigator.share) {
       try {
-        await navigator.share({ title: `${name} · APEX Financial`, text: "My APEX calling card", url: shareUrl });
+        await navigator.share({ title: `${name} · Galaxy Financial`, text: "My Galaxy calling card", url: shareUrl });
       } catch { /* user cancelled */ } // empty-catch-allow:user-cancelled
     } else copyLink();
   };
@@ -178,7 +178,7 @@ export default function CallingCards() {
                 <div className={`h-full w-full ${t.bg} p-6 flex flex-col justify-between`}>
                   <div className="flex items-start justify-between">
                     <div>
-                      <p className={`text-10 uppercase tracking-[0.2em] font-bold ${t.accent}`}>APEX FINANCIAL</p>
+                      <p className={`text-10 uppercase tracking-[0.2em] font-bold ${t.accent}`}>GALAXY FINANCIAL</p>
                       <p className={`text-11 mt-0.5 ${template === "white" ? "text-slate-600" : "text-foreground/70"}`}>
                         Hold the Standard
                       </p>

@@ -162,16 +162,16 @@ Deno.serve(async (req) => {
       `<td style="padding:4px 10px;color:#94a3b8">${c.detail}</td></tr>`
     ).join("");
     await resend.emails.send({
-      from: "APEX Overseer <notifications@apex-financial.org>",
+      from: "Galaxy Overseer <notifications@apex-financial.org>",
       to: [ADMIN_EMAIL],
-      subject: `${overall === "critical" ? "🚨" : "⚠️"} APEX ${overall.toUpperCase()} — ${criticalCount} critical, ${warningCount} warning`,
+      subject: `${overall === "critical" ? "🚨" : "⚠️"} Galaxy ${overall.toUpperCase()} — ${criticalCount} critical, ${warningCount} warning`,
       html: `<div style="font-family:'DM Sans',Arial;background:#030712;color:#e2e8f0;padding:32px;">
         <div style="max-width:640px;margin:0 auto;background:#0d1526;border:1px solid #22d3a540;border-radius:14px;padding:28px;">
-          <h1 style="color:${overall === "critical" ? "#f87171" : "#fbbf24"};margin:0 0 6px 0;font-size:22px;">APEX Overseer Report — ${overall.toUpperCase()}</h1>
+          <h1 style="color:${overall === "critical" ? "#f87171" : "#fbbf24"};margin:0 0 6px 0;font-size:22px;">Galaxy Overseer Report — ${overall.toUpperCase()}</h1>
           <p style="color:#94a3b8;font-size:13px;margin:0 0 20px 0;">${new Date().toLocaleString("en-US", { dateStyle: "long", timeStyle: "short" })}</p>
           <table style="width:100%;border-collapse:collapse;font-size:13px;">${rows}</table>
           ${autoFixed.length ? `<p style="margin-top:20px;color:#22d3a5;font-size:13px;">Auto-fixed: ${autoFixed.join(", ")}</p>` : ""}
-          <p style="color:#64748b;font-size:11px;margin-top:28px;letter-spacing:2px;">APEX OVERSEER · SELF-HEALING</p>
+          <p style="color:#64748b;font-size:11px;margin-top:28px;letter-spacing:2px;">GALAXY OVERSEER · SELF-HEALING</p>
         </div>
       </div>`,
     }).catch(() => {});

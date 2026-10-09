@@ -63,18 +63,20 @@ export interface Brand {
  * any tenant field left unset.
  */
 export const APEX_BRAND: Brand = {
-  platformName: "APEX",
-  productName: "APEX OS",
+  platformName: "Galaxy",
+  productName: "Galaxy OS",
+  // The LEGAL entity stays "Apex Financial" until the entity rename is filed with the state and
+  // the carriers. Documents and invoices must name the entity that actually exists.
   legalName: "Apex Financial",
-  shortName: "APEX",
-  poweredBy: "Powered by APEX",
+  shortName: "Galaxy",
+  poweredBy: "Powered by Galaxy",
   brandingMode: "apex",
   poweredByLocations: ["loading_screen", "auth_screen", "footer", "email_footer"],
   supportEmail: "info@kingofsales.net",
   supportUrl: null,
   termsUrl: null,
   privacyUrl: null,
-  titleSuffix: "· APEX OS",
+  titleSuffix: "· Galaxy OS",
 } as const;
 
 /**

@@ -84,7 +84,7 @@ serve(async (req: Request) => {
       if (resend && email) {
         try {
           await resend.emails.send({
-            from: "Sam · APEX <notifications@apex-financial.org>",
+            from: "Sam · Galaxy <notifications@apex-financial.org>",
             to: email,
             subject: `${firstName} — don't forget your numbers today`,
             html: `
@@ -97,7 +97,7 @@ serve(async (req: Request) => {
                 <a href="https://apex-financial.org/numbers" style="display:block;text-align:center;background:#22d3a5;color:#030712;padding:14px;border-radius:8px;font-family:Syne,sans-serif;font-weight:700;text-decoration:none">
                   LOG TODAY'S NUMBERS →
                 </a>
-                <p style="margin:20px 0 0;font-size:12px;color:#64748b;text-align:center">— Sam, APEX Financial</p>
+                <p style="margin:20px 0 0;font-size:12px;color:#64748b;text-align:center">— Sam, Galaxy Financial</p>
                 <div style="height:3px;background:linear-gradient(90deg,#22d3a5,#0ea5e9);margin-top:24px;border-radius:2px"></div>
               </div>
             `,

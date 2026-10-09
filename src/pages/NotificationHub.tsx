@@ -375,7 +375,7 @@ function CarrierAssignmentTool() {
         try {
           await invokeEdge("send-sms-auto-detect", {
             phone: lead.phone,
-            message: `Hey ${lead.first_name}! Apex Financial has an opportunity for you — check your email! 🚀`.substring(0, 160),
+            message: `Hey ${lead.first_name}! Galaxy Financial has an opportunity for you — check your email! 🚀`.substring(0, 160),
             applicationId: lead.id,
           });
           sent++;

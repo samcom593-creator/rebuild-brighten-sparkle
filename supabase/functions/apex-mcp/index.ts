@@ -63,7 +63,7 @@ const TOOLS = [
   {
     name: "status",
     description:
-      "LIVE Apex production numbers — call this FIRST whenever the user asks 'how am I doing', " +
+      "LIVE Galaxy production numbers — call this FIRST whenever the user asks 'how am I doing', " +
       "'what's my production', 'how much did my team do today/this week/this month', 'any sales', " +
       "'any deals', 'what's running', 'apex status'. Returns: today/week/month/full-book deal " +
       "counts + annual premium ($), new applicants today, new agents hired today, last AgentLink " +
@@ -144,7 +144,7 @@ const handler = async (req: Request): Promise<Response> => {
         const dt = truth?.last_synced_at ? new Date(String(truth.last_synced_at)) : null;
         const minutesAgo = dt ? Math.round((Date.now() - dt.getTime()) / 60000) : null;
         const text = [
-          `🏛️ APEX TODAY (${new Date().toISOString().slice(0,10)})`,
+          `🏛️ GALAXY TODAY (${new Date().toISOString().slice(0,10)})`,
           truth ? `Today: ${truth.deals_today ?? 0} deals · ${money(truth.premium_today)} premium` : "Today: data not loaded",
           truth ? `This week: ${truth.deals_this_week ?? 0} deals · ${money(truth.premium_this_week)}` : "",
           truth ? `This month: ${truth.deals_this_month ?? 0} deals · ${money(truth.premium_this_month)}` : "",

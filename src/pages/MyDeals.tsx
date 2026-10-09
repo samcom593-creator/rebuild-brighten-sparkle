@@ -262,7 +262,7 @@ export default function MyDeals() {
         title={productionTitle}
         subtitle={
           <>
-            Source: <span className="font-medium text-foreground">Vantage live feed</span> + native APEX
+            Source: <span className="font-medium text-foreground">Vantage live feed</span> + native Galaxy
             {latestSync && <> · last sync {formatDistanceToNowStrict(new Date(latestSync), { addSuffix: true })}</>}
           </>
         }
@@ -457,7 +457,7 @@ export default function MyDeals() {
                           </div>
                           <div>
                             <p className="text-muted-foreground uppercase tracking-wider text-[11px]">Source</p>
-                            <p className="font-semibold">{d.origin === "apex_native" ? "APEX native" : "Live production feed"}</p>
+                            <p className="font-semibold">{d.origin === "apex_native" ? "Galaxy native" : "Live production feed"}</p>
                           </div>
                           <div>
                             <p className="text-muted-foreground uppercase tracking-wider text-[11px]">Last synced</p>

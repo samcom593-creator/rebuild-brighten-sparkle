@@ -69,7 +69,7 @@ async function sendSMS(app: App): Promise<{ ok: boolean; error?: string }> {
   const first = app.first_name || "there";
   const body = app.license_status === "licensed"
     ? `${first} — Sam here. You're licensed, so you skip the course and go straight to contracting. Book 15 min: ${CALENDLY_LICENSED}`
-    : `${first} — Sam at APEX. We pay for your licensing course and you're producing in ~2 weeks. Next step: ${GET_LICENSED_URL}`;
+    : `${first} — Sam at Galaxy. We pay for your licensing course and you're producing in ~2 weeks. Next step: ${GET_LICENSED_URL}`;
   const res = await supabase.functions.invoke("send-sms-auto-detect", {
     body: { phone: app.phone, message: body, applicationId: app.id },
   });
@@ -97,12 +97,12 @@ async function sendEmail(app: App): Promise<{ ok: boolean; error?: string }> {
     : `<a href="${GET_LICENSED_URL}" style="display:inline-block;background:#0f172a;color:#fff;padding:12px 22px;border-radius:6px;text-decoration:none;font-weight:600">Start the licensing path</a>`;
   const html = `<!doctype html><html><body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,Segoe UI,Arial,sans-serif;color:#0f172a;line-height:1.5">
 <div style="max-width:520px;margin:0 auto;padding:28px 22px">
-<div style="font-weight:700;letter-spacing:0.5px;font-size:13px;margin-bottom:8px">APEX</div>
+<div style="font-weight:700;letter-spacing:0.5px;font-size:13px;margin-bottom:8px">Galaxy</div>
 <p style="margin:0 0 14px">${first},</p>
 <p style="margin:0 0 14px">You applied ${age} days ago and I haven't heard back. Two questions:</p>
 <ol style="padding-left:18px;margin:0 0 18px"><li>Still want in?</li><li>If yes, hit the button. If no, reply STOP and I'll close your file.</li></ol>
 <div style="margin:22px 0">${cta}</div>
-<p style="color:#475569;font-size:13px;margin:24px 0 0">— Sam James · Managing Partner, APEX Financial</p>
+<p style="color:#475569;font-size:13px;margin:24px 0 0">— Sam James · Managing Partner, Galaxy Financial</p>
 </div></body></html>`;
   try {
     await resend.emails.send({

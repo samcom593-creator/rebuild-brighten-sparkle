@@ -72,8 +72,8 @@ const Index = () => {
 
   useEffect(() => {
     const previousTitle = document.title;
-    document.title = "APEX Financial · Operating System for Elite Insurance Agencies";
-    const description = "APEX helps ambitious producers and agency builders scale with contracting, training, carrier access, and live production operations.";
+    document.title = "Galaxy Financial · Operating System for Elite Insurance Agencies";
+    const description = "Galaxy helps ambitious producers and agency builders scale with contracting, training, carrier access, and live production operations.";
     const meta = document.querySelector<HTMLMetaElement>('meta[name="description"]');
     const previousDescription = meta?.content;
     if (meta) meta.content = description;

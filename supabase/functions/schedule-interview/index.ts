@@ -6,7 +6,7 @@ const corsHeaders = {
 };
 
 const ADMIN_EMAIL = "info@kingofsales.net";
-const FROM_EMAIL = "APEX Financial <notifications@apex-financial.org>";
+const FROM_EMAIL = "Galaxy Financial <notifications@apex-financial.org>";
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -140,7 +140,7 @@ Deno.serve(async (req: Request) => {
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0f1117; color: #e2e8f0; border-radius: 12px; overflow: hidden;">
         <div style="background: linear-gradient(135deg, #1a1f2e, #0f1117); padding: 32px; text-align: center; border-bottom: 1px solid #2d3748;">
           <h1 style="margin: 0; font-size: 24px; font-weight: 700; color: #ffffff;">Interview Scheduled</h1>
-          <p style="margin: 8px 0 0; color: #94a3b8; font-size: 14px;">APEX Financial</p>
+          <p style="margin: 8px 0 0; color: #94a3b8; font-size: 14px;">Galaxy Financial</p>
         </div>
         <div style="padding: 32px;">
           <p style="font-size: 16px; margin: 0 0 24px;">Hi ${app.first_name},</p>
@@ -182,7 +182,7 @@ Deno.serve(async (req: Request) => {
           </p>
         </div>
         <div style="padding: 20px 32px; border-top: 1px solid #2d3748; text-align: center;">
-          <p style="font-size: 11px; color: #475569; margin: 0;">Powered by <strong style="color: #6366f1;">APEX Financial</strong></p>
+          <p style="font-size: 11px; color: #475569; margin: 0;">Powered by <strong style="color: #6366f1;">Galaxy Financial</strong></p>
         </div>
       </div>
     `;

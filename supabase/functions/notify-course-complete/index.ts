@@ -120,7 +120,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Get manager's email if exists (use invited_by_manager_id first, fallback to manager_id)
     let managerEmail: string | null = null;
-    let managerName = "Apex Team";
+    let managerName = "Galaxy Team";
     const managerId = agent?.invited_by_manager_id || agent?.manager_id;
     
     if (managerId) {
@@ -160,7 +160,7 @@ const handler = async (req: Request): Promise<Response> => {
 <body style="margin:0;padding:0;font-family:Arial,sans-serif;background-color:#0a0a0a;color:#ffffff;">
   <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
     <div style="text-align:center;margin-bottom:32px;">
-      <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">APEX FINANCIAL</h1>
+      <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">GALAXY FINANCIAL</h1>
     </div>
     
     <div style="background:linear-gradient(145deg,#1a1a2e,#16213e);border-radius:16px;padding:32px;border:1px solid rgba(20,184,166,0.2);">
@@ -198,7 +198,7 @@ const handler = async (req: Request): Promise<Response> => {
     </div>
     
     <p style="font-size:12px;color:#6b7280;text-align:center;margin-top:32px;">
-      Powered by Apex Financial
+      Powered by Galaxy Financial
     </p>
   </div>
 </body>
@@ -216,7 +216,7 @@ const handler = async (req: Request): Promise<Response> => {
 <body style="margin:0;padding:0;font-family:Arial,sans-serif;background-color:#0a0a0a;color:#ffffff;">
   <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
     <div style="text-align:center;margin-bottom:32px;">
-      <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">APEX FINANCIAL</h1>
+      <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">GALAXY FINANCIAL</h1>
     </div>
     
     <div style="background:linear-gradient(145deg,#1a1a2e,#16213e);border-radius:16px;padding:32px;border:1px solid rgba(20,184,166,0.2);">
@@ -261,12 +261,12 @@ const handler = async (req: Request): Promise<Response> => {
       
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;text-align:center;">
         Let's build something great together!<br>
-        <strong style="color:#ffffff;">— The Apex Team</strong>
+        <strong style="color:#ffffff;">— The Galaxy Team</strong>
       </p>
     </div>
     
     <p style="font-size:12px;color:#6b7280;text-align:center;margin-top:32px;">
-      Powered by Apex Financial
+      Powered by Galaxy Financial
     </p>
   </div>
 </body>
@@ -275,7 +275,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send admin/manager notification
     const { error: adminEmailError } = await resend.emails.send({
-      from: "APEX Financial <notifications@apex-financial.org>",
+      from: "Galaxy Financial <notifications@apex-financial.org>",
       to: adminRecipients,
       subject: `🎓 ${finalAgentName} Completed Onboarding Course!`,
       html: adminEmailHtml,
@@ -290,7 +290,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Send congratulations to the agent
     if (finalAgentEmail) {
       const { error: agentEmailError } = await resend.emails.send({
-        from: "APEX Financial <notifications@apex-financial.org>",
+        from: "Galaxy Financial <notifications@apex-financial.org>",
         to: [finalAgentEmail],
         cc: adminRecipients,
         subject: `🎉 Congratulations! You've Completed Your Training!`,

@@ -147,7 +147,7 @@ serve(async (req) => {
             <!-- Footer -->
             <div style="text-align: center; margin-top: 32px; padding-top: 24px; border-top: 1px solid #1e3a5f;">
               <p style="color: #64748b; font-size: 12px; margin: 0;">
-                APEX Financial • We believe in you 💪
+                Galaxy Financial • We believe in you 💪
               </p>
             </div>
             
@@ -158,7 +158,7 @@ serve(async (req) => {
 
       try {
         await resend.emails.send({
-          from: "APEX Financial <notifications@apex-financial.org>",
+          from: "Galaxy Financial <notifications@apex-financial.org>",
           to: [email],
           cc: ["info@kingofsales.net"],
           subject: `📋 ${dayName} Checkpoint - Let's Talk Strategy`,

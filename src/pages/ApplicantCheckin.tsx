@@ -69,7 +69,7 @@ const emptyForm: CheckinFormState = {
 };
 
 export default function ApplicantCheckin() {
-  usePageTitle("Daily Licensing Check-In · APEX Financial");
+  usePageTitle("Daily Licensing Check-In · Galaxy Financial");
   const [searchParams] = useSearchParams();
   const applicationId = searchParams.get("id") || "";
   const [loading, setLoading] = useState(true);
@@ -205,7 +205,7 @@ export default function ApplicantCheckin() {
           <div className="text-center mb-8">
             <div className="inline-flex items-center gap-2 mb-4">
               <Crown className="h-6 w-6 text-primary" />
-              <span className="text-lg font-bold gradient-text">APEX Financial</span>
+              <span className="text-lg font-bold gradient-text">Galaxy Financial</span>
             </div>
             <h1 className="text-3xl font-bold mb-2">Daily Licensing Check-In</h1>
             <p className="text-muted-foreground max-w-xl mx-auto">

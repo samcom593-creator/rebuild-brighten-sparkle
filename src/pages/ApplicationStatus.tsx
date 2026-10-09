@@ -10,7 +10,7 @@ import { useApplicationStatus } from "@/hooks/useApplicationStatus";
 // owns it, and what the next move is. The RPC is SECURITY DEFINER + only
 // returns by id, so no auth required.
 export default function ApplicationStatus() {
-  usePageTitle("Your APEX Application Status");
+  usePageTitle("Your Galaxy Application Status");
   const { applicationId } = useParams<{ applicationId: string }>();
   // react-query result: the snapshot is on .data.
   const { data: snap, isLoading } = useApplicationStatus(applicationId ?? null);

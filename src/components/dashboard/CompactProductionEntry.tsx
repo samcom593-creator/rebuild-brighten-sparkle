@@ -430,7 +430,7 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
                     className="text-xs text-muted-foreground hover:text-primary gap-2"
                     onClick={() => {
                       navigator.share({
-                        title: "APEX Daily Numbers",
+                        title: "Galaxy Daily Numbers",
                         text: "Log your numbers in under 30 seconds!",
                         url: `${window.location.origin}/numbers`,
                       });

@@ -14,12 +14,12 @@ describe("licensed and unlicensed onboarding email policy", () => {
 
   it("gives both license cohorts an ordered roadmap with community, account, and training steps", () => {
     for (const expected of [
-      "Join the APEX Slack",
-      "Set Up Your APEX Account",
+      "Join the Galaxy Slack",
+      "Set Up Your Galaxy Account",
       "Set Up Your Course Account",
-      "Open Your APEX Roadmap",
+      "Open Your Galaxy Roadmap",
       "Finish Online Training",
-      "Complete APEX Contracting",
+      "Complete Galaxy Contracting",
     ]) {
       expect(licensing).toContain(expected);
     }
@@ -44,14 +44,14 @@ describe("licensed and unlicensed onboarding email policy", () => {
     expect(welcome).not.toMatch(/whatsapp/i);
   });
 
-  it("uses the APEX licensed curriculum instead of sending licensed agents to prelicensing", () => {
-    expect(queueWorker).toContain("Your APEX online training is ready");
+  it("uses the Galaxy licensed curriculum instead of sending licensed agents to prelicensing", () => {
+    expect(queueWorker).toContain("Your Galaxy online training is ready");
     expect(queueWorker).toContain("dashboard/training/library");
-    expect(queueWorker).not.toContain("Your APEX prelicensing course access is ready");
+    expect(queueWorker).not.toContain("Your Galaxy prelicensing course access is ready");
     expect(course).toContain("Your next-step roadmap");
-    expect(course).toContain("Join the APEX Slack");
-    expect(queueWorker).toContain("Join the APEX Slack");
-    expect(queueWorker).not.toMatch(/discord\.gg|Join the APEX Discord|Join Discord/);
+    expect(course).toContain("Join the Galaxy Slack");
+    expect(queueWorker).toContain("Join the Galaxy Slack");
+    expect(queueWorker).not.toMatch(/discord\.gg|Join the Galaxy Discord|Join Discord/);
     expect(course).not.toMatch(/whatsapp/i);
     expect(queueWorker.match(/Slack is your <strong>primary team hub<\/strong>/g)).toHaveLength(1);
   });

@@ -97,7 +97,7 @@ export async function postNtfyGraded(url: string, opts: NtfyOptions): Promise<Nt
   // Title/Click are HTTP headers, so they are ByteStrings: an emoji subject
   // throws while the Request is being CONSTRUCTED, before any status exists.
   const headers: Record<string, string> = {
-    Title: headerSafe(String(opts.title ?? "APEX alert").slice(0, 200)),
+    Title: headerSafe(String(opts.title ?? "Galaxy alert").slice(0, 200)),
     Priority: opts.priority ?? "4",
   };
   if (opts.tags) headers.Tags = headerSafe(opts.tags);

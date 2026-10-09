@@ -211,7 +211,7 @@ serve(async (req) => {
           const adminName = adminProfile.full_name || "Admin";
 
           await resend.emails.send({
-            from: "APEX Financial <notifications@apex-financial.org>",
+            from: "Galaxy Financial <notifications@apex-financial.org>",
             to: [adminProfile.email],
             subject: "🎉 New Manager Account Created",
             html: `
@@ -256,7 +256,7 @@ serve(async (req) => {
                   </div>
                   <div style="background: rgba(0, 0, 0, 0.3); padding: 20px; text-align: center; border-top: 1px solid rgba(212, 175, 55, 0.2);">
                     <p style="color: #666; font-size: 12px; margin: 0;">
-                      © ${new Date().getFullYear()} APEX Financial. All rights reserved.
+                      © ${new Date().getFullYear()} Galaxy Financial. All rights reserved.
                     </p>
                   </div>
                 </div>

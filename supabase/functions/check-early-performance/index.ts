@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
             headers: { Authorization: `Bearer ${serviceKey}`, "Content-Type": "application/json" },
             body: JSON.stringify({
               to: phone,
-              message: `APEX: ${firstName} — your manager wants to connect this week to help you hit your first big deal. What time works? Reply with your availability.`,
+              message: `Galaxy: ${firstName} — your manager wants to connect this week to help you hit your first big deal. What time works? Reply with your availability.`,
             }),
           }).catch(console.error);
         }
@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
                 method: "POST",
                 headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
                 body: JSON.stringify({
-                  from: "APEX Alerts <alerts@apex-financial.org>",
+                  from: "Galaxy Alerts <alerts@apex-financial.org>",
                   to: [mgrProfile.email],
                   subject: `⚠️ Early Performance Alert: ${agent.display_name}`,
                   html: `<p><strong>${agent.display_name}</strong> is at <strong>${Math.round(performanceRatio * 100)}%</strong> of expected pace after ${daysActive} days ($${Math.round(totalALP)} actual vs $${Math.round(expectedALP)} expected). Needs coaching.</p>`,

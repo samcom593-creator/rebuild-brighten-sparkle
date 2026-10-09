@@ -123,7 +123,7 @@ export function AgentActionsMenu({
       </PopoverTrigger>
       <PopoverContent align="end" className="w-64 p-2">
         <p className="px-2 py-1 text-[12px] uppercase tracking-[0.18em] text-muted-foreground">
-          Next Apex seminars
+          Next Galaxy seminars
         </p>
         <div className="mt-1 flex flex-col gap-1">
           {slots.map((slot) => {

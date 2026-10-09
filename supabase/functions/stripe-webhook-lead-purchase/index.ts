@@ -20,10 +20,10 @@ const corsHeaders = {
 };
 
 const MENTORSHIP_PRODUCTS: Record<string, { tier: string; tier_label: string; value_cents: number }> = {
-  prod_UXlEPjc7OazR7x: { tier: "inner_circle",  tier_label: "APEX Inner Circle",   value_cents: 250000 },
-  prod_UXlEsTAPbm1GPx: { tier: "one_on_one",    tier_label: "APEX 1:1",            value_cents: 500000 },
-  prod_UXlEm6O0YZpaSO: { tier: "sales_academy", tier_label: "APEX Sales Academy",  value_cents:  99700 },
-  prod_UXlEFTVsPsUrBE: { tier: "apex_fit",      tier_label: "APEX Fit",            value_cents:  49700 },
+  prod_UXlEPjc7OazR7x: { tier: "inner_circle",  tier_label: "Galaxy Inner Circle",   value_cents: 250000 },
+  prod_UXlEsTAPbm1GPx: { tier: "one_on_one",    tier_label: "Galaxy 1:1",            value_cents: 500000 },
+  prod_UXlEm6O0YZpaSO: { tier: "sales_academy", tier_label: "Galaxy Sales Academy",  value_cents:  99700 },
+  prod_UXlEFTVsPsUrBE: { tier: "apex_fit",      tier_label: "Galaxy Fit",            value_cents:  49700 },
 };
 
 serve(async (req) => {

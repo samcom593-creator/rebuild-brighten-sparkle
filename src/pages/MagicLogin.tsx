@@ -15,7 +15,7 @@ interface ErrorInfo {
 }
 
 export default function MagicLogin() {
-  usePageTitle("Secure Login Link · APEX Financial");
+  usePageTitle("Secure Login Link · Galaxy Financial");
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [state, setState] = useState<LoginState>("verifying");
@@ -313,7 +313,7 @@ export default function MagicLogin() {
           {/* Footer */}
           <div className="mt-8 pt-6 border-t border-border/50 text-center">
             <p className="text-xs text-muted-foreground">
-              APEX Financial Empire
+              Galaxy Financial
             </p>
           </div>
         </div>

@@ -31,7 +31,7 @@ const steps = [
 ];
 
 export default function UnlicensedOverview() {
-  usePageTitle("Your first 2 months at APEX — from unlicensed to first check");
+  usePageTitle("Your first 2 months at Galaxy — from unlicensed to first check");
 
   return (
     <main
@@ -41,14 +41,14 @@ export default function UnlicensedOverview() {
       <section className="px-5 pt-16 pb-12 sm:pt-24 sm:pb-16 max-w-2xl mx-auto">
         <div className="text-center">
           <p className="text-xs sm:text-sm uppercase tracking-[0.18em] text-teal-400 font-semibold mb-4">
-            Apex Financial
+            Galaxy Financial
           </p>
           <h1 className="text-3xl sm:text-5xl font-bold leading-tight">
             From unlicensed to your first commission check.
           </h1>
           <p className="mt-5 text-base sm:text-lg text-muted-foreground leading-relaxed">
             Here's exactly how new unlicensed agents go from zero to their first
-            paid policy at Apex, and what we cover on a call together.
+            paid policy at Galaxy, and what we cover on a call together.
           </p>
         </div>
 
@@ -122,7 +122,7 @@ export default function UnlicensedOverview() {
         </div>
 
         <p className="mt-10 text-center text-xs text-muted-foreground">
-          Apex Financial &nbsp;|&nbsp; sam@apex-financial.org
+          Galaxy Financial &nbsp;|&nbsp; sam@apex-financial.org
         </p>
       </section>
     </main>

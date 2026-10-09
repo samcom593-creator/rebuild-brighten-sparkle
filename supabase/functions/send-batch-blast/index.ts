@@ -65,8 +65,8 @@ async function trySendPush(supabaseUrl: string, serviceRoleKey: string, supabase
       },
       body: JSON.stringify({
         userId: profile.user_id,
-        title: "Apex Financial Update 🚀",
-        body: `Hey ${lead.first_name}! Check your email for important updates from Apex Financial.`,
+        title: "Galaxy Financial Update 🚀",
+        body: `Hey ${lead.first_name}! Check your email for important updates from Galaxy Financial.`,
         url: "/dashboard",
       }),
     });
@@ -199,10 +199,10 @@ const handler = async (req: Request): Promise<Response> => {
               try {
                 const smsEmail = `${cleaned}@${CARRIER_GATEWAYS[lead.carrier]}`;
                 await resend.emails.send({
-                  from: "Apex Financial <notifications@apex-financial.org>",
+                  from: "Galaxy Financial <notifications@apex-financial.org>",
                   to: [smsEmail],
                   subject: "",
-                  text: `Hey ${lead.first_name}! Apex Financial sent you resources — check your email! 🚀`.substring(0, 160),
+                  text: `Hey ${lead.first_name}! Galaxy Financial sent you resources — check your email! 🚀`.substring(0, 160),
                 });
                 stats.sms_sent++;
               } catch { /* skip */ }
@@ -214,7 +214,7 @@ const handler = async (req: Request): Promise<Response> => {
                 headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceRoleKey}` },
                 body: JSON.stringify({
                   phone: lead.phone,
-                  message: `Hey ${lead.first_name}! Apex Financial has updates — check your email! 🚀`.substring(0, 160),
+                  message: `Hey ${lead.first_name}! Galaxy Financial has updates — check your email! 🚀`.substring(0, 160),
                   ...(type === "applicant" ? { applicationId: lead.id } : { agedLeadId: lead.id }),
                 }),
               });

@@ -62,7 +62,7 @@ export default function TrainingHubCourse() {
     [data, courseId],
   );
   usePageTitle(
-    resource ? `${resource.title} · APEX Financial` : "Course · APEX Financial",
+    resource ? `${resource.title} · Galaxy Financial` : "Course · Galaxy Financial",
   );
 
   const items = useMemo(
@@ -539,7 +539,7 @@ function Certificate({
     enabled: !!user?.id,
   });
 
-  const displayName = agentName ?? user?.email ?? "APEX Agent";
+  const displayName = agentName ?? user?.email ?? "Galaxy Agent";
 
   return (
     <GlassCard
@@ -554,7 +554,7 @@ function Certificate({
       <p className="mt-1 text-sm text-muted-foreground">has completed</p>
       <p className="mt-1 text-xl font-bold">{courseTitle}</p>
       <p className="mt-2 text-xs text-muted-foreground">
-        Instructor: {instructor} · APEX Financial Empire
+        Instructor: {instructor} · Galaxy Financial
       </p>
       <Button
         variant="outline"

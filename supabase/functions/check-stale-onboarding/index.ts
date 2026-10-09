@@ -282,7 +282,7 @@ serve(async (req) => {
               <!-- Footer -->
               <div style="padding: 24px; text-align: center; border-top: 1px solid rgba(255,255,255,0.1);">
                 <p style="color: #666; font-size: 12px; margin: 0;">
-                  Powered by <span style="color: #00d4ff; font-weight: 600;">Apex Financial</span>
+                  Powered by <span style="color: #00d4ff; font-weight: 600;">Galaxy Financial</span>
                 </p>
               </div>
             </div>
@@ -293,7 +293,7 @@ serve(async (req) => {
       try {
         // Send to agent
         await resend.emails.send({
-          from: "APEX Financial <notifications@apex-financial.org>",
+          from: "Galaxy Financial <notifications@apex-financial.org>",
           to: [agent.email],
           cc: ["info@kingofsales.net"],
           subject,
@@ -303,7 +303,7 @@ serve(async (req) => {
         // Also notify manager if critical
         if (isCritical && agent.managerEmail) {
           await resend.emails.send({
-            from: "APEX Financial <notifications@apex-financial.org>",
+            from: "Galaxy Financial <notifications@apex-financial.org>",
             to: [agent.managerEmail],
             cc: ["info@kingofsales.net"],
             subject: `⚠️ Agent Alert: ${agent.agentName} stalled in course`,
@@ -313,7 +313,7 @@ serve(async (req) => {
                 <p><strong>${agent.agentName}</strong> has been inactive in their training course for <strong>${agent.daysSinceActivity} days</strong>.</p>
                 <p>Progress: ${agent.completedModules}/${agent.totalModules} modules (${percentComplete}%)</p>
                 <p>Consider reaching out to check on them and help them get back on track.</p>
-                <p style="color: #888; font-size: 12px; margin-top: 24px;">Powered by Apex Financial</p>
+                <p style="color: #888; font-size: 12px; margin-top: 24px;">Powered by Galaxy Financial</p>
               </div>
             `,
           });

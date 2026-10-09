@@ -156,7 +156,7 @@ function HubUnreachable({
 }
 
 export default function TrainingHub() {
-  usePageTitle("Training Hub · APEX Financial");
+  usePageTitle("Training Hub · Galaxy Financial");
   const { user, isAdmin, isManager, isVaManager } = useAuth();
   const { data, isLoading, isError, refetch, isRefetching } = useHubData();
 
@@ -380,7 +380,7 @@ export default function TrainingHub() {
       )}
 
       <p className="pt-4 text-center text-xs text-muted-foreground">
-        APEX Financial Empire · Internal agent resources · Confidential — do not distribute.
+        Galaxy Financial · Internal agent resources · Confidential — do not distribute.
       </p>
     </div>
   );

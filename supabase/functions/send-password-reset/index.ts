@@ -203,13 +203,13 @@ const handler = async (req: Request): Promise<Response> => {
         const firstName = profile.full_name?.split(" ")[0] || "there";
 
         await resend.emails.send({
-           from: "APEX Financial <notifications@apex-financial.org>",
+           from: "Galaxy Financial <notifications@apex-financial.org>",
           to: [normalizedEmail],
-          subject: "Your New Login Link – APEX",
+          subject: "Your New Login Link – Galaxy",
           html: `
             <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 20px;">
               <div style="text-align: center; margin-bottom: 24px;">
-                <h1 style="font-size: 24px; font-weight: 700; color: #1a1a2e; margin: 0;">APEX Financial</h1>
+                <h1 style="font-size: 24px; font-weight: 700; color: #1a1a2e; margin: 0;">Galaxy Financial</h1>
               </div>
               <p style="font-size: 16px; color: #333; margin-bottom: 16px;">Hey ${firstName},</p>
               <p style="font-size: 14px; color: #555; margin-bottom: 24px;">Here's your new login link. Click below to access your portal:</p>
@@ -226,7 +226,7 @@ const handler = async (req: Request): Promise<Response> => {
               </div>
               <p style="font-size: 12px; color: #999; text-align: center;">This link expires in 24 hours.</p>
               <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
-              <p style="font-size: 11px; color: #aaa; text-align: center;">Powered by Apex Financial</p>
+              <p style="font-size: 11px; color: #aaa; text-align: center;">Powered by Galaxy Financial</p>
             </div>
           `,
         });
@@ -287,13 +287,13 @@ const handler = async (req: Request): Promise<Response> => {
     // account is known to exist, so a send failure must not surface as a 500.
     try {
       await resend.emails.send({
-        from: "APEX Financial <notifications@apex-financial.org>",
+        from: "Galaxy Financial <notifications@apex-financial.org>",
         to: [normalizedEmail],
-        subject: "Reset Your Password – APEX",
+        subject: "Reset Your Password – Galaxy",
         html: `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 20px;">
             <div style="text-align: center; margin-bottom: 24px;">
-              <h1 style="font-size: 24px; font-weight: 700; color: #1a1a2e; margin: 0;">APEX Financial</h1>
+              <h1 style="font-size: 24px; font-weight: 700; color: #1a1a2e; margin: 0;">Galaxy Financial</h1>
             </div>
             <p style="font-size: 16px; color: #333; margin-bottom: 16px;">Hey ${firstName},</p>
             <p style="font-size: 14px; color: #555; margin-bottom: 24px;">We received a request to reset your password. Click the button below to set a new password:</p>
@@ -310,7 +310,7 @@ const handler = async (req: Request): Promise<Response> => {
             </div>
             <p style="font-size: 12px; color: #999; text-align: center;">If you didn't request this, you can safely ignore this email.</p>
             <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
-            <p style="font-size: 11px; color: #aaa; text-align: center;">Powered by Apex Financial</p>
+            <p style="font-size: 11px; color: #aaa; text-align: center;">Powered by Galaxy Financial</p>
           </div>
         `,
       });

@@ -67,7 +67,7 @@ const money = (value: number | string | null | undefined) =>
     .format(Number(value ?? 0));
 
 export default function DashboardToday() {
-  usePageTitle("APEX Today");
+  usePageTitle("Galaxy Today");
   const { user } = useAuth();
   const qc = useQueryClient();
   const today = format(new Date(), "yyyy-MM-dd");
@@ -173,7 +173,7 @@ export default function DashboardToday() {
 
   return (
     <div className="page-enter px-4 sm:px-6 pb-24 space-y-5 max-w-4xl mx-auto">
-      <PageHeader eyebrow={format(new Date(), "EEEE · MMM d")} title="APEX Today" subtitle="One screen. Every item leads to an action." />
+      <PageHeader eyebrow={format(new Date(), "EEEE · MMM d")} title="Galaxy Today" subtitle="One screen. Every item leads to an action." />
 
       <Section title="NOW" icon={<PlayCircle className="h-4 w-4 text-emerald-500" />}>
         {nowTask ? <TaskCard task={nowTask} onToggle={() => toggleTask.mutate(nowTask)} /> : <Empty text="No open task. Use the next meeting or content action below." />}

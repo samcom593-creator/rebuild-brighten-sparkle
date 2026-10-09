@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
           headers: { Authorization: `Bearer ${serviceKey}`, "Content-Type": "application/json" },
           body: JSON.stringify({
             to: phone,
-            message: `APEX: ${firstName} — don't forget to log your numbers today! https://apex-financial.org/numbers`,
+            message: `Galaxy: ${firstName} — don't forget to log your numbers today! https://apex-financial.org/numbers`,
           }),
         }).catch(console.error);
         alerts++;
@@ -94,7 +94,7 @@ Deno.serve(async (req) => {
             headers: { Authorization: `Bearer ${serviceKey}`, "Content-Type": "application/json" },
             body: JSON.stringify({
               to: phone,
-              message: `APEX: ${firstName} — 2 days no numbers. Your manager has been notified. Log now: https://apex-financial.org/numbers`,
+              message: `Galaxy: ${firstName} — 2 days no numbers. Your manager has been notified. Log now: https://apex-financial.org/numbers`,
             }),
           }).catch(console.error);
         }
@@ -117,7 +117,7 @@ Deno.serve(async (req) => {
                 method: "POST",
                 headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
                 body: JSON.stringify({
-                  from: "APEX Alerts <alerts@apex-financial.org>",
+                  from: "Galaxy Alerts <alerts@apex-financial.org>",
                   to: [mgrProfile.email],
                   subject: `⚠️ ${agent.display_name} — 2 days no production`,
                   html: `<p>${agent.display_name} hasn't logged production in 2 days. Please reach out.</p>`,
@@ -135,7 +135,7 @@ Deno.serve(async (req) => {
             headers: { Authorization: `Bearer ${serviceKey}`, "Content-Type": "application/json" },
             body: JSON.stringify({
               to: phone,
-              message: `APEX: ${firstName} — ${consecutiveMissed} days without numbers. This affects your standing on the team. Log now.`,
+              message: `Galaxy: ${firstName} — ${consecutiveMissed} days without numbers. This affects your standing on the team. Log now.`,
             }),
           }).catch(console.error);
         }
@@ -145,7 +145,7 @@ Deno.serve(async (req) => {
             method: "POST",
             headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
             body: JSON.stringify({
-              from: "APEX Alerts <alerts@apex-financial.org>",
+              from: "Galaxy Alerts <alerts@apex-financial.org>",
               to: ["info@kingofsales.net"],
               subject: `🚨 PRODUCTION GAP: ${agent.display_name} — ${consecutiveMissed} consecutive days`,
               html: `<p><strong>${agent.display_name}</strong> has not logged production in <strong>${consecutiveMissed} consecutive days</strong>.</p>`,

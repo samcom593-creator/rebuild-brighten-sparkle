@@ -129,7 +129,7 @@ interface Insights {
 }
 
 export default function BusinessAnalytics() {
-  usePageTitle("Business Analytics · APEX");
+  usePageTitle("Business Analytics · Galaxy");
 
   const summary = useQuery({
     queryKey: ["business-analytics-summary"],

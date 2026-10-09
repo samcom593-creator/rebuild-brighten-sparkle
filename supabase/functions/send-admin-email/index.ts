@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
     }
     const resend = new Resend(resendKey);
     const result = await resend.emails.send({
-      from: from || "Sam at APEX <sam@apex-financial.org>",
+      from: from || "Sam at Galaxy <sam@apex-financial.org>",
       to,
       subject,
       html: html || `<pre>${text}</pre>`,

@@ -195,7 +195,7 @@ function PlaqueFace({ row }: { row: PlaqueRow }) {
 
       <div className="relative flex h-full flex-col">
         <div className="flex items-baseline gap-1.5">
-          <span className="text-[12px] font-extrabold tracking-[0.18em] text-primary">APEX</span>
+          <span className="text-[12px] font-extrabold tracking-[0.18em] text-primary">Galaxy</span>
           <span className="text-[12px] font-medium tracking-[0.18em] text-foreground/80">FINANCIAL</span>
         </div>
         <div className="mt-1 h-px w-10 bg-primary/60" />

@@ -616,7 +616,7 @@ const LeadCard = memo(function LeadCard({
                   onClick={async () => {
                     try {
                       const result = await invokeEdge("send-notification", {
-                        email: lead.email, title: "Apex Financial", message: `Hey ${lead.first_name}, following up on your application!`,
+                        email: lead.email, title: "Galaxy Financial", message: `Hey ${lead.first_name}, following up on your application!`,
                       });
                       toast.success(`Notification sent! ${result.channelSummary || ""}`);
                       onXP(XP_REWARDS.contact, "🔔 Push sent!");
@@ -632,7 +632,7 @@ const LeadCard = memo(function LeadCard({
                     onClick={async () => {
                       try {
                         await invokeEdge("send-sms-auto-detect", {
-                          phone: lead.phone, message: `Hey ${lead.first_name}, just following up on your Apex Financial application! Reply or call us back.`, applicationId: lead.id,
+                          phone: lead.phone, message: `Hey ${lead.first_name}, just following up on your Galaxy Financial application! Reply or call us back.`, applicationId: lead.id,
                         });
                         toast.success("SMS sent!");
                         onXP(XP_REWARDS.contact, "💬 SMS sent!");

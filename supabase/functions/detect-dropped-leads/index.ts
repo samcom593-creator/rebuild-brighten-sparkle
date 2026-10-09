@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
         method: "POST",
         headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          from: "APEX Alerts <alerts@apex-financial.org>",
+          from: "Galaxy Alerts <alerts@apex-financial.org>",
           to: ["info@kingofsales.net"],
           subject: `⚠️ ${droppedLeads.length} Dropped Leads — No contact in 48+ hours`,
           html: `<div style="background:#030712;color:white;font-family:sans-serif;padding:32px;max-width:600px;margin:0 auto">
@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
           headers: { Authorization: `Bearer ${serviceKey}`, "Content-Type": "application/json" },
           body: JSON.stringify({
             to: lead.phone,
-            message: `Hi ${lead.first_name}! This is APEX Financial following up on your application. We'd love to connect — reply or call us at your convenience.`,
+            message: `Hi ${lead.first_name}! This is Galaxy Financial following up on your application. We'd love to connect — reply or call us at your convenience.`,
           }),
         }).catch(console.error);
         smsCount++;

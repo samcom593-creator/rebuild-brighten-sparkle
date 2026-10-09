@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
       <p style="font-size:28px;font-weight:bold;color:#ffffff;margin:0 0 8px;">${hirerName} just ${verb}</p>
       <p style="font-size:32px;font-weight:bold;color:#00d4aa;margin:0;">${hireeName}! 🎉</p>
     </div>
-    <p style="color:#666;font-size:11px;margin-top:20px;">Powered by Apex Financial</p>
+    <p style="color:#666;font-size:11px;margin-top:20px;">Powered by Galaxy Financial</p>
   </div>
 </body>
 </html>`;
@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "APEX Financial <notifications@apex-financial.org>",
+        from: "Galaxy Financial <notifications@apex-financial.org>",
         to: allRecipients,
         subject,
         html,

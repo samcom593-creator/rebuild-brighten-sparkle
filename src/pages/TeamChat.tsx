@@ -87,7 +87,7 @@ export default function TeamChat() {
           <MessageSquare className="h-5 w-5 text-primary" />
         </div>
         <div className="flex-1">
-          <h1 className="apex-headline text-2xl md:text-3xl font-bold">APEX Team Chat</h1>
+          <h1 className="apex-headline text-2xl md:text-3xl font-bold">Galaxy Team Chat</h1>
           <p className="text-xs text-muted-foreground">Live · everyone on the roster sees this.</p>
         </div>
         <Badge variant="outline" className="text-[11px] border-emerald-500/40 text-emerald-300"><span className="radar-pulse inline-block h-1.5 w-1.5 rounded-full bg-emerald-400 mr-1.5 align-middle" />LIVE</Badge>

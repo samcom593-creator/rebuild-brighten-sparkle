@@ -719,8 +719,8 @@ export default function InterviewRecovery() {
               </p>
               <ul className="space-y-2">
                 {(current.call_track === "licensed"
-                  ? ["Confirm license + states", "Current production", "Why leaving", "Apex comp", "Close to contracting"]
-                  : ["Team size today", "Income goal", "Leadership history", "Apex override structure", "Close to next step"]
+                  ? ["Confirm license + states", "Current production", "Why leaving", "Galaxy comp", "Close to contracting"]
+                  : ["Team size today", "Income goal", "Leadership history", "Galaxy override structure", "Close to next step"]
                 ).map((line) => (
                   <li key={line} className="flex items-start gap-2">
                     <ArrowRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
@@ -1184,10 +1184,10 @@ function UnmatchedPanel({
 }) {
   const why =
     matchCandidates === undefined
-      ? "Booked through Calendly without an APEX application. Everything known about them is below."
+      ? "Booked through Calendly without an Galaxy application. Everything known about them is below."
       : matchCandidates > 0
-        ? `Booked through Calendly without an APEX application. ${matchCandidates} record${matchCandidates === 1 ? "" : "s"} in the system could be this person — nothing is linked yet.`
-        : "Booked through Calendly without an APEX application, and no record in the system looks like them. This booking is everything Apex knows.";
+        ? `Booked through Calendly without an Galaxy application. ${matchCandidates} record${matchCandidates === 1 ? "" : "s"} in the system could be this person — nothing is linked yet.`
+        : "Booked through Calendly without an Galaxy application, and no record in the system looks like them. This booking is everything Galaxy knows.";
 
   return (
     <div className="rounded-lg border border-amber-500/35 bg-amber-500/5 p-3 sm:p-4">
@@ -1400,7 +1400,7 @@ function ProspectQueue({
         </span>
       </div>
       <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
-        Licensed agents and team leaders who booked a call and exist nowhere else in Apex — no application,
+        Licensed agents and team leaders who booked a call and exist nowhere else in Galaxy — no application,
         so no other screen in this product knows they are here.
       </p>
 

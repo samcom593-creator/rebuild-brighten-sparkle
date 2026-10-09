@@ -213,6 +213,7 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
       { label: "Contracting Ops", href: "/dashboard/contracting/ops", icon: Target, adminOnly: true },
       { label: "Contract Requests", href: "/dashboard/contracting/requests", icon: FileSearch, adminOnly: true },
       { label: "Ethos Contracting", href: "/dashboard/contracting/ethos", icon: FileSearch, adminOnly: true },
+      { label: "Aflac onboarding", href: "/dashboard/contracting/aflac", icon: FileSearch, adminOnly: true },
       { label: "Import", href: "/dashboard/import", icon: Import, adminOnly: true },
     ],
   },
@@ -270,6 +271,7 @@ export function agentCloudPathIsActive(pathname: string, href: string): boolean 
 const ROUTE_CRUMBS: Record<string, string[]> = {
   "/dashboard/contracting/cases": ["Contracting", "Contracting cases"],
   "/dashboard/contracting/ethos": ["Contracting", "Ethos Contracting"],
+  "/dashboard/contracting/aflac": ["Contracting", "Aflac onboarding"],
   "/dashboard/recruiting/pipeline": ["Grow", "Recruit Pipeline"],
   "/dashboard/recruiting/hires": ["Grow", "Recruit Pipeline"],
   "/dashboard/book-of-business": ["My Business", "Retention"],

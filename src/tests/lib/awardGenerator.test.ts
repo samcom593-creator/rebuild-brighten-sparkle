@@ -194,7 +194,7 @@ describe("getAwardCaption — output", () => {
 
   it("falls back to generic caption for unknown type", () => {
     const caption = getAwardCaption({ awardType: "unknown_award" as AwardType, ...BASE_OPTS });
-    expect(caption).toMatch(/APEX Financial/);
+    expect(caption).toMatch(/Galaxy Financial/);
     expect(caption).toContain("Jordan Smith");
   });
 

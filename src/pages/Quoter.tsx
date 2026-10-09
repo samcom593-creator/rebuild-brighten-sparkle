@@ -77,7 +77,7 @@ function ageBand(age: number, product: string): string | null {
 }
 
 export default function Quoter() {
-  usePageTitle("Quoter · APEX");
+  usePageTitle("Quoter · Galaxy");
 
   const [age, setAge] = useState("55");
   const [gender, setGender] = useState<Gender>("male");
@@ -118,7 +118,7 @@ export default function Quoter() {
 
   const copyQuote = async () => {
     const lines = [
-      `APEX Quick Quote · ${age}yo ${gender}${tobacco ? " · TOBACCO" : ""} · $${parseInt(face).toLocaleString()} face`,
+      `Galaxy Quick Quote · ${age}yo ${gender}${tobacco ? " · TOBACCO" : ""} · $${parseInt(face).toLocaleString()} face`,
       "—".repeat(60),
     ];
     for (const r of results) {
@@ -239,7 +239,7 @@ export default function Quoter() {
       {results.length === 0 ? (
         <Card><CardContent className="p-8 text-center text-13 text-muted-foreground">
           <Filter className="h-6 w-6 mx-auto mb-2 opacity-50" />
-          Age {age} is outside our rate bands. Adjust between 18–89 to pull a quote — most APEX closes sit 50–75.
+          Age {age} is outside our rate bands. Adjust between 18–89 to pull a quote — most Galaxy closes sit 50–75.
         </CardContent></Card>
       ) : (
         <div className="grid gap-3 md:grid-cols-3">
@@ -267,7 +267,7 @@ export default function Quoter() {
       <Card>
         <CardContent className="p-4">
           <p className="text-12 text-muted-foreground">
-            <strong>Illustrative only.</strong> Rates here are APEX-internal averages used for in-call rough quoting. Always pull the BINDING quote from the carrier's actual rate engine before promising a number. Tobacco = any usage in the last 12 months. Preferred = excellent health; Standard = some history; Graded = significant history; GI = guaranteed issue (no underwriting).
+            <strong>Illustrative only.</strong> Rates here are Galaxy-internal averages used for in-call rough quoting. Always pull the BINDING quote from the carrier's actual rate engine before promising a number. Tobacco = any usage in the last 12 months. Preferred = excellent health; Standard = some history; Graded = significant history; GI = guaranteed issue (no underwriting).
           </p>
         </CardContent>
       </Card>

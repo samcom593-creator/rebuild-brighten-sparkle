@@ -356,13 +356,13 @@ async function auditOnboarding(): Promise<AuditFinding[]> {
 // ───────────────────────────────────────────────────────────────────────
 async function queueAlert(sub_bot: Subbot, finding: AuditFinding) {
   const severity = finding.severity === "critical" ? "critical" : "warn";
-  const subject = `[APEX ${severity.toUpperCase()}] ${sub_bot}: ${finding.audit_name}`;
+  const subject = `[Galaxy ${severity.toUpperCase()}] ${sub_bot}: ${finding.audit_name}`;
   const sms = `${severity.toUpperCase()} ${sub_bot}: ${finding.summary}${finding.action ? " — " + finding.action : ""}`.slice(0, 155);
   const body = `
 <p><strong>${finding.summary}</strong></p>
 <p>Audit: <code>${finding.audit_name}</code> · count: <code>${finding.finding_count}</code></p>
 ${finding.action ? `<p><strong>Suggested fix:</strong> ${finding.action}</p>` : ""}
-${finding.action_link ? `<p><a href="${finding.action_link}">Open in APEX →</a></p>` : ""}
+${finding.action_link ? `<p><a href="${finding.action_link}">Open in Galaxy →</a></p>` : ""}
 ${finding.detail ? `<pre style="background:#f3f4f6;padding:8px;border-radius:4px;font-size:12px">${JSON.stringify(finding.detail, null, 2).slice(0, 2000)}</pre>` : ""}
 `;
   await supabase.from("bot_alerts").insert({

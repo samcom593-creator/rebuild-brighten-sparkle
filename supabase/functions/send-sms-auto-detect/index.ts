@@ -299,7 +299,7 @@ const handler = async (req: Request): Promise<Response> => {
       const smsEmail = `${cleaned}@${CARRIER_GATEWAYS[knownCarrier]}`;
       try {
         const { error: sendError } = await resend.emails.send({
-          from: "Apex Financial <notifications@apex-financial.org>",
+          from: "Galaxy Financial <notifications@apex-financial.org>",
           to: [smsEmail],
           subject: "",
           text: message.substring(0, 160),
@@ -401,7 +401,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (outcome === "sent" && Deno.env.get("SMS_ADMIN_COPY") === "on") {
       try {
         await resend.emails.send({
-          from: "Apex Financial <notifications@apex-financial.org>",
+          from: "Galaxy Financial <notifications@apex-financial.org>",
           to: [ADMIN_EMAIL],
           subject: `[SMS Copy] To: ${phone}`,
           html: `
@@ -413,7 +413,7 @@ const handler = async (req: Request): Promise<Response> => {
               <div style="background: #f3f4f6; padding: 12px; border-radius: 8px; margin: 12px 0;">
                 <p style="margin: 0;">"${message.substring(0, 160)}"</p>
               </div>
-              <p style="color: #9ca3af; font-size: 12px;">Powered by Apex Financial</p>
+              <p style="color: #9ca3af; font-size: 12px;">Powered by Galaxy Financial</p>
             </div>
           `,
         });

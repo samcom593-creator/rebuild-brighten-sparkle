@@ -47,7 +47,7 @@ function relativeTime(iso: string): string {
 }
 
 export default function TransferRequests() {
-  usePageTitle("Transfer Requests · APEX");
+  usePageTitle("Transfer Requests · Galaxy");
   const { user } = useAuth();
   const qc = useQueryClient();
   const isAdmin = (user as any)?.role === "admin" || (user as any)?.app_metadata?.role === "admin";

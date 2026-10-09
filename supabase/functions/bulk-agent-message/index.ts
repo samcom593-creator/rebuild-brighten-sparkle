@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
         if (channel === "email") {
           if (!resend) throw new Error("RESEND_API_KEY missing");
           await resend.emails.send({
-            from: "APEX Financial <notifications@apex-financial.org>",
+            from: "Galaxy Financial <notifications@apex-financial.org>",
             to: [to],
             subject: "A message from your manager",
             html: `<p>${message.replace(/\n/g, "<br>")}</p>`,

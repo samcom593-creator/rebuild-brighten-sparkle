@@ -63,7 +63,7 @@ type Recipient = {
   slack_user_id: string | null;
 };
 
-const SMS_TEXT = "Apex: log today's calls, presentations and deals before close of business. apex-financial.org/numbers";
+const SMS_TEXT = "Galaxy: log today's calls, presentations and deals before close of business. apex-financial.org/numbers";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -194,13 +194,13 @@ Deno.serve(async (req) => {
     }
 
     // ── 3. Send exactly one reminder per agent/business day, on every leg ──
-    const subject = "Apex · log your numbers";
+    const subject = "Galaxy · log your numbers";
     const messageBody = `Quick reminder — log today's calls, presentations, and deals before close of business.\n\nhttps://apex-financial.org/numbers`;
     const html = `
       <p>Hey ${"{{first_name}}"} — quick reminder.</p>
       <p>Log today's calls, presentations, and deals before close of business so your stats stay accurate:</p>
       <p><a href="https://apex-financial.org/numbers" style="display:inline-block;padding:10px 18px;background:#EDB81D;color:#0a0f1a;text-decoration:none;border-radius:6px;font-weight:600;">Log my numbers</a></p>
-      <p style="font-size:12px;color:#64748b">Sam — Apex Financial</p>
+      <p style="font-size:12px;color:#64748b">Sam — Galaxy Financial</p>
     `;
 
     let emailsSent = 0, smsSent = 0, slackSent = 0, errors = 0, rowsWritten = 0;

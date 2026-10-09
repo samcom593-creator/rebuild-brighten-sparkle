@@ -25,7 +25,7 @@ import { toast } from "sonner";
  */
 
 export default function AddReferral() {
-  usePageTitle("Add Referral · APEX Financial");
+  usePageTitle("Add Referral · Galaxy Financial");
   const navigate = useNavigate();
   const { user } = useAuth();
 

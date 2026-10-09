@@ -78,7 +78,7 @@ serve(async (req: Request) => {
         if (app.email) {
           try {
             await resend.emails.send({
-              from: "APEX Financial Empire <notifications@apex-financial.org>",
+              from: "Galaxy Financial <notifications@apex-financial.org>",
               to: [app.email],
               cc: ["info@kingofsales.net"],
               subject: "📋 Daily Check-In — Update Your Licensing Progress",
@@ -107,11 +107,11 @@ serve(async (req: Request) => {
   </div>
   <div style="background:rgba(74,21,75,0.18);border:1px solid rgba(212,175,55,0.3);border-radius:8px;padding:16px;margin:20px 0;text-align:center;">
     <p style="color:#D4AF37;font-weight:bold;font-size:14px;margin:0 0 8px;">💬 Need help with this step?</p>
-    <p style="color:#94a3b8;font-size:13px;margin:0 0 12px;">Use the APEX Slack for licensing support, training questions, and updates.</p>
+    <p style="color:#94a3b8;font-size:13px;margin:0 0 12px;">Use the Galaxy Slack for licensing support, training questions, and updates.</p>
     <a href="${SLACK_LINK}" style="display:inline-block;background:#4A154B;color:white;text-decoration:none;padding:10px 24px;border-radius:6px;font-weight:bold;font-size:14px;">Open Team Slack →</a>
   </div>
   <div style="border-top:1px solid rgba(148,163,184,0.2);padding-top:20px;margin-top:20px;">
-    <p style="color:#64748b;font-size:12px;text-align:center;margin:0;">Powered by Apex Financial</p>
+    <p style="color:#64748b;font-size:12px;text-align:center;margin:0;">Powered by Galaxy Financial</p>
   </div>
 </div></div></body></html>`,
             });
@@ -149,7 +149,7 @@ serve(async (req: Request) => {
               if (cleaned) {
                 const smsEmail = `${cleaned}@${CARRIER_GATEWAYS[app.carrier]}`;
                 await resend.emails.send({
-                  from: "Apex Financial <notifications@apex-financial.org>",
+                  from: "Galaxy Financial <notifications@apex-financial.org>",
                   to: [smsEmail],
                   subject: "",
                   text: smsText,

@@ -104,7 +104,7 @@ const handler = async (req: Request): Promise<Response> => {
     for (const email of notifyEmails) {
       try {
         await resend.emails.send({
-           from: "APEX Financial Empire <notifications@apex-financial.org>",
+           from: "Galaxy Financial <notifications@apex-financial.org>",
           to: [email!],
           subject: `⚠️ Low Close Rate Alert: ${agentName} (${closeRate.toFixed(0)}%)`,
           html: `
@@ -151,7 +151,7 @@ const handler = async (req: Request): Promise<Response> => {
                   
                   <div style="border-top: 1px solid rgba(148, 163, 184, 0.2); padding-top: 24px; margin-top: 24px;">
                     <p style="color: #64748b; font-size: 12px; margin: 0; text-align: center;">
-                      APEX Financial Empire - Manager Alert System
+                      Galaxy Financial - Manager Alert System
                     </p>
                   </div>
                   
@@ -172,7 +172,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (agentProfile?.email) {
       try {
         await resend.emails.send({
-          from: "APEX Financial Empire <notifications@apex-financial.org>",
+          from: "Galaxy Financial <notifications@apex-financial.org>",
           to: [agentProfile.email],
           subject: "💪 Let's Work on Your Closing Game",
           html: `
@@ -210,7 +210,7 @@ const handler = async (req: Request): Promise<Response> => {
                   
                   <div style="border-top: 1px solid rgba(148, 163, 184, 0.2); padding-top: 24px; margin-top: 24px;">
                     <p style="color: #64748b; font-size: 12px; margin: 0; text-align: center;">
-                      APEX Financial Empire
+                      Galaxy Financial
                     </p>
                   </div>
                   

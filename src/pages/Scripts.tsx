@@ -48,7 +48,7 @@ const CATEGORIES = [
 ] as const;
 
 export default function Scripts() {
-  usePageTitle("Scripts · APEX");
+  usePageTitle("Scripts · Galaxy");
   const access = useScriptsUnlocked();
   const [activeCat, setActiveCat] = useState<string>("all");
   const [search, setSearch] = useState("");
@@ -126,7 +126,7 @@ export default function Scripts() {
         eyebrow="Library"
         eyebrowIcon={<ScrollText className="h-3 w-3" />}
         title="Scripts"
-        subtitle="Every APEX sales script — inbound, objections, recruiting, brand voice. Click to copy."
+        subtitle="Every Galaxy sales script — inbound, objections, recruiting, brand voice. Click to copy."
         actions={
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="text-11">{scripts.data?.length ?? 0} scripts</Badge>

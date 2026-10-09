@@ -110,7 +110,7 @@ Deno.serve(async (req) => {
           to: s.phone,
           // With the application id the sender uses the carrier on file for this person.
           ...(s.application_id ? { applicationId: s.application_id } : {}),
-          message: `Hi ${first(s.name)}, it's Sam from APEX Financial. Reminder: you start tomorrow, ${when}. ${s.manager ?? "Your manager"} will check in with you today.`,
+          message: `Hi ${first(s.name)}, it's Sam from Galaxy Financial. Reminder: you start tomorrow, ${when}. ${s.manager ?? "Your manager"} will check in with you today.`,
         }),
       });
       const j = await r.json().catch(() => ({}));
@@ -134,8 +134,8 @@ Deno.serve(async (req) => {
   for (const s of starters) {
     const mgr = s.manager ? `${esc(s.manager)} will` : "Your manager will";
     const emailed = s.email
-      ? await email("starter_email", s.email, "Reminder: you start with APEX Financial tomorrow",
-          `<p>Hi ${esc(first(s.name))},</p><p>Quick reminder that you start with APEX Financial tomorrow, ${esc(when)}. ${mgr} check in with you today to make sure you're set.</p><p>If anything comes up, just reply to this email.</p><p>See you tomorrow,<br>Sam James</p>`)
+      ? await email("starter_email", s.email, "Reminder: you start with Galaxy Financial tomorrow",
+          `<p>Hi ${esc(first(s.name))},</p><p>Quick reminder that you start with Galaxy Financial tomorrow, ${esc(when)}. ${mgr} check in with you today to make sure you're set.</p><p>If anything comes up, just reply to this email.</p><p>See you tomorrow,<br>Sam James</p>`)
       : "no email";
     const texted = await text(s);
     results.push({ s, emailed, texted });

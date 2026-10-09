@@ -32,7 +32,7 @@ const handler = async (req: Request): Promise<Response> => {
     const sendReminder = async (email: string, name: string, attendanceType: string) => {
       const crmUrl = "https://apex-financial.org/dashboard/crm";
       const { error } = await resend.emails.send({
-        from: "Apex Financial <notifications@apex-financial.org>",
+        from: "Galaxy Financial <notifications@apex-financial.org>",
         to: [email],
         subject: `⏰ Time to Mark ${attendanceType} Attendance`,
         html: `
@@ -50,7 +50,7 @@ const handler = async (req: Request): Promise<Response> => {
                 </td>
               </tr>
             </table>
-            <p style="color: #9ca3af; font-size: 12px;">Powered by Apex Financial</p>
+            <p style="color: #9ca3af; font-size: 12px;">Powered by Galaxy Financial</p>
           </div>
         `,
       });

@@ -153,7 +153,7 @@ export default function MyCommissions() {
         title="My Commissions"
         subtitle={
           estimatedRows > 0
-            ? "Estimated from valid AgentLink/APEX deals until the commission ledger is populated."
+            ? "Estimated from valid AgentLink/Galaxy deals until the commission ledger is populated."
             : "Live ledger — every deal's commission computed from your contract rate. Pulled from Supabase."
         }
       />
@@ -170,7 +170,7 @@ export default function MyCommissions() {
       ) : rows.length === 0 ? (
         <GlassCard className="p-8 text-center">
           <Wallet className="h-8 w-8 mx-auto mb-3 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">No valid AgentLink/APEX deals or commission ledger rows are visible for this account.</p>
+          <p className="text-sm text-muted-foreground">No valid AgentLink/Galaxy deals or commission ledger rows are visible for this account.</p>
         </GlassCard>
       ) : (
         <>

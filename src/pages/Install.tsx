@@ -15,7 +15,7 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export default function Install() {
-  usePageTitle("Install APEX Financial OS");
+  usePageTitle("Install Galaxy Financial OS");
   const navigate = useNavigate();
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
@@ -176,7 +176,7 @@ export default function Install() {
                 <Crown className="w-10 h-10 text-primary-foreground" />
               </div>
             </div>
-            <h1 className="text-2xl font-bold gradient-text">APEX Financial OS</h1>
+            <h1 className="text-2xl font-bold gradient-text">Galaxy Financial OS</h1>
             <CardDescription>
               Install your agency operating system for one-tap phone access.
             </CardDescription>

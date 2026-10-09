@@ -87,10 +87,10 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send re-engagement email with admin CC
     await resend.emails.send({
-      from: "APEX Financial <notifications@apex-financial.org>",
+      from: "Galaxy Financial <notifications@apex-financial.org>",
       to: [lead.email],
       cc: [ADMIN_EMAIL],
-      subject: `${sanitizeHtml(firstName)}, Still Interested in Joining APEX? 🚀`,
+      subject: `${sanitizeHtml(firstName)}, Still Interested in Joining Galaxy? 🚀`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: linear-gradient(135deg, #10b981, #059669); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
@@ -103,14 +103,14 @@ const handler = async (req: Request): Promise<Response> => {
             </p>
             
             <p style="font-size: 16px; color: #374151; line-height: 1.6;">
-              We noticed you started your application to join APEX Financial but didn't get a chance to finish. 
+              We noticed you started your application to join Galaxy Financial but didn't get a chance to finish. 
               No worries – life gets busy! We wanted to reach out and see if you had any questions or if there's 
               anything we can help you with.
             </p>
 
             <div style="background: #ecfdf5; border-left: 4px solid #10b981; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
               <p style="margin: 0; color: #065f46; font-weight: 500;">
-                💡 Quick reminder: APEX agents earn uncapped commissions with no cold calling required. 
+                💡 Quick reminder: Galaxy agents earn uncapped commissions with no cold calling required. 
                 We provide warm leads, training, and support!
               </p>
             </div>
@@ -144,7 +144,7 @@ const handler = async (req: Request): Promise<Response> => {
             <p style="font-size: 14px; color: #6b7280; line-height: 1.6; margin-top: 30px;">
               Looking forward to hearing from you!<br><br>
               Best,<br>
-              <strong>The APEX Team</strong>
+              <strong>The Galaxy Team</strong>
             </p>
           </div>
         </div>

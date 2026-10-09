@@ -112,14 +112,14 @@ Deno.serve(async (req) => {
     const html = `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px;">
       ${coachingHtml}
       <hr style="border:none;border-top:1px solid #333;margin:20px 0;">
-      <p style="color:#888;font-size:12px;">Powered by APEX Financial AI Coaching</p>
+      <p style="color:#888;font-size:12px;">Powered by Galaxy Financial AI Coaching</p>
     </div>`;
 
     const res = await fetch(RESEND_URL, {
       method: "POST",
       headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        from: "APEX Coaching <coaching@rebuildbrightenseattle.com>",
+        from: "Galaxy Coaching <coaching@rebuildbrightenseattle.com>",
         to: [profile.email],
         subject,
         html,

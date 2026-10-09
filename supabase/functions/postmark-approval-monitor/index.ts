@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
     body: JSON.stringify({
       From: PROBE_FROM,
       To: PROBE_TO,
-      Subject: "APEX: Postmark external approval probe",
+      Subject: "Galaxy: Postmark external approval probe",
       HtmlBody: "<p>Postmark now accepts external sends. Reissue campaign unpaused.</p>",
       TextBody: "Postmark now accepts external sends. Reissue campaign unpaused.",
       MessageStream: "outbound",
@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
       // silent 429 here means outbound starts with nobody told, so the refusal
       // is logged rather than swallowed as "best-effort".
       const res = await postNtfyGraded(NTFY_URL, {
-        title: "APEX: Postmark APPROVED — 40-day reissue firing",
+        title: "Galaxy: Postmark APPROVED — 40-day reissue firing",
         priority: "high",
         tags: "envelope,rocket",
         body: `Postmark unlocked external sends at ${nowIso}. ` +

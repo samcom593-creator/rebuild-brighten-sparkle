@@ -30,7 +30,7 @@ const TWILIO_SID = Deno.env.get("TWILIO_ACCOUNT_SID") ?? "";
 const TWILIO_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN") ?? "";
 const TWILIO_FROM = Deno.env.get("TWILIO_MESSAGING_SID") ?? Deno.env.get("TWILIO_FROM") ?? "";
 const RESEND_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
-const RESEND_FROM = Deno.env.get("RESEND_FROM") ?? "Apex Financial <hello@apex-financial.org>";
+const RESEND_FROM = Deno.env.get("RESEND_FROM") ?? "Galaxy Financial <hello@apex-financial.org>";
 
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
 const resend = new Resend(RESEND_KEY);

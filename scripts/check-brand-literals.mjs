@@ -67,7 +67,13 @@ const SRC = join(ROOT, "src");
 // Do not read this move as a wave landing. 93 of 648 tracked non-test files
 // (14.4%) were lexed with inverted parity; the count differed on exactly one
 // because that is where an Apex-bearing comment happened to fall.
-const BASELINE = 509;
+// 509 -> 125 on 2026-10-08, and this is NOT the white-label debt shrinking. The agency was renamed
+// Apex -> Galaxy and ~1,000 literals were swapped for the new name in place. The count fell because
+// the literals stopped saying "Apex", not because they moved to resolveBrand(). The hardcoded-name
+// debt is the same size under a different word. What remains here is deliberate: the legal pages and
+// legal-entity strings (change when the entity is renamed), a real Gmail label (Apex/XCEL), user-agent
+// strings and one iCalendar PRODID.
+const BASELINE = 125;
 const EXEMPT = new Set(["src/config/brand.ts"]);
 /** Test files never ship to a user, so brand literals in them block nothing. */
 const IS_TEST = /(\.test\.tsx?$|\.spec\.tsx?$|__tests__\/|^src\/tests\/)/;

@@ -122,7 +122,7 @@ const handler = async (req: Request): Promise<Response> => {
     let htmlContent: string;
 
     if (licenseStatus === "licensed") {
-      subject = "🎉 Welcome to Apex Financial – Let's Get Started!";
+      subject = "🎉 Welcome to Galaxy Financial – Let's Get Started!";
       htmlContent = `
 <!DOCTYPE html>
 <html>
@@ -138,7 +138,7 @@ const handler = async (req: Request): Promise<Response> => {
           <tr>
             <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center;">
               <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">
-                🎉 Welcome to Apex Financial!
+                🎉 Welcome to Galaxy Financial!
               </h1>
             </td>
           </tr>
@@ -150,17 +150,17 @@ const handler = async (req: Request): Promise<Response> => {
               <p style="color: #e0e0e0; font-size: 16px; line-height: 1.6; margin: 0 0 25px;">
                 Since you're already licensed, follow this roadmap in order. Slack is the primary team hub for community and contracting support.
               </p>
-              ${buildStepCard("1", "Join the APEX Slack", "Join the primary team workspace for daily huddles, support, training, scripts, and sales wins.", SLACK_LINK, "Join Team Slack →", "#D4AF37", "212, 175, 55")}
+              ${buildStepCard("1", "Join the Galaxy Slack", "Join the primary team workspace for daily huddles, support, training, scripts, and sales wins.", SLACK_LINK, "Join Team Slack →", "#D4AF37", "212, 175, 55")}
               ${buildStepCard("2", "Book Your Onboarding Call", "Meet with Milver, your Contracting &amp; Onboarding Manager, to lock in your first-week plan.", SCHEDULING_LINKS.licensed, "Book My Call →", "#667eea", "102, 126, 234")}
-              ${buildStepCard("3", "Set Up Your APEX Account", "Open the portal, sign in with your email, confirm your profile, and use the live roadmap as your source of truth.", PORTAL_LINK, "Open My Account &amp; Roadmap →", "#14b8a6", "20, 184, 166")}
-              ${buildStepCard("4", "Complete APEX Contracting", "Submit your NPN and profile once. APEX routes the intake to the private contracting desk automatically.", CONTRACTING_LINK, "Complete Contracting →", "#f59e0b", "245, 158, 11")}
+              ${buildStepCard("3", "Set Up Your Galaxy Account", "Open the portal, sign in with your email, confirm your profile, and use the live roadmap as your source of truth.", PORTAL_LINK, "Open My Account &amp; Roadmap →", "#14b8a6", "20, 184, 166")}
+              ${buildStepCard("4", "Complete Galaxy Contracting", "Submit your NPN and profile once. Galaxy routes the intake to the private contracting desk automatically.", CONTRACTING_LINK, "Complete Contracting →", "#f59e0b", "245, 158, 11")}
               ${buildStepCard("5", "Finish Online Training", "Complete onboarding, scripts, objections, ReadyMode, pipeline, deal-posting, and underwriting training before launch.", TRAINING_LINK, "Start Training →", "#4CAF50", "76, 175, 80")}
             </td>
           </tr>
           <tr>
             <td style="background: rgba(0,0,0,0.3); padding: 25px 30px; text-align: center; border-top: 1px solid rgba(255,255,255,0.1);">
               <p style="color: #888; font-size: 14px; margin: 0;">
-                Powered by <strong style="color: #667eea;">Apex Financial</strong>
+                Powered by <strong style="color: #667eea;">Galaxy Financial</strong>
               </p>
             </td>
           </tr>
@@ -197,12 +197,12 @@ const handler = async (req: Request): Promise<Response> => {
                 Hey ${firstName}! 👋
               </p>
               <p style="color: #e0e0e0; font-size: 16px; line-height: 1.6; margin: 0 0 25px;">
-                Follow this roadmap in order. Your licensing course is the training priority, your APEX account tracks progress, and Slack is where the team supports you.
+                Follow this roadmap in order. Your licensing course is the training priority, your Galaxy account tracks progress, and Slack is where the team supports you.
               </p>
 
               ${buildStepCard(
                 "1",
-                "Join the APEX Slack",
+                "Join the Galaxy Slack",
                 "Join the primary team workspace for licensing support, questions, updates, and training.",
                 SLACK_LINK,
                 "Join Team Slack →",
@@ -232,8 +232,8 @@ const handler = async (req: Request): Promise<Response> => {
 
               ${buildStepCard(
                 "4",
-                "Open Your APEX Roadmap",
-                "Sign in to your APEX account and update course, exam, fingerprints, and license milestones as they happen.",
+                "Open Your Galaxy Roadmap",
+                "Sign in to your Galaxy account and update course, exam, fingerprints, and license milestones as they happen.",
                 "https://apex-financial.org/get-licensed",
                 "Open My Licensing Roadmap →",
                 "#14b8a6",
@@ -243,7 +243,7 @@ const handler = async (req: Request): Promise<Response> => {
               ${buildStepCard(
                 "5",
                 "Pass, Add Your NPN, Then Onboard",
-                "After your license posts, add your NPN in APEX and book the onboarding call. Contracting and sales training unlock next.",
+                "After your license posts, add your NPN in Galaxy and book the onboarding call. Contracting and sales training unlock next.",
                 SCHEDULING_LINKS.licensed,
                 "Book Licensed Onboarding →",
                 "#f093fb",
@@ -287,7 +287,7 @@ const handler = async (req: Request): Promise<Response> => {
           <tr>
             <td style="background: rgba(0,0,0,0.3); padding: 25px 30px; text-align: center; border-top: 1px solid rgba(255,255,255,0.1);">
               <p style="color: #888; font-size: 14px; margin: 0;">
-                Powered by <strong style="color: #f093fb;">Apex Financial</strong>
+                Powered by <strong style="color: #f093fb;">Galaxy Financial</strong>
               </p>
             </td>
           </tr>
@@ -300,7 +300,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const emailResponse = await resend.emails.send({
-      from: "APEX Financial <notifications@apex-financial.org>",
+      from: "Galaxy Financial <notifications@apex-financial.org>",
       to: [email],
       cc: ccList.length > 0 ? ccList : undefined,
       subject: subject,
@@ -322,7 +322,7 @@ const handler = async (req: Request): Promise<Response> => {
       const pushRes = await fetch(`${supabaseUrl}/functions/v1/send-push-notification`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${supabaseServiceKey}` },
-        body: JSON.stringify({ email, title: "Apex Financial – Licensing", body: pushMsg }),
+        body: JSON.stringify({ email, title: "Galaxy Financial – Licensing", body: pushMsg }),
       });
       channels.push = pushRes.ok;
       console.log(`[send-licensing-instructions] Push: ${pushRes.ok}`);
@@ -335,7 +335,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (phone) {
       try {
         const smsMsg = licenseStatus === "licensed"
-          ? `Hey ${firstName}, welcome to APEX. Your 5-step roadmap is in your email. Start by joining Slack: ${SLACK_LINK}`
+          ? `Hey ${firstName}, welcome to Galaxy. Your 5-step roadmap is in your email. Start by joining Slack: ${SLACK_LINK}`
           : `Hey ${firstName}, your licensing roadmap is in your email. Create your XCEL course account here: ${PRELICENSING_LINK}`;
 
         const smsRes = await fetch(`${supabaseUrl}/functions/v1/send-sms-auto-detect`, {

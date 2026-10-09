@@ -84,13 +84,13 @@ function planFor(app: App): Plan | null {
   const p = app.license_progress ?? "unlicensed";
 
   if (p === "unlicensed" && applyAge === 3) {
-    return { app, action: "sms", body: `${first} — Sam at APEX. You applied 3 days ago. Ready to start your licensing course? We cover the cost. Link: ${GET_LICENSED_URL}` };
+    return { app, action: "sms", body: `${first} — Sam at Galaxy. You applied 3 days ago. Ready to start your licensing course? We cover the cost. Link: ${GET_LICENSED_URL}` };
   }
   if (p === "unlicensed" && applyAge === 10) {
     return { app, action: "sms", body: `${first} — still want in? We pay for your course and you're producing in ~2 weeks. Reply YES or tap ${GET_LICENSED_URL}` };
   }
   if (p === "course_purchased" && stageAge === 7) {
-    return { app, action: "email", subject: `${first}, one-week check-in`, html: `<!doctype html><html><body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,Segoe UI,Arial,sans-serif;color:#0f172a;line-height:1.5"><div style="max-width:520px;margin:0 auto;padding:28px 22px"><div style="font-weight:700;letter-spacing:0.5px;font-size:13px;margin-bottom:8px">APEX</div><p style="margin:0 0 14px">${first},</p><p style="margin:0 0 14px">One week into the course. Most people finish in 2–3 weeks at an hour a day.</p><p style="margin:0 0 14px">Reply with one word so I know where you stand:</p><ul style="margin:0 0 14px;padding-left:18px;color:#334155"><li><strong>ON TRACK</strong> — you're cruising</li><li><strong>STUCK</strong> — one section is killing you</li><li><strong>PAUSE</strong> — life got in the way, need a plan</li></ul><p style="color:#475569;font-size:13px;margin:22px 0 0">— Sam James · Managing Partner, APEX Financial</p></div></body></html>` };
+    return { app, action: "email", subject: `${first}, one-week check-in`, html: `<!doctype html><html><body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,Segoe UI,Arial,sans-serif;color:#0f172a;line-height:1.5"><div style="max-width:520px;margin:0 auto;padding:28px 22px"><div style="font-weight:700;letter-spacing:0.5px;font-size:13px;margin-bottom:8px">Galaxy</div><p style="margin:0 0 14px">${first},</p><p style="margin:0 0 14px">One week into the course. Most people finish in 2–3 weeks at an hour a day.</p><p style="margin:0 0 14px">Reply with one word so I know where you stand:</p><ul style="margin:0 0 14px;padding-left:18px;color:#334155"><li><strong>ON TRACK</strong> — you're cruising</li><li><strong>STUCK</strong> — one section is killing you</li><li><strong>PAUSE</strong> — life got in the way, need a plan</li></ul><p style="color:#475569;font-size:13px;margin:22px 0 0">— Sam James · Managing Partner, Galaxy Financial</p></div></body></html>` };
   }
   if (p === "course_purchased" && stageAge === 14) {
     return { app, action: "sms", body: `${first} — two weeks in. Book your exam date this week even if you're not 100% ready. The date is the forcing function. Reply with a target date.` };
@@ -150,7 +150,7 @@ async function sendEmail(app: App, subject: string, html: string) {
     // send-outreach-email, notify-module-progress); this one caller did not.
     // A receipt id is required, not merely the absence of a throw.
     const { data, error } = await resend.emails.send({
-      from: "Sam at APEX <sam@apex-financial.org>",
+      from: "Sam at Galaxy <sam@apex-financial.org>",
       to: app.email, subject, html,
     });
     if (error) return { ok: false, error: (error as { message?: string }).message ?? String(error) };

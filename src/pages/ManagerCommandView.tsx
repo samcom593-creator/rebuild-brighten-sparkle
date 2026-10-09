@@ -50,7 +50,7 @@ function money(n: number | null | undefined): string {
  * state if their agents don't have al_user_id mapped yet.
  */
 export default function ManagerCommandView() {
-  usePageTitle("Manager Command · APEX");
+  usePageTitle("Manager Command · Galaxy");
   const { user } = useAuth();
   const { data: downlineIds = [] } = useMyDownline();
 
@@ -296,7 +296,7 @@ export default function ManagerCommandView() {
         </Button>
         <Button asChild variant="outline" className="justify-between">
           <Link to="/dashboard/training/sales-course">
-            <span className="flex items-center gap-2"><GraduationCap className="h-4 w-4" /> Apex Course</span>
+            <span className="flex items-center gap-2"><GraduationCap className="h-4 w-4" /> Galaxy Course</span>
             <ArrowRight className="h-4 w-4" />
           </Link>
         </Button>

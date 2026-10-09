@@ -133,7 +133,7 @@ const handler = async (req: Request): Promise<Response> => {
             
             <p>Hey ${name},</p>
             
-            <p>You just logged into the APEX Daily Numbers portal.</p>
+            <p>You just logged into the Galaxy Daily Numbers portal.</p>
             
             <div class="info-box">
               <div class="info-row">
@@ -169,7 +169,7 @@ const handler = async (req: Request): Promise<Response> => {
           
           <div class="footer">
             <p>Stay secure! 🔒</p>
-            <p>© ${new Date().getFullYear()} APEX Financial</p>
+            <p>© ${new Date().getFullYear()} Galaxy Financial</p>
           </div>
         </div>
       </body>
@@ -177,7 +177,7 @@ const handler = async (req: Request): Promise<Response> => {
     `;
 
     const res = await resend.emails.send({
-      from: "APEX Financial <notifications@apex-financial.org>",
+      from: "Galaxy Financial <notifications@apex-financial.org>",
       to: [email],
       cc: ccList.length > 0 ? ccList : undefined,
       subject: "✅ Portal Login Confirmed",

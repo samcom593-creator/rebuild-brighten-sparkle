@@ -2575,8 +2575,8 @@ function ReferralLinkBanner({ agentId }: { agentId: string }) {
     if (typeof navigator !== "undefined" && (navigator as any).share) {
       try {
         await (navigator as any).share({
-          title: "Apply to APEX Financial",
-          text: "Apply to APEX. Fast-track your insurance career.",
+          title: "Apply to Galaxy Financial",
+          text: "Apply to Galaxy. Fast-track your insurance career.",
           url,
         });
       } catch {

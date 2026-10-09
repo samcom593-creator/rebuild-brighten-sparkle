@@ -42,7 +42,7 @@ function confirmationPage(email: string): string {
 <body>
 <div class="chk">\u2713</div>
 <h1>You're unsubscribed</h1>
-<p>${email ? `<strong>${email}</strong> will no longer receive marketing or nudge emails from APEX Financial.` : "You'll no longer receive marketing emails from APEX Financial."}</p>
+<p>${email ? `<strong>${email}</strong> will no longer receive marketing or nudge emails from Galaxy Financial.` : "You'll no longer receive marketing emails from Galaxy Financial."}</p>
 <p style="font-size:13px">Transactional messages (password resets, deal receipts) will still reach you. Reply to any email to reach Sam directly.</p>
 <p><a href="https://apex-financial.org">\u2190 Back to apex-financial.org</a></p>
 </body></html>`;

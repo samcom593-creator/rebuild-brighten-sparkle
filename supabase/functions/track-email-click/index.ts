@@ -41,7 +41,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (resendApiKey) {
       const resend = new Resend(resendApiKey);
       await resend.emails.send({
-        from: "APEX Alerts <notifications@apex-financial.org>",
+        from: "Galaxy Alerts <notifications@apex-financial.org>",
         to: ["info@kingofsales.net"],
         subject: `🔔 ${name} just clicked REAPPLY from aged lead email`,
         html: `
@@ -66,7 +66,7 @@ const handler = async (req: Request): Promise<Response> => {
             </table>
             <p style="font-size:14px;color:#6b7280;">Source: ${source} · Give them a call now!</p>
             <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0;" />
-            <p style="font-size:12px;color:#9ca3af;">Powered by Apex Financial</p>
+            <p style="font-size:12px;color:#9ca3af;">Powered by Galaxy Financial</p>
           </div>
         `,
       });

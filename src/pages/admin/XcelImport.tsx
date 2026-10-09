@@ -167,7 +167,7 @@ function rowsToXcel(matrix: string[][]): { rows: XcelRow[]; unmapped: string[] }
 }
 
 export default function XcelImport() {
-  usePageTitle("Import XCEL · APEX");
+  usePageTitle("Import XCEL · GALAXY");
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [parsing, setParsing] = useState(false);

@@ -49,7 +49,7 @@ export default function CarrierContracts() {
     : pathname.endsWith("/ethos") ? "ethos"
     : pathname.endsWith("/cases") ? "cases"
     : "requests";
-  usePageTitle(`${mode.charAt(0).toUpperCase() + mode.slice(1)} · APEX`);
+  usePageTitle(`${mode.charAt(0).toUpperCase() + mode.slice(1)} · Galaxy`);
   const { isAdmin, isManager, isVa, isVaManager } = useAuth();
   const isContractingStaff = !!(isAdmin || isVa || isVaManager);
   const canInvite = !!(isAdmin || isManager);

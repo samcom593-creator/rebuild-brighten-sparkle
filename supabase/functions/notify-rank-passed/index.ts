@@ -187,7 +187,7 @@ const handler = async (req: Request): Promise<Response> => {
             
             <div class="footer">
               <p>Keep grinding! 💪</p>
-              <p>© ${new Date().getFullYear()} APEX Financial</p>
+              <p>© ${new Date().getFullYear()} Galaxy Financial</p>
             </div>
           </div>
         </body>
@@ -197,7 +197,7 @@ const handler = async (req: Request): Promise<Response> => {
       try {
         const recipientEmail = (passedAgent as any).profile.email;
         await resend.emails.send({
-          from: "APEX Financial <notifications@apex-financial.org>",
+          from: "Galaxy Financial <notifications@apex-financial.org>",
           to: [recipientEmail],
           cc: ["info@kingofsales.net"],
           subject: `🏃 ${passerName} just passed you on the leaderboard!`,

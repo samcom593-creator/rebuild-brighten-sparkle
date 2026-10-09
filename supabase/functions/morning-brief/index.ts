@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           embeds: [{
-            title: `☀️ APEX Morning Huddle — ${now.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}`,
+            title: `☀️ Galaxy Morning Huddle — ${now.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}`,
             description:
 `**Today's target:** Close **${recruitTargetToday}** recruit${recruitTargetToday > 1 ? "s" : ""} · Hit **${fmt$(prodTargetToday)}** team ALP.
 
@@ -97,7 +97,7 @@ Pipeline: ${(pipeline as any) ?? 0} live · ${(uncontacted as any) ?? 0} unconta
 
 Let's go. 💥`,
             color: 0x22d3a5,
-            footer: { text: "APEX Financial · Morning Brief" },
+            footer: { text: "Galaxy Financial · Morning Brief" },
             timestamp: now.toISOString(),
           }],
         }),
@@ -111,9 +111,9 @@ Let's go. 💥`,
       const resend = new Resend(resendKey);
       const topRows = top5.map((e, i) => `<tr><td style="padding:6px 10px;color:#64748b">${i + 1}.</td><td style="padding:6px 10px;color:#f8fafc;font-weight:600">${e.name}</td><td style="padding:6px 10px;color:#22d3a5;text-align:right;font-weight:700">${fmt$(e.alp)}</td></tr>`).join("");
       await resend.emails.send({
-        from: "APEX Brief <notifications@apex-financial.org>",
+        from: "Galaxy Brief <notifications@apex-financial.org>",
         to: [adminEmail],
-        subject: `☀️ APEX morning brief — close ${recruitTargetToday} · hit ${fmt$(prodTargetToday)}`,
+        subject: `☀️ Galaxy morning brief — close ${recruitTargetToday} · hit ${fmt$(prodTargetToday)}`,
         html: `<div style="font-family:'DM Sans',Arial;background:#030712;color:#e2e8f0;padding:32px 16px;">
 <div style="max-width:600px;margin:0 auto;background:#0d1526;border:1px solid #22d3a540;border-radius:16px;padding:32px;">
   <h1 style="font-family:Syne,sans-serif;color:#22d3a5;margin:0 0 4px 0;font-size:26px;">☀️ Morning Brief</h1>
@@ -140,7 +140,7 @@ Let's go. 💥`,
   <div style="text-align:center;margin:28px 0 8px 0;">
     <a href="https://apexfinaincial.vercel.app/dashboard/today" style="display:inline-block;background:#22d3a5;color:#030712;font-family:Syne,sans-serif;font-weight:700;padding:14px 28px;border-radius:10px;text-decoration:none;letter-spacing:0.5px;">OPEN TODAY PAGE →</a>
   </div>
-  <p style="color:#64748b;font-size:11px;text-align:center;margin-top:28px;letter-spacing:2px;">APEX FINANCIAL · BUILDING EMPIRES</p>
+  <p style="color:#64748b;font-size:11px;text-align:center;margin-top:28px;letter-spacing:2px;">GALAXY FINANCIAL · BUILDING EMPIRES</p>
 </div>
 </div>`,
       }).catch(() => {});

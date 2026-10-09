@@ -90,7 +90,7 @@ const NotFound = () => {
         </div>
 
         <p className="text-center text-xs text-muted-foreground mt-8">
-          APEX Financial
+          Galaxy Financial
         </p>
       </div>
     </div>

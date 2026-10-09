@@ -116,7 +116,7 @@ export default function LinksPage() {
           <div className="w-24 h-24 rounded-full bg-white dark:bg-card mx-auto mb-4 flex items-center justify-center shadow-lg glow-teal">
             <Crown className="h-12 w-12 text-primary-foreground" />
           </div>
-          <h1 className="text-2xl font-bold gradient-text">APEX Financial</h1>
+          <h1 className="text-2xl font-bold gradient-text">Galaxy Financial</h1>
           <p className="text-sm text-muted-foreground mt-1">Build your empire. Live on your terms.</p>
         </motion.div>
 
@@ -247,7 +247,7 @@ export default function LinksPage() {
         {/* Footer */}
         <div className="mt-auto pt-8 text-center">
           <p className="text-[11px] text-muted-foreground/60 uppercase tracking-widest">
-            Powered by <span className="text-primary/70 font-semibold">Apex Financial</span>
+            Powered by <span className="text-primary/70 font-semibold">Galaxy Financial</span>
           </p>
         </div>
       </div>

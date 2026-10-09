@@ -47,14 +47,14 @@ serve(async (req) => {
     if (email) {
       try {
         await resend.emails.send({
-          from: "Sam · APEX <sam@apex-financial.org>",
+          from: "Sam · Galaxy <sam@apex-financial.org>",
           to: email,
           subject: `${firstName}, You're Now Live — Start Logging Your Numbers`,
           html: `
             <div style="font-family:'DM Sans',sans-serif;max-width:560px;margin:0 auto;background:#030712;color:white">
               <div style="height:3px;background:linear-gradient(90deg,#22d3a5,#0ea5e9)"></div>
               <div style="padding:40px 32px">
-                <div style="font-size:11px;letter-spacing:4px;color:#22d3a5;text-transform:uppercase;margin-bottom:16px">APEX FINANCIAL · YOU'RE LIVE</div>
+                <div style="font-size:11px;letter-spacing:4px;color:#22d3a5;text-transform:uppercase;margin-bottom:16px">GALAXY FINANCIAL · YOU'RE LIVE</div>
                 <h1 style="font-family:'Syne',sans-serif;font-size:32px;font-weight:800;margin:0 0 16px;line-height:1.1">
                   ${firstName}, your dashboard is ready.<br/>
                   <span style="color:#22d3a5">Time to make money.</span>
@@ -97,7 +97,7 @@ serve(async (req) => {
           },
           body: JSON.stringify({
             phone: agent.profiles.phone,
-            message: `🔥 ${firstName} — you're LIVE on APEX. Dashboard is ready. Log your first deal today: apex-financial.org/agent-dashboard`,
+            message: `🔥 ${firstName} — you're LIVE on Galaxy. Dashboard is ready. Log your first deal today: apex-financial.org/agent-dashboard`,
             carrier: "auto",
           }),
         });
@@ -124,7 +124,7 @@ serve(async (req) => {
     // STEP 5: Notify Sam + manager
     try {
       await resend.emails.send({
-        from: "APEX System <alerts@apex-financial.org>",
+        from: "Galaxy System <alerts@apex-financial.org>",
         to: "info@kingofsales.net",
         subject: `🎯 ${firstName} is now LIVE — watch for their first deal`,
         html: `<p>${firstName} just went live on the platform. Production dashboard unlocked. Welcome email sent. They're on the leaderboard.</p>`,
@@ -141,7 +141,7 @@ serve(async (req) => {
         if (manager?.full_name) managerName = manager.full_name;
         if (manager?.email) {
           await resend.emails.send({
-            from: "APEX System <alerts@apex-financial.org>",
+            from: "Galaxy System <alerts@apex-financial.org>",
             to: manager.email,
             subject: `${firstName} is now live on your team`,
             html: `<p>Your agent ${firstName} has completed onboarding and is now live. Help them close their first deal this week.</p>`,
@@ -167,11 +167,11 @@ serve(async (req) => {
       const SAM_USER_ID = "4491dc82-a056-4fb3-ab38-b132afffb700";
       const fullName = (agent as any).display_name ?? firstName;
       const welcomeBody = mgrName
-        ? `🎉 Welcome to APEX, ${fullName}!\n\nHired by ${mgrName} — get them on the board this week.\n\nWho's first to make a deal happen?`
-        : `🎉 Welcome to APEX, ${fullName}!\n\nFresh on the team — let's get them on the board this week.`;
+        ? `🎉 Welcome to Galaxy, ${fullName}!\n\nHired by ${mgrName} — get them on the board this week.\n\nWho's first to make a deal happen?`
+        : `🎉 Welcome to Galaxy, ${fullName}!\n\nFresh on the team — let's get them on the board this week.`;
       await supabase.from("team_chat_messages").insert({
         user_id: SAM_USER_ID,
-        author_name: "APEX Pulse 🎉",
+        author_name: "Galaxy Pulse 🎉",
         body: welcomeBody,
       });
       results.push("welcome_posted_team_chat");

@@ -75,7 +75,7 @@ export function AgentOnboardingEmailStatus({ agentId }: Props) {
   async function resendCourse() {
     if (!data) return;
     if (data.course_state === "not_licensed") {
-      toast.error("Agent isn't licensed — course email skipped per Apex rule");
+      toast.error("Agent isn't licensed — course email skipped per Galaxy rule");
       return;
     }
     if (data.course_state === "no_email") {

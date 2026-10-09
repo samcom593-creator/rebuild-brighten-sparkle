@@ -444,7 +444,7 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
           </DialogTitle>
           <DialogDescription>
             {!licenseStatus
-              ? "First choose the correct journey. APEX will run the matching onboarding process inside this window."
+              ? "First choose the correct journey. Galaxy will run the matching onboarding process inside this window."
               : licenseStatus === "licensed"
                 ? "Send one link. Their completed intake starts contracting and the support desk immediately."
                 : "Create portal access, send the XCEL course, and add the recruit to the licensing tracker."}

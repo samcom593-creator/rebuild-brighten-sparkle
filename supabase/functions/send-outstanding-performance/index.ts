@@ -67,7 +67,7 @@ function generateCertificateHTML(
       
       <!-- Company Name -->
       <p style="font-size:16px;font-weight:600;color:#333333;margin:0 0 8px 0;letter-spacing:1px;">
-        APEX Financial Group
+        Galaxy Financial Group
       </p>
       <p style="font-size:13px;color:#666666;margin:0 0 25px 0;font-style:italic;">
         hereby expresses its appreciation to
@@ -106,7 +106,7 @@ function generateCertificateHTML(
         <div style="width:180px;height:1px;background:#333333;margin:0 auto 10px;"></div>
         <p style="font-size:11px;color:#666666;margin:0;line-height:1.5;">
           Chief Executive Officer<br>
-          APEX Financial Group
+          Galaxy Financial Group
         </p>
       </div>
       
@@ -115,7 +115,7 @@ function generateCertificateHTML(
     <!-- Footer -->
     <div style="background:#1a1a1a;padding:12px;text-align:center;">
       <p style="font-size:10px;color:#888888;margin:0;">
-        Powered by APEX Financial
+        Powered by Galaxy Financial
       </p>
     </div>
     
@@ -193,7 +193,7 @@ serve(async (req: Request) => {
     try {
       console.log("📧 Sending certificate to admin...");
       const adminResult = await resend.emails.send({
-        from: "APEX Financial <notifications@apex-financial.org>",
+        from: "Galaxy Financial <notifications@apex-financial.org>",
         to: ["info@kingofsales.net"],
         subject: `Weekly Performance: ${agentName} - $${formattedAmount} ALP`,
         html: certificateHTML,
@@ -210,7 +210,7 @@ serve(async (req: Request) => {
     try {
       console.log(`📧 Sending certificate to agent: ${profile.email}`);
       const agentResult = await resend.emails.send({
-        from: "APEX Financial <notifications@apex-financial.org>",
+        from: "Galaxy Financial <notifications@apex-financial.org>",
         to: [profile.email],
         cc: ["info@kingofsales.net"],
         subject: `Outstanding Performance Recognition - ${formatDate(weekEndingDate)}`,

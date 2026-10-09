@@ -98,7 +98,7 @@ const COMMON_DEFS = `
   <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="14" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
 `;
 
-const HEADER = `<text x="80" y="120" font-family="ui-sans-serif, -apple-system" font-weight="900" font-size="52" fill="#22d3a5" letter-spacing="6">APEX</text><text x="262" y="120" font-family="ui-sans-serif, -apple-system" font-weight="400" font-size="52" fill="#f8fafc" letter-spacing="6">FINANCIAL</text><rect x="80" y="142" width="120" height="3" fill="url(#emerald)"/>`;
+const HEADER = `<text x="80" y="120" font-family="ui-sans-serif, -apple-system" font-weight="900" font-size="52" fill="#22d3a5" letter-spacing="6">Galaxy</text><text x="262" y="120" font-family="ui-sans-serif, -apple-system" font-weight="400" font-size="52" fill="#f8fafc" letter-spacing="6">FINANCIAL</text><rect x="80" y="142" width="120" height="3" fill="url(#emerald)"/>`;
 
 const footer = (label: string) =>
   `<rect x="80" y="1780" width="${W - 160}" height="2" fill="#22d3a5" fill-opacity="0.35"/><text x="80" y="1830" font-family="ui-sans-serif, -apple-system" font-weight="600" font-size="22" fill="#94a3b8" letter-spacing="4">${esc(label)}</text><text x="${W - 80}" y="1830" text-anchor="end" font-family="ui-sans-serif, -apple-system" font-weight="700" font-size="22" fill="#22d3a5" letter-spacing="4">@APEX.FINANCIAL</text>`;
@@ -387,9 +387,9 @@ Deno.serve(async (req) => {
       if (webhook) {
         const lbLines = top6Rows.map((p, i) => `\`#${i + 1}\` **${p.full_name}** — ${fmt$(p.alp)} (${p.deals} deals)`).join("\n");
         const embeds = [
-          { title: `🏆 APEX ${label} — Team Production`, color: 0x22d3a5,
+          { title: `🏆 Galaxy ${label} — Team Production`, color: 0x22d3a5,
             description: `**${fmt$(team.alp)}** total ALP\n${team.deals} deals · ${team.agents} producers`,
-            image: { url: teamUrl }, footer: { text: "APEX Financial · Building Empires" }, timestamp: new Date().toISOString() },
+            image: { url: teamUrl }, footer: { text: "Galaxy Financial · Building Empires" }, timestamp: new Date().toISOString() },
           { title: `🥇 ${label} Leaderboard — Top 6`, color: 0xf5e6a3,
             description: lbLines, image: { url: lbUrl } },
           ...generated.filter(g => g.kind === "individual").map((g, i) => ({
@@ -408,7 +408,7 @@ Deno.serve(async (req) => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            username: "APEX Awards",
+            username: "Galaxy Awards",
             content: `**🚀 ${label} wrapped — full awards bundle below.** Save · post · tag @apex.financial`,
             embeds,
           }),
@@ -448,17 +448,17 @@ Deno.serve(async (req) => {
       const cards = generated.map(g => `<div style="margin:14px 0;border:1px solid #22d3a540;border-radius:12px;overflow:hidden;background:#0d1526;"><img src="${g.url}" alt="" width="100%" style="display:block;max-width:540px;"/></div>`).join("");
       const html = `<!DOCTYPE html><html><body style="font-family:ui-sans-serif,Arial,sans-serif;background:#020617;color:#e2e8f0;padding:32px 16px;">
         <div style="max-width:620px;margin:0 auto;background:#0a0f1a;border-radius:16px;padding:32px;">
-          <h1 style="color:#22d3a5;text-align:center;font-size:28px;margin:0 0 6px 0;">APEX ${esc(label)} — Awards Bundle</h1>
+          <h1 style="color:#22d3a5;text-align:center;font-size:28px;margin:0 0 6px 0;">Galaxy ${esc(label)} — Awards Bundle</h1>
           <p style="color:#94a3b8;text-align:center;font-size:13px;margin:0 0 24px 0;">${generated.length} plaques · team total ${esc(fmt$(team.alp))}</p>
           ${cards}
-          <p style="color:#475569;font-size:11px;text-align:center;margin-top:28px;letter-spacing:2px;">APEX FINANCIAL · BUILDING EMPIRES</p>
+          <p style="color:#475569;font-size:11px;text-align:center;margin-top:28px;letter-spacing:2px;">GALAXY FINANCIAL · BUILDING EMPIRES</p>
         </div>
       </body></html>`;
       try {
         emailResult = await resend.emails.send({
-          from: "APEX Awards <notifications@apex-financial.org>",
+          from: "Galaxy Awards <notifications@apex-financial.org>",
           to: [adminEmail],
-          subject: `🏆 APEX ${label} — Awards Bundle (${generated.length} plaques)`,
+          subject: `🏆 Galaxy ${label} — Awards Bundle (${generated.length} plaques)`,
           html,
         });
       } catch (e) {

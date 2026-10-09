@@ -102,16 +102,16 @@ const handler = async (req: Request): Promise<Response> => {
 <body style="margin:0;padding:0;background-color:#0a0a0a;">
   <div class="container">
     <div class="header">
-      <h1 style="margin:0;font-size:28px;">Welcome to APEX! 🎉</h1>
+      <h1 style="margin:0;font-size:28px;">Welcome to Galaxy! 🎉</h1>
       <p style="margin:10px 0 0 0;opacity:0.9;">Let's build something great together</p>
     </div>
     <div class="content">
       <p style="font-size:18px;">Hey ${agentName},</p>
       
-      <p>Welcome to the Apex Financial team. Your portal now shows a live roadmap, and these are your exact next steps:</p>
+      <p>Welcome to the Galaxy Financial team. Your portal now shows a live roadmap, and these are your exact next steps:</p>
 
       <div class="slack-step">
-        <h3 style="color:#D4AF37;"><span class="step-number" style="background:#D4AF37;color:#111;">1</span> Join the APEX Slack</h3>
+        <h3 style="color:#D4AF37;"><span class="step-number" style="background:#D4AF37;color:#111;">1</span> Join the Galaxy Slack</h3>
         <p>This is the primary team workspace for daily huddles, contracting support, training, scripts, and sales wins.</p>
         <a href="${SLACK_LINK}" class="button" style="background:#D4AF37;color:#111 !important;">Join Team Slack →</a>
       </div>
@@ -124,18 +124,18 @@ const handler = async (req: Request): Promise<Response> => {
         <a href="${ONBOARDING_CALL_LINK}" class="button" style="background:#D4AF37;color:#111 !important;">Book My Milver Call →</a>
       </div>
       <div class="step">
-        <h3><span class="step-number">3</span> Set Up Your APEX Account</h3>
+        <h3><span class="step-number">3</span> Set Up Your Galaxy Account</h3>
         <p>Sign in with your email, confirm your profile, and use the live roadmap as your source of truth.</p>
         <a href="${portalLink || PORTAL_LINK}" class="button">Open My Account &amp; Roadmap →</a>
       </div>
       <div class="step">
-        <h3><span class="step-number">4</span> Complete Native APEX Contracting</h3>
-        <p>Submit your NPN and profile once. APEX dispatches the contracting desk and spreadsheet automatically.</p>
+        <h3><span class="step-number">4</span> Complete Native Galaxy Contracting</h3>
+        <p>Submit your NPN and profile once. Galaxy dispatches the contracting desk and spreadsheet automatically.</p>
         <a href="${contractingLink || "https://apex-financial.org/start-contracting"}" class="button">Complete Contracting →</a>
       </div>
       ` : `
       <div class="step">
-        <h3><span class="step-number">2</span> Set Up Your APEX Account</h3>
+        <h3><span class="step-number">2</span> Set Up Your Galaxy Account</h3>
         <p>Sign in with your email, confirm your profile, and open the live licensing roadmap.</p>
         <a href="${portalLink || PORTAL_LINK}" class="button">Open My Account &amp; Roadmap →</a>
       </div>
@@ -156,7 +156,7 @@ const handler = async (req: Request): Promise<Response> => {
       <div class="highlight">
         <h3 style="text-align:center;">🏆 What We Expect</h3>
         <p style="text-align:center;font-size:16px;">
-          At Apex, the standard is <strong>excellence</strong>.<br><br>
+          At Galaxy, the standard is <strong>excellence</strong>.<br><br>
           Our minimum production standard is <strong style="font-size:22px;color:#14b8a6;">$20,000/month</strong>.<br><br>
           You were chosen because we believe you can hit that and beyond.
         </p>
@@ -164,12 +164,12 @@ const handler = async (req: Request): Promise<Response> => {
       
       <p style="text-align:center;margin-top:30px;">
         Let's build something great together!<br><br>
-        <strong>— The Apex Team</strong>
+        <strong>— The Galaxy Team</strong>
       </p>
     </div>
     <div class="footer">
-      <p>© ${new Date().getFullYear()} Apex Financial. All rights reserved.</p>
-      <p style="font-size:12px;">Powered by Apex Financial</p>
+      <p>© ${new Date().getFullYear()} Galaxy Financial. All rights reserved.</p>
+      <p style="font-size:12px;">Powered by Galaxy Financial</p>
     </div>
   </div>
 </body>
@@ -183,10 +183,10 @@ const handler = async (req: Request): Promise<Response> => {
         Authorization: `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "APEX Financial <notifications@apex-financial.org>",
+        from: "Galaxy Financial <notifications@apex-financial.org>",
         to: [agentEmail],
         cc: ccList.length > 0 ? ccList : undefined,
-        subject: "Welcome to Apex Financial! 🎉 Your First Steps",
+        subject: "Welcome to Galaxy Financial! 🎉 Your First Steps",
         html: emailHtml,
       }),
     });

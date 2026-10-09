@@ -134,7 +134,7 @@ export class ErrorBoundary extends Component<Props, State> {
             </div>
 
             <p className="text-xs text-muted-foreground">
-              APEX Financial • If this issue persists, contact support
+              Galaxy Financial • If this issue persists, contact support
             </p>
           </div>
         </div>

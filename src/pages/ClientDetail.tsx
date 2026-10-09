@@ -154,7 +154,7 @@ function Panel({ title, children }: { title: string; children: React.ReactNode }
 
 export default function ClientDetail() {
   const { clientId } = useParams<{ clientId: string }>();
-  usePageTitle("Client Workspace · APEX");
+  usePageTitle("Client Workspace · Galaxy");
   const { isAdmin } = useAuth();
   const queryClient = useQueryClient();
   const [prepOpen, setPrepOpen] = useState(false);

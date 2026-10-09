@@ -45,7 +45,7 @@ const LIFECYCLE_LABEL: Record<string, string> = {
 };
 
 export default function MyReferrals() {
-  usePageTitle("My referrals · APEX");
+  usePageTitle("My referrals · Galaxy");
   const { user } = useAuth();
 
   const { data: myAgentId } = useQuery({

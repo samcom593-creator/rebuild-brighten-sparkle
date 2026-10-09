@@ -117,7 +117,7 @@ function recoveryScript(row: RecoveryBatchRow): { title: string; body: string; h
     case "waiting_on_license":
       return {
         title: "Waiting on License",
-        body: `Hi ${first}, this is APEX Financial. Congrats on passing your test. We're calling to confirm your state license number came through. What's the status?`,
+        body: `Hi ${first}, this is Galaxy Financial. Congrats on passing your test. We're calling to confirm your state license number came through. What's the status?`,
         hint: "Confirm license number arrived. If yes, log Licensed. If not, get expected date.",
       };
     case "passed_test":
@@ -154,7 +154,7 @@ function recoveryScript(row: RecoveryBatchRow): { title: string; body: string; h
     default:
       return {
         title: "Unlicensed Stale",
-        body: `Hi ${first}, we've reached out several times. Are you still interested in getting licensed with APEX? Straight answer either way is fine.`,
+        body: `Hi ${first}, we've reached out several times. Are you still interested in getting licensed with Galaxy? Straight answer either way is fine.`,
         hint: "Straight yes/no. Suppress if no. Restart cadence if yes.",
       };
   }

@@ -141489,6 +141489,30 @@ export type Database = {
       apex_is_admin: { Args: never; Returns: boolean }
       day_plan_ensure_seeded: { Args: never; Returns: number }
       fn_book_agent_name_known: { Args: { p_name: string }; Returns: boolean }
+      fn_hire_priority_rows: {
+        Args: never
+        Returns: {
+          aflac: boolean
+          agent_id: string
+          agentlink: boolean
+          called_recently: boolean
+          days: number
+          display_name: string
+          email: string
+          ethos: boolean
+          first_contract: boolean
+          hired_at: string
+          last_call_at: string
+          manager_id: string
+          manager_name: string
+          phone: string
+          priority: number
+          priority_rank: number
+          reasons: Json
+          red_count: number
+          score: number
+        }[]
+      }
       has_agent: {
         Args: { app: Database["public"]["Tables"]["applications"]["Row"] }
         Returns: boolean
@@ -142999,6 +143023,12 @@ export type Database = {
         Args: { p_bucket: string; p_max: number; p_window_seconds: number }
         Returns: boolean
       }
+      hire_flag_eval: {
+        Args: { p_aflac_done: boolean; p_al_id: number; p_al_incomplete: number; p_al_pending_upline: number; p_carrier_days?: number; p_contract_days?: number; p_contract_done: boolean; p_days: number; p_ethos_status: string }
+        Returns: Json
+      }
+      hire_priority_alert: { Args: { p_topic?: string }; Returns: Json }
+      hire_priority_list: { Args: never; Returns: Json }
       ig_bucket: {
         Args: { last_msg_at: string; last_sender: string }
         Returns: string

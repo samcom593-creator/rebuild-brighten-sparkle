@@ -2300,6 +2300,11 @@ export default function DashboardCRM() {
           isLoading={rosterSegmentsQuery.isLoading}
           todayProduction={todayProductionQuery.data ?? null}
           isTodayLoading={todayProductionQuery.isLoading}
+          // Team size = active agents actually working the business (no terminated / inactive / sync-only
+          // placeholder seats). New hires, no sale = those active working agents who joined ≤30d ago and
+          // have zero lifetime deals — the activation queue. Both derived from the roster rows on screen.
+          teamSize={((rosterQuery.data ?? []) as RosterRow[]).filter((r) => r.status === "active" && r.is_sync_only !== true).length}
+          newHires30dNoSale={((rosterQuery.data ?? []) as RosterRow[]).filter((r) => r.status === "active" && r.is_sync_only !== true && (r.tenure_days ?? 9999) <= 30 && (r.lifetime_deals ?? 0) === 0).length}
         />
 
         {/* Two questions, two views, one set of headline numbers above.

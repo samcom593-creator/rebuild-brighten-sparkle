@@ -22,6 +22,8 @@ import { formatTimeAgo } from "@/lib/dateUtils";
 import { buildExceptionQueue, type OnboardingFacts } from "@/lib/onboardingExceptions";
 import { ExpectedStartControl } from "@/components/onboarding/ExpectedStartControl";
 import { useOnboardingExceptionFacts } from "@/components/onboarding/useOnboardingExceptionFacts";
+import { HireFlagChips } from "@/components/hires/HireFlagChips";
+import { groupHirePriority, useHirePriority } from "@/lib/hireFlags";
 
 /**
  * Recruit Stages (2026-09-30). Sam: "fix the licensing tracking so I can see
@@ -148,6 +150,9 @@ export default function RecruitPipeline() {
   const all = useMemo(() => rowsQuery.data ?? [], [rowsQuery.data]);
   const stageName = useCallback((key: string) => stages.find((s) => s.stage_key === key)?.display_name ?? key, [stages]);
   // First agent stage; everything below it is applicant territory.
+  // Red flags per hired agent. The server only returns them to managers and staff; for everyone else this is empty.
+  const hirePriority = useHirePriority();
+  const hireFlagsByAgent = useMemo(() => groupHirePriority(hirePriority.data ?? []).byAgent, [hirePriority.data]);
   const agentFloor = useMemo(() => stages.find((s) => s.stage_key === "hired_unlicensed")?.order_index ?? stages.find((s) => s.stage_key === "hired")?.order_index ?? 12, [stages]);
   const linkState = (r: Row): LinkFilter => (r.link_used_at || r.last_sign_in_at ? "clicked" : r.link_sent_at ? "sent" : "not_sent");
 
@@ -570,6 +575,9 @@ export default function RecruitPipeline() {
                               <Instagram className="h-3.5 w-3.5" /> add IG
                             </button>
                           )}
+                          {r.person_type === "agent" && r.agent_id && hireFlagsByAgent.get(r.agent_id) ? (
+                            <HireFlagChips row={hireFlagsByAgent.get(r.agent_id)!} />
+                          ) : null}
                           {r.person_type === "agent" && r.agent_id && (() => {
                             const info = factsByAgent.get(r.agent_id);
                             if (!info) {

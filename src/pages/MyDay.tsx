@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { MyDayWins } from "@/components/myday/MyDayWins";
 import { MyDayTodoist, pushMyDayToTodoist } from "@/components/myday/MyDayTodoist";
 import { PrelicensingCheck } from "@/components/myday/PrelicensingCheck";
+import { HirePriorityPanel } from "@/components/hires/HirePriorityPanel";
 
 interface Task {
   id: string;
@@ -379,6 +380,8 @@ export default function MyDay() {
           </button>
         ))}
       </div>
+
+      {!editing ? <HirePriorityPanel className="mb-4" /> : null}
 
       {!editing ? <MyDayWins /> : null}
 

@@ -79,6 +79,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ensureCurrentAgentRecord } from "@/lib/ensureCurrentAgentRecord";
 import { useAuth } from "@/hooks/useAuth";
 import { AflacCheckoffBanner } from "@/components/dashboard/AflacCheckoffBanner";
+import { HirePriorityPanel } from "@/components/hires/HirePriorityPanel";
 import { useMyDownline } from "@/hooks/useMyDownline";
 import { useRolePreview, type RolePreview } from "@/hooks/useRolePreview";
 import { getBusinessDayBounds, getBusinessMonthBounds, getBusinessWeekBounds, getMatchedPriorWeekBounds } from "@/lib/dateUtils";
@@ -1064,6 +1065,7 @@ export default function Dashboard() {
     return (
       <div className="mx-auto w-full max-w-7xl space-y-5 p-4 sm:p-6">
         <AflacCheckoffBanner />
+        <HirePriorityPanel />
         <AgentCloudHome />
       </div>
     );

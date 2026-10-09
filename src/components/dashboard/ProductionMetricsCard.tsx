@@ -37,17 +37,24 @@ export function ProductionMetricsCard({
   isLoading,
   todayProduction,
   isTodayLoading,
+  teamSize,
+  newHires30dNoSale,
 }: {
   snapshot: ProductionMetricSnapshot | null;
   isLoading: boolean;
   todayProduction: TodayProductionSnapshot | null;
   isTodayLoading: boolean;
+  // Row-derived overrides (Sam: Team size should be active agents actually working the business,
+  // not the canonical-roster total). When provided they win over the segment snapshot.
+  teamSize?: number | null;
+  newHires30dNoSale?: number | null;
 }) {
   const tiles = snapshot
     ? [
-        { label: "Team size", value: snapshot.total.toLocaleString(), note: "on the canonical roster", tone: "text-foreground" },
+        { label: "Team size", value: (teamSize ?? snapshot.total).toLocaleString(), note: teamSize != null ? "active, working the business" : "on the canonical roster", tone: "text-foreground" },
         { label: "Active", value: snapshot.active.toLocaleString(), note: `${snapshot.inactive} inactive · ${snapshot.terminated} terminated`, tone: "text-info" },
         { label: "Producing this month", value: snapshot.producing_mtd.toLocaleString(), note: `of ${snapshot.active} active`, tone: "text-success" },
+        ...(newHires30dNoSale != null ? [{ label: "New hires, no sale", value: newHires30dNoSale.toLocaleString(), note: "joined ≤30d, not selling yet", tone: "text-amber-500" }] : []),
         { label: "Month-to-date ALP", value: compactUsd(snapshot.mtd_alp), note: snapshot.book_last_posted ? `book through ${snapshot.book_last_posted}` : "not on file", tone: "text-foreground" },
       ]
     : null;

@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Hires who stall now throw red flags, and a Priority 1 list tells you who to talk to right now.",
+    detail: "A licensed hire still without Aflac or Ethos after three days is red on that step. After five days a missing first contract or AgentLink goes red too. Red chips show on the Home page, My Day, the recruit pipeline and the Aflac page. The Priority 1 panel on Home and My Day ranks everyone behind by how many steps are overdue and how late, shows the worst ten with Call and Text buttons, and puts a hire you already called today at the bottom. Your phone also gets a push at 9 AM and 3 PM on weekdays naming the first five. Measured today: 24 licensed hires are behind, and the worst four are 42 to 44 days in with nothing done. Aflac shows red for most of them because Aflac tracking began today, so mark anyone already sent.",
+    commit: "PL-HIRE-FLAGS",
+  },
+  {
+    ts: "today",
     label: "The text-message sender now refuses strangers. Anyone could use it to text any US phone number with their own words.",
     detail: "The function that sends texts through carrier email gateways read no login at all. One request from anyone on the internet, with a phone number and a message, sent that message from the agency's email domain to five carrier gateways at once, and a second form texted any agent by id. It now only answers the two internal callers it has: the bulk agent-message tool and the database queue drain. The logs show no outside use in the last day. The bulk agent-message tool also had a bug that would have made every bulk text fail while counting it as sent: it passed the phone under the wrong name and never checked the answer. It now sends the right field and counts a failure as a failure. That path has never been used, so no texts were lost.",
     commit: "PL-WIB-SMS-RELAY-AUTH",

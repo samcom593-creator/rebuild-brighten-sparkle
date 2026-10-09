@@ -179,6 +179,33 @@ describe("duplicate-person writers are closed", () => {
     expect(fn).toContain("already exists.`, existed: true }, 409)");
   });
 
+  // 2026-10-09: /agent-login kept a "Create your account" form that invoked this
+  // function after it became admin/manager-only, so every not-on-file visitor
+  // was refused (15/15 401s for one person in one evening). A logged-out page
+  // can never satisfy the gate above, so any src caller is a dead button.
+  it("no src surface invokes create-new-agent-account; /agent-login sends not-on-file people to /apply", () => {
+    const root = path.resolve(__dirname, "../..");
+    const callers: string[] = [];
+    const walk = (dir: string) => {
+      for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, ent.name);
+        if (ent.isDirectory()) {
+          if (ent.name !== "tests") walk(full);
+        } else if (/\.(tsx?|jsx?)$/.test(ent.name)) {
+          if (stripTs(fs.readFileSync(full, "utf8")).includes('"create-new-agent-account"')) {
+            callers.push(path.relative(root, full));
+          }
+        }
+      }
+    };
+    walk(root);
+    expect(callers).toEqual([]);
+
+    const login = stripTs(read("src/pages/AgentNumbersLogin.tsx"));
+    expect(login).toContain('setStep("not-on-file")');
+    expect(login).toContain('navigate("/apply")');
+  });
+
   it("add-agent refuses an existing agent by NPN or by an existing login", () => {
     const fn = read("supabase/functions/add-agent/index.ts");
     expect(fn).toContain('.eq("nipr_number", normalizedNpn)');

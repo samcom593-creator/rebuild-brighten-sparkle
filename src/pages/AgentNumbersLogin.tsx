@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { BarChart3, Mail, Lock, Loader2, TrendingUp, Trophy, Target, ArrowLeft, CheckCircle, User, Phone, UserPlus, Check } from "lucide-react";
+import { BarChart3, Mail, Lock, Loader2, TrendingUp, Trophy, Target, ArrowLeft, CheckCircle, Phone, Check, SearchX } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -15,8 +15,12 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import apexIcon from "@/assets/apex-icon.png";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { track } from "@/lib/analytics";
+import { resolveBrand } from "@/config/brand";
 
-type FlowStep = "identifier" | "password" | "set-password" | "create-account" | "reset-sent";
+const BRAND = resolveBrand();
+
+type FlowStep = "identifier" | "password" | "set-password" | "not-on-file" | "reset-sent";
 
 const identifierSchema = z.object({
   identifier: z.string().min(1, "Email or phone is required"),
@@ -31,15 +35,9 @@ const setPasswordSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
-const createAccountSchema = z.object({
-  fullName: z.string().min(2, "Name is required"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-});
-
 type IdentifierFormData = z.infer<typeof identifierSchema>;
 type PasswordFormData = z.infer<typeof passwordSchema>;
 type SetPasswordFormData = z.infer<typeof setPasswordSchema>;
-type CreateAccountFormData = z.infer<typeof createAccountSchema>;
 
 export default function AgentNumbersLogin() {
   usePageTitle("Agent Login · Galaxy Daily Numbers");
@@ -98,9 +96,6 @@ export default function AgentNumbersLogin() {
     resolver: zodResolver(setPasswordSchema),
   });
 
-  const createAccountForm = useForm<CreateAccountFormData>({
-    resolver: zodResolver(createAccountSchema),
-  });
 
   const handleIdentifierSubmit = async (data: IdentifierFormData) => {
     setIsCheckingIdentifier(true);
@@ -127,8 +122,16 @@ export default function AgentNumbersLogin() {
         // CRM user without auth - just need password (name already in CRM)
         setStep("set-password");
       } else {
-        // Not in CRM - create new account
-        setStep("create-account");
+        // Not on file. This step used to offer "Create your account", which
+        // invoked create-new-agent-account. Since the 2026-10-06 invite
+        // redesign that function refuses every caller who is not a signed-in
+        // admin or manager, so the form could never succeed for the logged-out
+        // visitor it was shown to: 15 of 15 attempts refused (401) on
+        // 2026-10-09 from one person who retried for four minutes and left.
+        // New agents get their login from the invite link (/hire/:token);
+        // people who are not hired yet start at /apply.
+        track("agent_login_not_on_file", { identifier_kind: input.includes("@") ? "email" : "phone" });
+        setStep("not-on-file");
       }
     } catch (error: any) {
       console.error("Error checking identifier:", error);
@@ -217,39 +220,6 @@ export default function AgentNumbersLogin() {
     }
   };
 
-  const handleCreateAccountSubmit = async (data: CreateAccountFormData) => {
-    setIsLoading(true);
-    
-    try {
-      const { data: result, error } = await supabase.functions.invoke("create-new-agent-account", {
-        body: { 
-          email, 
-          password: data.password,
-          fullName: data.fullName,
-        },
-      });
-
-      if (error) throw error;
-      if (result.error) throw new Error(result.error);
-
-      toast.success("Account created! Signing you in...");
-
-      // Now sign in
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password: data.password,
-      });
-
-      if (signInError) throw signInError;
-
-      await redirectAfterLogin();
-    } catch (error: any) {
-      console.error("Create account error:", error);
-      toast.error(error.message || "Failed to create account");
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleForgotPassword = async () => {
     if (!email) {
@@ -283,7 +253,6 @@ export default function AgentNumbersLogin() {
     identifierForm.reset();
     passwordForm.reset();
     setPasswordForm.reset();
-    createAccountForm.reset();
   };
 
   const features = [
@@ -297,7 +266,7 @@ export default function AgentNumbersLogin() {
       case "identifier": return "Sign in to log your production";
       case "password": return agentName ? `Welcome back, ${agentName.split(" ")[0]}!` : "Enter your password";
       case "set-password": return agentName ? `Welcome, ${agentName.split(" ")[0]}! 👋` : "Set your password";
-      case "create-account": return "Create your account";
+      case "not-on-file": return "We couldn't find you";
       case "reset-sent": return "Check your email";
       default: return "";
     }
@@ -592,90 +561,57 @@ export default function AgentNumbersLogin() {
             </motion.div>
           )}
 
-          {/* Step 2c: Create Account (not in CRM) */}
-          {step === "create-account" && (
+          {/* Step 2c: Not on file. Logins for new agents come from the invite link. */}
+          {step === "not-on-file" && (
             <motion.div
-              key="create-account-step"
+              key="not-on-file-step"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
             >
-              <GlassCard className="p-8">
-                <form onSubmit={createAccountForm.handleSubmit(handleCreateAccountSubmit)} className="space-y-4">
-                  <div className="p-3 rounded-lg bg-primary/10 text-sm text-center mb-2">
-                    <UserPlus className="h-4 w-4 inline mr-2" />
-                    Create your Galaxy account
+              <GlassCard className="p-8 space-y-5">
+                <div className="text-center">
+                  <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-primary/10 text-primary mb-3">
+                    <SearchX className="h-7 w-7" />
                   </div>
+                  <p className="text-sm text-muted-foreground">
+                    No agent account is on file for
+                  </p>
+                  <p className="text-sm font-medium break-all">{email}</p>
+                </div>
 
-                  <div className="p-2 rounded-lg bg-muted/50 text-xs text-center text-muted-foreground">
-                    <Mail className="h-3 w-3 inline mr-1" />
-                    {email}
+                <div className="p-4 rounded-lg bg-muted/50 text-sm space-y-1">
+                  <p className="font-medium">Already hired?</p>
+                  <p className="text-muted-foreground">
+                    Your login comes from the invite link your manager sends you. Open that link to set
+                    your password, or ask your manager to resend it. If you signed up with a different
+                    email or phone, try that one.
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-lg bg-muted/50 text-sm space-y-3">
+                  <div className="space-y-1">
+                    <p className="font-medium">Not with {BRAND.shortName} yet?</p>
+                    <p className="text-muted-foreground">Apply first. Once you are hired, your manager sends your invite link.</p>
                   </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="fullName" className="text-sm font-medium">Full Name</Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="fullName"
-                        type="text"
-                        {...createAccountForm.register("fullName")}
-                        className="pl-10 bg-input h-11"
-                        autoComplete="name"
-                        autoFocus
-                      />
-                    </div>
-                    {createAccountForm.formState.errors.fullName && (
-                      <p className="text-sm text-destructive">{createAccountForm.formState.errors.fullName.message}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="create-password" className="text-sm font-medium">Password</Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="create-password"
-                        type="password"
-                        {...createAccountForm.register("password")}
-                        placeholder="Choose a password"
-                        className="pl-10 bg-input h-11"
-                        autoComplete="new-password"
-                      />
-                    </div>
-                    {createAccountForm.formState.errors.password && (
-                      <p className="text-sm text-destructive">{createAccountForm.formState.errors.password.message}</p>
-                    )}
-                  </div>
-
-                  <GradientButton 
-                    type="submit" 
-                    className="w-full h-11 text-base font-semibold" 
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        Creating account...
-                      </>
-                    ) : (
-                      <>
-                        <UserPlus className="h-4 w-4 mr-2" />
-                        Create Account & Log In
-                      </>
-                    )}
-                  </GradientButton>
-
-                  <Button
+                  <GradientButton
                     type="button"
-                    variant="ghost"
-                    onClick={handleBack}
-                    className="w-full"
+                    className="w-full h-11 text-base font-semibold"
+                    onClick={() => navigate("/apply")}
                   >
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    Use different email
-                  </Button>
-                </form>
+                    Apply to Join {BRAND.shortName}
+                  </GradientButton>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={handleBack}
+                  className="w-full"
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Try a different email or phone
+                </Button>
               </GlassCard>
             </motion.div>
           )}

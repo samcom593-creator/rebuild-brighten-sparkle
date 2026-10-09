@@ -81,3 +81,37 @@ Deno.test("send-notification is wired to the policy (source contract)", async ()
   assert(body.includes("anonKey") && body.includes("Bearer ${token}"), "visibility read is not caller-scoped");
   assert(!body.includes("serviceRoleKey"), "visibility read uses the service role and bypasses RLS");
 });
+
+// Signup is open, so floor "any_authenticated" admits strangers. Each function
+// on that floor must be named here with the reason a stranger cannot choose the
+// recipient. A new entry, or send-aged-lead-email drifting back down, fails
+// this until someone writes the reason.
+const ANY_AUTHENTICATED_FLOOR: Record<string, string> = {
+  "send-notification": "member callers held to notify-caller-policy (Sam's inboxes or an RLS-visible person)",
+  "send-course-enrollment-email": "recipient is profile.email looked up from the body's agentId, never a body address",
+};
+
+Deno.test("any_authenticated sender floor census", async () => {
+  const root = new URL("../", import.meta.url);
+  const found: string[] = [];
+  for await (const entry of Deno.readDir(root)) {
+    if (!entry.isDirectory || entry.name.startsWith("_")) continue;
+    let src: string;
+    try {
+      src = await Deno.readTextFile(new URL(`${entry.name}/index.ts`, root));
+    } catch {
+      continue; // empty-catch-allow:no-index
+    }
+    if (/floor\s*:\s*["']any_authenticated["']/.test(src)) found.push(entry.name);
+  }
+  assertEquals(found.sort(), Object.keys(ANY_AUTHENTICATED_FLOOR).sort());
+});
+
+Deno.test("send-aged-lead-email: admin/manager floor and an escaped name", async () => {
+  const src = await Deno.readTextFile(
+    new URL("../send-aged-lead-email/index.ts", import.meta.url),
+  );
+  assert(/requireSendAuth\(req\)/.test(src), "send-aged-lead-email no longer uses the default admin_or_manager floor");
+  assert(/const name = escapeHtml\(rawName\)/.test(src), "firstName reaches the HTML unescaped");
+  assert(/getEmailHtml\(name,/.test(src), "template is not fed the escaped name");
+});

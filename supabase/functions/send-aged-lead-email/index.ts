@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
+import { escapeHtml } from "../_shared/notify-caller-policy.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -153,11 +154,17 @@ const handler = async (req: Request): Promise<Response> => {
   // notifications@apex-financial.org, cc info@kingofsales.net and, by passing a
   // managerId, that manager too.
   //
-  // Floor is any_authenticated: AgedLeadImporter (/dashboard/aged-leads, any
-  // signed-in user) calls this per imported lead and only console.errors the
-  // result, so an admin floor would drop those sends with nothing on screen.
-  // The other caller, send-batch-blast, presents the service key.
-  const auth = await requireSendAuth(req, { floor: "any_authenticated" });
+  // PL-WIB-SEND-NOTIFICATION-RECIPIENT (2026-10-09): floor raised from
+  // any_authenticated to the default admin_or_manager. The note that stood here
+  // said AgedLeadImporter is reachable by any signed-in user. It is not:
+  // DashboardAgedLeads renders it only for isAdmin || isManager, and the importer
+  // INSERTs into aged_leads first and throws on error before it sends, where the
+  // only INSERT policy is "Admins can manage all aged leads". So every UI send
+  // has always come from an admin. Meanwhile signup is open (GoTrue
+  // disable_signup=false), so any_authenticated let a stranger mail this pitch to
+  // any address with firstName dropped into the <h2> as raw HTML. The other
+  // caller, send-batch-blast, presents the service key.
+  const auth = await requireSendAuth(req);
   if (!auth.ok) {
     return new Response(JSON.stringify({ error: auth.error }), {
       status: auth.status,
@@ -183,11 +190,14 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Missing required field: email");
     }
 
-    const name = firstName || "there";
+    const rawName = firstName || "there";
+    // Escaped for the HTML only: firstName comes from an imported CSV row, never
+    // trusted markup. The tracking URL keeps the raw value (encodeURIComponent).
+    const name = escapeHtml(rawName);
 
     // Build tracking URLs
     const encodedEmail = encodeURIComponent(email);
-    const encodedName = encodeURIComponent(name);
+    const encodedName = encodeURIComponent(rawName);
     const trackingClickUrl = `${SUPABASE_URL}/functions/v1/track-email-click?email=${encodedEmail}&name=${encodedName}&source=aged_lead`;
     const trackingPixelUrl = `${SUPABASE_URL}/functions/v1/track-email-open?id=${encodedEmail}`;
 

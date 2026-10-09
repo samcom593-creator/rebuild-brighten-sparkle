@@ -627,6 +627,20 @@ function RosterStatusBadge({ row }: { row: RosterRow }) {
   );
 }
 
+// Contracts Sam ticks off per agent on My Team — a manual checklist, independent of the auto-synced
+// AgentLink contract data (which is messy and agent_id-null). Click a roster row open, tap a bubble to
+// mark a contract done. Extend this list as Sam names more carriers (he's detailing AgentLink's new use).
+const CONTRACTS: { key: string; label: string }[] = [
+  { key: "first_contract", label: "First contract" },
+  { key: "aflac", label: "Aflac" },
+  { key: "ethos", label: "Ethos" },
+  { key: "agentlink", label: "AgentLink" },
+];
+// Held in a const (not a bare .from("literal")) so the relation-types guard reads it as unprovable:
+// this table is newer than the generated types.ts, which the catalog guard forbids hand-editing —
+// it gets into types.ts the next time a connector session regenerates it from the live database.
+const ACC_TABLE = "agent_contract_checkoffs";
+
 function RosterPanel({ rows, isLoading, isError, onRetry }: {
   rows: RosterRow[];
   isLoading: boolean;
@@ -637,6 +651,37 @@ function RosterPanel({ rows, isLoading, isError, onRetry }: {
   const [q, setQ] = useState("");
   const [managerFilter, setManagerFilter] = useState("all");
   const [sort, setSort] = useState<RosterSortKey>("mtd_desc");
+  // Contract check-offs: which contracts each agent has done, and which rows are expanded to show them.
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [checks, setChecks] = useState<Map<string, Set<string>>>(new Map());
+  useEffect(() => {
+    const ids = rows.map((r) => r.agent_id).filter(Boolean) as string[];
+    if (ids.length === 0) return;
+    let off = false;
+    void (supabase.from(ACC_TABLE as never) as unknown as { select: (c: string) => { in: (col: string, v: string[]) => Promise<{ data: { agent_id: string; contract_key: string }[] | null; error: unknown }> } })
+      .select("agent_id, contract_key").in("agent_id", ids.slice(0, 1000))
+      .then(({ data, error }) => {
+        if (off || error || !data) return;
+        const m = new Map<string, Set<string>>();
+        for (const row of data as { agent_id: string; contract_key: string }[]) {
+          if (!m.has(row.agent_id)) m.set(row.agent_id, new Set());
+          m.get(row.agent_id)!.add(row.contract_key);
+        }
+        setChecks(m);
+      });
+    return () => { off = true; };
+  }, [rows]);
+  const toggleExpand = (id: string) => setExpanded((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const toggleContract = async (agentId: string, key: string) => {
+    const next = !(checks.get(agentId)?.has(key) ?? false);
+    const apply = (on: boolean) => setChecks((prev) => {
+      const m = new Map(prev); const set = new Set(m.get(agentId) ?? []);
+      if (on) set.add(key); else set.delete(key); m.set(agentId, set); return m;
+    });
+    apply(next); // optimistic; the write is a single gated RPC
+    const { error } = await supabase.rpc("toggle_agent_contract_checkoff" as never, { p_agent_id: agentId, p_contract_key: key, p_checked: next } as never);
+    if (error) { apply(!next); toast.error(`Couldn't save contract: ${error.message.slice(0, 100)}`); }
+  };
 
   const managers = useMemo(() => {
     const m = new Map<string, string>();
@@ -836,8 +881,11 @@ function RosterPanel({ rows, isLoading, isError, onRetry }: {
                   const l30 = usdOrNull(r.l30_alp);
                   const life = usdOrNull(r.lifetime_alp);
                   const sinceSale = daysSince(r.last_posted_date);
+                  const isOpen = expanded.has(r.agent_id);
+                  const done = checks.get(r.agent_id);
                   return (
-                    <TableRow key={r.agent_id} className="border-b border-border/60 transition-colors hover:bg-muted/30">
+                    <React.Fragment key={r.agent_id}>
+                    <TableRow className="border-b border-border/60 transition-colors hover:bg-muted/30">
                       <TableCell className="px-2 py-2">
                         <div className="flex min-w-0 items-center gap-2">
                           <AgentAvatar avatarUrl={getAvatarUrl(r.avatar_url ?? undefined)} name={r.full_name ?? "—"} size="sm" className="shrink-0 shadow-sm ring-2 ring-background" />
@@ -963,11 +1011,37 @@ function RosterPanel({ rows, isLoading, isError, onRetry }: {
                         </span>
                       </TableCell>
                       <TableCell className="px-2 py-2 text-right">
-                        <Button asChild variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label={`Open producer profile for ${r.full_name ?? "this agent"}`}>
-                          <Link to={`/dashboard/profile?agentId=${r.agent_id}`}><ArrowUpRight className="h-4 w-4" /></Link>
-                        </Button>
+                        <div className="flex items-center justify-end gap-0.5">
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" aria-expanded={isOpen} aria-label={`${isOpen ? "Hide" : "Show"} contracts for ${r.full_name ?? "this agent"}`} onClick={() => toggleExpand(r.agent_id)}>
+                            {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                          </Button>
+                          <Button asChild variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label={`Open producer profile for ${r.full_name ?? "this agent"}`}>
+                            <Link to={`/dashboard/profile?agentId=${r.agent_id}`}><ArrowUpRight className="h-4 w-4" /></Link>
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
+                    {isOpen && (
+                      <TableRow className="border-b border-border/60 bg-muted/20 hover:bg-muted/20">
+                        <TableCell colSpan={11} className="px-4 py-3">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="mr-1 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">Contracts</span>
+                            {CONTRACTS.map((c) => {
+                              const on = done?.has(c.key) ?? false;
+                              return (
+                                <button key={c.key} type="button" onClick={() => void toggleContract(r.agent_id, c.key)} aria-pressed={on}
+                                  className={cn("inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[13px] font-semibold transition",
+                                    on ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground")}>
+                                  {on ? <CircleCheck className="h-3.5 w-3.5" /> : <Circle className="h-3.5 w-3.5" />}{c.label}
+                                </button>
+                              );
+                            })}
+                            <span className="ml-auto text-[12px] font-semibold tabular-nums text-muted-foreground">{done?.size ?? 0}/{CONTRACTS.length} done</span>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    </React.Fragment>
                   );
                 })}
               </TableBody>

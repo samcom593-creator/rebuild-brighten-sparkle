@@ -19,6 +19,12 @@ export const SHIPPED: ShippedItem[] = [
   },
   {
     ts: "today",
+    label: "On My Team, tap the chevron on any agent to open their contracts right in the row — bubbles for First contract, Aflac, Ethos and AgentLink that you tap to check off, with a running count of how many are done. No opening a full profile to do it.",
+    detail: "The check-offs are your own manual tracker, saved per agent and kept separate from the AgentLink contract sync so nothing overwrites them. The \"Producing\" filter above the roster already narrows to only producing agents when you want the business view without the noise. The contract list is easy to extend — tell me which carriers to add and I'll drop them in.",
+    commit: "PL-MYTEAM-CONTRACT-CHECKOFFS",
+  },
+  {
+    ts: "today",
     label: "Film this works again, the Week tab is readable, the 22 cleared video ideas are back, and long-form self-improvement ideas are added.",
     detail: "Every tap on Film this failed with a save error because the card was sent with an empty date, which the database rejects. It now saves, with a test so it cannot return. The Week tab showed seven cramped columns that cut every title short and used tiny chips. It now shows four wider columns with full titles, larger chips and a bigger move menu. The 22 ideas that had been cleared today are restored. Eight new long-form ideas on discipline, routine, beliefs, the gym and your full story are in the pick list.",
     commit: "PL-LAUNCHBOARD-FIX",

@@ -7667,6 +7667,22 @@
         "raw": ""
       }
     ],
+    "toggle_agent_contract_checkoff": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_checked",
+          "p_contract_key"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_checked",
+          "p_contract_key"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_contract_key text, p_checked boolean"
+      }
+    ],
     "touch_getting_started": [
       {
         "all": [],

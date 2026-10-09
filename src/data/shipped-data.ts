@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Your text alert for licensing milestones goes out again. The database was sending it with a key the server now refuses.",
+    detail: "When an applicant moves a licensing step (passed the exam, fingerprints done, licensed), the system emails and texts you. The email gets through. The text is refused: eleven database jobs sign their requests with the public key, and the server answers that key with a 401 before the request runs. The alert log records both as sent anyway. They now sign with the internal key, which was tested against the same endpoint first. One of the eleven, the 'send login link on licensed' step, could never have worked with either key, because that endpoint only accepts a signed-in manager. It is removed, and the Discord welcome post that runs beside it is unchanged. Nine of the eleven are not scheduled anywhere, so nothing else changes today.",
+    commit: "PL-WIB-PG-ANON-BEARER",
+  },
+  {
+    ts: "today",
     label: "Hires who stall now throw red flags, and a Priority 1 list tells you who to talk to right now.",
     detail: "A licensed hire still without Aflac or Ethos after three days is red on that step. After five days a missing first contract or AgentLink goes red too. Red chips show on the Home page, My Day, the recruit pipeline and the Aflac page. The Priority 1 panel on Home and My Day ranks everyone behind by how many steps are overdue and how late, shows the worst ten with Call and Text buttons, and puts a hire you already called today at the bottom. Your phone also gets a push at 9 AM and 3 PM on weekdays naming the first five. Measured today: 24 licensed hires are behind, and the worst four are 42 to 44 days in with nothing done. Aflac shows red for most of them because Aflac tracking began today, so mark anyone already sent.",
     commit: "PL-HIRE-FLAGS",

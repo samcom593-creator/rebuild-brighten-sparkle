@@ -852,6 +852,13 @@ if git diff --cached --name-only | grep -qE '^(src/.*\.tsx?|scripts/check-brand-
   npm run --silent check:theme-literals || exit 1
 fi
 
+# Link-share card: og:image must be the rendered SVG and say brand.ts platformName.
+# A rename that only sweeps text leaves the old name in the image (2026-10-08).
+if git diff --cached --name-only | grep -qE '^(index\.html|src/config/brand\.ts|public/galaxy-recruit-og\.(svg|jpg)|scripts/data/share-card\.json|scripts/(check|render)-share-card\.mjs)$'; then
+  echo "[pre-commit] share card input staged — running check:share-card…"
+  npm run --silent check:share-card || exit 1
+fi
+
 # Icon-only buttons need an accessible name (WCAG 4.1.2). A tooltip is not a name.
 if git diff --cached --name-only | grep -qE '^src/.*\.tsx$'; then
   echo "[pre-commit] tsx staged — running check:icon-button-labels…"

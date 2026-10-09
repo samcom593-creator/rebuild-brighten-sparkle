@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Shared links now preview as Galaxy Financial. The preview picture still showed the old name after the rename.",
+    detail: "The rename changed the words on every page, but the picture that shows when someone shares an apex-financial.org link in a text, DM or Discord was an image with the old name drawn into it, so it showed that name under a Galaxy Financial title. The card is redrawn as Galaxy in the site's own fonts, the button text now fits inside its button, and it is a 61 KB file chat apps will show. It has a new file name so apps that saved the old picture fetch the new one. A new check fails if the card stops matching the brand name in the code, so the next rename cannot leave it behind. The home-screen app icon and the login-page logo still show the old logo; those need new logo artwork.",
+    commit: "PL-WIB-SHARE-CARD-BRAND",
+  },
+  {
+    ts: "today",
     label: "The agency is now Galaxy Financial on every screen and in every email, and there is a daily Aflac check-off that cannot be skipped.",
     detail: "Every hire has to be sent to Aflac, and nothing tracked whether that happened. A new Aflac page lists each licensed hire with their name, email, NPN and phone. You type the commission level by hand for each one, then press Sent to Aflac, and the hire gets an email telling them Aflac is emailing them right away. A hire with a missing or malformed field shows as Blocked with the exact field missing, and the page refuses to send them. The day can only be checked off once every ready hire is sent, and a red banner sits on the home page until it is. The rename covers the site, the browser tab and install name, and the sender name on about 140 email functions. Left under the old name on purpose: the legal pages and legal-entity strings until the company is renamed, the sub-agency name registered with Ethos, and the email addresses and website address, which move when the new domain is bought.",
     commit: "PL-GALAXY-AFLAC",

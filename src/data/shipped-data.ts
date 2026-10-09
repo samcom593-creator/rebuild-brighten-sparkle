@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Film this works again, the Week tab is readable, the 22 cleared video ideas are back, and long-form self-improvement ideas are added.",
+    detail: "Every tap on Film this failed with a save error because the card was sent with an empty date, which the database rejects. It now saves, with a test so it cannot return. The Week tab showed seven cramped columns that cut every title short and used tiny chips. It now shows four wider columns with full titles, larger chips and a bigger move menu. The 22 ideas that had been cleared today are restored. Eight new long-form ideas on discipline, routine, beliefs, the gym and your full story are in the pick list.",
+    commit: "PL-LAUNCHBOARD-FIX",
+  },
+  {
+    ts: "today",
     label: "My Day is rebuilt around your new schedule, syncs to your Todoist and calendar, texts your phone before each block, and counts your wins.",
     detail: "Every weekday now runs on one schedule: gym, a clip to record each morning (check-in, lift record, inspiration, production win, transformation), two lead-message hours, the team meeting at 11:30 AM Central which is 9:30 Arizona, two hours of sales calls, recruiting, a three-hour block for three or four videos, a leadership hour, and sleep by 11:30. Wednesday is the pre-licensing push day and Monday, Thursday and Sunday carry the production review. My Day now lets you edit notes, type and the phone alert on every block, and saving pushes the schedule into Todoist and your calendar. Your real Todoist list shows on the page and can be ticked off there. Three plus buttons count long-form videos posted, hires with every contract sent, and unlicensed hires who bought the course. A Pre-licensing check lists everyone who bought the course or is an unlicensed hire, with their XCEL progress, and you tick who is in the Slack and who is done. A phone alert fires five to ten minutes before each block.",
     commit: "PL-MYDAY-GALAXY",

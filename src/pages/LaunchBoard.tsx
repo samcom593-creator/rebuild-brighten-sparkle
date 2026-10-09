@@ -110,7 +110,7 @@ const STAGE_BAR: Record<Stage, string> = {
   ready: "border-l-primary", scheduled: "border-l-primary", published_unconfirmed: "border-l-destructive", published: "border-l-border",
 };
 function StageChip({ stage }: { stage: Stage }) {
-  return <span className={`inline-flex items-center whitespace-nowrap rounded-full border px-2 py-0.5 text-[12.5px] font-semibold ${STAGE_TONE[stage]}`}>{STAGE_LABEL[stage]}</span>;
+  return <span className={`inline-flex items-center whitespace-nowrap rounded-full border px-3 py-1 text-sm font-semibold ${STAGE_TONE[stage]}`}>{STAGE_LABEL[stage]}</span>;
 }
 const JOBS: { k: Job; label: string; desc: string; accent: string; border: string }[] = [
   { k: "REACH", label: "Reach", desc: "Get seen — who you are, wider than the offer.", accent: "text-amber-400", border: "border-t-amber-400/70" },
@@ -199,14 +199,14 @@ function WeekCard({ c, planned, onOpen, onMove }: { c: Card; planned: boolean; o
   const stage = stageOf(c);
   return (
     <div ref={setNodeRef} {...attributes} {...listeners}
-      className={`touch-manipulation rounded-xl border border-l-[3px] border-border bg-background/60 p-2.5 ${STAGE_BAR[stage]} ${isDragging ? "opacity-40" : ""}`}>
-      <button type="button" onClick={() => onOpen(c)} className="line-clamp-2 w-full text-left text-sm font-semibold leading-snug text-foreground hover:text-primary">{c.title.replace(/^Story · /, "")}</button>
-      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+      className={`touch-manipulation rounded-xl border border-l-[3px] border-border bg-background/60 p-3.5 ${STAGE_BAR[stage]} ${isDragging ? "opacity-40" : ""}`}>
+      <button type="button" onClick={() => onOpen(c)} className="line-clamp-4 w-full text-left text-base font-semibold leading-snug text-foreground hover:text-primary">{c.title.replace(/^Story · /, "")}</button>
+      <div className="mt-2.5 flex flex-wrap items-center gap-2">
         <StageChip stage={stage} />
-        <span className="rounded-full border border-border px-2 py-0.5 text-[13px] font-semibold text-muted-foreground">{cardIsLong(c) ? "Long" : "Short"}</span>
+        <span className="rounded-full border border-border px-3 py-1 text-sm font-semibold text-muted-foreground">{cardIsLong(c) ? "Long" : "Short"}</span>
       </div>
       <select value={planned ? c.day : 0} aria-label={`Move ${c.title}`} onChange={(e) => onMove(c, Number(e.target.value))}
-        className="mt-2 h-8 w-full rounded-md border border-border bg-card px-1.5 text-sm text-muted-foreground">
+        className="mt-2.5 h-11 w-full rounded-md border border-border bg-card px-2 text-base text-muted-foreground">
         {DAY_OPTIONS.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}
       </select>
     </div>
@@ -276,7 +276,7 @@ function WeekTab({ cards, onOpen, onMove, onAdd }: { cards: Card[]; onOpen: (c: 
           <span className="text-sm text-muted-foreground">Long-form planned <b className="tabular-nums text-foreground">{longPlanned}/{WEEKLY_TARGETS.long}</b></span>
           <span className="text-sm text-muted-foreground">Shorts posted <b className="tabular-nums text-foreground">{shortsFailed ? "—" : shortsByDay ? shortsTotal : "…"}</b> <span className="text-sm">(goal {WEEKLY_TARGETS.shortsMin}–{WEEKLY_TARGETS.shortsMax})</span></span>
         </div>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-7">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 7 }, (_, i) => i + 1).map((d) => {
             const t = DAY_THEMES[d];
             const tone = THEME_TONE[t.theme];
@@ -284,24 +284,24 @@ function WeekTab({ cards, onOpen, onMove, onAdd }: { cards: Card[]; onOpen: (c: 
             const posted = shortsByDay?.[d] ?? 0;
             const isToday = d === todayDow;
             return (
-              <div key={d} className={`flex flex-col gap-2.5 rounded-2xl border bg-card p-3 ${isToday ? `${tone.ring} ring-1 ring-primary/40` : "border-border"}`}>
+              <div key={d} className={`flex flex-col gap-3 rounded-2xl border bg-card p-4 ${isToday ? `${tone.ring} ring-1 ring-primary/40` : "border-border"}`}>
                 <div>
                   <div className="flex items-baseline justify-between gap-2">
-                    <span className="text-base font-extrabold text-foreground">{t.name}</span>
+                    <span className="text-lg font-extrabold text-foreground">{t.name}</span>
                     {isToday && <span className="text-[13px] font-bold uppercase tracking-wide text-primary">Today</span>}
                   </div>
-                  <span className={`mt-1.5 inline-flex max-w-full items-center rounded-full border px-2 py-0.5 text-[13px] font-semibold ${tone.chip}`}>{t.themeLabel} · {t.angle}</span>
+                  <span className={`mt-2 inline-flex max-w-full items-center rounded-full border px-3 py-1.5 text-sm font-semibold leading-snug ${tone.chip}`}>{t.themeLabel} · {t.angle}</span>
                 </div>
-                <DropZone id={`day-${d}`} className="flex min-h-[96px] flex-1 flex-col gap-2 rounded-xl border border-dashed border-border p-2">
-                  <div className="text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">{t.longTarget > 0 ? "Long-form" : d === 7 ? "Plan & batch" : "Long-form (bonus)"}</div>
+                <DropZone id={`day-${d}`} className="flex min-h-[140px] flex-1 flex-col gap-2.5 rounded-xl border border-dashed border-border p-3">
+                  <div className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{t.longTarget > 0 ? "Long-form" : d === 7 ? "Plan & batch" : "Long-form (bonus)"}</div>
                   {items.map((c) => <WeekCard key={c.id} c={c} planned onOpen={onOpen} onMove={onMove} />)}
                   {items.length === 0 && <div className="py-2 text-center text-sm text-muted-foreground">Drop a video here</div>}
-                  <button type="button" onClick={() => onAdd(d)} className="mt-auto rounded-lg border border-dashed border-border px-2 py-1.5 text-sm text-muted-foreground hover:border-primary/50 hover:text-primary">+ Add</button>
+                  <button type="button" onClick={() => onAdd(d)} className="mt-auto min-h-[44px] rounded-lg border border-dashed border-border px-3 py-2 text-base font-medium text-muted-foreground hover:border-primary/50 hover:text-primary">+ Add</button>
                 </DropZone>
                 {t.shortsTarget > 0 && (
                   <div>
-                    <div className="flex justify-between text-sm text-muted-foreground"><span>Shorts</span><span className="tabular-nums">{shortsFailed ? "—" : shortsByDay ? `${posted}/${t.shortsTarget}` : "…"}</span></div>
-                    <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted"><div className={`h-full ${tone.bar}`} style={{ width: `${Math.min(100, Math.round((posted / t.shortsTarget) * 100))}%` }} /></div>
+                    <div className="flex justify-between text-base text-muted-foreground"><span>Shorts</span><span className="tabular-nums">{shortsFailed ? "—" : shortsByDay ? `${posted}/${t.shortsTarget}` : "…"}</span></div>
+                    <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-muted"><div className={`h-full ${tone.bar}`} style={{ width: `${Math.min(100, Math.round((posted / t.shortsTarget) * 100))}%` }} /></div>
                   </div>
                 )}
               </div>
@@ -734,7 +734,8 @@ export default function LaunchBoard() {
         } else openEdit(existing);
         return;
       }
-      const base = { ...emptyDraft, title: idea.title, brand: idea.format === "Short" ? "SH" : "YT", content_type: idea.format === "Short" ? "short" : "long", status: "record", day: phoenixWeekday(), planned_week: phoenixWeekStart(), hook: "", cta: "Follow for the next part of the journey.", sort: Math.max(0, ...cards.map((c) => c.sort)) + 10 };
+      // due_date must be null, not "": the column is a date, and "" made every pick fail with a 400.
+      const base = { ...emptyDraft, due_date: null as string | null, title: idea.title, brand: idea.format === "Short" ? "SH" : "YT", content_type: idea.format === "Short" ? "short" : "long", status: "record", day: phoenixWeekday(), planned_week: phoenixWeekStart(), hook: "", cta: "Follow for the next part of the journey.", sort: Math.max(0, ...cards.map((c) => c.sort)) + 10 };
       const { data, error } = await supabase.from("content_cards").insert({ ...base, record_script: recordTemplate(base), edit_prompt: editTemplate(base) } as never).select("*").single();
       if (error) throw error;
       setCards((prev) => [...prev, data as Card]);

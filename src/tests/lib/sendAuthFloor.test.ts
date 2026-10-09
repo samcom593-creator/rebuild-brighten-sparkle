@@ -49,7 +49,17 @@ describe("requireSendAuth role floor", () => {
     expect(course.match(/generateMagicToken\(/g)?.length).toBe(2); // declaration + one call
   });
 
-  it("uses the authenticated floor there, because an admin floor is a silent disable on those routes", () => {
-    expect(course).toMatch(/requireSendAuth\(\s*req\s*,\s*\{\s*floor:\s*"any_authenticated"\s*\}\s*\)/);
+  // PL-WIB-COURSE-ENROLL-FLOOR: not admin (a silent disable for the va/recruiter
+  // and CallCenter agents who press it), and not any_authenticated (signup is
+  // open and every signup holds the 'agent' role, so that admitted strangers).
+  it("uses the staff_or_agent floor there: no admin lockout, no stranger signups", () => {
+    expect(course).toMatch(/requireSendAuth\(\s*req\s*,\s*\{\s*floor:\s*"staff_or_agent"\s*\}\s*\)/);
+  });
+
+  it("staff_or_agent reads an agents row, so the 'agent' role every signup gets is not enough", () => {
+    const floorModule = read("supabase/functions/_shared/send-floor.ts");
+    const branch = primitive.slice(primitive.indexOf('if (floor === "staff_or_agent")'));
+    expect(branch).toContain('.from("agents")');
+    expect(floorModule).not.toMatch(/STAFF_ROLES\s*=\s*new Set\([^)]*"agent"/);
   });
 });

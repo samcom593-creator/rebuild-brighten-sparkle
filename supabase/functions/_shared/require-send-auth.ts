@@ -25,6 +25,7 @@
 // dual-accept gate, so there is one pattern here and not two.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { STAFF_ROLES, staffOrAgentVerdict } from "./send-floor.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_KEY  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -48,7 +49,17 @@ const SENDER_ROLES = new Set(["admin", "manager"]);
 // exact behaviour they were proven with. (applicant-magic-link only CITES this
 // file in a comment; it does not import it. Checked rather than assumed off a
 // grep for the filename.)
-export type SenderFloor = "admin_or_manager" | "any_authenticated";
+//
+// PL-WIB-COURSE-ENROLL-FLOOR (2026-10-09). "any_authenticated" turned out to
+// admit strangers: GoTrue signup is open, handle_new_user gives every signup
+// the 'agent' role, and the "view agents for leaderboard" policy lets any
+// signed-in account read every agents.id. So a free signup could fire the
+// course email at every agent, CC Sam and each manager, minting a magic link
+// per call. Every real caller is either staff or has an agents row: CallCenter
+// loads nothing for a non-admin without one (CallCenter.tsx:129), and
+// CourseProgress is staff-only. "staff_or_agent" admits exactly that; the
+// 'agent' ROLE alone is not enough because every signup holds it.
+export type SenderFloor = "admin_or_manager" | "staff_or_agent" | "any_authenticated";
 
 export interface SendAuthOptions {
   /** Defaults to "admin_or_manager" — the pre-MP-457 behaviour. */
@@ -106,6 +117,21 @@ export async function requireSendAuth(
   // will one day be believed.
   if (floor === "any_authenticated") {
     return { ok: true, status: 200, caller: `user:${data.user.id}` };
+  }
+
+  if (floor === "staff_or_agent") {
+    const { data: staffRoles, error: rolesError } = await sb
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", data.user.id);
+    // The agents read only runs when the roles did not already decide it.
+    const decidedByRole = !rolesError &&
+      (staffRoles ?? []).some((r: { role: unknown }) => STAFF_ROLES.has(String(r.role)));
+    const agentRead = rolesError || decidedByRole
+      ? { data: null, error: null }
+      : await sb.from("agents").select("id").eq("user_id", data.user.id).limit(1);
+    const verdict = staffOrAgentVerdict(staffRoles, rolesError, agentRead.data, agentRead.error);
+    return verdict.ok ? { ...verdict, caller: `user:${data.user.id}` } : verdict;
   }
 
   const { data: roles } = await sb

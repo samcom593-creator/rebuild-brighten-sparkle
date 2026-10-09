@@ -88,7 +88,6 @@ Deno.test("send-notification is wired to the policy (source contract)", async ()
 // this until someone writes the reason.
 const ANY_AUTHENTICATED_FLOOR: Record<string, string> = {
   "send-notification": "member callers held to notify-caller-policy (Sam's inboxes or an RLS-visible person)",
-  "send-course-enrollment-email": "recipient is profile.email looked up from the body's agentId, never a body address",
 };
 
 Deno.test("any_authenticated sender floor census", async () => {
@@ -105,6 +104,15 @@ Deno.test("any_authenticated sender floor census", async () => {
     if (/floor\s*:\s*["']any_authenticated["']/.test(src)) found.push(entry.name);
   }
   assertEquals(found.sort(), Object.keys(ANY_AUTHENTICATED_FLOOR).sort());
+});
+
+// PL-WIB-COURSE-ENROLL-FLOOR. Its recipient came off a row, but any signup can
+// read every agents.id, so a stranger could still aim it at every agent.
+Deno.test("send-course-enrollment-email is on staff_or_agent, not any_authenticated", async () => {
+  const src = await Deno.readTextFile(
+    new URL("../send-course-enrollment-email/index.ts", import.meta.url),
+  );
+  assert(/requireSendAuth\(req, \{ floor: "staff_or_agent" \}\)/.test(src), "course email floor drifted");
 });
 
 Deno.test("send-aged-lead-email: admin/manager floor and an escaped name", async () => {

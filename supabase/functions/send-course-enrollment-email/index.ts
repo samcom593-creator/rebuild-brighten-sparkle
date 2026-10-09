@@ -58,7 +58,14 @@ const handler = async (req: Request): Promise<Response> => {
   // submit-contracting-intake) all send the service role key and take the
   // service branch. Gate sits ABOVE the agents lookup, so the 404 stops being
   // an existence oracle for strangers too.
-  const auth = await requireSendAuth(req, { floor: "any_authenticated" });
+  //
+  // PL-WIB-COURSE-ENROLL-FLOOR: "any signed-in user" included strangers. Signup
+  // is open, every signup gets the 'agent' role, and RLS lets any signed-in
+  // account read every agents.id, so a free account could mail this to every
+  // agent with Sam and the manager on CC. The real callers are staff or people
+  // with an agents row (CallCenter loads nothing for anyone else), so that is
+  // the floor now. See _shared/require-send-auth.ts.
+  const auth = await requireSendAuth(req, { floor: "staff_or_agent" });
   if (!auth.ok) {
     return new Response(
       JSON.stringify({ success: false, error: auth.error ?? "unauthorized" }),

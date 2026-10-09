@@ -65,9 +65,11 @@ export interface Brand {
 export const APEX_BRAND: Brand = {
   platformName: "Galaxy",
   productName: "Galaxy OS",
-  // The LEGAL entity stays "Apex Financial" until the entity rename is filed with the state and
-  // the carriers. Documents and invoices must name the entity that actually exists.
-  legalName: "Apex Financial",
+  // Despite the field name this is the organisation name shown in the sidebar, welcome emails,
+  // invitations and interview titles, so it follows the rename. The registered LEGAL entity is
+  // still Apex Financial until the filing is done, and it appears only on the legal pages
+  // (Terms, Privacy, Disclosures), which are deliberately unchanged.
+  legalName: "Galaxy Financial",
   shortName: "Galaxy",
   poweredBy: "Powered by Galaxy",
   brandingMode: "apex",

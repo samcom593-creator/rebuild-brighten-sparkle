@@ -147,7 +147,7 @@ function SourceLink({ source }: { source?: Source }) {
 
 function IdeaRow({ idea, onPick, busy, top }: { idea: Idea; onPick?: (idea: Idea) => void; busy?: boolean; top?: boolean }) {
   return (
-    <li className={`rounded-lg border bg-background/40 p-3 ${top ? "border-primary/60 bg-primary/5" : "border-border"}`}>
+    <li className={`rounded-xl border bg-background/40 p-4 ${top ? "border-primary/60 bg-primary/5" : "border-border"}`}>
       {top && <div className="mb-2 text-[13px] font-bold uppercase tracking-[0.12em] text-primary">★ Top pick — film this next</div>}
       <div className="flex items-start gap-3">
         <span className={`mt-0.5 shrink-0 rounded-full px-2.5 py-0.5 text-sm font-bold tabular-nums ${scoreTone(idea.score)}`} title="Editorial priority, 0–100; not a prediction of views">{idea.score}</span>
@@ -212,7 +212,9 @@ function Delta({ pct }: { pct: number | null }) {
  *  compute honestly is hidden rather than faked. */
 export function MomentumStrip({ posts, yt }: { posts: Post[]; yt: YtStats }) {
   const s = useMemo(() => streak(posts), [posts]);
-  const ytS = useMemo(() => streak(posts.filter((p) => p.platform === "youtube")), [posts]);
+  // Long-form only — Shorts post daily, so an all-YouTube streak just mirrors the main one. This is the
+  // lever Sam cares about: a long-form streak, and days-since when he's lapsed (last long-form was weeks ago).
+  const ytS = useMemo(() => streak(posts.filter((p) => p.platform === "youtube" && p.format === "long")), [posts]);
   const lv = useMemo(() => level(totalPieces(posts)), [posts]);
   const ms = useMemo(() => nextMilestone(yt.subs), [yt.subs]);
   const wow = useMemo(() => weekOverWeek(posts), [posts]);
@@ -226,7 +228,7 @@ export function MomentumStrip({ posts, yt }: { posts: Post[]; yt: YtStats }) {
   const streakNum = (x: { days: number; missed: number }) => (x.days > 0 ? String(x.days) : x.missed > 0 ? `−${x.missed}` : "0");
   const bar = (frac: number) => <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, Math.round(frac * 100))}%` }} /></div>;
   return (
-    <section aria-label="Your momentum" className="flex flex-col gap-3">
+    <section aria-label="Your momentum" className="flex flex-col gap-4">
       <div className={`flex flex-wrap items-center gap-x-6 gap-y-3 rounded-2xl border p-4 ${bannerTone}`}>
         <div className="flex items-center gap-4">
           <div className="text-4xl leading-none" aria-hidden>{broken ? "❄️" : "🔥"}</div>
@@ -236,12 +238,12 @@ export function MomentumStrip({ posts, yt }: { posts: Post[]; yt: YtStats }) {
           </div>
         </div>
         <div className="ml-auto flex items-center gap-2">
-          <span className="rounded-xl border border-border bg-background/50 px-3 py-1.5 text-center"><span className="block text-lg font-extrabold tabular-nums text-foreground">{streakNum(ytS)}</span><span className="block text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">YouTube in a row</span></span>
+          <span className="rounded-xl border border-border bg-background/50 px-3 py-1.5 text-center"><span className="block text-lg font-extrabold tabular-nums text-foreground">{streakNum(ytS)}</span><span className="block text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">YT long-form streak</span></span>
           <span className="rounded-xl border border-border bg-background/50 px-3 py-1.5 text-center"><span className="block text-lg font-extrabold tabular-nums text-foreground">Lvl {lv.level}</span><span className="block text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">{lv.next == null ? "max" : `${lv.span - lv.into} to next`}</span></span>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <div className="rounded-2xl border border-border bg-card p-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-2xl border border-border bg-card p-5">
           <div className="flex items-center justify-between gap-2">
             <span className="text-sm font-semibold text-muted-foreground">YouTube subscribers</span>
             {yt.weekDelta != null && yt.weekDelta !== 0 && <span className={`text-sm font-bold tabular-nums ${yt.weekDelta > 0 ? "text-emerald-400" : "text-red-400"}`}>{yt.weekDelta > 0 ? "↑" : "↓"} {fmtNum(Math.abs(yt.weekDelta))} / wk</span>}
@@ -250,19 +252,19 @@ export function MomentumStrip({ posts, yt }: { posts: Post[]; yt: YtStats }) {
           {ms ? (<>{bar(ms.pct / 100)}<div className="mt-1 text-[13px] font-semibold text-primary">{fmtNum(ms.remaining)} to {fmtNum(ms.next)}</div></>) : <div className="mt-2 text-[13px] text-muted-foreground">updates every 3 hours</div>}
           {(yt.long != null || yt.short != null) && <div className="mt-2 border-t border-border/60 pt-2 text-[13px] text-muted-foreground"><b className="tabular-nums text-foreground">{yt.long ?? "—"}</b> long-form · <b className="tabular-nums text-foreground">{yt.short ?? "—"}</b> Shorts on YouTube</div>}
         </div>
-        <div className="rounded-2xl border border-border bg-card p-4">
+        <div className="rounded-2xl border border-border bg-card p-5">
           <div className="flex items-center justify-between gap-2"><span className="text-sm font-semibold text-muted-foreground">Long-form this week</span><Delta pct={wow.long.deltaPct} /></div>
           <div className="mt-0.5 text-2xl font-extrabold tabular-nums text-foreground">{wow.long.now}</div>
           {bar(wow.long.now / WEEKLY_TARGETS.long)}
           <div className="mt-1 text-[13px] text-muted-foreground">goal {WEEKLY_TARGETS.long}/wk · last week {wow.long.prev}</div>
         </div>
-        <div className="rounded-2xl border border-border bg-card p-4">
+        <div className="rounded-2xl border border-border bg-card p-5">
           <div className="flex items-center justify-between gap-2"><span className="text-sm font-semibold text-muted-foreground">Shorts this week</span><Delta pct={wow.short.deltaPct} /></div>
           <div className="mt-0.5 text-2xl font-extrabold tabular-nums text-foreground">{wow.short.now}</div>
           {bar(wow.short.now / WEEKLY_TARGETS.shortsMin)}
           <div className="mt-1 text-[13px] text-muted-foreground">goal {WEEKLY_TARGETS.shortsMin}–{WEEKLY_TARGETS.shortsMax}/wk · last week {wow.short.prev}</div>
         </div>
-        <div className="rounded-2xl border border-border bg-card p-4">
+        <div className="rounded-2xl border border-border bg-card p-5">
           <div className="flex items-center justify-between gap-2"><span className="text-sm font-semibold text-muted-foreground">Views this week</span><Delta pct={wow.views.deltaPct} /></div>
           <div className="mt-0.5 text-2xl font-extrabold tabular-nums text-foreground">{fmtNum(wow.views.now)}</div>
           <div className="mt-1 text-[13px] text-muted-foreground">last week {fmtNum(wow.views.prev)}</div>
@@ -288,7 +290,7 @@ export function ContentHome({ onOpenAnalytics, onPick, picking }: { onOpenAnalyt
   const ideas = useMemo(() => [...(ins?.ideas ?? [])].sort((a, b) => (a.format === b.format ? 0 : a.format === "Long" ? -1 : 1) || Number(b.day === showDay) - Number(a.day === showDay) || b.score - a.score), [ins, showDay]);
   const pct = t.shortsTarget > 0 ? Math.min(100, Math.round((shortsToday / t.shortsTarget) * 100)) : 0;
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <MomentumStrip posts={posts} yt={yt} />
       <section aria-label="Today's plan" className={`rounded-xl border bg-card p-4 ${tone.ring}`}>
         <div className="flex flex-wrap items-center gap-2">

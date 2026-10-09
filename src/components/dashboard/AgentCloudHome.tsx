@@ -363,10 +363,11 @@ export function AgentCloudHome() {
             ))}
           </div>
           {(policy_status?.status_not_reported ?? 0) > 0 && (
-            <p className="mt-3 text-[12px] text-muted-foreground">
+            // A div, not a p: Badge renders a div, and a div cannot sit inside a paragraph.
+            <div className="mt-3 text-[12px] text-muted-foreground">
               <Badge variant="outline" className="mr-1.5 border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400">Upstream gap</Badge>
               The legacy book does not report a policy status for {(policy_status.status_not_reported).toLocaleString()} of these historical policies, so lapse and chargeback tracking is blind on them.
-            </p>
+            </div>
           )}
         </CardContent>
       </Card>

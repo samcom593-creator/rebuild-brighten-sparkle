@@ -2673,6 +2673,7 @@
       "approved_by",
       "archived_at",
       "brand",
+      "brief",
       "caption",
       "clip",
       "content_type",
@@ -2740,6 +2741,13 @@
       "transcript",
       "used_by_card",
       "width"
+    ],
+    "content_idea_dismissals": [
+      "dismissed_at",
+      "dismissed_by",
+      "idea_key",
+      "reason",
+      "title"
     ],
     "content_library": [
       "ai_analyzed",

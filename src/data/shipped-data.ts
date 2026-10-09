@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "The Launch Board now answers three questions first: what needs finishing, what to film next, and which post to remake.",
+    detail: "Needs finishing comes first, with where each video is (Idea, Selected, Filming, Editing, Ready, Published), one next action and a due date you can move without losing any work. Film next shows three distinct picks from your saved ideas. You can filter them by platform, format, topic, time and place, edit one before choosing it, dismiss one with an optional reason and bring it back later, or write your own. Choosing saves exactly one project per idea, even if you tap twice or use two devices, and opens a filming pack you can tick off on your phone: a script outline for talking-head videos, or a story outline and shot list for vlogs. Remake a winner only appears for posts with real recorded views that beat your normal range for that platform and format, and it shows the numbers behind the call. Nothing here uses AI, and nothing is published for you.",
+    commit: "PL-LAUNCHBOARD-THREE-DECISIONS",
+  },
+  {
+    ts: "today",
     label: "My Team now opens on the people who need a call, and the roster is built for that job.",
     detail: "Priority 1 sits at the top, then one summary strip, then one toolbar. Each roster row shows the person, what contracting is still open and how late it is, the next action, the owner and the last contact. The money columns moved to a Production view, and the Call list became a view beside it instead of a panel above everything. Details opens one panel per person with the full checklist, who changed what, the follow-up plan and the production numbers, with nothing stacked on top of it. On a phone each row is a card, with no sideways scrolling. Nobody is shown as overdue yet because the day the clock starts is still not confirmed, and a failed read now says so instead of showing an all-clear.",
     commit: "PL-MYTEAM-CLARITY-OVERHAUL",

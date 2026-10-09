@@ -215,6 +215,7 @@
     "public.content_access",
     "public.content_cards",
     "public.content_clips",
+    "public.content_idea_dismissals",
     "public.content_library",
     "public.content_posts",
     "public.content_queue",

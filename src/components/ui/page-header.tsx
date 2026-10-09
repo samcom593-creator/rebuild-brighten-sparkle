@@ -122,7 +122,7 @@ function PageActions({ actions }: { actions: ReactNode }) {
   const items = normalizedActions(actions);
 
   if (items.length <= 1) {
-    return <div className="apex-page-actions apex-page-actions-single">{items}</div>;
+    return <div className="apex-page-actions apex-page-actions-single">{Children.toArray(items)}</div>;
   }
 
   let primaryIndex = 0;
@@ -151,7 +151,9 @@ function PageActions({ actions }: { actions: ReactNode }) {
         id={disclosureId}
         className={cn("apex-page-secondary-actions", expanded ? "flex" : "hidden", "sm:flex")}
       >
-        {secondary}
+        {/* Children.toArray assigns each action a key. The actions arrive as an unkeyed array, which made React warn on
+            every page that passes more than one. */}
+        {Children.toArray(secondary)}
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 
@@ -43,5 +43,14 @@ describe("PageHeader mobile action disclosure", () => {
 
     expect(screen.getByText("Add Block").parentElement?.className).toContain("apex-page-primary-action");
     expect(screen.getByRole("button", { name: /More \(1\)/ })).toBeTruthy();
+  });
+
+  it("gives every action a key, so React does not warn about an unkeyed list whether there is one action or several", () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    render(<PageHeader title="One" actions={<Button>Only</Button>} />);
+    render(<PageHeader title="Many" actions={(<><Button variant="outline">Refresh</Button><Button>Add</Button><Button variant="outline">Import</Button></>)} />);
+    const keyWarnings = spy.mock.calls.filter((c) => String(c[0]).includes("unique \"key\" prop"));
+    spy.mockRestore();
+    expect(keyWarnings).toHaveLength(0);
   });
 });

@@ -15,6 +15,8 @@
 // evidence or an explicit confirmation carrying an https URL on a known
 // platform domain.
 
+import { parsePack } from "@/lib/contentFilmingPack";
+
 export type WorkflowStatus = "idea" | "record" | "edit" | "review" | "ready" | "scheduled" | "published";
 export type LegacyStatus = "recorded" | "posted";
 export type StoredStatus = WorkflowStatus | LegacyStatus;
@@ -314,4 +316,35 @@ export function fourQuestions<T extends WorkflowCard>(cards: T[]): FourQuestions
     published: by(["published"]),
     unconfirmed: by(["published_unconfirmed"]),
   };
+}
+
+// ── The simple lifecycle shown to the person ────────────────────────────────────────────────────────────────
+
+/**
+ * Idea -> Selected -> Filming -> Editing -> Ready -> Published. These are labels over the stored statuses above, not
+ * new statuses: nothing in the database changes. Record is "Selected" until some filming has actually happened (a
+ * ticked item in the pack, or footage attached), then "Filming". Review (waiting on approval) counts as Editing;
+ * Scheduled counts as Ready. Published needs the same evidence the stage already requires.
+ */
+export type Lifecycle = "idea" | "selected" | "filming" | "editing" | "ready" | "published";
+export const LIFECYCLE: Lifecycle[] = ["idea", "selected", "filming", "editing", "ready", "published"];
+export const LIFECYCLE_LABEL: Record<Lifecycle, string> = { idea: "Idea", selected: "Selected", filming: "Filming", editing: "Editing", ready: "Ready", published: "Published" };
+
+export function lifecycleOf(c: Pick<WorkflowCard, "status" | "published_url" | "publish_evidence" | "clip" | "record_script">): Lifecycle {
+  const stage = stageOf(c);
+  switch (stage) {
+    case "idea": return "idea";
+    case "record": return !blank(c.clip) || parsePack(c.record_script).done > 0 ? "filming" : "selected";
+    case "edit":
+    case "review": return "editing";
+    case "ready":
+    case "scheduled": return "ready";
+    case "published":
+    case "published_unconfirmed": return "published";
+  }
+}
+
+/** The lifecycle label for the screen. A post marked published without a live link says so instead of reading as confirmed. */
+export function lifecycleText(c: Pick<WorkflowCard, "status" | "published_url" | "publish_evidence" | "clip" | "record_script">): string {
+  return stageOf(c) === "published_unconfirmed" ? "Published (unconfirmed)" : LIFECYCLE_LABEL[lifecycleOf(c)];
 }

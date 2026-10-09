@@ -42,9 +42,19 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { toast } from "sonner";
 import { useSearchParams } from "react-router-dom";
 import { PageSkeleton } from "@/components/ui/page-skeleton";
-import { ContentHome, type Idea } from "@/components/content/AccountsAnalytics";
+import { ContentHome, useInsights, usePosts, type Insights } from "@/components/content/AccountsAnalytics";
+import { FilmNextPanel } from "@/components/content/FilmNextPanel";
+import { FilmingPackSheet } from "@/components/content/FilmingPackSheet";
+import { WinnersPanel } from "@/components/content/WinnersPanel";
+import { BANK_IDEAS } from "@/data/contentIdeaBank";
+import { ideaFromInsight, usedMarkers, type IdeaEdits, type PickIdea } from "@/lib/contentPicks";
 import {
-  STAGE_LABEL, STAGE_ORDER, WORKFLOW, checkPublishUrl, fourQuestions, nextAction, nextStatus, phoenixDate, previousStatus,
+  createProjectFromIdea, createRemake, dismissIdea as dismissIdeaRow, loadDismissals, saveIdeaForLater, savePack, undoDismissal,
+  type DbClient, type Dismissal,
+} from "@/lib/contentProjects";
+import type { RemakeDraft } from "@/lib/contentWinners";
+import {
+  LIFECYCLE_LABEL, STAGE_LABEL, STAGE_ORDER, lifecycleText, WORKFLOW, checkPublishUrl, fourQuestions, lifecycleOf, nextAction, nextStatus, phoenixDate, previousStatus,
   scheduleLabel, stageOf, todayQueue, type Stage, type WorkflowStatus,
 } from "@/lib/contentWorkflow";
 import { DndContext, DragOverlay, MouseSensor, TouchSensor, pointerWithin, rectIntersection, useDraggable, useDroppable, useSensor, useSensors, type CollisionDetection, type DragEndEvent, type DragStartEvent } from "@dnd-kit/core";
@@ -77,6 +87,8 @@ interface Card {
   scheduled_for?: string | null; schedule_kind?: string | null; schedule_job_ref?: string | null;
   published_url?: string | null; publish_evidence?: string | null; published_confirmed_at?: string | null;
   planned_week?: string | null;   // Phoenix Monday of the week the card sits on a day (set by trigger)
+  brief?: Record<string, unknown> | null;   // saved brief: idea key, premise, payoff, effort, remake link (migration 20261009160000)
+  archived_at?: string | null;
 }
 interface Clip {
   id: string; path: string; name: string; folder: string; kind: string; size_bytes: number; modified_at: string | null; used_by_card: string | null;
@@ -145,6 +157,7 @@ const hasCta = (s: string) => /apex-financial\.org/i.test(s);
 const brandHandle = (b: string) => (b === "SH" ? "YouTube Shorts → Repurpose" : b === "YT" ? "YouTube" : b === "IMS" ? "@imakesystems · retired" : b === "SFD" ? "@sellfordaddy · retired" : b);
 const brandClass = (b: string) => (b === "SH" ? "text-sky-300 border-sky-400/30 bg-sky-400/10" : b === "YT" ? "text-red-300 border-red-400/30 bg-red-400/10" : "text-zinc-400 border-zinc-500/30 bg-zinc-500/10");
 const WEEKDAY = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const fmtDueShort = (d: string) => new Date(`${d.slice(0, 10)}T12:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 const cleanName = (n: string) => n.replace(/\.[a-z0-9]+$/i, "").replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
 const fmtSize = (b: number) => (b >= 1e9 ? `${(b / 1e9).toFixed(1)} GB` : `${Math.max(1, Math.round(b / 1e6))} MB`);
 const fmtDate = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—");
@@ -342,6 +355,14 @@ export default function LaunchBoard() {
   const [archivedCards, setArchivedCards] = useState<Card[]>([]);
   const [archiveBusy, setArchiveBusy] = useState(false);
   const [picking, setPicking] = useState(false);
+  // Film next: dismissals, the shared results read, and which project's filming pack is open.
+  const [dismissals, setDismissals] = useState<Dismissal[]>([]);
+  const [dismissalsFailed, setDismissalsFailed] = useState(false);
+  const [busyIdeaKey, setBusyIdeaKey] = useState<string | null>(null);
+  const [packId, setPackId] = useState<string | null>(null);
+  const [remaking, setRemaking] = useState(false);
+  const postsRead = usePosts();
+  const insights = useInsights();
   const [clips, setClips] = useState<Clip[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
@@ -359,6 +380,15 @@ export default function LaunchBoard() {
     if (t && TAB_KEYS.has(t)) setTabState(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  useEffect(() => {
+    let live = true;
+    void loadDismissals(supabase as unknown as DbClient).then((r) => {
+      if (!live) return;
+      if (r.ok) { setDismissals(r.rows); setDismissalsFailed(false); } else setDismissalsFailed(true);
+    });
+    return () => { live = false; };
+  }, []);
+
   const setTab = (t: Tab) => {
     setTabState(t);
     setSearchParams((prev) => {
@@ -716,37 +746,85 @@ export default function LaunchBoard() {
     finally { setArchiveBusy(false); }
   };
 
-  const pickIdea = async (idea: Idea) => {
-    if (picking || workflowReady !== true) return;
-    setPicking(true);
-    try {
-      const existing = [...cards, ...archivedCards].find((c) => c.title === idea.title);
-      if (existing) {
-        const recording = { record_script: existing.record_script || recordTemplate({ ...existing }), edit_prompt: existing.edit_prompt || editTemplate({ ...existing }), day: phoenixWeekday(), planned_week: phoenixWeekStart() };
-        if (archivedCards.some((c) => c.id === existing.id)) {
-          const { data, error } = await supabase.from("content_cards").update({ archived_at: null, status: "record", ...recording } as never).eq("id", existing.id).eq("status", "idea").select("*").single();
-          if (error) throw error;
-          setArchivedCards((prev) => prev.filter((c) => c.id !== existing.id));
-          setCards((prev) => [...prev, data as Card]);
-          openEdit(data as Card);
-        } else if (existing.status === "idea") {
-          if (await move(existing, "record", recording)) openEdit({ ...existing, ...recording, status: "record" });
-        } else openEdit(existing);
-        return;
-      }
-      // due_date must be null, not "": the column is a date, and "" made every pick fail with a 400.
-      const base = { ...emptyDraft, due_date: null as string | null, title: idea.title, brand: idea.format === "Short" ? "SH" : "YT", content_type: idea.format === "Short" ? "short" : "long", status: "record", day: phoenixWeekday(), planned_week: phoenixWeekStart(), hook: "", cta: "Follow for the next part of the journey.", sort: Math.max(0, ...cards.map((c) => c.sort)) + 10 };
-      const { data, error } = await supabase.from("content_cards").insert({ ...base, record_script: recordTemplate(base), edit_prompt: editTemplate(base) } as never).select("*").single();
-      if (error) throw error;
-      setCards((prev) => [...prev, data as Card]);
-      openEdit(data as Card);
-      toast.success("Picked for filming — your shot list is ready");
-    } catch (e) { toast.error(`Couldn't pick this video: ${e instanceof Error ? e.message : "save failed"}`); }
-    finally { setPicking(false); }
+  // ── Film next: choose, dismiss, remake and save progress. Every write goes through src/lib/contentProjects.ts. ──
+  const db = supabase as unknown as DbClient;
+  const ideas = useMemo<PickIdea[]>(() => {
+    const seen = new Set(BANK_IDEAS.map((i) => i.title.trim().toLowerCase()));
+    const fromInsights = ((insights as Insights | null)?.ideas ?? []).map(ideaFromInsight).filter((i) => !seen.has(i.title.trim().toLowerCase()));
+    return [...BANK_IDEAS, ...fromInsights];
+  }, [insights]);
+  const usedIdeas = useMemo(() => usedMarkers([...cards, ...archivedCards]), [cards, archivedCards]);
+  const putCard = (card: Card) => {
+    setCards((prev) => (prev.some((c) => c.id === card.id) ? prev.map((c) => (c.id === card.id ? card : c)) : [...prev, card]));
+    setArchivedCards((prev) => prev.filter((c) => c.id !== card.id));
   };
+
+  const pickIdea = async (idea: PickIdea, edits?: IdeaEdits) => {
+    if (picking) return;
+    if (workflowReady !== true) { toast.error("Picking is unavailable until the Launch Board workflow migration is applied."); return; }
+    setPicking(true); setBusyIdeaKey(idea.key);
+    try {
+      const r = await createProjectFromIdea(db, idea, edits, {
+        live: cards, archived: archivedCards, weekday: phoenixWeekday(), plannedWeek: phoenixWeekStart(),
+        editPrompt: (d) => editTemplate({ ...emptyDraft, ...d }),
+      });
+      if (!r.ok) { toast.error(`Couldn't pick this video: ${r.error}`); return; }
+      putCard(r.card as unknown as Card);
+      setPackId(r.card.id);
+      toast.success(r.created ? "Picked for filming. Your pack is ready." : r.restored ? "Brought back from your archive." : "That one is already on your board. Opened it.");
+    } finally { setPicking(false); setBusyIdeaKey(null); }
+  };
+  const saveIdeaLater = async (idea: PickIdea) => {
+    if (picking) return;
+    setPicking(true); setBusyIdeaKey(idea.key);
+    try {
+      const r = await saveIdeaForLater(db, idea, { live: cards, archived: archivedCards });
+      if (!r.ok) { toast.error(`Couldn't save the idea: ${r.error}`); return; }
+      putCard(r.card as unknown as Card);
+      toast.success(r.created ? "Saved to your ideas." : "That idea is already on your board.");
+    } finally { setPicking(false); setBusyIdeaKey(null); }
+  };
+  const undoDismiss = async (ideaKey: string) => {
+    const r = await undoDismissal(db, ideaKey);
+    if (!r.ok) { toast.error(`Couldn't bring it back: ${r.error}`); return; }
+    setDismissals((prev) => prev.filter((d) => d.idea_key !== ideaKey));
+  };
+  const dismissIdea = async (idea: PickIdea, reason: string) => {
+    if (picking) return;
+    setPicking(true); setBusyIdeaKey(idea.key);
+    try {
+      const r = await dismissIdeaRow(db, idea, reason);
+      if (!r.ok) { toast.error(`Couldn't dismiss it: ${r.error}`); return; }
+      setDismissals((prev) => (prev.some((d) => d.idea_key === idea.key) ? prev : [{ idea_key: idea.key, title: idea.title, reason: reason.trim() || null, dismissed_at: new Date().toISOString() }, ...prev]));
+      toast.success("Dismissed. It will not come back unless you ask.", { action: { label: "Undo", onClick: () => void undoDismiss(idea.key) } });
+    } finally { setPicking(false); setBusyIdeaKey(null); }
+  };
+  const remake = async (draft: RemakeDraft) => {
+    if (remaking) return;
+    setRemaking(true);
+    try {
+      const r = await createRemake(db, draft, { live: cards, archived: archivedCards, weekday: phoenixWeekday(), plannedWeek: phoenixWeekStart() });
+      if (!r.ok) { toast.error(`Couldn't create the draft: ${r.error}`); return; }
+      putCard(r.card as unknown as Card);
+      setPackId(r.card.id);
+      toast.success(r.created ? "Draft created. The original post is untouched." : "You already made that remake. Opened it.");
+    } finally { setRemaking(false); }
+  };
+  const savePackText = async (cardId: string, text: string): Promise<boolean> => {
+    const r = await savePack(db, cardId, text);
+    if (!r.ok) { toast.error(`Not saved: ${r.error}`); return false; }
+    putCard(r.card as unknown as Card);
+    return true;
+  };
+  const packCard = packId ? [...cards, ...archivedCards].find((c) => c.id === packId) ?? null : null;
 
   const openNew = () => { setEditing(null); setDraft({ ...emptyDraft }); setEditorOpen(true); };
   const openEdit = (c: Card) => { setEditing(c); setDraft({ ...c }); setEditorOpen(true); };
+  // Moving the due date changes that one field and nothing else, so no work is lost by rescheduling.
+  const rescheduleCard = async (c: Card, date: string) => {
+    const ok = await patch(c.id, { due_date: date || null });
+    if (ok) toast.success(date ? `Rescheduled to ${fmtDueShort(date)}` : "Due date cleared");
+  };
   const draftStr = (k: string) => String(draft[k] ?? "");
   const setDraftField = (k: string, v: unknown) => setDraft((d) => ({ ...d, [k]: v }));
   const saveDraft = async () => {
@@ -830,7 +908,7 @@ export default function LaunchBoard() {
   const primaryAction = (c: Card) => {
     const stage = stageOf(c);
     const busy = busyId === c.id;
-    const base = "h-7 px-2.5 text-[13px] font-semibold";
+    const base = "h-11 px-3 text-sm font-semibold sm:h-7 sm:px-2.5 sm:text-[13px]";
     if (stage === "published") {
       const liveHref = externalHref(c.published_url);
       return liveHref ? <Button asChild size="sm" variant="outline" className={base}><a href={liveHref} target="_blank" rel="noopener noreferrer"><ExternalLink className="mr-1 h-3 w-3" aria-hidden />View post</a></Button> : null;
@@ -879,10 +957,10 @@ export default function LaunchBoard() {
           <Crown className="h-7 w-7 text-primary" aria-hidden />
           <div>
             <h1 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-[28px]">Launch Board</h1>
-            <p className="mt-1 max-w-[60ch] text-sm text-muted-foreground">Idea → Record → Edit → Review → Ready → Scheduled → Published. Publishing stays approval-gated and in your hands.</p>
+            <p className="mt-1 max-w-[60ch] text-sm text-muted-foreground">Idea → Selected → Filming → Editing → Ready → Published. Publishing stays approval-gated and in your hands.</p>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="hidden flex-wrap gap-2 sm:flex">
           {[
             { n: cards.filter(isOpen).length, l: "In progress" },
             { n: q4.readyToPublish.length, l: "Ready" },
@@ -917,21 +995,34 @@ export default function LaunchBoard() {
 
       {tab === "today" && (
         <div className="space-y-8">
-          <ContentHome onOpenAnalytics={() => setTab("analytics")} onPick={pickIdea} picking={picking || workflowReady !== true} />
-          <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border p-3">
-            <span className="text-sm text-muted-foreground">Clear unused ideas. Videos with footage and work in progress stay on the board.</span>
-            <Button variant="outline" disabled={archiveBusy || !unusedIdeas.length} onClick={() => void archiveIdeas()}>Clear unused ideas ({unusedIdeas.length})</Button>
-            {archivedCards.length > 0 && <Button variant="ghost" disabled={archiveBusy} onClick={() => void archiveIdeas(true)}>Restore cleared ideas ({archivedCards.length})</Button>}
-          </div>
           <section>
-            <Head title="Your work today" hint={today.length ? `${today.length} to work, most urgent first` : "nothing urgent"} />
+            <Head title="Needs finishing" hint={today.length ? `${today.length} to work, most urgent first` : "nothing urgent"} />
             {today.length === 0 ? (
               <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">Nothing is due, ready or waiting on approval. Plan a recording from an idea, or add one.</div>
             ) : (
-              <div className="overflow-x-auto rounded-lg border border-border">
+              <>
+              <ul className="space-y-3 md:hidden" aria-label="Needs finishing">
+                {(todayAll ? today : today.slice(0, 5)).map((t) => (
+                  <li key={t.card.id} className="rounded-lg border border-border bg-card p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <button onClick={() => openEdit(t.card)} className="min-h-[40px] text-left text-base font-semibold text-foreground">{t.card.title}</button>
+                      <span className="shrink-0 whitespace-nowrap rounded-full border border-border px-2.5 py-0.5 text-xs font-semibold text-foreground">{lifecycleText(t.card)}</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{t.reason}{t.card.owner ? ` · ${t.card.owner}` : ""}</p>
+                    <p className="mt-1 text-sm text-foreground"><b>Next:</b> {nextAction(t.card)}</p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <input type="date" value={(t.card.due_date ?? "").slice(0, 10)} onChange={(e) => void rescheduleCard(t.card, e.target.value)}
+                        aria-label={`Due date for ${t.card.title}`} className={`min-h-[44px] rounded-md border border-border bg-background px-2 text-sm ${dueTone(t.card.due_date)}`} />
+                      {(t.card.record_script ?? "").trim() && ["idea", "selected", "filming"].includes(lifecycleOf(t.card)) ? <Button size="sm" variant="outline" className="h-11 px-3 text-sm" onClick={() => setPackId(t.card.id)} aria-label={`Open the filming pack for ${t.card.title}`}>Open pack</Button> : null}
+                      {primaryAction(t.card)}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              <div className="hidden overflow-x-auto rounded-lg border border-border md:block">
                 <table className="w-full min-w-[640px] text-sm">
                   <thead className="bg-muted/50 text-left text-[13px] uppercase tracking-wide text-muted-foreground">
-                    <tr><th className="w-8 px-3 py-2">#</th><th className="px-3 py-2">Item</th><th className="px-3 py-2">Stage</th><th className="px-3 py-2">Next action</th><th className="px-3 py-2">Due</th><th className="px-3 py-2 text-right">Do it</th></tr>
+                    <tr><th className="w-8 px-3 py-2">#</th><th className="px-3 py-2">Item</th><th className="px-3 py-2">Where it is</th><th className="px-3 py-2">Next action</th><th className="px-3 py-2">Due</th><th className="px-3 py-2 text-right">Do it</th></tr>
                   </thead>
                   <tbody>
                     {(todayAll ? today : today.slice(0, 5)).map((t, i) => (
@@ -941,18 +1032,46 @@ export default function LaunchBoard() {
                           <button onClick={() => openEdit(t.card)} className="text-left font-semibold text-foreground hover:text-primary">{t.card.title}</button>
                           <div className="text-[13px] text-muted-foreground">{t.reason}{t.card.owner ? ` · ${t.card.owner}` : ""}</div>
                         </td>
-                        <td className="px-3 py-2.5"><StageChip stage={t.stage} /></td>
+                        <td className="px-3 py-2.5"><span className="inline-flex items-center whitespace-nowrap rounded-full border border-border px-3 py-1 text-sm font-semibold text-foreground">{lifecycleText(t.card)}</span></td>
                         <td className="px-3 py-2.5 text-sm text-foreground">{nextAction(t.card)}</td>
-                        <td className={`px-3 py-2.5 text-sm ${dueTone(t.card.due_date)}`}>{fmtDue(t.card.due_date) || "—"}</td>
-                        <td className="px-3 py-2.5 text-right">{primaryAction(t.card)}</td>
+                        <td className="px-3 py-2.5 text-sm">
+                          <input type="date" value={(t.card.due_date ?? "").slice(0, 10)} onChange={(e) => void rescheduleCard(t.card, e.target.value)}
+                            aria-label={`Due date for ${t.card.title}`} className={`min-h-[40px] rounded-md border border-border bg-background px-2 text-sm ${dueTone(t.card.due_date)}`} />
+                        </td>
+                        <td className="px-3 py-2.5 text-right">
+                          <div className="flex flex-wrap justify-end gap-1.5">
+                            {(t.card.record_script ?? "").trim() && ["idea", "selected", "filming"].includes(lifecycleOf(t.card)) ? <Button size="sm" variant="outline" className="h-8 px-2.5 text-[13px]" onClick={() => setPackId(t.card.id)} aria-label={`Open the filming pack for ${t.card.title}`}>Open pack</Button> : null}
+                            {primaryAction(t.card)}
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
+              </>
             )}
             {today.length > 5 && <button type="button" onClick={() => setTodayAll(!todayAll)} className="mt-3 rounded-full border border-border px-3 py-1 text-sm font-semibold text-foreground hover:border-primary/60">{todayAll ? "Show fewer" : `Show all (${today.length})`}</button>}
           </section>
+
+          <FilmNextPanel
+            ideas={ideas} used={usedIdeas} dismissed={dismissals} dismissalsFailed={dismissalsFailed} busyKey={busyIdeaKey}
+            onFilm={(i, e) => void pickIdea(i, e)} onSaveLater={(i) => void saveIdeaLater(i)}
+            onDismiss={(i, r) => void dismissIdea(i, r)} onBringBack={(k) => void undoDismiss(k)}
+          />
+
+          <WinnersPanel
+            posts={postsRead.posts} loading={postsRead.loading} failed={postsRead.failed} onRetry={() => void postsRead.load()}
+            cards={[...cards, ...archivedCards]} busy={remaking} onRemake={(d) => void remake(d)}
+            onOpenCard={(id) => setPackId(id)} onLogResults={() => setTab("analytics")}
+          />
+
+          <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border p-3">
+            <span className="text-sm text-muted-foreground">Clear unused ideas. Videos with footage and work in progress stay on the board.</span>
+            <Button variant="outline" disabled={archiveBusy || !unusedIdeas.length} onClick={() => void archiveIdeas()}>Clear unused ideas ({unusedIdeas.length})</Button>
+            {archivedCards.length > 0 && <Button variant="ghost" disabled={archiveBusy} onClick={() => void archiveIdeas(true)}>Restore cleared ideas ({archivedCards.length})</Button>}
+          </div>
+          <ContentHome hidePicks posts={postsRead.posts} onOpenAnalytics={() => setTab("analytics")} />
 
           <div className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2">
             <MessageSquareQuote className="h-4 w-4 shrink-0 text-primary" aria-hidden />
@@ -1338,6 +1457,13 @@ export default function LaunchBoard() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <FilmingPackSheet
+        card={packCard}
+        open={packCard !== null}
+        onOpenChange={(o) => { if (!o) setPackId(null); }}
+        onSave={savePackText}
+        onOpenEditor={(id) => { const c = [...cards, ...archivedCards].find((x) => x.id === id); setPackId(null); if (c) openEdit(c); }}
+      />
     </div>
   );
 }

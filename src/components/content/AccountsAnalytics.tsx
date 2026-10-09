@@ -10,7 +10,7 @@ import { formatTimeAgo } from "@/lib/dateUtils";
 import { DAY_THEMES, THEME_TONE, WEEKLY_TARGETS, countPieces, phoenixDateKey, phoenixWeekday, piecesByDay } from "@/lib/contentWeek";
 import { level, nextMilestone, streak, totalPieces, weekOverWeek } from "@/lib/contentMomentum";
 
-type Post = {
+export type Post = {
   id: number; platform: string; account: string | null; format: string; category: string | null; title: string | null;
   url: string | null; posted_at: string; views: number | null; likes: number | null; purposeful: boolean | null; source: string; external_id: string | null; thumb_url: string | null; watched_pct: number | null; duration_s: number | null;
 };
@@ -69,7 +69,7 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
   );
 }
 
-function usePosts() {
+export function usePosts(enabled = true) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -95,13 +95,13 @@ function usePosts() {
     setFailed(false);
     setLoading(false);
   }, []);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { if (enabled) void load(); }, [load, enabled]);
   return { posts, setPosts, loading, failed, load };
 }
 
 type Source = { title?: string; channel?: string; views?: number; video_id?: string; url?: string } | null;
 export type Idea = { day: number; theme?: string; format?: string; score: number; title: string; why: string; source?: Source };
-type Insights = {
+export type Insights = {
   niche?: string; generated_at?: string; rules?: string[]; inspiration?: string[];
   audience?: { summary?: string; segments?: { label: string; pct: number }[]; wants?: string[]; pains?: string[] };
   strategy?: { summary?: string; weekly?: string[] };
@@ -109,7 +109,7 @@ type Insights = {
   ideas?: Idea[];
 };
 
-function useInsights() {
+export function useInsights() {
   const [ins, setIns] = useState<Insights | null>(null);
   useEffect(() => {
     void supabase.from("system_settings").select("value, updated_at").eq("key", "vidiq_insights").maybeSingle()
@@ -275,9 +275,16 @@ export function MomentumStrip({ posts, yt }: { posts: Post[]; yt: YtStats }) {
 }
 
 /** Today tab: what today is for, and exactly what to make (with where each idea came from). */
-export function ContentHome({ onOpenAnalytics, onPick, picking }: { onOpenAnalytics: () => void; onPick?: (idea: Idea) => void; picking?: boolean }) {
+export function ContentHome({ onOpenAnalytics, onPick, picking, posts: sharedPosts, hidePicks }: {
+  onOpenAnalytics: () => void; onPick?: (idea: Idea) => void; picking?: boolean;
+  /** Posts the page already loaded. When given, this component does not fetch its own. */
+  posts?: Post[];
+  /** The Launch Board's Film next panel replaces the idea list below, so it is hidden there. */
+  hidePicks?: boolean;
+}) {
   const [showAll, setShowAll] = useState(false);
-  const { posts } = usePosts();
+  const own = usePosts(sharedPosts === undefined);
+  const posts = sharedPosts ?? own.posts;
   const yt = useYtStats();
   const ins = useInsights();
   const wd = phoenixWeekday();
@@ -306,7 +313,7 @@ export function ContentHome({ onOpenAnalytics, onPick, picking }: { onOpenAnalyt
         ) : <p className="mt-2 text-sm text-muted-foreground">{t.shorts}</p>}
       </section>
 
-      <section aria-label="Make today" className="flex flex-col gap-3">
+      {hidePicks ? null : <section aria-label="Make today" className="flex flex-col gap-3">
         <div className="flex flex-wrap items-baseline gap-3">
           <h2 className="text-lg font-bold text-foreground">{showAll ? "All video ideas" : "Pick a video to film"}</h2>
           <button type="button" onClick={onOpenAnalytics} className="ml-auto text-sm font-semibold text-primary hover:underline">See what's working →</button>
@@ -315,7 +322,7 @@ export function ContentHome({ onOpenAnalytics, onPick, picking }: { onOpenAnalyt
           ? <div className="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground">No ideas queued for this day yet.</div>
           : <ol className="flex flex-col gap-3">{(showAll ? ideas : ideas.slice(0, 3)).map((idea, i) => <IdeaRow key={`${idea.format}-${idea.title}`} idea={idea} onPick={onPick} busy={picking} top={!showAll && i === 0} />)}</ol>}
         {ideas.length > 3 && <Button variant="outline" onClick={() => setShowAll(!showAll)}>{showAll ? "Back to three choices" : `See all ${ideas.length} ideas`}</Button>}
-      </section>
+      </section>}
     </div>
   );
 }

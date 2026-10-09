@@ -40608,6 +40608,7 @@ export type Database = {
           approved_at: string | null
           approved_by: string | null
           brand: string
+          brief: Json
           caption: string
           clip: string
           content_type: string
@@ -40641,6 +40642,7 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           brand?: string
+          brief?: Json
           caption?: string
           clip?: string
           content_type?: string
@@ -40674,6 +40676,7 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           brand?: string
+          brief?: Json
           caption?: string
           clip?: string
           content_type?: string
@@ -40832,6 +40835,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      content_idea_dismissals: {
+        Row: {
+          dismissed_at: string
+          dismissed_by: string | null
+          idea_key: string
+          reason: string | null
+          title: string | null
+        }
+        Insert: {
+          dismissed_at?: string
+          dismissed_by?: string | null
+          idea_key: string
+          reason?: string | null
+          title?: string | null
+        }
+        Update: {
+          dismissed_at?: string
+          dismissed_by?: string | null
+          idea_key?: string
+          reason?: string | null
+          title?: string | null
+        }
+        Relationships: []
       }
       content_library: {
         Row: {

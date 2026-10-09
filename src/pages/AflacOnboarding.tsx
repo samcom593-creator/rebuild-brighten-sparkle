@@ -31,14 +31,6 @@ import { GlassCard } from "@/components/ui/glass-card";
 
 const COMP_RE = /^[A-Za-z0-9][A-Za-z0-9 %./()+-]{0,39}$/;
 
-/** Whole Phoenix calendar days since an ISO timestamp, matching how the database counts hire days. */
-function daysSince(iso: string): number {
-  const day = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Phoenix" }).format(d);
-  const a = Date.parse(`${day(new Date(iso))}T00:00:00Z`);
-  const b = Date.parse(`${day(new Date())}T00:00:00Z`);
-  return Math.max(0, Math.round((b - a) / 86_400_000));
-}
-
 function fullName(r: { first_name: string | null; last_name: string | null }): string {
   return `${r.first_name ?? ""} ${r.last_name ?? ""}`.trim() || "Unnamed";
 }
@@ -92,9 +84,6 @@ function QueueRow({ row, onSent }: { row: AflacQueueRow; onSent: () => void }) {
           </div>
         </div>
         <span className="flex items-center gap-2 text-xs text-muted-foreground">
-          {daysSince(row.created_at) >= 3 && row.tracked ? (
-            <span className="rounded-full border border-red-500/50 bg-red-500/15 px-2.5 py-0.5 font-bold text-red-300">Overdue: day {daysSince(row.created_at)}</span>
-          ) : null}
           Intake {formatTimeAgo(row.created_at)}
         </span>
       </div>

@@ -4245,6 +4245,60 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_contract_checkoff_events: {
+        Row: {
+          acted_at: string
+          acted_by: string | null
+          action: string
+          agent_id: string
+          contract_key: string
+          id: number
+          prev_checked_at: string | null
+          prev_checked_by: string | null
+        }
+        Insert: {
+          acted_at?: string
+          acted_by?: string | null
+          action: string
+          agent_id: string
+          contract_key: string
+          id?: number
+          prev_checked_at?: string | null
+          prev_checked_by?: string | null
+        }
+        Update: {
+          acted_at?: string
+          acted_by?: string | null
+          action?: string
+          agent_id?: string
+          contract_key?: string
+          id?: number
+          prev_checked_at?: string | null
+          prev_checked_by?: string | null
+        }
+        Relationships: []
+      }
+      agent_contract_checkoffs: {
+        Row: {
+          agent_id: string
+          checked_at: string
+          checked_by: string | null
+          contract_key: string
+        }
+        Insert: {
+          agent_id: string
+          checked_at?: string
+          checked_by?: string | null
+          contract_key: string
+        }
+        Update: {
+          agent_id?: string
+          checked_at?: string
+          checked_by?: string | null
+          contract_key?: string
+        }
+        Relationships: []
+      }
       agent_contract_levels: {
         Row: {
           agent_id: string
@@ -40249,6 +40303,80 @@ export type Database = {
           revoked_at?: string | null
         }
         Relationships: []
+      }
+      contract_checkoff_keys: {
+        Row: {
+          active: boolean
+          key: string
+          label: string
+          sort: number
+        }
+        Insert: {
+          active?: boolean
+          key: string
+          label: string
+          sort?: number
+        }
+        Update: {
+          active?: boolean
+          key?: string
+          label?: string
+          sort?: number
+        }
+        Relationships: []
+      }
+      contracting_followup_config: {
+        Row: {
+          clock_basis: string
+          confirmed_at: string | null
+          confirmed_by: string | null
+          singleton: boolean
+          updated_at: string
+          window_days: number
+        }
+        Insert: {
+          clock_basis?: string
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          singleton?: boolean
+          updated_at?: string
+          window_days?: number
+        }
+        Update: {
+          clock_basis?: string
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          singleton?: boolean
+          updated_at?: string
+          window_days?: number
+        }
+        Relationships: []
+      }
+      contracting_milestone_policy: {
+        Row: {
+          amber_day: number
+          deadline_day: number
+          key: string
+        }
+        Insert: {
+          amber_day: number
+          deadline_day: number
+          key: string
+        }
+        Update: {
+          amber_day?: number
+          deadline_day?: number
+          key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contracting_milestone_policy_key_fkey"
+            columns: ["key"]
+            isOneToOne: true
+            referencedRelation: "contract_checkoff_keys"
+            referencedColumns: ["key"]
+          }
+        ]
       }
       day_plan_todoist_map: {
         Row: {
@@ -141489,29 +141617,9 @@ export type Database = {
       apex_is_admin: { Args: never; Returns: boolean }
       day_plan_ensure_seeded: { Args: never; Returns: number }
       fn_book_agent_name_known: { Args: { p_name: string }; Returns: boolean }
-      fn_hire_priority_rows: {
-        Args: never
-        Returns: {
-          aflac: boolean
-          agent_id: string
-          agentlink: boolean
-          called_recently: boolean
-          days: number
-          display_name: string
-          email: string
-          ethos: boolean
-          first_contract: boolean
-          hired_at: string
-          last_call_at: string
-          manager_id: string
-          manager_name: string
-          phone: string
-          priority: number
-          priority_rank: number
-          reasons: Json
-          red_count: number
-          score: number
-        }[]
+      fn_milestone_state: {
+        Args: { p_amber: number; p_applicable: boolean; p_deadline: number; p_done: boolean; p_elapsed: number; p_policy_active: boolean; p_start_ok: boolean; p_tracked: boolean }
+        Returns: Json
       }
       has_agent: {
         Args: { app: Database["public"]["Tables"]["applications"]["Row"] }
@@ -143023,12 +143131,6 @@ export type Database = {
         Args: { p_bucket: string; p_max: number; p_window_seconds: number }
         Returns: boolean
       }
-      hire_flag_eval: {
-        Args: { p_aflac_done: boolean; p_al_id: number; p_al_incomplete: number; p_al_pending_upline: number; p_carrier_days?: number; p_contract_days?: number; p_contract_done: boolean; p_days: number; p_ethos_status: string }
-        Returns: Json
-      }
-      hire_priority_alert: { Args: { p_topic?: string }; Returns: Json }
-      hire_priority_list: { Args: never; Returns: Json }
       ig_bucket: {
         Args: { last_msg_at: string; last_sender: string }
         Returns: string
@@ -143950,6 +144052,12 @@ export type Database = {
         Args: { p_application_id: string; p_note?: string; p_stage: string }
         Returns: Json
       }
+      set_contract_checkoff: {
+        Args: { p_agent_id: string; p_checked: boolean; p_contract_key: string; p_expected?: boolean }
+        Returns: Json
+      }
+      set_contracting_followup: { Args: { p_agent_id: string; p_patch: Json }; Returns: Json }
+      set_contracting_followup_config: { Args: { p_basis: string; p_window_days?: number }; Returns: Json }
       set_hire_license_status: {
         Args: {
           p_agent_id: string
@@ -144082,6 +144190,7 @@ export type Database = {
       svg_url_encode: { Args: { p_svg: string }; Returns: string }
       sync_automation_status: { Args: never; Returns: Json }
       sync_health_summary: { Args: never; Returns: Json }
+      team_contracting_status: { Args: never; Returns: Json }
       telegram_due_nudges: {
         Args: { limit_n?: number; now_ts?: string }
         Returns: {

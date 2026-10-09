@@ -6,6 +6,14 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { AgentAvatar, getAvatarUrl } from "@/components/ui/AgentAvatar";
 import { useSearchParams, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  matchesContractingFilter, useCheckoffToggle, useTeamContracting,
+  type ContractingFilter, type TeamPerson,
+} from "@/lib/teamContracting";
+import { ContractingPriorityPanel } from "@/components/team/ContractingPriorityPanel";
+import { ContractingFilterBar } from "@/components/team/ContractingFilterBar";
+import { ContractingFollowupDialog } from "@/components/team/ContractingFollowupDialog";
+import { MilestoneChecklist, MilestoneChips, RowBadges } from "@/components/team/ContractingBadges";
 import { Users, Search, RefreshCw, Clock, AlertTriangle, ChevronRight, Mail, Phone, UserX, Filter, GraduationCap, Briefcase, Sparkles, Instagram, X, Send, CheckSquare, EyeOff, Link2, Eye, FileText, KeyRound, Copy, StickyNote, ClipboardCheck, Circle, CircleCheck, MoreHorizontal, TrendingUp, BadgeCheck, ArrowUpRight, Network, UserCheck, Flame, ChevronDown, Download } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -627,20 +635,6 @@ function RosterStatusBadge({ row }: { row: RosterRow }) {
   );
 }
 
-// Contracts Sam ticks off per agent on My Team — a manual checklist, independent of the auto-synced
-// AgentLink contract data (which is messy and agent_id-null). Click a roster row open, tap a bubble to
-// mark a contract done. Extend this list as Sam names more carriers (he's detailing AgentLink's new use).
-const CONTRACTS: { key: string; label: string }[] = [
-  { key: "first_contract", label: "First contract" },
-  { key: "aflac", label: "Aflac" },
-  { key: "ethos", label: "Ethos" },
-  { key: "agentlink", label: "AgentLink" },
-];
-// Held in a const (not a bare .from("literal")) so the relation-types guard reads it as unprovable:
-// this table is newer than the generated types.ts, which the catalog guard forbids hand-editing —
-// it gets into types.ts the next time a connector session regenerates it from the live database.
-const ACC_TABLE = "agent_contract_checkoffs";
-
 function RosterPanel({ rows, isLoading, isError, onRetry }: {
   rows: RosterRow[];
   isLoading: boolean;
@@ -651,37 +645,29 @@ function RosterPanel({ rows, isLoading, isError, onRetry }: {
   const [q, setQ] = useState("");
   const [managerFilter, setManagerFilter] = useState("all");
   const [sort, setSort] = useState<RosterSortKey>("mtd_desc");
-  // Contract check-offs: which contracts each agent has done, and which rows are expanded to show them.
+  // Contracting follow-up: ONE server calculation (team_contracting_status) drives the urgent section, the row badges,
+  // the filters and the expanded checklist. The old direct table read is gone: it could never succeed (no SELECT
+  // grant), swallowed its own error, and so showed every milestone unchecked.
+  const { isAdmin, isManager, isVaManager, isVa } = useAuth();
+  const queryClient = useQueryClient();
+  const contractingEnabled = isAdmin || isManager || isVaManager || isVa;
+  const canTick = isAdmin || isManager;
+  const tc = useTeamContracting(contractingEnabled);
+  const checkoff = useCheckoffToggle(tc.queryKey);
+  const [cFilter, setCFilter] = useState<ContractingFilter>("all");
+  const [cMilestone, setCMilestone] = useState("all");
+  const [planFor, setPlanFor] = useState<TeamPerson | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [checks, setChecks] = useState<Map<string, Set<string>>>(new Map());
-  useEffect(() => {
-    const ids = rows.map((r) => r.agent_id).filter(Boolean) as string[];
-    if (ids.length === 0) return;
-    let off = false;
-    void (supabase.from(ACC_TABLE as never) as unknown as { select: (c: string) => { in: (col: string, v: string[]) => Promise<{ data: { agent_id: string; contract_key: string }[] | null; error: unknown }> } })
-      .select("agent_id, contract_key").in("agent_id", ids.slice(0, 1000))
-      .then(({ data, error }) => {
-        if (off || error || !data) return;
-        const m = new Map<string, Set<string>>();
-        for (const row of data as { agent_id: string; contract_key: string }[]) {
-          if (!m.has(row.agent_id)) m.set(row.agent_id, new Set());
-          m.get(row.agent_id)!.add(row.contract_key);
-        }
-        setChecks(m);
-      });
-    return () => { off = true; };
-  }, [rows]);
+  // A tick made in another session arrives as an INSERT on the append-only events table (INSERT-only, scoped by RLS).
+  useRealtimeTable({ table: "agent_contract_checkoff_events", event: "INSERT", channelSuffix: "team-contracting", coalesceMs: 750, enabled: contractingEnabled }, () => {
+    void queryClient.invalidateQueries({ queryKey: tc.queryKey });
+  });
+  const rowById = useMemo(() => new Map(rows.map((r) => [r.agent_id, r] as const)), [rows]);
+  const contactFor = useCallback((id: string) => {
+    const r = rowById.get(id) ?? (tc.byAgent.get(id)?.alias_ids ?? []).map((a) => rowById.get(a)).find(Boolean);
+    return { phone: r?.phone ?? null, email: r?.email ?? null };
+  }, [rowById, tc.byAgent]);
   const toggleExpand = (id: string) => setExpanded((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
-  const toggleContract = async (agentId: string, key: string) => {
-    const next = !(checks.get(agentId)?.has(key) ?? false);
-    const apply = (on: boolean) => setChecks((prev) => {
-      const m = new Map(prev); const set = new Set(m.get(agentId) ?? []);
-      if (on) set.add(key); else set.delete(key); m.set(agentId, set); return m;
-    });
-    apply(next); // optimistic; the write is a single gated RPC
-    const { error } = await supabase.rpc("toggle_agent_contract_checkoff" as never, { p_agent_id: agentId, p_contract_key: key, p_checked: next } as never);
-    if (error) { apply(!next); toast.error(`Couldn't save contract: ${error.message.slice(0, 100)}`); }
-  };
 
   const managers = useMemo(() => {
     const m = new Map<string, string>();
@@ -716,7 +702,10 @@ function RosterPanel({ rows, isLoading, isError, onRetry }: {
   }, [searched]);
 
   const visible = useMemo(() => {
-    const list = [...(bySegment.get(segment) ?? [])];
+    const base = bySegment.get(segment) ?? [];
+    const list = cFilter === "all" || !tc.data
+      ? [...base]
+      : base.filter((r) => { const p = tc.byAgent.get(r.agent_id); return p ? matchesContractingFilter(p, cFilter, cMilestone) : false; });
     switch (sort) {
       case "mtd_desc": list.sort((a, b) => num(b.mtd_alp) - num(a.mtd_alp)); break;
       case "l30_desc": list.sort((a, b) => num(b.l30_alp) - num(a.l30_alp)); break;
@@ -731,7 +720,7 @@ function RosterPanel({ rows, isLoading, isError, onRetry }: {
       }); break;
     }
     return list;
-  }, [bySegment, segment, sort]);
+  }, [bySegment, segment, sort, cFilter, cMilestone, tc.data, tc.byAgent]);
 
   const activeSeg = ROSTER_SEGMENTS.find((s) => s.key === segment)!;
 
@@ -751,6 +740,7 @@ function RosterPanel({ rows, isLoading, isError, onRetry }: {
 
   return (
     <div className="space-y-3">
+      <ContractingPriorityPanel q={tc} contactFor={contactFor} />
       <GlassCard className="p-4">
         <div className="flex flex-col flex-wrap gap-2 sm:flex-row">
           <div className="relative min-w-0 flex-1 sm:min-w-[200px]">
@@ -825,6 +815,19 @@ function RosterPanel({ rows, isLoading, isError, onRetry }: {
         </div>
       </div>
 
+      {tc.data ? (
+        <ContractingFilterBar
+          status={tc.data}
+          filter={cFilter}
+          onFilter={(f) => { setCFilter(f); if (f !== "p1" && f !== "due_soon") setCMilestone("all"); }}
+          milestone={cMilestone}
+          onMilestone={setCMilestone}
+          shown={visible.length}
+          rosterTotal={rows.length}
+          narrowed={cFilter !== "all" || q.trim() !== "" || managerFilter !== "all"}
+        />
+      ) : null}
+
       <GlassCard className="overflow-hidden p-4">
         <div className="mb-1 flex items-baseline justify-between gap-2">
           <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
@@ -882,7 +885,7 @@ function RosterPanel({ rows, isLoading, isError, onRetry }: {
                   const life = usdOrNull(r.lifetime_alp);
                   const sinceSale = daysSince(r.last_posted_date);
                   const isOpen = expanded.has(r.agent_id);
-                  const done = checks.get(r.agent_id);
+                  const person = tc.byAgent.get(r.agent_id);
                   return (
                     <React.Fragment key={r.agent_id}>
                     <TableRow className="border-b border-border/60 transition-colors hover:bg-muted/30">
@@ -918,6 +921,8 @@ function RosterPanel({ rows, isLoading, isError, onRetry }: {
                                 </Badge>
                               )}
                             </div>
+                            {person ? <RowBadges p={person} className="mt-0.5" /> : null}
+                            {person ? <MilestoneChips p={person} /> : null}
                             {r.email ? (
                               <a href={`mailto:${r.email}`} className="block truncate text-[12px] text-muted-foreground hover:text-primary hover:underline">
                                 <Mail className="mr-1 inline h-3 w-3" />{r.email}
@@ -1030,23 +1035,29 @@ function RosterPanel({ rows, isLoading, isError, onRetry }: {
                       <TableRow className="border-b border-border/60 bg-muted/20 hover:bg-muted/20">
                         <TableCell colSpan={11} className="px-4 py-3">
                           <div className="flex flex-col gap-3">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="mr-1 w-20 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">Contracts</span>
-                              {CONTRACTS.map((c) => {
-                                const on = done?.has(c.key) ?? false;
-                                return (
-                                  <button key={c.key} type="button" onClick={() => void toggleContract(r.agent_id, c.key)} aria-pressed={on}
-                                    className={cn("inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[13px] font-semibold transition",
-                                      on ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground")}>
-                                    {on ? <CircleCheck className="h-3.5 w-3.5" /> : <Circle className="h-3.5 w-3.5" />}{c.label}
-                                  </button>
-                                );
-                              })}
-                              <span className="ml-auto text-[12px] font-semibold tabular-nums text-muted-foreground">{done?.size ?? 0}/{CONTRACTS.length} done</span>
+                            <div className="flex flex-col gap-1.5 sm:flex-row sm:items-start">
+                              <span className="mr-1 w-20 shrink-0 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">Contracts</span>
+                              {tc.isLoading ? (
+                                <span className="text-[13px] text-muted-foreground">Loading contracting status…</span>
+                              ) : tc.isError ? (
+                                <span className="text-[13px] text-amber-600 dark:text-amber-400">
+                                  Contracting status unavailable.{" "}
+                                  <button type="button" className="font-semibold underline" onClick={() => void tc.refetch()}>Retry</button>
+                                </span>
+                              ) : person ? (
+                                <div className="min-w-0 flex-1">
+                                  <MilestoneChecklist p={person} canEdit={canTick} onToggle={(id, key, d, name) => void checkoff.toggle(id, key, d, name)} isPending={checkoff.isPending} />
+                                </div>
+                              ) : (
+                                <span className="text-[13px] text-muted-foreground">
+                                  Contracting milestones do not apply to this person yet{r.license_status !== "licensed" ? " (not licensed)" : ""}.
+                                </span>
+                              )}
                             </div>
                             <div className="flex flex-wrap items-center gap-2 border-t border-border/60 pt-3">
                               <span className="mr-1 w-20 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">Actions</span>
                               <Button asChild size="sm" variant="outline" className="h-8 text-[13px]"><Link to={`/dashboard/profile?agentId=${r.agent_id}`}><ArrowUpRight className="mr-1.5 h-3.5 w-3.5" />Open full profile</Link></Button>
+                              {person ? <Button size="sm" variant="outline" className="h-8 text-[13px]" onClick={() => setPlanFor(person)}>Follow-up</Button> : null}
                               {r.email && <Button asChild size="sm" variant="outline" className="h-8 text-[13px]"><a href={`mailto:${r.email}`}><Mail className="mr-1.5 h-3.5 w-3.5" />Email</a></Button>}
                               {r.phone && <Button asChild size="sm" variant="outline" className="h-8 text-[13px]"><a href={phoneHref(r.phone) ?? `tel:${r.phone}`} {...contactLinkProps(phoneHref(r.phone))}><Phone className="mr-1.5 h-3.5 w-3.5" />Call</a></Button>}
                             </div>
@@ -1062,6 +1073,7 @@ function RosterPanel({ rows, isLoading, isError, onRetry }: {
           </div>
         )}
       </GlassCard>
+      <ContractingFollowupDialog person={planFor} queryKey={tc.queryKey} onClose={() => setPlanFor(null)} />
     </div>
   );
 }

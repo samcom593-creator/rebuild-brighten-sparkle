@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "My Team now shows who is overdue on contracting in one list with one set of rules. Urgency stays off until you confirm which day the clock starts.",
+    detail: "A Priority 1 section at the top of My Team lists everyone overdue on Aflac, Ethos, first contract or AgentLink, most urgent first, with the reason in plain words and a Call button. Every row carries an overdue or due-soon badge and a chip per step, and filters narrow to Priority 1, Due soon, all eligible people, or people whose timing needs review. Ticking a step records who and when, and two people ticking the same step can no longer overwrite each other. Home and My Day show a one-line count that links here, replacing the older separate flag list. Nobody is marked overdue yet because the day the clock starts is not confirmed, and the page says so. No texts, emails or calls go out on their own.",
+    commit: "PL-MYTEAM-CONTRACTING-FOLLOWUP",
+  },
+  {
+    ts: "today",
     label: "Your text alert for licensing milestones goes out again. The database was sending it with a key the server now refuses.",
     detail: "When an applicant moves a licensing step (passed the exam, fingerprints done, licensed), the system emails and texts you. The email gets through. The text is refused: eleven database jobs sign their requests with the public key, and the server answers that key with a 401 before the request runs. The alert log records both as sent anyway. They now sign with the internal key, which was tested against the same endpoint first. One of the eleven, the 'send login link on licensed' step, could never have worked with either key, because that endpoint only accepts a signed-in manager. It is removed, and the Discord welcome post that runs beside it is unchanged. Nine of the eleven are not scheduled anywhere, so nothing else changes today.",
     commit: "PL-WIB-PG-ANON-BEARER",

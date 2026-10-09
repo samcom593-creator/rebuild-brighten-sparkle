@@ -3400,14 +3400,6 @@
         "raw": "p_roots uuid[]"
       }
     ],
-    "fn_hire_priority_rows": [
-      {
-        "all": [],
-        "required": [],
-        "unnamed": false,
-        "raw": ""
-      }
-    ],
     "fn_hire_stage_for_rank": [
       {
         "all": [
@@ -3725,6 +3717,32 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "fn_milestone_state": [
+      {
+        "all": [
+          "p_amber",
+          "p_applicable",
+          "p_deadline",
+          "p_done",
+          "p_elapsed",
+          "p_policy_active",
+          "p_start_ok",
+          "p_tracked"
+        ],
+        "required": [
+          "p_amber",
+          "p_applicable",
+          "p_deadline",
+          "p_done",
+          "p_elapsed",
+          "p_policy_active",
+          "p_start_ok",
+          "p_tracked"
+        ],
+        "unnamed": false,
+        "raw": "p_applicable boolean, p_tracked boolean, p_policy_active boolean, p_start_ok boolean, p_elapsed integer, p_done boolean, p_amber integer, p_deadline integer"
       }
     ],
     "fn_mirror_licensing_tracker": [
@@ -5013,50 +5031,6 @@
       }
     ],
     "hh_touch_user": [
-      {
-        "all": [],
-        "required": [],
-        "unnamed": false,
-        "raw": ""
-      }
-    ],
-    "hire_flag_eval": [
-      {
-        "all": [
-          "p_aflac_done",
-          "p_al_id",
-          "p_al_incomplete",
-          "p_al_pending_upline",
-          "p_carrier_days",
-          "p_contract_days",
-          "p_contract_done",
-          "p_days",
-          "p_ethos_status"
-        ],
-        "required": [
-          "p_aflac_done",
-          "p_al_id",
-          "p_al_incomplete",
-          "p_al_pending_upline",
-          "p_contract_done",
-          "p_days",
-          "p_ethos_status"
-        ],
-        "unnamed": false,
-        "raw": "p_days integer, p_aflac_done boolean, p_ethos_status text, p_contract_done boolean, p_al_id bigint, p_al_incomplete integer, p_al_pending_upline integer, p_carrier_days integer DEFAULT 3, p_contract_days integer DEFAULT 5"
-      }
-    ],
-    "hire_priority_alert": [
-      {
-        "all": [
-          "p_topic"
-        ],
-        "required": [],
-        "unnamed": false,
-        "raw": "p_topic text DEFAULT NULL::text"
-      }
-    ],
-    "hire_priority_list": [
       {
         "all": [],
         "required": [],
@@ -7142,6 +7116,23 @@
         "raw": "p_application_id uuid, p_stage text, p_note text DEFAULT NULL::text"
       }
     ],
+    "set_contract_checkoff": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_checked",
+          "p_contract_key",
+          "p_expected"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_checked",
+          "p_contract_key"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_contract_key text, p_checked boolean, p_expected boolean DEFAULT NULL::boolean"
+      }
+    ],
     "set_contracting_checkin": [
       {
         "all": [
@@ -7158,6 +7149,33 @@
         ],
         "unnamed": false,
         "raw": "p_checkin_id uuid, p_agent_id uuid, p_step text, p_done boolean DEFAULT true, p_note text DEFAULT NULL::text"
+      }
+    ],
+    "set_contracting_followup": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_patch"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_patch"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_patch jsonb"
+      }
+    ],
+    "set_contracting_followup_config": [
+      {
+        "all": [
+          "p_basis",
+          "p_window_days"
+        ],
+        "required": [
+          "p_basis"
+        ],
+        "unnamed": false,
+        "raw": "p_basis text, p_window_days integer DEFAULT NULL::integer"
       }
     ],
     "set_expected_start": [
@@ -7591,6 +7609,14 @@
       }
     ],
     "sync_lead_counter": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "team_contracting_status": [
       {
         "all": [],
         "required": [],

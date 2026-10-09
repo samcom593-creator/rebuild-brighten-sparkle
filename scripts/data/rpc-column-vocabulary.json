@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-rpc-column-vocabulary.sh (bot_sql -> pg_proc + pg_rewrite)",
- "_generated_at": "2026-10-09T05:52:20Z",
+ "_generated_at": "2026-10-09T06:29:57Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "check-enum-filter-literals.mjs grades literals inside supabase.from().eq() chains. This is the other half of the same class: a status word that arrives from an RPC and is compared in JavaScript, where the return type is text and every wrong word type-checks. Per (function, returned column) this records the relation columns of that name reachable from the function body and the literals the function synthesises itself. It deliberately records CANDIDATES rather than one resolved source: provenance from a body regex is a guess, so check-rpc-status-literals.mjs refuses a literal only when NO candidate vocabulary and no body literal accepts it.",
  "_vocabulary_source": "scripts/data/enum-catalog.json (check_vocab + column_enum + enums). Not copied here on purpose, so the two guards read one snapshot and cannot drift.",
@@ -297,6 +297,7 @@
   "fn_match_carrier_policy_agents": "integer",
   "fn_match_readymode_calls": "jsonb",
   "fn_match_xcel_students": "integer",
+  "fn_milestone_state": "jsonb",
   "fn_mirror_licensing_tracker": "trigger",
   "fn_missed_opportunity_digest": "jsonb",
   "fn_next_onboarding_window": "timestamp with time zone",
@@ -413,9 +414,6 @@
   "hh_rate_limit": "boolean",
   "hh_touch_applicant": "trigger",
   "hh_touch_user": "trigger",
-  "hire_flag_eval": "jsonb",
-  "hire_priority_alert": "jsonb",
-  "hire_priority_list": "jsonb",
   "ig_bucket": "text",
   "in_course_peer_pressure": "jsonb",
   "ingest_ayro_sales_deal": "jsonb",
@@ -549,7 +547,10 @@
   "set_agent_training_stage": "jsonb",
   "set_apex_journey_step": "jsonb",
   "set_applicant_stage": "jsonb",
+  "set_contract_checkoff": "jsonb",
   "set_contracting_checkin": "jsonb",
+  "set_contracting_followup": "jsonb",
+  "set_contracting_followup_config": "jsonb",
   "set_expected_start": "jsonb",
   "set_hire_license_status": "jsonb",
   "set_limit": "real",
@@ -584,6 +585,7 @@
   "sync_automation_status": "jsonb",
   "sync_health_summary": "jsonb",
   "sync_lead_counter": "trigger",
+  "team_contracting_status": "jsonb",
   "telegram_autolink_application": "trigger",
   "telegram_broadcast_ica_paid": "trigger",
   "telegram_broadcast_new_hire": "trigger",
@@ -5879,372 +5881,6 @@
    "candidates": [],
    "body_literals": [
     "public"
-   ]
-  },
-  "fn_hire_priority_rows.aflac": {
-   "candidates": [],
-   "body_literals": [
-    "active",
-    "aflac",
-    "agentlink",
-    "ethos",
-    "first_contract",
-    "hire_flag_days_carrier",
-    "hire_flag_days_contract",
-    "licensed",
-    "public",
-    "reasons",
-    "red_count",
-    "verified_ready_to_write"
-   ]
-  },
-  "fn_hire_priority_rows.agent_id": {
-   "candidates": [
-    "aflac_submissions.agent_id",
-    "agent_contract_levels.agent_id",
-    "agentlink_book.agent_id",
-    "contracting_case_tracking.agent_id",
-    "contracting_checkins.agent_id",
-    "contracting_intakes.agent_id",
-    "deals.agent_id",
-    "roster_exclusions.agent_id",
-    "v_contracting_audit.agent_id",
-    "v_contracting_carrier_cases.agent_id",
-    "v_contracting_reconciliation.agent_id"
-   ],
-   "body_literals": [
-    "active",
-    "aflac",
-    "agentlink",
-    "ethos",
-    "first_contract",
-    "hire_flag_days_carrier",
-    "hire_flag_days_contract",
-    "licensed",
-    "public",
-    "reasons",
-    "red_count",
-    "verified_ready_to_write"
-   ]
-  },
-  "fn_hire_priority_rows.agentlink": {
-   "candidates": [],
-   "body_literals": [
-    "active",
-    "aflac",
-    "agentlink",
-    "ethos",
-    "first_contract",
-    "hire_flag_days_carrier",
-    "hire_flag_days_contract",
-    "licensed",
-    "public",
-    "reasons",
-    "red_count",
-    "verified_ready_to_write"
-   ]
-  },
-  "fn_hire_priority_rows.called_recently": {
-   "candidates": [],
-   "body_literals": [
-    "active",
-    "aflac",
-    "agentlink",
-    "ethos",
-    "first_contract",
-    "hire_flag_days_carrier",
-    "hire_flag_days_contract",
-    "licensed",
-    "public",
-    "reasons",
-    "red_count",
-    "verified_ready_to_write"
-   ]
-  },
-  "fn_hire_priority_rows.days": {
-   "candidates": [],
-   "body_literals": [
-    "active",
-    "aflac",
-    "agentlink",
-    "ethos",
-    "first_contract",
-    "hire_flag_days_carrier",
-    "hire_flag_days_contract",
-    "licensed",
-    "public",
-    "reasons",
-    "red_count",
-    "verified_ready_to_write"
-   ]
-  },
-  "fn_hire_priority_rows.display_name": {
-   "candidates": [
-    "agents.display_name",
-    "contracting_checkins.display_name",
-    "v_contracting_audit.display_name",
-    "v_contracting_reconciliation.display_name"
-   ],
-   "body_literals": [
-    "active",
-    "aflac",
-    "agentlink",
-    "ethos",
-    "first_contract",
-    "hire_flag_days_carrier",
-    "hire_flag_days_contract",
-    "licensed",
-    "public",
-    "reasons",
-    "red_count",
-    "verified_ready_to_write"
-   ]
-  },
-  "fn_hire_priority_rows.email": {
-   "candidates": [
-    "aflac_submissions.email",
-    "agentlink_roster.email",
-    "contracting_checkins.email",
-    "contracting_intakes.email",
-    "ethos_roster.email",
-    "ethos_sheet_rows.email",
-    "profiles.email",
-    "v_contracting_audit.email",
-    "v_ethos_roster_current.email"
-   ],
-   "body_literals": [
-    "active",
-    "aflac",
-    "agentlink",
-    "ethos",
-    "first_contract",
-    "hire_flag_days_carrier",
-    "hire_flag_days_contract",
-    "licensed",
-    "public",
-    "reasons",
-    "red_count",
-    "verified_ready_to_write"
-   ]
-  },
-  "fn_hire_priority_rows.ethos": {
-   "candidates": [],
-   "body_literals": [
-    "active",
-    "aflac",
-    "agentlink",
-    "ethos",
-    "first_contract",
-    "hire_flag_days_carrier",
-    "hire_flag_days_contract",
-    "licensed",
-    "public",
-    "reasons",
-    "red_count",
-    "verified_ready_to_write"
-   ]
-  },
-  "fn_hire_priority_rows.first_contract": {
-   "candidates": [],
-   "body_literals": [
-    "active",
-    "aflac",
-    "agentlink",
-    "ethos",
-    "first_contract",
-    "hire_flag_days_carrier",
-    "hire_flag_days_contract",
-    "licensed",
-    "public",
-    "reasons",
-    "red_count",
-    "verified_ready_to_write"
-   ]
-  },
-  "fn_hire_priority_rows.hired_at": {
-   "candidates": [],
-   "body_literals": [
-    "active",
-    "aflac",
-    "agentlink",
-    "ethos",
-    "first_contract",
-    "hire_flag_days_carrier",
-    "hire_flag_days_contract",
-    "licensed",
-    "public",
-    "reasons",
-    "red_count",
-    "verified_ready_to_write"
-   ]
-  },
-  "fn_hire_priority_rows.last_call_at": {
-   "candidates": [
-    "contracting_checkins.last_call_at"
-   ],
-   "body_literals": [
-    "active",
-    "aflac",
-    "agentlink",
-    "ethos",
-    "first_contract",
-    "hire_flag_days_carrier",
-    "hire_flag_days_contract",
-    "licensed",
-    "public",
-    "reasons",
-    "red_count",
-    "verified_ready_to_write"
-   ]
-  },
-  "fn_hire_priority_rows.manager_id": {
-   "candidates": [
-    "agents.manager_id",
-    "deals.manager_id",
-    "v_contracting_carrier_cases.manager_id"
-   ],
-   "body_literals": [
-    "active",
-    "aflac",
-    "agentlink",
-    "ethos",
-    "first_contract",
-    "hire_flag_days_carrier",
-    "hire_flag_days_contract",
-    "licensed",
-    "public",
-    "reasons",
-    "red_count",
-    "verified_ready_to_write"
-   ]
-  },
-  "fn_hire_priority_rows.manager_name": {
-   "candidates": [
-    "v_contracting_audit.manager_name",
-    "v_contracting_carrier_cases.manager_name"
-   ],
-   "body_literals": [
-    "active",
-    "aflac",
-    "agentlink",
-    "ethos",
-    "first_contract",
-    "hire_flag_days_carrier",
-    "hire_flag_days_contract",
-    "licensed",
-    "public",
-    "reasons",
-    "red_count",
-    "verified_ready_to_write"
-   ]
-  },
-  "fn_hire_priority_rows.phone": {
-   "candidates": [
-    "agentlink_roster.phone",
-    "contracting_checkins.phone",
-    "ethos_roster.phone",
-    "profiles.phone",
-    "v_contracting_audit.phone",
-    "v_ethos_roster_current.phone"
-   ],
-   "body_literals": [
-    "active",
-    "aflac",
-    "agentlink",
-    "ethos",
-    "first_contract",
-    "hire_flag_days_carrier",
-    "hire_flag_days_contract",
-    "licensed",
-    "public",
-    "reasons",
-    "red_count",
-    "verified_ready_to_write"
-   ]
-  },
-  "fn_hire_priority_rows.priority": {
-   "candidates": [],
-   "body_literals": [
-    "active",
-    "aflac",
-    "agentlink",
-    "ethos",
-    "first_contract",
-    "hire_flag_days_carrier",
-    "hire_flag_days_contract",
-    "licensed",
-    "public",
-    "reasons",
-    "red_count",
-    "verified_ready_to_write"
-   ]
-  },
-  "fn_hire_priority_rows.priority_rank": {
-   "candidates": [],
-   "body_literals": [
-    "active",
-    "aflac",
-    "agentlink",
-    "ethos",
-    "first_contract",
-    "hire_flag_days_carrier",
-    "hire_flag_days_contract",
-    "licensed",
-    "public",
-    "reasons",
-    "red_count",
-    "verified_ready_to_write"
-   ]
-  },
-  "fn_hire_priority_rows.reasons": {
-   "candidates": [],
-   "body_literals": [
-    "active",
-    "aflac",
-    "agentlink",
-    "ethos",
-    "first_contract",
-    "hire_flag_days_carrier",
-    "hire_flag_days_contract",
-    "licensed",
-    "public",
-    "reasons",
-    "red_count",
-    "verified_ready_to_write"
-   ]
-  },
-  "fn_hire_priority_rows.red_count": {
-   "candidates": [],
-   "body_literals": [
-    "active",
-    "aflac",
-    "agentlink",
-    "ethos",
-    "first_contract",
-    "hire_flag_days_carrier",
-    "hire_flag_days_contract",
-    "licensed",
-    "public",
-    "reasons",
-    "red_count",
-    "verified_ready_to_write"
-   ]
-  },
-  "fn_hire_priority_rows.score": {
-   "candidates": [],
-   "body_literals": [
-    "active",
-    "aflac",
-    "agentlink",
-    "ethos",
-    "first_contract",
-    "hire_flag_days_carrier",
-    "hire_flag_days_contract",
-    "licensed",
-    "public",
-    "reasons",
-    "red_count",
-    "verified_ready_to_write"
    ]
   },
   "fn_invite_caller.agent_id": {

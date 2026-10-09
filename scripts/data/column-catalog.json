@@ -214,6 +214,22 @@
       "insuracloud_user_id",
       "updated_at"
     ],
+    "agent_contract_checkoff_events": [
+      "acted_at",
+      "acted_by",
+      "action",
+      "agent_id",
+      "contract_key",
+      "id",
+      "prev_checked_at",
+      "prev_checked_by"
+    ],
+    "agent_contract_checkoffs": [
+      "agent_id",
+      "checked_at",
+      "checked_by",
+      "contract_key"
+    ],
     "agent_contract_levels": [
       "agent_id",
       "contract_pct",
@@ -2823,6 +2839,12 @@
       "token",
       "view_count"
     ],
+    "contract_checkoff_keys": [
+      "active",
+      "key",
+      "label",
+      "sort"
+    ],
     "contract_sends": [
       "agent_id",
       "carrier",
@@ -2898,6 +2920,7 @@
     "contracting_checkins": [
       "agent_id",
       "application_id",
+      "blocker",
       "call_count",
       "contracts_confirmed_at",
       "contracts_confirmed_by",
@@ -2908,6 +2931,7 @@
       "email",
       "flagged_at",
       "flagged_no_contracts",
+      "follow_up_on",
       "id",
       "last_call_at",
       "last_call_outcome",
@@ -2915,14 +2939,17 @@
       "left_at",
       "left_by",
       "left_reason",
+      "next_action",
       "note",
+      "owner_user_id",
       "phone",
       "profile_id",
       "reengage_email_sent_at",
       "training_ready_at",
       "training_ready_by",
       "updated_at",
-      "updated_by"
+      "updated_by",
+      "waiting_on"
     ],
     "contracting_ethos_approval_log": [
       "action",
@@ -2964,6 +2991,14 @@
       "owner_name",
       "updated_at",
       "updated_by"
+    ],
+    "contracting_followup_config": [
+      "clock_basis",
+      "confirmed_at",
+      "confirmed_by",
+      "singleton",
+      "updated_at",
+      "window_days"
     ],
     "contracting_intake_deliveries": [
       "accepted_at",
@@ -3010,6 +3045,11 @@
       "manager_id",
       "name",
       "url"
+    ],
+    "contracting_milestone_policy": [
+      "amber_day",
+      "deadline_day",
+      "key"
     ],
     "contracting_worklist_ack": [
       "acked_at",

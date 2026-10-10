@@ -46,7 +46,11 @@ import { orphanMirrorRoots } from "./lib/orphan-mirrors.mjs";
 // public endpoint — and it had never once read these five files (MP-479).
 const ROOTS = ["supabase/functions", "src", ...orphanMirrorRoots()];
 const BASELINE = "scripts/data/ilike-user-input-baseline.json";
-const SAFE_WRAPPERS = ["emailPattern", "escapeLikePattern", "likeLiteral"];
+// phoneCandidatePattern (check-email-status/phone-lookup.ts) returns null unless
+// its input is exactly /^\d{10}$/, then emits only those digits and its own "%"
+// separators, so no caller character reaches the pattern. Proven by
+// phone-lookup.test.ts ("nothing that is not ten digits builds a pattern").
+const SAFE_WRAPPERS = ["emailPattern", "escapeLikePattern", "likeLiteral", "phoneCandidatePattern"];
 
 function walk(dir, out = []) {
   if (!existsSync(dir)) return out;
@@ -129,7 +133,11 @@ const isWrapped = (t) => SAFE_WRAPPERS.some((w) => t.startsWith(w + "("));
 function argIsSafe(arg) {
   // In `cond ? a : b` only a and b reach the query — the condition is not a value.
   // Counting it as one marked correctly-escaped ternaries as violations.
-  const values = arg.includes("?") ? arg.slice(arg.indexOf("?") + 1) : arg;
+  // `a ?? b` is two value branches and `a?.b` is a member read; neither is a
+  // ternary. Read raw, `phoneCandidatePattern(x) ?? ""` split at its first "?"
+  // and left the bare branch `? ""`, so a fully escaped argument was a finding.
+  const norm = arg.replace(/\?\?/g, "||").replace(/\?\./g, ".");
+  const values = norm.includes("?") ? norm.slice(norm.indexOf("?") + 1) : norm;
   const branches = values.split(/:|\|\||&&/).map((t) => t.trim()).filter(Boolean);
   if (!branches.length) return false;
   return branches.every((b) => isLiteral(b) || isWrapped(b));

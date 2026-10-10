@@ -18,8 +18,16 @@
 // only, so no LIKE metacharacter from the caller can reach it (MP-277).
 // Same oracle as before: it still takes all ten real digits to get a hit.
 
-export function lastTenDigits(value: unknown): string {
-  return String(value ?? "").replace(/\D/g, "").slice(-10);
+import { nanpTenDigits } from "../_shared/nanp-phone.ts";
+
+// The stored side goes through nanpTenDigits, not `digits.slice(-10)`: a slice
+// cannot fail, so a non-US number whose last ten digits happen to equal the
+// typed ones would resolve to that profile (check:phone-gateway-source). On
+// 2026-10-10 the two rules disagreed on 1 of 197 stored phones, a 9-digit
+// value that could never equal ten typed digits under either rule, so no
+// answer changed.
+export function phoneTen(value: unknown): string {
+  return nanpTenDigits(value == null ? null : String(value)) ?? "";
 }
 
 /** ILIKE pattern that matches the ten digits through any punctuation. */
@@ -39,7 +47,7 @@ export function pickPhoneMatch<T extends { phone?: string | null }>(
 ): T | null {
   if (!/^\d{10}$/.test(last10)) return null;
   for (const row of rows ?? []) {
-    if (lastTenDigits(row.phone) === last10) return row;
+    if (phoneTen(row.phone) === last10) return row;
   }
   return null;
 }

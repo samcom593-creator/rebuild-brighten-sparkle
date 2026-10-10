@@ -4,7 +4,7 @@
 // Run: deno test --no-check --allow-read supabase/functions/check-email-status/phone-lookup.test.ts
 // Wired: npm run check:deno-tests (verify:core).
 import { assertEquals, assertStringIncludes } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { lastTenDigits, phoneCandidatePattern, pickPhoneMatch } from "./phone-lookup.ts";
+import { phoneCandidatePattern, phoneTen, pickPhoneMatch } from "./phone-lookup.ts";
 
 // Postgres ILIKE, case-sensitivity aside, for the patterns this module builds.
 function likeMatches(value: string, pattern: string): boolean {
@@ -44,7 +44,14 @@ Deno.test("nothing that is not ten digits builds a pattern or matches", () => {
     assertEquals(phoneCandidatePattern(bad), null, bad);
     assertEquals(pickPhoneMatch([{ phone: bad }], bad), null, bad);
   }
-  assertEquals(lastTenDigits("+1 (713) 882-8503"), "7138828503");
+  assertEquals(phoneTen("+1 (713) 882-8503"), "7138828503");
+});
+
+Deno.test("a non-US number sharing the last ten digits is never picked", () => {
+  // slice(-10) read both of these as 7138828503 and returned the profile.
+  const rows = [{ phone: "+44 713 882 8503", id: "uk" }, { phone: "0447138828503", id: "intl" }];
+  assertEquals(pickPhoneMatch(rows, "7138828503"), null);
+  assertEquals(phoneTen("+44 713 882 8503"), "");
 });
 
 Deno.test("index.ts decides on pickPhoneMatch, and a read error is not 'not on file'", async () => {

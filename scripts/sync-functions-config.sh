@@ -159,6 +159,9 @@ PUBLIC_ALLOWLIST=(
   "send-seminar-invite-blast"
   "send-bulk-unlicensed-outreach"
   "bulk-send-licensing"
+  # Two more blasts (2026-10-10): same gate, admin_or_manager floor.
+  "send-unlicensed-process-update"
+  "bulk-resend-course-emails"
   # send-sms-via-email (2026-10-09): same gate, admin_or_manager floor. Both
   # callers present the sb_secret service key, which is not a JWT.
   "send-sms-via-email"

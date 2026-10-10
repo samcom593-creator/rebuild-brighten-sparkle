@@ -346,6 +346,12 @@ const PUBLIC_ALLOWLIST = new Set([
   "send-seminar-invite-blast",
   "send-bulk-unlicensed-outreach",
   "bulk-send-licensing",
+  // send-unlicensed-process-update, bulk-resend-course-emails (2026-10-10): the
+  // same bare-POST blast shape, missed by 62e99158 because neither reads a
+  // recipient off the body. 695 applicants / 117 agents (magic link each, CC
+  // Sam + manager). requireSendAuth (admin_or_manager). No callers at all.
+  "send-unlicensed-process-update",
+  "bulk-resend-course-emails",
   // send-sms-via-email (2026-10-09): a bare POST {phone, body} texted any US
   // number with caller-chosen words; {agentId, body} texted any agent. No
   // credential read. requireSendAuth (admin_or_manager) now. Callers:
@@ -461,6 +467,9 @@ const PUBLIC_CONTRACT = {
   "send-seminar-invite-blast": "in_handler_gate",
   "send-bulk-unlicensed-outreach": "in_handler_gate",
   "bulk-send-licensing": "in_handler_gate",
+  // Two more blasts, 2026-10-10: requireSendAuth, admin_or_manager. No callers.
+  "send-unlicensed-process-update": "in_handler_gate",
+  "bulk-resend-course-emails": "in_handler_gate",
   // send-sms-via-email: requireSendAuth, admin_or_manager. Callers
   // bulk-agent-message and drain_sms_fallback_queue(), both on the service key.
   "send-sms-via-email": "in_handler_gate",

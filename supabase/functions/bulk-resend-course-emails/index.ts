@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireSendAuth } from "../_shared/require-send-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,6 +12,27 @@ serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  // PL-WIB-BLAST-SENDERS-AUTH-2 (2026-10-10). verify_jwt = false and no
+  // credential read, so a bare POST from anyone ran the loop below: it calls
+  // send-course-enrollment-email with the SERVICE key for every agent who has
+  // not finished the course (117 on 2026-10-10), minting a 24h magic link per
+  // agent and CCing Sam and the manager on each. That walked straight past the
+  // staff_or_agent floor 6e381af4 put on send-course-enrollment-email, because
+  // that floor admits the service key. No caller exists (src, pg_proc, cron: 0),
+  // so the admin_or_manager floor locks out nobody.
+  const auth = await requireSendAuth(req);
+  if (!auth.ok) {
+    return new Response(JSON.stringify({ error: auth.error }), {
+      status: auth.status,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  // dryRun returns the audience size and sends nothing, so the gate can be
+  // probed with the service key without mailing 117 agents.
+  const reqBody = await req.json().catch(() => ({}));
+  const dryRun = reqBody?.dryRun === true;
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -72,6 +94,13 @@ serve(async (req) => {
     if (!eligibleAgents.length) {
       return new Response(
         JSON.stringify({ success: true, sent: 0, message: "All agents have completed the course" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (dryRun) {
+      return new Response(
+        JSON.stringify({ dryRun: true, total: eligibleAgents.length }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

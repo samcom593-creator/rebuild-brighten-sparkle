@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { buildAppUrl } from "../_shared/apex.ts";
+import { requireSendAuth } from "../_shared/require-send-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,9 +16,26 @@ serve(async (req: Request) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  try {
-    await req.json().catch(() => ({}));
+  // PL-WIB-BLAST-SENDERS-AUTH-2 (2026-10-10). verify_jwt = false and, until this
+  // commit, no credential read, so a bare POST from anyone ran the send. Every
+  // POST mails every non-licensed, non-terminated applicant (695 on 2026-10-10),
+  // with no dedupe and no log row. Same shape as the four blasts gated in
+  // 62e99158. It has no caller at all (src, pg_proc, cron: 0), so the
+  // admin_or_manager floor locks out nobody.
+  const auth = await requireSendAuth(req);
+  if (!auth.ok) {
+    return new Response(JSON.stringify({ error: auth.error }), {
+      status: auth.status,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
+  // dryRun returns the audience size and sends nothing, so the gate can be
+  // probed with the service key without mailing 695 people.
+  const reqBody = await req.json().catch(() => ({}));
+  const dryRun = reqBody?.dryRun === true;
+
+  try {
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
@@ -32,6 +50,12 @@ serve(async (req: Request) => {
     if (error) throw error;
     if (!applicants?.length) {
       return new Response(JSON.stringify({ success: true, message: "No unlicensed applicants" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (dryRun) {
+      return new Response(JSON.stringify({ dryRun: true, total: applicants.length }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

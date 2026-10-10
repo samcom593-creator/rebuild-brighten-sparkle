@@ -2658,6 +2658,14 @@
         "raw": ""
       }
     ],
+    "fn_agents_default_stage": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "fn_agents_manager_no_cycle": [
       {
         "all": [],
@@ -2691,6 +2699,14 @@
       }
     ],
     "fn_apex_log_http_call": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_append_only_guard": [
       {
         "all": [],
         "required": [],
@@ -4111,6 +4127,14 @@
         "raw": ""
       }
     ],
+    "fn_phoenix_today": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "fn_policy_number_report_placeholder": [
       {
         "all": [
@@ -4446,6 +4470,18 @@
         "raw": ""
       }
     ],
+    "fn_stage_label": [
+      {
+        "all": [
+          "p_stage"
+        ],
+        "required": [
+          "p_stage"
+        ],
+        "unnamed": false,
+        "raw": "p_stage text"
+      }
+    ],
     "fn_stamp_agent_licensed_at": [
       {
         "all": [],
@@ -4539,6 +4575,22 @@
       }
     ],
     "fn_system_settings_reject_json_quoted": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_team_population": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_team_reader": [
       {
         "all": [],
         "required": [],
@@ -4644,6 +4696,54 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "fn_weekdays_valid": [
+      {
+        "all": [
+          "p"
+        ],
+        "required": [
+          "p"
+        ],
+        "unnamed": false,
+        "raw": "p smallint[]"
+      }
+    ],
+    "fn_work_weekdays_on": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_date"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_date"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_date date"
+      }
+    ],
+    "fn_workday_apply": [
+      {
+        "all": [
+          "p_agent",
+          "p_date",
+          "p_expected",
+          "p_note",
+          "p_status",
+          "p_uid"
+        ],
+        "required": [
+          "p_agent",
+          "p_date",
+          "p_expected",
+          "p_note",
+          "p_status",
+          "p_uid"
+        ],
+        "unnamed": false,
+        "raw": "p_agent uuid, p_date date, p_status text, p_expected text, p_note text, p_uid uuid"
       }
     ],
     "fn_xcel_auto_upgrade_all": [
@@ -7176,6 +7276,22 @@
         "raw": "p_agent_id uuid, p_progress text, p_test_date date DEFAULT NULL::date"
       }
     ],
+    "set_agent_stage": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_expect_unset",
+          "p_expected",
+          "p_stage"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_stage"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_stage text, p_expected text DEFAULT NULL::text, p_expect_unset boolean DEFAULT false"
+      }
+    ],
     "set_agent_status": [
       {
         "all": [
@@ -7488,6 +7604,57 @@
         "raw": "p_agent_id uuid, p_pct numeric, p_expected numeric DEFAULT NULL::numeric, p_expect_unset boolean DEFAULT false, p_note text DEFAULT NULL::text"
       }
     ],
+    "set_work_commitment": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_effective_from",
+          "p_expect_unset",
+          "p_expected",
+          "p_weekdays"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_weekdays"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_weekdays smallint[], p_effective_from date DEFAULT NULL::date, p_expected smallint[] DEFAULT NULL::smallint[], p_expect_unset boolean DEFAULT false"
+      }
+    ],
+    "set_workday_attendance": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_date",
+          "p_expected",
+          "p_note",
+          "p_status"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_date",
+          "p_status"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_date date, p_status text, p_expected text DEFAULT NULL::text, p_note text DEFAULT NULL::text"
+      }
+    ],
+    "set_workday_attendance_bulk": [
+      {
+        "all": [
+          "p_agent_ids",
+          "p_date",
+          "p_status"
+        ],
+        "required": [
+          "p_agent_ids",
+          "p_date",
+          "p_status"
+        ],
+        "unnamed": false,
+        "raw": "p_date date, p_agent_ids uuid[], p_status text"
+      }
+    ],
     "should_post_to_discord": [
       {
         "all": [
@@ -7771,7 +7938,25 @@
         "raw": ""
       }
     ],
+    "team_attendance_day": [
+      {
+        "all": [
+          "p_date"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_date date DEFAULT NULL::date"
+      }
+    ],
     "team_contracting_status": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "team_people_facts": [
       {
         "all": [],
         "required": [],

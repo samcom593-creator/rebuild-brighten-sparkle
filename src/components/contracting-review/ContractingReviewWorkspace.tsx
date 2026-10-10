@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useContractReview } from "@/hooks/useContractReview";
+import { useTeamFacts } from "@/hooks/useTeamFacts";
 import {
   REVIEW_FILTERS, nextToReview, reviewCounts, teamOptions, visibleAgents,
   type ReviewAgent, type ReviewCarrier, type ReviewFilter,
@@ -28,6 +29,8 @@ const PAGE = 50;
 export function ContractingReviewWorkspace({ className }: { className?: string }) {
   const review = useContractReview(true);
   const { roster, query, canRead, canEdit } = review;
+  const facts = useTeamFacts(true);
+  const stageOf = useMemo(() => new Map((facts.facts?.people ?? []).map((p) => [p.agent_id, p.stage] as const)), [facts.facts]);
   const [filter, setFilter] = useState<ReviewFilter>("needs_review");
   const [search, setSearch] = useState("");
   const [managerId, setManagerId] = useState("all");
@@ -154,7 +157,7 @@ export function ContractingReviewWorkspace({ className }: { className?: string }
         ) : (
           <ul ref={listRef} aria-label="Agents to review" className="list-none">
             {rows.map((a) => (
-              <ReviewRow key={a.agent_id} agent={a} carriers={carriers} current={a.agent_id === currentId} canEdit={canEdit}
+              <ReviewRow key={a.agent_id} agent={a} carriers={carriers} current={a.agent_id === currentId} canEdit={canEdit} stage={facts.facts ? stageOf.get(a.agent_id) ?? null : undefined}
                 isSaving={review.isPending} onToggle={onToggle} onOpen={(id) => { setCurrentId(id); setDrawerId(id); }} onNext={(id) => goNext(id)} />
             ))}
           </ul>

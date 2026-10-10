@@ -2632,6 +2632,10 @@ export type Database = {
           marked_by: string | null
           status: Database["public"]["Enums"]["attendance_mark"]
           updated_at: string
+          note: string | null
+          schedule_weekdays: number[] | null
+          stage_at_mark: string | null
+          was_scheduled: boolean | null
         }
         Insert: {
           agent_id: string
@@ -2642,6 +2646,10 @@ export type Database = {
           marked_by?: string | null
           status?: Database["public"]["Enums"]["attendance_mark"]
           updated_at?: string
+          note?: string | null
+          schedule_weekdays?: number[] | null
+          stage_at_mark?: string | null
+          was_scheduled?: boolean | null
         }
         Update: {
           agent_id?: string
@@ -2652,6 +2660,10 @@ export type Database = {
           marked_by?: string | null
           status?: Database["public"]["Enums"]["attendance_mark"]
           updated_at?: string
+          note?: string | null
+          schedule_weekdays?: number[] | null
+          stage_at_mark?: string | null
+          was_scheduled?: boolean | null
         }
         Relationships: [
           {
@@ -3131,6 +3143,45 @@ export type Database = {
             referencedColumns: ["agent_id"]
           },
         ]
+      }
+      agent_attendance_events: {
+        Row: {
+          acted_at: string
+          acted_by: string | null
+          agent_id: string
+          attendance_date: string
+          from_status: string | null
+          id: number
+          note: string | null
+          stage_at_mark: string | null
+          to_status: string
+          was_scheduled: boolean | null
+        }
+        Insert: {
+          acted_at?: string
+          acted_by?: string | null
+          agent_id: string
+          attendance_date: string
+          from_status?: string | null
+          id?: number
+          note?: string | null
+          stage_at_mark?: string | null
+          to_status: string
+          was_scheduled?: boolean | null
+        }
+        Update: {
+          acted_at?: string
+          acted_by?: string | null
+          agent_id?: string
+          attendance_date?: string
+          from_status?: string | null
+          id?: number
+          note?: string | null
+          stage_at_mark?: string | null
+          to_status?: string
+          was_scheduled?: boolean | null
+        }
+        Relationships: []
       }
       agent_attribution_audit: {
         Row: {
@@ -11076,6 +11127,60 @@ export type Database = {
           },
         ]
       }
+      agent_stage: {
+        Row: {
+          agent_id: string
+          set_at: string
+          set_by: string | null
+          source: string
+          stage: string
+        }
+        Insert: {
+          agent_id: string
+          set_at?: string
+          set_by?: string | null
+          source: string
+          stage: string
+        }
+        Update: {
+          agent_id?: string
+          set_at?: string
+          set_by?: string | null
+          source?: string
+          stage?: string
+        }
+        Relationships: []
+      }
+      agent_stage_events: {
+        Row: {
+          acted_at: string
+          acted_by: string | null
+          agent_id: string
+          from_stage: string | null
+          id: number
+          source: string
+          to_stage: string
+        }
+        Insert: {
+          acted_at?: string
+          acted_by?: string | null
+          agent_id: string
+          from_stage?: string | null
+          id?: number
+          source: string
+          to_stage: string
+        }
+        Update: {
+          acted_at?: string
+          acted_by?: string | null
+          agent_id?: string
+          from_stage?: string | null
+          id?: number
+          source?: string
+          to_stage?: string
+        }
+        Relationships: []
+      }
       agent_stage_moves: {
         Row: {
           agent_id: string
@@ -14061,6 +14166,60 @@ export type Database = {
             referencedColumns: ["application_id"]
           },
         ]
+      }
+      agent_work_commitment_events: {
+        Row: {
+          acted_at: string
+          acted_by: string | null
+          agent_id: string
+          effective_from: string
+          from_weekdays: number[] | null
+          id: number
+          to_weekdays: number[]
+        }
+        Insert: {
+          acted_at?: string
+          acted_by?: string | null
+          agent_id: string
+          effective_from: string
+          from_weekdays?: number[] | null
+          id?: number
+          to_weekdays: number[]
+        }
+        Update: {
+          acted_at?: string
+          acted_by?: string | null
+          agent_id?: string
+          effective_from?: string
+          from_weekdays?: number[] | null
+          id?: number
+          to_weekdays?: number[]
+        }
+        Relationships: []
+      }
+      agent_work_commitments: {
+        Row: {
+          agent_id: string
+          effective_from: string
+          set_at: string
+          set_by: string | null
+          weekdays: number[]
+        }
+        Insert: {
+          agent_id: string
+          effective_from: string
+          set_at?: string
+          set_by?: string | null
+          weekdays: number[]
+        }
+        Update: {
+          agent_id?: string
+          effective_from?: string
+          set_at?: string
+          set_by?: string | null
+          weekdays?: number[]
+        }
+        Relationships: []
       }
       agentlink_agents: {
         Row: {
@@ -141846,6 +142005,9 @@ export type Database = {
         Args: { p_amber: number; p_applicable: boolean; p_deadline: number; p_done: boolean; p_elapsed: number; p_policy_active: boolean; p_start_ok: boolean; p_tracked: boolean }
         Returns: Json
       }
+      fn_phoenix_today: { Args: never; Returns: string }
+      fn_stage_label: { Args: { p_stage: string }; Returns: string }
+      fn_weekdays_valid: { Args: { p: number[] }; Returns: boolean }
       get_my_contracting_profile: { Args: never; Returns: Json }
       has_agent: {
         Args: { app: Database["public"]["Tables"]["applications"]["Row"] }
@@ -144256,6 +144418,7 @@ export type Database = {
         Args: { p_agent_id: string; p_progress: string; p_test_date?: string }
         Returns: Json
       }
+      set_agent_stage: { Args: { p_agent_id: string; p_expect_unset?: boolean; p_expected?: string; p_stage: string }; Returns: Json }
       set_agent_status: {
         Args: { p_agent_id: string; p_reason?: string; p_status: string }
         Returns: Json
@@ -144330,6 +144493,9 @@ export type Database = {
         }
       }
       set_review_placement_level: { Args: { p_agent_id: string; p_expect_unset?: boolean; p_expected?: number; p_note?: string; p_pct: number }; Returns: Json }
+      set_work_commitment: { Args: { p_agent_id: string; p_effective_from?: string; p_expect_unset?: boolean; p_expected?: number[]; p_weekdays: number[] }; Returns: Json }
+      set_workday_attendance: { Args: { p_agent_id: string; p_date: string; p_expected?: string; p_note?: string; p_status: string }; Returns: Json }
+      set_workday_attendance_bulk: { Args: { p_agent_ids: string[]; p_date: string; p_status: string }; Returns: Json }
       should_post_to_discord: {
         Args: { p_category?: string; p_max_per_hour?: number }
         Returns: boolean
@@ -144420,7 +144586,9 @@ export type Database = {
       svg_url_encode: { Args: { p_svg: string }; Returns: string }
       sync_automation_status: { Args: never; Returns: Json }
       sync_health_summary: { Args: never; Returns: Json }
+      team_attendance_day: { Args: { p_date?: string }; Returns: Json }
       team_contracting_status: { Args: never; Returns: Json }
+      team_people_facts: { Args: never; Returns: Json }
       telegram_due_nudges: {
         Args: { limit_n?: number; now_ts?: string }
         Returns: {

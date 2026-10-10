@@ -169,8 +169,24 @@
       "created_at",
       "id",
       "marked_by",
+      "note",
+      "schedule_weekdays",
+      "stage_at_mark",
       "status",
-      "updated_at"
+      "updated_at",
+      "was_scheduled"
+    ],
+    "agent_attendance_events": [
+      "acted_at",
+      "acted_by",
+      "agent_id",
+      "attendance_date",
+      "from_status",
+      "id",
+      "note",
+      "stage_at_mark",
+      "to_status",
+      "was_scheduled"
     ],
     "agent_attribution_audit": [
       "application_id",
@@ -414,6 +430,22 @@
       "personal_monthly_alp",
       "personal_monthly_estimate"
     ],
+    "agent_stage": [
+      "agent_id",
+      "set_at",
+      "set_by",
+      "source",
+      "stage"
+    ],
+    "agent_stage_events": [
+      "acted_at",
+      "acted_by",
+      "agent_id",
+      "from_stage",
+      "id",
+      "source",
+      "to_stage"
+    ],
     "agent_stage_moves": [
       "agent_id",
       "created_at",
@@ -491,6 +523,22 @@
       "subject_agent_id",
       "subject_application_id",
       "touch_type"
+    ],
+    "agent_work_commitment_events": [
+      "acted_at",
+      "acted_by",
+      "agent_id",
+      "effective_from",
+      "from_weekdays",
+      "id",
+      "to_weekdays"
+    ],
+    "agent_work_commitments": [
+      "agent_id",
+      "effective_from",
+      "set_at",
+      "set_by",
+      "weekdays"
     ],
     "agentlink_agents": [
       "account_status",

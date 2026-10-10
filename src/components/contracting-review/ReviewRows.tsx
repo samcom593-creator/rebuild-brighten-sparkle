@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { levelText, missingIntake, type ReviewAgent, type ReviewCarrier } from "@/lib/contractReview";
 import { CarrierCircle } from "@/components/contracting-review/CarrierCircle";
+import { StageBadge } from "@/components/team/StageBadge";
+import type { StageKey } from "@/lib/teamStage";
 
 /** One grid for the header and every row, so the headings and the circles line up exactly. */
 const GRID = "md:grid md:grid-cols-[minmax(0,1.8fr)_repeat(4,minmax(4.25rem,1fr))_minmax(5.5rem,0.8fr)_auto] md:items-center md:gap-3";
@@ -19,8 +21,10 @@ export function ReviewHeader({ carriers }: { carriers: readonly ReviewCarrier[] 
   );
 }
 
-export function ReviewRow({ agent, carriers, current, canEdit, isSaving, onToggle, onOpen, onNext }: {
+export function ReviewRow({ agent, carriers, current, canEdit, isSaving, onToggle, onOpen, onNext, stage }: {
   agent: ReviewAgent;
+  /** The training stage badge beside the name; undefined = not loaded (shows nothing), null = not set. */
+  stage?: StageKey | null;
   carriers: readonly ReviewCarrier[];
   current: boolean;
   canEdit: boolean;
@@ -37,7 +41,10 @@ export function ReviewRow({ agent, carriers, current, canEdit, isSaving, onToggl
       className={cn("border-b border-border px-3 py-3 last:border-b-0", GRID, current ? "bg-primary/5 ring-1 ring-inset ring-primary/40" : "")}
     >
       <div className="min-w-0">
-        <p className="truncate text-sm font-semibold text-foreground">{agent.display_name}</p>
+        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+          <p className="truncate text-sm font-semibold text-foreground">{agent.display_name}</p>
+          {stage !== undefined ? <StageBadge stage={stage} /> : null}
+        </div>
         <p className="truncate text-xs text-muted-foreground">{agent.email ?? "No email on file"}</p>
         {missing.length > 0 ? (
           <p className="mt-0.5 text-[11px] text-muted-foreground">Profile: {5 - missing.length} of 5 fields filled</p>

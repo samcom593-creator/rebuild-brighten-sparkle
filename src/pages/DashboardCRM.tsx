@@ -10,6 +10,8 @@ import { ensureCompleteRead, plural } from "@/lib/teamRoster";
 import { daysSince, isSyncOnly, num, usdOrNull, type RosterRow } from "@/lib/teamRoster";
 import { useTeamWorkspace } from "@/hooks/useTeamWorkspace";
 import { ContractingReviewWorkspace } from "@/components/contracting-review/ContractingReviewWorkspace";
+import { TeamOverview } from "@/components/team/TeamOverview";
+import { TeamAttendance } from "@/components/team/TeamAttendance";
 import { RosterToolbar, type ActiveFilter } from "@/components/team/RosterToolbar";
 import { RosterProductionList } from "@/components/team/RosterRows";
 import { TeamPersonDrawer } from "@/components/team/TeamPersonDrawer";
@@ -808,10 +810,10 @@ export default function DashboardCRM() {
   });
 
   // My Team workspace: the one contracting read, the audited checkoff toggle, and the person drawer (?person=).
-  const [rosterMode, setRosterMode] = useState<"work" | "production" | "calls">(() => {
+  const [rosterMode, setRosterMode] = useState<"work" | "overview" | "attendance" | "production" | "calls">(() => {
     try {
       const v = localStorage.getItem("crm.mode.v2");
-      return v === "production" || v === "calls" ? v : "work";
+      return v === "production" || v === "calls" || v === "overview" || v === "attendance" ? v : "work";
     } catch { return "work"; } // empty-catch-allow:localstorage-incognito
   });
   useEffect(() => {
@@ -820,7 +822,7 @@ export default function DashboardCRM() {
   }, [rosterMode]);
   const team = useTeamWorkspace(rosterQuery.data ?? [], !rosterQuery.isLoading);
   // Roles with no contracting access only ever see the production view.
-  const effectiveMode: "work" | "production" | "calls" = team.contractingEnabled ? rosterMode : "production";
+  const effectiveMode: "work" | "overview" | "attendance" | "production" | "calls" = team.contractingEnabled ? rosterMode : "production";
 
   const focusAgentId = searchParams.get('focusAgentId');
   useEffect(() => {
@@ -1882,29 +1884,27 @@ export default function DashboardCRM() {
           newHires30dNoSale={((rosterQuery.data ?? []) as RosterRow[]).filter((r) => r.status === "active" && r.is_sync_only !== true && (r.tenure_days ?? 9999) <= 30 && (r.lifetime_deals ?? 0) === 0).length}
         />
 
-        {/* 2. ONE view switch. Contracting (the manual portal review: four carrier circles per agent) is the working view
-            and the default, Production carries the money columns, Call list is the call-mode check-in, and the
-            Recruiting pipeline counts open applications on top of hired agents, which is why its totals exceed team
-            size by design. */}
+        {/* 2. ONE roster, three working views: Overview (stage, work days, access), Attendance (today in Phoenix) and
+            Contracting (the manual portal review, the default). Production, the Call list and the Recruiting pipeline
+            (which counts open applications on top of hired agents, so its totals exceed team size by design) sit under
+            More. */}
         <div className="flex flex-wrap items-center gap-2">
           <div className="inline-flex flex-wrap rounded-lg border border-border bg-card p-1" role="group" aria-label="Team view">
             {([
-              ...(team.contractingEnabled ? [{ key: "work" as const, label: "Contracting", icon: ShieldCheck }] : []),
-              { key: "production" as const, label: "Production", icon: TrendingUp },
-              ...(team.contractingEnabled ? [{ key: "calls" as const, label: "Call list", icon: Phone }] : []),
-              { key: "pipeline" as const, label: "Recruiting pipeline", icon: Briefcase },
+              ...(team.contractingEnabled ? [
+                { key: "overview" as const, label: "Overview", icon: Users },
+                { key: "attendance" as const, label: "Attendance", icon: ClipboardCheck },
+                { key: "work" as const, label: "Contracting", icon: ShieldCheck },
+              ] : []),
+              ...(team.contractingEnabled ? [] : [{ key: "production" as const, label: "Production", icon: TrendingUp }]),
             ]).map((m) => {
               const Icon = m.icon;
-              const isActive = m.key === "pipeline" ? crmView === "pipeline" : crmView === "roster" && effectiveMode === m.key;
+              const isActive = crmView === "roster" && effectiveMode === m.key;
               return (
                 <button
                   key={m.key}
                   type="button"
-                  onClick={() => {
-                    if (m.key === "pipeline") setCrmView("pipeline");
-                    else { setCrmView("roster"); setRosterMode(m.key); }
-                    playSound("click");
-                  }}
+                  onClick={() => { setCrmView("roster"); setRosterMode(m.key); playSound("click"); }}
                   aria-pressed={isActive}
                   className={cn(
                     "inline-flex min-h-[40px] items-center gap-1.5 rounded-md px-3 text-sm font-medium transition-colors",
@@ -1918,6 +1918,22 @@ export default function DashboardCRM() {
               );
             })}
           </div>
+          {team.contractingEnabled ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className={cn("h-10 gap-1.5 sm:h-9", (crmView === "pipeline" || effectiveMode === "production" || effectiveMode === "calls") && "ring-1 ring-primary/60")} aria-label="More team views">
+                  {crmView === "pipeline" ? "Recruiting pipeline" : effectiveMode === "production" ? "Production" : effectiveMode === "calls" ? "Call list" : "More views"} <ChevronDown className="h-4 w-4 shrink-0" aria-hidden />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem onClick={() => { setCrmView("roster"); setRosterMode("production"); playSound("click"); }}><TrendingUp className="mr-2 h-4 w-4" /> Production</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => { setCrmView("roster"); setRosterMode("calls"); playSound("click"); }}><Phone className="mr-2 h-4 w-4" /> Call list (earlier workflow)</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => { setCrmView("pipeline"); playSound("click"); }}><Briefcase className="mr-2 h-4 w-4" /> Recruiting pipeline</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button variant={crmView === "pipeline" ? "secondary" : "outline"} size="sm" className="h-10 sm:h-9" onClick={() => { setCrmView("pipeline"); playSound("click"); }}><Briefcase className="mr-1.5 h-4 w-4" /> Recruiting pipeline</Button>
+          )}
           {crmView === "pipeline" ? (
             <p className="text-sm text-muted-foreground">Hired agents plus open applications, so counts here exceed team size by design.</p>
           ) : null}
@@ -1927,6 +1943,10 @@ export default function DashboardCRM() {
         {crmView === "roster" ? (
           effectiveMode === "work" ? (
             <GlassCard className="p-3 sm:p-4"><ContractingReviewWorkspace /></GlassCard>
+          ) : effectiveMode === "overview" ? (
+            <GlassCard className="p-3 sm:p-4"><TeamOverview rows={(rosterQuery.data ?? []) as RosterRow[]} /></GlassCard>
+          ) : effectiveMode === "attendance" ? (
+            <GlassCard className="p-3 sm:p-4"><TeamAttendance /></GlassCard>
           ) : effectiveMode === "calls" ? (
             <GlassCard className="p-3 sm:p-4"><ContractingCheckinPanel /></GlassCard>
           ) : (

@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-enum-catalog.sh (bot_sql -> pg_enum + pg_attribute.atttypid)",
- "_generated_at": "2026-10-06T16:51:32Z",
+ "_generated_at": "2026-10-09T23:51:50Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "A repo guard cannot query prod. This is a snapshot of every enum-typed column in the public schema and the exact member list Postgres will accept for it, so scripts/check-enum-filter-literals.mjs can decide whether a filter or write literal will survive PostgREST's coercion. Enum types are SCHEMA-QUALIFIED because this database has more than one type sharing a bare name. Views are included: a bad literal in a filter against a view column raises the same 22P02 as one against a table. apex-doctor Check #29 re-queries pg_enum weekly and goes red when this snapshot drifts from the live catalog.",
  "_ambiguous_bare_names": {
@@ -181,7 +181,8 @@
    "onboarded_meeting",
    "dialer_activity",
    "daily_sale",
-   "agency_meeting"
+   "agency_meeting",
+   "workday"
   ],
   "public.charge_action_type": [
    "acknowledged",
@@ -633,6 +634,81 @@
    ],
    "constraint": "agent_carrier_comp_contract_status_check"
   },
+  "agent_contract_checkoff_events.action": {
+   "members": [
+    "checked",
+    "unchecked"
+   ],
+   "constraint": "agent_contract_checkoff_events_action_check"
+  },
+  "agent_contract_profile.resident_state": {
+   "members": [
+    "AL",
+    "AK",
+    "AZ",
+    "AR",
+    "CA",
+    "CO",
+    "CT",
+    "DE",
+    "DC",
+    "FL",
+    "GA",
+    "HI",
+    "ID",
+    "IL",
+    "IN",
+    "IA",
+    "KS",
+    "KY",
+    "LA",
+    "ME",
+    "MD",
+    "MA",
+    "MI",
+    "MN",
+    "MS",
+    "MO",
+    "MT",
+    "NE",
+    "NV",
+    "NH",
+    "NJ",
+    "NM",
+    "NY",
+    "NC",
+    "ND",
+    "OH",
+    "OK",
+    "OR",
+    "PA",
+    "RI",
+    "SC",
+    "SD",
+    "TN",
+    "TX",
+    "UT",
+    "VT",
+    "VA",
+    "WA",
+    "WV",
+    "WI",
+    "WY",
+    "PR",
+    "GU",
+    "VI",
+    "AS",
+    "MP"
+   ],
+   "constraint": "agent_contract_profile_resident_state_check"
+  },
+  "agent_contract_profile.source": {
+   "members": [
+    "staff",
+    "self"
+   ],
+   "constraint": "agent_contract_profile_source_check"
+  },
   "agent_credentials.service": {
    "members": [
     "readymode",
@@ -729,6 +805,22 @@
     "denied"
    ],
    "constraint": "agent_removal_requests_status_check"
+  },
+  "agent_stage.source": {
+   "members": [
+    "staff",
+    "default",
+    "mapped"
+   ],
+   "constraint": "agent_stage_source_check"
+  },
+  "agent_stage.stage": {
+   "members": [
+    "online_training",
+    "training",
+    "released_in_field"
+   ],
+   "constraint": "agent_stage_stage_check"
   },
   "agent_stage_moves.field": {
    "members": [
@@ -1048,6 +1140,19 @@
    ],
    "constraint": "availability_blocks_kind_check"
   },
+  "book_flips.flip_status": {
+   "members": [
+    "to_call",
+    "no_answer",
+    "callback",
+    "appointment",
+    "resold",
+    "not_interested",
+    "do_not_call",
+    "bad_number"
+   ],
+   "constraint": "book_flips_flip_status_check"
+  },
   "bot_alerts.severity": {
    "members": [
     "info",
@@ -1270,6 +1375,43 @@
    ],
    "constraint": "content_clips_kind_check"
   },
+  "content_posts.format": {
+   "members": [
+    "short",
+    "long"
+   ],
+   "constraint": "content_posts_format_check"
+  },
+  "content_posts.platform": {
+   "members": [
+    "youtube",
+    "instagram",
+    "tiktok",
+    "facebook",
+    "other"
+   ],
+   "constraint": "content_posts_platform_check"
+  },
+  "content_posts.source": {
+   "members": [
+    "manual",
+    "youtube_sync",
+    "board",
+    "vidiq",
+    "instagram_graph"
+   ],
+   "constraint": "content_posts_source_check_v2"
+  },
+  "contract_review_events.event_type": {
+   "members": [
+    "marked",
+    "cleared",
+    "level_set",
+    "level_cleared",
+    "intake_saved"
+   ],
+   "constraint": "contract_review_events_event_type_check"
+  },
   "contract_sends.status": {
    "members": [
     "pending",
@@ -1352,6 +1494,29 @@
    ],
    "constraint": "contracting_case_tracking_waiting_on_check"
   },
+  "contracting_checkins.blocker": {
+   "members": [
+    "none",
+    "login_access",
+    "wrong_agency",
+    "missing_documents",
+    "missing_comp_upline",
+    "release_required",
+    "existing_carrier_relationship",
+    "upline_approval",
+    "carrier_issue"
+   ],
+   "constraint": "contracting_checkins_blocker_check"
+  },
+  "contracting_checkins.waiting_on": {
+   "members": [
+    "agent",
+    "staff",
+    "carrier",
+    "upline"
+   ],
+   "constraint": "contracting_checkins_waiting_on_check"
+  },
   "contracting_ethos_approvals.approved_advance_tier": {
    "members": [
     "As Earned",
@@ -1359,6 +1524,16 @@
     "9 Month Advance"
    ],
    "constraint": "contracting_ethos_approvals_approved_advance_tier_check"
+  },
+  "contracting_followup_config.clock_basis": {
+   "members": [
+    "unset",
+    "hired",
+    "hired_or_licensed",
+    "expected_start",
+    "contracting_request"
+   ],
+   "constraint": "contracting_followup_config_clock_basis_check"
   },
   "contracting_intake_deliveries.destination": {
    "members": [
@@ -1391,6 +1566,20 @@
     "completed"
    ],
    "constraint": "contracting_intakes_status_check"
+  },
+  "contracting_legacy_retirements.expected_state": {
+   "members": [
+    "disabled",
+    "inactive"
+   ],
+   "constraint": "contracting_legacy_retirements_expected_state_check"
+  },
+  "contracting_legacy_retirements.kind": {
+   "members": [
+    "trigger",
+    "cron"
+   ],
+   "constraint": "contracting_legacy_retirements_kind_check"
   },
   "data_deletion_requests.status": {
    "members": [
@@ -1910,6 +2099,22 @@
     "disabled"
    ],
    "constraint": "messaging_workspace_installations_status_check"
+  },
+  "monday_starter_notifications.kind": {
+   "members": [
+    "digest",
+    "starter_email",
+    "starter_sms"
+   ],
+   "constraint": "monday_starter_notifications_kind_check"
+  },
+  "myday_counter_events.kind": {
+   "members": [
+    "hire_contracts_sent",
+    "unlicensed_course_hire",
+    "long_form_posted"
+   ],
+   "constraint": "myday_counter_events_kind_check"
   },
   "next_step_events.event_type": {
    "members": [

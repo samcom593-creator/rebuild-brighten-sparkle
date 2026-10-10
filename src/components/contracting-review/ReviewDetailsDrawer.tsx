@@ -65,11 +65,13 @@ export function ReviewDetailsDrawer({ open, onOpenChange, agent, carriers, canEd
   const [values, setValues] = useState<IntakeValues>({ npn: "", first_name: "", last_name: "", email: "", resident_state: "" });
   const [problem, setProblem] = useState<{ field: IntakeField | null; text: string } | null>(null);
   const [levelInput, setLevelInput] = useState("");
+  const [closeWarning, setCloseWarning] = useState(false);
   const [levelError, setLevelError] = useState<string | null>(null);
 
-  // Reset the editor only when a different person (or a saved value) arrives, never on a mere re-render.
-  useEffect(() => { if (initial) { setValues(initial.values); setProblem(null); } }, [initial]);
-  useEffect(() => { setLevelInput(agent?.level ? String(agent.level.pct) : ""); setLevelError(null); }, [agent?.agent_id, agent?.level?.pct]);
+  // Background refreshes and optimistic rollback must not overwrite a person's unsaved draft.
+  // Reopening or selecting another person explicitly starts a new edit session.
+  useEffect(() => { if (initial) { setValues(initial.values); setProblem(null); setCloseWarning(false); } }, [agent?.agent_id, open]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setLevelInput(agent?.level ? String(agent.level.pct) : ""); setLevelError(null); }, [agent?.agent_id, open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const history = useQuery({
     queryKey: ["contract-review-history", agent?.agent_id, agent?.marked_count, agent?.level?.pct, agent?.profile.npn],
@@ -87,6 +89,8 @@ export function ReviewDetailsDrawer({ open, onOpenChange, agent, carriers, canEd
   if (!agent) return null;
   const dirty = initial ? (Object.keys(values) as IntakeField[]).some((k) => values[k] !== initial.values[k]) : false;
   const savingProfile = isSaving(agent.agent_id, "profile");
+  const levelDirty = levelInput !== (agent.level ? String(agent.level.pct) : "");
+  const savingAny = savingProfile || isSaving(agent.agent_id, "level") || carriers.some((c) => isSaving(agent.agent_id, c.key));
   const set = (k: IntakeField, v: string) => { setValues((s) => ({ ...s, [k]: v })); if (problem?.field === k) setProblem(null); };
 
   const save = async (): Promise<boolean> => {
@@ -99,13 +103,15 @@ export function ReviewDetailsDrawer({ open, onOpenChange, agent, carriers, canEd
   };
   const saveAndNext = async () => {
     if (canEdit && dirty && !(await save())) return;
+    if (canEdit && levelDirty && !(await submitLevel())) return;
     onSaveAndNext(agent.agent_id);
   };
-  const submitLevel = async () => {
+  const submitLevel = async (): Promise<boolean> => {
     const n = Number(levelInput);
-    if (!levelInput.trim() || !Number.isFinite(n) || n < 0 || n > 200) { setLevelError("Enter a number from 0 to 200."); return; }
+    if (!levelInput.trim() || !Number.isFinite(n) || n < 0 || n > 200) { setLevelError("Enter a number from 0 to 200."); return false; }
     const r = await onSetLevel(agent.agent_id, n);
     setLevelError(r.ok ? null : r.error);
+    return r.ok;
   };
 
   const field = (k: IntakeField, el: React.ReactNode) => (
@@ -118,7 +124,11 @@ export function ReviewDetailsDrawer({ open, onOpenChange, agent, carriers, canEd
   const common = { disabled: !canEdit || savingProfile };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet open={open} onOpenChange={(next) => {
+      if (!next && savingAny) return;
+      if (!next && canEdit && (dirty || levelDirty)) { setCloseWarning(true); return; }
+      onOpenChange(next);
+    }}>
       <SheetContent side="right" className="flex w-full flex-col gap-0 overflow-y-auto p-0 sm:max-w-lg">
         <SheetHeader className="space-y-1 border-b border-border p-4 text-left">
           <SheetTitle className="text-lg">{agent.display_name}</SheetTitle>
@@ -126,6 +136,10 @@ export function ReviewDetailsDrawer({ open, onOpenChange, agent, carriers, canEd
         </SheetHeader>
 
         <div className="flex-1 space-y-5 p-4">
+          {closeWarning ? <div role="alert" className="space-y-2 rounded-lg border border-border bg-muted/40 p-3">
+            <p className="text-sm text-foreground">You have unsaved edits. Keep editing or discard them before closing.</p>
+            <div className="flex gap-2"><Button size="sm" onClick={() => setCloseWarning(false)}>Keep editing</Button><Button size="sm" variant="outline" onClick={() => onOpenChange(false)}>Discard & close</Button></div>
+          </div> : null}
           <section aria-label="Carriers" className="space-y-2">
             <h3 className="text-sm font-semibold text-foreground">Carriers</h3>
             <p className="text-xs text-muted-foreground">Contracting happens in each carrier&apos;s own portal. Confirm a circle here only after you have checked it yourself. Opening a portal does not mark anything.</p>
@@ -158,7 +172,7 @@ export function ReviewDetailsDrawer({ open, onOpenChange, agent, carriers, canEd
                 {levelError ? <p role="alert" className="text-xs text-destructive">{levelError}</p> : null}
               </div>
               <Button type="button" size="sm" className="h-10" disabled={!canEdit || isSaving(agent.agent_id, "level")} onClick={() => void submitLevel()}>Set level</Button>
-              {isAdmin && agent.level ? <Button type="button" size="sm" variant="ghost" className="h-10" disabled={isSaving(agent.agent_id, "level")} onClick={() => void onSetLevel(agent.agent_id, null).then((r) => setLevelError(r.ok ? null : r.error))}>Clear</Button> : null}
+              {isAdmin && agent.level ? <Button type="button" size="sm" variant="ghost" className="h-10" disabled={isSaving(agent.agent_id, "level")} onClick={() => void onSetLevel(agent.agent_id, null).then((r) => { setLevelError(r.ok ? null : r.error); if (r.ok) setLevelInput(""); })}>Clear</Button> : null}
             </div>
           </section>
 
@@ -201,8 +215,8 @@ export function ReviewDetailsDrawer({ open, onOpenChange, agent, carriers, canEd
         </div>
 
         <div className="sticky bottom-0 flex items-center justify-end gap-2 border-t border-border bg-background p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          <Button type="button" className="h-10" disabled={savingProfile} onClick={() => void saveAndNext()}>
-            {hasNext ? (canEdit && dirty ? "Save & Next" : "Next unreviewed") : (canEdit && dirty ? "Save" : "Done")}
+          <Button type="button" className="h-10" disabled={savingAny} onClick={() => void saveAndNext()}>
+            {hasNext ? (canEdit && (dirty || levelDirty) ? "Save & Next" : "Next unreviewed") : (canEdit && (dirty || levelDirty) ? "Save" : "Done")}
           </Button>
         </div>
       </SheetContent>

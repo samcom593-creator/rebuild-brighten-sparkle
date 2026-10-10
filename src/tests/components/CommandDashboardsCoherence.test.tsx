@@ -11,17 +11,18 @@ function routeLine(app: string, routePath: string): string | undefined {
 describe("command dashboards link only to pages their audience can open", () => {
   const app = source("App.tsx");
 
-  it("contracting tile reads carrier-case truth and never renders a failed read as zero", () => {
+  it("contracting tile reads the review (people who still need a circle confirmed) and never renders a failed read as zero", () => {
     const tile = source("components/dashboard/OperationsCommandCenter.tsx");
-    expect(tile).toContain('supabase.rpc("contracting_exception_digest"');
-    expect(tile).toContain('to="/dashboard/contracting/cases"');
-    expect(tile).toContain("Could not load carrier cases");
+    expect(tile).toContain("useContractReview(isAdmin)");
+    expect(tile).toContain('to="/dashboard/contracting"');
+    expect(tile).not.toContain("contracting_exception_digest");
+    expect(tile).toContain("Could not load the contracting review");
     expect(tile).not.toContain("d.contracting.");
     expect(tile).not.toContain("/dashboard/recruiting/interviews");
     // Recruiting counts come from the worklist, the same source as HomeOperationsSummary.
     expect(tile).toContain("useRecruitingWorklist(isAdmin)");
     expect(tile).not.toContain("need a call");
-    expect(routeLine(app, "/dashboard/contracting/cases")).toContain("requireAdmin");
+    expect(routeLine(app, "/dashboard/contracting")).toContain("requireAdmin");
   });
 
   it("manager home links stay inside routes that admit managers", () => {

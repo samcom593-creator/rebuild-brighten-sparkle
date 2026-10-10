@@ -200,7 +200,7 @@ describe("Attendance: one day, one tap", () => {
     fireEvent.click(screen.getByRole("button", { name: "Select several" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Select Ann Lee" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Select Bo Chen" }));
-    expect(screen.getByText(/Preview: 1 will be marked Present; 1 already marked and left alone/)).toBeInTheDocument();
+    expect(screen.getByText(/Preview for .*: 1 will be marked Present; 1 already marked and left alone/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Mark 1 as Present" }));
     await waitFor(() => expect(fb.calls("set_workday_attendance_bulk")[0].args).toEqual({ p_date: "2026-10-09", p_agent_ids: ["ann"], p_status: "present" }));
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith(expect.stringMatching(/^1 marked Present/)));
@@ -236,5 +236,35 @@ describe("Attendance: one day, one tap", () => {
     fb.state.readError = null;
     fireEvent.click(screen.getByRole("button", { name: /Try again/ }));
     expect(await screen.findByText("Ann Lee")).toBeInTheDocument();
+  });
+});
+
+
+describe("attendance selection belongs to its date", () => {
+  it("clears selected people when the date changes", async () => {
+    mountAttendance();
+    await screen.findByText("Ann Lee");
+    fireEvent.click(screen.getByRole("button", { name: "Select several" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select Ann Lee" }));
+    expect(screen.getByText("1 selected.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Previous day" }));
+    await waitFor(() => expect(screen.queryByLabelText("Bulk mark")).not.toBeInTheDocument());
+    expect(fb.calls("set_workday_attendance_bulk")).toHaveLength(0);
+  });
+});
+
+
+describe("preserving workday edits", () => {
+  it("keeps selected days after a failed save and allows an explicit discard", async () => {
+    mountOverview(); await screen.findByText("Ann Lee");
+    fireEvent.click(row("Ann Lee").getByRole("button", { name: /Work days/ }));
+    fireEvent.click(row("Ann Lee").getByRole("checkbox", { name: "Monday for Ann Lee" }));
+    expect(row("Ann Lee").getByRole("button", { name: /Close/ })).toBeDisabled();
+    fb.state.failNext = { name: "set_work_commitment" };
+    fireEvent.click(row("Ann Lee").getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(row("Ann Lee").getByRole("alert")).toHaveTextContent("Schedule did not save"));
+    expect(row("Ann Lee").getByRole("checkbox", { name: "Monday for Ann Lee" })).toBeChecked();
+    fireEvent.click(row("Ann Lee").getByRole("button", { name: "Discard edit" }));
+    expect(row("Ann Lee").getByRole("button", { name: /Close/ })).toBeEnabled();
   });
 });

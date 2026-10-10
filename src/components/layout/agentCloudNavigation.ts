@@ -161,8 +161,8 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
       // booked from Calendar and follow-ups are the worklist's due queues.
       // Staff accounts (the former top-level "VA Team") live here too.
       { label: "Staff accounts", href: "/va-team", icon: Users, modes: ["va_manager"] },
-      { label: "Ethos Contracting", href: "/dashboard/contracting/ethos", icon: FileSearch, modes: ["va", "va_manager"] },
-      { label: "Contracting cases", href: "/dashboard/contracting/cases", icon: ScrollText, modes: ["va", "va_manager"] },
+      // Contracting is tracked by hand on My Team's Contracting view (read-only for VAs). The old Ethos / cases pages are history.
+      { label: "Contracting review", href: "/dashboard/team?view=contracting", icon: ScrollText, modes: ["va", "va_manager"] },
     ],
   },
 
@@ -268,9 +268,9 @@ export function agentCloudPathIsActive(pathname: string, href: string): boolean 
  * gives it (the favorites star saves this label too).
  */
 const ROUTE_CRUMBS: Record<string, string[]> = {
-  "/dashboard/contracting/cases": ["Contracting", "Contracting cases"],
-  "/dashboard/contracting/ethos": ["Contracting", "Ethos Contracting"],
-  "/dashboard/contracting/aflac": ["Contracting", "Aflac onboarding"],
+  "/dashboard/contracting/requests": ["Contracting", "Requests (history)"],
+  "/dashboard/contracting/carriers": ["Contracting", "Carriers"],
+  "/dashboard/contracting/documents": ["Contracting", "Writing numbers"],
   "/dashboard/recruiting/pipeline": ["Grow", "Recruit Pipeline"],
   "/dashboard/recruiting/hires": ["Grow", "Recruit Pipeline"],
   "/dashboard/book-of-business": ["My Business", "Retention"],

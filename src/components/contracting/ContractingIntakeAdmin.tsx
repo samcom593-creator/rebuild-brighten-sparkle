@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, Download, RefreshCw } from "lucide-react";
+import { AlertTriangle, RefreshCw } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -12,11 +12,6 @@ import {
   DESTINATION_COPY,
   type DeliveryState,
 } from "@/lib/contractingIntake";
-import {
-  buildEthosCsv,
-  ethosCsvFilename,
-  type ContractingExportRow,
-} from "@/lib/contractingExport";
 
 // review_reason holds either a machine code or a sentence a person wrote. Codes read as words.
 const REVIEW_REASON_LABELS: Record<string, string> = {
@@ -81,7 +76,6 @@ function receiptSummary(row: StatusRow): string | null {
 }
 
 export function ContractingIntakeAdmin({ showEmptyState = false }: { showEmptyState?: boolean } = {}) {
-  const [exporting, setExporting] = useState(false);
 
   const statusQ = useQuery({
     queryKey: ["contracting-intake-status"],
@@ -109,36 +103,6 @@ export function ContractingIntakeAdmin({ showEmptyState = false }: { showEmptySt
     return [...byIntake.values()];
   }, [statusQ.data]);
 
-  const onExport = () => {
-    setExporting(true);
-    try {
-      const seen = new Set<string>();
-      const rows: ContractingExportRow[] = [];
-      for (const { head } of intakes) {
-        if (seen.has(head.intake_id)) continue;
-        seen.add(head.intake_id);
-        rows.push({
-          intake_id: head.intake_id,
-          first_name: head.first_name,
-          last_name: head.last_name,
-          email: head.email,
-          phone_e164: head.phone_e164,
-          npn: head.npn,
-          status: head.status,
-          created_at: head.created_at,
-        });
-      }
-      const blob = new Blob([buildEthosCsv(rows)], { type: "text/csv;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = ethosCsvFilename(new Date());
-      a.click();
-      URL.revokeObjectURL(url);
-    } finally {
-      setExporting(false);
-    }
-  };
 
   // An empty result is the normal state for a non-staff viewer, because the RLS
   // policy returns no rows. Render nothing rather than an empty admin panel —
@@ -149,10 +113,9 @@ export function ContractingIntakeAdmin({ showEmptyState = false }: { showEmptySt
     if (!showEmptyState) return null;
     return (
       <GlassCard className="p-6 text-center" data-testid="contracting-intake-admin">
-        <h2 className="text-base font-semibold">Contracting intakes</h2>
+        <h2 className="text-base font-semibold">Contracting intakes (history)</h2>
         <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-          No contracting requests yet. When a recruit submits the Start Contracting
-          form, their intake lands here with per-destination delivery receipts.
+          No intake records. Intakes stopped on Oct 9, 2026; agents now complete their own contracting profile.
         </p>
       </GlassCard>
     );
@@ -162,9 +125,9 @@ export function ContractingIntakeAdmin({ showEmptyState = false }: { showEmptySt
     <GlassCard className="p-4 sm:p-5" data-testid="contracting-intake-admin">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="text-base font-semibold">Contracting intakes</h2>
+          <h2 className="text-base font-semibold">Contracting intakes (history)</h2>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            The database is the source of truth. Each destination shows where it actually got to.
+            Records from the retired intake process. Each destination shows where that intake actually got to at the time.
           </p>
         </div>
         <div className="flex gap-2">
@@ -172,16 +135,12 @@ export function ContractingIntakeAdmin({ showEmptyState = false }: { showEmptySt
             <RefreshCw className={cn("mr-1.5 h-3.5 w-3.5", statusQ.isFetching && "animate-spin")} aria-hidden />
             Refresh
           </Button>
-          <Button size="sm" variant="outline" onClick={onExport} disabled={exporting || intakes.length === 0}>
-            <Download className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-            Export spreadsheet
-          </Button>
         </div>
       </div>
 
       <p className="mt-3 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-        Workflow: <span className="font-medium">contracting spreadsheet → private Discord</span>.
-        Each step only reports Delivered after its provider confirms it.
+        These records were produced by the process retired on Oct 9, 2026. Nothing here is sent anywhere now; contracting is
+        confirmed by hand on the review.
       </p>
 
       {statusQ.isLoading ? (

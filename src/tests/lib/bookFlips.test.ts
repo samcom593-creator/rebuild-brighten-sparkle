@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { STATE_UNKNOWN, matchesState, policyState, stateCounts, stateSourceText } from "@/lib/bookFlips";
 import {
   isCallbackDue, matchesBook, matchesFlip, matchesSearch, monthsInForceText, priorityTier, sortPolicies, splitName,
   type BookPolicy,
@@ -110,5 +111,35 @@ describe("departed-writer priority", () => {
       gone({ flip_key: "e", status_group: "pending", annual_premium: 50 }),
     ];
     expect(sortPolicies(rows, "priority").map((r) => r.flip_key)).toEqual(["c", "b", "e", "a", "d"]);
+  });
+});
+
+
+describe("state targeting: a state is on file, or likely by area code, or unknown; never invented", () => {
+  const p = (state: string | null, phone: string | null) => ({ state, phone });
+  it("prefers the client's state on file", () => {
+    expect(policyState(p("az", "(602) 555-0100"))).toEqual({ code: "AZ", source: "client" });
+    expect(stateSourceText(policyState(p("AZ", null)))).toBe("AZ · on file");
+  });
+  it("falls back to the phone's area code and says it is a guess", () => {
+    expect(policyState(p(null, "602-555-0100"))).toEqual({ code: "AZ", source: "phone" });
+    expect(stateSourceText(policyState(p(null, "6025550100")))).toBe("AZ · likely, by area code");
+  });
+  it("a bad or missing state with no usable phone is unknown, not a default state", () => {
+    expect(policyState(p("new york", null))).toEqual({ code: null, source: null });
+    expect(policyState(p(null, "12"))).toEqual({ code: null, source: null });
+    expect(stateSourceText(policyState(p(null, null)))).toBe("State unknown");
+  });
+  it("matches by code, by unknown, or everyone", () => {
+    expect(matchesState(p(null, "602-555-0100"), "AZ")).toBe(true);
+    expect(matchesState(p("TX", "602-555-0100"), "AZ")).toBe(false);
+    expect(matchesState(p(null, null), STATE_UNKNOWN)).toBe(true);
+    expect(matchesState(p(null, null), "all")).toBe(true);
+  });
+  it("counts per state, highest first, on-file separately, Unknown last", () => {
+    const list = [p("AZ", null), p(null, "480-555-0100"), p("TX", null), p(null, null), p(null, "zz")];
+    expect(stateCounts(list)).toEqual([
+      { code: "AZ", count: 2, onFile: 1 }, { code: "TX", count: 1, onFile: 1 }, { code: STATE_UNKNOWN, count: 2, onFile: 0 },
+    ]);
   });
 });

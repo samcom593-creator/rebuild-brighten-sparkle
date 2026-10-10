@@ -13,6 +13,18 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Every contracting page now runs on the new process, and Book Flips can target a state.",
+    detail: "Contracting is four pages: Review, Carriers, Writing numbers, and Requests (history, behind a banner). The operations, cases, Aflac-send, Ethos-sheet, audit and contracts-board pages are gone; their old links and bookmarks land on the review or on My Team's Contracting view. The agent drawer and producer profile show the review's own standing (N of 4 confirmed, placement level) instead of an AgentLink 'ready to write' card, and Home's contracting panel and tile count people who still need a circle confirmed. Book Flips has a state row: the client's state on file first, otherwise the phone's area code marked as likely, with counts per state and an honest Unknown bucket, kept in the link (?state=AZ) so a state can be shared.",
+    commit: "PL-CONTRACTING-PAGES-HEAD-TO-TOE",
+  },
+  {
+    ts: "today",
+    label: "Search finds any person by any piece of a name, and every contracting page now reflects the new process.",
+    detail: "⌘K search (and the top-bar Search box) now runs one scoped people search: every word you type must match somewhere in the person's name, email, phone digits or agent code, in any order, so 'johnson alonzo' and 'alon john' both find Alonzo Johnson. Results show agents (stage, licensed, upline) and applicants (status) separately and open the agent drawer or the recruiting row. Managers see only their own downline and applicants; a '%' or ',' in the box is just text. Contracting pages: Review, Carriers (the four tracked carriers with portal links, plus the directory) and Documents are the working pages; Requests, Contracts board, Cases, Aflac sends, Operations, Audit and Ethos sit under History with a banner saying they belong to the retired process. The VA sidebar now has one 'Contracting review' entry that opens My Team's Contracting view.",
+    commit: "PL-PEOPLE-SEARCH-CONTRACTING-HISTORY",
+  },
+  {
+    ts: "today",
     label: "My Team has three views on one roster: Overview (stage, work days, access), Attendance (today in Phoenix, one tap) and Contracting. Three exact stages, five weekday checkboxes, and attendance that expects only the people scheduled that day.",
     detail: "Every agent carries one of three stages as a small badge beside the name: Online training, Training, Released in field. A new agent starts in Online training; people with unambiguous history were placed once (training_online, a first deal, live), and 39 whose history is ambiguous are shown as 'Stage not set' for staff to place, nobody was guessed. Work days are five Mon to Fri checkboxes with the summary 'Mon, Wed, Fri · 3 days/week'; 'Schedule not set' is not the same as 'no days'; a change takes effect today or on a later date and never rewrites a past day. Attendance opens on today in America/Phoenix with a date selector and expected/present/absent/excused/unmarked counts; expected comes from each person's commitment in force that day and their start date; Present, Absent and Excused are one tap with Undo, corrections keep history, every mark keeps the stage and schedule as they were, and a bulk mark applies only to people you selected and previewed and never overwrites a mark. The stage, carrier confirmations, work days, attendance and production are separate facts; nothing here sends a message or a penalty. The 'Over $5K' badge is written and tested as strictly over $5,000 but stays off until its metric, period and scope are confirmed.",
     commit: "PL-CONTRACTING-PORTAL-TRACKER-C",

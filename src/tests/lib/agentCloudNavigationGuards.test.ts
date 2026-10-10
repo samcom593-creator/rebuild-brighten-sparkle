@@ -65,7 +65,7 @@ describe("sidebar items only reach routes their audience can open", () => {
 
   it("names detail routes by section, not by record id", () => {
     expect(agentCloudBreadcrumb("/dashboard/agents/3f2a9c1e-1111-4222-8333-444455556666")).toEqual(["Agents"]);
-    expect(agentCloudBreadcrumb("/dashboard/contracting/cases")).toEqual(["Contracting", "Contracting cases"]);
+    expect(agentCloudBreadcrumb("/dashboard/contracting/requests")).toEqual(["Contracting", "Requests (history)"]);
     expect(agentCloudBreadcrumb("/dashboard/help")).toEqual(["Support desk"]);
   });
 });

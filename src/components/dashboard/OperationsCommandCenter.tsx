@@ -16,6 +16,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { contactLinkProps, phoneHref } from "@/lib/phone";
 import { useRecruitingWorklist } from "@/components/pipeline/worklist/useRecruitingWorklist";
 import { computeQueueCounts } from "@/lib/recruitingQueues";
+import { useContractReview } from "@/hooks/useContractReview";
+import { reviewCounts } from "@/lib/contractReview";
 
 interface OperationsData {
   as_of: string;
@@ -36,12 +38,7 @@ interface OperationsData {
   support: { open: number; urgent: number };
 }
 
-// contracting_exception_digest() is the carrier-case truth (one agent x one carrier). The legacy
-// apex_admin_operations_snapshot contracting block reads apex_carrier_contracts, which is empty, so
-// the tile reads the digest instead. Same query key as HomeOperationsSummary so Home shares one read.
-type DigestQueue = { key: string; label: string; cases: number };
-type ContractingDigest = { queues?: DigestQueue[] };
-
+// The contracting tile reads the review (the only contracting truth): people who still have a circle to confirm.
 const money = (value: number) => `$${Math.round(Number(value || 0)).toLocaleString()}`;
 function MetricLink({
   to, icon: Icon, label, value, detail, danger = false,
@@ -81,16 +78,7 @@ export function OperationsCommandCenter() {
     },
   });
 
-  const digest = useQuery({
-    queryKey: ["home-contracting-digest"],
-    enabled: isAdmin,
-    staleTime: 60_000,
-    queryFn: async (): Promise<ContractingDigest> => {
-      const { data, error } = await supabase.rpc("contracting_exception_digest" as never);
-      if (error) throw new Error(error.message);
-      return (data ?? {}) as ContractingDigest;
-    },
-  });
+  const review = useContractReview(isAdmin);
 
   // Recruiting counts come from the worklist's own query + math (shared cache with
   // HomeOperationsSummary), so Home never shows two different "uncontacted" numbers.
@@ -99,12 +87,6 @@ export function OperationsCommandCenter() {
     () => (worklist.data ? computeQueueCounts(worklist.data.rows, { now: new Date(), userId: user?.id ?? null }) : null),
     [worklist.data, user?.id],
   );
-
-  const contractingCases = useMemo(() => {
-    const byKey = new Map<string, number>();
-    for (const q of digest.data?.queues ?? []) byKey.set(q.key, Number(q.cases ?? 0));
-    return byKey;
-  }, [digest.data]);
 
   if (!isAdmin) return null;
 
@@ -131,20 +113,12 @@ export function OperationsCommandCenter() {
       ? { value: "…", detail: "Loading the recruiting worklist", danger: false }
       : { value: recruitCounts.new, detail: `${recruitCounts.uncontacted} uncontacted`, danger: false };
 
-  const staffAction = contractingCases.get("staff_action");
-  const verified = contractingCases.get("verified");
-  const support = contractingCases.get("support");
-  const contractingTile = digest.isError
-    ? { value: "Unavailable", detail: "Could not load carrier cases", danger: true }
-    : digest.isLoading || !digest.data
-      ? { value: "…", detail: "Loading carrier cases", danger: false }
-      : staffAction == null
-        ? { value: "Unavailable", detail: "Carrier case queues not reported", danger: true }
-        : {
-            value: staffAction,
-            detail: `staff action · ${verified ?? 0} verified · ${support ?? 0} support`,
-            danger: (support ?? 0) > 0,
-          };
+  const reviewTotals = review.roster ? reviewCounts(review.roster.agents, review.roster.carriers.length) : null;
+  const contractingTile = review.query.isError
+    ? { value: "Unavailable", detail: "Could not load the contracting review", danger: true }
+    : review.query.isLoading || !reviewTotals
+      ? { value: "…", detail: "Loading the contracting review", danger: false }
+      : { value: reviewTotals.needsReview, detail: `need review · ${reviewTotals.allFour} all four confirmed`, danger: false };
 
   return (
     <section className="space-y-3" aria-labelledby="operations-command-title">
@@ -167,7 +141,7 @@ export function OperationsCommandCenter() {
         <MetricLink to="/dashboard/team" icon={UserCheck2} label="Hired" value={d.recruiting.hired} detail={`${d.recruiting.contracting} at contracting`} />
         <MetricLink to={TRAINING_ROUTES.teamProgress} icon={UsersRound} label="Onboarding" value={d.onboarding.stalled} detail={`${d.onboarding.carrier_contracting} at contracting`} danger={d.onboarding.stalled > 0} />
         <MetricLink
-          to="/dashboard/contracting/cases"
+          to="/dashboard/contracting"
           icon={FileCheck2}
           label="Contracting"
           value={contractingTile.value}

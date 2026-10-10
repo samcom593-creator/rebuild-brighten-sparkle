@@ -7,7 +7,7 @@ import { circleAriaLabel, markSentence, type MarkInfo, type ReviewCarrier } from
  * by hand. It is never red, never "late", and pressing it records a manual confirmation only; it does not talk to
  * the carrier. While a save is in flight it cannot be pressed again.
  */
-export function CarrierCircle({ carrier, mark, canEdit, saving, onToggle, showLabel = false }: {
+export function CarrierCircle({ carrier, mark, canEdit, saving, onToggle, showLabel = false, large = false }: {
   carrier: ReviewCarrier;
   mark: MarkInfo | null;
   canEdit: boolean;
@@ -15,6 +15,7 @@ export function CarrierCircle({ carrier, mark, canEdit, saving, onToggle, showLa
   onToggle: (confirmed: boolean) => void;
   /** Printed under the circle on phones; from md up the table's column header carries the name and this becomes screen-reader-only. */
   showLabel?: boolean;
+  large?: boolean;
 }) {
   const confirmed = !!mark;
   return (
@@ -35,12 +36,13 @@ export function CarrierCircle({ carrier, mark, canEdit, saving, onToggle, showLa
     >
       <span
         className={cn(
-          "grid h-7 w-7 place-items-center rounded-full border-2 transition-colors",
-          confirmed ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/60 bg-transparent text-transparent",
+          "grid place-items-center rounded-full border-2 transition-colors motion-reduce:transition-none",
+          large ? "h-11 w-11" : "h-7 w-7",
+          confirmed ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/60 bg-background/60 text-muted-foreground",
           saving ? "opacity-70" : "",
         )}
       >
-        {saving ? <Loader2 className="h-4 w-4 animate-spin text-current" aria-hidden /> : confirmed ? <Check className="h-4 w-4" aria-hidden /> : null}
+        {saving ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none text-current" aria-hidden /> : confirmed ? <Check className="h-4 w-4" aria-hidden /> : null}
       </span>
       {showLabel ? (
         <span className="text-xs font-medium text-foreground md:sr-only">

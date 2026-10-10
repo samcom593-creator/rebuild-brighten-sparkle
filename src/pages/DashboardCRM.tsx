@@ -822,6 +822,12 @@ export default function DashboardCRM() {
   }, [rosterMode]);
   const team = useTeamWorkspace(rosterQuery.data ?? [], !rosterQuery.isLoading);
   // Roles with no contracting access only ever see the production view.
+  // A link may name the view (?view=contracting|overview|attendance), e.g. the VA sidebar entry.
+  useEffect(() => {
+    const v = searchParams.get("view");
+    const mode = v === "contracting" ? "work" : v === "overview" || v === "attendance" ? v : null;
+    if (mode) { setCrmView("roster"); setRosterMode(mode); }
+  }, [searchParams]);
   const effectiveMode: "work" | "overview" | "attendance" | "production" | "calls" = team.contractingEnabled ? rosterMode : "production";
 
   const focusAgentId = searchParams.get('focusAgentId');

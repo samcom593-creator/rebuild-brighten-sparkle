@@ -80,9 +80,14 @@ export function useContractReview(enabled = true) {
           action: { label: "Retry", onClick: () => { void setCircle(agentId, carrier, confirmed); } },
         });
       }
+    } catch {
+      patchAgent(agentId, (a) => withMark(a, carriers, carrier.key, was));
+      toast.error(`${carrier.label} for ${name} did not save. Your previous confirmation is restored.`, {
+        action: { label: "Retry", onClick: () => { void setCircle(agentId, carrier, confirmed); } },
+      });
     } finally {
       end(k);
-      void qc.invalidateQueries({ queryKey: CONTRACT_REVIEW_KEY });
+      if (inFlight.current.size === 0) void qc.invalidateQueries({ queryKey: CONTRACT_REVIEW_KEY });
     }
     return landed;
   }, [agentNow, canEdit, patchAgent, qc]);
@@ -105,9 +110,12 @@ export function useContractReview(enabled = true) {
       patchAgent(agentId, (a) => withLevel(a, was));
       if (r.conflict) { toast.message(`${before.display_name}'s level was just changed somewhere else. Showing the saved value.`); return { ok: false, error: "Changed somewhere else." }; }
       return { ok: false, error: r.error ?? "Not saved." };
+    } catch {
+      patchAgent(agentId, (a) => withLevel(a, was));
+      return { ok: false, error: "Level did not save. Your previous level is restored; try again." };
     } finally {
       end(k);
-      void qc.invalidateQueries({ queryKey: CONTRACT_REVIEW_KEY });
+      if (inFlight.current.size === 0) void qc.invalidateQueries({ queryKey: CONTRACT_REVIEW_KEY });
     }
   }, [agentNow, canEdit, patchAgent, qc]);
 
@@ -119,9 +127,11 @@ export function useContractReview(enabled = true) {
       const r = await saveProfileForAgent(agentId, v);
       if (r.ok) toast.success("Contracting profile saved");
       return r;
+    } catch {
+      return { ok: false, field: null, conflict: null, otherName: null, error: "Profile did not save. Your edits are still here; try again." };
     } finally {
       end(k);
-      void qc.invalidateQueries({ queryKey: CONTRACT_REVIEW_KEY });
+      if (inFlight.current.size === 0) void qc.invalidateQueries({ queryKey: CONTRACT_REVIEW_KEY });
     }
   }, [canEdit, qc]);
 

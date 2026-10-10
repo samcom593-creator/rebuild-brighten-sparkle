@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, RefreshCw, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +28,9 @@ export function TeamAttendance({ className }: { className?: string }) {
   const [bulkStatus, setBulkStatus] = useState<Exclude<MarkStatus, "unmarked">>("present");
 
   const people = useMemo(() => filterAttendance(att.day?.people ?? [], stage, search, onlyExpected), [att.day, stage, search, onlyExpected]);
+  // A selection belongs to the exact date/filter where it was made, never another attendance session.
+  useEffect(() => { setSelected(new Set()); setSelecting(false); }, [date, stage, search, onlyExpected]);
+
   const preview = useMemo(() => bulkPreview(att.day?.people ?? [], selected), [att.day, selected]);
 
   if (!att.canRead) return <p className={cn("rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground", className)}>Attendance is for admins, managers and the team that supports them.</p>;
@@ -66,7 +69,7 @@ export function TeamAttendance({ className }: { className?: string }) {
     <section aria-label="Attendance" className={cn("space-y-3", className)}>
       {header}
       <p className="text-sm text-muted-foreground" role="status">
-        <b className="text-foreground">{s.expected}</b> expected · <b className="text-foreground">{s.present}</b> present · <b className="text-foreground">{s.absent}</b> absent · <b className="text-foreground">{s.excused}</b> excused · <b className="text-foreground">{s.unmarked}</b> unmarked
+        <span className="font-medium text-foreground">Team totals:</span>{" "}<b className="text-foreground">{s.expected}</b> expected · <b className="text-foreground">{s.present}</b> present · <b className="text-foreground">{s.absent}</b> absent · <b className="text-foreground">{s.excused}</b> excused · <b className="text-foreground">{s.unmarked}</b> unmarked
         {s.not_scheduled ? ` · ${s.not_scheduled} not scheduled` : ""}{s.schedule_not_set ? ` · ${s.schedule_not_set} with no schedule set` : ""}.
         {weekend ? " Weekend: nobody with a schedule is expected." : ""}
       </p>
@@ -99,21 +102,21 @@ export function TeamAttendance({ className }: { className?: string }) {
             </select>
           </div>
           <p className="text-xs text-muted-foreground" role="status">
-            Preview: {preview.willChange.length} will be marked {statusLabel(bulkStatus)}; {preview.alreadyMarked.length} already marked and left alone{preview.notExpected.length ? `; ${preview.notExpected.length} not expected today (an extra day)` : ""}.
+            Preview for {dateKeyLabel(date)}: {preview.willChange.length} will be marked {statusLabel(bulkStatus)}; {preview.alreadyMarked.length} already marked and left alone{preview.notExpected.length ? `; ${preview.notExpected.length} not expected today (an extra day)` : ""}.
           </p>
           <Button type="button" size="sm" className="h-10" disabled={preview.willChange.length === 0 || att.isPending("bulk")}
-            onClick={() => void att.bulk(preview.willChange.map((p) => p.agent_id), bulkStatus).then((r) => { if (r.ok) { setSelected(new Set()); setSelecting(false); } })}>
+            onClick={() => void att.bulk(preview.willChange.map((p) => p.agent_id), bulkStatus).then((r) => { if (r.ok && r.denied === 0) { setSelected(new Set()); setSelecting(false); } })}>
             Mark {preview.willChange.length} as {statusLabel(bulkStatus)}
           </Button>
         </div>
       ) : null}
 
-      <ul aria-label="People for this day" className="list-none divide-y divide-border rounded-lg border border-border bg-card">
+      <ul aria-label="People for this day" className="list-none space-y-2">
         {people.length === 0 ? <li className="p-6 text-center text-sm text-muted-foreground" role="status">{att.day.people.length === 0 ? "Nobody on the team had started by this day." : "Nobody matches these filters."}</li> : null}
         {people.map((p) => {
           const saving = att.isPending(p.agent_id);
           return (
-            <li key={p.agent_id} className={cn("grid gap-x-4 gap-y-2 px-3 py-3 md:grid-cols-[auto_minmax(0,1.6fr)_minmax(8rem,0.8fr)_auto] md:items-center", p.expected !== "yes" && "bg-muted/20")}>
+            <li key={p.agent_id} className={cn("grid rounded-xl border border-border bg-card gap-x-4 gap-y-2 px-4 py-4 md:grid-cols-[auto_minmax(0,1.6fr)_minmax(8rem,0.8fr)_auto] md:items-center", p.expected !== "yes" && "bg-muted/20")}>
               {selecting && att.canEdit ? (
                 <input type="checkbox" className="h-5 w-5" aria-label={`Select ${p.display_name}`} checked={selected.has(p.agent_id)} onChange={(e) => setSelected((s0) => { const n = new Set(s0); if (e.target.checked) n.add(p.agent_id); else n.delete(p.agent_id); return n; })} />
               ) : <span className="hidden md:block" />}
@@ -133,7 +136,7 @@ export function TeamAttendance({ className }: { className?: string }) {
                       aria-label={`${m.label} for ${p.display_name}${on ? " (current)" : ""}`}
                       onClick={() => void att.mark(p.agent_id, on ? "unmarked" : m.key)}
                       className={cn("inline-flex min-h-[40px] min-w-[44px] items-center justify-center rounded-md border px-3 text-sm font-medium focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)] disabled:cursor-default",
-                        on ? "border-primary bg-primary/10 text-foreground ring-1 ring-primary/60" : "border-border bg-card text-muted-foreground hover:text-foreground")}>
+                        on ? (m.key === "present" ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200" : m.key === "absent" ? "border-rose-500/50 bg-rose-500/10 text-rose-800 dark:text-rose-200" : "border-amber-500/50 bg-amber-500/10 text-amber-800 dark:text-amber-200") : "border-border bg-card text-muted-foreground hover:text-foreground")}>
                       {m.label}
                     </button>
                   );

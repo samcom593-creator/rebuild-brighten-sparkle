@@ -4,7 +4,7 @@
  *
  * Every number here is read from the workspace that owns it, through the same code that
  * workspace uses, so Home cannot disagree with the page it links to:
- *   contracting  -> contracting_exception_digest()       (counts are carrier cases, queues overlap)
+ *   contracting  -> useContractReview + reviewCounts    (the review's own read and math; people, not cases)
  *   recruiting   -> useRecruitingWorklist + computeQueueCounts (the worklist's own query + math)
  *   onboarding   -> onboarding_exception_facts() + buildExceptionQueue (the NHLB queue's derivation)
  * A failed read says so; it never renders as zero.
@@ -20,19 +20,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { useRecruitingWorklist } from "@/components/pipeline/worklist/useRecruitingWorklist";
 import { computeQueueCounts, type QueueKey } from "@/lib/recruitingQueues";
 import { buildExceptionQueue, daysWaiting, type OnboardingFacts } from "@/lib/onboardingExceptions";
+import { useContractReview } from "@/hooks/useContractReview";
+import { reviewCounts } from "@/lib/contractReview";
 
-type DigestQueue = {
-  key: string;
-  label: string;
-  cases: number;
-  people?: number;
-  oldest?: Array<{ agent_id: string; agent_name: string | null; carrier: string; lifecycle: string; waiting_on: string | null; days_in_state: number | null }>;
-};
-type Digest = { queues?: DigestQueue[]; note?: string };
-
-// Keys as contracting_exception_digest() returns them (measured: verified, ready_to_submit, staff_action,
-// agent_action, carrier_review, follow_up_due, support).
-const CONTRACT_KEYS = ["verified", "ready_to_submit", "staff_action", "agent_action", "carrier_review", "follow_up_due"];
 const RECRUIT_KEYS: QueueKey[] = ["uncontacted", "due_today", "overdue", "unassigned"];
 
 function Row({ to, label, value, tone }: { to: string; label: string; value: number | string | null; tone?: "attention" | "good" }) {
@@ -64,16 +54,7 @@ export function HomeOperationsSummary() {
   const { user, isAdmin } = useAuth();
   const enabled = Boolean(isAdmin);
 
-  const digest = useQuery({
-    enabled,
-    queryKey: ["home-contracting-digest"],
-    staleTime: 60_000,
-    queryFn: async (): Promise<Digest> => {
-      const { data, error } = await supabase.rpc("contracting_exception_digest" as never);
-      if (error) throw new Error(error.message);
-      return (data ?? {}) as Digest;
-    },
-  });
+  const review = useContractReview(enabled);
 
   const onboarding = useQuery({
     enabled,
@@ -103,12 +84,6 @@ export function HomeOperationsSummary() {
     });
   }, [onboarding.data]);
 
-  const queues = useMemo(() => {
-    const map = new Map<string, DigestQueue>();
-    for (const q of digest.data?.queues ?? []) map.set(q.key, q);
-    return map;
-  }, [digest.data]);
-
   const actions = useMemo(() => {
     const list: Array<{ key: string; to: string; text: string; detail: string }> = [];
     for (const r of exceptionQueue.filter((x) => x.primary?.blocking).slice(0, 3)) {
@@ -121,35 +96,28 @@ export function HomeOperationsSummary() {
         detail: `${r.primary?.owner ?? "Unassigned"}${waited != null ? ` · waiting ${waited}d` : ""}`,
       });
     }
-    for (const c of (queues.get("staff_action")?.oldest ?? []).slice(0, 2)) {
-      list.push({
-        key: `case-${c.agent_id}-${c.carrier}`,
-        to: "/dashboard/contracting/cases",
-        text: `${c.agent_name ?? "Agent"} · ${c.carrier}: staff action needed`,
-        detail: c.days_in_state != null ? `${c.days_in_state}d in this state` : "age not recorded",
-      });
-    }
     return list;
-  }, [exceptionQueue, queues]);
+  }, [exceptionQueue]);
 
   if (!enabled) return null;
 
   const failed = (q: { isError: boolean }) => q.isError;
   return (
     <section className="grid gap-3 lg:grid-cols-3" aria-label="Contracting, recruiting and today's actions">
-      <Panel title="Contracting" icon={BriefcaseBusiness} to="/dashboard/contracting/cases" cta="Open cases">
-        {digest.isLoading ? <Skeleton className="h-28 w-full" /> : failed(digest) ? (
-          <p className="text-sm text-destructive">Could not load contracting queues.</p>
-        ) : (
-          <>
-            {CONTRACT_KEYS.map((k) => {
-              const q = queues.get(k);
-              if (!q) return null;
-              return <Row key={k} to="/dashboard/contracting/cases" label={q.label} value={q.cases} tone={k === "verified" ? "good" : "attention"} />;
-            })}
-            <p className="px-2 text-[12px] text-muted-foreground">Carrier cases (one agent × one carrier); queues overlap.</p>
-          </>
-        )}
+      <Panel title="Contracting" icon={BriefcaseBusiness} to="/dashboard/contracting" cta="Open review">
+        {review.query.isLoading ? <Skeleton className="h-28 w-full" /> : review.query.isError || !review.roster ? (
+          <p className="text-sm text-destructive">Could not load the contracting review.</p>
+        ) : (() => {
+          const c = reviewCounts(review.roster.agents, review.roster.carriers.length);
+          return (
+            <>
+              <Row to="/dashboard/contracting" label="Needs review" value={c.needsReview} tone="attention" />
+              <Row to="/dashboard/contracting" label="Partially marked" value={c.partial} tone="attention" />
+              <Row to="/dashboard/contracting" label="All four marked" value={c.allFour} tone="good" />
+              <p className="px-2 text-[12px] text-muted-foreground">People, not tasks. Not yet reviewed is not late.</p>
+            </>
+          );
+        })()}
       </Panel>
 
       <Panel title="Recruiting & starts" icon={UserPlus} to="/dashboard/recruiting" cta="Open worklist">
@@ -166,8 +134,8 @@ export function HomeOperationsSummary() {
       </Panel>
 
       <Panel title="Immediate actions" icon={ListChecks} to="/dashboard/recruits" cta="All exceptions">
-        {onboarding.isLoading || digest.isLoading ? <Skeleton className="h-28 w-full" /> : actions.length === 0 ? (
-          <p className="px-2 text-sm text-muted-foreground">{failed(onboarding) || failed(digest) ? "Some queues did not load; nothing is assumed clear." : "Nothing blocking right now."}</p>
+        {onboarding.isLoading || review.query.isLoading ? <Skeleton className="h-28 w-full" /> : actions.length === 0 ? (
+          <p className="px-2 text-sm text-muted-foreground">{failed(onboarding) || review.query.isError ? "Some queues did not load; nothing is assumed clear." : "Nothing blocking right now."}</p>
         ) : (
           <ul className="space-y-1">
             {actions.map((a) => (

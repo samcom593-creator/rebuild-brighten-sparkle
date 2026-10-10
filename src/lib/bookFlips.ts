@@ -1,6 +1,8 @@
 // Books page (2026-10-07): working carrier books for rewrites ("flips").
 // Pure helpers so the page, its counts and the tests share one set of rules.
 // The rows come from v_book_flip_worklist (one row per carrier + policy number + client).
+import { inferStateFromPhone } from "@/lib/inboundLeads";
+import { US_STATES } from "@/lib/contractReview";
 
 export type StatusGroup = "active" | "unknown" | "lapsing" | "pending" | "dead";
 export type FlipStatus =
@@ -269,4 +271,51 @@ export function displayName(name: string | null | undefined): string {
   if (!n) return "";
   if (n !== n.toLowerCase() && n !== n.toUpperCase()) return n;
   return n.toLowerCase().replace(/(^|[\s'-])([a-z])/g, (_m, pre: string, ch: string) => pre + ch.toUpperCase());
+}
+
+
+// ── State targeting ───────────────────────────────────────────────────────────────────────────────────────────
+// Sam (2026-10-09): "click Arizona and see what the opportunities are for that state." MEASURED first: the book carries a
+// client state on 19 of 1,317 policies (1.4%), none of them in the default view, and holds no address to backfill from.
+// So a state is layered and LABELLED: the client's recorded state when there is one; otherwise the phone's area code,
+// which is a likely state, not a fact (people keep mobile numbers when they move); otherwise Unknown. Counts show the
+// Unknown bucket so an empty state reads as truth, not as a broken filter.
+
+export type StateSource = "client" | "phone" | null;
+export interface PolicyState { code: string | null; source: StateSource }
+export const STATE_UNKNOWN = "unknown";
+const STATE_NAME = new Map(US_STATES.map(([code, name]) => [code, name] as const));
+export const stateName = (code: string): string => STATE_NAME.get(code) ?? code;
+
+export function policyState(p: Pick<BookPolicy, "state" | "phone">): PolicyState {
+  const known = (p.state ?? "").trim().toUpperCase();
+  if (known.length === 2 && STATE_NAME.has(known)) return { code: known, source: "client" };
+  const guess = p.phone ? inferStateFromPhone(p.phone) : null;
+  if (guess && STATE_NAME.has(guess)) return { code: guess, source: "phone" };
+  return { code: null, source: null };
+}
+
+export const stateSourceText = (s: PolicyState): string =>
+  s.code === null ? "State unknown" : s.source === "client" ? `${s.code} · on file` : `${s.code} · likely, by area code`;
+
+/** "all" = every policy; STATE_UNKNOWN = no state could be read; otherwise a two-letter code. */
+export function matchesState(p: Pick<BookPolicy, "state" | "phone">, code: string): boolean {
+  if (code === "all") return true;
+  const s = policyState(p);
+  return code === STATE_UNKNOWN ? s.code === null : s.code === code;
+}
+
+/** Counts per state over a list (already narrowed by the other filters), highest first, Unknown last. */
+export function stateCounts<T extends Pick<BookPolicy, "state" | "phone">>(list: readonly T[]): Array<{ code: string; count: number; onFile: number }> {
+  const m = new Map<string, { count: number; onFile: number }>();
+  let unknown = 0;
+  for (const p of list) {
+    const s = policyState(p);
+    if (!s.code) { unknown += 1; continue; }
+    const cur = m.get(s.code) ?? { count: 0, onFile: 0 };
+    cur.count += 1; if (s.source === "client") cur.onFile += 1; m.set(s.code, cur);
+  }
+  const out = [...m.entries()].map(([code, v]) => ({ code, ...v })).sort((a, b) => b.count - a.count || a.code.localeCompare(b.code));
+  if (unknown > 0) out.push({ code: STATE_UNKNOWN, count: unknown, onFile: 0 });
+  return out;
 }

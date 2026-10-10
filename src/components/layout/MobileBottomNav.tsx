@@ -61,7 +61,7 @@ const staffNavItems = [
   { path: "/dashboard/recruiting",             icon: Briefcase,       label: "Recruiting" },
   { path: "/dashboard/calendar",               icon: CalendarClock,   label: "Calendar" },
   { path: "/dashboard/recruits",               icon: Users,           label: "Stages" },
-  { path: "/dashboard/contracting/ethos",      icon: Library,         label: "Ethos" },
+  { path: "/dashboard/team?view=contracting",  icon: Library,         label: "Contracting" },
 ];
 
 export function MobileBottomNav() {

@@ -22,6 +22,7 @@ type StageFilter = "all" | StageKey | "unset";
 export function TeamOverview({ rows, className }: { rows: RosterRow[]; className?: string }) {
   const facts = useTeamFacts(true);
   const review = useContractReview(true);
+  const [editingWorkdays, setEditingWorkdays] = useState(false);
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState<StageFilter>("all");
   const [openId, setOpenId] = useState<string | null>(null);
@@ -64,9 +65,9 @@ export function TeamOverview({ rows, className }: { rows: RosterRow[]; className
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-[12rem] flex-1 sm:max-w-xs">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name or email" aria-label="Search the overview" className="h-10 pl-9" />
+          <Input disabled={editingWorkdays} value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name or email" aria-label="Search the overview" className="h-10 pl-9" />
         </div>
-        <select aria-label="Stage filter" value={stageFilter} onChange={(e) => setStageFilter(e.target.value as StageFilter)}
+        <select disabled={editingWorkdays} aria-label="Stage filter" value={stageFilter} onChange={(e) => setStageFilter(e.target.value as StageFilter)}
           className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]">
           <option value="all">All stages</option>
           <option value="online_training">Online training</option>
@@ -76,7 +77,7 @@ export function TeamOverview({ rows, className }: { rows: RosterRow[]; className
         </select>
       </div>
 
-      <ul aria-label="People" className="list-none divide-y divide-border rounded-lg border border-border bg-card">
+      <ul aria-label="People" className="list-none space-y-2">
         {people.length === 0 ? <li className="p-6 text-center text-sm text-muted-foreground" role="status">Nobody matches.</li> : null}
         {people.map(({ p, r }) => {
           const name = r?.full_name ?? "Name not on file";
@@ -84,8 +85,8 @@ export function TeamOverview({ rows, className }: { rows: RosterRow[]; className
           const m = marks.get(p.agent_id);
           const open = openId === p.agent_id;
           return (
-            <li key={p.agent_id} className="px-3 py-3">
-              <div className="grid gap-x-4 gap-y-2 md:grid-cols-[minmax(0,1.6fr)_minmax(10rem,1fr)_minmax(10rem,1fr)_minmax(8rem,0.9fr)_auto] md:items-center">
+            <li key={p.agent_id} className="rounded-xl border border-border bg-card p-4">
+              <div className="grid gap-x-4 gap-y-2 2xl:grid-cols-[minmax(0,1.6fr)_minmax(10rem,1fr)_minmax(10rem,1fr)_minmax(8rem,0.9fr)_auto] 2xl:items-center sm:grid-cols-2">
                 <div className="min-w-0">
                   <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                     <p className="truncate text-sm font-semibold text-foreground">{name}</p>
@@ -95,27 +96,27 @@ export function TeamOverview({ rows, className }: { rows: RosterRow[]; className
                   <p className="truncate text-xs text-muted-foreground">{r?.email ?? "No email on file"}</p>
                 </div>
                 <div>
-                  <span className="block text-xs text-muted-foreground md:hidden">Stage</span>
+                  <span className="block text-xs text-muted-foreground 2xl:hidden">Stage</span>
                   <StageSelect name={name} stage={p.stage} canEdit={facts.canEdit} saving={facts.isPending(p.agent_id, "stage")} onChange={(s) => void facts.setStage(p.agent_id, name, s)} />
                 </div>
                 <div className="text-sm">
-                  <span className="block text-xs text-muted-foreground md:hidden">Work days</span>
+                  <span className="block text-xs text-muted-foreground 2xl:hidden">Work days</span>
                   <span className={p.schedule_set ? "text-foreground" : "text-muted-foreground"}>{workdaysSummary(p.schedule_set ? p.weekdays ?? [] : null)}</span>
                 </div>
                 <div className="text-sm">
-                  <span className="block text-xs text-muted-foreground md:hidden">Access</span>
+                  <span className="block text-xs text-muted-foreground 2xl:hidden">Access</span>
                   <span className={cn(acc.tone === "ok" ? "text-foreground" : "text-muted-foreground")}>{acc.text}</span>
                   {m ? <span className="block text-xs text-muted-foreground">{m.marked_count} of 4 carriers · level {levelText(m.level)}</span> : null}
                 </div>
-                <Button type="button" variant="outline" size="sm" className="h-10 gap-1 md:h-9" aria-expanded={open} onClick={() => setOpenId(open ? null : p.agent_id)}>
+                <Button type="button" variant="outline" size="sm" className="h-10 gap-1 md:h-9" aria-expanded={open} disabled={editingWorkdays} onClick={() => setOpenId(open ? null : p.agent_id)}>
                   {open ? <>Close <ChevronUp className="h-4 w-4" aria-hidden /></> : <>Work days <ChevronDown className="h-4 w-4" aria-hidden /></>}
                 </Button>
               </div>
               {open ? (
                 <div className="mt-3 rounded-md border border-border bg-muted/30 p-3">
                   <WorkdaysEditor name={name} weekdays={p.weekdays} scheduleSet={p.schedule_set} nextSchedule={p.next_schedule} canEdit={facts.canEdit}
-                    saving={facts.isPending(p.agent_id, "workdays")} onSave={(days, from) => void facts.setWorkdays(p.agent_id, name, days, from)} />
-                  <p className="mt-2 text-xs text-muted-foreground">A work commitment is a plan for which days this person works. It is not attendance.</p>
+                    saving={facts.isPending(p.agent_id, "workdays")} onEditingChange={setEditingWorkdays} onSave={(days, from) => facts.setWorkdays(p.agent_id, name, days, from)} />
+                  <p className="mt-2 text-xs text-muted-foreground">{editingWorkdays ? "Save or discard your workday edits before closing or switching people." : "A work commitment is a plan, not attendance."}</p>
                 </div>
               ) : null}
             </li>

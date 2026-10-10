@@ -38,16 +38,11 @@ import {
 } from "lucide-react";
 
 interface AgentResult {
-  id: string;
-  display_name: string | null;
-  agent_code: string | null;
+  id: string; name: string; email: string | null; phone: string | null; code: string | null;
+  status: string | null; license: string | null; stage: string | null; upline: string | null;
 }
-interface ApplicationResult {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-}
+interface ApplicationResult { id: string; name: string; email: string | null; phone: string | null; status: string | null; license: string | null; applied_at: string | null }
+const STAGE_LABEL: Record<string, string> = { online_training: "Online training", training: "Training", released_in_field: "Released in field" };
 
 type RouteRole = "any" | "agent" | "manager" | "admin";
 interface RouteEntry {
@@ -159,32 +154,23 @@ export function CommandPalette() {
     return () => window.removeEventListener("apex:voice-prompt", handler as EventListener);
   }, [setOpen]);
 
-  // Debounced entity search
+  // One scoped server search (search_people): every piece of what was typed must match somewhere in the person's
+  // name, email, phone digits or agent code, in any order. Escaping and role scope live in the function.
+  const [searchState, setSearchState] = useState<"idle" | "loading" | "ok" | "error">("idle");
   useEffect(() => {
-    if (!open || query.length < 2) {
-      setAgents([]);
-      setApplications([]);
-      return;
-    }
+    if (!open || query.trim().length < 2) { setAgents([]); setApplications([]); setSearchState("idle"); return; }
+    let cancelled = false;
+    setSearchState("loading");
     const timer = setTimeout(async () => {
-      const [agentRes, appRes] = await Promise.all([
-        supabase
-          .from("agents")
-          .select("id, display_name, agent_code")
-          .or(`display_name.ilike.%${query}%,agent_code.ilike.%${query}%`)
-          .limit(5),
-        canOpenRecruiting
-          ? supabase
-            .from("applications")
-            .select("id, first_name, last_name, email")
-            .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,email.ilike.%${query}%`)
-            .limit(5)
-          : Promise.resolve({ data: [] as ApplicationResult[] }),
-      ]);
-      setAgents((agentRes.data as AgentResult[]) ?? []);
-      setApplications((appRes.data as ApplicationResult[]) ?? []);
-    }, 200);
-    return () => clearTimeout(timer);
+      const { data, error } = await supabase.rpc("search_people", { p_q: query, p_limit: 8 });
+      if (cancelled) return;
+      const r = data as unknown as { ok?: boolean; agents?: AgentResult[]; applicants?: ApplicationResult[] } | null;
+      if (error || !r?.ok) { setAgents([]); setApplications([]); setSearchState("error"); return; }
+      setAgents(r.agents ?? []);
+      setApplications(canOpenRecruiting ? r.applicants ?? [] : []);
+      setSearchState("ok");
+    }, 150);
+    return () => { cancelled = true; clearTimeout(timer); };
   }, [query, open, canOpenRecruiting]);
 
   const filteredRoutes = useMemo(() => {
@@ -200,14 +186,14 @@ export function CommandPalette() {
   };
 
   return (
-    <CommandDialog open={open} onOpenChange={setOpen}>
+    <CommandDialog open={open} onOpenChange={setOpen} commandProps={{ shouldFilter: false }}>
       <CommandInput
-        placeholder="Search pages, agents, leads… (⌘K)"
+        placeholder="Type any part of a name, email, phone or code… (⌘K)"
         value={query}
         onValueChange={setQuery}
       />
       <CommandList>
-        <CommandEmpty>No results found.</CommandEmpty>
+        <CommandEmpty>{searchState === "loading" ? "Searching…" : searchState === "error" ? "The people search did not answer. Try again." : "No results found."}</CommandEmpty>
 
         {filteredRoutes.length > 0 && (
           <CommandGroup heading="Navigate">
@@ -230,7 +216,7 @@ export function CommandPalette() {
         {agents.length > 0 && (
           <>
             <CommandSeparator />
-            <CommandGroup heading="Agents">
+            <CommandGroup heading="People on the team">
               {agents.map((a) => (
                 <CommandItem
                   key={`agent-${a.id}`}
@@ -247,11 +233,12 @@ export function CommandPalette() {
                     openAgentProfile(a.id);
                   }}
                 >
-                  <Users className="mr-2 h-4 w-4" />
-                  <span>{a.display_name || "Unnamed"}</span>
-                  {a.agent_code && (
-                    <span className="ml-auto text-xs text-muted-foreground">{a.agent_code}</span>
-                  )}
+                  <Users className="mr-2 h-4 w-4 shrink-0" />
+                  <span className="min-w-0 truncate">{a.name}</span>
+                  <span className="ml-2 shrink-0 text-[11px] text-muted-foreground">
+                    {[a.stage ? STAGE_LABEL[a.stage] ?? a.stage : null, a.license === "licensed" ? "Licensed" : null, a.status && a.status !== "active" ? a.status : null, a.upline ? `Upline ${a.upline}` : null].filter(Boolean).join(" · ")}
+                  </span>
+                  <span className="ml-auto shrink-0 pl-2 text-xs text-muted-foreground">{a.code ?? a.email ?? a.phone ?? ""}</span>
                 </CommandItem>
               ))}
             </CommandGroup>
@@ -261,7 +248,7 @@ export function CommandPalette() {
         {applications.length > 0 && (
           <>
             <CommandSeparator />
-            <CommandGroup heading="Applications / Leads">
+            <CommandGroup heading="Applicants">
               {applications.map((app) => (
                 <CommandItem
                   key={`app-${app.id}`}
@@ -272,9 +259,10 @@ export function CommandPalette() {
                   // the canonical /dashboard/recruiting and it selects a row by ?person=.
                   onSelect={() => go(`/dashboard/recruiting?queue=all_open&person=${app.id}`)}
                 >
-                  <FileText className="mr-2 h-4 w-4" />
-                  <span>{app.first_name} {app.last_name}</span>
-                  <span className="ml-auto text-xs text-muted-foreground">{app.email}</span>
+                  <FileText className="mr-2 h-4 w-4 shrink-0" />
+                  <span className="min-w-0 truncate">{app.name || "Name not on file"}</span>
+                  <span className="ml-2 shrink-0 text-[11px] text-muted-foreground">{[app.status ? `Applicant · ${app.status.replace(/_/g, " ")}` : "Applicant", app.license === "licensed" ? "Licensed" : null].filter(Boolean).join(" · ")}</span>
+                  <span className="ml-auto shrink-0 pl-2 text-xs text-muted-foreground">{app.email ?? app.phone ?? ""}</span>
                 </CommandItem>
               ))}
             </CommandGroup>

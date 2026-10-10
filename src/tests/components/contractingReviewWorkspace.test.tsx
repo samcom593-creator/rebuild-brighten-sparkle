@@ -19,7 +19,7 @@ const mount = (agents = [agent({ id: "ann", display_name: "Ann Lee" }), agent({ 
   fb = fakeBackend(agents);
   backend.current = fb;
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false, retryDelay: 0 } } });
-  return render(<QueryClientProvider client={qc}><MemoryRouter><ContractingReviewWorkspace /></MemoryRouter></QueryClientProvider>);
+  return render(<QueryClientProvider client={qc}><MemoryRouter><ContractingReviewWorkspace initialView="compact" /></MemoryRouter></QueryClientProvider>);
 };
 const circle = (name: RegExp) => screen.getByRole("button", { name });
 const circlesFor = (rowName: string) => within(screen.getByText(rowName).closest("li") as HTMLElement);
@@ -98,7 +98,7 @@ describe("the contracting review: what you see", () => {
     fb = fakeBackend([agent({ id: "a" })]);
     fb.state.rosterError = "statement timeout";
     backend.current = fb;
-    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false, retryDelay: 0 } } })}><MemoryRouter><ContractingReviewWorkspace /></MemoryRouter></QueryClientProvider>);
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false, retryDelay: 0 } } })}><MemoryRouter><ContractingReviewWorkspace initialView="compact" /></MemoryRouter></QueryClientProvider>);
     expect(await screen.findByRole("alert")).toHaveTextContent("did not load");
     expect(screen.queryByText(/Nobody needs review/)).not.toBeInTheDocument();
     expect(screen.queryByText("Agent a")).not.toBeInTheDocument();
@@ -111,7 +111,7 @@ describe("the contracting review: what you see", () => {
     fb = fakeBackend([agent({ id: "a" })]);
     fb.state.rosterShort = true;
     backend.current = fb;
-    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false, retryDelay: 0 } } })}><MemoryRouter><ContractingReviewWorkspace /></MemoryRouter></QueryClientProvider>);
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false, retryDelay: 0 } } })}><MemoryRouter><ContractingReviewWorkspace initialView="compact" /></MemoryRouter></QueryClientProvider>);
     expect(await screen.findByRole("alert")).toHaveTextContent("did not load");
   });
 

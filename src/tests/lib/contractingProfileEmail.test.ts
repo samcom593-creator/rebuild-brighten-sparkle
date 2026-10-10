@@ -103,7 +103,7 @@ describe("the retired contracting instructions stay out of what people read", ()
     const app = read("src/App.tsx");
     expect(app).toMatch(/path="\/dashboard\/contracting-profile" element=\{<ProtectedRoute><ContractingProfile \/><\/ProtectedRoute>\}/);
     const contracts = read("src/pages/CarrierContracts.tsx");
-    const card = contracts.slice(contracts.indexOf("function ContractingLinkCard"), contracts.indexOf("function StartContractingCard"));
+    const card = contracts.slice(contracts.indexOf("function ContractingLinkCard"));
     expect(card).not.toMatch(/<Input|<input|type="email"|first_name|last_name/);
     expect(card).toContain("You type nothing");
   });

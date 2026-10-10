@@ -13,7 +13,7 @@ import { contactLinkProps, formatPhoneDisplay, phoneHref } from "@/lib/phone";
 import { cn } from "@/lib/utils";
 import {
   BOOK_FILTERS, FLIP_FILTERS, FLIP_LABEL, FLIP_TONE, GROUP_TONE, PRIORITY_CARRIERS, PRIORITY_LABEL, PRIORITY_TONE, SORTS,
-  displayName, matchesBook, matchesFlip, matchesSearch, money, monthsInForceText, phoenixTime,
+  displayName, matchesBook, matchesFlip, matchesSearch, matchesState, money, monthsInForceText, phoenixTime, policyState, stateCounts, stateName, stateSourceText, STATE_UNKNOWN,
   priorityTier, shortDate, sortPolicies, splitName,
   type BookFilter, type BookPolicy, type FlipFilter, type FlipStatus, type SortKey,
 } from "@/lib/bookFlips";
@@ -83,6 +83,7 @@ function defaultCallbackLocal(): string {
 export default function BookFlips() {
   const [params, setParams] = useSearchParams();
   const carrier = params.get("carrier") || PRIORITY_CARRIERS[0].carrier;
+  const stateFilter = params.get("state") || "all";
   const qc = useQueryClient();
   const rowsKey = useMemo(() => ["book-flips", carrier] as const, [carrier]);
 
@@ -102,11 +103,16 @@ export default function BookFlips() {
     const t = window.setInterval(() => setNow(new Date()), 60_000);
     return () => window.clearInterval(t);
   }, []);
-  useEffect(() => { setShown(PAGE); }, [carrier, bookFilter, flipFilter, search, sort]);
+  useEffect(() => { setShown(PAGE); }, [carrier, bookFilter, flipFilter, search, sort, stateFilter]);
 
   const setCarrier = (c: string) => {
     const next = new URLSearchParams(params);
     next.set("carrier", c);
+    setParams(next, { replace: true });
+  };
+  const setStateFilter = (code: string) => {
+    const next = new URLSearchParams(params);
+    if (code === "all") next.delete("state"); else next.set("state", code);
     setParams(next, { replace: true });
   };
 
@@ -114,18 +120,32 @@ export default function BookFlips() {
   const searched = useMemo(() => all.filter((p) => matchesSearch(p, search)), [all, search]);
   const bookCounts = useMemo(() => {
     const out = {} as Record<BookFilter, number>;
-    for (const f of BOOK_FILTERS) out[f.key] = searched.filter((p) => matchesFlip(p, flipFilter, now) && matchesBook(p, f.key)).length;
+    for (const f of BOOK_FILTERS) out[f.key] = searched.filter((p) => matchesState(p, stateFilter) && matchesFlip(p, flipFilter, now) && matchesBook(p, f.key)).length;
     return out;
-  }, [searched, flipFilter, now]);
+  }, [searched, flipFilter, now, stateFilter]);
   const flipCounts = useMemo(() => {
     const out = {} as Record<FlipFilter, number>;
-    for (const f of FLIP_FILTERS) out[f.key] = searched.filter((p) => matchesBook(p, bookFilter) && matchesFlip(p, f.key, now)).length;
+    for (const f of FLIP_FILTERS) out[f.key] = searched.filter((p) => matchesState(p, stateFilter) && matchesBook(p, bookFilter) && matchesFlip(p, f.key, now)).length;
     return out;
-  }, [searched, bookFilter, now]);
-  const visible = useMemo(
-    () => sortPolicies(searched.filter((p) => matchesBook(p, bookFilter) && matchesFlip(p, flipFilter, now)), sort),
-    [searched, bookFilter, flipFilter, sort, now],
+  }, [searched, bookFilter, now, stateFilter]);
+  // State counts are taken over the book/call filters (not the state itself), so each chip says how many of THESE
+  // opportunities sit in that state, and Unknown is counted rather than hidden.
+  const byState = useMemo(
+    () => stateCounts(searched.filter((p) => matchesBook(p, bookFilter) && matchesFlip(p, flipFilter, now))),
+    [searched, bookFilter, flipFilter, now],
   );
+  const visible = useMemo(
+    () => sortPolicies(searched.filter((p) => matchesState(p, stateFilter) && matchesBook(p, bookFilter) && matchesFlip(p, flipFilter, now)), sort),
+    [searched, bookFilter, flipFilter, sort, now, stateFilter],
+  );
+  // A state that no longer has anyone under the current filters still shows (as 0) while selected, so the user can see why.
+  const stateChips = useMemo(() => {
+    const chips = byState.filter((s) => s.code !== STATE_UNKNOWN).slice(0, 12);
+    if (stateFilter !== "all" && stateFilter !== STATE_UNKNOWN && !chips.some((c) => c.code === stateFilter)) chips.unshift({ code: stateFilter, count: 0, onFile: 0 });
+    return chips;
+  }, [byState, stateFilter]);
+  const unknownCount = byState.find((s) => s.code === STATE_UNKNOWN)?.count ?? 0;
+  const inState = visible.length;
 
   const countFor = (c: string) => counts.data?.find((x) => x.carrier === c);
   const current = countFor(carrier);
@@ -310,7 +330,7 @@ export default function BookFlips() {
           </button>
         ))}
       </div>
-      <div className="mb-4 flex flex-wrap gap-2" role="group" aria-label="Call status">
+      <div className="mb-2 flex flex-wrap gap-2" role="group" aria-label="Call status">
         {FLIP_FILTERS.map((f) => (
           <button
             key={f.key}
@@ -325,6 +345,35 @@ export default function BookFlips() {
             {f.label} <span className="tabular-nums opacity-80">{flipCounts[f.key]}</span>
           </button>
         ))}
+      </div>
+      <div className="mb-4 space-y-1">
+        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="State">
+          <button type="button" onClick={() => setStateFilter("all")} aria-pressed={stateFilter === "all"}
+            className={cn("rounded-full border px-3 py-1.5 text-sm font-medium", stateFilter === "all" ? "border-primary bg-primary/15 text-foreground ring-1 ring-primary/60" : "border-border bg-card text-foreground hover:bg-muted")}>
+            All states
+          </button>
+          {stateChips.map((s) => (
+            <button key={s.code} type="button" onClick={() => setStateFilter(s.code)} aria-pressed={stateFilter === s.code}
+              aria-label={`${stateName(s.code)}: ${s.count} ${s.count === 1 ? "opportunity" : "opportunities"}${s.onFile < s.count ? `, ${s.count - s.onFile} by area code` : ""}`}
+              title={s.onFile < s.count ? `${s.onFile} on file · ${s.count - s.onFile} likely, by area code` : "On file"}
+              className={cn("rounded-full border px-3 py-1.5 text-sm font-medium", stateFilter === s.code ? "border-primary bg-primary/15 text-foreground ring-1 ring-primary/60" : "border-border bg-card text-foreground hover:bg-muted")}>
+              {s.code} <span className="tabular-nums opacity-80">{s.count}</span>
+            </button>
+          ))}
+          {unknownCount > 0 || stateFilter === STATE_UNKNOWN ? (
+            <button type="button" onClick={() => setStateFilter(STATE_UNKNOWN)} aria-pressed={stateFilter === STATE_UNKNOWN}
+              className={cn("rounded-full border border-dashed px-3 py-1.5 text-sm font-medium", stateFilter === STATE_UNKNOWN ? "border-primary bg-primary/15 text-foreground ring-1 ring-primary/60" : "border-border bg-card text-muted-foreground hover:bg-muted")}>
+              State unknown <span className="tabular-nums opacity-80">{unknownCount}</span>
+            </button>
+          ) : null}
+        </div>
+        <p className="text-xs text-muted-foreground" role="status">
+          {stateFilter === "all"
+            ? `${inState} ${inState === 1 ? "opportunity" : "opportunities"} across ${byState.filter((s) => s.code !== STATE_UNKNOWN).length} states${unknownCount ? ` plus ${unknownCount} with no state` : ""}. A state is the client's state on file, or the phone's area code (likely, not certain).`
+            : stateFilter === STATE_UNKNOWN
+              ? `${inState} ${inState === 1 ? "opportunity has" : "opportunities have"} no state on file and no area code to go by.`
+              : `${inState} ${inState === 1 ? "opportunity" : "opportunities"} in ${stateName(stateFilter)} under these filters.`}
+        </p>
       </div>
 
       {rows.isLoading ? (
@@ -368,7 +417,7 @@ function PolicyCard({ p, busy, onSet }: { p: BookPolicy; busy: boolean; onSet: (
   const tel = p.do_not_call ? null : phoneHref(p.phone);
   const name = displayName(p.client_name) || "Name missing";
   const { firstName, lastName } = splitName(p);
-  const meta = [p.age_years ? `${p.age_years} yrs` : "", p.state ?? "", p.best_time_to_call ? `best time ${p.best_time_to_call}` : ""].filter(Boolean).join(" · ");
+  const meta = [p.age_years ? `${p.age_years} yrs` : "", stateSourceText(policyState(p)), p.best_time_to_call ? `best time ${p.best_time_to_call}` : ""].filter(Boolean).join(" · ");
 
   const copyPhone = async () => {
     try {

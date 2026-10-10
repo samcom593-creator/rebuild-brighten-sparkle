@@ -3712,6 +3712,18 @@
         "raw": "p_student_id uuid"
       }
     ],
+    "fn_like_escape": [
+      {
+        "all": [
+          "p"
+        ],
+        "required": [
+          "p"
+        ],
+        "unnamed": false,
+        "raw": "p text"
+      }
+    ],
     "fn_log_interview_event_activity": [
       {
         "all": [
@@ -7163,6 +7175,19 @@
         ],
         "unnamed": false,
         "raw": "p_start date, p_end date"
+      }
+    ],
+    "search_people": [
+      {
+        "all": [
+          "p_limit",
+          "p_q"
+        ],
+        "required": [
+          "p_q"
+        ],
+        "unnamed": false,
+        "raw": "p_q text, p_limit integer DEFAULT 8"
       }
     ],
     "send_completion_contracting_handoff": [

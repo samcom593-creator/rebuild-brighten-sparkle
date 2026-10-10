@@ -61,6 +61,10 @@ export function useTeamAttendance(date: string, enabled = true) {
       if (r.conflict) { toast.message(`${name}'s attendance was just changed somewhere else. Showing the saved mark.`); patch(agentId, (p) => ({ ...p, status: r.status })); }
       else { patch(agentId, (p) => ({ ...p, status: was })); toast.error(`${name}'s mark did not save. It is back to ${statusLabel(was)}.${r.error ? ` ${r.error}` : ""}`, { action: { label: "Retry", onClick: () => { void mark(agentId, status, { note: opts?.note }); } } }); }
       return false;
+    } catch {
+      patch(agentId, (p) => ({ ...p, status: was, marked_by_name: before.marked_by_name, marked_at: before.marked_at, note: before.note }));
+      toast.error(`${name}'s attendance did not save. The previous mark is restored; try again.`);
+      return false;
     } finally { end(k); void qc.invalidateQueries({ queryKey: key }); }
   }, [canEdit, date, key, nowOf, patch, qc]);
 
@@ -72,6 +76,9 @@ export function useTeamAttendance(date: string, enabled = true) {
       if (r.ok) toast.success(`${r.applied} marked ${statusLabel(status)}${r.skipped ? `, ${r.skipped} already marked and left alone` : ""}${r.denied ? `, ${r.denied} not yours to mark` : ""}.`);
       else toast.error(`The bulk mark did not save.${r.error ? ` ${r.error}` : ""}`);
       return r;
+    } catch {
+      toast.error("Attendance did not save. Your selection is still here; try again.");
+      return { ok: false, applied: 0, skipped: 0, denied: 0, error: "Attendance did not save." };
     } finally { end("bulk"); void qc.invalidateQueries({ queryKey: key }); }
   }, [canEdit, date, key, qc]);
 

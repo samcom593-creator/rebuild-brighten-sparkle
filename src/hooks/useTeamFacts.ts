@@ -55,7 +55,11 @@ export function useTeamFacts(enabled = true) {
       if (r.conflict) { toast.message(`${name}'s stage was just changed somewhere else. Showing the saved value.`); patch(agentId, (p) => ({ ...p, stage: r.stage, stage_label: r.stage ? stageLabel(r.stage) : null })); }
       else { patch(agentId, (p) => ({ ...p, stage: was, stage_label: was ? stageLabel(was) : null })); toast.error(`${name}'s stage did not save. It is back to ${stageLabel(was)}.${r.error ? ` ${r.error}` : ""}`, { action: { label: "Retry", onClick: () => { void setStage(agentId, name, stage); } } }); }
       return false;
-    } finally { end(k); void qc.invalidateQueries({ queryKey: TEAM_FACTS_KEY }); }
+    } catch {
+      patch(agentId, (p) => ({ ...p, stage: was, stage_label: was ? stageLabel(was) : null, stage_source: before.stage_source }));
+      toast.error(`${name}'s stage did not save. The previous stage is restored; try again.`);
+      return false;
+    } finally { end(k); if (inFlight.current.size === 0) void qc.invalidateQueries({ queryKey: TEAM_FACTS_KEY }); }
   }, [canEdit, nowOf, patch, qc]);
 
   const setWorkdays = useCallback(async (agentId: string, name: string, weekdays: number[], effectiveFrom?: string, opts?: { undo?: boolean }): Promise<boolean> => {
@@ -77,7 +81,11 @@ export function useTeamFacts(enabled = true) {
       if (r.conflict) { toast.message(`${name}'s schedule was just changed somewhere else. Showing the saved value.`); patch(agentId, (p) => ({ ...p, schedule_set: r.weekdays !== null, weekdays: r.weekdays })); }
       else { if (immediate) patch(agentId, (p) => ({ ...p, schedule_set: was !== null, weekdays: was })); toast.error(`${name}'s schedule did not save. It is back to ${workdaysSummary(was)}.${r.error ? ` ${r.error}` : ""}`, { action: { label: "Retry", onClick: () => { void setWorkdays(agentId, name, weekdays, effectiveFrom); } } }); }
       return false;
-    } finally { end(k); void qc.invalidateQueries({ queryKey: TEAM_FACTS_KEY }); }
+    } catch {
+      if (immediate) patch(agentId, (p) => ({ ...p, schedule_set: was !== null, weekdays: was }));
+      toast.error(`${name}'s schedule did not save. The previous commitment is restored; try again.`);
+      return false;
+    } finally { end(k); if (inFlight.current.size === 0) void qc.invalidateQueries({ queryKey: TEAM_FACTS_KEY }); }
   }, [canEdit, nowOf, patch, qc]);
 
   return { query, facts: query.data ?? null, canRead, canEdit, setStage, setWorkdays, isPending: (id: string, what: string) => pending.has(`${id}:${what}`) };

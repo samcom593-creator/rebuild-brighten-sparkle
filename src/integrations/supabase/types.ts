@@ -142001,6 +142001,7 @@ export type Database = {
       contract_review_roster: { Args: never; Returns: Json }
       day_plan_ensure_seeded: { Args: never; Returns: number }
       fn_book_agent_name_known: { Args: { p_name: string }; Returns: boolean }
+      fn_like_escape: { Args: { p: string }; Returns: string }
       fn_milestone_state: {
         Args: { p_amber: number; p_applicable: boolean; p_deadline: number; p_done: boolean; p_elapsed: number; p_policy_active: boolean; p_start_ok: boolean; p_tracked: boolean }
         Returns: Json
@@ -144391,6 +144392,7 @@ export type Database = {
         Args: { p_end: string; p_start: string }
         Returns: Json
       }
+      search_people: { Args: { p_limit?: number; p_q: string }; Returns: Json }
       send_completion_contracting_handoff: { Args: never; Returns: Json }
       send_reapply_blast: {
         Args: { p_dry_run?: boolean; p_limit?: number }

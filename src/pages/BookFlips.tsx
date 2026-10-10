@@ -12,7 +12,7 @@ import { formatTimeAgo } from "@/lib/dateUtils";
 import { contactLinkProps, formatPhoneDisplay, phoneHref } from "@/lib/phone";
 import { cn } from "@/lib/utils";
 import {
-  BOOK_FILTERS, FLIP_FILTERS, FLIP_LABEL, FLIP_TONE, GROUP_TONE, PRIORITY_CARRIERS, PRIORITY_LABEL, PRIORITY_TONE, SORTS,
+  BOOK_FILTERS, defaultBookFilter, FLIP_FILTERS, FLIP_LABEL, FLIP_TONE, GROUP_TONE, PRIORITY_CARRIERS, PRIORITY_LABEL, PRIORITY_TONE, SORTS,
   displayName, matchesBook, matchesFlip, matchesSearch, matchesState, money, monthsInForceText, phoenixTime, policyState, stateCounts, stateName, stateSourceText, STATE_UNKNOWN,
   priorityTier, shortDate, sortPolicies, splitName,
   type BookFilter, type BookPolicy, type FlipFilter, type FlipStatus, type SortKey,
@@ -89,8 +89,10 @@ export default function BookFlips() {
 
   const counts = useQuery({ queryKey: ["book-flip-counts"], queryFn: fetchCounts, staleTime: 60_000 });
   const rows = useQuery({ queryKey: rowsKey, queryFn: () => fetchCarrier(carrier), staleTime: 60_000 });
+  const all = useMemo(() => rows.data ?? [], [rows.data]);
+  const bookParam = params.get("book");
+  const bookFilter: BookFilter = BOOK_FILTERS.some((f) => f.key === bookParam) ? (bookParam as BookFilter) : defaultBookFilter(all);
 
-  const [bookFilter, setBookFilter] = useState<BookFilter>("departed");
   const [flipFilter, setFlipFilter] = useState<FlipFilter>("to_call");
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortKey>("priority");
@@ -110,13 +112,18 @@ export default function BookFlips() {
     next.set("carrier", c);
     setParams(next, { replace: true });
   };
+  // The book bucket lives in the URL too (?book=all), so a link can open the page on exactly these opportunities.
+  const setBookFilter = (key: BookFilter) => {
+    const next = new URLSearchParams(params);
+    next.set("book", key);
+    setParams(next, { replace: true });
+  };
   const setStateFilter = (code: string) => {
     const next = new URLSearchParams(params);
     if (code === "all") next.delete("state"); else next.set("state", code);
     setParams(next, { replace: true });
   };
 
-  const all = useMemo(() => rows.data ?? [], [rows.data]);
   const searched = useMemo(() => all.filter((p) => matchesSearch(p, search)), [all, search]);
   const bookCounts = useMemo(() => {
     const out = {} as Record<BookFilter, number>;

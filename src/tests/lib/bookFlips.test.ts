@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { STATE_UNKNOWN, matchesState, policyState, stateCounts, stateSourceText } from "@/lib/bookFlips";
+import { STATE_UNKNOWN, defaultBookFilter, matchesState, policyState, stateCounts, stateSourceText } from "@/lib/bookFlips";
 import {
   isCallbackDue, matchesBook, matchesFlip, matchesSearch, monthsInForceText, priorityTier, sortPolicies, splitName,
   type BookPolicy,
@@ -141,5 +141,17 @@ describe("state targeting: a state is on file, or likely by area code, or unknow
     expect(stateCounts(list)).toEqual([
       { code: "AZ", count: 2, onFile: 1 }, { code: "TX", count: 1, onFile: 1 }, { code: STATE_UNKNOWN, count: 2, onFile: 0 },
     ]);
+  });
+});
+
+describe("the bucket the page opens on", () => {
+  it("opens on departed writers when the book has any, so the best flips come first", () => {
+    expect(defaultBookFilter([base({ agent_gone: false }), base({ agent_gone: true, status_group: "unknown" })])).toBe("departed");
+  });
+
+  it("opens on All when no writer has departed, so the page never opens on an empty list", () => {
+    expect(defaultBookFilter([base({ agent_gone: false }), base({ agent_gone: false, status_group: "lapsing" })])).toBe("all");
+    expect(defaultBookFilter([base({ agent_gone: true, status_group: "dead" })])).toBe("all");
+    expect(defaultBookFilter([])).toBe("all");
   });
 });

@@ -67,6 +67,14 @@ export const BOOK_FILTERS: { key: BookFilter; label: string }[] = [
   { key: "lapsing", label: "Lapsing" },
   { key: "all", label: "All" },
 ];
+/**
+ * Which book bucket to open on when the link names none. "Departed writers" is the best flip, so it comes first, but a
+ * book with no departed writers would open on an empty list; then the page opens on All so the opportunities show.
+ */
+export function defaultBookFilter(all: readonly (Pick<BookPolicy, "status_group"> & { agent_gone?: boolean })[]): BookFilter {
+  return all.some((p) => matchesBook(p, "departed")) ? "departed" : "all";
+}
+
 export const FLIP_FILTERS: { key: FlipFilter; label: string }[] = [
   { key: "to_call", label: "To call" },
   { key: "callbacks", label: "Callbacks" },

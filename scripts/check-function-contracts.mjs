@@ -357,6 +357,10 @@ const PUBLIC_ALLOWLIST = new Set([
   // credential read. requireSendAuth (admin_or_manager) now. Callers:
   // bulk-agent-message (service key) and pg drain_sms_fallback_queue (service key).
   "send-sms-via-email",
+  // notify-deal-alert (2026-10-10): a bare POST sent a caller-chosen agentName
+  // from Sam's sending domain to every non-deactivated agent (83) by email and
+  // push. requireSendAuth (admin_or_manager) now. No callers at all.
+  "notify-deal-alert",
 ]);
 
 // ---------------------------------------------------------------------------
@@ -473,6 +477,8 @@ const PUBLIC_CONTRACT = {
   // send-sms-via-email: requireSendAuth, admin_or_manager. Callers
   // bulk-agent-message and drain_sms_fallback_queue(), both on the service key.
   "send-sms-via-email": "in_handler_gate",
+  // notify-deal-alert: requireSendAuth, admin_or_manager. No callers.
+  "notify-deal-alert": "in_handler_gate",
 
   // --- the credential is the token in the URL ----------------------------
   "content-share": "url_token",

@@ -9,6 +9,8 @@ import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createHandler } from "../_shared/handler.ts";
 import { jsonResponse } from "../_shared/cors.ts";
 import { parseBody, v } from "../_shared/validate.ts";
+import { requireSendAuth } from "../_shared/require-send-auth.ts";
+import { escapeHtml } from "../_shared/notify-caller-policy.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -43,6 +45,18 @@ Deno.serve(
       rateLimit: { maxRequests: 30, windowSeconds: 60 },
     },
     async (req) => {
+      // PL-WIB-DEAL-ALERT-AUTH (2026-10-10). verify_jwt = false and no credential
+      // read, so a bare POST from anyone sent the body's agentName (up to 128
+      // chars, caller-chosen) from notifications@apex-financial.org to every
+      // non-deactivated agent (83 on 2026-10-10) and pushed it to the same 83
+      // phones. The only control was the 30/min per-IP rate limit. It has no
+      // caller (src, pg_proc, cron: 0; 24h edge logs: 0 POSTs), so the
+      // admin_or_manager floor locks out nobody. The gate runs before parseBody,
+      // so a service-key POST with an invalid body proves admission with a 400
+      // and sends nothing.
+      const gate = await requireSendAuth(req);
+      if (!gate.ok) return jsonResponse({ error: gate.error }, gate.status);
+
       const { agentId, agentName, deals, aop } = await parseBody(req, BodySchema);
       console.log(`🚨 DEAL ALERT triggered for ${agentName}: ${deals} deal(s), $${aop} ALP`);
 
@@ -108,7 +122,7 @@ Deno.serve(
           <h1 style="color: white; font-size: 28px; font-weight: 900; margin: 0; text-transform: uppercase; letter-spacing: 2px;">DEAL DROPPED!</h1>
         </td></tr>
         <tr><td style="background: rgba(0,0,0,0.2); padding: 32px 24px; text-align: center;">
-          <h2 style="color: white; font-size: 32px; font-weight: 900; margin: 0 0 16px 0; text-transform: uppercase;">${agentName.toUpperCase()}</h2>
+          <h2 style="color: white; font-size: 32px; font-weight: 900; margin: 0 0 16px 0; text-transform: uppercase;">${escapeHtml(agentName.toUpperCase())}</h2>
           <p style="color: rgba(255,255,255,0.9); font-size: 18px; margin: 0;">${deals > 1 ? `Logged ${deals} deals today` : "Just closed a deal"} for</p>
           <div style="font-size: 48px; font-weight: 900; color: #fef08a; margin: 16px 0;">$${formattedAop} ALP</div>
           <p style="color: rgba(255,255,255,0.7); font-size: 14px; margin: 0;">📍 ${pstTime} PST</p>

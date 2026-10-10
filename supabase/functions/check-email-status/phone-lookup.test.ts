@@ -57,6 +57,8 @@ Deno.test("a non-US number sharing the last ten digits is never picked", () => {
 Deno.test("index.ts decides on pickPhoneMatch, and a read error is not 'not on file'", async () => {
   const src = await Deno.readTextFile(new URL("./index.ts", import.meta.url));
   assertStringIncludes(src, "pickPhoneMatch(data, last10)");
+  assertStringIncludes(src, "const last10 = phoneTen(trimmedInput);");
+  assertEquals(src.includes("slice(-10)"), false);
   assertEquals(src.includes("phone.ilike.%${last10}%"), false);
   assertStringIncludes(src, "status: 503");
 });

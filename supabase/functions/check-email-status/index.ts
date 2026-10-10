@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { emailPattern } from "../_shared/like-escape.ts";
-import { phoneCandidatePattern, pickPhoneMatch } from "./phone-lookup.ts";
+import { phoneCandidatePattern, phoneTen, pickPhoneMatch } from "./phone-lookup.ts";
 
 // check-email-status — MP-448 (2026-09-06)
 //
@@ -98,7 +98,10 @@ const handler = async (req: Request): Promise<Response> => {
       // carries. 72 of 197 profile phones are saved like "(713) 882-8503", and
       // the old `phone.ilike.%<digits>%` could never match them, so 63 agents
       // were told "We couldn't find you". See phone-lookup.ts.
-      const last10 = digitsOnly.slice(-10);
+      // The typed side goes through the same NANP rule as the stored side. A
+      // last-ten truncation here let "+44 713 882 8503" resolve to the US agent holding
+      // 713-882-8503; a non-US number now resolves to nobody.
+      const last10 = phoneTen(trimmedInput);
       console.log(`Searching by phone, last 10 digits: ${last10}`);
 
       const { data, error } = await supabaseAdmin

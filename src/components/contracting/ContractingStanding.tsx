@@ -3,11 +3,13 @@ import { ArrowUpRight, ShieldCheck } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useContractReview } from "@/hooks/useContractReview";
+import { useAgentProfileDrawer } from "@/stores/agentProfileDrawer";
 import { levelText, markSentence } from "@/lib/contractReview";
 
 /**
  * Where contracting stands for one agent, straight from the review (the only contracting truth). Read-only here:
- * every confirmation happens on the review itself, so no second place can disagree with it.
+ * every confirmation happens on the review itself, so no second place can disagree with it. The link closes the
+ * global agent drawer when it came from there (a no-op on the producer profile), so the review is not under a sheet.
  */
 export function ContractingStanding({ agentId }: { agentId: string | null | undefined }) {
   const review = useContractReview(!!agentId);
@@ -22,7 +24,7 @@ export function ContractingStanding({ agentId }: { agentId: string | null | unde
             <h3 className="flex items-center gap-1.5 text-sm font-semibold text-foreground"><ShieldCheck className="h-4 w-4 text-primary" aria-hidden /> Contracting</h3>
             <p className="text-xs text-muted-foreground">Confirmed by hand on the review after checking each carrier&apos;s portal.</p>
           </div>
-          <Link to={`/dashboard/team?view=contracting&review=${agentId}`} className="inline-flex min-h-10 items-center gap-1 text-xs font-semibold text-primary underline-offset-2 hover:underline">
+          <Link to={`/dashboard/team?view=contracting&review=${agentId}`} onClick={() => useAgentProfileDrawer.getState().close()} className="inline-flex min-h-10 items-center gap-1 text-xs font-semibold text-primary underline-offset-2 hover:underline">
             Open in review <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
           </Link>
         </div>

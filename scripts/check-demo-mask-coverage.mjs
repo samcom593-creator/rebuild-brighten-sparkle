@@ -46,7 +46,6 @@ const EXEMPT = new Map([
   ["src/pages/AssistantInterviewForm.tsx", "write: submits an interview, returns a status"],
   ["src/pages/admin/IntegrationsSettings.tsx", "operator SQL console; showing real rows IS the feature"],
   ["src/pages/SharePage.tsx", "public share token page; content library, not the book"],
-  ["src/data/shipped-data.ts", "prose changelog, not code"],
 ]);
 
 const files = execSync(
@@ -54,12 +53,20 @@ const files = execSync(
 ).trim().split("\n").filter(Boolean).filter((f) => !f.startsWith("src/tests/"));
 
 const seam = ["src/integrations/supabase/demoFetch.ts", "src/integrations/supabase/boundedFetch.ts", "src/integrations/supabase/client.ts", "src/lib/demoMode.ts"];
+// Not code, so not graded at all. shipped-data.ts is the "What shipped" changelog: one
+// array of string literals, which cannot fetch anything, and whether its prose mentions
+// /rest/v1 changes with every wave. As a named exemption it flipped between "needed" and
+// "stale" on prose alone: on 2026-10-11 6bc3e650 retired the oldest entries' detail text
+// for the file's byte budget, the last /rest/v1 mention went with it, and this guard failed
+// verify:core over a changelog trim. Keeping it out of EXEMPT keeps the stale-exemption
+// rule honest for files that can actually fetch.
+const NOT_CODE = ["src/data/shipped-data.ts"];
 const violations = [];
 const covered = [];
 const unusedExemptions = new Set(EXEMPT.keys());
 
 for (const f of files) {
-  if (seam.includes(f)) continue;
+  if (seam.includes(f) || NOT_CODE.includes(f)) continue;
   const src = readFileSync(f, "utf8");
   if (!DATA_URL.test(src)) continue;
   unusedExemptions.delete(f);

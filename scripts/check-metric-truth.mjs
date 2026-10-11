@@ -281,6 +281,13 @@ shippedTotalMatchesData();
 // The remedy when it fires is available and specific: old entries' `detail`
 // prose can be dropped (the panel's value is in `label`), which is why this
 // can go green again by an action rather than by the calendar.
+//
+// 2026-10-11 (PL-WIB-SHIPPED-DATA-BUDGET): first use. The source reached
+// 1,145,790 bytes (95.5%) and the live chunk shipped-data-C3jlt5fP.js was
+// 1,126,591 bytes raw / 393,512 brotli. Dropping `detail` from the 290 entries
+// older than 2026-08-07 (index >= 175) took the source to 709,426. The remedy
+// is now scripts/retire-shipped-detail.mjs, which edits through the AST and
+// proves every label/ts/commit unchanged before it writes.
 const SHIPPED_DATA_BYTE_CEILING = 1_200_000;
 function shippedDataStaysWithinByteBudget() {
   const dataPath = "src/data/shipped-data.ts";
@@ -291,7 +298,7 @@ function shippedDataStaysWithinByteBudget() {
   if (bytes > SHIPPED_DATA_BYTE_CEILING) {
     const over = bytes - SHIPPED_DATA_BYTE_CEILING;
     violations.push(
-      `${dataPath}: ${bytes.toLocaleString()} bytes exceeds the ${SHIPPED_DATA_BYTE_CEILING.toLocaleString()}-byte budget by ${over.toLocaleString()}. It ships as its own lazy chunk and is already the largest asset on the site; anyone opening "What shipped today" downloads all of it. Drop the \`detail\` prose from the oldest entries (keep \`label\`) rather than raising this ceiling.`,
+      `${dataPath}: ${bytes.toLocaleString()} bytes exceeds the ${SHIPPED_DATA_BYTE_CEILING.toLocaleString()}-byte budget by ${over.toLocaleString()}. It ships as its own lazy chunk and is already the largest asset on the site; anyone opening "What shipped today" downloads all of it. Drop the \`detail\` prose from the oldest entries (keep \`label\`) rather than raising this ceiling: \`node scripts/retire-shipped-detail.mjs ${dataPath} <keep-newest-N> --write\`.`,
     );
   }
 
@@ -301,7 +308,7 @@ function shippedDataStaysWithinByteBudget() {
   const WARN_AT = Math.floor(SHIPPED_DATA_BYTE_CEILING * 0.9);
   if (bytes > WARN_AT && bytes <= SHIPPED_DATA_BYTE_CEILING) {
     console.warn(
-      `[metric-truth] ${dataPath} is ${bytes.toLocaleString()} bytes, within 10% of the ${SHIPPED_DATA_BYTE_CEILING.toLocaleString()}-byte budget. Retire \`detail\` prose from the oldest entries soon.`,
+      `[metric-truth] ${dataPath} is ${bytes.toLocaleString()} bytes, within 10% of the ${SHIPPED_DATA_BYTE_CEILING.toLocaleString()}-byte budget. Retire \`detail\` prose from the oldest entries soon: \`node scripts/retire-shipped-detail.mjs ${dataPath} <keep-newest-N> --write\`.`,
     );
   }
 }

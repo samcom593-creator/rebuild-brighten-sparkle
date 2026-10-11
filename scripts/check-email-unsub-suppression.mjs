@@ -14,6 +14,13 @@
 //   2. do it BEFORE its first send call, so the suppression decides the send.
 //   3. not use _shared/email.ts isUnsubscribed(), which fails open (added
 //      2026-10-11 with send-bulk-email).
+//   4. (browser side, added 2026-10-11 PL-WIB-BULK-NO-FALLBACK) a src/ file
+//      that invokes a listed sender must not also invoke send-email. send-email
+//      never reads email_unsubscribes, and the one place that did both was a
+//      fallback that re-mailed every recipient, opt-outs included, whenever the
+//      suppressing sender returned an error (including its own fail-closed 503).
+//      Browser callers are DERIVED by scanning src/, never listed, so a new
+//      caller is graded the day it lands.
 // Entries with directResend:false must also not build a Resend client: they
 // go through _shared/email.ts sendEmail, which adds the unsubscribe footer and
 // List-Unsubscribe headers and reports a provider refusal as ok:false.
@@ -23,7 +30,8 @@
 // regression.
 //
 // Exit 0 = every listed sender suppresses. Exit 1 = a violation (named).
-// Exit 2 = a listed file is missing or unreadable (never reported as clean).
+// Exit 2 = a listed file is missing or unreadable, or the src/ scan found no
+// browser caller of any listed sender (never reported as clean).
 
 import fs from "node:fs";
 import path from "node:path";
@@ -66,6 +74,31 @@ export function grade(name, code, rule) {
   return problems.map((p) => `${name}: ${p}`);
 }
 
+const invokes = (name) =>
+  new RegExp(`\\binvoke\\(\\s*["'\`]${name}["'\`]|functions/v1/${name}(?![\\w-])`);
+const UNSUPPRESSED = invokes("send-email");
+
+export function gradeClient(file, code) {
+  const callers = SENDERS.filter((r) => invokes(r.name).test(code)).map((r) => r.name);
+  if (callers.length === 0 || !UNSUPPRESSED.test(code)) return { callers, problems: [] };
+  return {
+    callers,
+    problems: [
+      `${file}: invokes ${callers.join(", ")} and also send-email, which never reads email_unsubscribes; ` +
+        "a fallback to it re-mails opt-outs and everyone the first call already reached",
+    ],
+  };
+}
+
+function walk(dir, out = []) {
+  for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, ent.name);
+    if (ent.isDirectory()) walk(p, out);
+    else if (/\.(tsx?|jsx?)$/.test(ent.name) && !/\.test\./.test(ent.name)) out.push(p);
+  }
+  return out;
+}
+
 const failures = [];
 const missing = [];
 for (const rule of SENDERS) {
@@ -79,12 +112,30 @@ for (const rule of SENDERS) {
   failures.push(...grade(rule.name, stripComments(raw), rule));
 }
 
+const SRC = path.resolve(ROOT, process.env.UNSUB_GUARD_SRC_DIR ?? "src");
+let clientCallers = 0;
+try {
+  for (const file of walk(SRC)) {
+    const { callers, problems } = gradeClient(path.relative(ROOT, file), stripComments(fs.readFileSync(file, "utf8")));
+    if (callers.length) clientCallers++;
+    failures.push(...problems);
+  }
+} catch (e) {
+  missing.push(`src scan (${SRC}): ${e.code ?? e.message}`);
+}
+if (clientCallers === 0 && !missing.length) {
+  missing.push(`src scan (${SRC}): found no browser caller of any listed sender, so it is not looking where the code is`);
+}
+
 if (missing.length) {
-  console.error(`check-email-unsub-suppression: cannot read ${missing.length} listed sender(s):\n  ${missing.join("\n  ")}`);
+  console.error(`check-email-unsub-suppression: cannot grade ${missing.length} input(s):\n  ${missing.join("\n  ")}`);
   process.exit(2);
 }
 if (failures.length) {
   console.error(`check-email-unsub-suppression: ${failures.length} violation(s):\n  ${failures.join("\n  ")}`);
   process.exit(1);
 }
-console.log(`check-email-unsub-suppression: ${SENDERS.length}/${SENDERS.length} listed senders read email_unsubscribes before sending`);
+console.log(
+  `check-email-unsub-suppression: ${SENDERS.length}/${SENDERS.length} listed senders read email_unsubscribes before sending; ` +
+    `${clientCallers} browser caller file(s), none falls back to send-email`,
+);

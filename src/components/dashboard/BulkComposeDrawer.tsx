@@ -41,8 +41,8 @@ interface BulkComposeDrawerProps {
 /**
  * Reusable drawer for previewing + sending bulk SMS or Email.
  * - SMS: routes through `send-sms-auto-detect` (one call per recipient).
- * - Email: routes through Resend via the `send-bulk-email` edge function
- *   if present, otherwise falls back to per-recipient `send-email`.
+ * - Email: routes through Resend via the `send-bulk-email` edge function.
+ *   No fallback: if it errors, nothing else is sent (see handleSend).
  *
  * Both flows skip recipients missing the relevant contact field and
  * surface the count in the result toast.
@@ -87,6 +87,7 @@ export function BulkComposeDrawer({
     setSending(true);
     let success = 0;
     let failed = 0;
+    let optedOut = 0;
 
     try {
       if (channel === "sms") {
@@ -110,7 +111,13 @@ export function BulkComposeDrawer({
           }
         }
       } else {
-        // Email path — try bulk function first, fall back to per-recipient.
+        // PL-WIB-BULK-NO-FALLBACK (2026-10-11). On any error this used to loop
+        // send-email over every recipient. send-email does not read
+        // email_unsubscribes, so the loop mailed opt-outs, and an error does not
+        // mean nothing went out: the 503 means the opt-out list was unreadable
+        // and nothing was sent ON PURPOSE, while a gateway timeout or a dropped
+        // connection comes back with the function still sending, so the loop
+        // mailed the same people twice. An error now sends nothing more.
         const bulkResult = await supabase.functions.invoke("send-bulk-email", {
           body: {
             recipients: reachable.map((r) => ({ email: r.email, name: r.name })),
@@ -121,34 +128,37 @@ export function BulkComposeDrawer({
         });
 
         if (bulkResult.error) {
-          // Fallback: loop send-email
-          for (const r of reachable) {
-            try {
-              const { error } = await supabase.functions.invoke("send-email", {
-                body: {
-                  to: r.email,
-                  subject: subject.trim(),
-                  html: message.trim().replace(/\n/g, "<br/>"),
-                },
-              });
-              if (error) {
-                failed++;
-              } else {
-                success++;
-              }
-            } catch {
-              failed++;
-            }
+          const err = bulkResult.error as { message?: string; context?: Response };
+          const status = err.context instanceof Response ? err.context.status : null;
+          let detail = err.message || "unknown error";
+          try {
+            const body = err.context instanceof Response ? await err.context.json() : null;
+            if (body?.error) detail = String(body.error);
+          } catch {
+            detail = `${detail}, response body unreadable`;
           }
-        } else {
-          success = (bulkResult.data as any)?.sent ?? reachable.length;
-          failed = (bulkResult.data as any)?.failed ?? 0;
+          // send-bulk-email answers 4xx and 503 before its send loop starts.
+          // Anything else (504, dropped connection) can land mid-loop.
+          const nothingSent = status !== null && ((status >= 400 && status < 500) || status === 503);
+          toast.error(
+            nothingSent
+              ? `Nothing sent: ${detail}`
+              : `Email send not confirmed (${detail}). Some may already have gone out, so do not resend the whole list.`
+          );
+          return;
         }
+
+        const data = bulkResult.data as { sent?: number; failed?: number; skipped?: number } | null;
+        success = data?.sent ?? 0;
+        failed = data?.failed ?? 0;
+        optedOut = data?.skipped ?? 0;
       }
 
       if (success > 0) {
         toast.success(
           `Sent to ${success}${failed > 0 ? ` (${failed} failed)` : ""}${
+            optedOut > 0 ? ` · ${optedOut} unsubscribed, not sent` : ""
+          }${
             skipped > 0 ? ` · ${skipped} skipped (no ${channel === "sms" ? "phone" : "email"})` : ""
           }`
         );
@@ -156,8 +166,10 @@ export function BulkComposeDrawer({
         setMessage("");
         setSubject("");
         onOpenChange(false);
-      } else {
+      } else if (failed > 0) {
         toast.error(`All ${failed} sends failed.`);
+      } else {
+        toast.error(`Nothing sent: all ${optedOut} unsubscribed.`);
       }
     } finally {
       setSending(false);

@@ -6,8 +6,8 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 // Measured 2026-08-17: send-notification 903/903 failures in 24h, poke-pusher
 // 164/164, metricool-sync 3/3 — zero 200s. 2.90.1 is the version proven booting.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
-import { Resend } from "https://esm.sh/resend@2.0.0";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
+import { sendEmail } from "../_shared/email.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -51,8 +51,6 @@ const handler = async (req: Request): Promise<Response> => {
     const supabase = createClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false },
     });
-    const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-
     // Fetch all active applicants with email
     const { data: applicants, error: applicantsError } = await supabase
       .from("applications")
@@ -61,9 +59,27 @@ const handler = async (req: Request): Promise<Response> => {
       .not("email", "is", null);
     if (applicantsError) throw applicantsError;
 
+    // PL-WIB-UNSUB-SUPPRESSION (2026-10-11). This blast never read
+    // email_unsubscribes, so the one applicant who clicked unsubscribe (05-05,
+    // still active) was in its audience. Same disease as system-health-check,
+    // which mailed that person 195 times after the opt-out. The list is read
+    // once; if it cannot be read the blast does not run, because for marketing
+    // mail "not sent" is the safe failure and "sent to an opt-out" is not.
+    const { data: unsubRows, error: unsubError } = await supabase
+      .from("email_unsubscribes")
+      .select("email");
+    if (unsubError) throw new Error(`email_unsubscribes unreadable, nothing sent: ${unsubError.message}`);
+    const unsubscribed = new Set(
+      (unsubRows ?? []).map((r: { email: string }) => String(r.email).trim().toLowerCase()),
+    );
+    const audience = (applicants ?? []).filter(
+      (a) => !unsubscribed.has(String(a.email).trim().toLowerCase()),
+    );
+    const suppressed = (applicants?.length ?? 0) - audience.length;
+
     if (dryRun) {
       return new Response(
-        JSON.stringify({ dryRun: true, total: applicants?.length ?? 0 }),
+        JSON.stringify({ dryRun: true, total: applicants?.length ?? 0, suppressed, audience: audience.length }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
@@ -71,11 +87,15 @@ const handler = async (req: Request): Promise<Response> => {
     let sent = 0;
     let failed = 0;
 
-    for (const app of applicants || []) {
+    for (const app of audience) {
       try {
-        await resend.emails.send({
+        // sendEmail adds the unsubscribe footer + List-Unsubscribe headers and
+        // returns ok:false on a provider refusal. The SDK call it replaces
+        // resolves {error} instead of throwing, so refusals were logged as sent.
+        const result = await sendEmail({
           from: "Galaxy Financial <notifications@apex-financial.org>",
-          to: [app.email],
+          to: app.email,
+          tagName: "push-optin",
           subject: "📲 Stay in the Loop — Enable Push Notifications!",
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -114,11 +134,13 @@ const handler = async (req: Request): Promise<Response> => {
           recipient_email: app.email,
           channel: "email",
           title: "Push Opt-In Email",
-          message: `Sent push opt-in encouragement to ${app.first_name} ${app.last_name || ""}`,
-          status: "sent",
-          metadata: { trigger: "push-optin", application_id: app.id },
+          message: `Push opt-in encouragement to ${app.first_name} ${app.last_name || ""}`,
+          status: result.ok ? "sent" : "failed",
+          error_message: result.ok ? null : result.error,
+          metadata: { trigger: "push-optin", application_id: app.id, provider_id: result.id },
         });
-        sent++;
+        if (result.ok) sent++;
+        else failed++;
       } catch (err: any) {
         console.error(`Opt-in email failed for ${app.email}:`, err);
         failed++;
@@ -129,7 +151,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log(`Push opt-in emails: sent=${sent}, failed=${failed}`);
 
     return new Response(
-      JSON.stringify({ success: true, sent, failed, total: (applicants?.length || 0) }),
+      JSON.stringify({ success: true, sent, failed, suppressed, total: (applicants?.length || 0) }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   } catch (error: any) {

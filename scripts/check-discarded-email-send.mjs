@@ -37,7 +37,10 @@ import path from "node:path";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 const SCAN_DIR = path.join(repoRoot, "supabase/functions");
-const BASELINE = 76;
+// 76 -> 74 (2026-10-11, PL-WIB-UNSUB-SUPPRESSION): send-push-optin-email now
+// goes through sendEmail (-1); the other -1 was already slack since an earlier
+// commit and is taken here so no regression can launder into it (MP-356).
+const BASELINE = 74;
 
 // `await resend.emails.send(` NOT preceded by a destructure/assignment on the same line.
 const SEND_RX = /await\s+resend\s*\.\s*emails\s*\.\s*send\s*\(/;

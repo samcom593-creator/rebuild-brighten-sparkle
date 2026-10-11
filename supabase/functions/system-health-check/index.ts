@@ -114,7 +114,28 @@ serve(async (req) => {
       let stampedCount = 0;
       const sendErrors: string[] = [];
 
-      for (const app of stalledApplicants.slice(0, 10)) {
+      // PL-WIB-UNSUB-SUPPRESSION (2026-10-11). This follow-up never read
+      // email_unsubscribes. The one applicant who clicked unsubscribe
+      // (2026-05-05) got 195 "Still interested" emails after it, 188 of them
+      // 06-11..06-13, and stopped only because MP-269 stamped contacted_at on
+      // 06-18: an accident, not a suppression. Filter BEFORE the slice so
+      // opt-outs can never occupy the 10 slots and starve real applicants. If
+      // the list cannot be read, hold every follow-up this tick (the outer catch
+      // reports degraded; contacted_at stays null so it retries in 15 min).
+      // Opt-outs are not stamped contacted_at: that column means contacted.
+      const { data: unsubRows, error: unsubError } = await supabase
+        .from("email_unsubscribes")
+        .select("email");
+      if (unsubError) throw new Error(`email_unsubscribes unreadable, follow-ups held: ${unsubError.message}`);
+      const unsubscribed = new Set(
+        (unsubRows ?? []).map((r: { email: string }) => String(r.email).trim().toLowerCase()),
+      );
+      const sendable = stalledApplicants.filter(
+        (a) => !unsubscribed.has(String(a.email ?? "").trim().toLowerCase()),
+      );
+      const suppressedCount = stalledApplicants.length - sendable.length;
+
+      for (const app of sendable.slice(0, 10)) {
         try {
           const res = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-notification`, {
             method: "POST",
@@ -186,7 +207,7 @@ serve(async (req) => {
         service: "Applicant Pipeline",
         status: sendErrors.length > 0 ? "degraded" : (stampedCount > 0 ? "degraded" : "healthy"),
         responseTime: 0,
-        message: `${stalledApplicants.length} applicants stalled 3+ days — ${stampedCount} contacted this run${detail}`,
+        message: `${stalledApplicants.length} applicants stalled 3+ days — ${stampedCount} contacted this run${suppressedCount > 0 ? `, ${suppressedCount} unsubscribed (not emailed)` : ""}${detail}`,
         autoFixed: stampedCount > 0,
       });
     } else {

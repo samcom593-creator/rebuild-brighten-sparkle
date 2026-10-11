@@ -12,6 +12,8 @@
 // sender must, in code (comments stripped):
 //   1. read email_unsubscribes, and
 //   2. do it BEFORE its first send call, so the suppression decides the send.
+//   3. not use _shared/email.ts isUnsubscribed(), which fails open (added
+//      2026-10-11 with send-bulk-email).
 // Entries with directResend:false must also not build a Resend client: they
 // go through _shared/email.ts sendEmail, which adds the unsubscribe footer and
 // List-Unsubscribe headers and reports a provider refusal as ok:false.
@@ -37,10 +39,16 @@ export const SENDERS = [
   { name: "send-push-optin-email", send: /\bsendEmail\s*\(/, directResend: false },
   // Every-15-min follow-up to applicants stalled 3+ days, via send-notification.
   { name: "system-health-check", send: /functions\/v1\/send-notification/, directResend: true },
+  // Admin Bulk Compose (BulkComposeDrawer): recipients come off the request body.
+  { name: "send-bulk-email", send: /\bsendEmail\s*\(/, directResend: false },
 ];
 
 const READ = /\.from\(\s*["'`]email_unsubscribes["'`]\s*\)|\bisUnsubscribed\s*\(/;
 const DIRECT = /\bnew\s+Resend\s*\(|api\.resend\.com\/emails/;
+// _shared/email.ts isUnsubscribed() returns false on a read error, so a sender
+// that relies on it mails opt-outs whenever the list is unreadable. Listed
+// senders read the list themselves and stop if the read fails.
+const FAIL_OPEN = /\bisUnsubscribed\s*\(/;
 
 export function grade(name, code, rule) {
   const problems = [];
@@ -49,6 +57,9 @@ export function grade(name, code, rule) {
   if (send < 0) problems.push(`no send call matching ${rule.send} (rule is stale, update SENDERS)`);
   if (read < 0) problems.push("never reads email_unsubscribes");
   else if (send >= 0 && read > send) problems.push("reads email_unsubscribes only AFTER its first send");
+  if (FAIL_OPEN.test(code)) {
+    problems.push("uses isUnsubscribed(), which sends to everyone when the list is unreadable; read email_unsubscribes once and stop on error");
+  }
   if (rule.directResend === false && DIRECT.test(code)) {
     problems.push("builds its own Resend client; route through _shared/email.ts sendEmail");
   }

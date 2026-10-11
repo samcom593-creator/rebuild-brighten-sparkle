@@ -73,8 +73,18 @@ const SRC = join(ROOT, "src");
 // debt is the same size under a different word. What remains here is deliberate: the legal pages and
 // legal-entity strings (change when the entity is renamed), a real Gmail label (Apex/XCEL), user-agent
 // strings and one iCalendar PRODID.
-const BASELINE = 125;
-const EXEMPT = new Set(["src/config/brand.ts"]);
+// 125 -> 27 on 2026-10-11 (PL-WIB-SHIPPED-DATA-BUDGET), and this is NOT a win either: the scanner
+// changed. The paragraph above was wrong about what the 125 held. Measured with this lexer, 97 of the
+// 124 were the word APEX inside src/data/shipped-data.ts, the "What shipped" changelog, and the
+// components held 27. That day the changelog's oldest `detail` prose was retired for its byte budget
+// and the count fell 51 with no component touched. Counting that file made the ratchet measure
+// changelog length, not white-label debt: a history entry cannot be routed through resolveBrand(),
+// every wave that writes one can move the count, and 51 points of slack from a prose edit would let a
+// real component regression pass green (MP-356). It is exempt below for the same reason tests are.
+const BASELINE = 27;
+// shipped-data.ts: a record of what shipped, under whatever name the agency had at the time. Prose,
+// not a brand slot. See the 2026-10-11 note above.
+const EXEMPT = new Set(["src/config/brand.ts", "src/data/shipped-data.ts"]);
 /** Test files never ship to a user, so brand literals in them block nothing. */
 const IS_TEST = /(\.test\.tsx?$|\.spec\.tsx?$|__tests__\/|^src\/tests\/)/;
 const PATTERN = /\bAPEX\b|\bApex\b/g;

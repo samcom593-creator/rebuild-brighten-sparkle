@@ -200,7 +200,19 @@ const repoRoot = path.resolve(import.meta.dirname, "..");
 // legacy page-typing errors; lock the measured lower floor.
 // 2026-09-04: the usage-drain release's typed PerformanceObserver entries and
 // nullable RPC normalization reduced the verified project graph from 86 to 85.
-const BASELINE = 82; // 2026-09-16 (MP-547): 85 -> 82, three `.catch()` calls on a
+const BASELINE = 75; // 2026-10-10 (PL-WIB-TSC-FLOOR-75): 82 -> 75. CI printed
+// "Ratchet drop available" from 10-06 (76) and 10-09 (75) and nobody locked it,
+// so any 7 new errors would have passed green (MP-356: a count floor is
+// fungible). Attributed by diffing the full error list at f5f74b5d (82) against
+// 81644cc0 (75), same `tsc -b --noEmit --force`, same node_modules:
+//   cab55b7a  UnclaimedLeads.tsx read an undeclared `kjId` (ReferenceError on render)
+//   d49815a9  ClientDetail.tsx filtered agentlink_* on 2 columns that do not exist
+//   be63c0d9  ApplicationStatus + ApplicationConfirmationV2 destructured `snap`
+//             off a react-query result, so the snapshot was always undefined (x2)
+//   10-06 types regen  applications Insert enums became text; LeadImporter fits
+//   8fbc6e98  DataFreshnessBanner.tsx deleted as an orphan (removal, not a fix)
+// None is a @ts-nocheck, an exclusion, or a parse failure (MP-496).
+// Prior: 2026-09-16 (MP-547): 85 -> 82, three `.catch()` calls on a
 // lazy Postgrest builder in UnlicensedAll.tsx. NOTE: measured with THIS gate's
 // `tsc -b` (src/ + tests/). A first cut read 81 off `tsc -p tsconfig.app.json`,
 // a narrower operand that omits tests/ — the count moved under the measurement,

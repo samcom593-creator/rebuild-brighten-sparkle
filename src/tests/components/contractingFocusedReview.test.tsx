@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useNavigate } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { agent, emptyProfile, fakeBackend } from "../helpers/reviewFixtures";
 
@@ -95,5 +95,20 @@ describe("focused contracting review", () => {
     expect(dialog.getByRole("alert")).toHaveTextContent("unsaved edits");
     fireEvent.click(dialog.getByRole("button", { name: "Keep editing" }));
     expect(dialog.getByLabelText("First name")).toHaveValue("Annie");
+  });
+});
+
+describe("focused contracting review: following a link while already open", () => {
+  it("switches to the person named by ?review= when the URL changes after mount (a drawer's 'Open in review' on My Team)", async () => {
+    let go: ((to: string) => void) | null = null;
+    const Nav = () => { go = useNavigate(); return null; };
+    fb = fakeBackend([agent({ id: "ann", display_name: "Ann Lee" }), agent({ id: "bo", display_name: "Bo Chen", marked: ["aflac"] })]);
+    backend.current = fb;
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false, retryDelay: 0 } } });
+    render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={["/team?view=contracting"]}><Nav /><ContractingReviewWorkspace /></MemoryRouter></QueryClientProvider>);
+    await screen.findByRole("article", { name: "Review Ann Lee" });
+    act(() => { go?.("/team?view=contracting&review=bo"); });
+    await screen.findByRole("article", { name: "Review Bo Chen" });
+    expect(screen.queryByRole("article", { name: "Review Ann Lee" })).toBeNull();
   });
 });

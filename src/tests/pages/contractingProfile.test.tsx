@@ -23,7 +23,9 @@ beforeEach(() => { vi.clearAllMocks(); });
 describe("Complete your contracting profile", () => {
   it("asks for the five fields and nothing else, prefilled from what the site already knows", async () => {
     mount();
-    expect(await screen.findByLabelText("First name")).toHaveValue("Ava");
+    // The inputs exist before the profile read lands; wait for the value, not just the field (flaked once on CI).
+    await screen.findByLabelText("First name");
+    await waitFor(() => expect(screen.getByLabelText("First name")).toHaveValue("Ava"));
     expect(screen.getByLabelText("Last name")).toHaveValue("Agent");
     expect(screen.getByLabelText("Email")).toHaveValue("ava@example.test");
     expect(screen.getByLabelText("Resident state")).toHaveValue("AZ");

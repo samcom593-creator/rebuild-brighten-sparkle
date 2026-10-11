@@ -58,6 +58,12 @@ export function ContractingReviewWorkspace({ className, initialView = "focused" 
 
   // A new search, filter or team starts a fresh list: the page size resets and nobody stays pinned from the old one.
   useEffect(() => { setShown(PAGE); }, [filter, search, managerId]);
+  // The link can change while this stays mounted (My Team opens on Contracting, then a drawer's "Open in review"
+  // rewrites ?review=); the initial state above would keep the first person on the list, so follow the URL.
+  const reviewParam = searchParams.get("review");
+  const qParam = searchParams.get("q");
+  useEffect(() => { if (reviewParam) setCurrentId(reviewParam); }, [reviewParam]);
+  useEffect(() => { if (qParam !== null) setSearch(qParam); }, [qParam]);
 
   const focusPerson = useCallback((id: string) => {
     setCurrentId(id);

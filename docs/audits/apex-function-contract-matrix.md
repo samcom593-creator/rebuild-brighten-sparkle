@@ -1,15 +1,15 @@
 # APEX Function Contract Matrix
 
-Generated: 2026-10-09T04:53:05.186Z
-Repository: `/private/tmp/wib-sms`
+Generated: 2026-10-11T09:29:06.198Z
+Repository: `/private/tmp/wib-26/wt`
 
 ## Inventory Summary
 
 - Total Local Edge Functions: **241**
 - Configured in `config.toml`: **242**
-- Invoked Edge Functions in Source: **104**
-- Invoked RPC Calls in Source: **218**
-- SQL Functions in Migrations: **641**
+- Invoked Edge Functions in Source: **99**
+- Invoked RPC Calls in Source: **215**
+- SQL Functions in Migrations: **679**
 
 ## Edge Function Auth & Verification Contracts
 
@@ -29,12 +29,12 @@ Repository: `/private/tmp/wib-sms`
 | `apex-alert-dispatch` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `apex-audit-engine` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `apex-bootstrap` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `apex-evening-report` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `apex-evening-report` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `apex-exec` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `apex-mcp` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `apex-morning-brief` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `apex-morning-brief` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `apex-outbox-dispatcher` | Yes | Yes | `true` | Authenticated JWT | PASS |
-| `apex-weekly-report` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `apex-weekly-report` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `applicant-checkin` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `applicant-magic-link` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `applicant-self-report` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -44,7 +44,7 @@ Repository: `/private/tmp/wib-sms`
 | `brand-collab` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `brand-photo-upload` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `bulk-agent-message` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
-| `bulk-resend-course-emails` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `bulk-resend-course-emails` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `bulk-send-licensing` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `calendly-backfill` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `calendly-webhook` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
@@ -92,7 +92,7 @@ Repository: `/private/tmp/wib-sms`
 | `gcal-sync` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `generate-award-graphics` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `generate-magic-link` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `generate-monthly-awards` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `generate-monthly-awards` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `get-active-managers` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `get-public-recruiters` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `get-vapid-public-key` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -108,7 +108,7 @@ Repository: `/private/tmp/wib-sms`
 | `interviews-outcome` | Yes | Yes | `true` | Authenticated JWT | PASS |
 | `interviews-pipeline` | Yes | Yes | `true` | Authenticated JWT | PASS |
 | `license-milestone-sms-drain` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
-| `licensing-stage-nudge` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `licensing-stage-nudge` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `link-account` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `log-production` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `manager-daily-digest` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -130,15 +130,15 @@ Repository: `/private/tmp/wib-sms`
 | `notify-comeback-alert` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `notify-course-complete` | Yes | Yes | `true` | Authenticated JWT | PASS |
 | `notify-course-started` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `notify-deal-alert` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `notify-deal-alert` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `notify-deal-submitted` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `notify-hire-announcement` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `notify-lead-assigned` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `notify-low-close-rate` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `notify-manager-downline-production` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `notify-manager-referral` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `notify-missed-dialer` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `notify-module-progress` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `notify-missed-dialer` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
+| `notify-module-progress` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `notify-no-deal-today` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `notify-notes-added` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `notify-production-submitted` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -147,16 +147,16 @@ Repository: `/private/tmp/wib-sms`
 | `notify-set-goals` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `notify-stage-change` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `notify-streak-alert` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `notify-test-reminder` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `notify-test-reminder` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `notify-test-scheduled` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `notify-top-performer` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `notify-training-reminder` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `notify-top-performer` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
+| `notify-training-reminder` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `notion-sync` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `nudge-unworked-applications` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `nudge-unworked-applications` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `numbers-reminder` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `onboarding-call-invites` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `onboarding-nudge-sweep` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `outreach-sender` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `outreach-sender` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `overseer-bot` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `parse-schedule-image` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `poke-pusher` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -172,7 +172,7 @@ Repository: `/private/tmp/wib-sms`
 | `request-agent-photos` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `reset-agent-password` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `resolve-ref-slug` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `run-licensing-checkups` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `run-licensing-checkups` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `schedule-auto-populate` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `schedule-interview` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `score-applicant` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -194,14 +194,14 @@ Repository: `/private/tmp/wib-sms`
 | `send-candidate-confirmation` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-couldnt-reach-email` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-course-enrollment-email` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `send-course-hurry-emails` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `send-course-hurry-emails` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `send-course-reminder` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `send-daily-checkin-prompt` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `send-daily-producer-spotlight` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `send-daily-checkin-prompt` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
+| `send-daily-producer-spotlight` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `send-email` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-followup-emails` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-instagram-dm` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
-| `send-license-milestone` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `send-license-milestone` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `send-licensing-instructions` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-licensing-sequence` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-login-to-manager` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -215,14 +215,14 @@ Repository: `/private/tmp/wib-sms`
 | `send-post-call-followup` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-proactive-coaching` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-push-notification` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `send-push-optin-email` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `send-push-optin-email` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `send-reapply-blast` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `send-sam-morning-report` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-seminar-invite-blast` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `send-sms-auto-detect` | Yes | Yes | `true` | Authenticated JWT | PASS |
 | `send-sms-via-email` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
-| `send-unlicensed-process-update` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `send-weekly-analytics` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `send-unlicensed-process-update` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
+| `send-weekly-analytics` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `send-whatsapp-onboarding-blast` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `setup-agent-password` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `simple-login` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -265,6 +265,6 @@ applied by hand through bot-sql and never round-tripped into
 `supabase/migrations`, so this directory does not model the deployed database.
 `apex-doctor` queries `pg_proc` and is the authority on deployed state.
 
-- Invoked RPCs: **218**
-- Also declared in this commit's migrations: **203**
-- Declared only in the database: **15**
+- Invoked RPCs: **215**
+- Also declared in this commit's migrations: **207**
+- Declared only in the database: **8**

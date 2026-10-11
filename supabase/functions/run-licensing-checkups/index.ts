@@ -7,6 +7,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 // 164/164, metricool-sync 3/3 — zero 200s. 2.90.1 is the version proven booting.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { requireSendAuth } from "../_shared/require-send-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -175,6 +176,18 @@ const NUDGE_SCHEDULE: NudgeScheduleItem[] = [
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // No caller (PL-WIB-ZERO-CALLER-SENDERS, 2026-10-11): no cron, trigger, page,
+  // edge function or local script invokes this, and 10 days of edge logs hold
+  // no real request. verify_jwt is false, so before this gate a bare POST from
+  // anyone ran the whole send. Service key or a signed-in admin/manager only.
+  const sendAuth = await requireSendAuth(req);
+  if (!sendAuth.ok) {
+    return new Response(JSON.stringify({ error: sendAuth.error }), {
+      status: sendAuth.status,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   try {

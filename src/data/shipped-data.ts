@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "18 automated message senders that nothing uses now refuse strangers. Anyone could set any of them off with one request.",
+    detail: "These 18 back-end senders (morning, evening and weekly reports, licensing nudges and checkups, training and test reminders, producer spotlight, weekly analytics and others) read no login. One request from anyone on the internet ran the whole send, and 9 of them can text. Nothing in the site, the database, the schedules or the bots calls any of them, and 10 days of logs show no real request, so they now answer only the internal service key or a signed-in admin or manager. Nothing that runs today changes. The checker that guards these gates also counted a gate that was only written in a comment as real. It now ignores comments, so commenting a gate out fails the build.",
+    commit: "PL-WIB-ZERO-CALLER-SENDERS",
+  },
+  {
+    ts: "today",
     label: "Every contracting page now runs on the new process, and Book Flips can target a state.",
     detail: "Contracting is four pages: Review, Carriers, Writing numbers, and Requests (history, behind a banner). The operations, cases, Aflac-send, Ethos-sheet, audit and contracts-board pages are gone; their old links and bookmarks land on the review or on My Team's Contracting view. The agent drawer and producer profile show the review's own standing (N of 4 confirmed, placement level) instead of an AgentLink 'ready to write' card, and Home's contracting panel and tile count people who still need a circle confirmed. Book Flips has a state row: the client's state on file first, otherwise the phone's area code marked as likely, with counts per state and an honest Unknown bucket, kept in the link (?state=AZ) so a state can be shared.",
     commit: "PL-CONTRACTING-PAGES-HEAD-TO-TOE",

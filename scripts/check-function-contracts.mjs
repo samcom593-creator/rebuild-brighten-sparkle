@@ -352,6 +352,31 @@ const PUBLIC_ALLOWLIST = new Set([
   // Sam + manager). requireSendAuth (admin_or_manager). No callers at all.
   "send-unlicensed-process-update",
   "bulk-resend-course-emails",
+  // 18 cron-shaped senders with NO caller (2026-10-11, PL-WIB-ZERO-CALLER-SENDERS):
+  // no src invoke, no edge fn, no pg_proc, no active cron, no local script, and
+  // 0 non-OPTIONS requests in function_edge_logs 2026-10-01..10-11 (control
+  // system-health-check 80-96/day). A bare POST ran each whole send (9 reach
+  // SMS). requireSendAuth (admin_or_manager) now. The two inactive cron rows
+  // (outreach-sender, send-license-milestone) present the service key, so
+  // re-enabling either still passes.
+  "apex-evening-report",
+  "apex-morning-brief",
+  "apex-weekly-report",
+  "generate-monthly-awards",
+  "licensing-stage-nudge",
+  "notify-missed-dialer",
+  "notify-module-progress",
+  "notify-test-reminder",
+  "notify-top-performer",
+  "notify-training-reminder",
+  "nudge-unworked-applications",
+  "run-licensing-checkups",
+  "send-course-hurry-emails",
+  "send-daily-checkin-prompt",
+  "send-daily-producer-spotlight",
+  "send-weekly-analytics",
+  "send-license-milestone",
+  "outreach-sender",
   // send-sms-via-email (2026-10-09): a bare POST {phone, body} texted any US
   // number with caller-chosen words; {agentId, body} texted any agent. No
   // credential read. requireSendAuth (admin_or_manager) now. Callers:
@@ -485,6 +510,25 @@ const PUBLIC_CONTRACT = {
   "notify-deal-alert": "in_handler_gate",
   // send-push-optin-email: requireSendAuth, admin_or_manager. Caller NotificationHub.
   "send-push-optin-email": "in_handler_gate",
+  // The 18 no-caller senders, 2026-10-11: requireSendAuth, admin_or_manager.
+  "apex-evening-report": "in_handler_gate",
+  "apex-morning-brief": "in_handler_gate",
+  "apex-weekly-report": "in_handler_gate",
+  "generate-monthly-awards": "in_handler_gate",
+  "licensing-stage-nudge": "in_handler_gate",
+  "notify-missed-dialer": "in_handler_gate",
+  "notify-module-progress": "in_handler_gate",
+  "notify-test-reminder": "in_handler_gate",
+  "notify-top-performer": "in_handler_gate",
+  "notify-training-reminder": "in_handler_gate",
+  "nudge-unworked-applications": "in_handler_gate",
+  "run-licensing-checkups": "in_handler_gate",
+  "send-course-hurry-emails": "in_handler_gate",
+  "send-daily-checkin-prompt": "in_handler_gate",
+  "send-daily-producer-spotlight": "in_handler_gate",
+  "send-weekly-analytics": "in_handler_gate",
+  "send-license-milestone": "in_handler_gate",
+  "outreach-sender": "in_handler_gate",
 
   // --- the credential is the token in the URL ----------------------------
   "content-share": "url_token",

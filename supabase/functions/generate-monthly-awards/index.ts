@@ -27,6 +27,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { Resvg, initWasm } from "https://esm.sh/@resvg/resvg-wasm@2.6.2";
 import { postNtfyGraded } from "../_shared/ntfy-post.ts";
+import { requireSendAuth } from "../_shared/require-send-auth.ts";
 
 // One-time WASM init (cold start cost ~150ms)
 let wasmReady = false;
@@ -226,6 +227,18 @@ async function svgToPng(svg: string): Promise<Uint8Array> {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  // No caller (PL-WIB-ZERO-CALLER-SENDERS, 2026-10-11): no cron, trigger, page,
+  // edge function or local script invokes this, and 10 days of edge logs hold
+  // no real request. verify_jwt is false, so before this gate a bare POST from
+  // anyone ran the whole send. Service key or a signed-in admin/manager only.
+  const sendAuth = await requireSendAuth(req);
+  if (!sendAuth.ok) {
+    return new Response(JSON.stringify({ error: sendAuth.error }), {
+      status: sendAuth.status,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
   const sb = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",

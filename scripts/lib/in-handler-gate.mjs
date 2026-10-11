@@ -29,6 +29,8 @@
 // requireAuth() reads as present too. It is a stronger operand than a name in a
 // list, not a proof of correctness.
 
+import { stripComments } from "./strip-comments.mjs";
+
 // Identifiers assigned from an expression matching `probe`, anywhere in the
 // file. Bounded at 300 chars so a runaway match cannot swallow the rest of the
 // source.
@@ -171,7 +173,17 @@ export function firstOffset(pats, src) {
 
 // The earliest offset at which this function refuses an unproven caller by ANY
 // known convention, plus which one answered. Infinity => no gate detected.
-export function inHandlerGate(code) {
+//
+// COMMENTS ARE NOT GATES (PL-WIB-ZERO-CALLER-SENDERS, 2026-10-11). Of the two
+// consumers, check-credential-minting stripped comments before asking and
+// check-function-contracts passed raw source, so a gate commented out of an
+// allowlisted function still read as present there: proven with
+// run-licensing-checkups, call commented out, guard exit 0. Stripping here
+// makes the answer the same for every consumer. stripComments blanks rather
+// than deletes, so offsets still index the caller's text, and running it on
+// already-stripped code changes nothing.
+export function inHandlerGate(rawCode) {
+  const code = stripComments(rawCode);
   const legs = {
     CRED: firstOffset(CRED_PATTERNS, code),
     SHARED_SECRET: sharedSecretGateAt(code),

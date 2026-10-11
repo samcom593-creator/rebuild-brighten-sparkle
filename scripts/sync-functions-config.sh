@@ -170,6 +170,27 @@ PUBLIC_ALLOWLIST=(
   # send-push-optin-email (2026-10-11): same gate, admin_or_manager floor.
   # Caller NotificationHub (requireAdmin) on the user JWT.
   "send-push-optin-email"
+  # 18 no-caller senders (2026-10-11): requireSendAuth, admin_or_manager. The
+  # inactive cron rows for outreach-sender and send-license-milestone present
+  # the service key, which is not a JWT, so verify_jwt stays false.
+  "apex-evening-report"
+  "apex-morning-brief"
+  "apex-weekly-report"
+  "generate-monthly-awards"
+  "licensing-stage-nudge"
+  "notify-missed-dialer"
+  "notify-module-progress"
+  "notify-test-reminder"
+  "notify-top-performer"
+  "notify-training-reminder"
+  "nudge-unworked-applications"
+  "run-licensing-checkups"
+  "send-course-hurry-emails"
+  "send-daily-checkin-prompt"
+  "send-daily-producer-spotlight"
+  "send-weekly-analytics"
+  "send-license-milestone"
+  "outreach-sender"
   "cron-newhire-portal-login"
   "instagram-comments-backfill"
   "instagram-token-keepalive"

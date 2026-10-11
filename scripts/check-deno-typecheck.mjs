@@ -18,11 +18,24 @@
  *         url = (data as any)?.value || NTFY_DEFAULT_TOPIC;
  *
  * and clean against the fix. The gate would have caught the real bug at the
- * commit that introduced it. That proof is pinned as a regression test in
- * src/tests/scripts/denoTypecheck.test.ts, so a future edit that stops this
- * script detecting TS2304 fails loudly instead of protecting nothing (MP-274:
- * a guard that restates the rule it guards is not a guard — the test drives
- * THIS file).
+ * commit that introduced it. What keeps TS2304 detection honest is selfTest()
+ * below, which compiles a file that IS the bug on every run and refuses a
+ * verdict if the predicate misses it. (This header used to say the proof was
+ * pinned in src/tests/scripts/denoTypecheck.test.ts. That file has never
+ * existed in any commit; checked 2026-10-11.)
+ *
+ * A NON-ZERO EXIT IS NOT A TYPE ERROR (PL-WIB-DENO-FETCH-NOT-TYPE-ERROR). deno
+ * check also exits 1 when a remote import cannot be fetched, with no TS code
+ * at all. This gate used to grade every non-zero exit as FAIL, so a deno.land
+ * blip told CI "NEW type errors in agent-signup ... they were introduced" on a
+ * commit that never touched it (run 38107075760), and printed none of deno's
+ * output, so nobody could tell. The same blip on a BASELINED function read as
+ * "still failing as expected": green, and that function's TS2304 grading
+ * silently skipped. Now: a failure with no TS diagnostic is retried, and if it
+ * persists it is reported as COULD NOT TYPE-CHECK (red, never green, never
+ * called a type error), with deno's own output printed under every red slug.
+ * Classifier and retry policy: scripts/lib/deno-check-classify.mjs, pinned by
+ * src/tests/scripts/denoCheckClassify.test.ts.
  *
  * WHY THE BASELINE IS A SET AND NOT A COUNT. MP-356: a count-only floor is
  * fungible — a real regression sat red for 8 commits and was then absorbed by
@@ -66,6 +79,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "no
 import { tmpdir } from "node:os";
 import { cpus } from "node:os";
 import path from "node:path";
+import { classify, excerpt, HAS_TS_DIAGNOSTIC, RETRY_DELAYS_MS } from "./lib/deno-check-classify.mjs";
 
 const BASELINE_PATH = "scripts/deno-typecheck-baseline.json";
 const WRITE = process.argv.includes("--write-baseline");
@@ -138,6 +152,11 @@ function selfTest() {
   if (!SAYS_UNDEFINED_NAME(b.out)) faults.push("the undefined-identifier predicate did NOT match deno's own diagnostic");
   if (g.status !== 0) faults.push("deno check FAILED a file that is plainly valid");
   if (SAYS_UNDEFINED_NAME(g.out)) faults.push("the predicate matched a clean file -- it would flag everything");
+  // Same control for the TS-diagnostic predicate: if deno stopped printing
+  // TSxxxx codes, every real type error would be retried and filed as
+  // COULD NOT TYPE-CHECK instead of a regression.
+  if (!HAS_TS_DIAGNOSTIC(b.out)) faults.push("HAS_TS_DIAGNOSTIC did NOT match deno's output for a real type error");
+  if (HAS_TS_DIAGNOSTIC(g.out)) faults.push("HAS_TS_DIAGNOSTIC matched a clean file");
   rmSync(dir, { recursive: true, force: true });
   return faults;
 }
@@ -167,35 +186,51 @@ console.log(
   "  cannot drift away from what it actually costs.",
 );
 
-/** @type {Map<string, {status:string, out:string}>} */
+/** @type {Map<string, {status:string, out:string, attempts:number, firstOut:string}>} */
 const results = new Map();
 let cursor = 0;
 async function worker() {
   while (cursor < files.length) {
     const f = files[cursor++];
-    const r = spawnSync(
-      "deno",
-      // --node-modules-dir=none: see the header. Without it, 7 correct
-      // functions report as broken because deno resolves npm: against this
-      // repo's node_modules instead of its own cache.
-      ["check", "--quiet", "--node-modules-dir=none", f],
-      { encoding: "utf8", timeout: TIMEOUT_MS },
-    );
-    const out = `${r.stdout || ""}${r.stderr || ""}`;
+    let attempts = 0;
     let status;
-    if (r.error && r.error.code === "ETIMEDOUT") status = "UNKNOWN";
-    else if (r.error) status = "UNKNOWN";
-    else if (r.status === 0) status = "PASS";
-    else if (r.status === null) status = "UNKNOWN";
-    else status = "FAIL";
-    results.set(slugOf(f), { status, out });
+    let out;
+    let firstOut = "";
+    for (;;) {
+      attempts += 1;
+      const r = spawnSync(
+        "deno",
+        // --node-modules-dir=none: see the header. Without it, 7 correct
+        // functions report as broken because deno resolves npm: against this
+        // repo's node_modules instead of its own cache.
+        ["check", "--quiet", "--node-modules-dir=none", f],
+        { encoding: "utf8", timeout: TIMEOUT_MS },
+      );
+      out = `${r.stdout || ""}${r.stderr || ""}`;
+      status = classify({ error: r.error, status: r.status, out });
+      if (attempts === 1) firstOut = out;
+      if (status !== "UNRESOLVED" || attempts > RETRY_DELAYS_MS.length) break;
+      await new Promise((res) => setTimeout(res, RETRY_DELAYS_MS[attempts - 1]));
+    }
+    results.set(slugOf(f), { status, out, attempts, firstOut });
   }
 }
 await Promise.all(Array.from({ length: CONCURRENCY }, worker));
 
 const elapsed = ((Date.now() - started) / 1000).toFixed(1);
 const unknown = [...results].filter(([, v]) => v.status === "UNKNOWN").map(([s]) => s).sort();
+const unresolved = [...results].filter(([, v]) => v.status === "UNRESOLVED").map(([s]) => s).sort();
 const failing = [...results].filter(([, v]) => v.status === "FAIL").map(([s]) => s).sort();
+// Retried and then compiled to a real verdict. Printed so a flaky fetch is
+// visible in the log instead of vanishing, but it does not vote.
+const recovered = [...results]
+  .filter(([, v]) => v.attempts > 1 && v.status !== "UNRESOLVED")
+  .map(([s]) => s).sort();
+
+const MAX_SHOWN = 5;
+const showOutput = (slugs) => slugs.slice(0, MAX_SHOWN).map((s) =>
+  `\n    ${s}:\n` + excerpt(results.get(s).out).map((l) => `      | ${l}`).join("\n"),
+).join("") + (slugs.length > MAX_SHOWN ? `\n    ... and ${slugs.length - MAX_SHOWN} more` : "");
 
 // Tier 2, graded across EVERY entrypoint including baselined ones: this is the
 // class the gate exists for, and a baseline must not hide it.
@@ -204,6 +239,16 @@ const undefinedName = [...results]
   .map(([s]) => s).sort();
 
 if (WRITE) {
+  // A baseline written while blind drops every slug it could not look at, and
+  // the next run would read those slugs' real type errors as "introduced".
+  if (unknown.length || unresolved.length) {
+    console.log(
+      `\nREFUSING to write ${BASELINE_PATH}: could not type-check ` +
+      `${[...unknown, ...unresolved].join(", ")}. Re-run once they resolve.` +
+      showOutput([...unknown, ...unresolved]),
+    );
+    process.exit(1);
+  }
   const reasons = Object.fromEntries(failing.map((s) => {
     const codes = [...new Set((results.get(s).out.match(/TS[0-9]+/g) || []))].sort();
     return [s, codes.join(",") || "non-TS"];
@@ -232,7 +277,22 @@ if (unknown.length) {
   problems.push(
     `COULD NOT LOOK at ${unknown.length} function(s): ${unknown.join(", ")}.\n` +
     "    A check that could not run is not a check that passed. Re-run; if it\n" +
-    "    persists, the compile is hanging and that is itself the finding.",
+    "    persists, the compile is hanging and that is itself the finding." +
+    showOutput(unknown),
+  );
+}
+
+if (unresolved.length) {
+  problems.push(
+    `COULD NOT TYPE-CHECK ${unresolved.length} function(s): ${unresolved.join(", ")}.\n` +
+    `    deno exited non-zero ${RETRY_DELAYS_MS.length + 1} times each without printing a single TS\n` +
+    "    diagnostic, so it never reached the type checker. This is NOT reported as a\n" +
+    "    type error and it is NOT a pass. Read deno's own words below: a remote import\n" +
+    "    that could not be fetched is the network (re-run); 'Integrity check failed'\n" +
+    "    is deno.lock vs the CDN; 'Module not found' on a file:// path is a real bug.\n" +
+    "    Graded for baselined functions too: a baselined function nobody could compile\n" +
+    "    has not been checked for an undefined identifier either." +
+    showOutput(unresolved),
   );
 }
 
@@ -251,7 +311,8 @@ if (regressions.length) {
     `NEW type errors in ${regressions.length} edge function(s): ${regressions.join(", ")}.\n` +
     "    These are NOT in the baseline, so they were introduced. Edge functions\n" +
     "    have no other type-check anywhere in this repo. Reproduce one with:\n" +
-    `      deno check --node-modules-dir=none supabase/functions/${regressions[0]}/index.ts`,
+    `      deno check --node-modules-dir=none supabase/functions/${regressions[0]}/index.ts` +
+    showOutput(regressions),
   );
 }
 
@@ -271,15 +332,25 @@ if (undefinedName.length) {
     "    This is graded across EVERY entrypoint, baselined or not, because it is\n" +
     "    the exact class that shipped in 66d59f20 and threw on every real alert\n" +
     "    for 8 days. At runtime this is an uncaught ReferenceError, not a falsy\n" +
-    "    value. The baseline does not cover it and cannot be used to silence it.",
+    "    value. The baseline does not cover it and cannot be used to silence it." +
+    showOutput(undefinedName),
   );
 }
 
 console.log(
-  `\n${results.size} checked in ${elapsed}s — ${results.size - failing.length - unknown.length} pass, ` +
+  `\n${results.size} checked in ${elapsed}s — ${results.size - failing.length - unknown.length - unresolved.length} pass, ` +
   `${failing.length} fail (${known.size} baselined), ${unknown.length} unknown, ` +
-  `${undefinedName.length} with an undefined identifier.`,
+  `${unresolved.length} could not type-check, ${undefinedName.length} with an undefined identifier.`,
 );
+if (recovered.length) {
+  console.log(
+    `NOTE: ${recovered.length} function(s) failed with no TS diagnostic and then compiled on retry: ` +
+    recovered.map((s) => {
+      const first = excerpt(results.get(s).firstOut, 1)[0] || "(no output)";
+      return `${s} (${results.get(s).attempts} attempts; first said: ${first.slice(0, 160)})`;
+    }).join("; ") + ". Not a type error, does not vote.",
+  );
+}
 
 if (problems.length) {
   console.log("\ncheck:deno-typecheck FAILED:\n");

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { STATE_UNKNOWN, defaultBookFilter, matchesState, policyState, stateCounts, stateSourceText } from "@/lib/bookFlips";
+import { STATE_UNKNOWN, defaultBookFilter, matchesState, policyState, stateChipsFor, stateCounts, stateSourceText } from "@/lib/bookFlips";
 import {
   isCallbackDue, matchesBook, matchesFlip, matchesSearch, monthsInForceText, priorityTier, sortPolicies, splitName,
   type BookPolicy,
@@ -153,5 +153,26 @@ describe("the bucket the page opens on", () => {
     expect(defaultBookFilter([base({ agent_gone: false }), base({ agent_gone: false, status_group: "lapsing" })])).toBe("all");
     expect(defaultBookFilter([base({ agent_gone: true, status_group: "dead" })])).toBe("all");
     expect(defaultBookFilter([])).toBe("all");
+  });
+});
+
+describe("state chips: the busiest states, and always the selected one with its real count", () => {
+  const by = [
+    { code: "OH", count: 9, onFile: 1 }, { code: "TX", count: 8, onFile: 0 }, { code: "MO", count: 7, onFile: 0 },
+    { code: "WA", count: 2, onFile: 0 }, { code: STATE_UNKNOWN, count: 5, onFile: 0 },
+  ];
+  it("shows the top states without the Unknown bucket", () => {
+    expect(stateChipsFor(by, "all", 3).map((c) => c.code)).toEqual(["OH", "TX", "MO"]);
+  });
+  it("a selected state hidden by the cut keeps its real count, never a zero stub", () => {
+    const chips = stateChipsFor(by, "WA", 3);
+    expect(chips[0]).toEqual({ code: "WA", count: 2, onFile: 0 });
+    expect(chips.map((c) => c.code)).toEqual(["WA", "OH", "TX", "MO"]);
+  });
+  it("a selected state with nobody at all shows as 0 so the user can see why the list is empty", () => {
+    expect(stateChipsFor(by, "AZ", 3)[0]).toEqual({ code: "AZ", count: 0, onFile: 0 });
+  });
+  it("selecting Unknown changes nothing about the state chips", () => {
+    expect(stateChipsFor(by, STATE_UNKNOWN, 3).map((c) => c.code)).toEqual(["OH", "TX", "MO"]);
   });
 });

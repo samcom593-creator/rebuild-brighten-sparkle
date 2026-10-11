@@ -266,11 +266,14 @@ export function AgentProfileDrawer() {
            total_policies, total_premium, total_earnings, manager_id,
            display_name, is_deactivated, is_inactive, onboarding_stage,
            first_deal_at, contracted_at, notes,
-           profile:profiles!agents_profile_id_fkey(full_name, email, phone, avatar_url),
-           manager:agents!manager_id(id, profile:profiles(full_name))`,
+           profile:profiles!agents_profile_id_fkey(full_name, email, phone, avatar_url)`,
         )
         .eq("id", agentId)
         .maybeSingle();
+      // 2026-10-10: the manager is read in a second query. Embedding it through v_agents_full
+      // (manager:agents!manager_id) is ambiguous to PostgREST — a view over agents matches the
+      // self-referencing key in both directions — so it answered 300 and the whole drawer failed
+      // with "Could not embed because more than one relationship was found", for every agent.
       if (error) {
         // 2026-06-16 Sam-feedback: search doesn't pull up profile. If RLS
         // or the embedded join breaks, surface it instead of silent-null.
@@ -283,8 +286,16 @@ export function AgentProfileDrawer() {
 
         console.warn("[AgentProfileDrawer] no agent row for id", agentId);
         toast.warning(`No agent row for id ${agentId.slice(0, 8)}…`);
+        return null;
       }
-      return (data as any) ?? null;
+      let manager: { id: string; profile: { full_name: string | null } | null } | null = null;
+      if (data.manager_id) {
+        const m = await supabase.from("agents").select("id, display_name, profile:profiles(full_name)").eq("id", data.manager_id).maybeSingle();
+        const mp = (m.data?.profile ?? null) as { full_name: string | null } | null;
+        // A failed manager read never hides the agent: the drawer shows "—" for the manager instead.
+        manager = m.data ? { id: m.data.id, profile: { full_name: m.data.display_name || mp?.full_name || null } } : null;
+      }
+      return { ...(data as any), manager };
     },
     staleTime: 30_000,
   });

@@ -314,7 +314,20 @@ export function matchesState(p: Pick<BookPolicy, "state" | "phone">, code: strin
 }
 
 /** Counts per state over a list (already narrowed by the other filters), highest first, Unknown last. */
-export function stateCounts<T extends Pick<BookPolicy, "state" | "phone">>(list: readonly T[]): Array<{ code: string; count: number; onFile: number }> {
+export interface StateCount { code: string; count: number; onFile: number }
+
+/**
+ * The state chips to show: the busiest states, and always the selected one. A selected state outside the busiest
+ * few keeps its REAL count (it was only hidden by the cut, not empty); only a state with nobody at all shows 0.
+ */
+export function stateChipsFor(byState: readonly StateCount[], selected: string, top = 12): StateCount[] {
+  const chips = byState.filter((s) => s.code !== STATE_UNKNOWN).slice(0, top);
+  if (selected === "all" || selected === STATE_UNKNOWN || chips.some((c) => c.code === selected)) return chips;
+  const real = byState.find((s) => s.code === selected);
+  return [real ?? { code: selected, count: 0, onFile: 0 }, ...chips];
+}
+
+export function stateCounts<T extends Pick<BookPolicy, "state" | "phone">>(list: readonly T[]): StateCount[] {
   const m = new Map<string, { count: number; onFile: number }>();
   let unknown = 0;
   for (const p of list) {

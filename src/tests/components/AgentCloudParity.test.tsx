@@ -71,7 +71,8 @@ describe("AgentCloud parity surfaces", () => {
     for (const event of ["Appointment", "Birthday", "Policy Starting Soon", "Beneficiary Check-In", "Lapse Follow-Up", "Policy Anniversary"]) expect(calendar).toContain(event);
 
     const profile = source("pages/ProducerProfile.tsx");
-    for (const tab of ["Personal info", "Carriers", "Contracts", "Background", "Documents"]) expect(profile).toContain(tab);
+    for (const tab of ["Personal info", "Carriers", "Writing numbers", "Background", "Documents"]) expect(profile).toContain(tab);
+    expect(profile).not.toContain("/dashboard/contracting/contracts");
   });
 
   it("keeps Galaxy Training recruit lifecycle, active journey, and qualification calculator first-class", () => {

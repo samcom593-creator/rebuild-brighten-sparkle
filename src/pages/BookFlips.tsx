@@ -13,7 +13,7 @@ import { contactLinkProps, formatPhoneDisplay, phoneHref } from "@/lib/phone";
 import { cn } from "@/lib/utils";
 import {
   BOOK_FILTERS, defaultBookFilter, FLIP_FILTERS, FLIP_LABEL, FLIP_TONE, GROUP_TONE, PRIORITY_CARRIERS, PRIORITY_LABEL, PRIORITY_TONE, SORTS,
-  displayName, matchesBook, matchesFlip, matchesSearch, matchesState, money, monthsInForceText, phoenixTime, policyState, stateCounts, stateName, stateSourceText, STATE_UNKNOWN,
+  displayName, matchesBook, matchesFlip, matchesSearch, matchesState, money, monthsInForceText, phoenixTime, policyState, stateChipsFor, stateCounts, stateName, stateSourceText, STATE_UNKNOWN,
   priorityTier, shortDate, sortPolicies, splitName,
   type BookFilter, type BookPolicy, type FlipFilter, type FlipStatus, type SortKey,
 } from "@/lib/bookFlips";
@@ -145,12 +145,8 @@ export default function BookFlips() {
     () => sortPolicies(searched.filter((p) => matchesState(p, stateFilter) && matchesBook(p, bookFilter) && matchesFlip(p, flipFilter, now)), sort),
     [searched, bookFilter, flipFilter, sort, now, stateFilter],
   );
-  // A state that no longer has anyone under the current filters still shows (as 0) while selected, so the user can see why.
-  const stateChips = useMemo(() => {
-    const chips = byState.filter((s) => s.code !== STATE_UNKNOWN).slice(0, 12);
-    if (stateFilter !== "all" && stateFilter !== STATE_UNKNOWN && !chips.some((c) => c.code === stateFilter)) chips.unshift({ code: stateFilter, count: 0, onFile: 0 });
-    return chips;
-  }, [byState, stateFilter]);
+  // The selected state always shows: with its real count when the top-12 cut hid it, as 0 only when nobody is there.
+  const stateChips = useMemo(() => stateChipsFor(byState, stateFilter), [byState, stateFilter]);
   const unknownCount = byState.find((s) => s.code === STATE_UNKNOWN)?.count ?? 0;
   const inState = visible.length;
 

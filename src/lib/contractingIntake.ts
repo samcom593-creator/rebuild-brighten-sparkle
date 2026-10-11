@@ -161,7 +161,8 @@ export const DELIVERY_COPY: Record<DeliveryState, { label: string; tone: "ok" | 
   not_configured: { label: "Not configured", tone: "muted" },
 };
 
+// History labels: these destinations belong to the process retired on Oct 9, 2026. Nothing is sent to them now.
 export const DESTINATION_COPY: Record<string, string> = {
-  contracting_discord: "Discord · Contracting",
-  ethos_sheet: "Contracting spreadsheet",
+  contracting_discord: "Discord channel (retired)",
+  ethos_sheet: "Spreadsheet (retired)",
 };

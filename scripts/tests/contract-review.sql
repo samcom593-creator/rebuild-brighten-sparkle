@@ -130,9 +130,17 @@ insert into discard_i select pg_temp.chk('7 the legacy checkoffs are preserved u
   (select count(*)::text from public.agent_contract_checkoffs where agent_id = 'b1000000-0000-4000-8000-0000000000a1'),
   '3');
 
-insert into discard_i select pg_temp.chk('8 an unmarked person counts as ''needs review'', never as done or late',
-  (select concat(pg_temp.tf((j->'counts'->>'needs_review')::int = (j->'counts'->>'agents')::int), '/', j->'counts'->>'all_four', '/', j->'counts'->>'partial') from r_admin),
-  'yes/0/0');
+-- The counts are judged against the rows of the same read, not against an empty roster: real people are being marked
+-- on the live system (Sam confirmed three agents on 2026-10-09), so "all_four = 0" would fail for a correct read.
+-- needs_review is everyone short of all four (unmarked AND partial), which is what the Needs review filter shows.
+insert into discard_i select pg_temp.chk('8 an unmarked person counts as ''needs review'', never as done or late: counts equal the rows'' marks',
+  (select concat(
+     pg_temp.tf((j->'counts'->>'needs_review')::int = (select count(*) from jsonb_array_elements(j->'agents') a where (a->>'marked_count')::int < 4)), '/',
+     pg_temp.tf((j->'counts'->>'all_four')::int = (select count(*) from jsonb_array_elements(j->'agents') a where (a->>'marked_count')::int = 4)), '/',
+     pg_temp.tf((j->'counts'->>'partial')::int = (select count(*) from jsonb_array_elements(j->'agents') a where (a->>'marked_count')::int between 1 and 3)), '/',
+     pg_temp.tf((select count(*) from jsonb_array_elements(j->'agents') a where a->>'display_name' like 'ZZ SYN%' and a->>'display_name' not like 'ZZ SYN Bulk%' and (a->>'marked_count')::int = 0) = 9))
+   from r_admin),
+  'yes/yes/yes/yes');
 
 -- ── 3. scope: who may read ───────────────────────────────────────────────────────────────────────────────────
 
@@ -220,9 +228,14 @@ insert into discard_i select pg_temp.chk('24 the roster reports three of four ma
   (select concat(a->>'marked_count', '/', (select count(*) from jsonb_object_keys(a->'marks')), '/', (select count(*) from jsonb_each(a->'marks') e where e.value <> 'null'::jsonb)) from (select a from jsonb_array_elements(pg_temp.j('a0000000-0000-4000-8000-0000000000ad', 'public.contract_review_roster()')->'agents') a where a->>'display_name' = 'ZZ SYN HireA1') t(a)),
   '3/4/3');
 
-insert into discard_i select pg_temp.chk('25 the counts come from marks only: there is a partial person, nobody has all four, everyone else needs review',
-  (select concat(pg_temp.tf((j->'counts'->>'partial')::int >= 1), '/', j->'counts'->>'all_four', '/', pg_temp.tf((j->'counts'->>'needs_review')::int = (j->'counts'->>'agents')::int)) from (select pg_temp.j('a0000000-0000-4000-8000-0000000000ad', 'public.contract_review_roster()') j) x),
-  'yes/0/yes');
+insert into discard_i select pg_temp.chk('25 the counts come from marks only: the synthetic partial person is counted as partial, and every count equals its rows',
+  (select concat(
+     pg_temp.tf((select (a->>'marked_count')::int between 1 and 3 from jsonb_array_elements(j->'agents') a where a->>'display_name' = 'ZZ SYN HireA1')), '/',
+     pg_temp.tf((j->'counts'->>'partial')::int = (select count(*) from jsonb_array_elements(j->'agents') a where (a->>'marked_count')::int between 1 and 3)), '/',
+     pg_temp.tf((j->'counts'->>'all_four')::int = (select count(*) from jsonb_array_elements(j->'agents') a where (a->>'marked_count')::int = 4)), '/',
+     pg_temp.tf((j->'counts'->>'needs_review')::int = (select count(*) from jsonb_array_elements(j->'agents') a where (a->>'marked_count')::int < 4)))
+   from (select pg_temp.j('a0000000-0000-4000-8000-0000000000ad', 'public.contract_review_roster()') j) x),
+  'yes/yes/yes/yes');
 
 -- ── 5. mark permissions ──────────────────────────────────────────────────────────────────────────────────────
 

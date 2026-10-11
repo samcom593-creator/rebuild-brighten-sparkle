@@ -361,6 +361,10 @@ const PUBLIC_ALLOWLIST = new Set([
   // from Sam's sending domain to every non-deactivated agent (83) by email and
   // push. requireSendAuth (admin_or_manager) now. No callers at all.
   "notify-deal-alert",
+  // send-push-optin-email (2026-10-11): a bare POST emailed every non-terminated
+  // applicant (836), no dedupe, so each POST repeats the send. requireSendAuth
+  // (admin_or_manager) now. Only caller is NotificationHub (requireAdmin).
+  "send-push-optin-email",
 ]);
 
 // ---------------------------------------------------------------------------
@@ -479,6 +483,8 @@ const PUBLIC_CONTRACT = {
   "send-sms-via-email": "in_handler_gate",
   // notify-deal-alert: requireSendAuth, admin_or_manager. No callers.
   "notify-deal-alert": "in_handler_gate",
+  // send-push-optin-email: requireSendAuth, admin_or_manager. Caller NotificationHub.
+  "send-push-optin-email": "in_handler_gate",
 
   // --- the credential is the token in the URL ----------------------------
   "content-share": "url_token",

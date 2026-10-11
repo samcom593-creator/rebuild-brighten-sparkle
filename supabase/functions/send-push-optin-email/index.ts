@@ -7,6 +7,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 // 164/164, metricool-sync 3/3 — zero 200s. 2.90.1 is the version proven booting.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { requireSendAuth } from "../_shared/require-send-auth.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -25,6 +26,27 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // PL-WIB-PUSH-OPTIN-AUTH (2026-10-11). verify_jwt = false and, until this
+  // commit, no credential read, so a bare POST from anyone emailed every
+  // non-terminated applicant with an address (836 on 2026-10-11) from
+  // notifications@apex-financial.org, 1s apart, with no dedupe: every POST
+  // repeats the whole send. The only caller is NotificationHub's opt-in button
+  // (requireAdmin route, user JWT); src/pg_proc/cron otherwise 0, so the
+  // admin_or_manager floor locks out nobody.
+  const auth = await requireSendAuth(req);
+  if (!auth.ok) {
+    return new Response(JSON.stringify({ error: auth.error }), {
+      status: auth.status,
+      headers: { "Content-Type": "application/json", ...corsHeaders },
+    });
+  }
+
+  // dryRun returns the audience size and sends nothing, so the deployed gate
+  // can be proven with the service key without mailing 836 people. The UI
+  // posts {}, which is not a dry run.
+  const reqBody = await req.json().catch(() => ({}));
+  const dryRun = reqBody?.dryRun === true;
+
   try {
     const supabase = createClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false },
@@ -32,11 +54,19 @@ const handler = async (req: Request): Promise<Response> => {
     const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
     // Fetch all active applicants with email
-    const { data: applicants } = await supabase
+    const { data: applicants, error: applicantsError } = await supabase
       .from("applications")
       .select("id, email, first_name, last_name")
       .is("terminated_at", null)
       .not("email", "is", null);
+    if (applicantsError) throw applicantsError;
+
+    if (dryRun) {
+      return new Response(
+        JSON.stringify({ dryRun: true, total: applicants?.length ?? 0 }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
 
     let sent = 0;
     let failed = 0;

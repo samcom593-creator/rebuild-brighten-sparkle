@@ -167,6 +167,9 @@ PUBLIC_ALLOWLIST=(
   "send-sms-via-email"
   # notify-deal-alert (2026-10-10): same gate, admin_or_manager floor. No callers.
   "notify-deal-alert"
+  # send-push-optin-email (2026-10-11): same gate, admin_or_manager floor.
+  # Caller NotificationHub (requireAdmin) on the user JWT.
+  "send-push-optin-email"
   "cron-newhire-portal-login"
   "instagram-comments-backfill"
   "instagram-token-keepalive"

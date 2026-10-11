@@ -65,6 +65,7 @@ const statusTone: Record<BountyRow["status"], string> = {
 
 export function RecordsAndBounties() {
   const qc = useQueryClient();
+  const [showAllRecords, setShowAllRecords] = useState(false);
   const query = useQuery({
     queryKey: ["apex_records_and_bounties"],
     queryFn: async () => {
@@ -112,7 +113,7 @@ export function RecordsAndBounties() {
           ) : records.length === 0 ? (
             <p className="text-xs text-muted-foreground">No records broken yet. A record is a day, week, policy count, or streak that beats the agent's own prior best.</p>
           ) : (
-            records.map((r) => (
+            (showAllRecords ? records : records.slice(0, 3)).map((r) => (
               <div key={r.id} className="flex items-baseline justify-between gap-3 border-b border-border/60 pb-1.5 last:border-0">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{r.agent_name ?? "Agent"}</p>
@@ -121,6 +122,11 @@ export function RecordsAndBounties() {
                 <span className="shrink-0 text-[12px] text-muted-foreground">{r.achieved_on}</span>
               </div>
             ))
+          )}
+          {records.length > 3 && (
+            <Button variant="ghost" size="sm" className="h-11 w-full" aria-expanded={showAllRecords} onClick={() => setShowAllRecords((value) => !value)}>
+              {showAllRecords ? "Show fewer records" : `Show all ${records.length} recent records`}
+            </Button>
           )}
         </CardContent>
       </Card>

@@ -1,5 +1,5 @@
 import { ReactNode, useState, useEffect, useRef, memo } from "react";
-import { Cloud, Menu } from "lucide-react";
+import { Cloud, Menu, Search } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { GlobalSidebar } from "./GlobalSidebar";
 import { TopBar } from "./TopBar";
@@ -12,6 +12,7 @@ import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { useNavigationGuard } from "@/hooks/useNavigationGuard";
 import { cn } from "@/lib/utils";
 import { useBrand } from "@/hooks/useBrand";
+import { useUIStore } from "@/shared/store/uiStore";
 import { MobileBottomNav } from "./MobileBottomNav";
 
 interface SidebarLayoutProps {
@@ -66,13 +67,14 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
             <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-primary-foreground"><Cloud className="h-[18px] w-[18px]" /></span>
             <span className="truncate text-sm font-semibold text-foreground">{brand.legalName}</span>
           </Link>
-          {/* One explicit mobile entry replaces the old row of unlabeled icon
-              buttons. The sheet below contains the same role-aware navigation,
-              search, support, and permitted money actions in a focus trap. */}
+          <div className="ml-2 flex shrink-0 items-center gap-1">
+          <Button variant="ghost" size="icon" className="h-11 w-11" aria-label="Search people and pages" onClick={() => useUIStore.getState().setCommandPaletteOpen(true)}>
+            <Search className="h-5 w-5" />
+          </Button>
           <Button
             variant="outline"
             size="sm"
-            className="h-10 shrink-0 gap-2 px-3"
+            className="h-11 shrink-0 gap-2 px-3"
             onClick={() => setMobileOpen(true)}
             aria-expanded={mobileOpen}
             aria-controls="apex-mobile-actions"
@@ -80,6 +82,7 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
             <Menu className="h-4 w-4" />
             Actions
           </Button>
+          </div>
         </div>
       </header>
 

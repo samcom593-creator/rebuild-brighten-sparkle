@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { ReactNode } from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import fs from "node:fs";
 import path from "node:path";
@@ -47,9 +47,10 @@ vi.mock("@/stores/agentProfileDrawer", () => ({
   useAgentProfileDrawer: (selector: (s: { openAgent: () => void }) => unknown) =>
     selector({ openAgent: vi.fn() }),
 }));
+const searchOpen = vi.hoisted(() => vi.fn());
 vi.mock("@/shared/store/uiStore", () => ({
-  useUIStore: (selector: (s: { setAskApexOpen: () => void }) => unknown) =>
-    selector({ setAskApexOpen: vi.fn() }),
+  useUIStore: Object.assign((selector: (s: { setAskApexOpen: () => void }) => unknown) =>
+    selector({ setAskApexOpen: vi.fn() }), { getState: () => ({ setCommandPaletteOpen: searchOpen }) }),
 }));
 
 import { GlobalSidebar } from "@/components/layout/GlobalSidebar";
@@ -210,7 +211,7 @@ describe("GlobalSidebar · AgentCloud application navigation", () => {
     renderSidebar("/dashboard", true);
     expect(screen.getByRole("button", { name: "Post a Deal" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Add Agent" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Search APEX" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Search people and pages" })).toBeTruthy();
     expect(screen.getAllByRole("link", { name: "Support desk" })).toHaveLength(1);
   });
 });
@@ -261,3 +262,10 @@ describe("SidebarLayout · mobile drawer contract", () => {
     expect(source).toContain("<Sheet open={mobileOpen}");
   });
 });
+
+ it.each([false, true])("opens shared search from the sidebar (mobile=%s)", (mobile) => {
+    searchOpen.mockClear();
+    renderSidebar("/dashboard", mobile);
+    fireEvent.click(screen.getByRole("button", { name: "Search people and pages" }));
+    expect(searchOpen).toHaveBeenCalledWith(true);
+  });

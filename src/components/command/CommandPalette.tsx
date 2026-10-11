@@ -7,7 +7,6 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-  CommandSeparator,
 } from "@/components/ui/command";
 import { useUIStore } from "@/shared/store/uiStore";
 import { supabase } from "@/integrations/supabase/client";
@@ -87,13 +86,14 @@ export function CommandPalette() {
   const navigate = useNavigate();
   // Same store the sidebar search uses, so both surfaces open the identical drawer.
   const openAgentProfile = useAgentProfileDrawer((s) => s.openAgent);
-  const { isAdmin, isManager, isAgent, hasAgentRecord, isVa, isVaManager, isRecruiter, isLoading: authLoading, effectiveMode } = useAuth();
+  const { user, isAdmin, isManager, isAgent, hasAgentRecord, isVa, isVaManager, isRecruiter, isLoading: authLoading, effectiveMode } = useAuth();
   const { isPreviewing, effectiveRole } = useRolePreview();
   // Applications search opens the recruiting workspace, whose route guard
   // admits admins, managers, VAs, VA managers and recruiters. Nobody else is
   // offered applicant results they could not open.
   const canOpenRecruiting = isAdmin || isManager || isVa || isVaManager || isRecruiter;
   const [query, setQuery] = useState("");
+  const [selectedValue, setSelectedValue] = useState("");
   const [agents, setAgents] = useState<AgentResult[]>([]);
   const [applications, setApplications] = useState<ApplicationResult[]>([]);
 
@@ -157,27 +157,41 @@ export function CommandPalette() {
   // One scoped server search (search_people): every piece of what was typed must match somewhere in the person's
   // name, email, phone digits or agent code, in any order. Escaping and role scope live in the function.
   const [searchState, setSearchState] = useState<"idle" | "loading" | "ok" | "error">("idle");
+  const [retry, setRetry] = useState(0);
   useEffect(() => {
-    if (!open || query.trim().length < 2) { setAgents([]); setApplications([]); setSearchState("idle"); return; }
+    if (!open || authLoading || !canOpenRecruiting || query.trim().length === 1) {
+      setAgents([]); setApplications([]); setSearchState("idle"); return;
+    }
     let cancelled = false;
+    setAgents([]);
+    setApplications([]);
     setSearchState("loading");
     const timer = setTimeout(async () => {
-      const { data, error } = await supabase.rpc("search_people", { p_q: query, p_limit: 8 });
-      if (cancelled) return;
-      const r = data as unknown as { ok?: boolean; agents?: AgentResult[]; applicants?: ApplicationResult[] } | null;
-      if (error || !r?.ok) { setAgents([]); setApplications([]); setSearchState("error"); return; }
-      setAgents(r.agents ?? []);
-      setApplications(canOpenRecruiting ? r.applicants ?? [] : []);
-      setSearchState("ok");
-    }, 150);
+      try {
+        const { data, error } = await supabase.rpc("search_people", { p_q: query.trim(), p_limit: query.trim() ? 8 : 4 });
+        if (cancelled) return;
+        const r = data as unknown as { ok?: boolean; agents?: AgentResult[]; applicants?: ApplicationResult[] } | null;
+        if (error || !r?.ok) { setSearchState("error"); return; }
+        setAgents(r.agents ?? []);
+        setApplications(r.applicants ?? []);
+        // Async people arrive after the quick links; Enter should open the first person.
+        if (r.agents?.[0]) setSelectedValue(`agent-${r.agents[0].id}`);
+        else if (r.applicants?.[0]) setSelectedValue(`app-${r.applicants[0].id}`);
+        setSearchState("ok");
+      } catch {
+        if (!cancelled) setSearchState("error");
+      }
+    }, query.trim() ? 150 : 0);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [query, open, canOpenRecruiting]);
+  }, [query, open, canOpenRecruiting, authLoading, user?.id, retry]);
+
+  useEffect(() => { if (!open) setQuery(""); }, [open]);
 
   const filteredRoutes = useMemo(() => {
-    if (!query) return visibleRoutes;
-    const q = query.toLowerCase();
+    if (!query.trim()) return navRoutes.slice(0, 5);
+    const q = query.trim().toLowerCase();
     return visibleRoutes.filter((r) => r.label.toLowerCase().includes(q));
-  }, [query, visibleRoutes]);
+  }, [query, visibleRoutes, navRoutes]);
 
   const go = (path: string) => {
     setOpen(false);
@@ -186,17 +200,73 @@ export function CommandPalette() {
   };
 
   return (
-    <CommandDialog open={open} onOpenChange={setOpen} commandProps={{ shouldFilter: false }}>
+    <CommandDialog open={open} onOpenChange={setOpen} commandProps={{ shouldFilter: false, value: selectedValue, onValueChange: setSelectedValue }}>
       <CommandInput
-        placeholder="Type any part of a name, email, phone or code… (⌘K)"
+        aria-label="Search people and pages"
+        placeholder="Search name, email, phone or agent code"
         value={query}
         onValueChange={setQuery}
       />
-      <CommandList>
-        <CommandEmpty>{searchState === "loading" ? "Searching…" : searchState === "error" ? "The people search did not answer. Try again." : "No results found."}</CommandEmpty>
+      <CommandList className="max-h-[min(65dvh,520px)]" aria-busy={searchState === "loading"}>
+        {searchState === "loading" && <p role="status" className="px-4 py-3 text-sm text-muted-foreground">Finding people…</p>}
+        {searchState === "error" && (
+          <div role="alert" className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
+            <span>People could not load.</span>
+            <button type="button" className="min-h-11 rounded-md px-3 font-medium text-primary hover:bg-accent" onClick={() => setRetry((n) => n + 1)}>Try again</button>
+          </div>
+        )}
+        {canOpenRecruiting && query.trim().length === 1 && <p className="px-4 py-3 text-sm text-muted-foreground">Type at least two characters to find someone.</p>}
+        {!query.trim() && canOpenRecruiting && searchState === "ok" && <p className="px-4 pt-3 text-xs text-muted-foreground">Recently added people · search to find anyone you can access</p>}
+        <CommandEmpty>{searchState === "loading" || searchState === "error" || query.trim().length === 1 ? null : "No matches. Try another part of the name, email or phone."}</CommandEmpty>
 
+
+        {agents.length > 0 && (
+          <>
+            <CommandGroup heading="People on the team">
+              {agents.map((a) => (
+                <CommandItem
+                  key={`agent-${a.id}`}
+                  value={`agent-${a.id}`}
+                  onSelect={() => {
+                    setOpen(false);
+                    setQuery("");
+                    openAgentProfile(a.id);
+                  }}
+                >
+                  <Users className="mr-2 h-4 w-4 shrink-0" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-medium">{a.name}</span>
+                    <span className="block truncate text-xs text-muted-foreground">{a.email || a.code || "Team member"}</span>
+                    <span className="block truncate text-xs text-muted-foreground">{[a.stage ? STAGE_LABEL[a.stage] ?? a.stage : null, a.status && a.status !== "active" ? a.status.replace(/_/g, " ") : null, a.upline ? `Upline: ${a.upline}` : null].filter(Boolean).join(" · ")}</span>
+                  </span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </>
+        )}
+
+        {applications.length > 0 && (
+          <>
+            <CommandGroup heading="Applicants">
+              {applications.map((app) => (
+                <CommandItem
+                  key={`app-${app.id}`}
+                  value={`app-${app.id}`}
+                  onSelect={() => go(`/dashboard/recruiting?queue=all_open&person=${app.id}`)}
+                >
+                  <FileText className="mr-2 h-4 w-4 shrink-0" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-medium">{app.name || "Name not on file"}</span>
+                    <span className="block truncate text-xs text-muted-foreground">{app.email || "Applicant"}</span>
+                    <span className="block truncate text-xs text-muted-foreground">{app.status?.replace(/_/g, " ") || "Application received"}</span>
+                  </span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </>
+        )}
         {filteredRoutes.length > 0 && (
-          <CommandGroup heading="Navigate">
+          <CommandGroup heading={query.trim() ? "Pages" : "Quick links"}>
             {filteredRoutes.map((route) => {
               const Icon = route.icon;
               return (
@@ -213,61 +283,6 @@ export function CommandPalette() {
           </CommandGroup>
         )}
 
-        {agents.length > 0 && (
-          <>
-            <CommandSeparator />
-            <CommandGroup heading="People on the team">
-              {agents.map((a) => (
-                <CommandItem
-                  key={`agent-${a.id}`}
-                  value={`agent-${a.id}`}
-                  // 2026-07-29: was go(`/dashboard/team`) — a template literal with no
-                  // interpolation, so a.id was discarded and every agent row landed on the
-                  // same unfiltered CRM list (/dashboard/team is itself just a redirect to
-                  // /dashboard/crm, which is admin+manager only — so agents and VAs got
-                  // bounced to /dashboard entirely). The sidebar's identical search already
-                  // does the right thing via openAgentProfile; this now mirrors it.
-                  onSelect={() => {
-                    setOpen(false);
-                    setQuery("");
-                    openAgentProfile(a.id);
-                  }}
-                >
-                  <Users className="mr-2 h-4 w-4 shrink-0" />
-                  <span className="min-w-0 truncate">{a.name}</span>
-                  <span className="ml-2 shrink-0 text-[11px] text-muted-foreground">
-                    {[a.stage ? STAGE_LABEL[a.stage] ?? a.stage : null, a.license === "licensed" ? "Licensed" : null, a.status && a.status !== "active" ? a.status : null, a.upline ? `Upline ${a.upline}` : null].filter(Boolean).join(" · ")}
-                  </span>
-                  <span className="ml-auto shrink-0 pl-2 text-xs text-muted-foreground">{a.code ?? a.email ?? a.phone ?? ""}</span>
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </>
-        )}
-
-        {applications.length > 0 && (
-          <>
-            <CommandSeparator />
-            <CommandGroup heading="Applicants">
-              {applications.map((app) => (
-                <CommandItem
-                  key={`app-${app.id}`}
-                  value={`app-${app.id}`}
-                  // 2026-07-29: same bug — app.id was dropped, so picking a named
-                  // applicant opened the unfiltered list. DashboardApplicants already reads
-                  // ?id= to focus a row. 2026-10-06: the worklist is now the default view at
-                  // the canonical /dashboard/recruiting and it selects a row by ?person=.
-                  onSelect={() => go(`/dashboard/recruiting?queue=all_open&person=${app.id}`)}
-                >
-                  <FileText className="mr-2 h-4 w-4 shrink-0" />
-                  <span className="min-w-0 truncate">{app.name || "Name not on file"}</span>
-                  <span className="ml-2 shrink-0 text-[11px] text-muted-foreground">{[app.status ? `Applicant · ${app.status.replace(/_/g, " ")}` : "Applicant", app.license === "licensed" ? "Licensed" : null].filter(Boolean).join(" · ")}</span>
-                  <span className="ml-auto shrink-0 pl-2 text-xs text-muted-foreground">{app.email ?? app.phone ?? ""}</span>
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </>
-        )}
       </CommandList>
     </CommandDialog>
   );

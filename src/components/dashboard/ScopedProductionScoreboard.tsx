@@ -587,7 +587,11 @@ export function ScopedProductionScoreboard() {
             </div>
 
             {projectionData?.has_producer_profile && (
-              <div className="border-t border-border bg-background/40 p-4">
+              <details className="group/projections border-t border-border bg-background/40 p-4">
+                <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-sm font-medium text-foreground">
+                  <Sparkles className="h-4 w-4 text-primary" /> Month-end projections
+                  <ChevronDown className="ml-auto h-4 w-4 group-open/projections:rotate-180" />
+                </summary>
                 <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
                   <div>
                     <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
@@ -639,7 +643,7 @@ export function ScopedProductionScoreboard() {
                 )}
 
                 <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">{projectionData.basis}</p>
-              </div>
+              </details>
             )}
 
             <div className="grid border-t border-border lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">

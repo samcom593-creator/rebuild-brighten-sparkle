@@ -58,5 +58,12 @@ insert into discard_i select pg_temp.chk('9 one character is too short; anon can
   concat((pg_temp.j('a0000000-0000-4000-8000-0000000000ad', $$public.search_people('j')$$)->'agents')::text, '/', has_function_privilege('anon', 'public.search_people(text,integer)', 'execute')), '[]/f');
 insert into discard_i select pg_temp.chk('10 the limit is honoured and capped',
   (select concat(jsonb_array_length(pg_temp.j('a0000000-0000-4000-8000-0000000000ad', $$public.search_people('johnson', 1)$$)->'agents'), '/', jsonb_array_length(pg_temp.j('a0000000-0000-4000-8000-0000000000ad', $$public.search_people('zz syn', 500)$$)->'agents') <= 25)), '1/t');
+insert into discard_i select pg_temp.chk('11 opening search returns recent people with a small limit',
+  (select concat(jsonb_array_length(j->'agents'), '/', jsonb_array_length(j->'applicants')) from (select pg_temp.j('a0000000-0000-4000-8000-0000000000ad', $$public.search_people('', 1)$$) j) r),
+  '1/1');
+insert into discard_i select pg_temp.chk('12 blank search never widens manager scope',
+  (select count(*)::text from jsonb_array_elements(pg_temp.j('a0000000-0000-4000-8000-0000000000a1', $$public.search_people(' ', 25)$$)->'agents') e where e->>'id' in ('b1000000-0000-4000-8000-0000000000b1', 'b1000000-0000-4000-8000-0000000000b2', 'b2000000-0000-4000-8000-000000000003')), '0');
+insert into discard_i select pg_temp.chk('13 blank search gives a plain agent no people',
+  (pg_temp.j('a0000000-0000-4000-8000-0000000000d1', $$public.search_people('')$$))::text, '{"ok": true, "agents": [], "applicants": []}');
 select test, outcome, expected, case when pass then 'PASS' else 'FAIL' end verdict from results order by n;
 rollback;

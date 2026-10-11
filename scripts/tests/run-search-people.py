@@ -4,6 +4,12 @@ import json, os, sys, urllib.request
 home = os.path.expanduser("~")
 url = open(f"{home}/.config/apex-creds/bot-sql.url").read().strip(); tok = open(f"{home}/.config/apex-creds/bot-sql.token").read().strip()
 sql = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "search-people.sql")).read()
+# Optionally prove a candidate migration in the SAME rolled-back transaction.
+if len(sys.argv) > 1:
+    migration = open(sys.argv[1]).read()
+    import re
+    migration = re.sub(r"(?im)^\s*(begin|commit);\s*$", "", migration)
+    sql = sql.replace("begin;", "begin;\n" + migration, 1)
 req = urllib.request.Request(url, data=json.dumps({"query": sql}).encode(), headers={"Authorization": f"Bearer {tok}", "Content-Type": "application/json"})
 try: r = json.loads(urllib.request.urlopen(req, timeout=300).read())
 except urllib.error.HTTPError as e: print("HTTP", e.code, e.read().decode()[:2000]); sys.exit(2)

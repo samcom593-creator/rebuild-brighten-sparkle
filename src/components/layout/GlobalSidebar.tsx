@@ -192,6 +192,14 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
           </Link>
         </div>
 
+        <div className="shrink-0 px-2 pt-3">
+          <Button variant="outline" aria-label="Search people and pages" title="Search people and pages (Ctrl or Command K)"
+            className={cn("h-11 w-full gap-2", collapsed ? "px-0" : "justify-start px-3")}
+            onClick={() => { if (mobile) onToggle(); useUIStore.getState().setCommandPaletteOpen(true); }}>
+            <Search className="h-4 w-4 shrink-0" />
+            {!collapsed && <span>Search people & pages</span>}
+          </Button>
+        </div>
         <nav aria-label="Primary" className="min-h-0 flex-1 overflow-y-auto px-2 py-3 [scrollbar-width:thin]">
           {favorites.length > 0 && (
             <div className="mb-3">
@@ -239,18 +247,7 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
                 )}
               />
             )}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-11 w-full justify-start gap-3 px-3"
-              onClick={() => {
-                onToggle();
-                useUIStore.getState().setCommandPaletteOpen(true);
-              }}
-            >
-              <Search className="h-4 w-4" />
-              Search {brand.shortName}
-            </Button>
+
           </div>
         )}
 

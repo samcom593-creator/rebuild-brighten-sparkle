@@ -81,8 +81,8 @@ export function TopBar() {
       </div>
 
       <div className="flex shrink-0 items-center gap-1.5">
-        <button type="button" onClick={() => setSearchOpen(true)} className="hidden h-8 w-[210px] items-center gap-2 rounded-md border border-border bg-card px-2.5 text-xs text-muted-foreground hover:border-primary/40 md:flex">
-          <Search className="h-3.5 w-3.5" /><span>Search</span>
+        <button type="button" onClick={() => setSearchOpen(true)} aria-label="Search people and pages" className="hidden h-8 w-[210px] items-center gap-2 rounded-md border border-border bg-card px-2.5 text-xs text-muted-foreground hover:border-primary/40 md:flex">
+          <Search className="h-3.5 w-3.5" /><span>Search people & pages</span>
           <span className="ml-auto flex items-center gap-0.5 rounded border border-border px-1 py-0.5 text-[10px]"><Command className="h-2.5 w-2.5" />K</span>
         </button>
         <Button

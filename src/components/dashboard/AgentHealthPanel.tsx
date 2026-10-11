@@ -5,13 +5,14 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { CheckCircle2, Circle, MessageSquare, Hash, KeyRound } from "lucide-react";
+import { CheckCircle2, Circle, Hash, KeyRound } from "lucide-react";
 import { CONTRACTING_PROFILE_URL } from "@/lib/contractingLinks";
 
 const CONTRACTING_LINK = CONTRACTING_PROFILE_URL;
 
 // Compact agent health for the profile drawer: placement (placing vs falling off),
-// access (Discord / Slack / portal login), and pre-licensing progress. Reads
+// access (Discord / portal login), and pre-licensing progress. The Slack invite line left with the
+// process retired on Oct 9, 2026 (its receipts view is not readable by signed-in users anyway). Reads
 // v_agent_placement + existing tables. No heavy animation.
 
 interface Placement {
@@ -66,8 +67,11 @@ export default function AgentHealthPanel({ agentId }: Props) {
   const access = useQuery<AgentAccess | null>({
     queryKey: ["agent-access", agentId],
     queryFn: async () => {
+      // 2026-10-10: read through v_agents_full. The comp columns are not granted on the agents table to
+      // signed-in users (the 2026-08-27 read-leak closure), so this exact select answered 403 for every
+      // agent — including the admin — and the panel never loaded.
       const { data, error } = await supabase
-        .from("agents" as never)
+        .from("v_agents_full" as never)
         .select("has_discord_access, portal_password_set, source_application_id, license_status, comp_percentage, contract_percentage, comp_approval_status, contracted_at, crm_setup_link")
         .eq("id", agentId).maybeSingle();
       if (error) throw error;
@@ -105,17 +109,6 @@ export default function AgentHealthPanel({ agentId }: Props) {
         .select("*").eq("agent_id", agentId).maybeSingle();
       if (error) throw error;
       return (data ?? null) as unknown as Placement | null;
-    },
-  });
-
-  const slack = useQuery<boolean>({
-    queryKey: ["agent-slack", agentId],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("v_slack_invite_receipts" as never)
-        .select("attempt_status").eq("agent_id", agentId).limit(1);
-      const row = (data ?? [])[0] as { attempt_status?: string } | undefined;
-      return !!row && (row.attempt_status === "sent" || row.attempt_status === "ok" || row.attempt_status === "delivered");
     },
   });
 
@@ -175,7 +168,6 @@ export default function AgentHealthPanel({ agentId }: Props) {
         <div className="text-sm font-semibold mb-2">Team access</div>
         <div className="flex flex-wrap gap-2">
           <Chip ok={!!hasDiscord} label="Discord" icon={Hash} />
-          <Chip ok={!!slack.data} label="Slack" icon={MessageSquare} />
           <Chip ok={!!portalPasswordSet} label="Portal login" icon={KeyRound} />
         </div>
       </Card>

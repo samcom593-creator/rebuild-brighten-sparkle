@@ -713,7 +713,7 @@ export default function DashboardCRM() {
   const [sortMode, setSortMode] = useState<string>("default");
   const [currentAgentId, setCurrentAgentId] = useState<string | null>(null);
   const [meetingAttendance, setMeetingAttendance] = useState<Map<string, "present" | "absent" | "unmarked">>(new Map());
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [crmView, setCrmView] = useState<"roster" | "pipeline">(() => {
     try { return localStorage.getItem("crm.view.v2") === "pipeline" ? "pipeline" : "roster"; }
     catch { return "roster"; } // empty-catch-allow:localstorage-incognito
@@ -2303,7 +2303,14 @@ export default function DashboardCRM() {
         open={Boolean(team.selectedId) && Boolean(team.row)}
         onOpenChange={(o) => { if (!o) team.closePerson(); }}
         row={team.row}
-        onOpenContracting={(id) => { team.closePerson(); setCrmView("roster"); setRosterMode("work"); requestAnimationFrame(() => document.getElementById(`review-row-${id}`)?.scrollIntoView({ block: "center" })); }}
+        onOpenContracting={(id) => {
+          // Drive the URL: ?view=contracting is what this page reads, ?review= is what the review follows (and what
+          // a shared link carries); dropping ?person= closes the drawer. Switching local state alone left the URL
+          // on the old view and the review on the first person of the list.
+          const next = new URLSearchParams(searchParams);
+          next.set("view", "contracting"); next.set("review", id); next.delete("person");
+          setSearchParams(next, { replace: true });
+        }}
       />
 
       <ApplicationDetailSheet open={!!viewAppTarget} onOpenChange={(o) => !o && setViewAppTarget(null)} applicationId={viewAppTarget?.applicationId} agentId={viewAppTarget?.agentId} onRefresh={fetchAgents} />

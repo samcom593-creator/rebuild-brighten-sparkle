@@ -37,7 +37,7 @@ export function ContractingReviewWorkspace({ className, initialView = "focused" 
   const [editing, setEditing] = useState(false);
   // A link may name the person (?review=<agent id>) or a search (?q=), e.g. from the agent drawer or a worklist.
   const [searchParams] = useSearchParams();
-  const [filter, setFilter] = useState<ReviewFilter>(() => (searchParams.get("review") ? "all_four" : "needs_review"));
+  const [filter, setFilter] = useState<ReviewFilter>("needs_review");
   const [search, setSearch] = useState(() => searchParams.get("q") ?? "");
   const [managerId, setManagerId] = useState("all");
   const [shown, setShown] = useState(PAGE);
@@ -51,17 +51,20 @@ export function ContractingReviewWorkspace({ className, initialView = "focused" 
   const scopedAgents = useMemo(() => agents.filter((a) => managerId === "all" || a.manager_id === managerId), [agents, managerId]);
   const counts = useMemo(() => reviewCounts(scopedAgents, n), [scopedAgents, n]);
   const teams = useMemo(() => teamOptions(agents), [agents]);
+  const reviewParam = searchParams.get("review");
+  const qParam = searchParams.get("q");
   const pinned = useMemo(() => new Set(currentId ? [currentId] : []), [currentId]);
   const visible = useMemo(() => visibleAgents(agents, { filter, search, managerId }, n, pinned), [agents, filter, search, managerId, n, pinned]);
   const rows = visible.slice(0, shown);
   const selected = visible.find((a) => a.agent_id === currentId) ?? visible[0];
+  // A link can name someone the review does not hold (a deactivated twin, a typo). Say so instead of quietly
+  // focusing the first person on the list as if they were the one asked for.
+  const linkedMissing = !!reviewParam && !!roster && !agents.some((a) => a.agent_id === reviewParam);
 
   // A new search, filter or team starts a fresh list: the page size resets and nobody stays pinned from the old one.
   useEffect(() => { setShown(PAGE); }, [filter, search, managerId]);
   // The link can change while this stays mounted (My Team opens on Contracting, then a drawer's "Open in review"
   // rewrites ?review=); the initial state above would keep the first person on the list, so follow the URL.
-  const reviewParam = searchParams.get("review");
-  const qParam = searchParams.get("q");
   useEffect(() => { if (reviewParam) setCurrentId(reviewParam); }, [reviewParam]);
   useEffect(() => { if (qParam !== null) setSearch(qParam); }, [qParam]);
 
@@ -173,6 +176,12 @@ export function ContractingReviewWorkspace({ className, initialView = "focused" 
       </fieldset>
 
       {!canEdit ? <p className="text-xs text-muted-foreground">View only. Admins and managers confirm carriers.</p> : null}
+
+      {linkedMissing ? (
+        <p role="status" className="rounded-lg border border-amber-300/60 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-200">
+          The person in this link is not in the contracting review (only active agents are, and a merged twin is reviewed under its canonical row). Showing the list instead.
+        </p>
+      ) : null}
 
       {view === "focused" && selected ? (
         <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[15rem_minmax(0,1fr)]">

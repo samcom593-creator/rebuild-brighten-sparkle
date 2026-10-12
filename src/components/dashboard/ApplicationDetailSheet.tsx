@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import {
@@ -91,6 +91,8 @@ export function ApplicationDetailSheet({
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const editingRecordId = useRef<string | null>(null);
   const [editForm, setEditForm] = useState<EditForm>(initForm(null));
 
   // Account management state
@@ -101,13 +103,14 @@ export function ApplicationDetailSheet({
   const [acctSendingLogin, setAcctSendingLogin] = useState(false);
   const [acctSendingToMgr, setAcctSendingToMgr] = useState(false);
 
-  const { data: application, isLoading } = useQuery({
+  const { data: application, isLoading, isError, refetch } = useQuery({
     queryKey: ["application-detail", applicationId, agentId],
     queryFn: async () => {
       let query = supabase.from("applications").select("*");
       if (applicationId) query = query.eq("id", applicationId);
       else if (agentId) query = query.eq("assigned_agent_id", agentId);
-      const { data } = await query.order("created_at", { ascending: false }).limit(1).maybeSingle();
+      const { data, error } = await query.order("created_at", { ascending: false }).limit(1).maybeSingle();
+      if (error) throw error;
       return data;
     },
     enabled: open && !!(applicationId || agentId),
@@ -143,51 +146,74 @@ export function ApplicationDetailSheet({
   });
 
   useEffect(() => {
-    if (app) {
+    const changedPerson = editingRecordId.current !== (app?.id ?? null);
+    if (changedPerson || !open || !isEditing) {
       setEditForm(initForm(app));
-      setIsEditing(false);
-      setAcctNewEmail("");
-      setAcctNewPassword("");
+      if (changedPerson || !open) {
+        setIsEditing(false);
+        setConfirmDiscard(false);
+        setAcctNewEmail("");
+        setAcctNewPassword("");
+      }
+      editingRecordId.current = app?.id ?? null;
     }
-  }, [app]);
+  }, [app, open, isEditing]);
+
+  const requestOpenChange = (nextOpen: boolean) => {
+    if (savingEdit) return;
+    if (!nextOpen && isEditing && JSON.stringify(editForm) !== JSON.stringify(initForm(app))) {
+      setConfirmDiscard(true);
+      return;
+    }
+    onOpenChange(nextOpen);
+  };
 
   const handleCancel = () => {
     setEditForm(initForm(app));
     setIsEditing(false);
+    setConfirmDiscard(false);
   };
 
   const handleSave = async () => {
-    if (!app) return;
+    if (!app || savingEdit) return;
     setSavingEdit(true);
-    const { error } = await supabase
-      .from("applications")
-      .update({
-        first_name: editForm.first_name.trim(),
-        last_name: editForm.last_name.trim(),
-        email: editForm.email.trim(),
-        phone: editForm.phone.trim() || null,
-        city: editForm.city.trim() || null,
-        state: editForm.state.trim() || null,
-        instagram_handle: editForm.instagram_handle.trim() || null,
-        referral_source: editForm.referral_source.trim() || null,
-        license_progress: (editForm.license_progress || null) as any,
-        test_scheduled_date: editForm.test_scheduled_date || null,
-        notes: editForm.notes.trim() || null,
-        carrier: editForm.carrier.trim() || null,
-        nipr_number: editForm.nipr_number.trim() || null,
-      })
-      .eq("id", app.id);
+    setConfirmDiscard(false);
+    try {
+      const { data: updated, error } = await supabase
+        .from("applications")
+        .update({
+          first_name: editForm.first_name.trim(),
+          last_name: editForm.last_name.trim(),
+          email: editForm.email.trim(),
+          phone: editForm.phone.trim() || null,
+          city: editForm.city.trim() || null,
+          state: editForm.state.trim() || null,
+          instagram_handle: editForm.instagram_handle.trim() || null,
+          referral_source: editForm.referral_source.trim() || null,
+          license_progress: (editForm.license_progress || null) as any,
+          test_scheduled_date: editForm.test_scheduled_date || null,
+          notes: editForm.notes.trim() || null,
+          carrier: editForm.carrier.trim() || null,
+          nipr_number: editForm.nipr_number.trim() || null,
+        })
+        .eq("id", app.id)
+        .select("*")
+        .single();
 
-    if (error) {
-      toast({ title: "Error saving", description: error.message, variant: "destructive" });
-    } else {
+      if (error) throw error;
+      if (!updated) throw new Error("The application was not saved. Please retry.");
+      queryClient.setQueryData(["application-detail", applicationId, agentId], updated);
+      setIsEditing(false);
+      setConfirmDiscard(false);
       toast({ title: "Lead info updated" });
       logLeadActivity({ leadId: app.id, type: "note_added", title: "Lead info updated" });
       queryClient.invalidateQueries({ queryKey: ["application-detail", applicationId, agentId] });
       onRefresh?.();
-      setIsEditing(false);
+    } catch (error) {
+      toast({ title: "Could not save changes", description: error instanceof Error ? error.message : "Your edits are still here. Please try again.", variant: "destructive" });
+    } finally {
+      setSavingEdit(false);
     }
-    setSavingEdit(false);
   };
 
   const setField = (key: keyof EditForm, value: string) =>
@@ -266,16 +292,17 @@ export function ApplicationDetailSheet({
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet open={open} onOpenChange={requestOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-lg p-0">
         <SheetHeader className="p-6 pb-4 flex flex-row items-center justify-between gap-2">
           <SheetTitle className="text-lg">
-            {isLoading ? "Loading…" : app ? `${app.first_name} ${app.last_name}` : "Application Not Found"}
+            {isLoading ? "Loading…" : isError ? "Application details" : app ? `${app.first_name} ${app.last_name}` : "Application Not Found"}
           </SheetTitle>
           {app && !isLoading && (
             <Button
               variant={isEditing ? "ghost" : "outline"}
               size="sm"
+              disabled={savingEdit}
               onClick={isEditing ? handleCancel : () => setIsEditing(true)}
               className="shrink-0"
             >
@@ -288,16 +315,30 @@ export function ApplicationDetailSheet({
           )}
         </SheetHeader>
 
+        {confirmDiscard && (
+          <div role="alert" className="mx-6 mb-4 space-y-2 rounded-lg border border-border bg-muted p-3 text-sm">
+            <p>You have unsaved changes. Keep editing or discard them to close.</p>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => setConfirmDiscard(false)}>Keep editing</Button>
+              <Button variant="destructive" size="sm" onClick={() => { handleCancel(); setConfirmDiscard(false); onOpenChange(false); }}>Discard changes</Button>
+            </div>
+          </div>
+        )}
         {isLoading ? (
           <div className="p-6 space-y-3">
             {/* stable-key-allow:skeleton */}
             {[1, 2, 3].map(i => <div key={i} className="h-6 bg-muted rounded animate-pulse" />)}
           </div>
+        ) : isError ? (
+          <div role="alert" className="space-y-3 p-6 text-sm">
+            <p>Could not load this application. Please try again.</p>
+            <Button variant="outline" onClick={() => { void refetch(); }}>Try again</Button>
+          </div>
         ) : !app ? (
           <div className="p-6 text-sm text-muted-foreground">No application found for this record.</div>
         ) : (
           <ScrollArea className="h-[calc(100vh-100px)]">
-            <div className="p-6 pt-0 space-y-5">
+            <fieldset disabled={savingEdit} className="min-w-0 p-6 pt-0 space-y-5">
               {/* Status Badges */}
               <div className="flex flex-wrap gap-2">
                 <Badge variant="outline" className={cn(
@@ -598,7 +639,7 @@ export function ApplicationDetailSheet({
                   </Button>
                 </div>
               )}
-            </div>
+            </fieldset>
           </ScrollArea>
         )}
       </SheetContent>
@@ -610,7 +651,7 @@ function EditRow({ label, value, onChange, type = "text" }: { label: string; val
   return (
     <div className="flex items-center justify-between gap-2">
       <span className="text-sm text-muted-foreground w-28 shrink-0">{label}</span>
-      <Input className="flex-1 h-9 text-sm" type={type} value={value} onChange={(e) => onChange(e.target.value)} />
+      <Input aria-label={label} className="flex-1 h-9 text-sm" type={type} value={value} onChange={(e) => onChange(e.target.value)} />
     </div>
   );
 }

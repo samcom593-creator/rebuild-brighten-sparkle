@@ -26,3 +26,14 @@ export function sanitizePolicyInput(raw: string): string {
 export function normalizePolicyNumber(raw: string | null | undefined): string {
   return sanitizePolicyInput(raw ?? "").trim();
 }
+
+/** Inclusive deadline: a sale dated 30 days ago may still be posted without a number. */
+export function isWithinPolicyNumberGrace(applicationDate: string, today = new Date().toISOString().slice(0, 10)): boolean {
+  const parseDay = (value: string) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return NaN;
+    const time = Date.parse(`${value}T00:00:00Z`);
+    return Number.isFinite(time) && new Date(time).toISOString().slice(0, 10) === value ? time : NaN;
+  };
+  const days = (parseDay(today) - parseDay(applicationDate)) / 86_400_000;
+  return days >= 0 && days <= 30;
+}

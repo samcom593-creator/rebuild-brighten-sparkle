@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { invalidateOperationalTruth } from "@/lib/invalidateOperationalTruth";
-import { normalizePolicyNumber, sanitizePolicyInput } from "@/lib/policyNumber";
+import { normalizePolicyNumber, sanitizePolicyInput, isWithinPolicyNumberGrace } from "@/lib/policyNumber";
 import { enqueue, isOffline, isTransportError } from "@/lib/offlineQueue";
 
 type PremiumMode = "annual" | "semiannual" | "quarterly" | "monthly" | "single_pay" | "other";
@@ -442,8 +442,9 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
     }
     if (index === 1) {
       if (!selectedAgentId) return "A writing agent must be linked before the deal can be saved.";
-      if (!form.carrierId || !form.product.trim() || !normalizePolicyNumber(form.policyNumber)) return "Carrier, product, and application or policy number are required.";
+      if (!form.carrierId || !form.product.trim()) return "Carrier and product are required.";
       if (!form.applicationDate) return "Application date is required.";
+      if (!normalizePolicyNumber(form.policyNumber) && !isWithinPolicyNumberGrace(form.applicationDate)) return "An application or policy number is required more than 30 days after the sale date.";
     }
     if (index === 2) {
       if (safeNumber(form.modalPremium) <= 0) return "Modal premium must be greater than zero.";
@@ -501,6 +502,11 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
     // Ask about the normalized string, because that is what submit_apex_deal
     // stores: a pasted tab used to make these two disagree.
     const policyNumber = normalizePolicyNumber(form.policyNumber);
+    if (!policyNumber) {
+      setChecking(false);
+      toast.success(`Ready to post — ${formatMoney(calculatedAnnualPaid)} annual. Add the policy number within 30 days of the sale date.`);
+      return;
+    }
     const { count, error } = await supabase
       .from("deals")
       .select("id", { count: "exact", head: true })
@@ -579,7 +585,7 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
       if (!user?.id) return false;
       const clientName = `${form.clientFirstName} ${form.clientLastName}`.trim();
       const policyNumber = normalizePolicyNumber(form.policyNumber);
-      const label = `${clientName} · ${policyNumber}`;
+      const label = `${clientName} · ${policyNumber || "Policy number pending"}`;
       const queued = enqueue({
         ownerUserId: user.id,
         kind: "submit_apex_deal",
@@ -893,6 +899,7 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
                       </datalist>
                     </div>
                     <Field label="Policy number" id="deal-policy" value={form.policyNumber} onChange={(value) => update("policyNumber", sanitizePolicyInput(value))} placeholder="e.g., POL-123456" autoComplete="off" />
+                    <p className="text-xs text-muted-foreground">Optional through 30 days after the sale date. Add the number once the carrier provides it; older deals require it to post.</p>
                     <Field label="Effective date" id="deal-effective-date" value={form.effectiveDate} onChange={(value) => update("effectiveDate", value)} type="date" />
                     <div className="space-y-1.5">
                       <Field label="Sale date" id="deal-application-date" value={form.applicationDate} onChange={(value) => update("applicationDate", value)} type="date" max={TODAY} />

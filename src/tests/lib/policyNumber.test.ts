@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizePolicyNumber, sanitizePolicyInput } from "@/lib/policyNumber";
+import { isWithinPolicyNumberGrace, normalizePolicyNumber, sanitizePolicyInput } from "@/lib/policyNumber";
 
 describe("normalizePolicyNumber", () => {
   it("accepts the exact paste that lost a deal on 2026-08-28", () => {
@@ -27,5 +27,20 @@ describe("normalizePolicyNumber", () => {
     expect(sanitizePolicyInput("POL 1")).toBe("POL 1");
     expect(sanitizePolicyInput("POL ")).toBe("POL ");
     expect(sanitizePolicyInput("POL\t")).toBe("POL ");
+  });
+});
+
+
+describe("policy number grace period", () => {
+  it("accepts sale day and day 30, but not day 31 or a future sale", () => {
+    expect(isWithinPolicyNumberGrace("2026-10-12", "2026-10-12")).toBe(true);
+    expect(isWithinPolicyNumberGrace("2026-09-12", "2026-10-12")).toBe(true);
+    expect(isWithinPolicyNumberGrace("2026-09-11", "2026-10-12")).toBe(false);
+    expect(isWithinPolicyNumberGrace("2026-10-13", "2026-10-12")).toBe(false);
+  });
+  it("rejects missing and impossible dates and handles year boundaries", () => {
+    expect(isWithinPolicyNumberGrace("", "2026-10-12")).toBe(false);
+    expect(isWithinPolicyNumberGrace("2026-02-30", "2026-03-01")).toBe(false);
+    expect(isWithinPolicyNumberGrace("2025-12-20", "2026-01-01")).toBe(true);
   });
 });

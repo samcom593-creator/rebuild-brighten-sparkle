@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "VA and VA-manager accounts can no longer be logged into from their email address alone.",
+    detail: "The instant-login and applicant login-link endpoints refused only admin and manager accounts. A VA or VA manager could be signed into by anyone who knew their email, and those roles open the recruiting pages with applicant details. Every staff role is now refused there, from the same list the email gate uses. The two affected accounts both have passwords and sign in normally.",
+    commit: "PL-WIB-MINT-STAFF-ROLES",
+  },
+  {
+    ts: "today",
     label: "The post-call follow-up email can no longer be sent by a stranger, and the recorder's Send follow-up button works again.",
     detail: "The follow-up took the recipient, the name and the booking link straight from the request with no sign-in, so anyone could send an Apex-branded email to any address, with you CC'd and a link of their choosing. It now needs a signed-in staff member or agent and reads the name and email off the lead itself. The interview recorder's Send follow-up button had failed on every press since February because it sent only the application; that shape is what the email now expects.",
     commit: "PL-WIB-POST-CALL-RELAY",

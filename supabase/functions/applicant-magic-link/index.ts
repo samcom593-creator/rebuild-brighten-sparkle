@@ -49,6 +49,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { findAuthUserByEmail } from "../_shared/find-auth-user.ts";
+import { STAFF_ROLES } from "../_shared/send-floor.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -59,7 +60,10 @@ const corsHeaders = {
 const SB_URL = Deno.env.get("SUPABASE_URL")!;
 const SB_SRV = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 // Roles that must never be handed a session by an applicant-facing minter.
-const PRIVILEGED_ROLES = new Set(["admin", "manager"]);
+// PL-WIB-MINT-STAFF-ROLES (2026-10-14): every staff role, shared with
+// requireSendAuth. admin/manager alone left va_manager and va mintable: put
+// their address on a public application row and this returned their login link.
+const PRIVILEGED_ROLES = STAFF_ROLES;
 
 /** Length-independent constant-time compare, per _shared/require-send-auth.ts. */
 function safeEqual(a: string, b: string): boolean {

@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { emailPattern } from "../_shared/like-escape.ts";
+import { STAFF_ROLES } from "../_shared/send-floor.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -239,7 +240,13 @@ const handler = async (req: Request): Promise<Response> => {
         { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
-    if ((privRoles ?? []).some((r: { role: unknown }) => ["admin", "manager"].includes(String(r.role)))) {
+    // PL-WIB-MINT-STAFF-ROLES (2026-10-14): "privileged" is every staff role,
+    // not just admin/manager. va_manager and va hold /dashboard/recruiting
+    // (applicant PII, disposition and send buttons) and pass requireSendAuth's
+    // "staff" floor, and the two-role list let either be minted from an email
+    // address alone (2 live accounts, both with passwords for the standard
+    // login). One set, shared with requireSendAuth, so the two cannot drift.
+    if ((privRoles ?? []).some((r: { role: unknown }) => STAFF_ROLES.has(String(r.role)))) {
       return new Response(
         JSON.stringify({ error: "This account requires a password. Use the standard login.", code: "PASSWORD_REQUIRED_FOR_ROLE" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },

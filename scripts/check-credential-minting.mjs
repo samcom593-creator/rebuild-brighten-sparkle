@@ -351,6 +351,21 @@ const mailPassing = [];
 const mailNamed = [];
 let scanned = 0;
 
+// PL-WIB-MINT-STAFF-ROLES (2026-10-14). PRIVGATE acquits on ANY user_roles read,
+// so it never asked WHICH roles a minter refuses. simple-login and
+// applicant-magic-link refused only ["admin","manager"] while va_manager and va
+// hold /dashboard/recruiting and pass requireSendAuth's "staff" floor: 2 live
+// staff accounts could be minted from an email address alone, and this guard
+// printed both green. These two refuse a TARGET by role (the other PRIVGATE
+// holders read the CALLER's role, which is a different question), so they are
+// named here and must refuse the shared STAFF_ROLES set from
+// _shared/send-floor.ts: imported AND used, comments stripped and string
+// contents blanked so prose or a string cannot satisfy it. Keyed by name, not
+// count. A returner whose ONLY gate is PRIVGATE and is not named here fails
+// too, so a new minter of this shape cannot pass on a two-role list.
+const TARGET_PRIVGATE = new Set(["applicant-magic-link", "simple-login"]);
+const privOnly = [];
+
 for (const dir of readdirSync(ROOT).sort()) {
   if (dir.startsWith("_")) continue;
   const p = join(ROOT, dir, "index.ts");
@@ -397,6 +412,7 @@ for (const dir of readdirSync(ROOT).sort()) {
   if (gatesHeld.length === 0) { violations.push(dir); continue; }
 
   passing.push(`${dir} [${gatesHeld.join("+")}]`);
+  if (gatesHeld.length === 1 && gatesHeld[0] === "PRIVGATE") privOnly.push(dir);
 
   // Non-voting: a token lookup with no expiry/single-use check is a weaker
   // selector than it looks. Printed so it cannot hide behind this green, never
@@ -440,6 +456,35 @@ if (mailViolations.length > 0) {
   console.error("takeover — but it is an unauthenticated outbound trigger on Sam's verified sending domain,");
   console.error("and it writes live credential rows on demand. Same remedy, positioned ABOVE the mint:");
   console.error("  CRED / SELECTOR / PRIVGATE (see below).");
+  process.exit(1);
+}
+
+const staffSetViolations = [];
+for (const dir of TARGET_PRIVGATE) {
+  const p = join(ROOT, dir, "index.ts");
+  if (!existsSync(p)) {
+    staffSetViolations.push(`${dir}: source not found (renamed? update TARGET_PRIVGATE, do not just drop the name)`);
+    continue;
+  }
+  const code = stripComments(readFileSync(p, "utf8"));
+  const imported = /import\s*\{[^}]*\bSTAFF_ROLES\b[^}]*\}\s*from\s*["'`][^"'`]*_shared\/send-floor\.ts["'`]/.test(code);
+  const refs = (blankStringValues(code).match(/\bSTAFF_ROLES\b/g) ?? []).length;
+  if (!imported || refs < 2) {
+    staffSetViolations.push(`${dir}: refuses privileged targets without the shared STAFF_ROLES set (imported=${imported}, references=${refs})`);
+  }
+}
+for (const dir of privOnly) {
+  if (!TARGET_PRIVGATE.has(dir)) {
+    staffSetViolations.push(`${dir}: returns a minted credential behind PRIVGATE alone and is not named in TARGET_PRIVGATE`);
+  }
+}
+if (staffSetViolations.length > 0) {
+  console.error(`check:credential-minting FAILED — ${staffSetViolations.length} minter(s) do not refuse every staff role:`);
+  for (const v of staffSetViolations) console.error(`  ${v}`);
+  console.error("");
+  console.error("A minter that refuses only admin/manager leaves va_manager/va/recruiter accounts mintable from an");
+  console.error("email address, and those roles reach applicant PII and pass requireSendAuth's \"staff\" floor.");
+  console.error("Import STAFF_ROLES from ../_shared/send-floor.ts and refuse any target holding one of them.");
   process.exit(1);
 }
 

@@ -212,8 +212,11 @@ export function licenseText(r: Pick<CallRow, "license_states" | "licensed_at">):
   return `Licensed${states.length ? ` ${states.join("/")}` : ""}${r.licensed_at ? ` since ${shortDay(r.licensed_at)}` : ""}`;
 }
 
-/** The next thing this person has to do, in the words to say on the phone. */
-export function callReason(r: Pick<CallRow, "reason" | "last_opened_at" | "opens" | "marked_count">, nowMs: number = Date.now()): string {
+/** The next thing this person has to do, in the words to say on the phone; for a finished person, what finished it. */
+export function callReason(r: Pick<CallRow, "bucket" | "reason" | "last_opened_at" | "opens" | "marked_count" | "request_status">, nowMs: number = Date.now()): string {
+  if (r.bucket === "finished") {
+    return r.marked_count === 4 ? "All four carriers confirmed" : r.request_status === "submitted" || r.request_status === "approved" ? `Request ${r.request_status}` : "Profile, DOB and address saved";
+  }
   const base = r.reason === "missing_details"
     ? "Saved their profile, still needs DOB + address"
     : r.reason === "opened_not_saved"

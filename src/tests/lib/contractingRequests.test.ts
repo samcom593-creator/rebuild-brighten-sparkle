@@ -88,6 +88,12 @@ describe("contracting call list helpers", () => {
     expect(callReason(call({ marked_count: 3 }), NOW)).toBe("Never opened the link · 3 of 4 carriers confirmed");
   });
 
+  it("says what finished a finished person instead of a step they no longer owe", () => {
+    expect(callReason(call({ bucket: "finished", marked_count: 4 }), NOW)).toBe("All four carriers confirmed");
+    expect(callReason(call({ bucket: "finished", request_status: "submitted" }), NOW)).toBe("Request submitted");
+    expect(callReason(call({ bucket: "finished", profile_saved: true, details_saved: true }), NOW)).toBe("Profile, DOB and address saved");
+  });
+
   it("shows license state and date only when they are on file", () => {
     expect(licenseText(call())).toBe("Licensed");
     expect(licenseText(call({ licensed_at: "2026-08-25T00:00:00Z" }))).toMatch(/^Licensed since Aug 2[45]$/);

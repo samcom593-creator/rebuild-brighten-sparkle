@@ -256,14 +256,19 @@
       "updated_at"
     ],
     "agent_contract_profile": [
+      "address_line1",
+      "address_line2",
       "agent_id",
+      "city",
+      "dob",
       "email",
       "first_name",
       "last_name",
       "resident_state",
       "source",
       "updated_at",
-      "updated_by"
+      "updated_by",
+      "zip"
     ],
     "agent_contract_status_history": [
       "agent_id",
@@ -3147,6 +3152,12 @@
       "revert_hint",
       "target"
     ],
+    "contracting_link_opens": [
+      "agent_id",
+      "first_opened_at",
+      "last_opened_at",
+      "opens"
+    ],
     "contracting_links": [
       "created_at",
       "id",
@@ -3158,6 +3169,34 @@
       "amber_day",
       "deadline_day",
       "key"
+    ],
+    "contracting_request_events": [
+      "acted_by",
+      "created_at",
+      "detail",
+      "event_type",
+      "id",
+      "request_id"
+    ],
+    "contracting_requests": [
+      "advance",
+      "agent_id",
+      "batch",
+      "created_at",
+      "id",
+      "request_type",
+      "sheet_attempts",
+      "sheet_error",
+      "sheet_range",
+      "sheet_row",
+      "sheet_status",
+      "sheet_synced_at",
+      "snapshot",
+      "status",
+      "submitted_at",
+      "submitted_by",
+      "updated_at",
+      "version"
     ],
     "contracting_worklist_ack": [
       "acked_at",

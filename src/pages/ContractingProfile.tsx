@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { GlassCard } from "@/components/ui/glass-card";
 import { cn } from "@/lib/utils";
-import { INTAKE_LABEL, US_STATES, npnProblem, saveMyProfile, type IntakeField, type IntakeValues } from "@/lib/contractReview";
+import { INTAKE_LABEL, US_STATES, npnProblem, saveMyDetails, saveMyProfile, type DetailsValues, type IntakeField, type IntakeValues } from "@/lib/contractReview";
 
 /**
  * Complete your contracting profile.
@@ -21,7 +21,10 @@ import { INTAKE_LABEL, US_STATES, npnProblem, saveMyProfile, type IntakeField, t
  * contracting is complete, and this page says so. It does not submit anything to any carrier.
  */
 
-interface Mine { ok: boolean; error?: string; npn?: string | null; first_name?: string | null; last_name?: string | null; email?: string | null; resident_state?: string | null; saved?: boolean }
+interface Mine {
+  ok: boolean; error?: string; npn?: string | null; first_name?: string | null; last_name?: string | null; email?: string | null; resident_state?: string | null; saved?: boolean;
+  dob?: string | null; address_line1?: string | null; address_line2?: string | null; city?: string | null; zip?: string | null; details_saved?: boolean;
+}
 
 const EMPTY: IntakeValues = { npn: "", first_name: "", last_name: "", email: "", resident_state: "" };
 
@@ -46,6 +49,10 @@ export default function ContractingProfile() {
 
   // Fill the form once per load of the person's record, never on a re-render that would erase what they typed.
   const loadedAt = mine.dataUpdatedAt;
+  // Opening this page is the "started contracting" signal My Team lists people by; recorded once per load, best effort.
+  useEffect(() => {
+    if (mine.data?.ok) void supabase.rpc("record_contracting_link_open" as never).then(() => undefined, () => undefined);
+  }, [mine.data?.ok]);
   useEffect(() => {
     const d = mine.data;
     if (d?.ok) setValues({ npn: d.npn ?? "", first_name: d.first_name ?? "", last_name: d.last_name ?? "", email: d.email ?? "", resident_state: d.resident_state ?? "" });
@@ -134,6 +141,58 @@ export default function ContractingProfile() {
           )}
         </form>
       )}
+      {mine.data?.ok ? <CarrierDetails mine={mine.data} onSaved={() => void qc.invalidateQueries({ queryKey: ["my-contracting-profile"] })} /> : null}
     </div>
+  );
+}
+
+/** DOB and residential address: carriers ask for them on the contracting request, and only the agent can supply them. */
+function CarrierDetails({ mine, onSaved }: { mine: Mine; onSaved: () => void }) {
+  const [v, setV] = useState<DetailsValues>({ dob: mine.dob ?? "", address_line1: mine.address_line1 ?? "", address_line2: mine.address_line2 ?? "", city: mine.city ?? "", zip: mine.zip ?? "" });
+  const [saving, setSaving] = useState(false);
+  const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
+  const field = (k: keyof DetailsValues, val: string) => { setV((s) => ({ ...s, [k]: val })); setNote(null); };
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (saving) return;
+    setSaving(true);
+    try {
+      const r = await saveMyDetails(v);
+      if (r.ok) { setNote({ ok: true, text: "Saved." }); onSaved(); }
+      else setNote({ ok: false, text: r.error ?? "Not saved. Try again." });
+    } finally { setSaving(false); }
+  };
+  return (
+    <form onSubmit={save} noValidate className="space-y-4 rounded-xl border border-border bg-card p-4 sm:p-5" aria-label="Carrier details">
+      <div>
+        <h2 className="text-base font-semibold text-foreground">Carrier details</h2>
+        <p className="text-xs text-muted-foreground">Carriers ask for your date of birth and home address on the contracting request. Add them when you can; {mine.details_saved ? "they are on file." : "they are not on file yet."}</p>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-1">
+          <Label htmlFor="cd-dob">Date of birth</Label>
+          <Input id="cd-dob" type="date" autoComplete="bday" value={v.dob} onChange={(e) => field("dob", e.target.value)} className="h-11" />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="cd-zip">ZIP</Label>
+          <Input id="cd-zip" inputMode="numeric" autoComplete="postal-code" value={v.zip} onChange={(e) => field("zip", e.target.value)} className="h-11" />
+        </div>
+        <div className="space-y-1 sm:col-span-2">
+          <Label htmlFor="cd-a1">Street address</Label>
+          <Input id="cd-a1" autoComplete="address-line1" value={v.address_line1} onChange={(e) => field("address_line1", e.target.value)} className="h-11" />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="cd-a2">Apt / unit (optional)</Label>
+          <Input id="cd-a2" autoComplete="address-line2" value={v.address_line2} onChange={(e) => field("address_line2", e.target.value)} className="h-11" />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="cd-city">City</Label>
+          <Input id="cd-city" autoComplete="address-level2" value={v.city} onChange={(e) => field("city", e.target.value)} className="h-11" />
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground">The state is the resident state saved above.</p>
+      <Button type="submit" variant="outline" className="h-11 w-full sm:w-auto" disabled={saving}>{saving ? "Saving…" : "Save carrier details"}</Button>
+      {note ? <p role={note.ok ? "status" : "alert"} className={note.ok ? "text-sm text-foreground" : "text-sm text-destructive"}>{note.text}</p> : null}
+    </form>
   );
 }

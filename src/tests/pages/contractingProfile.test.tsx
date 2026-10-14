@@ -21,7 +21,7 @@ const fill = (npn = "0123456") => fireEvent.change(screen.getByLabelText("NPN nu
 beforeEach(() => { vi.clearAllMocks(); });
 
 describe("Complete your contracting profile", () => {
-  it("asks for the five fields and nothing else, prefilled from what the site already knows", async () => {
+  it("asks for the five fields, then the carrier details, prefilled from what the site already knows", async () => {
     mount();
     // The inputs exist before the profile read lands; wait for the value, not just the field (flaked once on CI).
     await screen.findByLabelText("First name");
@@ -31,14 +31,20 @@ describe("Complete your contracting profile", () => {
     expect(screen.getByLabelText("Resident state")).toHaveValue("AZ");
     expect(screen.getByLabelText("NPN number")).toHaveValue("");
     const labels = Array.from(document.querySelectorAll("label")).map((l) => l.textContent);
-    expect(labels).toEqual(["First name", "Last name", "Email", "NPN number", "Resident state"]);
+    // The five intake fields come first; DOB and the residential address follow in their own form, because carriers
+    // ask for them on the contracting request and only the agent can supply them.
+    expect(labels).toEqual(["First name", "Last name", "Email", "NPN number", "Resident state", "Date of birth", "ZIP", "Street address", "Apt / unit (optional)", "City"]);
   });
 
-  it("never asks the person for anything beyond the five (no phone, SSN, birth date, bank, upload, password)", async () => {
+  it("never asks the person for anything a carrier request does not need (no phone, SSN, bank, upload, password); DOB and address are asked once, in their own form", async () => {
     mount();
     await screen.findByLabelText("First name");
     expect(document.querySelector('input[type="password"], input[type="file"], input[type="tel"]')).toBeNull();
-    expect(screen.queryByLabelText(/phone|ssn|social|birth|bank|routing|password/i)).toBeNull();
+    expect(screen.queryByLabelText(/phone|ssn|social|bank|routing|password/i)).toBeNull();
+    // 2026-10-14: the carrier contracting request carries DOB and residential address, and only the agent can supply
+    // them. They live in a second form that saves separately and never blocks the five-field profile.
+    expect(screen.getByLabelText("Date of birth")).toHaveAttribute("type", "date");
+    expect(screen.getByRole("button", { name: "Save carrier details" })).toBeInTheDocument();
   });
 
   it("says plainly that submitting does not mean carrier contracting is complete, before and after saving", async () => {

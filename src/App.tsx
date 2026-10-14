@@ -558,6 +558,7 @@ const App = () => (
                     <Route path="/dashboard/contracting/carriers" element={<ProtectedRoute requireAdmin><CarrierContracts /></ProtectedRoute>} />
                     <Route path="/dashboard/contracting/ops" element={<Navigate to="/dashboard/contracting" replace />} />
                     <Route path="/dashboard/contracting/requests" element={<ProtectedRoute requireAdmin><CarrierContracts /></ProtectedRoute>} />
+                    <Route path="/dashboard/contracting/history" element={<ProtectedRoute requireAdmin><CarrierContracts /></ProtectedRoute>} />
                     <Route path="/dashboard/contracting/documents" element={<ProtectedRoute requireAdmin><CarrierContracts /></ProtectedRoute>} />
                     <Route path="/dashboard/contracting/audit" element={<Navigate to="/dashboard/contracting" replace />} />
                     <Route path="/dashboard/contracting/ethos" element={<Navigate to="/dashboard/team?view=contracting" replace />} />

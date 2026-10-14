@@ -270,7 +270,8 @@ export function agentCloudPathIsActive(pathname: string, href: string): boolean 
  * gives it (the favorites star saves this label too).
  */
 const ROUTE_CRUMBS: Record<string, string[]> = {
-  "/dashboard/contracting/requests": ["Contracting", "Requests (history)"],
+  "/dashboard/contracting/requests": ["Contracting", "Requests"],
+  "/dashboard/contracting/history": ["Contracting", "Intake history"],
   "/dashboard/contracting/carriers": ["Contracting", "Carriers"],
   "/dashboard/contracting/documents": ["Contracting", "Writing numbers"],
   "/dashboard/recruiting/pipeline": ["Grow", "Recruit Pipeline"],

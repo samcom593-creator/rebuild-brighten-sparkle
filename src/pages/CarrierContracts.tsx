@@ -15,6 +15,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { ContractingIntakeAdmin } from "@/components/contracting/ContractingIntakeAdmin";
+import { ContractingRequestsBoard } from "@/components/contracting/ContractingRequestsBoard";
 import { ContractingReviewWorkspace } from "@/components/contracting-review/ContractingReviewWorkspace";
 import { useContractReview } from "@/hooks/useContractReview";
 import { useContractRows, useContractSummary } from "@/hooks/useContractRecords";
@@ -36,10 +37,11 @@ type Carrier = { id: string; name: string | null; website: string | null };
 export default function CarrierContracts() {
   const pathname = useLocation().pathname;
   const mode = pathname.endsWith("/requests") ? "requests"
+    : pathname.endsWith("/history") ? "history"
     : pathname.endsWith("/carriers") ? "carriers"
     : pathname.endsWith("/documents") ? "documents"
     : "review";
-  usePageTitle(`${mode === "review" ? "Contracting" : mode === "documents" ? "Writing numbers" : mode.charAt(0).toUpperCase() + mode.slice(1)} · Galaxy`);
+  usePageTitle(`${mode === "review" ? "Contracting" : mode === "documents" ? "Writing numbers" : mode === "history" ? "Intake history" : mode.charAt(0).toUpperCase() + mode.slice(1)} · Galaxy`);
   const { isAdmin, isManager } = useAuth();
   const canInvite = !!(isAdmin || isManager);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -72,8 +74,8 @@ export default function CarrierContracts() {
   // Every contracting route is admin-only (src/App.tsx). Requests is history: the intake records the retired process
   // produced, kept readable behind a banner so nothing is lost.
   const reviewItem = [["review", "/dashboard/contracting", "Review"]] as Array<[string, string, string]>;
-  const liveItems = [["carriers", "/dashboard/contracting/carriers", "Carriers"], ["documents", "/dashboard/contracting/documents", "Writing numbers"]] as Array<[string, string, string]>;
-  const earlierItems = [["requests", "/dashboard/contracting/requests", "Requests"]] as Array<[string, string, string]>;
+  const liveItems = [["requests", "/dashboard/contracting/requests", "Requests"], ["carriers", "/dashboard/contracting/carriers", "Carriers"], ["documents", "/dashboard/contracting/documents", "Writing numbers"]] as Array<[string, string, string]>;
+  const earlierItems = [["history", "/dashboard/contracting/history", "Intake history"]] as Array<[string, string, string]>;
   const isHistory = earlierItems.some(([k]) => k === mode);
 
   const navButton = ([key, to, label]: [string, string, string]) => (
@@ -116,10 +118,12 @@ export default function CarrierContracts() {
     );
   }
 
-  const title = mode === "carriers" ? "Carriers" : mode === "requests" ? "Requests (history)" : "Writing numbers";
+  const title = mode === "carriers" ? "Carriers" : mode === "requests" ? "Contracting requests" : mode === "history" ? "Intake history" : "Writing numbers";
   const subtitle = mode === "carriers"
     ? "The four carriers tracked on every agent's profile, their portal links, and the full carrier directory."
     : mode === "requests"
+    ? "The carrier contracting request for every active agent, filled from what is on file. Missing items name who fixes them; ready rows go to the sheet."
+    : mode === "history"
     ? "Intake records from the process retired on Oct 9, 2026. New agents now complete their own contracting profile from the link on the Review page."
     : "Writing and contract numbers that carriers have issued, kept on record. E&O certificates live on each agent's profile documents.";
 
@@ -136,7 +140,8 @@ export default function CarrierContracts() {
 
       {mode === "carriers" && <TrackedCarriersCard />}
       {mode === "carriers" && <CarrierDirectory carriersQ={carriersQ} />}
-      {mode === "requests" && <ContractingIntakeAdmin showEmptyState />}
+      {mode === "requests" && <ContractingRequestsBoard />}
+      {mode === "history" && <ContractingIntakeAdmin showEmptyState />}
       {mode === "documents" && <ContractDocuments />}
     </div>
   );

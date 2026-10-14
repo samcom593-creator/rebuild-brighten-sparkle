@@ -12,6 +12,7 @@ import { useTeamWorkspace } from "@/hooks/useTeamWorkspace";
 import { ContractingReviewWorkspace } from "@/components/contracting-review/ContractingReviewWorkspace";
 import { TeamOverview } from "@/components/team/TeamOverview";
 import { TeamAttendance } from "@/components/team/TeamAttendance";
+import { ContractingLinkActivity } from "@/components/team/ContractingLinkActivity";
 import { RosterToolbar, type ActiveFilter } from "@/components/team/RosterToolbar";
 import { RosterProductionList } from "@/components/team/RosterRows";
 import { TeamPersonDrawer } from "@/components/team/TeamPersonDrawer";
@@ -810,7 +811,7 @@ export default function DashboardCRM() {
   });
 
   // My Team workspace: the one contracting read, the audited checkoff toggle, and the person drawer (?person=).
-  const [rosterMode, setRosterMode] = useState<"work" | "overview" | "attendance" | "production" | "calls">(() => {
+  const [rosterMode, setRosterMode] = useState<"work" | "overview" | "attendance" | "link" | "production" | "calls">(() => {
     try {
       const v = localStorage.getItem("crm.mode.v2");
       return v === "production" || v === "calls" || v === "overview" || v === "attendance" ? v : "work";
@@ -825,10 +826,10 @@ export default function DashboardCRM() {
   // A link may name the view (?view=contracting|overview|attendance), e.g. the VA sidebar entry.
   useEffect(() => {
     const v = searchParams.get("view");
-    const mode = v === "contracting" ? "work" : v === "overview" || v === "attendance" ? v : null;
+    const mode = v === "contracting" ? "work" : v === "overview" || v === "attendance" || v === "link" ? v : null;
     if (mode) { setCrmView("roster"); setRosterMode(mode); }
   }, [searchParams]);
-  const effectiveMode: "work" | "overview" | "attendance" | "production" | "calls" = team.contractingEnabled ? rosterMode : "production";
+  const effectiveMode: "work" | "overview" | "attendance" | "link" | "production" | "calls" = team.contractingEnabled ? rosterMode : "production";
 
   const focusAgentId = searchParams.get('focusAgentId');
   useEffect(() => {
@@ -1901,6 +1902,7 @@ export default function DashboardCRM() {
                 { key: "overview" as const, label: "Overview", icon: Users },
                 { key: "attendance" as const, label: "Attendance", icon: ClipboardCheck },
                 { key: "work" as const, label: "Contracting", icon: ShieldCheck },
+                { key: "link" as const, label: "Contracting link", icon: Link2 },
               ] : []),
               ...(team.contractingEnabled ? [] : [{ key: "production" as const, label: "Production", icon: TrendingUp }]),
             ]).map((m) => {
@@ -1953,6 +1955,8 @@ export default function DashboardCRM() {
             <GlassCard className="p-3 sm:p-4"><TeamOverview rows={(rosterQuery.data ?? []) as RosterRow[]} /></GlassCard>
           ) : effectiveMode === "attendance" ? (
             <GlassCard className="p-3 sm:p-4"><TeamAttendance /></GlassCard>
+          ) : effectiveMode === "link" ? (
+            <GlassCard className="p-3 sm:p-4"><ContractingLinkActivity /></GlassCard>
           ) : effectiveMode === "calls" ? (
             <GlassCard className="p-3 sm:p-4"><ContractingCheckinPanel /></GlassCard>
           ) : (

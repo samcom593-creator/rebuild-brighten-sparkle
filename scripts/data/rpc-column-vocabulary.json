@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-rpc-column-vocabulary.sh (bot_sql -> pg_proc + pg_rewrite)",
- "_generated_at": "2026-10-10T04:00:30Z",
+ "_generated_at": "2026-10-14T15:31:11Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "check-enum-filter-literals.mjs grades literals inside supabase.from().eq() chains. This is the other half of the same class: a status word that arrives from an RPC and is compared in JavaScript, where the return type is text and every wrong word type-checks. Per (function, returned column) this records the relation columns of that name reachable from the function body and the literals the function synthesises itself. It deliberately records CANDIDATES rather than one resolved source: provenance from a body regex is a guess, so check-rpc-status-literals.mjs refuses a literal only when NO candidate vocabulary and no body literal accepts it.",
  "_vocabulary_source": "scripts/data/enum-catalog.json (check_vocab + column_enum + enums). Not copied here on purpose, so the two guards read one snapshot and cannot drift.",
@@ -142,6 +142,8 @@
   "contracting_audit_summary_rows": "SETOF v_contracting_audit_summary",
   "contracting_carrier_cases": "SETOF v_contracting_carrier_cases",
   "contracting_exception_digest": "jsonb",
+  "contracting_link_activity": "jsonb",
+  "contracting_request_rows": "jsonb",
   "contracting_save_ethos_review": "contracting_ethos_approvals",
   "contracting_update_case": "jsonb",
   "contracting_worklist_ack": "jsonb",
@@ -254,6 +256,8 @@
   "fn_contract_review_save_profile": "jsonb",
   "fn_contracting_case_events_append_only": "trigger",
   "fn_contracting_is_staff": "boolean",
+  "fn_contracting_request_eval": "jsonb",
+  "fn_contracting_request_row": "jsonb",
   "fn_culture_loop_on_deal": "trigger",
   "fn_deal_capture_writing_npn": "trigger",
   "fn_default_agent_manager_to_sam": "trigger",
@@ -361,6 +365,7 @@
   "fn_rpc_single_flight": "jsonb",
   "fn_run_applicant_nudges": "jsonb",
   "fn_seminar_registration_ntfy": "trigger",
+  "fn_settle_unlicensed_digest": "integer",
   "fn_site_page_ladder_anchor": "timestamp with time zone",
   "fn_skool_members_replace": "integer",
   "fn_sms_receipt_fix_anchor": "timestamp with time zone",
@@ -511,6 +516,7 @@
   "recompute_agent_metrics_for_period": "integer",
   "record_apex_licensed_disposition": "jsonb",
   "record_charge_action": "charge_review_actions",
+  "record_contracting_link_open": "jsonb",
   "record_discord_deal_ingestion_exception": "jsonb",
   "record_discord_deal_ingestion_heartbeat": "void",
   "record_invitation_share": "jsonb",
@@ -544,6 +550,7 @@
   "save_apex_deal_draft": "jsonb",
   "save_contract_review_profile": "jsonb",
   "save_my_agency_branding": "jsonb",
+  "save_my_contracting_details": "jsonb",
   "save_my_contracting_profile": "jsonb",
   "save_partial_application": "void",
   "schedule_auto_populate_tick": "void",
@@ -569,8 +576,10 @@
   "set_contract_checkoff": "jsonb",
   "set_contract_review_mark": "jsonb",
   "set_contracting_checkin": "jsonb",
+  "set_contracting_default_advance": "jsonb",
   "set_contracting_followup": "jsonb",
   "set_contracting_followup_config": "jsonb",
+  "set_contracting_request_status": "jsonb",
   "set_expected_start": "jsonb",
   "set_hire_license_status": "jsonb",
   "set_limit": "real",
@@ -604,6 +613,7 @@
   "submit_apex_deal": "jsonb",
   "submit_apex_deal_ledger_impl": "jsonb",
   "submit_contracting_intake": "jsonb",
+  "submit_contracting_request": "jsonb",
   "supabase_usage_drain_health": "jsonb",
   "svg_url_encode": "text",
   "sync_automation_status": "jsonb",
@@ -6333,13 +6343,15 @@
    "body_literals": [
     "delivered",
     "dispatched",
-    "g",
+    "error",
     "never_run",
-    "no response body",
-    "no_response_recorded",
+    "no detail",
+    "pending",
     "public",
     "refused",
-    "unlicensed_slack_digest"
+    "success",
+    "unlicensed_slack_digest",
+    "unsettled"
    ]
   },
   "fn_unlicensed_digest_health.http_status": {
@@ -6349,13 +6361,15 @@
    "body_literals": [
     "delivered",
     "dispatched",
-    "g",
+    "error",
     "never_run",
-    "no response body",
-    "no_response_recorded",
+    "no detail",
+    "pending",
     "public",
     "refused",
-    "unlicensed_slack_digest"
+    "success",
+    "unlicensed_slack_digest",
+    "unsettled"
    ]
   },
   "fn_unlicensed_digest_health.last_attempt": {
@@ -6363,13 +6377,15 @@
    "body_literals": [
     "delivered",
     "dispatched",
-    "g",
+    "error",
     "never_run",
-    "no response body",
-    "no_response_recorded",
+    "no detail",
+    "pending",
     "public",
     "refused",
-    "unlicensed_slack_digest"
+    "success",
+    "unlicensed_slack_digest",
+    "unsettled"
    ]
   },
   "fn_unlicensed_digest_health.verdict": {
@@ -6377,13 +6393,15 @@
    "body_literals": [
     "delivered",
     "dispatched",
-    "g",
+    "error",
     "never_run",
-    "no response body",
-    "no_response_recorded",
+    "no detail",
+    "pending",
     "public",
     "refused",
-    "unlicensed_slack_digest"
+    "success",
+    "unlicensed_slack_digest",
+    "unsettled"
    ]
   },
   "get_agent_production_stats.agent_id": {

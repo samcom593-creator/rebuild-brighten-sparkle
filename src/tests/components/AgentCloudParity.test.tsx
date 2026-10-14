@@ -63,7 +63,7 @@ describe("AgentCloud parity surfaces", () => {
 
   it("keeps contracting, marketing, calendar, and profile parity objects first-class", () => {
     const contracting = source("pages/CarrierContracts.tsx");
-    for (const name of ["Contracting review", "Carriers", "Writing numbers", "Requests (history)", "E&O certificates"]) expect(contracting).toContain(name);
+    for (const name of ["Contracting review", "Carriers", "Writing numbers", "Contracting requests", "Intake history", "E&O certificates"]) expect(contracting).toContain(name);
     for (const retired of ["Spreadsheet workflow", "private contracting Discord", "Open the intake", "Carrier Cases", "Contracting Operations"]) expect(contracting).not.toContain(retired);
 
     expect(source("pages/ClientMarketing.tsx")).toContain("Recruiting Funnels");

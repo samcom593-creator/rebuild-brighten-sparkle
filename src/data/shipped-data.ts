@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "My Team shows who opened the contracting link, in order, and who should have started; the Contracting page fills the carrier request for every agent.",
+    detail: "My Team has a fourth view, Contracting link: openers first with how far each got (profile saved, DOB and address, carriers confirmed), then everyone who has not opened it, oldest hire first. The Contracting page's Requests tab builds the 14-column carrier template from what is on file (legal name, NPN, email, direct upline, contract level, approved advance, DOB, residential address, phone), names exactly what is missing and who fixes it, exports ready rows as a CSV with the exact headers, and writes submitted requests to the apex new contracting Google Sheet with the header checked first. Agents add DOB and address on their own contracting page; nothing is guessed, and the advance applies only once an admin approves the default.",
+    commit: "PL-CONTRACTING-REQUESTS",
+  },
+  {
+    ts: "today",
     label: "Nobody's comp percentage shows on the site any more, and the one-link invite goes out without a name or email.",
     detail: "Commission and contract percentages came off the Home earnings block and the who-sold table, the agent drawer, the producer drawer, the onboarding carrier list and the agency override line; the placement level now shows only inside the contracting review. The Invite an agent form no longer needs a recipient name or email to create the link, so you can send one and let the person fill in their own details. Duplicate sidebar entries (a second Calendar, a second Contracting review) are gone for the owner, My Team overview rows are one line on a laptop, Book Flips cards keep the three rare outcomes behind one tap, and the contracting link card stacks on phones.",
     commit: "PL-COMP-HIDDEN-DECLUTTER",

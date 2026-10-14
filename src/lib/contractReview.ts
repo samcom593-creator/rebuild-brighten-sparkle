@@ -215,6 +215,15 @@ export async function saveProfileForAgent(agentId: string, v: IntakeValues): Pro
   return profileResult(data, error);
 }
 
+export interface DetailsValues { dob: string; address_line1: string; address_line2: string; city: string; zip: string }
+/** The agent's own DOB and residential address (the only honest source): carriers need them on the contracting request. */
+export async function saveMyDetails(v: DetailsValues): Promise<ProfileResult> {
+  const { data, error } = await supabase.rpc("save_my_contracting_details" as never, {
+    p_dob: v.dob.trim() || null, p_address1: v.address_line1, p_address2: v.address_line2, p_city: v.city, p_zip: v.zip,
+  } as never);
+  return profileResult(data, error);
+}
+
 export async function saveMyProfile(v: IntakeValues): Promise<ProfileResult> {
   const { data, error } = await supabase.rpc("save_my_contracting_profile", { p_npn: v.npn, p_first: v.first_name, p_last: v.last_name, p_email: v.email, p_state: v.resident_state });
   return profileResult(data, error);

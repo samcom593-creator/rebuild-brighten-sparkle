@@ -153,7 +153,9 @@ export function LeadImporter({ className }: { className?: string }) {
     const rows = parsedLeads.map((lead) => ({
       ...lead,
       assigned_agent_id: selectedManager,
-      status: "new",
+      // The column is the application_status enum; "new" is its opening member. A plain string no longer type-checks
+      // against the regenerated types (2026-10-14).
+      status: "new" as const,
     }));
 
     const { error } = await supabase.from("applications").insert(rows);

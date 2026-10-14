@@ -1786,6 +1786,22 @@
         "raw": ""
       }
     ],
+    "contracting_link_activity": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "contracting_request_rows": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "contracting_save_ethos_review": [
       {
         "all": [
@@ -3226,6 +3242,30 @@
         "raw": ""
       }
     ],
+    "fn_contracting_request_eval": [
+      {
+        "all": [
+          "p_agent"
+        ],
+        "required": [
+          "p_agent"
+        ],
+        "unnamed": false,
+        "raw": "p_agent uuid"
+      }
+    ],
+    "fn_contracting_request_row": [
+      {
+        "all": [
+          "p_agent"
+        ],
+        "required": [
+          "p_agent"
+        ],
+        "unnamed": false,
+        "raw": "p_agent uuid"
+      }
+    ],
     "fn_culture_loop_on_deal": [
       {
         "all": [],
@@ -4447,6 +4487,14 @@
       }
     ],
     "fn_seminar_registration_ntfy": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_settle_unlicensed_digest": [
       {
         "all": [],
         "required": [],
@@ -6517,6 +6565,14 @@
         "raw": "p_lead_purchase_id uuid, p_action charge_action_type, p_notes text DEFAULT NULL::text, p_refund_amount_cents integer DEFAULT NULL::integer"
       }
     ],
+    "record_contracting_link_open": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "record_discord_deal_ingestion_exception": [
       {
         "all": [
@@ -7084,6 +7140,26 @@
         "raw": "p_display_name text, p_subdomain text, p_accent_color text, p_show_personal_deals boolean, p_show_leaderboard boolean, p_show_recruiting boolean"
       }
     ],
+    "save_my_contracting_details": [
+      {
+        "all": [
+          "p_address1",
+          "p_address2",
+          "p_city",
+          "p_dob",
+          "p_zip"
+        ],
+        "required": [
+          "p_address1",
+          "p_address2",
+          "p_city",
+          "p_dob",
+          "p_zip"
+        ],
+        "unnamed": false,
+        "raw": "p_dob date, p_address1 text, p_address2 text, p_city text, p_zip text"
+      }
+    ],
     "save_my_contracting_profile": [
       {
         "all": [
@@ -7430,6 +7506,18 @@
         "raw": "p_checkin_id uuid, p_agent_id uuid, p_step text, p_done boolean DEFAULT true, p_note text DEFAULT NULL::text"
       }
     ],
+    "set_contracting_default_advance": [
+      {
+        "all": [
+          "p_value"
+        ],
+        "required": [
+          "p_value"
+        ],
+        "unnamed": false,
+        "raw": "p_value text"
+      }
+    ],
     "set_contracting_followup": [
       {
         "all": [
@@ -7455,6 +7543,21 @@
         ],
         "unnamed": false,
         "raw": "p_basis text, p_window_days integer DEFAULT NULL::integer"
+      }
+    ],
+    "set_contracting_request_status": [
+      {
+        "all": [
+          "p_note",
+          "p_request_id",
+          "p_status"
+        ],
+        "required": [
+          "p_request_id",
+          "p_status"
+        ],
+        "unnamed": false,
+        "raw": "p_request_id uuid, p_status text, p_note text DEFAULT NULL::text"
       }
     ],
     "set_expected_start": [
@@ -7889,6 +7992,19 @@
         ],
         "unnamed": false,
         "raw": "p_first_name text, p_last_name text, p_email text, p_phone text, p_npn text, p_source text DEFAULT 'apex_contracting_page'::text, p_submitted_by uuid DEFAULT NULL::uuid, p_license_status text DEFAULT 'licensed'::text"
+      }
+    ],
+    "submit_contracting_request": [
+      {
+        "all": [
+          "p_advance",
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_advance text DEFAULT NULL::text"
       }
     ],
     "submit_referral": [

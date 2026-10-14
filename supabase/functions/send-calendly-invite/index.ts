@@ -9,7 +9,10 @@
 //   - Per-batch rate-limit to stay under Resend's 10 req/sec ceiling
 //
 // Modes:
-//   1. Single send  → POST { applicant_id, applicant_email?, applicant_first_name? }
+//   1. Single send  → POST { applicant_id }
+//                     The recipient and first name come from the applications
+//                     row. applicant_email / applicant_first_name are still sent
+//                     by the UI and are ignored (PL-WIB-STAFF-PAGE-SENDERS).
 //   2. Batch drain  → POST {} or {"mode":"batch","batch_size":25}
 //                     Pulls pending rows from outreach_queue where
 //                     source_run='calendly-invite' AND sent_at IS NULL.
@@ -21,6 +24,7 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { requireSendAuth } from "../_shared/require-send-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -203,21 +207,29 @@ async function handleSingle(
 ): Promise<Outcome> {
   const out: Outcome = { processed: 1, sent: 0, failed: 0, skipped: 0, details: [] };
   const applicantId = payload.applicant_id!;
-  let email = payload.applicant_email || null;
-  let firstName = payload.applicant_first_name || null;
 
-  // Hydrate from applications if needed
-  if (!email || !firstName) {
-    const { data: appRow } = await supabase
-      .from("applications")
-      .select("email, first_name, license_status")
-      .eq("id", applicantId)
-      .maybeSingle();
-    if (appRow) {
-      if (!email) email = appRow.email;
-      if (!firstName) firstName = appRow.first_name;
-    }
+  // PL-WIB-STAFF-PAGE-SENDERS: the recipient is the applicant's own row, never
+  // the body. Before this, applicant_email was mailed as given, and
+  // outreach_queue.application_id has no FK, so any fresh uuid plus any address
+  // sent Sam's personal invite to that address. The UI passes app.id and
+  // app.email from the same row, and all 270 real sends matched their row's
+  // email (0 mismatches), so this changes nothing for the real caller.
+  const { data: appRow, error: appErr } = await supabase
+    .from("applications")
+    .select("email, first_name")
+    .eq("id", applicantId)
+    .maybeSingle();
+  if (appErr || !appRow) {
+    out.failed = 1;
+    out.details!.push({
+      applicant_id: applicantId,
+      status: "failed",
+      reason: appErr ? `applicant read: ${appErr.message}` : "applicant not found",
+    });
+    return out;
   }
+  const email: string | null = appRow.email ?? null;
+  const firstName: string | null = appRow.first_name ?? null;
 
   if (!email || !email.includes("@")) {
     out.failed = 1;
@@ -412,6 +424,21 @@ serve(async (req) => {
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "method_not_allowed" }), {
       status: 405,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  // The staff-page Send Calendly Invite button is the only caller
+  // (PL-WIB-STAFF-PAGE-SENDERS, 2026-10-14): ApplicationDispositionCluster on
+  // DashboardApplicants (/dashboard/recruiting: admin, manager, va_manager, va,
+  // recruiter). No cron row, trigger or edge function invokes this; the batch
+  // mode has 0 pending rows and last sent 2026-07-29. Before this gate
+  // verify_jwt = false let a bare POST from anyone run either mode. Service
+  // key or staff only.
+  const sendAuth = await requireSendAuth(req, { floor: "staff" });
+  if (!sendAuth.ok) {
+    return new Response(JSON.stringify({ error: sendAuth.error }), {
+      status: sendAuth.status,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

@@ -394,6 +394,14 @@ const PUBLIC_ALLOWLIST = new Set([
   "request-agent-photos",
   "send-agent-nudge",
   "send-plaque-batch",
+  // 2 senders whose only callers are staff-page buttons (2026-10-14,
+  // PL-WIB-STAFF-PAGE-SENDERS): send-calendly-invite from DashboardApplicants,
+  // send-couldnt-reach-email from DashboardApplicants + UnlicensedAll. No cron
+  // row, trigger or edge function; 0 POSTs in 24h of function_edge_logs. A bare
+  // POST mailed Sam's invite to any address (calendly) or emailed any named
+  // applicant (couldnt-reach). requireSendAuth floor "staff" now.
+  "send-calendly-invite",
+  "send-couldnt-reach-email",
   // 19 senders whose only caller is an admin "Run now" button (2026-10-14,
   // PL-WIB-RUN-NOW-SENDERS): AutomationHealth / AutomationHub, both
   // requireAdmin. No cron row, no trigger, no local script; check-team-milestones
@@ -576,6 +584,9 @@ const PUBLIC_CONTRACT = {
   "request-agent-photos": "in_handler_gate",
   "send-agent-nudge": "in_handler_gate",
   "send-plaque-batch": "in_handler_gate",
+  // The 2 staff-page senders, 2026-10-14: requireSendAuth, floor "staff".
+  "send-calendly-invite": "in_handler_gate",
+  "send-couldnt-reach-email": "in_handler_gate",
   // The 19 admin "Run now" senders, 2026-10-14: requireSendAuth, admin_or_manager.
   "check-abandoned-applications": "in_handler_gate",
   "check-comeback-milestones": "in_handler_gate",

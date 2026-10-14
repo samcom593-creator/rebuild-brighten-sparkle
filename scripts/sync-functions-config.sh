@@ -198,6 +198,9 @@ PUBLIC_ALLOWLIST=(
   "request-agent-photos"
   "send-agent-nudge"
   "send-plaque-batch"
+  # 2 staff-page senders (2026-10-14): requireSendAuth, floor "staff".
+  "send-calendly-invite"
+  "send-couldnt-reach-email"
   # 19 admin "Run now" senders (2026-10-14): requireSendAuth, admin_or_manager.
   # check-daily-plaques calls check-team-milestones with the service key, which
   # is not a user JWT, so verify_jwt stays false.

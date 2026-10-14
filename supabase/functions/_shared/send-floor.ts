@@ -25,3 +25,19 @@ export function staffOrAgentVerdict(
   if ((agentRows ?? []).length > 0) return { ok: true, status: 200 };
   return { ok: false, status: 403, error: "forbidden: requires staff or an agent record" };
 }
+
+/**
+ * Pure verdict for the "staff" floor (PL-WIB-STAFF-PAGE-SENDERS). Staff roles
+ * only: no agents-row fallback, because these senders sit on pages no agent
+ * can reach (/dashboard/recruiting, /admin/unlicensed-all), and an agents row
+ * would admit every agent to a button they never see. A failed roles read is
+ * 503, same reasoning as staffOrAgentVerdict.
+ */
+export function staffVerdict(
+  roles: Array<{ role: unknown }> | null,
+  rolesError: unknown,
+): { ok: boolean; status: number; error?: string } {
+  if (rolesError) return { ok: false, status: 503, error: "sender auth unavailable" };
+  if ((roles ?? []).some((r) => STAFF_ROLES.has(String(r.role)))) return { ok: true, status: 200 };
+  return { ok: false, status: 403, error: "forbidden: requires a staff role" };
+}

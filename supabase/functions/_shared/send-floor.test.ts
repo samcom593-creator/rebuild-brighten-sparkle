@@ -3,7 +3,7 @@
 // stranger: role 'agent' (handle_new_user gives every signup that) and no
 // agents row. That must be 403, and a read error must never decide either way.
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { staffOrAgentVerdict } from "./send-floor.ts";
+import { staffOrAgentVerdict, staffVerdict } from "./send-floor.ts";
 
 Deno.test("stranger signup: role 'agent', no agents row -> 403", () => {
   assertEquals(staffOrAgentVerdict([{ role: "agent" }], null, [], null).status, 403);
@@ -29,4 +29,26 @@ Deno.test("roles read failed -> 503, never a verdict", () => {
 
 Deno.test("agents read failed for a non-staff caller -> 503", () => {
   assertEquals(staffOrAgentVerdict([{ role: "agent" }], null, null, { message: "x" }).status, 503);
+});
+
+// PL-WIB-STAFF-PAGE-SENDERS. Floor "staff": the agents row that admits a real
+// agent under staff_or_agent must NOT admit anyone here, so a plain agent is
+// 403 whatever the agents table says (the verdict never sees it).
+Deno.test("staff floor: role 'agent' -> 403", () => {
+  assertEquals(staffVerdict([{ role: "agent" }], null).status, 403);
+});
+
+Deno.test("staff floor: no roles -> 403", () => {
+  assertEquals(staffVerdict([], null).status, 403);
+});
+
+for (const role of ["admin", "super_admin", "manager", "va_manager", "va", "recruiter"]) {
+  Deno.test(`staff floor: role ${role} -> 200`, () => {
+    assertEquals(staffVerdict([{ role }], null).status, 200);
+  });
+}
+
+Deno.test("staff floor: roles read failed -> 503, never a verdict", () => {
+  assertEquals(staffVerdict(null, { message: "x" }).status, 503);
+  assertEquals(staffVerdict([{ role: "admin" }], { message: "x" }).status, 503);
 });

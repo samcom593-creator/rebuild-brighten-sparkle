@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "The Calendly invite and the couldn't-reach-you email can no longer be sent by a stranger, and the invite only goes to the applicant on file.",
+    detail: "Both answered a bare request from anyone on the internet. The Calendly invite also mailed whatever address the request named, as a personal invite from Sam, so it could be pointed at anyone. Their only buttons are on Recruiting and the Unlicensed queue, so they now need a staff sign-in (admin, manager, VA manager, VA or recruiter) or the system key, and the invite reads the email from the applicant's own record. Every real invite already went to that address, so nothing changes for the team.",
+    commit: "PL-WIB-STAFF-PAGE-SENDERS",
+  },
+  {
+    ts: "today",
     label: "My Team shows who opened the contracting link, in order, and who should have started; the Contracting page fills the carrier request for every agent.",
     detail: "My Team has a fourth view, Contracting link: openers first with how far each got (profile saved, DOB and address, carriers confirmed), then everyone who has not opened it, oldest hire first. The Contracting page's Requests tab builds the 14-column carrier template from what is on file (legal name, NPN, email, direct upline, contract level, approved advance, DOB, residential address, phone), names exactly what is missing and who fixes it, exports ready rows as a CSV with the exact headers, and writes submitted requests to the apex new contracting Google Sheet with the header checked first. Agents add DOB and address on their own contracting page; nothing is guessed, and the advance applies only once an admin approves the default.",
     commit: "PL-CONTRACTING-REQUESTS",

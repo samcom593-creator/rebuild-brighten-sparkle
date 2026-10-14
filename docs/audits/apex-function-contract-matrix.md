@@ -1,7 +1,7 @@
 # APEX Function Contract Matrix
 
-Generated: 2026-10-14T15:51:16.365Z
-Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
+Generated: 2026-10-14T16:17:32.407Z
+Repository: `/private/tmp/wib-31/wt`
 
 ## Inventory Summary
 
@@ -9,7 +9,7 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 - Configured in `config.toml`: **243**
 - Invoked Edge Functions in Source: **100**
 - Invoked RPC Calls in Source: **218**
-- SQL Functions in Migrations: **692**
+- SQL Functions in Migrations: **689**
 
 ## Edge Function Auth & Verification Contracts
 
@@ -191,9 +191,9 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 | `send-bulk-email` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-bulk-portal-logins` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-bulk-unlicensed-outreach` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
-| `send-calendly-invite` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `send-calendly-invite` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `send-candidate-confirmation` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `send-couldnt-reach-email` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `send-couldnt-reach-email` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `send-course-enrollment-email` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-course-hurry-emails` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `send-course-reminder` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |

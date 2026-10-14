@@ -16,6 +16,7 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireSendAuth } from "../_shared/require-send-auth.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -79,6 +80,20 @@ serve(async (req) => {
       status: 405,
       headers: { ...cors, "Content-Type": "application/json" },
     });
+
+  // Staff-page buttons are the only callers (PL-WIB-STAFF-PAGE-SENDERS,
+  // 2026-10-14): DashboardApplicants (/dashboard/recruiting: admin, manager,
+  // va_manager, va, recruiter) and UnlicensedAll (/admin/unlicensed-all:
+  // admin, manager, va_manager, va). No cron row, trigger or edge function
+  // invokes this. Before this gate verify_jwt = false let a bare POST from
+  // anyone email any applicant whose id it named. Service key or staff only.
+  const sendAuth = await requireSendAuth(req, { floor: "staff" });
+  if (!sendAuth.ok) {
+    return new Response(JSON.stringify({ ok: false, error: sendAuth.error }), {
+      status: sendAuth.status,
+      headers: { ...cors, "Content-Type": "application/json" },
+    });
+  }
 
   const sb = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
 

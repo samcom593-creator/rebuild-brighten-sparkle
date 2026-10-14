@@ -784,3 +784,8 @@ verify_jwt = true
 # the gateway must not pre-verify; the function checks an admin JWT or the bot token itself (2026-10-14).
 [functions.contracting-sheet-sync]
 verify_jwt = false
+
+# contracting-sheet-csv (2026-10-14): Google Sheets' IMPORTDATA fetches it with no headers at all, so the gateway cannot
+# demand a JWT; the handler refuses anything without the 64-hex feed key held in system_settings.
+[functions.contracting-sheet-csv]
+verify_jwt = false

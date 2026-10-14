@@ -1818,6 +1818,14 @@
         "raw": "p_agent_id uuid, p_intake_id uuid, p_evidence jsonb DEFAULT '{}'::jsonb, p_approval jsonb DEFAULT NULL::jsonb"
       }
     ],
+    "contracting_sheet_csv": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "contracting_update_case": [
       {
         "all": [
@@ -3264,6 +3272,18 @@
         ],
         "unnamed": false,
         "raw": "p_agent uuid"
+      }
+    ],
+    "fn_csv_cell": [
+      {
+        "all": [
+          "x"
+        ],
+        "required": [
+          "x"
+        ],
+        "unnamed": false,
+        "raw": "x text"
       }
     ],
     "fn_culture_loop_on_deal": [

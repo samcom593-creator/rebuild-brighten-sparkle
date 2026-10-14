@@ -84,7 +84,9 @@ describe("the contracting review: what you see", () => {
     expect(screen.getByText("Nobody matches these filters.")).toBeInTheDocument();
   });
 
-  it("pages a long list in full: 120 people, 50 at a time, nothing dropped", async () => {
+  // 488ms here; 2026-10-14 it timed out at the 5s default on a loaded CI runner (file took 13.8s for 33 tests). It
+  // renders 120 rows three times over, so it gets the room a render test needs rather than a rerun-and-hope.
+  it("pages a long list in full: 120 people, 50 at a time, nothing dropped", { timeout: 20_000 }, async () => {
     mount(Array.from({ length: 120 }, (_, i) => agent({ id: `p${String(i).padStart(3, "0")}`, display_name: `Person ${String(i).padStart(3, "0")}` })));
     await screen.findByText("Person 000");
     expect(screen.getAllByRole("button", { name: /^Details for/ })).toHaveLength(50);

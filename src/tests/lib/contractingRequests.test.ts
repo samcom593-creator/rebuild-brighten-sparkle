@@ -78,14 +78,19 @@ describe("contracting call list helpers", () => {
   const call = (o: Partial<CallRow> = {}): CallRow => ({
     agent_id: "a1", display_name: "Tyler Krejcha", phone: "6025550100", license_states: null, licensed_at: null, start_date: null,
     bucket: "to_call", reason: "never_opened", last_opened_at: null, opens: 0, marked_count: 0,
-    profile_saved: false, details_saved: false, request_status: null, followup: null, ...o,
+    profile_saved: false, details_saved: false, request_status: null, lifetime_deals: 0, last_sale: null, followup: null, ...o,
   });
 
   it("names the next step in plain words, with partial carrier progress when there is some", () => {
-    expect(callReason(call(), NOW)).toBe("Never opened the link");
+    expect(callReason(call(), NOW)).toBe("No contracting profile saved");
     expect(callReason(call({ reason: "opened_not_saved", last_opened_at: "2026-10-14T17:00:00Z", opens: 3 }), NOW)).toBe("Opened the link 3 h ago (3 times), saved nothing");
     expect(callReason(call({ reason: "missing_details", profile_saved: true }), NOW)).toBe("Saved their profile, still needs DOB + address");
-    expect(callReason(call({ marked_count: 3 }), NOW)).toBe("Never opened the link · 3 of 4 carriers confirmed");
+    expect(callReason(call({ marked_count: 3 }), NOW)).toBe("No contracting profile saved · 3 of 4 carriers confirmed");
+  });
+
+  it("treats a posted deal as contracting evidence: a seller is described by their sales, never as never-opened", () => {
+    expect(callReason(call({ bucket: "selling", lifetime_deals: 12, last_sale: "2026-10-09" }), NOW)).toMatch(/^Selling · 12 deals, last Oct [89] · no contracting profile saved$/);
+    expect(callReason(call({ bucket: "selling", lifetime_deals: 1, last_sale: null }), NOW)).toBe("Selling · 1 deal · no contracting profile saved");
   });
 
   it("says what finished a finished person instead of a step they no longer owe", () => {

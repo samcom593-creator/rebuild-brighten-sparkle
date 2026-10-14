@@ -165,7 +165,7 @@ export async function syncContractingSheet(): Promise<SyncResult> {
  * next step in plain words, describes the last touch, and builds the text message. Every call or text is logged with
  * one tap (log_contracting_followup) so the list works itself down.
  */
-export type CallBucket = "to_call" | "called_recently" | "not_now" | "finished";
+export type CallBucket = "to_call" | "called_recently" | "not_now" | "selling" | "finished";
 export type CallReason = "never_opened" | "opened_not_saved" | "missing_details";
 export type FollowupChannel = "call" | "text" | "note";
 export type FollowupOutcome = "reached" | "will_finish" | "voicemail" | "no_answer" | "not_interested";
@@ -176,11 +176,12 @@ export interface CallRow {
   bucket: CallBucket; reason: CallReason;
   last_opened_at: string | null; opens: number; marked_count: number;
   profile_saved: boolean; details_saved: boolean; request_status: RequestStatus | null;
+  lifetime_deals: number; last_sale: string | null;
   followup: CallFollowup | null;
 }
 export interface CallListPayload {
   ok: boolean;
-  counts: { to_call: number; called_recently: number; not_now: number; finished: number; unlicensed: number; no_phone: number; total: number };
+  counts: { to_call: number; called_recently: number; not_now: number; selling: number; finished: number; unlicensed: number; no_phone: number; total: number };
   rows: CallRow[];
 }
 
@@ -213,15 +214,17 @@ export function licenseText(r: Pick<CallRow, "license_states" | "licensed_at">):
 }
 
 /** The next thing this person has to do, in the words to say on the phone; for a finished person, what finished it. */
-export function callReason(r: Pick<CallRow, "bucket" | "reason" | "last_opened_at" | "opens" | "marked_count" | "request_status">, nowMs: number = Date.now()): string {
+export function callReason(r: Pick<CallRow, "bucket" | "reason" | "last_opened_at" | "opens" | "marked_count" | "request_status" | "lifetime_deals" | "last_sale">, nowMs: number = Date.now()): string {
   if (r.bucket === "finished") {
     return r.marked_count === 4 ? "All four carriers confirmed" : r.request_status === "submitted" || r.request_status === "approved" ? `Request ${r.request_status}` : "Profile, DOB and address saved";
   }
+  // A posted deal is contracting evidence the link log cannot see: link opens are only tracked from 2026-10-14.
+  if (r.bucket === "selling") return `Selling · ${r.lifetime_deals} ${r.lifetime_deals === 1 ? "deal" : "deals"}${r.last_sale ? `, last ${shortDay(r.last_sale)}` : ""} · no contracting profile saved`;
   const base = r.reason === "missing_details"
     ? "Saved their profile, still needs DOB + address"
     : r.reason === "opened_not_saved"
       ? `Opened the link ${ago(r.last_opened_at, nowMs)}${r.opens > 1 ? ` (${r.opens} times)` : ""}, saved nothing`
-      : "Never opened the link";
+      : "No contracting profile saved";
   return r.marked_count > 0 && r.marked_count < 4 ? `${base} · ${r.marked_count} of 4 carriers confirmed` : base;
 }
 

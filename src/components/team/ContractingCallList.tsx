@@ -28,6 +28,7 @@ export function ContractingCallList() {
   const [search, setSearch] = useState("");
   const [showNotNow, setShowNotNow] = useState(false);
   const [showFinished, setShowFinished] = useState(false);
+  const [showSelling, setShowSelling] = useState(false);
   const [active, setActive] = useState<{ id: string; channel: FollowupChannel } | null>(null);
   const log = useMutation({
     mutationFn: (v: { agentId: string; channel: FollowupChannel; outcome?: FollowupOutcome }) => logFollowup(v.agentId, v.channel, v.outcome),
@@ -46,6 +47,7 @@ export function ContractingCallList() {
   const toCall = rows.filter((r) => r.bucket === "to_call");
   const called = rows.filter((r) => r.bucket === "called_recently");
   const notNow = rows.filter((r) => r.bucket === "not_now");
+  const selling = rows.filter((r) => r.bucket === "selling");
   const finished = rows.filter((r) => r.bucket === "finished");
   const activeRow = active ? q.data?.rows.find((r) => r.agent_id === active.id) ?? null : null;
 
@@ -104,7 +106,7 @@ export function ContractingCallList() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="text-base font-semibold text-foreground">Licensed agents who never finished contracting</h2>
-          <p className="text-sm text-muted-foreground">Tap Call, then tap how it went. Anyone touched this week moves below the list; finished people drop off.</p>
+          <p className="text-sm text-muted-foreground">Tap Call, then tap how it went. Anyone touched this week moves below the list; people already selling or finished drop off it.</p>
         </div>
         <Button type="button" variant="outline" size="sm" className="h-10 gap-1.5" onClick={() => void copyLink()}><Copy className="h-4 w-4" aria-hidden /> Copy link</Button>
       </div>
@@ -115,7 +117,7 @@ export function ContractingCallList() {
         <div className="rounded-xl border border-border bg-card px-2 py-3"><p className="text-2xl font-bold tabular-nums text-foreground">{c.finished}</p><p className="text-xs text-muted-foreground">finished</p></div>
       </div>
       <p className="text-xs text-muted-foreground">
-        {c.unlicensed} unlicensed {c.unlicensed === 1 ? "person is" : "people are"} not shown; they cannot contract until licensed.
+        {c.selling > 0 ? `${c.selling} ${c.selling === 1 ? "person is" : "people are"} already selling, so they are listed below the call list, not in it. ` : ""}{c.unlicensed} unlicensed {c.unlicensed === 1 ? "person is" : "people are"} not shown; they cannot contract until licensed.
         {c.no_phone > 0 ? ` ${c.no_phone} on the list ${c.no_phone === 1 ? "has" : "have"} no phone on file.` : ""}
       </p>
 
@@ -154,6 +156,15 @@ export function ContractingCallList() {
             Not interested right now · {notNow.length} <ChevronDown className={cn("h-4 w-4 transition-transform", showNotNow && "rotate-180")} aria-hidden />
           </button>
           {showNotNow ? <div className="mt-2"><List items={notNow} muted /></div> : null}
+        </div>
+      ) : null}
+
+      {selling.length > 0 ? (
+        <div>
+          <button type="button" className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground" aria-expanded={showSelling} onClick={() => setShowSelling((v) => !v)}>
+            Already selling · {selling.length} <ChevronDown className={cn("h-4 w-4 transition-transform", showSelling && "rotate-180")} aria-hidden />
+          </button>
+          {showSelling ? <div className="mt-2"><List items={selling} muted /></div> : null}
         </div>
       ) : null}
 

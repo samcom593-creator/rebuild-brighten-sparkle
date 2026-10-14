@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { requireSendAuth } from "../_shared/require-send-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -18,6 +19,19 @@ interface LowCloseRateRequest {
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // Admin "Run now" is the only caller (PL-WIB-RUN-NOW-SENDERS, 2026-10-14):
+  // no cron row, trigger, edge function or local script invokes this, and the
+  // pages that do (AutomationHealth / AutomationHub) are requireAdmin. Before
+  // this gate verify_jwt = false let a bare POST from anyone run the whole send.
+  // Service key or a signed-in admin/manager only.
+  const sendAuth = await requireSendAuth(req);
+  if (!sendAuth.ok) {
+    return new Response(JSON.stringify({ error: sendAuth.error }), {
+      status: sendAuth.status,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   try {

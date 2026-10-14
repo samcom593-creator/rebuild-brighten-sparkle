@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "19 automation jobs that email applicants, agents and Sam can no longer be set off by a stranger. Only an admin or the system can run them now.",
+    detail: "Ghosted-applicant follow-ups, abandoned-application emails, plaque and milestone awards, production-gap texts, low-close-rate and no-deal alerts, coaching emails and Sam's morning report all answered a bare request from anyone on the internet and ran their whole send. Their only real trigger is the Run Now button on the admin Automation pages, so they now require an admin sign-in or the system key. None of them is on a schedule, so nothing that runs today stops. No abuse was found in the logs.",
+    commit: "PL-WIB-RUN-NOW-SENDERS",
+  },
+  {
+    ts: "today",
     label: "The daily licensing digest reaches the #unlicensed Slack room again. It had been refused every weekday since September 8.",
     detail: "The weekday licensing-floor digest asked for the old room name after the room was moved to #unlicensed on September 7, so Slack posting refused it as an unknown channel each morning while the run log said it was sent. It now finds the room by its role instead of a copied name, so renaming the room cannot break it again. The run log still only records that the post was sent, not that it landed. That gap is written down and is next.",
     commit: "PL-WIB-UNLICENSED-DIGEST-CHANNEL",

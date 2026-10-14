@@ -377,6 +377,31 @@ const PUBLIC_ALLOWLIST = new Set([
   "send-weekly-analytics",
   "send-license-milestone",
   "outreach-sender",
+  // 19 senders whose only caller is an admin "Run now" button (2026-10-14,
+  // PL-WIB-RUN-NOW-SENDERS): AutomationHealth / AutomationHub, both
+  // requireAdmin. No cron row, no trigger, no local script; check-team-milestones
+  // is also called by check-daily-plaques with the service key. 0 non-OPTIONS
+  // requests in 24h of function_edge_logs; automation_run_log last run 2026-04-30.
+  // A bare POST ran each whole send. requireSendAuth (admin_or_manager) now.
+  "check-abandoned-applications",
+  "check-comeback-milestones",
+  "check-daily-plaques",
+  "check-early-performance",
+  "check-low-aop-friday",
+  "check-monthly-milestones",
+  "check-recruiting-milestones",
+  "check-stale-onboarding",
+  "check-streak-milestones",
+  "check-team-milestones",
+  "check-weekly-milestones",
+  "detect-dropped-leads",
+  "detect-ghosted-applicants",
+  "detect-production-gaps",
+  "notify-attendance-reminder",
+  "notify-low-close-rate",
+  "notify-no-deal-today",
+  "send-proactive-coaching",
+  "send-sam-morning-report",
   // send-sms-via-email (2026-10-09): a bare POST {phone, body} texted any US
   // number with caller-chosen words; {agentId, body} texted any agent. No
   // credential read. requireSendAuth (admin_or_manager) now. Callers:
@@ -529,6 +554,26 @@ const PUBLIC_CONTRACT = {
   "send-weekly-analytics": "in_handler_gate",
   "send-license-milestone": "in_handler_gate",
   "outreach-sender": "in_handler_gate",
+  // The 19 admin "Run now" senders, 2026-10-14: requireSendAuth, admin_or_manager.
+  "check-abandoned-applications": "in_handler_gate",
+  "check-comeback-milestones": "in_handler_gate",
+  "check-daily-plaques": "in_handler_gate",
+  "check-early-performance": "in_handler_gate",
+  "check-low-aop-friday": "in_handler_gate",
+  "check-monthly-milestones": "in_handler_gate",
+  "check-recruiting-milestones": "in_handler_gate",
+  "check-stale-onboarding": "in_handler_gate",
+  "check-streak-milestones": "in_handler_gate",
+  "check-team-milestones": "in_handler_gate",
+  "check-weekly-milestones": "in_handler_gate",
+  "detect-dropped-leads": "in_handler_gate",
+  "detect-ghosted-applicants": "in_handler_gate",
+  "detect-production-gaps": "in_handler_gate",
+  "notify-attendance-reminder": "in_handler_gate",
+  "notify-low-close-rate": "in_handler_gate",
+  "notify-no-deal-today": "in_handler_gate",
+  "send-proactive-coaching": "in_handler_gate",
+  "send-sam-morning-report": "in_handler_gate",
 
   // --- the credential is the token in the URL ----------------------------
   "content-share": "url_token",

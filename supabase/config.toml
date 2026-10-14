@@ -779,3 +779,8 @@ verify_jwt = true
 
 [functions.myday-todoist]
 verify_jwt = true
+
+# contracting-sheet-sync: the 15-minute pg_cron reconciliation calls it with the APEX bot token, which is not a JWT, so
+# the gateway must not pre-verify; the function checks an admin JWT or the bot token itself (2026-10-14).
+[functions.contracting-sheet-sync]
+verify_jwt = false

@@ -193,7 +193,7 @@ export function ImoByAgency({
               )}
               {(a.owner_override_pct ?? 0) > 0 && (
                 <p className="mt-0.5 text-[12px] font-medium text-primary">
-                  Your override: {a.owner_override_pct}% · {fmt(ovrOf(a))} {exactWindow ? "this window" : "MTD"}
+                  Your override: {fmt(ovrOf(a))} {exactWindow ? "this window" : "MTD"}
                 </p>
               )}
               {a.agency === "Vantage Financial" && vantageDays.length > 0 && (

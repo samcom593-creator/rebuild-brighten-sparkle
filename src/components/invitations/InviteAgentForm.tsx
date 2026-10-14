@@ -162,9 +162,11 @@ export function InviteAgentForm({
     : [];
   const issueFor = (field: string) => issues.find((i) => i.field === field)?.message ?? null;
 
-  const nameOk = recipientName.trim().split(/\s+/).filter(Boolean).length >= 2;
-  const emailOk = isPlausibleEmail(recipientEmail);
-  const canSubmit = !!opts && nameOk && emailOk && issues.length === 0 && !submitting;
+  // Name and email are optional (Sam, 2026-10-14): a link can go out bare and the person fills in their own
+  // details on landing. An email, when given, must be plausible, because it locks the invitation to that address.
+  const emailGiven = recipientEmail.trim() !== "";
+  const emailOk = !emailGiven || isPlausibleEmail(recipientEmail);
+  const canSubmit = !!opts && emailOk && issues.length === 0 && !submitting;
 
   const chosenUpline = opts?.uplines.find((u) => u.id === uplineId) ?? null;
 
@@ -188,8 +190,8 @@ export function InviteAgentForm({
         p_kind: "hire",
         p_target_role: targetRole,
         p_target_manager_id: uplineId,
-        p_recipient_email: normalizeEmailInput(recipientEmail),
-        p_recipient_name: recipientName.trim(),
+        p_recipient_email: emailGiven ? normalizeEmailInput(recipientEmail) : null,
+        p_recipient_name: recipientName.trim() || null,
         p_recipient_phone: recipientPhone.trim() || null,
         p_license_status: licensePath === "recruit_chooses" ? null : licensePath,
         p_offered_comp_pct: offeredComp,
@@ -211,12 +213,12 @@ export function InviteAgentForm({
         kind: row.kind ?? "hire",
         path: row.path,
         expires_at: row.expires_at ?? "",
-        recipient_email: normalizeEmailInput(recipientEmail),
-        recipient_name: recipientName.trim(),
+        recipient_email: emailGiven ? normalizeEmailInput(recipientEmail) : null,
+        recipient_name: recipientName.trim() || null,
       };
       setCreated(result);
       setCopied(false);
-      toast.success(`Invitation created for ${result.recipient_name}.`);
+      toast.success(result.recipient_name ? `Invitation created for ${result.recipient_name}.` : "Open invitation created. Anyone with the link can fill in their own details.");
       reset();
       void queryClient.invalidateQueries({ queryKey: ["invitations"] });
       onCreated?.(result);
@@ -279,12 +281,11 @@ export function InviteAgentForm({
     <div className="space-y-5" data-testid="invite-agent-form">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <Label htmlFor="invite-recipient-name">Recipient name</Label>
+          <Label htmlFor="invite-recipient-name">Recipient name (optional)</Label>
           <Input id="invite-recipient-name" value={recipientName} onChange={(e) => setRecipientName(e.target.value)} placeholder="First Last" autoComplete="off" />
-          {triedSubmit && !nameOk && <p className="text-xs text-destructive">Enter first and last name.</p>}
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="invite-recipient-email">Recipient email</Label>
+          <Label htmlFor="invite-recipient-email">Recipient email (optional)</Label>
           <Input
             id="invite-recipient-email"
             type="email"
@@ -294,10 +295,10 @@ export function InviteAgentForm({
             autoComplete="off"
           />
           <EmailTypoHint value={recipientEmail} onAccept={setRecipientEmail} />
-          {(triedSubmit || recipientEmail.length > 3) && !emailOk && (
-            <p className="text-xs text-destructive">Enter a valid email address.</p>
+          {emailGiven && !emailOk && (
+            <p className="text-xs text-destructive">Enter a valid email address, or leave it blank.</p>
           )}
-          <p className="text-xs text-muted-foreground">Only this address can accept the invitation.</p>
+          <p className="text-xs text-muted-foreground">{emailGiven ? "Only this address can accept the invitation." : "Leave blank for an open link: they enter their own name and email."}</p>
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="invite-recipient-phone">Phone (optional)</Label>

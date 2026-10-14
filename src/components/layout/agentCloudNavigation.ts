@@ -46,6 +46,8 @@ export interface AgentCloudNavItem {
   href: string;
   icon?: ElementType;
   adminOnly?: boolean;
+  /** A role fallback that duplicates an entry the all-seeing viewer already has elsewhere. */
+  hideWhenSeesAll?: boolean;
   /** Account modes that see this item. Omit = everyone. Admin always sees it. */
   modes?: AccountMode[];
 }
@@ -156,13 +158,13 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
       // Interviews are booked from Calendar (open to every signed-in user).
       // Producers and managers reach it under Sell; the staff who book
       // interviews but have no Sell calendar get it here.
-      { label: "Calendar", href: "/dashboard/calendar", icon: CalendarDays, modes: ["recruiter", "va", "va_manager"] },
+      { label: "Calendar", href: "/dashboard/calendar", icon: CalendarDays, modes: ["recruiter", "va", "va_manager"], hideWhenSeesAll: true },
       // Interviews and Follow-ups are not standalone destinations: interviews are
       // booked from Calendar and follow-ups are the worklist's due queues.
       // Staff accounts (the former top-level "VA Team") live here too.
       { label: "Staff accounts", href: "/va-team", icon: Users, modes: ["va_manager"] },
       // Contracting is tracked by hand on My Team's Contracting view (read-only for VAs). The old Ethos / cases pages are history.
-      { label: "Contracting review", href: "/dashboard/team?view=contracting", icon: ScrollText, modes: ["va", "va_manager"] },
+      { label: "Contracting review", href: "/dashboard/team?view=contracting", icon: ScrollText, modes: ["va", "va_manager"], hideWhenSeesAll: true },
     ],
   },
 
@@ -315,11 +317,14 @@ export interface AgentCloudNavViewer {
  */
 export function filterAgentCloudNav(entries: AgentCloudNavEntry[], viewer: AgentCloudNavViewer): AgentCloudNavEntry[] {
   const modeAllows = (modes?: AccountMode[]) => viewer.seesAll || !modes || modes.includes(viewer.viewMode);
+  // A role fallback (the VA's Calendar, the VA's Contracting review) duplicates an entry the all-seeing viewer already
+  // has elsewhere; it is for the roles that lack the original, not a second copy for the owner.
+  const notDuplicateForOwner = (item: { hideWhenSeesAll?: boolean }) => !(viewer.seesAll && item.hideWhenSeesAll);
   return entries
     .filter((entry) => !(!isAgentCloudGroup(entry) && entry.adminOnly && !viewer.seesAll))
     .filter((entry) => modeAllows(entry.modes))
     .map((entry) => (isAgentCloudGroup(entry)
-      ? { ...entry, items: entry.items.filter((item) => (!item.adminOnly || viewer.seesAll) && modeAllows(item.modes)) }
+      ? { ...entry, items: entry.items.filter((item) => (!item.adminOnly || viewer.seesAll) && modeAllows(item.modes) && notDuplicateForOwner(item)) }
       : entry))
     .filter((entry) => !isAgentCloudGroup(entry) || entry.items.length > 0);
 }

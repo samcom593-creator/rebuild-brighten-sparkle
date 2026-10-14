@@ -38,7 +38,6 @@ export function ContractingStanding({ agentId }: { agentId: string | null | unde
           <>
             <p className="text-sm text-foreground">
               <span className="font-semibold">{agent.marked_count} of {carriers.length} carriers confirmed</span>
-              <span className="text-muted-foreground"> · Placement level {levelText(agent.level)}</span>
             </p>
             <ul className="grid gap-1 sm:grid-cols-2">
               {carriers.map((c) => (

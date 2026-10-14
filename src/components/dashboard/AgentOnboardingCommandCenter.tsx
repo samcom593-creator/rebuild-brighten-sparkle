@@ -245,7 +245,6 @@ export function AgentOnboardingCommandCenter({
           ) : (
             <ul className="divide-y divide-border/70">
               {contracts.map((row) => {
-                const comp = row.effective_pct ?? row.contract_pct;
                 const isSaving = statusMutation.isPending && statusMutation.variables?.carrierId === row.carrier_id;
                 return (
                   <li key={row.carrier_id} className="space-y-2 px-4 py-3">
@@ -253,7 +252,6 @@ export function AgentOnboardingCommandCenter({
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold">{row.carrier_name}</p>
                         <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
-                          <span>Comp {comp == null ? "—" : `${Number(comp)}%`}</span>
                           {row.live_status && <span>Imported status: {row.live_status.replace(/_/g, " ")}</span>}
                           {row.writing_number && <span>Writing #{row.writing_number}</span>}
                         </div>

@@ -297,8 +297,8 @@ function ContractingLinkCard({ copyLink, copiedId }: { copyLink: (id: string, ur
   const url = `${origin}/dashboard/contracting-profile`;
   return (
     <GlassCard className="p-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0 flex-1">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0 sm:flex-1">
           <h2 className="text-sm font-semibold text-foreground">Contracting link</h2>
           <p className="mt-0.5 text-xs text-muted-foreground">Send this to any agent. They sign in, check the details we already have, and add their NPN, name, email and resident state. You type nothing.</p>
         </div>

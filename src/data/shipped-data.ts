@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Nobody's comp percentage shows on the site any more, and the one-link invite goes out without a name or email.",
+    detail: "Commission and contract percentages came off the Home earnings block and the who-sold table, the agent drawer, the producer drawer, the onboarding carrier list and the agency override line; the placement level now shows only inside the contracting review. The Invite an agent form no longer needs a recipient name or email to create the link, so you can send one and let the person fill in their own details. Duplicate sidebar entries (a second Calendar, a second Contracting review) are gone for the owner, My Team overview rows are one line on a laptop, Book Flips cards keep the three rare outcomes behind one tap, and the contracting link card stacks on phones.",
+    commit: "PL-COMP-HIDDEN-DECLUTTER",
+  },
+  {
+    ts: "today",
     label: "19 automation jobs that email applicants, agents and Sam can no longer be set off by a stranger. Only an admin or the system can run them now.",
     detail: "Ghosted-applicant follow-ups, abandoned-application emails, plaque and milestone awards, production-gap texts, low-close-rate and no-deal alerts, coaching emails and Sam's morning report all answered a bare request from anyone on the internet and ran their whole send. Their only real trigger is the Run Now button on the admin Automation pages, so they now require an admin sign-in or the system key. None of them is on a schedule, so nothing that runs today stops. No abuse was found in the logs.",
     commit: "PL-WIB-RUN-NOW-SENDERS",

@@ -413,7 +413,7 @@ export default function BookFlips() {
 }
 
 function PolicyCard({ p, busy, onSet }: { p: BookPolicy; busy: boolean; onSet: (p: BookPolicy, s: FlipStatus, o?: SetOpts) => Promise<boolean> }) {
-  const [panel, setPanel] = useState<"none" | "callback" | "note">("none");
+  const [panel, setPanel] = useState<"none" | "callback" | "note" | "more">("none");
   const [cb, setCb] = useState(defaultCallbackLocal);
   const [note, setNote] = useState("");
   // Phone: native dialer; laptop: Google Voice (the site-wide rule in @/lib/phone).
@@ -511,9 +511,17 @@ function PolicyCard({ p, busy, onSet }: { p: BookPolicy; busy: boolean; onSet: (
           onPosted={(receipt) => void onSet(p, "resold", { countAttempt: true, receipt })}
           secondaryAction={{ label: "Already posted: just mark resold", onClick: () => void onSet(p, "resold", { countAttempt: true }) }}
         />
-        <Button size="sm" variant="outline" disabled={busy} onClick={() => void onSet(p, "not_interested", { countAttempt: true })}>Not interested</Button>
-        <Button size="sm" variant="outline" disabled={busy} onClick={() => void onSet(p, "bad_number", { countAttempt: true })}>Bad number</Button>
-        <Button size="sm" variant="outline" disabled={busy} onClick={() => void onSet(p, "do_not_call")}>Do not call</Button>
+        {/* The three rare outcomes sit behind one tap so a card reads as a call, not a control panel. */}
+        <Button size="sm" variant="ghost" disabled={busy} aria-expanded={panel === "more"} onClick={() => setPanel(panel === "more" ? "none" : "more")}>
+          {panel === "more" ? "Fewer" : "More…"}
+        </Button>
+        {panel === "more" && (
+          <>
+            <Button size="sm" variant="outline" disabled={busy} onClick={() => void onSet(p, "not_interested", { countAttempt: true })}>Not interested</Button>
+            <Button size="sm" variant="outline" disabled={busy} onClick={() => void onSet(p, "bad_number", { countAttempt: true })}>Bad number</Button>
+            <Button size="sm" variant="outline" disabled={busy} onClick={() => void onSet(p, "do_not_call")}>Do not call</Button>
+          </>
+        )}
         <Button size="sm" variant="ghost" disabled={busy} onClick={() => setPanel(panel === "note" ? "none" : "note")}>
           <StickyNote className="mr-1 h-4 w-4" aria-hidden /> Note
         </Button>

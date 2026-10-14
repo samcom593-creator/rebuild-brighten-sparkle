@@ -85,8 +85,8 @@ export function TeamOverview({ rows, className }: { rows: RosterRow[]; className
           const m = marks.get(p.agent_id);
           const open = openId === p.agent_id;
           return (
-            <li key={p.agent_id} className="rounded-xl border border-border bg-card p-4">
-              <div className="grid gap-x-4 gap-y-2 2xl:grid-cols-[minmax(0,1.6fr)_minmax(10rem,1fr)_minmax(10rem,1fr)_minmax(8rem,0.9fr)_auto] 2xl:items-center sm:grid-cols-2">
+            <li key={p.agent_id} className="rounded-xl border border-border bg-card px-4 py-3">
+              <div className="grid gap-x-4 gap-y-2 xl:grid-cols-[minmax(0,1.6fr)_minmax(10rem,1fr)_minmax(10rem,1fr)_minmax(8rem,0.9fr)_auto] xl:items-center sm:grid-cols-2">
                 <div className="min-w-0">
                   <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                     <p className="truncate text-sm font-semibold text-foreground">{name}</p>
@@ -96,17 +96,17 @@ export function TeamOverview({ rows, className }: { rows: RosterRow[]; className
                   <p className="truncate text-xs text-muted-foreground">{r?.email ?? "No email on file"}</p>
                 </div>
                 <div>
-                  <span className="block text-xs text-muted-foreground 2xl:hidden">Stage</span>
+                  <span className="block text-xs text-muted-foreground xl:hidden">Stage</span>
                   <StageSelect name={name} stage={p.stage} canEdit={facts.canEdit} saving={facts.isPending(p.agent_id, "stage")} onChange={(s) => void facts.setStage(p.agent_id, name, s)} />
                 </div>
                 <div className="text-sm">
-                  <span className="block text-xs text-muted-foreground 2xl:hidden">Work days</span>
+                  <span className="block text-xs text-muted-foreground xl:hidden">Work days</span>
                   <span className={p.schedule_set ? "text-foreground" : "text-muted-foreground"}>{workdaysSummary(p.schedule_set ? p.weekdays ?? [] : null)}</span>
                 </div>
                 <div className="text-sm">
-                  <span className="block text-xs text-muted-foreground 2xl:hidden">Access</span>
+                  <span className="block text-xs text-muted-foreground xl:hidden">Access</span>
                   <span className={cn(acc.tone === "ok" ? "text-foreground" : "text-muted-foreground")}>{acc.text}</span>
-                  {m ? <span className="block text-xs text-muted-foreground">{m.marked_count} of 4 carriers · level {levelText(m.level)}</span> : null}
+                  {m ? <span className="block text-xs text-muted-foreground">{m.marked_count} of 4 carriers confirmed</span> : null}
                 </div>
                 <Button type="button" variant="outline" size="sm" className="h-10 gap-1 md:h-9" aria-expanded={open} disabled={editingWorkdays} onClick={() => setOpenId(open ? null : p.agent_id)}>
                   {open ? <>Close <ChevronUp className="h-4 w-4" aria-hidden /></> : <>Work days <ChevronDown className="h-4 w-4" aria-hidden /></>}

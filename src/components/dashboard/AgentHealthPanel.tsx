@@ -32,10 +32,6 @@ interface AgentAccess {
   portal_password_set: boolean | null;
   source_application_id: string | null;
   license_status: string | null;
-  comp_percentage: number | null;
-  contract_percentage: number | null;
-  comp_approval_status: string | null;
-  contracted_at: string | null;
   crm_setup_link: string | null;
 }
 
@@ -60,9 +56,6 @@ const PRELICENSE_STEPS = [
 
 export default function AgentHealthPanel({ agentId }: Props) {
   const qc = useQueryClient();
-  const [editComp, setEditComp] = useState(false);
-  const [compDraft, setCompDraft] = useState("");
-  const [contractDraft, setContractDraft] = useState("");
 
   const access = useQuery<AgentAccess | null>({
     queryKey: ["agent-access", agentId],
@@ -72,25 +65,13 @@ export default function AgentHealthPanel({ agentId }: Props) {
       // agent — including the admin — and the panel never loaded.
       const { data, error } = await supabase
         .from("v_agents_full" as never)
-        .select("has_discord_access, portal_password_set, source_application_id, license_status, comp_percentage, contract_percentage, comp_approval_status, contracted_at, crm_setup_link")
+        .select("has_discord_access, portal_password_set, source_application_id, license_status, crm_setup_link")
         .eq("id", agentId).maybeSingle();
       if (error) throw error;
       return (data ?? null) as unknown as AgentAccess | null;
     },
   });
 
-  const saveComp = useMutation({
-    mutationFn: async () => {
-      const comp = compDraft.trim() === "" ? null : Number(compDraft);
-      const contract = contractDraft.trim() === "" ? null : Number(contractDraft);
-      const { error } = await supabase.rpc("rp_update_agent_comp" as never, {
-        p_agent_id: agentId, p_comp: comp, p_contract: contract,
-      } as never);
-      if (error) throw error;
-    },
-    onSuccess: () => { toast.success("Comp updated"); setEditComp(false); qc.invalidateQueries({ queryKey: ["agent-access", agentId] }); },
-    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "Comp update failed"),
-  });
 
   const copyLink = () => {
     const link = CONTRACTING_LINK; // one generic link for everyone; staff type no name or email
@@ -172,36 +153,13 @@ export default function AgentHealthPanel({ agentId }: Props) {
         </div>
       </Card>
 
-      {/* Contracting & comp */}
+      {/* Contracting link. Carrier confirmations and the placement level live on the review (ContractingStanding
+          below); comp is never shown here. */}
       <Card className="p-3">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-semibold">Contracting &amp; comp</span>
-          <span className={`text-xs px-2 py-0.5 rounded-full ${access.data?.contracted_at ? "bg-emerald-500/10 text-emerald-600" : "bg-amber-500/10 text-amber-600"}`}>
-            {access.data?.contracted_at ? "Contracted" : "Not contracted"}
-          </span>
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-sm font-semibold">Contracting link</span>
+          <Button size="sm" variant="outline" className="h-8 px-3 text-xs" onClick={copyLink}>Copy contracting link</Button>
         </div>
-        <div className="flex items-center gap-4 mb-2 text-sm">
-          <div><span className="font-bold">{access.data?.comp_percentage ?? "—"}%</span> <span className="text-xs text-muted-foreground">comp</span></div>
-          <div><span className="font-bold">{access.data?.contract_percentage ?? "—"}%</span> <span className="text-xs text-muted-foreground">contract</span></div>
-          {access.data?.comp_approval_status && <span className="text-xs text-muted-foreground">· {access.data.comp_approval_status}</span>}
-        </div>
-        {editComp ? (
-          <div className="flex items-center gap-1 flex-wrap">
-            <Input type="number" value={compDraft} onChange={(e) => setCompDraft(e.target.value)} placeholder="comp %" className="h-8 w-24 text-xs" />
-            <Input type="number" value={contractDraft} onChange={(e) => setContractDraft(e.target.value)} placeholder="contract %" className="h-8 w-28 text-xs" />
-            <Button size="sm" className="h-8 px-3 text-xs" disabled={saveComp.isPending} onClick={() => saveComp.mutate()}>Save</Button>
-            <Button size="sm" variant="ghost" className="h-8 px-2 text-xs" onClick={() => setEditComp(false)}>Cancel</Button>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2 flex-wrap">
-            <Button size="sm" variant="outline" className="h-8 px-3 text-xs" onClick={() => {
-              setCompDraft(access.data?.comp_percentage != null ? String(access.data.comp_percentage) : "");
-              setContractDraft(access.data?.contract_percentage != null ? String(access.data.contract_percentage) : "");
-              setEditComp(true);
-            }}>Update comp</Button>
-            <Button size="sm" variant="outline" className="h-8 px-3 text-xs" onClick={copyLink}>Copy contracting link</Button>
-          </div>
-        )}
       </Card>
 
       {/* Pre-licensing (only when not yet licensed) */}

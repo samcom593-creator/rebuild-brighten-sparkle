@@ -26,7 +26,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { CompLevelEditor } from "@/components/dashboard/CompLevelEditor";
 import { useAuth } from "@/hooks/useAuth";
 import { resolveBrand } from "@/config/brand";
 import { scoreboardWindow, type ScoreboardPeriod } from "@/lib/scoreboardPeriod";
@@ -204,20 +203,6 @@ function provenanceMeta(value: string | null | undefined) {
   return { label: value.replace(/_/g, " "), tone: "solid" as const };
 }
 
-function ProvenanceChip({ value }: { value: string | null | undefined }) {
-  const meta = provenanceMeta(value);
-  return (
-    <span
-      className={
-        meta.tone === "assumed"
-          ? "rounded border border-amber-500/50 px-1.5 py-0.5 text-[11px] font-medium uppercase tracking-wide text-amber-600 dark:text-amber-400"
-          : "rounded border border-border px-1.5 py-0.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
-      }
-    >
-      {meta.label}
-    </span>
-  );
-}
 
 /**
  * Present mode (Sam, 2026-09-24): "a lot of people look at my numbers" — he screenshots the
@@ -456,7 +441,6 @@ export function ScopedProductionScoreboard() {
   // a worse failure than hiding one it would allow, so `is_self` is excluded
   // here as well rather than relying on the round trip to say no.
   const { isManager } = useAuth();
-  const canEditComp = isAdmin || isManager;
   const unknownLevels = data?.comp.unknown_levels_in_scope ?? 0;
 
   // Group the who-sold rows by hierarchy so Sam can collapse/expand each sub-agency (Sam 2026-09-24:
@@ -653,17 +637,12 @@ export function ScopedProductionScoreboard() {
                     <CircleDollarSign className="h-3.5 w-3.5" /> My estimated earnings
                   </p>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground">comp %</span>
-                    <SectionEye on={blur.comp} onToggle={() => toggleBlur("comp")} label="comp %" />
                     <span className="text-[10px] uppercase tracking-wide text-muted-foreground">$</span>
                     <SectionEye on={blur.earnings} onToggle={() => toggleBlur("earnings")} label="earnings" />
                   </div>
                 </div>
                 <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
                   <p className="text-3xl font-bold tabular-nums text-primary"><Reveal on={blur.earnings}>{money(data.earnings.estimated)}</Reveal></p>
-                  <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                    Your comp <Reveal on={blur.comp}>{pct(data.comp.viewer_pct)}</Reveal> <ProvenanceChip value={data.comp.provenance} />
-                  </span>
                 </div>
                 <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
                   <dt className="text-muted-foreground">Direct</dt>
@@ -767,8 +746,6 @@ export function ScopedProductionScoreboard() {
                         <TableHead>Agency</TableHead>
                         <TableHead className="text-right">Policies</TableHead>
                         <TableHead className="text-right">AP</TableHead>
-                        <TableHead>Seller comp</TableHead>
-                        <TableHead className="text-right">Your override</TableHead>
                         <TableHead className="text-right">Est. override</TableHead>
                         <TableHead>Last sale</TableHead>
                       </TableRow>
@@ -804,31 +781,6 @@ export function ScopedProductionScoreboard() {
                           <TableCell><AgencyChip agency={row.agency} /></TableCell>
                           <TableCell className="text-right tabular-nums">{row.policies.toLocaleString()}</TableCell>
                           <TableCell className="text-right tabular-nums">{money(row.ap)}</TableCell>
-                          <TableCell>
-                            <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-                              <span className="tabular-nums"><Reveal on={blur.comp}>{pct(row.seller_pct)}</Reveal></span>
-                              <ProvenanceChip value={row.seller_pct_provenance} />
-                              {row.external ? (
-                                <span className="text-[11px] uppercase tracking-wide text-muted-foreground">reported</span>
-                              ) : null}
-                              {canEditComp && !row.external && !(isManager && !isAdmin && row.is_self) && (
-                                <CompLevelEditor
-                                  agentId={row.agent_id}
-                                  agentName={row.name}
-                                  currentPct={row.seller_pct}
-                                  provenance={row.seller_pct_provenance}
-                                />
-                              )}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-right tabular-nums">
-                            <Reveal on={blur.comp}>{pct(row.override_pct_for_viewer)}</Reveal>
-                            {row.is_self ? (
-                              <span className="ml-1 text-[11px] text-muted-foreground">direct</span>
-                            ) : row.first_hop_name && row.first_hop_id !== row.agent_id ? (
-                              <span className="ml-1 whitespace-nowrap text-[11px] text-muted-foreground">via <Reveal on={blur.names}>{row.first_hop_name}</Reveal> <Reveal on={blur.comp}>{pct(row.first_hop_pct)}</Reveal></span>
-                            ) : null}
-                          </TableCell>
                           <TableCell className="text-right tabular-nums text-foreground">{money(row.est_override)}</TableCell>
                           <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{row.last_sale_date ?? "—"}</TableCell>
                         </TableRow>

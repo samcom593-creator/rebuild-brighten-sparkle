@@ -83,7 +83,6 @@ export function TeamPersonDrawer({ open, onOpenChange, row, onOpenContracting }:
                 <div className="space-y-2">
                   <p className="text-sm text-foreground">
                     {inReview.marked_count} of {total} carriers confirmed
-                    <span className="text-muted-foreground"> · Placement level {levelText(inReview.level)}</span>
                   </p>
                   <Button type="button" size="sm" variant="outline" className="h-10" onClick={() => onOpenContracting(inReview.agent_id)}>Open in contracting review</Button>
                 </div>

@@ -188,7 +188,7 @@ export function ContractingIntakeAdmin({ showEmptyState = false }: { showEmptySt
                       {receiptSummary(row) && (
                         <p className="mt-0.5 font-mono text-[11px] opacity-80">{receiptSummary(row)}</p>
                       )}
-                      {row.last_error_redacted && (
+                      {row.last_error_redacted && row.state !== "not_configured" && (
                         <p className="mt-0.5 text-[11px] opacity-90">{row.last_error_redacted}</p>
                       )}
                       {row.state === "failed" && row.next_retry_at && (

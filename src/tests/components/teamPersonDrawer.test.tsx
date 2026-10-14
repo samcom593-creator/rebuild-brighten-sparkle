@@ -38,7 +38,7 @@ describe("person drawer", () => {
   it("says where contracting stands (carriers confirmed, level) and sends you to the review to change it", async () => {
     const open = mount();
     expect(await screen.findByText(/2 of 4 carriers confirmed/)).toBeInTheDocument();
-    expect(screen.getByText(/Placement level 70%/)).toBeInTheDocument();
+    expect(screen.queryByText(/Placement level/)).toBeNull(); // the level is shown only on the review itself
     fireEvent.click(screen.getByRole("button", { name: "Open in contracting review" }));
     expect(open).toHaveBeenCalledWith("a1");
     // The drawer only reads: nothing here writes a carrier.
@@ -47,7 +47,8 @@ describe("person drawer", () => {
 
   it("an unknown level reads 'Not set', never 0%", async () => {
     mount(rosterRow({ agent_id: "a1" }), vi.fn(), [agent({ id: "a1" })]);
-    expect(await screen.findByText(/Placement level Not set/)).toBeInTheDocument();
+    expect(await screen.findByText(/0 of 4 carriers confirmed/)).toBeInTheDocument();
+    expect(screen.queryByText(/Placement level/)).toBeNull();
     expect(screen.queryByText(/0%/)).toBeNull();
   });
 

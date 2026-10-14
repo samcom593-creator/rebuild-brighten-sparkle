@@ -113,8 +113,8 @@ if (beacon === null) {
   }
   if (!/keepalive\s*:\s*true/.test(beacon)) {
     failures.push(
-      `${BEACON}: the fetch does not set \`keepalive: true\`. CONTRACT B. RecruitingShortLink.tsx has used it for ` +
-      `this exact reason since it was written.`
+      `${BEACON}: the fetch does not set \`keepalive: true\`. CONTRACT B. Without it the browser may ` +
+      `cancel the request when the page unloads.`
     );
   }
   if (!/export\s+function\s+beaconAnalyticsRows/.test(beacon)) {

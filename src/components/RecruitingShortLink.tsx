@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { Navigate, useParams } from "react-router-dom";
 
 /**
@@ -19,22 +18,11 @@ export function RecruitingShortLink() {
   const { code } = useParams<{ code: string }>();
   const slug = (code ?? "").trim();
 
-  useEffect(() => {
-    // Light-touch analytics so Sam can see which short links convert.
-    // Fire-and-forget; failures don't block the redirect.
-    if (slug) {
-      try {
-        void fetch("https://xrzweoneiieddzxogewk.supabase.co/functions/v1/short-link-tap", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ slug, ts: new Date().toISOString(), ua: navigator.userAgent.slice(0, 200) }),
-          keepalive: true,
-        }).catch(() => {}); // empty-catch-allow:short-link-beacon — fire-and-forget attribution; must not block redirect.
-      } catch {
-        /* swallow */
-      }
-    }
-  }, [slug]);
+  // No tap beacon. One fired here from 2026-06-17 to 2026-10-14 to a
+  // short-link-tap function that was never written: every tap sent a CORS
+  // preflight that 404'd and recorded nothing. The tap is already a
+  // navigation.page_view row in analytics_events (url /r/<code>, with
+  // user_agent and created_at), and conversion is on applications.referral_*.
 
   // Empty code = land on apply with no attribution
   if (!slug) return <Navigate to="/apply" replace />;

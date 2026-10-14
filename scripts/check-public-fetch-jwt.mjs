@@ -36,11 +36,12 @@ import { stripComments } from "./lib/strip-comments.mjs";
 // TWO WAYS TO FAIL, and the second is the quiet one:
 //   1. declared verify_jwt = true  → gateway refuses the bare fetch.
 //   2. NOT DECLARED AT ALL         → the Supabase CLI defaults verify_jwt to
-//      TRUE, so an omitted stanza fails exactly like an explicit true. That is
-//      short-link-tap: RecruitingShortLink.tsx:27 beacons to it with no auth
-//      and no config stanza. (That function is also not deployed and has no
-//      source in this repo — a separate fault, recorded in the MP-483 ledger,
-//      not laundered into this guard's verdict.)
+//      TRUE, so an omitted stanza fails exactly like an explicit true. That
+//      was short-link-tap: RecruitingShortLink.tsx beaconed to it with no auth
+//      and no config stanza. (The function was also never deployed and had no
+//      source in this repo. Recorded in the MP-483 ledger, carried here as the
+//      one baseline entry, and closed 2026-10-14 by deleting the beacon: the
+//      tap is already a navigation.page_view row in analytics_events.)
 //
 // WHY IT MATCHES CALL SHAPE, NOT NAME SHAPE (MP-309's lesson). A grep for
 // "functions/v1/" hits src/data/shipped-data.ts:1303, where a bot-sql URL sits
@@ -71,18 +72,7 @@ const CONFIG = join(ROOT, "supabase", "config.toml");
 // be config for a phantom — green by laundering. The entry states the real
 // fault and the list can only shrink: a baselined site that stops violating is
 // reported STALE below and fails, so this cannot rot into permanent cover.
-const BASELINE = [
-  {
-    file: "src/components/RecruitingShortLink.tsx",
-    fn: "short-link-tap",
-    why:
-      "Not a JWT problem: the function has no source in supabase/functions/, is not deployed " +
-      "(gateway answers NOT_FOUND, measured 2026-09-09) and there is no short_link_* table to " +
-      "receive a tap. The beacon is fire-and-forget behind an empty catch, so the page has never " +
-      "been able to notice. Recruiting short-link tap attribution has recorded nothing, ever. " +
-      "Building it is a feature, not this guard's business.",
-  },
-];
+const BASELINE = [];
 
 function walk(dir, out = []) {
   for (const e of readdirSync(dir)) {

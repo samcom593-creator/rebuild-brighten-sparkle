@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Recruiting short links (apex-financial.org/r/...) no longer fire a broken tracking call on every tap.",
+    detail: "Since June each tap on a recruiting short link also sent a tracking call to a back-end piece that was never built, so it failed every time and recorded nothing. The tap is already counted by the site's normal page-view tracking (25 taps in the last 30 days, 17 on one recruiter's link), and the applicant still lands on the application with the recruiter attached. The broken call is gone; the redirect is unchanged.",
+    commit: "PL-WIB-SHORT-LINK-DEAD-BEACON",
+  },
+  {
+    ts: "today",
     label: "18 automated message senders that nothing uses now refuse strangers. Anyone could set any of them off with one request.",
     detail: "These 18 back-end senders (morning, evening and weekly reports, licensing nudges and checkups, training and test reminders, producer spotlight, weekly analytics and others) read no login. One request from anyone on the internet ran the whole send, and 9 of them can text. Nothing in the site, the database, the schedules or the bots calls any of them, and 10 days of logs show no real request, so they now answer only the internal service key or a signed-in admin or manager. Nothing that runs today changes. The checker that guards these gates also counted a gate that was only written in a comment as real. It now ignores comments, so commenting a gate out fails the build.",
     commit: "PL-WIB-ZERO-CALLER-SENDERS",

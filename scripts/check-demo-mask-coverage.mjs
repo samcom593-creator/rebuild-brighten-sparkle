@@ -35,7 +35,6 @@ const DATA_URL = /\/(rest|functions)\/v1/;
 /** Exempt, by name, each with the reason it renders no client data. */
 const EXEMPT = new Map([
   ["src/shared/telemetry/beacon.ts", "write-only: POSTs analytics_events, renders nothing"],
-  ["src/components/RecruitingShortLink.tsx", "write-only: fire-and-forget tap ping, renders nothing"],
   ["src/components/dashboard/CalendarSyncSection.tsx", "builds an ICS feed URL for display; never reads a body"],
   ["src/pages/ReadyModeIntegration.tsx", "builds a webhook URL for display; never reads a body"],
   ["src/pages/BotToken.tsx", "documentation string showing operators the endpoint"],

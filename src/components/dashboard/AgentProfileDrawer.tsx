@@ -1095,8 +1095,6 @@ const qnum = (v: number | string | null | undefined): number | null => {
                 <span className="col-span-2 truncate">{managerName ?? "—"}</span>
                 <span className="text-muted-foreground">Hired</span>
                 <span className="col-span-2 tabular-nums">{fmtDate(agent.start_date)}</span>
-                <span className="text-muted-foreground">Contracted</span>
-                <span className="col-span-2 tabular-nums">{fmtDate(agent.contracted_at)}</span>
                 <span className="text-muted-foreground">First deal</span>
                 <span className="col-span-2 tabular-nums">{fmtDate(agent.first_deal_at)}</span>
               </div>

@@ -17,6 +17,7 @@ import {
   type AgentCloudNavEntry,
   type AgentCloudNavGroup,
   type AgentCloudNavItem,
+  filterAgentCloudNav,
 } from "./agentCloudNavigation";
 import { useFavoriteRoutes } from "./favoriteRoutes";
 import { AddAgentModal } from "@/components/dashboard/AddAgentModal";
@@ -73,14 +74,9 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
   // viewer's effective mode is in it. Admin always sees everything. Before this
   // the only gate was `adminOnly`, so a Pure Recruiter or a VA got the full
   // selling sidebar (Book of Business, Retention, Quoter...).
-  const modeAllows = (modes?: AgentCloudNavItem["modes"]) => seesAll || !modes || modes.includes(viewMode);
-  const filterEntries = (entries: AgentCloudNavEntry[]) => entries
-    .filter((entry) => !("adminOnly" in entry && entry.adminOnly && !seesAll))
-    .filter((entry) => modeAllows(entry.modes))
-    .map((entry) => isAgentCloudGroup(entry)
-      ? { ...entry, items: entry.items.filter((item) => (!item.adminOnly || seesAll) && modeAllows(item.modes)) }
-      : entry)
-    .filter((entry) => !isAgentCloudGroup(entry) || entry.items.length > 0);
+  // One rule for the sidebar and the palette (agentCloudNavigation.ts): the inline copy that lived here drifted the
+  // moment a flag (hideWhenSeesAll) was added to the shared one, so the owner's rail kept the VA fallbacks.
+  const filterEntries = (entries: AgentCloudNavEntry[]) => filterAgentCloudNav(entries, { seesAll, viewMode });
 
   // An applicant is a role-agent login with no agents row (applying mints the
   // login). They get four real next steps, not the producer's Sell/Grow/Book

@@ -55,9 +55,12 @@ describe("account mode → home screen routing", () => {
     expect(nav).toContain('const PRODUCERS: AccountMode[] = ["agent", "manager", "agency_owner"];');
     expect(nav).toContain('label: "Sell"');
     expect(nav).toContain('modes: [...PRODUCERS, "va", "va_manager"]');
+    // The mode check lives in the shared filter (one rule for the sidebar and the palette); the sidebar must call it
+    // with viewMode = the previewed role when Sam is previewing, else the real mode.
+    expect(nav).toContain("modes.includes(viewer.viewMode)");
     const sidebar = src("components/layout/GlobalSidebar.tsx");
-    // viewMode = the previewed role when Sam is previewing, else the real mode
-    expect(sidebar).toContain("modes.includes(viewMode)");
+    expect(sidebar).toContain("filterAgentCloudNav(entries, { seesAll, viewMode })");
+    expect(sidebar).not.toContain("modes.includes(viewMode)");
     expect(sidebar).toContain("const viewMode = isPreviewing ? effectiveRole : effectiveMode;");
     expect(sidebar).toContain("const seesAll = isAdmin && !isPreviewing;");
   });

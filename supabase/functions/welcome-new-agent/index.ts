@@ -4,6 +4,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 // and same fix as submit-contracting-intake (63fcf739).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 import { CONTRACTING_PROFILE_URL, NOT_CONTRACTED_YET } from "../_shared/contracting-profile.ts";
+import { requireSendAuth } from "../_shared/require-send-auth.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -38,8 +39,34 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // The only caller is add-agent, which invokes this with its service-role
+  // client after it has created the agent row (PL-WIB-WELCOME-RELAY,
+  // 2026-10-14). No src page, cron row, pg_proc body or local script calls it.
+  // Before this gate verify_jwt = false let a bare POST choose the recipient,
+  // the name (raw into the HTML) and the "Complete contracting profile" /
+  // "Open My Account" button hrefs, so anyone could send a Galaxy welcome email
+  // from notifications@apex-financial.org to any address, CC Sam and the named
+  // manager, with buttons pointing wherever they liked. Service key or a
+  // signed-in admin/manager only.
+  const sendAuth = await requireSendAuth(req);
+  if (!sendAuth.ok) {
+    return new Response(
+      JSON.stringify({ error: sendAuth.error }),
+      { status: sendAuth.status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
   try {
     const { agentName, agentEmail, agentId, managerId, courseLink, portalLink, contractingLink, licenseStatus }: WelcomeEmailRequest = await req.json();
+
+    // Refuse before any lookup or send. Without this an empty body reached
+    // Resend as to:[null] with Sam on CC.
+    if (!agentEmail || !agentName) {
+      return new Response(
+        JSON.stringify({ error: "Missing required fields: agentEmail, agentName" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     console.log(`Sending welcome email to ${agentName} at ${agentEmail}`);
 

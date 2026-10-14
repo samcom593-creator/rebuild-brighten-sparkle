@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "A stranger can no longer send a Galaxy welcome email to any address, copied to Sam, with buttons pointing wherever they choose.",
+    detail: "The new-agent welcome email took the recipient, the name and the \"Complete contracting profile\" and \"Open My Account\" links straight from the request, with no sign-in. Anyone could have mailed a convincing onboarding email from notifications@apex-financial.org that sent a recruit to a page of their choosing, with Sam and a manager on CC. Its only caller is Add Agent, which uses the system key, so real hires still get their welcome; everyone else is refused, and an empty request is now turned away before anything is sent.",
+    commit: "PL-WIB-WELCOME-RELAY",
+  },
+  {
+    ts: "today",
     label: "System emails sent between Apex's own functions can no longer be refused because of a library upgrade.",
     detail: "Newer versions of the Supabase library send the system key in a different header, and the email gate only looked in the old one. Nothing is failing today because the functions that send these calls are pinned to older versions, but locking down the new-hire welcome email (next on the list) would have refused it for every hire added from the dashboard. The gate now accepts the key in either header.",
     commit: "PL-WIB-SERVICE-KEY-APIKEY",

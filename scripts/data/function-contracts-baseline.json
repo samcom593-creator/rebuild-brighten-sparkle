@@ -129,7 +129,6 @@
       "validate-signup-token",
       "verify-magic-link",
       "verify-nipr",
-      "welcome-new-agent",
       "xcel-csv-ingest",
       "xcel-gmail-pull",
       "xcel-import"

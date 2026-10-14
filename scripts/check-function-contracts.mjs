@@ -415,6 +415,10 @@ const PUBLIC_ALLOWLIST = new Set([
   // simple-login with the service key; a bare POST chose the recipient and a
   // raw-HTML name, CC Sam. requireSendAuth, admin_or_manager.
   "notify-agent-login",
+  // welcome-new-agent (2026-10-14, PL-WIB-WELCOME-RELAY): sole caller add-agent
+  // with its service-role client; a bare POST chose the recipient, a raw-HTML
+  // name and the CTA hrefs, CC Sam. requireSendAuth, admin_or_manager.
+  "welcome-new-agent",
   // 19 senders whose only caller is an admin "Run now" button (2026-10-14,
   // PL-WIB-RUN-NOW-SENDERS): AutomationHealth / AutomationHub, both
   // requireAdmin. No cron row, no trigger, no local script; check-team-milestones
@@ -603,6 +607,7 @@ const PUBLIC_CONTRACT = {
   "send-candidate-confirmation": "in_handler_gate",
   "send-post-call-followup": "in_handler_gate",
   "notify-agent-login": "in_handler_gate",
+  "welcome-new-agent": "in_handler_gate",
   // The 19 admin "Run now" senders, 2026-10-14: requireSendAuth, admin_or_manager.
   "check-abandoned-applications": "in_handler_gate",
   "check-comeback-milestones": "in_handler_gate",

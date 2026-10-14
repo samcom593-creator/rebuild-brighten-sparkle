@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { SPAM_NOTE_HTML } from "../_shared/spam-note.ts";
 import { Resend } from "npm:resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
@@ -200,6 +201,7 @@ const handler = async (req: Request): Promise<Response> => {
               <p style="color: #e0e0e0; font-size: 16px; line-height: 1.6; margin: 0 0 25px;">
                 Follow this roadmap in order. Your licensing course is the training priority, your Galaxy account tracks progress, and Slack is where the team supports you.
               </p>
+              ${SPAM_NOTE_HTML}
 
               ${buildStepCard(
                 "1",

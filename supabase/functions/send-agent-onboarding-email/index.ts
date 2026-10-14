@@ -1,4 +1,5 @@
 // send-agent-onboarding-email
+import { SPAM_NOTE_HTML, SPAM_NOTE_TEXT } from "../_shared/spam-note.ts";
 //
 // Drains agent_onboarding_queue: sends licensed online-training, primary
 // team-community, and onboarding-call emails at 10:00 AM US/Central.
@@ -184,6 +185,8 @@ function buildGetLicensedEmail(
     ``,
     `Start here — the walkthrough video and the course link: ${licenseUrl}`,
     ``,
+    SPAM_NOTE_TEXT,
+    ``,
     `You do NOT need the Galaxy sales training yet. That unlocks the day your licence lands.`,
     bookingUrl ? `Questions? Book a call any time: ${bookingUrl}` : `Questions? Reply here and your manager will get you on a call.`,
     ``,
@@ -194,6 +197,7 @@ function buildGetLicensedEmail(
   <p>Hey ${fn},</p>
   <p>Welcome to Galaxy. One thing stands between you and writing business: <strong>your state licence</strong>.</p>
   <p><a href="${escapeHtml(licenseUrl)}" style="display:inline-block;padding:12px 20px;background:#EDB81D;color:#0a0f1a;text-decoration:none;border-radius:6px;font-weight:600;">Start here — how to get licensed</a></p>
+  ${SPAM_NOTE_HTML}
   <p>You do <strong>not</strong> need the Galaxy sales training yet. That unlocks the day your licence lands.</p>
   ${bookingUrl ? `<p><a href="${escapeHtml(bookingUrl)}">Questions? Book a call any time</a></p>` : `<p>Questions? Reply here and your manager will get you on a call.</p>`}
   <p style="color:#666;font-size:13px;">Every step you take gets posted to the team — you'll see the whole floor moving with you.</p>`;
@@ -211,6 +215,8 @@ function buildCourseEmail(name: string): { subject: string; html: string; text: 
   const text = [
     `Hey ${fn},`,
     ``,
+    SPAM_NOTE_TEXT,
+    ``,
     `You're licensed. Your Galaxy online training is ready: ${trainingUrl}`,
     ``,
     `Step 1 — Sign in and confirm your Galaxy account and profile.`,
@@ -225,6 +231,7 @@ function buildCourseEmail(name: string): { subject: string; html: string; text: 
   ].join("\n");
 
   const html = `
+  ${SPAM_NOTE_HTML}
 <!doctype html>
 <html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#111;line-height:1.55;">
   <p>Hey ${fn},</p>

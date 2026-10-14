@@ -491,6 +491,10 @@ export default function GetLicensed() {
               The state requires a pre-licensing course before you can take the
               exam. Galaxy covers this cost — no upfront payment from you.
             </p>
+            <p className="mb-4 rounded-md border border-primary/40 bg-primary/5 px-3 py-2 text-sm text-foreground" role="note">
+              XCEL emails your course login within minutes of enrolling. Not there? Check Spam, Junk and Promotions and search
+              for XCEL. Still nothing after 10 minutes, text or email your manager and we will resend it.
+            </p>
 
             <div className="mt-auto space-y-3">
               <GradientButton asChild className="w-full h-12 text-sm">

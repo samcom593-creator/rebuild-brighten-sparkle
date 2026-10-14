@@ -1,4 +1,5 @@
 // license-milestone-sms-drain — MP-341 (2026-08-29)
+import { sendEmail } from "../_shared/email.ts";
 //
 // trg_license_milestone_emit queues a templated SMS into license_milestone_outbox
 // on every licensing-stage change (it never fired once before 2026-08-27 because
@@ -81,7 +82,22 @@ Deno.serve(async (req) => {
     // error was discarded, and the 16:10 tick answered {processed:3} with zero rows
     // changed — fake success inside the fn whose one job is to refuse it. The
     // distinction lives in last_error; the status stays inside the contract.
-    else if (outcome === "skipped") { patch.status = "skipped"; patch.last_error = "no carrier on file"; }
+    else if (outcome === "skipped") {
+      // 2026-10-14: 500 of 716 texts in 14 days were skipped for "no carrier on file", so the licensing update never
+      // reached the person. The same update now goes by email when the application has one; the row records which
+      // channel carried it. A skip with no email on file stays an honest skip.
+      const { data: app } = await sb.from("applications").select("email, first_name").eq("id", r.application_id).maybeSingle();
+      const to = String(app?.email ?? "").trim();
+      if (to) {
+        const mail = await sendEmail({
+          to, subject: "Your licensing update from Galaxy Financial",
+          text: body, html: `<p style="font-size:16px;line-height:1.6;">${body.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</p>`,
+          tagName: "license-milestone-email-fallback",
+        });
+        if (mail.ok) { patch.status = "sent"; patch.sent_at = new Date().toISOString(); patch.last_error = "sent by email (no carrier on file)"; outcome = "sent_email"; }
+        else { patch.status = "skipped"; patch.last_error = `no carrier on file; email failed: ${String(mail.error ?? "").slice(0, 120)}`; }
+      } else { patch.status = "skipped"; patch.last_error = "no carrier on file; no email on file"; }
+    }
     else { patch.last_error = err || "gateway failed"; if ((r.send_attempts ?? 0) + 1 >= MAX_ATTEMPTS) patch.status = "failed"; }
     const { error: persistErr } = await sb.from("license_milestone_outbox").update(patch).eq("id", r.id);
     if (persistErr) { persistFailures++; results.push({ id: r.id, outcome, persisted: false, persist_error: persistErr.message.slice(0, 160) }); continue; }

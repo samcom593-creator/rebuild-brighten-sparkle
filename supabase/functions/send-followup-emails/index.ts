@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { SPAM_NOTE_HTML } from "../_shared/spam-note.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { SCHEDULING_LINKS } from "../_shared/apex.ts";
@@ -68,7 +69,7 @@ async function sendUnlicensedFollowup(app: {
       to: [app.email],
       cc: ccList.length > 0 ? ccList : undefined,
       subject: "Need Help Getting Licensed? We're Here For You! 📋",
-      html: `
+      html: `${SPAM_NOTE_HTML}
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: linear-gradient(135deg, #f59e0b, #d97706); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
             <h1 style="color: white; margin: 0; font-size: 26px;">Having Trouble Getting Licensed?</h1>
@@ -160,7 +161,7 @@ async function sendUnlicensedFollowup2(app: {
       to: [app.email],
       cc: ccList2.length > 0 ? ccList2 : undefined,
       subject: "Are You Licensed Yet? 🎓",
-      html: `
+      html: `${SPAM_NOTE_HTML}
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: linear-gradient(135deg, #059669, #047857); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
             <h1 style="color: white; margin: 0; font-size: 26px;">How's It Coming Along?</h1>
@@ -256,7 +257,7 @@ async function sendLicensedFollowup(app: {
       to: [app.email],
       cc: ccList3.length > 0 ? ccList3 : undefined,
       subject: "Did We Get to You Yet? Let's Connect! 🚀",
-      html: `
+      html: `${SPAM_NOTE_HTML}
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: linear-gradient(135deg, #059669, #047857); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
             <h1 style="color: white; margin: 0; font-size: 26px;">We Haven't Forgotten About You!</h1>

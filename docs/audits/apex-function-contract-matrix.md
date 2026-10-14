@@ -1,7 +1,7 @@
 # APEX Function Contract Matrix
 
-Generated: 2026-10-14T16:21:33.570Z
-Repository: `/private/tmp/wib-31/wt`
+Generated: 2026-10-14T17:43:05.457Z
+Repository: `/private/tmp/wib-32/wt`
 
 ## Inventory Summary
 
@@ -213,7 +213,7 @@ Repository: `/private/tmp/wib-31/wt`
 | `send-password-reset` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-plaque-batch` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `send-plaque-recognition` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `send-post-call-followup` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `send-post-call-followup` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `send-proactive-coaching` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `send-push-notification` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-push-optin-email` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |

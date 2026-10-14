@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { Resend } from "npm:resend@2.0.0";
 import { SCHEDULING_LINKS } from "../_shared/apex.ts";
+import { requireSendAuth } from "../_shared/require-send-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,13 +12,54 @@ const corsHeaders = {
 
 const ADMIN_EMAIL = "info@kingofsales.net";
 
+// PL-WIB-POST-CALL-RELAY (2026-10-14). The recipient, name and licence status
+// come from the lead ROW, never from the body. Before this the body carried
+// firstName + email + calendarLink with no credential read, so one anonymous
+// POST mailed any address from notifications@apex-financial.org (CC Sam), with
+// a name pasted raw into the HTML and a CTA link of the caller's choosing.
+// Callers: CallCenter (applications + aged_leads rows) and InterviewRecorder
+// (applicationId). InterviewRecorder already sent only applicationId, which the
+// old handler rejected as "Missing required fields", so that button had failed
+// on every press since 2026-02-16.
 interface PostCallFollowupRequest {
-  firstName: string;
-  email: string;
-  licenseStatus: string;
+  leadId?: string;
+  leadSource?: "applications" | "aged_leads";
+  /** InterviewRecorder's shape: shorthand for leadSource "applications". */
+  applicationId?: string;
   actionType?: string;
   calendarLink?: string;
   agentId?: string;
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+// A pasted scheduling link is the recruiter's own (Calendly, Google, etc.), so
+// the host is not pinned. The scheme is: only https, so a javascript: or data:
+// href can never ride an Apex email. Anything else falls back to the default.
+function safeHttpsLink(raw: unknown): string | null {
+  if (typeof raw !== "string" || !raw.trim()) return null;
+  try {
+    const u = new URL(raw.trim());
+    return u.protocol === "https:" ? u.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+function json(body: unknown, status: number): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json", ...corsHeaders },
+  });
 }
 
 // Helper to build a mobile-safe CTA button using table layout
@@ -68,19 +110,59 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Both buttons sit behind sign-in: CallCenter (/dashboard/call-center, a bare
+  // ProtectedRoute; it loads no leads for a non-staff user without an agents
+  // row) and InterviewRecorder (DashboardApplicants + RecruiterDashboard, staff
+  // pages). staff_or_agent admits exactly those people; a free signup holding
+  // only the default 'agent' role and no agents row is refused.
+  const sendAuth = await requireSendAuth(req, { floor: "staff_or_agent" });
+  if (!sendAuth.ok) {
+    return json({ success: false, error: sendAuth.error }, sendAuth.status);
+  }
+
   try {
     const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { firstName, email, licenseStatus, actionType = "contacted", calendarLink, agentId }: PostCallFollowupRequest = await req.json();
+    let body: PostCallFollowupRequest;
+    try {
+      body = await req.json() as PostCallFollowupRequest;
+    } catch {
+      return json({ success: false, error: "invalid JSON body" }, 400);
+    }
+    const { actionType = "contacted", agentId } = body;
+    const leadId = body.leadId ?? body.applicationId;
+    const leadSource = body.applicationId && !body.leadId ? "applications" : body.leadSource;
 
-    if (!firstName || !email) {
-      throw new Error("Missing required fields: firstName and email");
+    if (!leadId || !UUID_RE.test(leadId) || (leadSource !== "applications" && leadSource !== "aged_leads")) {
+      return json({ success: false, error: "leadId (uuid) and leadSource ('applications' | 'aged_leads'), or applicationId, are required" }, 400);
     }
 
-    console.log(`Sending post-call followup (${actionType}) to ${email} (${licenseStatus})`);
+    const { data: lead, error: leadError } = await supabase
+      .from(leadSource)
+      .select("first_name, email, license_status")
+      .eq("id", leadId)
+      .maybeSingle();
+    if (leadError) {
+      console.error("Lead read failed:", leadError);
+      return json({ success: false, error: "lead lookup failed" }, 503);
+    }
+    if (!lead) {
+      return json({ success: false, error: "lead not found" }, 404);
+    }
+    const email = typeof lead.email === "string" ? lead.email.trim() : "";
+    if (!email) {
+      return json({ success: false, emailSent: false, error: "lead has no email address" }, 422);
+    }
+    // Subject lines are plain text; the HTML body gets the escaped copy.
+    const firstNameText = (typeof lead.first_name === "string" && lead.first_name.trim()) || "there";
+    const firstName = escapeHtml(firstNameText);
+    const licenseStatus = String(lead.license_status ?? "unknown");
+    const calendarLink = safeHttpsLink(body.calendarLink);
+
+    console.log(`Sending post-call followup (${actionType}) to ${leadSource}:${leadId} (${licenseStatus}) by ${sendAuth.caller}`);
 
     // Resolve manager email for CC
     let managerEmail: string | null = null;
@@ -93,14 +175,14 @@ const handler = async (req: Request): Promise<Response> => {
     const defaultCalendarLink = isLicensed
       ? SCHEDULING_LINKS.licensed
       : SCHEDULING_LINKS.unlicensed;
-    const finalCalendarLink = calendarLink || defaultCalendarLink;
+    const finalCalendarLink = escapeHtml(calendarLink || defaultCalendarLink);
 
     const subjectLines: Record<string, string> = {
-      contacted: `Great Talking to You, ${firstName}! 📞`,
-      hired: `You've Been Selected, ${firstName}! 🎉`,
-      contracted: `Congratulations on Getting Contracted, ${firstName}! 🏆`,
-      licensing: `Your Licensing Journey Starts Now, ${firstName}! 🚀`,
-      no_pickup: `We Tried Reaching You, ${firstName}! 📞`,
+      contacted: `Great Talking to You, ${firstNameText}! 📞`,
+      hired: `You've Been Selected, ${firstNameText}! 🎉`,
+      contracted: `Congratulations on Getting Contracted, ${firstNameText}! 🏆`,
+      licensing: `Your Licensing Journey Starts Now, ${firstNameText}! 🚀`,
+      no_pickup: `We Tried Reaching You, ${firstNameText}! 📞`,
     };
     const emailSubject = subjectLines[actionType] || subjectLines.contacted;
 

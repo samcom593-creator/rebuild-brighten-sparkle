@@ -376,10 +376,11 @@ export default function CallCenter() {
   const sendFollowUpEmail = async (lead: UnifiedLead, actionType: string = "hired", calendarLink?: string) => {
     try {
       const { error } = await supabase.functions.invoke("send-post-call-followup", {
+        // The function reads name, email and licence status off this row
+        // (PL-WIB-POST-CALL-RELAY); it no longer accepts a recipient.
         body: {
-          firstName: lead.firstName,
-          email: lead.email,
-          licenseStatus: lead.licenseStatus,
+          leadId: lead.id,
+          leadSource: lead.source,
           actionType,
           agentId,
           ...(calendarLink ? { calendarLink } : {}),

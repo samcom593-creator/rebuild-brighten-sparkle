@@ -115,7 +115,6 @@
       "send-outstanding-performance",
       "send-password-reset",
       "send-plaque-recognition",
-      "send-post-call-followup",
       "send-push-notification",
       "send-whatsapp-onboarding-blast",
       "setup-agent-password",

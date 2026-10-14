@@ -1738,6 +1738,14 @@
         "raw": ""
       }
     ],
+    "contracting_call_list": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "contracting_carrier_cases": [
       {
         "all": [
@@ -1779,14 +1787,6 @@
       }
     ],
     "contracting_exception_digest": [
-      {
-        "all": [],
-        "required": [],
-        "unnamed": false,
-        "raw": ""
-      }
-    ],
-    "contracting_link_activity": [
       {
         "all": [],
         "required": [],
@@ -5817,6 +5817,22 @@
         ],
         "unnamed": false,
         "raw": "p_application_id uuid, p_channel text, p_outcome text, p_notes text DEFAULT NULL::text"
+      }
+    ],
+    "log_contracting_followup": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_channel",
+          "p_note",
+          "p_outcome"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_channel"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_channel text, p_outcome text DEFAULT NULL::text, p_note text DEFAULT NULL::text"
       }
     ],
     "manager_daily_accountability": [

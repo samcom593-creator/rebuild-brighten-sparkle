@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CONTRACTING_HEADERS, cellText, inView, levelText, toCsv, toExportRow, type RequestRow } from "@/lib/contractingRequests";
+import { CONTRACTING_HEADERS, OUTCOMES, ago, callReason, cellText, followupText, inView, levelText, licenseText, smsBody, toCsv, toExportRow, type CallRow, type RequestRow } from "@/lib/contractingRequests";
 
 const row = (o: Partial<RequestRow> = {}): RequestRow => ({
   agent_id: "a1", display_name: "Ann Lee", start_date: null, request_type: "contracting",
@@ -70,5 +70,48 @@ describe("contracting request export", () => {
     expect(inView(row({ status: "submitted", sheet_status: "failed" }), "attention")).toBe(true);
     expect(inView(row({ status: "submitted", sheet_status: "synced" }), "attention")).toBe(false);
     expect(inView(row({ status: "submitted", sheet_status: "synced" }), "submitted")).toBe(true);
+  });
+});
+
+describe("contracting call list helpers", () => {
+  const NOW = Date.parse("2026-10-14T20:00:00Z");
+  const call = (o: Partial<CallRow> = {}): CallRow => ({
+    agent_id: "a1", display_name: "Tyler Krejcha", phone: "6025550100", license_states: null, licensed_at: null, start_date: null,
+    bucket: "to_call", reason: "never_opened", last_opened_at: null, opens: 0, marked_count: 0,
+    profile_saved: false, details_saved: false, request_status: null, followup: null, ...o,
+  });
+
+  it("names the next step in plain words, with partial carrier progress when there is some", () => {
+    expect(callReason(call(), NOW)).toBe("Never opened the link");
+    expect(callReason(call({ reason: "opened_not_saved", last_opened_at: "2026-10-14T17:00:00Z", opens: 3 }), NOW)).toBe("Opened the link 3 h ago (3 times), saved nothing");
+    expect(callReason(call({ reason: "missing_details", profile_saved: true }), NOW)).toBe("Saved their profile, still needs DOB + address");
+    expect(callReason(call({ marked_count: 3 }), NOW)).toBe("Never opened the link · 3 of 4 carriers confirmed");
+  });
+
+  it("shows license state and date only when they are on file", () => {
+    expect(licenseText(call())).toBe("Licensed");
+    expect(licenseText(call({ licensed_at: "2026-08-25T00:00:00Z" }))).toMatch(/^Licensed since Aug 2[45]$/);
+    expect(licenseText(call({ license_states: ["FL", "OH", "TX"], licensed_at: "2026-08-25T00:00:00Z" }))).toMatch(/^Licensed FL\/OH since Aug 2[45]$/);
+  });
+
+  it("describes the last touch with who, how and the outcome", () => {
+    expect(followupText(call(), NOW)).toBe("");
+    expect(followupText(call({ followup: { channel: "call", outcome: null, at: "2026-10-14T19:50:00Z", by: "Samuel James", mine: true } }), NOW)).toBe("You called 10 min ago");
+    expect(followupText(call({ followup: { channel: "text", outcome: "will_finish", at: "2026-10-12T19:50:00Z", by: "Maria Lopez", mine: false } }), NOW)).toBe("Maria texted 2 d ago · will finish");
+    expect(followupText(call({ followup: { channel: "note", outcome: "voicemail", at: "2026-10-14T19:59:40Z", by: null, mine: false } }), NOW)).toBe("Someone noted just now · voicemail");
+  });
+
+  it("never renders a negative age for a future stamp", () => {
+    expect(ago("2026-10-15T00:00:00Z", NOW)).toBe("just now");
+  });
+
+  it("texts the first name and the link, and says 'there' to a record whose name is a raw email", () => {
+    expect(smsBody("Tyler Krejcha", "https://x.test/c")).toBe("Hey Tyler, your contracting isn't finished yet. Finish it here so we can get you contracted: https://x.test/c");
+    expect(smsBody("jadenselvaraj@gmail.com", "https://x.test/c")).toContain("Hey there,");
+    expect(smsBody("   ", "https://x.test/c")).toContain("Hey there,");
+  });
+
+  it("offers every outcome the database accepts, once", () => {
+    expect(OUTCOMES.map((o) => o.key)).toEqual(["reached", "will_finish", "voicemail", "no_answer", "not_interested"]);
   });
 });

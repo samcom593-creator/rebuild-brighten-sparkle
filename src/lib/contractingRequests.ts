@@ -159,23 +159,99 @@ export async function syncContractingSheet(): Promise<SyncResult> {
   return (data as SyncResult) ?? { ok: false, error: "The sync did not answer." };
 }
 
-/** My Team: who opened the contracting link, in order, and who never did. */
-export type LinkBucket = "clicked_not_finished" | "never_clicked" | "finished";
-export interface LinkActivityRow {
-  agent_id: string; display_name: string; start_date: string | null; bucket: LinkBucket;
-  opened: boolean; first_opened_at: string | null; last_opened_at: string | null; opens: number;
-  profile_saved: boolean; details_saved: boolean; marked_count: number; request_status: RequestStatus | null;
+/**
+ * My Team › Contracting calls. Sam, 2026-10-14: "easily call agents who already have their license and fell off in the
+ * contracting process". The database decides who is on the list and why (contracting_call_list); this module names the
+ * next step in plain words, describes the last touch, and builds the text message. Every call or text is logged with
+ * one tap (log_contracting_followup) so the list works itself down.
+ */
+export type CallBucket = "to_call" | "called_recently" | "not_now" | "finished";
+export type CallReason = "never_opened" | "opened_not_saved" | "missing_details";
+export type FollowupChannel = "call" | "text" | "note";
+export type FollowupOutcome = "reached" | "will_finish" | "voicemail" | "no_answer" | "not_interested";
+export interface CallFollowup { channel: FollowupChannel; outcome: FollowupOutcome | null; at: string; by: string | null; mine: boolean }
+export interface CallRow {
+  agent_id: string; display_name: string; phone: string | null;
+  license_states: string[] | null; licensed_at: string | null; start_date: string | null;
+  bucket: CallBucket; reason: CallReason;
+  last_opened_at: string | null; opens: number; marked_count: number;
+  profile_saved: boolean; details_saved: boolean; request_status: RequestStatus | null;
+  followup: CallFollowup | null;
 }
-export interface LinkActivityPayload {
-  ok: boolean; count: number; opened: number;
-  counts: { clicked_not_finished: number; never_clicked: number; finished: number; total: number };
-  rows: LinkActivityRow[];
+export interface CallListPayload {
+  ok: boolean;
+  counts: { to_call: number; called_recently: number; not_now: number; finished: number; unlicensed: number; no_phone: number; total: number };
+  rows: CallRow[];
 }
 
-export async function fetchLinkActivity(): Promise<LinkActivityPayload> {
-  const { data, error } = await supabase.rpc("contracting_link_activity" as never);
+export const OUTCOMES: Array<{ key: FollowupOutcome; label: string }> = [
+  { key: "reached", label: "Reached them" },
+  { key: "will_finish", label: "Said they'll finish" },
+  { key: "voicemail", label: "Voicemail" },
+  { key: "no_answer", label: "No answer" },
+  { key: "not_interested", label: "Not interested" },
+];
+const OUTCOME_SHORT: Record<FollowupOutcome, string> = { reached: "reached", will_finish: "will finish", voicemail: "voicemail", no_answer: "no answer", not_interested: "not interested" };
+
+const shortDay = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "");
+
+/** "just now" / "12 min ago" / "3 h ago" / "4 d ago"; a future stamp reads as now, never negative. */
+export function ago(iso: string | null | undefined, nowMs: number = Date.now()): string {
+  if (!iso) return "";
+  const m = Math.max(0, Math.round((nowMs - new Date(iso).getTime()) / 60000));
+  if (m < 1) return "just now";
+  if (m < 60) return `${m} min ago`;
+  const h = Math.round(m / 60);
+  if (h < 48) return `${h} h ago`;
+  return `${Math.round(h / 24)} d ago`;
+}
+
+/** "Licensed FL since Aug 25" when known, "Licensed since Aug 25", or just "Licensed". */
+export function licenseText(r: Pick<CallRow, "license_states" | "licensed_at">): string {
+  const states = (r.license_states ?? []).filter(Boolean).slice(0, 2);
+  return `Licensed${states.length ? ` ${states.join("/")}` : ""}${r.licensed_at ? ` since ${shortDay(r.licensed_at)}` : ""}`;
+}
+
+/** The next thing this person has to do, in the words to say on the phone. */
+export function callReason(r: Pick<CallRow, "reason" | "last_opened_at" | "opens" | "marked_count">, nowMs: number = Date.now()): string {
+  const base = r.reason === "missing_details"
+    ? "Saved their profile, still needs DOB + address"
+    : r.reason === "opened_not_saved"
+      ? `Opened the link ${ago(r.last_opened_at, nowMs)}${r.opens > 1 ? ` (${r.opens} times)` : ""}, saved nothing`
+      : "Never opened the link";
+  return r.marked_count > 0 && r.marked_count < 4 ? `${base} · ${r.marked_count} of 4 carriers confirmed` : base;
+}
+
+/** "You called 2 h ago · voicemail" / "Maria texted 3 d ago". Empty when nobody has reached out. */
+export function followupText(r: Pick<CallRow, "followup">, nowMs: number = Date.now()): string {
+  const f = r.followup;
+  if (!f) return "";
+  const who = f.mine ? "You" : f.by?.trim().split(/\s+/)[0] || "Someone";
+  const verb = f.channel === "call" ? "called" : f.channel === "text" ? "texted" : "noted";
+  return `${who} ${verb} ${ago(f.at, nowMs)}${f.outcome ? ` · ${OUTCOME_SHORT[f.outcome]}` : ""}`;
+}
+
+export function contractingLink(): string {
+  return `${typeof window !== "undefined" ? window.location.origin : "https://apex-financial.org"}/dashboard/contracting-profile`;
+}
+
+/** The text the Text button pre-fills. First name only; a record whose name is a raw email gets "there". */
+export function smsBody(displayName: string, link: string = contractingLink()): string {
+  const first = displayName.trim().split(/\s+/)[0] || "";
+  const name = first && !first.includes("@") ? first : "there";
+  return `Hey ${name}, your contracting isn't finished yet. Finish it here so we can get you contracted: ${link}`;
+}
+
+export async function fetchCallList(): Promise<CallListPayload> {
+  const { data, error } = await supabase.rpc("contracting_call_list" as never);
   if (error) throw new Error(error.message);
-  const p = data as unknown as LinkActivityPayload | null;
-  if (!p || p.ok !== true || !Array.isArray(p.rows) || !p.counts) throw new Error("The link activity did not load completely.");
+  const p = data as unknown as CallListPayload | null;
+  if (!p || p.ok !== true || !Array.isArray(p.rows) || !p.counts) throw new Error("The call list did not load completely.");
   return p;
+}
+
+export async function logFollowup(agentId: string, channel: FollowupChannel, outcome?: FollowupOutcome, note?: string): Promise<{ ok: boolean; id?: string; error?: string }> {
+  const { data, error } = await supabase.rpc("log_contracting_followup" as never, { p_agent_id: agentId, p_channel: channel, p_outcome: outcome ?? null, p_note: note ?? null } as never);
+  if (error) return { ok: false, error: error.message };
+  return (data as unknown as { ok: boolean; id?: string; error?: string }) ?? { ok: false, error: "The log did not come back." };
 }

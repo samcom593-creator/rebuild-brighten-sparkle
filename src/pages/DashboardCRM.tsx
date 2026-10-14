@@ -12,7 +12,7 @@ import { useTeamWorkspace } from "@/hooks/useTeamWorkspace";
 import { ContractingReviewWorkspace } from "@/components/contracting-review/ContractingReviewWorkspace";
 import { TeamOverview } from "@/components/team/TeamOverview";
 import { TeamAttendance } from "@/components/team/TeamAttendance";
-import { ContractingLinkActivity } from "@/components/team/ContractingLinkActivity";
+import { ContractingCallList } from "@/components/team/ContractingCallList";
 import { RosterToolbar, type ActiveFilter } from "@/components/team/RosterToolbar";
 import { RosterProductionList } from "@/components/team/RosterRows";
 import { TeamPersonDrawer } from "@/components/team/TeamPersonDrawer";
@@ -1902,7 +1902,7 @@ export default function DashboardCRM() {
                 { key: "overview" as const, label: "Overview", icon: Users },
                 { key: "attendance" as const, label: "Attendance", icon: ClipboardCheck },
                 { key: "work" as const, label: "Contracting", icon: ShieldCheck },
-                { key: "link" as const, label: "Contracting link", icon: Link2 },
+                { key: "link" as const, label: "Contracting calls", icon: Phone },
               ] : []),
               ...(team.contractingEnabled ? [] : [{ key: "production" as const, label: "Production", icon: TrendingUp }]),
             ]).map((m) => {
@@ -1956,7 +1956,7 @@ export default function DashboardCRM() {
           ) : effectiveMode === "attendance" ? (
             <GlassCard className="p-3 sm:p-4"><TeamAttendance /></GlassCard>
           ) : effectiveMode === "link" ? (
-            <GlassCard className="p-3 sm:p-4"><ContractingLinkActivity /></GlassCard>
+            <GlassCard className="p-3 sm:p-4"><ContractingCallList /></GlassCard>
           ) : effectiveMode === "calls" ? (
             <GlassCard className="p-3 sm:p-4"><ContractingCheckinPanel /></GlassCard>
           ) : (

@@ -160,17 +160,22 @@ export async function syncContractingSheet(): Promise<SyncResult> {
 }
 
 /** My Team: who opened the contracting link, in order, and who never did. */
+export type LinkBucket = "clicked_not_finished" | "never_clicked" | "finished";
 export interface LinkActivityRow {
-  agent_id: string; display_name: string; start_date: string | null;
+  agent_id: string; display_name: string; start_date: string | null; bucket: LinkBucket;
   opened: boolean; first_opened_at: string | null; last_opened_at: string | null; opens: number;
   profile_saved: boolean; details_saved: boolean; marked_count: number; request_status: RequestStatus | null;
 }
-export interface LinkActivityPayload { ok: boolean; count: number; opened: number; rows: LinkActivityRow[] }
+export interface LinkActivityPayload {
+  ok: boolean; count: number; opened: number;
+  counts: { clicked_not_finished: number; never_clicked: number; finished: number; total: number };
+  rows: LinkActivityRow[];
+}
 
 export async function fetchLinkActivity(): Promise<LinkActivityPayload> {
   const { data, error } = await supabase.rpc("contracting_link_activity" as never);
   if (error) throw new Error(error.message);
   const p = data as unknown as LinkActivityPayload | null;
-  if (!p || p.ok !== true || !Array.isArray(p.rows)) throw new Error("The link activity did not load completely.");
+  if (!p || p.ok !== true || !Array.isArray(p.rows) || !p.counts) throw new Error("The link activity did not load completely.");
   return p;
 }

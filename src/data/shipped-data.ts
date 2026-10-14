@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "The daily licensing digest reaches the #unlicensed Slack room again. It had been refused every weekday since September 8.",
+    detail: "The weekday licensing-floor digest asked for the old room name after the room was moved to #unlicensed on September 7, so Slack posting refused it as an unknown channel each morning while the run log said it was sent. It now finds the room by its role instead of a copied name, so renaming the room cannot break it again. The run log still only records that the post was sent, not that it landed. That gap is written down and is next.",
+    commit: "PL-WIB-UNLICENSED-DIGEST-CHANNEL",
+  },
+  {
+    ts: "today",
     label: "Recruiting short links (apex-financial.org/r/...) no longer fire a broken tracking call on every tap.",
     detail: "Since June each tap on a recruiting short link also sent a tracking call to a back-end piece that was never built, so it failed every time and recorded nothing. The tap is already counted by the site's normal page-view tracking (25 taps in the last 30 days, 17 on one recruiter's link), and the applicant still lands on the application with the recruiter attached. The broken call is gone; the redirect is unchanged.",
     commit: "PL-WIB-SHORT-LINK-DEAD-BEACON",

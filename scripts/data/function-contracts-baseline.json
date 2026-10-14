@@ -66,7 +66,6 @@
       "next-step-dispatch",
       "notify-agent-contracted",
       "notify-agent-live-field",
-      "notify-agent-login",
       "notify-all-managers-leaderboard",
       "notify-comeback-alert",
       "notify-course-started",

@@ -205,6 +205,8 @@ PUBLIC_ALLOWLIST=(
   "send-candidate-confirmation"
   # send-post-call-followup (2026-10-14): requireSendAuth, floor "staff_or_agent".
   "send-post-call-followup"
+  # notify-agent-login (2026-10-14): requireSendAuth, service-key caller (simple-login).
+  "notify-agent-login"
   # 19 admin "Run now" senders (2026-10-14): requireSendAuth, admin_or_manager.
   # check-daily-plaques calls check-team-milestones with the service key, which
   # is not a user JWT, so verify_jwt stays false.

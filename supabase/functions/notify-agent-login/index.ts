@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { requireSendAuth } from "../_shared/require-send-auth.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const resend = new Resend(RESEND_API_KEY);
@@ -22,6 +23,22 @@ interface LoginNotificationRequest {
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // The only caller is simple-login, which presents the service key after it
+  // has minted the session (PL-WIB-LOGIN-NOTICE-RELAY, 2026-10-14). No src page,
+  // cron row, pg_proc body or local script calls this. Before this gate
+  // verify_jwt = false let a bare POST choose the recipient AND the name, which
+  // is interpolated raw into the HTML, so anyone could send "Portal Login
+  // Confirmed ... contact your manager" from Apex's notifications sender to any
+  // address, CC Sam, with markup of their choosing. Service key or a signed-in
+  // admin/manager only.
+  const sendAuth = await requireSendAuth(req);
+  if (!sendAuth.ok) {
+    return new Response(
+      JSON.stringify({ error: sendAuth.error }),
+      { status: sendAuth.status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   }
 
   try {

@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "A stranger can no longer send a \"Portal Login Confirmed\" email from Apex to any address, copied to Sam.",
+    detail: "The login-notice email took the recipient and the name straight from the request, with no sign-in, and put the name into the email as raw HTML. Anyone could have sent an Apex security notice to any inbox, with Sam on CC and content of their choosing. Its only caller is the login step itself, which uses the system key, so real login notices keep sending; everyone else is refused.",
+    commit: "PL-WIB-LOGIN-NOTICE-RELAY",
+  },
+  {
+    ts: "today",
     label: "VA and VA-manager accounts can no longer be logged into from their email address alone.",
     detail: "The instant-login and applicant login-link endpoints refused only admin and manager accounts. A VA or VA manager could be signed into by anyone who knew their email, and those roles open the recruiting pages with applicant details. Every staff role is now refused there, from the same list the email gate uses. The two affected accounts both have passwords and sign in normally.",
     commit: "PL-WIB-MINT-STAFF-ROLES",

@@ -411,6 +411,10 @@ const PUBLIC_ALLOWLIST = new Set([
   // raw-HTML name and the CTA link. requireSendAuth floor "staff_or_agent", and
   // the recipient is now read off the lead row.
   "send-post-call-followup",
+  // notify-agent-login (2026-10-14, PL-WIB-LOGIN-NOTICE-RELAY): sole caller
+  // simple-login with the service key; a bare POST chose the recipient and a
+  // raw-HTML name, CC Sam. requireSendAuth, admin_or_manager.
+  "notify-agent-login",
   // 19 senders whose only caller is an admin "Run now" button (2026-10-14,
   // PL-WIB-RUN-NOW-SENDERS): AutomationHealth / AutomationHub, both
   // requireAdmin. No cron row, no trigger, no local script; check-team-milestones
@@ -598,6 +602,7 @@ const PUBLIC_CONTRACT = {
   "send-couldnt-reach-email": "in_handler_gate",
   "send-candidate-confirmation": "in_handler_gate",
   "send-post-call-followup": "in_handler_gate",
+  "notify-agent-login": "in_handler_gate",
   // The 19 admin "Run now" senders, 2026-10-14: requireSendAuth, admin_or_manager.
   "check-abandoned-applications": "in_handler_gate",
   "check-comeback-milestones": "in_handler_gate",

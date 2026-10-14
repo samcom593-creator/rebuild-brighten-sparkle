@@ -1,15 +1,15 @@
 # APEX Function Contract Matrix
 
-Generated: 2026-10-14T17:43:05.457Z
-Repository: `/private/tmp/wib-32/wt`
+Generated: 2026-10-14T19:01:08.675Z
+Repository: `/private/tmp/wib-33/wt`
 
 ## Inventory Summary
 
 - Total Local Edge Functions: **242**
 - Configured in `config.toml`: **243**
 - Invoked Edge Functions in Source: **100**
-- Invoked RPC Calls in Source: **218**
-- SQL Functions in Migrations: **689**
+- Invoked RPC Calls in Source: **219**
+- SQL Functions in Migrations: **691**
 
 ## Edge Function Auth & Verification Contracts
 
@@ -125,7 +125,7 @@ Repository: `/private/tmp/wib-32/wt`
 | `notify-aflac-submitted` | Yes | Yes | `true` | Authenticated JWT | PASS |
 | `notify-agent-contracted` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `notify-agent-live-field` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `notify-agent-login` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `notify-agent-login` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `notify-all-managers-leaderboard` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `notify-attendance-reminder` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `notify-comeback-alert` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -266,6 +266,6 @@ applied by hand through bot-sql and never round-tripped into
 `supabase/migrations`, so this directory does not model the deployed database.
 `apex-doctor` queries `pg_proc` and is the authority on deployed state.
 
-- Invoked RPCs: **218**
-- Also declared in this commit's migrations: **210**
+- Invoked RPCs: **219**
+- Also declared in this commit's migrations: **211**
 - Declared only in the database: **8**

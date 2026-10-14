@@ -119,6 +119,9 @@ PUBLIC_ALLOWLIST=(
   "provision-agent-accounts"
   "site-shell-watch"
   "slack-announce"
+  # contracting-sheet-sync (2026-10-14): gates in-handler on `Bearer <APEX_BOT_TOKEN>` or an admin JWT; its 15-minute
+  # pg_cron caller presents the vault bot token, which the gateway would refuse before the handler ran.
+  "contracting-sheet-sync"
   # MP-415 — the eight classified in check-function-contracts.mjs's
   # PUBLIC_CONTRACT. Seven refuse an unproven caller in code (verified against
   # scripts/lib/in-handler-gate.mjs on every run); brand-collab is the public

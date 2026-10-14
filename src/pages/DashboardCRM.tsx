@@ -1,416 +1,50 @@
-import { JustHiredPanel } from "@/components/dashboard/JustHiredPanel";
-import { OnboardingRollCall } from "@/components/dashboard/OnboardingRollCall";
-import { UnlinkedAgentsPanel } from "@/components/dashboard/UnlinkedAgentsPanel";
-import { ContractingCheckinPanel } from "@/components/dashboard/ContractingCheckinPanel";
-import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { AgentAvatar, getAvatarUrl } from "@/components/ui/AgentAvatar";
-import { useSearchParams, Link } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ensureCompleteRead, plural } from "@/lib/teamRoster";
-import { daysSince, isSyncOnly, num, usdOrNull, type RosterRow } from "@/lib/teamRoster";
+import { ChevronDown, ClipboardCheck, Download, EyeOff, GraduationCap, Link2, Mail, MoreHorizontal, Phone, RefreshCw, ShieldCheck, Sparkles, TrendingUp, UserCheck, UserX, Users, X } from "lucide-react";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { useTeamWorkspace } from "@/hooks/useTeamWorkspace";
+import { useTeamFacts } from "@/hooks/useTeamFacts";
+import { usePortalLoginSender } from "@/hooks/usePortalLoginSender";
+import { useProductionRealtime } from "@/hooks/useProductionRealtime";
+import { useRealtimeTable } from "@/shared/realtime/useRealtimeTable";
+import { daysSince, ensureCompleteRead, isSyncOnly, num, plural, type RosterRow } from "@/lib/teamRoster";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/page-header";
+import { GlassCard } from "@/components/ui/glass-card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AddAgentModal } from "@/components/dashboard/AddAgentModal";
+import { ApplicationDetailSheet } from "@/components/dashboard/ApplicationDetailSheet";
+import { DeactivateAgentDialog } from "@/components/dashboard/DeactivateAgentDialog";
+import { AgentQuickEditDialog } from "@/components/dashboard/AgentQuickEditDialog";
+import { JustHiredPanel } from "@/components/dashboard/JustHiredPanel";
+import { TeamEngagementPanel } from "@/components/dashboard/TeamEngagementPanel";
+import { ProductionMetricsCard } from "@/components/dashboard/ProductionMetricsCard";
 import { ContractingReviewWorkspace } from "@/components/contracting-review/ContractingReviewWorkspace";
 import { TeamOverview } from "@/components/team/TeamOverview";
 import { TeamAttendance } from "@/components/team/TeamAttendance";
 import { ContractingCallList } from "@/components/team/ContractingCallList";
 import { RosterToolbar, type ActiveFilter } from "@/components/team/RosterToolbar";
 import { RosterProductionList } from "@/components/team/RosterRows";
-import { TeamPersonDrawer } from "@/components/team/TeamPersonDrawer";
-import { ShieldCheck, Users, Search, RefreshCw, Clock, AlertTriangle, ChevronRight, Mail, Phone, UserX, Filter, GraduationCap, Briefcase, Sparkles, Instagram, X, Send, CheckSquare, EyeOff, Link2, Eye, FileText, KeyRound, Copy, StickyNote, ClipboardCheck, Circle, CircleCheck, MoreHorizontal, TrendingUp, BadgeCheck, ArrowUpRight, Network, UserCheck, Flame, ChevronDown, Download } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { PageHeader } from "@/components/ui/page-header";
-import { GlassCard } from "@/components/ui/glass-card";
-import { EmptyState } from "@/components/ui/empty-state";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { supabase } from "@/integrations/supabase/client";
-import { TeamEngagementPanel } from "@/components/dashboard/TeamEngagementPanel";
-import { BrandLeadsPanel } from "@/components/dashboard/BrandLeadsPanel";
-import { useProductionRealtime } from "@/hooks/useProductionRealtime";
-import { useAuth } from "@/hooks/useAuth";
-import { useConfirm } from "@/hooks/useConfirm";
-import { usePortalLoginSender } from "@/hooks/usePortalLoginSender";
-import { toast } from "sonner";
-import { AddAgentModal } from "@/components/dashboard/AddAgentModal";
-import { AgentNotes } from "@/components/dashboard/AgentNotes";
-import { DeactivateAgentDialog } from "@/components/dashboard/DeactivateAgentDialog";
-import { BulkStageActions, AgentSelectCheckbox } from "@/components/crm/BulkStageActions";
-import { cn } from "@/lib/utils";
-import { Database } from "@/integrations/supabase/types";
-import { ResendLicensingButton } from "@/components/callcenter/ResendLicensingButton";
-import { LicenseProgressSelector } from "@/components/dashboard/LicenseProgressSelector";
-import { ApplicationDetailSheet } from "@/components/dashboard/ApplicationDetailSheet";
-import { AgentQuickEditDialog } from "@/components/dashboard/AgentQuickEditDialog";
-import { useSoundEffects } from "@/hooks/useSoundEffects";
-import { differenceInDays } from "date-fns";
-import { BulkComposeDrawer } from "@/components/dashboard/BulkComposeDrawer";
-import { AgentCredentialsPanel } from "@/components/dashboard/AgentCredentialsPanel";
-import { AgentNameLink } from "@/components/dashboard/AgentNameLink";
-import { AgentTrainingStageBar } from "@/components/dashboard/AgentTrainingStageBar";
-import { ProductionMetricsCard } from "@/components/dashboard/ProductionMetricsCard";
-import { useRealtimeTable } from "@/shared/realtime/useRealtimeTable";
-import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
-import { getBusinessDayKey, getBusinessMonthBounds, getBusinessWeekBounds, getMatchedPriorWeekBounds } from "@/lib/dateUtils";
-import { getCloseRate, sumAnnualPremium } from "@/lib/metricTruth";
-import { DEAL_TRUTH_STATUS_FILTER } from "@/lib/dealTruth";
-import { getNextBestAction, type NBAInput } from "@/lib/nextBestAction";
-import { priorityBadgeClasses } from "@/lib/priority";
-import { contactLinkProps, phoneHref } from "@/lib/phone";
+import { TeamPersonDrawer, type TeamPersonManage } from "@/components/team/TeamPersonDrawer";
 
-/** Feature flag: hide destructive bulk delete by default. Set VITE_ENABLE_CRM_BULK_DELETE=true to enable. */
-const ENABLE_BULK_DELETE = import.meta.env.VITE_ENABLE_CRM_BULK_DELETE === "true";
-
-/** localStorage key for persisted CRM filter state */
-const CRM_FILTERS_STORAGE_KEY = "crm.filters.v1";
-
-interface PersistedCrmFilters {
-  searchTerm: string;
-  managerFilter: string;
-  licenseFilter: string;
-  aiScoreFilter: string;
-  showDeactivated: boolean;
-  showInactive: boolean;
-}
-
-const DEFAULT_FILTERS: PersistedCrmFilters = {
-  searchTerm: "",
-  managerFilter: "all",
-  licenseFilter: "all",
-  aiScoreFilter: "all",
-  showDeactivated: false,
-  showInactive: false,
-};
-
-function loadPersistedFilters(): PersistedCrmFilters {
-  try {
-    const raw = localStorage.getItem(CRM_FILTERS_STORAGE_KEY);
-    if (!raw) return { ...DEFAULT_FILTERS };
-    return { ...DEFAULT_FILTERS, ...JSON.parse(raw) };
-  } catch {
-    return { ...DEFAULT_FILTERS };
-  }
-}
-
-type AttendanceStatus = Database["public"]["Enums"]["attendance_status"];
-type PerformanceTier = Database["public"]["Enums"]["performance_tier"];
-type OnboardingStage = Database["public"]["Enums"]["onboarding_stage"];
-
-interface Manager { id: string; name: string; }
-
-interface AgentCRM {
-  id: string; userId: string; name: string; applicationId?: string;
-  email: string; phone?: string; avatarUrl?: string; instagramHandle?: string;
-  onboardingStage: OnboardingStage; attendanceStatus: AttendanceStatus;
-  performanceTier: PerformanceTier; fieldTrainingStartedAt?: string; startDate?: string;
-  onboardingCompletedAt?: string;
-  totalEarnings: number; hasTrainingCourse: boolean; hasDialerLogin: boolean; hasDiscordAccess: boolean;
-  potentialRating: number; evaluationResult?: string | null;
-  isDeactivated: boolean; isInactive: boolean; managerId?: string; managerName?: string;
-  weekly10kBadges: number; sortOrder: number;
-  weeklyALP: number; weeklyPresentations: number; weeklyDeals: number; weeklyClosingRate: number;
-  monthlyALP: number; monthlyDeals: number; prevWeekALP: number;
-  lastContactedAt: string | null; standardPaid: boolean; premiumPaid: boolean;
-  licenseProgress: string | null; testScheduledDate: string | null; agentLicenseStatus: string;
-  aiScoreTier?: string | null;
-  lifetimeDeals: number;
-  lifetimeALP: number;
-  lastActivityAt: string | null;
-  daysSinceHire: number | null;
-  hasReadymodeCreds: boolean;
-  createdAt: string | null;
-}
-
-const attendanceColors: Record<AttendanceStatus, string> = {
-  good: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
-  warning: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
-  critical: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
-};
-const attendanceLabels: Record<AttendanceStatus, string> = { good: "Good", warning: "Warning", critical: "Critical" };
-
-const getTimeAgo = (dateString: string): string => {
-  const date = new Date(dateString);
-  if (Number.isNaN(date.getTime())) return "—";
-  // Guard future-dated timestamps. "Last activity" is derived from production
-  // dates, and an insurance policy's posted/effective date can legitimately be
-  // in the future — so the delta must be clamped to 0, otherwise it renders as
-  // a nonsensical negative ("-18690m ago"). A just-written future-dated policy
-  // reads as "just now", which is the honest meaning of the activity.
-  const diffMs = Math.max(0, Date.now() - date.getTime());
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffHours / 24);
-  if (diffMins < 1) return "just now";
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays === 1) return "Yesterday";
-  if (diffDays < 7) return `${diffDays}d ago`;
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-};
-
-const isStaleAgent = (agent: AgentCRM): boolean => {
-  if (!agent.lastContactedAt) {
-    // Agents with no contact date are stale only if they've been around (have activity or are not brand new)
-    return true;
-  }
-  const daysSince = (Date.now() - new Date(agent.lastContactedAt).getTime()) / (1000 * 60 * 60 * 24);
-  return daysSince >= 6;
-};
-
-const getContactInfo = (agent: AgentCRM) => {
-  if (!agent.lastContactedAt) {
-    return { label: "Never", color: "text-rose-600 dark:text-rose-400" };
-  }
-  const days = (Date.now() - new Date(agent.lastContactedAt).getTime()) / (1000 * 60 * 60 * 24);
-  if (days < 3) return { label: getTimeAgo(agent.lastContactedAt), color: "text-emerald-600 dark:text-emerald-400" };
-  if (days < 6) return { label: getTimeAgo(agent.lastContactedAt), color: "text-amber-600 dark:text-amber-400" };
-  return { label: getTimeAgo(agent.lastContactedAt), color: "text-rose-600 dark:text-rose-400" };
-};
-
-type PipelineBucket = "unlicensed" | "licensed";
-
-const PRELICENSED_PROGRESS = new Set([
-  "unlicensed", "course_purchased", "finished_course", "test_scheduled",
-  "passed_test", "fingerprints_done", "waiting_fingerprints", "waiting_on_license",
-]);
-
-const PROGRESS_LABELS: Record<string, string> = {
-  unlicensed: "Not Started",
-  course_purchased: "In Course",
-  finished_course: "Finished",
-  test_scheduled: "Test Sched.",
-  passed_test: "Passed",
-  fingerprints_done: "Fingerprints",
-  waiting_fingerprints: "Waiting FP",
-  waiting_on_license: "Waiting Lic.",
-  licensed: "Licensed",
-};
-// 2026-07-26 visual pass — the per-section accent / headerBg / iconColor rainbow
-// (blue · purple · yellow · orange · teal · red · slate · gray · zinc) was the
-// loudest "different app" tell on this page. Severity is now carried by the row
-// itself in the three contract tokens (emerald / amber / rose); the segment
-// identity is carried by its label, icon, and one-sentence description.
-const SECTIONS = [
-  { key: "applied", bucket: "unlicensed" as PipelineBucket, label: "Applied", icon: Users, stages: ["applied"] as OnboardingStage[], desc: "Brand-new applications waiting on a first touch — every hour a row sits here is a hire cooling off." },
-  { key: "meeting_attendance", bucket: "unlicensed" as PipelineBucket, label: "Meeting Attendance", icon: ClipboardCheck, stages: ["meeting_attendance"] as OnboardingStage[], desc: "Today's agency meeting roll for licensed agents — an unfilled circle means attendance was never taken." },
-  { key: "pre_licensed", bucket: "unlicensed" as PipelineBucket, label: "Pre-Licensed", icon: GraduationCap, stages: ["pre_licensed", "onboarding", "training_online"] as OnboardingStage[], desc: "Recruits still working through licensing — a row stuck here is a seat that cannot earn yet." },
-  { key: "transfer", bucket: "licensed" as PipelineBucket, label: "Transfer", icon: Users, stages: ["transfer"] as OnboardingStage[], desc: "Licensed agents moving in from another agency — they stall until contracting and access are finished." },
-  { key: "in_training", bucket: "licensed" as PipelineBucket, label: "In-Field Training", icon: GraduationCap, stages: ["in_field_training"] as OnboardingStage[], desc: "Agents riding along in the field — they need a mentor touch every week or the ramp slips." },
-  { key: "below_10k", bucket: "licensed" as PipelineBucket, label: "Below $20K (last 30d)", icon: AlertTriangle, stages: ["below_10k"] as OnboardingStage[], desc: "Licensed producers under $20K in the last 30 days, weakest first — this is the coaching list." },
-  { key: "live", bucket: "licensed" as PipelineBucket, label: "Live", icon: Briefcase, stages: ["live", "evaluated"] as OnboardingStage[], desc: "Fully live producers ranked by month ALP — the board the agency's revenue actually runs on." },
-  { key: "needs_followup", bucket: "licensed" as PipelineBucket, label: "Needs Follow-Up", icon: AlertTriangle, stages: ["need_followup"] as OnboardingStage[], desc: "Under $10K this month or six days with no contact — call these before the week closes." },
-  { key: "hasnt_sold", bucket: "licensed" as PipelineBucket, label: "Hasn't Sold Yet", icon: AlertTriangle, stages: [] as OnboardingStage[], desc: "Licensed with zero lifetime deals, longest-hired first — every row is a recruit who never activated." },
-  { key: "missing", bucket: "licensed" as PipelineBucket, label: "Missing / Silent", icon: Clock, stages: [] as OnboardingStage[], desc: "No production, contact, or record change in seven days — silence is the first sign of an agent leaving." },
-  { key: "inactive", bucket: "licensed" as PipelineBucket, label: "Inactive", icon: UserX, stages: ["inactive"] as OnboardingStage[], desc: "Hidden by hand or dormant for 35 days — confirm they are gone before the seat counts as active." },
-  { key: "deactivated", bucket: "licensed" as PipelineBucket, label: "Deactivated", icon: UserX, stages: [] as OnboardingStage[], desc: "Removed from the active roster, kept visible so a wrong removal can be caught and reversed." },
-];
-
-/** Compute the deterministic Next Best Action for an agent row. Producer-risk lane per MP-261 spec. */
-function computeAgentNBA(agent: {
-  onboardingStage: string;
-  agentLicenseStatus: string;
-  monthlyALP: number;
-  weeklyALP: number;
-  prevWeekALP: number;
-  lifetimeDeals: number;
-  lastContactedAt: string | null;
-  lastActivityAt: string | null;
-  daysSinceHire: number | null;
-  hasReadymodeCreds: boolean;
-  isDeactivated: boolean;
-  isInactive: boolean;
-}) {
-  const daysSinceContact = agent.lastContactedAt
-    ? (Date.now() - new Date(agent.lastContactedAt).getTime()) / (1000 * 60 * 60 * 24)
-    : null;
-  const input: NBAInput = {
-    kind: "producer_risk",
-    dropped_3_weeks: agent.weeklyALP === 0 && agent.prevWeekALP > 0,
-    never_activated_60_days:
-      agent.lifetimeDeals === 0 &&
-      agent.agentLicenseStatus === "licensed" &&
-      (agent.daysSinceHire ?? 0) >= 60,
-    no_alp_30_days: agent.monthlyALP === 0 && agent.agentLicenseStatus === "licensed",
-    down_this_week: agent.prevWeekALP > 0 && agent.weeklyALP < agent.prevWeekALP,
-    // This used to read !agent.hasReadymodeCreds, so a missing DIALER login was
-    // reported as a missing AgentLink link. AgentLink IDs only matter for
-    // older imported deals (posted deals credit by agent_id), so the CRM does
-    // not raise it as a next action.
-    no_agentlink: false,
-    no_recent_contact: daysSinceContact !== null && daysSinceContact >= 7,
-    suppressed: agent.isDeactivated || agent.isInactive,
-  };
-  return getNextBestAction(input);
-}
-
-function ContactActions({ agent, onViewApp, onEditLogin, onDeactivate, onAgentUpdate }: {
-  agent: AgentCRM; onViewApp: (id: string) => void;
-  onEditLogin: (a: AgentCRM) => void; onDeactivate: (a: AgentCRM) => void;
-  onAgentUpdate: (id: string, updates: Partial<AgentCRM>) => void;
-}) {
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      {agent.phone && (
-        <Button variant="outline" size="sm" className="h-10 gap-1 text-xs sm:h-8" asChild>
-          <a href={phoneHref(agent.phone) ?? `tel:${agent.phone}`} {...contactLinkProps(phoneHref(agent.phone))}><Phone className="h-3 w-3" /> Call</a>
-        </Button>
-      )}
-      {agent.email && (
-        <Button variant="outline" size="sm" className="h-10 gap-1 text-xs sm:h-8" asChild>
-          <a href={`mailto:${agent.email}`}><Mail className="h-3 w-3" /> Email</a>
-        </Button>
-      )}
-      {agent.applicationId && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-10 gap-1 border-emerald-500/30 text-xs text-emerald-600 hover:bg-emerald-500/10 dark:text-emerald-400 sm:h-8"
-          onClick={async () => {
-            const checkedInAt = new Date().toISOString();
-            const { error } = await supabase
-              .from("applications")
-              .update({ last_contacted_at: checkedInAt })
-              .eq("id", agent.applicationId!);
-            if (error) {
-              toast.error("Could not record the check-in");
-              return;
-            }
-            onAgentUpdate(agent.id, { lastContactedAt: checkedInAt, lastActivityAt: checkedInAt });
-            toast.success(`${agent.name} marked checked in`);
-          }}
-        >
-          <CircleCheck className="h-3 w-3" /> Checked in
-        </Button>
-      )}
-      {agent.instagramHandle && (
-        <Button variant="outline" size="sm" className="h-10 gap-1 text-xs sm:h-8" asChild>
-          <a href={`https://instagram.com/${agent.instagramHandle.replace('@', '')}`} target="_blank" rel="noopener noreferrer">
-            <Instagram className="h-3 w-3" /> IG
-          </a>
-        </Button>
-      )}
-      <Button variant="outline" size="sm" className="h-10 gap-1 text-xs sm:h-8" onClick={() => onViewApp(agent.id)}>
-        <FileText className="h-3 w-3" /> App
-      </Button>
-      {agent.userId && (
-        <>
-          <Button variant="outline" size="sm" className="h-10 gap-1 text-xs sm:h-8"
-            onClick={async () => {
-              try {
-                const { data, error } = await supabase.functions.invoke("send-agent-portal-login", { body: { agentId: agent.id } });
-                if (error) throw error;
-                if (data?.success === false) throw new Error(data.error || "Failed");
-                toast.success(`Portal login sent to ${agent.email}`);
-              } catch (err: any) { toast.error(err.message || "Failed to send"); }
-            }}>
-            <Send className="h-3 w-3" /> Portal
-          </Button>
-          <Button variant="outline" size="sm" className="h-10 gap-1 text-xs sm:h-8"
-            onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/login`); toast.success("Login link copied!"); }}>
-            <Copy className="h-3 w-3" /> Link
-          </Button>
-          <Button variant="outline" size="sm" className="h-10 gap-1 border-amber-500/30 text-xs text-amber-600 hover:bg-amber-500/10 dark:text-amber-400 sm:h-8"
-            onClick={() => onEditLogin(agent)}>
-            <KeyRound className="h-3 w-3" /> Login
-          </Button>
-        </>
-      )}
-      <div className="flex-1" />
-      <Button variant="ghost" size="sm" className="h-10 gap-1 text-xs text-amber-600 hover:bg-amber-500/10 dark:text-amber-400 sm:h-8"
-        onClick={async () => {
-          try {
-            await supabase.from("agents").update({ is_inactive: true }).eq("id", agent.id);
-            onAgentUpdate(agent.id, { isInactive: true });
-            toast.success(`${agent.name} hidden`);
-          } catch { toast.error("Failed"); }
-        }}>
-        <EyeOff className="h-3 w-3" /> Hide
-      </Button>
-      <Button variant="ghost" size="sm" className="h-10 gap-1 text-xs text-destructive hover:bg-destructive/10 sm:h-8"
-        onClick={() => onDeactivate(agent)}>
-        <X className="h-3 w-3" /> Remove
-      </Button>
-    </div>
-  );
-}
-
-function CompactExpandedRow({ agent, onRefresh, onDeactivate, onViewApp, onEditLogin, onAgentUpdate }: {
-  agent: AgentCRM;
-  onRefresh: () => void;
-  onDeactivate: (agent: AgentCRM) => void;
-  onViewApp: (id: string) => void;
-  onEditLogin: (agent: AgentCRM) => void;
-  onAgentUpdate: (id: string, updates: Partial<AgentCRM>) => void;
-}) {
-  return (
-    <div className="border-t border-border bg-muted/20 px-3 py-3 sm:px-4">
-      <ContactActions agent={agent} onViewApp={onViewApp} onEditLogin={onEditLogin} onDeactivate={onDeactivate} onAgentUpdate={onAgentUpdate} />
-      <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" className={cn("text-[11px] font-bold uppercase tracking-wide", agent.agentLicenseStatus === "licensed" ? "border-success/30 bg-success/15 text-success" : "bg-muted text-muted-foreground")}>
-              {agent.agentLicenseStatus === "licensed" ? "Licensed" : "Unlicensed"}
-            </Badge>
-            {agent.agentLicenseStatus !== "licensed" && (
-              <LicenseProgressSelector
-                applicationId={agent.applicationId}
-                agentId={agent.userId ? agent.id : undefined}
-                currentProgress={(agent.licenseProgress || "unlicensed") as any}
-                testScheduledDate={agent.testScheduledDate}
-                onProgressUpdated={onRefresh}
-                className="h-6 text-xs"
-              />
-            )}
-            {agent.agentLicenseStatus !== "licensed" && (
-              <ResendLicensingButton recipientEmail={agent.email} recipientName={agent.name} licenseStatus="unlicensed" />
-            )}
-          </div>
-          {agent.userId && <AgentTrainingStageBar agentId={agent.id} />}
-          <details className="group">
-            <summary className="flex min-h-10 cursor-pointer select-none items-center gap-2 rounded-md py-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)] sm:min-h-0">
-              <KeyRound className="h-4 w-4 shrink-0 text-muted-foreground" />
-              Access &amp; Credentials
-              <ChevronRight className="h-4 w-4 shrink-0 transition-base group-open:rotate-90" />
-            </summary>
-            <AgentCredentialsPanel agentId={agent.id} agentName={agent.name} agentEmail={agent.email} />
-          </details>
-        </div>
-        <div>
-          <AgentNotes agentId={agent.id} onNoteAdded={() => {}} />
-        </div>
-      </div>
-    </div>
-  );
-}
-function InlineNotesButton({ agent }: { agent: AgentCRM }) {
-  return (
-    <Button variant="ghost" size="sm" className="h-6 w-6 p-0" title={`Open notes for ${agent.name}`}>
-      <StickyNote className="h-3.5 w-3.5 text-muted-foreground hover:text-primary" />
-    </Button>
-  );
-}
-
-/* ────────────────────────────────────────────────────────────────────────────
-   CANONICAL ROSTER
-   ────────────────────────────────────────────────────────────────────────────
-   Sam: "fix profiles and crm to have all agents". The pipeline view below is a
-   RECRUITING funnel — it merges `agents` with open `applications` rows, so its
-   array length answered "agents + applicants I can see" (664) when the question
-   asked was "how big is the team" (181). That is the same class of defect as
-   deriving a headline from a client array: the number was real, the SENTENCE
-   was false.
-
-   Every number in this panel comes from the canonical roster the backend
-   already owns — crm_roster_segments() for the headline tiles, crm_agent_roster()
-   for the rows. No second roster definition is invented here, and roster_exclusions
-   (Sam removed Alyjah Rowland) is enforced inside those functions, so an excluded
-   agent cannot reappear on this surface by way of a client-side filter someone
-   forgets to copy.
-──────────────────────────────────────────────────────────────────────────── */
-
+/**
+ * My Team (rebuilt 2026-10-14, Sam: "far too much clutter, more functions, easier to use and manage").
+ *
+ * One page, four working views, one card per person:
+ *   Overview           who is on the team, grouped by stage, with the gaps (no stage, no schedule, no login) one tap away
+ *   Attendance         today in Phoenix
+ *   Contracting        the carrier review
+ *   Contracting calls  licensed agents who fell off, with one-tap call and log
+ * Tapping a name anywhere opens the person's card (?person=), which now also manages their stage, work days, login and
+ * roster status. The old second roster (the recruiting pipeline with its twelve buckets, bulk mode and compose drawer)
+ * is gone from this page: Recruit Pipeline owns applicants, and every per-agent action it carried lives on the card.
+ */
 interface RosterContact {
   agent_id: string;
   full_name: string | null;
@@ -684,47 +318,27 @@ function HeaderActionRow({ children }: { children: React.ReactNode }) {
   return <div className="flex w-full items-center gap-2 sm:w-auto [&>*:first-child]:flex-1 sm:[&>*:first-child]:flex-none">{children}</div>;
 }
 
-export default function DashboardCRM() {
-  const { user, isAdmin, isManager, isVaManager, isVa, isLoading: authLoading } = useAuth();
-  const askConfirm = useConfirm();
-  const { playSound } = useSoundEffects();
-  const queryClient = useQueryClient();
-  const [agents, setAgents] = useState<AgentCRM[]>([]);
-  const [managers, setManagers] = useState<Manager[]>([]);
-  // Persisted filter state — survives page reload via localStorage
-  const [persistedFilters] = useState<PersistedCrmFilters>(() => loadPersistedFilters());
-  const [searchTerm, setSearchTerm] = useState(persistedFilters.searchTerm);
-  const [managerFilter, setManagerFilter] = useState<string>(persistedFilters.managerFilter);
-  const [licenseFilter, setLicenseFilter] = useState<string>(persistedFilters.licenseFilter);
-  const [aiScoreFilter, setAiScoreFilter] = useState<string>(persistedFilters.aiScoreFilter);
-  const [showDeactivated, setShowDeactivated] = useState(persistedFilters.showDeactivated);
-  const [showInactive, setShowInactive] = useState(persistedFilters.showInactive);
-  const [deactivateAgent, setDeactivateAgent] = useState<AgentCRM | null>(null);
-  const portalLogins = usePortalLoginSender();
-  const sendingBulkLogins = portalLogins.sending;
-  const [bulkMode, setBulkMode] = useState(false);
-  const [selectedAgents, setSelectedAgents] = useState<Set<string>>(new Set());
-  const [composeOpen, setComposeOpen] = useState(false);
-  const [composeChannel, setComposeChannel] = useState<"sms" | "email">("email");
-  const [bulkDeleting, setBulkDeleting] = useState(false);
-  const [viewAppTarget, setViewAppTarget] = useState<{ agentId?: string; applicationId?: string } | null>(null);
-  const [expandedAgentId, setExpandedAgentId] = useState<string | null>(null);
-  const [editLoginAgent, setEditLoginAgent] = useState<AgentCRM | null>(null);
-  const [activeStageTab, setActiveStageTab] = useState<string>("meeting_attendance");
-  const [sortMode, setSortMode] = useState<string>("default");
-  const [currentAgentId, setCurrentAgentId] = useState<string | null>(null);
-  const [meetingAttendance, setMeetingAttendance] = useState<Map<string, "present" | "absent" | "unmarked">>(new Map());
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [crmView, setCrmView] = useState<"roster" | "pipeline">(() => {
-    try { return localStorage.getItem("crm.view.v2") === "pipeline" ? "pipeline" : "roster"; }
-    catch { return "roster"; } // empty-catch-allow:localstorage-incognito
-  });
-  useEffect(() => {
-    try { localStorage.setItem("crm.view.v2", crmView); }
-    catch { /* ignore quota / disabled storage */ } // empty-catch-allow:localstorage-incognito
-  }, [crmView]);
+type Mode = "overview" | "attendance" | "work" | "link";
+const MODE_KEY = "crm.mode.v3";
+const VIEWS: Array<{ key: Mode; label: string; param: string; icon: typeof Users }> = [
+  { key: "overview", label: "Overview", param: "overview", icon: Users },
+  { key: "attendance", label: "Attendance", param: "attendance", icon: ClipboardCheck },
+  { key: "work", label: "Contracting", param: "contracting", icon: ShieldCheck },
+  { key: "link", label: "Contracting calls", param: "link", icon: Phone },
+];
+const modeFromParam = (v: string | null): Mode | null => VIEWS.find((m) => m.param === v)?.key ?? null;
 
-  // Canonical roster — the two functions that own "who is on this team".
+export default function DashboardCRM() {
+  const { user, isAdmin, isManager, isLoading: authLoading } = useAuth();
+  const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const portalLogins = usePortalLoginSender();
+  const [viewAppTarget, setViewAppTarget] = useState<{ agentId: string } | null>(null);
+  const [deactivateAgent, setDeactivateAgent] = useState<{ id: string; name: string; managerId?: string } | null>(null);
+  const [editLoginAgent, setEditLoginAgent] = useState<{ id: string; name: string } | null>(null);
+
+  // Canonical roster — the functions that own "who is on this team". They are authorised server-side (admin, manager,
+  // VA manager and VA), so a VA with no agent record of their own still reads the agency roster.
   const rosterSegmentsQuery = useQuery({
     queryKey: ["crm-roster-segments"],
     enabled: !authLoading && !!user,
@@ -737,16 +351,11 @@ export default function DashboardCRM() {
       return (row as RosterSegments) ?? null;
     },
   });
-
   const todayProductionQuery = useQuery({
     queryKey: ["crm-today-production"],
     enabled: !authLoading && !!user,
     staleTime: 15_000,
-    // No 30s poll. crm_today_production averages 2,683ms and this page also
-    // fires crm_agent_sales_pulse (3,825ms), crm_roster_segments (2,732ms) and
-    // crm_agent_roster (2,306ms) — a CRM tab left open was re-running the
-    // platform's most expensive queries twice a minute. Realtime below covers
-    // the tables these read.
+    // No poll: crm_today_production is one of the platform's most expensive reads. Realtime below covers its tables.
     refetchOnWindowFocus: false,
     queryFn: async (): Promise<TodayProduction | null> => {
       const { data, error } = await supabase.rpc("crm_today_production" as never);
@@ -756,10 +365,7 @@ export default function DashboardCRM() {
       return (row as TodayProduction) ?? null;
     },
   });
-
-  // Refresh on the realtime channel instead of the poll this replaced.
   useProductionRealtime(() => { void todayProductionQuery.refetch(); }, 800);
-
   const rosterQuery = useQuery({
     queryKey: ["crm-agent-roster"],
     enabled: !authLoading && !!user,
@@ -784,16 +390,10 @@ export default function DashboardCRM() {
         ((pulseResult.data as unknown as Array<Pick<RosterRow, "agent_id" | "today_alp" | "today_deals" | "selling_streak_days">>) ?? [])
           .map((row) => [row.agent_id, row] as const),
       );
-      const contactByAgent = new Map(
-        ((contactResult.data as unknown as RosterContact[]) ?? []).map((row) => [row.agent_id, row] as const),
-      );
+      const contactByAgent = new Map(((contactResult.data as unknown as RosterContact[]) ?? []).map((row) => [row.agent_id, row] as const));
       const freeLeadsByAgent = new Map(
-        ((freeLeadsResult.data as unknown as Array<{
-          agent_id: string;
-          qualifies: boolean;
-          reason: string;
-          needed_for_qual: number | string;
-        }>) ?? []).map((row) => [row.agent_id, row] as const),
+        ((freeLeadsResult.data as unknown as Array<{ agent_id: string; qualifies: boolean; reason: string; needed_for_qual: number | string }>) ?? [])
+          .map((row) => [row.agent_id, row] as const),
       );
       return ((rosterResult.data as unknown as RosterRow[]) ?? []).map((row) => ({
         ...row,
@@ -810,506 +410,18 @@ export default function DashboardCRM() {
     },
   });
 
-  // My Team workspace: the one contracting read, the audited checkoff toggle, and the person drawer (?person=).
-  const [rosterMode, setRosterMode] = useState<"work" | "overview" | "attendance" | "link" | "production" | "calls">(() => {
-    try {
-      const v = localStorage.getItem("crm.mode.v2");
-      return v === "production" || v === "calls" || v === "overview" || v === "attendance" ? v : "work";
-    } catch { return "work"; } // empty-catch-allow:localstorage-incognito
-  });
-  useEffect(() => {
-    try { localStorage.setItem("crm.mode.v2", rosterMode); }
-    catch { /* ignore quota / disabled storage */ } // empty-catch-allow:localstorage-incognito
-  }, [rosterMode]);
-  const team = useTeamWorkspace(rosterQuery.data ?? [], !rosterQuery.isLoading);
-  // Roles with no contracting access only ever see the production view.
-  // A link may name the view (?view=contracting|overview|attendance), e.g. the VA sidebar entry.
-  useEffect(() => {
-    const v = searchParams.get("view");
-    const mode = v === "contracting" ? "work" : v === "overview" || v === "attendance" || v === "link" ? v : null;
-    if (mode) { setCrmView("roster"); setRosterMode(mode); }
-  }, [searchParams]);
-  const effectiveMode: "work" | "overview" | "attendance" | "link" | "production" | "calls" = team.contractingEnabled ? rosterMode : "production";
-
-  const focusAgentId = searchParams.get('focusAgentId');
-  useEffect(() => {
-    if (focusAgentId && agents.length > 0) {
-      setExpandedAgentId(focusAgentId);
-      setTimeout(() => {
-        const el = document.getElementById(`agent-row-${focusAgentId}`);
-        if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); playSound("whoosh"); }
-      }, 500);
-    }
-  }, [focusAgentId, agents.length]);
-
-  // Persist filter state to localStorage on every change
-  useEffect(() => {
-    try {
-      localStorage.setItem(
-        CRM_FILTERS_STORAGE_KEY,
-        JSON.stringify({
-          searchTerm,
-          managerFilter,
-          licenseFilter,
-          aiScoreFilter,
-          showDeactivated,
-          showInactive,
-        } satisfies PersistedCrmFilters),
-      );
-    } catch { // empty-catch-allow:localstorage-incognito
-      /* ignore quota / disabled storage */
-    }
-  }, [searchTerm, managerFilter, licenseFilter, aiScoreFilter, showDeactivated, showInactive]);
-
-  // Count active (non-default) filters for the "Clear filters" affordance
-  const activeFilterCount = useMemo(() => {
-    let n = 0;
-    if (searchTerm.trim() !== "") n++;
-    if (managerFilter !== "all") n++;
-    if (licenseFilter !== "all") n++;
-    if (aiScoreFilter !== "all") n++;
-    if (showDeactivated) n++;
-    if (showInactive) n++;
-    return n;
-  }, [searchTerm, managerFilter, licenseFilter, aiScoreFilter, showDeactivated, showInactive]);
-
-  const clearAllFilters = useCallback(() => {
-    setSearchTerm("");
-    setManagerFilter("all");
-    setLicenseFilter("all");
-    setAiScoreFilter("all");
-    setShowDeactivated(false);
-    setShowInactive(false);
-    playSound("click");
-  }, [playSound]);
-
-  const fetchAgentsQuery = useCallback(async () => {
-    try {
-      // These early exits must NOT return from the whole function — the agent
-      // roster fetch below has to run regardless of whether the manager dropdown
-      // populates. (A bare `return` here left the CRM roster empty.)
-      const { data: managerRoles } = await supabase.from("user_roles").select("user_id").eq("role", "manager");
-      const managerUserIds = (managerRoles ?? []).map(r => r.user_id);
-      if (managerUserIds.length) {
-        const { data: managerAgents } = await supabase.from("agents").select("id, user_id").in("user_id", managerUserIds).eq("status", "active");
-        const { data: profiles } = await supabase.from("profiles").select("user_id, full_name").in("user_id", managerUserIds);
-        const profileMap = new Map(profiles?.map(p => [p.user_id, p.full_name]) || []);
-        setManagers((managerAgents ?? []).map(a => ({ id: a.id, name: profileMap.get(a.user_id) || "—" })));
-      } else {
-        setManagers([]);
-      }
-    } catch (error) { console.error("Error fetching managers:", error); }
-    try {
-      // agents.user_id is not unique — a duplicate-identity user would read null
-      // via a bare .maybeSingle() and be wrongly denied roster access. .limit(1)
-      // resolves to their primary row instead (MP-276 ambiguity-safe pattern).
-      const { data: currentAgent } = await supabase.from("agents").select("id").eq("user_id", user!.id).order("created_at", { ascending: true }).limit(1).maybeSingle();
-      // VA staff are operators, not producers, so they legitimately have no
-      // agents row. The route and roster RPC already authorize va_manager/va;
-      // returning here made Milver's Team screen empty despite that access.
-      const canWorkAgencyRoster = isAdmin || isVaManager || isVa;
-      if (!currentAgent && !canWorkAgencyRoster) { return []; }
-      if (currentAgent) setCurrentAgentId(currentAgent.id);
-
-      // select("*") excluded now that insuracloud_api_token is column-restricted (audit 2026-08-27); explicit non-secret columns.
-      let query = supabase.from("v_agents_full").select("agency_owner_qualified_at, agent_code, al_user_id, attendance_status, builder_track, canonical_agent_id, comp_approval_status, comp_approved_at, comp_approved_by, comp_percentage, contract_percentage, contracted_at, contracting_contact_name, created_at, crm_setup_link, deactivation_reason, display_name, eft_ready, eo_aggregate_limit, eo_certificate_url, eo_deductible, eo_expires_at, eo_per_claim_limit, eo_policy_number, evaluated_at, evaluated_by, evaluation_result, field_training_started_at, first_10k_at, first_appointment_at, first_appointment_set_by, first_deal_at, has_dialer_login, has_discord_access, has_production_access, has_training_course, id, insuracloud_user_id, invited_by_manager_id, is_deactivated, is_inactive, is_manager, is_presenting, last_license_alert_at, leader_notes, license_expires_at, license_number, license_progress, license_states, license_status, licensed_at, manager_id, max_recruits, metadata, next_action_due_at, next_action_text, next_step_due_at, next_step_stage_key, nipr_number, nipr_verified, nipr_verified_at, notes, onboarding_completed_at, onboarding_stage, override_rate, password_required, performance_tier, portal_password_set, potential_rating, production_unlocked_at, profile_id, ref_slug, sort_order, source_application_id, stage_changed_at, start_date, status, switched_to_manager_id, telegram_chat_id, telegram_opt_out, total_earnings, total_policies, total_premium, training_stage_override, training_stage_override_at, training_stage_override_by, updated_at, user_id, verified_at, verified_by, weekly_10k_badges").eq("status", "active").order("sort_order", { ascending: true, nullsFirst: false });
-      if (isManager && !isAdmin) query = query.eq("invited_by_manager_id", currentAgent?.id);
-
-      const { data: agentData, error } = await query;
-      if (error) throw error;
-      if (!agentData?.length) { return []; }
-
-      const userIds = agentData.map(a => a.user_id).filter(Boolean);
-      const managerIds = [...new Set(agentData.map(a => a.invited_by_manager_id).filter(Boolean))];
-      const liveAgentIds = agentData.filter(a => a.onboarding_stage === "evaluated").map(a => a.id);
-      const allAgentIds = agentData.map(a => a.id);
-
-      const weekBounds = getBusinessWeekBounds();
-      const monthBounds = getBusinessMonthBounds();
-      const priorWeekBounds = getMatchedPriorWeekBounds();
-      const weekStartStr = getBusinessDayKey(weekBounds.start);
-
-      const weekEndStr = getBusinessDayKey();
-
-      const [profilesResult, managerAgentsResult, monthlyDealsResult, weeklyDealsResult, prevWeekDealsResult, weeklyProductionResult, appContactsResult, appLicenseResult, paymentsResult] = await Promise.all([
-        supabase.from("profiles").select("user_id, full_name, email, phone, avatar_url, instagram_handle").in("user_id", userIds),
-        managerIds.length > 0 ? supabase.from("agents").select("id, user_id").in("id", managerIds) : Promise.resolve({ data: [] as any[] }),
-        allAgentIds.length > 0
-          ? supabase
-              .from("deals")
-              .select("agent_id, annual_premium")
-              .in("agent_id", allAgentIds)
-              .gte("posted_at", monthBounds.startIso)
-              .lt("posted_at", monthBounds.endIso)
-              .in("status", DEAL_TRUTH_STATUS_FILTER)
-          : Promise.resolve({ data: [] as any[] }),
-        allAgentIds.length > 0
-          ? supabase
-              .from("deals")
-              .select("agent_id, annual_premium")
-              .in("agent_id", allAgentIds)
-              .gte("posted_at", weekBounds.startIso)
-              .lt("posted_at", weekBounds.endIso)
-              .in("status", DEAL_TRUTH_STATUS_FILTER)
-          : Promise.resolve({ data: [] as any[] }),
-        allAgentIds.length > 0
-          ? supabase
-              .from("deals")
-              .select("agent_id, annual_premium")
-              .in("agent_id", allAgentIds)
-              .gte("posted_at", priorWeekBounds.startIso)
-              .lt("posted_at", priorWeekBounds.endIso)
-              .in("status", DEAL_TRUTH_STATUS_FILTER)
-          : Promise.resolve({ data: [] as any[] }),
-        allAgentIds.length > 0
-          ? supabase
-              .from("daily_production")
-              .select("agent_id, presentations, production_date")
-              .in("agent_id", allAgentIds)
-              .gte("production_date", weekStartStr)
-              .lte("production_date", weekEndStr)
-          : Promise.resolve({ data: [] as any[] }),
-        supabase.from("applications").select("assigned_agent_id, last_contacted_at").in("assigned_agent_id", allAgentIds).not("last_contacted_at", "is", null).order("last_contacted_at", { ascending: false }),
-        supabase.from("applications").select("id, email, license_progress, test_scheduled_date, ai_score_tier").is("terminated_at", null),
-        supabase.from("lead_payment_tracking").select("agent_id, tier, paid").eq("week_start", weekStartStr).eq("paid", true),
-      ]);
-
-      const profileMapData = new Map(profilesResult.data?.map(p => [p.user_id, p]) || []);
-
-      const managerProfileMap = new Map<string, string>();
-      const managerAgentsData = managerAgentsResult.data;
-      if (managerAgentsData?.length) {
-        const mUserIds = managerAgentsData.map((a: any) => a.user_id).filter(Boolean);
-        const { data: mProfiles } = await supabase.from("profiles").select("user_id, full_name").in("user_id", mUserIds);
-        const userToName = new Map(mProfiles?.map(p => [p.user_id, p.full_name]) || []);
-        managerAgentsData.forEach((ma: any) => { if (ma.user_id) managerProfileMap.set(ma.id, userToName.get(ma.user_id) || "—"); });
-      }
-
-      const weeklyProductionMap = new Map<string, { alp: number; presentations: number; deals: number }>();
-      const monthlyProductionMap = new Map<string, number>();
-      const monthlyDealsMap = new Map<string, number>();
-      for (const deal of monthlyDealsResult.data || []) {
-        monthlyProductionMap.set(
-          deal.agent_id,
-          (monthlyProductionMap.get(deal.agent_id) || 0) + (Number(deal.annual_premium) || 0),
-        );
-        monthlyDealsMap.set(deal.agent_id, (monthlyDealsMap.get(deal.agent_id) || 0) + 1);
-      }
-      for (const deal of weeklyDealsResult.data || []) {
-        const current = weeklyProductionMap.get(deal.agent_id) || { alp: 0, presentations: 0, deals: 0 };
-        weeklyProductionMap.set(deal.agent_id, {
-          alp: current.alp + (Number(deal.annual_premium) || 0),
-          presentations: current.presentations,
-          deals: current.deals + 1,
-        });
-      }
-      for (const production of weeklyProductionResult.data || []) {
-        const current = weeklyProductionMap.get(production.agent_id) || { alp: 0, presentations: 0, deals: 0 };
-        weeklyProductionMap.set(production.agent_id, {
-          alp: current.alp,
-          presentations: current.presentations + (production.presentations || 0),
-          deals: current.deals,
-        });
-      }
-
-      // Previous week ALP
-      const prevWeekALPMap = new Map<string, number>();
-      for (const deal of prevWeekDealsResult.data || []) {
-        prevWeekALPMap.set(
-          deal.agent_id,
-          (prevWeekALPMap.get(deal.agent_id) || 0) + (Number(deal.annual_premium) || 0),
-        );
-      }
-
-      const lastContactMap = new Map<string, string>();
-      for (const app of appContactsResult.data || []) {
-        if (app.assigned_agent_id && app.last_contacted_at && !lastContactMap.has(app.assigned_agent_id)) lastContactMap.set(app.assigned_agent_id, app.last_contacted_at);
-      }
-
-      const progressOrder = ["unlicensed","course_purchased","finished_course","test_scheduled","passed_test","fingerprints_done","waiting_on_license","licensed"];
-      const emailLicenseMap = new Map<string, { progress: string | null; testDate: string | null; appId: string; aiScore: string | null }>();
-      for (const app of appLicenseResult.data || []) {
-        const appEmail = app.email?.toLowerCase().trim();
-        if (!appEmail) continue;
-        const current = emailLicenseMap.get(appEmail);
-        const newIdx = progressOrder.indexOf(app.license_progress || "unlicensed");
-        const curIdx = current ? progressOrder.indexOf(current.progress || "unlicensed") : -1;
-        if (newIdx > curIdx) emailLicenseMap.set(appEmail, { progress: app.license_progress, testDate: app.test_scheduled_date, appId: app.id, aiScore: app.ai_score_tier || null });
-      }
-
-      const paymentMap = new Map<string, { standard: boolean; premium: boolean }>();
-      paymentsResult.data?.forEach((p: any) => {
-        const e = paymentMap.get(p.agent_id) || { standard: false, premium: false };
-        if (p.tier === "standard") e.standard = true;
-        if (p.tier === "premium") e.premium = true;
-        paymentMap.set(p.agent_id, e);
-      });
-
-      // Fetch last production date per agent for 35-day dormancy check
-      const { data: lastProdData } = await supabase
-        .from("daily_production")
-        .select("agent_id, production_date")
-        .in("agent_id", allAgentIds)
-        .order("production_date", { ascending: false });
-      const lastProdMap = new Map<string, string>();
-      for (const p of lastProdData || []) {
-        if (!lastProdMap.has(p.agent_id)) lastProdMap.set(p.agent_id, p.production_date);
-      }
-
-      // 2026-06-15 — lifetime production + ReadyMode credential coverage so the
-      // new "Hasn't sold" / "Missing" tabs + hero KPIs render truthful counts.
-      const [lifetimeRes, credsRes] = await Promise.all([
-        allAgentIds.length > 0
-          ? supabase
-              .from("agent_lifetime_production")
-              .select("agent_id, lifetime_alp, lifetime_deals, last_production_date")
-              .in("agent_id", allAgentIds)
-          : Promise.resolve({ data: [] as any[] }),
-        // RLS hard-blocks non-admin reads — this returns 0 rows for managers
-        // (and renders the hasReadymodeCreds flag as false, which is honest).
-        allAgentIds.length > 0
-          ? (supabase as any)
-              .from("agent_credentials")
-              .select("agent_id, service")
-              .in("agent_id", allAgentIds)
-              .eq("service", "readymode")
-              .not("password_encrypted", "is", null)
-          : Promise.resolve({ data: [] as any[] }),
-      ]);
-      const lifetimeMap = new Map<string, { deals: number; alp: number; lastProd: string | null }>();
-      for (const row of (lifetimeRes.data as any[]) || []) {
-        lifetimeMap.set(row.agent_id, {
-          deals: Number(row.lifetime_deals) || 0,
-          alp: Number(row.lifetime_alp) || 0,
-          lastProd: row.last_production_date || null,
-        });
-      }
-      const readymodeCredSet = new Set<string>(
-        ((credsRes.data as any[]) || []).map((r) => r.agent_id),
-      );
-
-      const DORMANT_DAYS = 35;
-      const now = Date.now();
-
-      const crmAgents: AgentCRM[] = agentData.map((agent, index) => {
-        const profile = profileMapData.get(agent.user_id);
-        const ws = weeklyProductionMap.get(agent.id) || { alp: 0, presentations: 0, deals: 0 };
-        const pay = paymentMap.get(agent.id) || { standard: false, premium: false };
-        const emailKey = profile?.email?.toLowerCase().trim() || "";
-        const licenseEntry = emailLicenseMap.get(emailKey);
-        const monthlyALP = monthlyProductionMap.get(agent.id) || 0;
-        const lifetimeDeals = lifetimeMap.get(agent.id)?.deals ?? 0;
-        // Production is conclusive evidence of a producer license. Normalize
-        // once here so every filter, badge, section, and next-best action uses
-        // the same truth even when a legacy agent row has stale license_status.
-        const effectiveLicenseStatus = agent.license_status === "licensed"
-          || lifetimeDeals > 0
-          || monthlyALP > 0
-          ? "licensed"
-          : (agent.license_status || "unlicensed");
-
-        // Auto-detect 35-day dormancy → move to inactive
-        let effectiveStage: OnboardingStage = agent.onboarding_stage || "onboarding";
-        if (!agent.is_deactivated && effectiveStage !== "inactive") {
-          const lastProd = lastProdMap.get(agent.id);
-          const lastContact = lastContactMap.get(agent.id);
-          const lastActivity = [lastProd, lastContact, agent.updated_at].filter(Boolean).map(d => new Date(d!).getTime());
-          const mostRecent = lastActivity.length > 0 ? Math.max(...lastActivity) : new Date(agent.created_at).getTime();
-          const daysSince = (now - mostRecent) / (1000 * 60 * 60 * 24);
-          if (daysSince >= DORMANT_DAYS) {
-            effectiveStage = "inactive" as OnboardingStage;
-          }
-        }
-
-        return {
-          id: agent.id, userId: agent.user_id || "", name: profile?.full_name || agent.display_name || "—",
-          applicationId: licenseEntry?.appId || undefined,
-          email: profile?.email || "", phone: profile?.phone || undefined, avatarUrl: profile?.avatar_url || undefined,
-          instagramHandle: profile?.instagram_handle || undefined, onboardingStage: effectiveStage,
-          attendanceStatus: agent.attendance_status || "good", performanceTier: agent.performance_tier || "below_10k",
-          fieldTrainingStartedAt: agent.field_training_started_at || undefined, startDate: agent.start_date || undefined,
-          onboardingCompletedAt: agent.onboarding_completed_at || undefined,
-          totalEarnings: Number(agent.total_earnings) || 0, hasTrainingCourse: agent.has_training_course || false,
-          hasDialerLogin: agent.has_dialer_login || false, hasDiscordAccess: agent.has_discord_access || false,
-          potentialRating: agent.potential_rating || 0, evaluationResult: agent.evaluation_result,
-          isDeactivated: agent.is_deactivated || false, isInactive: (agent as any).is_inactive || false,
-          managerId: agent.invited_by_manager_id || undefined, managerName: agent.invited_by_manager_id ? managerProfileMap.get(agent.invited_by_manager_id) : undefined,
-          weekly10kBadges: agent.weekly_10k_badges || 0, sortOrder: agent.sort_order ?? index,
-          weeklyALP: ws.alp, weeklyPresentations: ws.presentations, weeklyDeals: ws.deals,
-          weeklyClosingRate: Math.round(getCloseRate(ws.deals, ws.presentations)),
-          monthlyALP, monthlyDeals: monthlyDealsMap.get(agent.id) || 0,
-          prevWeekALP: prevWeekALPMap.get(agent.id) || 0,
-          lastContactedAt: lastContactMap.get(agent.id) || null, standardPaid: pay.standard, premiumPaid: pay.premium,
-          licenseProgress: licenseEntry?.progress || null, testScheduledDate: licenseEntry?.testDate || null,
-          agentLicenseStatus: effectiveLicenseStatus,
-          aiScoreTier: licenseEntry?.aiScore || null,
-          lifetimeDeals,
-          lifetimeALP: lifetimeMap.get(agent.id)?.alp ?? 0,
-          lastActivityAt: (() => {
-            const candidates = [
-              lifetimeMap.get(agent.id)?.lastProd ?? null,
-              lastProdMap.get(agent.id) ?? null,
-              lastContactMap.get(agent.id) ?? null,
-              agent.updated_at ?? null,
-            ].filter(Boolean) as string[];
-            if (candidates.length === 0) return null;
-            const newest = candidates
-              .map((d) => new Date(d).getTime())
-              .filter((t) => !Number.isNaN(t))
-              .sort((a, b) => b - a)[0];
-            return newest ? new Date(newest).toISOString() : null;
-          })(),
-          daysSinceHire: agent.start_date
-            ? Math.max(0, Math.floor((now - new Date(agent.start_date).getTime()) / (1000 * 60 * 60 * 24)))
-            : (agent.created_at
-                ? Math.max(0, Math.floor((now - new Date(agent.created_at).getTime()) / (1000 * 60 * 60 * 24)))
-                : null),
-          hasReadymodeCreds: readymodeCredSet.has(agent.id),
-          createdAt: agent.created_at || null,
-        };
-      });
-
-      // Applications visible in CRM: every application the viewer can see.
-      // - Admin: all
-      // - Manager (not admin): team (assigned to them) + their own
-      // - Everyone else: their own application (plus team if they were ever
-      //   made a hiring manager for someone else)
-      // Widened status filter so "new" and "reviewing" apps also show up —
-      // agents were complaining their own application wasn't visible at all.
-      let appQuery = supabase.from("applications")
-        // NOTE: applications has no user_id column — selecting it 400'd the whole
-        // query (error swallowed), so every unlicensed applicant was silently
-        // invisible on the CRM (~627 rows). Removed here and from the OR clause below.
-        .select("id, first_name, last_name, email, phone, license_status, license_progress, test_scheduled_date, status, instagram_handle, started_training, ai_score_tier, assigned_agent_id, referral_manager_id, recruiter_id, hiring_manager_user_id, created_at")
-        .is("terminated_at", null).neq("license_status", "licensed");
-      if (!canWorkAgencyRoster) {
-        // Visibility OR — applicant is the user themselves, OR I am the
-        // assigned agent, referral manager, recruiter (any of the three agent
-        // attribution columns), OR I am the hiring manager (auth.uid). This
-        // previously only checked user_id + assigned_agent_id, so leads
-        // credited to KJ via referral_manager_id or recruiter_id were
-        // invisible on the CRM even though they showed up on other pages.
-        const clauses: string[] = [];
-        if (user?.id) {
-          clauses.push(`hiring_manager_user_id.eq.${user.id}`);
-        }
-        if (currentAgent?.id) {
-          clauses.push(`assigned_agent_id.eq.${currentAgent.id}`);
-          clauses.push(`referral_manager_id.eq.${currentAgent.id}`);
-          clauses.push(`recruiter_id.eq.${currentAgent.id}`);
-        }
-        if (clauses.length > 0) appQuery = appQuery.or(clauses.join(","));
-      }
-
-      const { data: unlicensedApplicants } = await appQuery;
-
-      const existingEmails = new Set(crmAgents.map(a => a.email?.toLowerCase()).filter(Boolean));
-      const newApplicants: AgentCRM[] = (unlicensedApplicants || [])
-        .filter((app: any) => !existingEmails.has(app.email?.toLowerCase()))
-        .map((app: any, index: number) => ({
-          id: app.id, userId: "", name: `${app.first_name} ${app.last_name}`.trim(), applicationId: app.id, email: app.email || "",
-          phone: app.phone || undefined, avatarUrl: undefined, instagramHandle: app.instagram_handle || undefined,
-          onboardingStage: "onboarding" as OnboardingStage, attendanceStatus: "good" as AttendanceStatus,
-          performanceTier: "below_10k" as PerformanceTier, fieldTrainingStartedAt: undefined, startDate: undefined,
-          totalEarnings: 0, hasTrainingCourse: app.started_training || false, hasDialerLogin: false, hasDiscordAccess: false,
-          potentialRating: 0, evaluationResult: null, isDeactivated: false, isInactive: false, managerId: undefined,
-          managerName: undefined, weekly10kBadges: 0, sortOrder: crmAgents.length + index,
-          weeklyALP: 0, weeklyPresentations: 0, weeklyDeals: 0, weeklyClosingRate: 0,
-          monthlyALP: 0, monthlyDeals: 0, prevWeekALP: 0,
-          lastContactedAt: null, standardPaid: false, premiumPaid: false,
-          licenseProgress: app.license_progress || null, testScheduledDate: app.test_scheduled_date || null,
-          agentLicenseStatus: app.license_status || "unlicensed",
-          aiScoreTier: app.ai_score_tier || null,
-          lifetimeDeals: 0,
-          lifetimeALP: 0,
-          lastActivityAt: app.created_at || null,
-          daysSinceHire: app.created_at
-            ? Math.max(0, Math.floor((Date.now() - new Date(app.created_at).getTime()) / (1000 * 60 * 60 * 24)))
-            : null,
-          hasReadymodeCreds: false,
-          createdAt: app.created_at || null,
-        }));
-
-      return [...crmAgents, ...newApplicants];
-    } catch (error) { console.error("Error fetching CRM agents:", error); toast.error("Failed to load agents"); return []; }
-  }, [user?.id, isAdmin, isManager, isVaManager, isVa]);
-
-  const { data: agentsData, isLoading: agentsLoading } = useQuery({
-    queryKey: ["crm-agents", user?.id, isAdmin, isManager, isVaManager, isVa],
-    queryFn: fetchAgentsQuery,
-    enabled: !authLoading && !!user,
-    staleTime: 60000,
-  });
-
-  useEffect(() => { if (agentsData) setAgents(agentsData); }, [agentsData]);
-
-  // Fetch today's meeting attendance
-  const todayStr = useMemo(() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  }, []);
-
-  useEffect(() => {
-    if (!agents.length) return;
-    const fetchAttendance = async () => {
-      const agentIds = agents.map(a => a.id);
-      // Chunk the id list — a single ~200-id `.in()` built a URL long enough to
-      // 400 the gateway, which silently dropped every attendance badge.
-      const CHUNK = 100;
-      const map = new Map<string, "present" | "absent" | "unmarked">();
-      for (let i = 0; i < agentIds.length; i += CHUNK) {
-        const { data } = await supabase.from("agent_attendance")
-          .select("agent_id, status")
-          .in("agent_id", agentIds.slice(i, i + CHUNK))
-          .eq("attendance_date", todayStr)
-          .eq("attendance_type", "agency_meeting" as any);
-        data?.forEach(r => map.set(r.agent_id, r.status as any));
-      }
-      setMeetingAttendance(map);
-    };
-    fetchAttendance();
-  }, [agents, todayStr]);
-
-  const toggleMeetingAttendance = async (agentId: string) => {
-    const current = meetingAttendance.get(agentId) || "unmarked";
-    const next = current === "present" ? "absent" : "present";
-    setMeetingAttendance(prev => { const m = new Map(prev); m.set(agentId, next); return m; });
-    try {
-      await supabase.from("agent_attendance").upsert({
-        agent_id: agentId,
-        attendance_date: todayStr,
-        attendance_type: "agency_meeting" as any,
-        status: next as any,
-        marked_by: user?.id,
-      }, { onConflict: "agent_id,attendance_date,attendance_type" as any });
-    } catch { toast.error("Failed to save attendance"); }
-  };
-
-  const loading = agentsLoading;
-  const fetchAgents = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ["crm-agents"] });
-    // Refresh must move BOTH views, or the header tiles go stale behind a
-    // pipeline that just reloaded and the two start telling different stories.
+  const refreshAll = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["crm-agent-roster"] });
     queryClient.invalidateQueries({ queryKey: ["crm-roster-segments"] });
     queryClient.invalidateQueries({ queryKey: ["crm-today-production"] });
+    queryClient.invalidateQueries({ queryKey: ["team-facts"] });
   }, [queryClient]);
 
-  // MP-361. Every handler below invalidates react-query keys and ignores the
-  // payload, so a burst of row events only ever needed ONE refetch. Undebounced,
-  // a `deals` write burst (measured: 11 rows in one second) fired one immediate
-  // refetch per row of crm-today-production + crm-agent-roster +
-  // crm-roster-segments. That is the same starvation proven on v_imo_by_agency,
-  // where 195 of 269 reads timed out at 57014 and the public landing_* RPCs
-  // 500'd as collateral in the same windows.
+  // MP-361: every handler below invalidates and ignores the payload, so a burst of row events needs ONE refetch.
   const CRM_COALESCE_MS = 750;
-
-  // Phase 5: Live updates — invalidate when agents/applications change anywhere
   useRealtimeTable({ table: "agents", channelSuffix: "crm", coalesceMs: CRM_COALESCE_MS }, () => {
-    queryClient.invalidateQueries({ queryKey: ["crm-agents"] });
-  });
-  useRealtimeTable({ table: "applications", channelSuffix: "crm", coalesceMs: CRM_COALESCE_MS }, () => {
-    queryClient.invalidateQueries({ queryKey: ["crm-agents"] });
+    queryClient.invalidateQueries({ queryKey: ["crm-agent-roster"] });
+    queryClient.invalidateQueries({ queryKey: ["crm-roster-segments"] });
   });
   useRealtimeTable({ table: "deals", channelSuffix: "crm-production", coalesceMs: CRM_COALESCE_MS }, () => {
     queryClient.invalidateQueries({ queryKey: ["crm-today-production"] });
@@ -1323,9 +435,7 @@ export default function DashboardCRM() {
   });
   useRealtimeTable(
     { table: "production_external_daily_snapshots", channelSuffix: "crm-production", coalesceMs: CRM_COALESCE_MS },
-    () => {
-      queryClient.invalidateQueries({ queryKey: ["crm-today-production"] });
-    },
+    () => { queryClient.invalidateQueries({ queryKey: ["crm-today-production"] }); },
   );
   useRealtimeTable(
     { table: "production_external_deals", channelSuffix: "crm-production", coalesceMs: CRM_COALESCE_MS },
@@ -1336,18 +446,40 @@ export default function DashboardCRM() {
     },
   );
 
-  // Dry-run count → confirm → send → receipt from the function's own results.
-  // 2026-09-30 (Sam): "a button in CRM to download all agents: first name,
-  // last name, email, NPN." crm_agents_export() = every non-duplicate,
-  // non-placeholder agent at any status, same audience as the roster.
+  // The view lives in the URL (?view=overview|attendance|contracting|link) so a link lands on the right one; the last
+  // choice is remembered for a plain visit.
+  const [mode, setMode] = useState<Mode>(() => {
+    try { const v = localStorage.getItem(MODE_KEY); return VIEWS.some((m) => m.key === v) ? (v as Mode) : "overview"; }
+    catch { return "overview"; } // empty-catch-allow:localstorage-incognito
+  });
+  useEffect(() => {
+    try { localStorage.setItem(MODE_KEY, mode); }
+    catch { /* ignore quota / disabled storage */ } // empty-catch-allow:localstorage-incognito
+  }, [mode]);
+  useEffect(() => { const m = modeFromParam(searchParams.get("view")); if (m) setMode(m); }, [searchParams]);
+  const team = useTeamWorkspace(rosterQuery.data ?? [], !rosterQuery.isLoading);
+  const facts = useTeamFacts(team.contractingEnabled);
+  // Roles with no contracting access only ever see the production roster.
+  const effectiveMode: Mode | "production" = team.contractingEnabled ? mode : "production";
+  const showView = (m: Mode) => {
+    setMode(m);
+    const next = new URLSearchParams(searchParams);
+    next.set("view", VIEWS.find((v) => v.key === m)!.param);
+    setSearchParams(next, { replace: true });
+  };
+
+  const rows = (rosterQuery.data ?? []) as RosterRow[];
+  const working = rows.filter((r) => r.status === "active" && r.is_sync_only !== true);
+
+  // 2026-09-30 (Sam): "a button to download all agents: first name, last name, email, NPN."
   const downloadAgentsCsv = async () => {
     const { data, error } = await supabase.rpc("crm_agents_export" as never);
     if (error) { toast.error(`Export failed: ${error.message}`); return; }
-    const rows = (data ?? []) as Array<Record<string, string | null>>;
-    if (rows.length === 0) { toast.error("No agents to export."); return; }
+    const exported = (data ?? []) as Array<Record<string, string | null>>;
+    if (exported.length === 0) { toast.error("No agents to export."); return; }
     const cols = ["first_name", "last_name", "email", "npn", "phone", "status", "license_status", "manager_name", "agent_code", "start_date"];
     const cell = (v: string | null | undefined) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-    const csv = [cols.join(","), ...rows.map((r) => cols.map((c) => cell(r[c])).join(","))].join("\r\n");
+    const csv = [cols.join(","), ...exported.map((r) => cols.map((c) => cell(r[c])).join(","))].join("\r\n");
     const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -1355,480 +487,73 @@ export default function DashboardCRM() {
     a.download = `apex-agents-${new Date().toISOString().slice(0, 10)}.csv`;
     document.body.appendChild(a); a.click(); a.remove();
     URL.revokeObjectURL(url);
-    toast.success(`Downloaded ${rows.length} agents.`);
+    toast.success(`Downloaded ${exported.length} agents.`);
   };
 
-  const handleBulkSendPortalLogins = () => portalLogins.send();
-
-  const onAgentUpdate = (id: string, updates: Partial<AgentCRM>) => {
-    setAgents(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
+  // The person card's management actions. Each one is a receipt: it says what landed, never assumes.
+  const selected = team.row;
+  const selectedName = selected?.full_name ?? "This agent";
+  const personFacts = team.selectedId ? facts.facts?.people.find((p) => p.agent_id === team.selectedId) ?? null : null;
+  const canManage = isAdmin || isManager;
+  const checkIn = async (row: RosterRow) => {
+    // The check-in stamp lives on the person's application (what last_contacted_at reads from), never invented on agents.
+    const { data: agent, error: readError } = await supabase.from("agents").select("source_application_id").eq("id", row.agent_id).maybeSingle();
+    if (readError) { toast.error(`Check-in did not save: ${readError.message}`); return; }
+    if (!agent?.source_application_id) { toast.error(`${row.full_name ?? "This agent"} has no application on file to check in against.`); return; }
+    const checkedInAt = new Date().toISOString();
+    const { error } = await supabase.from("applications").update({ last_contacted_at: checkedInAt }).eq("id", agent.source_application_id);
+    if (error) { toast.error(`Check-in did not save: ${error.message}`); return; }
+    toast.success(`${row.full_name ?? "Agent"} marked checked in`);
+    refreshAll();
   };
-
-  /**
-   * Bulk delete (flag-gated). Marks selected agents as deactivated rather than
-   * hard-deleting rows — preserves referential integrity for production data,
-   * applications, etc. Hidden behind VITE_ENABLE_CRM_BULK_DELETE.
-   */
-  const handleBulkDelete = async () => {
-    if (selectedAgents.size === 0) return;
-    const count = selectedAgents.size;
-    const okDeact = await askConfirm({
-      title: `Deactivate ${count} selected agent${count === 1 ? "" : "s"}?`,
-      description: 'Rows stay in the database — reversible by toggling "Deactivated" back off.',
-      confirmText: `Deactivate ${count}`,
-      tone: "danger",
-    });
-    if (!okDeact) return;
-    setBulkDeleting(true);
+  const sendPortalLogin = async (row: RosterRow) => {
     try {
-      const ids = Array.from(selectedAgents);
-      // set_agent_active writes status + is_inactive + is_deactivated together.
-      // Writing only is_deactivated (what this did) left the three fields out of
-      // step, and v_apex_roster reads status — so a deactivated agent kept
-      // appearing in the roster and Sam's clear-house never took effect. One RPC
-      // so those flags cannot drift apart again.
-      const { error } = await supabase.rpc("set_agent_active" as never, {
-        p_agent_ids: ids,
-        p_active: false,
-      } as never);
+      const { data, error } = await supabase.functions.invoke("send-agent-portal-login", { body: { agentId: row.agent_id } });
       if (error) throw error;
-      toast.success(`Deactivated ${count} agent${count === 1 ? "" : "s"}`);
-      setSelectedAgents(new Set());
-      fetchAgents();
-    } catch (err) {
-      console.error("Bulk delete failed:", err);
-      toast.error("Failed to deactivate selected agents");
-    } finally {
-      setBulkDeleting(false);
-    }
+      if ((data as { success?: boolean; error?: string } | null)?.success === false) throw new Error((data as { error?: string }).error || "Failed");
+      toast.success(`Portal login sent to ${row.email ?? row.full_name ?? "the agent"}`);
+    } catch (err) { toast.error(err instanceof Error ? err.message : "Failed to send"); }
   };
+  const hideFromRoster = async (row: RosterRow) => {
+    const { error } = await supabase.from("agents").update({ is_inactive: true }).eq("id", row.agent_id);
+    if (error) { toast.error(`Could not hide: ${error.message}`); return; }
+    toast.success(`${row.full_name ?? "Agent"} hidden from the roster`);
+    team.closePerson();
+    refreshAll();
+  };
+  const manage: TeamPersonManage | undefined = selected && team.contractingEnabled ? {
+    facts: personFacts,
+    factsLoading: facts.query.isLoading,
+    canEdit: facts.canEdit,
+    saving: (what) => facts.isPending(selected.agent_id, what),
+    setStage: (s) => { void facts.setStage(selected.agent_id, selectedName, s); },
+    setWorkdays: (days, from) => facts.setWorkdays(selected.agent_id, selectedName, days, from),
+    ...(canManage ? {
+      onCheckIn: () => { void checkIn(selected); },
+      ...(isAdmin ? { onSendPortalLogin: () => { void sendPortalLogin(selected); } } : {}),
+      onEditLogin: () => setEditLoginAgent({ id: selected.agent_id, name: selectedName }),
+      onViewApplication: () => setViewAppTarget({ agentId: selected.agent_id }),
+      onHide: () => { void hideFromRoster(selected); },
+      onDeactivate: () => setDeactivateAgent({ id: selected.agent_id, name: selectedName, managerId: selected.manager_id ?? undefined }),
+    } : {}),
+  } : undefined;
 
-  const activeAgentsRaw = useMemo(() => agents.filter(a => {
-    // "Deactivated" chip owns its own section — surface those agents regardless
-    // of the top-level toggle when that chip is selected.
-    if (activeStageTab === "deactivated") return true;
-    if (!showDeactivated && a.isDeactivated) return false;
-    if (!showInactive && a.isInactive) return false;
-    return true;
-  }), [agents, showDeactivated, showInactive, activeStageTab]);
+  if (authLoading) return <PageLoadingSkeleton variant="table" />;
 
-  // Dedupe by lowercased email so tab counts + row lists stop double-counting
-  // ghost duplicates (e.g. two "Samuel James" rows). Retain the canonical row —
-  // prefer one with a real userId, then most-recent lastActivityAt, then lowest
-  // sortOrder. The Dupe badge below still surfaces because duplicateAgentIds is
-  // computed off activeAgentsRaw, not the deduped list.
-  const activeAgents = useMemo(() => {
-    const canonicalByEmail = new Map<string, AgentCRM>();
-    const noEmail: AgentCRM[] = [];
-    for (const a of activeAgentsRaw) {
-      const key = a.email?.toLowerCase().trim();
-      if (!key) { noEmail.push(a); continue; }
-      const prev = canonicalByEmail.get(key);
-      if (!prev) { canonicalByEmail.set(key, a); continue; }
-      const prevHasUser = !!prev.userId;
-      const nextHasUser = !!a.userId;
-      if (nextHasUser !== prevHasUser) { if (nextHasUser) canonicalByEmail.set(key, a); continue; }
-      const prevTs = prev.lastActivityAt ? new Date(prev.lastActivityAt).getTime() : 0;
-      const nextTs = a.lastActivityAt ? new Date(a.lastActivityAt).getTime() : 0;
-      if (nextTs !== prevTs) { if (nextTs > prevTs) canonicalByEmail.set(key, a); continue; }
-      if (a.sortOrder < prev.sortOrder) canonicalByEmail.set(key, a);
-    }
-    return [...canonicalByEmail.values(), ...noEmail];
-  }, [activeAgentsRaw]);
-
-  const filteredAgents = useMemo(() => activeAgents.filter(a => {
-    const matchesSearch = !searchTerm || a.name.toLowerCase().includes(searchTerm.toLowerCase()) || a.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesManager = managerFilter === "all" || a.managerId === managerFilter;
-    const matchesLicense = licenseFilter === "all" || (licenseFilter === "licensed" ? a.agentLicenseStatus === "licensed" : a.agentLicenseStatus !== "licensed");
-    const matchesAiScore = aiScoreFilter === "all" || a.aiScoreTier === aiScoreFilter;
-    return matchesSearch && matchesManager && matchesLicense && matchesAiScore;
-  }), [activeAgents, searchTerm, managerFilter, licenseFilter, aiScoreFilter]);
-
-  const agentsBySection = useMemo(() => {
-    const liveStages = ["in_field_training", "evaluated", "live", "below_10k"];
-    const map = new Map<string, AgentCRM[]>();
-    map.set("meeting_attendance", [...filteredAgents].filter(a => a.agentLicenseStatus === "licensed").sort((a, b) => a.name.localeCompare(b.name)));
-    map.set("needs_followup", filteredAgents.filter(a => {
-      if (a.isDeactivated || a.onboardingStage === "inactive") return false;
-      if (a.agentLicenseStatus !== "licensed") return false;
-      const lowProducer = (a.monthlyALP ?? 0) < 10000;
-      const daysSinceContact = a.lastContactedAt
-        ? (Date.now() - new Date(a.lastContactedAt).getTime()) / (1000 * 60 * 60 * 24)
-        : 999;
-      return lowProducer || daysSinceContact >= 6;
-    }).sort((a, b) => {
-      if ((a.monthlyALP ?? 0) !== (b.monthlyALP ?? 0)) return (a.monthlyALP ?? 0) - (b.monthlyALP ?? 0);
-      if (!a.lastContactedAt && !b.lastContactedAt) return a.sortOrder - b.sortOrder;
-      if (!a.lastContactedAt) return -1;
-      if (!b.lastContactedAt) return 1;
-      return new Date(a.lastContactedAt).getTime() - new Date(b.lastContactedAt).getTime();
-    }));
-    map.set("inactive", filteredAgents.filter(a => a.onboardingStage === "inactive" || a.isInactive));
-    map.set("pre_licensed", filteredAgents.filter(a => {
-      if (a.agentLicenseStatus === "licensed") return false;
-      return PRELICENSED_PROGRESS.has((a as any).licenseProgress || "unlicensed");
-    }));
-    map.set("live", filteredAgents.filter(a =>
-      a.agentLicenseStatus === "licensed" && liveStages.includes(a.onboardingStage) && !a.isDeactivated && !a.isInactive
-    ).sort((a, b) => b.monthlyALP - a.monthlyALP));
-    map.set("below_10k", filteredAgents.filter(a =>
-      a.agentLicenseStatus === "licensed" && liveStages.includes(a.onboardingStage) && !a.isDeactivated && !a.isInactive && (a.monthlyALP ?? 0) < 20000
-    ).sort((a, b) => b.monthlyALP - a.monthlyALP));
-    map.set("transfer", filteredAgents.filter(a =>
-      a.onboardingStage === "transfer" ||
-      (a.hasTrainingCourse && a.agentLicenseStatus === "licensed" && !liveStages.includes(a.onboardingStage))
-    ));
-    // 2026-06-15 — "Hasn't sold yet": licensed, active, zero lifetime deals.
-    // Sorted by daysSinceHire DESC so the oldest unsold sit at the top —
-    // they're the biggest red flag and the loudest coaching signal.
-    map.set("hasnt_sold", filteredAgents.filter(a =>
-      a.agentLicenseStatus === "licensed"
-      && !a.isDeactivated
-      && !a.isInactive
-      && a.onboardingStage !== "inactive"
-      && a.lifetimeDeals === 0
-    ).sort((a, b) => (b.daysSinceHire ?? 0) - (a.daysSinceHire ?? 0)));
-    // 2026-06-15 — "Missing / Silent": active agents whose freshest signal
-    // (lifetime last_production_date / daily_production / last_contacted_at
-    // / agents.updated_at) is older than 7 days. Sorted by silence duration
-    // DESC so the longest-quiet agents are first.
-    map.set("missing", filteredAgents.filter(a => {
-      if (a.isDeactivated || a.isInactive) return false;
-      if (a.onboardingStage === "inactive") return false;
-      if (a.onboardingStage === "applied" || a.onboardingStage === "meeting_attendance") return false;
-      const lastTs = a.lastActivityAt ? new Date(a.lastActivityAt).getTime() : null;
-      if (lastTs === null) return false;
-      const days = (Date.now() - lastTs) / (1000 * 60 * 60 * 24);
-      return days >= 7;
-    }).sort((a, b) => {
-      const at = a.lastActivityAt ? new Date(a.lastActivityAt).getTime() : 0;
-      const bt = b.lastActivityAt ? new Date(b.lastActivityAt).getTime() : 0;
-      return at - bt; // oldest first
-    }));
-    map.set("deactivated", filteredAgents.filter(a => a.isDeactivated).sort((a, b) => a.name.localeCompare(b.name)));
-    for (const sec of SECTIONS) {
-      if (!map.has(sec.key)) {
-        map.set(sec.key, filteredAgents.filter(a => sec.stages.includes(a.onboardingStage)).sort((a, b) => {
-          if (!a.lastContactedAt && !b.lastContactedAt) return a.sortOrder - b.sortOrder;
-          if (!a.lastContactedAt) return -1;
-          if (!b.lastContactedAt) return 1;
-          return new Date(a.lastContactedAt).getTime() - new Date(b.lastContactedAt).getTime();
-        }));
-      }
-    }
-    if (sortMode !== "default") {
-      for (const [k, arr] of Array.from(map.entries())) {
-        const sorted = [...arr];
-        if (sortMode === "alp_desc") sorted.sort((a, b) => b.monthlyALP - a.monthlyALP);
-        else if (sortMode === "newest") sorted.sort((a, b) => {
-          const at = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-          const bt = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-          return bt - at;
-        });
-        else if (sortMode === "stalest") sorted.sort((a, b) => {
-          const at = a.lastActivityAt ? new Date(a.lastActivityAt).getTime() : Number.MAX_SAFE_INTEGER;
-          const bt = b.lastActivityAt ? new Date(b.lastActivityAt).getTime() : Number.MAX_SAFE_INTEGER;
-          return at - bt;
-        });
-        else if (sortMode === "needs_followup") sorted.sort((a, b) => {
-          const at = a.lastContactedAt ? new Date(a.lastContactedAt).getTime() : 0;
-          const bt = b.lastContactedAt ? new Date(b.lastContactedAt).getTime() : 0;
-          return at - bt;
-        });
-        else if (sortMode === "by_stage") sorted.sort((a, b) => a.onboardingStage.localeCompare(b.onboardingStage));
-        map.set(k, sorted);
-      }
-    }
-    return map;
-  }, [filteredAgents, sortMode]);
-
-  const unlicensedAgents = useMemo(
-    () => filteredAgents.filter(a => a.agentLicenseStatus !== "licensed"),
-    [filteredAgents]
+  const fold = (title: string, body: React.ReactNode) => (
+    <details className="group rounded-lg border border-border bg-card [&[open]_.chev]:rotate-180">
+      <summary className="flex min-h-[44px] cursor-pointer list-none items-center gap-2 px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground">
+        {title}
+        <ChevronDown className="chev ml-auto h-4 w-4 transition-transform" aria-hidden />
+      </summary>
+      <div className="border-t border-border p-4">{body}</div>
+    </details>
   );
-
-  // Detect emails with >1 row in the raw list so the canonical (deduped) row
-  // still surfaces a "Dupe" badge to Sam even after dedupe collapses the second.
-  const duplicateAgentIds = useMemo(() => {
-    const emailCount = new Map<string, number>();
-    activeAgentsRaw.forEach(a => { if (a.email) { const k = a.email.toLowerCase().trim(); emailCount.set(k, (emailCount.get(k) || 0) + 1); } });
-    const dupeIds = new Set<string>();
-    activeAgents.forEach(a => { if (a.email && (emailCount.get(a.email.toLowerCase().trim()) || 0) > 1) dupeIds.add(a.id); });
-    return dupeIds;
-  }, [activeAgentsRaw, activeAgents]);
-
-  // 2026-08-23 — the old `teamKpis` memo lived here and rendered "Team size" from
-  // `activeAgents.length`. That array is agents UNION open applications, so the
-  // tile read 664 against a 181-agent roster. Deleted rather than relabelled:
-  // headline team numbers now come from crm_roster_segments() (see RosterKpis),
-  // and there is no longer a second place on this page that can answer the
-  // question differently.
-
-  // MP-261 — unified 11-col table shape. Chips filter rows; columns stay stable.
-  // Agent / Mentor / Stage / License / Present / Homework / Week ALP / Month ALP /
-  // Last Activity / Next Best Action / Actions.
-  const getTableHeaders = (_sectionKey: string) => (
-    <>
-      <TableHead className="w-[220px] px-2">Agent</TableHead>
-      <TableHead className="w-[110px] px-2">Mentor</TableHead>
-      <TableHead className="w-[110px] px-2">Stage</TableHead>
-      <TableHead className="w-[100px] px-2">License</TableHead>
-      <TableHead className="w-[80px] px-2 text-center">Present</TableHead>
-      <TableHead className="w-[100px] px-2 text-right">Week ALP</TableHead>
-      <TableHead className="w-[100px] px-2 text-right">Month ALP</TableHead>
-      <TableHead className="w-[110px] px-2">Last Activity</TableHead>
-      <TableHead className="w-[200px] px-2">Next Best Action</TableHead>
-      <TableHead className="w-[70px] px-2 text-right">Actions</TableHead>
-    </>
-  );
-
-  const renderNBACell = (agent: AgentCRM) => {
-    const nba = computeAgentNBA(agent);
-    const badge = priorityBadgeClasses(nba.priority);
-    return (
-      <TableCell className="px-2 py-2">
-        <div className="flex min-w-0 max-w-[200px] flex-col gap-1">
-          <Badge variant="outline" className={cn("w-fit text-[11px] font-bold uppercase tracking-wide", badge.className)}>
-            {badge.text}
-          </Badge>
-          <span className="truncate text-[12px] font-medium text-foreground" title={nba.reason}>{nba.action}</span>
-        </div>
-      </TableCell>
-    );
-  };
-
-  // MP-261 unified 11-col row. Sam's brief: table shape stays constant across
-  // every segment chip; only the row set changes. Columns after Agent:
-  // Mentor / Stage / License / Present / Homework / Week ALP / Month ALP /
-  // Last Activity / Next Best Action / Actions.
-  const renderKebabActions = (agent: AgentCRM) => {
-    // Applicant rows (no auth user; id === applicationId) can't be hidden or
-    // deactivated as agents — those UPDATEs silently no-op / FK-fail.
-    const isApplicantRow = !agent.userId;
-    return (
-    <TableCell className="px-2 py-2 text-right" onClick={(e) => e.stopPropagation()}>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="h-10 w-10 p-0 sm:h-8 sm:w-8" aria-label={`Actions for ${agent.name}`}>
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-52">
-          <DropdownMenuLabel className="truncate text-[12px]">{agent.name}</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => setViewAppTarget({ agentId: agent.id, applicationId: agent.applicationId })}>
-            <FileText className="h-3.5 w-3.5 mr-2" /> View application
-          </DropdownMenuItem>
-          {agent.email && (
-            <DropdownMenuItem asChild>
-              <a href={`mailto:${agent.email}`}><Mail className="h-3.5 w-3.5 mr-2" /> Email</a>
-            </DropdownMenuItem>
-          )}
-          {agent.phone && (
-            <DropdownMenuItem asChild>
-              <a href={phoneHref(agent.phone) ?? `tel:${agent.phone}`} {...contactLinkProps(phoneHref(agent.phone))}><Phone className="h-3.5 w-3.5 mr-2" /> Call</a>
-            </DropdownMenuItem>
-          )}
-          {agent.instagramHandle && (
-            <DropdownMenuItem asChild>
-              <a href={`https://instagram.com/${agent.instagramHandle.replace('@', '')}`} target="_blank" rel="noopener noreferrer">
-                <Instagram className="h-3.5 w-3.5 mr-2" /> Instagram
-              </a>
-            </DropdownMenuItem>
-          )}
-          {agent.userId && (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={async () => {
-                  try {
-                    const { data, error } = await supabase.functions.invoke("send-agent-portal-login", { body: { agentId: agent.id } });
-                    if (error) throw error;
-                    if (data?.success === false) throw new Error(data.error || "Failed");
-                    toast.success(`Portal login sent to ${agent.email}`);
-                  } catch (err: any) { toast.error(err.message || "Failed to send"); }
-                }}
-              >
-                <Send className="h-3.5 w-3.5 mr-2" /> Send portal login
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/login`); toast.success("Login link copied"); }}
-              >
-                <Copy className="h-3.5 w-3.5 mr-2" /> Copy login link
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setEditLoginAgent(agent)}>
-                <KeyRound className="h-3.5 w-3.5 mr-2" /> Edit login
-              </DropdownMenuItem>
-            </>
-          )}
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onClick={async () => {
-              if (isApplicantRow) {
-                toast.info(`${agent.name} is still an unhired applicant — remove from the Applicants queue instead.`);
-                return;
-              }
-              try {
-                const { error } = await supabase.from("agents").update({ is_inactive: true }).eq("id", agent.id);
-                if (error) throw error;
-                onAgentUpdate(agent.id, { isInactive: true });
-                toast.success(`${agent.name} hidden`);
-              } catch (err: any) { toast.error(err?.message || "Failed"); }
-            }}
-          >
-            <EyeOff className="h-3.5 w-3.5 mr-2" /> Hide
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => {
-              if (isApplicantRow) {
-                toast.info(`${agent.name} is still an unhired applicant — remove from the Applicants queue instead.`);
-                return;
-              }
-              setDeactivateAgent(agent);
-            }}
-            className="text-destructive focus:text-destructive"
-          >
-            <X className="h-3.5 w-3.5 mr-2" /> Remove
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </TableCell>
-    );
-  };
-
-  const getTableCells = (_sectionKey: string, agent: AgentCRM) => {
-    const attendanceState = meetingAttendance.get(agent.id) || "unmarked";
-    const attendancePresent = attendanceState === "present";
-    const isLicensed = agent.agentLicenseStatus === "licensed"
-      || agent.lifetimeDeals > 0
-      || agent.monthlyALP > 0;
-    const stageLabel = isLicensed
-      ? agent.onboardingStage.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())
-      : (PROGRESS_LABELS[agent.licenseProgress || "unlicensed"] || "In Course");
-    const isTrainee = agent.onboardingStage === "in_field_training";
-    // Applicant rows (still in applications table, no auth user) share id with
-    // applicationId. Actions that write to agents/agent_attendance by agent.id
-    // silently FK-fail — gate those actions and surface a helpful toast.
-    const isApplicantRow = !agent.userId;
-    // Derive color from the SAME timestamp the label reads so fresh activity
-    // never renders red. Fall back to lastContactedAt only when both are absent.
-    const activitySourceTs = agent.lastActivityAt || agent.lastContactedAt;
-    const lastActivityLabel = activitySourceTs ? getTimeAgo(activitySourceTs) : "—";
-    let activityColor = "text-muted-foreground";
-    if (activitySourceTs) {
-      // Math.max(0, …) so a stray future timestamp from a bad AgentLink sync
-      // can't render as red-stale — relative-time-guard invariant.
-      const days = Math.max(0, Date.now() - new Date(activitySourceTs).getTime()) / (1000 * 60 * 60 * 24);
-      if (days < 3) activityColor = "text-emerald-600 dark:text-emerald-400";
-      else if (days < 6) activityColor = "text-amber-600 dark:text-amber-400";
-      else activityColor = "text-rose-600 dark:text-rose-400";
-    } else {
-      activityColor = "text-rose-600 dark:text-rose-400";
-    }
-    return (
-      <>
-        <TableCell className="px-2 py-2">
-          <span className="inline-block max-w-[110px] truncate text-[12px] text-muted-foreground">
-            {agent.managerName?.split(" ")[0] || "—"}
-          </span>
-        </TableCell>
-        <TableCell className="px-2 py-2">
-          <Badge variant="outline" className="max-w-[104px] truncate text-[11px] font-bold uppercase tracking-wide">{stageLabel}</Badge>
-        </TableCell>
-        <TableCell className="px-2 py-2">
-          <Badge
-            variant="outline"
-            className={cn(
-              "text-[11px] font-bold uppercase tracking-wide",
-              isLicensed
-                ? "border-success/30 bg-success/15 text-success"
-                : "bg-muted text-muted-foreground",
-            )}
-          >
-            {isLicensed ? "Licensed" : "Unlicensed"}
-          </Badge>
-        </TableCell>
-        <TableCell className="px-2 py-2 text-center" onClick={(e) => e.stopPropagation()}>
-          <button
-            type="button"
-            onClick={() => {
-              if (isApplicantRow) {
-                toast.info(`Hire ${agent.name} first — attendance is agent-scoped.`);
-                return;
-              }
-              toggleMeetingAttendance(agent.id);
-            }}
-            disabled={isApplicantRow}
-            aria-pressed={attendancePresent}
-            className={cn(
-              "mx-auto inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors",
-              "focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
-              "sm:h-8 sm:w-8",
-              isApplicantRow ? "cursor-not-allowed opacity-40" : "hover:bg-muted/60",
-            )}
-            aria-label={`Toggle meeting attendance for ${agent.name}`}
-            title={isApplicantRow ? "Hire this applicant first to track attendance" : undefined}
-          >
-            {attendancePresent ? (
-              <CircleCheck className="h-5 w-5 fill-emerald-500/20 text-emerald-600 dark:text-emerald-400" />
-            ) : (
-              <Circle
-                className={cn(
-                  "h-5 w-5",
-                  attendanceState === "absent" ? "text-rose-600 dark:text-rose-400" : "text-muted-foreground/40",
-                )}
-              />
-            )}
-          </button>
-        </TableCell>
-        <TableCell className="px-2 py-2 text-right">
-          <span className={cn(
-            "text-sm font-bold tabular-nums",
-            agent.weeklyALP > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground",
-          )}>
-            {agent.weeklyALP > 0 ? `$${agent.weeklyALP.toLocaleString()}` : "—"}
-          </span>
-        </TableCell>
-        <TableCell className="px-2 py-2 text-right">
-          <span className={cn(
-            "text-sm font-bold tabular-nums",
-            agent.monthlyALP > 0 ? "text-foreground" : "text-muted-foreground",
-          )}>
-            {agent.monthlyALP > 0 ? `$${agent.monthlyALP.toLocaleString()}` : "—"}
-          </span>
-        </TableCell>
-        <TableCell className="px-2 py-2">
-          <span className={cn("text-[12px] font-medium tabular-nums", activityColor)}>{lastActivityLabel}</span>
-        </TableCell>
-        {renderNBACell(agent)}
-        {renderKebabActions(agent)}
-      </>
-    );
-  };
-
-  const renderExpandedRow = (_sectionKey: string, agent: AgentCRM) => (
-    <CompactExpandedRow
-      agent={agent}
-      onRefresh={fetchAgents}
-      onDeactivate={setDeactivateAgent}
-      onViewApp={(id) => {
-        const a = agents.find(ag => ag.id === id);
-        setViewAppTarget({ agentId: id, applicationId: a?.applicationId });
-      }}
-      onEditLogin={setEditLoginAgent}
-      onAgentUpdate={onAgentUpdate}
-    />
-  );
-
-  if (authLoading) {
-    return <PageLoadingSkeleton variant="table" />;
-  }
 
   return (
     <>
-      {/* max-w-[1400px] (not max-w-6xl) — the Production view is an 8-column grid at
-          xl, the one width exception the visual contract allows. px-4 sm:px-6
-          is required so PageHeader's -mx-4 sm:-mx-6 cancels exactly. */}
+      {/* max-w-[1400px] (not max-w-6xl): the production view is an 8-column grid at xl. px-4 sm:px-6 is required so
+          PageHeader's -mx-4 sm:-mx-6 cancels exactly. */}
       <div className="page-enter mx-auto w-full max-w-[1400px] space-y-4 px-4 pb-24 sm:px-6">
         <PageHeader
           accent="cyan"
@@ -1837,40 +562,27 @@ export default function DashboardCRM() {
           title="My Team"
           actions={
             <HeaderActionRow>
-              <AddAgentModal onAgentAdded={fetchAgents} />
+              <AddAgentModal onAgentAdded={refreshAll} />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm" className="h-10 gap-1.5 sm:h-9" aria-label="More team actions">
-                    <MoreHorizontal className="h-4 w-4 shrink-0" /> More
+                    <MoreHorizontal className="h-4 w-4 shrink-0" aria-hidden /> More
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  {(isAdmin || isManager) && (
-                    <DropdownMenuItem onClick={() => {
-                      const next = !bulkMode;
-                      setBulkMode(next);
-                      setSelectedAgents(new Set());
-                      // The row checkboxes and BulkStageActions live in the "pipeline" branch only. Pressing Bulk
-                      // Actions on the roster rendered ZERO checkboxes (measured live: bulkMode true, checkboxes 0),
-                      // so entering bulk mode switches to the view where there is something to select.
-                      if (next && crmView === "roster") setCrmView("pipeline");
-                    }}>
-                      <CheckSquare className="mr-2 h-4 w-4" /> {bulkMode ? "Exit bulk actions" : "Bulk actions"}
+                  {isAdmin ? (
+                    <DropdownMenuItem disabled={portalLogins.sending} onClick={() => portalLogins.send()}>
+                      <Mail className="mr-2 h-4 w-4" aria-hidden /> {portalLogins.sending ? "Sending..." : "Send portal logins (all)"}
                     </DropdownMenuItem>
-                  )}
-                  {isAdmin && (
-                    <DropdownMenuItem disabled={sendingBulkLogins} onClick={handleBulkSendPortalLogins}>
-                      <Mail className="mr-2 h-4 w-4" /> {sendingBulkLogins ? "Sending..." : "Send portal logins (all)"}
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuItem onClick={() => { navigator.clipboard.writeText("https://apex-financial.org/agent-login"); toast.success("Check-in link copied! Paste into a text or DM"); }}>
-                    <Link2 className="mr-2 h-4 w-4" /> Copy check-in link
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={fetchAgents}>
-                    <RefreshCw className="mr-2 h-4 w-4" /> Refresh
+                  ) : null}
+                  <DropdownMenuItem onClick={() => { navigator.clipboard.writeText("https://apex-financial.org/agent-login"); toast.success("Check-in link copied. Paste it into a text or DM."); }}>
+                    <Link2 className="mr-2 h-4 w-4" aria-hidden /> Copy check-in link
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={downloadAgentsCsv}>
-                    <Download className="mr-2 h-4 w-4" /> Download agents CSV
+                    <Download className="mr-2 h-4 w-4" aria-hidden /> Download agents CSV
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={refreshAll}>
+                    <RefreshCw className="mr-2 h-4 w-4" aria-hidden /> Refresh
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -1878,428 +590,55 @@ export default function DashboardCRM() {
           }
         />
 
-        {/* 1. One compact summary. Same numbers and definitions as before, presented as one strip. */}
         <ProductionMetricsCard
           snapshot={rosterSegmentsQuery.data ?? null}
           isLoading={rosterSegmentsQuery.isLoading}
           todayProduction={todayProductionQuery.data ?? null}
           isTodayLoading={todayProductionQuery.isLoading}
-          // Team size = active agents actually working the business (no terminated / inactive / sync-only
-          // placeholder seats). New hires, no sale = those active working agents who joined ≤30d ago and
-          // have zero lifetime deals — the activation queue. Both derived from the roster rows on screen.
-          teamSize={((rosterQuery.data ?? []) as RosterRow[]).filter((r) => r.status === "active" && r.is_sync_only !== true).length}
-          newHires30dNoSale={((rosterQuery.data ?? []) as RosterRow[]).filter((r) => r.status === "active" && r.is_sync_only !== true && (r.tenure_days ?? 9999) <= 30 && (r.lifetime_deals ?? 0) === 0).length}
+          // Team size = active agents actually working the business (no terminated / inactive / sync-only placeholder
+          // seats). New hires, no sale = those who joined ≤30d ago with zero lifetime deals — the activation queue.
+          teamSize={working.length}
+          newHires30dNoSale={working.filter((r) => (r.tenure_days ?? 9999) <= 30 && (r.lifetime_deals ?? 0) === 0).length}
         />
 
-        {/* 2. ONE roster, three working views: Overview (stage, work days, access), Attendance (today in Phoenix) and
-            Contracting (the manual portal review, the default). Production, the Call list and the Recruiting pipeline
-            (which counts open applications on top of hired agents, so its totals exceed team size by design) sit under
-            More. */}
-        <div className="flex flex-wrap items-center gap-2">
+        {team.contractingEnabled ? (
           <div className="inline-flex flex-wrap rounded-lg border border-border bg-card p-1" role="group" aria-label="Team view">
-            {([
-              ...(team.contractingEnabled ? [
-                { key: "overview" as const, label: "Overview", icon: Users },
-                { key: "attendance" as const, label: "Attendance", icon: ClipboardCheck },
-                { key: "work" as const, label: "Contracting", icon: ShieldCheck },
-                { key: "link" as const, label: "Contracting calls", icon: Phone },
-              ] : []),
-              ...(team.contractingEnabled ? [] : [{ key: "production" as const, label: "Production", icon: TrendingUp }]),
-            ]).map((m) => {
+            {VIEWS.map((m) => {
               const Icon = m.icon;
-              const isActive = crmView === "roster" && effectiveMode === m.key;
+              const isActive = effectiveMode === m.key;
               return (
-                <button
-                  key={m.key}
-                  type="button"
-                  onClick={() => { setCrmView("roster"); setRosterMode(m.key); playSound("click"); }}
-                  aria-pressed={isActive}
-                  className={cn(
-                    "inline-flex min-h-[40px] items-center gap-1.5 rounded-md px-3 text-sm font-medium transition-colors",
+                <button key={m.key} type="button" onClick={() => showView(m.key)} aria-pressed={isActive}
+                  className={cn("inline-flex min-h-[40px] items-center gap-1.5 rounded-md px-3 text-sm font-medium transition-colors",
                     "focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
-                    isActive ? "bg-primary/10 text-foreground ring-1 ring-primary/60" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
-                  )}
-                >
+                    isActive ? "bg-primary/10 text-foreground ring-1 ring-primary/60" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground")}>
                   <Icon className="h-4 w-4 shrink-0" aria-hidden />
                   {m.label}
                 </button>
               );
             })}
           </div>
-          {team.contractingEnabled ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className={cn("h-10 gap-1.5 sm:h-9", (crmView === "pipeline" || effectiveMode === "production" || effectiveMode === "calls") && "ring-1 ring-primary/60")} aria-label="More team views">
-                  {crmView === "pipeline" ? "Recruiting pipeline" : effectiveMode === "production" ? "Production" : effectiveMode === "calls" ? "Call list" : "More views"} <ChevronDown className="h-4 w-4 shrink-0" aria-hidden />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                <DropdownMenuItem onClick={() => { setCrmView("roster"); setRosterMode("production"); playSound("click"); }}><TrendingUp className="mr-2 h-4 w-4" /> Production</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => { setCrmView("roster"); setRosterMode("calls"); playSound("click"); }}><Phone className="mr-2 h-4 w-4" /> Call list (earlier workflow)</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => { setCrmView("pipeline"); playSound("click"); }}><Briefcase className="mr-2 h-4 w-4" /> Recruiting pipeline</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <Button variant={crmView === "pipeline" ? "secondary" : "outline"} size="sm" className="h-10 sm:h-9" onClick={() => { setCrmView("pipeline"); playSound("click"); }}><Briefcase className="mr-1.5 h-4 w-4" /> Recruiting pipeline</Button>
-          )}
-          {crmView === "pipeline" ? (
-            <p className="text-sm text-muted-foreground">Hired agents plus open applications, so counts here exceed team size by design.</p>
-          ) : null}
-        </div>
+        ) : null}
 
-        {/* 3. The work. */}
-        {crmView === "roster" ? (
-          effectiveMode === "work" ? (
-            <GlassCard className="p-3 sm:p-4"><ContractingReviewWorkspace /></GlassCard>
-          ) : effectiveMode === "overview" ? (
-            <GlassCard className="p-3 sm:p-4"><TeamOverview rows={(rosterQuery.data ?? []) as RosterRow[]} /></GlassCard>
-          ) : effectiveMode === "attendance" ? (
-            <GlassCard className="p-3 sm:p-4"><TeamAttendance /></GlassCard>
-          ) : effectiveMode === "link" ? (
-            <GlassCard className="p-3 sm:p-4"><ContractingCallList /></GlassCard>
-          ) : effectiveMode === "calls" ? (
-            <GlassCard className="p-3 sm:p-4"><ContractingCheckinPanel /></GlassCard>
-          ) : (
-            <RosterPanel
-              rows={rosterQuery.data ?? []}
-              isLoading={rosterQuery.isLoading}
-              isError={rosterQuery.isError}
-              onRetry={() => { rosterQuery.refetch(); rosterSegmentsQuery.refetch(); }}
-              team={team}
-            />
-          )
-        ) : (
-        <>
-        {bulkMode && (
-          <div className="space-y-2">
-            <BulkStageActions
-              agents={filteredAgents.map(a => ({ id: a.id, name: a.name, onboardingStage: a.onboardingStage }))}
-              selectedIds={selectedAgents} onSelectionChange={setSelectedAgents}
-              onBulkUpdate={() => { fetchAgents(); setSelectedAgents(new Set()); }}
-              isEnabled={bulkMode} onToggle={() => { setBulkMode(false); setSelectedAgents(new Set()); }}
-            />
-            {selectedAgents.size > 0 && (
-              <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card p-3 sm:p-4">
-                <span className="mr-1 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">More actions</span>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-10 gap-1.5 sm:h-8"
-                  onClick={() => { setComposeChannel("email"); setComposeOpen(true); }}
-                >
-                  <Mail className="h-4 w-4 shrink-0" /> Compose Email
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-10 gap-1.5 sm:h-8"
-                  onClick={() => { setComposeChannel("sms"); setComposeOpen(true); }}
-                >
-                  <Send className="h-4 w-4 shrink-0" /> Compose SMS
-                </Button>
-                {/* Was gated on VITE_ENABLE_CRM_BULK_DELETE, which defaults to
-                    "false" in .env.example — so the control was invisible in
-                    production and clearing house was impossible from the UI.
-                    Bulk deactivation is reversible (rows stay, flags flip) and
-                    already confirms before running, so admin is the right gate. */}
-                {isAdmin && (
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    className="ml-auto h-10 gap-1.5 sm:h-8"
-                    disabled={bulkDeleting}
-                    onClick={handleBulkDelete}
-                  >
-                    <UserX className="h-4 w-4 shrink-0" />
-                    <span className="tabular-nums">{bulkDeleting ? "Deactivating…" : `Deactivate (${selectedAgents.size})`}</span>
-                  </Button>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        <GlassCard className="p-4">
-          <div className="flex flex-col flex-wrap gap-2 sm:flex-row">
-            <div className="relative min-w-0 flex-1 sm:min-w-[180px]">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 shrink-0 text-muted-foreground" />
-              <Input placeholder="Search agents..." aria-label="Search agents by name or email" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="h-10 pl-9 text-sm sm:h-9" />
-            </div>
-            {isAdmin && managers.length > 0 && (
-              <Select value={managerFilter} onValueChange={setManagerFilter}>
-                <SelectTrigger aria-label="Filter by manager" className="h-10 w-full text-sm sm:h-9 sm:w-[140px]"><Filter className="mr-1.5 h-4 w-4 shrink-0 text-muted-foreground" /><SelectValue placeholder="All Managers" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Managers</SelectItem>
-                  {managers.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            )}
-            <Select value={licenseFilter} onValueChange={setLicenseFilter}>
-              <SelectTrigger aria-label="Filter by license status" className="h-10 w-full text-sm sm:h-9 sm:w-[130px]"><SelectValue placeholder="License" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All License</SelectItem>
-                <SelectItem value="licensed">Licensed</SelectItem>
-                <SelectItem value="unlicensed">Unlicensed</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={aiScoreFilter} onValueChange={setAiScoreFilter}>
-              <SelectTrigger aria-label="Filter by AI score" className="h-10 w-full text-sm sm:h-9 sm:w-[120px]"><Sparkles className="mr-1 h-4 w-4 shrink-0 text-muted-foreground" /><SelectValue placeholder="AI Score" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Scores</SelectItem>
-                <SelectItem value="hot">🔥 Hot</SelectItem>
-                <SelectItem value="warm">☀️ Warm</SelectItem>
-                <SelectItem value="cool">❄️ Cool</SelectItem>
-                <SelectItem value="cold">🧊 Cold</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={sortMode} onValueChange={setSortMode}>
-              <SelectTrigger aria-label="Sort rows" className="h-10 w-full text-sm sm:h-9 sm:w-[160px]"><SelectValue placeholder="Sort" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="default">Default order</SelectItem>
-                <SelectItem value="alp_desc">Highest ALP</SelectItem>
-                <SelectItem value="newest">Newest</SelectItem>
-                <SelectItem value="stalest">Most Stale</SelectItem>
-                <SelectItem value="needs_followup">Needs Follow-Up</SelectItem>
-                <SelectItem value="by_stage">By Stage</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button variant={showDeactivated ? "secondary" : "outline"} size="sm" aria-pressed={showDeactivated} onClick={() => setShowDeactivated(!showDeactivated)} className="h-10 gap-1.5 sm:h-9">
-              <UserX className="h-4 w-4 shrink-0" /> {showDeactivated ? "Deactivated ✓" : "Deactivated"}
-            </Button>
-            <Button variant={showInactive ? "secondary" : "outline"} size="sm" aria-pressed={showInactive} onClick={() => setShowInactive(!showInactive)} className="h-10 gap-1.5 sm:h-9">
-              <Eye className="h-4 w-4 shrink-0" /> {showInactive ? "Inactive ✓" : "Inactive"}
-            </Button>
-            {activeFilterCount > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={clearAllFilters}
-                className="h-10 gap-1.5 text-muted-foreground hover:text-foreground sm:ml-auto sm:h-9"
-              >
-                <X className="h-4 w-4 shrink-0" />
-                Clear filters
-                <Badge variant="secondary" className="ml-1 h-4 px-1.5 text-[11px] font-bold tabular-nums">
-                  {activeFilterCount}
-                </Badge>
-              </Button>
-            )}
-          </div>
-        </GlassCard>
-
-        {loading ? (
-          <GlassCard className="p-4">
-            <div className="mb-3 h-4 w-40 animate-pulse rounded bg-muted/40" />
-            <div className="space-y-2">
-              {[...Array(8)].map((_, i) => (
-                // stable-key-allow:skeleton — static Array(N) decorative loader, no reorder
-                <div key={i} className="h-[64px] animate-pulse rounded-lg bg-muted/30" />
-              ))}
-            </div>
-          </GlassCard>
-        ) : (
+        {effectiveMode === "overview" ? (
           <>
-          <Tabs value={activeStageTab} onValueChange={(v) => { setActiveStageTab(v); playSound("click"); }} className="space-y-3">
-            {/* Segment chips. One scroll rail on phones so twelve chips never
-                wrap into six rows and never push the page body sideways. */}
-            <div className="-mx-4 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
-              <TabsList className="flex h-auto min-w-max justify-start gap-1.5 rounded-lg border border-border bg-card p-1.5">
-                {SECTIONS.map(section => {
-                  const count = (agentsBySection.get(section.key) ?? []).length;
-                  const Icon = section.icon;
-                  return (
-                    <TabsTrigger
-                      key={section.key}
-                      value={section.key}
-                      className={cn(
-                        "shrink-0 gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-colors",
-                        "hover:bg-muted/60 hover:text-foreground",
-                        "data-[state=active]:bg-primary/10 data-[state=active]:text-foreground",
-                        "data-[state=active]:ring-1 data-[state=active]:ring-primary/60",
-                      )}
-                    >
-                      <Icon className="h-4 w-4 shrink-0" />
-                      {section.label}
-                      <Badge
-                        variant="outline"
-                        className="h-4 px-1.5 text-[11px] font-bold tabular-nums"
-                      >
-                        {count}
-                      </Badge>
-                    </TabsTrigger>
-                  );
-                })}
-              </TabsList>
-            </div>
-
-            {SECTIONS.map(section => {
-              const sectionAgents = agentsBySection.get(section.key) ?? [];
-              const SectionIcon = section.icon;
-
-              return (
-                <TabsContent key={section.key} value={section.key}>
-                  <GlassCard className="overflow-hidden p-4">
-                    <div className="mb-1 flex items-baseline justify-between gap-2">
-                      <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
-                        <SectionIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
-                        <span className="truncate">{section.label}</span>
-                      </h3>
-                      <span className="shrink-0 text-sm font-bold tabular-nums text-muted-foreground">
-                        {sectionAgents.length}
-                      </span>
-                    </div>
-                    <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
-                      {section.desc}
-                    </p>
-                  {sectionAgents.length === 0 ? (
-                    <EmptyState
-                      icon={<Users className="h-7 w-7" />}
-                      variant={agents.length === 0 ? "warning" : "default"}
-                      title={agents.length === 0 ? "No active agents fetched" : "No agents match this stage and filter set"}
-                      description={
-                        agents.length === 0
-                          ? "The roster query came back with nothing — hit Refresh, or check that this view is loading for your role."
-                          : "The segment itself may be clear, or the filters may be too tight. Clear them to see who really sits here."
-                      }
-                      actions={agents.length > 0 ? (
-                        <Button variant="outline" size="sm" className="h-10 sm:h-9" onClick={clearAllFilters}>
-                          Clear filters
-                        </Button>
-                      ) : undefined}
-                    />
-                  ) : (
-                    // The table's own wrapper supplies overflow-auto; -mx-4 lets that
-                    // scroll rail bleed to the card edge on a phone and inset on sm+.
-                    // The PAGE body never scrolls sideways.
-                    <div className="-mx-4 sm:mx-0">
-                      <Table className="min-w-[900px]">
-                        <TableHeader>
-                          <TableRow className="border-b border-border hover:bg-transparent [&_th]:h-9 [&_th]:text-[11px] [&_th]:font-bold [&_th]:uppercase [&_th]:tracking-wide [&_th]:text-muted-foreground">
-                            {bulkMode && <TableHead className="w-8 px-2" />}
-                            {getTableHeaders(section.key)}
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {sectionAgents.map(agent => {
-                            const isExpanded = expandedAgentId === agent.id;
-                            return (
-                              <React.Fragment key={agent.id}>
-                                <TableRow
-                                  id={`agent-row-${agent.id}`}
-                                  className={cn(
-                                    "cursor-pointer border-b border-border/60 transition-colors hover:bg-muted/30",
-                                    isExpanded && "bg-muted/40",
-                                    isStaleAgent(agent) && !isExpanded && "border-l-2 border-l-rose-500/50 bg-rose-500/[0.05] hover:bg-rose-500/10",
-                                    agent.isDeactivated && "opacity-50"
-                                  )}
-                                  onClick={() => { setExpandedAgentId(isExpanded ? null : agent.id); playSound(isExpanded ? "click" : "whoosh"); }}
-                                >
-                                  {bulkMode && (
-                                    <TableCell className="px-2 py-2" onClick={e => e.stopPropagation()}>
-                                      <AgentSelectCheckbox agentId={agent.id} isSelected={selectedAgents.has(agent.id)}
-                                        onToggle={(id) => {
-                                          const s = new Set(selectedAgents);
-                                          if (s.has(id)) s.delete(id);
-                                          else s.add(id);
-                                          setSelectedAgents(s);
-                                        }}
-                                        isEnabled={bulkMode} />
-                                    </TableCell>
-                                  )}
-                                  <TableCell className="px-2 py-2">
-                                    <div className="flex min-w-0 items-center gap-2">
-                                      <div className="relative shrink-0">
-                                        <AgentAvatar avatarUrl={getAvatarUrl(agent.avatarUrl)} name={agent.name} size="sm" className="shadow-sm ring-2 ring-background" />
-                                        {isStaleAgent(agent) && (
-                                          <div className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-background bg-rose-500" />
-                                        )}
-                                      </div>
-                                      <div className="min-w-0">
-                                        {/* 2026-06-15 — clickable name opens AgentProfileDrawer in-place */}
-                                        <p className="truncate text-sm font-medium text-foreground">
-                                          <AgentNameLink agentId={agent.id}>{agent.name}</AgentNameLink>
-                                        </p>
-                                        <div className="mt-0.5 flex flex-wrap items-center gap-1">
-                                          {duplicateAgentIds.has(agent.id) && <Badge variant="outline" className="h-4 border-amber-500/20 bg-amber-500/10 px-1 text-[11px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400">Dupe</Badge>}
-                                          {!agent.avatarUrl && <Badge variant="outline" className="h-4 border-rose-500/20 bg-rose-500/10 px-1 text-[11px] font-bold uppercase tracking-wide text-rose-600 dark:text-rose-400">📷 Photo</Badge>}
-                                          {agent.aiScoreTier && (
-                                            <Badge variant="outline" className={cn("h-4 px-1 text-[11px] font-bold uppercase tracking-wide", {
-                                              "border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-400": agent.aiScoreTier === "hot",
-                                              "border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400": agent.aiScoreTier === "warm",
-                                              "bg-muted text-muted-foreground": agent.aiScoreTier === "cool" || agent.aiScoreTier === "cold",
-                                            })}>
-                                              {agent.aiScoreTier === "hot" ? "🔥" : agent.aiScoreTier === "warm" ? "☀️" : agent.aiScoreTier === "cool" ? "❄️" : "🧊"} {agent.aiScoreTier}
-                                            </Badge>
-                                          )}
-                                          {agent.managerId && agent.managerName && agent.managerId !== currentAgentId && (
-                                            <Badge variant="outline" className="h-4 max-w-[96px] truncate px-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{agent.managerName.split(" ")[0]}</Badge>
-                                          )}
-                                        </div>
-                                        <p className="truncate text-[12px] text-muted-foreground">{agent.email}</p>
-                                        {agent.phone && <p className="cursor-text select-all truncate text-[12px] tabular-nums text-muted-foreground" onClick={e => e.stopPropagation()}>{agent.phone}</p>}
-                                      </div>
-                                    </div>
-                                  </TableCell>
-                                  {getTableCells(section.key, agent)}
-                                  <TableCell className="px-2 py-2">
-                                    <div className={`transition-base ${isExpanded ? 'rotate-90' : ''}`}>
-                                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                                    </div>
-                                  </TableCell>
-                                </TableRow>
-                                {isExpanded && (
-                                  <tr><td colSpan={20} className="p-0">{renderExpandedRow(section.key, agent)}</td></tr>
-                                )}
-                              </React.Fragment>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  )}
-                  </GlassCard>
-                </TabsContent>
-              );
-            })}
-          </Tabs>
-
-
+            <GlassCard className="p-3 sm:p-4"><TeamOverview rows={rows} onOpenPerson={team.openPerson} /></GlassCard>
+            {isAdmin || isManager ? fold("Just hired · last 30 days", <JustHiredPanel />) : null}
+            {isAdmin ? fold("Engagement: who logged in, emails sent, course progress", <TeamEngagementPanel />) : null}
           </>
-        )}
-        </>
-        )}
-
-        {/* 5. Secondary tools. Folded away so they never push the people and actions below the fold. None of these holds an
-            overdue item: urgent contracting lives in Priority 1 above and is never moved in here. */}
-        {(isAdmin || isManager) && (
-          <details className="group rounded-lg border border-border bg-card [&[open]_.chev]:rotate-180">
-            <summary className="flex min-h-[44px] cursor-pointer list-none items-center gap-2 px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground">
-              Roster health: just hired, onboarding roll call, AgentLink history links
-              <ChevronDown className="chev ml-auto h-4 w-4 transition-transform" />
-            </summary>
-            <div className="space-y-4 border-t border-border p-4">
-              <JustHiredPanel />
-              <OnboardingRollCall />
-              <UnlinkedAgentsPanel />
-            </div>
-          </details>
-        )}
-        {isAdmin && (
-          <details className="group rounded-lg border border-border bg-card [&[open]_.chev]:rotate-180">
-            <summary className="flex min-h-[44px] cursor-pointer list-none items-center gap-2 px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground">
-              Engagement: who logged in, emails sent, course progress
-              <ChevronDown className="chev ml-auto h-4 w-4 transition-transform" />
-            </summary>
-            <div className="border-t border-border p-4"><TeamEngagementPanel /></div>
-          </details>
-        )}
-        {isAdmin && (
-          <details className="group rounded-lg border border-border bg-card [&[open]_.chev]:rotate-180">
-            <summary className="flex min-h-[44px] cursor-pointer list-none items-center gap-2 px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground">
-              Brand funnel leads: mentorship, fitness, rentals, collabs
-              <ChevronDown className="chev ml-auto h-4 w-4 transition-transform" />
-            </summary>
-            <div className="border-t border-border p-4"><BrandLeadsPanel /></div>
-          </details>
+        ) : effectiveMode === "attendance" ? (
+          <GlassCard className="p-3 sm:p-4"><TeamAttendance /></GlassCard>
+        ) : effectiveMode === "work" ? (
+          <GlassCard className="p-3 sm:p-4"><ContractingReviewWorkspace /></GlassCard>
+        ) : effectiveMode === "link" ? (
+          <GlassCard className="p-3 sm:p-4"><ContractingCallList /></GlassCard>
+        ) : (
+          <RosterPanel
+            rows={rows}
+            isLoading={rosterQuery.isLoading}
+            isError={rosterQuery.isError}
+            onRetry={() => { rosterQuery.refetch(); rosterSegmentsQuery.refetch(); }}
+            team={team}
+          />
         )}
       </div>
 
@@ -2307,34 +646,21 @@ export default function DashboardCRM() {
         open={Boolean(team.selectedId) && Boolean(team.row)}
         onOpenChange={(o) => { if (!o) team.closePerson(); }}
         row={team.row}
+        manage={manage}
         onOpenContracting={(id) => {
-          // Drive the URL: ?view=contracting is what this page reads, ?review= is what the review follows (and what
-          // a shared link carries); dropping ?person= closes the drawer. Switching local state alone left the URL
-          // on the old view and the review on the first person of the list.
+          // Drive the URL: ?view=contracting is what this page reads, ?review= is what the review follows (and what a
+          // shared link carries); dropping ?person= closes the drawer.
           const next = new URLSearchParams(searchParams);
           next.set("view", "contracting"); next.set("review", id); next.delete("person");
           setSearchParams(next, { replace: true });
         }}
       />
 
-      <ApplicationDetailSheet open={!!viewAppTarget} onOpenChange={(o) => !o && setViewAppTarget(null)} applicationId={viewAppTarget?.applicationId} agentId={viewAppTarget?.agentId} onRefresh={fetchAgents} />
-      <DeactivateAgentDialog open={!!deactivateAgent} onOpenChange={(o) => !o && setDeactivateAgent(null)} agentId={deactivateAgent?.id || ""} agentName={deactivateAgent?.name || ""} currentManagerId={deactivateAgent?.managerId} onComplete={fetchAgents} />
-      {editLoginAgent && (
-        <AgentQuickEditDialog open={!!editLoginAgent} onOpenChange={(o) => !o && setEditLoginAgent(null)} agentId={editLoginAgent.id} currentName={editLoginAgent.name} onUpdate={fetchAgents} />
-      )}
-      <BulkComposeDrawer
-        open={composeOpen}
-        onOpenChange={setComposeOpen}
-        defaultChannel={composeChannel}
-        title={`Message ${selectedAgents.size} agent${selectedAgents.size === 1 ? "" : "s"}`}
-        recipients={filteredAgents
-          .filter((a) => selectedAgents.has(a.id))
-          .map((a) => ({ id: a.id, name: a.name, email: a.email, phone: a.phone }))}
-        onSent={() => {
-          setComposeOpen(false);
-          setSelectedAgents(new Set());
-        }}
-      />
+      <ApplicationDetailSheet open={!!viewAppTarget} onOpenChange={(o) => !o && setViewAppTarget(null)} agentId={viewAppTarget?.agentId} onRefresh={refreshAll} />
+      <DeactivateAgentDialog open={!!deactivateAgent} onOpenChange={(o) => !o && setDeactivateAgent(null)} agentId={deactivateAgent?.id || ""} agentName={deactivateAgent?.name || ""} currentManagerId={deactivateAgent?.managerId} onComplete={() => { setDeactivateAgent(null); team.closePerson(); refreshAll(); }} />
+      {editLoginAgent ? (
+        <AgentQuickEditDialog open onOpenChange={(o) => !o && setEditLoginAgent(null)} agentId={editLoginAgent.id} currentName={editLoginAgent.name} onUpdate={refreshAll} />
+      ) : null}
     </>
   );
 }

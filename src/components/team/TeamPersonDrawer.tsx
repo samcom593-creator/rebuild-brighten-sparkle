@@ -6,7 +6,10 @@ import { contactLinkProps, phoneHref } from "@/lib/phone";
 import { daysSince, plural, usdOrNull, type RosterRow } from "@/lib/teamRoster";
 import { useContractReview } from "@/hooks/useContractReview";
 import { levelText } from "@/lib/contractReview";
+import { accessSummary, workdaysSummary, type PersonFacts, type StageKey } from "@/lib/teamStage";
 import { OnboardingProgress } from "@/components/team/OnboardingProgress";
+import { StageSelect } from "@/components/team/StageBadge";
+import { WorkdaysEditor } from "@/components/team/WorkdaysEditor";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -27,16 +30,38 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
 }
 
 /**
- * The single home for everything about one person on the production roster: how to reach them, where they are in
- * onboarding, and their production. Contracting is not edited here. It lives in the contracting review, so there is one
- * place to confirm a carrier; this drawer only says where that stands and links to it.
+ * What the page hands the drawer so one card can manage a person: their stage/schedule facts and the writers for them,
+ * plus the account actions that used to live in a per-row menu. Everything is optional; a caller that passes nothing
+ * gets the read-only card.
  */
-export function TeamPersonDrawer({ open, onOpenChange, row, onOpenContracting }: {
+export interface TeamPersonManage {
+  facts: PersonFacts | null | undefined;
+  factsLoading?: boolean;
+  canEdit: boolean;
+  saving: (what: "stage" | "workdays") => boolean;
+  setStage: (stage: StageKey) => void;
+  setWorkdays: (weekdays: number[], effectiveFrom?: string) => Promise<boolean>;
+  onCheckIn?: () => void;
+  onSendPortalLogin?: () => void;
+  onEditLogin?: () => void;
+  onViewApplication?: () => void;
+  onHide?: () => void;
+  onDeactivate?: () => void;
+}
+
+/**
+ * The single home for everything about one person on the production roster: how to reach them, where they are in
+ * onboarding, their stage and work days, their production, and the account actions. Contracting is not edited here. It
+ * lives in the contracting review, so there is one place to confirm a carrier; this drawer only says where that stands
+ * and links to it.
+ */
+export function TeamPersonDrawer({ open, onOpenChange, row, onOpenContracting, manage }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   row: RosterRow | undefined;
   /** Closes this drawer and brings the contracting review to this person. */
   onOpenContracting: (agentId: string) => void;
+  manage?: TeamPersonManage;
 }) {
   const review = useContractReview(open);
   const name = row?.full_name ?? "Name not on file";
@@ -46,6 +71,8 @@ export function TeamPersonDrawer({ open, onOpenChange, row, onOpenContracting }:
   const sinceSale = row ? daysSince(row.last_posted_date) : null;
   const inReview = review.roster?.agents.find((a) => a.agent_id === agentId);
   const total = review.roster?.carriers.length ?? 4;
+  const facts = manage?.facts ?? null;
+  const access = facts ? accessSummary(facts.access) : null;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -70,6 +97,26 @@ export function TeamPersonDrawer({ open, onOpenChange, row, onOpenContracting }:
             {email ? <Button asChild size="sm" variant="outline" className="h-10 gap-1.5"><a href={`mailto:${email}`}><Mail className="h-4 w-4" aria-hidden />Email</a></Button> : null}
             {agentId ? <Button asChild size="sm" variant="outline" className="h-10 gap-1.5"><Link to={`/dashboard/profile?agentId=${agentId}`}><ArrowUpRight className="h-4 w-4" aria-hidden />Profile</Link></Button> : null}
           </div>
+
+          {manage ? (
+            <Section title="Stage and work days">
+              {facts ? (
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <StageSelect name={name} stage={facts.stage} canEdit={manage.canEdit} saving={manage.saving("stage")} onChange={manage.setStage} />
+                    <span className="text-sm text-muted-foreground">{workdaysSummary(facts.schedule_set ? facts.weekdays ?? [] : null)}</span>
+                    {access ? <span className={access.tone === "ok" ? "text-sm text-muted-foreground" : "text-sm text-amber-700 dark:text-amber-400"}>{access.text}</span> : null}
+                  </div>
+                  <WorkdaysEditor name={name} weekdays={facts.weekdays} scheduleSet={facts.schedule_set} nextSchedule={facts.next_schedule} canEdit={manage.canEdit}
+                    saving={manage.saving("workdays")} onSave={manage.setWorkdays} />
+                </div>
+              ) : manage.factsLoading ? (
+                <p className="text-sm text-muted-foreground">Loading…</p>
+              ) : (
+                <p className="text-sm text-muted-foreground">Not on the stage tracker (only active agents are).</p>
+              )}
+            </Section>
+          ) : null}
 
           {review.canRead ? (
             <Section title="Contracting">
@@ -108,6 +155,19 @@ export function TeamPersonDrawer({ open, onOpenChange, row, onOpenContracting }:
                 </dl>
               </Section>
             </>
+          ) : null}
+
+          {manage && (manage.onCheckIn || manage.onSendPortalLogin || manage.onEditLogin || manage.onViewApplication || manage.onHide || manage.onDeactivate) ? (
+            <Section title="Manage">
+              <div className="flex flex-wrap gap-2">
+                {manage.onCheckIn ? <Button type="button" size="sm" variant="outline" className="h-10" onClick={manage.onCheckIn}>Mark checked in</Button> : null}
+                {manage.onSendPortalLogin ? <Button type="button" size="sm" variant="outline" className="h-10" onClick={manage.onSendPortalLogin}>Send portal login</Button> : null}
+                {manage.onEditLogin ? <Button type="button" size="sm" variant="outline" className="h-10" onClick={manage.onEditLogin}>Edit login</Button> : null}
+                {manage.onViewApplication ? <Button type="button" size="sm" variant="outline" className="h-10" onClick={manage.onViewApplication}>Application</Button> : null}
+                {manage.onHide ? <Button type="button" size="sm" variant="ghost" className="h-10" onClick={manage.onHide}>Hide from roster</Button> : null}
+                {manage.onDeactivate ? <Button type="button" size="sm" variant="ghost" className="h-10 text-destructive hover:text-destructive" onClick={manage.onDeactivate}>Remove</Button> : null}
+              </div>
+            </Section>
           ) : null}
         </div>
       </SheetContent>

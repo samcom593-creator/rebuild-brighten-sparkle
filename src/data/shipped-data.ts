@@ -16,6 +16,9 @@ export const SHIPPED: ShippedItem[] = [
     label: "A stranger can no longer send a \"Portal Login Confirmed\" email from Apex to any address, copied to Sam.",
     detail: "The login-notice email took the recipient and the name straight from the request, with no sign-in, and put the name into the email as raw HTML. Anyone could have sent an Apex security notice to any inbox, with Sam on CC and content of their choosing. Its only caller is the login step itself, which uses the system key, so real login notices keep sending; everyone else is refused.",
     commit: "PL-WIB-LOGIN-NOTICE-RELAY",
+    label: "My Team is one page again: four views, one card per person that manages stage, work days, login and roster status, and the second roster is gone.",
+    detail: "Sam: far too much clutter. The page carried a second roster under every view (the recruiting pipeline with twelve buckets, bulk mode, a compose drawer and filters), three folded panels including AgentLink links Sam does not use, a More views menu with a superseded call list, and an Overview that listed 62 people in one flat column with five fields each. Now: a four-number strip, four tabs (Overview, Attendance, Contracting, Contracting calls), an Overview grouped by stage with the gaps as filter chips (stage not set, no schedule, no login) and one line per person, and a person card that also sets stage and work days, marks a check-in, sends a portal login, edits the login, opens the application, hides or removes the agent. Six dead modules deleted; the Recruit Pipeline page owns applicants.",
+    commit: "PL-MY-TEAM-ONE-PAGE",
   },
   {
     ts: "today",

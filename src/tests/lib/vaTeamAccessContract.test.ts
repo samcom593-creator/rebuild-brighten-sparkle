@@ -6,9 +6,10 @@ const crm = readFileSync(resolve(process.cwd(), "src/pages/DashboardCRM.tsx"), "
 
 describe("VA team access contract", () => {
   it("lets VA operators load the agency roster without requiring an agent record", () => {
-    expect(crm).toContain("const canWorkAgencyRoster = isAdmin || isVaManager || isVa");
-    expect(crm).toContain("if (!currentAgent && !canWorkAgencyRoster) { return []; }");
-    expect(crm).toContain("if (!canWorkAgencyRoster) {");
+    // 2026-10-14: the page reads the roster through crm_agent_roster(), which admits va/va_manager server-side, and
+    // never looks up the viewer's own agents row first — so a VA with no agent record still sees the agency roster.
+    expect(crm).toContain('supabase.rpc("crm_agent_roster"');
+    expect(crm).not.toMatch(/from\("agents"\)\.select\("id"\)\.eq\("user_id"/);
   });
 
   it("provides a permission-checked team check-in receipt", () => {

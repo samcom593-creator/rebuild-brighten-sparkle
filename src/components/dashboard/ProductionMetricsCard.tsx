@@ -32,9 +32,7 @@ function compactUsd(value: number | string): string {
  * represented by accessible loading text plus skeletons. The numbers and their definitions are unchanged; only the
  * presentation is: one line for today, one flat list for the team, no card around each figure.
  *
- * Team size counts active agents working the business. "Active" is the wider count of active seats and also includes
- * sync-only placeholder seats, so when the two differ the note says exactly why instead of leaving two near-equal
- * numbers to explain themselves.
+ * Team size counts active agents working the business (sync-only placeholder seats are not people and are left out).
  */
 export function ProductionMetricsCard({
   snapshot,
@@ -53,20 +51,19 @@ export function ProductionMetricsCard({
   teamSize?: number | null;
   newHires30dNoSale?: number | null;
 }) {
-  const placeholderSeats = snapshot && teamSize != null ? Math.max(0, snapshot.active - teamSize) : 0;
+  // Four numbers a manager acts on. "Active" (which also counted sync-only placeholder seats) and the per-number
+  // definitions came off the strip on 2026-10-14; the definitions are unchanged and live beside the RPCs.
   const stats = snapshot
     ? [
-        { label: "Team size", value: (teamSize ?? snapshot.total).toLocaleString(), note: teamSize != null ? "active, working the business" : "on the canonical roster", tone: "text-foreground" },
-        { label: "Active", value: snapshot.active.toLocaleString(), note: `${snapshot.inactive} inactive · ${snapshot.terminated} terminated`, tone: "text-info" },
-        { label: "Producing this month", value: snapshot.producing_mtd.toLocaleString(), note: `of ${snapshot.active} active`, tone: "text-success" },
-        ...(newHires30dNoSale != null ? [{ label: "New hires, no sale", value: newHires30dNoSale.toLocaleString(), note: "joined ≤30d, not selling yet", tone: "text-amber-700 dark:text-amber-400" }] : []),
-        { label: "Month-to-date ALP", value: compactUsd(snapshot.mtd_alp), note: snapshot.book_last_posted ? `book through ${snapshot.book_last_posted}` : "not on file", tone: "text-foreground" },
+        { label: "Team size", value: (teamSize ?? snapshot.total).toLocaleString(), note: null as string | null, tone: "text-foreground" },
+        { label: "Producing this month", value: snapshot.producing_mtd.toLocaleString(), note: null as string | null, tone: "text-success" },
+        ...(newHires30dNoSale != null ? [{ label: "New hires, no sale", value: newHires30dNoSale.toLocaleString(), note: null as string | null, tone: newHires30dNoSale > 0 ? "text-amber-700 dark:text-amber-400" : "text-foreground" }] : []),
+        { label: "Month-to-date ALP", value: compactUsd(snapshot.mtd_alp), note: snapshot.book_last_posted ? `through ${snapshot.book_last_posted}` : null, tone: "text-foreground" },
       ]
     : null;
 
   const visibleStats = stats ?? [
     { label: "Team size", value: "Unavailable", note: "refresh to retry", tone: "text-muted-foreground" },
-    { label: "Active", value: "Unavailable", note: "refresh to retry", tone: "text-muted-foreground" },
     { label: "Producing this month", value: "Unavailable", note: "refresh to retry", tone: "text-muted-foreground" },
     { label: "Month-to-date ALP", value: "Unavailable", note: "refresh to retry", tone: "text-muted-foreground" },
   ];
@@ -111,14 +108,11 @@ export function ProductionMetricsCard({
             <div key={stat.label} className="min-w-[8.5rem]">
               <dt className="text-xs text-muted-foreground">{stat.label}</dt>
               <dd className={cn("text-xl font-semibold tabular-nums", stat.tone)}>{stat.value}</dd>
-              <dd className="text-xs text-muted-foreground">{stat.note}</dd>
+              {stat.note ? <dd className="text-xs text-muted-foreground">{stat.note}</dd> : null}
             </div>
           ))}
         </dl>
       )}
-      {snapshot && placeholderSeats > 0 ? (
-        <p className="text-xs text-muted-foreground">Active counts {placeholderSeats} placeholder {placeholderSeats === 1 ? "seat" : "seats"} that team size leaves out. Placeholders hold production the deal feed could not match to a person.</p>
-      ) : null}
     </section>
   );
 }

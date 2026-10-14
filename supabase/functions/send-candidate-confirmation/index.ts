@@ -15,6 +15,7 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireSendAuth } from "../_shared/require-send-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -240,6 +241,22 @@ serve(async (req: Request): Promise<Response> => {
     return new Response(
       JSON.stringify({ ok: false, error: "POST only" }),
       { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
+  // The only caller is assistant-add-interview, which presents the service key
+  // (PL-WIB-CANDIDATE-CONFIRM-RELAY, 2026-10-14). No src page invokes this any
+  // more (/dashboard/interviews redirects to the calendar), and no cron row or
+  // pg_proc body does. Before this gate verify_jwt = false let a bare POST pick
+  // candidate_email, candidate_name AND calendly_url, so anyone could send a
+  // "Confirmed, reschedule here" email from Apex's sender with a link of their
+  // choosing. interview_id is only written AFTER the send, so it never gated it.
+  // Service key or a signed-in admin/manager only.
+  const sendAuth = await requireSendAuth(req);
+  if (!sendAuth.ok) {
+    return new Response(
+      JSON.stringify({ ok: false, error: sendAuth.error }),
+      { status: sendAuth.status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 

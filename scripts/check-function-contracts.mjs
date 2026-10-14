@@ -402,6 +402,10 @@ const PUBLIC_ALLOWLIST = new Set([
   // applicant (couldnt-reach). requireSendAuth floor "staff" now.
   "send-calendly-invite",
   "send-couldnt-reach-email",
+  // send-candidate-confirmation (2026-10-14, PL-WIB-CANDIDATE-CONFIRM-RELAY):
+  // sole caller assistant-add-interview with the service key; a bare POST chose
+  // the recipient AND the reschedule link. requireSendAuth, admin_or_manager.
+  "send-candidate-confirmation",
   // 19 senders whose only caller is an admin "Run now" button (2026-10-14,
   // PL-WIB-RUN-NOW-SENDERS): AutomationHealth / AutomationHub, both
   // requireAdmin. No cron row, no trigger, no local script; check-team-milestones
@@ -587,6 +591,7 @@ const PUBLIC_CONTRACT = {
   // The 2 staff-page senders, 2026-10-14: requireSendAuth, floor "staff".
   "send-calendly-invite": "in_handler_gate",
   "send-couldnt-reach-email": "in_handler_gate",
+  "send-candidate-confirmation": "in_handler_gate",
   // The 19 admin "Run now" senders, 2026-10-14: requireSendAuth, admin_or_manager.
   "check-abandoned-applications": "in_handler_gate",
   "check-comeback-milestones": "in_handler_gate",

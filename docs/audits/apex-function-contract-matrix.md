@@ -1,6 +1,6 @@
 # APEX Function Contract Matrix
 
-Generated: 2026-10-14T16:17:32.407Z
+Generated: 2026-10-14T16:21:33.570Z
 Repository: `/private/tmp/wib-31/wt`
 
 ## Inventory Summary
@@ -192,7 +192,7 @@ Repository: `/private/tmp/wib-31/wt`
 | `send-bulk-portal-logins` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-bulk-unlicensed-outreach` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `send-calendly-invite` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
-| `send-candidate-confirmation` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `send-candidate-confirmation` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `send-couldnt-reach-email` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `send-course-enrollment-email` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-course-hurry-emails` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |

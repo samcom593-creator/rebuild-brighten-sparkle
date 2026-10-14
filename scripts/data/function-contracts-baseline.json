@@ -104,7 +104,6 @@
       "send-agent-portal-login",
       "send-bulk-email",
       "send-bulk-portal-logins",
-      "send-candidate-confirmation",
       "send-course-enrollment-email",
       "send-course-reminder",
       "send-email",

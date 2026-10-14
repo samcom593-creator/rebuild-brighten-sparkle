@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "A stranger can no longer send an interview confirmation from Apex's address with a link they chose.",
+    detail: "The confirmation email took the recipient, the name and the reschedule link straight from the request, with no sign-in. Anyone could have sent a \"Confirmed, I'll be there\" email from Apex pointing anywhere. Its only caller is the assistant interview form's server step, which uses the system key, so that keeps working; everyone else is refused.",
+    commit: "PL-WIB-CANDIDATE-CONFIRM-RELAY",
+  },
+  {
+    ts: "today",
     label: "The Calendly invite and the couldn't-reach-you email can no longer be sent by a stranger, and the invite only goes to the applicant on file.",
     detail: "Both answered a bare request from anyone on the internet. The Calendly invite also mailed whatever address the request named, as a personal invite from Sam, so it could be pointed at anyone. Their only buttons are on Recruiting and the Unlicensed queue, so they now need a staff sign-in (admin, manager, VA manager, VA or recruiter) or the system key, and the invite reads the email from the applicant's own record. Every real invite already went to that address, so nothing changes for the team.",
     commit: "PL-WIB-STAFF-PAGE-SENDERS",

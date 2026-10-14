@@ -288,6 +288,14 @@ const PUBLIC_ALLOWLIST = new Set([
   // seam, not an open door.
   "provision-agent-accounts",
   "slack-announce",
+  // contracting-sheet-sync (2026-10-14): the 15-minute pg_cron reconciliation presents the vault's apex_bot_token,
+  // which is not a JWT, so the gateway cannot be the boundary. Gate READ before allowlisting:
+  //   contracting-sheet-sync/index.ts callerAllowed() — `auth === \`Bearer ${BOT_TOKEN}\`` (BOT_TOKEN = APEX_BOT_TOKEN,
+  //   empty token never matches) OR a user JWT that passes rpc("apex_is_admin") === true; anything else -> 401
+  //   {"ok":false,"error":"unauthorized"} from the handler. Probed live 2026-10-14 after the config landed: no bearer ->
+  //   handler's 401; the vault bot token -> handler JSON (blocker no_credential). Writes go only to the one sheet
+  //   named in system_settings and only for requests already marked submitted by an admin.
+  "contracting-sheet-sync",
   // MP-415 — the eight that turned this bucket red on 2026-09-30, each
   // classified in PUBLIC_CONTRACT below. Seven gate their caller in code and
   // the detector confirms it on every run; brand-collab is a public form. They
@@ -486,6 +494,7 @@ const PUBLIC_CONTRACT = {
   "slack-identity-admin": "in_handler_gate",
   "provision-agent-accounts": "in_handler_gate",
   "slack-announce": "in_handler_gate",
+  "contracting-sheet-sync": "in_handler_gate",
   // cron-newhire-portal-login + cron-inbound-brain-health: x-cron-secret
   // compared against the environment as the handler's first statement, probed
   // live 401 on a bare POST and on a wrong secret (MP-413).

@@ -1,15 +1,15 @@
 # APEX Function Contract Matrix
 
-Generated: 2026-10-14T14:57:28.851Z
-Repository: `/private/tmp/wib-30/wt`
+Generated: 2026-10-14T15:51:16.365Z
+Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 
 ## Inventory Summary
 
-- Total Local Edge Functions: **241**
-- Configured in `config.toml`: **242**
-- Invoked Edge Functions in Source: **99**
-- Invoked RPC Calls in Source: **211**
-- SQL Functions in Migrations: **680**
+- Total Local Edge Functions: **242**
+- Configured in `config.toml`: **243**
+- Invoked Edge Functions in Source: **100**
+- Invoked RPC Calls in Source: **218**
+- SQL Functions in Migrations: **692**
 
 ## Edge Function Auth & Verification Contracts
 
@@ -73,6 +73,7 @@ Repository: `/private/tmp/wib-30/wt`
 | `content-library` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `content-share` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `content-thumb` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
+| `contracting-sheet-sync` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `create-agent-from-leaderboard` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `create-lead-checkout` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `create-new-agent-account` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -265,6 +266,6 @@ applied by hand through bot-sql and never round-tripped into
 `supabase/migrations`, so this directory does not model the deployed database.
 `apex-doctor` queries `pg_proc` and is the authority on deployed state.
 
-- Invoked RPCs: **211**
-- Also declared in this commit's migrations: **203**
+- Invoked RPCs: **218**
+- Also declared in this commit's migrations: **210**
 - Declared only in the database: **8**

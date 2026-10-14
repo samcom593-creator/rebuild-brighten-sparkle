@@ -1,14 +1,14 @@
 # APEX Function Contract Matrix
 
-Generated: 2026-10-14T13:27:09.522Z
-Repository: `/private/tmp/wib-29/wt`
+Generated: 2026-10-14T14:57:28.851Z
+Repository: `/private/tmp/wib-30/wt`
 
 ## Inventory Summary
 
 - Total Local Edge Functions: **241**
 - Configured in `config.toml`: **242**
 - Invoked Edge Functions in Source: **99**
-- Invoked RPC Calls in Source: **215**
+- Invoked RPC Calls in Source: **211**
 - SQL Functions in Migrations: **680**
 
 ## Edge Function Auth & Verification Contracts
@@ -169,7 +169,7 @@ Repository: `/private/tmp/wib-29/wt`
 | `readymode-sync` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `readymode-webhook` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `render-all-plaques` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `request-agent-photos` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `request-agent-photos` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `reset-agent-password` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `resolve-ref-slug` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `run-licensing-checkups` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
@@ -183,7 +183,7 @@ Repository: `/private/tmp/wib-29/wt`
 | `send-abandoned-followup` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-admin-email` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `send-aged-lead-email` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
-| `send-agent-nudge` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `send-agent-nudge` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `send-agent-onboarding-email` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-agent-portal-login` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-batch-blast` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
@@ -210,7 +210,7 @@ Repository: `/private/tmp/wib-29/wt`
 | `send-outreach-email` | Yes | Yes | `true` | Authenticated JWT | PASS |
 | `send-outstanding-performance` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-password-reset` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `send-plaque-batch` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `send-plaque-batch` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `send-plaque-recognition` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-post-call-followup` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-proactive-coaching` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
@@ -265,6 +265,6 @@ applied by hand through bot-sql and never round-tripped into
 `supabase/migrations`, so this directory does not model the deployed database.
 `apex-doctor` queries `pg_proc` and is the authority on deployed state.
 
-- Invoked RPCs: **215**
-- Also declared in this commit's migrations: **207**
+- Invoked RPCs: **211**
+- Also declared in this commit's migrations: **203**
 - Declared only in the database: **8**

@@ -11,6 +11,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { requireSendAuth } from "../_shared/require-send-auth.ts";
 import { nanpTenDigits } from "../_shared/nanp-phone.ts";
 
 const corsHeaders = {
@@ -30,6 +31,19 @@ const CARRIER_GATEWAYS: Record<string, string> = {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  // Admin-only button is the only caller (PL-WIB-ADMIN-BUTTON-SENDERS,
+  // 2026-10-14): AwardsGallery's header actions renders it under {isAdmin && ...}. No cron row, trigger, edge
+  // function or local script invokes this; 0 POSTs in 24h of
+  // function_edge_logs. Before this gate verify_jwt = false let a bare POST
+  // from anyone run the send. Service key or a signed-in admin/manager only.
+  const sendAuth = await requireSendAuth(req);
+  if (!sendAuth.ok) {
+    return new Response(JSON.stringify({ error: sendAuth.error }), {
+      status: sendAuth.status,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
   const sb = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",

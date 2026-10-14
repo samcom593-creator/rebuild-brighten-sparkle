@@ -377,6 +377,15 @@ const PUBLIC_ALLOWLIST = new Set([
   "send-weekly-analytics",
   "send-license-milestone",
   "outreach-sender",
+  // 3 senders whose only caller is an admin-only button (2026-10-14,
+  // PL-WIB-ADMIN-BUTTON-SENDERS): send-agent-nudge from AgentManagement
+  // (requireAdmin), send-plaque-batch + request-agent-photos from AwardsGallery
+  // header actions rendered under isAdmin. No cron row, trigger, edge function
+  // or local script; 0 POSTs in 24h of function_edge_logs. A bare POST emailed
+  // agents (and texted them, request-agent-photos). requireSendAuth now.
+  "request-agent-photos",
+  "send-agent-nudge",
+  "send-plaque-batch",
   // 19 senders whose only caller is an admin "Run now" button (2026-10-14,
   // PL-WIB-RUN-NOW-SENDERS): AutomationHealth / AutomationHub, both
   // requireAdmin. No cron row, no trigger, no local script; check-team-milestones
@@ -554,6 +563,10 @@ const PUBLIC_CONTRACT = {
   "send-weekly-analytics": "in_handler_gate",
   "send-license-milestone": "in_handler_gate",
   "outreach-sender": "in_handler_gate",
+  // The 3 admin-button senders, 2026-10-14: requireSendAuth, admin_or_manager.
+  "request-agent-photos": "in_handler_gate",
+  "send-agent-nudge": "in_handler_gate",
+  "send-plaque-batch": "in_handler_gate",
   // The 19 admin "Run now" senders, 2026-10-14: requireSendAuth, admin_or_manager.
   "check-abandoned-applications": "in_handler_gate",
   "check-comeback-milestones": "in_handler_gate",

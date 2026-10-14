@@ -19,6 +19,12 @@ export const SHIPPED: ShippedItem[] = [
   },
   {
     ts: "today",
+    label: "Three admin-only buttons that email or text agents can no longer be set off by a stranger. An admin or the system has to send them now.",
+    detail: "Each one answered a bare request from anyone on the internet and sent to agents. Their only callers are buttons only an admin sees (Agent Management and the Awards Gallery header), so they now require an admin or manager sign-in or the system key. Nothing schedules them, and the logs showed no outside requests in the last day.",
+    commit: "PL-WIB-ADMIN-BUTTON-SENDERS",
+  },
+  {
+    ts: "today",
     label: "19 automation jobs that email applicants, agents and Sam can no longer be set off by a stranger. Only an admin or the system can run them now.",
     detail: "Ghosted-applicant follow-ups, abandoned-application emails, plaque and milestone awards, production-gap texts, low-close-rate and no-deal alerts, coaching emails and Sam's morning report all answered a bare request from anyone on the internet and ran their whole send. Their only real trigger is the Run Now button on the admin Automation pages, so they now require an admin sign-in or the system key. None of them is on a schedule, so nothing that runs today stops. No abuse was found in the logs.",
     commit: "PL-WIB-RUN-NOW-SENDERS",

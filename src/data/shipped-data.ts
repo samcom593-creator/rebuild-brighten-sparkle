@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "System emails sent between Apex's own functions can no longer be refused because of a library upgrade.",
+    detail: "Newer versions of the Supabase library send the system key in a different header, and the email gate only looked in the old one. Nothing is failing today because the functions that send these calls are pinned to older versions, but locking down the new-hire welcome email (next on the list) would have refused it for every hire added from the dashboard. The gate now accepts the key in either header.",
+    commit: "PL-WIB-SERVICE-KEY-APIKEY",
+  },
+  {
+    ts: "today",
     label: "A stranger can no longer send a \"Portal Login Confirmed\" email from Apex to any address, copied to Sam.",
     detail: "The login-notice email took the recipient and the name straight from the request, with no sign-in, and put the name into the email as raw HTML. Anyone could have sent an Apex security notice to any inbox, with Sam on CC and content of their choosing. Its only caller is the login step itself, which uses the system key, so real login notices keep sending; everyone else is refused.",
     commit: "PL-WIB-LOGIN-NOTICE-RELAY",

@@ -3,7 +3,7 @@
 // stranger: role 'agent' (handle_new_user gives every signup that) and no
 // agents row. That must be 403, and a read error must never decide either way.
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { staffOrAgentVerdict, staffVerdict } from "./send-floor.ts";
+import { presentsServiceKey, staffOrAgentVerdict, staffVerdict } from "./send-floor.ts";
 
 Deno.test("stranger signup: role 'agent', no agents row -> 403", () => {
   assertEquals(staffOrAgentVerdict([{ role: "agent" }], null, [], null).status, 403);
@@ -51,4 +51,34 @@ for (const role of ["admin", "super_admin", "manager", "va_manager", "va", "recr
 Deno.test("staff floor: roles read failed -> 503, never a verdict", () => {
   assertEquals(staffVerdict(null, { message: "x" }).status, 503);
   assertEquals(staffVerdict([{ role: "admin" }], { message: "x" }).status, 503);
+});
+
+// PL-WIB-SERVICE-KEY-APIKEY. supabase-js 2.111.0+ sends an sb_secret_ key from
+// functions.invoke() as `apikey` with no Authorization header.
+const SVC = "sb_secret_" + "k".repeat(31);
+const h = (o: Record<string, string>) => new Headers(o);
+
+Deno.test("service key as Bearer -> presented", () => {
+  assertEquals(presentsServiceKey(h({ authorization: `Bearer ${SVC}` }), SVC), true);
+});
+
+Deno.test("service key as apikey only (supabase-js 2.111.0+) -> presented", () => {
+  assertEquals(presentsServiceKey(h({ apikey: SVC }), SVC), true);
+});
+
+Deno.test("anon apikey, no Authorization -> not presented", () => {
+  assertEquals(presentsServiceKey(h({ apikey: "eyJhbGciOiJIUzI1NiJ9.anon.sig" }), SVC), false);
+});
+
+Deno.test("user JWT as Bearer, anon apikey -> not presented", () => {
+  assertEquals(presentsServiceKey(h({ authorization: "Bearer eyJ.user.sig", apikey: "eyJ.anon.sig" }), SVC), false);
+});
+
+Deno.test("no headers -> not presented", () => {
+  assertEquals(presentsServiceKey(h({}), SVC), false);
+});
+
+Deno.test("empty service key never matches, even with empty headers", () => {
+  assertEquals(presentsServiceKey(h({ apikey: "" , authorization: "Bearer " }), ""), false);
+  assertEquals(presentsServiceKey(h({}), ""), false);
 });

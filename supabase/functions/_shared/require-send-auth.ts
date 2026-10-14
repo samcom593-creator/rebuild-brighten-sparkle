@@ -17,7 +17,9 @@
 // Accepts exactly the two callers that exist today, and nothing else:
 //   1. the service role key   -- pg_net triggers (reapply_doors_open,
 //      hiring_pipeline_v2, apex_automation_v10) and function-to-function
-//      calls (siri-command) send `Authorization: Bearer <service_role_key>`.
+//      calls (siri-command) send `Authorization: Bearer <service_role_key>`;
+//      supabase-js 2.111.0+ functions.invoke() sends an sb_secret_ key as
+//      `apikey` only (see presentsServiceKey in send-floor.ts).
 //   2. a signed-in admin/manager JWT -- BulkComposeDrawer in the admin UI
 //      calls supabase.functions.invoke(), which attaches the user's JWT.
 //
@@ -25,7 +27,7 @@
 // dual-accept gate, so there is one pattern here and not two.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { STAFF_ROLES, staffOrAgentVerdict, staffVerdict } from "./send-floor.ts";
+import { presentsServiceKey, safeEqual, STAFF_ROLES, staffOrAgentVerdict, staffVerdict } from "./send-floor.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_KEY  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -88,14 +90,16 @@ export async function requireSendAuth(
   const raw = req.headers.get("authorization") ?? "";
   const token = raw.replace(/^Bearer\s+/i, "").trim();
 
-  if (!token) {
-    return { ok: false, status: 401, error: "unauthorized" };
+  // Internal path, before the empty-token refusal: a supabase-js 2.111.0+
+  // service client sends no Authorization header at all, only apikey.
+  // Constant-time compare so the key is not discoverable by timing a few
+  // thousand probes against a public endpoint.
+  if (presentsServiceKey(req.headers, SERVICE_KEY)) {
+    return { ok: true, status: 200, caller: "service" };
   }
 
-  // Internal path. Constant-time compare so the key is not discoverable by
-  // timing a few thousand probes against a public endpoint.
-  if (SERVICE_KEY && safeEqual(token, SERVICE_KEY)) {
-    return { ok: true, status: 200, caller: "service" };
+  if (!token) {
+    return { ok: false, status: 401, error: "unauthorized" };
   }
 
   // The anon key is a validly signed JWT that anyone can read out of the
@@ -162,12 +166,4 @@ export async function requireSendAuth(
   }
 
   return { ok: true, status: 200, caller: `user:${data.user.id}` };
-}
-
-/** Length-independent constant-time string compare. */
-function safeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
 }

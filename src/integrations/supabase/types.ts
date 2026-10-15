@@ -150887,6 +150887,44 @@ export type Database = {
         }
         Relationships: []
       }
+      v_sold_calls_queue: {
+        Row: {
+          agent_id: string | null
+          agent_raw: string | null
+          beneficiaries: Json | null
+          booked_at: string | null
+          call_at: string | null
+          call_id: string | null
+          carrier: string | null
+          client_first_name: string | null
+          client_last_name: string | null
+          client_state: string | null
+          confidence: Json | null
+          download_status: string | null
+          duration_seconds: number | null
+          external_call_id: string | null
+          face_amount: number | null
+          has_bank: boolean | null
+          has_ssn: boolean | null
+          has_transcript: boolean | null
+          lead_first_name: string | null
+          lead_last_name: string | null
+          lead_phone: string | null
+          local_path: string | null
+          missing_fields: string[] | null
+          monthly_premium: number | null
+          packet_id: string | null
+          packet_status: string | null
+          policy_number: string | null
+          product: string | null
+          rec_seconds: number | null
+          recording_url: string | null
+          sensitive_pointers: Json | null
+          ssn_last4: string | null
+          status: string | null
+        }
+        Relationships: []
+      }
       v_stale_applicants: {
         Row: {
           assigned_agent_id: string | null

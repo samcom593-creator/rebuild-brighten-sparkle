@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "The Manager Hierarchy and Top Producers MTD panel now shows October's real production: 11 producers, 43 deals, $74,183.72.",
+    detail: "Both views read the AgentLink book, and nobody has entered a deal in AgentLink since Aug 31. Deals now come in through Post-a-Deal and Discord, which the main dashboard tile already counted (43 deals / $74,183.72) and this panel never did. The only October rows left in the book were two protest entries a departed agent typed into AgentLink on Oct 2, with policy numbers like 'releasethecarrierandtakemeoffthisportal' and $150,000 a month in premium. Top Producers ranked that agent first and only at $1,821,600, and every manager showed $0. Both views now read the same canonical production the dashboard tile uses. Checked as Sam: 7 managers, 43 deals, $74,183.72, matching the tile to the cent.",
+    commit: "PL-WIB-MTD-PANELS-CANONICAL",
+  },
+  {
+    ts: "today",
     label: "Nobody can remove an agent through the removal-approval link without Sam's email anymore.",
     detail: "The manager \"request removal\" path read no sign-in. Anyone could create a removal request for any agent, and the reply handed back the request id. The approve link needed only that id, so two requests from a stranger took an agent off the roster with nobody approving it. Agent ids are visible to any account that signs up. Creating a request now needs a signed-in staff member, the requester's name comes from their login, and the reply no longer includes the id. The approve and deny links in the email carry a signature only the server can make, so only the email Sam receives can approve. Names and the reason are escaped in that email. Never used yet (0 removal requests ever), so nothing was lost.",
     commit: "PL-WIB-REMOVAL-APPROVAL-GATE",

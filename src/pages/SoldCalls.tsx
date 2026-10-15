@@ -23,6 +23,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { PageHeader } from "@/components/ui/page-header";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
+import { externalHref } from "@/lib/externalHref";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -226,13 +227,15 @@ function PacketDrawer({ row, onClose, onBooked }: { row: SoldRow | null; onClose
   const [sensitive, setSensitive] = useState<{ ssn?: string; bank_account?: string; bank_routing?: string } | null>(null);
   const [revealing, setRevealing] = useState(false);
   const [booking, setBooking] = useState(false);
+  const [policyInput, setPolicyInput] = useState("");
 
   // Reset reveal when switching rows.
   const key = row?.call_id ?? null;
-  useMemo(() => { setSensitive(null); }, [key]);
+  useMemo(() => { setSensitive(null); setPolicyInput(""); }, [key]);
 
   if (!row) return null;
   const money2 = (n: number | null) => (n == null ? "—" : money(n));
+  const recordingHref = externalHref(row.recording_url);
 
   const reveal = async () => {
     if (!row.packet_id) return;
@@ -247,7 +250,7 @@ function PacketDrawer({ row, onClose, onBooked }: { row: SoldRow | null; onClose
 
   const markBooked = async () => {
     if (!row.packet_id) return;
-    const policy = window.prompt("Policy number for this booked deal (optional):") ?? "";
+    const policy = policyInput.trim();
     setBooking(true);
     const { error } = await (supabase.rpc as unknown as (fn: string, args: Record<string, unknown>) => Promise<{ error: { message: string } | null }>)("booking_packet_mark_booked", { p_id: row.packet_id, p_policy: policy });
     setBooking(false);
@@ -326,10 +329,20 @@ function PacketDrawer({ row, onClose, onBooked }: { row: SoldRow | null; onClose
           </section>
 
           <section className="flex flex-wrap gap-2 border-t border-border/40 pt-3">
-            {row.recording_url && (
-              <a href={row.recording_url} target="_blank" rel="noreferrer">
-                <Button variant="outline" size="sm"><Download className="mr-1 h-3.5 w-3.5" />Recording ({mmss(row.duration_seconds)})</Button>
-              </a>
+            {recordingHref && (
+              <Button asChild variant="outline" size="sm">
+                <a href={recordingHref} target="_blank" rel="noopener noreferrer"><Download className="mr-1 h-3.5 w-3.5" />Recording ({mmss(row.duration_seconds)})</a>
+              </Button>
+            )}
+            {row.status !== "booked" && row.packet_id && (
+              <Input
+                value={policyInput}
+                onChange={(e) => setPolicyInput(e.target.value)}
+                placeholder="Policy number (optional)"
+                aria-label="Policy number for this booked deal (optional)"
+                className="h-9 w-48"
+                disabled={booking}
+              />
             )}
             {row.status !== "booked" && row.packet_id && (
               <Button size="sm" onClick={markBooked} disabled={booking}>

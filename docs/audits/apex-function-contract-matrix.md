@@ -1,15 +1,15 @@
 # APEX Function Contract Matrix
 
-Generated: 2026-10-14T21:43:29.788Z
-Repository: `/private/tmp/wib-34/wt`
+Generated: 2026-10-15T03:01:42.912Z
+Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 
 ## Inventory Summary
 
-- Total Local Edge Functions: **242**
-- Configured in `config.toml`: **243**
+- Total Local Edge Functions: **243**
+- Configured in `config.toml`: **244**
 - Invoked Edge Functions in Source: **98**
-- Invoked RPC Calls in Source: **212**
-- SQL Functions in Migrations: **691**
+- Invoked RPC Calls in Source: **213**
+- SQL Functions in Migrations: **696**
 
 ## Edge Function Auth & Verification Contracts
 
@@ -73,6 +73,7 @@ Repository: `/private/tmp/wib-34/wt`
 | `content-library` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `content-share` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `content-thumb` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
+| `contracting-sheet-csv` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `contracting-sheet-sync` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `create-agent-from-leaderboard` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `create-lead-checkout` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -212,7 +213,7 @@ Repository: `/private/tmp/wib-34/wt`
 | `send-outstanding-performance` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-password-reset` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-plaque-batch` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
-| `send-plaque-recognition` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `send-plaque-recognition` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `send-post-call-followup` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `send-proactive-coaching` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `send-push-notification` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -266,6 +267,6 @@ applied by hand through bot-sql and never round-tripped into
 `supabase/migrations`, so this directory does not model the deployed database.
 `apex-doctor` queries `pg_proc` and is the authority on deployed state.
 
-- Invoked RPCs: **212**
-- Also declared in this commit's migrations: **204**
+- Invoked RPCs: **213**
+- Also declared in this commit's migrations: **205**
 - Declared only in the database: **8**

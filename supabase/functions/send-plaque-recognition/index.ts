@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { Resvg, initWasm } from "https://esm.sh/@resvg/resvg-wasm@2.6.2";
+import { requireSendAuth } from "../_shared/require-send-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -174,6 +175,23 @@ serve(async (req: Request) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // PL-WIB-PLAQUE-GATE (2026-10-15). verify_jwt is false and nothing here read
+  // a credential, so any POST naming an agents.id mailed that agent (and their
+  // manager) a "You hit $<amount>" plaque from notifications@, with the amount
+  // and date taken from the body, and wrote a public plaque_awards row behind
+  // /plaque/<slug>. Recipients come from the row, so the floor is the union of
+  // who reaches a button: ProductionEntry (AgentPortal, Numbers, any agent),
+  // RecognitionQueue and EmailDeliveryLog (admin). Server callers present the
+  // service key: check-*-milestones send it as Bearer, backfill-plaque-images
+  // is supabase-js @2 (apikey only, admitted by presentsServiceKey).
+  const auth = await requireSendAuth(req, { floor: "staff_or_agent" });
+  if (!auth.ok) {
+    return new Response(JSON.stringify({ error: auth.error ?? "unauthorized" }), {
+      status: auth.status,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
@@ -183,6 +201,15 @@ serve(async (req: Request) => {
 
   try {
     const { agentId, milestoneType, amount, date, skipEmail }: PlaqueRequest = await req.json();
+
+    // Refuse before any lookup, render, upload or send. notify-deal-submitted
+    // posts { agent_id, tier, ... }, so it lands here and is told why.
+    if (!agentId || !milestoneType || !date || !Number.isFinite(Number(amount))) {
+      return new Response(
+        JSON.stringify({ error: "Missing required fields: agentId, milestoneType, amount, date" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     const { data: agentData } = await supabase
       .from("agents")

@@ -144,9 +144,9 @@ export function SoldCallPanel({ phone, firstName, lastName }: { phone?: string |
 
           <div className="flex flex-wrap items-center gap-2 border-t border-amber-500/20 pt-3">
             {p.recording_url && (
-              <a href={p.recording_url} target="_blank" rel="noreferrer">
-                <Button variant="outline" size="sm"><Headphones className="mr-1 h-3.5 w-3.5" />Recording{mmss(p.duration_seconds)}</Button>
-              </a>
+              <Button asChild variant="outline" size="sm">
+                <a href={p.recording_url} target="_blank" rel="noopener noreferrer"><Headphones className="mr-1 h-3.5 w-3.5" />Recording{mmss(p.duration_seconds)}</a>
+              </Button>
             )}
             {p.status === "booked" ? (
               <span className="flex items-center gap-1 text-xs text-emerald-400"><CheckCircle2 className="h-3.5 w-3.5" />Booked {dateStr(p.booked_at)}</span>

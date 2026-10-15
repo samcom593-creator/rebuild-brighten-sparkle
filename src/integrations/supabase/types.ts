@@ -150842,6 +150842,51 @@ export type Database = {
         }
         Relationships: []
       }
+      v_sold_call_packets: {
+        Row: {
+          agent_raw: string | null
+          bank_name: string | null
+          beneficiaries: Json | null
+          booked_at: string | null
+          booked_policy_number: string | null
+          call_at: string | null
+          call_id: string | null
+          carrier: string | null
+          client_city: string | null
+          client_dob: string | null
+          client_email: string | null
+          client_first_name: string | null
+          client_last_name: string | null
+          client_phone: string | null
+          client_state: string | null
+          client_street: string | null
+          client_zip: string | null
+          confidence: Json | null
+          draft_day: string | null
+          duration_seconds: number | null
+          external_call_id: string | null
+          face_amount: number | null
+          has_bank: boolean | null
+          has_ssn: boolean | null
+          health_notes: string | null
+          match_dob: string | null
+          match_first: string | null
+          match_last: string | null
+          match_phone10: string | null
+          missing_fields: string[] | null
+          monthly_premium: number | null
+          packet_id: string | null
+          payment_method_type: string | null
+          policy_number: string | null
+          product: string | null
+          recording_url: string | null
+          sensitive_pointers: Json | null
+          ssn_last4: string | null
+          status: string | null
+          tobacco: boolean | null
+        }
+        Relationships: []
+      }
       v_stale_applicants: {
         Row: {
           assigned_agent_id: string | null

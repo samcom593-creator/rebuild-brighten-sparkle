@@ -811,6 +811,7 @@
     "public.v_sms_receipt_truth",
     "public.v_social_bot_dashboard",
     "public.v_social_latest",
+    "public.v_sold_call_packets",
     "public.v_stale_applicants",
     "public.v_stale_submitted_action",
     "public.v_stale_submitted_by_carrier",

@@ -50,6 +50,14 @@ export interface AgentCloudNavItem {
   hideWhenSeesAll?: boolean;
   /** Account modes that see this item. Omit = everyone. Admin always sees it. */
   modes?: AccountMode[];
+  /**
+   * Query params that decide this item's active state, compared against the
+   * values in `href`. Omit it and the path alone decides, so an item whose href
+   * carries a param (Support desk's ?tab=desk) stays active on every tab of its
+   * page. Declare it when the item targets one view of a page that other items
+   * also point at (Contracting review is My Team's ?view=contracting).
+   */
+  matchParams?: readonly string[];
 }
 
 export interface AgentCloudNavGroup {
@@ -164,7 +172,7 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
       // Staff accounts (the former top-level "VA Team") live here too.
       { label: "Staff accounts", href: "/va-team", icon: Users, modes: ["va_manager"] },
       // Contracting is tracked by hand on My Team's Contracting view (read-only for VAs). The old Ethos / cases pages are history.
-      { label: "Contracting review", href: "/dashboard/team?view=contracting", icon: ScrollText, modes: ["va", "va_manager"], hideWhenSeesAll: true },
+      { label: "Contracting review", href: "/dashboard/team?view=contracting", icon: ScrollText, modes: ["va", "va_manager"], hideWhenSeesAll: true, matchParams: ["view"] },
     ],
   },
 
@@ -176,6 +184,7 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
       { label: "Book of Business", href: "/dashboard/production", icon: BookOpen },
       // Working carrier books for rewrites (2026-10-07). Admin and managers only, like the view behind it.
       { label: "Book Flips", href: "/dashboard/books", icon: PhoneCall, modes: ["manager"] },
+      { label: "Sold Calls", href: "/dashboard/sold-calls", icon: PhoneCall, modes: ["admin"] },
       { label: "My Commissions", href: "/dashboard/my-commissions", icon: WalletCards },
       { label: "Retention", href: "/dashboard/retention", icon: Shield },
     ],
@@ -262,6 +271,107 @@ export function agentCloudPathIsActive(pathname: string, href: string): boolean 
   if (target === "/dashboard/contracting") return pathname === target;
   if (target === "/dashboard/settings") return pathname === target;
   return pathname === target || pathname.startsWith(`${target}/`);
+}
+
+/** The pair react-router's useLocation() returns; `search` keeps its leading "?". */
+export interface AgentCloudLocation {
+  pathname: string;
+  search: string;
+}
+
+/**
+ * The query half of the active rule. True when every param the item declares
+ * in `matchParams` holds the same value in the location as in the item's href.
+ * No declaration means the path alone decides.
+ */
+export function agentCloudSearchMatches(search: string, href: string, matchParams?: readonly string[]): boolean {
+  if (!matchParams || matchParams.length === 0) return true;
+  const wanted = new URLSearchParams(href.split("?")[1] ?? "");
+  const actual = new URLSearchParams(search);
+  return matchParams.every((key) => actual.get(key) === wanted.get(key));
+}
+
+/**
+ * Path and params resolved separately: the path through agentCloudPathIsActive,
+ * the params through the item's own declaration. The desktop rail and the
+ * phone nav both read this, so a tab that targets one view of a page lights on
+ * that view and on no other.
+ */
+export function agentCloudItemIsActive(location: AgentCloudLocation, item: Pick<AgentCloudNavItem, "href" | "matchParams">): boolean {
+  return agentCloudPathIsActive(location.pathname, item.href) && agentCloudSearchMatches(location.search, item.href, item.matchParams);
+}
+
+/**
+ * A group is active when the route sits inside one of its items. Grow also
+ * owns the nested recruiting routes (/dashboard/recruiting/...) the manifest
+ * lists under no item.
+ */
+export function agentCloudGroupIsActive(location: AgentCloudLocation, group: AgentCloudNavGroup): boolean {
+  return group.items.some((item) => agentCloudItemIsActive(location, item))
+    || (group.label === "Grow" && location.pathname.startsWith("/dashboard/recruiting/"));
+}
+
+/** The auth signals the applicant rule reads. All come from useAuth and useRolePreview. */
+export interface ApplicantSignals {
+  authLoading: boolean;
+  isAdmin: boolean;
+  isManager: boolean;
+  isAgent: boolean;
+  hasAgentRecord: boolean;
+  isPreviewing: boolean;
+}
+
+/**
+ * One applicant rule for every surface (sidebar, phone nav). An applicant is a
+ * role-agent login with no agents row: applying mints the login and the
+ * confirmation page signs them in. Gated on auth having finished loading so a
+ * real producer never flashes the applicant rail while their agents row is
+ * still in flight, and off while Sam previews a role.
+ */
+export function isApplicantViewer(signals: ApplicantSignals): boolean {
+  return !signals.authLoading
+    && !signals.isAdmin
+    && !signals.isManager
+    && signals.isAgent
+    && !signals.hasAgentRecord
+    && !signals.isPreviewing;
+}
+
+/**
+ * Sidebar group expansion. Every group starts open. A chevron click is an
+ * explicit choice that stands, for the active group too, until the route moves
+ * into a group the user is not already in; entering a group opens it and
+ * touches nothing else. Pure so the rule is testable without React.
+ */
+export interface NavGroupExpansion {
+  /** Labels of the groups the route sat in when last reconciled. */
+  activeGroups: readonly string[];
+  /** Explicit choices: true open, false closed. A label with no entry is open. */
+  choices: Readonly<Record<string, boolean>>;
+}
+
+export function initialGroupExpansion(activeGroups: readonly string[]): NavGroupExpansion {
+  return { activeGroups, choices: {} };
+}
+
+/** Returns the same object when the active set is unchanged, so a render can compare by identity. */
+export function reconcileGroupExpansion(state: NavGroupExpansion, activeGroups: readonly string[]): NavGroupExpansion {
+  const unchanged = state.activeGroups.length === activeGroups.length
+    && activeGroups.every((label) => state.activeGroups.includes(label));
+  if (unchanged) return state;
+  const choices: Record<string, boolean> = { ...state.choices };
+  for (const label of activeGroups) {
+    if (!state.activeGroups.includes(label)) choices[label] = true;
+  }
+  return { activeGroups, choices };
+}
+
+export function isNavGroupOpen(state: NavGroupExpansion, label: string): boolean {
+  return state.choices[label] ?? true;
+}
+
+export function toggleNavGroup(state: NavGroupExpansion, label: string): NavGroupExpansion {
+  return { ...state, choices: { ...state.choices, [label]: !isNavGroupOpen(state, label) } };
 }
 
 /**

@@ -63,7 +63,7 @@ export function SoldCallPanel({ phone, firstName, lastName }: { phone?: string |
   });
 
   const p = q.data;
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const [sensitive, setSensitive] = useState<{ ssn?: string; bank_account?: string; bank_routing?: string } | null>(null);
   const [revealing, setRevealing] = useState(false);
   const bens = useMemo(() => p?.beneficiaries ?? [], [p]);

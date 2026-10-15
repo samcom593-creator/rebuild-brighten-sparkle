@@ -492,6 +492,10 @@ export default function ClientPipeline() {
 
   // Hasn't-bought-yet preview — sorted by recent stage change so working
   // pipeline surfaces first, dormant rows behind.
+  const soldMatchCount = useMemo(
+    () => (soldKeys.ready ? rows.filter((c) => soldKeys.has(c.phone, c.first_name, c.last_name)).length : 0),
+    [rows, soldKeys],
+  );
   const hasntBoughtTop = useMemo(() => {
     const items = rows
       .filter((c) => c.pipeline_stage !== "SOLD" && c.pipeline_stage !== "LOST" && c.pipeline_stage !== "INACTIVE");
@@ -896,13 +900,13 @@ export default function ClientPipeline() {
             onClick={() => setHousingFilter(housingFilter === "unknown" ? "__all__" : "unknown")}
           />
         </div>
-        {soldKeys.ready && (
+        {soldKeys.ready && soldMatchCount > 0 && (
           <button
             type="button"
             onClick={() => setSoldOnly((v) => !v)}
-            className={`mt-2 inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold transition-base ${soldOnly ? "border-amber-500 bg-amber-500/15 text-amber-600 dark:text-amber-400" : "border-border text-muted-foreground hover:border-amber-500/50"}`}
+            className={`mt-2 inline-flex items-center gap-1.5 rounded-full border-2 px-4 py-1.5 text-sm font-bold transition-base ${soldOnly ? "border-amber-500 bg-amber-500/20 text-amber-700 dark:text-amber-300" : "border-amber-500/60 bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20"}`}
           >
-            <Phone className="h-3 w-3" /> {soldOnly ? "Showing clients with a sold call" : "Clients with a sold call"}
+            <Phone className="h-4 w-4" /> {soldOnly ? `Showing ${soldMatchCount} with a sold call` : `${soldMatchCount} client${soldMatchCount === 1 ? "" : "s"} with a sold call`}
           </button>
         )}
         {!housingDataAvailable && (

@@ -18,6 +18,7 @@ import {
   type BookFilter, type BookPolicy, type FlipFilter, type FlipStatus, type SortKey,
 } from "@/lib/bookFlips";
 import { SoldCallPanel } from "@/components/clients/SoldCallPanel";
+import { useSoldCallKeys } from "@/hooks/useSoldCallKeys";
 
 const COLUMNS =
   "flip_key, carrier, policy_number, client_key, product, book_status, is_dead, is_book_active, status_group, " +
@@ -414,6 +415,7 @@ export default function BookFlips() {
 }
 
 function PolicyCard({ p, busy, onSet }: { p: BookPolicy; busy: boolean; onSet: (p: BookPolicy, s: FlipStatus, o?: SetOpts) => Promise<boolean> }) {
+  const soldKeys = useSoldCallKeys();
   const [panel, setPanel] = useState<"none" | "callback" | "note" | "more">("none");
   const [cb, setCb] = useState(defaultCallbackLocal);
   const [note, setNote] = useState("");
@@ -436,7 +438,14 @@ function PolicyCard({ p, busy, onSet }: { p: BookPolicy; busy: boolean; onSet: (
     <li className="rounded-xl border border-border bg-card p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate text-lg font-bold text-foreground">{name}</p>
+          <div className="flex items-center gap-2">
+            <p className="truncate text-lg font-bold text-foreground">{name}</p>
+            {soldKeys.has(p.phone, p.client_first_name, p.client_last_name) && (
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-amber-500/50 bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
+                <Phone className="h-3 w-3" aria-hidden /> Sold call
+              </span>
+            )}
+          </div>
           {meta && <p className="text-sm text-muted-foreground">{meta}</p>}
         </div>
         <span className={cn("shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-semibold", FLIP_TONE[p.flip_status])}>

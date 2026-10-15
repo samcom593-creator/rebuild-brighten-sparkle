@@ -64,6 +64,7 @@ import {
 import { format, formatDistanceToNow, isBefore } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useSoldCallKeys } from "@/hooks/useSoldCallKeys";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { PageHeader } from "@/components/ui/page-header";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -219,6 +220,8 @@ export default function ClientPipeline() {
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState<string>("__all__");
   const [housingFilter, setHousingFilter] = useState<HousingSegment | "__all__">("__all__");
+  const soldKeys = useSoldCallKeys();
+  const [soldOnly, setSoldOnly] = useState(false);
   const [bookFilter, setBookFilter] = useState<"all" | "hasnt_bought" | "missing">("all");
   const [sortKey, setSortKey] = useState<"recent" | "name" | "stage_changed" | "callback">("recent");
   const [cockpitView, setCockpitView] = useState<"priority" | "stages" | "all">("priority");
@@ -510,6 +513,9 @@ export default function ClientPipeline() {
     if (housingFilter !== "__all__") {
       r = r.filter((c) => classifyHousing(c) === housingFilter);
     }
+    if (soldOnly) {
+      r = r.filter((c) => soldKeys.has(c.phone, c.first_name, c.last_name));
+    }
     if (bookFilter === "hasnt_bought") {
       r = r.filter((c) => c.pipeline_stage !== "SOLD" && c.pipeline_stage !== "LOST");
     } else if (bookFilter === "missing") {
@@ -553,7 +559,7 @@ export default function ClientPipeline() {
         break;
     }
     return r.slice(0, 250); // cap for render perf
-  }, [rows, stageFilter, housingFilter, bookFilter, search, sortKey]);
+  }, [rows, stageFilter, housingFilter, bookFilter, search, sortKey, soldOnly, soldKeys]);
 
   const scopeLabel = isAdmin ? "agency-wide" : isManager ? "your team" : "your book";
 
@@ -890,6 +896,15 @@ export default function ClientPipeline() {
             onClick={() => setHousingFilter(housingFilter === "unknown" ? "__all__" : "unknown")}
           />
         </div>
+        {soldKeys.ready && (
+          <button
+            type="button"
+            onClick={() => setSoldOnly((v) => !v)}
+            className={`mt-2 inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold transition-base ${soldOnly ? "border-amber-500 bg-amber-500/15 text-amber-600 dark:text-amber-400" : "border-border text-muted-foreground hover:border-amber-500/50"}`}
+          >
+            <Phone className="h-3 w-3" /> {soldOnly ? "Showing clients with a sold call" : "Clients with a sold call"}
+          </button>
+        )}
         {!housingDataAvailable && (
           <p className="text-xs text-muted-foreground mt-3 leading-relaxed">
             Housing type isn't recorded for these clients. The mortgage / rent fields are empty for every client in this list,
@@ -1251,6 +1266,11 @@ export default function ClientPipeline() {
                             {housing === "renter" && (
                               <Badge variant="outline" className="text-[11px] bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/40">
                                 <Building2 className="h-2.5 w-2.5 mr-0.5" /> Renter
+                              </Badge>
+                            )}
+                            {soldKeys.has(c.phone, c.first_name, c.last_name) && (
+                              <Badge variant="outline" className="text-[11px] bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/50">
+                                <Phone className="h-2.5 w-2.5 mr-0.5" /> Sold call
                               </Badge>
                             )}
                             {c.do_not_call && (

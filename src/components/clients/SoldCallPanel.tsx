@@ -15,6 +15,8 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { looseSupabase } from "@/lib/looseSupabase";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
+import { SOLD_CALL_EXTRA_UID } from "@/hooks/useSoldCallKeys";
 
 interface Beneficiary { name?: string; relationship?: string; pct?: number | string; contingent?: boolean }
 interface Packet {
@@ -36,13 +38,15 @@ const mmss = (s: number | null) => (s == null ? "" : ` (${Math.floor(s / 60)}:${
 const dateStr = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) : "—");
 
 export function SoldCallPanel({ phone, firstName, lastName }: { phone?: string | null; firstName?: string | null; lastName?: string | null }) {
+  const { isAdmin, user } = useAuth();
+  const canView = !!isAdmin || user?.id === SOLD_CALL_EXTRA_UID;
   const ph = digits10(phone);
   const fn = (firstName ?? "").trim().toLowerCase();
   const ln = (lastName ?? "").trim().toLowerCase();
 
   const q = useQuery({
     queryKey: ["sold-call-packet", ph, fn, ln],
-    enabled: !!(ph || (fn && ln)),
+    enabled: canView && !!(ph || (fn && ln)),
     staleTime: 60_000,
     queryFn: async (): Promise<Packet | null> => {
       // phone match first (most reliable), then full-name fallback
@@ -113,8 +117,8 @@ export function SoldCallPanel({ phone, firstName, lastName }: { phone?: string |
             <div>
               <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Beneficiaries</div>
               <ul className="space-y-0.5">
-                {bens.map((b, i) => (
-                  <li key={`ben-${i}`} className="flex justify-between">
+                {bens.map((b) => (
+                  <li key={`${b.name ?? "ben"}|${b.relationship ?? ""}|${b.pct ?? ""}`} className="flex justify-between">
                     <span>{b.name ?? "—"}{b.relationship ? ` · ${b.relationship}` : ""}{b.contingent ? " (contingent)" : ""}</span>
                     <span className="tabular-nums">{b.pct != null ? `${b.pct}%` : ""}</span>
                   </li>

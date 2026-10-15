@@ -1,6 +1,6 @@
 # APEX Function Contract Matrix
 
-Generated: 2026-10-15T03:01:42.912Z
+Generated: 2026-10-15T04:15:15.840Z
 Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 
 ## Inventory Summary
@@ -204,7 +204,7 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 | `send-followup-emails` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-instagram-dm` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `send-license-milestone` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
-| `send-licensing-instructions` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `send-licensing-instructions` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `send-licensing-sequence` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-login-to-manager` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `send-notification` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |

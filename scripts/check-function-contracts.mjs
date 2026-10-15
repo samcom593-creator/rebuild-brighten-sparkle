@@ -427,6 +427,11 @@ const PUBLIC_ALLOWLIST = new Set([
   // and wrote a public plaque_awards row. requireSendAuth, staff_or_agent
   // (ProductionEntry is an agent button); server callers present the service key.
   "send-plaque-recognition",
+  // send-licensing-instructions (2026-10-15, PL-WIB-LICENSING-GATE): a bare POST
+  // chose the recipient, the CC and the phone, and sent an email, an SMS and a
+  // push. requireSendAuth, staff_or_agent (CallCenter, AgentPipeline are agent
+  // pages); bulk-send-licensing and send-batch-blast send the service key.
+  "send-licensing-instructions",
   // 19 senders whose only caller is an admin "Run now" button (2026-10-14,
   // PL-WIB-RUN-NOW-SENDERS): AutomationHealth / AutomationHub, both
   // requireAdmin. No cron row, no trigger, no local script; check-team-milestones
@@ -618,6 +623,7 @@ const PUBLIC_CONTRACT = {
   "notify-agent-login": "in_handler_gate",
   "welcome-new-agent": "in_handler_gate",
   "send-plaque-recognition": "in_handler_gate",
+  "send-licensing-instructions": "in_handler_gate",
   // The 19 admin "Run now" senders, 2026-10-14: requireSendAuth, admin_or_manager.
   "check-abandoned-applications": "in_handler_gate",
   "check-comeback-milestones": "in_handler_gate",

@@ -212,6 +212,8 @@ PUBLIC_ALLOWLIST=(
   "welcome-new-agent"
   # send-plaque-recognition (2026-10-15): requireSendAuth staff_or_agent; service-key callers.
   "send-plaque-recognition"
+  # send-licensing-instructions (2026-10-15): requireSendAuth staff_or_agent; service-key callers.
+  "send-licensing-instructions"
   # 19 admin "Run now" senders (2026-10-14): requireSendAuth, admin_or_manager.
   # check-daily-plaques calls check-team-milestones with the service key, which
   # is not a user JWT, so verify_jwt stays false.

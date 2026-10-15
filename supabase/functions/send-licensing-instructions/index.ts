@@ -6,6 +6,8 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { logFunctionError, writeAudit } from "../_shared/audit.ts";
 import { SCHEDULING_LINKS } from "../_shared/apex.ts";
 import { CONTRACTING_PROFILE_URL, NOT_CONTRACTED_YET } from "../_shared/contracting-profile.ts";
+import { requireSendAuth } from "../_shared/require-send-auth.ts";
+import { escapeHtml } from "../_shared/notify-caller-policy.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const ADMIN_EMAIL = "info@kingofsales.net";
@@ -77,14 +79,45 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response("ok", { headers: corsHeaders });
   }
 
+  // PL-WIB-LICENSING-GATE (2026-10-15). verify_jwt is false and nothing here
+  // read a credential, so a bare POST picked the recipient, the CC (managerEmail)
+  // and the phone: it sent a "Welcome to Galaxy Financial" email from
+  // notifications@ to any address (CC info@kingofsales.net), texted any number
+  // through send-sms-auto-detect on the service key, and fired a push. The
+  // floor is the union of who reaches a button: CallCenter and AgentPipeline
+  // (ProtectedRoute, agents) plus DashboardApplicants (staff). Server callers
+  // present the service key as Bearer: bulk-send-licensing, send-batch-blast.
+  const auth = await requireSendAuth(req, { floor: "staff_or_agent" });
+  if (!auth.ok) {
+    return new Response(JSON.stringify({ success: false, error: auth.error ?? "unauthorized" }), {
+      status: auth.status,
+      headers: { "Content-Type": "application/json", ...corsHeaders },
+    });
+  }
+
+  let body: LicensingEmailRequest;
   try {
-    const { email, firstName, licenseStatus, managerEmail, phone, agentId }: LicensingEmailRequest = await req.json();
+    body = await req.json();
+  } catch {
+    body = {} as LicensingEmailRequest;
+  }
+  const { email, licenseStatus, managerEmail, phone, agentId } = body ?? ({} as LicensingEmailRequest);
+  // Refused before any lookup or send, so the post-deploy service-key probe
+  // writes nothing. This used to throw into the catch below: a 500 plus an
+  // error row for a request that was simply incomplete.
+  if (!email || !body?.firstName) {
+    return new Response(JSON.stringify({ success: false, error: "Missing required fields: email and firstName" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json", ...corsHeaders },
+    });
+  }
+  // firstName is typed by a person on a lead card; it goes into the HTML raw
+  // otherwise. Push and SMS are plain text and keep the original.
+  const firstName = body.firstName;
+  const firstNameHtml = escapeHtml(firstName);
 
+  try {
     console.log(`[send-licensing-instructions] Sending to ${email}, status: ${licenseStatus}, agentId: ${agentId}`);
-
-    if (!email || !firstName) {
-      throw new Error("Missing required fields: email and firstName");
-    }
 
     // Resolve manager email from DB if not provided directly
     let resolvedManagerEmail = managerEmail;
@@ -147,7 +180,7 @@ const handler = async (req: Request): Promise<Response> => {
           <tr>
             <td style="padding: 40px 30px;">
               <p style="color: #ffffff; font-size: 18px; line-height: 1.6; margin: 0 0 20px;">
-                Hey ${firstName}! 👋
+                Hey ${firstNameHtml}! 👋
               </p>
               <p style="color: #e0e0e0; font-size: 16px; line-height: 1.6; margin: 0 0 25px;">
                 Since you're already licensed, follow this roadmap in order. Slack is the primary team hub for community and contracting support.
@@ -196,7 +229,7 @@ const handler = async (req: Request): Promise<Response> => {
           <tr>
             <td style="padding: 40px 30px;">
               <p style="color: #ffffff; font-size: 18px; line-height: 1.6; margin: 0 0 20px;">
-                Hey ${firstName}! 👋
+                Hey ${firstNameHtml}! 👋
               </p>
               <p style="color: #e0e0e0; font-size: 16px; line-height: 1.6; margin: 0 0 25px;">
                 Follow this roadmap in order. Your licensing course is the training priority, your Galaxy account tracks progress, and Slack is where the team supports you.

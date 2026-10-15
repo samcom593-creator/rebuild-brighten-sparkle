@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Nobody without a sign-in can send the licensing welcome email or text anymore.",
+    detail: "The licensing instructions email took the recipient, the CC and the phone number straight from the request, with no sign-in. Anyone could have sent a \"Welcome to Galaxy Financial\" email from notifications@apex-financial.org to any address, copied info@kingofsales.net, and texted any phone number on Apex's account. Now it needs a signed-in agent or staff member, or the system key the bulk senders already use. The applicant's name is escaped in the email, and a request with no email or name is refused before anything is sent.",
+    commit: "PL-WIB-LICENSING-GATE",
+  },
+  {
+    ts: "today",
     label: "Nobody without a sign-in can send an agent a fake plaque email anymore.",
     detail: "The plaque email took the agent, the dollar amount and the date straight from the request, with no sign-in. Anyone who knew an agent's id could have emailed that agent and their manager a \"You hit $X\" plaque from notifications@apex-financial.org and published it on a public plaque page. Now it needs a signed-in agent or staff member, or the system key the milestone jobs already use, and a request missing the agent, milestone, amount or date is refused before anything is drawn or sent.",
     commit: "PL-WIB-PLAQUE-GATE",

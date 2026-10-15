@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Every ReadyMode sold call is now a booking packet on the site, so nobody re-listens to a call to book a deal.",
+    detail: "Pulls every call marked Completed Sale from the ReadyMode dialer, downloads the recording, transcribes it, and extracts the client and policy facts needed to book: name, DOB, address, beneficiaries, carrier, face amount, premium, bank, SSN. SSN and bank account and routing are encrypted at rest and revealed only to an admin or manager, with every reveal logged. Lives under My Business, Sold Calls.",
+    commit: "MP-304-READYMODE-SOLD-CALLS",
+  },
+  {
+    ts: "today",
     label: "Nobody without a sign-in can send the licensing welcome email or text anymore.",
     detail: "The licensing instructions email took the recipient, the CC and the phone number straight from the request, with no sign-in. Anyone could have sent a \"Welcome to Galaxy Financial\" email from notifications@apex-financial.org to any address, copied info@kingofsales.net, and texted any phone number on Apex's account. Now it needs a signed-in agent or staff member, or the system key the bulk senders already use. The applicant's name is escaped in the email, and a request with no email or name is refused before anything is sent.",
     commit: "PL-WIB-LICENSING-GATE",

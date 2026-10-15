@@ -27,7 +27,7 @@ import {
   UserPlus,
   Users,
   WalletCards,
-  Mic, Milestone, Send, PhoneCall } from "lucide-react";
+  Mic, Milestone, Send, PhoneCall, FileAudio } from "lucide-react";
 
 import type { AccountMode } from "@/hooks/useAuth";
 
@@ -176,6 +176,7 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
       { label: "Book of Business", href: "/dashboard/production", icon: BookOpen },
       // Working carrier books for rewrites (2026-10-07). Admin and managers only, like the view behind it.
       { label: "Book Flips", href: "/dashboard/books", icon: PhoneCall, modes: ["manager"] },
+      { label: "Sold Calls", href: "/dashboard/sold-calls", icon: FileAudio, modes: ["manager"] },
       { label: "My Commissions", href: "/dashboard/my-commissions", icon: WalletCards },
       { label: "Retention", href: "/dashboard/retention", icon: Shield },
     ],
@@ -278,6 +279,7 @@ const ROUTE_CRUMBS: Record<string, string[]> = {
   "/dashboard/recruiting/hires": ["Grow", "Recruit Pipeline"],
   "/dashboard/book-of-business": ["My Business", "Retention"],
   "/dashboard/books": ["My Business", "Book Flips"],
+  "/dashboard/sold-calls": ["My Business", "Sold Calls"],
   "/dashboard/my-deals": ["My Business", "Book of Business"],
   "/dashboard/nova": ["Support desk"],
   "/dashboard/help": ["Support desk"],

@@ -256,6 +256,14 @@ const handler = async (req: Request): Promise<Response> => {
     });
   }
 
+  // PL-SEMINAR-OFF (2026-10-15, per Sam): the seminar funnel is retired. Recruits
+  // were receiving a "Seminar Zoom is locked" email pointing at a dead link, so we
+  // stop sending it entirely. Returns 200 so the fire-and-forget caller logs no error.
+  // Re-enable by deleting this block.
+  return new Response(JSON.stringify({ ok: true, skipped: "seminar funnel disabled" }), {
+    status: 200, headers: { "Content-Type": "application/json", ...corsHeaders },
+  });
+
   let body: { application_id?: string };
   try {
     body = await req.json();

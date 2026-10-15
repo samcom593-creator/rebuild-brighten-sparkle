@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { useConfirm } from "@/hooks/useConfirm";
+import { proposedReason, rankDuplicateMembers } from "@/lib/agentDuplicateWinner";
 
 /**
  * Sam-adjudication for agent identity duplicates.
@@ -44,6 +45,8 @@ type DupRow = {
   last_deal_at: string | null;
   downline_count: number;
   has_production_signal: boolean;
+  /** agents.user_id IS NOT NULL. Absent until PL-WIB-DUP-CANDIDATES-CANONICAL's view is live. */
+  has_login?: boolean | null;
 };
 
 const REASON_LABEL: Record<DupRow["dup_reason"], string> = {
@@ -85,7 +88,8 @@ export default function AgentDuplicates() {
   });
 
   // One card per duplicate group, biggest split production first. Inside each
-  // group the row with the most lifetime ALP is the proposed canonical.
+  // group the proposed canonical is the row someone can log in as, then the most
+  // lifetime ALP (see rankDuplicateMembers for why production alone is wrong).
   const groups = useMemo(() => {
     const byKey = new Map<string, DupRow[]>();
     for (const row of rows ?? []) {
@@ -95,9 +99,10 @@ export default function AgentDuplicates() {
     }
     return [...byKey.entries()]
       .map(([key, members]) => {
-        const sorted = [...members].sort((a, b) => Number(b.lifetime_alp) - Number(a.lifetime_alp));
+        const sorted = rankDuplicateMembers(members);
         return {
           key,
+          proposedBecause: proposedReason(sorted),
           reason: sorted[0].dup_reason,
           label: sorted[0].group_display_name ?? "—",
           members: sorted,
@@ -242,9 +247,10 @@ export default function AgentDuplicates() {
                           {isProposed && (
                             <Badge variant="secondary" className="gap-1">
                               <ShieldCheck className="h-3 w-3" />
-                              Most production
+                              {group.proposedBecause === "login" ? "Has the login" : "Most production"}
                             </Badge>
                           )}
+                          {member.has_login === false && <Badge variant="outline">No login</Badge>}
                         </div>
                         <p className="text-sm text-muted-foreground">
                           {member.lifetime_deals} deals · {money(Number(member.lifetime_alp))} ALP ·{" "}

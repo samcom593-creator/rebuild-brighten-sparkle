@@ -6779,6 +6779,7 @@
       "dup_reason",
       "group_display_name",
       "group_key",
+      "has_login",
       "has_production_signal",
       "insuracloud_user_id",
       "is_active",

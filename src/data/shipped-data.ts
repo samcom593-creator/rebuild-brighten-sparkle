@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "The agent merge page shows real production and no longer proposes keeping a row nobody can log in as.",
+    detail: "Agent Duplicates measured production from the old deals table only, so the one open pair, Tyler Krejcha, showed $0 on both rows while the agency's production record credits him $15,765 across 5 policies. On a $0 tie the page kept the older row, which was a placeholder created from a Discord post with no login, and offered to merge the row Tyler signs in with into it. Tested without saving: that merge would have left his login pointing at no active agent row and removed him from Producer Trends. The page now reads the same production as the dashboard and always proposes the row with the login. It then falls back to most production and then the oldest row. A No login badge marks the placeholder. Nothing was merged: that click is still Sam's.",
+    commit: "PL-WIB-DUP-CANDIDATES-CANONICAL",
+  },
+  {
+    ts: "today",
     label: "Producer Trends shows production through this week again: 20 producers, 256 deals, $415,871 over 12 weeks.",
     detail: "The page, the producer drawer's 12-week chart, the trend chip on agent profiles and the producer risk board all read one weekly view, and it only counted the AgentLink book. Nobody has entered a deal in AgentLink since Aug 31, so the newest week on the page was Aug 31 and it showed 73 deals and $101,253 where the agency actually wrote 256 deals and $415,871. It also skipped weeks with no sales, so a producer who stopped selling kept showing their last good week as This Week and the No ALP 30D tile could never fire. It now reads the same production the dashboard tile uses, with every one of the last 12 weeks filled in, zeros included. 7 producers who sold earlier in the window and nothing in the last 4 weeks now show under No ALP 30D. Checked as Sam: 256 deals, current week Oct 12. An agent still sees only their own weeks.",
     commit: "PL-WIB-WEEKLY-PRODUCTION-CANONICAL",

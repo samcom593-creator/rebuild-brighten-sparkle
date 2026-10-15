@@ -176,7 +176,7 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 | `resolve-ref-slug` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `run-licensing-checkups` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `schedule-auto-populate` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `schedule-interview` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `schedule-interview` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `score-applicant` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `self-enroll-course` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `seminar-confirmation` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |

@@ -95,7 +95,6 @@
       "reset-agent-password",
       "resolve-ref-slug",
       "schedule-auto-populate",
-      "schedule-interview",
       "score-applicant",
       "self-enroll-course",
       "send-abandoned-followup",

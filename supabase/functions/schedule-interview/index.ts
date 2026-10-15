@@ -1,4 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireSendAuth } from "../_shared/require-send-auth.ts";
+import { escapeHtml } from "../_shared/notify-caller-policy.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,6 +13,22 @@ const FROM_EMAIL = "Galaxy Financial <notifications@apex-financial.org>";
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // PL-WIB-SCHEDULE-INTERVIEW-GATE (2026-10-15). verify_jwt is false and nothing
+  // here read a credential, so any POST naming an application id mailed that
+  // applicant from notifications@ with info@kingofsales.net, their agent, their
+  // manager and every manager on CC, using the caller's meetingLink as the
+  // button href and the caller's notes as raw HTML. Application ids sit in
+  // public URLs (/apply/success?aid=, /status/:id). The only caller is
+  // InterviewScheduler (CallCenter, /dashboard/recruiter, /dashboard/calendar)
+  // on the user's JWT, so the floor is staff_or_agent.
+  const auth = await requireSendAuth(req, { floor: "staff_or_agent" });
+  if (!auth.ok) {
+    return new Response(JSON.stringify({ success: false, error: auth.error ?? "unauthorized" }), {
+      status: auth.status,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   try {
@@ -47,6 +65,22 @@ Deno.serve(async (req: Request) => {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // The link becomes an <a href> in mail sent from our domain, so only a web
+    // address is accepted. A bare host ("zoom.us/j/123") is read as https.
+    let meetingHref: string | null = null;
+    if (typeof meetingLink === "string" && meetingLink.trim()) {
+      const raw = meetingLink.trim();
+      const parse = (s: string): URL | null => (URL.canParse(s) ? new URL(s) : null);
+      const parsed = parse(raw) ?? (/^[a-z][a-z0-9+.-]*:/i.test(raw) ? null : parse(`https://${raw}`));
+      if (!parsed || (parsed.protocol !== "https:" && parsed.protocol !== "http:")) {
+        return new Response(JSON.stringify({ success: false, error: "Meeting link must be a web address" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      meetingHref = parsed.toString();
     }
 
     // Get application details + assigned agent
@@ -143,7 +177,7 @@ Deno.serve(async (req: Request) => {
           <p style="margin: 8px 0 0; color: #94a3b8; font-size: 14px;">Galaxy Financial</p>
         </div>
         <div style="padding: 32px;">
-          <p style="font-size: 16px; margin: 0 0 24px;">Hi ${app.first_name},</p>
+          <p style="font-size: 16px; margin: 0 0 24px;">Hi ${escapeHtml(app.first_name)},</p>
           <p style="color: #cbd5e1; margin: 0 0 24px;">Your interview has been scheduled! Here are the details:</p>
 
           <div style="background: #1e2330; border-radius: 8px; padding: 20px; margin-bottom: 24px; border: 1px solid #2d3748;">
@@ -158,20 +192,20 @@ Deno.serve(async (req: Request) => {
               </tr>
               <tr>
                 <td style="color: #64748b; padding: 6px 0; font-size: 13px;">📋 Type</td>
-                <td style="color: #e2e8f0; padding: 6px 0; font-size: 13px; font-weight: 600;">${typeLabel}</td>
+                <td style="color: #e2e8f0; padding: 6px 0; font-size: 13px; font-weight: 600;">${escapeHtml(typeLabel)}</td>
               </tr>
-              ${meetingLink ? `
+              ${meetingHref ? `
               <tr>
                 <td style="color: #64748b; padding: 6px 0; font-size: 13px;">🔗 Link</td>
                 <td style="padding: 6px 0;">
-                  <a href="${meetingLink}" style="color: #6366f1; font-size: 13px;">${meetingLink}</a>
+                  <a href="${escapeHtml(meetingHref)}" style="color: #6366f1; font-size: 13px;">${escapeHtml(meetingHref)}</a>
                 </td>
               </tr>
               ` : ""}
               ${notes ? `
               <tr>
                 <td style="color: #64748b; padding: 6px 0; font-size: 13px;">📝 Notes</td>
-                <td style="color: #e2e8f0; padding: 6px 0; font-size: 13px;">${notes}</td>
+                <td style="color: #e2e8f0; padding: 6px 0; font-size: 13px;">${escapeHtml(notes)}</td>
               </tr>
               ` : ""}
             </table>

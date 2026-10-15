@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Nobody without a sign-in can send the interview-scheduled email anymore.",
+    detail: "The interview confirmation email needed only an application id, and those ids show up in public links like the application status page. Anyone holding one could send that applicant an \"Interview Scheduled\" email from notifications@apex-financial.org with info@kingofsales.net, their agent, their manager and every manager copied, with any link they chose as the meeting button and any text in the notes. Now it needs a signed-in agent or staff member, which is everyone who uses the scheduler. The meeting link must be a web address, and the name, notes and link are escaped in the email.",
+    commit: "PL-WIB-SCHEDULE-INTERVIEW-GATE",
+  },
+  {
+    ts: "today",
     label: "Every ReadyMode sold call now shows up on the client's own record in Client Pipeline, Book of Business and Book Flips, matched by phone and name.",
     detail: "Pulls every call marked Completed Sale from the ReadyMode dialer, downloads the recording, transcribes it, and extracts the client and policy facts needed to book: name, DOB, address, beneficiaries, carrier, face amount, premium, bank, SSN. It is merged into the client records you already use, not a separate page: open a client in Client Pipeline, a deal in Book of Business, or a row in Book Flips and the sold call appears inline when the phone or name matches. SSN and bank account and routing are encrypted at rest and revealed only to an admin or manager, with every reveal logged.",
     commit: "MP-304-READYMODE-SOLD-CALLS",

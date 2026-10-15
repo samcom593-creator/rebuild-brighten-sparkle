@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Producer Trends shows production through this week again: 20 producers, 256 deals, $415,871 over 12 weeks.",
+    detail: "The page, the producer drawer's 12-week chart, the trend chip on agent profiles and the producer risk board all read one weekly view, and it only counted the AgentLink book. Nobody has entered a deal in AgentLink since Aug 31, so the newest week on the page was Aug 31 and it showed 73 deals and $101,253 where the agency actually wrote 256 deals and $415,871. It also skipped weeks with no sales, so a producer who stopped selling kept showing their last good week as This Week and the No ALP 30D tile could never fire. It now reads the same production the dashboard tile uses, with every one of the last 12 weeks filled in, zeros included. 7 producers who sold earlier in the window and nothing in the last 4 weeks now show under No ALP 30D. Checked as Sam: 256 deals, current week Oct 12. An agent still sees only their own weeks.",
+    commit: "PL-WIB-WEEKLY-PRODUCTION-CANONICAL",
+  },
+  {
+    ts: "today",
     label: "The Manager Hierarchy and Top Producers MTD panel now shows October's real production: 11 producers, 43 deals, $74,183.72.",
     detail: "Both views read the AgentLink book, and nobody has entered a deal in AgentLink since Aug 31. Deals now come in through Post-a-Deal and Discord, which the main dashboard tile already counted (43 deals / $74,183.72) and this panel never did. The only October rows left in the book were two protest entries a departed agent typed into AgentLink on Oct 2, with policy numbers like 'releasethecarrierandtakemeoffthisportal' and $150,000 a month in premium. Top Producers ranked that agent first and only at $1,821,600, and every manager showed $0. Both views now read the same canonical production the dashboard tile uses. Checked as Sam: 7 managers, 43 deals, $74,183.72, matching the tile to the cent.",
     commit: "PL-WIB-MTD-PANELS-CANONICAL",

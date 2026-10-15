@@ -13,8 +13,8 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
-    label: "Every ReadyMode sold call is now a booking packet on the site, so nobody re-listens to a call to book a deal.",
-    detail: "Pulls every call marked Completed Sale from the ReadyMode dialer, downloads the recording, transcribes it, and extracts the client and policy facts needed to book: name, DOB, address, beneficiaries, carrier, face amount, premium, bank, SSN. SSN and bank account and routing are encrypted at rest and revealed only to an admin or manager, with every reveal logged. Lives under My Business, Sold Calls.",
+    label: "Every ReadyMode sold call now shows up on the client's own record in Client Pipeline, Book of Business and Book Flips, matched by phone and name.",
+    detail: "Pulls every call marked Completed Sale from the ReadyMode dialer, downloads the recording, transcribes it, and extracts the client and policy facts needed to book: name, DOB, address, beneficiaries, carrier, face amount, premium, bank, SSN. It is merged into the client records you already use, not a separate page: open a client in Client Pipeline, a deal in Book of Business, or a row in Book Flips and the sold call appears inline when the phone or name matches. SSN and bank account and routing are encrypted at rest and revealed only to an admin or manager, with every reveal logged.",
     commit: "MP-304-READYMODE-SOLD-CALLS",
   },
   {

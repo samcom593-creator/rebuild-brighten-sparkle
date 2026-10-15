@@ -17,6 +17,7 @@ import {
   priorityTier, shortDate, sortPolicies, splitName,
   type BookFilter, type BookPolicy, type FlipFilter, type FlipStatus, type SortKey,
 } from "@/lib/bookFlips";
+import { SoldCallPanel } from "@/components/clients/SoldCallPanel";
 
 const COLUMNS =
   "flip_key, carrier, policy_number, client_key, product, book_status, is_dead, is_book_active, status_group, " +
@@ -584,6 +585,7 @@ function PolicyCard({ p, busy, onSet }: { p: BookPolicy; busy: boolean; onSet: (
           </Button>
         </div>
       )}
+      <div className="mt-2"><SoldCallPanel phone={p.phone} firstName={p.client_first_name} lastName={p.client_last_name} /></div>
     </li>
   );
 }

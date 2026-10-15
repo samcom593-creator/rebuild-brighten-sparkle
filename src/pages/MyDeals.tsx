@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyDownline } from "@/hooks/useMyDownline";
 import { SubmitDealDialog } from "@/components/deals/SubmitDealDialog";
+import { SoldCallPanel } from "@/components/clients/SoldCallPanel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -437,7 +438,7 @@ export default function MyDeals() {
                           <Badge variant="outline" className={statusColor(d.status)}>{d.status || "unknown"}</Badge>
                         </div>
                       </button>
-                      {isOpen && (
+                      {isOpen && (<>
                         <div className="px-4 pb-4 pt-1 grid grid-cols-2 md:grid-cols-4 gap-3 text-xs bg-muted/10">
                           <div>
                             <p className="text-muted-foreground uppercase tracking-wider text-[11px]">Producer</p>
@@ -468,7 +469,8 @@ export default function MyDeals() {
                             <p className="font-semibold line-clamp-2">{d.row_key}</p>
                           </div>
                         </div>
-                      )}
+                        <div className="px-4 pb-4"><SoldCallPanel firstName={(d.client_name||"").trim().split(/\s+/)[0]} lastName={(d.client_name||"").trim().split(/\s+/).slice(1).join(" ")} /></div>
+                      </>)}
                     </div>
                   );
                 })}

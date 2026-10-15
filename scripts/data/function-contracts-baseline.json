@@ -38,7 +38,6 @@
       "check-email-status",
       "check-overdue-tasks",
       "claim-account",
-      "confirm-agent-removal",
       "create-agent-from-leaderboard",
       "create-lead-checkout",
       "create-new-agent-account",

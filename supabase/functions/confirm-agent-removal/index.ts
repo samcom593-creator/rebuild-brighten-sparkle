@@ -1,8 +1,47 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { requireSendAuth } from "../_shared/require-send-auth.ts";
+import { escapeHtml } from "../_shared/notify-caller-policy.ts";
+import { safeEqual } from "../_shared/send-floor.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// PL-WIB-REMOVAL-APPROVAL-GATE (2026-10-15). The approve link terminates an
+// agent, and until this change the only thing it checked was requestId. The
+// POST that creates a request read no credential and returned that requestId
+// in its response, so two anonymous requests (POST, then GET ?action=approve)
+// removed any agent from the roster with no human in the loop. Agent ids are
+// readable by any self-signup (MP-326), so "any agent" meant any of them.
+//
+// requestId is not a secret even with the POST gated: RLS lets a manager
+// SELECT the requests they created, so a manager could approve their own.
+// The link now carries an HMAC of the action and the request id under the
+// service role key, which never leaves this environment. Only the email to
+// info@kingofsales.net carries it.
+async function linkToken(action: string, requestId: string, key: string): Promise<string> {
+  const k = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(key),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const sig = await crypto.subtle.sign(
+    "HMAC",
+    k,
+    new TextEncoder().encode(`confirm-agent-removal:v1:${action}:${requestId.toLowerCase()}`),
+  );
+  return Array.from(new Uint8Array(sig), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+const htmlPage = (title: string, body: string, status: number) =>
+  new Response(
+    `<html><head><style>body{font-family:system-ui;padding:40px;text-align:center;}</style></head><body><h1>${title}</h1><p>${body}</p></body></html>`,
+    { headers: { ...corsHeaders, "Content-Type": "text/html" }, status },
+  );
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -38,6 +77,17 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Handle confirmation from email link
     if (action && requestId) {
+      if ((action !== "approve" && action !== "deny") || !UUID_RE.test(requestId)) {
+        return htmlPage("Invalid link", "This approval link is malformed.", 400);
+      }
+      // Verified before any read, so an unsigned link learns nothing about
+      // whether the request exists.
+      const token = url.searchParams.get("token") ?? "";
+      const expected = await linkToken(action, requestId, supabaseServiceKey);
+      if (!safeEqual(token, expected)) {
+        return htmlPage("Invalid link", "This approval link is not valid. Use the link in the removal request email.", 403);
+      }
+
       console.log(`Processing ${action} for request ${requestId}`);
 
       if (action === "approve") {
@@ -200,17 +250,65 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // Handle new removal request
+    // Handle new removal request. Credential first, body second: the only
+    // callers are DeactivateAgentDialog's non-admin branch on staff pages
+    // (DashboardCRM, DashboardCommandCenter, TeamHierarchyManager); the admin
+    // branch writes agents directly and never calls this.
+    const auth = await requireSendAuth(req, { floor: "staff" });
+    if (!auth.ok) {
+      return new Response(
+        JSON.stringify({ error: auth.error }),
+        { status: auth.status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     const body: RemovalRequest = await req.json();
-    console.log("Creating removal request:", body);
+    if (!UUID_RE.test(String(body.agentId ?? ""))) {
+      return new Response(
+        JSON.stringify({ error: "agentId must be a uuid" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // The requester is whoever holds the token, not whoever the body names.
+    // A service caller (none exist today) has no user, so it must name one.
+    const requesterId = auth.caller?.startsWith("user:") ? auth.caller.slice(5) : String(body.requestedBy ?? "");
+    if (!UUID_RE.test(requesterId)) {
+      return new Response(
+        JSON.stringify({ error: "requestedBy must be a uuid" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // Names in the email come from the rows, so the email Sam approves from
+    // says who is really being removed and who really asked.
+    const { data: agentRows } = await supabase
+      .from("agents")
+      .select("display_name")
+      .eq("id", body.agentId)
+      .limit(1);
+    if (!agentRows?.length) {
+      return new Response(
+        JSON.stringify({ error: "agent not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    const { data: requesterRows } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("user_id", requesterId)
+      .limit(1);
+    const agentName = String(agentRows[0].display_name || body.agentName || "Unknown agent");
+    const requesterName = String(requesterRows?.[0]?.full_name || body.requestedByName || "—");
+    const reason = String(body.reason || "No reason provided");
 
     // Create the removal request
     const { data: request, error: insertError } = await supabase
       .from("agent_removal_requests")
       .insert({
         agent_id: body.agentId,
-        requested_by: body.requestedBy,
-        reason: body.reason || "No reason provided",
+        requested_by: requesterId,
+        reason,
       })
       .select()
       .single();
@@ -221,13 +319,14 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Send confirmation email to admin
-    const confirmUrl = `${supabaseUrl}/functions/v1/confirm-agent-removal?action=approve&requestId=${request.id}`;
-    const denyUrl = `${supabaseUrl}/functions/v1/confirm-agent-removal?action=deny&requestId=${request.id}`;
+    const base = `${supabaseUrl}/functions/v1/confirm-agent-removal?requestId=${request.id}`;
+    const confirmUrl = `${base}&action=approve&token=${await linkToken("approve", request.id, supabaseServiceKey)}`;
+    const denyUrl = `${base}&action=deny&token=${await linkToken("deny", request.id, supabaseServiceKey)}`;
 
     const emailResponse = await resend.emails.send({
       from: "Galaxy Team <notifications@apex-financial.org>",
       to: ["info@kingofsales.net"],
-      subject: `🗑️ Agent Removal Request: ${body.agentName}`,
+      subject: `🗑️ Agent Removal Request: ${agentName.replace(/[\r\n]+/g, " ").slice(0, 120)}`,
       html: `
         <div style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background: linear-gradient(135deg, #dc2626, #b91c1c); color: white; padding: 20px; border-radius: 12px 12px 0 0; text-align: center;">
@@ -239,15 +338,15 @@ const handler = async (req: Request): Promise<Response> => {
             <table style="width: 100%; border-collapse: collapse;">
               <tr>
                 <td style="padding: 8px 0; color: #64748b;">Agent Name:</td>
-                <td style="padding: 8px 0; font-weight: bold; color: #1e293b;">${body.agentName}</td>
+                <td style="padding: 8px 0; font-weight: bold; color: #1e293b;">${escapeHtml(agentName)}</td>
               </tr>
               <tr>
                 <td style="padding: 8px 0; color: #64748b;">Requested By:</td>
-                <td style="padding: 8px 0; color: #1e293b;">${body.requestedByName}</td>
+                <td style="padding: 8px 0; color: #1e293b;">${escapeHtml(requesterName)}</td>
               </tr>
               <tr>
                 <td style="padding: 8px 0; color: #64748b;">Reason:</td>
-                <td style="padding: 8px 0; color: #1e293b;">${body.reason || "No reason provided"}</td>
+                <td style="padding: 8px 0; color: #1e293b;">${escapeHtml(reason)}</td>
               </tr>
             </table>
             
@@ -270,8 +369,10 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("Email sent:", emailResponse);
 
+    // No requestId in the response: the requester must not hold anything that
+    // reaches the approve branch. DeactivateAgentDialog reads only `error`.
     return new Response(
-      JSON.stringify({ success: true, requestId: request.id }),
+      JSON.stringify({ success: true }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: any) {

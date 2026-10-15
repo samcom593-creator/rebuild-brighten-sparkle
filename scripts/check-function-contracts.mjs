@@ -437,6 +437,12 @@ const PUBLIC_ALLOWLIST = new Set([
   // with a caller-chosen link and raw-HTML notes. requireSendAuth, staff_or_agent
   // (InterviewScheduler on CallCenter, /dashboard/recruiter, /dashboard/calendar).
   "schedule-interview",
+  // confirm-agent-removal (2026-10-15, PL-WIB-REMOVAL-APPROVAL-GATE): an
+  // anonymous POST created a removal request and got its requestId back, and
+  // GET ?action=approve&requestId= terminated the agent. requireSendAuth, staff
+  // (DeactivateAgentDialog's non-admin branch); the email links carry an HMAC
+  // token over action + requestId, verified before any read.
+  "confirm-agent-removal",
   // 19 senders whose only caller is an admin "Run now" button (2026-10-14,
   // PL-WIB-RUN-NOW-SENDERS): AutomationHealth / AutomationHub, both
   // requireAdmin. No cron row, no trigger, no local script; check-team-milestones
@@ -630,6 +636,7 @@ const PUBLIC_CONTRACT = {
   "send-plaque-recognition": "in_handler_gate",
   "send-licensing-instructions": "in_handler_gate",
   "schedule-interview": "in_handler_gate",
+  "confirm-agent-removal": "in_handler_gate",
   // The 19 admin "Run now" senders, 2026-10-14: requireSendAuth, admin_or_manager.
   "check-abandoned-applications": "in_handler_gate",
   "check-comeback-milestones": "in_handler_gate",

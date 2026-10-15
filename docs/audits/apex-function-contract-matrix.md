@@ -68,7 +68,7 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 | `check-team-milestones` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `check-weekly-milestones` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `claim-account` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `confirm-agent-removal` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `confirm-agent-removal` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `consume-invite-token` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `content-library` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `content-share` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |

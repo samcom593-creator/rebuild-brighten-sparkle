@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Nobody can remove an agent through the removal-approval link without Sam's email anymore.",
+    detail: "The manager \"request removal\" path read no sign-in. Anyone could create a removal request for any agent, and the reply handed back the request id. The approve link needed only that id, so two requests from a stranger took an agent off the roster with nobody approving it. Agent ids are visible to any account that signs up. Creating a request now needs a signed-in staff member, the requester's name comes from their login, and the reply no longer includes the id. The approve and deny links in the email carry a signature only the server can make, so only the email Sam receives can approve. Names and the reason are escaped in that email. Never used yet (0 removal requests ever), so nothing was lost.",
+    commit: "PL-WIB-REMOVAL-APPROVAL-GATE",
+  },
+  {
+    ts: "today",
     label: "Nobody without a sign-in can send the interview-scheduled email anymore.",
     detail: "The interview confirmation email needed only an application id, and those ids show up in public links like the application status page. Anyone holding one could send that applicant an \"Interview Scheduled\" email from notifications@apex-financial.org with info@kingofsales.net, their agent, their manager and every manager copied, with any link they chose as the meeting button and any text in the notes. Now it needs a signed-in agent or staff member, which is everyone who uses the scheduler. The meeting link must be a web address, and the name, notes and link are escaped in the email.",
     commit: "PL-WIB-SCHEDULE-INTERVIEW-GATE",

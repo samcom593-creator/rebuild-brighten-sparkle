@@ -216,6 +216,8 @@ PUBLIC_ALLOWLIST=(
   "send-licensing-instructions"
   # schedule-interview (2026-10-15): requireSendAuth staff_or_agent; InterviewScheduler on the user's JWT.
   "schedule-interview"
+  # confirm-agent-removal (2026-10-15): requireSendAuth staff on the POST; approve/deny links carry an HMAC token.
+  "confirm-agent-removal"
   # 19 admin "Run now" senders (2026-10-14): requireSendAuth, admin_or_manager.
   # check-daily-plaques calls check-team-milestones with the service key, which
   # is not a user JWT, so verify_jwt stays false.

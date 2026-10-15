@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { looseSupabase } from "@/lib/looseSupabase";
 import { Button } from "@/components/ui/button";
+import { externalHref } from "@/lib/externalHref";
 import { useAuth } from "@/hooks/useAuth";
 import { SOLD_CALL_EXTRA_UID } from "@/hooks/useSoldCallKeys";
 
@@ -69,6 +70,9 @@ export function SoldCallPanel({ phone, firstName, lastName }: { phone?: string |
   const bens = useMemo(() => p?.beneficiaries ?? [], [p]);
 
   if (!p) return null; // no match → render nothing (no clutter)
+  // ReadyMode recording URL from the DB: laundered so a scheme-less value can never
+  // resolve relative to the current page (MP-497). Every live row is https today.
+  const recordingHref = externalHref(p.recording_url);
 
   const reveal = async () => {
     setRevealing(true);
@@ -147,9 +151,9 @@ export function SoldCallPanel({ phone, firstName, lastName }: { phone?: string |
           )}
 
           <div className="flex flex-wrap items-center gap-2 border-t border-amber-500/20 pt-3">
-            {p.recording_url && (
+            {recordingHref && (
               <Button asChild variant="outline" size="sm">
-                <a href={p.recording_url} target="_blank" rel="noopener noreferrer"><Headphones className="mr-1 h-3.5 w-3.5" />Recording{mmss(p.duration_seconds)}</a>
+                <a href={recordingHref} target="_blank" rel="noopener noreferrer"><Headphones className="mr-1 h-3.5 w-3.5" />Recording{mmss(p.duration_seconds)}</a>
               </Button>
             )}
             {p.status === "booked" ? (

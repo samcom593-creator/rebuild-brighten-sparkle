@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Producer Reactivation no longer tells you to win back people who sold this week.",
+    detail: "The win-back call list was built from the AgentLink book, which nobody has posted to since Aug 31, so anyone who moved to posting deals here looked dark. The Hot winback tab opened on Chudi Ifediora, Obiajulu Ifediora and Wendell Funderburg, who last sold 1, 4 and 1 days ago. The list also held Sam, Aisha Kebbeh and Michael Kayembe, plus Alyjah Rowland, who was removed from the roster on Aug 22. It now reads every deal, from AgentLink and from here, so it lists only people who really have gone quiet, including 5 native sellers it never showed before, such as Marquay Vaughns (8 deals, 43 days dark).",
+    commit: "PL-WIB-REACTIVATION-CANONICAL",
+  },
+  {
+    ts: "today",
     label: "Home has one date bar: the scoreboard's dates now drive Total IMO by agency too, so the two totals agree.",
     detail: "Home had a second This month picker that ran to Nov 1 and counted policies dated later in October, so Total IMO by agency read $86,844 and 50 policies beside a scoreboard reading $83,092 and 48 for the same book. Both now read the window the scoreboard shows, and the block says which dates it covers. Sam's own book shows as Galaxy Financial instead of the database's old APEX name, the repeated contracting banner above the scoreboard is gone, the Discord line says the import is off because the bot has no token, and the onboarding tile that collided with the Onboarding stage now reads No sale yet.",
     commit: "PL-HOME-ONE-DATE-BAR",

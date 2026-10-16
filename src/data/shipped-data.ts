@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "VAs no longer see outside-agency deals, and Aisha now sees the whole book on every page.",
+    detail: "VAs and VA managers could read all 104 outside-agency deals through a CRM rule that gives VA staff every agent's records. That table now follows the same rule as the rest of the book: Sam and Aisha see it all, agents see their own, managers their team. Aisha also saw only part of two client tables, 130 of 1,384 AgentLink snapshot rows and 14 of 89 carrier policies, so Book of Business disagreed with her other pages; she now sees all of them. Checked live as each role.",
+    commit: "PL-SEC-BOOK-READERS-EXT",
+  },
+  {
+    ts: "today",
     label: "Producer Reactivation no longer tells you to win back people who sold this week.",
     detail: "The win-back call list was built from the AgentLink book, which nobody has posted to since Aug 31, so anyone who moved to posting deals here looked dark. The Hot winback tab opened on Chudi Ifediora, Obiajulu Ifediora and Wendell Funderburg, who last sold 1, 4 and 1 days ago. The list also held Sam, Aisha Kebbeh and Michael Kayembe, plus Alyjah Rowland, who was removed from the roster on Aug 22. It now reads every deal, from AgentLink and from here, so it lists only people who really have gone quiet, including 5 native sellers it never showed before, such as Marquay Vaughns (8 deals, 43 days dark).",
     commit: "PL-WIB-REACTIVATION-CANONICAL",

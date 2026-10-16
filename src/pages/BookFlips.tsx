@@ -20,6 +20,7 @@ import { SoldCallPanel } from "@/components/clients/SoldCallPanel";
 import { useSoldCallKeys } from "@/hooks/useSoldCallKeys";
 import { ageFromDob, dobDisplay } from "@/lib/clientFacts";
 import { FlipActions, type FlipSetOptions } from "@/components/books/FlipActions";
+import { EASY_RESELLS_KEY } from "@/lib/easyResells";
 
 const COLUMNS =
   "flip_key, carrier, policy_number, client_key, product, book_status, is_dead, is_book_active, status_group, " +
@@ -166,11 +167,15 @@ export default function BookFlips() {
     if (agentFilter !== ALL_AGENTS && !agentFilter.startsWith("group:") && !list.some((a) => a.name === agentFilter)) list.push({ name: agentFilter, count: 0, gone: false });
     return list;
   }, [searched, stateFilter, bookFilter, flipFilter, now, agentFilter]);
-  // Everyone under Vantage, counted the same way: the Vantage Financial producers' policies under these filters.
-  const vantageCount = useMemo(
-    () => searched.filter((p) => p.agent_group === "Vantage" && matchesState(p, stateFilter) && matchesBook(p, bookFilter) && matchesFlip(p, flipFilter, now)).length,
-    [searched, stateFilter, bookFilter, flipFilter, now],
-  );
+  // Everyone under Vantage, counted under the bucket picking it opens on: the URL's ?book when set, otherwise the
+  // group's own default (the same thing bookFilter computes once it is picked), so the label and the list agree.
+  const vantageValue = agentGroupValue("Vantage");
+  const vantageCount = useMemo(() => {
+    const book: BookFilter = BOOK_FILTERS.some((f) => f.key === bookParam)
+      ? (bookParam as BookFilter)
+      : defaultBookFilter(all.filter((p) => matchesAgent(p, vantageValue)));
+    return searched.filter((p) => matchesAgent(p, vantageValue) && matchesState(p, stateFilter) && matchesBook(p, book) && matchesFlip(p, flipFilter, now)).length;
+  }, [all, searched, bookParam, stateFilter, flipFilter, now, vantageValue]);
   // The selected state always shows: with its real count when the top-12 cut hid it, as 0 only when nobody is there.
   const stateChips = useMemo(() => stateChipsFor(byState, stateFilter), [byState, stateFilter]);
   const unknownCount = byState.find((s) => s.code === STATE_UNKNOWN)?.count ?? 0;
@@ -235,6 +240,7 @@ export default function BookFlips() {
       // list stale so the other one reloads the next time it is shown; refetchType "none" means no
       // 1,000-row reload now and no refetch racing another optimistic save.
       void qc.invalidateQueries({ queryKey: ["book-flips"], refetchType: "none" });
+      void qc.invalidateQueries({ queryKey: [EASY_RESELLS_KEY], refetchType: "none" });
       if (status === "resold") toast.success("Marked resold.");
       return true;
     } catch (e) {
@@ -371,8 +377,8 @@ export default function BookFlips() {
           className="h-11 rounded-md border border-input bg-background px-3 text-base text-foreground sm:max-w-[16rem] sm:text-sm"
         >
           <option value={ALL_AGENTS}>All agents</option>
-          {(vantageCount > 0 || agentFilter === agentGroupValue("Vantage")) && (
-            <option value={agentGroupValue("Vantage")}>Everyone under Vantage · {vantageCount}</option>
+          {(vantageCount > 0 || agentFilter === vantageValue) && (
+            <option value={vantageValue}>Everyone under Vantage · {vantageCount}</option>
           )}
           {agentOptions.map((a) => (
             <option key={a.name} value={a.name}>{a.name}{a.gone ? " (left)" : ""} · {a.count}</option>

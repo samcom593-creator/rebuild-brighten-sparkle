@@ -19,14 +19,15 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FlipActions, type FlipSetOptions } from "@/components/books/FlipActions";
-import { SubmitDealDialog } from "@/components/deals/SubmitDealDialog";
+import { SubmitDealDialog, type PostedDealReceipt } from "@/components/deals/SubmitDealDialog";
+import { BOOK_CLIENT_DETAILS_KEY } from "@/hooks/useBookClientDetails";
 import { contactLinkProps, formatPhoneDisplay, phoneHref, smsHref } from "@/lib/phone";
 import { splitClientName } from "@/lib/clientFacts";
-import type { FlipStatus } from "@/lib/bookFlips";
+import { shortDate, type FlipStatus } from "@/lib/bookFlips";
 import { cn } from "@/lib/utils";
 import {
-  BUCKET_LABEL, BUCKET_TONE, RESELL_FILTERS, matchesResellFilter, matchesResellSearch, resellCounts, sortResells, touchedText,
-  type EasyResell, type ResellFilter,
+  BUCKET_LABEL, BUCKET_TONE, EASY_RESELLS_KEY, RESELL_FILTERS, closesBookRow, closesCallRow, matchesResellFilter, matchesResellSearch,
+  resellCounts, sortResells, touchedText, type EasyResell, type ResellFilter,
 } from "@/lib/easyResells";
 
 const PAGE = 50;
@@ -59,7 +60,7 @@ export default function EasyResells() {
   const { isAdmin, user } = useAuth();
   const canView = !!isAdmin || user?.id === SOLD_CALL_EXTRA_UID;
   usePageTitle("Easy Resells");
-  const q = useQuery({ queryKey: ["easy-resells"], queryFn: fetchResells, staleTime: 30_000, enabled: canView });
+  const q = useQuery({ queryKey: [EASY_RESELLS_KEY], queryFn: fetchResells, staleTime: 30_000, enabled: canView });
   const [filter, setFilter] = useState<ResellFilter>("all");
   const [search, setSearch] = useState("");
   const [shown, setShown] = useState(PAGE);
@@ -171,7 +172,8 @@ function ResellRow({ r }: { r: EasyResell }) {
           {facts && <p className="mt-0.5 text-sm text-muted-foreground">{facts}</p>}
           {touched && <p className="mt-0.5 text-xs font-medium text-muted-foreground">{touched}</p>}
         </div>
-        {r.event_at && <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{shortDay(r.event_at)}</span>}
+        {/* A call is a moment (Phoenix time); a book row's date is a calendar date, read as stored. */}
+        {r.event_at && <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{r.call_id ? shortDay(r.event_at) : shortDate(r.event_at)}</span>}
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -201,19 +203,33 @@ function ResellRow({ r }: { r: EasyResell }) {
   );
 }
 
+/** Patch one row in the cached list (or drop it once the person is closed) so it does not jump mid-call. */
+function patchRow(qc: ReturnType<typeof useQueryClient>, itemKey: string, closed: boolean, patch: Partial<EasyResell>) {
+  qc.setQueryData<EasyResell[]>([EASY_RESELLS_KEY], (list) => list && (closed
+    ? list.filter((x) => x.item_key !== itemKey)
+    : list.map((x) => (x.item_key === itemKey ? { ...x, ...patch } : x))));
+  // Stale for next time, without a reload now that would re-sort the list under the caller.
+  void qc.invalidateQueries({ queryKey: [EASY_RESELLS_KEY], refetchType: "none" });
+}
+
 /** The four call marks Sold Calls uses (sold_call_set_status), on one line. Resold posts the deal first. */
 function CallMarks({ r }: { r: EasyResell }) {
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
   const { firstName, lastName } = splitClientName(r.client_name);
-  const mark = async (status: "contacted" | "resold" | "pushed" | "pushback") => {
+  const mark = async (status: "contacted" | "resold" | "pushed" | "pushback", receipt?: PostedDealReceipt) => {
     if (busy || !r.call_id) return;
     setBusy(true);
     try {
+      // Same order as Sold Calls: a sold call's packet is marked resold first, with the new policy number.
+      if (status === "resold" && r.packet_id) {
+        const { error: bookErr } = await (supabase.rpc as unknown as Rpc)("booking_packet_mark_booked", { p_id: r.packet_id, p_policy: receipt?.policyNumber ?? "" });
+        if (bookErr) throw new Error(bookErr.message);
+      }
       const { error } = await (supabase.rpc as unknown as Rpc)("sold_call_set_status", { p_call_id: r.call_id, p_status: status, p_note: null });
       if (error) throw new Error(error.message);
       toast.success(`${r.client_name || "Client"}: ${status === "pushed" ? "Pushed" : status[0].toUpperCase() + status.slice(1)}.`);
-      void qc.invalidateQueries({ queryKey: ["easy-resells"] });
+      patchRow(qc, r.item_key, closesCallRow(status), { work_status: status, last_touch_at: new Date().toISOString() });
       void qc.invalidateQueries({ queryKey: ["sold-calls-queue"] });
       void qc.invalidateQueries({ queryKey: ["objection-calls"] });
     } catch (e) {
@@ -229,8 +245,11 @@ function CallMarks({ r }: { r: EasyResell }) {
         trigger={<Button size="sm" disabled={busy}>Resold</Button>}
         title="Post the new policy"
         description="Posting counts the sale in production and marks this call resold."
-        initialClient={{ firstName, lastName, phone: r.phone ?? "", dob: "" }}
-        onPosted={() => void mark("resold")}
+        initialClient={{ firstName, lastName, phone: r.phone ?? "", dob: r.dob ?? "" }}
+        initialDeal={r.bucket === "ready_to_finish" || r.bucket === "vantage"
+          ? { carrierName: r.carrier, product: r.product, monthlyPremium: r.monthly_premium }
+          : undefined}
+        onPosted={(receipt) => void mark("resold", receipt)}
         secondaryAction={{ label: "Already posted: just mark resold", onClick: () => void mark("resold") }}
       />
       <Button size="sm" variant="outline" disabled={busy} onClick={() => void mark("pushed")}>Push</Button>
@@ -249,7 +268,7 @@ function BookMarks({ r }: { r: EasyResell }) {
     if (busy || !r.flip_carrier || !r.flip_policy_number) return false;
     setBusy(true);
     try {
-      const { error } = await (supabase.rpc as unknown as Rpc)("book_flip_set", {
+      const { data, error } = await (supabase.rpc as unknown as Rpc)("book_flip_set", {
         p_carrier: r.flip_carrier,
         p_policy_number: r.flip_policy_number,
         p_client_key: r.flip_client_key,
@@ -264,9 +283,17 @@ function BookMarks({ r }: { r: EasyResell }) {
         } : {}),
       });
       if (error) throw new Error(error.message);
+      const saved = (data ?? {}) as { flip_status?: string; attempts?: number; last_contact_at?: string | null; callback_at?: string | null };
+      const next = saved.flip_status ?? status;
+      patchRow(qc, r.item_key, closesBookRow(next, saved.callback_at ?? opts.callbackAt ?? null), {
+        flip_status: next,
+        attempts: saved.attempts ?? r.attempts,
+        last_touch_at: saved.last_contact_at ?? (opts.countAttempt ? new Date().toISOString() : r.last_touch_at),
+        callback_at: saved.callback_at ?? null,
+      });
       if (status === "resold") toast.success("Marked resold.");
-      void qc.invalidateQueries({ queryKey: ["easy-resells"] });
       void qc.invalidateQueries({ queryKey: ["book-flips"], refetchType: "none" });
+      void qc.invalidateQueries({ queryKey: [BOOK_CLIENT_DETAILS_KEY] });
       void qc.invalidateQueries({ queryKey: ["book-flip-counts"] });
       return true;
     } catch (e) {
@@ -285,7 +312,7 @@ function BookMarks({ r }: { r: EasyResell }) {
       idBase={r.item_key}
       status={status}
       busy={busy}
-      client={{ firstName, lastName, phone: r.phone ?? "", dob: "" }}
+      client={{ firstName, lastName, phone: r.phone ?? "", dob: r.dob ?? "" }}
       onSet={onSet}
     />
   );

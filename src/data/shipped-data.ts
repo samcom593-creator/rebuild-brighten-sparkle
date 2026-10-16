@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Easy Resells: review fixes (no DNC, honest Vantage, marks stay put)",
+    detail: "An adversarial review confirmed 19 findings. Do Not Call numbers and impossible numbers are off the queue. A Vantage agent's sale is no longer called 'never posted'. People already rewritten, or who bought after an objection, drop off. Resold books the sale's packet and prefills DOB and policy. Marks update in place. A manager's marks on AgentLink rows no longer vanish on reload. Book Flips stops listing 7 policies twice and reads AgentLink's catch-all 'submitted' as Unknown.",
+    commit: "PL-EASY-RESELLS",
+  },
+  {
+    ts: "today",
     label: "Easy Resells: the easiest people to resell, ranked",
     detail: "New page under My Business (admins and Aisha). One list: gave SSN + bank but never posted (26), lapsing (112), dropped in the last 18 months (123), Vantage clients, agent left (333), warm objection calls (135). Each row is one line of why, Call/Text, and the same marks Sold Calls and Book Flips use. Everyone under Vantage is one tap, and also an option in the Book Flips agent filter. Book Flips now lists the 308 AgentLink deals that had dropped out of the book.",
     commit: "PL-EASY-RESELLS",

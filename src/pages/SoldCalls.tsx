@@ -198,6 +198,8 @@ export default function SoldCalls() {
   const view = params.get("view") === "objections" ? "objections" : "sold";
   const setView = (v: "sold" | "objections") => {
     const next = new URLSearchParams(params);
+    // A call id belongs to one list; carried to the other tab it would match nothing.
+    if (v !== view) next.delete("call");
     if (v === "objections") next.set("view", "objections"); else next.delete("view");
     setParams(next, { replace: true });
   };
@@ -281,7 +283,7 @@ export default function SoldCalls() {
           <Button size="sm" variant="outline" onClick={clearOnlyCall}>Show all</Button>
         </div>
       )}
-      {view === "objections" ? <ObjectionCallList onlyCallId={onlyCall} /> : (<>
+      {view === "objections" ? <ObjectionCallList onlyCallId={onlyCall} onClearOnlyCall={clearOnlyCall} /> : (<>
 
       <div className="z-30 -mx-4 mb-4 border-b border-border/60 bg-background/95 px-4 py-3 backdrop-blur lg:sticky lg:top-[60px]">
         <div className="flex flex-wrap items-center gap-2">
@@ -291,7 +293,7 @@ export default function SoldCalls() {
                 key={f.key}
                 size="sm"
                 variant={filter === f.key ? "default" : "outline"}
-                onClick={() => setFilter(f.key)}
+                onClick={() => { setFilter(f.key); if (onlyCall) clearOnlyCall(); }}
                 aria-pressed={filter === f.key}
               >
                 {f.label}
@@ -305,7 +307,7 @@ export default function SoldCalls() {
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => { setSearch(e.target.value); if (onlyCall) clearOnlyCall(); }}
               placeholder="Search name, phone, agent, carrier, policy #"
               aria-label="Search sold calls"
               className="pl-9"
@@ -342,7 +344,7 @@ export default function SoldCalls() {
               secretLoading={sensitive.isPending || (sensitive.isFetching && !!r.packet_id && !sensitive.data?.has(r.packet_id))}
               secretFailed={sensitive.isError && !!r.packet_id && !sensitive.data?.has(r.packet_id)}
               twin={r.packet_id ? undefined : packetByPhone.get(phone10(r.lead_phone))}
-              onOpenTwin={(t) => { setFilter("all"); setSearch(phone10(t.lead_phone)); }}
+              onOpenTwin={(t) => { setFilter("all"); setSearch(phone10(t.lead_phone)); if (onlyCall) clearOnlyCall(); }}
             />
           ))}
         </div>

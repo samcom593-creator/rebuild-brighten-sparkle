@@ -17,6 +17,7 @@ import { FLIP_LABEL, FLIP_TONE, money, phoenixTime, type FlipStatus } from "@/li
 import { formatTimeAgo } from "@/lib/dateUtils";
 import { splitClientName } from "@/lib/clientFacts";
 import { cn } from "@/lib/utils";
+import { EASY_RESELLS_KEY } from "@/lib/easyResells";
 
 const FLIP_STATUSES = new Set<string>(Object.keys(FLIP_LABEL));
 
@@ -57,6 +58,7 @@ export function BookRowWork({ clientName, details, canWork }: {
       void qc.invalidateQueries({ queryKey: [BOOK_CLIENT_DETAILS_KEY] });
       void qc.invalidateQueries({ queryKey: ["book-flip-counts"] });
       void qc.invalidateQueries({ queryKey: ["book-flips"] });
+      void qc.invalidateQueries({ queryKey: [EASY_RESELLS_KEY], refetchType: "none" });
       return true;
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Could not save.";

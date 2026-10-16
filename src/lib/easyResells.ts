@@ -5,6 +5,18 @@
 
 export type ResellBucket = "ready_to_finish" | "lapsing" | "dropped" | "vantage" | "agent_left" | "warm_objection";
 
+/** The react-query key for the list. Every page that marks a person marks it stale, so the queue never shows someone just closed. */
+export const EASY_RESELLS_KEY = "easy-resells";
+
+/** Book outcomes that take a person off the queue, the same rule as easy_resells()'s blocked set. */
+export function closesBookRow(flipStatus: string, callbackAt: string | null | undefined, now: Date = new Date()): boolean {
+  if (["resold", "not_interested", "do_not_call", "bad_number", "appointment"].includes(flipStatus)) return true;
+  return flipStatus === "callback" && !!callbackAt && Date.parse(callbackAt) > now.getTime();
+}
+
+/** Call outcomes that take a person off the queue. */
+export const closesCallRow = (status: string): boolean => status === "resold" || status === "pushback";
+
 export interface EasyResell {
   item_key: string;
   bucket: ResellBucket;
@@ -32,6 +44,10 @@ export interface EasyResell {
   callback_at: string | null;
   attempts: number | null;
   last_touch_at: string | null;
+  /** Date of birth on file, for the deal form. */
+  dob: string | null;
+  /** The sold call's booking packet; Resold books it, as Sold Calls does. */
+  packet_id: string | null;
 }
 
 /** What each bucket is called on a row, easiest first. */

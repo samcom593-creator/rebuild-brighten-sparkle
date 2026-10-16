@@ -14,7 +14,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const auth = vi.hoisted(() => ({ current: { user: { id: "sam" }, isAdmin: true } as { user: { id: string } | null; isAdmin: boolean } }));
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => auth.current }));
 vi.mock("@/components/deals/SubmitDealDialog", () => ({
-  SubmitDealDialog: ({ trigger }: { trigger?: ReactNode }) => <>{trigger}</>,
+  // The real dialog posts a deal; the stand-in hands back a receipt so the page's own follow-up can be checked.
+  SubmitDealDialog: ({ trigger, onPosted }: { trigger?: ReactNode; onPosted?: (r: { dealId: string; status: string; annualPaid: number; policyNumber: string }) => void }) => (
+    <>{trigger}<button type="button" onClick={() => onPosted?.({ dealId: "d1", status: "submitted", annualPaid: 600, policyNumber: "NEW1" })}>Post deal (test)</button></>
+  ),
 }));
 
 const db = vi.hoisted(() => ({ rows: [] as unknown[], calls: [] as Array<{ fn: string; args: unknown }> }));
@@ -37,7 +40,7 @@ const row = (o: Record<string, unknown>) => ({
   client_name: "Pat Doe", phone: "6025550101", state: "AZ", age_years: 70, carrier: "Combined", product: "Final expense",
   monthly_premium: 54.37, policy_status: "Active", agent_name: "Ann Agent", agent_group: null, event_at: "2026-05-01T00:00:00Z",
   call_id: null, work_status: null, flip_carrier: "Combined", flip_policy_number: "P1", flip_client_key: "pat doe",
-  flip_status: "to_call", callback_at: null, attempts: 0, last_touch_at: null, ...o,
+  flip_status: "to_call", callback_at: null, attempts: 0, last_touch_at: null, dob: null, packet_id: null, ...o,
 });
 
 function renderPage() {
@@ -52,9 +55,12 @@ beforeEach(() => {
     row({ item_key: "book:left", bucket: "agent_left", tier: 5, client_name: "Lee Left", phone: "6025550105" }),
     row({ item_key: "call:ready", bucket: "ready_to_finish", tier: 1, reason: "Gave SSN and bank on the call, and no deal was ever posted. Finish the application.",
       client_name: "Kathy Smith", phone: "6015551234", call_id: "call-1", flip_carrier: null, flip_policy_number: null, flip_client_key: null, flip_status: null,
-      policy_status: "Sold on the call", event_at: "2026-10-12T17:00:00Z" }),
+      policy_status: "Sold on the call", event_at: "2026-10-12T17:00:00Z", packet_id: "pk-1", dob: "1958-03-07" }),
     row({ item_key: "book:van", bucket: "lapsing", tier: 2, reason: "Policy is lapsed. Save it, or rewrite it before it drops.", client_name: "Vic Vantage",
       phone: "6025550102", agent_name: "KJ Vaughn", agent_group: "Vantage", policy_status: "Lapsed", flip_policy_number: "P2", flip_client_key: "vic vantage" }),
+    row({ item_key: "call:warm", bucket: "warm_objection", tier: 6, reason: "Asked about covering the spouse. Did not buy (Social Objection).",
+      client_name: "Wes Warm", phone: "6025550106", call_id: "call-9", agent_group: "Vantage", flip_carrier: null, flip_policy_number: null,
+      flip_client_key: null, flip_status: null, policy_status: "Social Objection", event_at: "2026-10-01T17:00:00Z" }),
   ];
 });
 
@@ -62,7 +68,7 @@ describe("Easy Resells", () => {
   it("lists the easiest first, says why, and puts the number on a Call link", async () => {
     renderPage();
     const items = await screen.findAllByRole("listitem");
-    expect(items.map((li) => li.getAttribute("aria-label"))).toEqual(["Resell: Kathy Smith", "Resell: Vic Vantage", "Resell: Lee Left"]);
+    expect(items.map((li) => li.getAttribute("aria-label"))).toEqual(["Resell: Kathy Smith", "Resell: Vic Vantage", "Resell: Lee Left", "Resell: Wes Warm"]);
     const first = within(items[0]);
     expect(first.getByText("Ready to finish")).toBeInTheDocument();
     expect(first.getByText(/no deal was ever posted/)).toBeInTheDocument();
@@ -74,12 +80,13 @@ describe("Easy Resells", () => {
     renderPage();
     await screen.findAllByRole("listitem");
     const chip = screen.getByRole("button", { name: /Everyone under Vantage/ });
-    expect(chip).toHaveTextContent("1");
+    expect(chip).toHaveTextContent("2");
     fireEvent.click(chip);
     const items = screen.getAllByRole("listitem");
-    expect(items).toHaveLength(1);
-    expect(within(items[0]).getByText("Vantage")).toBeInTheDocument();
+    expect(items.map((li) => li.getAttribute("aria-label"))).toEqual(["Resell: Vic Vantage", "Resell: Wes Warm"]);
     expect(within(items[0]).getByText("Lapsing")).toBeInTheDocument();
+    expect(within(items[1]).getByText("Warm call")).toBeInTheDocument();
+    expect(within(items[1]).getByText("Vantage")).toBeInTheDocument();
   });
 
   it("marks a call with the Sold Calls status, and a book policy with the Book Flips status", async () => {
@@ -91,6 +98,23 @@ describe("Easy Resells", () => {
     await waitFor(() => expect(db.calls.find((c) => c.fn === "book_flip_set")?.args).toMatchObject({
       p_carrier: "Combined", p_policy_number: "P2", p_client_key: "vic vantage", p_status: "no_answer", p_count_attempt: true,
     }));
+    // Marked rows update where they are instead of reloading and jumping: same order, new status line.
+    await waitFor(() => expect(within(screen.getAllByRole("listitem")[0]).getByText(/^Contacted · /)).toBeInTheDocument());
+    expect(within(screen.getAllByRole("listitem")[1]).getByText(/^No answer · /)).toBeInTheDocument();
+    expect(db.calls.filter((c) => c.fn === "easy_resells")).toHaveLength(1);
+  });
+
+  it("books the sale's packet with the new policy number on Resold, then takes the person off the list", async () => {
+    renderPage();
+    const items = await screen.findAllByRole("listitem");
+    fireEvent.click(within(items[0]).getByRole("button", { name: "Post deal (test)" }));
+    await waitFor(() => expect(db.calls.map((c) => c.fn)).toEqual(expect.arrayContaining(["booking_packet_mark_booked", "sold_call_set_status"])));
+    const booked = db.calls.findIndex((c) => c.fn === "booking_packet_mark_booked");
+    const resold = db.calls.findIndex((c) => c.fn === "sold_call_set_status");
+    expect(db.calls[booked].args).toEqual({ p_id: "pk-1", p_policy: "NEW1" });
+    expect(db.calls[resold].args).toMatchObject({ p_call_id: "call-1", p_status: "resold" });
+    expect(booked).toBeLessThan(resold);
+    await waitFor(() => expect(screen.queryByRole("listitem", { name: "Resell: Kathy Smith" })).toBeNull());
   });
 
   it("stays closed to anyone who is not an admin or Aisha", () => {

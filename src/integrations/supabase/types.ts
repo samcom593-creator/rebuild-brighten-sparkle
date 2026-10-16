@@ -157373,6 +157373,7 @@ export type Database = {
           callback_at: string
           carrier: string
           client_name: string
+          dob: string
           event_at: string
           flip_carrier: string
           flip_client_key: string
@@ -157381,6 +157382,7 @@ export type Database = {
           item_key: string
           last_touch_at: string
           monthly_premium: number
+          packet_id: string
           phone: string
           policy_status: string
           product: string

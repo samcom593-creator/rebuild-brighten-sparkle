@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { SubmitDealDialog, type PostedDealReceipt } from "@/components/deals/SubmitDealDialog";
 import { BOOK_CLIENT_DETAILS_KEY, type BookClientDetails } from "@/hooks/useBookClientDetails";
 import { splitClientName } from "@/lib/clientFacts";
+import { EASY_RESELLS_KEY } from "@/lib/easyResells";
 
 export function BookResoldButton({ clientName, details }: { clientName: string | null; details: BookClientDetails | undefined }) {
   const qc = useQueryClient();
@@ -43,6 +44,7 @@ export function BookResoldButton({ clientName, details }: { clientName: string |
     toast.success("Marked resold.");
     void qc.invalidateQueries({ queryKey: [BOOK_CLIENT_DETAILS_KEY] });
     void qc.invalidateQueries({ queryKey: ["book-flip-counts"] });
+    void qc.invalidateQueries({ queryKey: [EASY_RESELLS_KEY], refetchType: "none" });
   };
 
   return (

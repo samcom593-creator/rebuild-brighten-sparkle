@@ -63,7 +63,7 @@ async function fetchObjections(): Promise<ObjectionRow[]> {
   return out;
 }
 
-export function ObjectionCallList({ onlyCallId = null }: { onlyCallId?: string | null } = {}) {
+export function ObjectionCallList({ onlyCallId = null, onClearOnlyCall }: { onlyCallId?: string | null; onClearOnlyCall?: () => void } = {}) {
   const q = useQuery({ queryKey: ["objection-calls"], queryFn: fetchObjections, staleTime: 30_000 });
   const [filter, setFilter] = useState<ObjFilter>("bank");
   const [search, setSearch] = useState("");
@@ -90,7 +90,7 @@ export function ObjectionCallList({ onlyCallId = null }: { onlyCallId?: string |
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex flex-wrap gap-1.5" role="group" aria-label="Which objection calls to show">
             {FILTERS.map((f) => (
-              <Button key={f.key} size="sm" variant={filter === f.key ? "default" : "outline"} aria-pressed={filter === f.key} onClick={() => { setFilter(f.key); setVisible(40); }}>
+              <Button key={f.key} size="sm" variant={filter === f.key ? "default" : "outline"} aria-pressed={filter === f.key} onClick={() => { setFilter(f.key); setVisible(40); if (onlyCallId) onClearOnlyCall?.(); }}>
                 {f.label}
                 <span className={cn("ml-1.5 rounded-full px-1.5 text-xs tabular-nums", filter === f.key ? "bg-background/20" : "bg-muted")}>{counts[f.key]}</span>
               </Button>
@@ -98,7 +98,7 @@ export function ObjectionCallList({ onlyCallId = null }: { onlyCallId?: string |
           </div>
           <div className="relative min-w-[220px] flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name, phone, agent" aria-label="Search objection calls" className="pl-9" />
+            <Input value={search} onChange={(e) => { setSearch(e.target.value); if (onlyCallId) onClearOnlyCall?.(); }} placeholder="Search name, phone, agent" aria-label="Search objection calls" className="pl-9" />
           </div>
         </div>
       </div>

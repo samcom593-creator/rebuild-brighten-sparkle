@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 import { WORK_LABEL, phx, type ResellFields, type WorkStatus } from "@/lib/resellSignals";
+import { EASY_RESELLS_KEY } from "@/lib/easyResells";
 
 const WORK_TONE: Record<WorkStatus, string> = {
   contacted: "border-sky-500/40 bg-sky-500/10 text-sky-800 dark:text-sky-300",
@@ -124,6 +125,7 @@ export function WorkActions({ callId, data, packetId, clientLabel }: {
       void qc.invalidateQueries({ queryKey: ["sold-calls-queue"] });
       void qc.invalidateQueries({ queryKey: ["sold-calls-extras"] });
       void qc.invalidateQueries({ queryKey: ["objection-calls"] });
+      void qc.invalidateQueries({ queryKey: [EASY_RESELLS_KEY], refetchType: "none" });
     } catch (e) {
       toast.error(`Not saved: ${e instanceof Error ? e.message : "unknown error"}`);
     } finally {

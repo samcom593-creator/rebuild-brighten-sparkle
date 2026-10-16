@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { matchesResellFilter, matchesResellSearch, resellCounts, sortResells, touchedText } from "@/lib/easyResells";
+import { closesBookRow, closesCallRow, matchesResellFilter, matchesResellSearch, resellCounts, sortResells, touchedText } from "@/lib/easyResells";
 
 const r = (o: Record<string, unknown>) => ({ item_key: "k", tier: 5, last_touch_at: null, event_at: null, bucket: "agent_left", agent_group: null, ...o }) as never;
 
@@ -35,5 +35,14 @@ describe("easy resell rules", () => {
     expect(touchedText({ work_status: null, flip_status: "no_answer", attempts: 2, last_touch_at: "2026-10-13T12:00:00Z", callback_at: null }, now)).toBe("No answer ×2 · 3d ago");
     expect(touchedText({ work_status: null, flip_status: "callback", attempts: 1, last_touch_at: null, callback_at: "2026-10-16T11:00:00Z" }, now)).toBe("Callback due");
     expect(touchedText({ work_status: null, flip_status: "to_call", attempts: 0, last_touch_at: null, callback_at: null }, now)).toBe("");
+  });
+
+  it("closes a person on the same outcomes the database blocks", () => {
+    const now = new Date("2026-10-16T12:00:00Z");
+    expect(["resold", "not_interested", "do_not_call", "bad_number", "appointment"].every((st) => closesBookRow(st, null, now))).toBe(true);
+    expect(closesBookRow("no_answer", null, now)).toBe(false);
+    expect(closesBookRow("callback", "2026-10-17T12:00:00Z", now)).toBe(true);
+    expect(closesBookRow("callback", "2026-10-15T12:00:00Z", now)).toBe(false);
+    expect([closesCallRow("resold"), closesCallRow("pushback"), closesCallRow("contacted"), closesCallRow("pushed")]).toEqual([true, true, false, false]);
   });
 });

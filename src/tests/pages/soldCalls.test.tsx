@@ -302,6 +302,18 @@ describe("Sold Calls", () => {
     await waitFor(() => expect(screen.queryByText("Showing one call, opened from Easy Resells.")).toBeNull());
   });
 
+  it("drops the one-call link when the other tab is opened", async () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter initialEntries={["/dashboard/sold-calls?call=call-1"]}><SoldCalls /></MemoryRouter>
+      </QueryClientProvider>,
+    );
+    await screen.findByText("Showing one call, opened from Easy Resells.");
+    fireEvent.click(screen.getByRole("tab", { name: /Bank & SSN objections/ }));
+    await waitFor(() => expect(screen.queryByText("Showing one call, opened from Easy Resells.")).toBeNull());
+  });
+
   it("says so when the SSN and bank numbers fail to load", async () => {
     db.sensitive = { data: null as unknown as unknown[], error: { message: "permission denied" } };
     renderPage();

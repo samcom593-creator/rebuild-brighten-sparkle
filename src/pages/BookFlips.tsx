@@ -516,7 +516,7 @@ function PolicyCard({ p, busy, onSet }: { p: BookPolicy; busy: boolean; onSet: (
       {/* Only a client with a sold call on file gets the packet (SSN, bank, beneficiaries),
           shown open on the card. The keys come from one shared read, so the other cards
           no longer fire a lookup each. */}
-      {soldCall && <div className="mt-2"><SoldCallPanel phone={p.phone} firstName={p.client_first_name} lastName={p.client_last_name} /></div>}
+      {soldCall && <div className="mt-2"><SoldCallPanel phone={p.phone} firstName={p.client_first_name} lastName={p.client_last_name} doNotCall={dnc} /></div>}
     </li>
   );
 }

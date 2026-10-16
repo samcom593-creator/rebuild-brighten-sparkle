@@ -66,12 +66,12 @@ function RosterTiles({ roster }: { roster: HomeData["roster"] }) {
       </CardContent></Card>
       <Card><CardContent className="p-4">
         <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"><TrendingUp className="h-3 w-3" />Producing</p>
-        <p className="mt-1.5 text-2xl font-bold tabular-nums text-emerald-500">{roster.producing}</p>
+        <p className="mt-1.5 text-2xl font-bold tabular-nums text-emerald-700 dark:text-emerald-500">{roster.producing}</p>
         <p className="text-[12px] text-muted-foreground">wrote business in 120d</p>
       </CardContent></Card>
       <Card><CardContent className="p-4">
         <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"><UserPlus className="h-3 w-3" />No sale yet</p>
-        <p className="mt-1.5 text-2xl font-bold tabular-nums text-amber-500">{roster.in_onboarding}</p>
+        <p className="mt-1.5 text-2xl font-bold tabular-nums text-amber-700 dark:text-amber-500">{roster.in_onboarding}</p>
         <p className="text-[12px] text-muted-foreground">active, no production yet</p>
       </CardContent></Card>
     </div>

@@ -18,7 +18,7 @@
 // so reads go through looseSupabase.
 
 import { useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle, CheckCircle2, Copy, Headphones, Loader2, MessageSquare, Phone, RefreshCw, Search, ShieldAlert,
 } from "lucide-react";
@@ -149,10 +149,23 @@ export default function SoldCalls() {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["sold-calls-queue"], queryFn: fetchQueue, staleTime: 30_000, enabled: canView });
   const extras = useQuery({ queryKey: ["sold-calls-extras"], queryFn: fetchExtras, staleTime: 60_000, enabled: canView });
-  // Five minutes: every fetch writes one access-log row per packet, so the page
-  // should not re-read the numbers on every tab focus.
-  const sensitive = useQuery({ queryKey: ["sold-calls-sensitive"], queryFn: fetchSensitive, staleTime: 5 * 60_000, refetchOnWindowFocus: false, enabled: canView });
   const rows = useMemo(() => q.data ?? [], [q.data]);
+  // Five minutes: every fetch writes one access-log row per packet, so the page
+  // should not re-read the numbers on every tab focus. The key carries the packets that
+  // hold an SSN or bank number, so a packet that lands later is read when it appears
+  // instead of printing "Not captured" until the cache expires.
+  const sensitiveIds = useMemo(
+    () => rows.filter((r) => r.packet_id && (r.has_ssn || r.has_bank)).map((r) => r.packet_id as string).sort().join(","),
+    [rows],
+  );
+  const sensitive = useQuery({
+    queryKey: ["sold-calls-sensitive", sensitiveIds],
+    queryFn: fetchSensitive,
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+    placeholderData: keepPreviousData,
+    enabled: canView && q.isSuccess,
+  });
 
   const [filter, setFilter] = useState<FilterKey>("to_resell");
   const [search, setSearch] = useState("");
@@ -174,7 +187,7 @@ export default function SoldCalls() {
       if (!term) return true;
       const extra = r.packet_id ? extras.data?.get(r.packet_id) : undefined;
       if (termDigits.length >= 4 && [r.lead_phone, extra?.client_phone].some((p) => (p ?? "").replace(/\D/g, "").includes(termDigits))) return true;
-      return [clientName(r), r.agent_raw, r.carrier, r.product, r.policy_number, r.client_state]
+      return [clientName(r), r.agent_raw, r.carrier, r.product, r.policy_number, extra?.booked_policy_number, r.client_state]
         .filter(Boolean)
         .some((v) => String(v).toLowerCase().includes(term));
     });
@@ -262,7 +275,7 @@ export default function SoldCalls() {
               row={r}
               extra={r.packet_id ? extras.data?.get(r.packet_id) : undefined}
               secret={r.packet_id ? sensitive.data?.get(r.packet_id) : undefined}
-              secretLoading={sensitive.isLoading}
+              secretLoading={sensitive.isPending || (sensitive.isFetching && !!r.packet_id && !sensitive.data?.has(r.packet_id))}
               onResold={refreshResold}
               twin={r.packet_id ? undefined : packetByPhone.get(phone10(r.lead_phone))}
               onOpenTwin={(t) => { setFilter("all"); setSearch(phone10(t.lead_phone)); }}
@@ -277,7 +290,7 @@ export default function SoldCalls() {
 function Field({ label, value, mono, copy, stacked }: { label: string; value: React.ReactNode; mono?: boolean; copy?: string | null; stacked?: boolean }) {
   const empty = value == null || value === "";
   const shown = (
-    <span className={cn("break-words", empty ? "text-muted-foreground" : "font-medium", !empty && mono && "font-mono tabular-nums")}>
+    <span className={cn("min-w-0 [overflow-wrap:anywhere]", empty ? "text-muted-foreground" : "font-medium", !empty && mono && "font-mono tabular-nums")}>
       {empty ? "Not captured" : value}
     </span>
   );
@@ -459,6 +472,9 @@ function SoldCallCard({ row, extra, secret, secretLoading, onResold, twin, onOpe
               <Field label="Premium" value={row.monthly_premium == null ? null : `${money(row.monthly_premium, true)}/mo`} />
               <Field label="Draft day" value={draftDayLabel(row.draft_day)} />
               <Field label="Policy #" value={policyNumber} mono copy={policyNumber} />
+              {extra?.booked_policy_number && row.policy_number && extra.booked_policy_number !== row.policy_number && (
+                <Field label="Policy # at resale" value={extra.booked_policy_number} mono copy={extra.booked_policy_number} />
+              )}
             </section>
 
             <section aria-label="Payment and SSN">
@@ -486,7 +502,7 @@ function SoldCallCard({ row, extra, secret, secretLoading, onResold, twin, onOpe
                 <ul className="space-y-1 text-sm">
                   {bens.map((b) => (
                     <li key={`${b.name ?? "beneficiary"}|${b.relationship ?? ""}|${b.pct ?? ""}|${b.contingent ? "c" : "p"}`} className="flex justify-between gap-2">
-                      <span>{b.name ?? "Name not captured"}{b.relationship ? ` · ${b.relationship}` : ""}{b.contingent ? " (contingent)" : ""}</span>
+                      <span>{b.name ?? "Name not captured"}{b.relationship ? ` · ${b.relationship}` : ""}{formatDob(b.dob) ? ` · DOB ${formatDob(b.dob)}` : ""}{b.contingent ? " (contingent)" : ""}</span>
                       <span className="tabular-nums text-muted-foreground">{b.pct != null && b.pct !== "" ? `${b.pct}%` : ""}</span>
                     </li>
                   ))}

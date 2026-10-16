@@ -18,7 +18,13 @@ const digits10 = (s?: string | null) => (s ? s.replace(/[^0-9]/g, "").slice(-10)
 const nameKey = (f?: string | null, l?: string | null) =>
   `${(f ?? "").trim().toLowerCase()}|${(l ?? "").trim().toLowerCase()}`;
 
-interface KeyRow { match_phone10: string | null; match_first: string | null; match_last: string | null }
+interface KeyRow {
+  lead_phone: string | null;
+  lead_first_name: string | null;
+  lead_last_name: string | null;
+  client_first_name: string | null;
+  client_last_name: string | null;
+}
 
 export interface SoldCallKeys {
   ready: boolean;
@@ -35,16 +41,23 @@ export function useSoldCallKeys(): SoldCallKeys {
     enabled: canView,
     staleTime: 120_000,
     queryFn: async () => {
-      const { data } = await (looseSupabase
-        .from("v_sold_call_packets")
-        .select("match_phone10, match_first, match_last")
-        .limit(2000) as unknown as Promise<{ data: KeyRow[] | null }>);
+      // Every ReadyMode Completed Sale, packet or not: 33 sales have no packet (no recording,
+      // or too short to hold an application) and still mean "this client bought on a call".
+      // A failed read throws, so it retries and never caches as "no sold calls".
+      const { data, error } = await (looseSupabase
+        .from("v_sold_calls_queue")
+        .select("lead_phone, lead_first_name, lead_last_name, client_first_name, client_last_name")
+        .limit(5000) as unknown as Promise<{ data: KeyRow[] | null; error: { message: string } | null }>);
+      if (error) throw new Error(error.message);
       const phones = new Set<string>();
       const names = new Set<string>();
       for (const r of data ?? []) {
-        if (r.match_phone10) phones.add(r.match_phone10);
-        const nk = `${r.match_first ?? ""}|${r.match_last ?? ""}`;
-        if (nk !== "|") names.add(nk);
+        const p = digits10(r.lead_phone);
+        if (p.length === 10) phones.add(p);
+        for (const [f, l] of [[r.lead_first_name, r.lead_last_name], [r.client_first_name, r.client_last_name]]) {
+          const nk = nameKey(f, l);
+          if (nk !== "|" && f && l) names.add(nk);
+        }
       }
       return { phones, names };
     },

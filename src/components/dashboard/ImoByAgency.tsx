@@ -63,16 +63,19 @@ export function ImoByAgency({
     staleTime: 60_000,
     retry: 1,
     queryFn: async () => {
-      const { data, error } = await supabase.from("production_external_daily_snapshots" as never)
+      const base = supabase.from("production_external_daily_snapshots" as never)
         .select("business_date, reported_alp, reported_policies, updated_at, metadata")
         .eq("source", "agentcloud_production_api").eq("agency_name", "Vantage Financial")
-        .gte("business_date", apiStart).lte("business_date", apiEnd);
+        .gte("business_date", apiStart);
+      // A passed window is end-exclusive (scoreboardWindow): .lte added the next day's snapshot.
+      // The summary window ends today, inclusive.
+      const { data, error } = await (exactWindow ? base.lt("business_date", apiEnd) : base.lte("business_date", apiEnd));
       if (error) throw error;
       return (data ?? []) as unknown as VantageDay[];
     },
   });
   const vantageApi = summarizeVantageDays(vantageDays);
-  const { data: imo = [] } = useQuery({
+  const imoQuery = useQuery({
     enabled: isAdmin,
     queryKey: ["imo-by-agency", start ?? "summary", end ?? "summary"],
     staleTime: 60_000,
@@ -95,6 +98,7 @@ export function ImoByAgency({
       return (data ?? []) as Row[];
     },
   });
+  const imo = imoQuery.data ?? [];
 
   const invalidateProduction = () => {
     queryClient.invalidateQueries({ queryKey: ["vantage-api-production"] }, { cancelRefetch: false });
@@ -150,11 +154,29 @@ export function ImoByAgency({
     },
   });
 
-  if (imo.length === 0) return null;
   // Second half of the gate: render nothing at all for a non-admin. The
   // disabled query above already prevents the fetch; this makes sure no
   // heading, skeleton or empty shell of an owner-only card is shown either.
   if (!isAdmin) return null;
+  // Loading, a failed read and an empty window used to all render nothing, so the block
+  // vanished from Home with no word of why (the Day period makes empty windows common).
+  if (imo.length === 0) {
+    const note = imoQuery.isPending
+      ? "Loading agency totals…"
+      : imoQuery.isError
+        ? `Agency totals did not load: ${(imoQuery.error as Error)?.message ?? "unknown error"}`
+        : "No production in this window.";
+    return (
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border px-3 py-2 text-xs" role="status">
+        <span className={imoQuery.isError ? "text-destructive" : "text-muted-foreground"}>{note}</span>
+        {imoQuery.isError && (
+          <button type="button" className="rounded-md border border-border px-2 py-1 font-medium text-foreground hover:bg-muted" onClick={() => void imoQuery.refetch()}>
+            Try again
+          </button>
+        )}
+      </div>
+    );
+  }
 
   const max = Math.max(1, ...imo.map((a) => a.alp));
   const periodTotal = imo.reduce((sum, agency) => sum + (exactWindow ? agency.alp : agency.alp_mtd ?? 0), 0);

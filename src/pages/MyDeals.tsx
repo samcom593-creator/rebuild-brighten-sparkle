@@ -247,7 +247,7 @@ function DealRowItem({
           the panel renders only for a client with a sold call on file. */}
       {soldCall && (
         <div className="px-3 pb-3 md:pl-11">
-          <SoldCallPanel phone={client?.phone} firstName={firstName} lastName={lastName} />
+          <SoldCallPanel phone={client?.phone} firstName={firstName} lastName={lastName} doNotCall={Boolean(client?.do_not_call || client?.flip_status === "do_not_call")} />
         </div>
       )}
       {isOpen && (

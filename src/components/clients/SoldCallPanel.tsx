@@ -20,7 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { externalHref } from "@/lib/externalHref";
 import { useAuth } from "@/hooks/useAuth";
 import { SOLD_CALL_EXTRA_UID } from "@/hooks/useSoldCallKeys";
-import { contactLinkProps, formatPhoneDisplay, phoneHref, smsHref } from "@/lib/phone";
+import { contactLinkProps, formatPhoneDisplay, isDialablePhone, nationalDigits, phoneHref, smsHref } from "@/lib/phone";
 import { bookingGaps, clientAsks, draftDayLabel, formatDob, formatSsn, paymentLabel } from "@/lib/soldCallPacket";
 
 interface Beneficiary { name?: string; relationship?: string; pct?: number | string; contingent?: boolean }
@@ -46,7 +46,13 @@ const money = (n: number | null, cents = false) =>
 const mmss = (s: number | null | undefined) => (s == null ? "" : `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`);
 const dateStr = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) : "date unknown");
 
-export function SoldCallPanel({ phone, firstName, lastName }: { phone?: string | null; firstName?: string | null; lastName?: string | null }) {
+export function SoldCallPanel({ phone, firstName, lastName, doNotCall = false }: {
+  phone?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  /** Do not call on the record or as a Book Flips outcome: no Call or Text from the panel. */
+  doNotCall?: boolean;
+}) {
   const { isAdmin, user } = useAuth();
   const canView = !!isAdmin || user?.id === SOLD_CALL_EXTRA_UID;
   const ph = digits10(phone);
@@ -60,11 +66,13 @@ export function SoldCallPanel({ phone, firstName, lastName }: { phone?: string |
     queryFn: async (): Promise<Packet | null> => {
       // phone match first (most reliable), then full-name fallback
       if (ph) {
-        const { data } = await (looseSupabase.from("v_sold_call_packets").select("*").eq("match_phone10", ph).order("call_at", { ascending: false }).limit(1) as unknown as Promise<{ data: Packet[] | null }>);
+        const { data, error } = await (looseSupabase.from("v_sold_call_packets").select("*").eq("match_phone10", ph).order("call_at", { ascending: false }).limit(1) as unknown as Promise<{ data: Packet[] | null; error: { message: string } | null }>);
+        if (error) throw new Error(error.message);
         if (data && data.length) return data[0];
       }
       if (fn && ln) {
-        const { data } = await (looseSupabase.from("v_sold_call_packets").select("*").eq("match_first", fn).eq("match_last", ln).order("call_at", { ascending: false }).limit(1) as unknown as Promise<{ data: Packet[] | null }>);
+        const { data, error } = await (looseSupabase.from("v_sold_call_packets").select("*").eq("match_first", fn).eq("match_last", ln).order("call_at", { ascending: false }).limit(1) as unknown as Promise<{ data: Packet[] | null; error: { message: string } | null }>);
+        if (error) throw new Error(error.message);
         if (data && data.length) return data[0];
       }
       return null;
@@ -89,13 +97,20 @@ export function SoldCallPanel({ phone, firstName, lastName }: { phone?: string |
   const [open, setOpen] = useState(true);
   const bens = useMemo(() => p?.beneficiaries ?? [], [p]);
 
+  // A failed read says so; "no packet" is only claimed after a read that answered.
+  if (q.isError) return <p className="text-xs text-destructive">Sold-call packet did not load: {(q.error as Error).message}</p>;
   if (!p) return null; // no match → render nothing (no clutter)
   // ReadyMode recording URL from the DB: laundered so a scheme-less value can never
   // resolve relative to the current page (MP-497). Every live row is https today.
   const recordingHref = externalHref(p.recording_url);
-  const dialPhone = p.client_phone ?? phone ?? null;
-  const callHref = phoneHref(dialPhone);
-  const textHref = smsHref(dialPhone);
+  // The record's number first: the packet's client_phone is transcribed from the call and is
+  // sometimes a fragment (4 of 22 cannot be dialed) or a different number. A transcribed number
+  // that differs from the one dialed is shown on its own line, never silently swapped in.
+  const dialPhone = [phone, p.client_phone].find((n) => isDialablePhone(n)) ?? null;
+  const saidOnCall = p.client_phone && isDialablePhone(p.client_phone) && nationalDigits(p.client_phone) !== nationalDigits(dialPhone)
+    ? p.client_phone : null;
+  const callHref = doNotCall ? null : phoneHref(dialPhone);
+  const textHref = doNotCall ? null : smsHref(dialPhone);
   const asks = clientAsks(p.missing_fields, Boolean(callHref));
   const gaps = bookingGaps(p.missing_fields);
   const pointers = p.sensitive_pointers ?? {};
@@ -120,6 +135,9 @@ export function SoldCallPanel({ phone, firstName, lastName }: { phone?: string |
       {open && (
         <div className="space-y-4 border-t border-amber-500/20 px-4 py-3 text-sm">
           <div className="flex flex-wrap items-center gap-2">
+            {doNotCall && (
+              <span className="text-xs font-semibold text-red-700 dark:text-red-300">Do not call</span>
+            )}
             {callHref && (
               <Button asChild size="sm">
                 <a href={callHref} {...contactLinkProps(callHref)}><Phone className="mr-1.5 h-3.5 w-3.5" />Call {formatPhoneDisplay(dialPhone)}</a>
@@ -138,6 +156,9 @@ export function SoldCallPanel({ phone, firstName, lastName }: { phone?: string |
             {p.status === "booked" ? (
               <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400"><CheckCircle2 className="h-3.5 w-3.5" />Resold {dateStr(p.booked_at)}</span>
             ) : null}
+            {saidOnCall && (
+              <span className="text-xs text-muted-foreground">Phone said on call: {formatPhoneDisplay(saidOnCall)}</span>
+            )}
           </div>
 
           {(asks.length > 0 || gaps.length > 0) && (

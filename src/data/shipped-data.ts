@@ -13,6 +13,36 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Sold Calls shows a new packet's SSN and bank numbers as soon as it arrives, each beneficiary's date of birth, and the policy number you entered at resale, which search now finds.",
+    detail: "The SSN and bank read was cached for five minutes, so a packet built while the page was open showed Routing and Account as Not captured. Beneficiary birth dates were captured on 51 packets and never shown. A policy number typed at Mark resold could not be searched and was hidden when the call had produced a different one. Long emails also wrap inside their column now instead of running into the next.",
+    commit: "PL-REVIEW-P2",
+  },
+  {
+    ts: "today",
+    label: "The sold-call panel on Book of Business, Book Flips and Client Detail dials the client's record number, shows a different number said on the call on its own line, and offers no Call or Text for a Do not call client.",
+    detail: "It dialed the number transcribed from the call first; 4 of 22 are fragments that cannot be dialed and 8 are a different number. The Sold call badge on Book Flips now marks every client with a Completed Sale, not only the ones with a packet (33 sales have none), and a failed read says it failed instead of looking like no sold call.",
+    commit: "PL-REVIEW-P2",
+  },
+  {
+    ts: "today",
+    label: "Total IMO by agency no longer adds the next day's Vantage numbers, and says Loading, No production in this window, or that it failed with a retry, instead of disappearing.",
+    detail: "The selected window ends on the day after its last day, and the Vantage read included that day. The block also rendered nothing at all while loading, on an empty day or when its read failed.",
+    commit: "PL-REVIEW-P2",
+  },
+  {
+    ts: "today",
+    label: "Resold on one client no longer opens with another client's unfinished deal draft.",
+    detail: "Every Post a Deal dialog shared one saved draft per login, so starting a resale for one client could recover the details of another and post them under this one. Each client's Resold now keeps its own draft; the plain Post a Deal button keeps the shared one.",
+    commit: "PL-REVIEW-P2",
+  },
+  {
+    ts: "today",
+    label: "Call Center's phone button no longer hides the copy button inside it, and its badges and Home's roster numbers are readable in light mode.",
+    detail: "The copy button sat inside the call button, which is invalid and made a copy tap also start the call; it is now beside it and the number stays on one line. Nine light-green, amber, purple and pink labels and Home's Producing and No sale yet numbers had no light-mode shade.",
+    commit: "PL-REVIEW-P2",
+  },
+  {
+    ts: "today",
     label: "Deals posted in the app after 5 PM Phoenix now count on the day they were posted, not the next day.",
     detail: "The production view turned the post time into a date in UTC, so 5 PM Phoenix was the day boundary: an evening sale was missing from Today and counted in tomorrow's window. 18 app deals were on the wrong day, 7 of them in the last 30 days. Home, the scoreboard, Agency Production and Book Flips now use the Phoenix calendar day.",
     commit: "PL-HOME-PHOENIX-DAY",

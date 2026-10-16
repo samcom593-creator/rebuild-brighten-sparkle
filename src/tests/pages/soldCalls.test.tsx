@@ -140,6 +140,8 @@ describe("Sold Calls", () => {
   it("shows the full policy and client facts on the page", async () => {
     renderPage();
     const card = await screen.findByRole("article", { name: "Sold call: Kathy Smith" });
+    // The payment block shows a loading state until the SSN and bank read lands.
+    expect(await within(card).findByText("Checking account", { exact: false })).toBeInTheDocument();
     for (const text of ["American Amicable", "Senior Choice", "$15,000", "$54.37/mo", "3rd of the month", "03/07/1958", "Checking account", "John Smith · son"]) {
       expect(within(card).getByText(text, { exact: false })).toBeInTheDocument();
     }
@@ -165,6 +167,20 @@ describe("Sold Calls", () => {
     fireEvent.click(within(short).getByRole("button", { name: "Show that sale" }));
     expect(await screen.findByRole("article", { name: "Sold call: Kathy Smith" })).toBeInTheDocument();
     expect((screen.getByRole("textbox", { name: "Search sold calls" }) as HTMLInputElement).value).toBe("6015551234");
+  });
+
+  it("shows each beneficiary's date of birth and the policy number entered at resale, and finds a sale by it", async () => {
+    db.queue = [{ ...packetRow, policy_number: "AA-100", beneficiaries: [{ name: "John Smith", relationship: "son", pct: 100, dob: "1985-02-03" }] }, waitingRow];
+    db.packets = [{ ...(db.packets[0] as Record<string, unknown>), booked_policy_number: "AA-999" }];
+    renderPage();
+    const card = await screen.findByRole("article", { name: "Sold call: Kathy Smith" });
+    expect(within(card).getByText(/John Smith · son · DOB 02\/03\/1985/)).toBeInTheDocument();
+    expect(await within(card).findByText("AA-999")).toBeInTheDocument();
+    expect(within(card).getByText("Policy # at resale")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /^All/ }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Search sold calls" }), { target: { value: "aa-999" } });
+    expect(await screen.findByRole("article", { name: "Sold call: Kathy Smith" })).toBeInTheDocument();
+    expect(screen.queryByRole("article", { name: "Sold call: Dora Lane" })).toBeNull();
   });
 
   it("says so when the SSN and bank numbers fail to load", async () => {

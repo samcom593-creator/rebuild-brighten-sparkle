@@ -201,7 +201,7 @@ export function CallCenterLeadCard({
                 className={cn(
                   "text-xs px-3 py-1 rounded-full font-medium",
                   lead.source === "aged_leads"
-                    ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                    ? "bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/30"
                     : "bg-info/20 text-info border border-info/30"
                 )}
               >
@@ -213,7 +213,7 @@ export function CallCenterLeadCard({
                 className={cn(
                   "text-xs px-3 py-1 rounded-full font-medium",
                   lead.licenseStatus === "licensed"
-                    ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                    ? "bg-green-500/20 text-green-700 dark:text-green-400 border border-green-500/30"
                     : "bg-slate-500/20 text-muted-foreground border border-slate-500/30"
                 )}
               >
@@ -233,7 +233,7 @@ export function CallCenterLeadCard({
                 <motion.span
                   variants={badgeVariants}
                   whileHover={{ scale: 1.05 }}
-                  className="text-xs px-3 py-1 rounded-full font-medium bg-purple-500/20 text-purple-400 border border-purple-500/30 flex items-center gap-1"
+                  className="text-xs px-3 py-1 rounded-full font-medium bg-purple-500/20 text-purple-700 dark:text-purple-400 border border-purple-500/30 flex items-center gap-1"
                 >
                   <User className="h-3 w-3" />
                   {lead.referredBy}
@@ -243,7 +243,7 @@ export function CallCenterLeadCard({
                 <motion.span
                   variants={badgeVariants}
                   whileHover={{ scale: 1.05 }}
-                  className="text-xs px-3 py-1 rounded-full font-medium bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center gap-1"
+                  className="text-xs px-3 py-1 rounded-full font-medium bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/40 flex items-center gap-1"
                   title="Applied without naming a referrer — yours by default"
                 >
                   <User className="h-3 w-3" />
@@ -344,6 +344,7 @@ export function CallCenterLeadCard({
         <motion.div variants={itemVariants} className="grid gap-3">
           {/* Phone - Primary CTA with ripple */}
           {lead.phone && (
+            <div className="flex items-stretch gap-2">
             <motion.button
               onClick={handleCall}
               whileHover={{ scale: 1.01 }}
@@ -367,20 +368,23 @@ export function CallCenterLeadCard({
               )}
 
               <div className="relative p-3 rounded-full bg-green-500/20 group-hover:bg-green-500/30 transition-colors">
-                <Phone className="h-5 w-5 text-green-400" />
+                <Phone className="h-5 w-5 text-green-700 dark:text-green-400" />
               </div>
               <div className="flex-1 relative z-10">
-                <div className="text-lg font-semibold text-foreground">{formatPhoneDisplay(lead.phone)}</div>
-                <div className="text-xs text-green-400">Tap to call</div>
+                <div className="whitespace-nowrap text-lg font-semibold text-foreground">{formatPhoneDisplay(lead.phone)}</div>
+                <div className="text-xs text-green-700 dark:text-green-400">Tap to call</div>
               </div>
-              <CopyPhoneButton phone={lead.phone} />
               <motion.div
-                className="relative z-10 text-xs px-3 py-1.5 rounded-lg bg-green-500/20 text-green-400 font-medium"
+                className="relative z-10 text-xs px-3 py-1.5 rounded-lg bg-green-500/20 text-green-700 dark:text-green-400 font-medium"
                 whileHover={{ scale: 1.05, backgroundColor: "rgba(34, 197, 94, 0.3)" }}
               >
                 CALL NOW
               </motion.div>
             </motion.button>
+            {/* A sibling of the call button, never inside it: a button inside a button is invalid
+                and the inner tap also fired the call. */}
+            <div className="flex items-center"><CopyPhoneButton phone={lead.phone} /></div>
+            </div>
           )}
 
           {/* SMS - secondary contact CTA */}
@@ -426,7 +430,7 @@ export function CallCenterLeadCard({
               className="flex items-center gap-4 p-3 rounded-md bg-muted/30 hover:bg-muted/50 transition-colors"
             >
               <div className="p-2.5 rounded-full bg-pink-500/10">
-                <Instagram className="h-4 w-4 text-pink-400" />
+                <Instagram className="h-4 w-4 text-pink-700 dark:text-pink-400" />
               </div>
               <span className="text-sm text-foreground">@{lead.instagramHandle.replace("@", "")}</span>
             </motion.a>
@@ -532,7 +536,7 @@ export function CallCenterLeadCard({
               recipientName={lead.firstName + (lead.lastName ? ` ${lead.lastName}` : "")}
               leadSource={lead.source}
               displayMode="icon"
-              className="p-2.5 rounded-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 transition-colors border border-amber-500/30"
+              className="p-2.5 rounded-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-400 transition-colors border border-amber-500/30"
             />
               {lead.licenseStatus !== "licensed" && (
                 <ResendLicensingButton

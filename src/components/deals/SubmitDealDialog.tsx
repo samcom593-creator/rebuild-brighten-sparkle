@@ -222,7 +222,14 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
   const [receipt, setReceipt] = useState<Receipt | null>(null);
   const [offlineReceipt, setOfflineReceipt] = useState<OfflineReceipt | null>(null);
 
-  const storageKey = user?.id ? `apex.native-deal-draft.${user.id}` : "";
+  // One draft slot per client a dialog was opened for. A Resold dialog prefilled for one client
+  // used to share the user's single slot, so it could recover another client's unfinished draft
+  // and post that client's details while marking this one resold. Plain Post a Deal keeps the
+  // shared slot it always had.
+  const clientSlot = initialClient
+    ? `${initialClient.firstName} ${initialClient.lastName}`.toLowerCase().replace(/[^a-z0-9]/g, "") || (initialClient.phone ?? "").replace(/\D/g, "")
+    : "";
+  const storageKey = user?.id ? `apex.native-deal-draft.${user.id}${clientSlot ? `.client.${clientSlot}` : ""}` : "";
 
   const carriers = useQuery({
     queryKey: ["native-deal-carriers"],

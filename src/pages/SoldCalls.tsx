@@ -58,6 +58,10 @@ interface SoldRow {
   beneficiaries: Beneficiary[] | null;
   sensitive_pointers: Record<string, { t_start?: number }> | null;
   missing_fields: string[] | null;
+  call_summary: string | null;
+  key_points: string[] | null;
+  draft_day: string | null;
+  payment_method_type: string | null;
   status: string | null;
   booked_at: string | null;
   packet_status: string;
@@ -270,6 +274,17 @@ function PacketDrawer({ row, onClose, onBooked }: { row: SoldRow | null; onClose
         </SheetHeader>
 
         <div className="mt-4 space-y-5">
+          {(row.call_summary || (row.key_points && row.key_points.length > 0)) && (
+            <section className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
+              <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-emerald-500 dark:text-emerald-400">Call summary</h3>
+              {row.call_summary && <p className="text-sm text-foreground">{row.call_summary}</p>}
+              {row.key_points && row.key_points.length > 0 && (
+                <ul className="mt-2 list-disc space-y-0.5 pl-5 text-sm text-muted-foreground">
+                  {row.key_points.map((k) => <li key={k}>{k}</li>)}
+                </ul>
+              )}
+            </section>
+          )}
           {row.missing_fields && row.missing_fields.length > 0 && (
             <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
               <div className="mb-1 flex items-center gap-1.5 font-medium text-amber-300"><ShieldAlert className="h-3.5 w-3.5" />Still needed from client</div>
@@ -287,10 +302,13 @@ function PacketDrawer({ row, onClose, onBooked }: { row: SoldRow | null; onClose
 
           <section>
             <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Policy</h3>
+            <Field label="Status" value={STATUS_META[row.packet_status]?.label ?? row.packet_status} />
             <Field label="Carrier" value={row.carrier} />
             <Field label="Product" value={row.product} />
             <Field label="Face amount" value={money2(row.face_amount)} />
             <Field label="Monthly premium" value={money2(row.monthly_premium)} />
+            <Field label="Draft day" value={row.draft_day} />
+            <Field label="Payment" value={row.payment_method_type && row.payment_method_type !== "unknown" ? row.payment_method_type : null} />
             <Field label="Policy #" value={row.policy_number} />
           </section>
 

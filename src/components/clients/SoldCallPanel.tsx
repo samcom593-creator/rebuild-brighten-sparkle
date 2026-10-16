@@ -30,6 +30,7 @@ interface Packet {
   draft_day: string | null; payment_method_type: string | null; bank_name: string | null; policy_number: string | null;
   beneficiaries: Beneficiary[] | null; sensitive_pointers: Record<string, { t_start?: number }> | null;
   missing_fields: string[] | null; has_ssn: boolean | null; has_bank: boolean | null;
+  call_summary: string | null; key_points: string[] | null;
   recording_url: string | null; duration_seconds: number | null; status: string | null; booked_at: string | null;
 }
 
@@ -97,6 +98,16 @@ export function SoldCallPanel({ phone, firstName, lastName }: { phone?: string |
 
       {open && (
         <div className="space-y-4 border-t border-amber-500/20 px-4 py-3 text-sm">
+          {(p.call_summary || (p.key_points && p.key_points.length > 0)) && (
+            <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
+              {p.call_summary && <p className="text-foreground">{p.call_summary}</p>}
+              {p.key_points && p.key_points.length > 0 && (
+                <ul className="mt-2 list-disc space-y-0.5 pl-5 text-muted-foreground">
+                  {p.key_points.map((k) => <li key={k}>{k}</li>)}
+                </ul>
+              )}
+            </div>
+          )}
           {p.missing_fields && p.missing_fields.length > 0 && (
             <p className="text-xs text-amber-300">Still needed from client: {p.missing_fields.join(", ")}</p>
           )}

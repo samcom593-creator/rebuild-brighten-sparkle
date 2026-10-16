@@ -149,10 +149,22 @@ describe("Sold Calls", () => {
     renderPage();
     await screen.findByRole("article", { name: "Sold call: Kathy Smith" });
     expect(screen.queryByRole("article", { name: "Sold call: Dora Lane" })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: /Waiting on packet/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Packet coming/ }));
     const waiting = await screen.findByRole("article", { name: "Sold call: Dora Lane" });
     expect(within(waiting).getByText(/booking packet is being written/)).toBeInTheDocument();
     expect(within(waiting).getByRole("link", { name: /Call \(601\) 555-9999/ })).toBeInTheDocument();
+  });
+
+  it("calls a seconds-long sale a short call and points to the client's full sale", async () => {
+    db.queue = [packetRow, { ...waitingRow, call_id: "call-3", lead_phone: "(601) 555-1234", duration_seconds: 4, packet_status: "short_call" }];
+    renderPage();
+    await screen.findByRole("article", { name: "Sold call: Kathy Smith" });
+    fireEvent.click(screen.getByRole("button", { name: /No packet/ }));
+    const short = await screen.findByRole("article", { name: "Sold call: Dora Lane" });
+    expect(within(short).getByText(/lasted 0:04, too short to hold an application/)).toBeInTheDocument();
+    fireEvent.click(within(short).getByRole("button", { name: "Show that sale" }));
+    expect(await screen.findByRole("article", { name: "Sold call: Kathy Smith" })).toBeInTheDocument();
+    expect((screen.getByRole("textbox", { name: "Search sold calls" }) as HTMLInputElement).value).toBe("6015551234");
   });
 
   it("says so when the SSN and bank numbers fail to load", async () => {

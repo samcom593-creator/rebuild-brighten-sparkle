@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Sold calls that lasted seconds now say Short call instead of showing a packet in progress forever, and point to the client's full sale when there is one.",
+    detail: "11 Completed Sale calls ran 2 to 27 seconds, too short to hold an application, so the packet step skips them and they read Packet in progress with no end. They now read Short call under No packet. When the same client has a full packet from another call, the card says so and Show that sale jumps to it. 16 sales are really in progress and the hourly pipeline is working through them.",
+    commit: "PL-SOLD-CALLS-SHORT",
+  },
+  {
+    ts: "today",
     label: "Sold Calls shows every sale in full on the page: a Call button with the number, what to ask the client, the policy, and the SSN and bank numbers with no Reveal button.",
     detail: "Each sale used to open in a narrow side drawer with the SSN and bank numbers behind a Reveal button, and the gaps listed raw database keys, so every packet said it still needed a policy number from the client. Each sale is now a card with Call and Text buttons carrying the client's number, the questions still open in plain words, the client, policy and payment details, beneficiaries and the call summary, and Mark booked on the card. Numbers link to the second in the recording where they were spoken. The page opens on the 81 sales left to book. Only Sam and Aisha can open it, and every load is logged.",
     commit: "PL-SOLD-CALLS-INLINE",

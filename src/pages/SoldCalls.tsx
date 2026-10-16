@@ -90,18 +90,21 @@ const STATUS_META: Record<string, { label: string; tone: string }> = {
   no_recording: { label: "No recording", tone: "bg-muted text-muted-foreground" },
   downloading: { label: "Pulling recording", tone: "bg-sky-500/15 text-sky-600 dark:text-sky-300" },
   transcribing: { label: "Packet in progress", tone: "bg-sky-500/15 text-sky-600 dark:text-sky-300" },
+  short_call: { label: "Short call", tone: "bg-muted text-muted-foreground" },
   needs_review: { label: "Missing info", tone: "bg-amber-500/15 text-amber-700 dark:text-amber-300" },
   ready: { label: "Ready to book", tone: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" },
   booked: { label: "Booked", tone: "bg-emerald-600/20 text-emerald-700 dark:text-emerald-200" },
 };
 
-type FilterKey = "to_book" | "waiting" | "booked" | "all";
+type FilterKey = "to_book" | "coming" | "no_packet" | "booked" | "all";
 const FILTERS: Array<{ key: FilterKey; label: string; match: (s: string) => boolean }> = [
   { key: "to_book", label: "To book", match: (s) => s === "ready" || s === "needs_review" },
-  { key: "waiting", label: "Waiting on packet", match: (s) => s === "transcribing" || s === "downloading" || s === "no_recording" },
+  { key: "coming", label: "Packet coming", match: (s) => s === "transcribing" || s === "downloading" },
+  { key: "no_packet", label: "No packet", match: (s) => s === "no_recording" || s === "short_call" },
   { key: "booked", label: "Booked", match: (s) => s === "booked" },
   { key: "all", label: "All", match: () => true },
 ];
+const phone10 = (v: string | null | undefined) => (v ?? "").replace(/\D/g, "").slice(-10);
 
 const money = (n: number | null | undefined) =>
   n == null ? null : n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
@@ -151,7 +154,7 @@ export default function SoldCalls() {
   const [search, setSearch] = useState("");
 
   const counts = useMemo(() => {
-    const out: Record<FilterKey, number> = { to_book: 0, waiting: 0, booked: 0, all: rows.length };
+    const out: Record<FilterKey, number> = { to_book: 0, coming: 0, no_packet: 0, booked: 0, all: rows.length };
     for (const r of rows) {
       for (const f of FILTERS) if (f.key !== "all" && f.match(r.packet_status)) out[f.key] += 1;
     }
@@ -159,7 +162,7 @@ export default function SoldCalls() {
   }, [rows]);
 
   const filtered = useMemo(() => {
-    const active = FILTERS.find((f) => f.key === filter) ?? FILTERS[3];
+    const active = FILTERS.find((f) => f.key === filter) ?? FILTERS[FILTERS.length - 1];
     const term = search.trim().toLowerCase();
     const termDigits = term.replace(/\D/g, "");
     return rows.filter((r) => {
@@ -172,6 +175,14 @@ export default function SoldCalls() {
         .some((v) => String(v).toLowerCase().includes(term));
     });
   }, [rows, filter, search, extras.data]);
+
+  // The newest sale with a packet for each phone, so a short or unrecorded sale can
+  // point at the same client's full call instead of looking like a lost sale.
+  const packetByPhone = new Map<string, SoldRow>();
+  for (const r of rows) {
+    const key = phone10(r.lead_phone);
+    if (key.length === 10 && r.packet_id && !packetByPhone.has(key)) packetByPhone.set(key, r);
+  }
 
   if (!canView) {
     return (
@@ -249,6 +260,8 @@ export default function SoldCalls() {
               secret={r.packet_id ? sensitive.data?.get(r.packet_id) : undefined}
               secretLoading={sensitive.isLoading}
               onBooked={refreshBooked}
+              twin={r.packet_id ? undefined : packetByPhone.get(phone10(r.lead_phone))}
+              onOpenTwin={(t) => { setFilter("all"); setSearch(phone10(t.lead_phone)); }}
             />
           ))}
         </div>
@@ -319,12 +332,14 @@ function Heard({ href, seconds }: { href: string | null; seconds: number | undef
   );
 }
 
-function SoldCallCard({ row, extra, secret, secretLoading, onBooked }: {
+function SoldCallCard({ row, extra, secret, secretLoading, onBooked, twin, onOpenTwin }: {
   row: SoldRow;
   extra: PacketExtra | undefined;
   secret: Sensitive | undefined;
   secretLoading: boolean;
   onBooked: () => void;
+  twin?: SoldRow;
+  onOpenTwin: (twin: SoldRow) => void;
 }) {
   const [policyInput, setPolicyInput] = useState("");
   const [booking, setBooking] = useState(false);
@@ -393,11 +408,21 @@ function SoldCallCard({ row, extra, secret, secretLoading, onBooked }: {
       </div>
 
       {!row.packet_id ? (
-        <p className="mt-3 text-sm text-muted-foreground">
-          {row.packet_status === "no_recording"
-            ? "ReadyMode has no recording for this sale, so there is no packet. Call the client to collect the application details."
-            : "The recording is pulled and the booking packet is being written. It shows here when it is done."}
-        </p>
+        <div className="mt-3 space-y-2 text-sm text-muted-foreground">
+          <p>
+            {row.packet_status === "no_recording"
+              ? "ReadyMode has no recording for this sale, so there is no packet. Call the client to collect the application details."
+              : row.packet_status === "short_call"
+                ? `This call lasted ${mmss(row.duration_seconds) || "a few seconds"}, too short to hold an application, so no packet can be built from it.`
+                : "The recording is pulled and the booking packet is being written. It shows here when it is done."}
+          </p>
+          {twin && (
+            <p className="flex flex-wrap items-center gap-2 text-foreground">
+              <span>The same client has a full packet from the {saleDate(twin.call_at)} sale.</span>
+              <Button size="sm" variant="outline" className="h-8" onClick={() => onOpenTwin(twin)}>Show that sale</Button>
+            </p>
+          )}
+        </div>
       ) : (
         <>
           {(asks.length > 0 || gaps.length > 0) && (

@@ -14,7 +14,6 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# Vercel takes ~30s to promote on average. Wait + give it room.
 concurrency:
   group: post-deploy-smoke-${{ github.ref }}
   cancel-in-progress: true
@@ -25,13 +24,40 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Wait for Vercel promote
-        # Sleep for 90s so the new deploy has time to flip into production
-        # (Vercel build takes ~15-30s + edge propagation). If the build was
-        # already promoted, this just adds 90s of cushion.
-        run: sleep 90
+      # 2026-10-16: was a fixed `sleep 90`. That was safe only while builds were live in ~20s
+      # (Turbo build machines, measured p50 20s / max 21s). The projects move to Standard build
+      # machines with on-demand concurrency off. A build then takes 1-2 min and can queue
+      # behind others, so a fixed sleep would smoke-test the PREVIOUS deploy and pass a commit
+      # that is not live: a fake success. /version.json ({"id": VERCEL_GIT_COMMIT_SHA[0:8]},
+      # written by vite.config.ts) says which build is live, so wait for this commit. Same
+      # operand as post-deploy-lighthouse.yml.
+      #
+      # If production never serves this commit, the smoke does NOT run, and it does not go
+      # red: the deploy failed (the old build is still live) or a newer commit promoted ahead
+      # (its own run tests it). It says so instead of passing.
+      - name: Wait for production to serve this commit
+        id: promote
+        run: |
+          SHORT="$(echo "${{ github.sha }}" | cut -c1-8)"
+          DEADLINE=$(( SECONDS + 600 ))
+          SERVED=""
+          echo "waiting for apex-financial.org to serve ${SHORT}"
+          while [ "$SECONDS" -lt "$DEADLINE" ]; do
+            # `|| true`: the step shell is -e with pipefail, so one failed fetch would end the wait as a failure.
+            SERVED="$(curl -fsS "https://apex-financial.org/version.json?ci=${GITHUB_RUN_ID}&t=${SECONDS}" \
+                      | sed -n 's/.*"id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' || true)"
+            if [ "$SERVED" = "$SHORT" ]; then
+              echo "matched=true" >> "$GITHUB_OUTPUT"
+              echo "::notice::Route smoke is testing build ${SERVED} (= ${{ github.sha }}), live after ${SECONDS}s."
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "matched=false" >> "$GITHUB_OUTPUT"
+          echo "::warning::Route smoke did NOT run: production never served ${SHORT} within 600s (last seen '${SERVED:-unreadable}'). Either the deploy did not promote, or a newer commit promoted ahead of this run. This is not a statement about the routes."
 
       - name: Run smoke
+        if: steps.promote.outputs.matched == 'true'
         run: node scripts/route-smoke.mjs
         env:
           BASE: https://apex-financial.org

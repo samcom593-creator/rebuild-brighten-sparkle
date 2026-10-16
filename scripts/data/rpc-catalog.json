@@ -2493,6 +2493,14 @@
         "raw": ""
       }
     ],
+    "easy_resells": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "enforce_builder_track_admin_only": [
       {
         "all": [],
@@ -5780,6 +5788,18 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "is_vantage_agent": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
       }
     ],
     "issue_strike": [

@@ -117102,6 +117102,7 @@ export type Database = {
         Row: {
           age_years: number | null
           agent_gone: boolean | null
+          agent_group: string | null
           agent_id: string | null
           agent_name: string | null
           agent_status: string | null
@@ -157360,6 +157361,35 @@ export type Database = {
       dm_overnight_digest: { Args: never; Returns: Json }
       dm_send_retry: { Args: never; Returns: Json }
       drain_sms_fallback_queue: { Args: never; Returns: Json }
+      easy_resells: {
+        Args: never
+        Returns: {
+          age_years: number
+          agent_group: string
+          agent_name: string
+          attempts: number
+          bucket: string
+          call_id: string
+          callback_at: string
+          carrier: string
+          client_name: string
+          event_at: string
+          flip_carrier: string
+          flip_client_key: string
+          flip_policy_number: string
+          flip_status: string
+          item_key: string
+          last_touch_at: string
+          monthly_premium: number
+          phone: string
+          policy_status: string
+          product: string
+          reason: string
+          state: string
+          tier: number
+          work_status: string
+        }[]
+      }
       ensure_next_month_partitions: { Args: never; Returns: Json }
       ethos_agent_update_rows: {
         Args: never
@@ -158434,6 +158464,7 @@ export type Database = {
         Returns: boolean
       }
       is_recruiting_staff: { Args: never; Returns: boolean }
+      is_vantage_agent: { Args: { p_agent_id: string }; Returns: boolean }
       issue_strike: {
         Args: {
           p_agent_id: string

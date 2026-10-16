@@ -7721,6 +7721,7 @@
     "v_book_flip_worklist": [
       "age_years",
       "agent_gone",
+      "agent_group",
       "agent_id",
       "agent_name",
       "agent_status",

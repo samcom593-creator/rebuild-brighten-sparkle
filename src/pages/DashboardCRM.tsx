@@ -10,7 +10,8 @@ import { useTeamFacts } from "@/hooks/useTeamFacts";
 import { usePortalLoginSender } from "@/hooks/usePortalLoginSender";
 import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 import { useRealtimeTable } from "@/shared/realtime/useRealtimeTable";
-import { daysSince, ensureCompleteRead, isSyncOnly, num, plural, type RosterRow } from "@/lib/teamRoster";
+import { daysSince, isSyncOnly, num, plural, type RosterRow } from "@/lib/teamRoster";
+import { ROSTER_PARTS, metricSource, partRows, rosterDerived, sourceNeedsRetry, type MetricSource, type RosterDerived } from "@/lib/productionMetrics";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
@@ -18,7 +19,6 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { AddAgentModal } from "@/components/dashboard/AddAgentModal";
 import { ApplicationDetailSheet } from "@/components/dashboard/ApplicationDetailSheet";
 import { DeactivateAgentDialog } from "@/components/dashboard/DeactivateAgentDialog";
 import { AgentQuickEditDialog } from "@/components/dashboard/AgentQuickEditDialog";
@@ -309,15 +309,6 @@ function RosterPanel({ rows, isLoading, isError, onRetry, team }: {
   );
 }
 
-/**
- * One action cluster for the page header. PageHeader folds every action after the first into a "More (n)" step on
- * phones; with Add Agent plus a menu that produced a "More" that only revealed another "More". A single component child
- * (not a bare div, which PageHeader unwraps) keeps both controls on one row at every width.
- */
-function HeaderActionRow({ children }: { children: React.ReactNode }) {
-  return <div className="flex w-full items-center gap-2 sm:w-auto [&>*:first-child]:flex-1 sm:[&>*:first-child]:flex-none">{children}</div>;
-}
-
 type Mode = "overview" | "attendance" | "work" | "link";
 const MODE_KEY = "crm.mode.v3";
 const VIEWS: Array<{ key: Mode; label: string; param: string; icon: typeof Users }> = [
@@ -377,25 +368,17 @@ export default function DashboardCRM() {
         supabase.rpc("crm_agent_contacts" as never),
         supabase.rpc("crm_agent_free_leads_status" as never),
       ]);
-      if (rosterResult.error) throw rosterResult.error;
-      if (pulseResult.error) throw pulseResult.error;
-      if (contactResult.error) throw contactResult.error;
-      if (freeLeadsResult.error) throw freeLeadsResult.error;
-      // A read that stops exactly at the platform page limit may be cut short: fail it rather than show a roster that quietly ends.
-      ensureCompleteRead("crm_agent_roster", rosterResult.data as unknown as unknown[]);
-      ensureCompleteRead("crm_agent_sales_pulse", pulseResult.data as unknown as unknown[]);
-      ensureCompleteRead("crm_agent_contacts", contactResult.data as unknown as unknown[]);
-      ensureCompleteRead("crm_agent_free_leads_status", freeLeadsResult.data as unknown as unknown[]);
-      const pulseByAgent = new Map(
-        ((pulseResult.data as unknown as Array<Pick<RosterRow, "agent_id" | "today_alp" | "today_deals" | "selling_streak_days">>) ?? [])
-          .map((row) => [row.agent_id, row] as const),
-      );
-      const contactByAgent = new Map(((contactResult.data as unknown as RosterContact[]) ?? []).map((row) => [row.agent_id, row] as const));
-      const freeLeadsByAgent = new Map(
-        ((freeLeadsResult.data as unknown as Array<{ agent_id: string; qualifies: boolean; reason: string; needed_for_qual: number | string }>) ?? [])
-          .map((row) => [row.agent_id, row] as const),
-      );
-      return ((rosterResult.data as unknown as RosterRow[]) ?? []).map((row) => ({
+      // F33: partRows tags a failure with the RPC that produced it, so the summary strip names the part that did not
+      // load instead of blaming crm_agent_roster for all four. A part that stops exactly at the platform page limit
+      // may be cut short, so it fails too rather than showing a roster that quietly ends.
+      const rosterRows = partRows<RosterRow>(ROSTER_PARTS.roster, rosterResult);
+      const pulseRows = partRows<Pick<RosterRow, "agent_id" | "today_alp" | "today_deals" | "selling_streak_days">>(ROSTER_PARTS.salesPulse, pulseResult);
+      const contactRows = partRows<RosterContact>(ROSTER_PARTS.contacts, contactResult);
+      const freeLeadsRows = partRows<{ agent_id: string; qualifies: boolean; reason: string; needed_for_qual: number | string }>(ROSTER_PARTS.freeLeads, freeLeadsResult);
+      const pulseByAgent = new Map(pulseRows.map((row) => [row.agent_id, row] as const));
+      const contactByAgent = new Map(contactRows.map((row) => [row.agent_id, row] as const));
+      const freeLeadsByAgent = new Map(freeLeadsRows.map((row) => [row.agent_id, row] as const));
+      return rosterRows.map((row) => ({
         ...row,
         full_name: contactByAgent.get(row.agent_id)?.full_name ?? row.full_name,
         email: contactByAgent.get(row.agent_id)?.email ?? row.email,
@@ -469,7 +452,21 @@ export default function DashboardCRM() {
   };
 
   const rows = (rosterQuery.data ?? []) as RosterRow[];
-  const working = rows.filter((r) => r.status === "active" && r.is_sync_only !== true);
+  // F33: each read the summary strip depends on carries its own availability, so a roster that failed or is still
+  // loading renders Unavailable or a skeleton in its own slots instead of borrowing the summary's loading flag and
+  // counting an empty list as "Team size 0". Team size and New hires, no sale are derived in rosterDerived().
+  const segmentsSource = metricSource<RosterSegments>(rosterSegmentsQuery);
+  const todaySource = metricSource<TodayProduction>(todayProductionQuery);
+  const rosterRowsSource = metricSource<RosterRow[]>(rosterQuery);
+  const rosterSource: MetricSource<RosterDerived> = { ...rosterRowsSource, value: rosterRowsSource.value ? rosterDerived(rosterRowsSource.value) : null };
+  // Retry refetches every source the strip names below the figures, by the same rule that names them: a read that
+  // failed, one that came back empty (crm_roster_segments returns no row at all for an empty scope) and one showing
+  // an earlier result. Keying this on isError alone left Retry inert beside "came back empty".
+  const retryListedSources = () => {
+    if (sourceNeedsRetry(rosterSource)) void rosterQuery.refetch();
+    if (sourceNeedsRetry(segmentsSource)) void rosterSegmentsQuery.refetch();
+    if (sourceNeedsRetry(todaySource)) void todayProductionQuery.refetch();
+  };
 
   // 2026-09-30 (Sam): "a button to download all agents: first name, last name, email, NPN."
   const downloadAgentsCsv = async () => {
@@ -555,51 +552,43 @@ export default function DashboardCRM() {
       {/* max-w-[1400px] (not max-w-6xl): the production view is an 8-column grid at xl. px-4 sm:px-6 is required so
           PageHeader's -mx-4 sm:-mx-6 cancels exactly. */}
       <div className="page-enter mx-auto w-full max-w-[1400px] space-y-4 px-4 pb-24 sm:px-6">
+        {/* F37: Add Agent is not repeated in this header. The shell's sidebar carries it (the desktop rail and Quick
+            actions in the phone menu) for admins and managers, which is also who the add-agent function admits, so
+            the page keeps only its own work in the menu below. One action means PageHeader renders it without a More
+            fold. */}
         <PageHeader
           accent="cyan"
           eyebrow="Team"
           eyebrowIcon={<Users className="h-3.5 w-3.5" />}
           title="My Team"
           actions={
-            <HeaderActionRow>
-              <AddAgentModal onAgentAdded={refreshAll} />
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-10 gap-1.5 sm:h-9" aria-label="More team actions">
-                    <MoreHorizontal className="h-4 w-4 shrink-0" aria-hidden /> More
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {isAdmin ? (
-                    <DropdownMenuItem disabled={portalLogins.sending} onClick={() => portalLogins.send()}>
-                      <Mail className="mr-2 h-4 w-4" aria-hidden /> {portalLogins.sending ? "Sending..." : "Send portal logins (all)"}
-                    </DropdownMenuItem>
-                  ) : null}
-                  <DropdownMenuItem onClick={() => { navigator.clipboard.writeText("https://apex-financial.org/agent-login"); toast.success("Check-in link copied. Paste it into a text or DM."); }}>
-                    <Link2 className="mr-2 h-4 w-4" aria-hidden /> Copy check-in link
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-10 gap-1.5 sm:h-9" aria-label="Team actions">
+                  <MoreHorizontal className="h-4 w-4 shrink-0" aria-hidden /> Actions
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {isAdmin ? (
+                  <DropdownMenuItem disabled={portalLogins.sending} onClick={() => portalLogins.send()}>
+                    <Mail className="mr-2 h-4 w-4" aria-hidden /> {portalLogins.sending ? "Sending..." : "Send portal logins (all)"}
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={downloadAgentsCsv}>
-                    <Download className="mr-2 h-4 w-4" aria-hidden /> Download agents CSV
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={refreshAll}>
-                    <RefreshCw className="mr-2 h-4 w-4" aria-hidden /> Refresh
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </HeaderActionRow>
+                ) : null}
+                <DropdownMenuItem onClick={() => { navigator.clipboard.writeText("https://apex-financial.org/agent-login"); toast.success("Check-in link copied. Paste it into a text or DM."); }}>
+                  <Link2 className="mr-2 h-4 w-4" aria-hidden /> Copy check-in link
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={downloadAgentsCsv}>
+                  <Download className="mr-2 h-4 w-4" aria-hidden /> Download agents CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={refreshAll}>
+                  <RefreshCw className="mr-2 h-4 w-4" aria-hidden /> Refresh
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           }
         />
 
-        <ProductionMetricsCard
-          snapshot={rosterSegmentsQuery.data ?? null}
-          isLoading={rosterSegmentsQuery.isLoading}
-          todayProduction={todayProductionQuery.data ?? null}
-          isTodayLoading={todayProductionQuery.isLoading}
-          // Team size = active agents actually working the business (no terminated / inactive / sync-only placeholder
-          // seats). New hires, no sale = those who joined ≤30d ago with zero lifetime deals — the activation queue.
-          teamSize={working.length}
-          newHires30dNoSale={working.filter((r) => (r.tenure_days ?? 9999) <= 30 && (r.lifetime_deals ?? 0) === 0).length}
-        />
+        <ProductionMetricsCard segments={segmentsSource} roster={rosterSource} today={todaySource} onRetry={retryListedSources} />
 
         {team.contractingEnabled ? (
           <div className="inline-flex flex-wrap rounded-lg border border-border bg-card p-1" role="group" aria-label="Team view">

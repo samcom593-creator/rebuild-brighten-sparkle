@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "The live site is updating again. Every website change since 8:48 AM had failed to publish, so the site was still running the morning's version.",
+    detail: "A change that morning switched 32 old page addresses to a new redirect helper, but the helper's file never made it into the shared code. Every website build after that stopped on the missing file, so nothing published from 8:48 AM Arizona time until this fix, including the restored Sold Calls list and the agent merge page fix. The automatic post-publish check still passed because it was testing the old version that was still live. The missing file and its test are now in place, two outdated tests that expected the old redirect style are updated, and a clean build passes. Without the file, the same build fails with the same error the hosting service reported.",
+    commit: "PL-WIB-MAIN-UNBUILDABLE",
+  },
+  {
+    ts: "today",
     label: "The agent merge page shows real production and no longer proposes keeping a row nobody can log in as.",
     detail: "Agent Duplicates measured production from the old deals table only, so the one open pair, Tyler Krejcha, showed $0 on both rows while the agency's production record credits him $15,765 across 5 policies. On a $0 tie the page kept the older row, which was a placeholder created from a Discord post with no login, and offered to merge the row Tyler signs in with into it. Tested without saving: that merge would have left his login pointing at no active agent row and removed him from Producer Trends. The page now reads the same production as the dashboard and always proposes the row with the login. It then falls back to most production and then the oldest row. A No login badge marks the placeholder. Nothing was merged: that click is still Sam's.",
     commit: "PL-WIB-DUP-CANDIDATES-CANONICAL",

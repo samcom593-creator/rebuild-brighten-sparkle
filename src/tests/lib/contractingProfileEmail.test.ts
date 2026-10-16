@@ -94,7 +94,9 @@ describe("the retired contracting instructions stay out of what people read", ()
 
   it("the old intake address only ever redirects, and nothing else in the app links to it", () => {
     const app = read("src/App.tsx");
-    expect(app).toContain('path="/start-contracting" element={<Navigate to="/dashboard/contracting-profile" replace />}');
+    // LegacyWorkspaceRedirect is the alias form since the 2026-10-15 routing wave:
+    // a <Navigate replace> that keeps ?query/#hash (src/lib/legacyRedirect.ts).
+    expect(app).toContain('path="/start-contracting" element={<LegacyWorkspaceRedirect to="/dashboard/contracting-profile" />}');
     expect(app).not.toMatch(/import\(["']\.\/pages\/StartContracting["']\)/);
     expect(fs.existsSync(path.join(root, "src/pages/StartContracting.tsx"))).toBe(false);
   });

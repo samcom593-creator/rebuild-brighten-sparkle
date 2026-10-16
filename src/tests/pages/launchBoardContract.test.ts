@@ -22,7 +22,9 @@ describe("Launch Board consolidation", () => {
   it("declares /dashboard/content exactly once, as a redirect to the Launch Board queue tab", () => {
     const routes = app.match(/<Route path="\/dashboard\/content"[^\n]*/g) ?? [];
     expect(routes).toHaveLength(1);
-    expect(routes[0]).toContain('<Navigate to="/dashboard/launch-board?tab=queue" replace />');
+    // Aliases use LegacyWorkspaceRedirect since the 2026-10-15 routing wave: a
+    // <Navigate replace> that keeps the visitor's ?query/#hash (src/lib/legacyRedirect.ts).
+    expect(routes[0]).toContain('<LegacyWorkspaceRedirect to="/dashboard/launch-board?tab=queue" />');
     expect(app).toMatch(/<Route path="\/dashboard\/launch-board" element=\{<ProtectedRoute><ContentAccessGate><LaunchBoard \/>/);
   });
   it("drops the separate Content nav entry and keeps Launch Board", () => {

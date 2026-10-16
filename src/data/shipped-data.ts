@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "The manager cards on Producer Trends show each team's last 30 days of deals again, instead of $0 for everyone.",
+    detail: "Every manager card's Deals 30d and ALP 30d read zero and turned amber, because they counted only deals entered in AgentLink, and none have been since August 31. They now count every deal the agency records, the same source the rest of Producer Trends uses. Today that is 62 deals and $114,758 on your team, 35 and $49,879 on Chudi's, and 13 and $26,504 on Aisha's. Team in-force ALP is unchanged ($112,949 across all managers), because only the carrier book says a policy is in force. Still visible to owners only. Tested before and after the change; the old version shows 0 deals and flags 3 producing teams amber.",
+    commit: "PL-WIB-MANAGER-SCORECARD-CANONICAL",
+  },
+  {
+    ts: "today",
     label: "Sold calls that lasted seconds now say Short call instead of showing a packet in progress forever, and point to the client's full sale when there is one.",
     detail: "11 Completed Sale calls ran 2 to 27 seconds, too short to hold an application, so the packet step skips them and they read Packet in progress with no end. They now read Short call under No packet. When the same client has a full packet from another call, the card says so and Show that sale jumps to it. 16 sales are really in progress and the hourly pipeline is working through them.",
     commit: "PL-SOLD-CALLS-SHORT",

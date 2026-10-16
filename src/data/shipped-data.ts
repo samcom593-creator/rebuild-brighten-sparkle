@@ -13,6 +13,24 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Deals posted in the app after 5 PM Phoenix now count on the day they were posted, not the next day.",
+    detail: "The production view turned the post time into a date in UTC, so 5 PM Phoenix was the day boundary: an evening sale was missing from Today and counted in tomorrow's window. 18 app deals were on the wrong day, 7 of them in the last 30 days. Home, the scoreboard, Agency Production and Book Flips now use the Phoenix calendar day.",
+    commit: "PL-HOME-PHOENIX-DAY",
+  },
+  {
+    ts: "today",
+    label: "The Total IMO by agency numbers and Sam's override are now readable by admins only, in the database as well as on the page.",
+    detail: "The card was hidden from everyone else, but the function behind it answered any signed-in login with agency-wide ALP and the owner override on each sub-agency.",
+    commit: "PL-SEC-IMO-OWNER-ONLY",
+  },
+  {
+    ts: "today",
+    label: "A sale marked resold on Sold Calls stays resold if the packet is rebuilt from the recording.",
+    detail: "Re-running the packet extractor set the status back to its own ready or missing-info, so a resold sale would land back in To resell and could be submitted twice. No packets are marked yet, so nothing was affected.",
+    commit: "PL-SOLD-CALLS-REVIEW",
+  },
+  {
+    ts: "today",
     label: "Closed the database reports any signed-in login could read, applicants included: insured clients' names and policy numbers, applicants' emails and phones, Stripe customer emails, Sam's to-do list and the CFO views.",
     detail: "Database views run with their owner's rights, so a view anyone can query hands over its whole result. Measured as an applicant login, 103 views returned rows. 63 that no page reads were closed outright; 21 read only by admin, manager or book pages now return their rows to that audience and nothing to anyone else, and every page shows exactly what it showed before. The 19 left open are the team surfaces agents are meant to see (leaderboards, culture feed, recent hires, challenges).",
     commit: "PL-SEC-VIEW-LOCKDOWN-2",

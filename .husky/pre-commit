@@ -744,6 +744,17 @@ if match '^(src/.*\.(tsx|jsx|ts)$|supabase/functions/.*\.ts$|scripts/check-enum-
   npm run --silent check:enum-filter-literals || exit 1
 fi
 
+# ---------- check-maybesingle-nonunique (PL-WIB-MS-BASELINE-PAYDOWN) ----------
+# A one-way ratchet keyed per file+table+filter: a new unsafe .maybeSingle() fails it,
+# and so does a pay-down that is not written into the baseline. It ran in CI only, so
+# 0acd2489 removed a seminar_registrations site, committed green here, and Verify core
+# went red on main. Trigger reads ALL staged names, deletions included: deleting a file
+# that holds a site pays its key down exactly like editing the site away.
+if git diff --cached --name-only | grep -qE '^((src|supabase/functions)/.*\.(ts|tsx)|scripts/check-maybesingle-nonunique\.mjs|scripts/lib/strip-comments\.mjs|scripts/data/(maybesingle-baseline|unique-index-catalog)\.json)$'; then
+  echo "[pre-commit] maybeSingle-affecting file staged — running check:maybesingle-nonunique…"
+  npm run --silent check:maybesingle-nonunique || exit 1
+fi
+
 # ---------- check-relation-exists (MP-345) ----------
 # A `.from("x")` naming a relation that does not exist is a runtime 404 PostgREST
 # resolves, never a build error. MP-330 fixed four such sites in src/ by hand; a

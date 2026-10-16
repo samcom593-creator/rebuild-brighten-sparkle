@@ -134,7 +134,7 @@ export function SoldCallPanel({ phone, firstName, lastName }: { phone?: string |
               </Button>
             )}
             {p.status === "booked" ? (
-              <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400"><CheckCircle2 className="h-3.5 w-3.5" />Booked {dateStr(p.booked_at)}</span>
+              <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400"><CheckCircle2 className="h-3.5 w-3.5" />Resold {dateStr(p.booked_at)}</span>
             ) : null}
           </div>
 

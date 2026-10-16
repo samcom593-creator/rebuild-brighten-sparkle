@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarClock, Copy, Loader2, Phone, PhoneOff, RotateCcw, Search, StickyNote } from "lucide-react";
+import { Copy, Loader2, Phone, PhoneOff, Search } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
-import { SubmitDealDialog, type PostedDealReceipt } from "@/components/deals/SubmitDealDialog";
 import { formatTimeAgo } from "@/lib/dateUtils";
 import { contactLinkProps, formatPhoneDisplay, phoneHref } from "@/lib/phone";
 import { cn } from "@/lib/utils";
@@ -20,6 +19,7 @@ import {
 import { SoldCallPanel } from "@/components/clients/SoldCallPanel";
 import { useSoldCallKeys } from "@/hooks/useSoldCallKeys";
 import { dobDisplay } from "@/lib/clientFacts";
+import { FlipActions, type FlipSetOptions } from "@/components/books/FlipActions";
 
 const COLUMNS =
   "flip_key, carrier, policy_number, client_key, product, book_status, is_dead, is_book_active, status_group, " +
@@ -44,12 +44,7 @@ interface CarrierCount {
   last_imported_at: string | null;
 }
 
-interface SetOpts {
-  countAttempt?: boolean;
-  note?: string;
-  callbackAt?: string;
-  receipt?: PostedDealReceipt;
-}
+type SetOpts = FlipSetOptions;
 
 async function fetchCarrier(carrier: string): Promise<BookPolicy[]> {
   // PostgREST answers at most 1000 rows per request, so page until a short page.
@@ -75,13 +70,6 @@ async function fetchCounts(): Promise<CarrierCount[]> {
   return (data ?? []) as unknown as CarrierCount[];
 }
 
-/** Default callback: two hours from now, on the quarter hour, in the device's local time. */
-function defaultCallbackLocal(): string {
-  const d = new Date(Date.now() + 2 * 3600_000);
-  d.setMinutes(Math.ceil(d.getMinutes() / 15) * 15, 0, 0);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
 
 export default function BookFlips() {
   const [params, setParams] = useSearchParams();
@@ -417,9 +405,6 @@ export default function BookFlips() {
 
 function PolicyCard({ p, busy, onSet }: { p: BookPolicy; busy: boolean; onSet: (p: BookPolicy, s: FlipStatus, o?: SetOpts) => Promise<boolean> }) {
   const soldKeys = useSoldCallKeys();
-  const [panel, setPanel] = useState<"none" | "callback" | "note" | "more">("none");
-  const [cb, setCb] = useState(defaultCallbackLocal);
-  const [note, setNote] = useState("");
   // Phone: native dialer; laptop: Google Voice (the site-wide rule in @/lib/phone).
   const tel = p.do_not_call ? null : phoneHref(p.phone);
   const name = displayName(p.client_name) || "Name missing";
@@ -510,93 +495,15 @@ function PolicyCard({ p, busy, onSet }: { p: BookPolicy; busy: boolean; onSet: (
       )}
       {p.notes && <p className="mt-2 line-clamp-4 whitespace-pre-line text-sm text-muted-foreground">{p.notes}</p>}
 
-      <div className="mt-3 flex flex-wrap gap-2">
-        <Button size="sm" variant="outline" disabled={busy} onClick={() => void onSet(p, "no_answer", { countAttempt: true })}>No answer</Button>
-        <Button size="sm" variant="outline" disabled={busy} onClick={() => setPanel(panel === "callback" ? "none" : "callback")}>
-          <CalendarClock className="mr-1 h-4 w-4" aria-hidden /> Callback
-        </Button>
-        <Button size="sm" variant="outline" disabled={busy} onClick={() => void onSet(p, "appointment", { countAttempt: true })}>Appointment</Button>
-        <SubmitDealDialog
-          trigger={<Button size="sm" disabled={busy}>Resold</Button>}
-          title="Post the new policy"
-          description="Posting counts the sale in production and marks this book policy resold."
-          initialClient={{ firstName, lastName, phone: p.phone ?? "", dob: p.dob ?? "" }}
-          onPosted={(receipt) => void onSet(p, "resold", { countAttempt: true, receipt })}
-          secondaryAction={{ label: "Already posted: just mark resold", onClick: () => void onSet(p, "resold", { countAttempt: true }) }}
+      <div className="mt-3">
+        <FlipActions
+          idBase={p.flip_key}
+          status={p.flip_status}
+          busy={busy}
+          client={{ firstName, lastName, phone: p.phone ?? "", dob: p.dob ?? "" }}
+          onSet={(status, opts) => onSet(p, status, opts)}
         />
-        {/* The three rare outcomes sit behind one tap so a card reads as a call, not a control panel. */}
-        <Button size="sm" variant="ghost" disabled={busy} aria-expanded={panel === "more"} onClick={() => setPanel(panel === "more" ? "none" : "more")}>
-          {panel === "more" ? "Fewer" : "More…"}
-        </Button>
-        {panel === "more" && (
-          <>
-            <Button size="sm" variant="outline" disabled={busy} onClick={() => void onSet(p, "not_interested", { countAttempt: true })}>Not interested</Button>
-            <Button size="sm" variant="outline" disabled={busy} onClick={() => void onSet(p, "bad_number", { countAttempt: true })}>Bad number</Button>
-            <Button size="sm" variant="outline" disabled={busy} onClick={() => void onSet(p, "do_not_call")}>Do not call</Button>
-          </>
-        )}
-        <Button size="sm" variant="ghost" disabled={busy} onClick={() => setPanel(panel === "note" ? "none" : "note")}>
-          <StickyNote className="mr-1 h-4 w-4" aria-hidden /> Note
-        </Button>
-        {p.flip_status !== "to_call" && (
-          <Button size="sm" variant="ghost" disabled={busy} onClick={() => void onSet(p, "to_call")}>
-            <RotateCcw className="mr-1 h-4 w-4" aria-hidden /> Back to call list
-          </Button>
-        )}
-        {busy && <Loader2 className="h-5 w-5 animate-spin self-center text-muted-foreground" aria-label="Saving" />}
       </div>
-
-      {panel === "callback" && (
-        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-border p-3">
-          <label className="text-sm text-muted-foreground" htmlFor={`cb-${p.flip_key}`}>Call back at</label>
-          <input
-            id={`cb-${p.flip_key}`}
-            type="datetime-local"
-            value={cb}
-            onChange={(e) => setCb(e.target.value)}
-            className="h-10 rounded-md border border-input bg-background px-2 text-base text-foreground"
-          />
-          <Button
-            size="sm"
-            disabled={busy || !cb}
-            onClick={async () => {
-              const at = new Date(cb);
-              if (Number.isNaN(at.getTime())) return;
-              if (await onSet(p, "callback", { countAttempt: true, callbackAt: at.toISOString() })) setPanel("none");
-            }}
-          >
-            Save callback
-          </Button>
-        </div>
-      )}
-      {panel === "note" && (
-        <div className="mt-3 flex flex-col gap-2 rounded-lg border border-border p-3">
-          <label className="sr-only" htmlFor={`note-${p.flip_key}`}>Note</label>
-          <textarea
-            id={`note-${p.flip_key}`}
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            maxLength={2000}
-            rows={3}
-            placeholder="What happened on the call?"
-            className="rounded-md border border-input bg-background p-2 text-base text-foreground"
-          />
-          <Button
-            size="sm"
-            className="self-start"
-            disabled={busy || !note.trim()}
-            onClick={async () => {
-              // Keep the typed note until the save lands, so a failed save never loses it.
-              if (await onSet(p, p.flip_status, { note: note.trim() })) {
-                setNote("");
-                setPanel("none");
-              }
-            }}
-          >
-            Save note
-          </Button>
-        </div>
-      )}
       {/* Only a client with a sold call on file gets the packet (SSN, bank, beneficiaries),
           shown open on the card. The keys come from one shared read, so the other cards
           no longer fire a lookup each. */}

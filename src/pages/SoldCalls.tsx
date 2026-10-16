@@ -92,16 +92,18 @@ const STATUS_META: Record<string, { label: string; tone: string }> = {
   transcribing: { label: "Packet in progress", tone: "bg-sky-500/15 text-sky-600 dark:text-sky-300" },
   short_call: { label: "Short call", tone: "bg-muted text-muted-foreground" },
   needs_review: { label: "Missing info", tone: "bg-amber-500/15 text-amber-700 dark:text-amber-300" },
-  ready: { label: "Ready to book", tone: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" },
-  booked: { label: "Booked", tone: "bg-emerald-600/20 text-emerald-700 dark:text-emerald-200" },
+  ready: { label: "Ready to resell", tone: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" },
+  booked: { label: "Resold", tone: "bg-emerald-600/20 text-emerald-700 dark:text-emerald-200" },
 };
 
-type FilterKey = "to_book" | "coming" | "no_packet" | "booked" | "all";
+// The database still calls a finished sale "booked" (status, booked_at,
+// booking_packet_mark_booked); everything a person reads says resold, which is Sam's word.
+type FilterKey = "to_resell" | "coming" | "no_packet" | "resold" | "all";
 const FILTERS: Array<{ key: FilterKey; label: string; match: (s: string) => boolean }> = [
-  { key: "to_book", label: "To book", match: (s) => s === "ready" || s === "needs_review" },
+  { key: "to_resell", label: "To resell", match: (s) => s === "ready" || s === "needs_review" },
   { key: "coming", label: "Packet coming", match: (s) => s === "transcribing" || s === "downloading" },
   { key: "no_packet", label: "No packet", match: (s) => s === "no_recording" || s === "short_call" },
-  { key: "booked", label: "Booked", match: (s) => s === "booked" },
+  { key: "resold", label: "Resold", match: (s) => s === "booked" },
   { key: "all", label: "All", match: () => true },
 ];
 const phone10 = (v: string | null | undefined) => (v ?? "").replace(/\D/g, "").slice(-10);
@@ -150,11 +152,11 @@ export default function SoldCalls() {
   const sensitive = useQuery({ queryKey: ["sold-calls-sensitive"], queryFn: fetchSensitive, staleTime: 5 * 60_000, refetchOnWindowFocus: false, enabled: canView });
   const rows = useMemo(() => q.data ?? [], [q.data]);
 
-  const [filter, setFilter] = useState<FilterKey>("to_book");
+  const [filter, setFilter] = useState<FilterKey>("to_resell");
   const [search, setSearch] = useState("");
 
   const counts = useMemo(() => {
-    const out: Record<FilterKey, number> = { to_book: 0, coming: 0, no_packet: 0, booked: 0, all: rows.length };
+    const out: Record<FilterKey, number> = { to_resell: 0, coming: 0, no_packet: 0, resold: 0, all: rows.length };
     for (const r of rows) {
       for (const f of FILTERS) if (f.key !== "all" && f.match(r.packet_status)) out[f.key] += 1;
     }
@@ -192,7 +194,7 @@ export default function SoldCalls() {
     );
   }
 
-  const refreshBooked = () => {
+  const refreshResold = () => {
     qc.invalidateQueries({ queryKey: ["sold-calls-queue"] });
     qc.invalidateQueries({ queryKey: ["sold-calls-extras"] });
   };
@@ -202,7 +204,7 @@ export default function SoldCalls() {
       <PageHeader
         eyebrow="My Business"
         title="Sold Calls"
-        subtitle="Every ReadyMode sale with the client, the policy and the payment details on one card. Call, fill the gaps, book it."
+        subtitle="Every ReadyMode sale with the client, the policy and the payment details on one card. Call, fill the gaps, resell it."
         accent="amber"
       />
 
@@ -259,7 +261,7 @@ export default function SoldCalls() {
               extra={r.packet_id ? extras.data?.get(r.packet_id) : undefined}
               secret={r.packet_id ? sensitive.data?.get(r.packet_id) : undefined}
               secretLoading={sensitive.isLoading}
-              onBooked={refreshBooked}
+              onResold={refreshResold}
               twin={r.packet_id ? undefined : packetByPhone.get(phone10(r.lead_phone))}
               onOpenTwin={(t) => { setFilter("all"); setSearch(phone10(t.lead_phone)); }}
             />
@@ -332,12 +334,12 @@ function Heard({ href, seconds }: { href: string | null; seconds: number | undef
   );
 }
 
-function SoldCallCard({ row, extra, secret, secretLoading, onBooked, twin, onOpenTwin }: {
+function SoldCallCard({ row, extra, secret, secretLoading, onResold, twin, onOpenTwin }: {
   row: SoldRow;
   extra: PacketExtra | undefined;
   secret: Sensitive | undefined;
   secretLoading: boolean;
-  onBooked: () => void;
+  onResold: () => void;
   twin?: SoldRow;
   onOpenTwin: (twin: SoldRow) => void;
 }) {
@@ -358,16 +360,16 @@ function SoldCallCard({ row, extra, secret, secretLoading, onBooked, twin, onOpe
   const bens = row.beneficiaries ?? [];
   const policyNumber = row.policy_number ?? extra?.booked_policy_number ?? null;
 
-  const markBooked = async () => {
+  const markResold = async () => {
     if (!row.packet_id) return;
     setBooking(true);
     const { error } = await (supabase.rpc as unknown as (fn: string, args: Record<string, unknown>) => Promise<{ error: { message: string } | null }>)(
       "booking_packet_mark_booked", { p_id: row.packet_id, p_policy: policyInput.trim() },
     );
     setBooking(false);
-    if (error) { toast.error("Could not mark booked", { description: error.message }); return; }
-    toast.success(`${clientName(row)} marked booked.`);
-    onBooked();
+    if (error) { toast.error("Could not mark resold", { description: error.message }); return; }
+    toast.success(`${clientName(row)} marked resold.`);
+    onResold();
   };
 
   return (
@@ -414,7 +416,7 @@ function SoldCallCard({ row, extra, secret, secretLoading, onBooked, twin, onOpe
               ? "ReadyMode has no recording for this sale, so there is no packet. Call the client to collect the application details."
               : row.packet_status === "short_call"
                 ? `This call lasted ${mmss(row.duration_seconds) || "a few seconds"}, too short to hold an application, so no packet can be built from it.`
-                : "The recording is pulled and the booking packet is being written. It shows here when it is done."}
+                : "The recording is pulled and the sale packet is being written. It shows here when it is done."}
           </p>
           {twin && (
             <p className="flex flex-wrap items-center gap-2 text-foreground">
@@ -512,7 +514,7 @@ function SoldCallCard({ row, extra, secret, secretLoading, onBooked, twin, onOpe
           <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border/60 pt-3">
             {row.status === "booked" ? (
               <span className="flex items-center gap-1.5 text-sm text-emerald-700 dark:text-emerald-300">
-                <CheckCircle2 className="h-4 w-4" />Booked {row.booked_at ? saleDate(row.booked_at) : ""}
+                <CheckCircle2 className="h-4 w-4" />Resold {row.booked_at ? saleDate(row.booked_at) : ""}
               </span>
             ) : (
               <>
@@ -524,9 +526,9 @@ function SoldCallCard({ row, extra, secret, secretLoading, onBooked, twin, onOpe
                   className="h-9 w-56"
                   disabled={booking}
                 />
-                <Button size="sm" className="h-9" onClick={markBooked} disabled={booking}>
+                <Button size="sm" className="h-9" onClick={markResold} disabled={booking}>
                   {booking ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-1.5 h-4 w-4" />}
-                  Mark booked
+                  Mark resold
                 </Button>
               </>
             )}

@@ -10,7 +10,7 @@ import { useBusinessToday } from "@/hooks/useBusinessToday";
 import { SubmitDealDialog } from "@/components/deals/SubmitDealDialog";
 import { SoldCallPanel } from "@/components/clients/SoldCallPanel";
 import { ClientContactLine } from "@/components/clients/ClientContactLine";
-import { BookResoldButton } from "@/components/deals/BookResoldButton";
+import { BookRowWork } from "@/components/books/BookRowWork";
 import { splitClientName } from "@/lib/clientFacts";
 import { useBookClientDetails, type BookClientDetails } from "@/hooks/useBookClientDetails";
 import { useSoldCallKeys } from "@/hooks/useSoldCallKeys";
@@ -68,6 +68,12 @@ const statusColor = (s: string | null) => {
     default: return "bg-muted";
   }
 };
+
+/** "submitted" -> "Submitted", "charged_back" -> "Charged back"; blank reads as "Not reported". */
+function policyStatusLabel(s: string | null): string {
+  const t = (s ?? "").trim().replace(/_/g, " ");
+  return t ? t.charAt(0).toUpperCase() + t.slice(1).toLowerCase() : "Not reported";
+}
 
 function fmtMoney(n: number | null | undefined): string {
   if (n === null || n === undefined) return "—";
@@ -155,6 +161,7 @@ function DealRowItem({
   client,
   clientLoading,
   hasSoldCall,
+  canWork = false,
 }: {
   d: DealRow;
   isOpen: boolean;
@@ -165,6 +172,8 @@ function DealRowItem({
   client?: BookClientDetails;
   clientLoading?: boolean;
   hasSoldCall?: (phone?: string | null, first?: string | null, last?: string | null) => boolean;
+  /** Admin or manager: may log call outcomes (book_flip_set enforces the same rule). */
+  canWork?: boolean;
 }) {
   const { firstName, lastName } = splitClientName(d.client_name);
   // A client-level row: something a person can be called about and resold. Aggregate rows
@@ -205,7 +214,8 @@ function DealRowItem({
           <p className="text-[11px] text-muted-foreground">annual premium</p>
         </div>
         <div className="flex flex-col items-end gap-1">
-          <Badge variant="outline" className={statusColor(d.status)}>{d.status || "unknown"}</Badge>
+          <span className="text-[11px] text-muted-foreground">Policy status</span>
+          <Badge variant="outline" className={statusColor(d.status)}>{policyStatusLabel(d.status)}</Badge>
         </div>
       </button>
       {isClientRow && (
@@ -219,14 +229,13 @@ function DealRowItem({
             bestTime={client?.best_time_to_call}
             loading={clientLoading && !client}
           />
-          <div className="flex items-center gap-2">
-            {client?.flip_status === "resold" && (
-              <Badge variant="outline" className="border-success/30 bg-success/10 text-success">
-                Resold{client.resold_carrier ? ` · ${client.resold_carrier}` : ""}{client.resold_policy_number ? ` · #${client.resold_policy_number}` : ""}
-              </Badge>
-            )}
-            <BookResoldButton clientName={d.client_name} details={client} />
-          </div>
+        </div>
+      )}
+      {/* Where this client stands and the same options Book Flips has (No answer,
+          Callback, Appointment, Resold, More, Note), recorded in one place for both pages. */}
+      {isClientRow && (
+        <div className="px-3 pb-3 md:pl-11">
+          <BookRowWork clientName={d.client_name} details={client} canWork={canWork} />
         </div>
       )}
       {/* The client's ReadyMode sold-call packet (SSN, bank, beneficiaries, health) sits
@@ -559,6 +568,7 @@ export default function MyDeals() {
   }, [deals, visible, focusRow]);
   const clientDetails = useBookClientDetails(shownRefs, enabled);
   const soldKeys = useSoldCallKeys();
+  const canWorkBook = Boolean(isAdmin || isManager);
 
   // Why the list is not shown yet, for a login whose scope is not resolved.
   // A failed read says so with a retry; it is never shown as an empty book.
@@ -828,6 +838,7 @@ export default function MyDeals() {
                         client={clientDetails.byKey.get(focusRow.row_key)}
                         clientLoading={clientDetails.loading.has(focusRow.row_key)}
                         hasSoldCall={soldKeys.has}
+                        canWork={canWorkBook}
                       />
                     </div>
                   </div>
@@ -911,6 +922,7 @@ export default function MyDeals() {
                       client={clientDetails.byKey.get(d.row_key)}
                       clientLoading={clientDetails.loading.has(d.row_key)}
                       hasSoldCall={soldKeys.has}
+                      canWork={canWorkBook}
                     />
                   ))}
                 </div>

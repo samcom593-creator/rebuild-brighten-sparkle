@@ -255,6 +255,47 @@ describe("Production page", () => {
     expect(screen.getAllByText("No phone on file").length).toBeGreaterThan(0);
   });
 
+  const flipDetails = (status: string) => ((fn: string, args: { p_rows?: Array<{ row_key: string; policy_number: string | null }> }) => {
+    if (fn === "book_flip_set") return Promise.resolve({ data: null, error: null });
+    if (fn !== "book_client_details") return Promise.resolve({ data: [], error: null });
+    const rows = (args?.p_rows ?? []).filter((r) => r.policy_number === "P3").map((r) => ({
+      row_key: r.row_key, phone: "6015551234", dob: "1958-03-07", state: "TX", city: "Tyler", do_not_call: false,
+      best_time_to_call: null, flip_carrier: "Carrier", flip_policy_number: "P3", flip_client_key: "client3last3", flip_status: status,
+      resold_policy_number: null, resold_carrier: null, resold_annual_premium: null,
+      attempts: 2, last_contact_at: "2026-10-15T18:00:00Z", callback_at: null, notes: "Left a voicemail",
+    }));
+    return Promise.resolve({ data: rows, error: null });
+  }) as never;
+
+  it("shows each policy's status and where the client stands, with the Book Flips options on the row (Sam 2026-10-16)", async () => {
+    vi.mocked(supabase.rpc).mockImplementation(flipDetails("no_answer"));
+    renderPage();
+    expect(await screen.findByText("Left a voicemail")).toBeInTheDocument();
+    expect(screen.getByText(/2 attempts/)).toBeInTheDocument();
+    // Every row labels the carrier's policy status in words.
+    expect(screen.getAllByText("Policy status").length).toBeGreaterThanOrEqual(30);
+    // The worked client gets the same outcomes as its Book Flips card; logging one writes the
+    // shared book_flips record, so both pages show it.
+    const noAnswer = screen.getAllByRole("button", { name: "No answer" });
+    expect(noAnswer).toHaveLength(1);
+    for (const name of ["Callback", "Appointment", "More…", "Note", "Back to call list"]) {
+      expect(screen.getByRole("button", { name: new RegExp(name) })).toBeInTheDocument();
+    }
+    fireEvent.click(noAnswer[0]);
+    await waitFor(() => expect(vi.mocked(supabase.rpc).mock.calls.some((c) => String(c[0]) === "book_flip_set")).toBe(true));
+    const set = vi.mocked(supabase.rpc).mock.calls.find((c) => String(c[0]) === "book_flip_set");
+    expect(set?.[1]).toEqual({ p_carrier: "Carrier", p_policy_number: "P3", p_client_key: "client3last3", p_status: "no_answer", p_count_attempt: true });
+  });
+
+  it("shows an agent where their client stands but leaves the call outcomes to admins and managers", async () => {
+    auth.current = { user: { id: "user-1" }, isAdmin: false, isManager: false };
+    vi.mocked(supabase.rpc).mockImplementation(flipDetails("callback"));
+    renderPage();
+    expect(await screen.findByText("Left a voicemail")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "No answer" })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Resold" }).length).toBeGreaterThan(0);
+  });
+
   it("says so when client details fail to load, with a retry", async () => {
     vi.mocked(supabase.rpc).mockImplementation(((fn: string) => fn === "book_client_details"
       ? Promise.resolve({ data: null, error: { message: "permission denied" } })

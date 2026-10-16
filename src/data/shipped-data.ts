@@ -13,6 +13,18 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Book of Business shows each policy's status in words and where the client stands (To call, No answer, Callback, Resold), with the same buttons as Book Flips on the row. Book Flips now lists the clients posted here, so recent sales are there to resell.",
+    detail: "The book showed a bare status chip and only a Resold button, and Book Flips only read the AgentLink book, which nobody has posted to since Aug 31: it held 2 clients written since Sep 1. It now also reads every deal posted on this site, so it holds 1,482 policies across 14 carriers, 134 written since Sep 1 and 43 this month. Each Book of Business row labels the policy status, shows the client's call status with attempts, last contact, callback time and latest note, and gives admins and managers No answer, Callback, Appointment, Resold, More, Note and Back to call list. A call logged on either page shows on both. Agents still see the policy status and Resold.",
+    commit: "PL-BOOK-ROW-WORK",
+  },
+  {
+    ts: "today",
+    label: "Sold Calls says resell and resold instead of book and booked: To resell, Ready to resell, Resold, Mark resold.",
+    detail: "The page used a word nobody here uses. Filters, status chips, the Mark resold button and its messages, and the sold-call panel on Production, Client Detail and Book Flips now say resell and resold. Nothing about the data changed.",
+    commit: "PL-BOOK-ROW-WORK",
+  },
+  {
+    ts: "today",
     label: "The Monthly challenge on Business Analytics no longer says Complete: October is at 43% of its goal. Daily and Weekly show real production too, here and in Ask APEX.",
     detail: "The challenges read the AgentLink book, which nobody has posted to since Aug 31. October read $1,821,600 from two rows for one client with no agent attached, one of them 1000x the other, against a $0 goal, so the Monthly tile showed 150% Complete and said to push the bonus. This week read $0 of $0 and today $0 against a $121,440 daily pace from the same two rows. They now read every deal, from AgentLink and from here: today $3,752 of a $5,539 pace, this week $32,883 against last week's $14,218, October $86,844 of a $201,115 goal (September plus 10%). The quarterly recruiting challenge is unchanged.",
     commit: "PL-WIB-SALES-CHALLENGES-CANONICAL",

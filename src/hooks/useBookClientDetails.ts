@@ -26,6 +26,10 @@ export interface BookClientDetails {
   resold_policy_number: string | null;
   resold_carrier: string | null;
   resold_annual_premium: number | null;
+  attempts: number | null;
+  last_contact_at: string | null;
+  callback_at: string | null;
+  notes: string | null;
 }
 
 export interface BookClientRowRef {

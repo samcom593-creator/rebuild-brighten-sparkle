@@ -145,13 +145,13 @@ describe("Sold Calls", () => {
     }
   });
 
-  it("starts on the sales left to book and keeps waiting sales one tap away", async () => {
+  it("starts on the sales left to resell and keeps waiting sales one tap away", async () => {
     renderPage();
     await screen.findByRole("article", { name: "Sold call: Kathy Smith" });
     expect(screen.queryByRole("article", { name: "Sold call: Dora Lane" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /Packet coming/ }));
     const waiting = await screen.findByRole("article", { name: "Sold call: Dora Lane" });
-    expect(within(waiting).getByText(/booking packet is being written/)).toBeInTheDocument();
+    expect(within(waiting).getByText(/sale packet is being written/)).toBeInTheDocument();
     expect(within(waiting).getByRole("link", { name: /Call \(601\) 555-9999/ })).toBeInTheDocument();
   });
 

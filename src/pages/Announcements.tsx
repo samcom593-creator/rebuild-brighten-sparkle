@@ -153,8 +153,20 @@ export default function Announcements() {
         eyebrowIcon={<Megaphone className="h-3 w-3" />}
         title="Announcements + News Feed"
         subtitle="Active company announcements + live celebrations stream."
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
+        // F38: the slots are declared, not inferred. Add Deal is the primary and stays visible at every width; the
+        // legacy ranking promoted Refresh in production, because the minified dialog has no name to rank by.
+        primaryAction={
+          <SubmitDealDialog
+            trigger={
+              <Button size="sm" variant="default" className="h-10 sm:h-9">
+                <Trophy className="mr-1.5 h-4 w-4" />
+                Add Deal
+              </Button>
+            }
+          />
+        }
+        secondaryActions={
+          <>
             <Button
               variant="outline"
               size="sm"
@@ -164,14 +176,6 @@ export default function Announcements() {
               <RefreshCw className={cn("mr-1.5 h-4 w-4", announcements.isFetching && "animate-spin")} />
               Refresh
             </Button>
-            <SubmitDealDialog
-              trigger={
-                <Button size="sm" variant="default" className="h-10 sm:h-9">
-                  <Trophy className="mr-1.5 h-4 w-4" />
-                  Add Deal
-                </Button>
-              }
-            />
             {isAdmin && (
               <Button
                 size="sm"
@@ -184,7 +188,7 @@ export default function Announcements() {
                 Post
               </Button>
             )}
-          </div>
+          </>
         }
       />
 

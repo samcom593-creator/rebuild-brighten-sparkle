@@ -13,13 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAgentProfileDrawer } from "@/stores/agentProfileDrawer";
 import { useRolePreview } from "@/hooks/useRolePreview";
-import {
-  AGENT_CLOUD_ACCOUNT_NAV,
-  AGENT_CLOUD_PRIMARY_NAV,
-  APPLICANT_NAV,
-  filterAgentCloudNav,
-  flattenAgentCloudNav,
-} from "@/components/layout/agentCloudNavigation";
+import { AGENT_CLOUD_ACCOUNT_NAV, AGENT_CLOUD_PRIMARY_NAV, APPLICANT_NAV, filterAgentCloudNav, flattenAgentCloudNav, isApplicantViewer } from "@/components/layout/agentCloudNavigation";
 import {
   LayoutDashboard,
   Users,
@@ -103,7 +97,8 @@ export function CommandPalette() {
   const navRoutes = useMemo<RouteEntry[]>(() => {
     const viewMode = isPreviewing ? effectiveRole : effectiveMode;
     const seesAll = isAdmin && !isPreviewing;
-    const isApplicant = !authLoading && !isAdmin && !isManager && isAgent && !hasAgentRecord && !isPreviewing;
+    // One applicant rule for palette, sidebar and phone nav (F26).
+    const isApplicant = isApplicantViewer({ authLoading, isAdmin, isManager, isAgent, hasAgentRecord, isPreviewing });
     const primary = isApplicant ? APPLICANT_NAV : filterAgentCloudNav(AGENT_CLOUD_PRIMARY_NAV, { seesAll, viewMode });
     const account = filterAgentCloudNav(AGENT_CLOUD_ACCOUNT_NAV, { seesAll, viewMode });
     return flattenAgentCloudNav([...primary, ...account]).map((link) => ({

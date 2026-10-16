@@ -15,6 +15,9 @@ const authState = {
   isVaManager: false,
   isVa: false,
   isRecruiter: false,
+  isAgent: false,
+  hasAgentRecord: false,
+  isLoading: false,
   accountMode: null,
   effectiveMode: "agent" as const,
   signOut: vi.fn().mockResolvedValue({ error: null }),
@@ -77,6 +80,9 @@ function setRoles(roles: Partial<typeof authState>) {
   authState.isVaManager = false;
   authState.isVa = false;
   authState.isRecruiter = false;
+  authState.isAgent = false;
+  authState.hasAgentRecord = false;
+  authState.isLoading = false;
   authState.accountMode = null;
   Object.assign(authState, roles);
   // MP-332: the sidebar filters on the resolved account mode, so a role flag
@@ -269,3 +275,87 @@ describe("SidebarLayout · mobile drawer contract", () => {
     fireEvent.click(screen.getByRole("button", { name: "Search people and pages" }));
     expect(searchOpen).toHaveBeenCalledWith(true);
   });
+
+describe("GlobalSidebar · an active group can be collapsed (F27)", () => {
+  it("collapses and reopens the group the current page sits in", () => {
+    setRoles({ isAdmin: true });
+    renderSidebar("/dashboard/call-center");
+    expect(group("Sell")!.getAttribute("aria-expanded")).toBe("true");
+    expect(link("Call Center")).toBeTruthy();
+    fireEvent.click(group("Sell")!);
+    expect(group("Sell")!.getAttribute("aria-expanded")).toBe("false");
+    expect(link("Call Center")).toBeNull();
+    fireEvent.click(group("Sell")!);
+    expect(group("Sell")!.getAttribute("aria-expanded")).toBe("true");
+    expect(link("Call Center")).toBeTruthy();
+  });
+
+  it("still lets a group the page is not in collapse", () => {
+    setRoles({ isAdmin: true });
+    renderSidebar("/dashboard/call-center");
+    fireEvent.click(group("Learn")!);
+    expect(group("Learn")!.getAttribute("aria-expanded")).toBe("false");
+    expect(link("Call Lab")).toBeNull();
+  });
+});
+
+describe("GlobalSidebar · applicant rail on every surface (F26)", () => {
+  it.each([false, true])("gives an applicant the four next steps and no producer shortcuts (mobile=%s)", (mobile) => {
+    setRoles({ isAgent: true, hasAgentRecord: false });
+    renderSidebar("/dashboard", mobile);
+    expect(link("Get licensed")?.getAttribute("href")).toBe("/get-licensed");
+    expect(link("Training")?.getAttribute("href")).toBe("/dashboard/training/library");
+    expect(group("Sell")).toBeNull();
+    expect(link("Book of Business")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Post a Deal" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Add Agent" })).toBeNull();
+  });
+});
+
+describe("GlobalSidebar · one permanent Add Agent / Post a Deal pair (F37)", () => {
+  it.each([false, true])("keeps Post a Deal directly under Add Agent for hiring roles (mobile=%s)", (mobile) => {
+    setRoles({ isManager: true });
+    renderSidebar("/dashboard", mobile);
+    const addAgent = screen.getByRole("button", { name: "Add Agent" });
+    const postDeal = screen.getByRole("button", { name: "Post a Deal" });
+    expect(addAgent.compareDocumentPosition(postDeal) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: "Add Agent" })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "Post a Deal" })).toHaveLength(1);
+  });
+
+  it("gives a plain agent Post a Deal on the desktop rail and no Add Agent", () => {
+    setRoles({ isAgent: true, hasAgentRecord: true });
+    renderSidebar("/dashboard", false);
+    expect(screen.getByRole("button", { name: "Post a Deal" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Add Agent" })).toBeNull();
+  });
+
+  it("leaves the top bar with context and utilities only, so the desktop shell has one search entry and one creation pair", () => {
+    const topBar = fs.readFileSync(path.resolve(__dirname, "../../components/layout/TopBar.tsx"), "utf8");
+    const sidebar = fs.readFileSync(path.resolve(__dirname, "../../components/layout/GlobalSidebar.tsx"), "utf8");
+    expect(topBar).not.toContain("SubmitDealDialog");
+    expect(topBar).not.toContain("AddAgentModal");
+    expect(topBar).not.toContain("setCommandPaletteOpen");
+    expect(topBar).toContain("RolePreviewMenu");
+    expect(topBar).toContain("NotificationBell");
+    const searchEntries = (topBar + sidebar).match(/aria-label="Search people and pages"/g) ?? [];
+    expect(searchEntries).toHaveLength(1);
+  });
+});
+
+describe("GlobalSidebar · query-aware active state (F25)", () => {
+  const ACTIVE_LINK_CLASS = "bg-primary/15";
+
+  it("lights the VA's Contracting review on the contracting team view", () => {
+    setRoles({ isVa: true });
+    renderSidebar("/dashboard/team?view=contracting");
+    expect(link("Contracting review")!.className).toContain(ACTIVE_LINK_CLASS);
+    expect(group("Grow")!.className).toContain("text-foreground");
+  });
+
+  it("leaves it dark on an unrelated team view", () => {
+    setRoles({ isVa: true });
+    renderSidebar("/dashboard/team?view=link");
+    expect(link("Contracting review")!.className).not.toContain(ACTIVE_LINK_CLASS);
+  });
+});

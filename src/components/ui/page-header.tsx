@@ -40,13 +40,45 @@ import { Button } from "@/components/ui/button";
  *
  * The accent bar, left sheen and public API are unchanged, so no caller needs
  * editing.
+ *
+ * v6 (2026-10-15): explicit action slots. `primaryAction`, `secondaryActions`
+ * and `viewControls` say what each control is, so the header no longer has to
+ * guess. The legacy `actions` bag is still accepted and still ranks its
+ * children by data-primary-action, a bg-primary class and the Button variant,
+ * so the pages that pass it render as before. The one legacy rule that is gone
+ * is the guess from a component's displayName or function name: production is
+ * minified (vite.config.ts minify: "esbuild"; the AddAgentModal chunk exports
+ * its component as `t`), so that rule returned 10 in production and 70 in dev
+ * and the two builds picked different primaries. View controls (tabs,
+ * segmented controls, date steppers) render in their own slot at every
+ * breakpoint and never go behind More. A legacy bag passed beside the new
+ * slots keeps its legacy pick while `primaryAction` is absent, so a page that
+ * moves only its date stepper to viewControls keeps its visible primary.
  */
 export interface PageHeaderProps {
   eyebrow?: string;
   eyebrowIcon?: ReactNode;
   title: ReactNode;
   subtitle?: ReactNode;
+  /**
+   * Legacy slot: a bag of controls whose primary is inferred from props. New
+   * code uses the explicit slots below. Beside them, the bag still supplies the
+   * primary by the same inference while `primaryAction` is absent; everything
+   * else in it renders among the secondary actions.
+   */
   actions?: ReactNode;
+  /**
+   * The one action this page exists to perform. Visible at every breakpoint.
+   * Declaring it, even as null, turns off inference from a legacy `actions` bag.
+   */
+  primaryAction?: ReactNode;
+  /**
+   * Less frequent mutations. Inline from sm up, behind "More (n)" on phones.
+   * Pass siblings (a fragment or an array), not one wrapper, so each one counts.
+   */
+  secondaryActions?: ReactNode;
+  /** View selection and time navigation. Always visible, never behind More. */
+  viewControls?: ReactNode;
   /** Tailwind accent color, defaults to primary. */
   accent?: "primary" | "emerald" | "blue" | "amber" | "rose" | "purple" | "cyan";
   className?: string;
@@ -99,6 +131,10 @@ function normalizedActions(actions: ReactNode): ReactNode[] {
   return topLevel;
 }
 
+/**
+ * Legacy ranking for the `actions` bag. Only props are read: they survive
+ * minification, a component's name does not.
+ */
 function actionPriority(action: ReactNode): number {
   if (!isValidElement(action)) return 0;
   const element = action as ActionElement;
@@ -109,32 +145,32 @@ function actionPriority(action: ReactNode): number {
     if (element.props.variant === "destructive") return 60;
     return 20;
   }
-  const componentType = element.type as unknown as { displayName?: string; name?: string };
-  const typeName = typeof element.type === "string"
-    ? ""
-    : componentType.displayName ?? componentType.name ?? "";
-  return /Add|Create|Invite|Post|Submit|Save/.test(typeName) ? 70 : 10;
+  return 10;
 }
 
-function PageActions({ actions }: { actions: ReactNode }) {
+function isRenderable(node: ReactNode): boolean {
+  return node !== null && node !== undefined && node !== false && node !== true;
+}
+
+/**
+ * One toolbar for both paths. The primary stays put at every breakpoint; the
+ * secondaries sit inline from sm up and behind "More (n)" below it.
+ */
+function ActionToolbar({ primary, secondary }: { primary: ReactNode; secondary: ReactNode[] }) {
   const [expanded, setExpanded] = useState(false);
   const disclosureId = useId();
-  const items = normalizedActions(actions);
+  const hasPrimary = isRenderable(primary);
 
-  if (items.length <= 1) {
-    return <div className="apex-page-actions apex-page-actions-single">{Children.toArray(items)}</div>;
+  if (secondary.length === 0) {
+    return hasPrimary ? <div className="apex-page-actions apex-page-actions-single">{primary}</div> : null;
   }
-
-  let primaryIndex = 0;
-  for (let index = 1; index < items.length; index += 1) {
-    if (actionPriority(items[index]) > actionPriority(items[primaryIndex])) primaryIndex = index;
+  if (!hasPrimary && secondary.length === 1) {
+    return <div className="apex-page-actions apex-page-actions-single">{Children.toArray(secondary)}</div>;
   }
-  const primary = items[primaryIndex];
-  const secondary = items.filter((_, index) => index !== primaryIndex);
 
   return (
     <div className="apex-page-actions">
-      <div className="apex-page-primary-action">{primary}</div>
+      {hasPrimary && <div className="apex-page-primary-action">{primary}</div>}
       <Button
         type="button"
         variant="outline"
@@ -159,15 +195,59 @@ function PageActions({ actions }: { actions: ReactNode }) {
   );
 }
 
+/** Index of the legacy primary: the highest actionPriority, the first one on a tie. Expects at least one item. */
+function legacyPrimaryIndex(items: ReactNode[]): number {
+  let primaryIndex = 0;
+  for (let index = 1; index < items.length; index += 1) {
+    if (actionPriority(items[index]) > actionPriority(items[primaryIndex])) primaryIndex = index;
+  }
+  return primaryIndex;
+}
+
+function LegacyPageActions({ actions }: { actions: ReactNode }) {
+  const items = normalizedActions(actions);
+  if (items.length <= 1) return <ActionToolbar primary={items[0] ?? null} secondary={[]} />;
+
+  const primaryIndex = legacyPrimaryIndex(items);
+  return <ActionToolbar primary={items[primaryIndex]} secondary={items.filter((_, index) => index !== primaryIndex)} />;
+}
+
+/**
+ * Explicit slots win. While `primaryAction` is absent (undefined, not null), a
+ * legacy bag passed beside the new slots still supplies the primary by the same
+ * ranking LegacyPageActions uses, so moving only a date stepper to viewControls
+ * cannot push the page's default Button behind More on phones. The rest of the
+ * bag joins the declared secondaries.
+ */
+function ExplicitPageActions({ primaryAction, secondaryActions, actions }: Pick<PageHeaderProps, "primaryAction" | "secondaryActions" | "actions">) {
+  const declared = normalizedActions(secondaryActions);
+  const legacy = normalizedActions(actions);
+  if (primaryAction === undefined && legacy.length > 0) {
+    const primaryIndex = legacyPrimaryIndex(legacy);
+    return (
+      <ActionToolbar
+        primary={legacy[primaryIndex]}
+        secondary={[...declared, ...legacy.filter((_, index) => index !== primaryIndex)]}
+      />
+    );
+  }
+  return <ActionToolbar primary={primaryAction ?? null} secondary={[...declared, ...legacy]} />;
+}
+
 export function PageHeader({
   eyebrow,
   eyebrowIcon,
   title,
   subtitle,
   actions,
+  primaryAction,
+  secondaryActions,
+  viewControls,
   accent = "primary",
   className,
 }: PageHeaderProps) {
+  const explicit = primaryAction !== undefined || secondaryActions !== undefined || viewControls !== undefined;
+  const hasViewControls = isRenderable(viewControls);
   return (
     <header
       className={cn(
@@ -206,8 +286,15 @@ export function PageHeader({
             </p>
           )}
         </div>
-        {actions && (
-          <PageActions actions={actions} />
+        {explicit ? (
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
+            {hasViewControls && (
+              <div className="apex-page-view-controls flex flex-wrap items-center gap-2">{viewControls}</div>
+            )}
+            <ExplicitPageActions primaryAction={primaryAction} secondaryActions={secondaryActions} actions={actions} />
+          </div>
+        ) : (
+          actions && <LegacyPageActions actions={actions} />
         )}
       </div>
     </header>

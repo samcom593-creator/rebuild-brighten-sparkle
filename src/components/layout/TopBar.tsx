@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Command, HelpCircle, Home, Menu, Moon, Search, Star, Sun, UserPlus } from "lucide-react";
+import { HelpCircle, Home, Menu, Moon, Star, Sun } from "lucide-react";
 // 2026-08-23 light/dark wave: this file used to import useTheme from
 // "next-themes". No <ThemeProvider> is mounted anywhere in this app, and
 // next-themes' hook falls back to a stub context when the provider is absent
@@ -13,11 +13,8 @@ import { Command, HelpCircle, Home, Menu, Moon, Search, Star, Sun, UserPlus } fr
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/hooks/useAuth";
 import { useSidebarState } from "@/hooks/useSidebarState";
-import { useUIStore } from "@/shared/store/uiStore";
 import { NotificationBell } from "@/components/layout/NotificationBell";
 import { RolePreviewMenu } from "@/components/layout/RolePreviewBubbles";
-import { SubmitDealDialog } from "@/components/deals/SubmitDealDialog";
-import { AddAgentModal } from "@/components/dashboard/AddAgentModal";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { agentCloudBreadcrumb } from "./agentCloudNavigation";
@@ -26,12 +23,17 @@ import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
+// Context and utilities only (2026-10-15). The shell's search entry and its
+// Add Agent / Post a Deal pair live in the sidebar, which every desktop
+// viewport shows beside this bar; the copies that used to sit here opened the
+// same command palette and the same two dialogs, so each desktop screen
+// carried two identical search boxes and two identical creation buttons.
+// Ctrl or Command K still opens search from anywhere.
 export function TopBar() {
   const { pathname } = useLocation();
-  const { user, isAdmin, isManager } = useAuth();
+  const { user } = useAuth();
   const { theme, setTheme } = useTheme();
   const { toggleSidebar } = useSidebarState();
-  const setSearchOpen = useUIStore((state) => state.setCommandPaletteOpen);
   const favorites = useFavoriteRoutes((state) => state.favorites);
   const toggleFavorite = useFavoriteRoutes((state) => state.toggleFavorite);
   const isFavorite = favorites.some((entry) => entry.href === pathname);
@@ -81,10 +83,6 @@ export function TopBar() {
       </div>
 
       <div className="flex shrink-0 items-center gap-1.5">
-        <button type="button" onClick={() => setSearchOpen(true)} aria-label="Search people and pages" className="hidden h-8 w-[210px] items-center gap-2 rounded-md border border-border bg-card px-2.5 text-xs text-muted-foreground hover:border-primary/40 md:flex">
-          <Search className="h-3.5 w-3.5" /><span>Search people & pages</span>
-          <span className="ml-auto flex items-center gap-0.5 rounded border border-border px-1 py-0.5 text-[10px]"><Command className="h-2.5 w-2.5" />K</span>
-        </button>
         <Button
           variant="ghost"
           size="icon"
@@ -106,17 +104,6 @@ export function TopBar() {
           {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </Button>
         <RolePreviewMenu />
-        {(isAdmin || isManager) && (
-          <AddAgentModal
-            trigger={(
-              <Button size="sm" variant="outline" className="h-8 gap-1.5 rounded-md px-2.5 text-xs font-semibold">
-                <UserPlus className="h-3.5 w-3.5" />
-                <span className="hidden 2xl:inline">Add Agent</span>
-              </Button>
-            )}
-          />
-        )}
-        <SubmitDealDialog trigger={<Button size="sm" className="h-8 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground shadow-none hover:bg-primary/90">Post a Deal</Button>} />
         <Avatar className="ml-1 h-8 w-8 border border-border">
           <AvatarFallback className="bg-card text-[11px] font-semibold text-foreground">{initials}</AvatarFallback>
         </Avatar>

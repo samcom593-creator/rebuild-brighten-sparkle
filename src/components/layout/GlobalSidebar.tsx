@@ -12,8 +12,14 @@ import {
   AGENT_CLOUD_ACCOUNT_NAV,
   AGENT_CLOUD_PRIMARY_NAV,
   APPLICANT_NAV,
-  agentCloudPathIsActive,
+  agentCloudGroupIsActive,
+  agentCloudItemIsActive,
+  initialGroupExpansion,
   isAgentCloudGroup,
+  isApplicantViewer,
+  isNavGroupOpen,
+  reconcileGroupExpansion,
+  toggleNavGroup,
   type AgentCloudNavEntry,
   type AgentCloudNavGroup,
   type AgentCloudNavItem,
@@ -36,7 +42,8 @@ interface GlobalSidebarProps {
 
 export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }: GlobalSidebarProps) {
   const brand = useBrand();
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
+  const here = { pathname, search };
   const navigate = useNavigate();
   const { isAdmin, isManager, isAgent, hasAgentRecord, isLoading: authLoading, effectiveMode, signOut } = useAuth();
   // MP-332: when Sam previews a role, the nav follows the preview too —
@@ -50,7 +57,6 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
   // has a visible result instead of vanishing into localStorage.
   const favorites = useFavoriteRoutes((state) => state.favorites);
   const collapsed = !isOpen;
-  const [closedGroups, setClosedGroups] = useState<Record<string, boolean>>({});
   const [signingOut, setSigningOut] = useState(false);
 
   const handleSignOut = async () => {
@@ -80,11 +86,36 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
 
   // An applicant is a role-agent login with no agents row (applying mints the
   // login). They get four real next steps, not the producer's Sell/Grow/Book
-  // groups. Gated on auth having finished loading so a real producer never
-  // flashes the applicant rail while their agents row is still in flight.
-  const isApplicant = !authLoading && !isAdmin && !isManager && isAgent && !hasAgentRecord && !isPreviewing;
+  // groups. The rule is isApplicantViewer, shared with the phone nav, so the
+  // two surfaces cannot disagree about who is an applicant.
+  const isApplicant = isApplicantViewer({ authLoading, isAdmin, isManager, isAgent, hasAgentRecord, isPreviewing });
   const primary = isApplicant ? APPLICANT_NAV : filterEntries(AGENT_CLOUD_PRIMARY_NAV);
   const account = filterEntries(AGENT_CLOUD_ACCOUNT_NAV);
+
+  // Group expansion is explicit state. It starts from the route, a chevron
+  // click is a choice that stands (for the active group too), and moving into
+  // a group the user was not already in opens that group. The reconcile runs
+  // during render so the first paint after a route change is already right;
+  // reconcileGroupExpansion returns the same object when nothing changed, so
+  // this cannot loop.
+  const activeGroups = [...primary, ...account]
+    .filter(isAgentCloudGroup)
+    .filter((group) => agentCloudGroupIsActive(here, group))
+    .map((group) => group.label);
+  const [expansion, setExpansion] = useState(() => initialGroupExpansion(activeGroups));
+  const groupState = reconcileGroupExpansion(expansion, activeGroups);
+  if (groupState !== expansion) setExpansion(groupState);
+
+  // The shell's one Add Agent / Post a Deal pair lives here, on the desktop rail
+  // and in the phone sheet alike; the top bar carries no copy. Add Agent (hiring
+  // roles) sits above Post a Deal, the order Sam asked for. An applicant has no
+  // agents row to post a deal under, so the pair is absent for them.
+  const canAddAgent = isAdmin || isManager;
+  const canPostDeal = !isApplicant;
+  const quickActionClass = cn(
+    "w-full gap-2",
+    mobile ? "h-11 justify-start gap-3 px-3" : collapsed ? "h-9 px-0" : "h-9 justify-start px-3",
+  );
 
   const withTooltip = (label: string, child: ReactNode) => {
     if (!collapsed || isTouch) return child;
@@ -97,7 +128,7 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
   };
 
   const renderLeaf = (item: AgentCloudNavItem, nested = false) => {
-    const active = agentCloudPathIsActive(pathname, item.href);
+    const active = agentCloudItemIsActive(here, item);
     const Icon = item.icon;
     return withTooltip(item.label, (
       <Link
@@ -119,14 +150,13 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
   };
 
   const renderGroup = (group: AgentCloudNavGroup) => {
-    const active = group.items.some((item) => agentCloudPathIsActive(pathname, item.href))
-      || (group.label === "Grow" && pathname.startsWith("/dashboard/recruiting/"));
-    const open = active || !closedGroups[group.label];
+    const active = agentCloudGroupIsActive(here, group);
+    const open = isNavGroupOpen(groupState, group.label);
     const Icon = group.icon;
     const trigger = (
       <button
         type="button"
-        onClick={() => collapsed ? onToggle() : setClosedGroups((value) => ({ ...value, [group.label]: !value[group.label] }))}
+        onClick={() => collapsed ? onToggle() : setExpansion((value) => toggleNavGroup(value, group.label))}
         aria-expanded={open}
         className={cn(
           "flex min-h-9 w-full items-center rounded-md text-[13px] font-medium transition-colors",
@@ -220,47 +250,33 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
           <div className="space-y-0.5">{renderEntries(account)}</div>
         </nav>
 
-        {mobile && (
-          <div className="shrink-0 space-y-2 border-t border-border p-2">
-            <div className="px-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-              Quick actions
-            </div>
-            <SubmitDealDialog
-              trigger={(
-                <Button size="sm" className="h-11 w-full justify-start gap-3 px-3">
-                  <HandCoins className="h-4 w-4" />
-                  Post a Deal
-                </Button>
-              )}
-            />
-            {(isAdmin || isManager) && (
+        {(canAddAgent || canPostDeal) && (
+          <div className={cn("shrink-0 border-t border-border p-2", mobile ? "space-y-2" : "space-y-1")}>
+            {mobile && (
+              <div className="px-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                Quick actions
+              </div>
+            )}
+            {canAddAgent && (
               <AddAgentModal
                 trigger={(
-                  <Button variant="outline" size="sm" className="h-11 w-full justify-start gap-3 px-3">
-                    <UserPlus className="h-4 w-4" />
-                    Add Agent
+                  <Button size="sm" className={quickActionClass} aria-label="Add Agent">
+                    <UserPlus className="h-4 w-4 shrink-0" />
+                    {!collapsed && <span>Add Agent</span>}
                   </Button>
                 )}
               />
             )}
-
-          </div>
-        )}
-
-        {!mobile && (isAdmin || isManager) && (
-          <div className="shrink-0 border-t border-border p-2">
-            <AddAgentModal
-              trigger={(
-                <Button
-                  size="sm"
-                  className={cn("h-9 gap-2", collapsed ? "w-full px-0" : "w-full justify-start px-3")}
-                  aria-label="Add Agent"
-                >
-                  <UserPlus className="h-4 w-4 shrink-0" />
-                  {!collapsed && <span>Add Agent</span>}
-                </Button>
-              )}
-            />
+            {canPostDeal && (
+              <SubmitDealDialog
+                trigger={(
+                  <Button size="sm" variant={canAddAgent ? "outline" : "default"} className={quickActionClass} aria-label="Post a Deal">
+                    <HandCoins className="h-4 w-4 shrink-0" />
+                    {!collapsed && <span>Post a Deal</span>}
+                  </Button>
+                )}
+              />
+            )}
           </div>
         )}
 

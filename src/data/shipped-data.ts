@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "The hire board shows real production: Edwin Ac-lumor (40 deals, $65,873) and Jontay Taylor (24 deals, $46,753) no longer show zero deals with the next step \"Book the onboarding call\".",
+    detail: "Each hire card's deals and premium came from the AgentLink book, which has no agent rows after Aug 31 and repeats some imports. Seven hires who sold in the last 30 days showed no production, and nine licensed hires who were already writing business were told to start onboarding, book the onboarding call or move to field training. The card now reads the same production as the rest of the dashboard, and anyone writing business below the Producing step is told to mark them producing. Your own card drops from 104 deals to 59 because the book held 49 duplicate copies of your policies. Two hires now show up as writing business while marked unlicensed: Tyler Krejcha (the duplicate row waiting on a merge) and David Ladd.",
+    commit: "PL-WIB-HIRE-BOARD-CANONICAL",
+  },
+  {
+    ts: "today",
     label: "Sold Calls is a resell workbench: Mark contacted, Mark resold, Mark push and Mark pushback on every call, with notes, and a Bank & SSN objections tab for the 793 callers who balked at bank or SSN.",
     detail: "Each card shows when the call happened in the top corner, the client's age worked out beside the birth date (2026 − 1958 = 68), who gave SSN and who gave bank, what the agent said about approval, and flags for mortgage-protection interest, spouse questions, price and bank objections, and anyone who gave SSN and bank but was declined (try another carrier). The moments that matter from the transcript replace the full recording. The objections tab covers 85 Bank Objection, 10 No Bank Account and 698 Social Objection calls with Call and Text, the date, the agent and the same buttons; clients who bought later are marked so nobody calls them as lost.",
     commit: "PL-RESELL-WORKBENCH",

@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Only staff can read the prospects on Sam's call calendar; agents and applicants can't anymore.",
+    detail: "The scheduled-calls table holds each prospect's name, phone, email and call notes, and its rule let any login read it, applicants included. Reads are now limited to admins, managers, VAs and recruiters; the calendar sync and daily brief run as the system and are unaffected. A new weekly doctor check reads every table with personal data as an ordinary agent and goes critical if one is open to everyone; it found none after this fix across 102 tables.",
+    commit: "PL-SEC-SCHEDULED-CALLS",
+  },
+  {
+    ts: "today",
     label: "VAs no longer see outside-agency deals, and Aisha now sees the whole book on every page.",
     detail: "VAs and VA managers could read all 104 outside-agency deals through a CRM rule that gives VA staff every agent's records. That table now follows the same rule as the rest of the book: Sam and Aisha see it all, agents see their own, managers their team. Aisha also saw only part of two client tables, 130 of 1,384 AgentLink snapshot rows and 14 of 89 carrier policies, so Book of Business disagreed with her other pages; she now sees all of them. Checked live as each role.",
     commit: "PL-SEC-BOOK-READERS-EXT",

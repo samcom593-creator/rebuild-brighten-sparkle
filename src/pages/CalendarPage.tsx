@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   format, parseISO, startOfMonth, endOfMonth, startOfWeek, endOfWeek,
@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useBusinessToday } from "@/hooks/useBusinessToday";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +21,7 @@ import { InterviewScheduler } from "@/components/dashboard/InterviewScheduler";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageSkeleton } from "@/components/ui/page-skeleton";
 import { PageHeader } from "@/components/ui/page-header";
+import { QueryState } from "@/components/ui/query-state";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as DayCalendar } from "@/components/ui/calendar";
 import {
@@ -44,6 +46,13 @@ import { type CalendarItem, groupByDay, mergeAgenda } from "@/lib/calendarAgenda
 import {
   BUSINESS_TZ, dateKeyInZone, isValidTimeZone, timeValueInZone, formatClock, zonedWallTimeToUtc,
 } from "@/lib/calendarTime";
+import {
+  dayCountAria, dayCountText, emptyQualifier, inViewCount, inViewNote, inViewValue, kindChipCount, tallyKinds,
+} from "@/lib/calendarInView";
+import {
+  LEAD_COLUMNS, LEAD_SEARCH_DEBOUNCE_MS, LEAD_SEARCH_MIN_CHARS, createLatestGuard, fetchLeadById,
+  findExistingApplicants, searchLeads, type DuplicateLookup, type LeadResult,
+} from "@/lib/leadSearch";
 
 /* ─────────────────────────────────────────────────────────────────────────────
  * Calendar — one event model (redesign section 7).
@@ -133,57 +142,134 @@ function businessTodayKey(): string {
   return dateKeyInZone(new Date(), BUSINESS_TZ);
 }
 
-// ─── Add New Applicant (shown when the lead search finds nobody) ───
-type LeadResult = { id: string; first_name: string; last_name: string; email: string; phone: string; status: string };
-
+// ─── Add New Applicant (shown only after a search that completed with no match) ───
 function AddNewApplicantForm({ onCreated }: { onCreated: (lead: LeadResult) => void }) {
   const [form, setForm] = useState({ first_name: "", last_name: "", email: "", phone: "", instagram_handle: "" });
-  const [saving, setSaving] = useState(false);
+  // "checking" is the duplicate lookup, "adding" the insert, so the button names the step in progress.
+  const [phase, setPhase] = useState<"idle" | "checking" | "adding">("idle");
+  const saving = phase !== "idle";
+  const [existing, setExisting] = useState<Extract<DuplicateLookup, { status: "found" }> | null>(null);
+
+  /**
+   * Insert, then read the row back. The server's BEFORE INSERT trigger
+   * (trg_applications_flag_duplicates) flags a second live row for the same
+   * email, case-insensitive, as a duplicate pointing at the canonical row.
+   * When that happens the canonical row is the one handed to the scheduler,
+   * never the flagged copy.
+   */
+  const createApplicant = async () => {
+    const { data, error } = await supabase.from("applications").insert({
+      first_name: form.first_name.trim(),
+      last_name: form.last_name.trim(),
+      email: form.email.trim(),
+      phone: form.phone.trim() || null,
+      instagram_handle: form.instagram_handle.trim() || null,
+      status: "new" as never,
+    }).select(LEAD_COLUMNS).single();
+    if (error) throw error;
+    const created = data as unknown as LeadResult;
+    if (created.is_duplicate === true) {
+      const canonical = created.duplicate_of ? await fetchLeadById(supabase, created.duplicate_of) : null;
+      if (canonical?.status === "ready" && canonical.lead) {
+        toast.success(`${created.email} already belongs to ${canonical.lead.first_name} ${canonical.lead.last_name}. Scheduling for that record.`);
+        onCreated(canonical.lead);
+        return;
+      }
+      toast.error("This email already belongs to another applicant, so the new record was flagged as a duplicate. Search for them instead of adding again.");
+      return;
+    }
+    toast.success(`${created.first_name} ${created.last_name} added`);
+    onCreated(created);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.first_name || !form.last_name || !form.email) {
+    if (!form.first_name.trim() || !form.last_name.trim() || !form.email.trim()) {
       toast.error("First name, last name, and email are required");
       return;
     }
-    setSaving(true);
+    setPhase("checking");
     try {
-      const { data, error } = await supabase.from("applications").insert({
-        first_name: form.first_name,
-        last_name: form.last_name,
-        email: form.email,
-        phone: form.phone || null,
-        instagram_handle: form.instagram_handle || null,
-        status: "new" as never,
-      }).select("id, first_name, last_name, email, phone, status").single();
-      if (error) throw error;
-      toast.success(`${form.first_name} ${form.last_name} added`);
-      onCreated(data as LeadResult);
+      // Exact match on email and phone first. A lookup that did not happen
+      // never creates a record: "none" means every read completed empty.
+      const lookup = await findExistingApplicants(supabase, { email: form.email, phone: form.phone });
+      if (lookup.status === "error") {
+        toast.error(`Could not check for an existing applicant (${lookup.message}). Nothing was created.`);
+        return;
+      }
+      if (lookup.status === "found") {
+        setExisting(lookup);
+        return;
+      }
+      setPhase("adding");
+      await createApplicant();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Failed to add applicant");
     } finally {
-      setSaving(false);
+      setPhase("idle");
+    }
+  };
+
+  const createAnyway = async () => {
+    setPhase("adding");
+    try {
+      await createApplicant();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to add applicant");
+    } finally {
+      setPhase("idle");
     }
   };
 
   return (
     <div className="space-y-3">
-      <p className="py-2 text-center text-sm text-muted-foreground">No leads found</p>
-      <form onSubmit={handleSubmit} className="space-y-2 rounded-lg border border-border p-3">
-        <p className="flex items-center gap-1.5 text-xs font-medium text-foreground">
-          <Plus className="h-3.5 w-3.5 text-primary" /> Add New Applicant
-        </p>
-        <div className="grid grid-cols-2 gap-2">
-          <Input placeholder="First Name *" value={form.first_name} onChange={(e) => setForm((p) => ({ ...p, first_name: e.target.value }))} required />
-          <Input placeholder="Last Name *" value={form.last_name} onChange={(e) => setForm((p) => ({ ...p, last_name: e.target.value }))} required />
+      {/* Only above the form: beside an exact-match panel it would contradict "already exists". */}
+      {!existing && <p className="py-2 text-center text-sm text-muted-foreground">No leads found</p>}
+      {existing ? (
+        <div className="space-y-2 rounded-lg border border-border p-3">
+          <p className="text-xs font-medium text-foreground">
+            {existing.byEmail
+              ? "An applicant with this email already exists. Schedule for them, or go back and change the email."
+              : "An applicant with this phone number already exists. Schedule for them, or add a new applicant anyway."}
+          </p>
+          {existing.matches.map((match) => (
+            <button key={match.id} type="button" onClick={() => onCreated(match)}
+              className="flex w-full items-center gap-3 rounded-lg border border-border p-2 text-left transition-colors hover:bg-muted/50">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">{match.first_name} {match.last_name}</p>
+                <p className="truncate text-xs text-muted-foreground">{match.email}{match.phone ? ` · ${match.phone}` : ""}</p>
+              </div>
+              <Badge variant="outline" className="shrink-0 text-[11px]">
+                {match.matchedOn === "email" ? "same email" : "same phone"}{match.is_duplicate ? " · flagged duplicate" : ""}
+              </Badge>
+            </button>
+          ))}
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" size="sm" variant="outline" onClick={() => setExisting(null)}>Back</Button>
+            {!existing.byEmail && (
+              <Button type="button" size="sm" onClick={createAnyway} disabled={saving}>
+                {phase === "adding" ? "Adding..." : "Add new applicant anyway"}
+              </Button>
+            )}
+          </div>
         </div>
-        <Input placeholder="Email *" type="email" value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} required />
-        <Input placeholder="Phone" value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} />
-        <Input placeholder="Instagram Handle" value={form.instagram_handle} onChange={(e) => setForm((p) => ({ ...p, instagram_handle: e.target.value }))} />
-        <Button type="submit" size="sm" className="w-full" disabled={saving}>
-          {saving ? "Adding..." : "Add & Schedule"}
-        </Button>
-      </form>
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-2 rounded-lg border border-border p-3">
+          <p className="flex items-center gap-1.5 text-xs font-medium text-foreground">
+            <Plus className="h-3.5 w-3.5 text-primary" /> Add New Applicant
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <Input placeholder="First Name *" value={form.first_name} onChange={(e) => setForm((p) => ({ ...p, first_name: e.target.value }))} required />
+            <Input placeholder="Last Name *" value={form.last_name} onChange={(e) => setForm((p) => ({ ...p, last_name: e.target.value }))} required />
+          </div>
+          <Input placeholder="Email *" type="email" value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} required />
+          <Input placeholder="Phone" value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} />
+          <Input placeholder="Instagram Handle" value={form.instagram_handle} onChange={(e) => setForm((p) => ({ ...p, instagram_handle: e.target.value }))} />
+          <Button type="submit" size="sm" className="w-full" disabled={saving}>
+            {phase === "checking" ? "Checking..." : phase === "adding" ? "Adding..." : "Add & Schedule"}
+          </Button>
+        </form>
+      )}
     </div>
   );
 }
@@ -213,6 +299,14 @@ function EventChip({ item, onClick }: { item: CalendarItem; onClick: () => void 
 }
 
 type ApptForm = { title: string; person: string; date: string; time: string; duration: string; zone: string; link: string; notes: string };
+type CountRow = { kind: string; n: number };
+
+/** The lead search. "ready" with no rows is the only state that offers Add New Applicant (F30). */
+type LeadSearch =
+  | { status: "idle" }
+  | { status: "loading"; rows: LeadResult[] }
+  | { status: "ready"; rows: LeadResult[] }
+  | { status: "error"; error: unknown };
 
 export default function CalendarPage() {
   const { user, isAdmin, isManager, isVaManager, isVa } = useAuth();
@@ -220,7 +314,8 @@ export default function CalendarPage() {
   const queryClient = useQueryClient();
   const { playSound } = useSoundEffects();
 
-  const todayKey = useMemo(() => businessTodayKey(), []);
+  // Live business day: advances at Phoenix midnight and on returning to the tab (F32).
+  const todayKey = useBusinessToday();
   const [anchor, setAnchor] = useState<Date>(() => parseISO(businessTodayKey()));
   const [view, setView] = useState<CalendarView>(DEFAULT_CALENDAR_PREFS.view);
   const [activeKinds, setActiveKinds] = useState<string[]>([]); // [] = every kind
@@ -260,8 +355,10 @@ export default function CalendarPage() {
   // interview scheduling (lead search → InterviewScheduler)
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<LeadResult[]>([]);
-  const [searching, setSearching] = useState(false);
+  const [search, setSearch] = useState<LeadSearch>({ status: "idle" });
+  const searchGuard = useRef(createLatestGuard());
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (searchTimer.current) clearTimeout(searchTimer.current); }, []);
   const [selectedLead, setSelectedLead] = useState<LeadResult | null>(null);
   const [schedulerOpen, setSchedulerOpen] = useState(false);
   const [autoPopulating, setAutoPopulating] = useState(false);
@@ -277,17 +374,30 @@ export default function CalendarPage() {
       ? format(anchor, "EEEE, MMMM d, yyyy")
       : `${format(range.from, "MMM d")} – ${format(range.to, "MMM d, yyyy")}`;
 
-  // ── counts: aggregated in Postgres, never an array length ───────────────
-  const { data: counts } = useQuery({
-    queryKey: ["calendar-window-counts", fromKey, toKey],
+  // ── one effective filter: the rows, the server counts and "In view" all read it (F31) ──
+  const agendaFilter = useMemo(() => ({
+    fromKey,
+    toKey,
+    kinds: activeKinds,
+    showCanceled,
+    viewerUserId: user?.id ?? null,
+  }), [fromKey, toKey, activeKinds, showCanceled, user?.id]);
+
+  // ── per-kind counts: aggregated in Postgres for the whole window ────────
+  // calendar_window_counts takes only the window. It counts a canceled
+  // interview and never a cancelled appointment, so it feeds the kind chips
+  // and the truncation notice, not the "In view" tile.
+  const countsQuery = useQuery({
+    queryKey: ["calendar-window-counts", agendaFilter.fromKey, agendaFilter.toKey],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("calendar_window_counts" as never, { p_from: fromKey, p_to: toKey } as never);
+      const { data, error } = await supabase.rpc("calendar_window_counts" as never, { p_from: agendaFilter.fromKey, p_to: agendaFilter.toKey } as never);
       if (error) throw error;
-      return (data ?? []) as { kind: string; n: number }[];
+      return (data ?? []) as CountRow[];
     },
     enabled: !!user,
     staleTime: 60_000,
   });
+  const counts = countsQuery.data;
 
   const countByKind = useMemo(() => {
     const map: Record<string, number> = {};
@@ -295,6 +405,7 @@ export default function CalendarPage() {
     return map;
   }, [counts]);
 
+  /** Server total for the active kinds; only a number when the count read succeeded. */
   const countedTotal = useMemo(() => {
     const keys = activeKinds.length ? activeKinds : KIND_KEYS;
     return keys.reduce((sum, k) => sum + (countByKind[k] ?? 0), 0);
@@ -302,14 +413,14 @@ export default function CalendarPage() {
 
   // ── the events: window markers + the editable agenda ────────────────────
   const windowQuery = useQuery({
-    queryKey: ["calendar-window", fromKey, toKey],
-    queryFn: () => fetchWindowRows(fromKey, toKey, null),
+    queryKey: ["calendar-window", agendaFilter.fromKey, agendaFilter.toKey],
+    queryFn: () => fetchWindowRows(agendaFilter.fromKey, agendaFilter.toKey, null),
     enabled: !!user,
     staleTime: 30_000,
   });
   const agendaQuery = useQuery({
-    queryKey: ["calendar-agenda", fromKey, toKey],
-    queryFn: () => fetchAgendaRows(fromKey, toKey),
+    queryKey: ["calendar-agenda", agendaFilter.fromKey, agendaFilter.toKey],
+    queryFn: () => fetchAgendaRows(agendaFilter.fromKey, agendaFilter.toKey),
     enabled: !!user,
     staleTime: 30_000,
   });
@@ -317,11 +428,49 @@ export default function CalendarPage() {
   const items = useMemo(() => mergeAgenda(
     windowQuery.data?.rows,
     agendaQuery.isError ? null : agendaQuery.data?.rows,
-    { kinds: activeKinds, showCanceled, viewerUserId: user?.id ?? null },
-  ), [windowQuery.data, agendaQuery.data, agendaQuery.isError, activeKinds, showCanceled, user?.id]);
+    { kinds: agendaFilter.kinds, showCanceled: agendaFilter.showCanceled, viewerUserId: agendaFilter.viewerUserId },
+  ), [windowQuery.data, agendaQuery.data, agendaQuery.isError, agendaFilter]);
   const byDay = useMemo(() => groupByDay(items), [items]);
-  const isLoading = windowQuery.isLoading || agendaQuery.isLoading;
+  // isPending, not isLoading: under the app's offlineFirst network mode a
+  // retry paused while offline has isLoading false and still no rows, which
+  // would paint an empty calendar and a 0 for a read that has not happened.
+  const isLoading = windowQuery.isPending || agendaQuery.isPending;
   const truncated = !!windowQuery.data?.truncated || !!agendaQuery.data?.truncated;
+
+  // "In view" = the rows painted under agendaFilter (kind, canceled visibility,
+  // scope, window). Exact only when both feeds answered in full; a cut-off read
+  // is a floor, a failed feed is partial, nothing readable is unavailable (F31).
+  // The agenda's rows are dropped on error (the date feed's copies are painted
+  // instead), so they count as painted only while that feed answers.
+  const inView = useMemo(() => inViewCount(
+    items.length,
+    {
+      isPending: windowQuery.isPending,
+      isError: windowQuery.isError,
+      truncated: !!windowQuery.data?.truncated,
+      painted: windowQuery.data !== undefined,
+    },
+    {
+      isPending: agendaQuery.isPending,
+      isError: agendaQuery.isError,
+      truncated: !!agendaQuery.data?.truncated,
+      painted: !agendaQuery.isError && agendaQuery.data !== undefined,
+    },
+  ), [items.length, windowQuery.isPending, windowQuery.isError, windowQuery.data, agendaQuery.isPending, agendaQuery.isError, agendaQuery.data]);
+
+  // Per-kind tally of the rows the list paints with every kind on, under the
+  // same canceled visibility, so the kind chips follow Show canceled as In view
+  // does. Only when both feeds answered in full; otherwise the chips fall back
+  // to the server's window totals.
+  const kindTally = useMemo(() => {
+    if (inView.status !== "exact") return null;
+    const everyKind = agendaFilter.kinds.length
+      ? mergeAgenda(windowQuery.data?.rows, agendaQuery.data?.rows, {
+        kinds: null, showCanceled: agendaFilter.showCanceled, viewerUserId: agendaFilter.viewerUserId,
+      })
+      : items;
+    return tallyKinds(everyKind);
+  }, [inView.status, items, windowQuery.data, agendaQuery.data, agendaFilter]);
 
   const gridDays = useMemo(
     () => eachDayOfInterval({ start: range.from, end: range.to }),
@@ -354,28 +503,60 @@ export default function CalendarPage() {
   });
 
   // ── today / next-30 KPIs, both server-counted ───────────────────────────
-  const { data: todayCounts } = useQuery({
+  const todayCountsQuery = useQuery({
     queryKey: ["calendar-window-counts-today", todayKey],
     queryFn: async () => {
       const { data, error } = await supabase.rpc("calendar_window_counts" as never, { p_from: todayKey, p_to: todayKey } as never);
       if (error) throw error;
-      return (data ?? []) as { kind: string; n: number }[];
+      return (data ?? []) as CountRow[];
     },
     enabled: !!user,
     staleTime: 60_000,
   });
-  const { data: next30Counts } = useQuery({
+  const next30CountsQuery = useQuery({
     queryKey: ["calendar-window-counts-next30", todayKey],
     queryFn: async () => {
       const to = fmtKey(addDays(parseISO(todayKey), 30));
       const { data, error } = await supabase.rpc("calendar_window_counts" as never, { p_from: todayKey, p_to: to } as never);
       if (error) throw error;
-      return (data ?? []) as { kind: string; n: number }[];
+      return (data ?? []) as CountRow[];
     },
     enabled: !!user,
     staleTime: 60_000,
   });
-  const sumCounts = (rows?: { kind: string; n: number }[]) => (rows ?? []).reduce((s, r) => s + Number(r.n), 0);
+  const sumCounts = (rows: CountRow[]) => rows.reduce((s, r) => s + Number(r.n), 0);
+
+  /**
+   * A server-counted tile value: a skeleton while loading, "Unavailable" with
+   * Retry when the read failed, and the last good number (marked stale in the
+   * caption, with Retry) when only a refresh failed. Never a zero that was
+   * not counted.
+   */
+  const countTile = (
+    q: { data?: CountRow[]; isLoading: boolean; isError: boolean; error: unknown; refetch: () => unknown },
+    label: string,
+  ): { value: ReactNode; stale: boolean } => {
+    if (q.data === undefined) {
+      if (q.isError) {
+        return { value: <QueryState status="error" compact label={label} error={q.error} onRetry={() => void q.refetch()} />, stale: false };
+      }
+      return { value: <QueryState status="loading" compact label={label} />, stale: false };
+    }
+    const total = sumCounts(q.data).toLocaleString();
+    if (!q.isError) return { value: total, stale: false };
+    return {
+      value: (
+        <span className="flex flex-wrap items-center gap-2">
+          {total}
+          <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" aria-label={`Retry ${label}`}
+            onClick={() => void q.refetch()}>
+            <RefreshCw className="h-3.5 w-3.5" aria-hidden /> Retry
+          </Button>
+        </span>
+      ),
+      stale: true,
+    };
+  };
 
   // ── navigation ──────────────────────────────────────────────────────────
   /** Move the anchor and keep the selected day on screen with it. */
@@ -602,27 +783,50 @@ export default function CalendarPage() {
     }
   };
 
-  const handleSearch = async (query: string) => {
+  /**
+   * One search request (F30). A failed read is an error the dialog shows with
+   * Retry, never an empty list, so "Add New Applicant" is offered only after a
+   * search that completed with no match. The sequence guard drops a response
+   * that arrives after a newer request was sent.
+   */
+  const runSearch = useCallback(async (query: string) => {
+    const seq = searchGuard.current.next();
+    setSearch((prev) => ({ status: "loading", rows: "rows" in prev ? prev.rows : [] }));
+    const outcome = await searchLeads(supabase, query);
+    if (!searchGuard.current.isLatest(seq)) return;
+    if (outcome.status === "ready") setSearch({ status: "ready", rows: outcome.rows });
+    else if (outcome.status === "error") setSearch({ status: "error", error: outcome.error });
+    else setSearch({ status: "idle" });
+  }, []);
+
+  /** Debounced: one request per pause in typing, not one per keystroke. */
+  const handleSearch = (query: string) => {
     setSearchQuery(query);
-    if (query.length < 2) { setSearchResults([]); return; }
-    setSearching(true);
-    try {
-      const { data } = await supabase
-        .from("applications")
-        .select("id, first_name, last_name, email, phone, status")
-        .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,email.ilike.%${query}%,phone.ilike.%${query}%`)
-        .is("terminated_at", null)
-        .limit(10);
-      setSearchResults((data || []) as LeadResult[]);
-    } catch { setSearchResults([]); } // empty-catch-allow:best-effort-fallback
-    finally { setSearching(false); }
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = null;
+    if (query.trim().length < LEAD_SEARCH_MIN_CHARS) {
+      searchGuard.current.invalidate();
+      setSearch({ status: "idle" });
+      return;
+    }
+    searchTimer.current = setTimeout(() => {
+      searchTimer.current = null;
+      void runSearch(query);
+    }, LEAD_SEARCH_DEBOUNCE_MS);
   };
+
+  const resetSearch = useCallback(() => {
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = null;
+    searchGuard.current.invalidate();
+    setSearchQuery("");
+    setSearch({ status: "idle" });
+  }, []);
 
   const handleSelectLead = (lead: LeadResult) => {
     setSelectedLead(lead);
     setSearchOpen(false);
-    setSearchQuery("");
-    setSearchResults([]);
+    resetSearch();
     setSchedulerOpen(true);
   };
 
@@ -632,6 +836,24 @@ export default function CalendarPage() {
   const weekdayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const listDays = view === "day" ? [fmtKey(anchor)] : dayKeys;
   const selectedDayCount = byDay.get(selectedDay)?.length ?? 0;
+  // Null while loading or when nothing is readable: the day then shows the shared state, never "0 events".
+  const selectedDayLine = dayCountText(inView, selectedDayCount);
+  const feedError = windowQuery.error ?? agendaQuery.error;
+  const retryFeeds = () => { void windowQuery.refetch(); void agendaQuery.refetch(); };
+  const windowErrorText = windowQuery.error instanceof Error ? windowQuery.error.message : "unknown error";
+  const agendaErrorText = agendaQuery.error instanceof Error ? agendaQuery.error.message : "unknown error";
+  const bothErrorText = windowErrorText === agendaErrorText ? windowErrorText : `${windowErrorText}; ${agendaErrorText}`;
+  const kindNote = activeKinds.length ? " for the selected kinds" : "";
+  const emptyNote = emptyQualifier(inView);
+  const rangeLabel = fromKey === toKey
+    ? format(range.from, "EEE, MMM d")
+    : `${format(range.from, "MMM d")} – ${format(range.to, "MMM d, yyyy")}`;
+  const inViewTile: ReactNode = inViewValue(inView) ?? (inView.status === "unavailable"
+    ? <QueryState status="error" compact label="events in view" error={feedError} onRetry={retryFeeds} />
+    : <QueryState status="loading" compact label="events in view" />);
+  const todayTile = countTile(todayCountsQuery, "today's events");
+  const next30Tile = countTile(next30CountsQuery, "the next 30 days");
+  const staleNote = (stale: boolean) => (stale ? " · last good value; the refresh failed" : "");
 
   return (
     <div className="space-y-5 p-4 md:p-6">
@@ -697,23 +919,17 @@ export default function CalendarPage() {
         }
       />
 
-      {/* KPI strip — numbers aggregated server-side by calendar_window_counts */}
+      {/* KPI strip: "In view" counts the rows painted under the current filter; Today and Next 30 are server counts */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         {[
-          {
-            label: "In view",
-            value: countedTotal.toLocaleString(),
-            note: fromKey === toKey
-              ? format(range.from, "EEE, MMM d")
-              : `${format(range.from, "MMM d")} – ${format(range.to, "MMM d, yyyy")}`,
-          },
-          { label: "Today", value: sumCounts(todayCounts).toLocaleString(), note: format(parseISO(todayKey), "EEE, MMM d") },
-          { label: "Next 30 days", value: sumCounts(next30Counts).toLocaleString(), note: "all event kinds" },
+          { label: "In view", value: inViewTile, note: inViewNote(inView, rangeLabel) },
+          { label: "Today", value: todayTile.value, note: `${format(parseISO(todayKey), "EEE, MMM d")}${staleNote(todayTile.stale)}` },
+          { label: "Next 30 days", value: next30Tile.value, note: `all event kinds${staleNote(next30Tile.stale)}` },
         ].map((metric) => (
           <Card key={metric.label}>
             <CardContent className="p-4">
               <p className="text-xs text-muted-foreground">{metric.label}</p>
-              <p className="mt-1 text-2xl font-semibold tabular-nums">{metric.value}</p>
+              <div className="mt-1 text-2xl font-semibold tabular-nums">{metric.value}</div>
               <p className="line-clamp-2 text-xs text-muted-foreground">{metric.note}</p>
             </CardContent>
           </Card>
@@ -762,23 +978,27 @@ export default function CalendarPage() {
           </button>
           {KINDS.map((kind) => {
             const on = activeKinds.includes(kind.key);
-            const n = countByKind[kind.key] ?? 0;
+            // The painted rows when both feeds answered in full (follows Show canceled and adds up to
+            // In view); otherwise the server's window total, labelled; no number before either was read.
+            const chip = kindChipCount(kind.key, inView, kindTally, countsQuery.isSuccess ? countByKind : null);
             return (
               <button
                 key={kind.key}
                 type="button"
                 onClick={() => toggleKind(kind.key)}
                 aria-pressed={on}
-                title={`Source: ${kind.source}`}
+                title={chip?.from === "server"
+                  ? `Source: ${kind.source}. Server total for the whole range; it does not follow Show canceled.`
+                  : `Source: ${kind.source}`}
                 className={cn(
                   "flex items-center gap-2 rounded-full border px-2.5 py-1 transition-colors",
                   on ? "border-primary/40 bg-primary/10 text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
-                  n === 0 && !on && "opacity-50",
+                  chip?.n === 0 && !on && "opacity-50",
                 )}
               >
                 <span className={cn("h-2.5 w-2.5 rounded-full", kind.dot)} />
                 {kind.label}
-                <span className="tabular-nums text-muted-foreground">{n}</span>
+                {chip && <span className="tabular-nums text-muted-foreground">{chip.n}</span>}
               </button>
             );
           })}
@@ -789,8 +1009,8 @@ export default function CalendarPage() {
         <div className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-xs text-foreground">
           <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" />
           <span>
-            This range holds more rows than the page reads at once ({countedTotal.toLocaleString()} counted). Filter by kind or
-            switch to a shorter view to see every row. The counts above are complete.
+            This range holds more rows than the page reads at once{countsQuery.isSuccess ? ` (${countedTotal.toLocaleString()} counted by the server)` : ""}.
+            Filter by kind or switch to a shorter view to see every row. The kind counts above are complete; In view is a floor.
           </span>
         </div>
       )}
@@ -799,9 +1019,11 @@ export default function CalendarPage() {
         <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
           <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
           <span>
-            {agendaQuery.isError
-              ? `Appointments feed did not answer (${agendaQuery.error instanceof Error ? agendaQuery.error.message : "unknown error"}); interviews are shown read-only from the date feed.`
-              : `Date feed did not answer (${windowQuery.error instanceof Error ? windowQuery.error.message : "unknown error"}).`}
+            {windowQuery.isError && agendaQuery.isError
+              ? `Neither the date feed nor the appointments feed answered (${bothErrorText}).${windowQuery.data ? " The last dates that loaded are shown, read-only." : ""}`
+              : agendaQuery.isError
+                ? `Appointments feed did not answer (${agendaErrorText}); interviews are shown read-only from the date feed.`
+                : `Date feed did not answer (${windowErrorText}).`}
             {" "}Nothing is being guessed in its place.
           </span>
         </div>
@@ -816,17 +1038,21 @@ export default function CalendarPage() {
               {["s1", "s2", "s3", "s4", "s5"].map((id) => <Skeleton key={id} className="h-12 w-full rounded-md" />)}
             </div>
           ) : view === "agenda" || view === "day" ? (
-            <AgendaList
-              days={listDays}
-              itemsByDay={byDay}
-              todayKey={todayKey}
-              viewerUserId={user.id}
-              ownerNames={ownerNames ?? {}}
-              actions={agendaActions}
-              emptyText={view === "day"
-                ? `Nothing on ${format(anchor, "EEEE, MMMM d")}${activeKinds.length ? " for the selected kinds" : ""}.`
-                : `Nothing in the next ${AGENDA_DAYS} days${activeKinds.length ? " for the selected kinds" : ""}.`}
-            />
+            inView.status === "unavailable" ? (
+              <QueryState status="error" label="the agenda" error={feedError} onRetry={retryFeeds} className="m-4" />
+            ) : (
+              <AgendaList
+                days={listDays}
+                itemsByDay={byDay}
+                todayKey={todayKey}
+                viewerUserId={user.id}
+                ownerNames={ownerNames ?? {}}
+                actions={agendaActions}
+                emptyText={view === "day"
+                  ? `Nothing on ${format(anchor, "EEEE, MMMM d")}${kindNote}${emptyNote}.`
+                  : `Nothing in the next ${AGENDA_DAYS} days${kindNote}${emptyNote}.`}
+              />
+            )
           ) : (
             <>
               <div className="grid grid-cols-7 border-b border-border">
@@ -846,7 +1072,7 @@ export default function CalendarPage() {
                       key={key}
                       role="button"
                       tabIndex={0}
-                      aria-label={`${format(day, "EEEE, MMMM d")}: ${rows.length} event${rows.length === 1 ? "" : "s"}`}
+                      aria-label={`${format(day, "EEEE, MMMM d")}: ${dayCountAria(inView, rows.length)}`}
                       onClick={() => pickDay(key)}
                       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pickDay(key); } }}
                       onDoubleClick={() => openCreate(key)}
@@ -893,24 +1119,33 @@ export default function CalendarPage() {
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2.5">
               <div>
                 <p className="font-semibold">{format(parseISO(selectedDay), "EEEE, MMMM d, yyyy")}</p>
-                <p className="text-xs text-muted-foreground">
-                  {selectedDay === todayKey ? "Today · " : ""}
-                  {selectedDayCount} event{selectedDayCount === 1 ? "" : "s"} in view
-                </p>
+                {selectedDayLine !== null ? (
+                  <p className="text-xs text-muted-foreground">
+                    {selectedDay === todayKey ? "Today · " : ""}
+                    {selectedDayLine}
+                  </p>
+                ) : inView.status === "unavailable" ? (
+                  <QueryState status="error" compact label="this day" error={feedError} onRetry={retryFeeds} className="text-xs" />
+                ) : (
+                  <QueryState status="loading" compact label="this day's events" />
+                )}
               </div>
               <Button size="sm" variant="outline" onClick={() => openCreate(selectedDay)}>
                 <Plus className="mr-1 h-3.5 w-3.5" />Appointment
               </Button>
             </div>
-            <AgendaList
-              days={[selectedDay]}
-              itemsByDay={byDay}
-              todayKey={todayKey}
-              viewerUserId={user.id}
-              ownerNames={ownerNames ?? {}}
-              actions={agendaActions}
-              emptyText={`Nothing on this day${activeKinds.length ? " for the selected kinds" : ""}.`}
-            />
+            {/* No count (loading or unavailable): the header carries the state and its Retry, so no "Nothing on this day" below. */}
+            {selectedDayLine !== null && (
+              <AgendaList
+                days={[selectedDay]}
+                itemsByDay={byDay}
+                todayKey={todayKey}
+                viewerUserId={user.id}
+                ownerNames={ownerNames ?? {}}
+                actions={agendaActions}
+                emptyText={`Nothing on this day${kindNote}${emptyNote}.`}
+              />
+            )}
           </CardContent>
         </Card>
       )}
@@ -1034,7 +1269,7 @@ export default function CalendarPage() {
       />
 
       {/* ── Lead search → interview scheduler ────────────────────────────── */}
-      <Dialog open={searchOpen} onOpenChange={setSearchOpen}>
+      <Dialog open={searchOpen} onOpenChange={(open) => { setSearchOpen(open); if (!open) resetSearch(); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -1044,10 +1279,13 @@ export default function CalendarPage() {
           <div className="space-y-3">
             <Input placeholder="Search by name, email, or phone..." value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)} autoFocus />
-            {searching && <p className="text-xs text-muted-foreground">Searching...</p>}
-            {searchResults.length > 0 && (
+            {search.status === "loading" && <p className="text-xs text-muted-foreground">Searching...</p>}
+            {search.status === "error" && (
+              <QueryState status="error" compact label="lead search" error={search.error} onRetry={() => void runSearch(searchQuery)} />
+            )}
+            {"rows" in search && search.rows.length > 0 && (
               <div className="max-h-64 space-y-1 overflow-y-auto">
-                {searchResults.map((lead) => (
+                {search.rows.map((lead) => (
                   <button key={lead.id} type="button" onClick={() => handleSelectLead(lead)}
                     className="flex w-full items-center gap-3 rounded-lg border border-border p-3 text-left transition-colors hover:bg-muted/50">
                     <div className="rounded-full bg-primary/10 p-1.5">
@@ -1062,7 +1300,7 @@ export default function CalendarPage() {
                 ))}
               </div>
             )}
-            {searchQuery.length >= 2 && !searching && searchResults.length === 0 && (
+            {search.status === "ready" && search.rows.length === 0 && (
               <AddNewApplicantForm onCreated={handleSelectLead} />
             )}
           </div>

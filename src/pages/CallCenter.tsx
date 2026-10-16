@@ -1,13 +1,58 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo, type ComponentProps } from "react";
 import { AnimatePresence } from "framer-motion";
-import { Phone, CheckCircle2, Sparkles, Instagram, Mail, PhoneCall, ListChecks } from "lucide-react";
+import { Phone, CheckCircle2, Sparkles, Instagram, Mail, PhoneCall, ListChecks, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/glass-card";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
+import { QueryState } from "@/components/ui/query-state";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { useAgentIdentity } from "@/hooks/useAgentIdentity";
+import { errorMessage, formatAsOf } from "@/lib/queryState";
+import {
+  EMPTY_COVERAGE,
+  EMPTY_NOTE_DRAFT,
+  QUEUE_PAGE_SIZE,
+  SOURCE_NOT_REQUESTED,
+  agedLeadQueueOps,
+  appendNoteEntry,
+  appendQueuePage,
+  applicationQueueOps,
+  applyFilterOps,
+  asSentence,
+  buildNoteEntry,
+  classifyFollowUpResponse,
+  combineCoverage,
+  coverageLabel,
+  cursorFromPage,
+  discardNoteDraft,
+  followUpKey,
+  followUpToast,
+  isUnattributed,
+  keysetOps,
+  markDraftSaved,
+  mineFilterBlockedReason,
+  nextHasMore,
+  noteLanded,
+  noteLockFits,
+  pageHasMore,
+  queueAccessMessage,
+  recordTranscript,
+  remainingLabel,
+  resolveQueueAccess,
+  sortQueueRows,
+  zeroRowVerdict,
+  type FollowUpOutcome,
+  type FollowUpToast,
+  type NoteDraft,
+  type QueueAccess,
+  type QueueCoverage,
+  type QueueCursor,
+} from "@/lib/callCenterQueue";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { ContractedModal } from "@/components/dashboard/ContractedModal";
 import { ConfettiCelebration } from "@/components/dashboard/ConfettiCelebration";
@@ -20,7 +65,7 @@ import { getNextBestAction } from "@/lib/nextBestAction";
 import { priorityBadgeClasses } from "@/lib/priority";
 import { openGoogleVoice } from "@/lib/phone";
 import { cn } from "@/lib/utils";
-import { createCanonicalHire, promoteApplicationToAgent } from "@/lib/hireToOnboarding";
+import { createCanonicalHire, promoteApplicationToAgent, type HireReceipt } from "@/lib/hireToOnboarding";
 import {
   CallCenterFilters,
   CallCenterLeadCard,
@@ -54,6 +99,8 @@ interface UnifiedLead {
   licenseProgress?: string | null;
   testScheduledDate?: string | null;
   createdAt: string;
+  /** created_at as stored, for queue order: undated rows sort last, as the server pages them. */
+  queuedAt: string | null;
   status: string;
   contactedAt?: string;
   lastContactedAt?: string;
@@ -68,22 +115,304 @@ interface UnifiedLead {
   assignedManagerName?: string;
 }
 
+// Raw rows as the two source queries return them. Typed here so the mapping
+// below is checked instead of cast to any.
+interface AgedLeadRow {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+  phone: string | null;
+  instagram_handle: string | null;
+  notes: string | null;
+  motivation: string | null;
+  license_status: string | null;
+  created_at: string | null;
+  status: string | null;
+  contacted_at: string | null;
+  last_contacted_at: string | null;
+  assigned_manager_id: string | null;
+  agents: { display_name: string | null } | null;
+}
+
+interface ApplicationRow {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+  phone: string | null;
+  instagram_handle: string | null;
+  notes: string | null;
+  license_status: string | null;
+  license_progress: string | null;
+  test_scheduled_date: string | null;
+  created_at: string | null;
+  status: string | null;
+  contacted_at: string | null;
+  last_contacted_at: string | null;
+  previous_company: string | null;
+  nipr_number: string | null;
+  licensed_states: string[] | null;
+  city: string | null;
+  state: string | null;
+  availability: string | null;
+  assigned_agent_id: string | null;
+  hiring_manager_user_id: string | null;
+  referral_manager_id: string | null;
+  recruiter_id: string | null;
+  terminated_at: string | null;
+  contracted_at: string | null;
+  closed_at: string | null;
+  agents: { display_name: string | null } | null;
+}
+
+const AGED_LEAD_SELECT =
+  "id, first_name, last_name, email, phone, instagram_handle, notes, motivation, license_status, created_at, status, contacted_at, last_contacted_at, assigned_manager_id, agents!aged_leads_assigned_manager_id_fkey(display_name)";
+
+// recruiter_id is selected so the badge and the no_referrer filter can share
+// one definition of "credited" (F07).
+const APPLICATION_SELECT =
+  "id, first_name, last_name, email, phone, instagram_handle, notes, license_status, license_progress, test_scheduled_date, created_at, status, contacted_at, last_contacted_at, previous_company, nipr_number, licensed_states, city, state, availability, assigned_agent_id, hiring_manager_user_id, referral_manager_id, recruiter_id, terminated_at, contracted_at, closed_at, agents!applications_assigned_agent_id_fkey(display_name)";
+
+function mapAgedLead(lead: AgedLeadRow): UnifiedLead {
+  return {
+    id: lead.id,
+    source: "aged_leads",
+    firstName: lead.first_name ?? "",
+    lastName: lead.last_name || undefined,
+    email: lead.email ?? "",
+    phone: lead.phone || undefined,
+    instagramHandle: lead.instagram_handle || undefined,
+    notes: lead.notes || undefined,
+    motivation: lead.motivation || undefined,
+    licenseStatus: lead.license_status || "unknown",
+    createdAt: lead.created_at || new Date().toISOString(),
+    queuedAt: lead.created_at ?? null,
+    status: lead.status || "new",
+    contactedAt: lead.contacted_at || undefined,
+    lastContactedAt: lead.last_contacted_at || undefined,
+    assignedManagerName: lead.agents?.display_name || undefined,
+  };
+}
+
+function mapApplication(app: ApplicationRow): UnifiedLead {
+  return {
+    id: app.id,
+    source: "applications",
+    firstName: app.first_name ?? "",
+    lastName: app.last_name || undefined,
+    email: app.email ?? "",
+    phone: app.phone || undefined,
+    instagramHandle: app.instagram_handle || undefined,
+    notes: app.notes || undefined,
+    motivation: app.notes || undefined,
+    licenseStatus: app.license_status || "unknown",
+    licenseProgress: app.license_progress || null,
+    testScheduledDate: app.test_scheduled_date || null,
+    createdAt: app.created_at || new Date().toISOString(),
+    queuedAt: app.created_at ?? null,
+    status: app.status || "new",
+    contactedAt: app.contacted_at || undefined,
+    lastContactedAt: app.last_contacted_at || undefined,
+    previousCompany: app.previous_company || undefined,
+    niprNumber: app.nipr_number || undefined,
+    licensedStates: app.licensed_states || undefined,
+    city: app.city || undefined,
+    state: app.state || undefined,
+    availability: app.availability || undefined,
+    assignedManagerName: app.agents?.display_name || undefined,
+    // Unattributed only when every attribution column is empty: the same
+    // test the no_referrer filter runs on the server (F07).
+    hasNoReferrer: isUnattributed(app),
+  };
+}
+
+function leadDisplayName(lead: UnifiedLead): string {
+  return `${lead.firstName ?? ""} ${lead.lastName ?? ""}`.trim() || "this lead";
+}
+
+function showFollowUpToast(t: FollowUpToast) {
+  const options = { description: t.description, duration: t.level === "error" ? 10000 : 6000 };
+  if (t.level === "success") toast.success(t.title, options);
+  else if (t.level === "error") toast.error(t.title, options);
+  else toast.info(t.title, options);
+}
+
+// functions.invoke wraps a non-2xx answer in FunctionsHttpError whose context
+// is the Response. The function writes its reason into that body.
+async function readInvokeErrorBody(error: unknown): Promise<unknown> {
+  const context = (error as { context?: unknown } | null)?.context;
+  if (typeof Response === "undefined" || !(context instanceof Response)) return null;
+  try {
+    return await context.clone().json();
+  } catch {
+    return null;
+  }
+}
+
+/** The HTTP status of a non-2xx functions.invoke answer; null when there was no answer. */
+function invokeErrorStatus(error: unknown): number | null {
+  const context = (error as { context?: unknown } | null)?.context;
+  if (typeof Response === "undefined" || !(context instanceof Response)) return null;
+  return context.status;
+}
+
+/** The four pre-start states F02 asks for: loading, no identity, blocked, ready. */
+function QueueAccessNotice({ access, onRetry }: { access: QueueAccess; onRetry: () => void }) {
+  const body = queueAccessNoticeBody(access, onRetry);
+  if (!body) return null;
+  return <div className="container mx-auto max-w-4xl px-4 pt-6">{body}</div>;
+}
+
+function queueAccessNoticeBody(access: QueueAccess, onRetry: () => void) {
+  if (access.kind === "loading") {
+    return <QueryState status="loading" label="your Call Center access" compact />;
+  }
+  if (access.kind === "error") {
+    return <QueryState status="error" label="your agent record" error={access.message} onRetry={onRetry} />;
+  }
+  if (access.kind === "ambiguous" || access.kind === "no_identity") {
+    const message = queueAccessMessage(access);
+    return <QueryState status="empty" title={message?.title} body={message?.body} />;
+  }
+  if (access.identityError) {
+    return (
+      <QueryState
+        status="error"
+        label="your agent record"
+        error={`${access.identityError} You can still dial under your staff role; hires and contracts need the record.`}
+        onRetry={onRetry}
+        compact
+      />
+    );
+  }
+  if (access.staffWithoutAgentRow) {
+    return (
+      <p role="status" className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+        Working as staff: the queue is what your role may see on the server. Hires and contracts need an agent record linked to this login.
+      </p>
+    );
+  }
+  if (access.identityNote) {
+    return (
+      <p role="status" className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+        {access.identityNote}
+      </p>
+    );
+  }
+  return null;
+}
+
+type QueueLoad = { kind: "idle" } | { kind: "loading" } | { kind: "error"; message: string } | { kind: "ready" };
+
+type SourceKey = "aged" | "apps";
+
+type CoverageBySource = Record<SourceKey, QueueCoverage>;
+
+const NO_COVERAGE: CoverageBySource = { aged: EMPTY_COVERAGE, apps: EMPTY_COVERAGE };
+
+interface SourceLoad {
+  rows: UnifiedLead[];
+  pageLength: number;
+  cursor: QueueCursor | null;
+  total: number | null;
+  countError: string | null;
+  remaining: number | null;
+}
+
+const SOURCE_SKIPPED: SourceLoad = { rows: [], pageLength: 0, cursor: null, total: 0, countError: null, remaining: 0 };
+
+const NOTE_WRITE_ATTEMPTS = 3;
+
+type SaveNotesResult = { ok: true; notes: string } | { ok: false; message: string };
+
+/** The lead a draft of call notes belongs to. */
+interface NoteTarget {
+  id: string;
+  source: UnifiedLead["source"];
+  name: string;
+}
+
+interface LeadNoteDraft {
+  target: NoteTarget;
+  draft: NoteDraft;
+}
+
+function noteTargetOf(lead: UnifiedLead): NoteTarget {
+  return { id: lead.id, source: lead.source, name: leadDisplayName(lead) };
+}
+
+type HeadCount = { count: number | null; error: string | null };
+
+function headCount({ count, error }: { count: number | null; error: unknown }): HeadCount {
+  if (error) return { count: null, error: errorMessage(error) };
+  return { count: typeof count === "number" ? count : null, error: null };
+}
+
+type ContractedProgress = ComponentProps<typeof ContractedModal>["application"]["license_progress"];
+
+/** Admin-only opt-in for closed records (F06). Off by default; do-not-contact and bad numbers stay out regardless. */
+function IncludeClosedToggle({ checked, onChange }: { checked: boolean; onChange: (value: boolean) => void }) {
+  return (
+    <div className="container mx-auto max-w-4xl px-4 pt-4">
+      <div className="flex items-start gap-3 rounded-md border border-border bg-muted/40 px-3 py-2">
+        <Switch
+          id="call-center-include-closed"
+          checked={checked}
+          onCheckedChange={onChange}
+          aria-describedby="call-center-include-closed-help"
+          className="mt-0.5"
+        />
+        <div className="min-w-0">
+          <Label htmlFor="call-center-include-closed" className="text-sm font-medium text-foreground">
+            Include closed records
+          </Label>
+          <p id="call-center-include-closed-help" className="mt-1 text-xs text-muted-foreground">
+            Off by default. Turn it on to add hired, contracted, terminated, not-a-fit and closed-lost leads to this
+            session. Do-not-contact leads and bad numbers stay out either way.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function CallCenter() {
-  const { isAdmin, isManager, user } = useAuth();
+  const { isAdmin, isVa, isVaManager, isRecruiter, user, profile, isLoading: rolesLoading } = useAuth();
+  const me = useAgentIdentity();
+  const refetchIdentity = me.refetch;
   const { playSound } = useSoundEffects();
   const [leads, setLeads] = useState<UnifiedLead[]>([]);
+  // The latest leads, for decisions made after an await. Every change goes
+  // through updateLeads, so this never lags the state.
+  const leadsRef = useRef<UnifiedLead[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const [queueLoad, setQueueLoad] = useState<QueueLoad>({ kind: "idle" });
+  const [loadingMore, setLoadingMore] = useState(false);
+  const loadingMoreRef = useRef(false);
+  // Each reset starts a generation; a load that settles after a newer reset is dropped.
+  const loadGenerationRef = useRef(0);
+  const [coverage, setCoverage] = useState<CoverageBySource>(NO_COVERAGE);
+  const coverageRef = useRef<CoverageBySource>(NO_COVERAGE);
+  const [countedAt, setCountedAt] = useState<number | null>(null);
+  const cursorsRef = useRef<Record<SourceKey, QueueCursor | null>>({ aged: null, apps: null });
   const [processing, setProcessing] = useState(false);
+  // Held from the start of an action until it settles (F04). State lags a
+  // render, so a second key press in the same tick reads this instead.
+  const busyRef = useRef(false);
   const [started, setStarted] = useState(false);
-  const [agentId, setAgentId] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
-  const [currentTranscription, setCurrentTranscription] = useState("");
-  const [showContractedModal, setShowContractedModal] = useState(false);
+  // Unsaved call notes, per lead (F04). A ref rather than state: every save in
+  // one async chain reads and clears the same draft, so nothing is written
+  // twice and nothing rides along to the next lead.
+  const draftsRef = useRef<Map<string, LeadNoteDraft>>(new Map());
+  // The lead each dialog acts on, fixed when it opens, so the queue moving
+  // underneath cannot change who is hired or contracted.
+  const [contractLead, setContractLead] = useState<UnifiedLead | null>(null);
+  const [hireLead, setHireLead] = useState<UnifiedLead | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
   const confettiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (confettiTimerRef.current) clearTimeout(confettiTimerRef.current); }, []);
-  const [showHireConfirm, setShowHireConfirm] = useState(false);
   // Schedule Meeting modal — Sam: "fix the schedule button, actually
   // work a schedule a meeting." It was never wired into CallCenter.
   const [showScheduleModal, setShowScheduleModal] = useState(false);
@@ -101,6 +430,9 @@ export default function CallCenter() {
   const [dateRangeFilter, setDateRangeFilter] = useState<DateRangeFilter>("all");
   const [ownerFilter, setOwnerFilter] = useState<OwnerFilter>("all");
   const [stateFilter, setStateFilter] = useState<StateFilter>("all");
+  // Closed records are a choice an admin makes, never a side effect of being
+  // an admin (F06).
+  const [includeClosed, setIncludeClosed] = useState(false);
   // MP-260 detail drawer for row-tap → expanded context (applications only).
   const [detailAppId, setDetailAppId] = useState<string | null>(null);
 
@@ -108,332 +440,477 @@ export default function CallCenter() {
   const totalLeads = leads.length;
   const processedCount = currentIndex;
 
-  // Fetch agent ID for role-based filtering
-  useEffect(() => {
-    const fetchAgentId = async () => {
-      if (!user) return;
-      const { data } = await supabase
-        .from("agents")
-        .select("id")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      if (data) setAgentId(data.id);
-    };
-    fetchAgentId();
-  }, [user?.id]);
+  // Who may dial and under which scope (F02, F17). The agents row comes from
+  // the shared resolver, never from .maybeSingle() on user_id, and a staff
+  // role is enough: RLS already bounds what a VA or VA manager can read and
+  // update, so no producer record has to be manufactured for them.
+  const access = useMemo(
+    () => resolveQueueAccess({ rolesLoading, isAdmin, isVa, isVaManager, isRecruiter, identity: me.identity }),
+    [rolesLoading, isAdmin, isVa, isVaManager, isRecruiter, me.identity],
+  );
+  const agentId = access.kind === "ready" ? access.agentId : null;
+  const identityError = access.kind === "ready" ? access.identityError : null;
+  const closedIncluded = access.kind === "ready" && access.mayIncludeClosed && includeClosed;
 
-  const fetchLeads = useCallback(async () => {
-    // CRITICAL: Never fetch without agentId — unfiltered queries return all leads.
-    // Admin path (Sam): bypass assigned-only and lifecycle-status filters so
-    // every lead in the system stays visible. v2026-05-02-admin-bypass.
-    if (!agentId && !isAdmin) {
-      setLeads([]);
+  const updateLeads = useCallback((next: (prev: UnifiedLead[]) => UnifiedLead[]) => {
+    leadsRef.current = next(leadsRef.current);
+    setLeads(leadsRef.current);
+  }, []);
+
+  const commitCoverage = useCallback((next: CoverageBySource) => {
+    coverageRef.current = next;
+    setCoverage(next);
+  }, []);
+
+  /**
+   * Load the first page of each requested source ("reset") or the next page
+   * behind the last loaded row ("more"). One filter plan per source feeds the
+   * exact count, the page and the count of rows past the page, so the header
+   * and Load more describe one set of filters (F06). A failed read is an
+   * error with Retry, never an empty queue.
+   */
+  const loadQueue = useCallback(async (mode: "reset" | "more") => {
+    if (access.kind !== "ready") return;
+    if (mode === "more" && loadingMoreRef.current) return;
+    const { agentId: identityAgentId, scopeAgentId } = access;
+    const generation = mode === "reset" ? ++loadGenerationRef.current : loadGenerationRef.current;
+
+    if (mode === "reset") {
+      // A new session starts empty: nothing from the last one may sit in the
+      // header or on screen while this loads, or next to its error.
+      cursorsRef.current = { aged: null, apps: null };
+      commitCoverage(NO_COVERAGE);
+      setCountedAt(null);
+      updateLeads(() => []);
+      setCurrentIndex(0);
+    }
+
+    if (refererFilter === "mine" && !identityAgentId) {
+      if (mode === "reset") setQueueLoad({ kind: "error", message: mineFilterBlockedReason(access.identityError) });
       return;
     }
 
-    setLoading(true);
-    try {
-      const allLeads: UnifiedLead[] = [];
-
-      // MP-260 shared date-range gate. `all` → no bound.
-      const dateSinceIso = (() => {
-        const day = 24 * 60 * 60 * 1000;
-        const now = Date.now();
-        switch (dateRangeFilter) {
-          case "last_7": return new Date(now - 7 * day).toISOString();
-          case "last_30": return new Date(now - 30 * day).toISOString();
-          case "last_90": return new Date(now - 90 * day).toISOString();
-          default: return null;
-        }
-      })();
-
-      // Fetch aged leads if source filter allows
-      if (sourceFilter === "all" || sourceFilter === "aged_leads") {
-        // 2026-06-17 Sam directive: "the button as they start calling runs
-        // way too slow." Was unbounded query against 899 aged_leads + 550
-        // applications + JOIN — ~1500 rows fetched per tap. Cap at 500
-        // (covers ~3 days of dial throughput for a single seat) and load
-        // more on scroll if Sam needs it.
-        let query = supabase
-          .from("aged_leads")
-          .select("id, first_name, last_name, email, phone, instagram_handle, notes, motivation, license_status, created_at, status, contacted_at, last_contacted_at, assigned_manager_id, agents!aged_leads_assigned_manager_id_fkey(display_name)")
-          .order("created_at", { ascending: sortOrder === "oldest_first" })
-          .limit(500);
-
-        // Status filter (source-of-truth = contact timestamps)
-        if (statusFilter === "new") {
-          query = query.is("contacted_at", null);
-        } else if (statusFilter === "no_pickup") {
-          query = query.eq("status", "no_pickup");
-        } else if (statusFilter === "contacted") {
-          query = query.not("contacted_at", "is", null);
-        }
-
-        // License filter
-        if (licenseFilter !== "all") {
-          query = query.eq("license_status", licenseFilter);
-        }
-
-        // Role-based filtering — admins see EVERY lead regardless of who it
-        // is assigned to (Sam: "I should be able to see them unless I
-        // physically put them somewhere else"). Non-admins still see only
-        // leads assigned to them.
-        if (!isAdmin && agentId) {
-          query = query.eq("assigned_manager_id", agentId);
-        }
-
-        // MP-260 axes.
-        if (dateSinceIso) query = query.gte("created_at", dateSinceIso);
-        if (ownerFilter === "unassigned") {
-          query = query.is("assigned_manager_id", null);
-        } else if (ownerFilter && ownerFilter !== "all") {
-          query = query.eq("assigned_manager_id", ownerFilter);
-        }
-
-        const { data: agedData, error: agedError } = await query;
-        if (agedError) throw agedError;
-
-        (agedData || []).forEach((lead: any) => {
-          const agentData = lead.agents;
-          const managerName = agentData?.display_name || undefined;
-          allLeads.push({
-            id: lead.id,
-            source: "aged_leads",
-            firstName: lead.first_name,
-            lastName: lead.last_name || undefined,
-            email: lead.email,
-            phone: lead.phone || undefined,
-            instagramHandle: lead.instagram_handle || undefined,
-            notes: lead.notes || undefined,
-            motivation: lead.motivation || undefined,
-            licenseStatus: lead.license_status || "unknown",
-            createdAt: lead.created_at || new Date().toISOString(),
-            status: lead.status || "new",
-            contactedAt: lead.contacted_at || undefined,
-            lastContactedAt: lead.last_contacted_at || undefined,
-            assignedManagerName: managerName,
-          });
-        });
+    // MP-260 shared date-range gate. `all` means no lower bound.
+    const dateSinceIso = (() => {
+      const day = 24 * 60 * 60 * 1000;
+      const now = Date.now();
+      switch (dateRangeFilter) {
+        case "last_7": return new Date(now - 7 * day).toISOString();
+        case "last_30": return new Date(now - 30 * day).toISOString();
+        case "last_90": return new Date(now - 90 * day).toISOString();
+        default: return null;
       }
+    })();
 
-      // Fetch applications if source filter allows
-      if (sourceFilter === "all" || sourceFilter === "applications") {
-        // Sam 2026-04-29: hired/contracted/terminated apps must never appear
-        // in the call list. He kept seeing Kyle and others he'd already
-        // hired show up in the funnel because we only excluded
-        // terminated_at + contracted_at; closed_at (hired) was leaking
-        // through. Three-way exclusion now matches the dashboard's
-        // active-funnel definition.
-        // Note: no embed for the referrer agent — that FK constraint
-        // (applications_referral_manager_id_fkey) doesn't exist yet, and
-        // including the embed makes the entire query 400. Migration
-        // 20260504143100_add_referral_manager_fk adds it; once it's applied
-        // we can re-add `referrer:agents!fkname(display_name)` here.
-        let appQuery = supabase
-          .from("applications")
-          .select("id, first_name, last_name, email, phone, instagram_handle, notes, license_status, license_progress, test_scheduled_date, created_at, status, contacted_at, last_contacted_at, previous_company, nipr_number, licensed_states, city, state, availability, assigned_agent_id, hiring_manager_user_id, referral_manager_id, terminated_at, contracted_at, closed_at, agents!applications_assigned_agent_id_fkey(display_name)")
-          .order("created_at", { ascending: sortOrder === "oldest_first" })
-          .limit(500);
+    const wantAged = sourceFilter === "all" || sourceFilter === "aged_leads";
+    const wantApps = sourceFilter === "all" || sourceFilter === "applications";
+    const ascending = sortOrder === "oldest_first";
+    const prior = coverageRef.current;
 
-        // Referrer filter — "mine" matches if the agent is the referrer via
-        // ANY attribution column (assigned_agent_id / referral_manager_id /
-        // recruiter_id). Earlier this only checked referral_manager_id, so
-        // older leads where attribution was on a different column were
-        // invisible to the agent who owned them. "no_referrer" means
-        // genuinely orphaned (none of the 3 columns set).
-        if (refererFilter === "mine" && agentId) {
-          appQuery = appQuery.or(
-            `assigned_agent_id.eq.${agentId},referral_manager_id.eq.${agentId},recruiter_id.eq.${agentId}`,
-          );
-        } else if (refererFilter === "no_referrer") {
-          appQuery = appQuery
-            .is("referral_manager_id", null)
-            .is("assigned_agent_id", null)
-            .is("recruiter_id", null);
-        }
+    if (mode === "reset") {
+      setQueueLoad({ kind: "loading" });
+    } else {
+      loadingMoreRef.current = true;
+      setLoadingMore(true);
+    }
 
-        // Status filter for applications (source-of-truth = contact timestamps)
-        if (statusFilter === "new") {
-          appQuery = appQuery.is("contacted_at", null);
-        } else if (statusFilter === "no_pickup") {
-          appQuery = appQuery.eq("status", "no_pickup");
-        } else if (statusFilter === "contacted") {
-          appQuery = appQuery.not("contacted_at", "is", null).neq("status", "no_pickup");
-        }
+    const loadAged = async (): Promise<SourceLoad> => {
+      const plan = agedLeadQueueOps({ statusFilter, licenseFilter, dateSinceIso, ownerFilter, scopeAgentId, includeClosed: closedIncluded });
+      const after = mode === "more" ? cursorsRef.current.aged : null;
+      const skipPage = mode === "more" && !prior.aged.hasMore;
+      const [page, total] = await Promise.all([
+        skipPage
+          ? Promise.resolve([] as AgedLeadRow[])
+          : applyFilterOps(supabase.from("aged_leads").select(AGED_LEAD_SELECT), [...plan, ...keysetOps(after, sortOrder)])
+              .order("created_at", { ascending, nullsFirst: false })
+              .order("id", { ascending })
+              .limit(QUEUE_PAGE_SIZE)
+              .then(({ data, error }) => {
+                if (error) throw error;
+                return (data ?? []) as unknown as AgedLeadRow[];
+              }),
+        applyFilterOps(supabase.from("aged_leads").select("id", { count: "exact", head: true }), plan).then(headCount),
+      ]);
+      const cursor = cursorFromPage(page) ?? after;
+      // Counting what sits past the page is the honest answer to "is there
+      // more"; a full page alone can be the last one.
+      const remaining =
+        pageHasMore(page.length) && cursor
+          ? await applyFilterOps(supabase.from("aged_leads").select("id", { count: "exact", head: true }), [...plan, ...keysetOps(cursor, sortOrder)]).then(headCount)
+          : { count: 0, error: null };
+      return { rows: page.map(mapAgedLead), pageLength: page.length, cursor, total: total.count, countError: total.error, remaining: remaining.count };
+    };
 
-        // License filter
-        if (licenseFilter !== "all") {
-          appQuery = appQuery.eq("license_status", licenseFilter);
-        }
-
-        // License progress filter
-        if (progressFilter !== "all") {
-          appQuery = appQuery.eq("license_progress", progressFilter);
-        }
-
-        // MP-260 axes for applications.
-        if (dateSinceIso) appQuery = appQuery.gte("created_at", dateSinceIso);
-        if (stateFilter && stateFilter !== "all") appQuery = appQuery.eq("state", stateFilter);
-        if (ownerFilter === "unassigned") {
-          appQuery = appQuery
-            .is("assigned_agent_id", null)
-            .is("referral_manager_id", null);
-        } else if (ownerFilter && ownerFilter !== "all") {
-          appQuery = appQuery.or(
-            `assigned_agent_id.eq.${ownerFilter},referral_manager_id.eq.${ownerFilter}`,
-          );
-        }
-
-        // Role-based filtering — admins see every application regardless of
-        // assignment + lifecycle status (Sam wants visibility, not curation).
-        // Non-admins keep the existing assigned-only + active-only filter.
-        if (!isAdmin) {
-          appQuery = appQuery
-            .is("terminated_at", null)
-            .is("contracted_at", null)
-            .is("closed_at", null);
-          // Non-admin scope: caller sees leads where they are referrer on ANY
-          // of the 3 attribution columns. Single-column filter (the old
-          // behavior) hid hot leads from KJ/managers when attribution was on
-          // a different column.
-          if (agentId && refererFilter !== "mine" && refererFilter !== "no_referrer") {
-            appQuery = appQuery.or(
-              `assigned_agent_id.eq.${agentId},referral_manager_id.eq.${agentId},recruiter_id.eq.${agentId}`,
-            );
-          }
-        }
-
-        const { data: appData, error: appError } = await appQuery;
-        if (appError) throw appError;
-
-        (appData || []).forEach((app: any) => {
-          const agentData = app.agents;
-          const managerName = agentData?.display_name || undefined;
-          allLeads.push({
-            id: app.id,
-            source: "applications",
-            firstName: app.first_name,
-            lastName: app.last_name || undefined,
-            email: app.email,
-            phone: app.phone || undefined,
-            instagramHandle: app.instagram_handle || undefined,
-            notes: app.notes || undefined,
-            motivation: app.notes || undefined,
-            licenseStatus: app.license_status || "unknown",
-            licenseProgress: app.license_progress || null,
-            testScheduledDate: app.test_scheduled_date || null,
-            createdAt: app.created_at,
-            status: app.status || "new",
-            contactedAt: app.contacted_at || undefined,
-            lastContactedAt: app.last_contacted_at || undefined,
-            previousCompany: app.previous_company || undefined,
-            niprNumber: app.nipr_number || undefined,
-            licensedStates: app.licensed_states || undefined,
-            city: app.city || undefined,
-            state: app.state || undefined,
-            availability: app.availability || undefined,
-            assignedManagerName: managerName,
-            // Only "no referrer" if BOTH the referrer column AND the
-            // assigned_agent_id are empty. A lead with a real manager
-            // attached is never unattributed.
-            hasNoReferrer: !app.referral_manager_id && !app.assigned_agent_id,
-          });
-        });
-      }
-
-      // Sort by created date based on sort order preference
-      allLeads.sort((a, b) => {
-        const timeA = new Date(a.createdAt).getTime();
-        const timeB = new Date(b.createdAt).getTime();
-        return sortOrder === "oldest_first" ? timeA - timeB : timeB - timeA;
+    const loadApps = async (): Promise<SourceLoad> => {
+      const plan = applicationQueueOps({
+        statusFilter,
+        licenseFilter,
+        progressFilter,
+        dateSinceIso,
+        stateFilter,
+        ownerFilter,
+        refererFilter,
+        identityAgentId,
+        scopeAgentId,
+        includeClosed: closedIncluded,
       });
+      const after = mode === "more" ? cursorsRef.current.apps : null;
+      const skipPage = mode === "more" && !prior.apps.hasMore;
+      const [page, total] = await Promise.all([
+        skipPage
+          ? Promise.resolve([] as ApplicationRow[])
+          : applyFilterOps(supabase.from("applications").select(APPLICATION_SELECT), [...plan, ...keysetOps(after, sortOrder)])
+              .order("created_at", { ascending, nullsFirst: false })
+              .order("id", { ascending })
+              .limit(QUEUE_PAGE_SIZE)
+              .then(({ data, error }) => {
+                if (error) throw error;
+                return (data ?? []) as unknown as ApplicationRow[];
+              }),
+        applyFilterOps(supabase.from("applications").select("id", { count: "exact", head: true }), plan).then(headCount),
+      ]);
+      const cursor = cursorFromPage(page) ?? after;
+      const remaining =
+        pageHasMore(page.length) && cursor
+          ? await applyFilterOps(supabase.from("applications").select("id", { count: "exact", head: true }), [...plan, ...keysetOps(cursor, sortOrder)]).then(headCount)
+          : { count: 0, error: null };
+      return { rows: page.map(mapApplication), pageLength: page.length, cursor, total: total.count, countError: total.error, remaining: remaining.count };
+    };
 
-      setLeads(allLeads);
-      setCurrentIndex(0);
+    try {
+      const [aged, apps] = await Promise.all([
+        wantAged ? loadAged() : Promise.resolve(SOURCE_SKIPPED),
+        wantApps ? loadApps() : Promise.resolve(SOURCE_SKIPPED),
+      ]);
+      // A newer reset owns the screen now.
+      if (generation !== loadGenerationRef.current) return;
+      // Each page is sorted on its own and appended behind what is loaded, so
+      // the lead on screen never moves when the next page arrives.
+      const pageRows = sortQueueRows([...aged.rows, ...apps.rows], sortOrder);
+      cursorsRef.current = { aged: aged.cursor, apps: apps.cursor };
+      const base = mode === "reset" ? NO_COVERAGE : coverageRef.current;
+      const nextCoverage = (prev: QueueCoverage, src: SourceLoad, wanted: boolean): QueueCoverage =>
+        wanted
+          ? {
+              loaded: prev.loaded + src.pageLength,
+              total: src.total,
+              countError: src.countError,
+              remaining: src.remaining,
+              hasMore: nextHasMore(src.pageLength, src.cursor, src.remaining),
+            }
+          : SOURCE_NOT_REQUESTED;
+      commitCoverage({ aged: nextCoverage(base.aged, aged, wantAged), apps: nextCoverage(base.apps, apps, wantApps) });
+      setCountedAt(Date.now());
+      if (mode === "reset") {
+        updateLeads(() => pageRows);
+        setCurrentIndex(0);
+        setQueueLoad({ kind: "ready" });
+      } else {
+        updateLeads((prev) => appendQueuePage(prev, pageRows));
+        if (pageRows.length === 0) toast.info("No further leads came back for these filters");
+      }
     } catch (error) {
-      console.error("Error fetching leads:", error);
-      toast.error("Failed to load leads");
+      if (generation !== loadGenerationRef.current) return;
+      const message = errorMessage(error, "The dial queue could not load.");
+      if (mode === "reset") {
+        updateLeads(() => []);
+        setQueueLoad({ kind: "error", message });
+      } else {
+        toast.error("More leads could not load", { description: message });
+      }
       playSound("error");
     } finally {
-      setLoading(false);
+      if (mode === "more") {
+        loadingMoreRef.current = false;
+        setLoadingMore(false);
+      }
     }
-  }, [sourceFilter, licenseFilter, statusFilter, progressFilter, sortOrder, refererFilter, dateRangeFilter, ownerFilter, stateFilter, isAdmin, isManager, agentId]);
+  }, [access, closedIncluded, sourceFilter, licenseFilter, statusFilter, progressFilter, sortOrder, refererFilter, dateRangeFilter, ownerFilter, stateFilter, playSound, updateLeads, commitCoverage]);
 
-  const agentIdLoading = !agentId && !isAdmin && !!user;
+  // A toast action outlives the render that made it, so it calls the latest loader.
+  const loadQueueRef = useRef(loadQueue);
+  useEffect(() => {
+    loadQueueRef.current = loadQueue;
+  }, [loadQueue]);
+
+  const combinedCoverage = combineCoverage([coverage.aged, coverage.apps]);
 
   const handleStartCalling = () => {
-    if (agentIdLoading) {
-      toast.error("Still loading your profile, please wait...");
+    const blocked = queueAccessMessage(access);
+    if (blocked) {
+      toast.error(blocked.title, { description: blocked.body });
       playSound("error");
       return;
+    }
+    if (refererFilter === "mine" && !agentId) {
+      // Refused here rather than opening a session that can only show this.
+      toast.error("The Mine filter cannot run for this login", {
+        description: mineFilterBlockedReason(identityError),
+        ...(identityError ? { action: { label: "Retry", onClick: () => refetchIdentity() } } : {}),
+      });
+      playSound("error");
+      return;
+    }
+    // Drafts that were saved or discarded have nothing left to keep.
+    for (const [leadId, entry] of Array.from(draftsRef.current.entries())) {
+      if (!entry.draft.pending.trim()) draftsRef.current.delete(leadId);
     }
     playSound("click");
     setStarted(true);
-    fetchLeads();
+    void loadQueue("reset");
   };
 
-  // Send post-call follow-up email
-  const sendFollowUpEmail = async (lead: UnifiedLead, actionType: string = "hired", calendarLink?: string) => {
-    try {
-      const { error } = await supabase.functions.invoke("send-post-call-followup", {
-        // The function reads name, email and licence status off this row
-        // (PL-WIB-POST-CALL-RELAY); it no longer accepts a recipient.
-        body: {
-          leadId: lead.id,
-          leadSource: lead.source,
-          actionType,
-          agentId,
-          ...(calendarLink ? { calendarLink } : {}),
-        },
-      });
+  // One operation id per (lead, action, message) send attempt, kept until the
+  // provider accepts, so a retry carries the same id. send-post-call-followup
+  // does not dedupe on it yet; until it does, a retry is a second message and
+  // the toast says so.
+  const followUpOperationIds = useRef<Map<string, string>>(new Map());
+  const followUpInFlight = useRef<Set<string>>(new Set());
 
-      if (error) {
-        console.error("Failed to send follow-up email:", error);
+  /** Send the post-call follow-up and report what actually happened (F03). Never throws. */
+  const sendFollowUpEmail = useCallback(
+    async (lead: UnifiedLead, actionType: string = "hired", calendarLink?: string): Promise<FollowUpOutcome> => {
+      const key = followUpKey(lead.source, lead.id, actionType, calendarLink);
+      if (followUpInFlight.current.has(key)) return { kind: "in_flight" };
+      let operationId = followUpOperationIds.current.get(key);
+      if (!operationId) {
+        operationId =
+          typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+            ? crypto.randomUUID()
+            : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+        followUpOperationIds.current.set(key, operationId);
       }
-    } catch (err) {
-      console.error("Error sending follow-up email:", err);
-    }
-  };
+      followUpInFlight.current.add(key);
+      try {
+        const result = await supabase.functions.invoke("send-post-call-followup", {
+          // The function reads name, email and licence status off this row
+          // (PL-WIB-POST-CALL-RELAY); it no longer accepts a recipient.
+          body: {
+            leadId: lead.id,
+            leadSource: lead.source,
+            actionType,
+            agentId,
+            operationId,
+            ...(calendarLink ? { calendarLink } : {}),
+          },
+        });
+        const errorBody = result.error ? await readInvokeErrorBody(result.error) : null;
+        const outcome = classifyFollowUpResponse(result, errorBody, result.error ? invokeErrorStatus(result.error) : null);
+        if (outcome.kind === "accepted") followUpOperationIds.current.delete(key);
+        return outcome;
+      } catch (err) {
+        return { kind: "failed", message: errorMessage(err, "The follow-up request could not be sent."), permanent: false };
+      } finally {
+        followUpInFlight.current.delete(key);
+      }
+    },
+    [agentId],
+  );
 
-  // Manual follow-up email from summary panel
+  // Manual follow-up email from the summary panel. The recorder marks its
+  // button green only when this resolves, so anything but an accepted send
+  // throws after the honest toast.
   const handleSendFollowUp = useCallback(async (calendarLink?: string) => {
     if (!currentLead) return;
-    try {
-      await sendFollowUpEmail(currentLead, "contacted", calendarLink);
-      toast.success("Follow-up email sent!");
-      playSound("success");
-    } catch {
-      toast.error("Failed to send follow-up email");
+    const outcome = await sendFollowUpEmail(currentLead, "contacted", calendarLink);
+    const t = followUpToast(outcome, leadDisplayName(currentLead));
+    showFollowUpToast(t);
+    if (outcome.kind !== "accepted") {
       playSound("error");
-      throw new Error("Failed");
+      throw new Error(t.title);
     }
-  }, [currentLead]);
+    playSound("success");
+  }, [currentLead, sendFollowUpEmail, playSound]);
 
-  // Save transcription notes
-  const saveNotes = async (lead: UnifiedLead, notes: string) => {
-    if (!notes.trim()) return;
+  const noteAuthor = profile?.full_name?.trim() || user?.email || null;
+
+  /**
+   * Append call notes to a lead's notes on the server (F04). The text is
+   * re-read right before the write so the append lands on the server's
+   * current notes, not the copy loaded when the queue started, and the write
+   * is guarded: on applications by the trigger-kept updated_at, on aged_leads
+   * (no updated_at) by the notes text itself. A guarded write that matches no
+   * row is re-read: a moved guard is a concurrent editor and the append is
+   * retried on the fresh text; an unchanged one is a refusal. The write is
+   * verified from the returned row. Any failure is reported; the caller keeps
+   * the draft.
+   */
+  const saveNotes = useCallback(async (target: NoteTarget, draft: string): Promise<SaveNotesResult> => {
+    const entry = buildNoteEntry(draft, new Date().toISOString(), noteAuthor);
+    const isApplication = target.source === "applications";
+    const what = isApplication ? "applicant" : "lead";
+
+    const readCurrent = async (): Promise<{ notes: string | null; guard: string | null } | null> => {
+      if (isApplication) {
+        const { data, error } = await supabase.from("applications").select("notes, updated_at").eq("id", target.id).limit(1);
+        if (error) throw error;
+        const row = (data ?? [])[0] as { notes: string | null; updated_at: string | null } | undefined;
+        return row ? { notes: row.notes, guard: row.updated_at } : null;
+      }
+      const { data, error } = await supabase.from("aged_leads").select("notes").eq("id", target.id).limit(1);
+      if (error) throw error;
+      const row = (data ?? [])[0] as { notes: string | null } | undefined;
+      return row ? { notes: row.notes, guard: row.notes } : null;
+    };
+
+    // The guarded append; null when it matched no row.
+    const writeGuarded = async (next: string, guard: string | null): Promise<{ notes: string | null } | null> => {
+      if (isApplication) {
+        let q = supabase.from("applications").update({ notes: next } as never).eq("id", target.id);
+        q = guard === null ? q.is("updated_at", null) : q.eq("updated_at", guard);
+        const { data, error } = await q.select("notes");
+        if (error) throw error;
+        return ((data ?? [])[0] as { notes: string | null } | undefined) ?? null;
+      }
+      let q = supabase.from("aged_leads").update({ notes: next } as never).eq("id", target.id);
+      q = guard === null ? q.is("notes", null) : q.eq("notes", guard);
+      const { data, error } = await q.select("notes");
+      if (error) throw error;
+      return ((data ?? [])[0] as { notes: string | null } | undefined) ?? null;
+    };
 
     try {
-      const timestamp = new Date().toISOString();
-      const noteEntry = `\n\n[Call Notes - ${timestamp}]\n${notes}`;
-
-      if (lead.source === "aged_leads") {
-        const existingNotes = lead.notes || "";
-        await supabase
-          .from("aged_leads")
-          .update({ notes: existingNotes + noteEntry })
-          .eq("id", lead.id);
-      } else {
-        const existingNotes = lead.notes || "";
-        await supabase
-          .from("applications")
-          .update({ notes: existingNotes + noteEntry })
-          .eq("id", lead.id);
+      // The guard of the last write that matched no row; undefined until one does.
+      let missedGuard: string | null | undefined;
+      for (let attempt = 0; ; attempt += 1) {
+        const current = await readCurrent();
+        if (!current) {
+          return { ok: false, message: `This ${what} could not be read back from the server, so nothing was written. Your note was kept.` };
+        }
+        if (missedGuard !== undefined && zeroRowVerdict(missedGuard, current.guard) === "refused") {
+          return {
+            ok: false,
+            message: `The server would not update this ${what} (a permission limit, most likely), so nothing was written. Your note was kept.`,
+          };
+        }
+        if (attempt >= NOTE_WRITE_ATTEMPTS) {
+          return {
+            ok: false,
+            message: `Someone else saved this ${what} while you were typing, ${NOTE_WRITE_ATTEMPTS} times in a row, so nothing was written. Your note was kept; try again.`,
+          };
+        }
+        if (!isApplication && !noteLockFits(current.notes)) {
+          return {
+            ok: false,
+            message: "This lead's notes are too long to append safely from the Call Center, so nothing was written. Your note was kept.",
+          };
+        }
+        const rowBack = await writeGuarded(appendNoteEntry(current.notes, entry), current.guard);
+        if (!rowBack) {
+          missedGuard = current.guard;
+          continue;
+        }
+        if (!noteLanded(rowBack.notes, entry)) {
+          return { ok: false, message: "The server answered without your note at the end of the text. Your note was kept." };
+        }
+        return { ok: true, notes: rowBack.notes ?? "" };
       }
-    } catch (error) {
-      console.error("Error saving notes:", error);
+    } catch (err) {
+      return { ok: false, message: errorMessage(err, "The note could not be written.") };
     }
-  };
+  }, [noteAuthor]);
+
+  /** Fold the recorder's running transcript into that lead's draft. */
+  const recordDraft = useCallback((target: NoteTarget, transcript: string) => {
+    const prev = draftsRef.current.get(target.id);
+    draftsRef.current.set(target.id, { target, draft: recordTranscript(prev?.draft ?? EMPTY_NOTE_DRAFT, transcript) });
+  }, []);
+
+  const discardDraft = useCallback((leadId: string) => {
+    const entry = draftsRef.current.get(leadId);
+    if (entry) draftsRef.current.set(leadId, { ...entry, draft: discardNoteDraft(entry.draft) });
+  }, []);
+
+  /**
+   * Save every unsaved draft before anything moves (F04). Normally that is
+   * the current lead's; words that arrive after their lead left the screen
+   * are saved to that lead, never to the one now showing. True when nothing
+   * was pending or everything saved; false after reporting a failure, with
+   * the draft kept and a Discard action offered.
+   */
+  const flushDraftNotes = useCallback(async (consequence: string): Promise<boolean> => {
+    for (const [leadId, entry] of Array.from(draftsRef.current.entries())) {
+      const text = entry.draft.pending;
+      if (!text.trim()) continue;
+      const saved = await saveNotes(entry.target, text);
+      if (saved.ok === false) {
+        toast.error(`Call notes for ${entry.target.name} were NOT saved, so ${consequence}`, {
+          description: saved.message,
+          duration: 10000,
+          action: { label: "Discard notes", onClick: () => discardDraft(leadId) },
+        });
+        playSound("error");
+        return false;
+      }
+      const latest = draftsRef.current.get(leadId);
+      if (latest) draftsRef.current.set(leadId, { ...latest, draft: markDraftSaved(latest.draft, text) });
+      updateLeads((prev) => prev.map((l) => (l.id === leadId ? { ...l, notes: saved.notes } : l)));
+    }
+    return true;
+  }, [saveNotes, discardDraft, playSound, updateLeads]);
+
+  /**
+   * One action at a time (F04). Every way of changing, removing or leaving
+   * the current lead runs through here, so a second key press while notes
+   * save is ignored instead of saving them twice or advancing twice.
+   */
+  const runExclusive = useCallback(async (task: () => Promise<void>): Promise<void> => {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setProcessing(true);
+    try {
+      await task();
+    } catch (error) {
+      toast.error("That action did not finish", { description: errorMessage(error) });
+      playSound("error");
+    } finally {
+      busyRef.current = false;
+      setProcessing(false);
+    }
+  }, [playSound]);
+
+  const celebrate = useCallback(() => {
+    setShowConfetti(true);
+    if (confettiTimerRef.current) clearTimeout(confettiTimerRef.current);
+    confettiTimerRef.current = setTimeout(() => setShowConfetti(false), 3000);
+  }, []);
+
+  /** Move to the lead after `leadId`. False when it is the last loaded lead. */
+  const advancePast = useCallback((leadId: string): boolean => {
+    const list = leadsRef.current;
+    const index = list.findIndex((l) => l.id === leadId);
+    if (index === -1 || index >= list.length - 1) return false;
+    setCurrentIndex(index + 1);
+    return true;
+  }, []);
+
+  /** Take a lead out of the loaded queue; the lead after it moves up into its place. */
+  const removeLead = useCallback((leadId: string) => {
+    const index = leadsRef.current.findIndex((l) => l.id === leadId);
+    if (index === -1) return;
+    updateLeads((prev) => prev.filter((l) => l.id !== leadId));
+    setCurrentIndex((prev) => (index < prev ? prev - 1 : prev));
+  }, [updateLeads]);
+
+  /** At the last loaded lead, say so, and offer the next page when one exists. */
+  const lastLeadNotice = useCallback(() => {
+    const current = combineCoverage([coverageRef.current.aged, coverageRef.current.apps]);
+    if (current.hasMore) {
+      toast.info("This is the last loaded lead", {
+        description: remainingLabel(current),
+        action: { label: "Load more", onClick: () => void loadQueueRef.current("more") },
+      });
+    } else {
+      toast.info("You've reached the last lead");
+    }
+  }, []);
+
+  /** After a lead leaves the queue: nothing loaded is left and nothing more matches. */
+  const noticeIfAllProcessed = useCallback(() => {
+    if (leadsRef.current.length > 0) return;
+    if (combineCoverage([coverageRef.current.aged, coverageRef.current.apps]).hasMore) return;
+    toast.info("All leads processed!");
+  }, []);
 
   // MP-260 shared log_contact_attempt helper. Fire-and-forget so a 500
   // never blocks the disposition or auto-advance. Channel default = 'call'
@@ -477,48 +954,30 @@ export default function CallCenter() {
     [],
   );
 
-  const handleAction = useCallback(async (actionId: ActionId) => {
-    if (!currentLead || processing) return;
-
-    // For contracted action, open the modal instead
-    if (actionId === "contracted") {
-      setShowContractedModal(true);
-      return;
-    }
-
-    // For hired action, always show the hire confirm modal
-    if (actionId === "hired") {
-      setShowHireConfirm(true);
-      return;
-    }
-
-    // MP-260 — Reschedule opens the InterviewScheduler modal for applications.
-    // For aged leads (no application_id), fall back to logging a scheduled outcome.
-    if (actionId === "reschedule") {
-      if (currentLead.source === "applications") {
-        setShowScheduleModal(true);
-      } else {
-        logContactAttempt(currentLead.id, "reschedule_requested");
-        toast.info("Reschedule requested — advancing");
-        handleSkip();
-      }
-      return;
-    }
-
-    await executeAction(actionId);
-  }, [currentLead, processing, logContactAttempt]);
-
-  const executeAction = useCallback(async (actionId: ActionId) => {
-    if (!currentLead) return;
-    
-    setProcessing(true);
+  /**
+   * Record a disposition on one lead and move the queue. The caller holds the
+   * action lock and has already saved the call notes, so they are not saved
+   * again here (F04). A refused or failed write is reported, and the queue
+   * does not move. After a hire, a failure says the agent account exists.
+   */
+  const executeAction = useCallback(async (actionId: ActionId, lead: UnifiedLead, opts: { afterHire?: boolean } = {}): Promise<boolean> => {
+    const failedTitle = opts.afterHire
+      ? "The agent account was created, but this lead was not marked hired"
+      : "The disposition was NOT saved";
+    // .select("id") turns a write row security refused into zero rows instead
+    // of a silent success.
+    const refusedWrite = (what: string): boolean => {
+      toast.error(failedTitle, {
+        description: `The server would not update this ${what} (a permission limit, most likely), so the queue did not move.`,
+        duration: 10000,
+      });
+      playSound("error");
+      return false;
+    };
+    // Set when the server refused the phone-bad flag, so the toast below does
+    // not claim the lead left the queue for good.
+    let phoneFlagFailed = false;
     try {
-      // Save any transcription notes first
-      if (currentTranscription) {
-        await saveNotes(currentLead, currentTranscription);
-        setCurrentTranscription("");
-      }
-
       // MP-260 disposition → outcome/channel mapping for log_contact_attempt.
       const outcomeMap: Record<string, string> = {
         hired: "hired",
@@ -532,11 +991,11 @@ export default function CallCenter() {
       };
 
       // Log telemetry for applications — RPC only accepts application ids.
-      if (currentLead.source === "applications" && outcomeMap[actionId]) {
-        logContactAttempt(currentLead.id, outcomeMap[actionId]);
+      if (lead.source === "applications" && outcomeMap[actionId]) {
+        logContactAttempt(lead.id, outcomeMap[actionId]);
       }
 
-      if (currentLead.source === "aged_leads") {
+      if (lead.source === "aged_leads") {
         const nowIso = new Date().toISOString();
         const statusMap: Record<string, string> = {
           hired: "hired",
@@ -549,19 +1008,21 @@ export default function CallCenter() {
         const patch: Record<string, string> = {
           status: statusMap[actionId] || actionId,
           processed_at: nowIso,
-          contacted_at: currentLead.contactedAt || nowIso,
+          contacted_at: lead.contactedAt || nowIso,
           last_contacted_at: nowIso,
         };
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from("aged_leads")
           .update(patch as never)
-          .eq("id", currentLead.id);
+          .eq("id", lead.id)
+          .select("id");
 
         if (error) throw error;
+        if (!data || data.length === 0) return refusedWrite("lead");
       } else {
         const nowIso = new Date().toISOString();
         const updateData: Record<string, string> = {
-          contacted_at: currentLead.contactedAt || nowIso,
+          contacted_at: lead.contactedAt || nowIso,
           last_contacted_at: nowIso,
         };
 
@@ -579,7 +1040,7 @@ export default function CallCenter() {
           // The one status worth touching is a stale no_pickup, because the
           // contacted filter excludes it and a lead we just reached would stay
           // invisible. Any other funnel stage is left alone.
-          if (currentLead.status === "no_pickup") updateData.status = "reviewing";
+          if (lead.status === "no_pickup") updateData.status = "reviewing";
           if (actionId === "needs_followup") {
             // Bump next-action to tomorrow so the follow-up cohort catches it.
             const tomorrow = new Date();
@@ -588,48 +1049,51 @@ export default function CallCenter() {
           }
         }
 
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from("applications")
           .update(updateData as never)
-          .eq("id", currentLead.id);
+          .eq("id", lead.id)
+          .select("id");
 
         if (error) throw error;
+        if (!data || data.length === 0) return refusedWrite("applicant");
 
-        // Bad number → also flag phone_bad via unified RPC so the dialer
-        // stops calling it. Guarded to applications since aged_leads use
-        // a different column set.
+        // Bad number: phone_bad_at is what keeps the number out of every dial
+        // queue (F06), so a failed flag is reported instead of swallowed.
         if (actionId === "bad_number") {
-          Promise.resolve(
-            supabase.rpc("unified_mark_phone_bad" as any, {
-              p_id: currentLead.id,
-              p_source: "applied",
-              p_reason: "call_center_marked_bad",
-            }),
-          )
-            .then(() => undefined)
-            // empty-catch-allow:fire-and-forget — bad-number status still wins even if the RPC 500s (edge fn optional).
-            .catch(() => undefined);
+          const { error: flagError } = await supabase.rpc("unified_mark_phone_bad", {
+            p_id: lead.id,
+            p_source: "applied",
+            p_reason: "call_center_marked_bad",
+          });
+          if (flagError) {
+            phoneFlagFailed = true;
+            toast.error("The bad number was NOT flagged on the server", {
+              description: `${asSentence(errorMessage(flagError))} The lead can come back in the contacted queue.`,
+              duration: 10000,
+            });
+          }
         }
       }
 
       // MP-260 outcome UX for new dispositions.
       if (actionId === "contacted") {
         toast.success("Marked contacted — advancing");
-      } else if (actionId === "bad_number") {
+      } else if (actionId === "bad_number" && !phoneFlagFailed) {
         toast.warning("Bad number flagged — removed from queue");
       } else if (actionId === "needs_followup") {
         toast.success("Follow-up scheduled for tomorrow — advancing");
       }
 
       if (actionId === "hired") {
-        await sendFollowUpEmail(currentLead, "hired");
-        
+        const hiredFollowUp = await sendFollowUpEmail(lead, "hired");
+
         // Auto-send licensing instructions for unlicensed hires
-        if (currentLead.licenseStatus === "unlicensed" || currentLead.licenseStatus === "unknown") {
+        if (lead.licenseStatus === "unlicensed" || lead.licenseStatus === "unknown") {
           supabase.functions.invoke("send-licensing-instructions", {
             body: {
-              email: currentLead.email,
-              firstName: currentLead.firstName,
+              email: lead.email,
+              firstName: lead.firstName,
               licenseStatus: "unlicensed",
               agentId,
             },
@@ -640,22 +1104,28 @@ export default function CallCenter() {
         supabase.functions.invoke("notify-hire-announcement", {
           body: {
             hirerName: "Manager",
-            hireeName: `${currentLead.firstName} ${currentLead.lastName || ""}`.trim(),
+            hireeName: `${lead.firstName} ${lead.lastName || ""}`.trim(),
             actionType: "hired",
             agentId,
           },
         }).catch(err => console.error("Failed to send hire announcement:", err));
 
-        setShowConfetti(true);
-        confettiTimerRef.current = setTimeout(() => setShowConfetti(false), 3000);
-        toast.success("Lead marked as hired - follow-up email sent!");
+        celebrate();
+        const hiredToast = followUpToast(hiredFollowUp, leadDisplayName(lead));
+        if (hiredFollowUp.kind === "accepted") {
+          toast.success("Lead marked as hired. Follow-up email accepted by the mail provider.", { description: hiredToast.description });
+        } else {
+          toast.success("Lead marked as hired");
+          showFollowUpToast(hiredToast);
+        }
         playSound("celebrate");
       } else if (actionId === "no_pickup") {
-        // Auto-send "we tried calling you" email
-        sendFollowUpEmail(currentLead, "no_pickup").catch(err => 
-          console.error("Failed to send no-pickup follow-up:", err)
-        );
-        toast.info("Marked as no pickup - follow-up email sent!");
+        // The "we tried calling you" email is reported when the provider
+        // answers, never announced up front (F03).
+        toast.info("Marked as no pickup. Sending the we-tried-calling email.");
+        void sendFollowUpEmail(lead, "no_pickup").then((outcome) => {
+          showFollowUpToast(followUpToast(outcome, leadDisplayName(lead)));
+        });
       } else {
         toast.success(`Lead marked as ${actionId.replace("_", " ")}`);
         playSound("success");
@@ -668,128 +1138,186 @@ export default function CallCenter() {
         // Mirror what the write actually persisted. The old value showed
         // "contacted" on a row whose status the enum cannot hold, so the
         // optimistic state disagreed with the next refetch.
-        const patchStatus = currentLead.source === "aged_leads"
+        const patchStatus = lead.source === "aged_leads"
           ? (actionId === "no_pickup" ? "no_pickup" : actionId)
           : actionId === "no_pickup"
             ? "no_pickup"
-            : currentLead.status === "no_pickup"
+            : lead.status === "no_pickup"
               ? "reviewing"
-              : currentLead.status;
-        setLeads((prev) =>
-          prev.map((l) => l.id === currentLead.id ? { ...l, status: patchStatus } : l)
-        );
-        if (currentIndex < leads.length - 1) {
-          setCurrentIndex((prev) => prev + 1);
-        } else {
-          toast.info("You've reached the last lead");
-        }
+              : lead.status;
+        updateLeads((prev) => prev.map((l) => (l.id === lead.id ? { ...l, status: patchStatus } : l)));
+        // Read from the latest queue, so a page loaded during this action
+        // counts and the last lead before it is not reported as the end.
+        if (!advancePast(lead.id)) lastLeadNotice();
       } else {
-        setLeads((prev) => prev.filter((l) => l.id !== currentLead.id));
+        removeLead(lead.id);
+        noticeIfAllProcessed();
       }
-
-      if (leads.length <= 1) {
-        toast.info("All leads processed!");
-      }
+      return true;
     } catch (error) {
       console.error("Error updating lead:", error);
-      toast.error("Failed to update lead");
+      toast.error(failedTitle, { description: errorMessage(error), duration: 10000 });
       playSound("error");
-    } finally {
-      setProcessing(false);
+      return false;
     }
-  }, [currentLead, leads.length, currentTranscription, currentIndex, logContactAttempt]);
+  }, [logContactAttempt, sendFollowUpEmail, agentId, playSound, celebrate, updateLeads, advancePast, lastLeadNotice, removeLead, noticeIfAllProcessed]);
 
-  const handleHireConfirm = useCallback(async (boughtCourse: boolean, npn: string) => {
-    if (!currentLead) return;
-    setShowHireConfirm(false);
-    try {
-      const licenseStatus = currentLead.licenseStatus === "licensed"
-        ? "licensed"
-        : currentLead.licenseStatus === "pending"
-          ? "pending"
-          : "unlicensed";
-      const receipt = currentLead.source === "applications"
-        ? await promoteApplicationToAgent(currentLead.id, { managerId: agentId, npn })
-        : await createCanonicalHire({
-            firstName: currentLead.firstName,
-            lastName: currentLead.lastName || "",
-            email: currentLead.email,
-            phone: currentLead.phone || "",
-            licenseStatus,
-            npn,
-            city: currentLead.city,
-            state: currentLead.state,
-            licenseStates: currentLead.licensedStates,
-            instagramHandle: currentLead.instagramHandle,
-            managerId: agentId,
+  const handleAction = useCallback((actionId: ActionId) => runExclusive(async () => {
+    const lead = currentLead;
+    if (!lead) return;
+
+    // Contracting places the new agent under the caller's record, so a login
+    // without one gets the reason instead of a modal that never mounts. A
+    // record that failed to read is not the same as no record (F02).
+    if (actionId === "contracted") {
+      if (!agentId) {
+        if (identityError) {
+          toast.error("Your agent record could not be read, so contracting cannot start", {
+            description: identityError,
+            action: { label: "Retry", onClick: () => refetchIdentity() },
           });
-      if (receipt.partial) toast.warning(receipt.message);
-      else toast.success("Agent account created · onboarding started");
-      await executeAction("hired");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Hire could not start onboarding");
+        } else {
+          toast.error("Contracting needs an agent record linked to your login", {
+            description: "The new agent is placed under your record. Ask an admin to link one.",
+          });
+        }
+        playSound("error");
+        return;
+      }
+      if (!(await flushDraftNotes("the contracting form did not open"))) return;
+      setContractLead(lead);
       return;
     }
 
+    // For hired action, always show the hire confirm modal
+    if (actionId === "hired") {
+      setHireLead(lead);
+      return;
+    }
+
+    // Reschedule opens the InterviewScheduler for applications. An aged lead
+    // has no application row, and both the scheduler and log_contact_attempt
+    // key on one, so the aged branch writes nothing and the queue stays put
+    // instead of logging the lead under the wrong entity and advancing (F05).
+    if (actionId === "reschedule") {
+      if (lead.source === "applications") {
+        setShowScheduleModal(true);
+      } else {
+        toast.error("Scheduling needs an application record", {
+          description:
+            "This aged lead has none, so no meeting or contact entry was written and the queue did not move. Use Needs follow-up to log this call instead.",
+          duration: 10000,
+        });
+        playSound("error");
+      }
+      return;
+    }
+
+    // A failed save keeps the draft and stops the disposition (F04).
+    if (!(await flushDraftNotes("nothing else was changed"))) return;
+    await executeAction(actionId, lead);
+  }), [runExclusive, currentLead, agentId, identityError, refetchIdentity, flushDraftNotes, executeAction, playSound]);
+
+  const handleHireConfirm = useCallback((lead: UnifiedLead, boughtCourse: boolean, npn: string) => runExclusive(async () => {
+    setHireLead(null);
+    if (!(await flushDraftNotes("the hire was not started"))) return;
+    let receipt: HireReceipt;
+    try {
+      const licenseStatus = lead.licenseStatus === "licensed"
+        ? "licensed"
+        : lead.licenseStatus === "pending"
+          ? "pending"
+          : "unlicensed";
+      receipt = lead.source === "applications"
+        ? await promoteApplicationToAgent(lead.id, { managerId: agentId, npn })
+        : await createCanonicalHire({
+            firstName: lead.firstName,
+            lastName: lead.lastName || "",
+            email: lead.email,
+            phone: lead.phone || "",
+            licenseStatus,
+            npn,
+            city: lead.city,
+            state: lead.state,
+            licenseStates: lead.licensedStates,
+            instagramHandle: lead.instagramHandle,
+            managerId: agentId,
+          });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Hire could not start onboarding");
+      playSound("error");
+      return;
+    }
+    if (receipt.partial) toast.warning(receipt.message);
+    else toast.success("Agent account created · onboarding started");
+    // The notes were saved above; marking the lead hired does not save them
+    // again, and a failure from here on says the account already exists (F04).
+    await executeAction("hired", lead, { afterHire: true });
+
     // Log course purchase activity if checked
-    if (boughtCourse && currentLead) {
+    if (boughtCourse) {
       const { logLeadActivity } = await import("@/lib/logLeadActivity");
       logLeadActivity({
-        leadId: currentLead.id,
+        leadId: lead.id,
         type: "course_purchased_on_call",
         title: "Bought course on the phone",
-        details: { source: currentLead.source },
+        details: { source: lead.source },
       });
 
       // Also update the has_training_course flag if it's an application-linked agent
-      if (currentLead.source === "applications") {
+      if (lead.source === "applications") {
         supabase
           .from("applications")
           .update({ started_training: true })
-          .eq("id", currentLead.id)
+          .eq("id", lead.id)
           .then(({ error }) => {
             if (error) { /* console.error stripped by v25 codemod */ }
           });
       }
     }
-  }, [agentId, executeAction, currentLead]);
+  }), [runExclusive, flushDraftNotes, agentId, executeAction, playSound]);
 
-  const handleContractedSuccess = useCallback(() => {
-    // Remove lead from list after successful contracting
-    if (currentLead) {
-      setLeads((prev) => prev.filter((l) => l.id !== currentLead.id));
-    }
-    setShowContractedModal(false);
-    
-    // Trigger celebration
-    setShowConfetti(true);
-    setTimeout(() => setShowConfetti(false), 3000);
+  const handleContractedSuccess = useCallback((leadId: string) => {
+    // Remove the contracted lead, by id: the one the dialog was opened for.
+    setContractLead(null);
+    removeLead(leadId);
+    celebrate();
+    noticeIfAllProcessed();
+  }, [removeLead, celebrate, noticeIfAllProcessed]);
 
-    if (leads.length <= 1) {
-      toast.info("All leads processed!");
-    }
-  }, [currentLead, leads.length]);
+  const handleSkip = useCallback(() => runExclusive(async () => {
+    const lead = currentLead;
+    if (!lead) return;
+    // A draft that fails to save keeps the queue where it is (F04).
+    if (!(await flushDraftNotes("the queue did not move"))) return;
+    if (advancePast(lead.id)) playSound("whoosh");
+    else lastLeadNotice();
+  }), [runExclusive, currentLead, flushDraftNotes, advancePast, lastLeadNotice, playSound]);
 
-  const handleSkip = useCallback(() => {
-    // Save any transcription notes before skipping
-    if (currentLead && currentTranscription) {
-      saveNotes(currentLead, currentTranscription);
-      setCurrentTranscription("");
-    }
+  const handlePrevious = useCallback(() => runExclusive(async () => {
+    if (!currentLead || currentIndex <= 0) return;
+    if (!(await flushDraftNotes("the queue did not move"))) return;
+    setCurrentIndex((prev) => Math.max(0, prev - 1));
+  }), [runExclusive, currentLead, currentIndex, flushDraftNotes]);
 
-    if (currentIndex < leads.length - 1) {
-      setCurrentIndex((prev) => prev + 1);
-      playSound("whoosh");
-    } else {
-      toast.info("You've reached the last lead");
-    }
-  }, [currentIndex, leads.length, currentLead, currentTranscription]);
+  /** Queue-rail jump. By id, so a page appended meanwhile cannot move the target. */
+  const jumpToLead = useCallback((leadId: string) => runExclusive(async () => {
+    if (!(await flushDraftNotes("the queue did not move"))) return;
+    const index = leadsRef.current.findIndex((l) => l.id === leadId);
+    if (index !== -1) setCurrentIndex(index);
+  }), [runExclusive, flushDraftNotes]);
 
-  const handlePrevious = useCallback(() => {
-    if (currentIndex > 0) {
-      setCurrentIndex((prev) => prev - 1);
-    }
-  }, [currentIndex]);
+  /** Back to the filters, with the notes saved first so they cannot follow the next session's first lead. */
+  const exitSession = useCallback(() => runExclusive(async () => {
+    if (!(await flushDraftNotes("the session stayed open"))) return;
+    setStarted(false);
+  }), [runExclusive, flushDraftNotes]);
+
+  /** The reassignment already landed on the server; the lead's notes are saved before it leaves this queue. */
+  const handleReassigned = useCallback((leadId: string) => runExclusive(async () => {
+    if (!(await flushDraftNotes("the reassigned lead stays on screen until its notes are saved or discarded"))) return;
+    removeLead(leadId);
+  }), [runExclusive, flushDraftNotes, removeLead]);
 
   const handleCall = useCallback(() => {
     if (!currentLead?.phone) return;
@@ -858,12 +1386,11 @@ export default function CallCenter() {
     }
   }, [currentLead, logContactAttempt]);
 
-  const handleStageChange = useCallback(async (stage: LicensingStage) => {
-    if (!currentLead || processing) return;
-
-    setProcessing(true);
+  const handleStageChange = useCallback((stage: LicensingStage) => runExclusive(async () => {
+    const lead = currentLead;
+    if (!lead) return;
     try {
-      if (currentLead.source === "applications") {
+      if (lead.source === "applications") {
         // Update license_progress for applications
         const updateData: Record<string, unknown> = {
           license_progress: stage,
@@ -877,19 +1404,19 @@ export default function CallCenter() {
         await supabase
           .from("applications")
           .update(updateData as never)
-          .eq("id", currentLead.id);
+          .eq("id", lead.id);
       } else {
         // For aged_leads, just update status
         await supabase
           .from("aged_leads")
           .update({ status: stage })
-          .eq("id", currentLead.id);
+          .eq("id", lead.id);
       }
 
       // Update local state
-      setLeads((prev) =>
+      updateLeads((prev) =>
         prev.map((l) =>
-          l.id === currentLead.id ? { ...l, licenseProgress: stage } : l
+          l.id === lead.id ? { ...l, licenseProgress: stage } : l
         )
       );
 
@@ -899,38 +1426,35 @@ export default function CallCenter() {
       console.error("Error updating stage:", error);
       toast.error("Failed to update stage");
       playSound("error");
-    } finally {
-      setProcessing(false);
     }
-  }, [currentLead, processing]);
+  }), [runExclusive, currentLead, updateLeads, playSound]);
 
-  const handleStatusChange = useCallback(async (newStatus: string) => {
-    if (!currentLead || processing) return;
-
-    setProcessing(true);
+  const handleStatusChange = useCallback((newStatus: string) => runExclusive(async () => {
+    const lead = currentLead;
+    if (!lead) return;
     try {
       const nowIso = new Date().toISOString();
 
-      if (currentLead.source === "aged_leads") {
+      if (lead.source === "aged_leads") {
         const { error } = await supabase
           .from("aged_leads")
           .update({ status: newStatus, last_contacted_at: nowIso })
-          .eq("id", currentLead.id);
+          .eq("id", lead.id);
         if (error) throw error;
       } else {
         const updateData: Record<string, string> = { status: newStatus, last_contacted_at: nowIso };
-        if (newStatus === "contacted" && !currentLead.contactedAt) {
+        if (newStatus === "contacted" && !lead.contactedAt) {
           updateData.contacted_at = nowIso;
         }
         const { error } = await supabase
           .from("applications")
           .update(updateData as never)
-          .eq("id", currentLead.id);
+          .eq("id", lead.id);
         if (error) throw error;
       }
 
-      setLeads((prev) =>
-        prev.map((l) => l.id === currentLead.id ? { ...l, status: newStatus } : l)
+      updateLeads((prev) =>
+        prev.map((l) => l.id === lead.id ? { ...l, status: newStatus } : l)
       );
       toast.success(`Status updated to ${newStatus.replace("_", " ")}`);
       playSound("success");
@@ -938,27 +1462,24 @@ export default function CallCenter() {
       console.error("Error updating status:", error);
       toast.error("Failed to update status");
       playSound("error");
-    } finally {
-      setProcessing(false);
     }
-  }, [currentLead, processing]);
+  }), [runExclusive, currentLead, updateLeads, playSound]);
 
-  const handleTestDateChange = useCallback(async (date: Date | undefined) => {
-    if (!currentLead || processing || currentLead.source !== "applications") return;
-
-    setProcessing(true);
+  const handleTestDateChange = useCallback((date: Date | undefined) => runExclusive(async () => {
+    const lead = currentLead;
+    if (!lead || lead.source !== "applications") return;
     try {
       const dateStr = date ? date.toISOString().split("T")[0] : null;
 
       await supabase
         .from("applications")
         .update({ test_scheduled_date: dateStr })
-        .eq("id", currentLead.id);
+        .eq("id", lead.id);
 
       // Update local state
-      setLeads((prev) =>
+      updateLeads((prev) =>
         prev.map((l) =>
-          l.id === currentLead.id ? { ...l, testScheduledDate: dateStr } : l
+          l.id === lead.id ? { ...l, testScheduledDate: dateStr } : l
         )
       );
 
@@ -966,17 +1487,19 @@ export default function CallCenter() {
     } catch (error) {
       console.error("Error updating test date:", error);
       toast.error("Failed to update test date");
-    } finally {
-      setProcessing(false);
     }
-  }, [currentLead, processing]);
+  }), [runExclusive, currentLead, updateLeads]);
+
+  // A dialog acts on the lead it opened for; keys behind it would act on the
+  // queue instead, so they are ignored while one is open.
+  const dialogOpen = Boolean(hireLead || contractLead || showScheduleModal || detailAppId);
 
   // Keyboard shortcuts
   useEffect(() => {
     if (!started) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (processing || showContractedModal) return;
+      if (busyRef.current || dialogOpen) return;
 
       // Ignore if typing in input
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
@@ -989,44 +1512,44 @@ export default function CallCenter() {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       switch (e.key.toLowerCase()) {
         case "1":
-          handleAction("hired");
+          void handleAction("hired");
           break;
         case "2":
-          handleAction("contracted");
+          void handleAction("contracted");
           break;
         case "3":
-          handleAction("bad_applicant");
+          void handleAction("bad_applicant");
           break;
         case "4":
-          handleAction("no_pickup");
+          void handleAction("no_pickup");
           break;
         case "5":
-          handleAction("contacted");
+          void handleAction("contacted");
           break;
         case "6":
-          handleAction("reschedule");
+          void handleAction("reschedule");
           break;
         case "7":
-          handleAction("bad_number");
+          void handleAction("bad_number");
           break;
         case "8":
-          handleAction("needs_followup");
+          void handleAction("needs_followup");
           break;
         case "n":
-          handleSkip();
+          void handleSkip();
           break;
         case "p":
-          handlePrevious();
+          void handlePrevious();
           break;
         case "escape":
-          setStarted(false);
+          void exitSession();
           break;
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [started, processing, showContractedModal, handleAction, handleSkip, handlePrevious]);
+  }, [started, dialogOpen, handleAction, handleSkip, handlePrevious, exitSession]);
 
   // MP-260 NBA + priority for the current lead. Signals mapped from the
   // unified lead shape — never invented, always safe fallbacks for missing.
@@ -1054,9 +1577,15 @@ export default function CallCenter() {
     });
   }, [currentLead]);
 
-  // Filter selection UI
+  // Filter selection UI, with the access state above it: loading, no
+  // identity (and what to do), blocked, or ready (F02).
   if (!started) {
     return (
+      <>
+        <QueueAccessNotice access={access} onRetry={refetchIdentity} />
+        {access.kind === "ready" && access.mayIncludeClosed && (
+          <IncludeClosedToggle checked={includeClosed} onChange={setIncludeClosed} />
+        )}
         <CallCenterFilters
         sourceFilter={sourceFilter}
         licenseFilter={licenseFilter}
@@ -1077,8 +1606,9 @@ export default function CallCenter() {
         onOwnerChange={setOwnerFilter}
         onStateChange={setStateFilter}
         onStart={handleStartCalling}
-        disabled={agentIdLoading}
+        disabled={access.kind !== "ready"}
       />
+      </>
     );
   }
 
@@ -1095,6 +1625,9 @@ export default function CallCenter() {
         subtitle={
           <span className="tabular-nums">
             {totalLeads - processedCount} leads remaining · {processedCount} processed
+            {queueLoad.kind === "ready"
+              ? ` · ${coverageLabel(combinedCoverage, countedAt ? formatAsOf(countedAt) : null)}`
+              : ""}
           </span>
         }
         actions={
@@ -1106,7 +1639,8 @@ export default function CallCenter() {
             <Button
               variant="outline"
               className="h-10 sm:h-9"
-              onClick={() => setStarted(false)}
+              onClick={() => void exitSession()}
+              disabled={processing}
               aria-label="Exit call center"
             >
               Exit
@@ -1116,7 +1650,7 @@ export default function CallCenter() {
       />
 
       {/* Content */}
-      {loading ? (
+      {queueLoad.kind === "loading" || queueLoad.kind === "idle" ? (
         <div className="space-y-5">
           <GlassCard className="p-4">
             <div className="flex gap-2">
@@ -1140,21 +1674,43 @@ export default function CallCenter() {
             </div>
           </GlassCard>
         </div>
+      ) : queueLoad.kind === "error" ? (
+        <QueryState status="error" label="the dial queue" error={queueLoad.message} onRetry={() => void loadQueue("reset")} />
       ) : !currentLead ? (
-        <EmptyState
-          icon={<CheckCircle2 className="h-7 w-7" />}
-          variant="success"
-          title="No leads left in this queue"
-          description="Every lead matching your filters has been worked. Head back and widen the filters to keep dialing."
-          actions={
-            <Button
-              className="h-10 w-full sm:h-9 sm:w-auto"
-              onClick={() => setStarted(false)}
-            >
-              Back to filters
-            </Button>
-          }
-        />
+        combinedCoverage.hasMore ? (
+          <EmptyState
+            icon={<ListChecks className="h-7 w-7" />}
+            title="The loaded leads are done"
+            description={`${coverageLabel(combinedCoverage, countedAt ? formatAsOf(countedAt) : null)}. ${remainingLabel(combinedCoverage)}`}
+            actions={
+              <>
+                <Button className="h-10 w-full sm:h-9 sm:w-auto" onClick={() => void loadQueue("more")} disabled={loadingMore}>
+                  {loadingMore ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}
+                  Load more
+                </Button>
+                <Button variant="outline" className="h-10 w-full sm:h-9 sm:w-auto" onClick={() => void exitSession()} disabled={processing}>
+                  Back to filters
+                </Button>
+              </>
+            }
+          />
+        ) : (
+          <EmptyState
+            icon={<CheckCircle2 className="h-7 w-7" />}
+            variant="success"
+            title="No leads left in this queue"
+            description="Every lead matching your filters has been worked. Head back and widen the filters to keep dialing."
+            actions={
+              <Button
+                className="h-10 w-full sm:h-9 sm:w-auto"
+                onClick={() => void exitSession()}
+                disabled={processing}
+              >
+                Back to filters
+              </Button>
+            }
+          />
+        )
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
           {/* CALL PANEL — left column on desktop, stacked on mobile */}
@@ -1213,16 +1769,14 @@ export default function CallCenter() {
               <CallCenterLeadCard
                 key={currentLead.id}
                 lead={currentLead}
-                onTranscriptionUpdate={setCurrentTranscription}
+                onTranscriptionUpdate={(text) => recordDraft(noteTargetOf(currentLead), text)}
                 onStageChange={handleStageChange}
                 onTestDateChange={handleTestDateChange}
                 onCall={handleCall}
                 isRecording={isRecording}
                 onRecordingStateChange={setIsRecording}
                 isAdmin={isAdmin}
-                onReassigned={() => {
-                  setLeads((prev) => prev.filter((l) => l.id !== currentLead.id));
-                }}
+                onReassigned={() => void handleReassigned(currentLead.id)}
                 onSendFollowUp={handleSendFollowUp}
                 onStatusChange={handleStatusChange}
                 className="min-w-0 flex-1 overflow-y-auto"
@@ -1305,7 +1859,7 @@ export default function CallCenter() {
               </p>
             </div>
             <div className="min-w-0 flex-1 divide-y divide-border/60 overflow-y-auto">
-              {leads.slice(currentIndex + 1, currentIndex + 11).map((l, idx) => {
+              {leads.slice(currentIndex + 1, currentIndex + 11).map((l) => {
                 const name = `${l.firstName} ${l.lastName ?? ""}`.trim() || "Unnamed";
                 const isLicensed = (l.licenseStatus ?? "").toLowerCase() === "licensed";
                 const hasPhone = !!l.phone;
@@ -1317,7 +1871,8 @@ export default function CallCenter() {
                   <button
                     key={l.id}
                     type="button"
-                    onClick={() => setCurrentIndex(currentIndex + 1 + idx)}
+                    onClick={() => void jumpToLead(l.id)}
+                    disabled={processing}
                     aria-label={`Jump to ${name}`}
                     className="w-full px-3 py-2.5 text-left transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
                   >
@@ -1356,10 +1911,26 @@ export default function CallCenter() {
                   </button>
                 );
               })}
-              {leads.length - currentIndex - 1 <= 0 && (
+              {leads.length - currentIndex - 1 <= 0 && !combinedCoverage.hasMore && (
                 <p className="px-3 py-8 text-center text-xs text-muted-foreground">
                   No more leads in the queue.
                 </p>
+              )}
+              {combinedCoverage.hasMore && (
+                <div className="px-3 py-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => void loadQueue("more")}
+                    disabled={loadingMore}
+                    aria-label="Load more leads"
+                  >
+                    {loadingMore ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}
+                    Load more
+                    {combinedCoverage.remaining !== null ? ` · ${combinedCoverage.remaining.toLocaleString()} not loaded yet` : ""}
+                  </Button>
+                </div>
               )}
             </div>
           </GlassCard>
@@ -1367,34 +1938,38 @@ export default function CallCenter() {
       )}
 
       {/* Contracted Modal */}
-      {currentLead && agentId && (
+      {contractLead && agentId && (
         <ContractedModal
-          open={showContractedModal}
-          onOpenChange={setShowContractedModal}
+          open
+          onOpenChange={(open) => {
+            if (!open) setContractLead(null);
+          }}
           application={{
-            id: currentLead.id,
-            first_name: currentLead.firstName,
-            last_name: currentLead.lastName || "",
-            email: currentLead.email,
-            phone: currentLead.phone || "",
-            license_status: currentLead.licenseStatus as "licensed" | "unlicensed" | "pending",
-            license_progress: currentLead.licenseProgress as any,
-            source: currentLead.source,
+            id: contractLead.id,
+            first_name: contractLead.firstName,
+            last_name: contractLead.lastName || "",
+            email: contractLead.email,
+            phone: contractLead.phone || "",
+            license_status: contractLead.licenseStatus as "licensed" | "unlicensed" | "pending",
+            license_progress: contractLead.licenseProgress as ContractedProgress,
+            source: contractLead.source,
           }}
           agentId={agentId}
-          onSuccess={handleContractedSuccess}
+          onSuccess={() => handleContractedSuccess(contractLead.id)}
         />
       )}
 
       {/* Hire Confirmation Modal */}
-      {currentLead && (
+      {hireLead && (
         <HireConfirmModal
-          open={showHireConfirm}
-          onOpenChange={setShowHireConfirm}
-          onConfirm={handleHireConfirm}
-          applicantName={`${currentLead.firstName} ${currentLead.lastName || ""}`.trim()}
-          isUnlicensed={currentLead.licenseStatus !== "licensed"}
-          initialNpn={currentLead.niprNumber || ""}
+          open
+          onOpenChange={(open) => {
+            if (!open) setHireLead(null);
+          }}
+          onConfirm={(boughtCourse, npn) => handleHireConfirm(hireLead, boughtCourse, npn)}
+          applicantName={`${hireLead.firstName} ${hireLead.lastName || ""}`.trim()}
+          isUnlicensed={hireLead.licenseStatus !== "licensed"}
+          initialNpn={hireLead.niprNumber || ""}
         />
       )}
 
@@ -1414,7 +1989,7 @@ export default function CallCenter() {
             if (currentLead?.source === "applications") {
               logContactAttempt(currentLead.id, "reschedule_confirmed");
             }
-            handleSkip();
+            void handleSkip();
           }}
         />
       )}

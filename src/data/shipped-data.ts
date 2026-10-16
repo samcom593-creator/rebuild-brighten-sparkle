@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Ask APEX names your real top producer: Jontay Taylor, 21 deals and $44,102 in 30 days, not Willard Herald with $1.8M.",
+    detail: "The producer list behind \"who is my top producer?\" read the AgentLink book, which nobody has posted to since Aug 31. Its top row was $1,821,600 from two rows for one client with no agent attached, one of them 1000x the other, and it listed 5 of the 13 people who sold in the last 30 days. It now reads every deal, from AgentLink and from here: 13 sellers, 112 deals, $194,801 over 30 days, the same producers the Business Analytics page counts.",
+    commit: "PL-WIB-TEAM-PRODUCERS-CANONICAL",
+  },
+  {
+    ts: "today",
     label: "The production scoreboard catches up the moment its numbers refresh, instead of trailing Total IMO by agency after a deal until something else reloads it.",
     detail: "The scoreboard reads a production snapshot that refreshes every few minutes, while the IMO block reads live data, so right after a deal the two disagreed and the scoreboard stayed behind. The database now announces each refresh and the scoreboard reloads then.",
     commit: "PL-REVIEW-P2",

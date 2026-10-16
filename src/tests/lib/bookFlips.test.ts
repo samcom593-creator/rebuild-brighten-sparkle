@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { STATE_UNKNOWN, defaultBookFilter, matchesState, policyState, stateChipsFor, stateCounts, stateSourceText } from "@/lib/bookFlips";
+import { ALL_AGENTS, STATE_UNKNOWN, agentCounts, defaultBookFilter, matchesAgent, matchesState, policyState, stateChipsFor, stateCounts, stateSourceText } from "@/lib/bookFlips";
 import {
   isCallbackDue, matchesBook, matchesFlip, matchesSearch, monthsInForceText, priorityTier, sortPolicies, splitName,
   type BookPolicy,
@@ -174,5 +174,27 @@ describe("state chips: the busiest states, and always the selected one with its 
   });
   it("selecting Unknown changes nothing about the state chips", () => {
     expect(stateChipsFor(by, STATE_UNKNOWN, 3).map((c) => c.code)).toEqual(["OH", "TX", "MO"]);
+  });
+});
+
+describe("who sold what", () => {
+  const rows = [
+    base({ flip_key: "1", agent_name: "KJ Vaughn" }),
+    base({ flip_key: "2", agent_name: "KJ Vaughn " }),
+    base({ flip_key: "3", agent_name: "Aisha Kebbeh", agent_gone: true }),
+    base({ flip_key: "4", agent_name: null }),
+  ];
+
+  it("counts each writing agent's policies, most first, and leaves blank agents out", () => {
+    expect(agentCounts(rows)).toEqual([
+      { name: "KJ Vaughn", count: 2, gone: false },
+      { name: "Aisha Kebbeh", count: 1, gone: true },
+    ]);
+  });
+
+  it("filters to one agent, and All agents keeps every row", () => {
+    expect(rows.filter((p) => matchesAgent(p, "KJ Vaughn")).map((p) => p.flip_key)).toEqual(["1", "2"]);
+    expect(rows.filter((p) => matchesAgent(p, ALL_AGENTS))).toHaveLength(4);
+    expect(rows.filter((p) => matchesAgent(p, "Nobody"))).toHaveLength(0);
   });
 });

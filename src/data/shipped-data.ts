@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Book Flips shows who sold what",
+    detail: "Every card now says Sold by <agent> under the client's name (with left when the agent is gone), a Writing agent filter lists each agent with how many policies they sold under the current filters, and All carriers puts one agent's whole book in one list. ?agent= in the URL opens straight on one agent.",
+    commit: "PL-BOOKFLIPS-WHO-SOLD",
+  },
+  {
+    ts: "today",
     label: "Cari Mullen (8 deals), Tre'va Tribble (5), David Ladd (2) and Tyler Krejcha now count as having closed their first deal everywhere on the site.",
     detail: "The first-deal date was only set when a deal arrived from the AgentLink book or was posted fresh. Deals reported in Discord, deals moved onto an agent after posting, and a merge that left the date on the duplicate row never set it. So the onboarding tracker held Cari at \"Start the pre-selling course\" and Tre'va at \"Complete all pre-selling modules\", both flagged stalled, and all four sat on the no-first-sale list. The date now comes from the same production the dashboard counts and is rechecked every hour. It only fills a missing date or moves it earlier, and it sends nothing. Jontay Taylor's first deal moves one day earlier, to Aug 23.",
     commit: "PL-WIB-FIRST-DEAL-CANONICAL",

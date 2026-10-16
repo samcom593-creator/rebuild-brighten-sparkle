@@ -200,6 +200,37 @@ export function matchesFlip(
 
 export const digits = (s: string | null | undefined): string => (s ?? "").replace(/\D/g, "");
 
+/** The carrier picker's "All carriers" entry: one list across every book, so one agent's whole book shows at once. */
+export const ALL_CARRIERS = "all";
+/** The agent filter's "everyone" value. */
+export const ALL_AGENTS = "all";
+
+const agentOf = (p: Pick<BookPolicy, "agent_name">): string => (p.agent_name ?? "").trim();
+
+/** True when the row was written by this agent ("all" keeps every row). */
+export function matchesAgent(p: Pick<BookPolicy, "agent_name">, agent: string): boolean {
+  return agent === ALL_AGENTS || agentOf(p) === agent;
+}
+
+export interface AgentCount { name: string; count: number; gone: boolean }
+
+/**
+ * Writing agents in a list with how many of its policies each one sold, most first. An agent counts as gone
+ * when any of their rows says so. Rows with no agent on file are left out of the list rather than shown blank.
+ */
+export function agentCounts(list: readonly Pick<BookPolicy, "agent_name" | "agent_gone">[]): AgentCount[] {
+  const byName = new Map<string, AgentCount>();
+  for (const p of list) {
+    const name = agentOf(p);
+    if (!name) continue;
+    const c = byName.get(name) ?? { name, count: 0, gone: false };
+    c.count += 1;
+    c.gone = c.gone || p.agent_gone;
+    byName.set(name, c);
+  }
+  return [...byName.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+}
+
 export function matchesSearch(p: Pick<BookPolicy, "client_name" | "phone" | "policy_number">, q: string): boolean {
   const t = q.trim().toLowerCase();
   if (!t) return true;

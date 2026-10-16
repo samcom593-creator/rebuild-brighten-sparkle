@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import {
   BOOK_FILTERS, defaultBookFilter, FLIP_FILTERS, FLIP_LABEL, FLIP_TONE, GROUP_TONE, PRIORITY_CARRIERS, PRIORITY_LABEL, PRIORITY_TONE, SORTS,
   displayName, matchesBook, matchesFlip, matchesSearch, matchesState, money, monthsInForceText, phoenixTime, policyState, stateChipsFor, stateCounts, stateName, stateSourceText, STATE_UNKNOWN,
-  priorityTier, shortDate, sortPolicies, splitName,
+  priorityTier, shortDate, sortPolicies, splitName, ALL_AGENTS, ALL_CARRIERS, agentCounts, matchesAgent,
   type BookFilter, type BookPolicy, type FlipFilter, type FlipStatus, type SortKey,
 } from "@/lib/bookFlips";
 import { SoldCallPanel } from "@/components/clients/SoldCallPanel";
@@ -48,12 +48,12 @@ type SetOpts = FlipSetOptions;
 
 async function fetchCarrier(carrier: string): Promise<BookPolicy[]> {
   // PostgREST answers at most 1000 rows per request, so page until a short page.
+  // "All carriers" reads every book, so one writing agent's whole book shows in one list.
   const out: BookPolicy[] = [];
   for (let from = 0; ; from += 1000) {
-    const { data, error } = await supabase
-      .from("v_book_flip_worklist")
-      .select(COLUMNS)
-      .eq("carrier", carrier)
+    let query = supabase.from("v_book_flip_worklist").select(COLUMNS);
+    if (carrier !== ALL_CARRIERS) query = query.eq("carrier", carrier);
+    const { data, error } = await query
       .order("flip_key")
       .range(from, from + 999);
     if (error) throw error;
@@ -62,6 +62,19 @@ async function fetchCarrier(carrier: string): Promise<BookPolicy[]> {
     if (rows.length < 1000) break;
   }
   return out;
+}
+
+/** The carrier totals summed for the "All carriers" view (latest import across the books). */
+function sumCounts(list: CarrierCount[]): CarrierCount | undefined {
+  if (list.length === 0) return undefined;
+  const latest = list.map((c) => c.last_imported_at).filter((d): d is string => !!d).sort().pop() ?? null;
+  const sum = (k: keyof CarrierCount) => list.reduce((s, c) => s + Number(c[k] ?? 0), 0);
+  return {
+    carrier: ALL_CARRIERS, policies: sum("policies"), book_active: sum("book_active"), unknown_status: sum("unknown_status"),
+    lapsing: sum("lapsing"), workable: sum("workable"), with_phone: sum("with_phone"), to_call: sum("to_call"),
+    callbacks_due: sum("callbacks_due"), resold: sum("resold"), resold_annual_premium: sum("resold_annual_premium"),
+    last_imported_at: latest,
+  };
 }
 
 async function fetchCounts(): Promise<CarrierCount[]> {
@@ -75,6 +88,9 @@ export default function BookFlips() {
   const [params, setParams] = useSearchParams();
   const carrier = params.get("carrier") || PRIORITY_CARRIERS[0].carrier;
   const stateFilter = params.get("state") || "all";
+  // The writing agent lives in the URL too (?agent=Name), so a link opens on one agent's book.
+  const agentFilter = params.get("agent") || ALL_AGENTS;
+  const allCarriers = carrier === ALL_CARRIERS;
   const qc = useQueryClient();
   const rowsKey = useMemo(() => ["book-flips", carrier] as const, [carrier]);
 
@@ -96,7 +112,7 @@ export default function BookFlips() {
     const t = window.setInterval(() => setNow(new Date()), 60_000);
     return () => window.clearInterval(t);
   }, []);
-  useEffect(() => { setShown(PAGE); }, [carrier, bookFilter, flipFilter, search, sort, stateFilter]);
+  useEffect(() => { setShown(PAGE); }, [carrier, bookFilter, flipFilter, search, sort, stateFilter, agentFilter]);
 
   const setCarrier = (c: string) => {
     const next = new URLSearchParams(params);
@@ -114,35 +130,48 @@ export default function BookFlips() {
     if (code === "all") next.delete("state"); else next.set("state", code);
     setParams(next, { replace: true });
   };
+  const setAgentFilter = (name: string) => {
+    const next = new URLSearchParams(params);
+    if (name === ALL_AGENTS) next.delete("agent"); else next.set("agent", name);
+    setParams(next, { replace: true });
+  };
 
   const searched = useMemo(() => all.filter((p) => matchesSearch(p, search)), [all, search]);
   const bookCounts = useMemo(() => {
     const out = {} as Record<BookFilter, number>;
-    for (const f of BOOK_FILTERS) out[f.key] = searched.filter((p) => matchesState(p, stateFilter) && matchesFlip(p, flipFilter, now) && matchesBook(p, f.key)).length;
+    for (const f of BOOK_FILTERS) out[f.key] = searched.filter((p) => matchesAgent(p, agentFilter) && matchesState(p, stateFilter) && matchesFlip(p, flipFilter, now) && matchesBook(p, f.key)).length;
     return out;
-  }, [searched, flipFilter, now, stateFilter]);
+  }, [searched, flipFilter, now, stateFilter, agentFilter]);
   const flipCounts = useMemo(() => {
     const out = {} as Record<FlipFilter, number>;
-    for (const f of FLIP_FILTERS) out[f.key] = searched.filter((p) => matchesState(p, stateFilter) && matchesBook(p, bookFilter) && matchesFlip(p, f.key, now)).length;
+    for (const f of FLIP_FILTERS) out[f.key] = searched.filter((p) => matchesAgent(p, agentFilter) && matchesState(p, stateFilter) && matchesBook(p, bookFilter) && matchesFlip(p, f.key, now)).length;
     return out;
-  }, [searched, bookFilter, now, stateFilter]);
+  }, [searched, bookFilter, now, stateFilter, agentFilter]);
   // State counts are taken over the book/call filters (not the state itself), so each chip says how many of THESE
   // opportunities sit in that state, and Unknown is counted rather than hidden.
   const byState = useMemo(
-    () => stateCounts(searched.filter((p) => matchesBook(p, bookFilter) && matchesFlip(p, flipFilter, now))),
-    [searched, bookFilter, flipFilter, now],
+    () => stateCounts(searched.filter((p) => matchesAgent(p, agentFilter) && matchesBook(p, bookFilter) && matchesFlip(p, flipFilter, now))),
+    [searched, bookFilter, flipFilter, now, agentFilter],
   );
   const visible = useMemo(
-    () => sortPolicies(searched.filter((p) => matchesState(p, stateFilter) && matchesBook(p, bookFilter) && matchesFlip(p, flipFilter, now)), sort),
-    [searched, bookFilter, flipFilter, sort, now, stateFilter],
+    () => sortPolicies(searched.filter((p) => matchesAgent(p, agentFilter) && matchesState(p, stateFilter) && matchesBook(p, bookFilter) && matchesFlip(p, flipFilter, now)), sort),
+    [searched, bookFilter, flipFilter, sort, now, stateFilter, agentFilter],
   );
+  // Agent counts are taken over every other filter (not the agent itself), so each option says how many of THESE
+  // opportunities that agent sold. The chosen agent stays listed, at 0, when the other filters leave them nothing.
+  const agentOptions = useMemo(() => {
+    const list = agentCounts(searched.filter((p) => matchesState(p, stateFilter) && matchesBook(p, bookFilter) && matchesFlip(p, flipFilter, now)));
+    if (agentFilter !== ALL_AGENTS && !list.some((a) => a.name === agentFilter)) list.push({ name: agentFilter, count: 0, gone: false });
+    return list;
+  }, [searched, stateFilter, bookFilter, flipFilter, now, agentFilter]);
   // The selected state always shows: with its real count when the top-12 cut hid it, as 0 only when nobody is there.
   const stateChips = useMemo(() => stateChipsFor(byState, stateFilter), [byState, stateFilter]);
   const unknownCount = byState.find((s) => s.code === STATE_UNKNOWN)?.count ?? 0;
   const inState = visible.length;
 
   const countFor = (c: string) => counts.data?.find((x) => x.carrier === c);
-  const current = countFor(carrier);
+  const current = allCarriers ? sumCounts(counts.data ?? []) : countFor(carrier);
+  const bookLabel = allCarriers ? "every carrier's" : `${carrier}'s`;
   const others = (counts.data ?? []).filter((x) => !PRIORITY_CARRIERS.some((p) => p.carrier === x.carrier));
   const stats = useMemo(() => ({
     workable: all.filter((p) => p.status_group !== "dead").length,
@@ -214,7 +243,7 @@ export default function BookFlips() {
   }, [busy, qc, rowsKey]);
 
   const lastImport = current?.last_imported_at ? shortDate(current.last_imported_at) : "";
-  const noKnownStatus = !!current && current.book_active === 0 && current.unknown_status > 0;
+  const noKnownStatus = !allCarriers && !!current && current.book_active === 0 && current.unknown_status > 0;
 
   return (
     <div className="mx-auto w-full max-w-5xl px-4 pb-24 pt-4 sm:px-6">
@@ -225,6 +254,20 @@ export default function BookFlips() {
       />
 
       <nav aria-label="Carrier" className="-mx-4 mb-3 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
+        <button
+          type="button"
+          onClick={() => setCarrier(ALL_CARRIERS)}
+          aria-pressed={allCarriers}
+          className={cn(
+            "shrink-0 rounded-xl border px-3 py-2 text-left transition-colors",
+            allCarriers ? "border-primary bg-primary/15" : "border-border bg-card hover:bg-muted",
+          )}
+        >
+          <span className="block text-sm font-bold text-foreground">All carriers</span>
+          <span className="block text-xs text-muted-foreground">
+            Every book{counts.data ? ` · ${sumCounts(counts.data)?.to_call ?? 0} to call` : ""}
+          </span>
+        </button>
         {PRIORITY_CARRIERS.map(({ carrier: c, priority }) => {
           const n = countFor(c);
           const active = c === carrier;
@@ -306,6 +349,17 @@ export default function BookFlips() {
         >
           {SORTS.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
         </select>
+        <select
+          aria-label="Writing agent"
+          value={agentFilter}
+          onChange={(e) => setAgentFilter(e.target.value)}
+          className="h-11 rounded-md border border-input bg-background px-3 text-base text-foreground sm:max-w-[16rem] sm:text-sm"
+        >
+          <option value={ALL_AGENTS}>All agents</option>
+          {agentOptions.map((a) => (
+            <option key={a.name} value={a.name}>{a.name}{a.gone ? " (left)" : ""} · {a.count}</option>
+          ))}
+        </select>
       </div>
 
       <div className="mb-2 flex flex-wrap gap-2" role="group" aria-label="Book status">
@@ -371,10 +425,10 @@ export default function BookFlips() {
       </div>
 
       {rows.isLoading ? (
-        <div className="flex items-center gap-2 py-10 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" aria-hidden /> Loading {carrier}'s book…</div>
+        <div className="flex items-center gap-2 py-10 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" aria-hidden /> Loading {bookLabel} book…</div>
       ) : rows.isError ? (
         <div className="rounded-lg border border-red-400/40 bg-red-500/10 p-4 text-sm">
-          <p className="font-semibold text-foreground">Could not load {carrier}'s book.</p>
+          <p className="font-semibold text-foreground">Could not load {bookLabel} book.</p>
           <p className="text-muted-foreground">{(rows.error as Error)?.message}</p>
           <Button size="sm" variant="outline" className="mt-2" onClick={() => void rows.refetch()}>Try again</Button>
         </div>
@@ -389,7 +443,7 @@ export default function BookFlips() {
           </p>
           <ul className="flex flex-col gap-3">
             {visible.slice(0, shown).map((p) => (
-              <PolicyCard key={p.flip_key} p={p} busy={!!busy[p.flip_key]} onSet={setFlip} />
+              <PolicyCard key={p.flip_key} p={p} busy={!!busy[p.flip_key]} onSet={setFlip} showCarrier={allCarriers} />
             ))}
           </ul>
           {shown < visible.length && (
@@ -403,7 +457,7 @@ export default function BookFlips() {
   );
 }
 
-function PolicyCard({ p, busy, onSet }: { p: BookPolicy; busy: boolean; onSet: (p: BookPolicy, s: FlipStatus, o?: SetOpts) => Promise<boolean> }) {
+function PolicyCard({ p, busy, onSet, showCarrier = false }: { p: BookPolicy; busy: boolean; onSet: (p: BookPolicy, s: FlipStatus, o?: SetOpts) => Promise<boolean>; showCarrier?: boolean }) {
   const soldKeys = useSoldCallKeys();
   // Phone: native dialer; laptop: Google Voice (the site-wide rule in @/lib/phone).
   // Do not call comes from the client record or from this card's own outcome; a number
@@ -439,6 +493,16 @@ function PolicyCard({ p, busy, onSet }: { p: BookPolicy; busy: boolean; onSet: (
               </span>
             )}
           </div>
+          {/* Who sold it sits under the name, so a scroll down the list reads as "who sold what". */}
+          <p className="text-sm text-foreground">
+            <span className="text-muted-foreground">Sold by </span>
+            <span className="font-semibold">{p.agent_name || "agent not on file"}</span>
+            {p.agent_gone && <span className="ml-1.5 rounded border border-border px-1.5 text-xs text-muted-foreground">left</span>}
+            {p.agent_gone && priorityTier(p) < 6 && (
+              <span className={cn("ml-1.5 rounded border px-1.5 text-xs font-semibold", PRIORITY_TONE[priorityTier(p)])}>{PRIORITY_LABEL[priorityTier(p)]}</span>
+            )}
+            {showCarrier && <span className="text-muted-foreground"> · {p.carrier}</span>}
+          </p>
           {meta && <p className="text-sm text-muted-foreground">{meta}</p>}
         </div>
         <span className={cn("shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-semibold", FLIP_TONE[p.flip_status])}>
@@ -479,16 +543,6 @@ function PolicyCard({ p, busy, onSet }: { p: BookPolicy; busy: boolean; onSet: (
           <dd><span className={cn("inline-block rounded-full border px-2 py-0.5 text-xs font-semibold", GROUP_TONE[p.status_group])}>{p.book_status}</span></dd>
         </div>
         <Field label="Policy #" value={`${p.policy_number}${p.clients_on_number > 1 ? " (number shared)" : ""}`} />
-        <div>
-          <dt className="text-xs text-muted-foreground">Writing agent</dt>
-          <dd className="text-foreground">
-            {p.agent_name || "—"}
-            {p.agent_gone && <span className="ml-1.5 rounded border border-border px-1.5 text-xs text-muted-foreground">left</span>}
-            {p.agent_gone && priorityTier(p) < 6 && (
-              <span className={cn("ml-1.5 rounded border px-1.5 text-xs font-semibold", PRIORITY_TONE[priorityTier(p)])}>{PRIORITY_LABEL[priorityTier(p)]}</span>
-            )}
-          </dd>
-        </div>
         <Field label="Attempts" value={`${p.attempts}${p.last_contact_at ? ` · last ${formatTimeAgo(p.last_contact_at)}` : ""}`} />
       </dl>
 

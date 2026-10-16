@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { AlertTriangle, Columns3, List, RefreshCw, Search } from "lucide-react";
+import { AlertTriangle, ChevronRight, Columns3, List, RefreshCw, Search, Table2 } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -22,10 +22,22 @@ import {
   type QueueKey,
   type WorklistRow,
 } from "@/lib/recruitingQueues";
+import { errorMessage } from "@/lib/queryState";
 import { loadNumber, saveNumber, scrollKey } from "@/lib/worklistDraftStore";
 import { cn } from "@/lib/utils";
+import { loadColumns, saveColumns, type WorklistColumnKey } from "@/lib/worklistColumns";
+import {
+  assessCoverage,
+  coverageFacts,
+  coverageSummary,
+  coverageWarning,
+  panelPlacement,
+  resolveWorklistLayout,
+  worklistViewFromParam,
+} from "@/lib/worklistLayout";
 import { PersonPanel } from "./PersonPanel";
-import { WorklistBoard, WorklistTable } from "./WorklistViews";
+import { formatWhen } from "./worklistFormat";
+import { WorklistBoard, WorklistColumnChooser, WorklistQueueList, WorklistTable } from "./WorklistViews";
 import {
   useRecruitingStaff,
   useRecruitingStages,
@@ -33,18 +45,24 @@ import {
   type StageDefinition,
 } from "./useRecruitingWorklist";
 
+/**
+ * Room for the list and the 400px person panel side by side, and the only width where
+ * the 980px table fits. Same breakpoint as the lg: grid below. Under it every screen,
+ * phone or tablet, gets the compact cards with the person in a sheet.
+ */
 const WIDE_QUERY = "(min-width: 1024px)";
 
-function useIsWide(): boolean {
-  const [wide, setWide] = useState(() => typeof window !== "undefined" && window.matchMedia?.(WIDE_QUERY).matches === true);
+function useMediaQuery(query: string): boolean {
+  const [matches, setMatches] = useState(() => typeof window !== "undefined" && window.matchMedia?.(query).matches === true);
   useEffect(() => {
     if (typeof window === "undefined" || !window.matchMedia) return;
-    const mql = window.matchMedia(WIDE_QUERY);
-    const onChange = () => setWide(mql.matches);
+    const mql = window.matchMedia(query);
+    const onChange = () => setMatches(mql.matches);
+    onChange();
     mql.addEventListener("change", onChange);
     return () => mql.removeEventListener("change", onChange);
-  }, []);
-  return wide;
+  }, [query]);
+  return matches;
 }
 
 /** Search across the fields a recruiter actually types: name, email, phone digits. */
@@ -68,7 +86,7 @@ export function RecruitingWorklist() {
   const { user, isAdmin, isManager, isVa, isVaManager, isRecruiter } = useAuth();
   const userId = user?.id ?? null;
   const [params, setParams] = useSearchParams();
-  const isWide = useIsWide();
+  const isWide = useMediaQuery(WIDE_QUERY);
   const listRef = useRef<HTMLDivElement | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
@@ -105,7 +123,11 @@ export function RecruitingWorklist() {
   const queue: QueueKey = isQueueKey(queueParam)
     ? queueParam
     : legacyQueue ?? defaultQueue.current ?? "likely";
-  const view = params.get("view") === "board" ? "board" : "list";
+  const view = worklistViewFromParam(params.get("view"));
+  // F28: the compact list beside the panel is the default; the 980px table is its own
+  // full-width view and only resolves where it fits.
+  const layout = resolveWorklistLayout({ view, isWide });
+  const panelInline = panelPlacement(layout, isWide) === "inline";
   const search = params.get("q") ?? "";
   const license = params.get("license") ?? "all";
   // Other pages open a person with ?id=, ?lead= or ?focus= (all application ids).
@@ -152,11 +174,12 @@ export function RecruitingWorklist() {
     [rows, selectedId],
   );
 
-  // On wide screens, keep someone open: the first person in the queue.
+  // When the panel sits beside the list, keep someone open: the first person in the
+  // queue. A sheet is never opened by the page itself, only by a tap.
   useEffect(() => {
-    if (!isWide || selectedId || filtered.length === 0) return;
+    if (!panelInline || selectedId || filtered.length === 0) return;
     setParam({ person: filtered[0].id });
-  }, [isWide, selectedId, filtered, setParam]);
+  }, [panelInline, selectedId, filtered, setParam]);
 
   // Restore the list's scroll position for this queue once rows exist.
   const restoredFor = useRef<string | null>(null);
@@ -175,6 +198,20 @@ export function RecruitingWorklist() {
   }, [queue, view, userId]);
 
   const selectPerson = useCallback((id: string) => setParam({ person: id }), [setParam]);
+
+  // F28: which Table columns show, a per-viewer preference. Storage is read once per
+  // viewer; a change lives in state and is written through, so a blocked storage still
+  // honours the choice for this visit.
+  const storedColumns = useMemo(() => loadColumns(userId), [userId]);
+  const [columnChoice, setColumnChoice] = useState<{ userId: string | null; keys: WorklistColumnKey[] } | null>(null);
+  const tableColumns = columnChoice !== null && columnChoice.userId === userId ? columnChoice.keys : storedColumns;
+  const setTableColumns = useCallback(
+    (keys: WorklistColumnKey[]) => {
+      setColumnChoice({ userId, keys });
+      saveColumns(userId, keys);
+    },
+    [userId],
+  );
 
   /** The person after `id` in the current queue order, captured before a save moves rows. */
   const nextAfter = useCallback(
@@ -200,13 +237,16 @@ export function RecruitingWorklist() {
 
   if (worklist.isLoading) return <PageSkeleton />;
 
-  if (worklist.isError) {
+  // Only a load that never produced rows replaces the page. A refetch that fails keeps
+  // the last good rows on screen (TanStack keeps data on a failed refetch) behind a
+  // stale notice below, so Reload and Retry cannot wipe the queue someone is working.
+  if (worklist.isError && worklist.data === undefined) {
     return (
       <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-6 text-sm">
         <p className="flex items-center gap-2 font-semibold text-destructive">
           <AlertTriangle className="h-4 w-4" /> The recruiting worklist could not load.
         </p>
-        <p className="mt-1 text-muted-foreground">{(worklist.error as Error).message}</p>
+        <p className="mt-1 text-muted-foreground">{errorMessage(worklist.error)}</p>
         <Button className="mt-3" variant="outline" size="sm" onClick={() => worklist.refetch()}>
           <RefreshCw className="h-4 w-4" /> Try again
         </Button>
@@ -214,13 +254,21 @@ export function RecruitingWorklist() {
     );
   }
 
-  const coverage = worklist.data?.coverage;
   const scopeLabel = orgWide
-    ? "Organization-wide — every eligible application, licensed or not, any age"
+    ? "Organization-wide: every eligible application, licensed or not, any age"
     : isManager
-      ? "Your team — applications attributed to you and the agents you manage"
+      ? "Your team: applications attributed to you and the agents you manage"
       : "Applications attributed to you";
   const activeDef = QUEUE_DEFINITIONS.find((q) => q.key === queue);
+  const scopeText = activeDef?.scope === "personal" ? "Assigned to you" : scopeLabel;
+  const filtersOn = search.trim() !== "" || license !== "all";
+  // The toggles read the resolved layout, not the URL: a phone opening ?view=table gets
+  // the compact rows, and the Worklist toggle says so.
+  const worklistOn = layout === "split" || layout === "stack";
+  // F29: the loaded rows are compared with the eligible count on every render, so an
+  // incomplete load is a visible warning, not a clause inside a paragraph.
+  const coverage = assessCoverage(rows.length, worklist.data?.coverage);
+  const warning = coverageWarning(coverage);
 
   const panel = selected ? (
     <PersonPanel
@@ -261,16 +309,29 @@ export function RecruitingWorklist() {
           <div className="flex items-center gap-1 rounded-lg border border-border bg-card p-1">
             <Button
               size="sm"
-              variant={view === "list" ? "secondary" : "ghost"}
-              aria-pressed={view === "list"}
+              variant={worklistOn ? "secondary" : "ghost"}
+              aria-pressed={worklistOn}
               onClick={() => setParam({ view: null })}
             >
               <List className="h-4 w-4" /> Worklist
             </Button>
+            {/* The table needs 1024px, so its toggle exists only where it can render. It is a
+                full-width view with the person in a sheet, so the selection is cleared on the
+                way in; otherwise the sheet would open over the table on the first render. */}
+            {isWide && (
+              <Button
+                size="sm"
+                variant={layout === "table" ? "secondary" : "ghost"}
+                aria-pressed={layout === "table"}
+                onClick={() => setParam({ view: "table", person: null })}
+              >
+                <Table2 className="h-4 w-4" /> Table
+              </Button>
+            )}
             <Button
               size="sm"
-              variant={view === "board" ? "secondary" : "ghost"}
-              aria-pressed={view === "board"}
+              variant={layout === "board" ? "secondary" : "ghost"}
+              aria-pressed={layout === "board"}
               onClick={() => setParam({ view: "board" })}
             >
               <Columns3 className="h-4 w-4" /> Board
@@ -284,6 +345,21 @@ export function RecruitingWorklist() {
           Read-only: the workspace database update (owners, outcomes, waiting reasons) is not applied yet, so outcomes cannot be saved and
           every queue that depends on them shows people as unassigned and unplanned.
         </p>
+      )}
+
+      {worklist.isError && worklist.data !== undefined && (
+        <div
+          role="status"
+          className="flex flex-col gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive sm:flex-row sm:items-center sm:justify-between"
+        >
+          <p className="flex items-center gap-2 font-semibold">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            Showing records loaded {formatWhen(worklist.data.loadedAt)}. The latest reload failed: {errorMessage(worklist.error)}
+          </p>
+          <Button size="sm" variant="outline" className="shrink-0" onClick={() => void worklist.refetch()}>
+            <RefreshCw className="h-4 w-4" /> Retry
+          </Button>
+        </div>
       )}
 
       {/* Saved queues — counts are over every row loaded, not a page. */}
@@ -309,19 +385,57 @@ export function RecruitingWorklist() {
         ))}
       </nav>
 
+      {/* One scope and count line. Provenance lives in the Data status disclosure below;
+          an incomplete load is a warning of its own and is never folded into it. */}
       <div className="flex flex-col gap-2 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-        <p>
-          <span className="font-semibold text-foreground">{activeDef?.scope === "personal" ? "Assigned to you" : scopeLabel}.</span>{" "}
-          {activeDef?.description}. {rows.length.toLocaleString()} worklist records loaded
-          {coverage && coverage.live !== null
-            ? ` of ${coverage.live.toLocaleString()} live records you can see (${(coverage.duplicates ?? 0).toLocaleString()} marked duplicate, ${(coverage.nonApplication ?? 0).toLocaleString()} interview bookings or tests not shown).`
-            : ". Coverage count unavailable."}
-          {" "}“Today” is the Phoenix business day.
+        <p className="min-w-0">
+          <span className="font-semibold text-foreground">{scopeText}.</span>{" "}
+          {activeDef?.label}: {filtered.length.toLocaleString()} {filtered.length === 1 ? "person" : "people"}
+          {filtersOn ? " with these filters" : ""}.
         </p>
         <Link to="/dashboard/recruiting?view=classic" className="shrink-0 text-primary underline-offset-2 hover:underline">
           Classic applicants view
         </Link>
       </div>
+
+      {warning && (
+        <div
+          role="status"
+          className="flex flex-col gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive sm:flex-row sm:items-center sm:justify-between"
+        >
+          <p className="flex items-center gap-2 font-semibold">
+            <AlertTriangle className="h-4 w-4 shrink-0" /> {warning}
+          </p>
+          <Button size="sm" variant="outline" className="shrink-0" onClick={() => void worklist.refetch()}>
+            <RefreshCw className="h-4 w-4" /> Reload
+          </Button>
+        </div>
+      )}
+
+      <details className="group rounded-lg border border-border bg-card text-xs text-muted-foreground">
+        <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2 [&::-webkit-details-marker]:hidden">
+          <ChevronRight aria-hidden="true" className="h-3.5 w-3.5 shrink-0 transition-transform group-open:rotate-90" />
+          <span className="font-semibold text-foreground">Data status</span>
+          <span>· {coverageSummary(coverage)}</span>
+        </summary>
+        <div className="space-y-2 border-t border-border px-3 py-2">
+          <p>Queue rule: {activeDef?.description}.</p>
+          <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
+            {coverageFacts(rows.length, worklist.data?.coverage).map((fact) => (
+              <Fragment key={fact.label}>
+                <dt>{fact.label}</dt>
+                <dd className="tabular-nums text-foreground">{fact.value}</dd>
+              </Fragment>
+            ))}
+          </dl>
+          <p>“Today” is the Phoenix business day. Loaded {formatWhen(worklist.data?.loadedAt)}.</p>
+          {coverage.kind === "unknown" && (
+            <Button size="sm" variant="outline" onClick={() => void worklist.refetch()}>
+              <RefreshCw className="h-4 w-4" /> Retry the counts
+            </Button>
+          )}
+        </div>
+      </details>
 
       <div className="flex flex-col gap-2 sm:flex-row">
         <div className="relative flex-1">
@@ -345,9 +459,10 @@ export function RecruitingWorklist() {
             <SelectItem value="licensed">Licensed (self-reported)</SelectItem>
           </SelectContent>
         </Select>
+        {layout === "table" && <WorklistColumnChooser columns={tableColumns} onChange={setTableColumns} />}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_400px]">
+      <div className={cn("grid gap-4", panelInline && "lg:grid-cols-[minmax(0,1fr)_400px]")}>
         <div
           ref={listRef}
           onScroll={onScroll}
@@ -357,7 +472,7 @@ export function RecruitingWorklist() {
             <p className="p-8 text-center text-sm text-muted-foreground">
               Nobody in “{activeDef?.label}”{search || license !== "all" ? " with these filters" : ""}.
             </p>
-          ) : view === "board" ? (
+          ) : layout === "board" ? (
             <WorklistBoard
               rows={filtered}
               selectedId={selectedId}
@@ -367,8 +482,19 @@ export function RecruitingWorklist() {
               stages={stages}
               now={now}
             />
-          ) : (
+          ) : layout === "table" ? (
             <WorklistTable
+              rows={filtered}
+              selectedId={selectedId}
+              onSelect={selectPerson}
+              staff={staff}
+              staffAvailable={staffAvailable}
+              stagesByKey={stagesByKey}
+              now={now}
+              columns={tableColumns}
+            />
+          ) : (
+            <WorklistQueueList
               rows={filtered}
               selectedId={selectedId}
               onSelect={selectPerson}
@@ -380,7 +506,7 @@ export function RecruitingWorklist() {
           )}
         </div>
 
-        {isWide ? (
+        {panelInline ? (
           <aside aria-label="Selected person" className="sticky top-4 max-h-[calc(100vh-6rem)] overflow-y-auto rounded-xl border border-border bg-card p-4">
             {panel}
           </aside>

@@ -1,7 +1,11 @@
 import { useMemo, useState } from "react";
+import { SlidersHorizontal } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
+import { Badge, badgeVariants } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { formatPhoneDisplay } from "@/lib/phone";
 import {
   blockersOf,
@@ -12,6 +16,14 @@ import {
   type WorklistRow,
 } from "@/lib/recruitingQueues";
 import { cn } from "@/lib/utils";
+import {
+  DEFAULT_WORKLIST_COLUMNS,
+  WORKLIST_TABLE_COLUMNS,
+  hiddenColumnCount,
+  tableMinWidth,
+  toggleColumn,
+  type WorklistColumnKey,
+} from "@/lib/worklistColumns";
 import type { StaffMember, StageDefinition } from "./useRecruitingWorklist";
 import { formatNextAction, formatRelative, formatWhen, humanizeKey, ownerName } from "./worklistFormat";
 
@@ -48,24 +60,61 @@ function NextActionText({ row }: { row: WorklistRow }) {
   return <span className="text-muted-foreground">None</span>;
 }
 
-export function WorklistTable({ rows, selectedId, onSelect, staff, staffAvailable, stagesByKey, now }: ViewProps) {
+function stageLabel(row: WorklistRow, stagesByKey: Map<string, StageDefinition>): string {
+  if (!row.next_step_stage_key) return "Not staged";
+  return stagesByKey.get(row.next_step_stage_key)?.display_name ?? humanizeKey(row.next_step_stage_key);
+}
+
+function LastContact({ row, now }: { row: WorklistRow; now: number }) {
+  if (row.last_contact_outcome) {
+    return (
+      <span title={formatWhen(row.last_contact_outcome_at)}>
+        {outcomeLabel(row.last_contact_outcome)} · {formatRelative(row.last_contact_outcome_at, now)}
+      </span>
+    );
+  }
+  if (row.last_contacted_at) return <span title={formatWhen(row.last_contacted_at)}>{formatRelative(row.last_contacted_at, now)}</span>;
+  return <span className="text-muted-foreground">Never</span>;
+}
+
+function ShowMore({ total, visible, onMore }: { total: number; visible: number; onMore: () => void }) {
+  if (total <= visible) return null;
+  return (
+    <div className="flex items-center justify-between border-t border-border px-3 py-2 text-xs text-muted-foreground">
+      <span>Showing {visible.toLocaleString()} of {total.toLocaleString()} in this queue</span>
+      <Button size="sm" variant="outline" onClick={onMore}>Show {Math.min(TABLE_WINDOW, total - visible)} more</Button>
+    </div>
+  );
+}
+
+/**
+ * The full-width table (F28). `columns` is the viewer's choice from
+ * WorklistColumnChooser; Name is always present, so a row never loses its
+ * identity. Header and body both consult the same set, so they cannot drift.
+ * The minimum width follows the columns shown: 980px with all ten, less as
+ * columns are hidden, so hiding columns is how the table fits without panning.
+ */
+export function WorklistTable({
+  rows, selectedId, onSelect, staff, staffAvailable, stagesByKey, now, columns = DEFAULT_WORKLIST_COLUMNS,
+}: ViewProps & { columns?: readonly WorklistColumnKey[] }) {
   const [visible, setVisible] = useState(TABLE_WINDOW);
   const shown = rows.slice(0, visible);
+  const show = new Set<WorklistColumnKey>(columns);
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[980px] text-left text-xs">
+      <table className="w-full text-left text-xs" style={{ minWidth: tableMinWidth(columns) }}>
         <thead className="sticky top-0 z-10 bg-card text-[12px] uppercase tracking-wide text-muted-foreground">
           <tr className="border-b border-border">
             <th scope="col" className="px-3 py-2 font-semibold">Name</th>
-            <th scope="col" className="px-2 py-2 font-semibold">Phone</th>
-            <th scope="col" className="px-2 py-2 font-semibold">State</th>
-            <th scope="col" className="px-2 py-2 font-semibold">License</th>
-            <th scope="col" className="px-2 py-2 font-semibold">Stage</th>
-            <th scope="col" className="px-2 py-2 font-semibold">Owner</th>
-            <th scope="col" className="px-2 py-2 font-semibold">Last contact</th>
-            <th scope="col" className="px-2 py-2 font-semibold">Next action</th>
-            <th scope="col" className="px-2 py-2 font-semibold">Due</th>
-            <th scope="col" className="px-2 py-2 font-semibold">Blocker</th>
+            {show.has("phone") && <th scope="col" className="px-2 py-2 font-semibold">Phone</th>}
+            {show.has("state") && <th scope="col" className="px-2 py-2 font-semibold">State</th>}
+            {show.has("license") && <th scope="col" className="px-2 py-2 font-semibold">License</th>}
+            {show.has("stage") && <th scope="col" className="px-2 py-2 font-semibold">Stage</th>}
+            {show.has("owner") && <th scope="col" className="px-2 py-2 font-semibold">Owner</th>}
+            {show.has("last_contact") && <th scope="col" className="px-2 py-2 font-semibold">Last contact</th>}
+            {show.has("next_action") && <th scope="col" className="px-2 py-2 font-semibold">Next action</th>}
+            {show.has("due") && <th scope="col" className="px-2 py-2 font-semibold">Due</th>}
+            {show.has("blocker") && <th scope="col" className="px-2 py-2 font-semibold">Blocker</th>}
           </tr>
         </thead>
         <tbody>
@@ -73,7 +122,6 @@ export function WorklistTable({ rows, selectedId, onSelect, staff, staffAvailabl
             const selected = row.id === selectedId;
             const blockers = blockersOf(row).filter((b) => b.hard || b.key === "no_phone");
             const needsPlan = !planCheck(row).ok;
-            const stage = row.next_step_stage_key ? stagesByKey.get(row.next_step_stage_key) : null;
             return (
               <tr
                 key={row.id}
@@ -96,36 +144,142 @@ export function WorklistTable({ rows, selectedId, onSelect, staff, staffAvailabl
                   <div className="font-medium text-foreground">{fullName(row)}</div>
                   {needsPlan && <div className="text-[11px] font-medium text-muted-foreground">Needs a plan</div>}
                 </td>
-                <td className="whitespace-nowrap px-2 py-2 tabular-nums text-foreground">{row.phone ? formatPhoneDisplay(row.phone) : "—"}</td>
-                <td className="px-2 py-2 text-foreground">{row.state ?? "—"}</td>
-                <td className="px-2 py-2 text-foreground">{humanizeKey(row.license_status)}</td>
-                <td className="px-2 py-2 text-foreground">{row.next_step_stage_key ? stage?.display_name ?? humanizeKey(row.next_step_stage_key) : "Not staged"}</td>
-                <td className="px-2 py-2 text-foreground">{ownerName(row.recruiting_owner_user_id, staff, staffAvailable)}</td>
-                <td className="whitespace-nowrap px-2 py-2 text-foreground">
-                  {row.last_contact_outcome
-                    ? <span title={formatWhen(row.last_contact_outcome_at)}>{outcomeLabel(row.last_contact_outcome)} · {formatRelative(row.last_contact_outcome_at, now)}</span>
-                    : row.last_contacted_at
-                      ? <span title={formatWhen(row.last_contacted_at)}>{formatRelative(row.last_contacted_at, now)}</span>
-                      : <span className="text-muted-foreground">Never</span>}
-                </td>
-                <td className="max-w-[200px] truncate px-2 py-2 text-foreground"><NextActionText row={row} /></td>
-                <td className="whitespace-nowrap px-2 py-2"><DueCell row={row} now={now} /></td>
-                <td className="px-2 py-2">
-                  {blockers.length === 0
-                    ? <span className="text-muted-foreground">—</span>
-                    : <Badge variant={blockers[0].hard ? "destructive" : "outline"}>{blockers[0].label}</Badge>}
-                </td>
+                {show.has("phone") && (
+                  <td className="whitespace-nowrap px-2 py-2 tabular-nums text-foreground">{row.phone ? formatPhoneDisplay(row.phone) : "—"}</td>
+                )}
+                {show.has("state") && <td className="px-2 py-2 text-foreground">{row.state ?? "—"}</td>}
+                {show.has("license") && <td className="px-2 py-2 text-foreground">{humanizeKey(row.license_status)}</td>}
+                {show.has("stage") && <td className="px-2 py-2 text-foreground">{stageLabel(row, stagesByKey)}</td>}
+                {show.has("owner") && (
+                  <td className="px-2 py-2 text-foreground">{ownerName(row.recruiting_owner_user_id, staff, staffAvailable)}</td>
+                )}
+                {show.has("last_contact") && (
+                  <td className="whitespace-nowrap px-2 py-2 text-foreground"><LastContact row={row} now={now} /></td>
+                )}
+                {show.has("next_action") && (
+                  <td className="max-w-[200px] truncate px-2 py-2 text-foreground"><NextActionText row={row} /></td>
+                )}
+                {show.has("due") && <td className="whitespace-nowrap px-2 py-2"><DueCell row={row} now={now} /></td>}
+                {show.has("blocker") && (
+                  <td className="px-2 py-2">
+                    {blockers.length === 0
+                      ? <span className="text-muted-foreground">—</span>
+                      : <Badge variant={blockers[0].hard ? "destructive" : "outline"}>{blockers[0].label}</Badge>}
+                  </td>
+                )}
               </tr>
             );
           })}
         </tbody>
       </table>
-      {rows.length > visible && (
-        <div className="flex items-center justify-between border-t border-border px-3 py-2 text-xs text-muted-foreground">
-          <span>Showing {visible.toLocaleString()} of {rows.length.toLocaleString()} in this queue</span>
-          <Button size="sm" variant="outline" onClick={() => setVisible((v) => v + TABLE_WINDOW)}>Show {Math.min(TABLE_WINDOW, rows.length - visible)} more</Button>
-        </div>
-      )}
+      <ShowMore total={rows.length} visible={visible} onMore={() => setVisible((v) => v + TABLE_WINDOW)} />
+    </div>
+  );
+}
+
+/**
+ * Which Table columns show. One labelled checkbox per column; Name is locked so
+ * a row never loses its identity. The choice is the viewer's and persists with
+ * them (see src/lib/worklistColumns.ts), so the button says how many are hidden.
+ */
+export function WorklistColumnChooser({
+  columns,
+  onChange,
+}: {
+  columns: readonly WorklistColumnKey[];
+  onChange: (next: WorklistColumnKey[]) => void;
+}) {
+  const show = new Set<WorklistColumnKey>(columns);
+  const hidden = hiddenColumnCount(columns);
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button size="sm" variant="outline" className="shrink-0">
+          <SlidersHorizontal className="h-4 w-4" /> Columns{hidden > 0 ? ` (${hidden} hidden)` : ""}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-60 p-3">
+        <fieldset className="space-y-2">
+          <legend className="mb-2 text-xs font-semibold text-foreground">Table columns</legend>
+          {WORKLIST_TABLE_COLUMNS.map((col) => {
+            const id = `worklist-column-${col.key}`;
+            return (
+              <div key={col.key} className="flex items-center gap-2">
+                <Checkbox
+                  id={id}
+                  checked={show.has(col.key)}
+                  disabled={col.locked}
+                  onCheckedChange={(value) => onChange(toggleColumn(columns, col.key, value === true))}
+                />
+                <Label htmlFor={id} className="text-xs font-normal text-foreground">
+                  {col.label}{col.locked ? " (always shown)" : ""}
+                </Label>
+              </div>
+            );
+          })}
+        </fieldset>
+        <Button size="sm" variant="ghost" className="mt-2" disabled={hidden === 0} onClick={() => onChange([...DEFAULT_WORKLIST_COLUMNS])}>
+          Show all
+        </Button>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/**
+ * The compact queue list (F28): identity with state, stage and owner, last contact,
+ * next action and due. It wraps instead of scrolling sideways, so it fits beside the
+ * person panel from 1024px and reads as cards on a phone. Same rows, order, selection
+ * and window as the table, so switching views never changes who is next.
+ */
+export function WorklistQueueList({ rows, selectedId, onSelect, staff, staffAvailable, stagesByKey, now }: ViewProps) {
+  const [visible, setVisible] = useState(TABLE_WINDOW);
+  const shown = rows.slice(0, visible);
+  return (
+    <div>
+      <ul aria-label="Queue" className="divide-y divide-border/60">
+        {shown.map((row) => {
+          const selected = row.id === selectedId;
+          const blockers = blockersOf(row).filter((b) => b.hard || b.key === "no_phone");
+          const needsPlan = !planCheck(row).ok;
+          return (
+            <li key={row.id} data-row-id={row.id}>
+              <button
+                type="button"
+                onClick={() => onSelect(row.id)}
+                aria-pressed={selected}
+                className={cn(
+                  "block w-full px-3 py-2.5 text-left text-xs transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
+                  selected && "bg-primary/10 hover:bg-primary/10",
+                )}
+              >
+                <span className="flex items-start justify-between gap-3">
+                  <span className="min-w-0">
+                    <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                      <span className="font-medium text-foreground">{fullName(row)}</span>
+                      {row.state && <span className="text-muted-foreground">{row.state}</span>}
+                      <span className="text-muted-foreground">{row.license_status ? humanizeKey(row.license_status) : "License unknown"}</span>
+                      {blockers.length > 0 && (
+                        <span className={badgeVariants({ variant: blockers[0].hard ? "destructive" : "outline" })}>{blockers[0].label}</span>
+                      )}
+                      {needsPlan && <span className="text-[11px] font-medium text-muted-foreground">Needs a plan</span>}
+                    </span>
+                    <span className="mt-0.5 block text-muted-foreground">
+                      {stageLabel(row, stagesByKey)} · {ownerName(row.recruiting_owner_user_id, staff, staffAvailable)}
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-right"><DueCell row={row} now={now} /></span>
+                </span>
+                <span className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-muted-foreground">
+                  <span>Last contact: <LastContact row={row} now={now} /></span>
+                  <span className="min-w-0 max-w-full truncate">Next: <NextActionText row={row} /></span>
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      <ShowMore total={rows.length} visible={visible} onMore={() => setVisible((v) => v + TABLE_WINDOW)} />
     </div>
   );
 }

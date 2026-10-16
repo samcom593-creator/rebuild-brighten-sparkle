@@ -83,9 +83,10 @@ function renderAt(path: string) {
 }
 
 beforeEach(() => {
+  // A desktop browser: only the wide query matches, as a real one would report it.
   Object.defineProperty(window, "matchMedia", {
     configurable: true,
-    value: (q: string) => ({ matches: true, media: q, addEventListener: () => {}, removeEventListener: () => {} }),
+    value: (q: string) => ({ matches: q === "(min-width: 1024px)", media: q, addEventListener: () => {}, removeEventListener: () => {} }),
   });
   window.sessionStorage.clear();
   db.rpcCalls = [];

@@ -247,7 +247,7 @@ describe("Production page", () => {
     expect(screen.getByText(/DOB 03\/07\/1958/)).toBeInTheDocument();
     expect(screen.getByText("Tyler, TX")).toBeInTheDocument();
     // The lookup asked for the rows on screen, by row key, origin, policy and carrier.
-    const asked = vi.mocked(supabase.rpc).mock.calls.find((c) => c[0] === "book_client_details");
+    const asked = vi.mocked(supabase.rpc).mock.calls.find((c) => String(c[0]) === "book_client_details");
     expect((asked?.[1] as { p_rows: unknown[] }).p_rows.length).toBeGreaterThan(0);
     // Every client row offers Resold.
     expect(screen.getAllByRole("button", { name: "Resold" }).length).toBeGreaterThanOrEqual(30);

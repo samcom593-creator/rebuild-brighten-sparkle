@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Sold Calls labels a sale Short call only when the recording really was too short, so three sales no longer read No recording beside a working Recording link.",
+    detail: "The page guessed with its own rule (under 30 seconds or 60 words), which disagreed with the pipeline: a real 27-second sale read Short call until its packet arrived, and three sales whose audio ReadyMode served under 10 KB read No recording. The pipeline now records why a call has no packet (audio too small, transcript too short) and the page shows that: 13 short calls, 20 with no recording. The short-call note uses the recording's length.",
+    commit: "PL-SOLD-CALLS-REVIEW",
+  },
+  {
+    ts: "today",
     label: "Sold Calls shows a new packet's SSN and bank numbers as soon as it arrives, each beneficiary's date of birth, and the policy number you entered at resale, which search now finds.",
     detail: "The SSN and bank read was cached for five minutes, so a packet built while the page was open showed Routing and Account as Not captured. Beneficiary birth dates were captured on 51 packets and never shown. A policy number typed at Mark resold could not be searched and was hidden when the call had produced a different one. Long emails also wrap inside their column now instead of running into the next.",
     commit: "PL-REVIEW-P2",

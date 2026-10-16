@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Merging duplicate agents can no longer lock an agent out of their own account.",
+    detail: "When two rows exist for the same agent, merging folds one into the other. If the row they log in with is folded into a row with no login, they lose their scripts, interview pipeline and add-agent tools, and their production rolls up to a row they cannot sign in as. The merge page already proposes the right winner, but the database accepted either direction, so any other path could get it wrong. On the one pair waiting for you (Tyler Krejcha) the row with no login holds $14,354 of production against $1,411 on the row he logs in with, so ranking by production picks the wrong one. The database now refuses that direction and says which way to merge. Tested on Tyler's real rows and rolled back: the wrong way is refused and nothing changes, the right way still merges, and the old version allowed the wrong merge.",
+    commit: "PL-WIB-MERGE-DIRECTION",
+  },
+  {
+    ts: "today",
     label: "A code change that points at a file nobody saved can no longer be committed, so the site cannot get stuck the way it did this morning.",
     detail: "This morning's 8 hour publishing freeze started with a change that relied on a file that existed on one laptop but was never saved into the shared code. The safety check that runs before every save looked at the laptop, saw the file, and let it through. It now checks exactly what is being saved, so the same change is refused with the name of the missing file and the one command that fixes it. It also runs on every website and backend change instead of only page changes, and it now catches 7 links it used to skip, including three on the application page. Replayed against this morning's real change: the old check let it through, the new one stops it.",
     commit: "PL-WIB-INDEX-IMPORTS",

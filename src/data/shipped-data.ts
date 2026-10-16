@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Business Analytics shows October as it is: 50 deals and $86,844 from 13 producers, not 2 deals and $1.8M from one. Ask APEX quotes the same numbers.",
+    detail: "The header tiles, insight cards and carrier table read the AgentLink book, which nobody has posted to since Aug 31. October read $1,821,600 from two rows for one client with no agent attached, one of them 1000x the other: 1 producer, $910,800 average deal, last month $0 so growth showed 0%, and Newbridge as 100% of premium. They now read every deal, from AgentLink and from here: October 50 deals / $86,844 against September's $182,832, 13 producers in 30 days, 112 deals / $194,801 over 30 days, and Ethos as the top carrier. Carriers the AgentLink list does not have (Ethos, Chubb) now appear in the carrier table.",
+    commit: "PL-WIB-BUSINESS-ANALYTICS-CANONICAL",
+  },
+  {
+    ts: "today",
     label: "Book of Business no longer shows another client's phone, date of birth or call status on a policy number two clients share, and a call logged on that row goes to the right client.",
     detail: "72 policy numbers (248 book rows) are shared by more than one client. The lookup matched on the policy number alone, so a row got whichever client sorted first: as Sam, 170 of 262 shared-number rows carried another client's record and 126 showed someone else's phone or birth date, and No answer or Resold wrote that other person's history. Each row now sends its client's name and only takes the record of the client with that name; a row with no name gets nothing rather than a guess.",
     commit: "PL-BOOK-ROW-WORK-REVIEW",

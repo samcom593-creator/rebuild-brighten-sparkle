@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { resolveAgentIdentity } from "@/lib/agentIdentity";
 
 type LicenseStatus = "licensed" | "unlicensed" | "pending";
 
@@ -43,16 +44,17 @@ async function resolveManagerId(preferred?: string | null): Promise<string> {
   const { data: auth, error: authError } = await supabase.auth.getUser();
   if (authError || !auth.user) throw new Error("Your session expired. Sign in and try again.");
 
-  const { data: actorAgent, error: actorError } = await supabase
-    .from("agents")
-    .select("id")
-    .eq("user_id", auth.user.id)
-    .eq("is_deactivated", false)
-    .limit(1)
-    .maybeSingle();
-  if (actorError) throw actorError;
+  // The person marking the hire is the hiring manager when they hold an agent
+  // record; otherwise the manager the caller passed. The actor is resolved by the
+  // shared identity rule (src/lib/agentIdentity): before 2026-10-15 this read the
+  // first agents row for the login with .maybeSingle(), so a login whose row was
+  // merged away (Sam's SJAMES02 into SJAMES01) attached every hire to the merged
+  // row. Two live rows for one login is never resolved by picking one.
+  const actor = await resolveAgentIdentity(supabase, auth.user.id);
+  if (actor.status === "error") throw new Error(actor.message);
+  const actorId = actor.status === "resolved" && actor.row.is_deactivated !== true ? actor.agentId : null;
 
-  const managerId = actorAgent?.id || preferred;
+  const managerId = actorId || preferred;
   if (!managerId) throw new Error("Assign a hiring manager before marking this person hired.");
   return managerId;
 }

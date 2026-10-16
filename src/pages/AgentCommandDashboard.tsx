@@ -162,12 +162,14 @@ export default function AgentCommandDashboard() {
     queryKey: ["me-agent-row", user?.id],
     enabled: !isAdmin && !!user?.id,
     queryFn: async () => {
-      await ensureCurrentAgentRecord(user!.id);
+      // One identity rule for the whole app (src/lib/agentIdentity): the resolved
+      // id, not "newest row for this login", which returned a merged-away row.
+      const resolvedId = await ensureCurrentAgentRecord(user!.id);
+      if (!resolvedId) return null;
       const { data, error } = await (supabase as any)
         .from("agents")
         .select("id, license_status, license_progress")
-        .eq("user_id", user!.id)
-        .order("created_at", { ascending: false })
+        .eq("id", resolvedId)
         .limit(1);
       if (error) throw error;
       const agent = data?.[0] ?? null;

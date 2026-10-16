@@ -28,6 +28,18 @@ export const OPERATIONAL_TRUTH_QUERY_KEYS = [
   "deals",
   "deals-count",
   "news-feed",
+  // PL-GALAXY-MAP (2026-10-15): My Team reads its roster through these three keys;
+  // a hire added from the shell's Add Agent refreshed them only via the page's own
+  // realtime subscription or Refresh item once the page-level button was removed.
+  "crm-agent-roster",
+  "crm-roster-segments",
+  "team-facts",
+  // PL-GALAXY-MAP: Production now filters its list by status tile and opens a
+  // deal by key, and a hire changes a manager's resolved team.
+  "book-status-tiles",
+  "book-truth-production",
+  "deal-by-key",
+  "resolved-downline",
 ] as const;
 
 export interface InvalidateOperationalTruthOptions {

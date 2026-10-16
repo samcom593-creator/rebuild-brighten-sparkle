@@ -28,10 +28,12 @@ import {
 // AgentCommandDashboard, so everything below moves into its own lazy chunk
 // per route condition.
 const AgentCommandDashboard = lazy(() => import("@/pages/AgentCommandDashboard"));
-// The default admin landing is the clean APEX Today (the ONE canonical dashboard per
-// spec) instead of the sprawling command view. The full command view is still at
-// /agent-dashboard, and the "Admin View" preview toggle still shows ExecutiveDashboard.
-const DashboardToday = lazy(() => import("@/pages/DashboardToday"));
+// The default admin landing (real admin, no role preview) is AgentCloudHome: the
+// same Home every role's sidebar points at (/dashboard). /dashboard/today
+// ("Galaxy Today") is a separate personal-priorities surface and is not what
+// loads here; the old command view lives at /dashboard/admin, and the "Admin
+// View" preview toggle still shows ExecutiveDashboard. A DashboardToday lazy
+// import sat here unused until 2026-10-15 and kept the two surfaces confused.
 const ManagerCommandView = lazy(() => import("@/pages/ManagerCommandView"));
 const VaOpsCommandCenter = lazy(() => import("@/pages/VaOpsCommandCenter"));
 // MP-332 role-tailored homes, keyed on the resolved account mode.
@@ -77,6 +79,7 @@ import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
 import { PageHeader } from "@/components/ui/page-header";
 import { supabase } from "@/integrations/supabase/client";
 import { ensureCurrentAgentRecord } from "@/lib/ensureCurrentAgentRecord";
+import { loadDashboardCurrentAgent, type DashboardCurrentAgent } from "@/lib/dashboardCurrentAgent";
 import { useAuth } from "@/hooks/useAuth";
 import { ContractingReviewBanner } from "@/components/contracting-review/ContractingReviewBanner";
 import { useMyDownline } from "@/hooks/useMyDownline";
@@ -155,11 +158,6 @@ interface DashboardSnapshot {
     critical: number;
     warnings: number;
   };
-}
-
-interface CurrentAgent {
-  id: string;
-  display_name: string | null;
 }
 
 function money(value: number): string {
@@ -563,25 +561,14 @@ async function loadDashboardSnapshot(
   };
 }
 
+// The id comes from ensureCurrentAgentRecord (the shared resolver) and the row is
+// read by that id; see src/lib/dashboardCurrentAgent.ts. A failed read is the
+// query's error, never "no agent".
 function useCurrentAgent(userId: string | undefined) {
   return useQuery({
     queryKey: ["current-agent-for-dashboard", userId],
-    queryFn: async (): Promise<CurrentAgent | null> => {
-      if (!userId) return null;
-      await ensureCurrentAgentRecord(userId);
-      const { data, error } = await supabase
-        .from("agents")
-        .select("id, display_name")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (error) {
-
-        return null;
-      }
-      return data;
-    },
+    queryFn: (): Promise<DashboardCurrentAgent | null> =>
+      loadDashboardCurrentAgent(userId, { ensure: ensureCurrentAgentRecord, client: supabase }),
     enabled: Boolean(userId),
     staleTime: 5 * 60_000,
   });
@@ -1055,8 +1042,8 @@ export default function Dashboard() {
     );
   }
 
-  // Role preview routing contract:
-  // - no preview + real admin: AgentCommandDashboard
+  // Role preview routing contract (what the branches below render):
+  // - no preview + real admin: AgentCloudHome, the canonical Home at /dashboard
   // - previewRole=agent: AgentCommandDashboard
   // - previewRole=manager: ManagerCommandView
   // - previewRole=admin: ExecutiveDashboard

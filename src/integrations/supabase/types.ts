@@ -91223,6 +91223,7 @@ export type Database = {
           missing_fields: string[] | null
           model: string | null
           monthly_premium: number | null
+          numbers_fixed: Json
           payment_method_type: string | null
           policy_number: string | null
           product: string | null
@@ -91268,6 +91269,7 @@ export type Database = {
           missing_fields?: string[] | null
           model?: string | null
           monthly_premium?: number | null
+          numbers_fixed?: Json
           payment_method_type?: string | null
           policy_number?: string | null
           product?: string | null
@@ -91313,6 +91315,7 @@ export type Database = {
           missing_fields?: string[] | null
           model?: string | null
           monthly_premium?: number | null
+          numbers_fixed?: Json
           payment_method_type?: string | null
           policy_number?: string | null
           product?: string | null
@@ -156182,6 +156185,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      booking_packet_fix_number: {
+        Args: { p_field: string; p_packet_id: string; p_value: string }
+        Returns: Json
+      }
       booking_packet_mark_booked: {
         Args: { p_id: string; p_policy: string }
         Returns: undefined
@@ -157886,6 +157893,10 @@ export type Database = {
       fn_next_onboarding_window: { Args: never; Returns: string }
       fn_next_seminar_date: { Args: { p_from?: string }; Returns: string }
       fn_next_seminar_slot: { Args: { p_from?: string }; Returns: string }
+      fn_next_step_cadence_due: {
+        Args: { p_cadence: string; p_elapsed: string }
+        Returns: string
+      }
       fn_next_step_manual_advance: {
         Args: {
           p_actor?: string
@@ -157972,6 +157983,17 @@ export type Database = {
         Returns: number
       }
       fn_readymode_ingest: { Args: { p_payload: Json }; Returns: Json }
+      fn_reconcile_first_deal_at: {
+        Args: { p_apply?: boolean }
+        Returns: {
+          agent_id: string
+          applied: boolean
+          display_name: string
+          error: string
+          now_is: string
+          was: string
+        }[]
+      }
       fn_record_auth_provision_failure: {
         Args: {
           p_email: string

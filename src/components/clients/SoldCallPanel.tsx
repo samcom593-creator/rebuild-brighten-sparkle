@@ -21,7 +21,8 @@ import { externalHref } from "@/lib/externalHref";
 import { useAuth } from "@/hooks/useAuth";
 import { SOLD_CALL_EXTRA_UID } from "@/hooks/useSoldCallKeys";
 import { contactLinkProps, formatPhoneDisplay, isDialablePhone, nationalDigits, phoneHref, smsHref } from "@/lib/phone";
-import { bookingGaps, clientAsks, draftDayLabel, formatDob, formatSsn, paymentLabel } from "@/lib/soldCallPacket";
+import { bookingGaps, checkNumber, clientAsks, draftDayLabel, formatDob, formatSsn, paymentLabel, withNumberAsks, type NumberCheck, type NumberField } from "@/lib/soldCallPacket";
+import { FixNumber } from "@/components/soldcalls/FixNumber";
 
 interface Beneficiary { name?: string; relationship?: string; pct?: number | string; contingent?: boolean }
 interface Packet {
@@ -111,14 +112,18 @@ export function SoldCallPanel({ phone, firstName, lastName, doNotCall = false }:
     ? p.client_phone : null;
   const callHref = doNotCall ? null : phoneHref(dialPhone);
   const textHref = doNotCall ? null : smsHref(dialPhone);
-  const asks = clientAsks(p.missing_fields, Boolean(callHref));
+  const s = secret.data;
+  const ssnCheck = checkNumber("ssn", s?.ssn);
+  const routingCheck = checkNumber("bank_routing", s?.bank_routing);
+  const accountCheck = checkNumber("bank_account", s?.bank_account);
+  // A number heard wrong is asked as "Confirm the SSN: 10 digits, ...", in place of the generic ask.
+  const asks = withNumberAsks(clientAsks(p.missing_fields, Boolean(callHref)), [ssnCheck, routingCheck, accountCheck]);
   const gaps = bookingGaps(p.missing_fields);
   const pointers = p.sensitive_pointers ?? {};
   const heardAt = (s: number | undefined) =>
     s == null ? null : recordingHref ? (
       <a href={`${recordingHref}#t=${Math.max(0, Math.floor(s) - 3)}`} target="_blank" rel="noopener noreferrer" className="ml-1 text-[11px] font-normal text-muted-foreground underline-offset-2 hover:underline">heard at {mmss(s)}</a>
     ) : <span className="ml-1 text-[11px] font-normal text-muted-foreground">heard at {mmss(s)}</span>;
-  const s = secret.data;
   const ssnShown = formatSsn(s?.ssn) ?? (p.ssn_last4 ? `•••-••-${p.ssn_last4}` : null);
 
   return (
@@ -205,10 +210,10 @@ export function SoldCallPanel({ phone, firstName, lastName, doNotCall = false }:
                 <p className="text-destructive">SSN and bank numbers did not load: {(secret.error as Error).message}</p>
               ) : (
                 <div className="grid gap-x-6 gap-y-1 font-mono sm:grid-cols-2">
-                  <Field k="SSN" v={ssnShown ? <>{ssnShown}{heardAt(pointers.ssn?.t_start)}</> : null} />
+                  <NumberCell k="SSN" shown={ssnShown} heard={heardAt(pointers.ssn?.t_start)} check={ssnCheck} packetId={p.packet_id} field="ssn" />
                   <Field k="Bank" v={p.bank_name} />
-                  <Field k="Routing #" v={s?.bank_routing ? <>{s.bank_routing}{heardAt(pointers.routing?.t_start)}</> : null} />
-                  <Field k="Account #" v={s?.bank_account ? <>{s.bank_account}{heardAt(pointers.bank_account?.t_start)}</> : null} />
+                  <NumberCell k="Routing #" shown={s?.bank_routing} heard={heardAt(pointers.routing?.t_start)} check={routingCheck} packetId={p.packet_id} field="bank_routing" />
+                  <NumberCell k="Account #" shown={s?.bank_account} heard={heardAt(pointers.bank_account?.t_start)} check={accountCheck} packetId={p.packet_id} field="bank_account" />
                 </div>
               )}
               <p className="mt-2 flex items-center gap-1.5 font-sans text-[11px] text-muted-foreground">
@@ -230,6 +235,24 @@ export function SoldCallPanel({ phone, firstName, lastName, doNotCall = false }:
               </ul>
             </div>
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** An SSN or bank number, plus what is wrong with it (and Fix) when it cannot be right as heard. */
+function NumberCell({ k, shown, heard, check, packetId, field }: {
+  k: string; shown: string | null | undefined; heard: React.ReactNode; check: NumberCheck | null; packetId: string | null | undefined; field: NumberField;
+}) {
+  const bad = !!check && !check.ok;
+  return (
+    <div>
+      <Field k={k} v={shown ? <>{shown}{heard}</> : null} />
+      {bad && (
+        <div className="flex flex-wrap items-center justify-end gap-x-2 font-sans">
+          <span className="mr-auto text-[11px] font-medium text-red-700 dark:text-red-300">{check.problem}. Confirm it with the client.</span>
+          {packetId && <FixNumber packetId={packetId} field={field} hasValue flagged />}
         </div>
       )}
     </div>

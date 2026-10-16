@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bookingGaps, clientAsks, draftDayLabel, formatDob, formatSsn, paymentLabel } from "@/lib/soldCallPacket";
+import { bookingGaps, checkNumber, clientAsks, draftDayLabel, formatDob, formatSsn, numberAsks, paymentLabel, routingChecksumOk, withNumberAsks } from "@/lib/soldCallPacket";
 
 describe("clientAsks", () => {
   it("never asks the client for a policy number, which the carrier assigns", () => {
@@ -65,5 +65,49 @@ describe("formatters", () => {
   it("shows an ISO date of birth the way an application asks for it", () => {
     expect(formatDob("1958-03-07")).toBe("03/07/1958");
     expect(formatDob("March 1958")).toBe("March 1958");
+  });
+});
+
+describe("checkNumber (numbers heard off the recording)", () => {
+  it("passes a 9-digit SSN and says how a mis-heard one is off", () => {
+    expect(checkNumber("ssn", "123-45-6789")).toEqual({ field: "ssn", digits: "123456789", ok: true, problem: null });
+    expect(checkNumber("ssn", "1234567890")?.problem).toBe("10 digits, one more than an SSN has");
+    expect(checkNumber("ssn", "12345678")?.problem).toBe("8 digits, one fewer than an SSN has");
+    expect(checkNumber("ssn", "1234567")?.problem).toBe("7 digits, 2 fewer than an SSN has");
+    expect(checkNumber("ssn", "000123456")?.problem).toBe("starts with 000, which no SSN does");
+    expect(checkNumber("ssn", "123006789")?.problem).toBe("the middle two digits are 00, which no SSN has");
+    expect(checkNumber("ssn", "123450000")?.problem).toBe("ends in 0000, which no SSN does");
+    expect(checkNumber("ssn", "912345678")?.problem).toBe("starts with 9, which is a tax ID (ITIN), not an SSN");
+    expect(checkNumber("ssn", "")).toBeNull();
+    expect(checkNumber("ssn", null)).toBeNull();
+  });
+
+  it("checks a routing number's length and the bank's check digit", () => {
+    expect(routingChecksumOk("111000025")).toBe(true);
+    expect(routingChecksumOk("111000026")).toBe(false);
+    expect(checkNumber("bank_routing", "111000025")?.ok).toBe(true);
+    expect(checkNumber("bank_routing", "111000026")?.problem).toBe("fails the bank's check digit, so one digit is wrong");
+    expect(checkNumber("bank_routing", "1110000255")?.problem).toBe("10 digits, and a routing number has 9");
+  });
+
+  it("holds a bank account number to 4 to 17 digits", () => {
+    expect(checkNumber("bank_account", "000123456789")?.ok).toBe(true);
+    expect(checkNumber("bank_account", "123")?.problem).toBe("3 digits, too short for a bank account");
+    expect(checkNumber("bank_account", "1234567890123456789")?.problem).toBe("19 digits, more than any US bank account has (17 at most)");
+  });
+
+  it("turns each number that cannot be right into what to confirm with the client", () => {
+    expect(numberAsks([checkNumber("ssn", "1234567890"), checkNumber("bank_routing", "111000025"), null, checkNumber("bank_routing", "111000026")]))
+      .toEqual([
+        "Confirm the SSN: 10 digits, one more than an SSN has",
+        "Confirm the routing number: fails the bank's check digit, so one digit is wrong",
+      ]);
+  });
+
+  it("asks to confirm a mis-heard number instead of asking for it from scratch", () => {
+    const asks = clientAsks(["ssn", "client_zip", "bank_routing"], true);
+    expect(asks).toEqual(["Social Security number", "Home address", "Routing number"]);
+    expect(withNumberAsks(asks, [checkNumber("ssn", "1234567890"), checkNumber("bank_routing", "111000025")]))
+      .toEqual(["Home address", "Routing number", "Confirm the SSN: 10 digits, one more than an SSN has"]);
   });
 });

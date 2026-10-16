@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-rpc-column-vocabulary.sh (bot_sql -> pg_proc + pg_rewrite)",
- "_generated_at": "2026-10-16T11:16:31Z",
+ "_generated_at": "2026-10-16T19:39:24Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "check-enum-filter-literals.mjs grades literals inside supabase.from().eq() chains. This is the other half of the same class: a status word that arrives from an RPC and is compared in JavaScript, where the return type is text and every wrong word type-checks. Per (function, returned column) this records the relation columns of that name reachable from the function body and the literals the function synthesises itself. It deliberately records CANDIDATES rather than one resolved source: provenance from a body regex is a guess, so check-rpc-status-literals.mjs refuses a literal only when NO candidate vocabulary and no body literal accepts it.",
  "_vocabulary_source": "scripts/data/enum-catalog.json (check_vocab + column_enum + enums). Not copied here on purpose, so the two guards read one snapshot and cannot drift.",
@@ -97,6 +97,7 @@
   "book_flip_client_key": "text",
   "book_flip_set": "jsonb",
   "book_interview_event": "interview_events",
+  "booking_packet_fix_number": "jsonb",
   "booking_packet_mark_booked": "void",
   "booking_packet_upsert": "uuid",
   "bot_alert_agent_contracted": "trigger",
@@ -329,6 +330,7 @@
   "fn_next_seminar_slot": "timestamp with time zone",
   "fn_next_step_agents_recompute_trigger": "trigger",
   "fn_next_step_applications_recompute_trigger": "trigger",
+  "fn_next_step_cadence_due": "text",
   "fn_next_step_deal_first_check": "trigger",
   "fn_next_step_manual_advance": "jsonb",
   "fn_next_step_messages_auto_dispatch": "trigger",
@@ -617,6 +619,7 @@
   "slack_delivery_receipt_stats": "jsonb",
   "sms_allowed": "boolean",
   "snapshot_aged_leads_daily": "void",
+  "sold_call_set_status": "sold_call_work",
   "stale_submitted_alert": "jsonb",
   "strict_word_similarity": "real",
   "strict_word_similarity_commutator_op": "boolean",
@@ -6390,6 +6393,7 @@
     "cadence",
     "day",
     "public",
+    "step",
     "telegram"
    ]
   },
@@ -6431,6 +6435,51 @@
     "sla_due_at",
     "stall",
     "stall_action"
+   ]
+  },
+  "fn_reconcile_first_deal_at.agent_id": {
+   "candidates": [
+    "agentlink_book.agent_id",
+    "deals.agent_id",
+    "production_external_deals.agent_id",
+    "v_agent_canonical_map.agent_id",
+    "v_agentlink_book_scoped.agent_id",
+    "v_production_canonical.agent_id"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "fn_reconcile_first_deal_at.applied": {
+   "candidates": [],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "fn_reconcile_first_deal_at.display_name": {
+   "candidates": [
+    "agents.display_name"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "fn_reconcile_first_deal_at.error": {
+   "candidates": [],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "fn_reconcile_first_deal_at.now_is": {
+   "candidates": [],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "fn_reconcile_first_deal_at.was": {
+   "candidates": [],
+   "body_literals": [
+    "public"
    ]
   },
   "fn_reissue_40d_template_for.cohort": {

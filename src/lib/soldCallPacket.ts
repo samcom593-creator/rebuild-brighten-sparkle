@@ -82,6 +82,85 @@ export function bookingGaps(missing: string[] | null | undefined): string[] {
   return out;
 }
 
+export type NumberField = "ssn" | "bank_routing" | "bank_account";
+
+export const NUMBER_LABEL: Record<NumberField, string> = {
+  ssn: "SSN",
+  bank_routing: "Routing number",
+  bank_account: "Account number",
+};
+
+export interface NumberCheck {
+  field: NumberField;
+  digits: string;
+  ok: boolean;
+  /** Plain words for the caller when the number cannot be right, e.g. "10 digits, one more than an SSN has". */
+  problem: string | null;
+}
+
+const howMany = (n: number) => (n === 1 ? "one" : String(n));
+
+/** "SSN", "routing number", "account number": the noun used inside a sentence. */
+export const numberNoun = (field: NumberField): string => (field === "ssn" ? "SSN" : NUMBER_LABEL[field].toLowerCase());
+
+/** ABA check digit: 3·(d1+d4+d7) + 7·(d2+d5+d8) + (d3+d6+d9) is a multiple of 10 for every real routing number. */
+export function routingChecksumOk(digits: string): boolean {
+  if (!/^\d{9}$/.test(digits)) return false;
+  const d = digits.split("").map(Number);
+  return (3 * (d[0] + d[3] + d[6]) + 7 * (d[1] + d[4] + d[7]) + (d[2] + d[5] + d[8])) % 10 === 0;
+}
+
+/**
+ * Whether a transcribed SSN, routing or account number can be right. These numbers are heard off the
+ * call recording, and 2026-10-16 measured 16 of 85 SSNs at 10 digits, 4 at 7-8, and 8 of 58 routing
+ * numbers wrong (4 the wrong length, 4 failing the check digit). A number that fails is still shown,
+ * never guessed at or trimmed: the caller confirms it with the client. The same rules run again in
+ * booking_packet_fix_number when a corrected number is saved. Returns null when nothing was heard.
+ */
+export function checkNumber(field: NumberField, value: string | null | undefined): NumberCheck | null {
+  const digits = (value ?? "").replace(/\D/g, "");
+  if (!digits) return null;
+  const n = digits.length;
+  let problem: string | null = null;
+  if (field === "ssn") {
+    if (n > 9) problem = `${n} digits, ${howMany(n - 9)} more than an SSN has`;
+    else if (n < 9) problem = `${n} digits, ${howMany(9 - n)} fewer than an SSN has`;
+    else if (digits.startsWith("000") || digits.startsWith("666")) problem = `starts with ${digits.slice(0, 3)}, which no SSN does`;
+    else if (digits.slice(3, 5) === "00") problem = "the middle two digits are 00, which no SSN has";
+    else if (digits.endsWith("0000")) problem = "ends in 0000, which no SSN does";
+    else if (digits.startsWith("9")) problem = "starts with 9, which is a tax ID (ITIN), not an SSN";
+  } else if (field === "bank_routing") {
+    if (n !== 9) problem = `${n} digits, and a routing number has 9`;
+    else if (!routingChecksumOk(digits)) problem = "fails the bank's check digit, so one digit is wrong";
+  } else if (n < 4) {
+    problem = `${n} digits, too short for a bank account`;
+  } else if (n > 17) {
+    problem = `${n} digits, more than any US bank account has (17 at most)`;
+  }
+  return { field, digits, ok: problem === null, problem };
+}
+
+// The generic clientAsks() label for each number, which a "Confirm the ..." ask replaces.
+const GENERIC_ASK: Record<NumberField, string> = {
+  ssn: "Social Security number",
+  bank_routing: "Routing number",
+  bank_account: "Account number",
+};
+
+/** The client asks with each mis-heard number's "Confirm the ..." line in place of its generic ask. */
+export function withNumberAsks(asks: readonly string[], checks: ReadonlyArray<NumberCheck | null | undefined>): string[] {
+  const bad = checks.filter((c): c is NumberCheck => !!c && !c.ok);
+  const replaced = new Set<string>(bad.map((c) => GENERIC_ASK[c.field]));
+  return [...asks.filter((a) => !replaced.has(a)), ...numberAsks(bad)];
+}
+
+/** The "Ask the client" line for each number that cannot be right as heard. */
+export function numberAsks(checks: ReadonlyArray<NumberCheck | null | undefined>): string[] {
+  return checks
+    .filter((c): c is NumberCheck => !!c && !c.ok)
+    .map((c) => `Confirm the ${numberNoun(c.field)}: ${c.problem}`);
+}
+
 /** 9 digits render as 123-45-6789; anything else is shown exactly as transcribed. */
 export function formatSsn(value: string | null | undefined): string | null {
   const raw = value?.trim();

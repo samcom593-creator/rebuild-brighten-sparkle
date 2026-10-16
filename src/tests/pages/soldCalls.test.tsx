@@ -245,6 +245,36 @@ describe("Sold Calls", () => {
     expect(await screen.findByRole("article", { name: "Objection call: Sam Ode" })).toBeInTheDocument();
   });
 
+  it("flags an SSN heard with an extra digit and a routing number that fails its check digit", async () => {
+    db.sensitive = { data: [{ packet_id: "pk-1", ssn: "1234567890", bank_account: "000123456789", bank_routing: "111000026" }], error: null };
+    renderPage();
+    const card = await screen.findByRole("article", { name: "Sold call: Kathy Smith" });
+    await waitFor(() => expect(within(card).getByText("10 digits, one more than an SSN has. Confirm it with the client.")).toBeInTheDocument());
+    expect(within(card).getByText("fails the bank's check digit, so one digit is wrong. Confirm it with the client.")).toBeInTheDocument();
+    expect(within(card).getByText("2 numbers to check")).toBeInTheDocument();
+    expect(within(card).getByText(/Confirm the SSN: 10 digits, one more than an SSN has/)).toBeInTheDocument();
+    // A number that cannot be right stays on screen but is not offered for pasting into an application.
+    expect(within(card).queryByRole("button", { name: "Copy SSN" })).toBeNull();
+    expect(within(card).queryByRole("button", { name: "Copy Routing #" })).toBeNull();
+    expect(within(card).getByRole("button", { name: "Copy Account #" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Numbers to check/ })).toHaveTextContent("1");
+  });
+
+  it("saves the SSN the client confirms, and will not save one that still cannot be right", async () => {
+    db.sensitive = { data: [{ packet_id: "pk-1", ssn: "1234567890", bank_account: "000123456789", bank_routing: "111000025" }], error: null };
+    renderPage();
+    const card = await screen.findByRole("article", { name: "Sold call: Kathy Smith" });
+    fireEvent.click(await within(card).findByRole("button", { name: "Fix the SSN" }));
+    const input = within(card).getByRole("textbox", { name: "SSN the client confirmed" });
+    const form = input.closest("form") as HTMLFormElement;
+    fireEvent.change(input, { target: { value: "12345" } });
+    expect(within(form).getByText("5 digits, 4 fewer than an SSN has")).toBeInTheDocument();
+    expect(within(form).getByRole("button", { name: "Save" })).toBeDisabled();
+    fireEvent.change(input, { target: { value: "123-45-6780" } });
+    fireEvent.click(within(form).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(db.rpcArgs).toContainEqual({ fn: "booking_packet_fix_number", args: { p_packet_id: "pk-1", p_field: "ssn", p_value: "123456780" } }));
+  });
+
   it("says so when the SSN and bank numbers fail to load", async () => {
     db.sensitive = { data: null as unknown as unknown[], error: { message: "permission denied" } };
     renderPage();

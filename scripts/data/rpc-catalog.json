@@ -1179,6 +1179,22 @@
         "raw": "p_scheduled_at timestamp with time zone, p_event_tz text, p_application_id uuid DEFAULT NULL::uuid, p_agent_id uuid DEFAULT NULL::uuid, p_invitee_name text DEFAULT NULL::text, p_invitee_email text DEFAULT NULL::text, p_kind text DEFAULT 'interview'::text, p_duration_minutes integer DEFAULT 30, p_meeting_link text DEFAULT NULL::text, p_notes text DEFAULT NULL::text, p_owner_user_id uuid DEFAULT NULL::uuid"
       }
     ],
+    "booking_packet_fix_number": [
+      {
+        "all": [
+          "p_field",
+          "p_packet_id",
+          "p_value"
+        ],
+        "required": [
+          "p_field",
+          "p_packet_id",
+          "p_value"
+        ],
+        "unnamed": false,
+        "raw": "p_packet_id uuid, p_field text, p_value text"
+      }
+    ],
     "booking_packet_mark_booked": [
       {
         "all": [
@@ -4086,6 +4102,20 @@
         "raw": ""
       }
     ],
+    "fn_next_step_cadence_due": [
+      {
+        "all": [
+          "p_cadence",
+          "p_elapsed"
+        ],
+        "required": [
+          "p_cadence",
+          "p_elapsed"
+        ],
+        "unnamed": false,
+        "raw": "p_cadence text, p_elapsed interval"
+      }
+    ],
     "fn_next_step_deal_first_check": [
       {
         "all": [],
@@ -4491,6 +4521,16 @@
         ],
         "unnamed": false,
         "raw": "p_payload jsonb"
+      }
+    ],
+    "fn_reconcile_first_deal_at": [
+      {
+        "all": [
+          "p_apply"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_apply boolean DEFAULT true"
       }
     ],
     "fn_reconcile_licensing_vocabularies": [
@@ -8041,6 +8081,20 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "sold_call_set_status": [
+      {
+        "all": [
+          "p_call_id",
+          "p_note",
+          "p_status"
+        ],
+        "required": [
+          "p_call_id"
+        ],
+        "unnamed": false,
+        "raw": "p_call_id uuid, p_status text DEFAULT NULL::text, p_note text DEFAULT NULL::text"
       }
     ],
     "staff_existing_auth_user_ids": [

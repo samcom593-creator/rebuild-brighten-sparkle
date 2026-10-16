@@ -35,7 +35,8 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { contactLinkProps, formatPhoneDisplay, isDialablePhone, nationalDigits, phoneHref, smsHref } from "@/lib/phone";
-import { bookingGaps, clientAsks, draftDayLabel, formatDob, formatSsn, paymentLabel } from "@/lib/soldCallPacket";
+import { bookingGaps, checkNumber, clientAsks, draftDayLabel, formatDob, formatSsn, paymentLabel, withNumberAsks, type NumberCheck, type NumberField } from "@/lib/soldCallPacket";
+import { FixNumber } from "@/components/soldcalls/FixNumber";
 import { cn } from "@/lib/utils";
 import { ageEquation } from "@/lib/clientFacts";
 import { ResellSignals, WorkActions } from "@/components/soldcalls/ResellWork";
@@ -105,10 +106,13 @@ const STATUS_META: Record<string, { label: string; tone: string }> = {
 
 // The database still calls a finished sale "booked" (status, booked_at,
 // booking_packet_mark_booked); everything a person reads says resold, which is Sam's word.
-type FilterKey = "to_resell" | "leads" | "contacted" | "pushback" | "coming" | "no_packet" | "resold" | "all";
-const FILTERS: Array<{ key: FilterKey; label: string; match: (r: SoldRow) => boolean }> = [
+type FilterKey = "to_resell" | "leads" | "numbers" | "contacted" | "pushback" | "coming" | "no_packet" | "resold" | "all";
+// "Numbers to check" needs the decrypted numbers, so its rule reads the set of packets whose SSN,
+// routing or account number cannot be right as heard (see checkNumber).
+const FILTERS: Array<{ key: FilterKey; label: string; match: (r: SoldRow, badNumbers: ReadonlySet<string>) => boolean }> = [
   { key: "to_resell", label: "To resell", match: (r) => (r.packet_status === "ready" || r.packet_status === "needs_review") && r.work_status !== "resold" },
   { key: "leads", label: "Resell leads", match: (r) => isResellLead(r) && r.work_status !== "resold" },
+  { key: "numbers", label: "Numbers to check", match: (r, badNumbers) => !!r.packet_id && badNumbers.has(r.packet_id) },
   { key: "contacted", label: "Contacted", match: (r) => r.work_status === "contacted" },
   { key: "pushback", label: "Pushback", match: (r) => r.work_status === "pushback" },
   { key: "coming", label: "Packet coming", match: (r) => r.packet_status === "transcribing" || r.packet_status === "downloading" },
@@ -152,6 +156,11 @@ async function fetchSensitive(): Promise<Map<string, Sensitive>> {
   return new Map(rows.map((s) => [s.packet_id, s]));
 }
 
+/** The three heard numbers on a packet, checked: SSN, routing, account (null where nothing was heard). */
+function secretChecks(sec: Pick<Sensitive, "ssn" | "bank_routing" | "bank_account"> | undefined): Array<NumberCheck | null> {
+  return [checkNumber("ssn", sec?.ssn), checkNumber("bank_routing", sec?.bank_routing), checkNumber("bank_account", sec?.bank_account)];
+}
+
 export default function SoldCalls() {
   const { isAdmin, user } = useAuth();
   const canView = !!isAdmin || user?.id === SOLD_CALL_EXTRA_UID;
@@ -187,20 +196,30 @@ export default function SoldCalls() {
   };
   const [search, setSearch] = useState("");
 
-  const counts = useMemo(() => {
-    const out: Record<FilterKey, number> = { to_resell: 0, leads: 0, contacted: 0, pushback: 0, coming: 0, no_packet: 0, resold: 0, all: rows.length };
-    for (const r of rows) {
-      for (const f of FILTERS) if (f.key !== "all" && f.match(r)) out[f.key] += 1;
+  // Packets whose SSN, routing or account number cannot be right as heard (wrong length, failed
+  // check digit). They stay visible everywhere; this set drives the "Numbers to check" filter.
+  const badNumbers = useMemo(() => {
+    const out = new Set<string>();
+    for (const [id, sec] of sensitive.data ?? new Map<string, Sensitive>()) {
+      if (secretChecks(sec).some((c) => c && !c.ok)) out.add(id);
     }
     return out;
-  }, [rows]);
+  }, [sensitive.data]);
+
+  const counts = useMemo(() => {
+    const out: Record<FilterKey, number> = { to_resell: 0, leads: 0, numbers: 0, contacted: 0, pushback: 0, coming: 0, no_packet: 0, resold: 0, all: rows.length };
+    for (const r of rows) {
+      for (const f of FILTERS) if (f.key !== "all" && f.match(r, badNumbers)) out[f.key] += 1;
+    }
+    return out;
+  }, [rows, badNumbers]);
 
   const filtered = useMemo(() => {
     const active = FILTERS.find((f) => f.key === filter) ?? FILTERS[FILTERS.length - 1];
     const term = search.trim().toLowerCase();
     const termDigits = term.replace(/\D/g, "");
     return rows.filter((r) => {
-      if (!active.match(r)) return false;
+      if (!active.match(r, badNumbers)) return false;
       if (!term) return true;
       const extra = r.packet_id ? extras.data?.get(r.packet_id) : undefined;
       if (termDigits.length >= 4 && [r.lead_phone, extra?.client_phone].some((p) => (p ?? "").replace(/\D/g, "").includes(termDigits))) return true;
@@ -208,7 +227,7 @@ export default function SoldCalls() {
         .filter(Boolean)
         .some((v) => String(v).toLowerCase().includes(term));
     });
-  }, [rows, filter, search, extras.data]);
+  }, [rows, filter, search, extras.data, badNumbers]);
 
   // The newest sale with a packet for each phone, so a short or unrecorded sale can
   // point at the same client's full call instead of looking like a lost sale.
@@ -310,6 +329,27 @@ export default function SoldCalls() {
   );
 }
 
+/**
+ * The line under an SSN or bank number: what is wrong with it when it cannot be right as heard, where in
+ * the call it was said, and Fix / Edit / Add to save the number the client confirms.
+ */
+function NumberNote({ check, heard, packetId, field, hasValue }: {
+  check: NumberCheck | null; heard: number | undefined; packetId: string | null; field: NumberField; hasValue: boolean;
+}) {
+  const bad = !!check && !check.ok;
+  return (
+    <div className="-mt-1 flex flex-wrap items-center justify-end gap-x-2 gap-y-1 pb-1 text-right">
+      {bad && (
+        <span className="mr-auto text-left text-xs font-medium text-red-700 dark:text-red-300">
+          {check.problem}. Confirm it with the client.
+        </span>
+      )}
+      <Heard seconds={heard} />
+      {packetId && <FixNumber packetId={packetId} field={field} hasValue={hasValue} flagged={bad} />}
+    </div>
+  );
+}
+
 function Field({ label, value, mono, copy, stacked }: { label: string; value: React.ReactNode; mono?: boolean; copy?: string | null; stacked?: boolean }) {
   const empty = value == null || value === "";
   const shown = (
@@ -379,7 +419,10 @@ function SoldCallCard({ row, extra, secret, secretLoading, twin, onOpenTwin }: {
   const callHref = phoneHref(dialPhone);
   const textHref = smsHref(dialPhone);
   const otherPhone = extra?.client_phone && isDialablePhone(extra.client_phone) && nationalDigits(extra.client_phone) !== nationalDigits(row.lead_phone) ? extra.client_phone : null;
-  const asks = clientAsks(row.missing_fields, Boolean(callHref));
+  const [ssnCheck, routingCheck, accountCheck] = secretChecks(secret);
+  const badChecks = [ssnCheck, routingCheck, accountCheck].filter((c): c is NumberCheck => !!c && !c.ok);
+  // A number heard wrong is asked as "Confirm the SSN: 10 digits, ...", in place of the generic ask.
+  const asks = withNumberAsks(clientAsks(row.missing_fields, Boolean(callHref)), badChecks);
   const gaps = bookingGaps(row.missing_fields);
   const status = STATUS_META[row.packet_status] ?? { label: row.packet_status, tone: "bg-muted text-muted-foreground" };
   const pointers = row.sensitive_pointers ?? {};
@@ -482,18 +525,26 @@ function SoldCallCard({ row, extra, secret, secretLoading, twin, onOpenTwin }: {
             </section>
 
             <section aria-label="Payment and SSN">
-              <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Payment &amp; SSN</h3>
+              <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Payment &amp; SSN
+                {badChecks.length > 0 && (
+                  <span className="ml-2 rounded-full bg-red-500/15 px-2 py-0.5 normal-case tracking-normal text-red-700 dark:text-red-300">
+                    {badChecks.length === 1 ? "1 number to check" : `${badChecks.length} numbers to check`}
+                  </span>
+                )}
+              </h3>
               {secretLoading && !secret && (row.has_ssn || row.has_bank) ? (
                 <div className="space-y-2 py-1"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-5/6" /><Skeleton className="h-4 w-4/6" /></div>
               ) : (
                 <>
-                  <Field label="SSN" value={ssn ?? (row.ssn_last4 ? `•••-••-${row.ssn_last4}` : null)} mono copy={secret?.ssn?.replace(/\D/g, "") || null} />
-                  <div className="-mt-1 text-right"><Heard seconds={pointers.ssn?.t_start} /></div>
+                  <Field label="SSN" value={ssn ?? (row.ssn_last4 ? `•••-••-${row.ssn_last4}` : null)} mono copy={ssnCheck?.ok ? ssnCheck.digits : null} />
+                  <NumberNote check={ssnCheck} heard={pointers.ssn?.t_start} packetId={row.packet_id} field="ssn" hasValue={Boolean(secret?.ssn)} />
                   <Field label="Pays by" value={paymentLabel(row.payment_method_type)} />
                   <Field label="Bank" value={extra?.bank_name} />
-                  <Field label="Routing #" value={secret?.bank_routing} mono copy={secret?.bank_routing} />
-                  <Field label="Account #" value={secret?.bank_account} mono copy={secret?.bank_account} />
-                  <div className="-mt-1 text-right"><Heard seconds={pointers.bank_account?.t_start ?? pointers.routing?.t_start} /></div>
+                  <Field label="Routing #" value={secret?.bank_routing} mono copy={routingCheck?.ok ? routingCheck.digits : null} />
+                  <NumberNote check={routingCheck} heard={pointers.routing?.t_start} packetId={row.packet_id} field="bank_routing" hasValue={Boolean(secret?.bank_routing)} />
+                  <Field label="Account #" value={secret?.bank_account} mono copy={accountCheck?.ok ? accountCheck.digits : null} />
+                  <NumberNote check={accountCheck} heard={pointers.bank_account?.t_start} packetId={row.packet_id} field="bank_account" hasValue={Boolean(secret?.bank_account)} />
                 </>
               )}
             </section>

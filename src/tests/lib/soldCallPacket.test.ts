@@ -78,6 +78,7 @@ describe("checkNumber (numbers heard off the recording)", () => {
     expect(checkNumber("ssn", "123006789")?.problem).toBe("the middle two digits are 00, which no SSN has");
     expect(checkNumber("ssn", "123450000")?.problem).toBe("ends in 0000, which no SSN does");
     expect(checkNumber("ssn", "912345678")?.problem).toBe("starts with 9, which is a tax ID (ITIN), not an SSN");
+    expect(checkNumber("ssn", "1")?.problem).toBe("1 digit, 8 fewer than an SSN has");
     expect(checkNumber("ssn", "")).toBeNull();
     expect(checkNumber("ssn", null)).toBeNull();
   });
@@ -86,7 +87,9 @@ describe("checkNumber (numbers heard off the recording)", () => {
     expect(routingChecksumOk("111000025")).toBe(true);
     expect(routingChecksumOk("111000026")).toBe(false);
     expect(checkNumber("bank_routing", "111000025")?.ok).toBe(true);
-    expect(checkNumber("bank_routing", "111000026")?.problem).toBe("fails the bank's check digit, so one digit is wrong");
+    expect(checkNumber("bank_routing", "111000026")?.problem).toBe("fails the bank's check digit, so a digit is wrong or two are swapped");
+    expect(checkNumber("bank_routing", "503000196")?.problem).toBe("starts with 50, which no routing number does");
+    expect(checkNumber("bank_routing", "000000000")?.problem).toBe("all zeros, which no routing number is");
     expect(checkNumber("bank_routing", "1110000255")?.problem).toBe("10 digits, and a routing number has 9");
   });
 
@@ -100,7 +103,7 @@ describe("checkNumber (numbers heard off the recording)", () => {
     expect(numberAsks([checkNumber("ssn", "1234567890"), checkNumber("bank_routing", "111000025"), null, checkNumber("bank_routing", "111000026")]))
       .toEqual([
         "Confirm the SSN: 10 digits, one more than an SSN has",
-        "Confirm the routing number: fails the bank's check digit, so one digit is wrong",
+        "Confirm the routing number: fails the bank's check digit, so a digit is wrong or two are swapped",
       ]);
   });
 

@@ -99,11 +99,18 @@ export interface NumberCheck {
 }
 
 const howMany = (n: number) => (n === 1 ? "one" : String(n));
+const digitCount = (n: number) => `${n} digit${n === 1 ? "" : "s"}`;
 
 /** "SSN", "routing number", "account number": the noun used inside a sentence. */
 export const numberNoun = (field: NumberField): string => (field === "ssn" ? "SSN" : NUMBER_LABEL[field].toLowerCase());
 
 /** ABA check digit: 3·(d1+d4+d7) + 7·(d2+d5+d8) + (d3+d6+d9) is a multiple of 10 for every real routing number. */
+/** First two digits of a real routing number: 00-12 (US government, Fed districts), 21-32 (thrifts), 61-72 (electronic), 80. */
+export function routingPrefixOk(digits: string): boolean {
+  const p = Number(digits.slice(0, 2));
+  return p <= 12 || (p >= 21 && p <= 32) || (p >= 61 && p <= 72) || p === 80;
+}
+
 export function routingChecksumOk(digits: string): boolean {
   if (!/^\d{9}$/.test(digits)) return false;
   const d = digits.split("").map(Number);
@@ -123,19 +130,21 @@ export function checkNumber(field: NumberField, value: string | null | undefined
   const n = digits.length;
   let problem: string | null = null;
   if (field === "ssn") {
-    if (n > 9) problem = `${n} digits, ${howMany(n - 9)} more than an SSN has`;
-    else if (n < 9) problem = `${n} digits, ${howMany(9 - n)} fewer than an SSN has`;
+    if (n > 9) problem = `${digitCount(n)}, ${howMany(n - 9)} more than an SSN has`;
+    else if (n < 9) problem = `${digitCount(n)}, ${howMany(9 - n)} fewer than an SSN has`;
     else if (digits.startsWith("000") || digits.startsWith("666")) problem = `starts with ${digits.slice(0, 3)}, which no SSN does`;
     else if (digits.slice(3, 5) === "00") problem = "the middle two digits are 00, which no SSN has";
     else if (digits.endsWith("0000")) problem = "ends in 0000, which no SSN does";
     else if (digits.startsWith("9")) problem = "starts with 9, which is a tax ID (ITIN), not an SSN";
   } else if (field === "bank_routing") {
-    if (n !== 9) problem = `${n} digits, and a routing number has 9`;
-    else if (!routingChecksumOk(digits)) problem = "fails the bank's check digit, so one digit is wrong";
+    if (n !== 9) problem = `${digitCount(n)}, and a routing number has 9`;
+    else if (/^0+$/.test(digits)) problem = "all zeros, which no routing number is";
+    else if (!routingPrefixOk(digits)) problem = `starts with ${digits.slice(0, 2)}, which no routing number does`;
+    else if (!routingChecksumOk(digits)) problem = "fails the bank's check digit, so a digit is wrong or two are swapped";
   } else if (n < 4) {
-    problem = `${n} digits, too short for a bank account`;
+    problem = `${digitCount(n)}, too short for a bank account`;
   } else if (n > 17) {
-    problem = `${n} digits, more than any US bank account has (17 at most)`;
+    problem = `${digitCount(n)}, more than any US bank account has (17 at most)`;
   }
   return { field, digits, ok: problem === null, problem };
 }

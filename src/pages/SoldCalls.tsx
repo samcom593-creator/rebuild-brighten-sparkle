@@ -206,6 +206,10 @@ export default function SoldCalls() {
     return out;
   }, [sensitive.data]);
 
+  // Which numbers need checking is only known once the read answers; until then the chip shows "–"
+  // and the list says so, rather than a 0 that reads like a clean book.
+  const numbersKnown = sensitive.data !== undefined;
+
   const counts = useMemo(() => {
     const out: Record<FilterKey, number> = { to_resell: 0, leads: 0, numbers: 0, contacted: 0, pushback: 0, coming: 0, no_packet: 0, resold: 0, all: rows.length };
     for (const r of rows) {
@@ -278,7 +282,7 @@ export default function SoldCalls() {
               >
                 {f.label}
                 <span className={cn("ml-1.5 rounded-full px-1.5 text-xs tabular-nums", filter === f.key ? "bg-background/20" : "bg-muted")}>
-                  {counts[f.key]}
+                  {f.key === "numbers" && !numbersKnown ? "–" : counts[f.key]}
                 </span>
               </Button>
             ))}
@@ -307,6 +311,10 @@ export default function SoldCalls() {
         <div className="space-y-3">{Array.from({ length: 4 }, (_, n) => <Skeleton key={`sold-sk-${n}`} className="h-56 w-full rounded-xl" />)}</div>
       ) : q.isError ? (
         <EmptyState icon={<ShieldAlert className="h-6 w-6" />} title="Could not load sold calls" description={String((q.error as Error)?.message ?? "Unknown error")} />
+      ) : filter === "numbers" && !numbersKnown ? (
+        sensitive.isError
+          ? <EmptyState icon={<ShieldAlert className="h-6 w-6" />} title="Numbers to check did not load" description="The SSN and bank numbers did not load, so which ones need checking is not known. Use Try again above." />
+          : <div className="space-y-3">{Array.from({ length: 2 }, (_, n) => <Skeleton key={`num-sk-${n}`} className="h-56 w-full rounded-xl" />)}</div>
       ) : filtered.length === 0 ? (
         <EmptyState icon={<Phone className="h-6 w-6" />} title="Nothing here" description={search ? "No sold call matches that search." : "No sold calls in this list right now."} />
       ) : (
@@ -318,6 +326,7 @@ export default function SoldCalls() {
               extra={r.packet_id ? extras.data?.get(r.packet_id) : undefined}
               secret={r.packet_id ? sensitive.data?.get(r.packet_id) : undefined}
               secretLoading={sensitive.isPending || (sensitive.isFetching && !!r.packet_id && !sensitive.data?.has(r.packet_id))}
+              secretFailed={sensitive.isError && !!r.packet_id && !sensitive.data?.has(r.packet_id)}
               twin={r.packet_id ? undefined : packetByPhone.get(phone10(r.lead_phone))}
               onOpenTwin={(t) => { setFilter("all"); setSearch(phone10(t.lead_phone)); }}
             />
@@ -407,11 +416,13 @@ function Heard({ seconds }: { seconds: number | undefined }) {
   return <span className="text-xs text-muted-foreground">heard at {mmss(seconds)}</span>;
 }
 
-function SoldCallCard({ row, extra, secret, secretLoading, twin, onOpenTwin }: {
+function SoldCallCard({ row, extra, secret, secretLoading, secretFailed = false, twin, onOpenTwin }: {
   row: SoldRow;
   extra: PacketExtra | undefined;
   secret: Sensitive | undefined;
   secretLoading: boolean;
+  /** The SSN and bank read failed for this packet: say so, never "Not captured" with an Add button. */
+  secretFailed?: boolean;
   twin?: SoldRow;
   onOpenTwin: (twin: SoldRow) => void;
 }) {
@@ -535,6 +546,8 @@ function SoldCallCard({ row, extra, secret, secretLoading, twin, onOpenTwin }: {
               </h3>
               {secretLoading && !secret && (row.has_ssn || row.has_bank) ? (
                 <div className="space-y-2 py-1"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-5/6" /><Skeleton className="h-4 w-4/6" /></div>
+              ) : secretFailed && (row.has_ssn || row.has_bank) ? (
+                <p className="py-1 text-sm text-destructive">SSN and bank numbers did not load. Use Try again at the top of the page.</p>
               ) : (
                 <>
                   <Field label="SSN" value={ssn ?? (row.ssn_last4 ? `•••-••-${row.ssn_last4}` : null)} mono copy={ssnCheck?.ok ? ssnCheck.digits : null} />

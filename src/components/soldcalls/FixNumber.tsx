@@ -90,8 +90,8 @@ export function FixNumber({ packetId, field, hasValue, flagged, className }: {
         aria-label={`${label} the client confirmed`}
         className="h-9 w-40 font-mono text-base sm:text-sm"
       />
-      <Button type="submit" size="sm" className="h-9" disabled={saving || !check?.ok}>
-        {saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : "Save"}
+      <Button type="submit" size="sm" className="h-9" disabled={saving || !check?.ok} aria-busy={saving || undefined}>
+        {saving ? <><Loader2 className="h-4 w-4 animate-spin" aria-hidden />Saving…</> : "Save"}
       </Button>
       <Button type="button" size="sm" variant="ghost" className="h-9" onClick={close} disabled={saving}>Cancel</Button>
       {check && !check.ok && (

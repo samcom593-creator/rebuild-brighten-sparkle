@@ -67,13 +67,12 @@ async function fetchCarrier(carrier: string): Promise<BookPolicy[]> {
 /** The carrier totals summed for the "All carriers" view (latest import across the books). */
 function sumCounts(list: CarrierCount[]): CarrierCount | undefined {
   if (list.length === 0) return undefined;
-  const latest = list.map((c) => c.last_imported_at).filter((d): d is string => !!d).sort().pop() ?? null;
   const sum = (k: keyof CarrierCount) => list.reduce((s, c) => s + Number(c[k] ?? 0), 0);
   return {
     carrier: ALL_CARRIERS, policies: sum("policies"), book_active: sum("book_active"), unknown_status: sum("unknown_status"),
     lapsing: sum("lapsing"), workable: sum("workable"), with_phone: sum("with_phone"), to_call: sum("to_call"),
     callbacks_due: sum("callbacks_due"), resold: sum("resold"), resold_annual_premium: sum("resold_annual_premium"),
-    last_imported_at: latest,
+    last_imported_at: null,
   };
 }
 
@@ -98,7 +97,10 @@ export default function BookFlips() {
   const rows = useQuery({ queryKey: rowsKey, queryFn: () => fetchCarrier(carrier), staleTime: 60_000 });
   const all = useMemo(() => rows.data ?? [], [rows.data]);
   const bookParam = params.get("book");
-  const bookFilter: BookFilter = BOOK_FILTERS.some((f) => f.key === bookParam) ? (bookParam as BookFilter) : defaultBookFilter(all);
+  // The default bucket is chosen from the rows actually in view: with an agent picked, from that agent's rows.
+  const bookFilter: BookFilter = BOOK_FILTERS.some((f) => f.key === bookParam)
+    ? (bookParam as BookFilter)
+    : defaultBookFilter(all.filter((p) => matchesAgent(p, agentFilter)));
 
   const [flipFilter, setFlipFilter] = useState<FlipFilter>("to_call");
   const [search, setSearch] = useState("");
@@ -224,6 +226,10 @@ export default function BookFlips() {
         resold_annual_premium: saved.resold_annual_premium ?? null,
       } : r)));
       void qc.invalidateQueries({ queryKey: ["book-flip-counts"] });
+      // A policy sits in both the All carriers list and its own carrier's list. Mark every cached book
+      // list stale so the other one reloads the next time it is shown; refetchType "none" means no
+      // 1,000-row reload now and no refetch racing another optimistic save.
+      void qc.invalidateQueries({ queryKey: ["book-flips"], refetchType: "none" });
       if (status === "resold") toast.success("Marked resold.");
       return true;
     } catch (e) {
@@ -242,7 +248,8 @@ export default function BookFlips() {
     }
   }, [busy, qc, rowsKey]);
 
-  const lastImport = current?.last_imported_at ? shortDate(current.last_imported_at) : "";
+  // Each carrier's book is imported on its own date, so the combined view names no single date.
+  const lastImport = !allCarriers && current?.last_imported_at ? shortDate(current.last_imported_at) : "";
   const noKnownStatus = !allCarriers && !!current && current.book_active === 0 && current.unknown_status > 0;
 
   return (
@@ -311,7 +318,10 @@ export default function BookFlips() {
         {noKnownStatus
           ? `None of ${carrier}'s ${current?.policies ?? ""} policies has a known status in our records, so confirm each one on the call. `
           : ""}
-        Statuses come from the book import{lastImport ? ` on ${lastImport}` : ""}. "Status unknown" means the carrier never sent one.
+        {allCarriers
+          ? "Statuses come from each carrier's own book import, and those dates differ. Pick a carrier to see its import date. "
+          : `Statuses come from the book import${lastImport ? ` on ${lastImport}` : ""}. `}
+        "Status unknown" means the carrier never sent one.
       </p>
 
       <section aria-label="Totals" className="mb-4 grid grid-cols-3 gap-2 sm:grid-cols-6">

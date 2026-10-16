@@ -250,7 +250,7 @@ describe("Sold Calls", () => {
     renderPage();
     const card = await screen.findByRole("article", { name: "Sold call: Kathy Smith" });
     await waitFor(() => expect(within(card).getByText("10 digits, one more than an SSN has. Confirm it with the client.")).toBeInTheDocument());
-    expect(within(card).getByText("fails the bank's check digit, so one digit is wrong. Confirm it with the client.")).toBeInTheDocument();
+    expect(within(card).getByText("fails the bank's check digit, so a digit is wrong or two are swapped. Confirm it with the client.")).toBeInTheDocument();
     expect(within(card).getByText("2 numbers to check")).toBeInTheDocument();
     expect(within(card).getByText(/Confirm the SSN: 10 digits, one more than an SSN has/)).toBeInTheDocument();
     // A number that cannot be right stays on screen but is not offered for pasting into an application.
@@ -273,6 +273,19 @@ describe("Sold Calls", () => {
     fireEvent.change(input, { target: { value: "123-45-6780" } });
     fireEvent.click(within(form).getByRole("button", { name: "Save" }));
     await waitFor(() => expect(db.rpcArgs).toContainEqual({ fn: "booking_packet_fix_number", args: { p_packet_id: "pk-1", p_field: "ssn", p_value: "123456780" } }));
+  });
+
+  it("never shows Add or a 0 count for numbers it could not read", async () => {
+    db.sensitive = { data: null as unknown as unknown[], error: { message: "timeout" } };
+    renderPage();
+    const card = await screen.findByRole("article", { name: "Sold call: Kathy Smith" });
+    await waitFor(() => expect(within(card).getByText("SSN and bank numbers did not load. Use Try again at the top of the page.")).toBeInTheDocument());
+    expect(within(card).queryByRole("button", { name: "Add the SSN" })).toBeNull();
+    const chip = screen.getByRole("button", { name: /Numbers to check/ });
+    expect(chip).toHaveTextContent("–");
+    fireEvent.click(chip);
+    expect(await screen.findByText("Numbers to check did not load")).toBeInTheDocument();
+    expect(screen.queryByText("No sold calls in this list right now.")).toBeNull();
   });
 
   it("says so when the SSN and bank numbers fail to load", async () => {

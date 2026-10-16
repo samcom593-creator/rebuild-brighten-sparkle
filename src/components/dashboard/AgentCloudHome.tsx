@@ -4,11 +4,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { ChevronDown, LineChart as LineChartIcon, TrendingUp, UserPlus, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { QueryState, describeQuery } from "@/components/ui/query-state";
 import { ImoByAgency } from "@/components/dashboard/ImoByAgency";
 import { TrainingNextStep } from "@/components/dashboard/TrainingNextStep";
@@ -21,11 +16,8 @@ import { OperationsCommandCenter } from "@/components/dashboard/OperationsComman
 import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 import { useBusinessToday } from "@/hooks/useBusinessToday";
 import { invalidateOperationalTruth } from "@/lib/invalidateOperationalTruth";
-import { shiftDateKey } from "@/lib/businessClock";
-import {
-  PERIODS, validateCustomRange, windowFor,
-  type CustomRange, type HomeData, type PeriodKey,
-} from "@/lib/homeDashboard";
+import type { HomeData } from "@/lib/homeDashboard";
+import { scoreboardWindow, type ScoreboardPeriod } from "@/lib/scoreboardPeriod";
 import { resolveBrand } from "@/config/brand";
 
 const BRAND = resolveBrand();
@@ -78,7 +70,7 @@ function RosterTiles({ roster }: { roster: HomeData["roster"] }) {
         <p className="text-[12px] text-muted-foreground">wrote business in 120d</p>
       </CardContent></Card>
       <Card><CardContent className="p-4">
-        <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"><UserPlus className="h-3 w-3" />In onboarding</p>
+        <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"><UserPlus className="h-3 w-3" />No sale yet</p>
         <p className="mt-1.5 text-2xl font-bold tabular-nums text-amber-500">{roster.in_onboarding}</p>
         <p className="text-[12px] text-muted-foreground">active, no production yet</p>
       </CardContent></Card>
@@ -91,16 +83,14 @@ export function AgentCloudHome() {
   const queryClient = useQueryClient();
   // The Phoenix business day, kept live across midnight and tab wake-ups.
   const todayKey = useBusinessToday();
-  const [period, setPeriod] = useState<PeriodKey>("this_month");
-  // F23: `custom` is the committed range the RPC is called with and is always
-  // valid. `draft` is what the two inputs show. Typing never changes the
-  // window; Apply does, after validateCustomRange. So an empty or reversed
-  // draft can neither disable the query nor hide the controls that fix it.
-  const [custom, setCustom] = useState<CustomRange>(() => ({ start: shiftDateKey(todayKey, -30), end: todayKey }));
-  const [draft, setDraft] = useState<CustomRange>(custom);
-  const draftCheck = validateCustomRange(draft);
-  const draftIsApplied = draft.start === custom.start && draft.end === custom.end;
-  const win = windowFor(period, custom, todayKey);
+  // ONE date bar for every production number on Home (Galaxy map, Home gate). The
+  // scoreboard renders the controls; Home owns the state, so the dashboard RPC and
+  // Total IMO by agency read the exact window the scoreboard shows. Two pickers gave
+  // two answers for the same month: "This month" ran to Nov 1 and counted policies
+  // dated later in October, while the scoreboard read month to date.
+  const [period, setPeriod] = useState<ScoreboardPeriod>("month");
+  const [throughDate, setThroughDate] = useState<string>(todayKey);
+  const win = scoreboardWindow(period, throughDate);
   const home = useQuery({
     queryKey: ["apex-home-dashboard", win.start, win.end],
     staleTime: 120_000,
@@ -144,60 +134,6 @@ export function AgentCloudHome() {
   // afterwards, so re-opening does not refetch the chunk or lose chart state.
   const [analyticsOpened, setAnalyticsOpened] = useState(false);
 
-  const applyDraft = () => {
-    if (draftCheck.ok) setCustom(draftCheck.range);
-  };
-
-  const PeriodPicker = (
-    <div className="flex flex-col items-end gap-1.5">
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        {period === "custom" && (
-          <form
-            className="flex flex-wrap items-center gap-1.5"
-            onSubmit={(event) => { event.preventDefault(); applyDraft(); }}
-          >
-            <Input
-              aria-label="Start date"
-              className="h-8 w-[132px] text-xs"
-              type="date"
-              value={draft.start}
-              onChange={(event) => setDraft((value) => ({ ...value, start: event.target.value }))}
-            />
-            <span className="text-xs text-muted-foreground">to</span>
-            <Input
-              aria-label="End date"
-              className="h-8 w-[132px] text-xs"
-              type="date"
-              value={draft.end}
-              onChange={(event) => setDraft((value) => ({ ...value, end: event.target.value }))}
-            />
-            <Button type="submit" size="sm" variant="secondary" disabled={!draftCheck.ok || draftIsApplied}>
-              Apply
-            </Button>
-          </form>
-        )}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="outline">{PERIODS.find((item) => item.key === period)?.label}</Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {PERIODS.map((item) => (
-              <DropdownMenuItem key={item.key} onSelect={() => setPeriod(item.key)}>
-                {item.label}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-      {period === "custom" && draftCheck.ok === false && (
-        <p role="status" className="text-xs text-destructive">{draftCheck.message}</p>
-      )}
-      {period === "custom" && draftCheck.ok && !draftIsApplied && (
-        <p className="text-xs text-muted-foreground">Showing {win.label}. Apply to switch to {draft.start} - {draft.end}.</p>
-      )}
-    </div>
-  );
-
   // F23: no early return. The page frame and the period controls are always in
   // the tree; only the blocks that depend on the RPC change state, and a
   // failed refresh keeps the last loaded numbers on screen under an as-of label.
@@ -218,7 +154,7 @@ export function AgentCloudHome() {
           training first — that placement is what moved 92 agents into the
           course. */}
       {!isAdmin && <TrainingNextStep />}
-      <ScopedProductionScoreboard />
+      <ScopedProductionScoreboard control={{ period, throughDate, onPeriodChange: setPeriod, onThroughDateChange: setThroughDate }} />
 
       {/* Ayro Financial production (Sam, 2026-09-24: "make it live on the block").
           A SEPARATE book from AgentLink/Ethos — the scoreboard above is date-windowed
@@ -236,9 +172,9 @@ export function AgentCloudHome() {
           they are gone rather than moved. */}
       <div className="grid gap-3 lg:grid-cols-2">
         <div className="space-y-3">
-          <div className="mb-1 flex items-center justify-between gap-3">
+          <div className="mb-1 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
             <h2 className="text-sm font-semibold text-foreground">Total IMO by agency</h2>
-            {PeriodPicker}
+            <p className="text-xs text-muted-foreground">{win.label} · same dates as the scoreboard</p>
           </div>
           <QueryState
             {...homeState}
@@ -250,7 +186,7 @@ export function AgentCloudHome() {
           >
             {data ? <RosterTiles roster={data.roster} /> : null}
           </QueryState>
-          <ImoByAgency start={win.start} end={win.end} windowLabel={win.label} />
+          <ImoByAgency start={win.start} end={win.end} windowLabel={win.label} hideTitle />
         </div>
 
         {/* Operations flow sits beside IMO: recruit → interview → hire → onboard →

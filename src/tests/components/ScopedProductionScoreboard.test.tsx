@@ -97,7 +97,8 @@ describe("scoped production scoreboard", () => {
     // MP-332: agent, manager, AND agency_owner homes all open with the one
     // hierarchy-scoped scoreboard — the single production source on /dashboard.
     expect(dashboard.match(/<ScopedProductionScoreboard \/>/g)).toHaveLength(3);
-    expect(source("components/dashboard/AgentCloudHome.tsx")).toContain("<ScopedProductionScoreboard />");
+    // Home mounts the same scoreboard and hands it the page's one date bar.
+    expect(source("components/dashboard/AgentCloudHome.tsx")).toMatch(/<ScopedProductionScoreboard control=\{\{ period, throughDate, onPeriodChange: setPeriod, onThroughDateChange: setThroughDate \}\} \/>/);
   });
 
   it("MP-425 projects personal, scoped team, IMO and agency production from the canonical ledger", () => {

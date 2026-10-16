@@ -403,7 +403,8 @@ export function CallCenterLeadCard({
             </motion.a>
           )}
 
-          {/* Email */}
+          {/* Email — only when there is one; an empty row was a dead click with no text. */}
+          {lead.email && (
           <motion.a
             href={`mailto:${lead.email}`}
             whileHover={{ scale: 1.01, x: 2 }}
@@ -414,6 +415,7 @@ export function CallCenterLeadCard({
             </div>
             <span className="text-sm text-foreground">{lead.email}</span>
           </motion.a>
+          )}
 
           {/* Instagram */}
           {lead.instagramHandle && (
@@ -447,69 +449,19 @@ export function CallCenterLeadCard({
           </motion.div>
         )}
 
-        {/* Applicant Details - Collapsible on mobile, always visible on desktop */}
+        {/* Applicant Details — open on every screen size. On a phone they used to sit
+            behind a tap, which is the hidden-detail pattern callers asked to remove. */}
         {(lead.previousCompany || lead.niprNumber || lead.licensedStates?.length || (lead.city || lead.state) || lead.availability) && (
           <>
-            {/* Mobile: collapsible */}
-            <motion.div variants={itemVariants} className="md:hidden">
-              <details className="group">
-                <summary className="p-4 rounded-md bg-muted/20 border border-border/30 cursor-pointer list-none flex items-center justify-between">
-                  <div className="text-xs font-medium text-muted-foreground flex items-center gap-2">
-                    <FileText className="h-3.5 w-3.5" />
-                    Applicant Details
-                  </div>
-                  <span className="text-xs text-muted-foreground group-open:rotate-180 transition-base">▼</span>
-                </summary>
-                <div className="p-4 rounded-b-xl bg-muted/20 border border-t-0 border-border/30 space-y-2">
-                  <div className="grid grid-cols-1 gap-2 text-sm">
-                    {lead.previousCompany && (
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span className="text-muted-foreground">Previous Agency:</span>
-                        <span className="text-foreground font-medium truncate">{lead.previousCompany}</span>
-                      </div>
-                    )}
-                    {lead.niprNumber && (
-                      <div className="flex items-center gap-2">
-                        <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span className="text-muted-foreground">NIPR #:</span>
-                        <span className="text-foreground font-medium">{lead.niprNumber}</span>
-                      </div>
-                    )}
-                    {(lead.city || lead.state) && (
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span className="text-foreground">{[lead.city, lead.state].filter(Boolean).join(", ")}</span>
-                      </div>
-                    )}
-                    {lead.licensedStates && lead.licensedStates.length > 0 && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-muted-foreground">Licensed States:</span>
-                        <span className="text-foreground font-medium">{lead.licensedStates.join(", ")}</span>
-                      </div>
-                    )}
-                    {lead.availability && (
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span className="text-muted-foreground">Availability:</span>
-                        <span className="text-foreground">{lead.availability}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </details>
-            </motion.div>
-
-            {/* Desktop: always visible */}
             <motion.div
               variants={itemVariants}
-              className="hidden md:block p-4 rounded-md bg-muted/20 border border-border/30 space-y-2"
+              className="p-4 rounded-md bg-muted/20 border border-border/30 space-y-2"
             >
               <div className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-2">
                 <FileText className="h-3.5 w-3.5" />
                 Applicant Details
               </div>
-              <div className="grid grid-cols-2 gap-2 text-sm">
+              <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
                 {lead.previousCompany && (
                   <div className="flex items-center gap-2">
                     <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
@@ -531,7 +483,7 @@ export function CallCenterLeadCard({
                   </div>
                 )}
                 {lead.licensedStates && lead.licensedStates.length > 0 && (
-                  <div className="flex items-center gap-2 col-span-2">
+                  <div className="flex items-center gap-2 sm:col-span-2">
                     <span className="text-muted-foreground">Licensed States:</span>
                     <span className="text-foreground font-medium">{lead.licensedStates.join(", ")}</span>
                   </div>

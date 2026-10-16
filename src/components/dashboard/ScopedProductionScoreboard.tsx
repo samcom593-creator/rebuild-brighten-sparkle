@@ -290,14 +290,30 @@ function ScoreTile({
   );
 }
 
-export function ScopedProductionScoreboard() {
+/**
+ * Lets a page own the scoreboard's date bar so every production block on it reads
+ * the same window (Galaxy map, Home gate: "one scope/date bar governs related
+ * production widgets"). Home passes it; every other mount keeps its own state.
+ */
+export interface ScoreboardDateControl {
+  period: ScoreboardPeriod;
+  throughDate: string;
+  onPeriodChange: (period: ScoreboardPeriod) => void;
+  onThroughDateChange: (throughDate: string) => void;
+}
+
+export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDateControl } = {}) {
   // Default to month-to-date, not "day". The board / leaderboard on the same
   // page show MTD, so a "day" default made this card read ~$0 while KJ's team's
   // monthly deals sat right below it on the board — the recurring "my dashboard
   // shows none of the deals" report. Both headline surfaces now open on the same
   // period. (Sam can still switch to Day/Week/Year.)
-  const [period, setPeriod] = useState<ScoreboardPeriod>("month");
-  const [throughDate, setThroughDate] = useState(phoenixToday);
+  const [ownPeriod, setOwnPeriod] = useState<ScoreboardPeriod>("month");
+  const [ownThroughDate, setOwnThroughDate] = useState(phoenixToday);
+  const period = control?.period ?? ownPeriod;
+  const setPeriod = control?.onPeriodChange ?? setOwnPeriod;
+  const throughDate = control?.throughDate ?? ownThroughDate;
+  const setThroughDate = control?.onThroughDateChange ?? setOwnThroughDate;
   // Present mode: blur the things Sam doesn't post (names / projection / agency split / earnings).
   const [blur, setBlur] = useState({ names: false, projection: false, split: false, earnings: false, comp: false });
   const presenting = blur.names && blur.projection && blur.split && blur.earnings && blur.comp;
@@ -562,7 +578,7 @@ export function ScopedProductionScoreboard() {
               {isAdmin && data.imo && (
                 <ScoreTile
                   accent
-                  detail={`${policies(data.imo.policies)} · ${plural(data.imo.agents_current ?? data.imo.agents, "current agent")} incl. you${data.imo.agents_current != null ? ` (${data.imo.agents} on record)` : ""} · Vantage counted`}
+                  detail={`${policies(data.imo.policies)} · ${plural(data.imo.agents_current ?? data.imo.agents, "current agent")} incl. you${data.imo.agents_current != null ? ` (${data.imo.agents} on record)` : ""}`}
                   icon={Building2}
                   label="IMO total"
                   value={money(data.imo.ap)}
@@ -700,12 +716,16 @@ export function ScopedProductionScoreboard() {
                   <p>
                     <span className="font-medium text-foreground">
                       {blockedFeeds.length === 1
-                        ? `${blockedFeedAgencies} Discord deal import needs attention.`
+                        ? blockedFeeds[0].status === "credential_blocked"
+                          ? "The Discord deal import is off: the Discord bot has no token."
+                          : "The Discord deal import needs attention."
                         : `${blockedFeeds.length} Discord deal imports need attention: ${blockedFeedAgencies}.`}
                     </span>{" "}
-                    {blockedFeedsMissingIngestTimestamp
-                      ? "These feeds have no verified import timestamp. "
-                      : "One or more chats may be missing recent deals. "}
+                    {blockedFeeds.length === 1 && blockedFeeds[0].status === "credential_blocked"
+                      ? ""
+                      : blockedFeedsMissingIngestTimestamp
+                        ? "These feeds have no verified import timestamp. "
+                        : "One or more chats may be missing recent deals. "}
                     Discord-only deals may be missing. Agency totals received through the production API remain included.
                   </p>
                 </div>

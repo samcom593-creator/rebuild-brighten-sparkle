@@ -1,10 +1,15 @@
 /**
- * AgentCloudHome (F22 / F23 / F24 in the 2026-10-14 Galaxy OS map).
+ * AgentCloudHome (F22 / F23 / F24 in the 2026-10-14 Galaxy OS map, and the map's
+ * Home gate: "one scope/date bar governs related production widgets").
  *
- * F23: the period controls are in the tree while the RPC loads, after it
- * fails, and while a custom draft is invalid; an invalid draft shows a
- * message and never changes the window. F22: the window handed to the RPC
- * and to ImoByAgency is the key-space window for the Phoenix business day.
+ * The scoreboard renders Home's only date bar and Home owns its state, so the
+ * dashboard RPC and Total IMO by agency read the window the scoreboard shows.
+ * Before 2026-10-15 Home had a second "This month" picker that ran to Nov 1 and
+ * counted policies dated later in October, so the IMO block read $86,844 beside a
+ * month-to-date scoreboard reading $83,092 for the same book.
+ *
+ * F23: the date bar and sibling panels stay on screen while the RPC loads and
+ * after it fails. F22: windows are built from the Phoenix business-day key.
  * F24: the analytics panel module is not imported and the panel is not
  * rendered until the disclosure opens, and it stays mounted afterwards.
  *
@@ -16,7 +21,6 @@ import path from "node:path";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { HomeData } from "@/lib/homeDashboard";
 
@@ -26,7 +30,15 @@ vi.mock("@/hooks/useProductionRealtime", () => ({ useProductionRealtime: () => u
 vi.mock("@/lib/invalidateOperationalTruth", () => ({ invalidateOperationalTruth: vi.fn() }));
 vi.mock("@/components/dashboard/JoinYourTeam", () => ({ JoinYourTeam: () => <div data-testid="join-your-team" /> }));
 vi.mock("@/components/dashboard/TrainingNextStep", () => ({ TrainingNextStep: () => <div data-testid="training" /> }));
-vi.mock("@/components/dashboard/ScopedProductionScoreboard", () => ({ ScopedProductionScoreboard: () => <div data-testid="scoreboard" /> }));
+type Control = { period: string; throughDate: string; onPeriodChange: (p: string) => void; onThroughDateChange: (d: string) => void };
+vi.mock("@/components/dashboard/ScopedProductionScoreboard", () => ({
+  ScopedProductionScoreboard: ({ control }: { control?: Control }) => (
+    <div data-testid="scoreboard" data-period={control?.period} data-through={control?.throughDate}>
+      <button type="button" onClick={() => control?.onPeriodChange("year")}>Year to date</button>
+      <button type="button" onClick={() => control?.onThroughDateChange("2026-10-10")}>Through Oct 10</button>
+    </div>
+  ),
+}));
 vi.mock("@/components/dashboard/AyroProductionPanel", () => ({ AyroProductionPanel: () => <div data-testid="ayro" /> }));
 vi.mock("@/components/dashboard/OperationsCommandCenter", () => ({ OperationsCommandCenter: () => <div data-testid="ops" /> }));
 vi.mock("@/components/dashboard/HomeOperationsSummary", () => ({ HomeOperationsSummary: () => <div data-testid="ops-summary" /> }));
@@ -36,17 +48,6 @@ vi.mock("@/components/dashboard/ImoByAgency", () => ({
     <div data-testid="imo" data-start={props.start} data-end={props.end}>{props.windowLabel}</div>
   ),
 }));
-// Radix menus need pointer capture jsdom does not have; the picker's wiring
-// (which item sets which period) is what matters here, so the menu is flat.
-vi.mock("@/components/ui/dropdown-menu", () => ({
-  DropdownMenu: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  DropdownMenuTrigger: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  DropdownMenuContent: ({ children }: { children: ReactNode }) => <div role="menu">{children}</div>,
-  DropdownMenuItem: ({ children, onSelect }: { children: ReactNode; onSelect?: () => void }) => (
-    <button type="button" role="menuitem" onClick={onSelect}>{children}</button>
-  ),
-}));
-
 // The factory runs when the module is first imported, so this flag records
 // whether AgentCloudHome's lazy import() has executed yet.
 const panel = vi.hoisted(() => ({ imported: false, renders: 0 }));
@@ -101,84 +102,51 @@ afterEach(() => {
 });
 
 describe("AgentCloudHome", () => {
-  it("F23: keeps the period controls on screen while the dashboard RPC is still loading", () => {
+  it("F23: keeps the date bar and every sibling on screen while the dashboard RPC is still loading", () => {
     rpc.mockReturnValue(new Promise(() => undefined) as never);
     renderHome();
-    expect(screen.getByRole("button", { name: "This month" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Year to date" })).toBeInTheDocument();
     expect(screen.getByText("Total IMO by agency")).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveAttribute("aria-busy", "true");
-    // The siblings that do not depend on this RPC render regardless of it.
     for (const id of ["join-your-team", "scoreboard", "ayro", "ops", "ops-summary", "records"]) {
       expect(screen.getByTestId(id)).toBeInTheDocument();
     }
   });
 
-  it("F22: asks the RPC and ImoByAgency for the key-space window of the Phoenix business day", async () => {
+  it("one date bar: the RPC and Total IMO by agency read the scoreboard's month-to-date window", async () => {
     rpc.mockResolvedValue({ data: HOME, error: null } as never);
     renderHome();
     expect(await screen.findByText("215")).toBeInTheDocument();
-    expect(rpcCalls()).toEqual([{ p_start: "2026-10-01", p_end: "2026-11-01" }]);
+    const board = screen.getByTestId("scoreboard");
+    expect(board).toHaveAttribute("data-period", "month");
+    expect(board).toHaveAttribute("data-through", "2026-10-14");
+    // F22: the Phoenix business day 2026-10-14 gives Oct 1 through Oct 14, end-exclusive.
+    expect(rpcCalls()).toEqual([{ p_start: "2026-10-01", p_end: "2026-10-15" }]);
     const imo = screen.getByTestId("imo");
     expect(imo).toHaveAttribute("data-start", "2026-10-01");
-    expect(imo).toHaveAttribute("data-end", "2026-11-01");
-    expect(imo).toHaveTextContent("This month");
+    expect(imo).toHaveAttribute("data-end", "2026-10-15");
+    expect(imo).toHaveTextContent("Oct 1, 2026 – Oct 14, 2026");
+    expect(screen.getByText(/same dates as the scoreboard/)).toBeInTheDocument();
+    // The old second picker is gone.
+    expect(screen.queryByRole("button", { name: "This month" })).not.toBeInTheDocument();
   });
 
-  it("F23: an invalid custom draft shows a message, keeps both fields, and never changes the window", async () => {
+  it("changing the scoreboard's period or date moves every production block on Home", async () => {
     rpc.mockResolvedValue({ data: HOME, error: null } as never);
     renderHome();
     expect(await screen.findByText("215")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("menuitem", { name: "Custom range" }));
-    const start = screen.getByLabelText("Start date") as HTMLInputElement;
-    const end = screen.getByLabelText("End date") as HTMLInputElement;
-    expect(start.value).toBe("2026-09-14");
-    expect(end.value).toBe("2026-10-14");
-    // Selecting the preset commits its default 30-day window (the day after today is the exclusive end).
-    expect(rpcCalls().at(-1)).toEqual({ p_start: "2026-09-14", p_end: "2026-10-15" });
-    // That window is a new query key, so its numbers load before the draft is touched.
-    expect(await screen.findByText("215")).toBeInTheDocument();
-    const callsBefore = rpc.mock.calls.length;
+    fireEvent.click(screen.getByRole("button", { name: "Year to date" }));
+    expect(rpcCalls().at(-1)).toEqual({ p_start: "2026-01-01", p_end: "2026-10-15" });
+    expect(screen.getByTestId("imo")).toHaveAttribute("data-start", "2026-01-01");
 
-    fireEvent.change(start, { target: { value: "" } });
-    expect(screen.getByText("Pick a start date.")).toBeInTheDocument();
-    expect(screen.getByLabelText("Start date")).toBeInTheDocument();
-    expect(screen.getByLabelText("End date")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Apply" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Custom range" })).toBeInTheDocument();
-
-    fireEvent.change(start, { target: { value: "2026-10-20" } });
-    expect(screen.getByText("The start date must be on or before the end date.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Apply" })).toBeDisabled();
-
-    // Neither invalid draft touched the query or the sibling window.
-    expect(rpc.mock.calls.length).toBe(callsBefore);
-    expect(screen.getByTestId("imo")).toHaveAttribute("data-start", "2026-09-14");
-    expect(screen.getByText("215")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Through Oct 10" }));
+    expect(rpcCalls().at(-1)).toEqual({ p_start: "2026-01-01", p_end: "2026-10-11" });
+    expect(screen.getByTestId("imo")).toHaveAttribute("data-end", "2026-10-11");
+    expect(screen.getByTestId("scoreboard")).toHaveAttribute("data-through", "2026-10-10");
   });
 
-  it("F23 / F22: Apply commits a valid draft as an end-exclusive window", async () => {
-    rpc.mockResolvedValue({ data: HOME, error: null } as never);
-    renderHome();
-    expect(await screen.findByText("215")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("menuitem", { name: "Custom range" }));
-
-    fireEvent.change(screen.getByLabelText("Start date"), { target: { value: "2026-10-01" } });
-    fireEvent.change(screen.getByLabelText("End date"), { target: { value: "2026-10-10" } });
-    expect(screen.getByText("Showing 2026-09-14 - 2026-10-14. Apply to switch to 2026-10-01 - 2026-10-10.")).toBeInTheDocument();
-    const apply = screen.getByRole("button", { name: "Apply" });
-    expect(apply).toBeEnabled();
-    fireEvent.click(apply);
-
-    expect(rpcCalls().at(-1)).toEqual({ p_start: "2026-10-01", p_end: "2026-10-11" });
-    const imo = screen.getByTestId("imo");
-    expect(imo).toHaveAttribute("data-start", "2026-10-01");
-    expect(imo).toHaveAttribute("data-end", "2026-10-11");
-    expect(imo).toHaveTextContent("2026-10-01 - 2026-10-10");
-    expect(screen.getByRole("button", { name: "Apply" })).toBeDisabled();
-  });
-
-  it("F23: a failed load shows the error with Retry and leaves the period controls in place", async () => {
+  it("F23: a failed load shows the error with Retry and leaves the date bar in place", async () => {
     vi.useFakeTimers();
     rpc.mockResolvedValue({ data: null, error: { message: "permission denied", code: "42501" } } as never);
     renderHome();
@@ -189,7 +157,7 @@ describe("AgentCloudHome", () => {
     const alert = screen.getByRole("alert");
     expect(alert).toHaveTextContent("could not load.");
     expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "This month" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Year to date" })).toBeInTheDocument();
     expect(screen.queryByText("215")).not.toBeInTheDocument();
   });
 

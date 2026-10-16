@@ -5,6 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { useRealtimeTable } from "@/shared/realtime/useRealtimeTable";
 import { useAuth } from "@/hooks/useAuth";
 import { summarizeVantageDays, type VantageDay } from "@/lib/vantageProductionApi";
+import { resolveBrand } from "@/config/brand";
+
+const BRAND = resolveBrand();
 
 // TOTAL IMO BY AGENCY — Agent Cloud's home-dashboard block. APEX (your direct
 // book) vs each sub-agency (Vantage = KJ Vaughn's team), rolled up from the real
@@ -36,7 +39,8 @@ export function ImoByAgency({
   start,
   end,
   windowLabel,
-}: { start?: string; end?: string; windowLabel?: string } = {}) {
+  hideTitle = false,
+}: { start?: string; end?: string; windowLabel?: string; hideTitle?: boolean } = {}) {
   // OWNER-ONLY. This card is the whole IMO's production plus Sam's personal
   // override on each sub-agency — agency-wide ALP and owner comp. It was
   // rendering for every signed-in agent, because /dashboard has no admin gate
@@ -161,9 +165,10 @@ export function ImoByAgency({
   return (
     <div>
       <div className="mb-2 flex items-baseline justify-between">
-        <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">Total IMO by Agency</p>
+        {/* Home titles this block itself and shows the window once; it passes hideTitle. */}
+        {hideTitle ? <span /> : <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">Total IMO by Agency</p>}
         <p className="text-xs text-muted-foreground">
-          {periodLabel} · {fmt(periodTotal)} ALP
+          {hideTitle ? "" : `${periodLabel} · `}{fmt(periodTotal)} ALP
           {overrideTotal > 0 && <span className="ml-1 text-primary">· {fmt(overrideTotal)} your override</span>}
         </p>
       </div>
@@ -173,7 +178,9 @@ export function ImoByAgency({
             <div key={a.agency}>
               <div className="flex items-center justify-between text-sm">
                 <span className="flex items-center gap-2 font-medium">
-                  {a.agency}
+                  {/* The primary book's row carries the database name, which still reads
+                      APEX after the rename; the scoreboard above calls the same book Galaxy. */}
+                  {a.is_primary ? BRAND.legalName : a.agency}
                   {a.is_primary && <Badge variant="outline" className="border-primary/30 bg-primary/15 text-primary text-[11px]">MINE</Badge>}
                 </span>
                 <span className="font-semibold tabular-nums">{fmt(a.alp)}</span>
@@ -183,7 +190,7 @@ export function ImoByAgency({
               </div>
               {exactWindow ? (
                 <p className="mt-0.5 text-[12px] text-muted-foreground">
-                  {a.policies.toLocaleString()} policies · {(windowLabel ?? "selected period").toLowerCase()}
+                  {a.policies.toLocaleString()} policies · {windowLabel ?? "selected period"}
                 </p>
               ) : (
                 <div className="mt-0.5 text-[12px] text-muted-foreground">

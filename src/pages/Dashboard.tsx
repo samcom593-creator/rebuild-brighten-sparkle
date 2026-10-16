@@ -81,7 +81,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { ensureCurrentAgentRecord } from "@/lib/ensureCurrentAgentRecord";
 import { loadDashboardCurrentAgent, type DashboardCurrentAgent } from "@/lib/dashboardCurrentAgent";
 import { useAuth } from "@/hooks/useAuth";
-import { ContractingReviewBanner } from "@/components/contracting-review/ContractingReviewBanner";
 import { useMyDownline } from "@/hooks/useMyDownline";
 import { useRolePreview, type RolePreview } from "@/hooks/useRolePreview";
 import { getBusinessDayBounds, getBusinessMonthBounds, getBusinessWeekBounds, getMatchedPriorWeekBounds } from "@/lib/dateUtils";
@@ -1050,7 +1049,9 @@ export default function Dashboard() {
   if (shouldRenderDefaultAdminCommand) {
     return (
       <div className="mx-auto w-full max-w-7xl space-y-5 p-4 sm:p-6">
-        <ContractingReviewBanner />
+        {/* No contracting banner here: Home's Contracting panel and the Contracting
+            tile already carry the same "needs review" count with a link, so the
+            banner was the third copy of one number above the scoreboard. */}
         <AgentCloudHome />
       </div>
     );

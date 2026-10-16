@@ -13,6 +13,24 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Home has one date bar: the scoreboard's dates now drive Total IMO by agency too, so the two totals agree.",
+    detail: "Home had a second This month picker that ran to Nov 1 and counted policies dated later in October, so Total IMO by agency read $86,844 and 50 policies beside a scoreboard reading $83,092 and 48 for the same book. Both now read the window the scoreboard shows, and the block says which dates it covers. Sam's own book shows as Galaxy Financial instead of the database's old APEX name, the repeated contracting banner above the scoreboard is gone, the Discord line says the import is off because the bot has no token, and the onboarding tile that collided with the Onboarding stage now reads No sale yet.",
+    commit: "PL-HOME-ONE-DATE-BAR",
+  },
+  {
+    ts: "today",
+    label: "Live updates no longer break when two parts of a page watch the same table.",
+    detail: "Two components watching the same table shared one live channel, so the second one's listener was added after the channel connected and threw, and closing either one silently stopped the other's live updates. Each component now gets its own channel. This surfaced as a crash loop on Home while checking the change above, before it shipped.",
+    commit: "PL-REALTIME-PER-INSTANCE",
+  },
+  {
+    ts: "today",
+    label: "Call Center shows applicant details on a phone without a tap, and hides the empty email row.",
+    detail: "On a phone, previous agency, NIPR number, location, licensed states and availability sat behind a collapsed Applicant Details row, and leads with no email still showed an empty email row. Details are now open on every screen size, and the email row appears only when there is an address.",
+    commit: "PL-CALLCENTER-DETAILS-OPEN",
+  },
+  {
+    ts: "today",
     label: "The manager cards on Producer Trends show each team's last 30 days of deals again, instead of $0 for everyone.",
     detail: "Every manager card's Deals 30d and ALP 30d read zero and turned amber, because they counted only deals entered in AgentLink, and none have been since August 31. They now count every deal the agency records, the same source the rest of Producer Trends uses. Today that is 62 deals and $114,758 on your team, 35 and $49,879 on Chudi's, and 13 and $26,504 on Aisha's. Team in-force ALP is unchanged ($112,949 across all managers), because only the carrier book says a policy is in force. Still visible to owners only. Tested before and after the change; the old version shows 0 deals and flags 3 producing teams amber.",
     commit: "PL-WIB-MANAGER-SCORECARD-CANONICAL",

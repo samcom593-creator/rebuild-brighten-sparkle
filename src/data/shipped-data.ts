@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Sold Calls is a resell workbench: Mark contacted, Mark resold, Mark push and Mark pushback on every call, with notes, and a Bank & SSN objections tab for the 793 callers who balked at bank or SSN.",
+    detail: "Each card shows when the call happened in the top corner, the client's age worked out beside the birth date (2026 − 1958 = 68), who gave SSN and who gave bank, what the agent said about approval, and flags for mortgage-protection interest, spouse questions, price and bank objections, and anyone who gave SSN and bank but was declined (try another carrier). The moments that matter from the transcript replace the full recording. The objections tab covers 85 Bank Objection, 10 No Bank Account and 698 Social Objection calls with Call and Text, the date, the agent and the same buttons; clients who bought later are marked so nobody calls them as lost.",
+    commit: "PL-RESELL-WORKBENCH",
+  },
+  {
+    ts: "today",
     label: "An agent's profile no longer says \"0 in 30d\" under Book quality while the same drawer shows their October deals.",
     detail: "The Book quality panel counted 30-day deals from the AgentLink book, which has no agent row after Aug 31. Chudi, Obiajulu, Aisha, Wendell, Michael and you each read 0 in 30 days beside a last deal in October. The panel now shows the date the book last saw a deal for that agent, for example Chudi: last book deal Aug 18. For managers, Lifetime ALP and Deals showed $0 and 0 because only an admin can read those totals; they now show a dash instead of a zero.",
     commit: "PL-WIB-DRAWER-BOOK-RECENCY",

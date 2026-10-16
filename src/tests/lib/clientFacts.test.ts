@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ageFromDob, dobDisplay, realDob, splitClientName } from "@/lib/clientFacts";
+import { ageEquation, ageFromDob, dobDisplay, realDob, splitClientName } from "@/lib/clientFacts";
 
 describe("clientFacts", () => {
   it("reads whole years of age and refuses dates it cannot place", () => {
@@ -26,6 +26,15 @@ describe("clientFacts", () => {
     expect(realDob("1958-13-01", today)).toBeNull();
     expect(realDob("1958-03-07T00:00:00Z", today)).toBe("1958-03-07");
     expect(realDob("2020-05-01", today)).toBe("2020-05-01"); // a child's policy is real
+  });
+
+  it("shows the age arithmetic, minus one before this year's birthday", () => {
+    const today = new Date(2026, 9, 16); // Oct 16 2026
+    expect(ageEquation("1958-03-07", today)).toEqual({ age: 68, text: "2026 − 1958 = 68" });
+    expect(ageEquation("1958-11-03", today)).toEqual({ age: 67, text: "2026 − 1958 − 1 = 67 (birthday Nov 3 not yet)" });
+    expect(ageEquation("1958-10-16", today)).toEqual({ age: 68, text: "2026 − 1958 = 68" }); // birthday today
+    expect(ageEquation("1900-01-01", today)).toBeNull();
+    expect(ageEquation(null, today)).toBeNull();
   });
 
   it("splits a client name into first and the rest", () => {

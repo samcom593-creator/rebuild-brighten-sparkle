@@ -27,6 +27,26 @@ export function ageFromDob(dob: string | null | undefined, today: Date = new Dat
   return age >= 0 && age < 130 ? age : null;
 }
 
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/**
+ * Age with the arithmetic shown, the way an agent checks it on a call: "2026 − 1958 = 68", or
+ * "2026 − 1958 − 1 = 67 (birthday Nov 3 not yet)" before this year's birthday.
+ */
+export function ageEquation(dob: string | null | undefined, today: Date = new Date()): { age: number; text: string } | null {
+  const m = realDob(dob, today)?.match(ISO_DATE);
+  if (!m) return null;
+  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const year = today.getFullYear();
+  const hadBirthday = today.getMonth() + 1 > mo || (today.getMonth() + 1 === mo && today.getDate() >= d);
+  const age = year - y - (hadBirthday ? 0 : 1);
+  if (age < 0 || age >= 130) return null;
+  return {
+    age,
+    text: hadBirthday ? `${year} − ${y} = ${age}` : `${year} − ${y} − 1 = ${age} (birthday ${MONTHS[mo - 1]} ${d} not yet)`,
+  };
+}
+
 /** ISO date of birth as an application form asks for it: MM/DD/YYYY. */
 export function dobDisplay(dob: string | null | undefined): string | null {
   const m = realDob(dob)?.match(ISO_DATE);

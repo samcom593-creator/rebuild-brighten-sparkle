@@ -19,13 +19,16 @@ const db = vi.hoisted(() => ({
   packets: [] as unknown[],
   sensitive: { data: [] as unknown[], error: null as null | { message: string } },
   rpcCalls: [] as string[],
+  rpcArgs: [] as Array<{ fn: string; args: unknown }>,
+  objections: [] as unknown[],
 }));
 
 vi.mock("@/lib/looseSupabase", () => {
   const builder = (table: string) => {
-    const result = () => ({ data: table === "v_sold_calls_queue" ? db.queue : db.packets, error: null });
+    const result = () => ({ data: table === "v_sold_calls_queue" ? db.queue : table === "v_objection_calls" ? db.objections : db.packets, error: null });
     const b: Record<string, unknown> = {};
     for (const m of ["select", "order", "eq", "limit"]) b[m] = () => b;
+    b.range = () => Promise.resolve(result());
     b.then = (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) => Promise.resolve(result()).then(resolve, reject);
     return b;
   };
@@ -34,8 +37,9 @@ vi.mock("@/lib/looseSupabase", () => {
 
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
-    rpc: (fn: string) => {
+    rpc: (fn: string, args?: unknown) => {
       db.rpcCalls.push(fn);
+      db.rpcArgs.push({ fn, args });
       if (fn === "booking_packets_sensitive_all") return Promise.resolve(db.sensitive);
       return Promise.resolve({ data: null, error: null });
     },
@@ -107,6 +111,8 @@ beforeEach(() => {
   }];
   db.sensitive = { data: [{ packet_id: "pk-1", ssn: "123456789", bank_account: "000123456789", bank_routing: "111000025" }], error: null };
   db.rpcCalls = [];
+  db.rpcArgs = [];
+  db.objections = [];
 });
 
 describe("Sold Calls", () => {
@@ -181,6 +187,62 @@ describe("Sold Calls", () => {
     fireEvent.change(screen.getByRole("textbox", { name: "Search sold calls" }), { target: { value: "aa-999" } });
     expect(await screen.findByRole("article", { name: "Sold call: Kathy Smith" })).toBeInTheDocument();
     expect(screen.queryByRole("article", { name: "Sold call: Dora Lane" })).toBeNull();
+  });
+
+  it("puts the call date in the corner, the age arithmetic by the birth date, and what the call means for reselling", async () => {
+    db.queue = [{
+      ...packetRow,
+      approval_status: "declined", declined_after_ssn_bank: true, said_ssn: true, said_bank: true,
+      mortgage_protection: true, spouse_coverage: true, price_objection: true,
+      other_opportunities: ["Wants coverage for her grandson"],
+      insight_summary: "Willing buyer; carrier declined after SSN and bank. Try another carrier.",
+      key_moments: [{ t: "14:05", label: "mortgage protection", quote: "what about something for the house" }],
+      approval_quote: "it came back declined",
+    }, waitingRow];
+    renderPage();
+    const card = await screen.findByRole("article", { name: "Sold call: Kathy Smith" });
+    expect(within(card).getByText(/Mon, Oct 12, 2026 · /)).toBeInTheDocument();
+    expect(await within(card).findByText(/2026 − 1958/)).toBeInTheDocument();
+    for (const chip of ["Gave SSN + bank, declined: resell with another carrier", "Gave SSN", "Gave bank", "Wants mortgage protection", "Asked about the spouse", "Price objection"]) {
+      expect(within(card).getByText(chip)).toBeInTheDocument();
+    }
+    expect(within(card).getByText(/what about something for the house/)).toBeInTheDocument();
+    expect(within(card).getByText(/Wants coverage for her grandson/)).toBeInTheDocument();
+    // The recording itself is gone from the card; the transcript moments replace it.
+    expect(within(card).queryByRole("link", { name: /Recording/ })).toBeNull();
+  });
+
+  it("marks a call contacted, resold, push or pushback with one tap, and a note", async () => {
+    renderPage();
+    const card = await screen.findByRole("article", { name: "Sold call: Kathy Smith" });
+    for (const name of ["Mark contacted", "Mark resold", "Mark push", "Mark pushback"]) {
+      expect(within(card).getByRole("button", { name })).toBeInTheDocument();
+    }
+    fireEvent.click(within(card).getByRole("button", { name: "Mark pushback" }));
+    await waitFor(() => expect(db.rpcArgs.some((c) => c.fn === "sold_call_set_status")).toBe(true));
+    expect(db.rpcArgs.find((c) => c.fn === "sold_call_set_status")?.args).toEqual({ p_call_id: "call-1", p_status: "pushback", p_note: null });
+    fireEvent.change(within(card).getByRole("textbox", { name: "Note for Kathy Smith" }), { target: { value: "Call back Friday with her husband" } });
+    fireEvent.click(within(card).getByRole("button", { name: "Save note" }));
+    await waitFor(() => expect(db.rpcArgs.filter((c) => c.fn === "sold_call_set_status")).toHaveLength(2));
+    expect(db.rpcArgs.filter((c) => c.fn === "sold_call_set_status")[1].args).toEqual({ p_call_id: "call-1", p_status: null, p_note: "Call back Friday with her husband" });
+  });
+
+  it("lists bank and SSN objection calls with Call, the date and the same buttons", async () => {
+    db.objections = [
+      { call_id: "obj-1", call_at: "2026-10-14T18:30:00Z", agent_raw: "Marcos", lead_first_name: "Rita", lead_last_name: "Moss", lead_phone: "6015550101", lead_email: null, disposition: "Bank Objection", duration_seconds: 1500, rec_seconds: null, has_transcript: false, download_status: null, sold_later: false },
+      { call_id: "obj-2", call_at: "2026-10-13T18:30:00Z", agent_raw: "Marcos", lead_first_name: "Sam", lead_last_name: "Ode", lead_phone: "6015550102", lead_email: null, disposition: "Social Objection", duration_seconds: 300, rec_seconds: null, has_transcript: false, download_status: null, sold_later: false },
+    ];
+    renderPage();
+    await screen.findByRole("article", { name: "Sold call: Kathy Smith" });
+    fireEvent.click(screen.getByRole("tab", { name: /Bank & SSN objections/ }));
+    const card = await screen.findByRole("article", { name: "Objection call: Rita Moss" });
+    expect(screen.queryByRole("article", { name: "Objection call: Sam Ode" })).toBeNull(); // starts on bank objections
+    expect(within(card).getByRole("link", { name: /Call \(601\) 555-0101/ })).toBeInTheDocument();
+    expect(within(card).getByText(/Wed, Oct 14, 2026 · /)).toBeInTheDocument();
+    fireEvent.click(within(card).getByRole("button", { name: "Mark contacted" }));
+    await waitFor(() => expect(db.rpcArgs.find((c) => c.fn === "sold_call_set_status")?.args).toEqual({ p_call_id: "obj-1", p_status: "contacted", p_note: null }));
+    fireEvent.click(screen.getByRole("button", { name: /^Social objection/ }));
+    expect(await screen.findByRole("article", { name: "Objection call: Sam Ode" })).toBeInTheDocument();
   });
 
   it("says so when the SSN and bank numbers fail to load", async () => {

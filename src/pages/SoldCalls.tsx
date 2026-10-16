@@ -18,9 +18,10 @@
 // so reads go through looseSupabase.
 
 import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  AlertTriangle, CheckCircle2, Copy, Headphones, Loader2, MessageSquare, Phone, RefreshCw, Search, ShieldAlert,
+  AlertTriangle, Copy, MessageSquare, Phone, RefreshCw, Search, ShieldAlert,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -33,14 +34,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
-import { externalHref } from "@/lib/externalHref";
 import { contactLinkProps, formatPhoneDisplay, isDialablePhone, nationalDigits, phoneHref, smsHref } from "@/lib/phone";
 import { bookingGaps, clientAsks, draftDayLabel, formatDob, formatSsn, paymentLabel } from "@/lib/soldCallPacket";
 import { cn } from "@/lib/utils";
+import { ageEquation } from "@/lib/clientFacts";
+import { ResellSignals, WorkActions } from "@/components/soldcalls/ResellWork";
+import { callStamp, isResellLead, type ResellFields } from "@/lib/resellSignals";
+import { ObjectionCallList } from "@/components/soldcalls/ObjectionCallList";
 
 interface Beneficiary { name?: string; relationship?: string; pct?: number | string; contingent?: boolean; dob?: string }
-interface SoldRow {
+interface SoldRow extends ResellFields {
   call_id: string;
+  has_transcript?: boolean | null;
   call_at: string | null;
   agent_raw: string | null;
   lead_first_name: string | null;
@@ -100,12 +105,15 @@ const STATUS_META: Record<string, { label: string; tone: string }> = {
 
 // The database still calls a finished sale "booked" (status, booked_at,
 // booking_packet_mark_booked); everything a person reads says resold, which is Sam's word.
-type FilterKey = "to_resell" | "coming" | "no_packet" | "resold" | "all";
-const FILTERS: Array<{ key: FilterKey; label: string; match: (s: string) => boolean }> = [
-  { key: "to_resell", label: "To resell", match: (s) => s === "ready" || s === "needs_review" },
-  { key: "coming", label: "Packet coming", match: (s) => s === "transcribing" || s === "downloading" },
-  { key: "no_packet", label: "No packet", match: (s) => s === "no_recording" || s === "short_call" },
-  { key: "resold", label: "Resold", match: (s) => s === "booked" },
+type FilterKey = "to_resell" | "leads" | "contacted" | "pushback" | "coming" | "no_packet" | "resold" | "all";
+const FILTERS: Array<{ key: FilterKey; label: string; match: (r: SoldRow) => boolean }> = [
+  { key: "to_resell", label: "To resell", match: (r) => (r.packet_status === "ready" || r.packet_status === "needs_review") && r.work_status !== "resold" },
+  { key: "leads", label: "Resell leads", match: (r) => isResellLead(r) && r.work_status !== "resold" },
+  { key: "contacted", label: "Contacted", match: (r) => r.work_status === "contacted" },
+  { key: "pushback", label: "Pushback", match: (r) => r.work_status === "pushback" },
+  { key: "coming", label: "Packet coming", match: (r) => r.packet_status === "transcribing" || r.packet_status === "downloading" },
+  { key: "no_packet", label: "No packet", match: (r) => r.packet_status === "no_recording" || r.packet_status === "short_call" },
+  { key: "resold", label: "Resold", match: (r) => r.packet_status === "booked" || r.work_status === "resold" },
   { key: "all", label: "All", match: () => true },
 ];
 const phone10 = (v: string | null | undefined) => (v ?? "").replace(/\D/g, "").slice(-10);
@@ -170,12 +178,19 @@ export default function SoldCalls() {
   });
 
   const [filter, setFilter] = useState<FilterKey>("to_resell");
+  const [params, setParams] = useSearchParams();
+  const view = params.get("view") === "objections" ? "objections" : "sold";
+  const setView = (v: "sold" | "objections") => {
+    const next = new URLSearchParams(params);
+    if (v === "objections") next.set("view", "objections"); else next.delete("view");
+    setParams(next, { replace: true });
+  };
   const [search, setSearch] = useState("");
 
   const counts = useMemo(() => {
-    const out: Record<FilterKey, number> = { to_resell: 0, coming: 0, no_packet: 0, resold: 0, all: rows.length };
+    const out: Record<FilterKey, number> = { to_resell: 0, leads: 0, contacted: 0, pushback: 0, coming: 0, no_packet: 0, resold: 0, all: rows.length };
     for (const r of rows) {
-      for (const f of FILTERS) if (f.key !== "all" && f.match(r.packet_status)) out[f.key] += 1;
+      for (const f of FILTERS) if (f.key !== "all" && f.match(r)) out[f.key] += 1;
     }
     return out;
   }, [rows]);
@@ -185,7 +200,7 @@ export default function SoldCalls() {
     const term = search.trim().toLowerCase();
     const termDigits = term.replace(/\D/g, "");
     return rows.filter((r) => {
-      if (!active.match(r.packet_status)) return false;
+      if (!active.match(r)) return false;
       if (!term) return true;
       const extra = r.packet_id ? extras.data?.get(r.packet_id) : undefined;
       if (termDigits.length >= 4 && [r.lead_phone, extra?.client_phone].some((p) => (p ?? "").replace(/\D/g, "").includes(termDigits))) return true;
@@ -211,19 +226,25 @@ export default function SoldCalls() {
     );
   }
 
-  const refreshResold = () => {
-    qc.invalidateQueries({ queryKey: ["sold-calls-queue"] });
-    qc.invalidateQueries({ queryKey: ["sold-calls-extras"] });
-  };
-
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-6">
       <PageHeader
         eyebrow="My Business"
         title="Sold Calls"
-        subtitle="Every ReadyMode sale with the client, the policy and the payment details on one card. Call, fill the gaps, resell it."
+        subtitle="Every ReadyMode sale and every caller who balked at bank or SSN, with what they said that matters. Call, mark it, resell it."
         accent="amber"
       />
+
+      <div className="mb-3 flex flex-wrap gap-2" role="tablist" aria-label="Which calls">
+        <Button role="tab" aria-selected={view === "sold"} variant={view === "sold" ? "default" : "outline"} onClick={() => setView("sold")}>
+          Sold calls <span className="ml-1.5 rounded-full bg-muted px-1.5 text-xs tabular-nums text-foreground">{rows.length}</span>
+        </Button>
+        <Button role="tab" aria-selected={view === "objections"} variant={view === "objections" ? "default" : "outline"} onClick={() => setView("objections")}>
+          Bank &amp; SSN objections
+        </Button>
+      </div>
+
+      {view === "objections" ? <ObjectionCallList /> : (<>
 
       <div className="z-30 -mx-4 mb-4 border-b border-border/60 bg-background/95 px-4 py-3 backdrop-blur lg:sticky lg:top-[60px]">
         <div className="flex flex-wrap items-center gap-2">
@@ -278,13 +299,13 @@ export default function SoldCalls() {
               extra={r.packet_id ? extras.data?.get(r.packet_id) : undefined}
               secret={r.packet_id ? sensitive.data?.get(r.packet_id) : undefined}
               secretLoading={sensitive.isPending || (sensitive.isFetching && !!r.packet_id && !sensitive.data?.has(r.packet_id))}
-              onResold={refreshResold}
               twin={r.packet_id ? undefined : packetByPhone.get(phone10(r.lead_phone))}
               onOpenTwin={(t) => { setFilter("all"); setSearch(phone10(t.lead_phone)); }}
             />
           ))}
         </div>
       )}
+      </>)}
     </div>
   );
 }
@@ -340,30 +361,20 @@ function CopyButton({ value, label }: { value: string; label: string }) {
   );
 }
 
-function Heard({ href, seconds }: { href: string | null; seconds: number | undefined }) {
+// Where on the call it was said, as a transcript time; the recording itself is not needed here.
+function Heard({ seconds }: { seconds: number | undefined }) {
   if (seconds == null) return null;
-  const label = `heard at ${mmss(seconds)}`;
-  if (!href) return <span className="text-xs text-muted-foreground">{label}</span>;
-  return (
-    <a href={`${href}#t=${Math.max(0, Math.floor(seconds) - 3)}`} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
-      {label}
-    </a>
-  );
+  return <span className="text-xs text-muted-foreground">heard at {mmss(seconds)}</span>;
 }
 
-function SoldCallCard({ row, extra, secret, secretLoading, onResold, twin, onOpenTwin }: {
+function SoldCallCard({ row, extra, secret, secretLoading, twin, onOpenTwin }: {
   row: SoldRow;
   extra: PacketExtra | undefined;
   secret: Sensitive | undefined;
   secretLoading: boolean;
-  onResold: () => void;
   twin?: SoldRow;
   onOpenTwin: (twin: SoldRow) => void;
 }) {
-  const [policyInput, setPolicyInput] = useState("");
-  const [booking, setBooking] = useState(false);
-
-  const recordingHref = externalHref(row.recording_url);
   const dialPhone = row.lead_phone ?? extra?.client_phone ?? null;
   const callHref = phoneHref(dialPhone);
   const textHref = smsHref(dialPhone);
@@ -377,17 +388,7 @@ function SoldCallCard({ row, extra, secret, secretLoading, onResold, twin, onOpe
   const bens = row.beneficiaries ?? [];
   const policyNumber = row.policy_number ?? extra?.booked_policy_number ?? null;
 
-  const markResold = async () => {
-    if (!row.packet_id) return;
-    setBooking(true);
-    const { error } = await (supabase.rpc as unknown as (fn: string, args: Record<string, unknown>) => Promise<{ error: { message: string } | null }>)(
-      "booking_packet_mark_booked", { p_id: row.packet_id, p_policy: policyInput.trim() },
-    );
-    setBooking(false);
-    if (error) { toast.error("Could not mark resold", { description: error.message }); return; }
-    toast.success(`${clientName(row)} marked resold.`);
-    onResold();
-  };
+  const age = ageEquation(extra?.client_dob);
 
   return (
     <article className="rounded-xl border border-border/70 bg-card p-4 shadow-sm sm:p-5" aria-label={`Sold call: ${clientName(row)}`}>
@@ -398,10 +399,13 @@ function SoldCallCard({ row, extra, secret, secretLoading, onResold, twin, onOpe
             {row.client_state ? <span className="ml-2 text-sm font-normal text-muted-foreground">{row.client_state}</span> : null}
           </h2>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Sold {saleDate(row.call_at)}{row.agent_raw ? ` by ${row.agent_raw}` : ""}{row.duration_seconds ? ` · ${mmss(row.duration_seconds)} call` : ""}
+            {row.agent_raw ? `Sold by ${row.agent_raw}` : "Agent not on file"}{row.duration_seconds ?? row.rec_seconds ? ` · ${mmss(row.duration_seconds ?? row.rec_seconds)} call` : ""}
           </p>
         </div>
-        <span className={cn("shrink-0 rounded-full px-2.5 py-1 text-xs font-medium", status.tone)}>{status.label}</span>
+        <div className="flex shrink-0 flex-col items-end gap-1 text-right">
+          <span className="text-sm font-semibold tabular-nums">{callStamp(row.call_at)}</span>
+          <span className={cn("rounded-full px-2.5 py-1 text-xs font-medium", status.tone)}>{status.label}</span>
+        </div>
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -419,12 +423,9 @@ function SoldCallCard({ row, extra, secret, secretLoading, onResold, twin, onOpe
             <a href={textHref} {...contactLinkProps(textHref)}><MessageSquare className="mr-1.5 h-4 w-4" />Text</a>
           </Button>
         )}
-        {recordingHref && (
-          <Button asChild size="sm" variant="outline" className="h-9">
-            <a href={recordingHref} target="_blank" rel="noopener noreferrer"><Headphones className="mr-1.5 h-4 w-4" />Recording {mmss(row.duration_seconds)}</a>
-          </Button>
-        )}
       </div>
+
+      <ResellSignals data={row} gaveSsn={row.has_ssn} gaveBank={row.has_bank} hasTranscript={Boolean(row.has_transcript)} />
 
       {!row.packet_id ? (
         <div className="mt-3 space-y-2 text-sm text-muted-foreground">
@@ -459,6 +460,7 @@ function SoldCallCard({ row, extra, secret, secretLoading, onResold, twin, onOpe
             <section aria-label="Client">
               <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Client</h3>
               <Field label="Date of birth" value={formatDob(extra?.client_dob)} copy={formatDob(extra?.client_dob)} />
+              {age && <Field label="Age" value={<span>{age.age} <span className="font-normal text-muted-foreground">({age.text})</span></span>} />}
               {otherPhone ? <Field label="Phone said on call" value={formatPhoneDisplay(otherPhone)} copy={otherPhone} /> : null}
               <Field label="Email" value={extra?.client_email} copy={extra?.client_email} />
               <Field label="Address" value={address || null} copy={address || null} stacked />
@@ -486,12 +488,12 @@ function SoldCallCard({ row, extra, secret, secretLoading, onResold, twin, onOpe
               ) : (
                 <>
                   <Field label="SSN" value={ssn ?? (row.ssn_last4 ? `•••-••-${row.ssn_last4}` : null)} mono copy={secret?.ssn?.replace(/\D/g, "") || null} />
-                  <div className="-mt-1 text-right"><Heard href={recordingHref} seconds={pointers.ssn?.t_start} /></div>
+                  <div className="-mt-1 text-right"><Heard seconds={pointers.ssn?.t_start} /></div>
                   <Field label="Pays by" value={paymentLabel(row.payment_method_type)} />
                   <Field label="Bank" value={extra?.bank_name} />
                   <Field label="Routing #" value={secret?.bank_routing} mono copy={secret?.bank_routing} />
                   <Field label="Account #" value={secret?.bank_account} mono copy={secret?.bank_account} />
-                  <div className="-mt-1 text-right"><Heard href={recordingHref} seconds={pointers.bank_account?.t_start ?? pointers.routing?.t_start} /></div>
+                  <div className="-mt-1 text-right"><Heard seconds={pointers.bank_account?.t_start ?? pointers.routing?.t_start} /></div>
                 </>
               )}
             </section>
@@ -531,30 +533,9 @@ function SoldCallCard({ row, extra, secret, secretLoading, onResold, twin, onOpe
             </p>
           )}
 
-          <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border/60 pt-3">
-            {row.status === "booked" ? (
-              <span className="flex items-center gap-1.5 text-sm text-emerald-700 dark:text-emerald-300">
-                <CheckCircle2 className="h-4 w-4" />Resold {row.booked_at ? saleDate(row.booked_at) : ""}
-              </span>
-            ) : (
-              <>
-                <Input
-                  value={policyInput}
-                  onChange={(e) => setPolicyInput(e.target.value)}
-                  placeholder="Policy number (optional)"
-                  aria-label={`Policy number for ${clientName(row)} (optional)`}
-                  className="h-9 w-56"
-                  disabled={booking}
-                />
-                <Button size="sm" className="h-9" onClick={markResold} disabled={booking}>
-                  {booking ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-1.5 h-4 w-4" />}
-                  Mark resold
-                </Button>
-              </>
-            )}
-          </div>
         </>
       )}
+      <WorkActions callId={row.call_id} data={row} packetId={row.packet_id} clientLabel={clientName(row)} />
     </article>
   );
 }

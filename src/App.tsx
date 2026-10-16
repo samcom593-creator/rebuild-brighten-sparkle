@@ -712,8 +712,10 @@ const App = () => (
                         a role. The page scopes its own data by caller, but an ungated route
                         is one refactor away from being the leak. */}
                     <Route path="/dashboard/call-center" element={<ProtectedRoute><CallCenter /></ProtectedRoute>} />
-                     {/* v9 Wave A complaint #2: /dashboard/leads removed.
-                         Inbound flow lives at /dashboard/inbound-leads now. */}
+                     {/* v9 Wave A complaint #2: /dashboard/leads is retired, and so are
+                         /dashboard/inbound-leads and /dashboard/inbound further down. All three
+                         land on the old command center at /dashboard/admin, where their former
+                         redirect chains ended. The recruiting worklist is /dashboard/recruiting. */}
                      <Route path="/dashboard/leads" element={<LegacyWorkspaceRedirect to="/dashboard/admin" />} />
                      {/* v9 social dashboard: cross-platform IG / TikTok / YT / Snap analytics */}
                      <Route path="/dashboard/social" element={<ProtectedRoute requireAdmin><SocialDashboard /></ProtectedRoute>} />

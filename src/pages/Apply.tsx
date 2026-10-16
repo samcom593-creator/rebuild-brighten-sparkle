@@ -7,18 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Crown, 
-  ArrowLeft, 
-  ArrowRight, 
-  User, 
-  FileText, 
-  Briefcase, 
-  CheckCircle2,
-  Loader2,
-  Instagram,
-  Heart,
-} from "lucide-react";
+import { Crown, ArrowLeft, ArrowRight, User, FileText, Briefcase, CheckCircle2, Loader2, Instagram, Heart, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { GradientButton } from "@/components/ui/gradient-button";
@@ -127,6 +116,8 @@ function ApplyCheckbox(props: ComponentProps<typeof LazyApplyCheckbox>) {
 // mount. Cleared on successful submit so it doesn't leak into a second
 // application from the same browser.
 import { getRefSlug, clearRefSlug } from "@/lib/refSlug";
+import { refLinkOutcome } from "@/lib/refLinkNotice";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getAttribution } from "@/lib/attribution";
 import { isDialablePhone, normalizePhoneForDial } from "@/lib/phone";
 
@@ -247,6 +238,9 @@ export default function Apply() {
   const isQuickQualifyTraffic = sourceParam === "ad" || utmMediumParam === "paid_social";
   const [referrerId, setReferrerId] = useState<string | null>(null);
   const [referrerName, setReferrerName] = useState<string | null>(null);
+  // F01 acceptance: an unknown, deactivated or uncheckable ?ref= code is said out
+  // loud above the agent picker instead of silently applying unattributed.
+  const [refLinkNotice, setRefLinkNotice] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
   const activeSteps = isQuickQualifyTraffic
     ? [{ id: 1, title: "Quick Qualify", icon: User }, ...steps.map((step) => ({ ...step, id: step.id + 1 }))]
@@ -628,23 +622,25 @@ export default function Apply() {
         const { data, error } = await supabase.functions.invoke("resolve-ref-slug", {
           body: { slug: refSlug },
         });
-        if (error) {
-          console.error("[Apply] resolve-ref-slug invoke error:", error);
-          return;
-        }
-        const payload = data as { resolved?: boolean; agent_id?: string; display_name?: string };
-        if (payload?.resolved && payload.agent_id) {
-          setReferrerId(payload.agent_id);
-          setReferrerName(payload.display_name ?? "");
-          setSelectedReferrer(payload.agent_id);
+        if (error) console.error("[Apply] resolve-ref-slug invoke error:", error);
+        const outcome = refLinkOutcome(data, error);
+        if (outcome.kind === "credited") {
+          setRefLinkNotice(null);
+          setReferrerId(outcome.agentId);
+          setReferrerName(outcome.displayName ?? "");
+          setSelectedReferrer(outcome.agentId);
           toast.success(
-            payload.display_name
-              ? `Referred by ${payload.display_name} — we'll credit them.`
+            outcome.displayName
+              ? `Referred by ${outcome.displayName} — we'll credit them.`
               : "Referral link detected!",
           );
+          return;
         }
+        setRefLinkNotice(outcome.message);
       } catch (err) {
         console.error("[Apply] ref_slug resolve failed:", err);
+        const failed = refLinkOutcome(undefined, err);
+        setRefLinkNotice(failed.kind === "credited" ? null : failed.message);
       }
     })();
   }, [refSlug]);
@@ -1445,6 +1441,13 @@ export default function Apply() {
                           agent gets credited at application creation, not
                           retroactively. Hidden when the ?ref= URL already
                           identified the referrer. */}
+                      {!referrerId && refLinkNotice && (
+                        <Alert role="status" className="border-border bg-card text-card-foreground">
+                          <Info className="h-4 w-4" aria-hidden />
+                          <AlertDescription>{refLinkNotice}</AlertDescription>
+                        </Alert>
+                      )}
+
                       {!referrerId && (
                         <div className="space-y-2">
                           <Label>Which Galaxy agent should get credit?</Label>

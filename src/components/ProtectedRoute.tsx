@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { PageSkeleton } from "@/components/ui/page-skeleton";
+import { AccessDeniedPanel } from "@/components/AccessDeniedPanel";
+import { describeAccessRequirement, safeHomeHref } from "@/lib/accessRequirement";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -108,10 +110,20 @@ export function ProtectedRoute({
     return <Navigate to={loginPath} state={{ from: location }} replace />;
   }
 
-  // Admin required but user is not admin (or manager/presenter/allowed-role when opted-in)
+  // Admin required but user is not admin (or manager/presenter/allowed-role when opted-in).
+  // Say so instead of bouncing to another home (the silent redirect went away on
+  // 2026-10-15): a person following a shared link needs to know what was refused
+  // and where they can go. The server (RLS, SECURITY INVOKER views, gated RPCs)
+  // stays the real boundary; this panel is a message, not a lock. VA managers
+  // keep /va-team as their safe destination, everyone else gets /dashboard.
   if (requireAdmin && !isAdmin && !(allowManagers && isManager) && !(allowPresenters && isPresenter) && !roleAllowed) {
-    // VA managers have no /dashboard access — send them to their own home to avoid a redirect loop.
-    return <Navigate to={isVaManager ? "/va-team" : "/dashboard"} replace />;
+    return (
+      <AccessDeniedPanel
+        pathname={location.pathname}
+        requirement={describeAccessRequirement({ requireAdmin, allowManagers, allowPresenters, allowRoles })}
+        homeHref={safeHomeHref({ isVaManager })}
+      />
+    );
   }
 
   // Allow all authenticated users

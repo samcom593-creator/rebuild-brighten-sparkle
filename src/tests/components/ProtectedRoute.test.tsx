@@ -4,7 +4,9 @@
  * Gaps covered:
  *   ✅ Unauthenticated user redirected to /login
  *   ✅ Unauthenticated user on agent page redirected to /agent-login
- *   ✅ Authenticated non-admin blocked from requireAdmin route → /dashboard
+ *   ✅ Authenticated non-admin on a requireAdmin route sees the access-denied panel (no silent redirect)
+ *   ✅ Denied VA manager is offered /va-team as the safe destination
+ *   ✅ Unauthenticated redirect carries path + query in state.from so Login can return there
  *   ✅ Admin user can access requireAdmin route
  *   ✅ Manager bypasses requireAdmin when allowManagers=true
  *   ✅ Manager still blocked when allowManagers=false
@@ -20,7 +22,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
 // Mock useAuth
@@ -32,6 +34,24 @@ import { useAuth } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 const mockUseAuth = vi.mocked(useAuth);
+
+// Stands in for Login.tsx, which reads state.from (pathname + search) to send
+// the visitor back where they were headed after signing in.
+function LoginEcho() {
+  const { state } = useLocation();
+  const from = (state as { from?: { pathname: string; search: string } } | null)?.from;
+  return <div data-testid="from">{from ? `${from.pathname}${from.search}` : "none"}</div>;
+}
+
+function expectAccessDenied(pathname: string, requirement: string, homeHref: string) {
+  const panel = screen.getByRole("alert");
+  expect(panel).toHaveTextContent("You do not have access to this page");
+  expect(panel).toHaveTextContent(pathname);
+  expect(panel).toHaveTextContent(`needs ${requirement}`);
+  expect(screen.getByRole("link", { name: "Go to Home" })).toHaveAttribute("href", homeHref);
+  expect(screen.queryByText("Protected content")).not.toBeInTheDocument();
+  expect(screen.queryByText("Dashboard")).not.toBeInTheDocument();
+}
 
 function renderRoute(
   path: string,
@@ -100,6 +120,26 @@ describe("ProtectedRoute — unauthenticated", () => {
     renderRoute("/admin");
     expect(screen.getByText("Login page")).toBeInTheDocument();
   });
+
+  it("carries the requested path and query in state.from so Login can return there", () => {
+    mockUseAuth.mockReturnValue({ ...mockUseAuth(), user: null });
+    render(
+      <MemoryRouter initialEntries={["/dashboard/team?view=contracting"]}>
+        <Routes>
+          <Route
+            path="/dashboard/team"
+            element={
+              <ProtectedRoute>
+                <div>Protected content</div>
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/login" element={<LoginEcho />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(screen.getByTestId("from")).toHaveTextContent("/dashboard/team?view=contracting");
+  });
 });
 
 describe("ProtectedRoute — authenticated, no elevated role", () => {
@@ -108,9 +148,15 @@ describe("ProtectedRoute — authenticated, no elevated role", () => {
     expect(screen.getByText("Protected content")).toBeInTheDocument();
   });
 
-  it("redirects to /dashboard when requireAdmin=true and user is not admin", () => {
+  it("shows the access-denied panel instead of a silent redirect when requireAdmin=true and user is not admin", () => {
     renderRoute("/admin", { requireAdmin: true });
-    expect(screen.getByText("Dashboard")).toBeInTheDocument();
+    expectAccessDenied("/admin", "an admin account", "/dashboard");
+  });
+
+  it("names managers in the requirement when the route lets them through, and offers a VA manager /va-team", () => {
+    mockUseAuth.mockReturnValue({ ...mockUseAuth(), isVaManager: true });
+    renderRoute("/dashboard/hiring-pipeline", { requireAdmin: true, allowManagers: true });
+    expectAccessDenied("/dashboard/hiring-pipeline", "an admin or manager account", "/va-team");
   });
 });
 
@@ -132,7 +178,7 @@ describe("ProtectedRoute — manager bypass", () => {
   it("blocks manager when allowManagers=false (default)", () => {
     mockUseAuth.mockReturnValue({ ...mockUseAuth(), isManager: true } as any);
     renderRoute("/admin", { requireAdmin: true, allowManagers: false });
-    expect(screen.getByText("Dashboard")).toBeInTheDocument();
+    expectAccessDenied("/admin", "an admin account", "/dashboard");
   });
 });
 
@@ -185,7 +231,7 @@ describe("ProtectedRoute — presenter bypass", () => {
     renderRoute("/seminar", { requireAdmin: true, allowPresenters: true });
 
     await waitFor(() => {
-      expect(screen.getByText("Dashboard")).toBeInTheDocument();
+      expectAccessDenied("/seminar", "an admin or active presenter account", "/dashboard");
     });
   });
 
@@ -199,7 +245,7 @@ describe("ProtectedRoute — presenter bypass", () => {
     renderRoute("/seminar", { requireAdmin: true, allowPresenters: true });
 
     await waitFor(() => {
-      expect(screen.getByText("Dashboard")).toBeInTheDocument();
+      expectAccessDenied("/seminar", "an admin or active presenter account", "/dashboard");
     });
   });
 });

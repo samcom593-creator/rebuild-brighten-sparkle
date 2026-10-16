@@ -58,7 +58,9 @@ export function MyReferralLinkCard() {
   if (!user) return null;
   if (linkQ.isLoading) {
     return (
-      <Card className="border-border/60 bg-card/80">
+      // Opaque bg-card, not bg-card/80: apex-tokens.css repaints bg-card/80 as pure
+      // white in light mode, which is the isolated white card F39 removed.
+      <Card className="border-border/60 bg-card">
         <CardContent className="p-4 text-sm text-muted-foreground">Loading your referral link…</CardContent>
       </Card>
     );
@@ -66,14 +68,17 @@ export function MyReferralLinkCard() {
   if (!linkQ.data?.active) return null;
 
   return (
-    <Card className="border-emerald-500/30 bg-white dark:bg-card">
+    <Card className="border-emerald-500/30 bg-card">
       <CardContent className="space-y-3 p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-[12px] font-semibold uppercase tracking-wider text-emerald-300">Your link in bio</p>
+            <p className="text-[12px] font-semibold uppercase tracking-wider text-card-foreground">Your link in bio</p>
             <p className="text-xs text-muted-foreground">Put it in Instagram, TikTok, or any bio. Every applicant is credited to you.</p>
           </div>
-          <Badge variant="outline" className="border-emerald-500/40 bg-emerald-500/10 text-emerald-300">
+          {/* The tint uses the primary token. A bg-emerald-* class with no text-emerald-*
+              class matches the light-mode rule in apex-tokens.css that forces white text,
+              which measured 1.18:1 for this label. */}
+          <Badge variant="outline" className="border-primary/40 bg-primary/10">
             <QrCode className="mr-1 h-3 w-3" /> live
           </Badge>
         </div>

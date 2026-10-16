@@ -363,15 +363,27 @@ if match '^(src/(pages|components/(dashboard|landing|recruiter|admin|agent|award
   node scripts/check-hex-color-areas.mjs
 fi
 
-# ---------- check-unresolved-imports + check-orphan-pages + check-sidebar-routes ----------
+# ---------- check-unresolved-imports (PL-WIB-INDEX-IMPORTS, 2026-10-16) ----------
+# Graded on the git INDEX, not the disk: the commit is the index, and a clean
+# checkout (Vercel, CI, deploy-supabase) has only what the commit holds. On
+# 8493017d this guard ran (App.tsx was staged), walked the disk, found the
+# UNTRACKED src/lib/legacyRedirect.ts and passed; every production build then
+# failed for ~8.4h. Trigger is ANY staged change under src/ or
+# supabase/functions/, deletions included: $STAGED drops D, and a staged delete
+# of a file something still imports is the same failure. ~1s.
+if git diff --cached --name-only | grep -qE '^(src/|supabase/functions/|scripts/check-unresolved-imports\.mjs$)'; then
+  echo "[pre-commit] src/ or edge-function change staged — running check:unresolved-imports (graded on the index)…"
+  node scripts/check-unresolved-imports.mjs
+fi
+
+# ---------- check-orphan-pages + check-sidebar-routes ----------
 # Trigger: src/App.tsx (route table), src/components/layout/GlobalSidebar.tsx
 # (sidebar route list), or any file under src/pages/ (page addition/removal/rename).
-# These 3 guards catch route-table drift, orphan page files not wired to a route,
+# check:unresolved-imports used to run here too; it now has its own wider trigger
+# above. These guards catch route-table drift, orphan page files not wired to a route,
 # and sidebar links pointing at non-existent routes — a class of leak that only
 # surfaces at runtime today (404 on click, dead page ships to prod).
 if match '^(src/App\.tsx|src/components/layout/GlobalSidebar\.tsx|src/pages/)'; then
-  echo "[pre-commit] Route/sidebar/page file staged — running check:unresolved-imports…"
-  node scripts/check-unresolved-imports.mjs
   echo "[pre-commit] Route/sidebar/page file staged — running check:orphan-pages…"
   node scripts/check-orphan-pages.mjs
   echo "[pre-commit] Route/sidebar/page file staged — running check:sidebar-routes…"

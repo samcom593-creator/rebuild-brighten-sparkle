@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "A code change that points at a file nobody saved can no longer be committed, so the site cannot get stuck the way it did this morning.",
+    detail: "This morning's 8 hour publishing freeze started with a change that relied on a file that existed on one laptop but was never saved into the shared code. The safety check that runs before every save looked at the laptop, saw the file, and let it through. It now checks exactly what is being saved, so the same change is refused with the name of the missing file and the one command that fixes it. It also runs on every website and backend change instead of only page changes, and it now catches 7 links it used to skip, including three on the application page. Replayed against this morning's real change: the old check let it through, the new one stops it.",
+    commit: "PL-WIB-INDEX-IMPORTS",
+  },
+  {
+    ts: "today",
     label: "The live site is updating again. Every website change since 8:48 AM had failed to publish, so the site was still running the morning's version.",
     detail: "A change that morning switched 32 old page addresses to a new redirect helper, but the helper's file never made it into the shared code. Every website build after that stopped on the missing file, so nothing published from 8:48 AM Arizona time until this fix, including the restored Sold Calls list and the agent merge page fix. The automatic post-publish check still passed because it was testing the old version that was still live. The missing file and its test are now in place, two outdated tests that expected the old redirect style are updated, and a clean build passes. Without the file, the same build fails with the same error the hosting service reported.",
     commit: "PL-WIB-MAIN-UNBUILDABLE",

@@ -47,6 +47,8 @@ interface SoldRow {
   lead_last_name: string | null;
   lead_phone: string | null;
   duration_seconds: number | null;
+  /** Length of the downloaded recording; the dialer's own duration is often empty. */
+  rec_seconds?: number | null;
   recording_url: string | null;
   packet_id: string | null;
   client_first_name: string | null;
@@ -430,7 +432,7 @@ function SoldCallCard({ row, extra, secret, secretLoading, onResold, twin, onOpe
             {row.packet_status === "no_recording"
               ? "ReadyMode has no recording for this sale, so there is no packet. Call the client to collect the application details."
               : row.packet_status === "short_call"
-                ? `This call lasted ${mmss(row.duration_seconds) || "a few seconds"}, too short to hold an application, so no packet can be built from it.`
+                ? `This call lasted ${mmss(row.duration_seconds ?? row.rec_seconds) || "a few seconds"}, too short to hold an application, so no packet can be built from it.`
                 : "The recording is pulled and the sale packet is being written. It shows here when it is done."}
           </p>
           {twin && (

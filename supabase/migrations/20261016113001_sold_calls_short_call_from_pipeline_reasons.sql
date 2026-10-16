@@ -1,0 +1,82 @@
+-- PL-SOLD-CALLS-REVIEW (2026-10-16): "short call" comes from the reason the pipeline recorded, not
+-- from the view's own guess. The view used "under 30 s of recording or under 60 words", which is not
+-- what the pipeline does: extract-packets.py skips a flat transcript under 200 bytes, and
+-- sold-recordings.mjs / register-recordings.py refuse a download under 10 KB. So a real 27-second
+-- sale read "short call" until its packet appeared, and three sales whose audio ReadyMode served
+-- under 10 KB had no recording row and read "No recording" beside a working Recording link.
+-- The pipeline now records both decisions (download_status 'too_small', skip_reason 'too_short';
+-- backfilled today: 3 and 10) and the view reads them.
+create or replace view public.v_sold_calls_queue with (security_invoker = true) as
+SELECT c.id AS call_id,
+    c.external_call_id,
+    c.call_started_at AS call_at,
+    c.agent_id,
+    c.agent_raw,
+    c.lead_first_name,
+    c.lead_last_name,
+    c.lead_phone,
+    c.duration_seconds,
+    c.recording_url,
+    r.download_status,
+    r.local_path,
+    r.duration_seconds AS rec_seconds,
+    t.id IS NOT NULL AS has_transcript,
+    p.id AS packet_id,
+    p.client_first_name,
+    p.client_last_name,
+    p.client_state,
+    p.carrier,
+    p.product,
+    p.face_amount,
+    p.monthly_premium,
+    p.policy_number,
+    p.draft_day,
+    p.payment_method_type,
+    p.ssn_last4,
+    p.ssn_encrypted IS NOT NULL AS has_ssn,
+    p.bank_account_encrypted IS NOT NULL AS has_bank,
+    p.beneficiaries,
+    p.sensitive_pointers,
+    p.missing_fields,
+    p.confidence,
+    p.status,
+    p.booked_at,
+    p.call_summary,
+    p.key_points,
+        CASE
+            WHEN p.id IS NOT NULL AND p.status = 'booked'::text THEN 'booked'::text
+            WHEN p.id IS NOT NULL AND p.status = 'ready'::text THEN 'ready'::text
+            WHEN p.id IS NOT NULL THEN 'needs_review'::text
+            WHEN r.download_status = 'too_small'::text OR r.skip_reason = 'too_short'::text THEN 'short_call'::text
+            WHEN t.id IS NOT NULL THEN 'transcribing'::text
+            WHEN r.download_status = 'ok'::text THEN 'transcribing'::text
+            WHEN r.id IS NOT NULL THEN 'downloading'::text
+            ELSE 'no_recording'::text
+        END AS packet_status
+   FROM readymode_dialer_calls c
+     LEFT JOIN LATERAL ( SELECT rr.id,
+            rr.call_id,
+            rr.external_call_id,
+            rr.source_url,
+            rr.local_path,
+            rr.storage_path,
+            rr.duration_seconds,
+            rr.file_bytes,
+            rr.sha256,
+            rr.download_status,
+            rr.skip_reason,
+            rr.error_message,
+            rr.downloaded_at,
+            rr.created_at
+           FROM readymode_recordings rr
+          WHERE rr.call_id = c.id
+          ORDER BY rr.created_at DESC
+         LIMIT 1) r ON true
+     LEFT JOIN LATERAL ( SELECT tt.id,
+            tt.word_count
+           FROM readymode_call_transcripts tt
+          WHERE tt.call_id = c.id
+          ORDER BY tt.transcribed_at DESC
+         LIMIT 1) t ON true
+     LEFT JOIN readymode_booking_packets p ON p.call_id = c.id
+  WHERE c.disposition = 'Completed Sale'::text;

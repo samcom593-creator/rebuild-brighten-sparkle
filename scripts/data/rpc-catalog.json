@@ -796,6 +796,62 @@
         "raw": "p_id uuid, p_status text, p_resolution_note text DEFAULT NULL::text"
       }
     ],
+    "api_is_admin_role": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "api_is_full_reader": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "api_is_ops_staff": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "api_is_presenter": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "api_is_staff": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "api_my_application_ids": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "api_scope_agent_ids": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "app_visible_to": [
       {
         "all": [
@@ -1111,6 +1167,44 @@
         "raw": "p_scheduled_at timestamp with time zone, p_event_tz text, p_application_id uuid DEFAULT NULL::uuid, p_agent_id uuid DEFAULT NULL::uuid, p_invitee_name text DEFAULT NULL::text, p_invitee_email text DEFAULT NULL::text, p_kind text DEFAULT 'interview'::text, p_duration_minutes integer DEFAULT 30, p_meeting_link text DEFAULT NULL::text, p_notes text DEFAULT NULL::text, p_owner_user_id uuid DEFAULT NULL::uuid"
       }
     ],
+    "booking_packet_mark_booked": [
+      {
+        "all": [
+          "p_id",
+          "p_policy"
+        ],
+        "required": [
+          "p_id",
+          "p_policy"
+        ],
+        "unnamed": false,
+        "raw": "p_id uuid, p_policy text"
+      }
+    ],
+    "booking_packet_reveal_sensitive": [
+      {
+        "all": [
+          "p_id"
+        ],
+        "required": [
+          "p_id"
+        ],
+        "unnamed": false,
+        "raw": "p_id uuid"
+      }
+    ],
+    "booking_packet_upsert": [
+      {
+        "all": [
+          "p"
+        ],
+        "required": [
+          "p"
+        ],
+        "unnamed": false,
+        "raw": "p jsonb"
+      }
+    ],
     "bot_alert_agent_contracted": [
       {
         "all": [],
@@ -1341,6 +1435,14 @@
         ],
         "unnamed": false,
         "raw": "p_from date, p_to date"
+      }
+    ],
+    "can_view_sold_calls": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
       }
     ],
     "can_work_application": [

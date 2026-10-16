@@ -259,10 +259,12 @@ describe("Production page for a manager (not an admin)", () => {
     expect(requests.filter((c) => c.table === "v_production_unified")).toHaveLength(0);
   });
 
-  it("counts the status tiles over the team with the list's own filters, and says the totals are agency-wide (F11)", async () => {
+  it("counts the status tiles over the team with the list's own filters, and says the totals are the team's (F11, PL-SEC-VIEW-LOCKDOWN)", async () => {
     downline.current = { ids: ["agent-2", "agent-3"], isWaiting: false, isError: false, error: null, refetch: vi.fn(), source: "root" } satisfies ResolvedDownline;
     renderPage();
-    expect(await screen.findByText("Agency-wide totals, not only your team. Your team's deals are listed below.")).toBeInTheDocument();
+    // The server scopes the book to the manager's team since PL-SEC-VIEW-LOCKDOWN, so the caption says so.
+    expect(await screen.findByText("Your team's totals.")).toBeInTheDocument();
+    expect(screen.queryByText(/Production by Agency/)).not.toBeInTheDocument();
     expect(screen.getByText(/Counts for your team\./)).toBeInTheDocument();
     const tiles = await screen.findByRole("group", { name: "Filter the deal list by policy status" });
     expect(within(tiles).getByRole("button", { name: /7\s*Active/ })).toBeInTheDocument();

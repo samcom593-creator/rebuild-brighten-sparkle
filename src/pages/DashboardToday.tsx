@@ -8,7 +8,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAgentIdentity, type UseAgentIdentityResult } from "@/hooks/useAgentIdentity";
-import { useAuth } from "@/hooks/useAuth";
+import { useFullBookReader } from "@/hooks/useFullBookReader";
 import { useBusinessToday } from "@/hooks/useBusinessToday";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Card, CardContent } from "@/components/ui/card";
@@ -117,9 +117,10 @@ export default function DashboardToday() {
   usePageTitle("Galaxy Today");
   const qc = useQueryClient();
   const me = useAgentIdentity();
-  const { isAdmin, isVa, isVaManager } = useAuth();
-  // Same staff set as public.is_agency_staff(), which gates production_period_totals.
-  const seesAgency = isAdmin || isVa || isVaManager;
+  // The agency total is the full book: Sam's admin logins and book_readers
+  // (Aisha). Everyone else sees their own posted deals (PL-SEC-VIEW-LOCKDOWN).
+  const bookReader = useFullBookReader();
+  const seesAgency = bookReader.isFullReader;
   // The business day in Phoenix, kept live across midnight (F21). Every "today"
   // on this page derives from this key, never from the browser's calendar.
   const todayKey = useBusinessToday();

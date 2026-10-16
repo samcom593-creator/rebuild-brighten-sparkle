@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Client deals, leads and Sam's inbox are readable only by Sam and Aisha again; agents see only their own book.",
+    detail: "Reporting views run with the database owner's rights, and Supabase grants every new view to all logins, so any agent login could read 1,751 client deals, 225k lead rows with dates of birth and beneficiaries, 182,169 notification rows and Sam's inbox. 30 views now filter rows to the caller's own agents or to Sam and Aisha, and 51 views no page reads were closed. Aisha sees the full book and every sold call; Sam's inbox stays Sam's. A Sunday doctor check now counts rows as an ordinary agent and goes critical if any view hands that agent the whole table.",
+    commit: "PL-SEC-VIEW-LOCKDOWN",
+  },
+  {
+    ts: "today",
     label: "Call Center's first screen now counts every lead the session will load instead of stopping at 500 per source.",
     detail: "The Queue Preview read at most 500 rows from each source with its own filters, so it printed Aged leads 500 and Matching leads 507 while 895 aged leads matched, and it never showed a read error. It now runs exact counts over the same filter plans, scope and closed-records switch the queue uses, picks the true oldest and newest lead, and says Preview unavailable with Retry when a count fails.",
     commit: "PL-GALAXY-MAP-CALLCENTER-PREVIEW",

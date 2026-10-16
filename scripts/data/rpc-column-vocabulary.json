@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-rpc-column-vocabulary.sh (bot_sql -> pg_proc + pg_rewrite)",
- "_generated_at": "2026-10-14T18:28:09Z",
+ "_generated_at": "2026-10-16T05:27:34Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "check-enum-filter-literals.mjs grades literals inside supabase.from().eq() chains. This is the other half of the same class: a status word that arrives from an RPC and is compared in JavaScript, where the return type is text and every wrong word type-checks. Per (function, returned column) this records the relation columns of that name reachable from the function body and the literals the function synthesises itself. It deliberately records CANDIDATES rather than one resolved source: provenance from a body regex is a guess, so check-rpc-status-literals.mjs refuses a literal only when NO candidate vocabulary and no body literal accepts it.",
  "_vocabulary_source": "scripts/data/enum-catalog.json (check_vocab + column_enum + enums). Not copied here on purpose, so the two guards read one snapshot and cannot drift.",
@@ -61,6 +61,13 @@
   "apex_toolkit_is_staff": "boolean",
   "apex_try_jsonb": "jsonb",
   "apex_update_support_request": "void",
+  "api_is_admin_role": "boolean",
+  "api_is_full_reader": "boolean",
+  "api_is_ops_staff": "boolean",
+  "api_is_presenter": "boolean",
+  "api_is_staff": "boolean",
+  "api_my_application_ids": "uuid[]",
+  "api_scope_agent_ids": "uuid[]",
   "app_visible_to": "boolean",
   "applicant_contacted_recently": "boolean",
   "applicant_login_drain": "jsonb",
@@ -90,6 +97,8 @@
   "book_flip_client_key": "text",
   "book_flip_set": "jsonb",
   "book_interview_event": "interview_events",
+  "booking_packet_mark_booked": "void",
+  "booking_packet_upsert": "uuid",
   "bot_alert_agent_contracted": "trigger",
   "bot_alert_agent_deactivated": "trigger",
   "bot_alert_automation_failure": "trigger",
@@ -107,6 +116,7 @@
   "calendar_interview_reminders_enabled": "boolean",
   "calendar_is_scheduling_staff": "boolean",
   "calendar_valid_tz": "boolean",
+  "can_view_sold_calls": "boolean",
   "can_work_application": "boolean",
   "can_work_recruiting_application": "boolean",
   "cancel_interview_event": "interview_events",
@@ -145,6 +155,7 @@
   "contracting_exception_digest": "jsonb",
   "contracting_request_rows": "jsonb",
   "contracting_save_ethos_review": "contracting_ethos_approvals",
+  "contracting_sheet_csv": "text",
   "contracting_update_case": "jsonb",
   "contracting_worklist_ack": "jsonb",
   "contracting_worklist_rows": "SETOF v_contracting_worklist",
@@ -258,6 +269,7 @@
   "fn_contracting_is_staff": "boolean",
   "fn_contracting_request_eval": "jsonb",
   "fn_contracting_request_row": "jsonb",
+  "fn_csv_cell": "text",
   "fn_culture_loop_on_deal": "trigger",
   "fn_deal_capture_writing_npn": "trigger",
   "fn_default_agent_manager_to_sam": "trigger",
@@ -1920,6 +1932,42 @@
     "public",
     "rejected",
     "statement_timeout"
+   ]
+  },
+  "booking_packet_reveal_sensitive.bank_account": {
+   "candidates": [],
+   "body_literals": [
+    "agent_credentials_key",
+    "bank_account",
+    "bank_routing",
+    "extensions",
+    "public",
+    "ssn",
+    "vault"
+   ]
+  },
+  "booking_packet_reveal_sensitive.bank_routing": {
+   "candidates": [],
+   "body_literals": [
+    "agent_credentials_key",
+    "bank_account",
+    "bank_routing",
+    "extensions",
+    "public",
+    "ssn",
+    "vault"
+   ]
+  },
+  "booking_packet_reveal_sensitive.ssn": {
+   "candidates": [],
+   "body_literals": [
+    "agent_credentials_key",
+    "bank_account",
+    "bank_routing",
+    "extensions",
+    "public",
+    "ssn",
+    "vault"
    ]
   },
   "calendar_owner_conflicts.ends_at": {
@@ -7395,7 +7443,9 @@
     "One or both agents not found",
     "Only admins may merge agent duplicates",
     "admin",
-    "public"
+    "public",
+    "the canonical row",
+    "the duplicate"
    ]
   },
   "merge_agent_into_canonical.dup_agent_id": {
@@ -7405,7 +7455,9 @@
     "One or both agents not found",
     "Only admins may merge agent duplicates",
     "admin",
-    "public"
+    "public",
+    "the canonical row",
+    "the duplicate"
    ]
   },
   "merge_agent_into_canonical.dup_set_at": {
@@ -7415,7 +7467,9 @@
     "One or both agents not found",
     "Only admins may merge agent duplicates",
     "admin",
-    "public"
+    "public",
+    "the canonical row",
+    "the duplicate"
    ]
   },
   "monday_starters.application_id": {

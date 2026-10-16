@@ -4,6 +4,7 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAgentIdentity } from "@/hooks/useAgentIdentity";
+import { useFullBookReader } from "@/hooks/useFullBookReader";
 import { useResolvedDownline } from "@/hooks/useResolvedDownline";
 import { useBusinessToday } from "@/hooks/useBusinessToday";
 import { SubmitDealDialog } from "@/components/deals/SubmitDealDialog";
@@ -243,9 +244,13 @@ export default function MyDeals() {
   // F17: one shared answer to "which agents row is this login". It follows
   // merge pointers and reports a failed read as an error, never as "no agent".
   const me = useAgentIdentity();
+  // The full book is for Sam's admin logins and the book_readers list (Aisha);
+  // the database enforces it, and this page follows the same answer.
+  const bookReader = useFullBookReader();
+  const fullBook = isAdmin || bookReader.isFullReader;
   // A manager who is not an admin sees their team. The team is read under the
   // row `me` resolved, and a failed read is an error, never an empty team.
-  const isTeamManager = isManager && !isAdmin;
+  const isTeamManager = isManager && !fullBook;
   const downline = useResolvedDownline(me.identity, isTeamManager);
   const todayKey = useBusinessToday();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -260,22 +265,22 @@ export default function MyDeals() {
   const focusRef = useRef<HTMLDivElement | null>(null);
   const focusHandled = useRef<string | null>(null);
 
-  const teamView = isAdmin || isManager;
+  const teamView = fullBook || isManager;
   const selfAgentId = me.agentId;
   const scopedAgentIds = Array.from(new Set([
     ...(isTeamManager ? downline.ids ?? [] : []),
     ...(selfAgentId ? [selfAgentId] : []),
   ]));
-  const scopeKey = isAdmin ? "all" : scopedAgentIds.join(",");
+  const scopeKey = fullBook ? "all" : scopedAgentIds.join(",");
 
   // The book is read once its scope is known: admins at once, managers once
   // their own record and their team list have both answered, agents only with
   // a resolved record. Until then nothing is fetched and nothing below
   // pretends to be empty. A manager whose team list could not be read sees that
   // error, not their own deals presented as the team's.
-  const identityLoading = !isAdmin && (me.isLoading || (isTeamManager && downline.isWaiting));
+  const identityLoading = !fullBook && (bookReader.isLoading || me.isLoading || (isTeamManager && downline.isWaiting));
   const teamListReady = !isTeamManager || downline.ids !== undefined;
-  const scopeReady = isAdmin || (!identityLoading && teamListReady && scopedAgentIds.length > 0);
+  const scopeReady = fullBook || (!identityLoading && teamListReady && scopedAgentIds.length > 0);
   const enabled = Boolean(user?.id) && scopeReady;
   const statusFilter = statusBucket ? statusBucketFilter(statusBucket) : null;
 
@@ -301,7 +306,7 @@ export default function MyDeals() {
         .order("posted_date", { ascending: false, nullsFirst: false })
         .order("row_key", { ascending: true })
         .limit(3000);
-      if (!isAdmin) query = query.in("agent_id", scopedAgentIds);
+      if (!fullBook) query = query.in("agent_id", scopedAgentIds);
       if (statusFilter) query = query.or(statusFilter);
       if (pageParam) query = query.or(dealsPageCursorFilter(pageParam));
       const { data, error, count } = await query;
@@ -327,7 +332,7 @@ export default function MyDeals() {
     enabled,
     queryFn: async () => {
       let query = supabase.from("v_production_unified").select("row_key", { count: "exact", head: true });
-      if (!isAdmin) query = query.in("agent_id", scopedAgentIds);
+      if (!fullBook) query = query.in("agent_id", scopedAgentIds);
       if (statusFilter) query = query.or(statusFilter);
       const { count, error } = await query;
       if (error) throw error;
@@ -353,7 +358,7 @@ export default function MyDeals() {
       const key = focusDealId;
       if (!key) throw new Error("No deal id to look up.");
       let query = supabase.from("v_production_unified").select("*").eq("row_key", key).limit(1);
-      if (!isAdmin) query = query.in("agent_id", scopedAgentIds);
+      if (!fullBook) query = query.in("agent_id", scopedAgentIds);
       const { data, error } = await query;
       if (error) throw error;
       if (!Array.isArray(data)) throw new Error("The deal lookup returned no result set.");
@@ -395,9 +400,9 @@ export default function MyDeals() {
     return !acc || t > acc ? t : acc;
   }, null);
 
-  const productionTitle = isAdmin ? "Agency Production" : isManager ? "Team Production" : "My Deals";
-  const productionListLabel = isAdmin ? "Agency production" : isManager ? "Team production" : "My deals";
-  const productionScopeKey = isAdmin ? "agency" : scopedAgentIds.join(",") || "self-unresolved";
+  const productionTitle = fullBook ? "Agency Production" : isManager ? "Team Production" : "My Deals";
+  const productionListLabel = fullBook ? "Agency production" : isManager ? "Team production" : "My deals";
+  const productionScopeKey = fullBook ? "agency" : scopedAgentIds.join(",") || "self-unresolved";
 
   // Production dollars, straight from the unified book-truth view (Phoenix tz,
   // posted-date, dead excluded, the documented source of truth). The header's
@@ -457,7 +462,7 @@ export default function MyDeals() {
     enabled: teamView && scopeReady,
     staleTime: 60_000,
     queryFn: async (): Promise<StatusTile[]> => {
-      if (!isAdmin) return countStatusBucketsInScope(supabase, scopedAgentIds);
+      if (!fullBook) return countStatusBucketsInScope(supabase, scopedAgentIds);
       const { data, error } = await supabase.from("v_book_status_tiles").select("bucket, n");
       if (error) throw error;
       if (!Array.isArray(data)) throw new Error("The policy status read returned no result set.");
@@ -469,9 +474,10 @@ export default function MyDeals() {
   // hierarchy used by the rows and headline totals. The view carries three
   // periods per agency, computed in one statement from the same Phoenix day,
   // so whichever period is chosen, amount, bar, sort and total agree (F08).
+  // Agency-level totals are part of the full book: shown to full-book readers only.
   const imoQuery = useQuery({
     queryKey: ["imo-by-agency", productionScopeKey],
-    enabled: teamView,
+    enabled: fullBook,
     staleTime: 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -551,7 +557,7 @@ export default function MyDeals() {
           page's own button shows only below lg, where the shell keeps its copy
           inside the Actions sheet. One visible creation button per viewport. */}
       <PageHeader
-        eyebrow={isAdmin ? "Production · Agency" : isManager ? "Production · Team" : "Production · My Deals"}
+        eyebrow={fullBook ? "Production · Agency" : isManager ? "Production · Team" : "Production · My Deals"}
         eyebrowIcon={<DollarSign className="h-3 w-3" />}
         title={productionTitle}
         subtitle={
@@ -584,7 +590,7 @@ export default function MyDeals() {
           {book && (
             <>
               <p className="mb-2 text-xs text-muted-foreground">
-                {isAdmin ? "Agency-wide totals." : "Agency-wide totals, not only your team. Your team's deals are listed below."}
+                {fullBook ? "Agency-wide totals." : isManager ? "Your team's totals." : "Your totals."}
               </p>
               <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
                 <div className="rounded-md border border-border p-4">
@@ -655,7 +661,7 @@ export default function MyDeals() {
               </p>
             ) : (
               <p className="text-xs text-muted-foreground">
-                {isAdmin ? "Agency-wide counts." : "Counts for your team."} Select one to filter the list below.
+                {fullBook ? "Agency-wide counts." : isManager ? "Counts for your team." : "Counts for your deals."} Select one to filter the list below.
               </p>
             )}
           </div>
@@ -687,7 +693,7 @@ export default function MyDeals() {
         </div>
       )}
 
-      {teamView && (
+      {fullBook && (
         <div>
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">Production by Agency</p>

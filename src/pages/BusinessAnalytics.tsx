@@ -103,7 +103,7 @@ interface NeedsAttention {
 }
 
 interface LearnFrom {
-  user_id: number;
+  user_id: number | null; // null for producers with no AgentLink id (Discord/native deals only)
   display_name: string;
   agent_code: string | null;
   deals_30d: number;
@@ -587,7 +587,7 @@ export default function BusinessAnalytics() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {learnFrom.data!.map((agent) => (
                 <div
-                  key={`lf-${agent.user_id}`}
+                  key={`lf-${agent.user_id ?? agent.display_name}`}
                   className={cn("rounded-md border bg-card p-3 sm:p-4", SEV_BORDER.good)}
                 >
                   <div className="flex items-start gap-3">

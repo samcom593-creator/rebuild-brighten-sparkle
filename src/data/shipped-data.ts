@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Business Analytics stops calling your top producers inactive: Jontay Taylor and Edwin Ac-lumor now lead Learn from instead of sitting in the 106-name inactive list.",
+    detail: "Four cards on the analytics page read the AgentLink book, which has nothing after Oct 2 and nothing for September. The inactive list named Jontay (21 deals, $44,102), Edwin (28 deals, $42,015) and you; Needs attention said to coach agents who were selling; Learn from was empty; the trophy cabinet counted 1 day with a deal this month. They now read every deal, from AgentLink and from here: 88 licensed agents with no deal in 30 days, Jontay +194% and Edwin +180% above team average, 12 deal days this month and 42 five-deal weeks this year.",
+    commit: "PL-WIB-ANALYTICS-CARDS-CANONICAL",
+  },
+  {
+    ts: "today",
     label: "Ask APEX names your real top producer: Jontay Taylor, 21 deals and $44,102 in 30 days, not Willard Herald with $1.8M.",
     detail: "The producer list behind \"who is my top producer?\" read the AgentLink book, which nobody has posted to since Aug 31. Its top row was $1,821,600 from two rows for one client with no agent attached, one of them 1000x the other, and it listed 5 of the 13 people who sold in the last 30 days. It now reads every deal, from AgentLink and from here: 13 sellers, 112 deals, $194,801 over 30 days, the same producers the Business Analytics page counts.",
     commit: "PL-WIB-TEAM-PRODUCERS-CANONICAL",

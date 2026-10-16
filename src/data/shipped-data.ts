@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Cari Mullen (8 deals), Tre'va Tribble (5), David Ladd (2) and Tyler Krejcha now count as having closed their first deal everywhere on the site.",
+    detail: "The first-deal date was only set when a deal arrived from the AgentLink book or was posted fresh. Deals reported in Discord, deals moved onto an agent after posting, and a merge that left the date on the duplicate row never set it. So the onboarding tracker held Cari at \"Start the pre-selling course\" and Tre'va at \"Complete all pre-selling modules\", both flagged stalled, and all four sat on the no-first-sale list. The date now comes from the same production the dashboard counts and is rechecked every hour. It only fills a missing date or moves it earlier, and it sends nothing. Jontay Taylor's first deal moves one day earlier, to Aug 23.",
+    commit: "PL-WIB-FIRST-DEAL-CANONICAL",
+  },
+  {
+    ts: "today",
     label: "The hire board shows real production: Edwin Ac-lumor (40 deals, $65,873) and Jontay Taylor (24 deals, $46,753) no longer show zero deals with the next step \"Book the onboarding call\".",
     detail: "Each hire card's deals and premium came from the AgentLink book, which has no agent rows after Aug 31 and repeats some imports. Seven hires who sold in the last 30 days showed no production, and nine licensed hires who were already writing business were told to start onboarding, book the onboarding call or move to field training. The card now reads the same production as the rest of the dashboard, and anyone writing business below the Producing step is told to mark them producing. Your own card drops from 104 deals to 59 because the book held 49 duplicate copies of your policies. Two hires now show up as writing business while marked unlicensed: Tyler Krejcha (the duplicate row waiting on a merge) and David Ladd.",
     commit: "PL-WIB-HIRE-BOARD-CANONICAL",

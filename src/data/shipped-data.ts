@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Book of Business shows each client's phone with a Call button, date of birth, age and state on the row, plus a Resold button; sold-call details sit on the row too.",
+    detail: "The book only carried client names, so calling or reselling someone meant leaving the page. Every client row now has Call and Text with the number, date of birth with age, city and state, and a Resold button that posts the new policy prefilled with the client and, when the policy is in a carrier book, marks it resold in Book Flips. A client with a sold call shows the packet on the row: summary, health, address, SSN, bank and beneficiaries. Book Flips cards add date of birth and city, and only cards with a sold call load the packet. Client details follow each login's own access rules.",
+    commit: "PL-BOOK-CLIENT-INFO",
+  },
+  {
+    ts: "today",
     label: "The Team Hierarchy card on the admin dashboard shows this month's production again instead of $0 for every recruiter.",
     detail: "The card read the month from the AgentLink book, which nobody has posted to since Aug 31, so all 7 recruiters showed $0 own, downline and team AP and the header said $0 team MTD. October holds 50 deals and $86,844 across 11 sellers. It now reads every deal, from AgentLink and from here. Who can see what is unchanged: an agent still sees only their own numbers and their own manager's email.",
     commit: "PL-WIB-DOWNLINE-CANONICAL",

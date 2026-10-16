@@ -9,7 +9,8 @@
  * deals as the team's and never "No deals logged yet".
  * F11: a manager's tiles are counted in the list's scope.
  * F37: the header's Post a Deal hides at lg, where the shell rail carries one.
- * MP-304: the expanded row still carries the sold-call panel.
+ * MP-304: a client with a sold call shows the packet panel on the row itself.
+ * 2026-10-16: every client row shows phone (Call), date of birth and state, and a Resold button.
  */
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -36,6 +37,15 @@ vi.mock("@/hooks/useResolvedDownline", () => ({
 vi.mock("@/hooks/useBusinessToday", () => ({ useBusinessToday: () => "2026-10-15" }));
 vi.mock("@/components/deals/SubmitDealDialog", () => ({
   SubmitDealDialog: ({ trigger }: { trigger?: ReactNode }) => <>{trigger ?? <button type="button">Post a Deal (default)</button>}</>,
+}));
+const soldKeys = vi.hoisted(() => ({ names: new Set<string>() }));
+vi.mock("@/hooks/useSoldCallKeys", () => ({
+  SOLD_CALL_EXTRA_UID: "aisha",
+  useSoldCallKeys: () => ({
+    ready: true,
+    count: soldKeys.names.size,
+    has: (_phone?: string | null, first?: string | null, last?: string | null) => soldKeys.names.has(`${first ?? ""}|${last ?? ""}`),
+  }),
 }));
 vi.mock("@/components/clients/SoldCallPanel", () => ({
   SoldCallPanel: ({ firstName, lastName }: { firstName?: string | null; lastName?: string | null }) => (
@@ -178,6 +188,7 @@ beforeEach(() => {
   respond = bookResponder();
   vi.mocked(supabase.from).mockImplementation(((table: string) => chainFor(table)) as never);
   vi.mocked(supabase.rpc).mockImplementation((() => Promise.resolve({ data: [], error: null })) as never);
+  soldKeys.names.clear();
 });
 
 describe("Production page", () => {
@@ -210,11 +221,47 @@ describe("Production page", () => {
     expect(screen.getByRole("button", { name: "Reload list" })).toBeInTheDocument();
   });
 
-  it("keeps the MP-304 sold-call panel in the expanded row, with the client's name split", async () => {
+  it("shows the MP-304 sold-call panel on the row itself for a client with a sold call, never behind the expand", async () => {
+    soldKeys.names.add("Client3|Last3");
     renderPage();
-    const row = await screen.findByText("Client3 Last3");
-    fireEvent.click(row.closest("button") as HTMLButtonElement);
-    expect(await screen.findByTestId("sold-call-panel")).toHaveTextContent("Client3|Last3");
+    expect(await screen.findByText("Client3 Last3")).toBeInTheDocument();
+    // No click: the packet is on the row.
+    const panels = await screen.findAllByTestId("sold-call-panel");
+    expect(panels).toHaveLength(1);
+    expect(panels[0]).toHaveTextContent("Client3|Last3");
+  });
+
+  it("puts the client's phone, date of birth and state on every client row, with Call and Resold, without expanding", async () => {
+    vi.mocked(supabase.rpc).mockImplementation(((fn: string, args: { p_rows?: Array<{ row_key: string; policy_number: string | null }> }) => {
+      if (fn !== "book_client_details") return Promise.resolve({ data: [], error: null });
+      const rows = (args?.p_rows ?? []).filter((r) => r.policy_number === "P3").map((r) => ({
+        row_key: r.row_key, phone: "6015551234", dob: "1958-03-07", state: "TX", city: "Tyler", do_not_call: false,
+        best_time_to_call: null, flip_carrier: null, flip_policy_number: null, flip_client_key: null, flip_status: null,
+        resold_policy_number: null, resold_carrier: null, resold_annual_premium: null,
+      }));
+      return Promise.resolve({ data: rows, error: null });
+    }) as never);
+    renderPage();
+    const call = await screen.findByRole("link", { name: /Call \(601\) 555-1234/ });
+    expect(call).toBeInTheDocument();
+    expect(screen.getByText(/DOB 03\/07\/1958/)).toBeInTheDocument();
+    expect(screen.getByText("Tyler, TX")).toBeInTheDocument();
+    // The lookup asked for the rows on screen, by row key, origin, policy and carrier.
+    const asked = vi.mocked(supabase.rpc).mock.calls.find((c) => c[0] === "book_client_details");
+    expect((asked?.[1] as { p_rows: unknown[] }).p_rows.length).toBeGreaterThan(0);
+    // Every client row offers Resold.
+    expect(screen.getAllByRole("button", { name: "Resold" }).length).toBeGreaterThanOrEqual(30);
+    // A row with no details yet says so instead of hiding the line.
+    expect(screen.getAllByText("No phone on file").length).toBeGreaterThan(0);
+  });
+
+  it("says so when client details fail to load, with a retry", async () => {
+    vi.mocked(supabase.rpc).mockImplementation(((fn: string) => fn === "book_client_details"
+      ? Promise.resolve({ data: null, error: { message: "permission denied" } })
+      : Promise.resolve({ data: [], error: null })) as never);
+    renderPage();
+    expect(await screen.findByText(/Client phone and date of birth did not load: permission denied/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
   });
 
   it("shows the page's Post a Deal below lg only, and labels agency-wide totals without inventing an average (F37 / F10)", async () => {

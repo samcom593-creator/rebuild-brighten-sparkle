@@ -1104,6 +1104,18 @@
         "raw": ""
       }
     ],
+    "book_client_details": [
+      {
+        "all": [
+          "p_rows"
+        ],
+        "required": [
+          "p_rows"
+        ],
+        "unnamed": false,
+        "raw": "p_rows jsonb"
+      }
+    ],
     "book_flip_client_key": [
       {
         "all": [

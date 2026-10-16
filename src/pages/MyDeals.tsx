@@ -9,6 +9,11 @@ import { useResolvedDownline } from "@/hooks/useResolvedDownline";
 import { useBusinessToday } from "@/hooks/useBusinessToday";
 import { SubmitDealDialog } from "@/components/deals/SubmitDealDialog";
 import { SoldCallPanel } from "@/components/clients/SoldCallPanel";
+import { ClientContactLine } from "@/components/clients/ClientContactLine";
+import { BookResoldButton } from "@/components/deals/BookResoldButton";
+import { splitClientName } from "@/lib/clientFacts";
+import { useBookClientDetails, type BookClientDetails } from "@/hooks/useBookClientDetails";
+import { useSoldCallKeys } from "@/hooks/useSoldCallKeys";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -147,6 +152,9 @@ function DealRowItem({
   teamView,
   onToggle,
   focusRef,
+  client,
+  clientLoading,
+  hasSoldCall,
 }: {
   d: DealRow;
   isOpen: boolean;
@@ -154,7 +162,15 @@ function DealRowItem({
   teamView: boolean;
   onToggle: () => void;
   focusRef?: RefObject<HTMLDivElement | null>;
+  client?: BookClientDetails;
+  clientLoading?: boolean;
+  hasSoldCall?: (phone?: string | null, first?: string | null, last?: string | null) => boolean;
 }) {
+  const { firstName, lastName } = splitClientName(d.client_name);
+  // A client-level row: something a person can be called about and resold. Aggregate rows
+  // (external daily gaps, API totals) have no client, so they get no contact line.
+  const isClientRow = Boolean(d.client_name || d.policy_number);
+  const soldCall = isClientRow && hasSoldCall ? hasSoldCall(client?.phone, firstName, lastName) : false;
   return (
     <div
       ref={isFocus ? focusRef : undefined}
@@ -192,6 +208,35 @@ function DealRowItem({
           <Badge variant="outline" className={statusColor(d.status)}>{d.status || "unknown"}</Badge>
         </div>
       </button>
+      {isClientRow && (
+        <div className="flex flex-wrap items-center justify-between gap-2 px-3 pb-3 md:pl-11">
+          <ClientContactLine
+            phone={client?.phone}
+            dob={client?.dob}
+            state={client?.state}
+            city={client?.city}
+            doNotCall={client?.do_not_call}
+            bestTime={client?.best_time_to_call}
+            loading={clientLoading && !client}
+          />
+          <div className="flex items-center gap-2">
+            {client?.flip_status === "resold" && (
+              <Badge variant="outline" className="border-success/30 bg-success/10 text-success">
+                Resold{client.resold_carrier ? ` · ${client.resold_carrier}` : ""}{client.resold_policy_number ? ` · #${client.resold_policy_number}` : ""}
+              </Badge>
+            )}
+            <BookResoldButton clientName={d.client_name} details={client} />
+          </div>
+        </div>
+      )}
+      {/* The client's ReadyMode sold-call packet (SSN, bank, beneficiaries, health) sits
+          on the row itself, never behind the expand. Only admins and Aisha get keys, and
+          the panel renders only for a client with a sold call on file. */}
+      {soldCall && (
+        <div className="px-3 pb-3 md:pl-11">
+          <SoldCallPanel phone={client?.phone} firstName={firstName} lastName={lastName} />
+        </div>
+      )}
       {isOpen && (
         <>
           <div className="px-4 pb-4 pt-1 grid grid-cols-2 md:grid-cols-4 gap-3 text-xs bg-muted/10">
@@ -223,15 +268,6 @@ function DealRowItem({
               <p className="text-muted-foreground uppercase tracking-wider text-[11px]">Row ID</p>
               <p className="font-semibold line-clamp-2">{d.row_key}</p>
             </div>
-          </div>
-          {/* MP-304 (2d43509c): the client's ReadyMode sold-call packet, matched by
-              name. The panel shows itself to admins and Aisha only and renders
-              nothing when no packet matches. */}
-          <div className="px-4 pb-4">
-            <SoldCallPanel
-              firstName={(d.client_name || "").trim().split(/\s+/)[0]}
-              lastName={(d.client_name || "").trim().split(/\s+/).slice(1).join(" ")}
-            />
           </div>
         </>
       )}
@@ -513,6 +549,17 @@ export default function MyDeals() {
     countQuery.data !== undefined && dealsLoaded && !dealsQuery.hasNextPage && deals.length < countQuery.data;
   const focusRow = focusLookup.data ?? null;
 
+  // Client phone, date of birth, state and Book Flips resale state for the rows on
+  // screen plus the focused deal, read in the list's own 60-row chunks (see
+  // useBookClientDetails). Sold-call keys decide which rows carry the packet panel.
+  const shownRefs = useMemo(() => {
+    const rows = deals.slice(0, visible);
+    if (focusRow && !rows.some((r) => r.row_key === focusRow.row_key)) rows.push(focusRow);
+    return rows.map((r) => ({ row_key: r.row_key, origin: r.origin, policy_number: r.policy_number, carrier: r.carrier }));
+  }, [deals, visible, focusRow]);
+  const clientDetails = useBookClientDetails(shownRefs, enabled);
+  const soldKeys = useSoldCallKeys();
+
   // Why the list is not shown yet, for a login whose scope is not resolved.
   // A failed read says so with a retry; it is never shown as an empty book.
   let identityBlock: ReactNode = null;
@@ -778,6 +825,9 @@ export default function MyDeals() {
                         isFocus
                         teamView={teamView}
                         onToggle={() => setExpandedId((current) => (current === focusRow.row_key ? null : focusRow.row_key))}
+                        client={clientDetails.byKey.get(focusRow.row_key)}
+                        clientLoading={clientDetails.loading.has(focusRow.row_key)}
+                        hasSoldCall={soldKeys.has}
                       />
                     </div>
                   </div>
@@ -842,6 +892,12 @@ export default function MyDeals() {
                 title={activeStatus ? `No ${activeStatus.label} deals in this view` : "No deals logged yet"}
                 body={activeStatus ? <>Every other status is hidden by the filter. {clearFilterButton}</> : "Use Post a Deal to record the first one."}
               >
+                {clientDetails.failed && (
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2 text-xs" role="status">
+                    <span className="text-destructive">Client phone and date of birth did not load: {clientDetails.failed}</span>
+                    <Button size="sm" variant="outline" className="h-7" onClick={clientDetails.retry}>Try again</Button>
+                  </div>
+                )}
                 <div className="divide-y divide-border">
                   {deals.slice(0, visible).map((d) => (
                     <DealRowItem
@@ -852,6 +908,9 @@ export default function MyDeals() {
                       teamView={teamView}
                       onToggle={() => setExpandedId(expandedId === d.row_key ? null : d.row_key)}
                       focusRef={focusRef}
+                      client={clientDetails.byKey.get(d.row_key)}
+                      clientLoading={clientDetails.loading.has(d.row_key)}
+                      hasSoldCall={soldKeys.has}
                     />
                   ))}
                 </div>

@@ -19,6 +19,7 @@ import {
 } from "@/lib/bookFlips";
 import { SoldCallPanel } from "@/components/clients/SoldCallPanel";
 import { useSoldCallKeys } from "@/hooks/useSoldCallKeys";
+import { dobDisplay } from "@/lib/clientFacts";
 
 const COLUMNS =
   "flip_key, carrier, policy_number, client_key, product, book_status, is_dead, is_book_active, status_group, " +
@@ -423,7 +424,9 @@ function PolicyCard({ p, busy, onSet }: { p: BookPolicy; busy: boolean; onSet: (
   const tel = p.do_not_call ? null : phoneHref(p.phone);
   const name = displayName(p.client_name) || "Name missing";
   const { firstName, lastName } = splitName(p);
-  const meta = [p.age_years ? `${p.age_years} yrs` : "", stateSourceText(policyState(p)), p.best_time_to_call ? `best time ${p.best_time_to_call}` : ""].filter(Boolean).join(" · ");
+  const dob = dobDisplay(p.dob);
+  const meta = [dob ? `DOB ${dob}` : "", p.age_years ? `${p.age_years} yrs` : "", p.city ?? "", stateSourceText(policyState(p)), p.best_time_to_call ? `best time ${p.best_time_to_call}` : ""].filter(Boolean).join(" · ");
+  const soldCall = soldKeys.has(p.phone, p.client_first_name, p.client_last_name);
 
   const copyPhone = async () => {
     try {
@@ -440,7 +443,7 @@ function PolicyCard({ p, busy, onSet }: { p: BookPolicy; busy: boolean; onSet: (
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <p className="truncate text-lg font-bold text-foreground">{name}</p>
-            {soldKeys.has(p.phone, p.client_first_name, p.client_last_name) && (
+            {soldCall && (
               <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-amber-500/50 bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
                 <Phone className="h-3 w-3" aria-hidden /> Sold call
               </span>
@@ -594,7 +597,10 @@ function PolicyCard({ p, busy, onSet }: { p: BookPolicy; busy: boolean; onSet: (
           </Button>
         </div>
       )}
-      <div className="mt-2"><SoldCallPanel phone={p.phone} firstName={p.client_first_name} lastName={p.client_last_name} /></div>
+      {/* Only a client with a sold call on file gets the packet (SSN, bank, beneficiaries),
+          shown open on the card. The keys come from one shared read, so the other cards
+          no longer fire a lookup each. */}
+      {soldCall && <div className="mt-2"><SoldCallPanel phone={p.phone} firstName={p.client_first_name} lastName={p.client_last_name} /></div>}
     </li>
   );
 }

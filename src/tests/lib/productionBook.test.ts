@@ -401,15 +401,16 @@ describe("src/pages/MyDeals.tsx keeps the contracts", () => {
     expect(page).not.toContain("actions={<SubmitDealDialog />}");
   });
 
-  it("keeps the MP-304 sold-call packet in every expanded deal row (lost in the first rewrite)", () => {
+  it("keeps the MP-304 sold-call packet on the deal row itself, outside the expand (Sam 2026-10-15: nothing hidden)", () => {
     expect(page).toContain('import { SoldCallPanel } from "@/components/clients/SoldCallPanel";');
-    // Rendered as a component inside the expanded-row branch, not merely mentioned.
+    // Rendered on the row, gated on a sold call being on file, and NOT inside the expanded-row branch.
+    expect(page).toMatch(/\{soldCall && \(\s*<div[^>]*>\s*<SoldCallPanel\s/);
     const expanded = page.match(/\{isOpen && \(\s*<>([\s\S]*?)<\/>\s*\)\}/);
-    expect(expanded?.[1]).toMatch(/<SoldCallPanel\s/);
-    expect(page).toContain('firstName={(d.client_name || "").trim().split(/\\s+/)[0]}');
-    expect(page).toContain('lastName={(d.client_name || "").trim().split(/\\s+/).slice(1).join(" ")}');
-    // DealRowItem draws both the list rows and the pinned deep-link row, so both carry the panel.
+    expect(expanded?.[1] ?? "").not.toMatch(/<SoldCallPanel\s/);
+    expect(page).toContain("const { firstName, lastName } = splitClientName(d.client_name);");
+    // DealRowItem draws both the list rows and the pinned deep-link row, and both get the client details.
     expect(page.match(/<DealRowItem/g) ?? []).toHaveLength(2);
+    expect(page.match(/client=\{clientDetails\.byKey\.get\(/g) ?? []).toHaveLength(2);
   });
 
   it("does not say it is still looking for a deep-linked deal after the list failed", () => {

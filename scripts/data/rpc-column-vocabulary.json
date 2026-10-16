@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-rpc-column-vocabulary.sh (bot_sql -> pg_proc + pg_rewrite)",
- "_generated_at": "2026-10-16T05:36:00Z",
+ "_generated_at": "2026-10-16T09:08:28Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "check-enum-filter-literals.mjs grades literals inside supabase.from().eq() chains. This is the other half of the same class: a status word that arrives from an RPC and is compared in JavaScript, where the return type is text and every wrong word type-checks. Per (function, returned column) this records the relation columns of that name reachable from the function body and the literals the function synthesises itself. It deliberately records CANDIDATES rather than one resolved source: provenance from a body regex is a guess, so check-rpc-status-literals.mjs refuses a literal only when NO candidate vocabulary and no body literal accepts it.",
  "_vocabulary_source": "scripts/data/enum-catalog.json (check_vocab + column_enum + enums). Not copied here on purpose, so the two guards read one snapshot and cannot drift.",
@@ -1932,6 +1932,189 @@
     "public",
     "rejected",
     "statement_timeout"
+   ]
+  },
+  "book_client_details.best_time_to_call": {
+   "candidates": [
+    "agentlink_clients.best_time_to_call",
+    "v_book_flip_worklist.best_time_to_call"
+   ],
+   "body_literals": [
+    "apex_native",
+    "carrier",
+    "origin",
+    "policy_number",
+    "public",
+    "row_key"
+   ]
+  },
+  "book_client_details.city": {
+   "candidates": [
+    "agentlink_clients.city",
+    "v_book_flip_worklist.city"
+   ],
+   "body_literals": [
+    "apex_native",
+    "carrier",
+    "origin",
+    "policy_number",
+    "public",
+    "row_key"
+   ]
+  },
+  "book_client_details.do_not_call": {
+   "candidates": [
+    "agentlink_clients.do_not_call",
+    "v_book_flip_worklist.do_not_call"
+   ],
+   "body_literals": [
+    "apex_native",
+    "carrier",
+    "origin",
+    "policy_number",
+    "public",
+    "row_key"
+   ]
+  },
+  "book_client_details.dob": {
+   "candidates": [
+    "v_book_flip_worklist.dob"
+   ],
+   "body_literals": [
+    "apex_native",
+    "carrier",
+    "origin",
+    "policy_number",
+    "public",
+    "row_key"
+   ]
+  },
+  "book_client_details.flip_carrier": {
+   "candidates": [],
+   "body_literals": [
+    "apex_native",
+    "carrier",
+    "origin",
+    "policy_number",
+    "public",
+    "row_key"
+   ]
+  },
+  "book_client_details.flip_client_key": {
+   "candidates": [],
+   "body_literals": [
+    "apex_native",
+    "carrier",
+    "origin",
+    "policy_number",
+    "public",
+    "row_key"
+   ]
+  },
+  "book_client_details.flip_policy_number": {
+   "candidates": [],
+   "body_literals": [
+    "apex_native",
+    "carrier",
+    "origin",
+    "policy_number",
+    "public",
+    "row_key"
+   ]
+  },
+  "book_client_details.flip_status": {
+   "candidates": [
+    "book_flips.flip_status",
+    "v_book_flip_worklist.flip_status"
+   ],
+   "body_literals": [
+    "apex_native",
+    "carrier",
+    "origin",
+    "policy_number",
+    "public",
+    "row_key"
+   ]
+  },
+  "book_client_details.phone": {
+   "candidates": [
+    "agentlink_clients.phone",
+    "v_book_flip_worklist.phone"
+   ],
+   "body_literals": [
+    "apex_native",
+    "carrier",
+    "origin",
+    "policy_number",
+    "public",
+    "row_key"
+   ]
+  },
+  "book_client_details.resold_annual_premium": {
+   "candidates": [
+    "book_flips.resold_annual_premium",
+    "v_book_flip_worklist.resold_annual_premium"
+   ],
+   "body_literals": [
+    "apex_native",
+    "carrier",
+    "origin",
+    "policy_number",
+    "public",
+    "row_key"
+   ]
+  },
+  "book_client_details.resold_carrier": {
+   "candidates": [
+    "book_flips.resold_carrier",
+    "v_book_flip_worklist.resold_carrier"
+   ],
+   "body_literals": [
+    "apex_native",
+    "carrier",
+    "origin",
+    "policy_number",
+    "public",
+    "row_key"
+   ]
+  },
+  "book_client_details.resold_policy_number": {
+   "candidates": [
+    "book_flips.resold_policy_number",
+    "v_book_flip_worklist.resold_policy_number"
+   ],
+   "body_literals": [
+    "apex_native",
+    "carrier",
+    "origin",
+    "policy_number",
+    "public",
+    "row_key"
+   ]
+  },
+  "book_client_details.row_key": {
+   "candidates": [],
+   "body_literals": [
+    "apex_native",
+    "carrier",
+    "origin",
+    "policy_number",
+    "public",
+    "row_key"
+   ]
+  },
+  "book_client_details.state": {
+   "candidates": [
+    "agentlink_clients.state",
+    "v_book_flip_worklist.state"
+   ],
+   "body_literals": [
+    "apex_native",
+    "carrier",
+    "origin",
+    "policy_number",
+    "public",
+    "row_key"
    ]
   },
   "booking_packet_reveal_sensitive.bank_account": {

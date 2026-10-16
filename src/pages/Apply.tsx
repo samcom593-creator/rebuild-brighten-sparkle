@@ -1078,6 +1078,15 @@ export default function Apply() {
             </p>
           </div>
 
+          {/* F01: an unknown, inactive or uncheckable ?ref= link is said on the first
+              screen, not only beside the agent picker several steps later. */}
+          {!referrerId && refLinkNotice && (
+            <Alert role="status" className="mb-4 border-border bg-card text-card-foreground">
+              <Info className="h-4 w-4" aria-hidden />
+              <AlertDescription>{refLinkNotice}</AlertDescription>
+            </Alert>
+          )}
+
           {/* Form */}
           <form onSubmit={handleSubmit(onSubmit)}>
               <div
@@ -1441,13 +1450,6 @@ export default function Apply() {
                           agent gets credited at application creation, not
                           retroactively. Hidden when the ?ref= URL already
                           identified the referrer. */}
-                      {!referrerId && refLinkNotice && (
-                        <Alert role="status" className="border-border bg-card text-card-foreground">
-                          <Info className="h-4 w-4" aria-hidden />
-                          <AlertDescription>{refLinkNotice}</AlertDescription>
-                        </Alert>
-                      )}
-
                       {!referrerId && (
                         <div className="space-y-2">
                           <Label>Which Galaxy agent should get credit?</Label>

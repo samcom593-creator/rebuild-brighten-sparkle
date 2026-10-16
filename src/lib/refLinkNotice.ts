@@ -13,7 +13,7 @@ export type RefLinkOutcome =
   | { kind: "deactivated"; message: string }
   | { kind: "unchecked"; message: string };
 
-const STILL_APPLY = "You can still apply; choose who referred you below.";
+const STILL_APPLY = "You can still apply, and pick who referred you before you submit.";
 
 export function refLinkOutcome(payload: unknown, invokeError: unknown): RefLinkOutcome {
   if (invokeError) {

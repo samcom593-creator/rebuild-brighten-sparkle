@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Sold Calls shows every sale in full on the page: a Call button with the number, what to ask the client, the policy, and the SSN and bank numbers with no Reveal button.",
+    detail: "Each sale used to open in a narrow side drawer with the SSN and bank numbers behind a Reveal button, and the gaps listed raw database keys, so every packet said it still needed a policy number from the client. Each sale is now a card with Call and Text buttons carrying the client's number, the questions still open in plain words, the client, policy and payment details, beneficiaries and the call summary, and Mark booked on the card. Numbers link to the second in the recording where they were spoken. The page opens on the 81 sales left to book. Only Sam and Aisha can open it, and every load is logged.",
+    commit: "PL-SOLD-CALLS-INLINE",
+  },
+  {
+    ts: "today",
     label: "Client deals, leads and Sam's inbox are readable only by Sam and Aisha again; agents see only their own book.",
     detail: "Reporting views run with the database owner's rights, and Supabase grants every new view to all logins, so any agent login could read 1,751 client deals, 225k lead rows with dates of birth and beneficiaries, 182,169 notification rows and Sam's inbox. 30 views now filter rows to the caller's own agents or to Sam and Aisha, and 51 views no page reads were closed. Aisha sees the full book and every sold call; Sam's inbox stays Sam's. A Sunday doctor check now counts rows as an ordinary agent and goes critical if any view hands that agent the whole table.",
     commit: "PL-SEC-VIEW-LOCKDOWN",

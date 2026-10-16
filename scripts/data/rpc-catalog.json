@@ -1205,6 +1205,14 @@
         "raw": "p jsonb"
       }
     ],
+    "booking_packets_sensitive_all": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "bot_alert_agent_contracted": [
       {
         "all": [],

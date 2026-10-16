@@ -6557,6 +6557,18 @@
         "raw": ""
       }
     ],
+    "production_can_read_agent": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
+      }
+    ],
     "production_period_totals": [
       {
         "all": [],

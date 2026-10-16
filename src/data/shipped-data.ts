@@ -13,6 +13,30 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Closed the database reports any signed-in login could read, applicants included: insured clients' names and policy numbers, applicants' emails and phones, Stripe customer emails, Sam's to-do list and the CFO views.",
+    detail: "Database views run with their owner's rights, so a view anyone can query hands over its whole result. Measured as an applicant login, 103 views returned rows. 63 that no page reads were closed outright; 21 read only by admin, manager or book pages now return their rows to that audience and nothing to anyone else, and every page shows exactly what it showed before. The 19 left open are the team surfaces agents are meant to see (leaderboards, culture feed, recent hires, challenges).",
+    commit: "PL-SEC-VIEW-LOCKDOWN-2",
+  },
+  {
+    ts: "today",
+    label: "Leads, the outside agency's book and four staff tables are no longer open to every manager.",
+    detail: "Every manager and VA manager could read all 125,547 leads (46,012 with a date of birth, 9,733 with a beneficiary); no page reads that table, so now only admins and the VA a lead is assigned to can. The Ayro book is Sam's and Aisha's. Contracting intakes (comp %, NPN, contacts), abandoned applications and the email log are admin-only. Notifications are admin-wide and otherwise each person's own, which also makes the unread badge work for agents.",
+    commit: "PL-SEC-VIEW-LOCKDOWN-2",
+  },
+  {
+    ts: "today",
+    label: "Agency production follows the book rule: VAs no longer get the agency leaderboard and totals, and Aisha's Leaderboard and Agency Production now match Sam's.",
+    detail: "Four production functions still used the old staff list, so a VA or VA manager got the agency's $86,843.84 / 50 deals while Aisha saw 2 producers and $14,456.52, and her Agency Production was $28,959 short because the outside-agency gap rows and most client records were admin-only. Production now reads as full-book reader (Sam, Aisha) or your own team; managers and agents are unchanged.",
+    commit: "PL-SEC-PRODUCTION-SCOPE",
+  },
+  {
+    ts: "today",
+    label: "The weekly health check now measures this kind of leak instead of reporting clean while it was open.",
+    detail: "Checks #100 to #102 picked views by column name and only graded an ordinary agent, so they passed while all of the above was open. They now test every view as an applicant login against the 19 reviewed team views, test the production totals as VA staff and as Aisha, and grade managers and VA managers as well as agents. Each was proven to go red under a deliberate break.",
+    commit: "PL-SEC-VIEW-LOCKDOWN-2",
+  },
+  {
+    ts: "today",
     label: "Business Analytics shows October as it is: 50 deals and $86,844 from 13 producers, not 2 deals and $1.8M from one. Ask APEX quotes the same numbers.",
     detail: "The header tiles, insight cards and carrier table read the AgentLink book, which nobody has posted to since Aug 31. October read $1,821,600 from two rows for one client with no agent attached, one of them 1000x the other: 1 producer, $910,800 average deal, last month $0 so growth showed 0%, and Newbridge as 100% of premium. They now read every deal, from AgentLink and from here: October 50 deals / $86,844 against September's $182,832, 13 producers in 30 days, 112 deals / $194,801 over 30 days, and Ethos as the top carrier. Carriers the AgentLink list does not have (Ethos, Chubb) now appear in the carrier table.",
     commit: "PL-WIB-BUSINESS-ANALYTICS-CANONICAL",

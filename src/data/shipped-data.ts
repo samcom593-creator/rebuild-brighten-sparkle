@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "An agent's profile no longer says \"0 in 30d\" under Book quality while the same drawer shows their October deals.",
+    detail: "The Book quality panel counted 30-day deals from the AgentLink book, which has no agent row after Aug 31. Chudi, Obiajulu, Aisha, Wendell, Michael and you each read 0 in 30 days beside a last deal in October. The panel now shows the date the book last saw a deal for that agent, for example Chudi: last book deal Aug 18. For managers, Lifetime ALP and Deals showed $0 and 0 because only an admin can read those totals; they now show a dash instead of a zero.",
+    commit: "PL-WIB-DRAWER-BOOK-RECENCY",
+  },
+  {
+    ts: "today",
     label: "Business Analytics stops calling your top producers inactive: Jontay Taylor and Edwin Ac-lumor now lead Learn from instead of sitting in the 106-name inactive list.",
     detail: "Four cards on the analytics page read the AgentLink book, which has nothing after Oct 2 and nothing for September. The inactive list named Jontay (21 deals, $44,102), Edwin (28 deals, $42,015) and you; Needs attention said to coach agents who were selling; Learn from was empty; the trophy cabinet counted 1 day with a deal this month. They now read every deal, from AgentLink and from here: 88 licensed agents with no deal in 30 days, Jontay +194% and Edwin +180% above team average, 12 deal days this month and 42 five-deal weeks this year.",
     commit: "PL-WIB-ANALYTICS-CARDS-CANONICAL",

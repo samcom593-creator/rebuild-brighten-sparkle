@@ -122,6 +122,9 @@ interface ActivityRow {
   last_deal_posted_at: string | null;
   lifetime_deals: number | null;
   lifetime_alp: number | null;
+  // agent_lifetime_production is gated on is_owner(), so for anyone but an admin it
+  // returns no row. False means "this viewer cannot read it", not "zero".
+  lifetime_visible: boolean;
   downline_count: number | null;
 }
 
@@ -198,6 +201,15 @@ function fmtRelative(iso: string | null | undefined): string {
   } catch {
     return "—";
   }
+}
+
+// last_deal is a date column ("2026-08-18"). new Date() reads that as UTC midnight,
+// which renders as the previous day in Phoenix, so format it in UTC.
+function fmtBookDay(ymd: string): string {
+  const d = new Date(`${ymd.slice(0, 10)}T00:00:00Z`);
+  return Number.isNaN(d.getTime())
+    ? "—"
+    : d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 }
 
 function fmtDate(iso: string | null | undefined): string {
@@ -310,7 +322,7 @@ interface CarrierMixRow {
 
 interface DealQualityRow {
   deals_total: number | string | null;
-  deals_30d: number | string | null;
+  last_deal: string | null;
   avg_deal_alp: number | string | null;
   persistency_pct: number | string | null;
   pct_never_issued: number | string | null;
@@ -333,7 +345,7 @@ const qnum = (v: number | string | null | undefined): number | null => {
 };
 
   const { data: activity } = useQuery<ActivityRow | null>({
-    queryKey: ["agent-profile-drawer-activity", agentId],
+    queryKey: ["agent-profile-drawer-activity", agentId, isAdmin],
     enabled: !!agentId,
     queryFn: async () => {
       if (!agentId) return null;
@@ -363,6 +375,7 @@ const qnum = (v: number | string | null | undefined): number | null => {
         last_deal_posted_at: lp?.last_production_date ?? null,
         lifetime_deals: lp?.lifetime_deals ?? 0,
         lifetime_alp: lp?.lifetime_alp ?? 0,
+        lifetime_visible: !lpRes.error && (lp != null || isAdmin),
         downline_count: dlRes.count ?? 0,
       };
     },
@@ -385,7 +398,11 @@ const qnum = (v: number | string | null | undefined): number | null => {
         // policy number and deals has 0 of 1598; neither system records a deal without one.
         // It was fetched here but never rendered. A metric that cannot vary is not a quality
         // signal, and putting it on screen would train Sam to ignore the panel.
-        .select("deals_total, deals_30d, avg_deal_alp, persistency_pct, pct_never_issued, in_force, lapsed, carriers_used, top_carrier, top_carrier_share_pct")
+        // deals_30d dropped 2026-10-16 for a different reason: the book has no agent row after
+        // Aug 31, so it read "0 in 30d" for Chudi, Obiajulu, Aisha, Wendell, Michael and Sam
+        // while this drawer showed their October deals. The panel now says when the book last
+        // saw a deal, which stays true whether the AgentLink sync is current or not.
+        .select("deals_total, last_deal, avg_deal_alp, persistency_pct, pct_never_issued, in_force, lapsed, carriers_used, top_carrier, top_carrier_share_pct")
         .eq("agent_id", agentId)
         .maybeSingle();
       if (error) throw error;
@@ -1107,14 +1124,14 @@ const qnum = (v: number | string | null | undefined): number | null => {
                   <TrendingUp className="h-3 w-3 text-emerald-500" />
                   <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Lifetime ALP</span>
                 </div>
-                <p className="text-sm font-bold tabular-nums">{fmtUSD(activity?.lifetime_alp ?? null)}</p>
+                <p className="text-sm font-bold tabular-nums">{activity && !activity.lifetime_visible ? "—" : fmtUSD(activity?.lifetime_alp ?? null)}</p>
               </div>
               <div className="rounded-lg border border-border bg-card/60 p-2.5">
                 <div className="flex items-center gap-1.5 mb-1">
                   <Calendar className="h-3 w-3 text-info" />
                   <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Deals</span>
                 </div>
-                <p className="text-sm font-bold tabular-nums">{(activity?.lifetime_deals ?? 0).toLocaleString()}</p>
+                <p className="text-sm font-bold tabular-nums">{activity && !activity.lifetime_visible ? "—" : (activity?.lifetime_deals ?? 0).toLocaleString()}</p>
               </div>
               <div className="rounded-lg border border-border bg-card/60 p-2.5">
                 <div className="flex items-center gap-1.5 mb-1">
@@ -1166,7 +1183,7 @@ const qnum = (v: number | string | null | undefined): number | null => {
                       {qnum(quality.avg_deal_alp) !== null ? fmtUSD(qnum(quality.avg_deal_alp)) : "—"}
                     </p>
                     <div className="mt-0.5 text-[11px] text-muted-foreground tabular-nums">
-                      {qnum(quality.deals_30d) ?? 0} in 30d
+                      {quality.last_deal ? `last book deal ${fmtBookDay(quality.last_deal)}` : "no dated book deal"}
                     </div>
                   </div>
 

@@ -424,6 +424,17 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
     if (windowIsEmpty) void freshness.refetch();
   };
   useProductionRealtime(refreshProduction, 800);
+  // The board reads the production snapshot (mv_production_comp_truth), which refreshes on a
+  // 5-minute job after a 15 s debounce, so a deal shows in Total IMO by agency (live) first and the
+  // board only caught up on the next unrelated event. truth_refresh_state's 'production' row flips
+  // to dirty=false when the snapshot lands: refetch the board then. A dirty-mark (deal written,
+  // snapshot not refreshed yet) is ignored, because refetching then would read the old snapshot.
+  useRealtimeTable<{ name: string; dirty: boolean }>(
+    { table: "truth_refresh_state", event: "UPDATE", filter: "name=eq.production", channelSuffix: "scoreboard-truth" },
+    (payload) => {
+      if (payload.new && payload.new.dirty === false) void query.refetch({ cancelRefetch: false });
+    },
+  );
   // MP-361. Three raw subscriptions were REMOVED here — deals,
   // production_external_deals and production_external_daily_snapshots — because
   // useProductionRealtime() above already watches all three and delivers them

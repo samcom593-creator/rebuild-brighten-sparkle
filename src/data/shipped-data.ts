@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "The production scoreboard catches up the moment its numbers refresh, instead of trailing Total IMO by agency after a deal until something else reloads it.",
+    detail: "The scoreboard reads a production snapshot that refreshes every few minutes, while the IMO block reads live data, so right after a deal the two disagreed and the scoreboard stayed behind. The database now announces each refresh and the scoreboard reloads then.",
+    commit: "PL-REVIEW-P2",
+  },
+  {
+    ts: "today",
     label: "Sold Calls labels a sale Short call only when the recording really was too short, so three sales no longer read No recording beside a working Recording link.",
     detail: "The page guessed with its own rule (under 30 seconds or 60 words), which disagreed with the pipeline: a real 27-second sale read Short call until its packet arrived, and three sales whose audio ReadyMode served under 10 KB read No recording. The pipeline now records why a call has no packet (audio too small, transcript too short) and the page shows that: 13 short calls, 20 with no recording. The short-call note uses the recording's length.",
     commit: "PL-SOLD-CALLS-REVIEW",

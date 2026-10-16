@@ -13,6 +13,18 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Call Center's first screen now counts every lead the session will load instead of stopping at 500 per source.",
+    detail: "The Queue Preview read at most 500 rows from each source with its own filters, so it printed Aged leads 500 and Matching leads 507 while 895 aged leads matched, and it never showed a read error. It now runs exact counts over the same filter plans, scope and closed-records switch the queue uses, picks the true oldest and newest lead, and says Preview unavailable with Retry when a count fails.",
+    commit: "PL-GALAXY-MAP-CALLCENTER-PREVIEW",
+  },
+  {
+    ts: "today",
+    label: "A recruit who taps an unknown or inactive recruiting link sees the notice on the first screen of the application.",
+    detail: "The notice sat beside the agent picker several steps into the form, so a recruit on the first screen never saw it (checked live after the wave deployed). It now sits above the form from the first step and says they can still apply and pick who referred them before they submit.",
+    commit: "PL-GALAXY-MAP-REFLINK-FIRST-SCREEN",
+  },
+  {
+    ts: "today",
     label: "Every ReadyMode call since Aug 31 is back in the system, and new calls arrive every hour, so sold calls get booking packets again.",
     detail: "Nothing had pulled the dialer's call log since Aug 31: the cloud sync failed every hour on a rotated password, so the Sold Calls packets only covered 95 sales loaded by hand. A local hourly pull now reads the same call-log feed one Chicago day at a time, and a backfill loaded 49,291 calls for Aug 31 to Oct 13 with no day cut off. Sold calls went from 95 to 131: 36 sales were invisible. The bot no longer takes over a manager's ReadyMode session during dialing hours, and the failing cloud sync is switched off instead of trying a stale password 24 times a day.",
     commit: "PL-READYMODE-INGEST",

@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "The Team Hierarchy card on the admin dashboard shows this month's production again instead of $0 for every recruiter.",
+    detail: "The card read the month from the AgentLink book, which nobody has posted to since Aug 31, so all 7 recruiters showed $0 own, downline and team AP and the header said $0 team MTD. October holds 50 deals and $86,844 across 11 sellers. It now reads every deal, from AgentLink and from here. Who can see what is unchanged: an agent still sees only their own numbers and their own manager's email.",
+    commit: "PL-WIB-DOWNLINE-CANONICAL",
+  },
+  {
+    ts: "today",
     label: "Only staff can read the prospects on Sam's call calendar; agents and applicants can't anymore.",
     detail: "The scheduled-calls table holds each prospect's name, phone, email and call notes, and its rule let any login read it, applicants included. Reads are now limited to admins, managers, VAs and recruiters; the calendar sync and daily brief run as the system and are unaffected. A new weekly doctor check reads every table with personal data as an ordinary agent and goes critical if one is open to everyone; it found none after this fix across 102 tables.",
     commit: "PL-SEC-SCHEDULED-CALLS",

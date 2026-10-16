@@ -13,6 +13,36 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Book of Business no longer shows another client's phone, date of birth or call status on a policy number two clients share, and a call logged on that row goes to the right client.",
+    detail: "72 policy numbers (248 book rows) are shared by more than one client. The lookup matched on the policy number alone, so a row got whichever client sorted first: as Sam, 170 of 262 shared-number rows carried another client's record and 126 showed someone else's phone or birth date, and No answer or Resold wrote that other person's history. Each row now sends its client's name and only takes the record of the client with that name; a row with no name gets nothing rather than a guess.",
+    commit: "PL-BOOK-ROW-WORK-REVIEW",
+  },
+  {
+    ts: "today",
+    label: "Aisha can log No answer, Callback, Resold and notes on the whole book, and sees the call history Sam logged.",
+    detail: "She reads the whole book, but the database only let her update policies her own team wrote, so outcomes failed on about 1,190 of her rows and she saw 0 of the 32 call records. Admins and full-book readers now log on every policy; other managers still work only their team's.",
+    commit: "PL-BOOK-ROW-WORK-REVIEW",
+  },
+  {
+    ts: "today",
+    label: "Sold Calls works for Aisha: it is in her sidebar and command search, and sales without a packet say whether the call was too short instead of all reading No recording. Premiums show their cents.",
+    detail: "The recording and transcript rows were admin-only, so on her login all 33 sales without a packet read No recording; she now sees 23 no recording and 10 short calls, the same as Sam. Premiums on Sold Calls and the sold-call panel read $54.37/mo instead of $54/mo.",
+    commit: "PL-BOOK-ROW-WORK-REVIEW",
+  },
+  {
+    ts: "today",
+    label: "Home, the production scoreboard and Team Attendance move to the new day at Phoenix midnight instead of staying on the day the page was opened.",
+    detail: "The date was read once when the page opened, so a tab left open overnight kept yesterday's window and today's deals never showed. Today now follows the clock; a date someone picked stays picked.",
+    commit: "PL-BOOK-ROW-WORK-REVIEW",
+  },
+  {
+    ts: "today",
+    label: "Clients marked Do not call or Bad number in Book Flips lose their Call and Text buttons on both book pages, and the 1900-01-01 birth dates read as not on file.",
+    detail: "Book of Business and Book Flips only checked the client record's do-not-call flag, which is set on 0 of 2,025 clients, so the 7 clients marked Do not call and 15 marked Bad number still had a dial button. 18 book rows carry the carriers' 1900-01-01 placeholder and showed a 126-year-old client. A failed lookup now says the details did not load instead of No phone on file, and rows no longer flash back to loading when a deal is posted.",
+    commit: "PL-BOOK-ROW-WORK-REVIEW",
+  },
+  {
+    ts: "today",
     label: "Book of Business shows each policy's status in words and where the client stands (To call, No answer, Callback, Resold), with the same buttons as Book Flips on the row. Book Flips now lists the clients posted here, so recent sales are there to resell.",
     detail: "The book showed a bare status chip and only a Resold button, and Book Flips only read the AgentLink book, which nobody has posted to since Aug 31: it held 2 clients written since Sep 1. It now also reads every deal posted on this site, so it holds 1,482 policies across 14 carriers, 134 written since Sep 1 and 43 this month. Each Book of Business row labels the policy status, shows the client's call status with attempts, last contact, callback time and latest note, and gives admins and managers No answer, Callback, Appointment, Resold, More, Note and Back to call list. A call logged on either page shows on both. Agents still see the policy status and Resold.",
     commit: "PL-BOOK-ROW-WORK",

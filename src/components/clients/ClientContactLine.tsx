@@ -7,18 +7,23 @@ import { contactLinkProps, formatPhoneDisplay, phoneHref, smsHref } from "@/lib/
 import { Skeleton } from "@/components/ui/skeleton";
 import { ageFromDob, dobDisplay } from "@/lib/clientFacts";
 
-export function ClientContactLine({ phone, dob, state, city, doNotCall, bestTime, loading }: {
+export function ClientContactLine({ phone, dob, state, city, doNotCall, badNumber, bestTime, loading, failed }: {
   phone: string | null | undefined;
   dob: string | null | undefined;
   state?: string | null;
   city?: string | null;
   doNotCall?: boolean | null;
+  /** Marked Bad number in Book Flips: the number is shown, but not offered as a call. */
+  badNumber?: boolean | null;
   bestTime?: string | null;
   loading?: boolean;
+  /** The lookup failed, so "not on file" would be a guess; the page shows the error and a retry. */
+  failed?: boolean;
 }) {
   if (loading) return <Skeleton className="h-8 w-64 max-w-full" aria-label="Loading client details" />;
-  const callHref = doNotCall ? null : phoneHref(phone);
-  const textHref = doNotCall ? null : smsHref(phone);
+  if (failed) return <span className="text-xs text-destructive">Phone and date of birth did not load</span>;
+  const callHref = doNotCall || badNumber ? null : phoneHref(phone);
+  const textHref = doNotCall || badNumber ? null : smsHref(phone);
   const age = ageFromDob(dob);
   const dobText = dobDisplay(dob);
   const place = [city, state].filter(Boolean).join(", ");
@@ -27,6 +32,10 @@ export function ClientContactLine({ phone, dob, state, city, doNotCall, bestTime
       {doNotCall ? (
         <span className="inline-flex h-8 items-center gap-1.5 rounded-md border border-red-400/40 bg-red-500/10 px-2.5 text-xs font-semibold text-red-700 dark:text-red-300">
           <PhoneOff className="h-3.5 w-3.5" aria-hidden /> Do not call
+        </span>
+      ) : badNumber ? (
+        <span className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 text-xs font-semibold text-foreground">
+          <PhoneOff className="h-3.5 w-3.5" aria-hidden /> Bad number{phone ? ` · ${formatPhoneDisplay(phone)}` : ""}
         </span>
       ) : callHref ? (
         <a href={callHref} {...contactLinkProps(callHref)} className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90">

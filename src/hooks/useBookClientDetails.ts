@@ -8,7 +8,7 @@
 // not already read. Rows are fetched in the same 60-row chunks the list paints, so
 // "Show more" asks only for the new rows.
 import { useMemo } from "react";
-import { useQueries } from "@tanstack/react-query";
+import { keepPreviousData, useQueries } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 export interface BookClientDetails {
@@ -37,6 +37,8 @@ export interface BookClientRowRef {
   origin: string | null;
   policy_number: string | null;
   carrier: string | null;
+  /** Matches the row to its own client: 72 policy numbers are shared by more than one client. */
+  client_name: string | null;
 }
 
 export const BOOK_CLIENT_DETAILS_KEY = "book-client-details";
@@ -54,9 +56,12 @@ export function useBookClientDetails(rows: BookClientRowRef[], enabled = true) {
       queryKey: [BOOK_CLIENT_DETAILS_KEY, chunk.map((r) => r.row_key).join("|")],
       enabled: enabled && chunk.length > 0,
       staleTime: 60_000,
+      // A new deal shifts every chunk by one row, which changes every key. Keep the rows on
+      // screen while the new chunks load instead of flashing them all back to skeletons.
+      placeholderData: keepPreviousData,
       queryFn: async (): Promise<BookClientDetails[]> => {
         const { data, error } = await supabase.rpc("book_client_details" as never, {
-          p_rows: chunk.map((r) => ({ row_key: r.row_key, origin: r.origin, policy_number: r.policy_number, carrier: r.carrier })),
+          p_rows: chunk.map((r) => ({ row_key: r.row_key, origin: r.origin, policy_number: r.policy_number, carrier: r.carrier, client_name: r.client_name })),
         } as never);
         // supabase-js resolves with {error} instead of throwing; raise it as an Error so the
         // message (not "unknown error") reaches the row.
@@ -69,12 +74,21 @@ export function useBookClientDetails(rows: BookClientRowRef[], enabled = true) {
   return useMemo(() => {
     const byKey = new Map<string, BookClientDetails>();
     const loading = new Set<string>();
+    const failedKeys = new Set<string>();
     let failed: string | null = null;
+    // Fresh answers first, so a chunk's placeholder (the previous chunk's rows) never overrides them.
+    const order = results.map((res, i) => ({ res, i })).sort((a, b) => Number(b.res.isPlaceholderData) - Number(a.res.isPlaceholderData));
+    for (const { res } of order) if (res.data) for (const d of res.data) byKey.set(d.row_key, d);
     results.forEach((res, i) => {
-      if (res.data) for (const d of res.data) byKey.set(d.row_key, d);
-      if (res.isPending) for (const r of chunks[i] ?? []) loading.add(r.row_key);
-      if (res.isError && !failed) failed = (res.error as { message?: string } | null)?.message ?? "unknown error";
+      const chunk = chunks[i] ?? [];
+      if (res.isPending) for (const r of chunk) loading.add(r.row_key);
+      // Still loading a row the placeholder does not hold: a skeleton, not "not on file".
+      if (res.isPlaceholderData) for (const r of chunk) if (!byKey.has(r.row_key)) loading.add(r.row_key);
+      if (res.isError) {
+        failed ??= (res.error as { message?: string } | null)?.message ?? "unknown error";
+        for (const r of chunk) failedKeys.add(r.row_key);
+      }
     });
-    return { byKey, loading, failed, retry: () => results.forEach((r) => { if (r.isError) void r.refetch(); }) };
+    return { byKey, loading, failed, failedKeys, retry: () => results.forEach((r) => { if (r.isError) void r.refetch(); }) };
   }, [results, chunks]);
 }

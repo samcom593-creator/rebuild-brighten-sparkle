@@ -25,7 +25,8 @@ import { supabase } from "@/integrations/supabase/client";
 import type { HomeData } from "@/lib/homeDashboard";
 
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: "samuel" }, isAdmin: true, isManager: false }) }));
-vi.mock("@/hooks/useBusinessToday", () => ({ useBusinessToday: () => "2026-10-14" }));
+const businessDay = vi.hoisted(() => ({ key: "2026-10-14" }));
+vi.mock("@/hooks/useBusinessToday", () => ({ useBusinessToday: () => businessDay.key }));
 vi.mock("@/hooks/useProductionRealtime", () => ({ useProductionRealtime: () => undefined }));
 vi.mock("@/lib/invalidateOperationalTruth", () => ({ invalidateOperationalTruth: vi.fn() }));
 vi.mock("@/components/dashboard/JoinYourTeam", () => ({ JoinYourTeam: () => <div data-testid="join-your-team" /> }));
@@ -92,6 +93,7 @@ function renderHome() {
 }
 
 beforeEach(() => {
+  businessDay.key = "2026-10-14";
   rpc.mockReset();
   panel.imported = false;
   panel.renders = 0;
@@ -129,6 +131,28 @@ describe("AgentCloudHome", () => {
     expect(screen.getByText(/same dates as the scoreboard/)).toBeInTheDocument();
     // The old second picker is gone.
     expect(screen.queryByRole("button", { name: "This month" })).not.toBeInTheDocument();
+  });
+
+  it("rolls to the new business day at Phoenix midnight, but keeps a date someone picked", async () => {
+    rpc.mockResolvedValue({ data: HOME, error: null } as never);
+    const { client, rerender } = renderHome();
+    expect(await screen.findByText("215")).toBeInTheDocument();
+    expect(screen.getByTestId("scoreboard")).toHaveAttribute("data-through", "2026-10-14");
+    const tree = () => (
+      <QueryClientProvider client={client}>
+        <AgentCloudHome />
+      </QueryClientProvider>
+    );
+    // Midnight passes (useBusinessToday re-renders with the new key): Home follows it.
+    businessDay.key = "2026-10-15";
+    rerender(tree());
+    expect(screen.getByTestId("scoreboard")).toHaveAttribute("data-through", "2026-10-15");
+    expect(rpcCalls().at(-1)).toEqual({ p_start: "2026-10-01", p_end: "2026-10-16" });
+    // A picked date is a choice, not "today": it stays through the next rollover.
+    fireEvent.click(screen.getByRole("button", { name: "Through Oct 10" }));
+    businessDay.key = "2026-10-16";
+    rerender(tree());
+    expect(screen.getByTestId("scoreboard")).toHaveAttribute("data-through", "2026-10-10");
   });
 
   it("changing the scoreboard's period or date moves every production block on Home", async () => {

@@ -160,6 +160,7 @@ function DealRowItem({
   focusRef,
   client,
   clientLoading,
+  clientFailed = false,
   hasSoldCall,
   canWork = false,
 }: {
@@ -171,6 +172,7 @@ function DealRowItem({
   focusRef?: RefObject<HTMLDivElement | null>;
   client?: BookClientDetails;
   clientLoading?: boolean;
+  clientFailed?: boolean;
   hasSoldCall?: (phone?: string | null, first?: string | null, last?: string | null) => boolean;
   /** Admin or manager: may log call outcomes (book_flip_set enforces the same rule). */
   canWork?: boolean;
@@ -225,9 +227,11 @@ function DealRowItem({
             dob={client?.dob}
             state={client?.state}
             city={client?.city}
-            doNotCall={client?.do_not_call}
+            doNotCall={client?.do_not_call || client?.flip_status === "do_not_call"}
+            badNumber={client?.flip_status === "bad_number"}
             bestTime={client?.best_time_to_call}
             loading={clientLoading && !client}
+            failed={clientFailed && !client}
           />
         </div>
       )}
@@ -564,7 +568,7 @@ export default function MyDeals() {
   const shownRefs = useMemo(() => {
     const rows = deals.slice(0, visible);
     if (focusRow && !rows.some((r) => r.row_key === focusRow.row_key)) rows.push(focusRow);
-    return rows.map((r) => ({ row_key: r.row_key, origin: r.origin, policy_number: r.policy_number, carrier: r.carrier }));
+    return rows.map((r) => ({ row_key: r.row_key, origin: r.origin, policy_number: r.policy_number, carrier: r.carrier, client_name: r.client_name }));
   }, [deals, visible, focusRow]);
   const clientDetails = useBookClientDetails(shownRefs, enabled);
   const soldKeys = useSoldCallKeys();
@@ -837,6 +841,7 @@ export default function MyDeals() {
                         onToggle={() => setExpandedId((current) => (current === focusRow.row_key ? null : focusRow.row_key))}
                         client={clientDetails.byKey.get(focusRow.row_key)}
                         clientLoading={clientDetails.loading.has(focusRow.row_key)}
+                        clientFailed={clientDetails.failedKeys.has(focusRow.row_key)}
                         hasSoldCall={soldKeys.has}
                         canWork={canWorkBook}
                       />
@@ -921,6 +926,7 @@ export default function MyDeals() {
                       focusRef={focusRef}
                       client={clientDetails.byKey.get(d.row_key)}
                       clientLoading={clientDetails.loading.has(d.row_key)}
+                      clientFailed={clientDetails.failedKeys.has(d.row_key)}
                       hasSoldCall={soldKeys.has}
                       canWork={canWorkBook}
                     />

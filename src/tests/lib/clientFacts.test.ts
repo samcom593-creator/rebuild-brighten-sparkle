@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ageFromDob, dobDisplay, splitClientName } from "@/lib/clientFacts";
+import { ageFromDob, dobDisplay, realDob, splitClientName } from "@/lib/clientFacts";
 
 describe("clientFacts", () => {
   it("reads whole years of age and refuses dates it cannot place", () => {
@@ -15,6 +15,17 @@ describe("clientFacts", () => {
     expect(dobDisplay("1958-03-07")).toBe("03/07/1958");
     expect(dobDisplay("1958-03-07T00:00:00Z")).toBe("03/07/1958");
     expect(dobDisplay("")).toBeNull();
+  });
+
+  it("reads the carriers' 1900-01-01 placeholder and impossible dates as not on file, never as a 126-year-old", () => {
+    const today = new Date(2026, 9, 16);
+    expect(realDob("1900-01-01", today)).toBeNull();
+    expect(ageFromDob("1900-01-01", today)).toBeNull();
+    expect(dobDisplay("1900-01-01")).toBeNull();
+    expect(realDob("2027-01-01", today)).toBeNull(); // not born yet
+    expect(realDob("1958-13-01", today)).toBeNull();
+    expect(realDob("1958-03-07T00:00:00Z", today)).toBe("1958-03-07");
+    expect(realDob("2020-05-01", today)).toBe("2020-05-01"); // a child's policy is real
   });
 
   it("splits a client name into first and the rest", () => {

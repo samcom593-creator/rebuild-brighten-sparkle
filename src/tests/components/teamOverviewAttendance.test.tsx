@@ -13,6 +13,8 @@ vi.mock("sonner", () => ({ toast }));
 const backend = vi.hoisted(() => ({ current: null as null | { rpc: (n: string, a?: Record<string, unknown>) => Promise<unknown> } }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc: (n: string, a?: Record<string, unknown>) => backend.current!.rpc(n, a) } }));
 vi.mock("@/lib/teamStage", async (orig) => { const real = await orig<typeof import("@/lib/teamStage")>(); return { ...real, phoenixToday: () => "2026-10-09" }; });
+// Attendance's "today" is the live Phoenix business day (useBusinessToday), so it rolls over at midnight.
+vi.mock("@/hooks/useBusinessToday", () => ({ useBusinessToday: () => "2026-10-09" }));
 
 import { TeamOverview } from "@/components/team/TeamOverview";
 import { TeamAttendance } from "@/components/team/TeamAttendance";

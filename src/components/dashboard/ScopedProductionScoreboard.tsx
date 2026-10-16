@@ -27,6 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuth } from "@/hooks/useAuth";
+import { useBusinessToday } from "@/hooks/useBusinessToday";
 import { resolveBrand } from "@/config/brand";
 import { scoreboardWindow, type ScoreboardPeriod } from "@/lib/scoreboardPeriod";
 import { useRealtimeTable } from "@/shared/realtime/useRealtimeTable";
@@ -309,7 +310,12 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
   // shows none of the deals" report. Both headline surfaces now open on the same
   // period. (Sam can still switch to Day/Week/Year.)
   const [ownPeriod, setOwnPeriod] = useState<ScoreboardPeriod>("month");
-  const [ownThroughDate, setOwnThroughDate] = useState(phoenixToday);
+  // Own date (pages that do not pass a control): follows the Phoenix business day until a
+  // date is picked, so a tab left open overnight does not keep showing yesterday.
+  const businessToday = useBusinessToday(PHOENIX_TZ);
+  const [pickedThroughDate, setPickedThroughDate] = useState<string | null>(null);
+  const ownThroughDate = pickedThroughDate ?? businessToday;
+  const setOwnThroughDate = (d: string) => setPickedThroughDate(d === businessToday ? null : d);
   const period = control?.period ?? ownPeriod;
   const setPeriod = control?.onPeriodChange ?? setOwnPeriod;
   const throughDate = control?.throughDate ?? ownThroughDate;

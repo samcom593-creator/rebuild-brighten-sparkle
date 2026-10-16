@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAgentProfileDrawer } from "@/stores/agentProfileDrawer";
 import { useRolePreview } from "@/hooks/useRolePreview";
+import { useNavGrants } from "@/hooks/useNavGrants";
 import { AGENT_CLOUD_ACCOUNT_NAV, AGENT_CLOUD_PRIMARY_NAV, APPLICANT_NAV, filterAgentCloudNav, flattenAgentCloudNav, isApplicantViewer } from "@/components/layout/agentCloudNavigation";
 import {
   LayoutDashboard,
@@ -82,6 +83,7 @@ export function CommandPalette() {
   const openAgentProfile = useAgentProfileDrawer((s) => s.openAgent);
   const { user, isAdmin, isManager, isAgent, hasAgentRecord, isVa, isVaManager, isRecruiter, isLoading: authLoading, effectiveMode } = useAuth();
   const { isPreviewing, effectiveRole } = useRolePreview();
+  const navGrants = useNavGrants();
   // Applications search opens the recruiting workspace, whose route guard
   // admits admins, managers, VAs, VA managers and recruiters. Nobody else is
   // offered applicant results they could not open.
@@ -99,15 +101,15 @@ export function CommandPalette() {
     const seesAll = isAdmin && !isPreviewing;
     // One applicant rule for palette, sidebar and phone nav (F26).
     const isApplicant = isApplicantViewer({ authLoading, isAdmin, isManager, isAgent, hasAgentRecord, isPreviewing });
-    const primary = isApplicant ? APPLICANT_NAV : filterAgentCloudNav(AGENT_CLOUD_PRIMARY_NAV, { seesAll, viewMode });
-    const account = filterAgentCloudNav(AGENT_CLOUD_ACCOUNT_NAV, { seesAll, viewMode });
+    const primary = isApplicant ? APPLICANT_NAV : filterAgentCloudNav(AGENT_CLOUD_PRIMARY_NAV, { seesAll, viewMode, grants: navGrants });
+    const account = filterAgentCloudNav(AGENT_CLOUD_ACCOUNT_NAV, { seesAll, viewMode, grants: navGrants });
     return flattenAgentCloudNav([...primary, ...account]).map((link) => ({
       label: link.label,
       path: link.href,
       icon: (link.icon ?? LayoutDashboard) as RouteEntry["icon"],
       group: "Navigate",
     }));
-  }, [authLoading, effectiveMode, effectiveRole, hasAgentRecord, isAdmin, isAgent, isManager, isPreviewing]);
+  }, [authLoading, effectiveMode, effectiveRole, hasAgentRecord, isAdmin, isAgent, isManager, isPreviewing, navGrants]);
 
   // Only show extra routes the current role can actually open. Previously this
   // exposed every admin route to every user, leading to access-denied bounces.

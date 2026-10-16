@@ -40,7 +40,9 @@ interface Packet {
 interface Sensitive { ssn: string | null; bank_account: string | null; bank_routing: string | null }
 
 const digits10 = (s?: string | null) => (s ? s.replace(/[^0-9]/g, "").slice(-10) : "");
-const money = (n: number | null) => (n == null ? null : n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }));
+// Whole dollars for face amounts, cents for premiums (same rule as the Sold Calls page).
+const money = (n: number | null, cents = false) =>
+  n == null ? null : n.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: cents ? 2 : 0, maximumFractionDigits: cents ? 2 : 0 });
 const mmss = (s: number | null | undefined) => (s == null ? "" : `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`);
 const dateStr = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) : "date unknown");
 
@@ -110,7 +112,7 @@ export function SoldCallPanel({ phone, firstName, lastName }: { phone?: string |
         <span className="flex items-center gap-2 text-sm font-semibold">
           <PhoneCall className="h-4 w-4 text-amber-500" />
           Sold call on file, {dateStr(p.call_at)}
-          {p.carrier ? <span className="font-normal text-muted-foreground">· {p.carrier}{p.monthly_premium ? ` · ${money(p.monthly_premium)}/mo` : ""}</span> : null}
+          {p.carrier ? <span className="font-normal text-muted-foreground">· {p.carrier}{p.monthly_premium ? ` · ${money(p.monthly_premium, true)}/mo` : ""}</span> : null}
         </span>
         <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
@@ -162,7 +164,7 @@ export function SoldCallPanel({ phone, firstName, lastName }: { phone?: string |
             <Field k="Carrier" v={p.carrier} />
             <Field k="Product" v={p.product} />
             <Field k="Face amount" v={money(p.face_amount)} />
-            <Field k="Premium" v={p.monthly_premium == null ? null : `${money(p.monthly_premium)}/mo`} />
+            <Field k="Premium" v={p.monthly_premium == null ? null : `${money(p.monthly_premium, true)}/mo`} />
             <Field k="Policy #" v={p.policy_number} />
             <Field k="Draft day" v={draftDayLabel(p.draft_day)} />
             <Field k="Date of birth" v={formatDob(p.client_dob)} />

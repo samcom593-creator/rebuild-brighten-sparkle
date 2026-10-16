@@ -89,7 +89,12 @@ export function AgentCloudHome() {
   // two answers for the same month: "This month" ran to Nov 1 and counted policies
   // dated later in October, while the scoreboard read month to date.
   const [period, setPeriod] = useState<ScoreboardPeriod>("month");
-  const [throughDate, setThroughDate] = useState<string>(todayKey);
+  // The window follows the business day until someone picks another date: a picked
+  // date sticks, "today" rolls over at Phoenix midnight and after a laptop wake. Seeding
+  // useState with todayKey froze Home on the day the page mounted.
+  const [pickedDate, setPickedDate] = useState<string | null>(null);
+  const throughDate = pickedDate ?? todayKey;
+  const setThroughDate = (d: string) => setPickedDate(d === todayKey ? null : d);
   const win = scoreboardWindow(period, throughDate);
   const home = useQuery({
     queryKey: ["apex-home-dashboard", win.start, win.end],

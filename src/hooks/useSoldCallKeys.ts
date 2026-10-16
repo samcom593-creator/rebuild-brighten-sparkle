@@ -9,6 +9,11 @@ import { useAuth } from "@/hooks/useAuth";
 // Admins + Aisha Kebbeh only (Sam's directive) — sold-call data is sensitive (SSN/bank).
 export const SOLD_CALL_EXTRA_UID = "66bc4464-f10b-4ecf-8e8b-144486f18a44";
 
+/** The front-end mirror of can_view_sold_calls(): admins and Aisha. The database decides. */
+export function canViewSoldCalls(isAdmin: boolean, userId: string | null | undefined): boolean {
+  return isAdmin || userId === SOLD_CALL_EXTRA_UID;
+}
+
 const digits10 = (s?: string | null) => (s ? s.replace(/[^0-9]/g, "").slice(-10) : "");
 const nameKey = (f?: string | null, l?: string | null) =>
   `${(f ?? "").trim().toLowerCase()}|${(l ?? "").trim().toLowerCase()}`;
@@ -24,7 +29,7 @@ export interface SoldCallKeys {
 
 export function useSoldCallKeys(): SoldCallKeys {
   const { isAdmin, user } = useAuth();
-  const canView = !!isAdmin || user?.id === SOLD_CALL_EXTRA_UID;
+  const canView = canViewSoldCalls(!!isAdmin, user?.id);
   const q = useQuery({
     queryKey: ["sold-call-keys"],
     enabled: canView,

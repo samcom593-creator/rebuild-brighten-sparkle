@@ -41,6 +41,9 @@ const PRODUCERS: AccountMode[] = ["agent", "manager", "agency_owner"];
 const LEADERS: AccountMode[] = ["manager", "agency_owner"];
 const RECRUITING: AccountMode[] = ["agent", "manager", "agency_owner", "recruiter", "va", "va_manager"];
 
+/** A per-person permission the database checks, beyond account mode (see useNavGrants). */
+export type AgentCloudNavGrant = "sold_calls";
+
 export interface AgentCloudNavItem {
   label: string;
   href: string;
@@ -58,6 +61,8 @@ export interface AgentCloudNavItem {
    * also point at (Contracting review is My Team's ?view=contracting).
    */
   matchParams?: readonly string[];
+  /** Shown only to a viewer holding this grant; an admin sees it regardless. */
+  grant?: AgentCloudNavGrant;
 }
 
 export interface AgentCloudNavGroup {
@@ -184,7 +189,8 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
       { label: "Book of Business", href: "/dashboard/production", icon: BookOpen },
       // Working carrier books for rewrites (2026-10-07). Admin and managers only, like the view behind it.
       { label: "Book Flips", href: "/dashboard/books", icon: PhoneCall, modes: ["manager"] },
-      { label: "Sold Calls", href: "/dashboard/sold-calls", icon: PhoneCall, modes: ["admin"] },
+      // Admins and Aisha (can_view_sold_calls); she works in manager mode, so a mode list could not reach her.
+      { label: "Sold Calls", href: "/dashboard/sold-calls", icon: PhoneCall, grant: "sold_calls" },
       { label: "My Commissions", href: "/dashboard/my-commissions", icon: WalletCards },
       { label: "Retention", href: "/dashboard/retention", icon: Shield },
     ],
@@ -419,6 +425,8 @@ export interface AgentCloudNavViewer {
   seesAll: boolean;
   /** Account mode the entries are filtered for (the previewed mode while previewing). */
   viewMode: AccountMode;
+  /** Per-person grants (useNavGrants). Omit = none. */
+  grants?: ReadonlySet<AgentCloudNavGrant>;
 }
 
 /**
@@ -431,11 +439,13 @@ export function filterAgentCloudNav(entries: AgentCloudNavEntry[], viewer: Agent
   // A role fallback (the VA's Calendar, the VA's Contracting review) duplicates an entry the all-seeing viewer already
   // has elsewhere; it is for the roles that lack the original, not a second copy for the owner.
   const notDuplicateForOwner = (item: { hideWhenSeesAll?: boolean }) => !(viewer.seesAll && item.hideWhenSeesAll);
+  const grantAllows = (item: { grant?: AgentCloudNavGrant }) => !item.grant || viewer.seesAll || Boolean(viewer.grants?.has(item.grant));
   return entries
     .filter((entry) => !(!isAgentCloudGroup(entry) && entry.adminOnly && !viewer.seesAll))
+    .filter((entry) => isAgentCloudGroup(entry) || grantAllows(entry))
     .filter((entry) => modeAllows(entry.modes))
     .map((entry) => (isAgentCloudGroup(entry)
-      ? { ...entry, items: entry.items.filter((item) => (!item.adminOnly || viewer.seesAll) && modeAllows(item.modes) && notDuplicateForOwner(item)) }
+      ? { ...entry, items: entry.items.filter((item) => (!item.adminOnly || viewer.seesAll) && modeAllows(item.modes) && notDuplicateForOwner(item) && grantAllows(item)) }
       : entry))
     .filter((entry) => !isAgentCloudGroup(entry) || entry.items.length > 0);
 }

@@ -108,8 +108,10 @@ const FILTERS: Array<{ key: FilterKey; label: string; match: (s: string) => bool
 ];
 const phone10 = (v: string | null | undefined) => (v ?? "").replace(/\D/g, "").slice(-10);
 
-const money = (n: number | null | undefined) =>
-  n == null ? null : n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+// Face amounts read in whole dollars; premiums keep their cents ($54.37/mo is what the
+// application asks for, $54 is not).
+const money = (n: number | null | undefined, cents = false) =>
+  n == null ? null : n.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: cents ? 2 : 0, maximumFractionDigits: cents ? 2 : 0 });
 const mmss = (s: number | null | undefined) => (s == null ? "" : `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`);
 const clientName = (r: SoldRow) =>
   [r.client_first_name ?? r.lead_first_name, r.client_last_name ?? r.lead_last_name].filter(Boolean).join(" ") || "Unknown client";
@@ -454,7 +456,7 @@ function SoldCallCard({ row, extra, secret, secretLoading, onResold, twin, onOpe
               <Field label="Carrier" value={row.carrier} />
               <Field label="Product" value={row.product} />
               <Field label="Face amount" value={money(row.face_amount)} />
-              <Field label="Premium" value={row.monthly_premium == null ? null : `${money(row.monthly_premium)}/mo`} />
+              <Field label="Premium" value={row.monthly_premium == null ? null : `${money(row.monthly_premium, true)}/mo`} />
               <Field label="Draft day" value={draftDayLabel(row.draft_day)} />
               <Field label="Policy #" value={policyNumber} mono copy={policyNumber} />
             </section>

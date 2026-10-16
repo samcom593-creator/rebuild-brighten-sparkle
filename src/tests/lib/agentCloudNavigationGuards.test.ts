@@ -8,6 +8,7 @@ import {
   agentCloudBreadcrumb,
   filterAgentCloudNav,
   flattenAgentCloudNav,
+  type AgentCloudNavGrant,
 } from "@/components/layout/agentCloudNavigation";
 
 const root = path.resolve(__dirname, "../../..");
@@ -49,6 +50,17 @@ describe("sidebar items only reach routes their audience can open", () => {
       }
     });
   }
+
+  it("offers Sold Calls only to a viewer holding the sold_calls grant (admins and Aisha), in her manager mode too", () => {
+    const soldCalls = (grants?: ReadonlySet<AgentCloudNavGrant>) =>
+      flattenAgentCloudNav(filterAgentCloudNav([...AGENT_CLOUD_PRIMARY_NAV, ...AGENT_CLOUD_ACCOUNT_NAV], { seesAll: false, viewMode: "manager", grants }))
+        .some((link) => link.href === "/dashboard/sold-calls");
+    expect(soldCalls()).toBe(false);
+    expect(soldCalls(new Set())).toBe(false);
+    expect(soldCalls(new Set<AgentCloudNavGrant>(["sold_calls"]))).toBe(true);
+    const admin = flattenAgentCloudNav(filterAgentCloudNav([...AGENT_CLOUD_PRIMARY_NAV, ...AGENT_CLOUD_ACCOUNT_NAV], { seesAll: true, viewMode: "manager" }));
+    expect(admin.some((link) => link.href === "/dashboard/sold-calls")).toBe(true);
+  });
 
   it("never offers a retired destination", () => {
     for (const mode of Object.keys(MODE_ROLE)) {

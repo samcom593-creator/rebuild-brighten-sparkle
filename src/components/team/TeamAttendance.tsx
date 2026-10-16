@@ -5,8 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useTeamAttendance } from "@/hooks/useTeamAttendance";
+import { useBusinessToday } from "@/hooks/useBusinessToday";
 import {
-  MARKS, bulkPreview, dateKeyLabel, expectedLabel, filterAttendance, phoenixToday, shiftDateKey, statusLabel,
+  MARKS, bulkPreview, dateKeyLabel, expectedLabel, filterAttendance, shiftDateKey, statusLabel,
   type AttendanceStageFilter, type MarkStatus,
 } from "@/lib/teamStage";
 import { StageBadge } from "@/components/team/StageBadge";
@@ -17,8 +18,14 @@ import { StageBadge } from "@/components/team/StageBadge";
  * ever applies to people you selected and previewed, and never overwrites a mark already made.
  */
 export function TeamAttendance({ className }: { className?: string }) {
-  const today = phoenixToday();
-  const [date, setDate] = useState(today);
+  // Today follows the Phoenix clock across midnight and laptop wake; a picked day sticks.
+  const today = useBusinessToday();
+  const [picked, setPicked] = useState<string | null>(null);
+  const date = picked ?? today;
+  const setDate = (next: string | ((d: string) => string)) => {
+    const value = typeof next === "function" ? next(date) : next;
+    setPicked(value === today ? null : value);
+  };
   const att = useTeamAttendance(date, true);
   const [search, setSearch] = useState("");
   const [stage, setStage] = useState<AttendanceStageFilter>("all");

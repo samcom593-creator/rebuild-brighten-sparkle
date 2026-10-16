@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ChevronDown, ChevronLeft, ChevronRight, Cloud, HandCoins, Loader2, LogOut, Search, Star, UserPlus } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRolePreview } from "@/hooks/useRolePreview";
+import { useNavGrants } from "@/hooks/useNavGrants";
 import { useIsTouchDevice } from "@/hooks/useIsTouchDevice";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -82,7 +83,8 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
   // selling sidebar (Book of Business, Retention, Quoter...).
   // One rule for the sidebar and the palette (agentCloudNavigation.ts): the inline copy that lived here drifted the
   // moment a flag (hideWhenSeesAll) was added to the shared one, so the owner's rail kept the VA fallbacks.
-  const filterEntries = (entries: AgentCloudNavEntry[]) => filterAgentCloudNav(entries, { seesAll, viewMode });
+  const navGrants = useNavGrants();
+  const filterEntries = (entries: AgentCloudNavEntry[]) => filterAgentCloudNav(entries, { seesAll, viewMode, grants: navGrants });
 
   // An applicant is a role-agent login with no agents row (applying mints the
   // login). They get four real next steps, not the producer's Sell/Grow/Book

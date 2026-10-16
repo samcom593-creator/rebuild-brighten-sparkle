@@ -60,7 +60,7 @@ const packetRow = {
   carrier: "American Amicable",
   product: "Senior Choice",
   face_amount: 15000,
-  monthly_premium: 54,
+  monthly_premium: 54.37,
   policy_number: null,
   ssn_last4: "6789",
   has_ssn: true,
@@ -140,7 +140,7 @@ describe("Sold Calls", () => {
   it("shows the full policy and client facts on the page", async () => {
     renderPage();
     const card = await screen.findByRole("article", { name: "Sold call: Kathy Smith" });
-    for (const text of ["American Amicable", "Senior Choice", "$15,000", "$54/mo", "3rd of the month", "03/07/1958", "Checking account", "John Smith · son"]) {
+    for (const text of ["American Amicable", "Senior Choice", "$15,000", "$54.37/mo", "3rd of the month", "03/07/1958", "Checking account", "John Smith · son"]) {
       expect(within(card).getByText(text, { exact: false })).toBeInTheDocument();
     }
   });

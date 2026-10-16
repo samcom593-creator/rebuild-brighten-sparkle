@@ -296,6 +296,31 @@ describe("Production page", () => {
     expect(screen.getAllByRole("button", { name: "Resold" }).length).toBeGreaterThan(0);
   });
 
+  it("matches each row to its own client: the lookup carries the client name, since policy numbers are shared", async () => {
+    renderPage();
+    await screen.findByText("Client0 Last0");
+    await waitFor(() => expect(vi.mocked(supabase.rpc).mock.calls.some((c) => String(c[0]) === "book_client_details")).toBe(true));
+    const asked = vi.mocked(supabase.rpc).mock.calls.find((c) => String(c[0]) === "book_client_details");
+    const rows = (asked?.[1] as { p_rows: Array<{ row_key: string; client_name: string | null }> }).p_rows;
+    expect(rows.find((r) => r.row_key === "r0003")?.client_name).toBe("Client3 Last3");
+  });
+
+  it("does not offer Call or Text for a client marked Do not call or Bad number in Book Flips", async () => {
+    vi.mocked(supabase.rpc).mockImplementation(flipDetails("do_not_call"));
+    const first = renderPage();
+    expect(await screen.findByText("Left a voicemail")).toBeInTheDocument();
+    // The status chip and the contact line both say it; the contact line no longer offers the call.
+    expect(screen.getAllByText("Do not call")).toHaveLength(2);
+    expect(screen.queryByRole("link", { name: /Call \(601\) 555-1234/ })).not.toBeInTheDocument();
+    first.unmount();
+
+    vi.mocked(supabase.rpc).mockImplementation(flipDetails("bad_number"));
+    renderPage();
+    expect(await screen.findByText(/Bad number · \(601\) 555-1234/)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Call \(601\) 555-1234/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Text/ })).not.toBeInTheDocument();
+  });
+
   it("says so when client details fail to load, with a retry", async () => {
     vi.mocked(supabase.rpc).mockImplementation(((fn: string) => fn === "book_client_details"
       ? Promise.resolve({ data: null, error: { message: "permission denied" } })
@@ -303,6 +328,9 @@ describe("Production page", () => {
     renderPage();
     expect(await screen.findByText(/Client phone and date of birth did not load: permission denied/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
+    // The rows say the lookup failed; "No phone on file" would be a guess.
+    expect(screen.getAllByText("Phone and date of birth did not load").length).toBeGreaterThanOrEqual(30);
+    expect(screen.queryByText("No phone on file")).not.toBeInTheDocument();
   });
 
   it("shows the page's Post a Deal below lg only, and labels agency-wide totals without inventing an average (F37 / F10)", async () => {

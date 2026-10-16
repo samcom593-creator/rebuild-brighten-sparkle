@@ -18,7 +18,7 @@ import {
 } from "@/lib/bookFlips";
 import { SoldCallPanel } from "@/components/clients/SoldCallPanel";
 import { useSoldCallKeys } from "@/hooks/useSoldCallKeys";
-import { dobDisplay } from "@/lib/clientFacts";
+import { ageFromDob, dobDisplay } from "@/lib/clientFacts";
 import { FlipActions, type FlipSetOptions } from "@/components/books/FlipActions";
 
 const COLUMNS =
@@ -406,11 +406,16 @@ export default function BookFlips() {
 function PolicyCard({ p, busy, onSet }: { p: BookPolicy; busy: boolean; onSet: (p: BookPolicy, s: FlipStatus, o?: SetOpts) => Promise<boolean> }) {
   const soldKeys = useSoldCallKeys();
   // Phone: native dialer; laptop: Google Voice (the site-wide rule in @/lib/phone).
-  const tel = p.do_not_call ? null : phoneHref(p.phone);
+  // Do not call comes from the client record or from this card's own outcome; a number
+  // marked Bad number stays visible but is no longer offered as a call.
+  const dnc = p.do_not_call || p.flip_status === "do_not_call";
+  const badNumber = p.flip_status === "bad_number";
+  const tel = dnc || badNumber ? null : phoneHref(p.phone);
   const name = displayName(p.client_name) || "Name missing";
   const { firstName, lastName } = splitName(p);
   const dob = dobDisplay(p.dob);
-  const meta = [dob ? `DOB ${dob}` : "", p.age_years ? `${p.age_years} yrs` : "", p.city ?? "", stateSourceText(policyState(p)), p.best_time_to_call ? `best time ${p.best_time_to_call}` : ""].filter(Boolean).join(" · ");
+  const age = ageFromDob(p.dob);
+  const meta = [dob ? `DOB ${dob}` : "", age != null ? `${age} yrs` : "", p.city ?? "", stateSourceText(policyState(p)), p.best_time_to_call ? `best time ${p.best_time_to_call}` : ""].filter(Boolean).join(" · ");
   const soldCall = soldKeys.has(p.phone, p.client_first_name, p.client_last_name);
 
   const copyPhone = async () => {
@@ -442,9 +447,13 @@ function PolicyCard({ p, busy, onSet }: { p: BookPolicy; busy: boolean; onSet: (
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        {p.do_not_call ? (
+        {dnc ? (
           <span className="inline-flex items-center gap-1.5 rounded-md border border-red-400/40 bg-red-500/10 px-3 py-2 text-sm font-semibold text-red-700 dark:text-red-300">
             <PhoneOff className="h-4 w-4" aria-hidden /> Do not call
+          </span>
+        ) : badNumber ? (
+          <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-3 py-2 text-sm font-semibold text-foreground">
+            <PhoneOff className="h-4 w-4" aria-hidden /> Bad number{p.phone ? ` · ${formatPhoneDisplay(p.phone)}` : ""}
           </span>
         ) : tel ? (
           <a href={tel} {...contactLinkProps(tel)} className="inline-flex h-11 items-center gap-2 rounded-md bg-primary px-4 text-base font-bold text-primary-foreground">
@@ -453,7 +462,7 @@ function PolicyCard({ p, busy, onSet }: { p: BookPolicy; busy: boolean; onSet: (
         ) : (
           <span className="text-sm text-muted-foreground">No phone on file</span>
         )}
-        {p.phone && !p.do_not_call && (
+        {p.phone && !dnc && (
           <Button type="button" variant="ghost" size="icon" aria-label="Copy phone number" onClick={() => void copyPhone()}>
             <Copy className="h-4 w-4" />
           </Button>

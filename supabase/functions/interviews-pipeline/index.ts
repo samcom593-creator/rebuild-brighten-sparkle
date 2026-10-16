@@ -176,7 +176,7 @@ async function updateApplicant(req: Request, actor: Actor, body: Record<string, 
       return json({
         error: identity.identityConflict
           ? "Candidate identity conflicts across Galaxy applications. Resolve the email, phone, or Instagram match before hiring."
-          : "Link an Galaxy application before hiring so the agent account and onboarding can be created.",
+          : "Link a Galaxy application before hiring so the agent account and onboarding can be created.",
       }, 422);
     }
   }

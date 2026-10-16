@@ -68,7 +68,7 @@ const FAQ: FaqItem[] = [
     a: "Open Call Center (/dashboard/call-center) for your call queue. If dialer access or call data is missing, submit a ReadyMode request in the Support Desk on this page." },
   { category: "Tools", q: "Where's the AI assistant?",
     a: "There is no in-app AI chat right now. Open the Support Desk tab on this page or message your manager, and we will answer." },
-  { category: "Tools", q: "How do I share an Galaxy win on social?",
+  { category: "Tools", q: "How do I share a Galaxy win on social?",
     a: "Tap 'Post a Deal' in the top bar (or 'Add Deal' on Community, /dashboard/community) → fill in premium + product. It posts to the live News Feed and we'll auto-feed it to the public landing page ticker." },
 
   // Brand + Culture

@@ -1184,10 +1184,10 @@ function UnmatchedPanel({
 }) {
   const why =
     matchCandidates === undefined
-      ? "Booked through Calendly without an Galaxy application. Everything known about them is below."
+      ? "Booked through Calendly without a Galaxy application. Everything known about them is below."
       : matchCandidates > 0
-        ? `Booked through Calendly without an Galaxy application. ${matchCandidates} record${matchCandidates === 1 ? "" : "s"} in the system could be this person — nothing is linked yet.`
-        : "Booked through Calendly without an Galaxy application, and no record in the system looks like them. This booking is everything Galaxy knows.";
+        ? `Booked through Calendly without a Galaxy application. ${matchCandidates} record${matchCandidates === 1 ? "" : "s"} in the system could be this person — nothing is linked yet.`
+        : "Booked through Calendly without a Galaxy application, and no record in the system looks like them. This booking is everything Galaxy knows.";
 
   return (
     <div className="rounded-lg border border-amber-500/35 bg-amber-500/5 p-3 sm:p-4">

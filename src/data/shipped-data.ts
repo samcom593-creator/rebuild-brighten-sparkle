@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "New hires' welcome email no longer says \"You are officially an Galaxy agent.\" 15 emails to 8 hires since Oct 10 carried it.",
+    detail: "The Oct 8 rename swapped Apex for Galaxy word by word, so every \"an Apex\" became \"an Galaxy\". Fixed in the hire welcome text and email, the $10K-week next step, the Agent Flow page, a Help Center question, Interview Recovery and the hire refusal message. A daily check now catches \"an Galaxy\" or a doubled brand name in the site and in the database copy.",
+    commit: "PL-WIB-AN-GALAXY",
+  },
+  {
+    ts: "today",
     label: "An agent's profile shows this month's real IT and AV: Jontay Taylor 17 / $34K (was 11 / $22K), and Cari Mullen, Michael Kayembe and Tyler Krejcha no longer read 0.",
     detail: "The IT and AV tiles counted the old deals table, which misses deals posted from Discord and deals on a merged second login. This month that left 13 deals and $27,374 off the tiles. They now count the same production every other page reads, in Phoenix time. When a manager or agent opens the profile of someone outside their team, the tiles used to say 0 items this month even when that person had sold; they now show a dash, the same as Lifetime ALP.",
     commit: "PL-WIB-DRAWER-MONTHLY-VISIBLE",

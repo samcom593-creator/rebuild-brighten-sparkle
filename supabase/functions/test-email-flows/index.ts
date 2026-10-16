@@ -756,7 +756,7 @@ const handler = async (req: Request): Promise<Response> => {
               <div style="background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%); border-radius: 16px 16px 0 0; padding: 30px; text-align: center;">
                 <div style="font-size: 48px; margin-bottom: 10px;">🏆</div>
                 <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 700;">
-                  An Galaxy manager just landed a new recruit!
+                  A Galaxy manager just landed a new recruit!
                 </h1>
               </div>
 

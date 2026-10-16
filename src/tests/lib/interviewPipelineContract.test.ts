@@ -86,7 +86,7 @@ describe("native recruiting interview contract", () => {
   it("enforces the application/onboarding invariant in the server writer", () => {
     const edge = read("supabase/functions/interviews-pipeline/index.ts");
     expect(edge).toContain('if (action === "hire")');
-    expect(edge).toContain("Link an Galaxy application before hiring");
+    expect(edge).toContain("Link a Galaxy application before hiring");
     expect(edge).toContain("Candidate identity conflicts across Galaxy applications");
   });
 

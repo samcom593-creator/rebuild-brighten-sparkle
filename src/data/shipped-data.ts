@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "The Monthly challenge on Business Analytics no longer says Complete: October is at 43% of its goal. Daily and Weekly show real production too, here and in Ask APEX.",
+    detail: "The challenges read the AgentLink book, which nobody has posted to since Aug 31. October read $1,821,600 from two rows for one client with no agent attached, one of them 1000x the other, against a $0 goal, so the Monthly tile showed 150% Complete and said to push the bonus. This week read $0 of $0 and today $0 against a $121,440 daily pace from the same two rows. They now read every deal, from AgentLink and from here: today $3,752 of a $5,539 pace, this week $32,883 against last week's $14,218, October $86,844 of a $201,115 goal (September plus 10%). The quarterly recruiting challenge is unchanged.",
+    commit: "PL-WIB-SALES-CHALLENGES-CANONICAL",
+  },
+  {
+    ts: "today",
     label: "Book of Business shows each client's phone with a Call button, date of birth, age and state on the row, plus a Resold button; sold-call details sit on the row too.",
     detail: "The book only carried client names, so calling or reselling someone meant leaving the page. Every client row now has Call and Text with the number, date of birth with age, city and state, and a Resold button that posts the new policy prefilled with the client and, when the policy is in a carrier book, marks it resold in Book Flips. A client with a sold call shows the packet on the row: summary, health, address, SSN, bank and beneficiaries. Book Flips cards add date of birth and city, and only cards with a sold call load the packet. Client details follow each login's own access rules.",
     commit: "PL-BOOK-CLIENT-INFO",

@@ -288,6 +288,20 @@ describe("Sold Calls", () => {
     expect(screen.queryByText("No sold calls in this list right now.")).toBeNull();
   });
 
+  it("opens on one call from an Easy Resells link (?call=), with a way back to all", async () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter initialEntries={["/dashboard/sold-calls?call=call-1"]}><SoldCalls /></MemoryRouter>
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByRole("article", { name: "Sold call: Kathy Smith" })).toBeInTheDocument();
+    expect(screen.getAllByRole("article")).toHaveLength(1);
+    expect(screen.getByText("Showing one call, opened from Easy Resells.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Show all" }));
+    await waitFor(() => expect(screen.queryByText("Showing one call, opened from Easy Resells.")).toBeNull());
+  });
+
   it("says so when the SSN and bank numbers fail to load", async () => {
     db.sensitive = { data: null as unknown as unknown[], error: { message: "permission denied" } };
     renderPage();

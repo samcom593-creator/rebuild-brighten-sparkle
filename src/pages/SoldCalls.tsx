@@ -188,6 +188,13 @@ export default function SoldCalls() {
 
   const [filter, setFilter] = useState<FilterKey>("to_resell");
   const [params, setParams] = useSearchParams();
+  // ?call=<call id> (an id, never client data) opens on that one call; Easy Resells links here.
+  const onlyCall = params.get("call");
+  const clearOnlyCall = () => {
+    const next = new URLSearchParams(params);
+    next.delete("call");
+    setParams(next, { replace: true });
+  };
   const view = params.get("view") === "objections" ? "objections" : "sold";
   const setView = (v: "sold" | "objections") => {
     const next = new URLSearchParams(params);
@@ -222,6 +229,7 @@ export default function SoldCalls() {
     const active = FILTERS.find((f) => f.key === filter) ?? FILTERS[FILTERS.length - 1];
     const term = search.trim().toLowerCase();
     const termDigits = term.replace(/\D/g, "");
+    if (onlyCall) return rows.filter((r) => r.call_id === onlyCall);
     return rows.filter((r) => {
       if (!active.match(r, badNumbers)) return false;
       if (!term) return true;
@@ -231,7 +239,7 @@ export default function SoldCalls() {
         .filter(Boolean)
         .some((v) => String(v).toLowerCase().includes(term));
     });
-  }, [rows, filter, search, extras.data, badNumbers]);
+  }, [rows, filter, search, extras.data, badNumbers, onlyCall]);
 
   // The newest sale with a packet for each phone, so a short or unrecorded sale can
   // point at the same client's full call instead of looking like a lost sale.
@@ -267,7 +275,13 @@ export default function SoldCalls() {
         </Button>
       </div>
 
-      {view === "objections" ? <ObjectionCallList /> : (<>
+      {onlyCall && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-sm">
+          <span>Showing one call, opened from Easy Resells.</span>
+          <Button size="sm" variant="outline" onClick={clearOnlyCall}>Show all</Button>
+        </div>
+      )}
+      {view === "objections" ? <ObjectionCallList onlyCallId={onlyCall} /> : (<>
 
       <div className="z-30 -mx-4 mb-4 border-b border-border/60 bg-background/95 px-4 py-3 backdrop-blur lg:sticky lg:top-[60px]">
         <div className="flex flex-wrap items-center gap-2">

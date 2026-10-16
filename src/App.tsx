@@ -293,6 +293,7 @@ const PreLicensing = lazy(() => import("./pages/PreLicensing"));
 const BookReconciliation = lazy(() => import("./pages/BookReconciliation"));
 const BookFlips = lazy(() => import("./pages/BookFlips"));
 const SoldCalls = lazy(() => import("./pages/SoldCalls"));
+const EasyResells = lazy(() => import("./pages/EasyResells"));
 const ReadyModeIntegration = lazy(() => import("./pages/ReadyModeIntegration"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const ContentWheel = lazy(() => import("./pages/ContentWheel"));
@@ -850,6 +851,7 @@ const App = () => (
                            <Route path="/dashboard/book-quality" element={<ProtectedRoute requireAdmin allowManagers><BookReconciliation /></ProtectedRoute>} />
                            <Route path="/dashboard/books" element={<ProtectedRoute requireAdmin allowManagers><BookFlips /></ProtectedRoute>} />
                            <Route path="/dashboard/sold-calls" element={<ProtectedRoute requireAdmin allowManagers><SoldCalls /></ProtectedRoute>} />
+                           <Route path="/dashboard/easy-resells" element={<ProtectedRoute requireAdmin allowManagers><EasyResells /></ProtectedRoute>} />
                            <Route path="/dashboard/admin/book-quality" element={<LegacyWorkspaceRedirect to="/dashboard/book-quality" />} />
                            {/* ReadyMode dialer integration — credentials live in system_settings */}
                            <Route path="/dashboard/readymode" element={<ProtectedRoute requireAdmin><ReadyModeIntegration /></ProtectedRoute>} />

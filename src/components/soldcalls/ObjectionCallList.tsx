@@ -63,7 +63,7 @@ async function fetchObjections(): Promise<ObjectionRow[]> {
   return out;
 }
 
-export function ObjectionCallList() {
+export function ObjectionCallList({ onlyCallId = null }: { onlyCallId?: string | null } = {}) {
   const q = useQuery({ queryKey: ["objection-calls"], queryFn: fetchObjections, staleTime: 30_000 });
   const [filter, setFilter] = useState<ObjFilter>("bank");
   const [search, setSearch] = useState("");
@@ -73,13 +73,14 @@ export function ObjectionCallList() {
     const f = FILTERS.find((x) => x.key === filter) ?? FILTERS[FILTERS.length - 1];
     const term = search.trim().toLowerCase();
     const digits = term.replace(/\D/g, "");
+    if (onlyCallId) return rows.filter((r) => r.call_id === onlyCallId);
     return rows.filter((r) => {
       if (!f.match(r)) return false;
       if (!term) return true;
       if (digits.length >= 4 && (r.lead_phone ?? "").replace(/\D/g, "").includes(digits)) return true;
       return [nameOf(r), r.agent_raw, r.disposition].some((v) => (v ?? "").toLowerCase().includes(term));
     });
-  }, [rows, filter, search]);
+  }, [rows, filter, search, onlyCallId]);
   // Render a page at a time: 600+ social objections as full cards would stall a phone.
   const [visible, setVisible] = useState(40);
 

@@ -36,6 +36,8 @@ export interface BookPolicy {
   months_in_force: number | null;
   agent_name: string | null;
   agent_gone: boolean;
+  /** "Vantage" when the writing agent is one of the Vantage Financial producers (is_vantage_agent). */
+  agent_group?: string | null;
   clients_on_number: number;
   flip_status: FlipStatus;
   attempts: number;
@@ -207,9 +209,14 @@ export const ALL_AGENTS = "all";
 
 const agentOf = (p: Pick<BookPolicy, "agent_name">): string => (p.agent_name ?? "").trim();
 
-/** True when the row was written by this agent ("all" keeps every row). */
-export function matchesAgent(p: Pick<BookPolicy, "agent_name">, agent: string): boolean {
-  return agent === ALL_AGENTS || agentOf(p) === agent;
+/** The agent filter's value for a whole agent group, e.g. "group:Vantage". */
+export const agentGroupValue = (group: string) => `group:${group}`;
+
+/** True when the row was written by this agent, or by anyone in the group ("all" keeps every row). */
+export function matchesAgent(p: Pick<BookPolicy, "agent_name" | "agent_group">, agent: string): boolean {
+  if (agent === ALL_AGENTS) return true;
+  if (agent.startsWith("group:")) return (p.agent_group ?? "") === agent.slice(6);
+  return agentOf(p) === agent;
 }
 
 export interface AgentCount { name: string; count: number; gone: boolean }

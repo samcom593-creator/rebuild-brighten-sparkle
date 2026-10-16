@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import {
   BOOK_FILTERS, defaultBookFilter, FLIP_FILTERS, FLIP_LABEL, FLIP_TONE, GROUP_TONE, PRIORITY_CARRIERS, PRIORITY_LABEL, PRIORITY_TONE, SORTS,
   displayName, matchesBook, matchesFlip, matchesSearch, matchesState, money, monthsInForceText, phoenixTime, policyState, stateChipsFor, stateCounts, stateName, stateSourceText, STATE_UNKNOWN,
-  priorityTier, shortDate, sortPolicies, splitName, ALL_AGENTS, ALL_CARRIERS, agentCounts, matchesAgent,
+  priorityTier, shortDate, sortPolicies, splitName, ALL_AGENTS, ALL_CARRIERS, agentCounts, agentGroupValue, matchesAgent,
   type BookFilter, type BookPolicy, type FlipFilter, type FlipStatus, type SortKey,
 } from "@/lib/bookFlips";
 import { SoldCallPanel } from "@/components/clients/SoldCallPanel";
@@ -25,7 +25,7 @@ const COLUMNS =
   "flip_key, carrier, policy_number, client_key, product, book_status, is_dead, is_book_active, status_group, " +
   "client_name, client_first_name, client_last_name, phone, phone_source, dob, age_years, state, city, do_not_call, " +
   "best_time_to_call, face_amount, monthly_premium, annual_premium, effective_date, months_in_force, agent_name, " +
-  "agent_gone, clients_on_number, flip_status, attempts, last_contact_at, callback_at, notes, resold_policy_number, " +
+  "agent_gone, agent_group, clients_on_number, flip_status, attempts, last_contact_at, callback_at, notes, resold_policy_number, " +
   "resold_carrier, resold_annual_premium";
 const PAGE = 50;
 
@@ -163,9 +163,14 @@ export default function BookFlips() {
   // opportunities that agent sold. The chosen agent stays listed, at 0, when the other filters leave them nothing.
   const agentOptions = useMemo(() => {
     const list = agentCounts(searched.filter((p) => matchesState(p, stateFilter) && matchesBook(p, bookFilter) && matchesFlip(p, flipFilter, now)));
-    if (agentFilter !== ALL_AGENTS && !list.some((a) => a.name === agentFilter)) list.push({ name: agentFilter, count: 0, gone: false });
+    if (agentFilter !== ALL_AGENTS && !agentFilter.startsWith("group:") && !list.some((a) => a.name === agentFilter)) list.push({ name: agentFilter, count: 0, gone: false });
     return list;
   }, [searched, stateFilter, bookFilter, flipFilter, now, agentFilter]);
+  // Everyone under Vantage, counted the same way: the Vantage Financial producers' policies under these filters.
+  const vantageCount = useMemo(
+    () => searched.filter((p) => p.agent_group === "Vantage" && matchesState(p, stateFilter) && matchesBook(p, bookFilter) && matchesFlip(p, flipFilter, now)).length,
+    [searched, stateFilter, bookFilter, flipFilter, now],
+  );
   // The selected state always shows: with its real count when the top-12 cut hid it, as 0 only when nobody is there.
   const stateChips = useMemo(() => stateChipsFor(byState, stateFilter), [byState, stateFilter]);
   const unknownCount = byState.find((s) => s.code === STATE_UNKNOWN)?.count ?? 0;
@@ -366,6 +371,9 @@ export default function BookFlips() {
           className="h-11 rounded-md border border-input bg-background px-3 text-base text-foreground sm:max-w-[16rem] sm:text-sm"
         >
           <option value={ALL_AGENTS}>All agents</option>
+          {(vantageCount > 0 || agentFilter === agentGroupValue("Vantage")) && (
+            <option value={agentGroupValue("Vantage")}>Everyone under Vantage · {vantageCount}</option>
+          )}
           {agentOptions.map((a) => (
             <option key={a.name} value={a.name}>{a.name}{a.gone ? " (left)" : ""} · {a.count}</option>
           ))}

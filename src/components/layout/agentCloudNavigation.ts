@@ -187,6 +187,8 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
     modes: PRODUCERS,
     items: [
       { label: "Book of Business", href: "/dashboard/production", icon: BookOpen },
+      // The day's start (2026-10-16): the easiest resells from every book and call, ranked. Admins and Aisha, like Sold Calls.
+      { label: "Easy Resells", href: "/dashboard/easy-resells", icon: Sparkles, grant: "sold_calls" },
       // Working carrier books for rewrites (2026-10-07). Admin and managers only, like the view behind it.
       { label: "Book Flips", href: "/dashboard/books", icon: PhoneCall, modes: ["manager"] },
       // Admins and Aisha (can_view_sold_calls); she works in manager mode, so a mode list could not reach her.

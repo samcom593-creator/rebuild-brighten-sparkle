@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ALL_AGENTS, STATE_UNKNOWN, agentCounts, defaultBookFilter, matchesAgent, matchesState, policyState, stateChipsFor, stateCounts, stateSourceText } from "@/lib/bookFlips";
+import { ALL_AGENTS, STATE_UNKNOWN, agentCounts, agentGroupValue, defaultBookFilter, matchesAgent, matchesState, policyState, stateChipsFor, stateCounts, stateSourceText } from "@/lib/bookFlips";
 import {
   isCallbackDue, matchesBook, matchesFlip, matchesSearch, monthsInForceText, priorityTier, sortPolicies, splitName,
   type BookPolicy,
@@ -10,7 +10,7 @@ const base = (o: Partial<BookPolicy>): BookPolicy => ({
   is_dead: false, is_book_active: false, status_group: "unknown", client_name: "Ann Lee", client_first_name: null,
   client_last_name: null, phone: "(602) 555-0101", phone_source: "client_record", dob: null, age_years: null, state: null,
   city: null, do_not_call: false, best_time_to_call: null, face_amount: null, monthly_premium: null, annual_premium: null,
-  effective_date: null, months_in_force: null, agent_name: null, agent_gone: false, clients_on_number: 1,
+  effective_date: null, months_in_force: null, agent_name: null, agent_gone: false, agent_group: null, clients_on_number: 1,
   flip_status: "to_call", attempts: 0, last_contact_at: null, callback_at: null, notes: null,
   resold_policy_number: null, resold_carrier: null, resold_annual_premium: null, ...o,
 });
@@ -196,5 +196,10 @@ describe("who sold what", () => {
     expect(rows.filter((p) => matchesAgent(p, "KJ Vaughn")).map((p) => p.flip_key)).toEqual(["1", "2"]);
     expect(rows.filter((p) => matchesAgent(p, ALL_AGENTS))).toHaveLength(4);
     expect(rows.filter((p) => matchesAgent(p, "Nobody"))).toHaveLength(0);
+  });
+
+  it("filters to everyone under an agent group", () => {
+    const grouped = [base({ flip_key: "v1", agent_name: "KJ Vaughn", agent_group: "Vantage" }), base({ flip_key: "n1", agent_name: "Ann Agent" })];
+    expect(grouped.filter((p) => matchesAgent(p, agentGroupValue("Vantage"))).map((p) => p.flip_key)).toEqual(["v1"]);
   });
 });

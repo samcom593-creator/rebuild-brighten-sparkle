@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Easy Resells: the easiest people to resell, ranked",
+    detail: "New page under My Business (admins and Aisha). One list: gave SSN + bank but never posted (26), lapsing (112), dropped in the last 18 months (123), Vantage clients, agent left (333), warm objection calls (135). Each row is one line of why, Call/Text, and the same marks Sold Calls and Book Flips use. Everyone under Vantage is one tap, and also an option in the Book Flips agent filter. Book Flips now lists the 308 AgentLink deals that had dropped out of the book.",
+    commit: "PL-EASY-RESELLS",
+  },
+  {
+    ts: "today",
     label: "Mis-heard SSN and bank numbers are flagged and fixable",
     detail: "Sold Calls and the sold-call panel check every SSN (9 digits, a possible SSN), routing number (9 digits, bank check digit) and account number (4-17 digits) heard off the recording. One that cannot be right says how it is off, loses its copy button, joins Numbers to check, and becomes 'Confirm the SSN: ...' in Ask the client. Fix saves the number the client confirms, encrypted, and the extractor can no longer write the mis-heard one back.",
     commit: "PL-SOLD-CALL-NUMBERS",

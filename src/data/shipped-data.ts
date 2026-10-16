@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "An agent's profile shows this month's real IT and AV: Jontay Taylor 17 / $34K (was 11 / $22K), and Cari Mullen, Michael Kayembe and Tyler Krejcha no longer read 0.",
+    detail: "The IT and AV tiles counted the old deals table, which misses deals posted from Discord and deals on a merged second login. This month that left 13 deals and $27,374 off the tiles. They now count the same production every other page reads, in Phoenix time. When a manager or agent opens the profile of someone outside their team, the tiles used to say 0 items this month even when that person had sold; they now show a dash, the same as Lifetime ALP.",
+    commit: "PL-WIB-DRAWER-MONTHLY-VISIBLE",
+  },
+  {
+    ts: "today",
     label: "Follow-up texts no longer go out overnight. They wait for 8am in the person's own time zone.",
     detail: "This afternoon's reminder fix made the 1-hour, 6-hour and 12-hour reminders start going out, and nothing checked the clock. A 12-hour reminder lands on the opposite side of the day from when someone applied: for 28 of the last 42 applicants it would have gone out between 9pm and 8am their time, mostly as a text. Reminders now go out only from 8am to 9pm in the time zone of the state on the application (or the agent's profile). A state that spans two zones has to be daytime in both, and unknown means daytime in both Eastern and Pacific. A reminder that comes due overnight goes out in the morning instead of being dropped. Over the next 24 hours: the same 9 reminders, none at night (4 would have been).",
     commit: "PL-WIB-NUDGE-QUIET-HOURS",

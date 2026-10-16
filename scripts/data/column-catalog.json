@@ -6942,7 +6942,8 @@
       "display_name",
       "items_this_month",
       "legs",
-      "monthly_premium_this_month"
+      "monthly_premium_this_month",
+      "production_visible"
     ],
     "v_agent_owner_truth": [
       "agent_id",

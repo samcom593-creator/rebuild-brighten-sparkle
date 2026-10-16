@@ -132,6 +132,9 @@ interface MonthlyProductionRow {
   items_this_month: number | null;
   annual_volume_this_month: number | null;
   legs: number | null;
+  // v_agent_monthly_production is security_invoker. False means "this viewer cannot
+  // read every deal behind the row", and the money columns come back null, not zero.
+  production_visible: boolean | null;
 }
 
 interface PaceVerdictRow {
@@ -456,16 +459,15 @@ const qnum = (v: number | string | null | undefined): number | null => {
       if (!agentId) return null;
       const { data, error } = await supabase
         .from("v_agent_monthly_production" as any)
-        .select("items_this_month, annual_volume_this_month, legs")
+        .select("items_this_month, annual_volume_this_month, legs, production_visible")
         .eq("agent_id", agentId)
         .maybeSingle();
       if (error) {
-        // Graceful: never block the drawer if the view is missing in dev.
-
+        // Never block the drawer, and never turn a failed read into zeros: the tiles show a dash.
         console.warn("[AgentProfileDrawer] monthly production query failed", error);
-        return { items_this_month: 0, annual_volume_this_month: 0, legs: 0 };
+        return { items_this_month: null, annual_volume_this_month: null, legs: null, production_visible: false };
       }
-      return (data as any) ?? { items_this_month: 0, annual_volume_this_month: 0, legs: 0 };
+      return (data as any) ?? { items_this_month: null, annual_volume_this_month: null, legs: null, production_visible: false };
     },
     staleTime: 30_000,
   });
@@ -826,7 +828,7 @@ const qnum = (v: number | string | null | undefined): number | null => {
                   <Calendar className="h-2.5 w-2.5" /> IT
                 </p>
                 <p className="mt-1 text-3xl font-black tabular-nums leading-none text-emerald-500 dark:text-emerald-400">
-                  {(monthly?.items_this_month ?? 0).toLocaleString()}
+                  {monthly && !monthly.production_visible ? "—" : (monthly?.items_this_month ?? 0).toLocaleString()}
                 </p>
                 <p className="mt-1 text-[11px] text-muted-foreground">items · this month</p>
               </div>
@@ -835,7 +837,7 @@ const qnum = (v: number | string | null | undefined): number | null => {
                   <TrendingUp className="h-2.5 w-2.5" /> AV
                 </p>
                 <p className="mt-1 text-3xl font-black tabular-nums leading-none text-amber-500 dark:text-amber-400">
-                  {fmtUSDCompact(monthly?.annual_volume_this_month ?? 0)}
+                  {monthly && !monthly.production_visible ? "—" : fmtUSDCompact(monthly?.annual_volume_this_month ?? 0)}
                 </p>
                 <p className="mt-1 text-[11px] text-muted-foreground">premium · this month</p>
               </div>
@@ -844,7 +846,7 @@ const qnum = (v: number | string | null | undefined): number | null => {
                   <Users className="h-2.5 w-2.5" /> Legs
                 </p>
                 <p className="mt-1 text-3xl font-black tabular-nums leading-none text-info dark:text-info">
-                  {(monthly?.legs ?? 0).toLocaleString()}
+                  {monthly?.legs == null ? "—" : monthly.legs.toLocaleString()}
                 </p>
                 <p className="mt-1 text-[11px] text-muted-foreground">downline</p>
               </div>

@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { applyFilterOps, combineQueuePreview, type FilterOp, type PreviewEdgeLead, type QueuePreview, type QueuePreviewPlans, type SourcePreview } from "@/lib/callCenterQueue";
+import { errorMessage } from "@/lib/queryState";
 import { motion } from "framer-motion";
 import { Phone, Filter, Sparkles, Eye, PlayCircle, Users, Calendar as CalendarIcon, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -61,6 +63,8 @@ interface CallCenterFiltersProps {
   onStart: () => void;
   disabled?: boolean;
   className?: string;
+  /** The queue's own plans for the current filters; null until access is known. */
+  previewPlans: QueuePreviewPlans | null;
 }
 
 const containerVariants = {
@@ -102,26 +106,6 @@ const US_STATES: Array<{ code: string; name: string }> = [
   { code: "WI", name: "Wisconsin" }, { code: "WY", name: "Wyoming" },
 ];
 
-interface QueuePreviewStats {
-  matching: number;
-  oldest: { name: string; ageDays: number } | null;
-  newest: { name: string; ageDays: number } | null;
-  licensed: number;
-  unlicensed: number;
-  aged: number;
-  noContact: number;
-}
-
-function dateRangeToIso(range: DateRangeFilter): string | null {
-  const now = Date.now();
-  const day = 24 * 60 * 60 * 1000;
-  switch (range) {
-    case "last_7": return new Date(now - 7 * day).toISOString();
-    case "last_30": return new Date(now - 30 * day).toISOString();
-    case "last_90": return new Date(now - 90 * day).toISOString();
-    default: return null;
-  }
-}
 
 function daysSince(iso: string | null | undefined): number {
   if (!iso) return 0;
@@ -130,125 +114,50 @@ function daysSince(iso: string | null | undefined): number {
   return Math.max(0, Math.floor((Date.now() - t) / (24 * 60 * 60 * 1000)));
 }
 
-function usePreviewStats(filters: {
-  sourceFilter: SourceFilter;
-  licenseFilter: LicenseFilter;
-  statusFilter: StatusFilter;
-  progressFilter: ProgressFilter;
-  refererFilter: RefererFilter;
-  dateRangeFilter: DateRangeFilter;
-  ownerFilter: OwnerFilter;
-  stateFilter: StateFilter;
-  enabled: boolean;
-}) {
-  return useQuery<QueuePreviewStats>({
-    queryKey: ["mp260-callcenter-preview", filters],
-    enabled: filters.enabled,
+/**
+ * The preview counts exactly what Start Calling will load: the page hands in the
+ * queue's own filter plans (src/lib/callCenterQueue.ts), and every figure is an
+ * exact head count. A failed count is an error with Retry, never a number.
+ */
+async function sourcePreview(table: "aged_leads" | "applications", plan: FilterOp[]): Promise<SourcePreview> {
+  const head = async (ops: FilterOp[]) => {
+    const { count, error } = await applyFilterOps(supabase.from(table).select("id", { count: "exact", head: true }), ops);
+    if (error) throw error;
+    if (typeof count !== "number") throw new Error(`The ${table === "aged_leads" ? "aged lead" : "application"} count did not come back.`);
+    return count;
+  };
+  const edge = async (ascending: boolean): Promise<PreviewEdgeLead | null> => {
+    const { data, error } = await applyFilterOps(supabase.from(table).select("first_name, last_name, created_at"), plan)
+      .not("created_at", "is", null)
+      .order("created_at", { ascending })
+      .limit(1);
+    if (error) throw error;
+    const row = (data ?? [])[0] as { first_name: string | null; last_name: string | null; created_at: string | null } | undefined;
+    if (!row?.created_at) return null;
+    const name = `${(row.first_name ?? "").trim()} ${(row.last_name ?? "").trim()}`.trim() || "Unnamed";
+    return { name, createdAt: row.created_at };
+  };
+  const [total, licensed, noContact, oldest, newest] = await Promise.all([
+    head(plan),
+    head([...plan, { op: "eq", column: "license_status", value: "licensed" }]),
+    head([...plan, { op: "is", column: "contacted_at", value: null }]),
+    edge(true),
+    edge(false),
+  ]);
+  return { total, licensed, noContact, oldest, newest };
+}
+
+function usePreviewStats(plans: QueuePreviewPlans | null) {
+  return useQuery<QueuePreview>({
+    queryKey: ["mp260-callcenter-preview", plans],
+    enabled: plans !== null,
     staleTime: 30_000,
     queryFn: async () => {
-      const sinceIso = dateRangeToIso(filters.dateRangeFilter);
-      const rows: Array<{
-        id: string;
-        first_name: string | null;
-        last_name: string | null;
-        created_at: string | null;
-        license_status: string | null;
-        contacted_at: string | null;
-        state: string | null;
-        source: "aged_leads" | "applications";
-      }> = [];
-
-      if (filters.sourceFilter === "all" || filters.sourceFilter === "applications") {
-        let q: any = supabase
-          .from("applications")
-          .select("id, first_name, last_name, created_at, license_status, contacted_at, state, assigned_agent_id, referral_manager_id, terminated_at, contracted_at, closed_at, license_progress")
-          .is("terminated_at", null)
-          .is("contracted_at", null)
-          .is("closed_at", null)
-          .limit(500);
-        if (sinceIso) q = q.gte("created_at", sinceIso);
-        if (filters.licenseFilter !== "all") q = q.eq("license_status", filters.licenseFilter);
-        if (filters.progressFilter !== "all") q = q.eq("license_progress", filters.progressFilter);
-        if (filters.statusFilter === "new") q = q.is("contacted_at", null);
-        if (filters.statusFilter === "contacted") q = q.not("contacted_at", "is", null);
-        if (filters.stateFilter && filters.stateFilter !== "all") q = q.eq("state", filters.stateFilter);
-        if (filters.ownerFilter === "unassigned") {
-          q = q.is("assigned_agent_id", null).is("referral_manager_id", null);
-        } else if (filters.ownerFilter && filters.ownerFilter !== "all") {
-          q = q.or(`assigned_agent_id.eq.${filters.ownerFilter},referral_manager_id.eq.${filters.ownerFilter}`);
-        }
-        const { data } = await q;
-        for (const r of (data ?? []) as any[]) {
-          rows.push({
-            id: r.id,
-            first_name: r.first_name,
-            last_name: r.last_name,
-            created_at: r.created_at,
-            license_status: r.license_status,
-            contacted_at: r.contacted_at,
-            state: r.state,
-            source: "applications",
-          });
-        }
-      }
-
-      if (filters.sourceFilter === "all" || filters.sourceFilter === "aged_leads") {
-        let q: any = supabase
-          .from("aged_leads")
-          .select("id, first_name, last_name, created_at, license_status, contacted_at, assigned_manager_id")
-          .limit(500);
-        if (sinceIso) q = q.gte("created_at", sinceIso);
-        if (filters.licenseFilter !== "all") q = q.eq("license_status", filters.licenseFilter);
-        if (filters.statusFilter === "new") q = q.is("contacted_at", null);
-        if (filters.statusFilter === "contacted") q = q.not("contacted_at", "is", null);
-        if (filters.ownerFilter === "unassigned") q = q.is("assigned_manager_id", null);
-        else if (filters.ownerFilter && filters.ownerFilter !== "all") q = q.eq("assigned_manager_id", filters.ownerFilter);
-        const { data } = await q;
-        for (const r of (data ?? []) as any[]) {
-          rows.push({
-            id: r.id,
-            first_name: r.first_name,
-            last_name: r.last_name,
-            created_at: r.created_at,
-            license_status: r.license_status,
-            contacted_at: r.contacted_at,
-            state: null,
-            source: "aged_leads",
-          });
-        }
-      }
-
-      const sorted = [...rows].sort((a, b) => {
-        const ta = new Date(a.created_at ?? 0).getTime();
-        const tb = new Date(b.created_at ?? 0).getTime();
-        return ta - tb;
-      });
-      const oldestRow = sorted[0];
-      const newestRow = sorted[sorted.length - 1];
-
-      let licensed = 0;
-      let unlicensed = 0;
-      let aged = 0;
-      let noContact = 0;
-      for (const r of rows) {
-        if ((r.license_status ?? "").toLowerCase() === "licensed") licensed++;
-        else unlicensed++;
-        if (r.source === "aged_leads") aged++;
-        if (!r.contacted_at) noContact++;
-      }
-
-      const nameOf = (r: typeof oldestRow) =>
-        `${(r?.first_name ?? "").trim()} ${(r?.last_name ?? "").trim()}`.trim() || "Unnamed";
-
-      return {
-        matching: rows.length,
-        oldest: oldestRow ? { name: nameOf(oldestRow), ageDays: daysSince(oldestRow.created_at) } : null,
-        newest: newestRow ? { name: nameOf(newestRow), ageDays: daysSince(newestRow.created_at) } : null,
-        licensed,
-        unlicensed,
-        aged,
-        noContact,
-      } satisfies QueuePreviewStats;
+      const [aged, apps] = await Promise.all([
+        plans?.aged ? sourcePreview("aged_leads", plans.aged) : Promise.resolve(null),
+        plans?.apps ? sourcePreview("applications", plans.apps) : Promise.resolve(null),
+      ]);
+      return combineQueuePreview({ aged, apps });
     },
   });
 }
@@ -321,25 +230,13 @@ export function CallCenterFilters({
   onStart,
   disabled,
   className,
+  previewPlans,
 }: CallCenterFiltersProps) {
   const [previewOpen, setPreviewOpen] = useState(false);
   const managersQ = useManagerOptions();
-  const previewFilters = useMemo(
-    () => ({
-      sourceFilter,
-      licenseFilter,
-      statusFilter,
-      progressFilter,
-      refererFilter,
-      dateRangeFilter,
-      ownerFilter,
-      stateFilter,
-      enabled: true,
-    }),
-    [sourceFilter, licenseFilter, statusFilter, progressFilter, refererFilter, dateRangeFilter, ownerFilter, stateFilter],
-  );
-  const previewQ = usePreviewStats(previewFilters);
+  const previewQ = usePreviewStats(previewPlans);
   const stats = previewQ.data;
+  const daysOld = (iso: string) => daysSince(iso);
 
   const filterDefs: Array<{
     label: string;
@@ -534,6 +431,15 @@ export function CallCenterFilters({
               </Button>
             </div>
 
+            {previewQ.isError && (
+              <div role="alert" className="mb-2 flex flex-wrap items-center gap-2 text-sm">
+                <span className="font-medium text-destructive">Preview unavailable.</span>
+                <span className="text-muted-foreground">{errorMessage(previewQ.error)}</span>
+                <Button type="button" variant="ghost" size="sm" className="h-8 px-2" onClick={() => void previewQ.refetch()}>
+                  Retry
+                </Button>
+              </div>
+            )}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               <PreviewTile
                 label="Matching leads"
@@ -542,13 +448,13 @@ export function CallCenterFilters({
               />
               <PreviewTile
                 label="Oldest lead"
-                value={stats?.oldest ? `${stats.oldest.ageDays}d` : "—"}
+                value={stats?.oldest ? `${daysOld(stats.oldest.createdAt)}d` : "—"}
                 hint={stats?.oldest?.name}
                 tone="gold"
               />
               <PreviewTile
                 label="Newest lead"
-                value={stats?.newest ? `${stats.newest.ageDays}d` : "—"}
+                value={stats?.newest ? `${daysOld(stats.newest.createdAt)}d` : "—"}
                 hint={stats?.newest?.name}
                 tone="blue"
               />
@@ -647,13 +553,13 @@ export function CallCenterFilters({
               />
               <PreviewTile
                 label="Oldest"
-                value={stats?.oldest ? `${stats.oldest.ageDays}d` : "—"}
+                value={stats?.oldest ? `${daysOld(stats.oldest.createdAt)}d` : "—"}
                 hint={stats?.oldest?.name}
                 tone="gold"
               />
               <PreviewTile
                 label="Newest"
-                value={stats?.newest ? `${stats.newest.ageDays}d` : "—"}
+                value={stats?.newest ? `${daysOld(stats.newest.createdAt)}d` : "—"}
                 hint={stats?.newest?.name}
                 tone="blue"
               />

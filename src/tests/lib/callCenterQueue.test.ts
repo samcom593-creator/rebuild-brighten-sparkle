@@ -694,3 +694,49 @@ describe("call notes (F04)", () => {
     expect(noteLockFits(" ".repeat(Math.ceil(NOTE_LOCK_MAX_ENCODED / 3) + 1))).toBe(false);
   });
 });
+
+describe("filter-screen preview (F06): the queue's own plans, exact counts", () => {
+  it("sinceIsoForRange is the one date window for the queue and its preview", async () => {
+    const { sinceIsoForRange } = await import("@/lib/callCenterQueue");
+    const now = Date.parse("2026-10-15T12:00:00Z");
+    expect(sinceIsoForRange("all", now)).toBeNull();
+    expect(sinceIsoForRange("last_7", now)).toBe("2026-10-08T12:00:00.000Z");
+    expect(sinceIsoForRange("last_30", now)).toBe("2026-09-15T12:00:00.000Z");
+    expect(sinceIsoForRange("last_90", now)).toBe("2026-07-17T12:00:00.000Z");
+  });
+
+  it("combineQueuePreview sums exact counts, never caps them, and picks the true oldest and newest", async () => {
+    const { combineQueuePreview } = await import("@/lib/callCenterQueue");
+    const out = combineQueuePreview({
+      aged: { total: 895, licensed: 40, noContact: 895, oldest: { name: "Old Aged", createdAt: "2026-02-08T00:00:00Z" }, newest: { name: "New Aged", createdAt: "2026-10-01T00:00:00Z" } },
+      apps: { total: 12, licensed: 7, noContact: 3, oldest: { name: "Old App", createdAt: "2026-03-01T00:00:00Z" }, newest: { name: "New App", createdAt: "2026-10-15T00:00:00Z" } },
+    });
+    expect(out).toEqual({
+      matching: 907,
+      licensed: 47,
+      unlicensed: 860,
+      aged: 895,
+      noContact: 898,
+      oldest: { name: "Old Aged", createdAt: "2026-02-08T00:00:00Z" },
+      newest: { name: "New App", createdAt: "2026-10-15T00:00:00Z" },
+    });
+  });
+
+  it("a source the session does not request contributes nothing, and no leads means no edges", async () => {
+    const { combineQueuePreview } = await import("@/lib/callCenterQueue");
+    expect(combineQueuePreview({ aged: null, apps: { total: 0, licensed: 0, noContact: 0, oldest: null, newest: null } })).toEqual({
+      matching: 0, licensed: 0, unlicensed: 0, aged: 0, noContact: 0, oldest: null, newest: null,
+    });
+  });
+
+  it("the filter screen no longer samples 500 rows or builds its own filters", async () => {
+    const fs = await import("node:fs");
+    const src = fs.readFileSync("src/components/callcenter/CallCenterFilters.tsx", "utf8");
+    expect(src).not.toMatch(/\.limit\(500\)/);
+    expect(src).toContain('count: "exact", head: true');
+    expect(src).toContain("combineQueuePreview(");
+    const page = fs.readFileSync("src/pages/CallCenter.tsx", "utf8");
+    expect(page).toContain("previewPlans={previewPlans}");
+    expect(page.match(/sinceIsoForRange\(dateRangeFilter, Date\.now\(\)\)/g)?.length).toBe(2);
+  });
+});

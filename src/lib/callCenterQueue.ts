@@ -109,6 +109,76 @@ export function applyFilterOps<Q>(query: Q, ops: readonly FilterOp[]): Q {
   return chain as unknown as Q;
 }
 
+// ------------------------------------------------------------------ the filter screen's preview (F06)
+
+/** The lower bound of the shared date-range filter, or null for "all time". One definition for the queue and its preview. */
+export function sinceIsoForRange(range: string, nowMs: number): string | null {
+  const day = 24 * 60 * 60 * 1000;
+  switch (range) {
+    case "last_7": return new Date(nowMs - 7 * day).toISOString();
+    case "last_30": return new Date(nowMs - 30 * day).toISOString();
+    case "last_90": return new Date(nowMs - 90 * day).toISOString();
+    default: return null;
+  }
+}
+
+/** The exact filter plan per source the queue will run; null for a source the session does not request. */
+export interface QueuePreviewPlans {
+  aged: FilterOp[] | null;
+  apps: FilterOp[] | null;
+}
+
+export interface PreviewEdgeLead {
+  name: string;
+  createdAt: string;
+}
+
+/** Exact head counts for one source under its queue plan, plus its oldest and newest lead. */
+export interface SourcePreview {
+  total: number;
+  licensed: number;
+  noContact: number;
+  oldest: PreviewEdgeLead | null;
+  newest: PreviewEdgeLead | null;
+}
+
+export interface QueuePreview {
+  matching: number;
+  licensed: number;
+  /** Everything that is not licensed: unlicensed, pending or unknown. */
+  unlicensed: number;
+  aged: number;
+  noContact: number;
+  oldest: PreviewEdgeLead | null;
+  newest: PreviewEdgeLead | null;
+}
+
+/**
+ * Combine the per-source counts into the preview tiles. Before 2026-10-15 the
+ * preview read at most 500 rows per source with its own filters and counted
+ * them, so it printed "Aged leads 500" while 895 matched, and it never read an
+ * error. Counts here are exact and come from the queue's own plans.
+ */
+export function combineQueuePreview(parts: { aged: SourcePreview | null; apps: SourcePreview | null }): QueuePreview {
+  const sources = [parts.aged, parts.apps].filter((p): p is SourcePreview => p !== null);
+  const matching = sources.reduce((n, p) => n + p.total, 0);
+  const licensed = sources.reduce((n, p) => n + p.licensed, 0);
+  const pick = (which: "oldest" | "newest") => {
+    const edges = sources.map((p) => p[which]).filter((e): e is PreviewEdgeLead => e !== null);
+    if (edges.length === 0) return null;
+    return edges.reduce((best, e) => ((which === "oldest" ? e.createdAt < best.createdAt : e.createdAt > best.createdAt) ? e : best));
+  };
+  return {
+    matching,
+    licensed,
+    unlicensed: matching - licensed,
+    aged: parts.aged?.total ?? 0,
+    noContact: sources.reduce((n, p) => n + p.noContact, 0),
+    oldest: pick("oldest"),
+    newest: pick("newest"),
+  };
+}
+
 // ------------------------------------------------------------------ what may be dialed (F06)
 
 /**

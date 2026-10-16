@@ -52,6 +52,8 @@ import {
   type QueueAccess,
   type QueueCoverage,
   type QueueCursor,
+  sinceIsoForRange,
+  type QueuePreviewPlans,
 } from "@/lib/callCenterQueue";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { ContractedModal } from "@/components/dashboard/ContractedModal";
@@ -452,6 +454,35 @@ export default function CallCenter() {
   const identityError = access.kind === "ready" ? access.identityError : null;
   const closedIncluded = access.kind === "ready" && access.mayIncludeClosed && includeClosed;
 
+  // The filter screen's preview counts exactly what Start Calling will load:
+  // the same plans, scope and closed-records switch as loadQueue (F06).
+  const previewPlans = useMemo<QueuePreviewPlans | null>(() => {
+    if (access.kind !== "ready") return null;
+    if (refererFilter === "mine" && !access.agentId) return null;
+    const dateSinceIso = sinceIsoForRange(dateRangeFilter, Date.now());
+    const wantAged = sourceFilter === "all" || sourceFilter === "aged_leads";
+    const wantApps = sourceFilter === "all" || sourceFilter === "applications";
+    return {
+      aged: wantAged
+        ? agedLeadQueueOps({ statusFilter, licenseFilter, dateSinceIso, ownerFilter, scopeAgentId: access.scopeAgentId, includeClosed: closedIncluded })
+        : null,
+      apps: wantApps
+        ? applicationQueueOps({
+            statusFilter,
+            licenseFilter,
+            progressFilter,
+            dateSinceIso,
+            stateFilter,
+            ownerFilter,
+            refererFilter,
+            identityAgentId: access.agentId,
+            scopeAgentId: access.scopeAgentId,
+            includeClosed: closedIncluded,
+          })
+        : null,
+    };
+  }, [access, refererFilter, dateRangeFilter, sourceFilter, statusFilter, licenseFilter, ownerFilter, progressFilter, stateFilter, closedIncluded]);
+
   const updateLeads = useCallback((next: (prev: UnifiedLead[]) => UnifiedLead[]) => {
     leadsRef.current = next(leadsRef.current);
     setLeads(leadsRef.current);
@@ -490,17 +521,9 @@ export default function CallCenter() {
       return;
     }
 
-    // MP-260 shared date-range gate. `all` means no lower bound.
-    const dateSinceIso = (() => {
-      const day = 24 * 60 * 60 * 1000;
-      const now = Date.now();
-      switch (dateRangeFilter) {
-        case "last_7": return new Date(now - 7 * day).toISOString();
-        case "last_30": return new Date(now - 30 * day).toISOString();
-        case "last_90": return new Date(now - 90 * day).toISOString();
-        default: return null;
-      }
-    })();
+    // MP-260 shared date-range gate. `all` means no lower bound. The preview
+    // on the filter screen uses the same helper.
+    const dateSinceIso = sinceIsoForRange(dateRangeFilter, Date.now());
 
     const wantAged = sourceFilter === "all" || sourceFilter === "aged_leads";
     const wantApps = sourceFilter === "all" || sourceFilter === "applications";
@@ -1607,6 +1630,7 @@ export default function CallCenter() {
         onStateChange={setStateFilter}
         onStart={handleStartCalling}
         disabled={access.kind !== "ready"}
+        previewPlans={previewPlans}
       />
       </>
     );

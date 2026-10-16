@@ -159,3 +159,30 @@ describe("useRealtimeTable — enabled toggling", () => {
     expect(mockRemoveChannel).toHaveBeenCalled();
   });
 });
+
+describe("useRealtimeTable — one channel per component (2026-10-15)", () => {
+  it("gives two components watching the same table and suffix their own channels", () => {
+    renderHook(() => {
+      useRealtimeTable({ table: "contract_review_events", event: "INSERT", channelSuffix: "contract-review" }, vi.fn());
+      useRealtimeTable({ table: "contract_review_events", event: "INSERT", channelSuffix: "contract-review" }, vi.fn());
+    });
+    const names = mockChannel.mock.calls.map((call) => String(call[0]));
+    expect(names).toHaveLength(2);
+    expect(names[0]).toContain("rt:contract_review_events:contract-review:all:");
+    expect(names[1]).toContain("rt:contract_review_events:contract-review:all:");
+    // A shared name made supabase.channel() hand back the already-subscribed channel,
+    // so the second .on() threw and Home crashed in a retry loop.
+    expect(names[0]).not.toBe(names[1]);
+  });
+
+  it("keeps one component's channel when the other unmounts", () => {
+    const first = { on: vi.fn().mockReturnThis(), subscribe: vi.fn().mockReturnThis() };
+    const second = { on: vi.fn().mockReturnThis(), subscribe: vi.fn().mockReturnThis() };
+    mockChannel.mockReturnValueOnce(first as any).mockReturnValueOnce(second as any);
+    const a = renderHook(() => useRealtimeTable({ table: "deals", channelSuffix: "imo-agency" }, vi.fn()));
+    renderHook(() => useRealtimeTable({ table: "deals", channelSuffix: "imo-agency" }, vi.fn()));
+    a.unmount();
+    expect(mockRemoveChannel).toHaveBeenCalledTimes(1);
+    expect(mockRemoveChannel).toHaveBeenCalledWith(first);
+  });
+});

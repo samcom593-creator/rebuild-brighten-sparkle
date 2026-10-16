@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
@@ -45,7 +45,7 @@ interface UseRealtimeTableOptions {
 
 /**
  * Standardized Postgres-changes subscription.
- * - One channel per (table, filter, suffix)
+ * - One channel per hook instance (table, filter, suffix, instance id)
  * - Auto-unsubscribes on unmount or dependency change
  * - `onChange` is captured in a ref so callers don't need to memoize
  * - Optionally coalesces bursts via `coalesceMs` (see that option)
@@ -58,11 +58,19 @@ export function useRealtimeTable<T = any>(
   const handlerRef = useRef(onChange);
   handlerRef.current = onChange;
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // 2026-10-15: the channel name used to be (table, suffix, filter) only, so two
+  // components watching the same table got the SAME channel back from
+  // supabase.channel(). The second one's .on() then ran after subscribe() and threw
+  // "cannot add postgres_changes callbacks ... after subscribe()" (Home crashed in a
+  // retry loop once the contracting banner stopped mounting first), and when either
+  // component unmounted, removeChannel() tore down the other one's live updates
+  // without a word. Each hook instance now owns its own channel.
+  const instance = useId().replace(/[^a-zA-Z0-9]/g, "");
 
   useEffect(() => {
     if (!enabled) return;
 
-    const channelName = `rt:${table}:${channelSuffix}:${filter ?? "all"}`;
+    const channelName = `rt:${table}:${channelSuffix}:${filter ?? "all"}:${instance}`;
     const channel: RealtimeChannel = supabase
       .channel(channelName)
       .on(
@@ -107,5 +115,5 @@ export function useRealtimeTable<T = any>(
       }
       supabase.removeChannel(channel);
     };
-  }, [table, event, filter, enabled, channelSuffix, coalesceMs]);
+  }, [table, event, filter, enabled, channelSuffix, coalesceMs, instance]);
 }

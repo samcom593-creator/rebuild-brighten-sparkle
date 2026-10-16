@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Follow-up texts no longer go out overnight. They wait for 8am in the person's own time zone.",
+    detail: "This afternoon's reminder fix made the 1-hour, 6-hour and 12-hour reminders start going out, and nothing checked the clock. A 12-hour reminder lands on the opposite side of the day from when someone applied: for 28 of the last 42 applicants it would have gone out between 9pm and 8am their time, mostly as a text. Reminders now go out only from 8am to 9pm in the time zone of the state on the application (or the agent's profile). A state that spans two zones has to be daytime in both, and unknown means daytime in both Eastern and Pacific. A reminder that comes due overnight goes out in the morning instead of being dropped. Over the next 24 hours: the same 9 reminders, none at night (4 would have been).",
+    commit: "PL-WIB-NUDGE-QUIET-HOURS",
+  },
+  {
+    ts: "today",
     label: "Easy Resells: review fixes (no DNC, honest Vantage, marks stay put)",
     detail: "An adversarial review confirmed 19 findings. Do Not Call numbers and impossible numbers are off the queue. A Vantage agent's sale is no longer called 'never posted'. People already rewritten, or who bought after an objection, drop off. Resold books the sale's packet and prefills DOB and policy. Marks update in place. A manager's marks on AgentLink rows no longer vanish on reload. Book Flips stops listing 7 policies twice and reads AgentLink's catch-all 'submitted' as Unknown.",
     commit: "PL-EASY-RESELLS",

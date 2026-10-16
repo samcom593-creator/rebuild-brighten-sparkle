@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Follow-up texts to applicants and new hires go out when they were scheduled to. Before this, 82% of them went out on the wrong day.",
+    detail: "Each onboarding stage lists when its reminders go out, in hours or in days. The reminder job matched those numbers as loose text against the number of days, so a stage set to remind at 24, 48 and 72 hours actually sent on days 4, 7, 24 and 48, and never in the first three days. In the last 30 days 151 of the 184 hour-based reminders that went out landed on the wrong day, reaching 90 people. Examples: \"You're hired, course unlocked\" on day 72, and \"Welcome\" on day 24. The 1-hour, 6-hour and 12-hour reminders had never gone out. It now reads each stage's schedule exactly. Day reminders still go once on their day, and each hour reminder goes once within three hours of its time. Finished-course applicants also stop looking like they started that stage last night: that date reset every night, so 15 people would otherwise have been texted at 10pm. Over the next 24 hours: 9 reminders, all on time, instead of 14 (12 of them on the wrong day).",
+    commit: "PL-WIB-NUDGE-CADENCE-EXACT",
+  },
+  {
+    ts: "today",
     label: "Book Flips shows who sold what",
     detail: "Every card now says Sold by <agent> under the client's name (with left when the agent is gone), a Writing agent filter lists each agent with how many policies they sold under the current filters, and All carriers puts one agent's whole book in one list. ?agent= in the URL opens straight on one agent.",
     commit: "PL-BOOKFLIPS-WHO-SOLD",

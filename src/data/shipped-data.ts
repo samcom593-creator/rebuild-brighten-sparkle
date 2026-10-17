@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Agents opening their own portal now see their real month: Michael Kayembe 3 deals / $5,773 and Jontay Taylor 17 / $34,333, where every agent read 0 deals and $0.",
+    detail: "Since late August the portal's headline tiles and lifetime tile read views locked to the owner, so every agent's own stats came back empty and the page showed 0 deals, $0, \"unlicensed\" and \"Pipeline clean\" above their own recent deals. 31 agents opened it in the last 30 days. Each agent now reads only their own row; managers and agents still cannot see anyone else's money. The deal and premium counts also moved to the same production every other page reads, which adds deals posted from Discord (10 of October's 55).",
+    commit: "PL-WIB-AGENT-PORTAL-SELF",
+  },
+  {
+    ts: "today",
     label: "The licensing roadmap email for unlicensed applicants no longer sends them to a deleted Calendly page. Its \"Book a Licensing Support Call\" button now opens the live Leader Call.",
     detail: "The button read the retired seminar's booking link, whose Calendly event was deleted. The email sender is paused for Postmark approval, so 57 queued roadmap emails would have carried the dead button the moment it resumes. Those 57 were rewritten (link only) and new ones read their own setting, licensing_support_call_url. Slack, Discord, XCEL and the roadmap page were checked live and work.",
     commit: "PL-WIB-ROADMAP-BOOKING-LINK",

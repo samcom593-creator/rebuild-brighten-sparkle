@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "The licensing roadmap email for unlicensed applicants no longer sends them to a deleted Calendly page. Its \"Book a Licensing Support Call\" button now opens the live Leader Call.",
+    detail: "The button read the retired seminar's booking link, whose Calendly event was deleted. The email sender is paused for Postmark approval, so 57 queued roadmap emails would have carried the dead button the moment it resumes. Those 57 were rewritten (link only) and new ones read their own setting, licensing_support_call_url. Slack, Discord, XCEL and the roadmap page were checked live and work.",
+    commit: "PL-WIB-ROADMAP-BOOKING-LINK",
+  },
+  {
+    ts: "today",
     label: "New hires' welcome email no longer says \"You are officially an Galaxy agent.\" 15 emails to 8 hires since Oct 10 carried it.",
     detail: "The Oct 8 rename swapped Apex for Galaxy word by word, so every \"an Apex\" became \"an Galaxy\". Fixed in the hire welcome text and email, the $10K-week next step, the Agent Flow page, a Help Center question, Interview Recovery and the hire refusal message. A daily check now catches \"an Galaxy\" or a doubled brand name in the site and in the database copy.",
     commit: "PL-WIB-AN-GALAXY",

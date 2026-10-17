@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Your idle-agent count no longer lists people who are selling: Cari Mullen (9 deals / $20,210 this month) and Tyler Krejcha came off the list, and the count dropped from 136 to 127.",
+    detail: "The dashboard's \"idle\" tile and attention row, and the Idle Active Agents list on Finances, only read deals entered on the site, and they counted duplicate agent rows as separate people. Deals posted from Discord were missed, so Cari Mullen and both of Tyler Krejcha's records showed as idle, plus 6 duplicate rows including your own second record. They now read the same production every other page reads, one row per person. The labels said \"10d+\"; the number has always meant no deal in the last 30 days, and the labels now say that.",
+    commit: "PL-WIB-IDLE-AGENTS-CANONICAL",
+  },
+  {
+    ts: "today",
     label: "Agents opening their own portal now see their real month: Michael Kayembe 3 deals / $5,773 and Jontay Taylor 17 / $34,333, where every agent read 0 deals and $0.",
     detail: "Since late August the portal's headline tiles and lifetime tile read views locked to the owner, so every agent's own stats came back empty and the page showed 0 deals, $0, \"unlicensed\" and \"Pipeline clean\" above their own recent deals. 31 agents opened it in the last 30 days. Each agent now reads only their own row; managers and agents still cannot see anyone else's money. The deal and premium counts also moved to the same production every other page reads, which adds deals posted from Discord (10 of October's 55).",
     commit: "PL-WIB-AGENT-PORTAL-SELF",

@@ -542,7 +542,7 @@ const snapshot = useQuery({
             <StatTile icon={CheckCircle2} label="Mentorship paid" value={snap.mentorship_paid_total} tone="success" sub="lifetime payments" />
             <StatTile icon={Clock} label="Course bought · stuck" value={snap.ica_paid_stuck} tone="warning" sub="paid for prelicensing · not advancing" />
             <StatTile icon={ShieldAlert} label="Open dup charges" value={snap.dup_charges_open} tone="warning" />
-            <StatTile icon={Users} label="Idle active agents" value={snap.idle_active_agents} tone="warning" sub="no recent activity" />
+            <StatTile icon={Users} label="Idle active agents" value={snap.idle_active_agents} tone="warning" sub="no deal in 30d" />
           </div>
 
           {/* System status strip — sync health as compact chips */}

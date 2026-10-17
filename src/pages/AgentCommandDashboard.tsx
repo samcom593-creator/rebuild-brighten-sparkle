@@ -1910,7 +1910,7 @@ function AgencyCommandView() {
             },
             {
               icon: TrendingDown, label: "At-Risk Producers", value: fmtNum(atRiskProducers),
-              sub: `${fmtNum((leak?.idle_active_agents ?? 0) as number)} idle 10d+`,
+              sub: `${fmtNum((leak?.idle_active_agents ?? 0) as number)} no deal in 30d`,
               tone: "text-rose-400 border-border bg-card",
               href: "/admin/producer-trends",
             },
@@ -2019,7 +2019,7 @@ function AgencyCommandView() {
         const attention = [
           { label: "Producer drop risk", count: priCounts?.producer_risk ?? 0, href: "/admin/producer-trends" },
           { label: "Chargebacks in 30d window", count: priCounts?.chargebacks_30d ?? 0, href: "/dashboard/book-of-business" },
-          { label: "Producers idle 10d+", count: (leak?.idle_active_agents ?? 0) as number, href: "/admin/producer-trends" },
+          { label: "Agents with no deal in 30d", count: (leak?.idle_active_agents ?? 0) as number, href: "/admin/producer-trends" },
         ].filter((r) => r.count > 0);
         return (
           <>
@@ -2372,9 +2372,9 @@ function AgencyCommandView() {
               <p className="text-[11px] text-rose-300/80 tabular-nums">{fmtNum(depth?.uncontacted_48h ?? 0)} stale 48h+</p>
             </div>
             <div>
-              <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">Idle producers</p>
+              <p className="text-[11px] uppercase tracking-widest text-white/40 mb-1">Idle agents</p>
               <p className="text-[22px] leading-none font-bold tabular-nums text-amber-300">{fmtNum((leak?.idle_active_agents ?? 0) as number)}</p>
-              <p className="text-[11px] text-white/40 tabular-nums">no deal 10d+</p>
+              <p className="text-[11px] text-white/40 tabular-nums">no deal in 30d</p>
             </div>
           </div>
 

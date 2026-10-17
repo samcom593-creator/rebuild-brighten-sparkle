@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "The Activations tab on your dashboard now counts Discord-posted deals: Tyler Krejcha shows 4 deals / $14,354 in his first 30 days instead of $0, and ranks 4th, not last.",
+    detail: "The Recent activations panel ranks new agents by the premium they posted in their first 30 days. It only read deals entered on the site, so anyone selling through Discord showed $0. It now reads the same production every other dashboard number uses since 10-16, counted by Arizona date. Edwin Ac-lumor moves from 34 to 37 deals because three deals he posted on his 30th day were cut off a few hours early. Tyler still appears twice because he has two agent records; merging them is a separate fix.",
+    commit: "PL-WIB-ACTIVATIONS-CANONICAL",
+  },
+  {
+    ts: "today",
     label: "Your idle-agent count no longer lists people who are selling: Cari Mullen (9 deals / $20,210 this month) and Tyler Krejcha came off the list, and the count dropped from 136 to 127.",
     detail: "The dashboard's \"idle\" tile and attention row, and the Idle Active Agents list on Finances, only read deals entered on the site, and they counted duplicate agent rows as separate people. Deals posted from Discord were missed, so Cari Mullen and both of Tyler Krejcha's records showed as idle, plus 6 duplicate rows including your own second record. They now read the same production every other page reads, one row per person. The labels said \"10d+\"; the number has always meant no deal in the last 30 days, and the labels now say that.",
     commit: "PL-WIB-IDLE-AGENTS-CANONICAL",

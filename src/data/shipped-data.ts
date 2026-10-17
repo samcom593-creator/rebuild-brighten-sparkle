@@ -13,7 +13,7 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
-    label: "The Activations tab on your dashboard now counts Discord-posted deals: Tyler Krejcha shows 4 deals / $14,354 in his first 30 days instead of $0, and ranks 4th, not last.",
+    label: "The Activations tab on your dashboard now counts Discord-posted deals: Tyler Krejcha shows 4 deals / $14,354 in his first 30 days instead of $0 / 0 deals.",
     detail: "The Recent activations panel ranks new agents by the premium they posted in their first 30 days. It only read deals entered on the site, so anyone selling through Discord showed $0. It now reads the same production every other dashboard number uses since 10-16, counted by Arizona date. Edwin Ac-lumor moves from 34 to 37 deals because three deals he posted on his 30th day were cut off a few hours early. Tyler still appears twice because he has two agent records; merging them is a separate fix.",
     commit: "PL-WIB-ACTIVATIONS-CANONICAL",
   },

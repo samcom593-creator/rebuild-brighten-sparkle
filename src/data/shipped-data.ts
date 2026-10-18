@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Your phone no longer gets a top-priority push about 40 times a day saying the AgentLink book is stale. That one alert was 26 of the last 55 messages on your APEX alert channel, and AgentLink is retired.",
+    detail: "The backup workflow that re-fires your sync jobs kept calling the AgentLink sync. AgentLink has not delivered a new deal since at least Sept 25, and its login cookie died on Oct 15, so every run after that failed and pushed \"External cron backup FAILED\": 34 on Oct 16, 40 on Oct 17. That leg is retired now, and the run log still prints how old the AgentLink book is. Every other job in the workflow still fails the run and pages you when it breaks, and a check on every commit runs the real workflow step to prove it.",
+    commit: "PL-WIB-CRON-AGENTLINK-RETIRED",
+  },
+  {
+    ts: "today",
     label: "The Activations tab on your dashboard now counts Discord-posted deals: Tyler Krejcha shows 4 deals / $14,354 in his first 30 days instead of $0 / 0 deals.",
     detail: "The Recent activations panel ranks new agents by the premium they posted in their first 30 days. It only read deals entered on the site, so anyone selling through Discord showed $0. It now reads the same production every other dashboard number uses since 10-16, counted by Arizona date. Edwin Ac-lumor moves from 34 to 37 deals because three deals he posted on his 30th day were cut off a few hours early. Tyler still appears twice because he has two agent records; merging them is a separate fix.",
     commit: "PL-WIB-ACTIVATIONS-CANONICAL",

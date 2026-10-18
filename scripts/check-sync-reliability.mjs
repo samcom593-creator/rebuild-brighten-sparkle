@@ -14,6 +14,9 @@ import path from "node:path";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 const violations = [];
+// Set by section 2. While the AgentLink cookie-sync leg is retired its verdict
+// rules are dormant, and the pass line must say so instead of claiming them.
+let cookieLegRetired = false;
 
 function read(file) {
   return fs.readFileSync(path.join(repoRoot, file), "utf8");
@@ -186,117 +189,137 @@ function walk(dir, exts, fn) {
         );
       }
     }
-    // …and when curl does give up, the verdict must come from the pipeline's
-    // own record, not from how long curl was willing to wait. Green must mean
-    // "the pipelines moved"; red must mean "they didn't". Both directions are
-    // decided by agentlink_sync_log.
-    if (!/agentlink_sync_log/.test(src) || !/acquit/.test(src)) {
+    // PL-WIB-CRON-AGENTLINK-RETIRED (2026-10-17). The cookie-sync leg was
+    // retired: AgentLink stopped delivering deals, pg_cron no longer called
+    // the sync, and after the cookie died on 10-15 every tick paged Sam at
+    // priority 5 that the book was stale (34/34 runs on 10-16, 40/40 on
+    // 10-17). Every rule below governs that leg's verdict, so they apply only
+    // while the leg is called; re-adding the call re-arms all of them. While
+    // it is absent the retirement must be recorded in the file, and
+    // check-cron-verdict-states.mjs proves by running the step that nothing
+    // calls it.
+    const cookieLegLive = Boolean(cookieCall) || /functions\/v1\/agentlink-cookie-sync/.test(src);
+    if (!cookieLegLive && !/PL-WIB-CRON-AGENTLINK-RETIRED/.test(src)) {
       violations.push(
-        `${cronYml}: a curl timeout on agentlink-cookie-sync must be reconciled against ` +
-        `agentlink_sync_log before it counts as a failure. Judging the tick on curl's exit code ` +
-        `alone reports slow-but-successful syncs as failures. Query the log's status and only ` +
-        `keep the run red when it is genuinely 'stuck', past the reap threshold, or never ` +
-        `registered at all.`,
+        `${cronYml}: agentlink-cookie-sync is no longer called and the file does not record why ` +
+        `(PL-WIB-CRON-AGENTLINK-RETIRED). A leg that disappears without a recorded retirement looks ` +
+        `the same as one deleted by accident.`,
       );
     }
-    // …and the row it reconciles against must be one the reaper has already
-    // RULED on. 843c6164 judged the row the tick had just created. Supabase's
-    // gateway forces that verdict at its own 150s idle timeout and
-    // fn_agentlink_reap_stuck does not call a run stuck until 300s, so the row
-    // was always 'running', always under the threshold, and always acquitted:
-    // the cookie-sync leg could not go red at all. Run 31413717796 logged
-    // "verdict: status=running age=151s" and reported SUCCESS while the row it
-    // judged (ab407e97) died and was reaped 'stuck' at 485s. A gate that cannot
-    // fail is the 465-fake-success-row disease with the sign flipped.
-    if (/started_at\s*>=\s*to_timestamp/.test(src)) {
-      violations.push(
-        `${cronYml}: the cookie-sync verdict is anchored on the CURRENT tick ` +
-        `(started_at >= to_timestamp(...)). That row is only ~150s old when the gateway forces ` +
-        `the verdict and the reaper needs 300s, so it is always 'running' and always acquitted — ` +
-        `the leg can never go red. Judge the newest row OLDER than the reap threshold instead, ` +
-        `whose status is final.`,
-      );
-    }
-    // …and it must be reconciled on the question the ALERT claims to answer:
-    // is the book still being refreshed? a3fa21b4 judged the newest settled
-    // row's status — correct about the row, wrong about the system. It sent 9
-    // reds in 39 runs (~39 priority-5 pages/day) reading "the pipelines are not
-    // moving" while they were moving: at the two moments it paged (runs
-    // 31446750097/31443587597, 31441868477) the book had been refreshed 3500s
-    // and 1235s earlier, and 100 ok syncs in 48h had moved 120,236 deal
-    // updates. Every stuck row carries upstream_status=NULL, policies_seen=0
-    // and dies in the 'deals' phase — AgentLink's API hanging, which Apex
-    // cannot fix and should not be paged about per occurrence. True-but-
-    // misleading at 39/day costs exactly what false at 36/day cost.
-    if (!/WHERE l\.status = 'ok'/.test(src) || !/max\(COALESCE\(l\.finished_at/.test(src)) {
-      violations.push(
-        `${cronYml}: the cookie-sync verdict must measure how long since the last SUCCESSFUL sync ` +
-        `(max(COALESCE(finished_at, started_at)) over status='ok'), not the status of whichever row ` +
-        `happens to be newest. A single stuck row inside a fresh stream is upstream weather; paging ` +
-        `on it sends a push whose sentence is false as it is being sent.`,
-      );
-    }
-    const acquitTest = src.match(/if \[ "\$ok_age" -le "\$STALE_MAX" \][^\n]*/);
-    if (!acquitTest) {
-      violations.push(
-        `${cronYml}: the cookie-sync acquit must be gated on $ok_age vs $STALE_MAX. Without that ` +
-        `bound a pipeline that stops writing rows altogether keeps acquitting on an ancient success ` +
-        `and the gate goes quiet permanently.`,
-      );
-    } else if (/last_status/.test(acquitTest[0])) {
-      violations.push(
-        `${cronYml}: last_status is diagnostic and must never vote in the acquit. Letting the newest ` +
-        `row's status red a fresh book is exactly the a3fa21b4 regression: ~39 true-about-the-row, ` +
-        `false-about-the-system pages a day, which is how Sam learns to ignore the one loud channel.`,
-      );
-    }
-    // The push body must say what is actually wrong. The old text asserted
-    // "pg_cron's backup is not moving the pipelines" on every red, including
-    // the ones where it was moving them.
-    if (!/STALE_DETAIL/.test(src) || /not moving the pipelines/.test(src)) {
-      violations.push(
-        `${cronYml}: the failure push must carry the measured reason (STALE_DETAIL) rather than ` +
-        `asserting "pg_cron's backup is not moving the pipelines" on every red. An alert that ` +
-        `overstates its own finding burns the channel just as fast as a false one.`,
-      );
-    }
-    // Fail-safe parsing. The old code coerced a non-numeric age to 0, which
-    // ACQUITTED a stale 'ok' — fail-open, in the one place that exists to fail
-    // loud. The pg_cron gap parser above already set the correct precedent:
-    // coerce an unparseable value to "very stale", never to "brand new".
-    if (/case "\$ok_age" in ''\|\*\[!0-9\]\*\) ok_age=0 ;; esac/.test(src)) {
-      violations.push(
-        `${cronYml}: a non-numeric freshness age coerces to 0, which makes a garbled response ACQUIT. ` +
-        `Coerce it to a very-stale sentinel instead, matching the pg_cron gap parser's 99999 ` +
-        `precedent, so a broken parse fails loud rather than silent.`,
-      );
-    }
-    // MP-407. Two rules, because the 2026-09-03 false pages needed both.
-    //
-    // (a) The freshness read must RETRY. It was a single curl, and on 09-03 two
-    //     bot-sql blips 35 minutes apart each became a priority-5 push claiming
-    //     the book was stale while it was 10,612s / 12,661s old -- inside the
-    //     14,400s bound, i.e. this gate's own rule said acquit both times.
-    if (!/for\s+fr_delay\s+in\s+0\s+2\s+4/.test(src)) {
-      violations.push(
-        `${cronYml}: the AgentLink freshness read must retry (3x, 0/2/4s backoff) before it is ` +
-        `allowed to conclude anything. A single unretried read turns a transient bot-sql blip ` +
-        `into a page that says the book is stale when it is fresh -- measured twice on 2026-09-03.`,
-      );
-    }
-    // (b) An unreadable answer must never be dressed as a measured duration.
-    //     "99999999" is the sentinel for "I could not look"; printing it inside
-    //     "No successful AgentLink sync for ${ok_age}s" told Sam the book had not
-    //     synced in 3.17 YEARS. Staying red on an unreadable answer is correct and
-    //     deliberate -- the SENTENCE is what must not lie.
-    const staleDetails = [...src.matchAll(/STALE_DETAIL="([^"]*)"/g)].map((m) => m[1]);
-    for (const detail of staleDetails) {
-      if (detail.includes("99999999")) {
+    cookieLegRetired = !cookieLegLive;
+    if (cookieLegLive) {
+      // …and when curl does give up, the verdict must come from the pipeline's
+      // own record, not from how long curl was willing to wait. Green must mean
+      // "the pipelines moved"; red must mean "they didn't". Both directions are
+      // decided by agentlink_sync_log.
+      if (!/agentlink_sync_log/.test(src) || !/acquit/.test(src)) {
         violations.push(
-          `${cronYml}: a STALE_DETAIL page text interpolates the 99999999 unreadable-sentinel as if ` +
-          `it were a measured age. Report "freshness UNKNOWN, not measured" instead. A true page and ` +
-          `a false page cost the same when both carry a fabricated number.`,
+          `${cronYml}: a curl timeout on agentlink-cookie-sync must be reconciled against ` +
+          `agentlink_sync_log before it counts as a failure. Judging the tick on curl's exit code ` +
+          `alone reports slow-but-successful syncs as failures. Query the log's status and only ` +
+          `keep the run red when it is genuinely 'stuck', past the reap threshold, or never ` +
+          `registered at all.`,
         );
+      }
+      // …and the row it reconciles against must be one the reaper has already
+      // RULED on. 843c6164 judged the row the tick had just created. Supabase's
+      // gateway forces that verdict at its own 150s idle timeout and
+      // fn_agentlink_reap_stuck does not call a run stuck until 300s, so the row
+      // was always 'running', always under the threshold, and always acquitted:
+      // the cookie-sync leg could not go red at all. Run 31413717796 logged
+      // "verdict: status=running age=151s" and reported SUCCESS while the row it
+      // judged (ab407e97) died and was reaped 'stuck' at 485s. A gate that cannot
+      // fail is the 465-fake-success-row disease with the sign flipped.
+      if (/started_at\s*>=\s*to_timestamp/.test(src)) {
+        violations.push(
+          `${cronYml}: the cookie-sync verdict is anchored on the CURRENT tick ` +
+          `(started_at >= to_timestamp(...)). That row is only ~150s old when the gateway forces ` +
+          `the verdict and the reaper needs 300s, so it is always 'running' and always acquitted — ` +
+          `the leg can never go red. Judge the newest row OLDER than the reap threshold instead, ` +
+          `whose status is final.`,
+        );
+      }
+      // …and it must be reconciled on the question the ALERT claims to answer:
+      // is the book still being refreshed? a3fa21b4 judged the newest settled
+      // row's status — correct about the row, wrong about the system. It sent 9
+      // reds in 39 runs (~39 priority-5 pages/day) reading "the pipelines are not
+      // moving" while they were moving: at the two moments it paged (runs
+      // 31446750097/31443587597, 31441868477) the book had been refreshed 3500s
+      // and 1235s earlier, and 100 ok syncs in 48h had moved 120,236 deal
+      // updates. Every stuck row carries upstream_status=NULL, policies_seen=0
+      // and dies in the 'deals' phase — AgentLink's API hanging, which Apex
+      // cannot fix and should not be paged about per occurrence. True-but-
+      // misleading at 39/day costs exactly what false at 36/day cost.
+      if (!/WHERE l\.status = 'ok'/.test(src) || !/max\(COALESCE\(l\.finished_at/.test(src)) {
+        violations.push(
+          `${cronYml}: the cookie-sync verdict must measure how long since the last SUCCESSFUL sync ` +
+          `(max(COALESCE(finished_at, started_at)) over status='ok'), not the status of whichever row ` +
+          `happens to be newest. A single stuck row inside a fresh stream is upstream weather; paging ` +
+          `on it sends a push whose sentence is false as it is being sent.`,
+        );
+      }
+      const acquitTest = src.match(/if \[ "\$ok_age" -le "\$STALE_MAX" \][^\n]*/);
+      if (!acquitTest) {
+        violations.push(
+          `${cronYml}: the cookie-sync acquit must be gated on $ok_age vs $STALE_MAX. Without that ` +
+          `bound a pipeline that stops writing rows altogether keeps acquitting on an ancient success ` +
+          `and the gate goes quiet permanently.`,
+        );
+      } else if (/last_status/.test(acquitTest[0])) {
+        violations.push(
+          `${cronYml}: last_status is diagnostic and must never vote in the acquit. Letting the newest ` +
+          `row's status red a fresh book is exactly the a3fa21b4 regression: ~39 true-about-the-row, ` +
+          `false-about-the-system pages a day, which is how Sam learns to ignore the one loud channel.`,
+        );
+      }
+      // The push body must say what is actually wrong. The old text asserted
+      // "pg_cron's backup is not moving the pipelines" on every red, including
+      // the ones where it was moving them.
+      if (!/STALE_DETAIL/.test(src) || /not moving the pipelines/.test(src)) {
+        violations.push(
+          `${cronYml}: the failure push must carry the measured reason (STALE_DETAIL) rather than ` +
+          `asserting "pg_cron's backup is not moving the pipelines" on every red. An alert that ` +
+          `overstates its own finding burns the channel just as fast as a false one.`,
+        );
+      }
+      // Fail-safe parsing. The old code coerced a non-numeric age to 0, which
+      // ACQUITTED a stale 'ok' — fail-open, in the one place that exists to fail
+      // loud. The pg_cron gap parser above already set the correct precedent:
+      // coerce an unparseable value to "very stale", never to "brand new".
+      if (/case "\$ok_age" in ''\|\*\[!0-9\]\*\) ok_age=0 ;; esac/.test(src)) {
+        violations.push(
+          `${cronYml}: a non-numeric freshness age coerces to 0, which makes a garbled response ACQUIT. ` +
+          `Coerce it to a very-stale sentinel instead, matching the pg_cron gap parser's 99999 ` +
+          `precedent, so a broken parse fails loud rather than silent.`,
+        );
+      }
+      // MP-407. Two rules, because the 2026-09-03 false pages needed both.
+      //
+      // (a) The freshness read must RETRY. It was a single curl, and on 09-03 two
+      //     bot-sql blips 35 minutes apart each became a priority-5 push claiming
+      //     the book was stale while it was 10,612s / 12,661s old -- inside the
+      //     14,400s bound, i.e. this gate's own rule said acquit both times.
+      if (!/for\s+fr_delay\s+in\s+0\s+2\s+4/.test(src)) {
+        violations.push(
+          `${cronYml}: the AgentLink freshness read must retry (3x, 0/2/4s backoff) before it is ` +
+          `allowed to conclude anything. A single unretried read turns a transient bot-sql blip ` +
+          `into a page that says the book is stale when it is fresh -- measured twice on 2026-09-03.`,
+        );
+      }
+      // (b) An unreadable answer must never be dressed as a measured duration.
+      //     "99999999" is the sentinel for "I could not look"; printing it inside
+      //     "No successful AgentLink sync for ${ok_age}s" told Sam the book had not
+      //     synced in 3.17 YEARS. Staying red on an unreadable answer is correct and
+      //     deliberate -- the SENTENCE is what must not lie.
+      const staleDetails = [...src.matchAll(/STALE_DETAIL="([^"]*)"/g)].map((m) => m[1]);
+      for (const detail of staleDetails) {
+        if (detail.includes("99999999")) {
+          violations.push(
+            `${cronYml}: a STALE_DETAIL page text interpolates the 99999999 unreadable-sentinel as if ` +
+            `it were a measured age. Report "freshness UNKNOWN, not measured" instead. A true page and ` +
+            `a false page cost the same when both carry a fabricated number.`,
+          );
+        }
       }
     }
   }
@@ -462,12 +485,19 @@ function walk(dir, exts, fn) {
 
 if (violations.length === 0) {
   console.log(
-    "Sync-reliability guardrail passed (17 rules checked: deploy fail-loud, " +
+    "Sync-reliability guardrail passed (" +
+    (cookieLegRetired
+      ? "12 rules checked; the 6 AgentLink cookie-sync verdict rules are dormant because that leg " +
+        "is retired (PL-WIB-CRON-AGENTLINK-RETIRED recorded; re-adding the call re-arms them): "
+      : "17 rules checked: ") +
+    "deploy fail-loud, " +
     "no continue-on-error masking, link must authenticate, " +
     "cron gap parser, insuracloud revival probe, cron tick must fail loud, " +
-    "cookie-sync verdict must not judge the in-flight row, " +
-    "verdict measures book freshness, last_status must not vote, " +
-    "stale bound on ok_age, push carries the measured reason, fail-safe age coercion, " +
+    (cookieLegRetired
+      ? "cookie-sync retirement recorded, "
+      : "cookie-sync verdict must not judge the in-flight row, " +
+        "verdict measures book freshness, last_status must not vote, " +
+        "stale bound on ok_age, push carries the measured reason, fail-safe age coercion, ") +
     "no errexit-aborting && appends, environment-only bot tokens, " +
     "refresh_sync_health grants, dashboard canonical source, insuracloud-sync " +
     "auth gate, insuracloud placeholder client data, ReadyMode hardcoding).",

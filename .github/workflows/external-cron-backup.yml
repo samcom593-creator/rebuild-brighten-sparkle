@@ -20,10 +20,10 @@ name: External cron backup (pg_cron resilience)
 #      now()-max(start_time), so a dead bgworker inserts no rows, the gap
 #      grows, and it fires. Do not "fix" it by lowering the threshold; 600s
 #      is the right bound for a 60s scheduler.
-#   2. Every tick here fires agentlink-cookie-sync redundantly with a pg_cron
-#      that is already firing it every 60s. That redundancy is the POINT of a
-#      safety net, but it is why this leg's timeout/verdict behaviour has cost
-#      four separate waves — see the Fire-critical-jobs block below.
+#   2. This used to say every tick fires agentlink-cookie-sync redundantly
+#      with a pg_cron that fires it every 60s. By 2026-10-17 pg_cron had no
+#      such job, AgentLink had stopped delivering deals, and the leg was
+#      retired here (see the Fire-critical-jobs block below).
 #   3. The premise may have been true when written; retention starts
 #      2026-06-11 and cannot see before it. Re-measure before acting on it —
 #      do not inherit this comment's story either. Query:
@@ -192,151 +192,60 @@ jobs:
           }
           # SQL watchdog
           fire "public.agentlink_watchdog()" "agentlink-watchdog" no 30 || true
-          # AgentLink cookie pull — fetch through Edge Runtime, not pg_net.
-          # The Postgres pg_net path can hang on AgentLink's large /api/deals
-          # response; the edge function logs to agentlink_sync_log and routes
-          # policy-by-policy via upstream userId -> agents.insuracloud_user_id.
+          # AgentLink cookie sync: RETIRED 2026-10-17 (PL-WIB-CRON-AGENTLINK-RETIRED).
           #
-          # Supabase's gateway kills this request at its own 150s idle timeout
-          # ({"code":"IDLE_TIMEOUT","message":"Request idle timeout limit (150s)
-          # reached"}), and 150s sits essentially ON the measured median sync
-          # time of 143s and well under p90 of 177s. So a large share of syncs
-          # will ALWAYS return 504 to curl no matter how patient curl is.
-          # 843c6164 raised --max-time from 90 to 300 expecting most syncs to
-          # then complete over HTTP; they cannot, and that bump is largely
-          # inert. It stays at 300 only so curl never gives up BEFORE the
-          # gateway and the reaper do. The honest statement is "the log is the
-          # verdict", not "give curl more time" — reconciliation is the primary
-          # path for this job, not a rare fallback.
+          # This leg is no longer fired. AgentLink stopped delivering deals.
+          # Measured in agentlink_sync_log: every successful sync from
+          # 2026-09-25 on inserted 0 deals, upstream policies_seen fell from
+          # 1734 to 1384 on 10-02 and stayed there, and each sync re-wrote the
+          # same 19 rows. The app says the same thing (DashboardToday.tsx:
+          # "AgentLink is retired"; Leaderboard.tsx: "AgentLink no longer
+          # delivers deals"). pg_cron no longer schedules agentlink-cookie-sync
+          # at all (no job, no run in cron.job_run_details), so this tick was
+          # the function's only caller, not a backup for one.
           #
-          # THE VERDICT: is the BOOK FRESH? Not: what did the last row do?
+          # The session cookie died after the last ok sync at 2026-10-15 18:28Z.
+          # Every call since came back 401 Unauthorized, then a Cloudflare 403
+          # challenge, and the freshness verdict that lived here called the book
+          # stale on every tick: 34 of 34 runs red on 10-16, 40 of 40 on 10-17,
+          # each one a priority-5 push. In the 12h that ntfy keeps, 26 of the 55
+          # messages on Sam's topic were this alert, on the channel every APEX
+          # critical uses. The alert was true and nobody could act on it except
+          # by harvesting a cookie for a platform Sam has stopped using.
           #
-          # This is the third rewrite of this one decision in three days, and
-          # each previous version was honest about a narrower question than the
-          # alert it fired actually claimed to answer.
+          # Retired, not allowlisted: an allowlist would keep calling AgentLink
+          # with a dead cookie every tick and add ~40 error rows a day to
+          # agentlink_sync_log. The freshness verdict (710b27c3, 843c6164,
+          # a3fa21b4, c91f82b7, MP-407) is in git history. If AgentLink comes
+          # back, harvest a fresh cookie, then restore this block and the old
+          # scripts/check-cron-verdict-states.mjs together.
           #
-          #   710b27c3 asked "did curl get a 200?" — 36 false pages/day, because
-          #            curl's patience is not a fact about the pipeline.
-          #   843c6164 asked "what is the row this tick just made?" — the answer
-          #            was always 'running' (gateway forces the verdict at 151s,
-          #            the reaper needs 300s), so the leg could not go red AT
-          #            ALL. Proven in prod: run 31413717796 reported SUCCESS on
-          #            row ab407e97, which ran 485s and was reaped 'stuck'.
-          #   a3fa21b4 asked "what is the last SETTLED row?" — correct about the
-          #            row, and still wrong about the system. It sent 9 reds in
-          #            39 runs over 5.5h (~39 priority-5 pages/day) saying "the
-          #            pipelines are not moving" while the pipelines were
-          #            moving. Measured counterfactual, not asserted: at the two
-          #            moments it paged (runs 31446750097/31443587597 ~23:48Z
-          #            and 31441868477 ~00:14Z) the book had last been refreshed
-          #            3500s and 1235s earlier. 100 ok syncs in 48h moved
-          #            120,236 deal updates. The sentence in the push was false
-          #            as it was being sent.
-          #
-          # True-but-misleading at 39 pages/day costs exactly what false at 36
-          # pages/day cost: Sam stops believing the one loud channel. So the
-          # verdict now answers the question the alert actually asks — has the
-          # book stopped being refreshed? A single stuck row inside a healthy
-          # stream is weather, not an outage. Every stuck row carries
-          # upstream_status=NULL and policies_seen=0 and dies in the 'deals'
-          # phase (AgentLink's own /api/deals never returns), and it tracks
-          # AgentLink's business hours: 44.2% stuck in 13-23 UTC vs 24.2% in
-          # 00-12 UTC. Apex cannot fix AgentLink's API. Paging per occurrence is
-          # paging on someone else's weather; the run log still records it.
-          #
-          # THE THRESHOLD, measured over 7 days (352 consecutive ok-to-ok gaps,
-          # not the 48h window the previous wave sized this on):
-          #   p50 765s · p90 4124s · p99 11417s · max 31913s
-          #   42 gaps > 1h · 13 > 2h · 1 > 4h
-          # STALE_MAX=14400 (4h) sits above p99 (3.2h) and under the one gap
-          # that beat it. State that honestly: this bound WILL fire on normal
-          # operation roughly once a week, and the 7d max EXCEEDS it — the
-          # previous wave's claim that 14400 is "above observed-worst so
-          # throttling can never trip it" is false, and was sized on too short a
-          # window. The one 7d event that crossed it (08-06 15:37 -> 08-07 00:29)
-          # deserved to fire: the book went 8.9h without a refresh because
-          # nothing asked it to sync for 7 hours (zero rows between 15:34 and
-          # 22:31). A page for that is the alert working. Tightening to 2h would
-          # buy 13 pages/week of noise for no extra detection.
-          #
-          # Fresh book acquits, whatever the newest row says. Stale book reds,
-          # whatever the newest row says. An unreachable or garbled answer
-          # coerces to very-stale, never to 0 — fail loud, in the one place
-          # whose entire job is to fail loud.
-          #
-          # LIMIT, stated so nobody reads more safety into this than it has:
-          # this gate can only speak on ticks that actually run. GitHub throttles
-          # this schedule hard (measured p90 gap 40.8min, max 108min against a
-          # header that used to promise 10min), and during the 7h hole above it
-          # was not running at all, so it could not have paged until it came
-          # back. A watcher cannot report its own absence.
-          STALE_MAX=14400
-          STALE_DETAIL=""
-          call_edge "agentlink-cookie-sync" '{}' no 300 || true
-          if printf '%s\n' ${FAILED[@]+"${FAILED[@]}"} | grep -qx "edge:agentlink-cookie-sync"; then
-            # curl gave up. Ask the book how long since it was last refreshed.
-            # ok_age comes FIRST in the pair on purpose: it is the value that
-            # decides, and `%%:*` stays correct even if a status ever grows a
-            # colon. last_status is carried for the log line only and never
-            # votes.
-            # MP-407: RETRIED. A single unretried read is why runs 33787407080
-            # (~17:26Z) and 33787585735 (18:00:09Z) each paged Sam at priority 5
-            # with "No successful AgentLink sync for 99999999s". Measured after
-            # the fact, the book was 10,612s and 12,661s old at those instants —
-            # both UNDER STALE_MAX, i.e. this gate's own rule said ACQUIT both
-            # times. bot-sql blips under load; apex-doctor has wrapped it in a
-            # 3x/0-2-4s retry since 2026-07-19 for exactly this reason, and that
-            # hardening never reached here.
-            #
-            # ok_age must arrive as a NUMBER from the query or the attempt does
-            # not count — same type gate as the pg_cron gap parser above. That
-            # makes a garbled age impossible to mistake for a measured one,
-            # rather than merely coercing it after the fact.
-            freshness=""
-            for fr_delay in 0 2 4; do
-              [ "$fr_delay" -gt 0 ] && sleep "$fr_delay"
-              fr_raw=$(curl -sS -X POST "$BOT_SQL" \
-                -H "Authorization: Bearer $BOT_TOKEN" \
-                -H "content-type: application/json" \
-                --max-time 20 \
-                -d "{\"query\":\"SELECT COALESCE(EXTRACT(EPOCH FROM (now() - max(COALESCE(l.finished_at, l.started_at))))::int, 99999999) AS ok_age, COALESCE((SELECT n.status FROM agentlink_sync_log n ORDER BY n.started_at DESC LIMIT 1), 'none') AS last_status FROM agentlink_sync_log l WHERE l.status = 'ok';\"}" 2>/dev/null) || true
-              fr_parsed=$(printf '%s' "$fr_raw" | jq -r 'if (.ok == true) and (.rows | length > 0) and ((.rows[0].ok_age | type) == "number") then "\(.rows[0].ok_age):\(.rows[0].last_status)" else empty end' 2>/dev/null || true)
-              if [ -n "$fr_parsed" ]; then freshness="$fr_parsed"; break; fi
-            done
-            if [ -z "$freshness" ]; then
-              # Three reads failed. STILL RED — failing loud in the one place
-              # whose job is to fail loud is deliberate and stays. What changes
-              # is the SENTENCE. "I could not look" is not a duration, and
-              # printing 99999999 as one told Sam the book was 3.17 YEARS stale
-              # while it sat 3.5h old and inside the bound. A true page and a
-              # false page cost the same when both carry a fabricated number,
-              # because he cannot tell them apart.
-              STALE_DETAIL="Could not read agentlink_sync_log after 3 attempts — AgentLink freshness UNKNOWN, NOT measured. The book may be fine; this is a failure to look, not proof of staleness."
-              echo "agentlink-cookie-sync freshness verdict: UNREADABLE after 3 attempts (stale bound ${STALE_MAX}s)"
-              echo "::warning::agentlink-cookie-sync: $STALE_DETAIL Keeping it red"
-            else
-              ok_age=${freshness%%:*}
-              last_status=${freshness##*:}
-              case "$last_status" in '') last_status=unknown ;; esac
-              echo "agentlink-cookie-sync freshness verdict: last successful sync ${ok_age}s ago, newest row '$last_status' (stale bound ${STALE_MAX}s)"
-              if [ "$ok_age" -le "$STALE_MAX" ]; then
-                echo "::notice::agentlink-cookie-sync: curl timed out and the newest row is '$last_status', but the book was refreshed ${ok_age}s ago — the pipeline is moving"
-                REMAINING=()
-                for f in ${FAILED[@]+"${FAILED[@]}"}; do
-                  if [ "$f" != "edge:agentlink-cookie-sync" ]; then REMAINING+=("$f"); fi
-                done
-                FAILED=(${REMAINING[@]+"${REMAINING[@]}"})
+          # The run log still says what was skipped, with the book's measured
+          # age, so the retirement is visible on every tick. That read is
+          # diagnostic only: it cannot add to FAILED and cannot page.
+          al_age=$(curl -sS -X POST "$BOT_SQL" \
+            -H "Authorization: Bearer $BOT_TOKEN" \
+            -H "content-type: application/json" \
+            --max-time 20 \
+            -d "{\"query\":\"SELECT COALESCE(EXTRACT(EPOCH FROM (now() - max(COALESCE(l.finished_at, l.started_at))))::int, -1) AS age FROM agentlink_sync_log l WHERE l.status = 'ok';\"}" 2>/dev/null \
+            | jq -r 'if (.ok == true) and (.rows | length > 0) and (.rows[0].age | type == "number") then .rows[0].age else empty end' 2>/dev/null || true)
+          case "$al_age" in
+            ''|*[!0-9-]*) echo "::notice::agentlink-cookie-sync is retired and was not fired. Book age not read this tick (diagnostic only; never colours the run)." ;;
+            -1) echo "::notice::agentlink-cookie-sync is retired and was not fired. agentlink_sync_log has no successful sync at all." ;;
+            *)
+              if [ "$al_age" -le 14400 ]; then
+                echo "::notice::agentlink-cookie-sync is retired and was not fired, but something synced AgentLink ${al_age}s ago. If AgentLink is back, restore this leg (see PL-WIB-CRON-AGENTLINK-RETIRED)."
               else
-                STALE_DETAIL="No successful AgentLink sync for ${ok_age}s (bound ${STALE_MAX}s); newest row '$last_status'. The book is stale."
-                echo "::warning::agentlink-cookie-sync: $STALE_DETAIL Keeping it red"
+                echo "::notice::agentlink-cookie-sync is retired and was not fired. Last successful AgentLink sync ${al_age}s ago (expected: the book is frozen). This never colours the run."
               fi
-            fi
-          fi
+              ;;
+          esac
           # InsuraCloud revival probe — deliberately NOT a per-tick sync.
           # Upstream 404s all three endpoints (/business-analytics,
           # /book-of-business, /team-analytics: "API endpoint not found"), so
-          # this call cannot succeed from our side; the dashboards actually
-          # ride agentlink-cookie-sync above. Until 2026-08-08 it ran every
+          # this call cannot succeed from our side; the dashboards rode
+          # agentlink-cookie-sync until AgentLink was retired, and now read
+          # native and Discord-posted deals. Until 2026-08-08 it ran every
           # tick as critical and painted the run red 71 times a day. The fix
           # that day demoted it to non-critical, which stopped the red but left
           # it hammering a dead endpoint 288 times a day and writing ~200 error
@@ -428,7 +337,7 @@ jobs:
               -H "Title: External cron backup FAILED" \
               -H "Priority: 5" \
               -H "Tags: rotating_light" \
-              --data-binary "Sync jobs failed this tick: ${UNEXPECTED[*]}. ${STALE_DETAIL:-These bot-sql calls returned non-200 or ok:false on this tick.}" || true
+              --data-binary "Sync jobs failed this tick: ${UNEXPECTED[*]}. These calls returned non-200 or ok:false on this tick." || true
             echo "::error::Unexpected sync failures: ${UNEXPECTED[*]}"
             exit 1
           fi
@@ -439,6 +348,6 @@ jobs:
           {
             echo "### External cron backup"
             echo "- pg_cron gap: ${{ steps.cron.outputs.gap }}s"
-            echo "- Fired: agentlink_watchdog, agentlink_live_pull, deal_sync_queue_promote_dead, auto_assign_hiring_manager"
+            echo "- Fired: agentlink_watchdog, deal_sync_queue_promote_dead, auto_assign_hiring_manager, refresh_sync_health (insuracloud-sync hourly probe; agentlink-cookie-sync retired)"
             echo "- Trigger: ${{ github.event_name }}"
           } >> $GITHUB_STEP_SUMMARY

@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Your phone no longer gets an hourly \"APEX automation went silent\" push about the applicant gap-closer and the missed-opportunity digest. Both were switched off in late July, so that alert repeated the same two names 24 times a day.",
+    detail: "The hourly liveness check now reads the scheduler before it pages. If an automation's scheduled job exists and is turned off, the check lists it as paused and does not push. If the job is missing, or the automation runs off-box, it is still checked the old way. A real silence now pushes once when it starts and then once a day while it lasts, not every hour. Turning the gap-closer back on would restart emails to applicants, so that stays your call.",
+    commit: "PL-WIB-LIVENESS-PAUSED",
+  },
+  {
+    ts: "today",
     label: "Your phone no longer gets a top-priority push about 40 times a day saying the AgentLink book is stale. That one alert was 26 of the last 55 messages on your APEX alert channel, and AgentLink is retired.",
     detail: "The backup workflow that re-fires your sync jobs kept calling the AgentLink sync. AgentLink has not delivered a new deal since at least Sept 25, and its login cookie died on Oct 15, so every run after that failed and pushed \"External cron backup FAILED\": 34 on Oct 16, 40 on Oct 17. That leg is retired now, and the run log still prints how old the AgentLink book is. Every other job in the workflow still fails the run and pages you when it breaks, and a check on every commit runs the real workflow step to prove it.",
     commit: "PL-WIB-CRON-AGENTLINK-RETIRED",

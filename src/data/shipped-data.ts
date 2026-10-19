@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "The search bar can find the 7 agents who have no agent code and no login. Isaac Assaba is one of them: active, licensed, 3 deals. Search returned nothing for any of them.",
+    detail: "Search was meant to hide only the sync-only placeholder seats the Ayro feed creates. It did that with its own copy of the rule, and that copy treated a missing agent code as \"unknown\", which dropped the row. Search now uses the same placeholder rule as the rest of the app. The 6 placeholder seats stay hidden. The 10 former producers with a GHOST code and a real login still show.",
+    commit: "PL-WIB-SEARCH-PEOPLE-PLACEHOLDER",
+  },
+  {
+    ts: "today",
     label: "Your phone no longer gets an hourly \"APEX automation went silent\" push about the applicant gap-closer and the missed-opportunity digest. Both were switched off in late July, so that alert repeated the same two names 24 times a day.",
     detail: "The hourly liveness check now reads the scheduler before it pages. If an automation's scheduled job exists and is turned off, the check lists it as paused and does not push. If the job is missing, or the automation runs off-box, it is still checked the old way. A real silence now pushes once when it starts and then once a day while it lasts, not every hour. Turning the gap-closer back on would restart emails to applicants, so that stays your call.",
     commit: "PL-WIB-LIVENESS-PAUSED",

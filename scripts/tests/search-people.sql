@@ -1,4 +1,4 @@
--- Behavioural proof for search_people (migration 20261009210000). ROLLBACK at the end; synthetic people only.
+-- Behavioural proof for search_people (migrations 20261009210000, 20261019050000). ROLLBACK at the end; synthetic people only.
 -- Run:  python3 scripts/tests/run-search-people.py     Expected: every row PASS.
 begin;
 create temp table results(n serial, test text, outcome text, expected text, pass boolean);
@@ -28,6 +28,13 @@ insert into public.agents (id, display_name, agent_code, status, license_status,
   ('b1000000-0000-4000-8000-0000000000b1', 'ZZ SYN Bea Johnson', 'ZZ-BJ', 'active', 'licensed', now() - interval '6 days', 'b0000000-0000-4000-8000-0000000000b1'),
   ('b1000000-0000-4000-8000-0000000000b2', 'ZZ SYN Carl 100% Percent', 'ZZ-CP', 'inactive', 'licensed', now() - interval '6 days', 'b0000000-0000-4000-8000-0000000000b1'),
   ('b2000000-0000-4000-8000-000000000003', 'ZZ SYN Ghost Johnson', 'GHOST_ZZ', 'active', 'licensed', now(), 'b0000000-0000-4000-8000-0000000000a1');
+-- 20261019050000: an agent with no agent_code and no login is a real person (7 in prod on 2026-10-19), and a GHOST-coded
+-- agent who holds a login is a real former producer (10 in prod). Only GHOST-coded AND login-less is a placeholder.
+insert into auth.users (id) values ('a0000000-0000-4000-8000-0000000000f1');
+insert into public.agents (id, user_id, display_name, agent_code, status, license_status, created_at) values
+  ('b3000000-0000-4000-8000-000000000001', null, 'ZZ SYN Noel Nocode', null, 'active', 'licensed', now() - interval '30 days'),
+  ('b3000000-0000-4000-8000-000000000002', 'a0000000-0000-4000-8000-0000000000f1', 'ZZ SYN Gia Ghostlogin', 'GHOST_ZZ2', 'inactive', 'licensed', now() - interval '300 days');
+insert into public.profiles (user_id, email, full_name) values ('a0000000-0000-4000-8000-0000000000f1', 'zz.gia@example.invalid', 'ZZ SYN Gia Ghostlogin') on conflict (user_id) do update set email = excluded.email, full_name = excluded.full_name;
 insert into public.applications (id, first_name, last_name, email, phone, hiring_manager_user_id) values
   ('c0000000-0000-4000-8000-000000000001', 'ZZ SYN Dana', 'Johnson', 'zz.dana@example.invalid', '6025550123', 'a0000000-0000-4000-8000-0000000000b1');
 
@@ -65,5 +72,9 @@ insert into discard_i select pg_temp.chk('12 blank search never widens manager s
   (select count(*)::text from jsonb_array_elements(pg_temp.j('a0000000-0000-4000-8000-0000000000a1', $$public.search_people(' ', 25)$$)->'agents') e where e->>'id' in ('b1000000-0000-4000-8000-0000000000b1', 'b1000000-0000-4000-8000-0000000000b2', 'b2000000-0000-4000-8000-000000000003')), '0');
 insert into discard_i select pg_temp.chk('13 blank search gives a plain agent no people',
   (pg_temp.j('a0000000-0000-4000-8000-0000000000d1', $$public.search_people('')$$))::text, '{"ok": true, "agents": [], "applicants": []}');
+insert into discard_i select pg_temp.chk('14 an agent with no agent code and no login is still a person search can find',
+  pg_temp.names(pg_temp.j('a0000000-0000-4000-8000-0000000000ad', $$public.search_people('noel nocode')$$), 'agents'), 'ZZ SYN Noel Nocode');
+insert into discard_i select pg_temp.chk('15 a GHOST-coded agent who holds a login is a real former producer, not a placeholder',
+  pg_temp.names(pg_temp.j('a0000000-0000-4000-8000-0000000000ad', $$public.search_people('ghostlogin')$$), 'agents'), 'ZZ SYN Gia Ghostlogin');
 select test, outcome, expected, case when pass then 'PASS' else 'FAIL' end verdict from results order by n;
 rollback;

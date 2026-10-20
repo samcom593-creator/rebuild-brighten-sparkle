@@ -191,6 +191,8 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
       { label: "Easy Resells", href: "/dashboard/easy-resells", icon: Sparkles, grant: "sold_calls" },
       // Working carrier books for rewrites (2026-10-07). Admin and managers only, like the view behind it.
       { label: "Book Flips", href: "/dashboard/books", icon: PhoneCall, modes: ["manager"] },
+      // Ayro Financial's production (2026-10-20), every policy from its CRM grouped by carrier. Admin only.
+      { label: "Ayro Book", href: "/dashboard/ayro-book", icon: Building2, adminOnly: true },
       // Admins and Aisha (can_view_sold_calls); she works in manager mode, so a mode list could not reach her.
       { label: "Sold Calls", href: "/dashboard/sold-calls", icon: PhoneCall, grant: "sold_calls" },
       { label: "My Commissions", href: "/dashboard/my-commissions", icon: WalletCards },

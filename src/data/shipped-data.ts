@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Ayro Financial book is live at My Business > Ayro Book: all 129 Ayro policies ($232,297), grouped by carrier, with every writing agent, policy number, premium, status and the time it was entered.",
+    detail: "The Ayro sync only read the first ten or so rows of each day's feed, so 32 policies ($54,808) from Sep 23 to 27 never reached the site. They are back with their real dates, and the sync now reads Ayro's whole history every run and skips rows that did not change. $8,698 of the recovered policies belong to Tyler Krejcha, Michael Kayembe and jontay taylor and now count in production; the rest belong to the five Ayro-only producers, who stay out of our totals. The recovered deals were not reposted to Discord. Carrier spellings are merged (trans, Trans, trans america are one Transamerica). The page checks its count against Ayro's own total on every sync.",
+    commit: "PL-AYRO-BOOK",
+  },
+  {
+    ts: "today",
     label: "Interview confirmation emails no longer send candidates to a dead Calendly page. The only \"if anything changes\" button pointed at the seminar booking event, which Calendly deleted with the seminar.",
     detail: "The email goes out when an interview is added through the assistant form. Its reschedule button read a seminar setting, and when that was empty the code fell back to the same deleted link, so clearing the setting would not have fixed it. The email now shows a reschedule button only when a working link is set; otherwise it tells the candidate to reply. The dead setting is removed. No candidate has received this email since June, so nobody was hurt by it, but the next booking would have been.",
     commit: "PL-WIB-CONFIRM-NO-DEAD-LINK",

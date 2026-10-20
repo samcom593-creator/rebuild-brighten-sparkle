@@ -2,7 +2,9 @@
 //
 // Sends a confirmation email to a recruiting candidate after Sam adds an
 // interview in /dashboard/interviews. Email tells them "I'm actually
-// going there" and includes the Calendly link as a backup reschedule URL.
+// going there". A reschedule link is included only when one is configured and
+// is an absolute https URL; otherwise the email says to reply (see
+// email.ts for why there is no fallback).
 //
 // Sam directive (voice transcript 2026-06-15):
 //   "Make sure again I wanna re-click and add these [interviews], and
@@ -16,6 +18,11 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
+import {
+  buildConfirmationEmail,
+  resolveRescheduleUrl,
+  stripWrappedQuotes,
+} from "./email.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -37,17 +44,8 @@ interface RequestBody {
 
 interface Settings {
   resend_api_key: string | null;
-  seminar_calendly_url: string;
+  reschedule_url: string | null;
   from_address: string;
-}
-
-function stripWrappedQuotes(raw: string | null | undefined): string {
-  if (!raw) return "";
-  const trimmed = raw.trim();
-  if (trimmed.length >= 2 && trimmed.startsWith('"') && trimmed.endsWith('"')) {
-    return trimmed.slice(1, -1);
-  }
-  return trimmed;
 }
 
 async function loadSettings(sb: ReturnType<typeof createClient>): Promise<Settings> {
@@ -66,8 +64,9 @@ async function loadSettings(sb: ReturnType<typeof createClient>): Promise<Settin
   }
 
   const envResend = Deno.env.get("RESEND_API_KEY");
-  const calendly = stripWrappedQuotes(map.get("seminar_calendly_url"))
-    || "https://calendly.com/apexfinancialempire/interview";
+  // No hardcoded fallback: the old one was the deleted Calendly event, so an
+  // empty setting re-emitted the same dead link.
+  const reschedule = resolveRescheduleUrl(map.get("seminar_calendly_url"));
   const fromRaw = stripWrappedQuotes(map.get("onboarding_email_from_address"))
     || "Sam James <sam@apex-financial.org>";
 
@@ -75,89 +74,9 @@ async function loadSettings(sb: ReturnType<typeof createClient>): Promise<Settin
     resend_api_key: envResend && envResend.length > 8
       ? envResend
       : (map.get("resend_api_key") ?? null),
-    seminar_calendly_url: calendly,
+    reschedule_url: reschedule,
     from_address: fromRaw,
   };
-}
-
-function firstName(fullName: string | null | undefined): string {
-  if (!fullName) return "there";
-  const cleaned = fullName.trim();
-  if (!cleaned) return "there";
-  return cleaned.split(/\s+/)[0];
-}
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-function formatScheduled(scheduledAt: string): { day: string; time: string; full: string } {
-  // Format in US/Central since Sam runs on CT.
-  // We do it manually because Deno doesn't ship Intl polyfills for arbitrary TZs
-  // without options. Intl.DateTimeFormat with timeZone is supported.
-  const d = new Date(scheduledAt);
-  if (Number.isNaN(d.getTime())) {
-    return { day: scheduledAt, time: "", full: scheduledAt };
-  }
-  const dayFmt = new Intl.DateTimeFormat("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    timeZone: "America/Chicago",
-  });
-  const timeFmt = new Intl.DateTimeFormat("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "America/Chicago",
-    timeZoneName: "short",
-  });
-  const day = dayFmt.format(d);
-  const time = timeFmt.format(d);
-  return { day, time, full: `${day} at ${time}` };
-}
-
-function buildConfirmationEmail(
-  candidateName: string,
-  scheduledAt: string,
-  calendlyUrl: string,
-): { subject: string; html: string; text: string } {
-  const fn = firstName(candidateName);
-  const fnHtml = escapeHtml(fn);
-  const { day, time, full } = formatScheduled(scheduledAt);
-  const fullHtml = escapeHtml(full);
-  const dayHtml = escapeHtml(day);
-  const timeHtml = escapeHtml(time);
-  const urlHtml = escapeHtml(calendlyUrl);
-
-  const subject = `Confirmed — our call on ${day} ${time} CT`;
-
-  const text = [
-    `Hey ${fn},`,
-    ``,
-    `Confirmed for ${full}. I'll be there. Bring questions.`,
-    ``,
-    `If anything changes, you can reschedule here: ${calendlyUrl}`,
-    ``,
-    `— Sam`,
-    `Galaxy Financial`,
-  ].join("\n");
-
-  const html = `
-<!doctype html>
-<html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#111;line-height:1.55;">
-  <p>Hey ${fnHtml},</p>
-  <p>Confirmed for <strong>${dayHtml} at ${timeHtml}</strong>. I'll be there. Bring questions.</p>
-  <p>If anything changes, you can reschedule here:</p>
-  <p><a href="${urlHtml}" style="display:inline-block;padding:12px 20px;background:#0a0a0a;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">Reschedule on Calendly</a></p>
-  <p style="margin-top:24px;">— Sam<br/>Galaxy Financial</p>
-</body></html>`.trim();
-
-  return { subject, html, text };
 }
 
 interface ResendResult {
@@ -302,9 +221,9 @@ serve(async (req: Request): Promise<Response> => {
       throw new Error("Missing RESEND_API_KEY (env or system_settings.resend_api_key).");
     }
 
-    const calendlyUrl = (body.calendly_url ?? "").trim() || settings.seminar_calendly_url;
+    const rescheduleUrl = resolveRescheduleUrl(body.calendly_url) ?? settings.reschedule_url;
 
-    const built = buildConfirmationEmail(candidateName, scheduledAt, calendlyUrl);
+    const built = buildConfirmationEmail(candidateName, scheduledAt, rescheduleUrl);
 
     const sendResult = await sendViaResend(
       settings.resend_api_key,
@@ -357,7 +276,7 @@ serve(async (req: Request): Promise<Response> => {
         resend_id: sendResult.id,
         from: settings.from_address,
         to: candidateEmail,
-        calendly_url: calendlyUrl,
+        reschedule_url: rescheduleUrl,
         timestamp: new Date().toISOString(),
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },

@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Interview confirmation emails no longer send candidates to a dead Calendly page. The only \"if anything changes\" button pointed at the seminar booking event, which Calendly deleted with the seminar.",
+    detail: "The email goes out when an interview is added through the assistant form. Its reschedule button read a seminar setting, and when that was empty the code fell back to the same deleted link, so clearing the setting would not have fixed it. The email now shows a reschedule button only when a working link is set; otherwise it tells the candidate to reply. The dead setting is removed. No candidate has received this email since June, so nobody was hurt by it, but the next booking would have been.",
+    commit: "PL-WIB-CONFIRM-NO-DEAD-LINK",
+  },
+  {
+    ts: "today",
     label: "The search bar can find the 7 agents who have no agent code and no login. Isaac Assaba is one of them: active, licensed, 3 deals. Search returned nothing for any of them.",
     detail: "Search was meant to hide only the sync-only placeholder seats the Ayro feed creates. It did that with its own copy of the rule, and that copy treated a missing agent code as \"unknown\", which dropped the row. Search now uses the same placeholder rule as the rest of the app. The 6 placeholder seats stay hidden. The 10 former producers with a GHOST code and a real login still show.",
     commit: "PL-WIB-SEARCH-PEOPLE-PLACEHOLDER",

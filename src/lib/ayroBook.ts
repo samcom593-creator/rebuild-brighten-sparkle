@@ -70,9 +70,10 @@ export const PERIODS: { key: PeriodKey; label: string }[] = [
   { key: "today", label: "Today" },
 ];
 
-export type SortKey = "newest" | "premium" | "agent";
+export type SortKey = "newest" | "named" | "premium" | "agent";
 export const SORTS: { key: SortKey; label: string }[] = [
   { key: "newest", label: "Newest first" },
+  { key: "named", label: "Named first" },
   { key: "premium", label: "Biggest premium" },
   { key: "agent", label: "Agent A to Z" },
 ];
@@ -159,7 +160,8 @@ export interface CarrierGroup {
 
 export function sortDeals(deals: AyroDeal[], sort: SortKey): AyroDeal[] {
   const out = [...deals];
-  if (sort === "premium") out.sort((a, b) => b.annual_premium - a.annual_premium || b.submitted_at.localeCompare(a.submitted_at));
+  if (sort === "named") out.sort((a, b) => Number(!!b.client_name) - Number(!!a.client_name) || b.submitted_at.localeCompare(a.submitted_at));
+  else if (sort === "premium") out.sort((a, b) => b.annual_premium - a.annual_premium || b.submitted_at.localeCompare(a.submitted_at));
   else if (sort === "agent") out.sort((a, b) => a.agent_name.localeCompare(b.agent_name, undefined, { sensitivity: "base" }) || b.submitted_at.localeCompare(a.submitted_at));
   else out.sort((a, b) => b.submitted_at.localeCompare(a.submitted_at));
   return out;
@@ -280,7 +282,9 @@ export function reconcile(deals: AyroDeal[], sync: AyroSync | null): { matches: 
 export function agentListLine(d: AyroDeal): string {
   const policy = d.policy_number || "No policy #";
   const name = d.client_name?.trim();
-  return `${policy}-${Math.round(d.annual_premium)}AP${name ? ` · ${name}` : ""}`;
+  const tail = `${policy}-${Math.round(d.annual_premium)}AP`;
+  // Client name first when we have one, so names stand out; otherwise just the policy number.
+  return name ? `${name} · ${tail}` : tail;
 }
 
 export function agentListBlocks(deals: AyroDeal[]): { carrier: string; lines: { deal: AyroDeal; text: string }[] }[] {

@@ -169,7 +169,7 @@ describe("the agent list in Sam's format", () => {
       deal({ client_name: null, policy_number: "TA2893772642", annual_premium: 2594, carrier: "Ethos", submitted_at: "2026-10-16T23:30:00Z" }),
       deal({ client_name: "Jo Lee", policy_number: "GA222", annual_premium: 980.4, carrier: "Aetna", submitted_at: "2026-10-01T20:00:00Z" }),
     ]);
-    expect(text).toBe("TA2893772642-2594AP\nTA2377165821-1812AP \u00b7 Robert Burns\nAll Ethos\n\nGA222-980AP \u00b7 Jo Lee\nAll Aetna");
+    expect(text).toBe("TA2893772642-2594AP\nRobert Burns \u00b7 TA2377165821-1812AP\nAll Ethos\n\nJo Lee \u00b7 GA222-980AP\nAll Aetna");
   });
 
   it("a pasted line that is a policy number already on the book adds no name", () => {

@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Ayro Book now leads each agent-list line with the client name when there is one (Robert Burns \u00b7 TA2377165821-1812AP), so names stand out instead of being buried, plus a Named first sort.",
+    detail: "Ayro's feed has no client names; the only names on the page are the ones entered through Paste names or Edit names. Michael Kayembe's 8 are in and now show name-first. Every other agent has no names yet, so their lines show the policy number until names are pasted for them.",
+    commit: "PL-AYRO-NAME-LEAD",
+  },
+  {
+    ts: "today",
     label: "Ayro Book agent lists now show both the policy number and the client name on each line (TA2377165821-1812AP \u00b7 Robert Burns). Policies without a name show just the number.",
     detail: "Pasting a list of policy numbers no longer tries to store them as names; those policies are already shown by number and are skipped. jontay taylor's 10 policies render as their numbers; Michael Kayembe's 8 named Ethos clients show the number and the name together.",
     commit: "PL-AYRO-BOTH",

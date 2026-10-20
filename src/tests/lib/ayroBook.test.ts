@@ -163,12 +163,23 @@ describe("the agent list in Sam's format", () => {
     expect(r.matched.map((m) => [m.entry.name, m.deal.id])).toEqual([["Al One", "e"], ["Bo Two", "t"]]);
   });
 
-  it("writes the list back out in the same format, one block per carrier", () => {
+  it("writes the list back out with both policy # and name, one block per carrier", () => {
     const text = agentListText([
-      deal({ client_name: "Robert Burns", annual_premium: 1812, carrier: "Ethos", submitted_at: "2026-10-02T20:53:26Z" }),
+      deal({ client_name: "Robert Burns", policy_number: "TA2377165821", annual_premium: 1812, carrier: "Ethos", submitted_at: "2026-10-02T20:53:26Z" }),
       deal({ client_name: null, policy_number: "TA2893772642", annual_premium: 2594, carrier: "Ethos", submitted_at: "2026-10-16T23:30:00Z" }),
-      deal({ client_name: "Jo Lee", annual_premium: 980.4, carrier: "Aetna", submitted_at: "2026-10-01T20:00:00Z" }),
+      deal({ client_name: "Jo Lee", policy_number: "GA222", annual_premium: 980.4, carrier: "Aetna", submitted_at: "2026-10-01T20:00:00Z" }),
     ]);
-    expect(text).toBe("TA2893772642-2594AP\nRobert Burns-1812AP\nAll Ethos\n\nJo Lee-980AP\nAll Aetna");
+    expect(text).toBe("TA2893772642-2594AP\nTA2377165821-1812AP \u00b7 Robert Burns\nAll Ethos\n\nGA222-980AP \u00b7 Jo Lee\nAll Aetna");
+  });
+
+  it("a pasted line that is a policy number already on the book adds no name", () => {
+    const deals = [deal({ id: "j", policy_number: "TA1432627407", carrier: "Ethos", annual_premium: 2296 })];
+    const r = matchClientList(parseClientList("TA1432627407-2296AP\nAll Ethos").entries, deals);
+    expect(r.matched).toEqual([]);
+    expect(r.unmatched).toEqual([]);
+    expect(r.ambiguous).toEqual([]);
+    // a real name at the same premium still lands
+    const r2 = matchClientList(parseClientList("Jane Roe-2296AP\nAll Ethos").entries, deals);
+    expect(r2.matched.map((m) => m.deal.id)).toEqual(["j"]);
   });
 });

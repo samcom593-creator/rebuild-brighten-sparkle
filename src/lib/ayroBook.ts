@@ -274,9 +274,13 @@ export function reconcile(deals: AyroDeal[], sync: AyroSync | null): { matches: 
 // One block per carrier, newest first, "All <Carrier>" under each block. A policy with no client
 // name yet shows its policy number in the name's place.
 
+// Both the policy number and the client name, when we have a name (2026-10-20, Sam: "i want both").
+// The policy number is always there; the client name is added after it. Ayro's feed has no names,
+// so a policy with no name entered yet shows just its number.
 export function agentListLine(d: AyroDeal): string {
-  const who = d.client_name?.trim() || d.policy_number || "No name yet";
-  return `${who}-${Math.round(d.annual_premium)}AP`;
+  const policy = d.policy_number || "No policy #";
+  const name = d.client_name?.trim();
+  return `${policy}-${Math.round(d.annual_premium)}AP${name ? ` · ${name}` : ""}`;
 }
 
 export function agentListBlocks(deals: AyroDeal[]): { carrier: string; lines: { deal: AyroDeal; text: string }[] }[] {
@@ -348,6 +352,7 @@ const CARRIER_ALIASES: Record<string, string> = {
   chubb: "Chubb", aflac: "Aflac", mutualofomaha: "Mutual of Omaha", moo: "Mutual of Omaha",
   baltimorelife: "Baltimore Life",
 };
+const normId = (s: string | null | undefined) => (s ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
 const letters = (s: string | null | undefined) => (s ?? "").toLowerCase().replace(/[^a-z]/g, "");
 
 export function sameCarrier(typed: string, deal: AyroDeal): boolean {
@@ -369,8 +374,13 @@ export interface ClientMatchResult {
  * a policy they claim stops counting as a candidate for the lines still open.
  */
 export function matchClientList(entries: ClientListEntry[], deals: AyroDeal[]): ClientMatchResult {
+  // A line like "TA1432627407-2296AP" is a policy number, not a client name. That policy is
+  // already shown by its number, so there is nothing to save — drop the line rather than store
+  // the policy number as a fake name.
+  const policyIds = new Set(deals.map((d) => normId(d.policy_number)).filter(Boolean));
+  const named = entries.filter((e) => !policyIds.has(normId(e.name)));
   const claimed = new Set<string>();
-  const open = new Set(entries.map((_, i) => i));
+  const open = new Set(named.map((_, i) => i));
   const matched: ClientMatchResult["matched"] = [];
   const candidatesFor = (e: ClientListEntry) =>
     deals.filter((d) => !claimed.has(d.id) && Math.abs(d.annual_premium - e.ap) < 1 && (!e.carrier || sameCarrier(e.carrier, d)));
@@ -379,9 +389,9 @@ export function matchClientList(entries: ClientListEntry[], deals: AyroDeal[]): 
   while (progress) {
     progress = false;
     for (const i of [...open]) {
-      const c = candidatesFor(entries[i]);
+      const c = candidatesFor(named[i]);
       if (c.length === 1) {
-        matched.push({ entry: entries[i], deal: c[0] });
+        matched.push({ entry: named[i], deal: c[0] });
         claimed.add(c[0].id);
         open.delete(i);
         progress = true;
@@ -391,9 +401,9 @@ export function matchClientList(entries: ClientListEntry[], deals: AyroDeal[]): 
   const ambiguous: ClientMatchResult["ambiguous"] = [];
   const unmatched: ClientListEntry[] = [];
   for (const i of open) {
-    const c = candidatesFor(entries[i]);
-    if (c.length > 1) ambiguous.push({ entry: entries[i], candidates: c });
-    else unmatched.push(entries[i]);
+    const c = candidatesFor(named[i]);
+    if (c.length > 1) ambiguous.push({ entry: named[i], candidates: c });
+    else unmatched.push(named[i]);
   }
   return { matched, ambiguous, unmatched };
 }

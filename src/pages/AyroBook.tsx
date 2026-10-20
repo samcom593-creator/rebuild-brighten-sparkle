@@ -204,8 +204,8 @@ export default function AyroBook() {
 
           <p className="mt-6 text-xs text-muted-foreground">
             Ayro's feed lists policy #, writing agent, carrier, annual premium, status and the time each policy was entered.
-            It does not share client names or phone numbers with this login. Client names here come from lists pasted on an
-            agent's view (pick an agent, then Paste names).
+            Each list line shows the policy number and, when it is known, the client name. Ayro does not share client names with
+            this login; names come from lists pasted on an agent's view (pick an agent, then Paste names).
             Monthly premium is annual premium divided by 12. "Counts" marks policies included in our production totals; the
             Ayro-only producers (Dom Yous, snow flake, Travis N, Nels r, David Agbebaku) are left out of those totals, so their
             policies show here as "Ayro only".
@@ -308,7 +308,7 @@ function AgentListCard({ agent, deals, allDeals, toneFor }: {
             value={paste}
             onChange={(e) => setPaste(e.target.value)}
             rows={8}
-            placeholder={"Robert Burns-1812AP\nLynn Scott-1367AP\nAll Ethos"}
+            placeholder={"Robert Burns-1812AP\nLynn Scott-1367AP\nAll Ethos\n\n(policy-number lines are already shown and are skipped)"}
             aria-label={`Paste ${agent}'s client list`}
             className="text-base"
           />

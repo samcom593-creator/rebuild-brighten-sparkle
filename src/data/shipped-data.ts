@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Ayro Book agent lists now show both the policy number and the client name on each line (TA2377165821-1812AP \u00b7 Robert Burns). Policies without a name show just the number.",
+    detail: "Pasting a list of policy numbers no longer tries to store them as names; those policies are already shown by number and are skipped. jontay taylor's 10 policies render as their numbers; Michael Kayembe's 8 named Ethos clients show the number and the name together.",
+    commit: "PL-AYRO-BOTH",
+  },
+  {
+    ts: "today",
     label: "Ayro Book has an agent filter. Pick an agent and their policies show as a list in your format (Robert Burns-1812AP ... All Ethos), one block per carrier, with Copy list.",
     detail: "Ayro's feed has no client names, so Paste names reads a list in that same format and puts each name on the agent's policy with that premium (and carrier, from the All line). Two policies with the same premium are never guessed; Edit names fixes those by hand. Michael Kayembe's 8 Ethos clients are in. Names are admin only and the 20-minute sync cannot overwrite them. The chosen agent stays in the link, so a reload keeps the view.",
     commit: "PL-AYRO-AGENT-VIEW",

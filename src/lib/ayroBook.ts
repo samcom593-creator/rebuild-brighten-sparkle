@@ -10,6 +10,8 @@ export interface AyroDeal {
   carrier: string;
   carrier_entered: string | null;
   agent_name: string;
+  /** Entered by Sam (pasted on the page); Ayro's feed has no client names. */
+  client_name: string | null;
   apex_agent_id: string | null;
   apex_agent_name: string | null;
   on_apex_team: boolean;
@@ -107,7 +109,7 @@ export function inPeriod(deal: AyroDeal, period: PeriodKey, now: Date = new Date
 export function matchesSearch(deal: AyroDeal, search: string): boolean {
   const s = search.trim().toLowerCase();
   if (!s) return true;
-  return [deal.policy_number, deal.agent_name, deal.apex_agent_name, deal.carrier, deal.carrier_entered, deal.ayro_status]
+  return [deal.client_name, deal.policy_number, deal.agent_name, deal.apex_agent_name, deal.carrier, deal.carrier_entered, deal.ayro_status]
     .some((v) => (v ?? "").toLowerCase().includes(s));
 }
 
@@ -262,4 +264,136 @@ export function reconcile(deals: AyroDeal[], sync: AyroSync | null): { matches: 
       ? `${ayro}. Every one is here.`
       : `${ayro}, this page has ${t.policies} / ${dollars(t.premium)}. The next sync should close the gap; if it does not, the sync is missing rows.`,
   };
+}
+
+// ---------------------------------------------------------------------------------------------
+// The agent list, in Sam's own format (2026-10-20):
+//   Robert burns-1812AP
+//   Lynn Scott-1367AP
+//   All Ethos
+// One block per carrier, newest first, "All <Carrier>" under each block. A policy with no client
+// name yet shows its policy number in the name's place.
+
+export function agentListLine(d: AyroDeal): string {
+  const who = d.client_name?.trim() || d.policy_number || "No name yet";
+  return `${who}-${Math.round(d.annual_premium)}AP`;
+}
+
+export function agentListBlocks(deals: AyroDeal[]): { carrier: string; lines: { deal: AyroDeal; text: string }[] }[] {
+  return groupByCarrier(deals, "newest").map((g) => ({
+    carrier: g.carrier,
+    lines: g.deals.map((deal) => ({ deal, text: agentListLine(deal) })),
+  }));
+}
+
+export function agentListText(deals: AyroDeal[]): string {
+  return agentListBlocks(deals)
+    .map((b) => [...b.lines.map((l) => l.text), `All ${b.carrier}`].join("\n"))
+    .join("\n\n");
+}
+
+// Reading a pasted list back in. Accepts "Name-1812AP", "Name - $1,812 AP", "Name 1812".
+// "All Ethos" names the carrier for the lines above it, as in Sam's format.
+
+export interface ClientListEntry {
+  name: string;
+  ap: number;
+  carrier: string | null;
+  line: string;
+}
+
+const LINE_RE = /^(.*?[A-Za-z].*?)\s*(?:[-–—:|,]\s*|\s+)\$?\s*(\d[\d,]*(?:\.\d{1,2})?)\s*(?:a\.?p\.?|annual)?\s*$/i;
+const ALL_RE = /^all\s+(.+?)\s*$/i;
+
+/** Title-cases a name that was typed all lower case ("robert burns" -> "Robert Burns"); leaves mixed case alone. */
+export function tidyName(raw: string): string {
+  const name = raw.replace(/\s+/g, " ").trim();
+  return name
+    .split(" ")
+    .map((w) => (w === w.toLowerCase() ? w.charAt(0).toUpperCase() + w.slice(1) : w))
+    .join(" ");
+}
+
+export function parseClientList(text: string): { entries: ClientListEntry[]; unreadable: string[] } {
+  const entries: ClientListEntry[] = [];
+  const unreadable: string[] = [];
+  let pending: ClientListEntry[] = [];
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) continue;
+    const m = line.match(LINE_RE);
+    if (m) {
+      const e = { name: tidyName(m[1]), ap: Number(m[2].replace(/,/g, "")), carrier: null, line };
+      entries.push(e);
+      pending.push(e);
+      continue;
+    }
+    const all = line.match(ALL_RE);
+    if (all) {
+      for (const e of pending) e.carrier = all[1];
+      pending = [];
+      continue;
+    }
+    unreadable.push(line);
+  }
+  return { entries, unreadable };
+}
+
+const CARRIER_ALIASES: Record<string, string> = {
+  ethos: "Ethos", ethoslife: "Ethos",
+  trans: "Transamerica", transamerica: "Transamerica", transam: "Transamerica",
+  aetna: "Aetna", accendo: "Aetna",
+  americo: "Americo", amirico: "Americo",
+  americanamicable: "American Amicable", amam: "American Amicable",
+  chubb: "Chubb", aflac: "Aflac", mutualofomaha: "Mutual of Omaha", moo: "Mutual of Omaha",
+  baltimorelife: "Baltimore Life",
+};
+const letters = (s: string | null | undefined) => (s ?? "").toLowerCase().replace(/[^a-z]/g, "");
+
+export function sameCarrier(typed: string, deal: AyroDeal): boolean {
+  const k = letters(typed);
+  if (!k) return true;
+  return k === letters(deal.carrier) || k === letters(deal.carrier_entered) || CARRIER_ALIASES[k] === deal.carrier;
+}
+
+export interface ClientMatchResult {
+  matched: { entry: ClientListEntry; deal: AyroDeal }[];
+  ambiguous: { entry: ClientListEntry; candidates: AyroDeal[] }[];
+  unmatched: ClientListEntry[];
+}
+
+/**
+ * Pair each pasted line with one of the agent's policies by premium (and carrier when the list
+ * names it). A line that fits exactly one open policy is matched; when several policies share the
+ * premium the line is left for a hand pick rather than guessed. Unique matches are taken first, so
+ * a policy they claim stops counting as a candidate for the lines still open.
+ */
+export function matchClientList(entries: ClientListEntry[], deals: AyroDeal[]): ClientMatchResult {
+  const claimed = new Set<string>();
+  const open = new Set(entries.map((_, i) => i));
+  const matched: ClientMatchResult["matched"] = [];
+  const candidatesFor = (e: ClientListEntry) =>
+    deals.filter((d) => !claimed.has(d.id) && Math.abs(d.annual_premium - e.ap) < 1 && (!e.carrier || sameCarrier(e.carrier, d)));
+
+  let progress = true;
+  while (progress) {
+    progress = false;
+    for (const i of [...open]) {
+      const c = candidatesFor(entries[i]);
+      if (c.length === 1) {
+        matched.push({ entry: entries[i], deal: c[0] });
+        claimed.add(c[0].id);
+        open.delete(i);
+        progress = true;
+      }
+    }
+  }
+  const ambiguous: ClientMatchResult["ambiguous"] = [];
+  const unmatched: ClientListEntry[] = [];
+  for (const i of open) {
+    const c = candidatesFor(entries[i]);
+    if (c.length > 1) ambiguous.push({ entry: entries[i], candidates: c });
+    else unmatched.push(entries[i]);
+  }
+  return { matched, ambiguous, unmatched };
 }

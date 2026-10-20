@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Ayro Book has an agent filter. Pick an agent and their policies show as a list in your format (Robert Burns-1812AP ... All Ethos), one block per carrier, with Copy list.",
+    detail: "Ayro's feed has no client names, so Paste names reads a list in that same format and puts each name on the agent's policy with that premium (and carrier, from the All line). Two policies with the same premium are never guessed; Edit names fixes those by hand. Michael Kayembe's 8 Ethos clients are in. Names are admin only and the 20-minute sync cannot overwrite them. The chosen agent stays in the link, so a reload keeps the view.",
+    commit: "PL-AYRO-AGENT-VIEW",
+  },
+  {
+    ts: "today",
     label: "Ayro Financial book is live at My Business > Ayro Book: all 129 Ayro policies ($232,297), grouped by carrier, with every writing agent, policy number, premium, status and the time it was entered.",
     detail: "The Ayro sync only read the first ten or so rows of each day's feed, so 32 policies ($54,808) from Sep 23 to 27 never reached the site. They are back with their real dates, and the sync now reads Ayro's whole history every run and skips rows that did not change. $8,698 of the recovered policies belong to Tyler Krejcha, Michael Kayembe and jontay taylor and now count in production; the rest belong to the five Ayro-only producers, who stay out of our totals. The recovered deals were not reposted to Discord. Carrier spellings are merged (trans, Trans, trans america are one Transamerica). The page checks its count against Ayro's own total on every sync.",
     commit: "PL-AYRO-BOOK",

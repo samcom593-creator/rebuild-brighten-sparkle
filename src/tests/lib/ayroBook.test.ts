@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  agentListText, matchClientList, parseClientList, tidyName,
   agentRows, carrierChecks, groupByCarrier, inPeriod, periodBounds, phoenixDay, policyPrefix, reconcile, totals, type AyroDeal,
 } from "@/lib/ayroBook";
 
@@ -10,6 +11,7 @@ const deal = (over: Partial<AyroDeal>): AyroDeal => ({
   carrier: "Ethos",
   carrier_entered: null,
   agent_name: "Dom Yous",
+  client_name: null,
   apex_agent_id: null,
   apex_agent_name: null,
   on_apex_team: false,
@@ -109,5 +111,64 @@ describe("reconcile against Ayro's own count", () => {
   });
   it("says nothing before the first sync", () => {
     expect(reconcile([deal({})], null)).toBeNull();
+  });
+});
+
+describe("the agent list in Sam's format", () => {
+  const SAM_PASTE = [
+    "Robert burns-1812AP", "Lynn Scott-1367AP", "William Hanily-1313AP", "Norice taylor-1480AP",
+    "Tracy Nash-1051AP", "David Pollard-1378AP", "Susan Vincent-1710AP", "Pamela Hoelscher-2235AP", "All Ethos",
+  ].join("\n");
+
+  it("reads Sam's pasted list, carrier from the All line, names tidied", () => {
+    const { entries, unreadable } = parseClientList(SAM_PASTE);
+    expect(unreadable).toEqual([]);
+    expect(entries).toHaveLength(8);
+    expect(entries[0]).toMatchObject({ name: "Robert Burns", ap: 1812, carrier: "Ethos" });
+    expect(entries[3].name).toBe("Norice Taylor");
+    expect(entries.every((e) => e.carrier === "Ethos")).toBe(true);
+  });
+
+  it("accepts spacing, dollar signs and commas, and reports lines it cannot read", () => {
+    const { entries, unreadable } = parseClientList("Mary-Jane O'Neil - $1,206 AP\nJo Lee 980\nhello there\nAll trans");
+    expect(entries.map((e) => [e.name, e.ap, e.carrier])).toEqual([["Mary-Jane O'Neil", 1206, "trans"], ["Jo Lee", 980, "trans"]]);
+    expect(unreadable).toEqual(["hello there"]);
+    expect(tidyName("  pamela   hoelscher ")).toBe("Pamela Hoelscher");
+    expect(tidyName("McDonald")).toBe("McDonald");
+  });
+
+  it("matches each line to one policy by premium and carrier", () => {
+    const deals = [
+      deal({ id: "a", agent_name: "Michael Kayembe", carrier: "Ethos", annual_premium: 1812 }),
+      deal({ id: "b", agent_name: "Michael Kayembe", carrier: "Ethos", annual_premium: 1378 }),
+      deal({ id: "c", agent_name: "Michael Kayembe", carrier: "Aetna", annual_premium: 1378 }),
+    ];
+    const r = matchClientList(parseClientList("Robert burns-1812AP\nDavid Pollard-1378AP\nAll Ethos").entries, deals);
+    expect(r.matched.map((m) => [m.entry.name, m.deal.id])).toEqual([["Robert Burns", "a"], ["David Pollard", "b"]]);
+    expect(r.ambiguous).toEqual([]);
+    expect(r.unmatched).toEqual([]);
+  });
+
+  it("never guesses between two policies with the same premium", () => {
+    const deals = [deal({ id: "x", carrier: "Chubb", annual_premium: 3169 }), deal({ id: "y", carrier: "Chubb", annual_premium: 3169 })];
+    const r = matchClientList(parseClientList("Ann Ray-3169AP\nBo Ray-3169AP").entries, deals);
+    expect(r.matched).toEqual([]);
+    expect(r.ambiguous).toHaveLength(2);
+    expect(matchClientList(parseClientList("Zed-4000AP").entries, deals).unmatched).toHaveLength(1);
+  });
+
+  it("a unique match frees the next line: two policies, one claimed, the other line resolves", () => {
+    const deals = [deal({ id: "e", carrier: "Ethos", annual_premium: 1500 }), deal({ id: "t", carrier: "Transamerica", annual_premium: 1500 })];
+    const r = matchClientList(parseClientList("Al One-1500AP\nAll Ethos\nBo Two-1500AP").entries, deals);
+    expect(r.matched.map((m) => [m.entry.name, m.deal.id])).toEqual([["Al One", "e"], ["Bo Two", "t"]]);
+  });
+
+  it("writes the list back out in the same format, one block per carrier", () => {
+    const text = agentListText([
+      deal({ client_name: "Robert Burns", annual_premium: 1812, carrier: "Ethos", submitted_at: "2026-10-02T20:53:26Z" }),
+      deal({ client_name: null, policy_number: "TA2893772642", annual_premium: 2594, carrier: "Ethos", submitted_at: "2026-10-16T23:30:00Z" }),
+      deal({ client_name: "Jo Lee", annual_premium: 980.4, carrier: "Aetna", submitted_at: "2026-10-01T20:00:00Z" }),
+    ]);
+    expect(text).toBe("TA2893772642-2594AP\nRobert Burns-1812AP\nAll Ethos\n\nJo Lee-980AP\nAll Aetna");
   });
 });

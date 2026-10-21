@@ -79,7 +79,6 @@ const SUPERLATIVE_TRACKED_GLOBS = [
   // days") and ApplicationConfirmationV2.tsx ("3 days to license") —
   // already in scope. Adding SeminarPage so the new LICENSE_TIMELINE
   // patterns below lock the entire surface area at the guard.
-  "src/pages/SeminarPage.tsx",
   // Wave-7 (2026-07-01): /unlicensed-overview page shipped from MP-224 §3
   // (Calendly-auto-send target for unlicensed applicants — every fresh
   // unlicensed applicant hits this surface post-Calendly). Shipped

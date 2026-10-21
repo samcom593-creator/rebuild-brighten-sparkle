@@ -97,12 +97,19 @@ async function loadMeetingConfig(): Promise<{ url: string; label: string }> {
     .in("key", ["seminar_meeting_url", "seminar_meeting_url_label"]);
   const map = new Map((data ?? []).map((r: any) => [r.key, r.value as string]));
   return {
-    url: map.get("seminar_meeting_url") || `${APP_URL}/seminar/join`,
+    url: map.get("seminar_meeting_url") || "",
     label: map.get("seminar_meeting_url_label") || "Join the seminar",
   };
 }
 
 Deno.serve(async (_req) => {
+  // PL-WIB-SEMINAR-RETIRE (2026-10-21): the seminar is retired (2026-10-15, per Sam).
+  // No cron calls this; a manual call must not remind anyone about a session that
+  // does not run. Re-enable by deleting this block.
+  return new Response(JSON.stringify({ ok: true, skipped: "seminar retired" }), {
+    status: 200, headers: { "Content-Type": "application/json" },
+  });
+
   const now = new Date();
   const horizon = new Date(now.getTime() + 26 * 60 * 60 * 1000);
   const meetingCfg = await loadMeetingConfig();

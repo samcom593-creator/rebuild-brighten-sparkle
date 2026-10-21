@@ -191,7 +191,6 @@ const InterviewRecovery = lazy(() => import("./pages/InterviewRecovery"));
 const ProducerReactivation = lazy(() => import("./pages/ProducerReactivation"));
 const AdminBoardAccess = lazy(() => import("./pages/AdminBoardAccess"));
 const AwardGraphics = lazy(() => import("./pages/AwardGraphics"));
-const SeminarPage = lazy(() => import("./pages/SeminarPage"));
 const ApplicantCheckin = lazy(() => import("./pages/ApplicantCheckin"));
 const AgentFlow = lazy(() => import("./pages/AgentFlow"));
 const InboxPage = lazy(() => import("./pages/InboxPage"));
@@ -500,7 +499,9 @@ const App = () => (
                       record their own activity on /numbers. */}
                   <Route path="/apex-daily-numbers" element={<ProtectedRoute requireAdmin><LogNumbers /></ProtectedRoute>} />
                   <Route path="/links" element={<LinksPage />} />
-                  <Route path="/seminar" element={<SeminarPage />} />
+                  {/* The seminar is retired (2026-10-15, per Sam). /seminar took registrations
+                      for sessions that no longer run; recruits now go to /apply. */}
+                  <Route path="/seminar" element={<LegacyWorkspaceRedirect to="/apply" />} />
                   <Route path="/leads" element={<LeadsLanding />} />
                   <Route path="/contact" element={<Contact />} />
                   <Route path="/storefront" element={<Storefront />} />

@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "The retired seminar is fully off. /seminar now sends visitors to /apply instead of booking them into a session that no longer runs, and the database function behind it can no longer be called by anyone with the site's public key.",
+    detail: "That function could create an applicant, or rewrite an existing applicant's name and phone by matching their email or phone, then queue an email, a text and a Discord alert. It had stayed open because the seminar page used it. It was never used, so nothing was lost. The seminar sign-up function now refuses with 410, the reminder function is retired, the admin Add to Seminar button is gone, and the two settings that held the dead Calendly link are removed.",
+    commit: "PL-WIB-SEMINAR-RETIRE",
+  },
+  {
+    ts: "today",
     label: "Ayro Book now leads each agent-list line with the client name when there is one (Robert Burns \u00b7 TA2377165821-1812AP), so names stand out instead of being buried, plus a Named first sort.",
     detail: "Ayro's feed has no client names; the only names on the page are the ones entered through Paste names or Edit names. Michael Kayembe's 8 are in and now show name-first. Every other agent has no names yet, so their lines show the policy number until names are pasted for them.",
     commit: "PL-AYRO-NAME-LEAD",

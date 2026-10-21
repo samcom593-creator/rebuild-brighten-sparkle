@@ -281,6 +281,12 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return jsonResponse({ ok: false, error: "method not allowed" }, 405);
 
+  // PL-WIB-SEMINAR-RETIRE (2026-10-21): the seminar is retired (2026-10-15, per Sam)
+  // and /seminar now redirects to /apply. A registration here booked a session
+  // that no longer runs and alerted a manager about it, so refuse before any
+  // write. 410, not 200: a caller must not read this as "registered".
+  return jsonResponse({ ok: false, error: "The seminar is retired. Apply at https://apex-financial.org/apply." }, 410);
+
   let payload: SeminarPayload;
   try {
     payload = await req.json();

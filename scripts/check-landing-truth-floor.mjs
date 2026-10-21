@@ -29,7 +29,6 @@ const TRACKED_FILES = [
   // public surface missing here — it shipped a stale `?? 104` active-agent floor
   // while the DB said 41, and this guard never saw it. Track it.
   "src/pages/Apply.tsx",
-  "src/pages/SeminarPage.tsx",
 ];
 
 // MP-373: pre-commit carried its OWN hand list of which paths should fire this

@@ -3465,6 +3465,18 @@
         "raw": "p_jobnames text[]"
       }
     ],
+    "fn_cron_jobs_schedule": [
+      {
+        "all": [
+          "p_jobnames"
+        ],
+        "required": [
+          "p_jobnames"
+        ],
+        "unnamed": false,
+        "raw": "p_jobnames text[]"
+      }
+    ],
     "fn_csv_cell": [
       {
         "all": [

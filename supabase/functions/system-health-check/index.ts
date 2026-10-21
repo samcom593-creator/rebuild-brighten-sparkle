@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { stalledFollowUpMessage } from "./followup-message.ts";
+import { restartMarker, slotVerdict } from "../_shared/cron-schedule.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -238,7 +239,7 @@ serve(async (req) => {
     results.push({ service: "Production Logging", status: "degraded", responseTime: 0, message: String(err) });
   }
 
-  // ─── CHECK 6: Cron jobs running (with auto-restart if >26h) ───
+  // ─── CHECK 6: Cron jobs running (re-fire a missed scheduled slot) ───
   // PL-WIB-HEALTH-NO-FIRE (2026-10-21): this used to POST an automation whenever
   // its last automation_runs row was >26h old, without asking whether its cron
   // was on. All four crons it watched were active=false, so this check WAS
@@ -250,17 +251,25 @@ serve(async (req) => {
   // "Numbers Reminder" entry is gone: numbers-reminder owns that job and does
   // not write automation_runs, so watching it here could only re-fire the
   // retired sender.
+  // PL-WIB-HEALTH-SLOT (same day): a fixed 26h bar on a cron that IS on still
+  // added runs the schedule leaves out. The digest is '0 13 * * 1-6', so
+  // Saturday 13:00 + 26h fired a Sunday digest to every manager each week. It
+  // now re-fires only when the cron's last scheduled slot is 2h old with no run
+  // (_shared/cron-schedule.ts), and at most once per slot: the marker it writes
+  // to auto_fixed is read back before firing, so a function that never logs a
+  // run cannot make it fire every 15 minutes.
   try {
     const cronChecks = [
       { name: "Manager Daily Digest", endpoint: "manager-daily-digest", jobname: "apex-manager-daily-digest" },
       { name: "Licensing Sequences", endpoint: "send-licensing-sequence", jobname: "apex-licensing-sequences" },
       { name: "Daily Churn Check", endpoint: "check-churn-risk", jobname: "apex-daily-churn-check" },
     ];
-    const { data: cronRows, error: cronErr } = await supabase.rpc("fn_cron_jobs_active", {
+    const { data: cronRows, error: cronErr } = await supabase.rpc("fn_cron_jobs_schedule", {
       p_jobnames: cronChecks.map((c) => c.jobname),
     });
-    const cronActive = new Map<string, boolean>(
-      ((cronRows ?? []) as { jobname: string; active: boolean }[]).map((r) => [r.jobname, r.active === true]),
+    const cronByName = new Map<string, { active: boolean; schedule: string | null; timezone: string | null }>(
+      ((cronRows ?? []) as { jobname: string; active: boolean; schedule: string | null; timezone: string | null }[])
+        .map((r) => [r.jobname, { active: r.active === true, schedule: r.schedule, timezone: r.timezone }]),
     );
     for (const check of cronChecks) {
       if (cronErr || !Array.isArray(cronRows)) {
@@ -272,56 +281,103 @@ serve(async (req) => {
         });
         continue;
       }
-      if (cronActive.get(check.jobname) !== true) {
+      const cron = cronByName.get(check.jobname);
+      if (cron?.active !== true) {
         results.push({
           service: `Cron: ${check.name}`,
           status: "healthy",
           responseTime: 0,
-          message: `Schedule off (${check.jobname} ${cronActive.has(check.jobname) ? "disabled" : "not scheduled"}); not auto-fired`,
+          message: `Schedule off (${check.jobname} ${cron ? "disabled" : "not scheduled"}); not auto-fired`,
         });
         continue;
       }
-      const { data } = await supabase
+      const { data, error: runErr } = await supabase
         .from("automation_runs")
         .select("ran_at, status")
         .eq("automation_name", check.name)
         .order("ran_at", { ascending: false })
         .limit(1)
         .maybeSingle();
+      if (runErr) {
+        results.push({
+          service: `Cron: ${check.name}`,
+          status: "degraded",
+          responseTime: 0,
+          message: `Could not read automation_runs (${runErr.message}); not auto-fired`,
+        });
+        continue;
+      }
 
-      const hoursAgo = data ? (Date.now() - new Date(data.ran_at).getTime()) / 3600000 : 999;
+      const now = new Date();
+      const lastRunAt = data ? new Date(data.ran_at) : null;
+      const hoursAgo = lastRunAt ? (now.getTime() - lastRunAt.getTime()) / 3600000 : null;
+      const lastRan = hoursAgo === null ? "never ran" : `last ran ${Math.round(hoursAgo)}hrs ago`;
+      const verdict = slotVerdict({ active: true, schedule: cron.schedule, timezone: cron.timezone, lastRunAt, now });
 
-      // AUTO-RESTART: if cron hasn't run in 26+ hours, fire it now
+      if (verdict.kind === "ungraded") {
+        results.push({
+          service: `Cron: ${check.name}`,
+          status: "degraded",
+          responseTime: 0,
+          message: `${verdict.reason}; ${lastRan}; not auto-fired`,
+        });
+        continue;
+      }
+
       let restarted = false;
-      if (hoursAgo > 26) {
-        try {
-          await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/${check.endpoint}`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
-            },
-            body: "{}",
-          });
-          restarted = true;
-          autoFixed.push(`Auto-restarted ${check.name} after ${Math.round(hoursAgo)}hr gap`);
-        } catch (restartErr) {
-          console.error(`Auto-restart failed for ${check.endpoint}:`, restartErr);
+      let alreadyRestarted = false;
+      let markerErr: string | null = null;
+      if (verdict.fire) {
+        const marker = restartMarker(check.name, verdict.slot);
+        const { data: prior, error: priorErr } = await supabase
+          .from("system_health_logs")
+          .select("id")
+          .gte("checked_at", verdict.slot.toISOString())
+          .contains("auto_fixed", [marker])
+          .limit(1);
+        if (priorErr || !Array.isArray(prior)) {
+          markerErr = priorErr?.message ?? "no rows";
+        } else if (prior.length > 0) {
+          alreadyRestarted = true;
+        } else {
+          try {
+            const res = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/${check.endpoint}`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+              },
+              body: "{}",
+            });
+            await res.body?.cancel();
+            restarted = true;
+            autoFixed.push(marker);
+          } catch (restartErr) {
+            console.error(`Auto-restart failed for ${check.endpoint}:`, restartErr);
+          }
         }
       }
 
+      const missed = verdict.fire;
+      const down = missed && !restarted && !alreadyRestarted && !markerErr;
       results.push({
         service: `Cron: ${check.name}`,
-        status: hoursAgo > 26 ? (restarted ? "degraded" : "down") : data?.status === "error" ? "degraded" : "healthy",
+        status: down ? "down" : missed ? "degraded" : data?.status === "error" ? "degraded" : "healthy",
         responseTime: 0,
-        message: hoursAgo > 26
-          ? restarted ? `Was down ${Math.round(hoursAgo)}hrs — auto-restarted` : `Not run in ${Math.round(hoursAgo)}hrs`
-          : `Last ran ${Math.round(hoursAgo)}hrs ago`,
+        message: !missed
+          ? `${lastRan[0].toUpperCase()}${lastRan.slice(1)} (${verdict.reason})`
+          : restarted
+            ? `Missed ${verdict.slot.toISOString()} slot (${lastRan}) — auto-restarted`
+            : alreadyRestarted
+              ? `Missed ${verdict.slot.toISOString()} slot (${lastRan}); already re-fired once for it, no run logged since`
+              : markerErr
+                ? `Missed ${verdict.slot.toISOString()} slot (${lastRan}); could not read prior restarts (${markerErr}), not auto-fired`
+                : `Missed ${verdict.slot.toISOString()} slot (${lastRan}); restart failed`,
         autoFixed: restarted,
-        requiresAction: hoursAgo > 26 && !restarted,
-        actionRequired: hoursAgo > 26 && !restarted ? "Check cron schedule" : undefined,
+        requiresAction: down,
+        actionRequired: down ? "Check cron schedule" : undefined,
       });
-      if (hoursAgo > 26 && !restarted) criticalIssues.push(`Cron job not running: ${check.name}`);
+      if (down) criticalIssues.push(`Cron job not running: ${check.name}`);
     }
   } catch (err) {
     results.push({ service: "Cron Jobs", status: "degraded", responseTime: 0, message: String(err) });

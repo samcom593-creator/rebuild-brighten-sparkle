@@ -48,6 +48,7 @@ PUBLIC_ALLOWLIST=(
   "get-public-recruiters"
   "submit-contracting-intake"
   "numbers-reminder"
+  "resend-suppression-sync"   # pg_cron bot bearer; in-handler gate (check-function-contracts.mjs)
   "slack-identity-admin"
   # MP-441 — RECOVERED FROM PROD, not a new decision. These two are ACTIVE in
   # the project today with verify_jwt=false (read live from the management API

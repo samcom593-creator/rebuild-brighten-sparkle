@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Texts to AT&T and Verizon numbers are no longer sent into a dead gateway and logged as sent. They are now recorded as not sent, so the caller can reach the person another way.",
+    detail: "Texts go out as email to the carrier. Over 30 days Resend delivered 0 of 60 AT&T texts and 0 of 139 Verizon texts, and every one was logged as sent. Those sends were 70 of the 368 bounces on apex-financial.org, the domain applicant onboarding mail goes out on. T-Mobile and Metro still deliver a few, so they stay on. Email to a placeholder address (placeholder.apex, example.com) is now refused before it is sent: one agent's placeholder address was mailed a numbers reminder every business day and bounced every time.",
+    commit: "PL-WIB-DEAD-GATEWAYS",
+  },
+  {
+    ts: "today",
     label: "The retired seminar is fully off. /seminar now sends visitors to /apply instead of booking them into a session that no longer runs, and the database function behind it can no longer be called by anyone with the site's public key.",
     detail: "That function could create an applicant, or rewrite an existing applicant's name and phone by matching their email or phone, then queue an email, a text and a Discord alert. It had stayed open because the seminar page used it. It was never used, so nothing was lost. The seminar sign-up function now refuses with 410, the reminder function is retired, the admin Add to Seminar button is gone, and the two settings that held the dead Calendly link are removed.",
     commit: "PL-WIB-SEMINAR-RETIRE",

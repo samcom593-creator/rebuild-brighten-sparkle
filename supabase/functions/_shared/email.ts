@@ -19,6 +19,7 @@
 // Optional env: EMAIL_FROM, EMAIL_REPLY_TO, APEX_DOMAIN
 
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { nonRoutableDomain } from "./non-routable.ts";
 
 export interface SendEmailInput {
   to: string | string[];
@@ -35,6 +36,7 @@ export interface SendEmailResult {
   ok: boolean;
   id: string | null;
   error?: string;
+  refused?: "non_routable";
 }
 
 const DEFAULT_FROM     = Deno.env.get("EMAIL_FROM")     ?? "Sam at Galaxy Financial <sam@apex-financial.org>";
@@ -72,6 +74,11 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
   const { to, subject, html, text, from, reply_to, unsubscribe_token, tagName } = input;
   if (!to || !subject || (!html && !text)) {
     return { ok: false, id: null, error: "to, subject, and html|text required" };
+  }
+
+  const deadDomain = (Array.isArray(to) ? to : [to]).map(nonRoutableDomain).find(Boolean);
+  if (deadDomain) {
+    return { ok: false, id: null, error: `recipient domain ${deadDomain} cannot receive mail; not sent`, refused: "non_routable" };
   }
 
   const resendKey = Deno.env.get("RESEND_API_KEY");

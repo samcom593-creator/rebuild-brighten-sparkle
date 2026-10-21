@@ -32,6 +32,21 @@ const CARRIER_GATEWAYS: Record<string, string> = {
   boost: "sms.myboostmobile.com",
 };
 
+// 2026-10-21 (WIB resend-deliverability): these gateways no longer deliver.
+// Over 30 days Resend delivered 0 of 60 sends to txt.att.net (all 60 bounced;
+// AT&T shut email-to-text down in June 2025) and 0 of 139 to vtext.com (129
+// suppressed, 10 bounced). This function logged every one of them as "sent",
+// and they were 70 of the domain's 368 bounces, on the same domain applicant
+// onboarding mail goes out on. Refuse like "no carrier on file": nothing sent,
+// status skipped, a reason the caller can route on. T-Mobile and Metro still
+// land some (13/202, 2/29), so they stay on. Graded daily by
+// business-ops/website-integrity-bot/scripts/resend-deliverability.py; a
+// gateway goes on this list only after it delivers 0 of >= 10 sends there.
+const RETIRED_GATEWAYS: Record<string, string> = {
+  att: "AT&T email-to-text is shut down (Resend delivered 0 of 60 in 30d)",
+  verizon: "Verizon email-to-text does not deliver (Resend delivered 0 of 139 in 30d)",
+};
+
 
 
 function delay(ms: number) {
@@ -282,15 +297,24 @@ const handler = async (req: Request): Promise<Response> => {
       knownCarrier = String(scopedLead.carrier).toLowerCase();
     }
 
+    let retiredCarrier: string | null = null;
     const noCarrierReason = (): string =>
-      carrierConflict
-        ? `conflicting carriers on file (${carrierConflict.join(", ")}) — not guessing`
-        : carrierLookupError
-          ? `carrier lookup failed: ${carrierLookupError}`
-          : "no carrier on file — not broadcasting";
+      retiredCarrier
+        ? `${RETIRED_GATEWAYS[retiredCarrier]} — not sending`
+        : carrierConflict
+          ? `conflicting carriers on file (${carrierConflict.join(", ")}) — not guessing`
+          : carrierLookupError
+            ? `carrier lookup failed: ${carrierLookupError}`
+            : "no carrier on file — not broadcasting";
 
     if (knownCarrier && !CARRIER_GATEWAYS[knownCarrier]) {
       results.push({ carrier: knownCarrier, success: false, error: "unrecognized carrier value" });
+      knownCarrier = null;
+    }
+
+    if (knownCarrier && RETIRED_GATEWAYS[knownCarrier]) {
+      retiredCarrier = knownCarrier;
+      results.push({ carrier: knownCarrier, success: false, error: RETIRED_GATEWAYS[knownCarrier] });
       knownCarrier = null;
     }
 
@@ -321,7 +345,7 @@ const handler = async (req: Request): Promise<Response> => {
       // 8-gateway broadcast. Report it honestly instead of burning quota on a guess.
       // MP-273: "we looked and found nothing" and "the lookup itself failed" are
       // different problems with different fixes, so they no longer share one string.
-      results.push({ carrier: "unknown", success: false, error: noCarrierReason() });
+      if (!retiredCarrier) results.push({ carrier: "unknown", success: false, error: noCarrierReason() });
     }
 
     // ONE consolidated notification_log row per outbound SMS.
@@ -352,6 +376,8 @@ const handler = async (req: Request): Promise<Response> => {
         // reader can tell a duplicate-row collision from a genuinely blank field.
         carrierConflict,
         carrierLookupError,
+        carrierRetired: retiredCarrier,
+        ...(retiredCarrier ? { refusal: "carrier_gateway_retired" } : {}),
         carrierSuccesses,
         carrierFailures,
         attempts: results,
@@ -431,6 +457,7 @@ const handler = async (req: Request): Promise<Response> => {
         // file and nothing was sent, so fall back to email/Telegram rather than
         // treating the person as contacted.
         outcome,
+        ...(retiredCarrier ? { reason: "carrier_gateway_retired" } : {}),
         deliveryConfirmed: false,
         phone,
         attempts: results,

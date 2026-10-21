@@ -221,8 +221,13 @@ Deno.serve(async (req) => {
             unsubscribe_token: r.agent_id,
             tagName: "numbers-reminder",
           });
+          // A refusal (non-routable domain, Resend suppression) is a decision
+          // sendEmail made, not a fault: it must not read as sent, and it must
+          // not count toward errors either.
           legs.email = result.ok
             ? { status: "sent", receipt: (result as any).id ?? (result as any).messageId ?? null }
+            : result.refused
+            ? { status: "refused", error: result.refused }
             : { status: "failed", error: String((result as any).error ?? "send failed").slice(0, 200) };
         } catch (err) {
           legs.email = { status: "failed", error: String((err as Error)?.message ?? err).slice(0, 200) };

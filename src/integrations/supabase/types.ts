@@ -35017,6 +35017,38 @@ export type Database = {
         }
         Relationships: []
       }
+      ayro_policy_clients: {
+        Row: {
+          client_name: string
+          deal_id: string
+          source: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          client_name: string
+          deal_id: string
+          source?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          client_name?: string
+          deal_id?: string
+          source?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ayro_policy_clients_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: true
+            referencedRelation: "production_external_deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       banned_prospects: {
         Row: {
           banned_by: string | null
@@ -58944,6 +58976,33 @@ export type Database = {
             referencedColumns: ["agent_id"]
           },
         ]
+      }
+      email_suppressions: {
+        Row: {
+          email: string
+          first_seen_at: string
+          last_event: string
+          last_seen_at: string
+          resend_email_id: string | null
+          synced_at: string
+        }
+        Insert: {
+          email: string
+          first_seen_at?: string
+          last_event: string
+          last_seen_at: string
+          resend_email_id?: string | null
+          synced_at?: string
+        }
+        Update: {
+          email?: string
+          first_seen_at?: string
+          last_event?: string
+          last_seen_at?: string
+          resend_email_id?: string | null
+          synced_at?: string
+        }
+        Relationships: []
       }
       email_tracking: {
         Row: {
@@ -106624,6 +106683,7 @@ export type Database = {
           items_this_month: number | null
           legs: number | null
           monthly_premium_this_month: number | null
+          production_visible: boolean | null
         }
         Relationships: []
       }
@@ -156073,6 +156133,12 @@ export type Database = {
       }
       auto_assign_hiring_manager: { Args: never; Returns: Json }
       autoposter_leak_watchdog: { Args: never; Returns: Json }
+      ayro_book: { Args: never; Returns: Json }
+      ayro_carrier_name: { Args: { p: string }; Returns: string }
+      ayro_set_client_names: {
+        Args: { p_rows: Json; p_source?: string }
+        Returns: Json
+      }
       backfill_monthly_awards: {
         Args: { p_months_back?: number; p_threshold?: number }
         Returns: Json
@@ -157704,6 +157770,22 @@ export type Database = {
       fn_contracting_is_staff: { Args: never; Returns: boolean }
       fn_contracting_request_eval: { Args: { p_agent: string }; Returns: Json }
       fn_contracting_request_row: { Args: { p_agent: string }; Returns: Json }
+      fn_cron_jobs_active: {
+        Args: { p_jobnames: string[] }
+        Returns: {
+          active: boolean
+          jobname: string
+        }[]
+      }
+      fn_cron_jobs_schedule: {
+        Args: { p_jobnames: string[] }
+        Returns: {
+          active: boolean
+          jobname: string
+          schedule: string
+          timezone: string
+        }[]
+      }
       fn_csv_cell: { Args: { x: string }; Returns: string }
       fn_dedupe_phantom_lead_purchases: {
         Args: never
@@ -157929,6 +158011,15 @@ export type Database = {
         Args: { p_cadence: string; p_elapsed: string }
         Returns: string
       }
+      fn_next_step_cadence_due_local: {
+        Args: {
+          p_cadence: string
+          p_entered: string
+          p_now: string
+          p_zones: string[]
+        }
+        Returns: string
+      }
       fn_next_step_manual_advance: {
         Args: {
           p_actor?: string
@@ -157956,6 +158047,14 @@ export type Database = {
       fn_next_step_recompute_one: {
         Args: { p_agent_id?: string; p_application_id?: string }
         Returns: undefined
+      }
+      fn_next_step_send_ok: {
+        Args: { p_at: string; p_zones: string[] }
+        Returns: boolean
+      }
+      fn_next_step_send_zones: {
+        Args: { p_agent_id: string; p_application_id: string }
+        Returns: string[]
       }
       fn_next_step_stall_sweep: {
         Args: never
@@ -158141,6 +158240,7 @@ export type Database = {
         }[]
       }
       fn_unlicensed_slack_digest: { Args: never; Returns: string }
+      fn_us_state_send_zones: { Args: { p_state: string }; Returns: string[] }
       fn_weekdays_valid: { Args: { p: number[] }; Returns: boolean }
       fn_work_weekdays_on: {
         Args: { p_agent_id: string; p_date: string }
@@ -158362,6 +158462,7 @@ export type Database = {
           p_carrier: string
           p_external_ref?: string
           p_face_amount?: number
+          p_metadata?: Json
           p_monthly_premium?: number
           p_occurred_at?: string
           p_policy_number: string

@@ -1,15 +1,15 @@
 # APEX Function Contract Matrix
 
-Generated: 2026-10-15T04:15:15.840Z
-Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
+Generated: 2026-10-21T22:59:07.073Z
+Repository: `/private/tmp/wib108/wt`
 
 ## Inventory Summary
 
-- Total Local Edge Functions: **243**
-- Configured in `config.toml`: **244**
-- Invoked Edge Functions in Source: **98**
-- Invoked RPC Calls in Source: **213**
-- SQL Functions in Migrations: **696**
+- Total Local Edge Functions: **244**
+- Configured in `config.toml`: **245**
+- Invoked Edge Functions in Source: **97**
+- Invoked RPC Calls in Source: **217**
+- SQL Functions in Migrations: **723**
 
 ## Edge Function Auth & Verification Contracts
 
@@ -172,6 +172,7 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 | `readymode-webhook` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `render-all-plaques` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `request-agent-photos` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
+| `resend-suppression-sync` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `reset-agent-password` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `resolve-ref-slug` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `run-licensing-checkups` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
@@ -267,6 +268,6 @@ applied by hand through bot-sql and never round-tripped into
 `supabase/migrations`, so this directory does not model the deployed database.
 `apex-doctor` queries `pg_proc` and is the authority on deployed state.
 
-- Invoked RPCs: **213**
-- Also declared in this commit's migrations: **205**
+- Invoked RPCs: **217**
+- Also declared in this commit's migrations: **209**
 - Declared only in the database: **8**

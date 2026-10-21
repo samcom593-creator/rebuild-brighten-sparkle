@@ -271,6 +271,12 @@ const PUBLIC_ALLOWLIST = new Set([
   // bearer in-code, fail closed when configuration is missing, and expose no
   // anonymous success path.
   "numbers-reminder",
+  // resend-suppression-sync (PL-WIB-RESEND-SUPPRESSION): pg_cron
+  // apex-resend-suppression-sync calls it hourly with the apex_bot_token
+  // bearer; the handler accepts that token or the service role key and
+  // returns 401 to anything else. verify_jwt=false only because the bot
+  // token is not a JWT.
+  "resend-suppression-sync",
   // license-milestone-sms-drain (MP-341): pg_cron jobid 94 invokes it every 10 min
   // through run_automation_job with the bot bearer; the handler rejects any
   // caller without it, so verify_jwt=false is the cron seam, not an open door.
@@ -539,6 +545,7 @@ const PUBLIC_CONTRACT = {
   "free-leads-weekly-alerts": "in_handler_gate",
   "onboarding-call-invites": "in_handler_gate",
   "numbers-reminder": "in_handler_gate",
+  "resend-suppression-sync": "in_handler_gate",
   "license-milestone-sms-drain": "in_handler_gate",
   "slack-identity-admin": "in_handler_gate",
   "provision-agent-accounts": "in_handler_gate",

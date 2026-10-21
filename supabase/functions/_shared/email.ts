@@ -20,6 +20,7 @@
 
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { nonRoutableDomain } from "./non-routable.ts";
+import { lookupSuppressed } from "./suppression.ts";
 
 export interface SendEmailInput {
   to: string | string[];
@@ -36,7 +37,7 @@ export interface SendEmailResult {
   ok: boolean;
   id: string | null;
   error?: string;
-  refused?: "non_routable";
+  refused?: "non_routable" | "suppressed";
 }
 
 const DEFAULT_FROM     = Deno.env.get("EMAIL_FROM")     ?? "Sam at Galaxy Financial <sam@apex-financial.org>";
@@ -86,10 +87,20 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
     return { ok: false, id: null, error: "RESEND_API_KEY missing" };
   }
 
+  // Resend accepts a send to an address on its suppression list, returns an
+  // id, and never attempts it. Drop those here (see suppression.ts). A failed
+  // lookup returns null and the send goes ahead unchanged.
+  const wanted = (Array.isArray(to) ? to : [to]).map((a) => String(a).trim()).filter(Boolean);
+  const blocked = await lookupSuppressed(wanted);
+  const deliverable = blocked ? wanted.filter((a) => !blocked.has(a.toLowerCase())) : wanted;
+  if (deliverable.length === 0) {
+    return { ok: false, id: null, error: "recipient is on Resend's suppression list (hard bounce or complaint); not sent", refused: "suppressed" };
+  }
+
   const resolvedHtml = html ?? `<pre style="font-family:Arial,sans-serif;white-space:pre-wrap">${text}</pre>`;
   const resolvedText = text ?? htmlToText(resolvedHtml);
 
-  const firstTo = Array.isArray(to) ? to[0] : to;
+  const firstTo = deliverable[0];
   const unsubToken = unsubscribe_token ?? encodeURIComponent(String(firstTo));
   // Route to the unsubscribe edge function directly so one-click works
   // regardless of whether the marketing site is up, and so the HTML
@@ -103,7 +114,7 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
     const resend = new Resend(resendKey);
     const result = await resend.emails.send({
       from:     from     ?? DEFAULT_FROM,
-      to:       Array.isArray(to) ? to : [to],
+      to:       deliverable,
       reply_to: reply_to ?? DEFAULT_REPLY_TO,
       subject,
       html:     finalHtml,

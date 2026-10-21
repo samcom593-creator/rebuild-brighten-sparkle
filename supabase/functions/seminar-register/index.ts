@@ -277,6 +277,8 @@ async function logManagerAlert(
     .eq("id", registrationId);
 }
 
+const SEMINAR_RETIRED: boolean = true;
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return jsonResponse({ ok: false, error: "method not allowed" }, 405);
@@ -285,7 +287,9 @@ Deno.serve(async (req) => {
   // and /seminar now redirects to /apply. A registration here booked a session
   // that no longer runs and alerted a manager about it, so refuse before any
   // write. 410, not 200: a caller must not read this as "registered".
-  return jsonResponse({ ok: false, error: "The seminar is retired. Apply at https://apex-financial.org/apply." }, 410);
+  // Gated on a boolean, not a bare return: a bare return makes the rest of the
+  // handler unreachable, and deno check stops narrowing there (7 new errors).
+  if (SEMINAR_RETIRED) return jsonResponse({ ok: false, error: "The seminar is retired. Apply at https://apex-financial.org/apply." }, 410);
 
   let payload: SeminarPayload;
   try {

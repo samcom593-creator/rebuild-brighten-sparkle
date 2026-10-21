@@ -102,11 +102,14 @@ async function loadMeetingConfig(): Promise<{ url: string; label: string }> {
   };
 }
 
+const SEMINAR_RETIRED: boolean = true;
+
 Deno.serve(async (_req) => {
   // PL-WIB-SEMINAR-RETIRE (2026-10-21): the seminar is retired (2026-10-15, per Sam).
   // No cron calls this; a manual call must not remind anyone about a session that
-  // does not run. Re-enable by deleting this block.
-  return new Response(JSON.stringify({ ok: true, skipped: "seminar retired" }), {
+  // does not run. Re-enable by setting SEMINAR_RETIRED to false. Gated on a
+  // boolean, not a bare return, so deno check still narrows the code below.
+  if (SEMINAR_RETIRED) return new Response(JSON.stringify({ ok: true, skipped: "seminar retired" }), {
     status: 200, headers: { "Content-Type": "application/json" },
   });
 

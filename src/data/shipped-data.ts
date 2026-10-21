@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "The licensing email drip you turned off on 10-14 had kept running. The system health check was restarting it every day. It now stays off, and the health check no longer restarts any automation whose schedule is off.",
+    detail: "Every 15 minutes the health check restarted any of four automations that had not run in 26 hours. All four schedules were off, so the health check was really what ran them. It ran the licensing drip 127 times since May and the retired numbers reminder 84 times, a second reminder on the day numbers-reminder already sent one. A bug made it worse: the drip's last email, \"don't let the momentum slip\", never recorded that it had been sent, so it went out on every run. That was 2,627 copies to 110 applicants in 30 days, up to 27 each (8,500 to 392 people in total), with no unsubscribe link. The last email now goes out once, the drip checks the unsubscribe list and carries the link, and the manager digest and churn check run on their own schedules as before.",
+    commit: "PL-WIB-HEALTH-NO-FIRE",
+  },
+  {
+    ts: "today",
     label: "Texts to AT&T and Verizon numbers are no longer sent into a dead gateway and logged as sent. They are now recorded as not sent, so the caller can reach the person another way.",
     detail: "Texts go out as email to the carrier. Over 30 days Resend delivered 0 of 60 AT&T texts and 0 of 139 Verizon texts, and every one was logged as sent. Those sends were 70 of the 368 bounces on apex-financial.org, the domain applicant onboarding mail goes out on. T-Mobile and Metro still deliver a few, so they stay on. Email to a placeholder address (placeholder.apex, example.com) is now refused before it is sent: one agent's placeholder address was mailed a numbers reminder every business day and bounced every time.",
     commit: "PL-WIB-DEAD-GATEWAYS",

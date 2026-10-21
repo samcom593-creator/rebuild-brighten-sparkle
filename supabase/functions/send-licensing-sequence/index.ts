@@ -1,35 +1,16 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { isUnsubscribed, sendEmail } from "../_shared/email.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const RESEND_URL = "https://api.resend.com/emails";
-
-async function sendEmail(apiKey: string, to: string, subject: string, html: string) {
-  try {
-    const res = await fetch(RESEND_URL, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        from: "Sam · Galaxy Financial <notifications@apex-financial.org>",
-        to: [to],
-        subject,
-        html,
-      }),
-    });
-    if (!res.ok) {
-      const txt = await res.text();
-      console.error("Resend error:", res.status, txt);
-      return false;
-    }
-    return true;
-  } catch (e) {
-    console.error("sendEmail threw:", e);
-    return false;
-  }
-}
+// PL-WIB-HEALTH-NO-FIRE (2026-10-21): this file called Resend directly, so its
+// mail carried no unsubscribe link, no List-Unsubscribe header and no
+// email_unsubscribes check, and a placeholder domain went out to bounce. The
+// shared helper does all three; the From line is kept as it was.
+const FROM = "Sam · Galaxy Financial <notifications@apex-financial.org>";
 
 async function logRun(
   supabase: any,
@@ -82,7 +63,7 @@ Deno.serve(async (req) => {
         const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString();
         const { data: apps, error: appsErr } = await supabase
           .from("applications")
-          .select("id, first_name, last_name, email, license_status, license_progress, state, followup_sent_at, followup_unlicensed_2_sent_at")
+          .select("id, first_name, last_name, email, license_status, license_progress, state, followup_sent_at, followup_unlicensed_2_sent_at, manual_followup_sent_at")
           .eq("license_status", "unlicensed")
           .is("terminated_at", null)
           .lt("created_at", sevenDaysAgo)
@@ -104,6 +85,14 @@ Deno.serve(async (req) => {
             const since = (now - new Date(app.followup_unlicensed_2_sent_at).getTime()) / 86400000;
             if (since >= 7) nextStep = 3;
             else continue;
+          }
+          // Step 3 is the last email, and it stamps manual_followup_sent_at
+          // (nothing else writes that column). This picker never read it, so
+          // step 3 went out again on every sweep: 2,627 sends to 110
+          // applicants in the 30 days to 2026-10-21, up to 27 each.
+          if (nextStep === 3 && app.manual_followup_sent_at &&
+              new Date(app.manual_followup_sent_at).getTime() >= new Date(app.followup_unlicensed_2_sent_at).getTime()) {
+            continue;
           }
           const sent = await sendStep(supabase, resendKey ?? "", app, nextStep);
           if (sent) processed++;
@@ -166,7 +155,8 @@ Deno.serve(async (req) => {
 });
 
 async function sendStep(supabase: any, resendKey: string, app: any, step: number): Promise<boolean> {
-  const firstName = app.first_name || "there";
+  if (await isUnsubscribed(supabase, app.email)) return false;
+  const firstName = String(app.first_name ?? "").trim() || "there";
   const sequences: Record<number, { subject: string; html: string }> = {
     1: {
       subject: `${firstName}, here's your licensing roadmap`,
@@ -211,7 +201,15 @@ async function sendStep(supabase: any, resendKey: string, app: any, step: number
 
   const emailData = sequences[step] || sequences[1];
   if (!resendKey) return false;
-  const ok = await sendEmail(resendKey, app.email, emailData.subject, emailData.html);
+  const result = await sendEmail({
+    from: FROM,
+    to: app.email,
+    subject: emailData.subject,
+    html: emailData.html,
+    tagName: `licensing_sequence_step_${step}`,
+  });
+  if (!result.ok) console.error("Resend error:", result.error);
+  const ok = result.ok;
 
   if (ok) {
     try {

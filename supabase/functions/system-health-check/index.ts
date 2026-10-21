@@ -239,14 +239,48 @@ serve(async (req) => {
   }
 
   // ─── CHECK 6: Cron jobs running (with auto-restart if >26h) ───
+  // PL-WIB-HEALTH-NO-FIRE (2026-10-21): this used to POST an automation whenever
+  // its last automation_runs row was >26h old, without asking whether its cron
+  // was on. All four crons it watched were active=false, so this check WAS
+  // their schedule. It re-ran the licensing drip Sam turned off on 10-14 (127
+  // sweeps since May) and the legacy send-numbers-reminder retired on 08-25 for
+  // numbers-reminder (84 runs, a second reminder on the same day). It now fires
+  // only an automation whose cron is on. A disabled cron is a decision, not an
+  // outage, and a cron state it cannot read never fires anything. The legacy
+  // "Numbers Reminder" entry is gone: numbers-reminder owns that job and does
+  // not write automation_runs, so watching it here could only re-fire the
+  // retired sender.
   try {
     const cronChecks = [
-      { name: "Manager Daily Digest", endpoint: "manager-daily-digest" },
-      { name: "Licensing Sequences", endpoint: "send-licensing-sequence" },
-      { name: "Daily Churn Check", endpoint: "check-churn-risk" },
-      { name: "Numbers Reminder", endpoint: "send-numbers-reminder" },
+      { name: "Manager Daily Digest", endpoint: "manager-daily-digest", jobname: "apex-manager-daily-digest" },
+      { name: "Licensing Sequences", endpoint: "send-licensing-sequence", jobname: "apex-licensing-sequences" },
+      { name: "Daily Churn Check", endpoint: "check-churn-risk", jobname: "apex-daily-churn-check" },
     ];
+    const { data: cronRows, error: cronErr } = await supabase.rpc("fn_cron_jobs_active", {
+      p_jobnames: cronChecks.map((c) => c.jobname),
+    });
+    const cronActive = new Map<string, boolean>(
+      ((cronRows ?? []) as { jobname: string; active: boolean }[]).map((r) => [r.jobname, r.active === true]),
+    );
     for (const check of cronChecks) {
+      if (cronErr || !Array.isArray(cronRows)) {
+        results.push({
+          service: `Cron: ${check.name}`,
+          status: "degraded",
+          responseTime: 0,
+          message: `Could not read cron state (${cronErr?.message ?? "no rows"}); not auto-fired`,
+        });
+        continue;
+      }
+      if (cronActive.get(check.jobname) !== true) {
+        results.push({
+          service: `Cron: ${check.name}`,
+          status: "healthy",
+          responseTime: 0,
+          message: `Schedule off (${check.jobname} ${cronActive.has(check.jobname) ? "disabled" : "not scheduled"}); not auto-fired`,
+        });
+        continue;
+      }
       const { data } = await supabase
         .from("automation_runs")
         .select("ran_at, status")

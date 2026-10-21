@@ -1077,6 +1077,39 @@
         "raw": ""
       }
     ],
+    "ayro_book": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "ayro_carrier_name": [
+      {
+        "all": [
+          "p"
+        ],
+        "required": [
+          "p"
+        ],
+        "unnamed": false,
+        "raw": "p text"
+      }
+    ],
+    "ayro_set_client_names": [
+      {
+        "all": [
+          "p_rows",
+          "p_source"
+        ],
+        "required": [
+          "p_rows"
+        ],
+        "unnamed": false,
+        "raw": "p_rows jsonb, p_source text DEFAULT 'page'::text"
+      }
+    ],
     "backfill_monthly_awards": [
       {
         "all": [
@@ -3420,6 +3453,18 @@
         "raw": "p_agent uuid"
       }
     ],
+    "fn_cron_jobs_active": [
+      {
+        "all": [
+          "p_jobnames"
+        ],
+        "required": [
+          "p_jobnames"
+        ],
+        "unnamed": false,
+        "raw": "p_jobnames text[]"
+      }
+    ],
     "fn_csv_cell": [
       {
         "all": [
@@ -4124,6 +4169,24 @@
         "raw": "p_cadence text, p_elapsed interval"
       }
     ],
+    "fn_next_step_cadence_due_local": [
+      {
+        "all": [
+          "p_cadence",
+          "p_entered",
+          "p_now",
+          "p_zones"
+        ],
+        "required": [
+          "p_cadence",
+          "p_entered",
+          "p_now",
+          "p_zones"
+        ],
+        "unnamed": false,
+        "raw": "p_cadence text, p_entered timestamp with time zone, p_now timestamp with time zone, p_zones text[]"
+      }
+    ],
     "fn_next_step_deal_first_check": [
       {
         "all": [],
@@ -4191,6 +4254,34 @@
         "required": [],
         "unnamed": false,
         "raw": "p_application_id uuid DEFAULT NULL::uuid, p_agent_id uuid DEFAULT NULL::uuid"
+      }
+    ],
+    "fn_next_step_send_ok": [
+      {
+        "all": [
+          "p_at",
+          "p_zones"
+        ],
+        "required": [
+          "p_at",
+          "p_zones"
+        ],
+        "unnamed": false,
+        "raw": "p_zones text[], p_at timestamp with time zone"
+      }
+    ],
+    "fn_next_step_send_zones": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_application_id"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_application_id"
+        ],
+        "unnamed": false,
+        "raw": "p_application_id uuid, p_agent_id uuid"
       }
     ],
     "fn_next_step_stall_sweep": [
@@ -4948,6 +5039,18 @@
         "raw": ""
       }
     ],
+    "fn_us_state_send_zones": [
+      {
+        "all": [
+          "p_state"
+        ],
+        "required": [
+          "p_state"
+        ],
+        "unnamed": false,
+        "raw": "p_state text"
+      }
+    ],
     "fn_weekdays_valid": [
       {
         "all": [
@@ -5525,6 +5628,7 @@
           "p_carrier",
           "p_external_ref",
           "p_face_amount",
+          "p_metadata",
           "p_monthly_premium",
           "p_occurred_at",
           "p_policy_number",
@@ -5539,7 +5643,7 @@
           "p_policy_number"
         ],
         "unnamed": false,
-        "raw": "p_policy_number text, p_agent_name text, p_carrier text, p_annual_premium numeric, p_monthly_premium numeric DEFAULT NULL::numeric, p_face_amount numeric DEFAULT NULL::numeric, p_occurred_at timestamp with time zone DEFAULT now(), p_posted_date date DEFAULT ((now() AT TIME ZONE 'America/Phoenix'::text))::date, p_status text DEFAULT 'active'::text, p_product text DEFAULT NULL::text, p_external_ref text DEFAULT NULL::text"
+        "raw": "p_policy_number text, p_agent_name text, p_carrier text, p_annual_premium numeric, p_monthly_premium numeric DEFAULT NULL::numeric, p_face_amount numeric DEFAULT NULL::numeric, p_occurred_at timestamp with time zone DEFAULT now(), p_posted_date date DEFAULT ((now() AT TIME ZONE 'America/Phoenix'::text))::date, p_status text DEFAULT 'active'::text, p_product text DEFAULT NULL::text, p_external_ref text DEFAULT NULL::text, p_metadata jsonb DEFAULT NULL::jsonb"
       }
     ],
     "ingest_discord_production_deal": [

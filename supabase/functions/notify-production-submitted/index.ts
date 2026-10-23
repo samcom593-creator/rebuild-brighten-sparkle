@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { gateResend } from "../_shared/resend-gate.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type" };
@@ -99,7 +100,7 @@ serve(async (req) => {
     const push = await sendPush([agent.user_id, managerUserId].filter(Boolean) as string[], "Production submitted", `${agentName}: ${deals} policies, $${alp.toLocaleString()} ALP`);
     let email: unknown = { skipped: true };
     if (resendKey) {
-      email = await new Resend(resendKey).emails.send({
+      email = await gateResend(new Resend(resendKey)).emails.send({
         from: "Galaxy Production <notifications@apex-financial.org>",
         to: [...new Set(["info@kingofsales.net", managerEmail].filter(Boolean))] as string[],
         subject: `${agentName} | Production report`,

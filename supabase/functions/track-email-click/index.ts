@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { gateResend } from "../_shared/resend-gate.ts";
 
 const handler = async (req: Request): Promise<Response> => {
   const url = new URL(req.url);
@@ -39,7 +40,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Send admin notification
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
     if (resendApiKey) {
-      const resend = new Resend(resendApiKey);
+      const resend = gateResend(new Resend(resendApiKey));
       await resend.emails.send({
         from: "Galaxy Alerts <notifications@apex-financial.org>",
         to: ["info@kingofsales.net"],

@@ -6,6 +6,7 @@
 // 164/164, metricool-sync 3/3 — zero 200s. 2.90.1 is the version proven booting.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { gateResend } from "../_shared/resend-gate.ts";
 import { createHandler } from "../_shared/handler.ts";
 import { jsonResponse } from "../_shared/cors.ts";
 import { parseBody, v } from "../_shared/validate.ts";
@@ -55,7 +56,7 @@ Deno.serve(
       if (!agentId || !newStage) throw new Error("Missing required fields");
 
       const supabase = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
-      const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+      const resend = gateResend(new Resend(Deno.env.get("RESEND_API_KEY")));
 
       const { data: agent } = await supabase.from("agents").select("user_id, invited_by_manager_id").eq("id", agentId).maybeSingle();
       if (!agent?.user_id) throw new Error("Agent not found");

@@ -17,6 +17,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { gateResend } from "../_shared/resend-gate.ts";
 import { escapeLikePattern } from "../_shared/like-escape.ts";
 
 const corsHeaders = {
@@ -33,7 +34,7 @@ const RESEND_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
 const RESEND_FROM = Deno.env.get("RESEND_FROM") ?? "Galaxy Financial <hello@apex-financial.org>";
 
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
-const resend = new Resend(RESEND_KEY);
+const resend = gateResend(new Resend(RESEND_KEY));
 
 type Stage = {
   stage_key: string;

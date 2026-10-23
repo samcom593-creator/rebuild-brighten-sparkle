@@ -20,6 +20,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { gateResend } from "../_shared/resend-gate.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -155,7 +156,7 @@ Deno.serve(async (req) => {
 
   // ─── Email Sam if degraded or critical ──
   if (overall !== "healthy") {
-    const resend = new Resend(Deno.env.get("RESEND_API_KEY") ?? "");
+    const resend = gateResend(new Resend(Deno.env.get("RESEND_API_KEY") ?? ""));
     const rows = checks.filter(c => c.status !== "ok").map(c =>
       `<tr><td style="padding:4px 10px;color:${c.status === "critical" ? "#f87171" : "#fbbf24"};font-weight:700">${c.status.toUpperCase()}</td>` +
       `<td style="padding:4px 10px;font-family:monospace">${c.name}</td>` +

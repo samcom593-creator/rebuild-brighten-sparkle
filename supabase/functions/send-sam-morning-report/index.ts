@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
+import { gateResend } from "../_shared/resend-gate.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -87,7 +88,7 @@ serve(async (req) => {
     const resendKey = Deno.env.get("RESEND_API_KEY");
     if (resendKey) {
       const { Resend } = await import("https://esm.sh/resend@2.0.0");
-      const resend = new Resend(resendKey);
+      const resend = gateResend(new Resend(resendKey));
 
       await resend.emails.send({
         from: "Galaxy System <sam@apex-financial.org>",

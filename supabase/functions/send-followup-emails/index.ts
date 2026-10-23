@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { SPAM_NOTE_HTML } from "../_shared/spam-note.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { gateResend } from "../_shared/resend-gate.ts";
 import { SCHEDULING_LINKS } from "../_shared/apex.ts";
 
 const corsHeaders = {
@@ -22,7 +23,7 @@ const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
   auth: { persistSession: false },
 });
 
-const resend = resendApiKey ? new Resend(resendApiKey) : null;
+const resend = resendApiKey ? gateResend(new Resend(resendApiKey)) : null;
 
 const ADMIN_EMAIL = "info@kingofsales.net";
 

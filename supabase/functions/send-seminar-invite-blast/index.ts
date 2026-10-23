@@ -7,6 +7,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 // 164/164, metricool-sync 3/3 — zero 200s. 2.90.1 is the version proven booting.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { gateResend } from "../_shared/resend-gate.ts";
 import { nanpTenDigits } from "../_shared/nanp-phone.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
 
@@ -146,7 +147,7 @@ serve(async (req: Request) => {
     const slackLink = "https://join.slack.com/t/apex-financial-co/shared_invite/zt-47rdeq1fr-ETmj8yGBgRcoYVkwfc3DBQ";
 
     const sb = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
-    const resend = new Resend(resendKey);
+    const resend = gateResend(new Resend(resendKey));
 
     // Fetch all unlicensed, non-terminated applicants
     const { data: apps, error: appsErr } = await sb

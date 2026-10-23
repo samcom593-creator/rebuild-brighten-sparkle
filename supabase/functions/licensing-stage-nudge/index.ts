@@ -22,6 +22,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { gateResend } from "../_shared/resend-gate.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
 
 const corsHeaders = {
@@ -38,7 +39,7 @@ const supabase = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   { auth: { persistSession: false } },
 );
-const resend = new Resend(Deno.env.get("RESEND_API_KEY") ?? "");
+const resend = gateResend(new Resend(Deno.env.get("RESEND_API_KEY") ?? ""));
 
 type App = {
   id: string;

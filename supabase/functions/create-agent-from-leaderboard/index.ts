@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@4.0.0";
+import { gateResend } from "../_shared/resend-gate.ts";
 import { findAuthUserByEmail, type AuthUserLister } from "../_shared/find-auth-user.ts";
 
 const corsHeaders = {
@@ -213,7 +214,7 @@ const handler = async (req: Request): Promise<Response> => {
     const numbersLink = `${BASE_URL}/magic-login?token=${token}&redirect=numbers`;
 
     // Send welcome email with magic link
-    const resend = new Resend(RESEND_API_KEY);
+    const resend = gateResend(new Resend(RESEND_API_KEY));
     const { error: emailError } = await resend.emails.send({
       from: "Galaxy Financial <notifications@apex-financial.org>",
       to: [email],

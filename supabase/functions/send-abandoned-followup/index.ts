@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { gateResend } from "../_shared/resend-gate.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -20,7 +21,7 @@ const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
   auth: { persistSession: false },
 });
 
-const resend = resendApiKey ? new Resend(resendApiKey) : null;
+const resend = resendApiKey ? gateResend(new Resend(resendApiKey)) : null;
 
 const APPLY_URL = "https://apex-financial.org/apply";
 const CALENDLY_URL = "https://calendly.com/apexfinancialempire/licensed-prospect-call-clone";

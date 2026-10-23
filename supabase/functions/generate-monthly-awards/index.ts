@@ -25,6 +25,7 @@
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { gateResend } from "../_shared/resend-gate.ts";
 import { Resvg, initWasm } from "https://esm.sh/@resvg/resvg-wasm@2.6.2";
 import { postNtfyGraded } from "../_shared/ntfy-post.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
@@ -457,7 +458,7 @@ Deno.serve(async (req) => {
     // 7. Email digest to Sam via Resend
     let emailResult = null;
     if (!skipEmail && targetAdmin) {
-      const resend = new Resend(Deno.env.get("RESEND_API_KEY") ?? "");
+      const resend = gateResend(new Resend(Deno.env.get("RESEND_API_KEY") ?? ""));
       const cards = generated.map(g => `<div style="margin:14px 0;border:1px solid #22d3a540;border-radius:12px;overflow:hidden;background:#0d1526;"><img src="${g.url}" alt="" width="100%" style="display:block;max-width:540px;"/></div>`).join("");
       const html = `<!DOCTYPE html><html><body style="font-family:ui-sans-serif,Arial,sans-serif;background:#020617;color:#e2e8f0;padding:32px 16px;">
         <div style="max-width:620px;margin:0 auto;background:#0a0f1a;border-radius:16px;padding:32px;">

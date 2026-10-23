@@ -23,6 +23,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { gateResend } from "../_shared/resend-gate.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
 
 const corsHeaders = {
@@ -61,7 +62,7 @@ Deno.serve(async (req) => {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const resend = new Resend(resendKey);
+    const resend = gateResend(new Resend(resendKey));
     const result = await resend.emails.send({
       from: from || "Sam at Galaxy <sam@apex-financial.org>",
       to,

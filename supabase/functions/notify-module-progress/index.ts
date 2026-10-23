@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.2";
 import { Resend } from "npm:resend@2.0.0";
+import { gateResend } from "../_shared/resend-gate.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
 
 const corsHeaders = {
@@ -9,7 +10,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+const resend = gateResend(new Resend(Deno.env.get("RESEND_API_KEY")));
 
 interface NotifyModuleProgressRequest {
   agentId: string;

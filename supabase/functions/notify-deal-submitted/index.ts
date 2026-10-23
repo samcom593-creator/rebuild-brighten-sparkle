@@ -13,6 +13,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { gateResend } from "../_shared/resend-gate.ts";
 import { sendEmail, isUnsubscribed } from "../_shared/email.ts";
 import { nanpTenDigits } from "../_shared/nanp-phone.ts";
 
@@ -130,7 +131,7 @@ Deno.serve(async (req) => {
       .limit(500) : { data: [] as any[] };
 
     const resendKey = Deno.env.get("RESEND_API_KEY");
-    const resend    = resendKey ? new Resend(resendKey) : null;
+    const resend    = resendKey ? gateResend(new Resend(resendKey)) : null;
 
     let emailsSent = 0, smsSent = 0, failed = 0;
     if (!emailsEnabled) console.log("📭 notify_deal_emails=off — skipping per-agent blast");

@@ -18,6 +18,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { gateResend } from "../_shared/resend-gate.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
 
 const corsHeaders = {
@@ -89,7 +90,7 @@ async function sendEmail(app: App): Promise<{ ok: boolean; error?: string }> {
   if (!app.email) return { ok: false, error: "no email" };
   const resendKey = Deno.env.get("RESEND_API_KEY");
   if (!resendKey) return { ok: false, error: "RESEND_API_KEY missing" };
-  const resend = new Resend(resendKey);
+  const resend = gateResend(new Resend(resendKey));
   const first = app.first_name || "there";
   const age = ageDays(app.created_at);
   const licensed = app.license_status === "licensed";

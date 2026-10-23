@@ -15,6 +15,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { gateResend } from "../_shared/resend-gate.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
 
 const corsHeaders = {
@@ -28,7 +29,7 @@ const SUBJECT  = "The doors are back open.";
 const FROM     = "Sam @ Galaxy Financial <sam@apex-financial.org>";
 const SB_URL   = Deno.env.get("SUPABASE_URL")!;
 const SB_SRV   = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const RESEND   = new Resend(Deno.env.get("RESEND_API_KEY"));
+const RESEND   = gateResend(new Resend(Deno.env.get("RESEND_API_KEY")));
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 

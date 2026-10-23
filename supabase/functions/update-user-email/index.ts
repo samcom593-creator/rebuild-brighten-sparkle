@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { gateResend } from "../_shared/resend-gate.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -209,7 +210,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Send notification emails
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
     if (resendApiKey && authEmailChanged) {
-      const resend = new Resend(resendApiKey);
+      const resend = gateResend(new Resend(resendApiKey));
 
       // Get target user's name for the email
       const { data: profile } = await supabaseAdmin

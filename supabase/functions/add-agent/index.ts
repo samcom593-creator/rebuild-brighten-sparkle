@@ -5,6 +5,7 @@ import { resolveOne } from "../_shared/resolve-one.ts";
 import { CONTRACTING_PROFILE_URL } from "../_shared/contracting-profile.ts";
 import { findAuthUserByEmail, type AuthUserLister } from "../_shared/find-auth-user.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { gateResend } from "../_shared/resend-gate.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -672,7 +673,7 @@ const handler = async (req: Request): Promise<Response> => {
         compApprovalEmailStatus = { ok: false, error: "RESEND_API_KEY missing" };
       } else {
         try {
-          const resend = new Resend(resendKey);
+          const resend = gateResend(new Resend(resendKey));
           const { data: approvalEmail, error: approvalEmailError } = await resend.emails.send({
             from: "Galaxy Hiring <notifications@apex-financial.org>",
             to: ["info@kingofsales.net"],

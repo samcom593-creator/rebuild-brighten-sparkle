@@ -11,6 +11,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { gateResend } from "../_shared/resend-gate.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -108,7 +109,7 @@ Let's go. 💥`,
     const adminEmail = Deno.env.get("ADMIN_EMAIL") ?? "info@kingofsales.net";
     const resendKey  = Deno.env.get("RESEND_API_KEY");
     if (resendKey) {
-      const resend = new Resend(resendKey);
+      const resend = gateResend(new Resend(resendKey));
       const topRows = top5.map((e, i) => `<tr><td style="padding:6px 10px;color:#64748b">${i + 1}.</td><td style="padding:6px 10px;color:#f8fafc;font-weight:600">${e.name}</td><td style="padding:6px 10px;color:#22d3a5;text-align:right;font-weight:700">${fmt$(e.alp)}</td></tr>`).join("");
       await resend.emails.send({
         from: "Galaxy Brief <notifications@apex-financial.org>",

@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { gateResend } from "../_shared/resend-gate.ts";
 import { stalledFollowUpMessage } from "./followup-message.ts";
 import { restartMarker, slotVerdict } from "../_shared/cron-schedule.ts";
 
@@ -451,7 +452,7 @@ serve(async (req) => {
     try {
       const resendKey = Deno.env.get("RESEND_API_KEY");
       if (resendKey) {
-        const resend = new Resend(resendKey);
+        const resend = gateResend(new Resend(resendKey));
         await resend.emails.send({
           from: "Galaxy System <alerts@apex-financial.org>",
           to: "info@kingofsales.net",

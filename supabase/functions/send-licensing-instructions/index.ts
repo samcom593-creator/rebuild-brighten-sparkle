@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { SPAM_NOTE_HTML } from "../_shared/spam-note.ts";
 import { Resend } from "npm:resend@2.0.0";
+import { gateResend } from "../_shared/resend-gate.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { logFunctionError, writeAudit } from "../_shared/audit.ts";
@@ -9,7 +10,7 @@ import { CONTRACTING_PROFILE_URL, NOT_CONTRACTED_YET } from "../_shared/contract
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
 import { escapeHtml } from "../_shared/notify-caller-policy.ts";
 
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+const resend = gateResend(new Resend(Deno.env.get("RESEND_API_KEY")));
 const ADMIN_EMAIL = "info@kingofsales.net";
 const SLACK_LINK = "https://join.slack.com/t/apex-financial-co/shared_invite/zt-47rdeq1fr-ETmj8yGBgRcoYVkwfc3DBQ";
 const PORTAL_LINK = "https://apex-financial.org/agent-portal";

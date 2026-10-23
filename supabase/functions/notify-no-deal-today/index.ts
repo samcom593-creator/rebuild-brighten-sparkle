@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { gateResend } from "../_shared/resend-gate.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
 
 const corsHeaders = {
@@ -34,7 +35,7 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+    const resend = gateResend(new Resend(Deno.env.get("RESEND_API_KEY")));
 
     const today = new Date().toISOString().split("T")[0];
     const dayName = new Date().toLocaleDateString("en-US", { weekday: "long" });

@@ -9,6 +9,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 // @2 boots clean and is the exact specifier ics-feed uses, which is serving 200s.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { gateResend } from "../_shared/resend-gate.ts";
 import { nanpRefusalReason, nanpTenDigits } from "../_shared/nanp-phone.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -234,7 +235,7 @@ const handler = async (req: Request): Promise<Response> => {
         status: 503, headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     }
-    const resend = new Resend(resendKey);
+    const resend = gateResend(new Resend(resendKey));
 
     const results: { carrier: string; success: boolean; error?: string }[] = [];
     let successCount = 0;

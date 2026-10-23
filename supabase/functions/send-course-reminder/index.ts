@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { gateResend } from "../_shared/resend-gate.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -43,7 +44,7 @@ serve(async (req) => {
       serviceRoleKey,
     );
 
-    const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+    const resend = gateResend(new Resend(Deno.env.get("RESEND_API_KEY")));
 
     // This endpoint sends email and mints a one-tap login token. Never trust
     // an agentId from an anonymous caller, even though gateway JWT validation

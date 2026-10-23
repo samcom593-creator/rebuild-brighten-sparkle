@@ -21,13 +21,14 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { gateResend } from "../_shared/resend-gate.ts";
 
 const BASE_URL = "https://apex-financial.org";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const CRON_SECRET = Deno.env.get("NEWHIRE_CRON_SECRET") ?? "";
 const ADMIN_EMAIL = "info@kingofsales.net";
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+const resend = gateResend(new Resend(Deno.env.get("RESEND_API_KEY")));
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

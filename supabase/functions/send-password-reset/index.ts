@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { gateResend } from "../_shared/resend-gate.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -8,7 +9,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+const resend = gateResend(new Resend(Deno.env.get("RESEND_API_KEY")));
 const BASE_URL = "https://apex-financial.org";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 

@@ -6,6 +6,7 @@
 // 164/164, metricool-sync 3/3 — zero 200s. 2.90.1 is the version proven booting.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { gateResend } from "../_shared/resend-gate.ts";
 import { createHandler } from "../_shared/handler.ts";
 import { requireRole } from "../_shared/auth.ts";
 import { jsonResponse } from "../_shared/cors.ts";
@@ -14,7 +15,7 @@ const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-const resend = new Resend(RESEND_API_KEY);
+const resend = gateResend(new Resend(RESEND_API_KEY));
 
 Deno.serve(
   createHandler(

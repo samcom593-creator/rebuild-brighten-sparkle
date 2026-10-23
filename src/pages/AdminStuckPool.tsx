@@ -96,15 +96,10 @@ export default function AdminStuckPool() {
       toast({ title: "Failed to queue nudge", description: error.message, variant: "destructive" });
       return;
     }
-    // Fire the dispatcher
-    const dispatch = await supabase.functions.invoke("next-step-dispatch", {
-      body: { limit: 5 },
-    });
-    if (dispatch.error) {
-      toast({ title: "Nudge queued, dispatcher errored", description: dispatch.error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Nudge fired", description: `${row.first_name ?? "Person"} → ${row.derived_stage_key}` });
-    }
+    // trg_next_step_messages_auto_dispatch sends the row on insert. This used to
+    // also call the dispatcher's fan-out ({limit: 5}), which sent the 5 OLDEST
+    // queued rows to other people and raced the trigger for this one.
+    toast({ title: "Nudge queued", description: `${row.first_name ?? "Person"} → ${row.derived_stage_key}` });
     refetch();
   }
 

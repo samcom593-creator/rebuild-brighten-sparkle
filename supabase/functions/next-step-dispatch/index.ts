@@ -4,9 +4,25 @@
 // single nudge is fully auditable.
 //
 // Triggers:
-//   - pg_cron every 5 min: POST {} to fan out queued msgs
-//   - inline from server actions: POST {message_id: "..."} for a single dispatch
-//   - manual: POST {dry_run: true} to preview without sending
+//   - trg_next_step_messages_auto_dispatch (AFTER INSERT): POST {message_id}
+//     with the anon key, one call per queued row. This is the only caller that
+//     sends in practice. No pg_cron job calls this function (checked 2026-10-23).
+//   - fan-out: POST {} / {limit}, staff or service role only (see below)
+//   - preview: POST {dry_run: true}, staff or service role only
+//
+// PL-WIB-NEXT-STEP-RESEND (2026-10-23). The SMS fallback for a telegram row
+// logged a child row and never stamped the parent, so the parent read as
+// queued forever. 2,051 of 2,067 "pending" rows had a sent SMS child. The
+// fan-out path took the oldest pending rows first and was public
+// (verify_jwt=false, no gate), so any bare POST re-sent texts people had
+// already received months earlier. That happened twice: 2026-08-23 03:57Z
+// (50 people) and 2026-10-23 05:43Z (39 people, a boot probe). Now:
+//   1. the SMS fallback stamps the parent, like the email fallback already did;
+//   2. a row with a sent fallback child is delivered and is never sent again;
+//   3. nothing older than MAX_QUEUE_AGE_HOURS is ever selected, on either path;
+//   4. fan-out and dry_run (which returns the person's email and phone)
+//      require a staff JWT or the service key. The message_id path stays open
+//      because the trigger posts with the anon key.
 //
 // Channels: telegram (via telegram_scheduled_messages → existing Telegram worker)
 //           sms (Twilio REST)
@@ -19,6 +35,13 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { gateResend } from "../_shared/resend-gate.ts";
 import { escapeLikePattern } from "../_shared/like-escape.ts";
+import { requireSendAuth } from "../_shared/require-send-auth.ts";
+
+// The trigger dispatches a row seconds after insert, and the nudge sweep never
+// evaluates a step older than 20h (20261016210500_next_step_quiet_hours.sql).
+// A queued row older than this is a missed send, and a late one is worse than
+// none: "Welcome, step 1" four months after the person moved on.
+const MAX_QUEUE_AGE_HOURS = 24;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -278,7 +301,30 @@ async function isUnsubscribed(email: string | null): Promise<boolean> {
   return !!data;
 }
 
+// A parent whose fallback already went out is delivered. Before the SMS branch
+// stamped its parent, this was the only record of that send.
+async function sentFallbackChild(parentId: string): Promise<{ id: string; sent_at: string } | null> {
+  const { data, error } = await supabase
+    .from("next_step_messages")
+    .select("id, sent_at")
+    .eq("fallback_of_id", parentId)
+    .not("sent_at", "is", null)
+    .order("sent_at", { ascending: true })
+    .limit(1);
+  // Could not look: refuse to send rather than risk a second copy.
+  if (error) throw new Error(`fallback lookup failed: ${error.message}`);
+  return (data?.[0] as any) ?? null;
+}
+
 async function dispatchOne(msg: any, dry: boolean) {
+  const child = await sentFallbackChild(msg.id);
+  if (child) {
+    if (!dry) {
+      await supabase.from("next_step_messages").update({ sent_at: child.sent_at })
+        .eq("id", msg.id).is("sent_at", null);
+    }
+    return { ok: true, skipped: true, reason: "already_delivered_by_fallback", id: msg.id, child_id: child.id };
+  }
   const stage = await loadStage(msg.stage_key);
   if (!stage) throw new Error(`stage ${msg.stage_key} not found`);
   const person = await loadPerson(msg.application_id, msg.agent_id);
@@ -366,6 +412,12 @@ async function dispatchOne(msg: any, dry: boolean) {
             external_id: sid,
             fallback_of_id: parent_id,
           });
+          // Stamp the parent, as the email fallback does. Without this the
+          // parent stayed queued and the fan-out sent it again.
+          await supabase.from("next_step_messages").update({
+            sent_at: new Date().toISOString(),
+            failed_at: null,
+          }).eq("id", parent_id);
         }
         delivered = true;
       } catch (e: any) {
@@ -427,15 +479,33 @@ Deno.serve(async (req) => {
   try {
     const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
     const dry = !!body.dry_run;
+    const single = typeof body.message_id === "string" && body.message_id.length > 0;
+    if (dry || !single) {
+      const auth = await requireSendAuth(req, { floor: "staff" });
+      if (!auth.ok) {
+        return new Response(JSON.stringify({ ok: false, error: auth.error ?? "unauthorized" }), {
+          status: auth.status,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
     const limit = Math.max(1, Math.min(200, body.limit ?? 50));
+    const notBefore = new Date(Date.now() - MAX_QUEUE_AGE_HOURS * 3600_000).toISOString();
     let q = supabase.from("next_step_messages")
       .select("*")
       .is("sent_at", null)
       .is("failed_at", null)
+      .gte("created_at", notBefore)
       .order("created_at", { ascending: true })
       .limit(limit);
-    if (body.message_id) {
-      q = supabase.from("next_step_messages").select("*").eq("id", body.message_id).limit(1);
+    if (single) {
+      // Same three filters: a sent, failed or stale row is never re-sent by id.
+      q = supabase.from("next_step_messages").select("*")
+        .eq("id", body.message_id)
+        .is("sent_at", null)
+        .is("failed_at", null)
+        .gte("created_at", notBefore)
+        .limit(1);
     }
     const { data: queue, error } = await q;
     if (error) throw error;

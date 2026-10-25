@@ -2,7 +2,8 @@
 -- display-name fallback. public.profiles carries the same email, so the join moves there and no view readable by a
 -- login touches the auth schema. Column lists are unchanged (CREATE OR REPLACE), grants and in-body staff gates untouched.
 -- profiles is read through DISTINCT ON (user_id) so a duplicated profile row can never fan a strike out twice; the
--- subquery exposes id = user_id so joins written against auth.users(id) downstream keep working as-is.
+-- subquery exposes id = user_id so joins written against auth.users(id) downstream keep working, and email is cast to
+-- varchar(255) because that is the type auth.users.email gave these view columns and a view cannot change a column type.
 
 CREATE OR REPLACE VIEW public.v_agent_strikes AS
  SELECT s.id,
@@ -33,10 +34,10 @@ CREATE OR REPLACE VIEW public.v_agent_strikes AS
    FROM agent_strikes s
      LEFT JOIN agents a ON a.id = s.agent_id
      LEFT JOIN profiles p ON p.id = a.profile_id
-     LEFT JOIN (SELECT DISTINCT ON (pr.user_id) pr.user_id AS id, pr.user_id, pr.email FROM public.profiles pr WHERE pr.user_id IS NOT NULL ORDER BY pr.user_id, pr.created_at) u ON u.user_id = a.user_id
-     LEFT JOIN (SELECT DISTINCT ON (pr.user_id) pr.user_id AS id, pr.user_id, pr.email FROM public.profiles pr WHERE pr.user_id IS NOT NULL ORDER BY pr.user_id, pr.created_at) iu ON iu.user_id = s.issued_by
+     LEFT JOIN (SELECT DISTINCT ON (pr.user_id) pr.user_id AS id, pr.user_id, pr.email::character varying(255) AS email FROM public.profiles pr WHERE pr.user_id IS NOT NULL ORDER BY pr.user_id, pr.created_at) u ON u.user_id = a.user_id
+     LEFT JOIN (SELECT DISTINCT ON (pr.user_id) pr.user_id AS id, pr.user_id, pr.email::character varying(255) AS email FROM public.profiles pr WHERE pr.user_id IS NOT NULL ORDER BY pr.user_id, pr.created_at) iu ON iu.user_id = s.issued_by
      LEFT JOIN profiles ip ON ip.id = iu.id
-     LEFT JOIN (SELECT DISTINCT ON (pr.user_id) pr.user_id AS id, pr.user_id, pr.email FROM public.profiles pr WHERE pr.user_id IS NOT NULL ORDER BY pr.user_id, pr.created_at) ru ON ru.user_id = s.resolved_by
+     LEFT JOIN (SELECT DISTINCT ON (pr.user_id) pr.user_id AS id, pr.user_id, pr.email::character varying(255) AS email FROM public.profiles pr WHERE pr.user_id IS NOT NULL ORDER BY pr.user_id, pr.created_at) ru ON ru.user_id = s.resolved_by
      LEFT JOIN profiles rp ON rp.id = ru.id;
 
 CREATE OR REPLACE VIEW public.v_strike_summary AS
@@ -72,7 +73,7 @@ CREATE OR REPLACE VIEW public.v_strike_summary AS
                 END AS standing
            FROM agents a
              LEFT JOIN profiles p ON p.id = a.profile_id
-             LEFT JOIN (SELECT DISTINCT ON (pr.user_id) pr.user_id AS id, pr.user_id, pr.email FROM public.profiles pr WHERE pr.user_id IS NOT NULL ORDER BY pr.user_id, pr.created_at) u ON u.user_id = a.user_id
+             LEFT JOIN (SELECT DISTINCT ON (pr.user_id) pr.user_id AS id, pr.user_id, pr.email::character varying(255) AS email FROM public.profiles pr WHERE pr.user_id IS NOT NULL ORDER BY pr.user_id, pr.created_at) u ON u.user_id = a.user_id
              LEFT JOIN agent_strikes s ON (s.agent_id IN ( SELECT m.agent_id
                    FROM v_agent_canonical_map m
                   WHERE m.canonical_agent_id = a.id))
@@ -95,7 +96,7 @@ CREATE OR REPLACE VIEW public.v_recent_conduct_events AS
            FROM v_agent_canonical_map m
           WHERE m.agent_id = s.agent_id))
      LEFT JOIN profiles p ON p.id = ag.profile_id
-     LEFT JOIN (SELECT DISTINCT ON (pr.user_id) pr.user_id AS id, pr.user_id, pr.email FROM public.profiles pr WHERE pr.user_id IS NOT NULL ORDER BY pr.user_id, pr.created_at) u ON u.user_id = ag.user_id
+     LEFT JOIN (SELECT DISTINCT ON (pr.user_id) pr.user_id AS id, pr.user_id, pr.email::character varying(255) AS email FROM public.profiles pr WHERE pr.user_id IS NOT NULL ORDER BY pr.user_id, pr.created_at) u ON u.user_id = ag.user_id
 UNION ALL
  SELECT 'charge_anomaly'::text AS event_type,
     c.id::text AS event_id,
@@ -155,7 +156,7 @@ CREATE OR REPLACE VIEW public.v_unlicensed_all AS
             EXTRACT(day FROM now() - a.created_at)::integer AS days_since_applied,
             va.email AS assigned_va_email
            FROM applications a
-             LEFT JOIN (SELECT DISTINCT ON (pr.user_id) pr.user_id AS id, pr.user_id, pr.email FROM public.profiles pr WHERE pr.user_id IS NOT NULL ORDER BY pr.user_id, pr.created_at) va ON va.user_id = a.assigned_va_id
+             LEFT JOIN (SELECT DISTINCT ON (pr.user_id) pr.user_id AS id, pr.user_id, pr.email::character varying(255) AS email FROM public.profiles pr WHERE pr.user_id IS NOT NULL ORDER BY pr.user_id, pr.created_at) va ON va.user_id = a.assigned_va_id
           WHERE a.terminated_at IS NULL AND (a.license_status IS NULL OR (a.license_status::text = ANY (ARRAY['unlicensed'::text, 'pending'::text])))
         UNION ALL
          SELECT al.id::text AS id,
@@ -178,6 +179,6 @@ CREATE OR REPLACE VIEW public.v_unlicensed_all AS
             EXTRACT(day FROM now() - al.created_at)::integer AS days_since_applied,
             vau.email AS assigned_va_email
            FROM aged_leads al
-             LEFT JOIN (SELECT DISTINCT ON (pr.user_id) pr.user_id AS id, pr.user_id, pr.email FROM public.profiles pr WHERE pr.user_id IS NOT NULL ORDER BY pr.user_id, pr.created_at) vau ON vau.user_id = al.assigned_va_id
+             LEFT JOIN (SELECT DISTINCT ON (pr.user_id) pr.user_id AS id, pr.user_id, pr.email::character varying(255) AS email FROM public.profiles pr WHERE pr.user_id IS NOT NULL ORDER BY pr.user_id, pr.created_at) vau ON vau.user_id = al.assigned_va_id
           WHERE al.dnc IS NOT TRUE AND (al.license_status IS NULL OR (al.license_status = ANY (ARRAY['unlicensed'::text, 'pending'::text, 'licensed'::text]))) AND (al.status IS NULL OR (al.status <> ALL (ARRAY['hired'::text, 'terminated'::text, 'promoted_to_application'::text])))) t
   WHERE is_agency_staff();

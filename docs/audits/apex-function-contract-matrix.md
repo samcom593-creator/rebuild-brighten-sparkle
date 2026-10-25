@@ -1,13 +1,13 @@
 # APEX Function Contract Matrix
 
-Generated: 2026-10-21T22:59:07.073Z
-Repository: `/private/tmp/wib108/wt`
+Generated: 2026-10-25T22:20:49.942Z
+Repository: `/private/tmp/wib111`
 
 ## Inventory Summary
 
 - Total Local Edge Functions: **244**
 - Configured in `config.toml`: **245**
-- Invoked Edge Functions in Source: **97**
+- Invoked Edge Functions in Source: **96**
 - Invoked RPC Calls in Source: **217**
 - SQL Functions in Migrations: **723**
 
@@ -113,7 +113,7 @@ Repository: `/private/tmp/wib108/wt`
 | `licensing-stage-nudge` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `link-account` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `log-production` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `manager-daily-digest` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `manager-daily-digest` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `manager-signup` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `manychat-webhook` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `merge-agent-records` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -202,7 +202,7 @@ Repository: `/private/tmp/wib108/wt`
 | `send-daily-checkin-prompt` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `send-daily-producer-spotlight` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `send-email` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `send-followup-emails` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `send-followup-emails` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `send-instagram-dm` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `send-license-milestone` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `send-licensing-instructions` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |

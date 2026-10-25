@@ -4,6 +4,15 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { gateResend } from "../_shared/resend-gate.ts";
 import { SCHEDULING_LINKS } from "../_shared/apex.ts";
+import { requireSendAuth } from "../_shared/require-send-auth.ts";
+import { safeEqual } from "../_shared/send-floor.ts";
+
+// PL-WIB-DIGEST-GATE (2026-10-25). verify_jwt is false and this handler read no
+// credential, so any POST ran the applicant drip. The followup_*_sent_at stamps
+// keep it from mailing anyone twice, but the drip should run on its schedule,
+// not on a stranger's. Callers that exist: pg_cron job 108 (apex_bot_token
+// bearer). Service key and admin/manager JWT stay open for a manual run.
+const BOT_TOKEN = (Deno.env.get("APEX_BOT_TOKEN") ?? "").trim();
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -327,6 +336,18 @@ const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  const bearer = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+  const isBot = BOT_TOKEN !== "" && bearer !== "" && safeEqual(bearer, BOT_TOKEN);
+  if (!isBot) {
+    const auth = await requireSendAuth(req);
+    if (!auth.ok) {
+      return new Response(JSON.stringify({ error: auth.error ?? "unauthorized" }), {
+        status: auth.status,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
   }
 
   try {

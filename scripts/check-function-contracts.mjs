@@ -277,6 +277,11 @@ const PUBLIC_ALLOWLIST = new Set([
   // returns 401 to anything else. verify_jwt=false only because the bot
   // token is not a JWT.
   "resend-suppression-sync",
+  // manager-daily-digest + send-followup-emails (PL-WIB-DIGEST-GATE): pg_cron
+  // jobs 19 and 108 call them with the apex_bot_token bearer; anything else
+  // must pass requireSendAuth (service key or admin/manager JWT) or get 401.
+  "manager-daily-digest",
+  "send-followup-emails",
   // license-milestone-sms-drain (MP-341): pg_cron jobid 94 invokes it every 10 min
   // through run_automation_job with the bot bearer; the handler rejects any
   // caller without it, so verify_jwt=false is the cron seam, not an open door.
@@ -592,6 +597,11 @@ const PUBLIC_CONTRACT = {
   "send-aged-lead-email": "in_handler_gate",
   // bulk-agent-message: requireSendAuth, admin_or_manager. Caller AgentManagement.
   "bulk-agent-message": "in_handler_gate",
+  // PL-WIB-DIGEST-GATE: apex_bot_token bearer (pg_cron jobs 19 and 108), else
+  // requireSendAuth, admin_or_manager. manager-daily-digest has no per-day
+  // marker, so every unauthenticated POST mailed all managers + CC Sam again.
+  "manager-daily-digest": "in_handler_gate",
+  "send-followup-emails": "in_handler_gate",
   // send-batch-blast: requireSendAuth, admin_or_manager. Caller NotificationHub.
   "send-batch-blast": "in_handler_gate",
   // The four applicant blasts: requireSendAuth, admin_or_manager. Callers

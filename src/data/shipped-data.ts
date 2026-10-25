@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "John Riley and KJ Vaughn are out: logins banned at the auth layer, sessions killed, manager roles removed, and everyone who was under them (29 agents, 87 applicants, every live invite link) now sits under Sam. 66 of their recruits got a note from Sam the same hour.",
+    detail: "Their /r/ referral links keep working and now credit Sam instead of dying (a recruit who still has one lands in the right place). The lockout is recorded as deliberate so the Sunday doctor grades it as intended state rather than an accident, which is how the August lockout slipped back twice. Same wave: Ayro Book is Sam + Aisha only; the Supabase security advisor's two criticals are closed (RLS on two tables, four strike/unlicensed views moved off auth.users, two auth-backed views closed to logins). Historical production rows were not rewritten; totals unchanged.",
+    commit: "PL-TERMINATION-JR-KJ",
+  },
+  {
+    ts: "today",
     label: "The licensing email drip you turned off on 10-14 had kept running. The system health check was restarting it every day. It now stays off, and the health check no longer restarts any automation whose schedule is off.",
     detail: "Every 15 minutes the health check restarted any of four automations that had not run in 26 hours. All four schedules were off, so the health check was really what ran them. It ran the licensing drip 127 times since May and the retired numbers reminder 84 times, a second reminder on the day numbers-reminder already sent one. A bug made it worse: the drip's last email, \"don't let the momentum slip\", never recorded that it had been sent, so it went out on every run. That was 2,627 copies to 110 applicants in 30 days, up to 27 each (8,500 to 392 people in total), with no unsubscribe link. The last email now goes out once, the drip checks the unsubscribe list and carries the link, and the manager digest and churn check run on their own schedules as before.",
     commit: "PL-WIB-HEALTH-NO-FIRE",

@@ -49,6 +49,8 @@ PUBLIC_ALLOWLIST=(
   "submit-contracting-intake"
   "numbers-reminder"
   "resend-suppression-sync"   # pg_cron bot bearer; in-handler gate (check-function-contracts.mjs)
+  "manager-daily-digest"      # pg_cron job 19 bot bearer; in-handler gate (PL-WIB-DIGEST-GATE)
+  "send-followup-emails"      # pg_cron job 108 bot bearer; in-handler gate (PL-WIB-DIGEST-GATE)
   "slack-identity-admin"
   # MP-441 — RECOVERED FROM PROD, not a new decision. These two are ACTIVE in
   # the project today with verify_jwt=false (read live from the management API

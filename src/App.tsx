@@ -854,7 +854,7 @@ const App = () => (
                            <Route path="/dashboard/books" element={<ProtectedRoute requireAdmin allowManagers><BookFlips /></ProtectedRoute>} />
                            <Route path="/dashboard/sold-calls" element={<ProtectedRoute requireAdmin allowManagers><SoldCalls /></ProtectedRoute>} />
                            <Route path="/dashboard/easy-resells" element={<ProtectedRoute requireAdmin allowManagers><EasyResells /></ProtectedRoute>} />
-                           <Route path="/dashboard/ayro-book" element={<ProtectedRoute requireAdmin><AyroBook /></ProtectedRoute>} />
+                           <Route path="/dashboard/ayro-book" element={<ProtectedRoute requireAdmin allowManagers><AyroBook /></ProtectedRoute>} />
                            <Route path="/dashboard/admin/book-quality" element={<LegacyWorkspaceRedirect to="/dashboard/book-quality" />} />
                            {/* ReadyMode dialer integration — credentials live in system_settings */}
                            <Route path="/dashboard/readymode" element={<ProtectedRoute requireAdmin><ReadyModeIntegration /></ProtectedRoute>} />

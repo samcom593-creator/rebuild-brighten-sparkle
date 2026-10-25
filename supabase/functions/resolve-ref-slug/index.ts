@@ -69,7 +69,7 @@ Deno.serve(async (req: Request) => {
   // have NULL there and .eq("is_deactivated", false) would silently exclude
   // them.
   const SELECT_COLS =
-    "id, user_id, display_name, agent_code, profile_id, is_deactivated, profiles:profile_id(full_name)";
+    "id, user_id, display_name, agent_code, profile_id, is_deactivated, status, manager_id, canonical_agent_id, profiles:profile_id(full_name)";
 
   let { data, error } = await supabase
     .from("agents")
@@ -104,11 +104,30 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  if (data?.is_deactivated === true) {
-    return jsonResponse({ resolved: false, reason: "deactivated" });
+  if (!data) return jsonResponse({ resolved: false });
+
+  // 2026-10-25 (PL-TERMINATION-RECODE): a terminated manager's link keeps working
+  // and credits the person their team was recoded to. John Riley and KJ Vaughn
+  // were terminated with live /r/ links in the field; "resolved: false" here
+  // would have dropped every recruit who clicked one onto an unattributed
+  // application. Walk up the manager chain to the first live agent (the
+  // canonical row when the upline is a duplicate), at most 4 hops.
+  let redirectedFrom: string | null = null;
+  let hops = 0;
+  while (data && (data.is_deactivated === true || data.status === "terminated") && hops < 4) {
+    const upId = (data as any).canonical_agent_id ?? (data as any).manager_id;
+    if (!upId) { data = null; break; }
+    const { data: up, error: upErr } = await supabase
+      .from("agents").select(SELECT_COLS).eq("id", upId).maybeSingle();
+    if (upErr || !up) { data = null; break; }
+    redirectedFrom = redirectedFrom ?? slug;
+    data = up as typeof data;
+    hops++;
   }
 
-  if (!data) return jsonResponse({ resolved: false });
+  if (!data || data.is_deactivated === true || data.status === "terminated") {
+    return jsonResponse({ resolved: false, reason: "deactivated" });
+  }
 
   const name =
     data.display_name?.trim()
@@ -121,5 +140,6 @@ Deno.serve(async (req: Request) => {
     user_id: data.user_id,
     display_name: name,
     agent_code: data.agent_code,
+    ...(redirectedFrom ? { redirected_from: redirectedFrom } : {}),
   });
 });

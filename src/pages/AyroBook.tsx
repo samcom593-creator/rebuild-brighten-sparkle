@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { AlertTriangle, CheckCircle2, ClipboardPaste, Copy, ExternalLink, Loader2, Pencil, Phone, Search, ShieldAlert } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { SOLD_CALL_EXTRA_UID } from "@/hooks/useSoldCallKeys";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,9 +52,11 @@ const CARRIER_TONES = [
 ];
 
 export default function AyroBook() {
-  const { isAdmin } = useAuth();
+  // Sam + Aisha only (2026-10-25, Sam: "make sure it's just me and Aisha"); the database gate is can_view_sold_calls().
+  const { isAdmin, user } = useAuth();
+  const canView = !!isAdmin || user?.id === SOLD_CALL_EXTRA_UID;
   usePageTitle("Ayro Financial Book");
-  const q = useQuery({ queryKey: [AYRO_BOOK_KEY], queryFn: fetchAyroBook, staleTime: 60_000, refetchInterval: 5 * 60_000, enabled: !!isAdmin });
+  const q = useQuery({ queryKey: [AYRO_BOOK_KEY], queryFn: fetchAyroBook, staleTime: 60_000, refetchInterval: 5 * 60_000, enabled: canView });
 
   const [period, setPeriod] = useState<PeriodKey>("all");
   const [carrier, setCarrier] = useState<string>(ALL);
@@ -100,7 +103,7 @@ export default function AyroBook() {
     return (c: string) => CARRIER_TONES[Math.max(0, order.indexOf(c)) % CARRIER_TONES.length];
   }, [all]);
 
-  if (!isAdmin) {
+  if (!canView) {
     return <div className="mx-auto w-full max-w-md px-4 py-16 text-center text-sm text-muted-foreground">This page is restricted.</div>;
   }
 

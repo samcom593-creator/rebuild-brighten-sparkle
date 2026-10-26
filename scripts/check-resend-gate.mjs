@@ -37,9 +37,7 @@ const REST_READERS = {
   "resend-suppression-sync/index.ts": "GETs /emails to build the suppression list; sends nothing",
 };
 // Known debt. Remove a line when its file is fixed; never add one.
-const UNGATED_SDK = new Set([
-  "seminar-confirmation/index.ts", // held by a concurrent worker's uncommitted edit on 2026-10-22
-]);
+const UNGATED_SDK = new Set([]);
 const RAW_REST = new Set([
   "apex-outbox-dispatcher/index.ts", "brand-collab/index.ts", "check-early-performance/index.ts",
   "check-low-aop-friday/index.ts", "detect-dropped-leads/index.ts", "detect-production-gaps/index.ts",

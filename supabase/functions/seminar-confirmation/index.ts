@@ -13,6 +13,8 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { gateResend } from "../_shared/resend-gate.ts";
+import { BRAND_NAME } from "../_shared/brand.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -31,7 +33,7 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const resendKey = Deno.env.get("RESEND_API_KEY");
 const supabase = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
-const resend = resendKey ? new Resend(resendKey) : null;
+const resend = resendKey ? gateResend(new Resend(resendKey)) : null;
 
 Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -56,7 +58,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   if (!app.email) return json({ ok: true, skipped: "no email on file" });
 
   const first = esc(String(app.first_name || "there").trim() || "there");
-  const subject = "You're licensed. Book your Apex interview.";
+  const subject = "You're licensed. Book your interview.";
   const html = `
   <div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;">
     <div style="background:#047857;padding:22px 20px;text-align:center;border-radius:12px 12px 0 0;">
@@ -69,19 +71,24 @@ Deno.serve(async (req: Request): Promise<Response> => {
         <a href="${INTERVIEW_URL}" style="display:inline-block;background:#047857;color:#fff;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:700;font-size:16px;">Book your interview</a>
       </p>
       <p style="color:#6b7280;font-size:13px;margin:0;">Or paste this link: <a href="${INTERVIEW_URL}" style="color:#047857;">${INTERVIEW_URL}</a></p>
-      <p style="color:#111827;margin:24px 0 0;">Talk soon,<br/><strong>Sam</strong><br/>Apex Financial</p>
+      <p style="color:#111827;margin:24px 0 0;">Talk soon,<br/><strong>Sam</strong><br/>${BRAND_NAME}</p>
       <p style="color:#9ca3af;font-size:12px;margin:16px 0 0;">Instagram ${IG}</p>
     </div>
   </div>`;
-  const text = `${first}, you're licensed. The next step is a quick 10 to 15 minute interview call. Book a time: ${INTERVIEW_URL} . Talk soon, Sam, Apex Financial. Instagram ${IG}`;
+  const text = `${first}, you're licensed. The next step is a quick 10 to 15 minute interview call. Book a time: ${INTERVIEW_URL} . Talk soon, Sam, ${BRAND_NAME}. Instagram ${IG}`;
 
   if (!resend) return json({ ok: true, skipped: "resend not configured" });
   try {
     const r = await resend.emails.send({
-      from: "Apex Financial <notifications@apex-financial.org>",
+      from: `${BRAND_NAME} <notifications@apex-financial.org>`,
       to: [String(app.email)],
       subject, html, text,
     });
+    // The SDK resolves { data: null, error } on a refusal (suppressed or
+    // non-routable recipient, via gateResend) or a Resend error; it does not
+    // throw. Until 2026-10-26 this returned sent:true for those too.
+    const sendErr = (r as { error?: { message?: string } | null })?.error;
+    if (sendErr) return json({ ok: false, sent: false, error: String(sendErr.message ?? sendErr).slice(0, 300) }, 200);
     return json({ ok: true, sent: true, id: (r as { data?: { id?: string } })?.data?.id ?? null });
   } catch (e) {
     return json({ ok: false, error: String(e).slice(0, 300) }, 200); // 200 so fire-and-forget caller logs no hard failure

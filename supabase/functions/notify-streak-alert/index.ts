@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { gateResend } from "../_shared/resend-gate.ts";
+import { requireSendAuth } from "../_shared/require-send-auth.ts";
 
 const resend = gateResend(new Resend(Deno.env.get("RESEND_API_KEY")));
 
@@ -25,6 +26,11 @@ serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+  // PL-LEAK-GATE (2026-10-25): this function was public (verify_jwt=false, no auth) and sends mail or writes rows
+  // from caller-supplied ids. Service key always passes; otherwise a signed-in any authenticated JWT.
+  const leakGate = await requireSendAuth(req, { floor: "any_authenticated" });
+  if (!leakGate.ok) return new Response(JSON.stringify({ ok: false, error: leakGate.error }), { status: leakGate.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
 
   try {
     const { agentId, agentName }: StreakAlertRequest = await req.json();

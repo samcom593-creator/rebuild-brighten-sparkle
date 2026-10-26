@@ -125,10 +125,23 @@ const handler = async (req: Request): Promise<Response> => {
     // terminated one). .maybeSingle() returned null for exactly those people, so
     // this fell through to the user_id fallback below and stamped
     // portal_password_set on BOTH rows. Resolve to the live row deliberately.
-    const { row: agent } = await resolveOne<{ id: string }>(
+    const { row: agent } = await resolveOne<{ id: string; is_deactivated: boolean | null; status: string | null }>(
       supabaseAdmin.from("agents").select(`id, ${AGENT_RANK_COLUMNS}`).eq("profile_id", profile.id),
       { prefer: preferLiveAgent, label: "agents.by_profile_id" },
     );
+
+    // PL-LEAK-GATE (2026-10-25): this path mints a brand-new login for whatever agent row the
+    // profile points at, with no liveness check, so a terminated agent (or a duplicate row of one)
+    // could be revived through it. Refuse when the row is dead or the person is suspended.
+    const { data: suspension } = profile.user_id
+      ? await supabaseAdmin.from("agent_access_suspensions").select("user_id").eq("user_id", profile.user_id).is("lifted_at", null).maybeSingle()
+      : { data: null };
+    if (suspension || (agent && (agent.is_deactivated === true || agent.status === "terminated"))) {
+      return new Response(
+        JSON.stringify({ ok: false, error: "This account is closed. Contact your manager." }),
+        { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } },
+      );
+    }
 
     if (agent) {
       const { error: agentUpdateError } = await supabaseAdmin

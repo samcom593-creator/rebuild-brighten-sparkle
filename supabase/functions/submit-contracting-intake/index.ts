@@ -34,6 +34,7 @@ import {
   rateLimitVerdict,
 } from "../_shared/intake-guard.ts";
 import { findAuthUserByEmail, type AuthUserLister } from "../_shared/find-auth-user.ts";
+import { requireSendAuth } from "../_shared/require-send-auth.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -220,6 +221,11 @@ async function provisionOnboarding(
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  // PL-LEAK-GATE (2026-10-25): this function was public (verify_jwt=false, no auth) and sends mail or writes rows
+  // from caller-supplied ids. Service key always passes; otherwise a signed-in staff JWT.
+  const leakGate = await requireSendAuth(req, { floor: "staff" });
+  if (!leakGate.ok) return new Response(JSON.stringify({ ok: false, error: leakGate.error }), { status: leakGate.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
   if (req.method !== "POST") return errorResponse("POST only", 405, "METHOD_NOT_ALLOWED");
   if (!SUPABASE_URL || !SERVICE_KEY) {
     return errorResponse("Server configuration missing", 503, "NOT_CONFIGURED");

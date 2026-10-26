@@ -10,6 +10,7 @@ import { gateResend } from "../_shared/resend-gate.ts";
 import { createHandler } from "../_shared/handler.ts";
 import { requireRole } from "../_shared/auth.ts";
 import { jsonResponse } from "../_shared/cors.ts";
+import { requireSendAuth } from "../_shared/require-send-auth.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -46,6 +47,11 @@ Deno.serve(
       rateLimit: { maxRequests: 10, windowSeconds: 60 },
     },
     async (req, ctx) => {
+  // PL-LEAK-GATE (2026-10-25): this function was public (verify_jwt=false, no auth) and sends mail or writes rows
+  // from caller-supplied ids. Service key always passes; otherwise a signed-in staff JWT.
+  const leakGate = await requireSendAuth(req, { floor: "staff" });
+  if (!leakGate.ok) return new Response(JSON.stringify({ ok: false, error: leakGate.error }), { status: leakGate.status, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
+
       // Above the body read and above the roster query: refusing late would
       // still let an unprivileged caller enumerate the active roster's size.
       // requireRole throws AuthError(403) when has_role errors OR returns false,

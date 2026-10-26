@@ -10,6 +10,7 @@ import { gateResend } from "../_shared/resend-gate.ts";
 import { createHandler } from "../_shared/handler.ts";
 import { jsonResponse } from "../_shared/cors.ts";
 import { parseBody, v } from "../_shared/validate.ts";
+import { requireSendAuth } from "../_shared/require-send-auth.ts";
 
 const resend = gateResend(new Resend(Deno.env.get("RESEND_API_KEY")));
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -44,6 +45,11 @@ Deno.serve(
       rateLimit: { maxRequests: 60, windowSeconds: 60 },
     },
     async (req, ctx) => {
+  // PL-LEAK-GATE (2026-10-25): this function was public (verify_jwt=false, no auth) and sends mail or writes rows
+  // from caller-supplied ids. Service key always passes; otherwise a signed-in any authenticated JWT.
+  const leakGate = await requireSendAuth(req, { floor: "any_authenticated" });
+  if (!leakGate.ok) return new Response(JSON.stringify({ ok: false, error: leakGate.error }), { status: leakGate.status, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
+
       if (!ctx.auth) return jsonResponse({ error: "Unauthorized" }, 401);
       const { agentId, note } = await parseBody(req, BodySchema);
 

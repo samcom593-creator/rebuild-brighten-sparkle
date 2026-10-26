@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { createHandler } from "../_shared/handler.ts";
 import { jsonResponse } from "../_shared/cors.ts";
 import { parseBody, v } from "../_shared/validate.ts";
+import { requireSendAuth } from "../_shared/require-send-auth.ts";
 
 const BodySchema = v.object({
   niprNumber: v.string({ required: true, min: 1, max: 32 }),
@@ -18,6 +19,11 @@ Deno.serve(
       rateLimit: { maxRequests: 30, windowSeconds: 60 },
     },
     async (req) => {
+  // PL-LEAK-GATE (2026-10-25): this function was public (verify_jwt=false, no auth) and sends mail or writes rows
+  // from caller-supplied ids. Service key always passes; otherwise a signed-in staff JWT.
+  const leakGate = await requireSendAuth(req, { floor: "staff" });
+  if (!leakGate.ok) return new Response(JSON.stringify({ ok: false, error: leakGate.error }), { status: leakGate.status, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
+
       const { niprNumber, applicationId, firstName, lastName, state } = await parseBody(req, BodySchema);
 
       const supabase = createClient(

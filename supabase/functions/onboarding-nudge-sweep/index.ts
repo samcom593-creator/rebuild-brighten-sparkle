@@ -17,6 +17,7 @@
 // Enum fix: commit 2080b3e deactivation_reason
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { requireSendAuth } from "../_shared/require-send-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -250,6 +251,11 @@ async function sweep(dryRun: boolean, limit: number) {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  // PL-LEAK-GATE (2026-10-25): this function was public (verify_jwt=false, no auth) and sends mail or writes rows
+  // from caller-supplied ids. Service key always passes; otherwise a signed-in staff JWT.
+  const leakGate = await requireSendAuth(req, { floor: "staff" });
+  if (!leakGate.ok) return new Response(JSON.stringify({ ok: false, error: leakGate.error }), { status: leakGate.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
 
   let body: { dry_run?: boolean; limit?: number } = {};
   try { body = await req.json(); } catch { /* allow empty */ }

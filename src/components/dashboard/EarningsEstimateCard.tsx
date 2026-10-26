@@ -97,7 +97,7 @@ export function EarningsEstimateCard() {
                 {money(earned)}
               </p>
               <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
-                Carrier can pay on this
+                In-force deals only, at your advance rate
               </p>
             </div>
             <div className="min-w-0">
@@ -108,7 +108,7 @@ export function EarningsEstimateCard() {
                 {money(pending)}
               </p>
               <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
-                Submitted, not issued yet
+                Submitted, not issued yet (advance basis)
               </p>
             </div>
           </div>

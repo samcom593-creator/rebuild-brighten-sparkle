@@ -12,6 +12,12 @@ export interface ShippedItem {
 
 export const SHIPPED: ShippedItem[] = [
   {
+    ts: "Oct 27, 2026",
+    label: "Agent-Cloud verification now has a measured inventory and an explicit list of remaining proof.",
+    detail: "AC-P10: captured the current route, page, function, guard, test and live database inventory, with a repeatable read-only inventory command and item-level evidence report. Static checks and public HTTP responses are recorded separately from authenticated behavior. Full rebuild sign-off remains open until the role/viewport matrix, permission denials and critical write-and-delivery paths have direct evidence.",
+    commit: "AC-P10-VERIFICATION-INVENTORY",
+  },
+  {
     ts: "today",
     label: "Five notification functions that yesterday's leak gate left open to any self-registered login are closed: a stranger can no longer email the whole active roster, every agent a chosen id \"passed\", or any agent's manager. CI on main is green again.",
     detail: "The census guard in the Deno tests did its job: it refused eight functions put on the any-login floor with no reason written. Read one by one, four took an agent id off the request and mailed about it, so they now require a real agent record or a staff role and only ever act on the caller's own record (staff may act for their team). The note sender is staff-only. Names and notes are escaped before they reach email HTML. Three stay on the any-login floor with their reason written, two of them naming open items for you: the link-account function can re-bind an active agent's login to a new signup, and signup emails are never confirmed, so a stranger can register as a licensed applicant's address. Also pruned the two functions the leak gate fixed from the type-check baseline, which is the other half of why CI was red.",

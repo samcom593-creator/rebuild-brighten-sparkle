@@ -3,6 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { gateResend } from "../_shared/resend-gate.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
+import { bodyAgentAllowed, callerUid, resolveCallerScope } from "../_shared/caller-binding.ts";
+import { escapeHtml } from "../_shared/notify-caller-policy.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -23,8 +25,11 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
   // PL-LEAK-GATE (2026-10-25): this function was public (verify_jwt=false, no auth) and sends mail or writes rows
-  // from caller-supplied ids. Service key always passes; otherwise a signed-in any authenticated JWT.
-  const leakGate = await requireSendAuth(req, { floor: "any_authenticated" });
+  // from caller-supplied ids. Service key always passes; otherwise a signed-in JWT.
+  // PL-LEAK-GATE-CENSUS (2026-10-27): "any_authenticated" let any signup mail the manager of any
+  // agents.id it named. staff_or_agent refuses a login with no agents row, and the body id is
+  // bound to the caller below (the only UI caller, useOnboardingCourse, passes its own id).
+  const leakGate = await requireSendAuth(req, { floor: "staff_or_agent" });
   if (!leakGate.ok) return new Response(JSON.stringify({ ok: false, error: leakGate.error }), { status: leakGate.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
 
@@ -36,6 +41,17 @@ const handler = async (req: Request): Promise<Response> => {
       SUPABASE_URL,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
+
+    // PL-LEAK-GATE-CENSUS: without a staff role the body id must be one of the caller's own
+    // agents rows; the service key stays unbound.
+    const uid = callerUid(leakGate.caller);
+    if (uid) {
+      const scope = await resolveCallerScope(supabaseClient, uid);
+      if (!scope) return new Response(JSON.stringify({ ok: false, error: "caller scope unavailable" }), { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (!bodyAgentAllowed(agentId, scope.ownAgentIds, scope.isStaff)) {
+        return new Response(JSON.stringify({ ok: false, error: "forbidden: not your agent record" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
 
     // Get agent details
     const { data: agent, error: agentError } = await supabaseClient
@@ -67,8 +83,9 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const agentName = profile.full_name || "Unknown Agent";
-    const agentEmail = profile.email;
+    // Both land in HTML below; a profile name is user-editable text.
+    const agentName = escapeHtml(profile.full_name || "Unknown Agent");
+    const agentEmail = escapeHtml(profile.email);
 
     // Look up manager's email
     let managerEmail: string | null = null;

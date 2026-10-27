@@ -11,6 +11,7 @@ import { createHandler } from "../_shared/handler.ts";
 import { jsonResponse } from "../_shared/cors.ts";
 import { parseBody, v } from "../_shared/validate.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
+import { escapeHtml } from "../_shared/notify-caller-policy.ts";
 
 const resend = gateResend(new Resend(Deno.env.get("RESEND_API_KEY")));
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -46,8 +47,11 @@ Deno.serve(
     },
     async (req, ctx) => {
   // PL-LEAK-GATE (2026-10-25): this function was public (verify_jwt=false, no auth) and sends mail or writes rows
-  // from caller-supplied ids. Service key always passes; otherwise a signed-in any authenticated JWT.
-  const leakGate = await requireSendAuth(req, { floor: "any_authenticated" });
+  // from caller-supplied ids. Service key always passes; otherwise a signed-in JWT.
+  // PL-LEAK-GATE-CENSUS (2026-10-27): "any_authenticated" let any signup mail any agent's manager
+  // (cc Sam) a 5,000-character note of its choosing. Notes are written by staff about agents
+  // (AgentProfileDrawer), so the floor is "staff": every STAFF_ROLES role, no agents-row fallback.
+  const leakGate = await requireSendAuth(req, { floor: "staff" });
   if (!leakGate.ok) return new Response(JSON.stringify({ ok: false, error: leakGate.error }), { status: leakGate.status, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
 
       if (!ctx.auth) return jsonResponse({ error: "Unauthorized" }, 401);
@@ -109,10 +113,10 @@ Deno.serve(
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #3b82f6;">New Agent Note</h2>
-            <p>Hi ${managerProfile.full_name || "Manager"},</p>
-            <p>A new note has been added for your agent <strong>${agentName}</strong>:</p>
+            <p>Hi ${escapeHtml(managerProfile.full_name || "Manager")},</p>
+            <p>A new note has been added for your agent <strong>${escapeHtml(agentName)}</strong>:</p>
             <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; margin: 16px 0;">
-              <p style="margin: 0; color: #374151;">"${note}"</p>
+              <p style="margin: 0; color: #374151;">"${escapeHtml(note)}"</p>
             </div>
             <p>Log in to the CRM to view full details and history.</p>
             <br/>

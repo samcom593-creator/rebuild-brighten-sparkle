@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Five notification functions that yesterday's leak gate left open to any self-registered login are closed: a stranger can no longer email the whole active roster, every agent a chosen id \"passed\", or any agent's manager. CI on main is green again.",
+    detail: "The census guard in the Deno tests did its job: it refused eight functions put on the any-login floor with no reason written. Read one by one, four took an agent id off the request and mailed about it, so they now require a real agent record or a staff role and only ever act on the caller's own record (staff may act for their team). The note sender is staff-only. Names and notes are escaped before they reach email HTML. Three stay on the any-login floor with their reason written, two of them naming open items for you: the link-account function can re-bind an active agent's login to a new signup, and signup emails are never confirmed, so a stranger can register as a licensed applicant's address. Also pruned the two functions the leak gate fixed from the type-check baseline, which is the other half of why CI was red.",
+    commit: "PL-LEAK-GATE-CENSUS",
+  },
+  {
+    ts: "today",
     label: "John Riley and KJ Vaughn are out: logins banned at the auth layer, sessions killed, manager roles removed, and everyone who was under them (29 agents, 87 applicants, every live invite link) now sits under Sam. 66 of their recruits got a note from Sam the same hour.",
     detail: "Their /r/ referral links keep working and now credit Sam instead of dying (a recruit who still has one lands in the right place). The lockout is recorded as deliberate so the Sunday doctor grades it as intended state rather than an accident, which is how the August lockout slipped back twice. Same wave: Ayro Book is Sam + Aisha only; the Supabase security advisor's two criticals are closed (RLS on two tables, four strike/unlicensed views moved off auth.users, two auth-backed views closed to logins). Historical production rows were not rewritten; totals unchanged.",
     commit: "PL-TERMINATION-JR-KJ",

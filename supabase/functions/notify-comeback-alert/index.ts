@@ -3,6 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { gateResend } from "../_shared/resend-gate.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
+import { bodyAgentAllowed, callerUid, resolveCallerScope } from "../_shared/caller-binding.ts";
+import { escapeHtml } from "../_shared/notify-caller-policy.ts";
 
 const resend = gateResend(new Resend(Deno.env.get("RESEND_API_KEY")));
 
@@ -23,28 +25,51 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
   // PL-LEAK-GATE (2026-10-25): this function was public (verify_jwt=false, no auth) and sends mail or writes rows
-  // from caller-supplied ids. Service key always passes; otherwise a signed-in any authenticated JWT.
-  const leakGate = await requireSendAuth(req, { floor: "any_authenticated" });
+  // from caller-supplied ids. Service key always passes; otherwise a signed-in JWT.
+  // PL-LEAK-GATE-CENSUS (2026-10-27): "any_authenticated" admitted strangers (signup is open) to a
+  // roster-wide bcc with a body-supplied name. staff_or_agent refuses a login with no agents row,
+  // and the body agent id is bound to the caller below.
+  const leakGate = await requireSendAuth(req, { floor: "staff_or_agent" });
   if (!leakGate.ok) return new Response(JSON.stringify({ ok: false, error: leakGate.error }), { status: leakGate.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
 
   try {
     const { agentId, agentName, previousRank, newRank }: ComebackAlertRequest = await req.json();
 
-    console.log(`⚡ Checking comeback for ${agentName}: #${previousRank} → #${newRank}`);
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // PL-LEAK-GATE-CENSUS: the floor proves a login, not that the login may send about THIS
+    // agent. Without a staff role the body id must be one of the caller's own agents rows.
+    const uid = callerUid(leakGate.caller);
+    if (uid) {
+      const scope = await resolveCallerScope(supabase, uid);
+      if (!scope) return new Response(JSON.stringify({ ok: false, error: "caller scope unavailable" }), { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (!bodyAgentAllowed(agentId, scope.ownAgentIds, scope.isStaff)) {
+        return new Response(JSON.stringify({ ok: false, error: "forbidden: not your agent record" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
+
+    // The ranks are body claims. Coerce before the gate below: with a non-number both
+    // comparisons are false and the "not qualifying" exit would never fire.
+    const prev = Number(previousRank);
+    const next = Number(newRank);
+    if (!Number.isFinite(prev) || !Number.isFinite(next)) {
+      return new Response(JSON.stringify({ ok: false, error: "previousRank and newRank must be numbers" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    const safeName = escapeHtml(agentName);
+
+    console.log(`⚡ Checking comeback for ${safeName}: #${prev} → #${next}`);
 
     // Only send if jumped INTO top 3 FROM outside top 5
-    if (newRank > 3 || previousRank <= 5) {
+    if (next > 3 || prev <= 5) {
       console.log("Not a qualifying comeback - no alert");
       return new Response(
         JSON.stringify({ success: true, alert_sent: false, reason: "not qualifying" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Get all live agent emails
     const { data: agents, error: agentsError } = await supabase
@@ -70,7 +95,7 @@ serve(async (req) => {
       );
     }
 
-    const rankJump = previousRank - newRank;
+    const rankJump = prev - next;
     
     const emailHtml = `
 <!DOCTYPE html>
@@ -99,7 +124,7 @@ serve(async (req) => {
           <tr>
             <td style="background: rgba(0,0,0,0.2); padding: 32px 24px; text-align: center;">
               <h2 style="color: white; font-size: 28px; font-weight: 900; margin: 0 0 20px 0;">
-                ${agentName}
+                ${safeName}
               </h2>
               <p style="color: rgba(255,255,255,0.9); font-size: 18px; margin: 0 0 20px 0;">
                 just made a <span style="color: #fef08a; font-weight: 900;">BIG MOVE!</span>
@@ -109,12 +134,12 @@ serve(async (req) => {
               <div style="display: flex; justify-content: center; align-items: center; gap: 16px; margin: 20px 0;">
                 <div style="background: rgba(0,0,0,0.3); border-radius: 12px; padding: 20px 24px;">
                   <p style="color: rgba(255,255,255,0.6); font-size: 12px; margin: 0 0 4px 0; text-transform: uppercase;">Was</p>
-                  <p style="color: #f87171; font-size: 36px; font-weight: 900; margin: 0;">#${previousRank}</p>
+                  <p style="color: #f87171; font-size: 36px; font-weight: 900; margin: 0;">#${prev}</p>
                 </div>
                 <div style="font-size: 32px;">→</div>
                 <div style="background: rgba(0,0,0,0.3); border-radius: 12px; padding: 20px 24px;">
                   <p style="color: rgba(255,255,255,0.6); font-size: 12px; margin: 0 0 4px 0; text-transform: uppercase;">Now</p>
-                  <p style="color: #4ade80; font-size: 36px; font-weight: 900; margin: 0;">#${newRank}</p>
+                  <p style="color: #4ade80; font-size: 36px; font-weight: 900; margin: 0;">#${next}</p>
                 </div>
               </div>
               
@@ -159,7 +184,7 @@ serve(async (req) => {
         from: "Galaxy Financial <notifications@apex-financial.org>",
         bcc: recipients,
         to: "info@kingofsales.net",
-        subject: `⚡ COMEBACK! ${agentName} jumped from #${previousRank} to #${newRank}!`,
+        subject: `⚡ COMEBACK! ${agentName} jumped from #${prev} to #${next}!`,
         html: emailHtml,
       });
       console.log(`✅ Comeback alert sent to ${recipients.length} agents`);

@@ -3,6 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { gateResend } from "../_shared/resend-gate.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
+import { bodyAgentAllowed, callerUid, resolveCallerScope } from "../_shared/caller-binding.ts";
+import { escapeHtml } from "../_shared/notify-caller-policy.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const resend = gateResend(new Resend(RESEND_API_KEY));
@@ -23,8 +25,11 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
   // PL-LEAK-GATE (2026-10-25): this function was public (verify_jwt=false, no auth) and sends mail or writes rows
-  // from caller-supplied ids. Service key always passes; otherwise a signed-in any authenticated JWT.
-  const leakGate = await requireSendAuth(req, { floor: "any_authenticated" });
+  // from caller-supplied ids. Service key always passes; otherwise a signed-in JWT.
+  // PL-LEAK-GATE-CENSUS (2026-10-27): "any_authenticated" let any signup pick submittingAgentId
+  // and productionDate and mail every agent that id "passed". staff_or_agent refuses a login with
+  // no agents row, and the body id is bound to the caller below.
+  const leakGate = await requireSendAuth(req, { floor: "staff_or_agent" });
   if (!leakGate.ok) return new Response(JSON.stringify({ ok: false, error: leakGate.error }), { status: leakGate.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
 
@@ -37,6 +42,20 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
+
+    // PL-LEAK-GATE-CENSUS: without a staff role the submitting id must be one of the caller's
+    // own agents rows (staff enter production for team members); the service key stays unbound.
+    const uid = callerUid(leakGate.caller);
+    if (uid) {
+      const scope = await resolveCallerScope(supabaseAdmin, uid);
+      if (!scope) return new Response(JSON.stringify({ ok: false, error: "caller scope unavailable" }), { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (!bodyAgentAllowed(submittingAgentId, scope.ownAgentIds, scope.isStaff)) {
+        return new Response(JSON.stringify({ ok: false, error: "forbidden: not your agent record" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
+    if (typeof productionDate !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(productionDate)) {
+      return new Response(JSON.stringify({ ok: false, error: "productionDate must be YYYY-MM-DD" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     // Get yesterday's date for comparison
     const yesterday = new Date(productionDate);
@@ -135,8 +154,9 @@ const handler = async (req: Request): Promise<Response> => {
         continue;
       }
 
-      const passedName = (passedAgent as any).profile.full_name || "Agent";
-      const passerName = (passerAgent as any).profile.full_name;
+      // Profile names are user-editable text and land in HTML below.
+      const passedName = escapeHtml((passedAgent as any).profile.full_name || "Agent");
+      const passerName = escapeHtml((passerAgent as any).profile.full_name);
 
       const emailHtml = `
         <!DOCTYPE html>

@@ -88,6 +88,17 @@ Deno.test("send-notification is wired to the policy (source contract)", async ()
 // this until someone writes the reason.
 const ANY_AUTHENTICATED_FLOOR: Record<string, string> = {
   "send-notification": "member callers held to notify-caller-policy (Sam's inboxes or an RLS-visible person)",
+  // PL-LEAK-GATE-CENSUS (2026-10-27). PL-LEAK-GATE put eight senders on this floor with no
+  // reason written. Read one by one: four took an agent id off the body and mailed about it
+  // (roster-wide bcc, or the id's manager), so they moved to staff_or_agent / staff and bind
+  // the id to the caller (contract test below). These three stay. Where a reason rests on an
+  // upstream guarantee that does not hold yet, it says so instead of pretending.
+  "notify-production-submitted":
+    "every read and recipient keys on the caller's own agents rows (agents.user_id = caller uid); a login with no agents row is 403. OPEN: link-account can re-bind agents.user_id without an .is('user_id', null) guard",
+  "self-enroll-course":
+    "reads no body; every row and the mail recipient key on the caller's own JWT (uid + email claim). OPEN: GoTrue signup autoconfirms, so the email claim is only as proven as signup is",
+  "update-user-email":
+    "handler 403s any JWT without a manager/admin user_roles row before it reads the body; managers are forced onto their own id",
 };
 
 Deno.test("any_authenticated sender floor census", async () => {
@@ -104,6 +115,24 @@ Deno.test("any_authenticated sender floor census", async () => {
     if (/floor\s*:\s*["']any_authenticated["']/.test(src)) found.push(entry.name);
   }
   assertEquals(found.sort(), Object.keys(ANY_AUTHENTICATED_FLOOR).sort());
+});
+
+// PL-LEAK-GATE-CENSUS (2026-10-27). The senders that mail about an agent id taken off the
+// body: floored above strangers, the id bound to the caller through _shared/caller-binding.ts,
+// and user text escaped before it reaches HTML. Source contract, like the two tests below it.
+Deno.test("senders that mail about a body agent id are floored above strangers and bound to the caller", async () => {
+  const read = (slug: string) => Deno.readTextFile(new URL(`../${slug}/index.ts`, import.meta.url));
+  for (const slug of ["notify-comeback-alert", "notify-rank-passed", "notify-streak-alert", "notify-course-started"]) {
+    const src = await read(slug);
+    assert(/requireSendAuth\(req, \{ floor: "staff_or_agent" \}\)/.test(src), `${slug}: floor drifted`);
+    assert(/callerUid\(leakGate\.caller\)/.test(src), `${slug}: caller is not resolved`);
+    assert(/bodyAgentAllowed\(/.test(src), `${slug}: body agent id is not bound to the caller`);
+    assert(/if \(!scope\) return new Response\([^;]*status: 503/.test(src), `${slug}: a failed scope read does not refuse`);
+    assert(/escapeHtml\(/.test(src), `${slug}: user text reaches HTML unescaped`);
+  }
+  const notes = await read("notify-notes-added");
+  assert(/requireSendAuth\(req, \{ floor: "staff" \}\)/.test(notes), "notify-notes-added: floor drifted");
+  assert(/escapeHtml\(note\)/.test(notes), "notify-notes-added: the note reaches HTML unescaped");
 });
 
 // PL-WIB-COURSE-ENROLL-FLOOR. Its recipient came off a row, but any signup can

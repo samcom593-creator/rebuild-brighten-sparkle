@@ -264,7 +264,7 @@ describe("SidebarLayout · mobile drawer contract", () => {
     const renders = source.match(/<GlobalSidebar/g) ?? [];
     expect(renders.length).toBe(2);
     expect(source).toMatch(/mobileOpen/);
-    expect(source).toContain("Actions and navigation");
+    expect(source).toContain("Navigation and quick actions");
     expect(source).toContain("<Sheet open={mobileOpen}");
   });
 });
@@ -288,6 +288,13 @@ describe("GlobalSidebar · an active group can be collapsed (F27)", () => {
     fireEvent.click(group("Sell")!);
     expect(group("Sell")!.getAttribute("aria-expanded")).toBe("true");
     expect(link("Call Center")).toBeTruthy();
+  });
+
+  it("marks the current page's link with aria-current and nothing else", () => {
+    setRoles({ isAdmin: true });
+    renderSidebar("/dashboard/call-center");
+    expect(link("Call Center")).toHaveAttribute("aria-current", "page");
+    expect(link("My Pipeline")).not.toHaveAttribute("aria-current");
   });
 
   it("still lets a group the page is not in collapse", () => {

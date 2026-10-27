@@ -858,18 +858,19 @@ export default function CalendarPage() {
   return (
     <div className="space-y-5 p-4 md:p-6">
       <PageHeader
-        eyebrow="Clients"
         eyebrowIcon={<CalendarIcon className="h-4 w-4" />}
         title="Calendar"
-        subtitle="Interviews, onboarding calls, appointments and client dates — one record each, times shown in their own zone."
-        actions={
+        subtitle="Appointments, interviews, and follow-ups."
+        primaryAction={<Button size="sm" onClick={() => openCreate()}><Plus className="mr-1 h-4 w-4" />Appointment</Button>}
+        secondaryActions={<Button variant="outline" size="sm" onClick={() => setSearchOpen(true)}><Search className="mr-1 h-4 w-4" />Schedule interview</Button>}
+        viewControls={
           <div className="flex flex-wrap items-center gap-2">
             <Button variant="outline" size="sm" onClick={goToday}>Today</Button>
             <div className="flex items-center">
-              <Button variant="outline" size="icon" className="h-8 w-8 rounded-r-none" aria-label="Previous period" onClick={() => step(-1)}>
+              <Button variant="outline" size="icon" className="h-10 w-10 rounded-r-none" aria-label="Previous period" onClick={() => step(-1)}>
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <Button variant="outline" size="icon" className="h-8 w-8 rounded-l-none border-l-0" aria-label="Next period" onClick={() => step(1)}>
+              <Button variant="outline" size="icon" className="h-10 w-10 rounded-l-none border-l-0" aria-label="Next period" onClick={() => step(1)}>
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
@@ -881,7 +882,7 @@ export default function CalendarPage() {
                   aria-pressed={view === mode}
                   onClick={() => changeView(mode)}
                   className={cn(
-                    "rounded px-3 py-1 text-xs font-medium capitalize transition-colors",
+                    "min-h-10 rounded px-3 py-2 text-sm font-medium capitalize transition-colors",
                     view === mode ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
                   )}
                 >
@@ -891,7 +892,7 @@ export default function CalendarPage() {
             </div>
             <Popover open={jumpOpen} onOpenChange={setJumpOpen}>
               <PopoverTrigger asChild>
-                <Button variant="outline" size="icon" className="h-8 w-8" aria-label="Jump to date">
+                <Button variant="outline" size="icon" className="h-10 w-10" aria-label="Jump to date">
                   <CalendarDays className="h-4 w-4" />
                 </Button>
               </PopoverTrigger>
@@ -909,45 +910,25 @@ export default function CalendarPage() {
                 />
               </PopoverContent>
             </Popover>
-            <Button variant="outline" size="sm" onClick={() => setSearchOpen(true)}>
-              <Search className="mr-1 h-4 w-4" />Schedule interview
-            </Button>
-            <Button size="sm" onClick={() => openCreate()}>
-              <Plus className="mr-1 h-4 w-4" />Appointment
-            </Button>
           </div>
         }
       />
 
-      {/* KPI strip: "In view" counts the rows painted under the current filter; Today and Next 30 are server counts */}
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-md border border-border bg-card px-4 py-3">
         {[
           { label: "In view", value: inViewTile, note: inViewNote(inView, rangeLabel) },
           { label: "Today", value: todayTile.value, note: `${format(parseISO(todayKey), "EEE, MMM d")}${staleNote(todayTile.stale)}` },
           { label: "Next 30 days", value: next30Tile.value, note: `all event kinds${staleNote(next30Tile.stale)}` },
         ].map((metric) => (
-          <Card key={metric.label}>
-            <CardContent className="p-4">
-              <p className="text-xs text-muted-foreground">{metric.label}</p>
-              <div className="mt-1 text-2xl font-semibold tabular-nums">{metric.value}</div>
-              <p className="line-clamp-2 text-xs text-muted-foreground">{metric.note}</p>
-            </CardContent>
-          </Card>
+          <div key={metric.label} className="min-w-0 flex-1">
+            <p className="text-xs text-muted-foreground">{metric.label}</p>
+            <div className="mt-1 text-lg font-semibold tabular-nums">{metric.value}</div>
+            <p className="mt-0.5 text-xs text-muted-foreground">{metric.note}</p>
+          </div>
         ))}
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">Booking sources</p>
-            <button
-              type="button"
-              className="mt-1 text-left text-sm font-medium text-primary underline-offset-2 hover:underline"
-              aria-expanded={providersOpen}
-              onClick={() => setProvidersOpen((v) => !v)}
-            >
-              {providersOpen ? "Hide provider status" : "Calendly, Google, reminders"}
-            </button>
-            <p className="truncate text-xs text-muted-foreground">read from sync logs, not assumed</p>
-          </CardContent>
-        </Card>
+        <Button type="button" variant="ghost" size="sm" className="ml-auto text-muted-foreground" aria-expanded={providersOpen} onClick={() => setProvidersOpen((v) => !v)}>
+          {providersOpen ? "Hide booking sources" : "Booking sources"}
+        </Button>
       </div>
 
       {providersOpen && <ProviderHealthPanel enabled={isStaff} />}

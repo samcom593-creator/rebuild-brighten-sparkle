@@ -69,7 +69,6 @@ export interface AgentCloudNavGroup {
   label: string;
   icon: ElementType;
   items: AgentCloudNavItem[];
-  kicker?: string;
   /** Account modes that see this group. Omit = everyone. Admin always sees it. */
   modes?: AccountMode[];
 }
@@ -140,7 +139,6 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
   {
     label: "Sell",
     icon: Target,
-    kicker: "MONEY TODAY",
     // Admits VAs for the Call Center: they work the recruit queue all day and
     // would otherwise have no path to it. Every other item stays producer-only.
     modes: [...PRODUCERS, "va", "va_manager"],
@@ -156,7 +154,6 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
     // not. This is the sidebar pointing at the leverage.
     label: "Grow",
     icon: UserPlus,
-    kicker: "BUILD THE TEAM",
     modes: RECRUITING,
     items: [
       // Each item names the modes whose route guard admits it (App.tsx). The
@@ -226,7 +223,6 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
     // section being absent, not by items sprinkled through five groups.
     label: "Owner",
     icon: Building2,
-    kicker: "ADMIN",
     items: [
       { label: "Launch Board", href: "/dashboard/launch-board", icon: Megaphone, adminOnly: true },
       { label: "Reports", href: "/dashboard/analytics", icon: BarChart3, adminOnly: true },

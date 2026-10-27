@@ -8,7 +8,9 @@ const read = (relative: string) => fs.readFileSync(path.join(root, relative), "u
 describe("recruiting command center", () => {
   it("uses one actionable command surface across applicants, interviews, and follow-ups", () => {
     const hero = read("src/components/recruiting/RecruitingCommandHero.tsx");
-    expect(hero).toContain("Every number opens the people behind it");
+    // Metrics are toggles that open the queue behind the number. The flat hero
+    // (2026-10-27) dropped the footer sentence that used to carry this contract.
+    expect(hero).toContain("aria-pressed={metric.active}");
     expect(hero).toContain("metric.onClick");
     expect(read("src/pages/DashboardApplicants.tsx")).toContain("<RecruitingCommandHero");
     expect(read("src/pages/Interviews.tsx")).toContain("<RecruitingCommandHero");

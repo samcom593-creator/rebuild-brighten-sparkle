@@ -135,9 +135,10 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
     return withTooltip(item.label, (
       <Link
         to={item.href}
+        aria-current={active ? "page" : undefined}
         onClick={mobile ? onToggle : undefined}
         className={cn(
-          "flex min-h-9 items-center rounded-md text-[13px] font-medium transition-colors",
+          "flex min-h-10 items-center rounded-lg text-sm font-medium transition-colors",
           mobile && "min-h-11",
           collapsed ? "justify-center px-2" : nested ? "gap-2.5 px-3" : "gap-3 px-3",
           active
@@ -161,7 +162,7 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
         onClick={() => collapsed ? onToggle() : setExpansion((value) => toggleNavGroup(value, group.label))}
         aria-expanded={open}
         className={cn(
-          "flex min-h-9 w-full items-center rounded-md text-[13px] font-medium transition-colors",
+          "flex min-h-10 w-full items-center rounded-lg text-sm font-medium transition-colors",
           mobile && "min-h-11",
           collapsed ? "justify-center px-2" : "gap-3 px-3",
           active ? "text-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground",
@@ -178,11 +179,6 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
         {withTooltip(group.label, trigger)}
         {!collapsed && open && (
           <div className="ml-[20px] space-y-0.5 border-l border-border pl-2">
-            {group.kicker && (
-              <div className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                {group.kicker}
-              </div>
-            )}
             {group.items.map((item) => <div key={item.href}>{renderLeaf(item, true)}</div>)}
           </div>
         )}

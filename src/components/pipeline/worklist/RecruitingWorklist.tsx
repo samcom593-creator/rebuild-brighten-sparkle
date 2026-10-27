@@ -302,10 +302,9 @@ export function RecruitingWorklist() {
   return (
     <div className="space-y-4">
       <PageHeader
-        eyebrow="Recruiting · Worklist"
-        title="Who to contact next"
-        subtitle="Open a person, contact them, record what happened, set the next step, move on."
-        actions={
+        title="Recruiting"
+        subtitle="Contact applicants, save outcomes, and schedule the next step."
+        viewControls={
           <div className="flex items-center gap-1 rounded-lg border border-border bg-card p-1">
             <Button
               size="sm"
@@ -363,7 +362,7 @@ export function RecruitingWorklist() {
       )}
 
       {/* Saved queues — counts are over every row loaded, not a page. */}
-      <nav aria-label="Saved queues" className="flex flex-wrap gap-1.5">
+      <nav aria-label="Saved queues" className="flex gap-1.5 overflow-x-auto py-1 [scrollbar-width:thin]">
         {QUEUE_DEFINITIONS.map((q) => (
           <button
             key={q.key}
@@ -372,7 +371,7 @@ export function RecruitingWorklist() {
             aria-pressed={queue === q.key}
             onClick={() => setParam({ queue: q.key, person: null })}
             className={cn(
-              "inline-flex min-h-9 items-center gap-2 rounded-md border px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
+              "inline-flex min-h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-md border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
               queue === q.key
                 ? "border-primary/50 bg-primary/10 text-foreground"
                 : "border-border bg-card text-muted-foreground hover:bg-muted/50 hover:text-foreground",
@@ -411,31 +410,6 @@ export function RecruitingWorklist() {
           </Button>
         </div>
       )}
-
-      <details className="group rounded-lg border border-border bg-card text-xs text-muted-foreground">
-        <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2 [&::-webkit-details-marker]:hidden">
-          <ChevronRight aria-hidden="true" className="h-3.5 w-3.5 shrink-0 transition-transform group-open:rotate-90" />
-          <span className="font-semibold text-foreground">Data status</span>
-          <span>· {coverageSummary(coverage)}</span>
-        </summary>
-        <div className="space-y-2 border-t border-border px-3 py-2">
-          <p>Queue rule: {activeDef?.description}.</p>
-          <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
-            {coverageFacts(rows.length, worklist.data?.coverage).map((fact) => (
-              <Fragment key={fact.label}>
-                <dt>{fact.label}</dt>
-                <dd className="tabular-nums text-foreground">{fact.value}</dd>
-              </Fragment>
-            ))}
-          </dl>
-          <p>“Today” is the Phoenix business day. Loaded {formatWhen(worklist.data?.loadedAt)}.</p>
-          {coverage.kind === "unknown" && (
-            <Button size="sm" variant="outline" onClick={() => void worklist.refetch()}>
-              <RefreshCw className="h-4 w-4" /> Retry the counts
-            </Button>
-          )}
-        </div>
-      </details>
 
       <div className="flex flex-col gap-2 sm:flex-row">
         <div className="relative flex-1">
@@ -507,7 +481,7 @@ export function RecruitingWorklist() {
         </div>
 
         {panelInline ? (
-          <aside aria-label="Selected person" className="sticky top-4 max-h-[calc(100vh-6rem)] overflow-y-auto rounded-xl border border-border bg-card p-4">
+          <aside aria-label="Selected person" className="sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto rounded-xl border border-border bg-card p-4">
             {panel}
           </aside>
         ) : (
@@ -522,6 +496,30 @@ export function RecruitingWorklist() {
           </Sheet>
         )}
       </div>
+      <details className="group rounded-lg border border-border bg-card text-xs text-muted-foreground">
+        <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2 [&::-webkit-details-marker]:hidden">
+          <ChevronRight aria-hidden="true" className="h-3.5 w-3.5 shrink-0 transition-transform group-open:rotate-90" />
+          <span className="font-semibold text-foreground">Data status</span>
+          <span>· {coverageSummary(coverage)}</span>
+        </summary>
+        <div className="space-y-2 border-t border-border px-3 py-2">
+          <p>Queue rule: {activeDef?.description}.</p>
+          <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
+            {coverageFacts(rows.length, worklist.data?.coverage).map((fact) => (
+              <Fragment key={fact.label}>
+                <dt>{fact.label}</dt>
+                <dd className="tabular-nums text-foreground">{fact.value}</dd>
+              </Fragment>
+            ))}
+          </dl>
+          <p>“Today” is the Phoenix business day. Loaded {formatWhen(worklist.data?.loadedAt)}.</p>
+          {coverage.kind === "unknown" && (
+            <Button size="sm" variant="outline" onClick={() => void worklist.refetch()}>
+              <RefreshCw className="h-4 w-4" /> Retry the counts
+            </Button>
+          )}
+        </div>
+      </details>
     </div>
   );
 }

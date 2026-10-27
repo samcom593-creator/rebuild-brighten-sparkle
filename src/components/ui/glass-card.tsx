@@ -19,7 +19,8 @@ interface GlassCardProps extends HTMLAttributes<HTMLDivElement> {
  *   - shadow-[0_8px_30px ...]  (colored glow shadow · banned per v22 §10.7)
  *
  * Now matches AgentLink restraint: 1px theme-aware border, no backdrop
- * blur, hover = bg shift only (not Y-axis transform), shadow-sm minimal.
+ * blur, hover = bg shift only (not Y-axis transform), no shadow at all
+ * since the 2026-10-27 flatten (the 1px border is the whole edge).
  * 50+ usages site-wide pick this up automatically.
  */
 export const GlassCard = forwardRef<HTMLDivElement, GlassCardProps>(
@@ -32,8 +33,8 @@ export const GlassCard = forwardRef<HTMLDivElement, GlassCardProps>(
     // both #FFFFFF, so card fills are byte-identical before/after; only the
     // borders and the subtle fill actually move.
     const variants = {
-      default: "bg-card border border-border shadow-sm",
-      strong:  "bg-card border border-foreground/20 shadow-sm",
+      default: "bg-card border border-border",
+      strong:  "bg-card border border-foreground/20",
       subtle:  "bg-card/50 border border-border",
     };
 
@@ -41,7 +42,7 @@ export const GlassCard = forwardRef<HTMLDivElement, GlassCardProps>(
       <div
         ref={ref}
         className={cn(
-          "rounded-md transition-base",
+          "rounded-md transition-colors",
           variants[variant],
           hoverEffect && "hover:bg-muted/50 cursor-pointer",
           className,

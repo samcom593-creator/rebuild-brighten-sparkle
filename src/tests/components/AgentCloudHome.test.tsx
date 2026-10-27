@@ -104,15 +104,24 @@ afterEach(() => {
 });
 
 describe("AgentCloudHome", () => {
-  it("F23: keeps the date bar and every sibling on screen while the dashboard RPC is still loading", () => {
+  it("F23: keeps the date bar, Ayro and every daily block on screen while the RPC loads; the Operations and Reports tabs hold the rest", () => {
     rpc.mockReturnValue(new Promise(() => undefined) as never);
     renderHome();
     expect(screen.getByRole("button", { name: "Year to date" })).toBeInTheDocument();
     expect(screen.getByText("Total IMO by agency")).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveAttribute("aria-busy", "true");
-    for (const id of ["join-your-team", "scoreboard", "ayro", "ops", "ops-summary", "records"]) {
+    // Ayro stays on the block beside the scoreboard (MP-AYRO-2, Sam: "make it live on the block").
+    for (const id of ["join-your-team", "scoreboard", "ayro", "ops"]) {
       expect(screen.getByTestId(id)).toBeInTheDocument();
     }
+    for (const id of ["ops-summary", "records"]) expect(screen.queryByTestId(id)).not.toBeInTheDocument();
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Operations" }), { button: 0, ctrlKey: false });
+    expect(screen.getByTestId("ops-summary")).toBeInTheDocument();
+    expect(screen.getByTestId("scoreboard")).toBeInTheDocument();
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Reports" }), { button: 0, ctrlKey: false });
+    expect(screen.getByTestId("records")).toBeInTheDocument();
+    expect(screen.getByTestId("scoreboard")).toBeInTheDocument();
+    expect(screen.getByTestId("ayro")).toBeInTheDocument();
   });
 
   it("one date bar: the RPC and Total IMO by agency read the scoreboard's month-to-date window", async () => {
@@ -193,6 +202,7 @@ describe("AgentCloudHome", () => {
     expect(panel.renders).toBe(0);
     expect(screen.queryByTestId("analytics-panel")).not.toBeInTheDocument();
 
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Reports" }), { button: 0, ctrlKey: false });
     const details = container.querySelector("details") as HTMLDetailsElement;
     expect(details).not.toBeNull();
     details.open = true;

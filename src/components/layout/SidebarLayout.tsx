@@ -80,7 +80,7 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
             aria-controls="apex-mobile-actions"
           >
             <Menu className="h-4 w-4" />
-            Actions
+            Menu
           </Button>
           </div>
         </div>
@@ -104,7 +104,7 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
           side="left"
           className="w-[min(90vw,320px)] overflow-hidden p-0 sm:max-w-[320px] lg:hidden"
         >
-          <SheetTitle className="sr-only">Actions and navigation</SheetTitle>
+          <SheetTitle className="sr-only">Navigation and quick actions</SheetTitle>
           <GlobalSidebar
             mobile
             isOpen

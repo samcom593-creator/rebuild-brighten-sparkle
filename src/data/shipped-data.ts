@@ -19,6 +19,12 @@ export const SHIPPED: ShippedItem[] = [
   },
   {
     ts: "today",
+    label: "The dashboard home, the recruiting pages and the calendar got a flatter, calmer layout. Home now has Overview, Operations and Reports tabs under the scoreboard, the recruiting header is a plain strip of five tappable numbers, and the calendar's top row is one line instead of four cards. Ayro production stays on the block.",
+    detail: "A 16-file redesign patch was reviewed before it landed. As submitted it broke one unit test, moved Ayro production off the home block you asked for on 09-24, collapsed every sidebar group except the current one (reversing the 10-15 rule), hid page actions behind More on desktop, and turned the metric captions into hover-only tooltips that phones never show. Those five were fixed or reverted. What stayed: the sidebar gets aria-current and larger targets, the shell gradient and panel shadows are gone, the recruiting workspace nav is a tab row, and the applicants page keeps its filters and pipeline ladder open on first paint. 2,397 unit tests green, type errors held at the 75 baseline, 25 gate scripts green.",
+    commit: "PL-UI-FLATTEN",
+  },
+  {
+    ts: "today",
     label: "Five notification functions that yesterday's leak gate left open to any self-registered login are closed: a stranger can no longer email the whole active roster, every agent a chosen id \"passed\", or any agent's manager. CI on main is green again.",
     detail: "The census guard in the Deno tests did its job: it refused eight functions put on the any-login floor with no reason written. Read one by one, four took an agent id off the request and mailed about it, so they now require a real agent record or a staff role and only ever act on the caller's own record (staff may act for their team). The note sender is staff-only. Names and notes are escaped before they reach email HTML. Three stay on the any-login floor with their reason written, two of them naming open items for you: the link-account function can re-bind an active agent's login to a new signup, and signup emails are never confirmed, so a stranger can register as a licensed applicant's address. Also pruned the two functions the leak gate fixed from the type-check baseline, which is the other half of why CI was red.",
     commit: "PL-LEAK-GATE-CENSUS",

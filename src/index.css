@@ -1899,13 +1899,8 @@ button[class*="border-emerald"]:hover {
 }
 
 .apex-app-shell {
-  background:
-    linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--background)) 58%, hsl(var(--muted) / 0.28) 100%);
-}
-
-.dark .apex-app-shell {
-  /* 2026-08-18 shell reskin: was a warm 40deg-hue gradient fighting the cool
-   * token ground. The approved template reads on ONE flat surface. */
+  /* 2026-08-18 shell reskin (dark) and 2026-10-27 flatten (light): the shell
+   * reads on ONE flat surface in both themes, so one rule covers both. */
   background: hsl(var(--background));
 }
 
@@ -1917,7 +1912,8 @@ button[class*="border-emerald"]:hover {
 
 .apex-content-frame {
   width: 100%;
-  max-width: none;
+  max-width: 1760px;
+  margin-inline: auto;
 }
 
 .apex-page-slot {
@@ -1928,9 +1924,12 @@ button[class*="border-emerald"]:hover {
 /* Page actions are content, not a second navigation bar. On phones the most
    likely primary action stays visible and everything else expands on demand;
    at sm+ the same React nodes return to one inline toolbar. */
+.apex-page-actions {
+  display: flex;
+}
+
 .apex-page-actions,
 .apex-page-secondary-actions {
-  display: flex;
   align-items: center;
   gap: 0.5rem;
   flex-wrap: wrap;
@@ -2039,8 +2038,8 @@ h1,
 .apex-op-panel {
   border: 1px solid hsl(var(--border) / 0.75);
   border-radius: 8px;
-  background: hsl(var(--card) / 0.94);
-  box-shadow: var(--elev-2);
+  background: hsl(var(--card));
+  box-shadow: none;
 }
 
 .apex-kpi-strip {
@@ -2053,9 +2052,8 @@ h1,
   min-height: 96px;
   border-radius: 8px;
   border: 1px solid hsl(var(--border) / 0.72);
-  background:
-    linear-gradient(180deg, hsl(var(--card) / 0.98), hsl(var(--card) / 0.88));
-  box-shadow: var(--elev-2);
+  background: hsl(var(--card));
+  box-shadow: none;
   transition:
     border-color 180ms var(--ease-standard),
     box-shadow 180ms var(--ease-standard),

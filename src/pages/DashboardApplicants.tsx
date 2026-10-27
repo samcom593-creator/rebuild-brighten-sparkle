@@ -27,7 +27,6 @@ import {
   Sparkles,
   Flame,
   Bell,
-  GraduationCap,
   Rocket,
   ArrowRight,
   X as XIcon,
@@ -1167,15 +1166,16 @@ function ApplicantsClassicView() {
 
   return (
     <div className="apex-fullbleed-page -mx-4 sm:-mx-6 lg:-mx-8 w-[calc(100%+2rem)] sm:w-[calc(100%+3rem)] lg:w-[calc(100%+4rem)]">
-      {/* The full-bleed opt-out is deliberate for the 11-column operating table. */}
+      {/* The full-bleed opt-out is deliberate for the 11-column operating table.
+          pb-24 keeps the last rows clear of the fixed SpeedToLeadBar. */}
       <div className="page-enter w-full space-y-5 px-4 pb-24 sm:px-6">
       <RecruitingWorkspaceNav />
       <RecruitingCommandHero
         eyebrow={statusFilter === "hired" ? "Recruiting · Hire launchpad" : "Recruiting · Pipeline control"}
-        title={statusFilter === "hired" ? "Get every hire into the field faster." : "Know who to contact—and what to do next."}
+        title={statusFilter === "hired" ? "Hires" : "Recruiting"}
         subtitle={statusFilter === "hired"
           ? "Track the handoff from hire to license, contracting, training, onboarding call, and first production."
-          : "A single live command center for new applicants, overdue follow-ups, scheduled interviews, and hires."}
+          : "Contact applicants, book interviews, and move recruits to their next step."}
         statusLabel={queryError ? "Last good roster" : "Live recruiting roster"}
         actions={
           <>
@@ -1184,7 +1184,7 @@ function ApplicantsClassicView() {
                 variant="outline"
                 size="sm"
                 aria-pressed={myDirectsOnly}
-                className="h-10 border-border bg-white/[0.04] text-foreground hover:bg-white/10 hover:text-white"
+                className="h-10 border-border text-foreground hover:bg-accent"
                 onClick={() => setMyDirectsOnly(!myDirectsOnly)}
               >
                 <Users className="h-4 w-4 shrink-0" />
@@ -1193,7 +1193,7 @@ function ApplicantsClassicView() {
             )}
             <Button
               size="sm"
-              className="h-10 bg-[#C9A961] font-bold text-black hover:bg-[#8A7340]"
+              className="h-10 font-semibold"
               disabled={speedQueue.length === 0}
               onClick={() => {
                 setSpeedIndex(0);
@@ -1264,11 +1264,16 @@ function ApplicantsClassicView() {
         ]}
       />
 
+      {(isAdmin || isManager || isVaStaff) && <NoHireLeftBehindPanel />}
+
+      {/* Every child below is role-gated; render the disclosure only when one of them will. */}
+      {((isAdmin || isManager) ? Boolean(agentId) : true) && (
+      <details className="rounded-md border border-border bg-card p-4">
+        <summary className="cursor-pointer text-sm font-medium text-foreground">Recruiting links and income</summary>
+        <div className="mt-4 space-y-4">
       {(isAdmin || isManager) && agentId && (
         <ReferralLinkBanner agentId={agentId} />
       )}
-
-      {(isAdmin || isManager || isVaStaff) && <NoHireLeftBehindPanel />}
 
       {(isAdmin || isManager) && agentId && (
         <RecruitingIncomeEstimateCard agentId={agentId} />
@@ -1278,6 +1283,10 @@ function ApplicantsClassicView() {
           cross the production threshold — below it they see the gap instead of
           nothing, so it reads as a target. Self-gating via my_referral_status(). */}
       {!(isAdmin || isManager) && <ReferralLinkCard />}
+
+        </div>
+      </details>
+      )}
 
       <GlassCard className="p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -1345,16 +1354,13 @@ function ApplicantsClassicView() {
       {/* MP-268 pipeline ladder — one chip per captured recruiting stage, mutually exclusive
           so the counts sum to the active roster. See PIPELINE_STAGES for why fingerprints,
           carrier appointments and first sale are not rungs here yet. */}
-      <GlassCard className="p-4">
-        <div className="mb-1 flex items-baseline justify-between gap-2">
-          <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
-            <GraduationCap className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <span className="truncate">Pipeline stage</span>
-          </h3>
-          <span className="shrink-0 text-sm font-bold tabular-nums text-muted-foreground">
-            {activeApplications.length.toLocaleString()}
-          </span>
-        </div>
+      {/* Open by default: the ladder exists to show these counts (MP-268). The
+          disclosure is for folding it away, not for hiding it on first paint. */}
+      <details open className="rounded-md border border-border bg-card p-4">
+        <summary className="cursor-pointer text-sm font-medium text-foreground">
+          Pipeline stage · {pipelineStage ? PIPELINE_STAGES.find((stage) => stage.key === pipelineStage)?.label : "All stages"}
+        </summary>
+        <div className="mt-3">
         {showDetails && (
         <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
           Every active applicant sits on exactly one rung. Pick a rung to work just that group.
@@ -1390,7 +1396,8 @@ function ApplicantsClassicView() {
             );
           })}
         </div>
-      </GlassCard>
+        </div>
+      </details>
 
       <GlassCard className="p-4">
         <div className="mb-1 flex items-baseline justify-between gap-2">
@@ -1418,6 +1425,13 @@ function ApplicantsClassicView() {
           />
         </div>
 
+        {/* Open by default: the status Select in here is the only in-page route to
+            the Hires and Terminated views, and a closed <details> resets on every mount. */}
+        <details open className="group/filters">
+          <summary className="min-h-11 cursor-pointer rounded-md border border-border px-3 py-3 text-sm font-medium text-foreground hover:bg-muted/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">
+            Filters and queue tools{activeFilterChips.length > 0 ? ` · ${activeFilterChips.length} active` : ""}
+          </summary>
+          <div className="pt-3">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="h-10 w-full bg-input sm:h-9">
@@ -1586,6 +1600,9 @@ function ApplicantsClassicView() {
           </Button>
         )}
         </div>
+
+          </div>
+        </details>
 
         {activeFilterChips.length > 0 && (
           <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/60 pt-3">

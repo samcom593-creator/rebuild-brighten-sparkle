@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { ChevronDown, LineChart as LineChartIcon, TrendingUp, UserPlus, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { QueryState, describeQuery } from "@/components/ui/query-state";
 import { ImoByAgency } from "@/components/dashboard/ImoByAgency";
@@ -165,9 +166,17 @@ export function AgentCloudHome() {
           A SEPARATE book from AgentLink/Ethos — the scoreboard above is date-windowed
           and reconciles to the penny, and the Ayro sales page carries no per-deal dates,
           so its all-time production sits here beside the scoreboard rather than being
-          folded into it with fabricated dates. */}
+          folded into it with fabricated dates. Stays above the tabs on purpose: the
+          block is first paint, not a report someone has to click into (MP-AYRO-2). */}
       <AyroProductionPanel />
 
+      <Tabs defaultValue="overview" className="space-y-4">
+        <TabsList aria-label="Dashboard views">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="operations">Operations</TabsTrigger>
+          <TabsTrigger value="reports">Reports</TabsTrigger>
+        </TabsList>
+        <TabsContent value="overview" className="space-y-4">
       {/* MP-430: straight from the scoreboard to Total IMO by agency. The three
           amber panels that used to sit here (just-hired, roll call, unlinked
           agents) now live on /dashboard/team under "Roster health" — Sam: "what
@@ -199,10 +208,12 @@ export function AgentCloudHome() {
         <OperationsCommandCenter />
       </div>
 
-      {/* Brief §4 order: production + agency breakdown above, then contracting, recruiting
-          & expected starts, and the few actions that need someone today. */}
-      <HomeOperationsSummary />
-      <RecordsAndBounties />
+        </TabsContent>
+        <TabsContent value="operations" className="space-y-4">
+          <HomeOperationsSummary />
+        </TabsContent>
+        <TabsContent value="reports" className="space-y-4">
+          <RecordsAndBounties />
 
       {/* MP-338 declutter. Sam: "so much options, that looks kinda cluttery."
           The home stacked ten full-width sections; the bottom two are the
@@ -241,6 +252,8 @@ export function AgentCloudHome() {
           ) : null}
         </div>
       </details>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

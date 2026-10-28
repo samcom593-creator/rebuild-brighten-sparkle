@@ -45,6 +45,61 @@ const PARTNER_URL    = "https://kingofsales-brand.vercel.app/#f-collab";
 import { describeNtfyRefusal } from "../_shared/ntfy-post.ts";
 
 const NTFY_TOPIC = "https://ntfy.sh/sams-agent-yrkv9kbqp9e987nb";
+
+// ── MP-305 link policy ─────────────────────────────────────────────────────
+// Meta has been refusing every DM that carries a URL since 2026-09-28 (code 508,
+// "Link can't be shared ... Community Standards"). send-instagram-dm records the
+// refusal in system_settings.instagram_links_blocked_at; while that stamp is
+// under 24h old every template and the model write "the link's in my bio" or
+// offer to email it instead. Set per request in the handler.
+let LINKS_OK = true;
+function L(url: string, noLinkPhrase: string): string { return LINKS_OK ? url : noLinkPhrase; }
+function stripLinksBrain(msg: string): string {
+  return msg.replace(/https?:\/\/\S+/gi, (u) => {
+    const l = u.toLowerCase();
+    if (l.includes("/apply")) return "the apply link in my bio";
+    if (l.includes("/fitness")) return "the fitness link in my bio";
+    if (l.includes("/mentorship")) return "the mentorship link in my bio";
+    if (l.includes("/rentals")) return "the rentals link in my bio";
+    if (l.includes("calendly")) return "my calendar link in my bio";
+    return "the link in my bio";
+  }).replace(/:\s+(the |my )/g, ", $1").replace(/\s{2,}/g, " ").trim();
+}
+async function refreshLinkPolicy(): Promise<void> {
+  try {
+    const { data } = await supabase.from("system_settings").select("value").eq("key", "instagram_links_blocked_at").limit(1);
+    const at = (data ?? [])[0]?.value ? Date.parse(String((data ?? [])[0].value).replace(/^"|"$/g, "")) : NaN;
+    LINKS_OK = !(Number.isFinite(at) && Date.now() - at < 24 * 3600_000);
+  } catch (_e) { LINKS_OK = true; }
+}
+// Email the lane's link to a prospect who dropped their address (links are blocked
+// in DMs; email is the one lane proven to deliver). true only on a Resend id.
+async function emailProspect(to: string, lane: Lane, link: string, handle: string | null): Promise<boolean> {
+  const key = Deno.env.get("RESEND_API_KEY");
+  if (!key) return false;
+  const subject: Record<Lane, string> = {
+    opportunity: "here's the link, sam", licensed: "let's talk, sam", fitness: "fitness link, sam",
+    mentorship: "mentorship link, sam", rentals: "rentals link, sam", partnership: "collab form, sam",
+  };
+  const line: Record<Lane, string> = {
+    opportunity: "fill this out, takes about 2 minutes, and i'll reach out after:", licensed: "grab a time on my calendar and i'll call you:",
+    fitness: "plans and 1 on 1 are all on here:", mentorship: "mentorship's a soft launch, apply here and i'll personally reach out:",
+    rentals: "all the cars are on here, drop your dates and i'll get you a quote:", partnership: "brand stuff goes through here so i see it:",
+  };
+  try {
+    const r = await fetch("https://api.resend.com/emails", {
+      method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from: "Sam James <alerts@apex-financial.org>", reply_to: "info@kingofsales.net", to: [to],
+        subject: subject[lane],
+        text: `yo${handle ? ` ${handle.replace(/^@/, "")}` : ""}, it's sam from ig.\n\n${line[lane]}\n${link}\n\nif something's not clear just reply here or dm me.\n\nsam`,
+      }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j?.id) { console.error("[manychat-webhook] emailProspect failed", r.status, JSON.stringify(j).slice(0, 200)); return false; }
+    return true;
+  } catch (e) { console.error("[manychat-webhook] emailProspect threw", e); return false; }
+}
 // Push to Sam's phone and return ntfy's message id, or null if it never landed.
 // A fetch that resolves is not a delivery: a 4xx/5xx resolves too. One retry.
 async function pushNtfy(title: string, body: string, priority: string, tags: string): Promise<string | null> {
@@ -235,23 +290,27 @@ function classify(body: string): Classification {
 function replyFor(path: ReplyPath, rawSource: string, _firstName?: string): string {
   const apply = applyUrl(rawSource);
   const replies: Record<ReplyPath, string> = {
-    licensed:      `perfect, let's get on a call. what's your number?`,
-    licensed_team: `perfect, and you have a team too? let's get on a call. what's your number?`,
-    license_q:     `do you have your life insurance license? either way, here's where you start and i'll reach out: ${apply}`,
-    license_yes:   `perfect, let's get on a call. what's your number?`,
-    license_no:    `all good, no stress. start here and i'll get you licensed: ${apply}`,
-    license_explain: `it's the license you need to sell life insurance. don't have it yet? no stress, i get you licensed. start here and i'll walk you through it: ${apply}`,
-    trust:         `no, it's my own site. no card, no payment, just your info so i can reach you. look me up anywhere, apex financial. ${apply}`,
-    why_us:        `i train you myself, we run real leads, and you're on a team that's actually writing. easiest way to see it is a quick call, start here: ${apply}`,
+    // MP-305 (2026-10-28): rewritten in Sam's voice. Short, lowercase, one question,
+    // no link on a first touch. Regex contracts kept on purpose: LICENSE_Q_RE needs
+    // "you got your life insurance license", LICENSE_EXPLAINED_RE needs "license you
+    // need to sell life insurance", ASK_PHONE_RE needs "what's your number".
+    licensed:      `say less, you're licensed? let's talk today. what's your number?`,
+    licensed_team: `licensed with a team? that's the call i want. what's your number?`,
+    license_q:     `say less 🙏 quick one, you got your life insurance license already or nah?`,
+    license_yes:   `perfect, let's talk today. what's your number?`,
+    license_no:    `all good, that's the easy part, i get you licensed. ${L(apply, "tap the apply link in my bio")}. or drop your email and i'll send it to you`,
+    license_explain: `it's just the license you need to sell life insurance. don't have it? no stress, i get you licensed. ${L(apply, "the apply link's in my bio")}, or drop your email and i'll send it`,
+    trust:         `nah it's my own site, no card, nothing to pay. just your info so i can reach you. ${L(apply, "it's the apply link in my bio")}`,
+    why_us:        `i train you myself, we run real leads, and you're on a team that's actually writing. easiest way to see it is a quick call. you licensed yet or nah?`,
     llm:           "",
     props:         "🔥",
-    fitness:       `everything's on here, plans and 1 on 1: ${FITNESS_URL}`,
-    apply:         `bet, here's the link: ${apply}`,
-    mentorship:    `mentorship's a soft launch right now. it's me working with you directly on sales and building your income, all on here, apply and i'll personally reach out: ${MENTORSHIP_URL}`,
-    rentals:       `all the cars are on here, drop your dates and i'll get you a quote: ${RENTALS_URL}`,
-    partnership:   `yo this is sam's assistant, brand stuff goes through here so he sees it: ${PARTNER_URL}`,
-    assistant:     `i've got help on the dms so nobody gets missed, but i read everything. what can i help you with?`,
-    route:         `what can i help you with?`,
+    fitness:       `gotchu. plans and 1 on 1 are on ${L(FITNESS_URL, "the fitness link in my bio")}. you tryna cut or build?`,
+    apply:         `bet. ${L(apply, "apply link's in my bio")}, tap it and i'll reach out 🙏`,
+    mentorship:    `mentorship's a soft launch, me working with you directly on sales and income. ${L(MENTORSHIP_URL, "mentorship link's in my bio")}. what you selling right now?`,
+    rentals:       `all the cars are on ${L(RENTALS_URL, "the rentals link in my bio")}. what dates you need?`,
+    partnership:   `yo this is sam's assistant, brand stuff goes through ${L(PARTNER_URL, "the collab form in my bio")} so he sees it`,
+    assistant:     `i've got help on the dms so nobody gets missed, but i read everything. what's up?`,
+    route:         `yoo what's good 🙏 you here for the team, fitness, or just saying wassup?`,
   };
   return replies[path];
 }
@@ -517,13 +576,26 @@ async function emailSam(subject: string, text: string): Promise<void> {
   } catch (e) { console.error("[manychat-webhook] emailSam threw", e); }
 }
 
-async function llmReply(history: HistoryRow[], text: string, st: ReturnType<typeof threadState>, rawSource: string): Promise<string | null> {
+async function llmReply(history: HistoryRow[], text: string, st: ReturnType<typeof threadState>, rawSource: string, mode: "reply" | "opener" | "casual" = "reply"): Promise<string | null> {
   const key = Deno.env.get("ANTHROPIC_API_KEY");
   if (!key) return null;
   const system = [
+    // MP-305: the voice is SHOWN, not described. Sam's own DMs: "yoo what's good", "say less",
+    // "bet", "gotchu", "i got you", "lmk", "you in or nah?", "bro", "brudda", "please do bro",
+    // "say the word", "myb that was my ai", "🙏", "😂". Lowercase, under 14 words, one thought,
+    // one question. No hype, no exclamation marks, no dashes, no "either way", no "feel free",
+    // no "i'd be happy to", no "absolutely".
+    "VOICE SAMPLES (copy the register exactly): \"yoo what's good\" / \"say less\" / \"bet, what's your number?\" / \"gotchu, you licensed yet or nah?\" / \"lmk, i got you either way 🙏\" / \"you went quiet on me 😂 you in or nah?\" / \"please do bro\" / \"say the word\".",
+    "FORMAT: lowercase. under 14 words. one thought and one question. emojis only 🙏 😂 🔥 and rarely. never exclamation marks, never dashes, never 'either way', never 'feel free', never 'i'd be happy to', never 'absolutely'. never sign your name.",
+    LINKS_OK
+      ? "LINKS: when a link fits, include exactly one of the URLs below, once."
+      : "LINKS: do NOT paste any URL. Instagram is blocking links on this account. say \"the link's in my bio\" or \"drop your email and i'll send it\".",
+    mode === "opener" ? "SITUATION: this is their FIRST message and it did not match any lane. open like Sam would: warm, 6 to 12 words, one question that finds out what they're here for (the team, fitness, mentorship, cars, or just saying wassup). no link." : "",
+    mode === "casual" ? "SITUATION: small talk in a thread only the assistant has worked. one short line, one light question that moves toward what they're here for. if they are clearly just chatting and want nothing, output exactly NONE." : "",
+
     "You write Instagram DM replies AS Samuel James (@sell4daddy): managing partner of Galaxy Financial, a life-insurance agency that recruits, licenses and trains agents. He also offers fitness coaching, a mentorship program, and car rentals in Arizona.",
     "Nobody buys a policy through his DMs. Anyone who mentions life insurance, a policy, or insurance in any form wants to JOIN THE TEAM. Never offer a quote, never mention buying coverage.",
-    "Style: first person as Sam, lowercase, SHORT (under 20 words), casual ('yeah', 'say less', 'bet'), no dashes, no hype. Push them to the link: 'it's all on the link'. Only if asked point-blank whether this is a bot: say his assistant runs the DMs with him.",
+    "Style: first person as Sam. Only if asked point-blank whether this is a bot: 'it's me and my assistant on here, i read everything'. Every reply ends with a question unless a call is already booked.",
     "Never invent prices, commission numbers, dates, or guarantees. If you don't know, say you'll go over it on the call.",
     "When a link fits the question, include exactly one of these:",
     `- joining the team / getting licensed / applying: ${applyUrl(rawSource)}`,
@@ -553,8 +625,10 @@ async function llmReply(history: HistoryRow[], text: string, st: ReturnType<type
       body: JSON.stringify({ model: "claude-haiku-4-5-20251001", max_tokens: 120, system, messages: msgs }),
     });
     const j = await r.json();
-    const out = (j?.content?.[0]?.text as string | undefined)?.trim();
+    let out = (j?.content?.[0]?.text as string | undefined)?.trim();
     if (!out) console.error("[manychat-webhook] llm no text", r.status, JSON.stringify(j).slice(0, 400));
+    if (out && /^\s*NONE\s*$/i.test(out)) return null;
+    if (out && !LINKS_OK) out = stripLinksBrain(out);
     return out || null;
   } catch (e) {
     console.error("[manychat-webhook] llm failed", e);
@@ -782,7 +856,9 @@ async function decide(text: string, rawSource: string, firstName: string | undef
       return { ...base, intent: "props", reply_path: null, auto_reply: null, public_reply: pub };
     }
     if (EMOJI_ONLY_RE.test(text.trim())) return { ...base, intent: "props", reply_path: null, auto_reply: null };   // "😉" in a DM: nothing
-    return { ...base, intent: "props", reply_path: "props", auto_reply: props };
+    // MP-305: props on a first touch get the push, not just the 🔥 (38 of the 316 unanswered people in 30d opened with props).
+    const firstTouch = history.filter((h) => h.direction === "inbound").length === 0 && channel === "dm";
+    return { ...base, intent: "props", reply_path: "props", auto_reply: firstTouch ? `${props} you here for the team or just showing love?` : props };
   }
 
   // 1) Licensed, at any point: page + email Sam, then run the call-booking flow.
@@ -856,6 +932,17 @@ async function decide(text: string, rawSource: string, firstName: string | undef
     const asked = /\?|\b(course|class|how (do|can) i|what|where|recommend)\b/i.test(text) ? faqReply(text, { ...st, licenseAnswer: "no" }, rawSource, firstName) : null;
     return { intent: "opportunity", lead_score: 60, reply_path: "license_no", urgent: false, auto_reply: asked ?? replyFor("license_no", rawSource, firstName) };
   }
+  // 2a) MP-305: an email in a business thread (outside the licensed call flow): email the lane's
+  //     link right now (links in DMs are blocked) and say so. Sam is told either way.
+  if (EMAIL_RE.test(text) && st.hasBusinessContext && !base.reply_path) {   // licensed threads returned above
+    const em = text.match(EMAIL_RE)![0];
+    const lane = laneOf(st, text);
+    const link = laneLink(lane, rawSource);
+    const sent = await emailProspect(em, lane, link, handle);
+    return { intent: st.threadIntent ?? "opportunity", lead_score: 75, reply_path: "llm", urgent: false,
+      auto_reply: sent ? `sent it, check your inbox (spam too). tap it and i'll reach out 🙏` : `got it 🙏 ${L(link, "the link's in my bio")}, tap it and i'll reach out`,
+      notify: `Email from a ${lane} prospect: ${em}${sent ? " (link emailed)" : " (email send FAILED, link not delivered)"}` };
+  }
   // 2b) A phone number in a non-licensed business thread: confirm, ping Sam.
   if (st.hasBusinessContext && PHONE_RE.test(text) && !base.reply_path) {
     const num = text.match(PHONE_RE)![0];
@@ -904,8 +991,22 @@ async function decide(text: string, rawSource: string, firstName: string | undef
   // First touch only: a stranger's opening "hey" gets pointed somewhere. Casual talk after
   // that is Sam's conversation, not the bot's (it cut into a personal chat 2026-09-28).
   const priorInbound = history.filter((h) => h.direction === "inbound").length;
-  if (priorInbound === 0 && /^\s*(yo+|hey+|hi+|hello|sup|wassup|wsg|what'?s (good|up)|whats (good|up)|ayo|aye)\b[\s!.?]*$/i.test(text)) {
-    return { ...base, intent: "greeting", reply_path: "route", auto_reply: `what's good, what can i help you with?` };
+  // MP-305 (2026-10-28): "unmatched" is not "casual". 229 of the 316 people who got
+  // nothing in 30 days landed here on their FIRST message. A stranger's opener is
+  // never silence: Sam opens the conversation and asks what they're here for.
+  // Comments and other transports keep the engagement-only rule.
+  if (channel !== "dm" && channel !== "story") return { ...base, intent: "casual", reply_path: null, auto_reply: null };
+  if (priorInbound === 0) {
+    const opener = (await llmReply(history, text, st, rawSource, "opener")) ?? replyFor("route", rawSource, firstName);
+    return { ...base, intent: "greeting", lead_score: 20, reply_path: "route", urgent: false, auto_reply: opener };
+  }
+  // A thread only the assistant has worked keeps moving (one light question, at most
+  // three such turns); a thread Sam has typed in is his conversation, not the bot's.
+  const humanHere = history.some((h) => h.intent === "sam_manual" || h.intent === "sam_thread");
+  const casualTurns = history.filter((h) => h.direction === "outbound" && h.intent === "casual").length;
+  if (!humanHere && casualTurns < 3) {
+    const llm = await llmReply(history, text, st, rawSource, "casual");
+    if (llm) return { ...base, intent: "casual", lead_score: 15, reply_path: "llm", urgent: false, auto_reply: llm };
   }
   return { ...base, intent: "casual", reply_path: null, auto_reply: null };
 }
@@ -1041,6 +1142,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true, intent: "sam_thread", auto_reply: null, reply_path: null, muted: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
   }
+  await refreshLinkPolicy();
   const decision = await decide(text, rawSource, senderName?.split(" ")[0], subscriberId, senderHandle, channel, senderName);
   // Same words twice in a row reads like a machine. Once: "like i said". Twice: nothing.
   if (decision.auto_reply && decision.reply_path !== "props") {
@@ -1059,6 +1161,9 @@ Deno.serve(async (req) => {
       decision.auto_reply = hasLink && !alreadySaid ? `like i said, ${decision.auto_reply}` : null;
     }
   }
+  // MP-305: while Meta is refusing links, nothing that reaches the sender carries one
+  // (templates already switched; this catches FAQ strings, socials and the model).
+  if (decision.auto_reply && !LINKS_OK && /https?:\/\//i.test(decision.auto_reply)) decision.auto_reply = stripLinksBrain(decision.auto_reply);
   // The CTA on every reel is "comment apex". A comment that carries the word with
   // anything around it ("Apex check the dm's", "apex 🔥🔥", "@friend apex") is the
   // same ask as a bare "Apex" and gets the same DM. 2026-10-02: "_v1ktor.l: Apex
@@ -1071,7 +1176,7 @@ Deno.serve(async (req) => {
   // Where it came from changes the opener, not the routing: a comment or a story
   // reply gets a DM that says why it's arriving. A 🔥 needs no opener.
   if (decision.auto_reply && (channel === "comment" || channel === "story") && decision.reply_path !== "props" && decision.intent !== "socials") {
-    const seen = channel === "comment" ? "hey, thanks for the comment." : "thanks for the reply on my story.";
+    const seen = channel === "comment" ? "saw your comment 🙏" : "saw your story reply 🙏";
     decision.auto_reply = `${seen} ${decision.auto_reply}`;
   }
   // Intent under a comment: the DM goes out privately and the comment gets a public pointer.

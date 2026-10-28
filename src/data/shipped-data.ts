@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "Oct 27, 2026",
+    label: "Production totals stay visible when a background refresh fails, with a timestamp and retry.",
+    detail: "AC-P3 slice: the shared scoreboard now uses the existing loading, empty, error and stale-data primitive. A failed refresh retains its last successful totals and explicitly labels them stale; a first-load failure never invents zero totals or a missing producer profile. Extracted the existing KPI tile as KPIStat without changing its design. Full shell/primitive and role/viewport verification remains open.",
+    commit: "AC-P3-SCOREBOARD-STALE",
+  },
+  {
+    ts: "Oct 27, 2026",
     label: "Agent-Cloud verification now has a measured inventory and an explicit list of remaining proof.",
     detail: "AC-P10: captured the current route, page, function, guard, test and live database inventory, with a repeatable read-only inventory command and item-level evidence report. Static checks and public HTTP responses are recorded separately from authenticated behavior. Full rebuild sign-off remains open until the role/viewport matrix, permission denials and critical write-and-delivery paths have direct evidence.",
     commit: "AC-P10-VERIFICATION-INVENTORY",

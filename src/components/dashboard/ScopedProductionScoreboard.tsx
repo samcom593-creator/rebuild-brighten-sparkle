@@ -24,6 +24,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { KPIStat } from "@/components/ui/kpi-stat";
+import { QueryState, describeQuery } from "@/components/ui/query-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuth } from "@/hooks/useAuth";
@@ -265,32 +267,6 @@ function AgencyChip({ agency }: { agency: string }) {
   );
 }
 
-function ScoreTile({
-  icon: Icon,
-  label,
-  value,
-  detail,
-  accent,
-}: {
-  icon: typeof TrendingUp;
-  label: string;
-  value: string;
-  detail: string;
-  accent?: boolean;
-}) {
-  return (
-    <div className="min-w-0 border-b border-border p-4 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0">
-      <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-        <Icon className="h-3.5 w-3.5" /> {label}
-      </p>
-      <p className={accent ? "mt-2 truncate text-3xl font-bold tabular-nums text-primary" : "mt-2 truncate text-3xl font-bold tabular-nums text-foreground"}>
-        {value}
-      </p>
-      <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
-    </div>
-  );
-}
-
 /**
  * Lets a page own the scoreboard's date bar so every production block on it reads
  * the same window (Galaxy map, Home gate: "one scope/date bar governs related
@@ -507,7 +483,7 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-sm font-semibold text-foreground">My production scoreboard</p>
               {data?.scope_label && <Badge variant="outline">{data.scope_label}</Badge>}
-              <Badge variant="secondary">Live · Phoenix</Badge>
+              <Badge variant="secondary">{query.isError ? "Refresh failed" : query.isPending ? "Loading" : query.isFetching ? "Refreshing" : "Production"} · Phoenix</Badge>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">{window.label} · personal results and your signed-in hierarchy</p>
           </div>
@@ -560,40 +536,40 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
           </div>
         </div>
 
-        {query.isLoading ? (
-          <div className="grid sm:grid-cols-3">
-            {[0, 1, 2].map((item) => <Skeleton className="m-4 h-24" key={item} />)}
-          </div>
-        ) : query.isError ? (
-          <div className="flex items-center justify-between gap-3 p-4">
-            <p className="text-sm text-destructive">Live production could not load. No totals were guessed.</p>
-            <Button onClick={() => void query.refetch()} size="sm" variant="outline">Retry</Button>
-          </div>
-        ) : !data?.has_producer_profile ? (
+        <QueryState
+          {...describeQuery(query)}
+          label="production totals"
+          asOf={query.dataUpdatedAt}
+          onRetry={() => void query.refetch()}
+          title="Production totals are unavailable"
+          body="The server returned no scoreboard. Refresh to try again."
+          className="p-4"
+        >
+        {!data?.has_producer_profile ? (
           <div className="p-4 text-sm text-muted-foreground">Your login is not linked to a producer profile yet. Ask an administrator to connect it before production can be attributed.</div>
         ) : (
           <>
             <div className={isAdmin ? "grid sm:grid-cols-2 lg:grid-cols-4" : "grid sm:grid-cols-3"}>
-              <ScoreTile
+              <KPIStat
                 detail={`${policies(data.personal.policies)} you sold`}
                 icon={TrendingUp}
                 label="My personal production"
                 value={money(data.personal.ap)}
               />
-              <ScoreTile
+              <KPIStat
                 detail={`${policies(data.direct_team.policies)} · ${plural(data.direct_team.agents_current ?? data.direct_team.agents, "current direct agent")}${data.direct_team.agents_current != null ? ` (${data.direct_team.agents} on record)` : ""}`}
                 icon={Users}
                 label="My direct team"
                 value={money(data.direct_team.ap)}
               />
-              <ScoreTile
+              <KPIStat
                 detail={`${policies(data.recursive_team.policies)} · ${data.scope_label}`}
                 icon={Layers}
                 label="My team production"
                 value={money(data.recursive_team.ap)}
               />
               {isAdmin && data.imo && (
-                <ScoreTile
+                <KPIStat
                   accent
                   detail={`${policies(data.imo.policies)} · ${plural(data.imo.agents_current ?? data.imo.agents, "current agent")} incl. you${data.imo.agents_current != null ? ` (${data.imo.agents} on record)` : ""}`}
                   icon={Building2}
@@ -843,6 +819,7 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
             </Link>
           </div>
         )}
+        </QueryState>
       </CardContent>
     </Card>
   );

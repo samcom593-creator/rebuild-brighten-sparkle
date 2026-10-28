@@ -24,7 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { useSoundEffects } from "@/hooks/useSoundEffects";
+import { celebrate } from "@/lib/celebrate";
 import { invalidateOperationalTruth } from "@/lib/invalidateOperationalTruth";
 import { ONBOARDING_CONTACT, SCHEDULING_LINKS, TEAM_COMMUNITY_LINKS } from "@/lib/apexConfig";
 import { resolveBrand } from "@/config/brand";
@@ -64,7 +64,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
   const { user, isAdmin } = useAuth();
-  const { playSound } = useSoundEffects();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -380,7 +379,8 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
       if (partial) {
         toast.warning(displayMessage);
       } else {
-        playSound("celebrate");
+        // A hire is the win this whole section exists for: bubbles and a fanfare.
+        void celebrate("hire");
         toast.success(displayMessage);
       }
 

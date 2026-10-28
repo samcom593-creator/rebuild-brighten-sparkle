@@ -17,6 +17,7 @@ import { NotificationBell } from "@/components/layout/NotificationBell";
 import { RolePreviewMenu } from "@/components/layout/RolePreviewBubbles";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { SoundToggle } from "@/components/ui/delight/SoundToggle";
 import { agentCloudBreadcrumb } from "./agentCloudNavigation";
 import { favoriteLabelFor, useFavoriteRoutes } from "./favoriteRoutes";
 import { cn } from "@/lib/utils";
@@ -66,46 +67,52 @@ export function TopBar() {
   return (
     <header className="sticky top-0 z-40 hidden h-[60px] items-center justify-between border-b border-border bg-background px-5 lg:flex">
       <div className="flex min-w-0 items-center gap-3">
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-accent hover:text-foreground" onClick={toggleSidebar} aria-label="Toggle navigation">
-          <Menu className="h-4 w-4" />
+        <Button variant="ghost" size="icon" className="h-11 w-11 text-muted-foreground hover:bg-accent hover:text-foreground" onClick={toggleSidebar} aria-label="Toggle navigation">
+          <Menu className="h-5 w-5" />
         </Button>
+        {/* Colour layer (2026-10-28): the bar sits outside .apex-page-slot, so text-xs would still
+            render 12px here. The greeting is 15px, the date and the breadcrumb 13px, the current
+            crumb semibold. Nothing under 13px on a signed-in screen. */}
         {pathname === "/dashboard" ? (
           <div className="flex min-w-0 items-baseline gap-2">
-            <span className="truncate text-sm font-semibold text-foreground">Good {new Date().getHours() < 12 ? "morning" : new Date().getHours() < 17 ? "afternoon" : "evening"}, {firstName}</span>
-            <span className="truncate text-xs text-muted-foreground">{new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</span>
+            <span className="truncate text-[15px] font-semibold leading-5 text-foreground">Good {new Date().getHours() < 12 ? "morning" : new Date().getHours() < 17 ? "afternoon" : "evening"}, {firstName}</span>
+            <span className="truncate text-[13px] leading-5 text-muted-foreground">{new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</span>
           </div>
         ) : (
-          <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs">
-            <Link to="/dashboard" aria-label="Dashboard home" className="inline-flex min-h-6 min-w-6 items-center justify-center text-muted-foreground hover:text-foreground"><Home className="h-3.5 w-3.5" aria-hidden="true" /></Link>
-            {crumbs.map((crumb, index) => <span key={`${crumb}-${index}`} className={index === crumbs.length - 1 ? "font-medium text-foreground" : "text-muted-foreground"}>{index > 0 && <span className="mr-2 text-muted-foreground">/</span>}{crumb}</span>)}
+          <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-[13px] leading-5">
+            <Link to="/dashboard" aria-label="Dashboard home" className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground"><Home className="h-4 w-4" aria-hidden="true" /></Link>
+            {crumbs.map((crumb, index) => <span key={`${crumb}-${index}`} className={index === crumbs.length - 1 ? "font-semibold text-foreground" : "text-muted-foreground"}>{index > 0 && <span className="mr-2 text-muted-foreground">/</span>}{crumb}</span>)}
           </nav>
         )}
       </div>
 
-      <div className="flex shrink-0 items-center gap-1.5">
+      {/* Every control here is 44px (2026-10-28): the first-timer lens fails anything smaller,
+          and the pages under this bar already meet it. The bar is 60px, so they fit. */}
+      <div className="flex shrink-0 items-center gap-1">
         <Button
           variant="ghost"
           size="icon"
           className={cn(
-            "h-8 w-8 hover:bg-accent hover:text-foreground",
+            "h-11 w-11 hover:bg-accent hover:text-foreground",
             isFavorite ? "text-primary hover:text-primary" : "text-muted-foreground",
           )}
           onClick={() => toggleFavorite(pathname, favoriteLabelFor(pathname))}
           aria-pressed={isFavorite}
           aria-label={isFavorite ? "Remove this page from favorites" : "Add this page to favorites"}
         >
-          <Star className={cn("h-4 w-4", isFavorite && "fill-current")} />
+          <Star className={cn("h-5 w-5", isFavorite && "fill-current")} />
         </Button>
-        <NotificationBell className="h-8 w-8 text-muted-foreground" />
-        <Button asChild variant="ghost" size="icon" aria-label="Open support desk" className="h-8 w-8 text-muted-foreground hover:bg-accent hover:text-foreground">
-          <Link to="/dashboard/help?tab=desk" aria-label="Open support desk"><HelpCircle className="h-4 w-4" /></Link>
+        <NotificationBell className="h-11 w-11 text-muted-foreground [&>svg]:h-5 [&>svg]:w-5" />
+        <Button asChild variant="ghost" size="icon" aria-label="Open support desk" className="h-11 w-11 text-muted-foreground hover:bg-accent hover:text-foreground">
+          <Link to="/dashboard/help?tab=desk" aria-label="Open support desk"><HelpCircle className="h-5 w-5" /></Link>
         </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-accent hover:text-foreground" onClick={() => setTheme(isDark ? "light" : "dark")} aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}>
-          {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+        <Button variant="ghost" size="icon" className="h-11 w-11 text-muted-foreground hover:bg-accent hover:text-foreground" onClick={() => setTheme(isDark ? "light" : "dark")} aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}>
+          {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
         </Button>
+        <SoundToggle />
         <RolePreviewMenu />
-        <Avatar className="ml-1 h-8 w-8 border border-border">
-          <AvatarFallback className="bg-card text-[11px] font-semibold text-foreground">{initials}</AvatarFallback>
+        <Avatar className="ml-1 h-9 w-9 border border-border">
+          <AvatarFallback className="bg-card text-[13px] font-semibold text-foreground">{initials}</AvatarFallback>
         </Avatar>
       </div>
     </header>

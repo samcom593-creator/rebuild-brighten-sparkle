@@ -23,8 +23,13 @@
 - Banned phrases: "want me to", "should I", "say go"
 - Tie tactical work back to business impact or personal benefit
 
-### Execution vs Analysis (NEW — 2026-05-14)
-Claude is the **execution engine**. Codex owns deep analysis.
+### Execution vs Analysis (2026-05-14; superseded 2026-10-28)
+**Current rule (Sam, 2026-10-28): everything runs on Claude. Do not use Codex.** Claude does both the
+analysis and the implementation, in separate sessions: analysis is read-only and ends in a written
+decision (see `docs/prompt-pack/platform-redesign/12-ANALYSIS-SESSIONS.md`); implementation starts from
+that decision. The Codex split below is kept for history only.
+
+Claude is the **execution engine**. Codex owns deep analysis. *(superseded, see above)*
 
 ### Explicit owner release authority — project-local override
 For this repository, Sam James is the final release authority. When Sam explicitly
@@ -42,9 +47,9 @@ external actions or bypass failed tests.
 
 **Claude does (in this repo):** coding, file edits, terminal work, UI implementation, component building, route fixes, form fixes, styling, dashboard implementation, bug fixes, git commits, tests, deployment prep.
 
-**Codex does (Sam runs separately):** architecture analysis, root-cause analysis, AgentLink integration audit, API/webhook audit, database/data model review, dashboard metric logic, permission logic, security review, scale-readiness review, hidden bug detection, QA audit plans.
+**Claude also does (since 2026-10-28, in a separate read-only analysis session):** architecture analysis, root-cause analysis, AgentLink integration audit, API/webhook audit, database/data model review, dashboard metric logic, permission logic, security review, scale-readiness review, hidden bug detection, QA audit plans. *(These were Codex's until 2026-10-28.)*
 
-Before any large analysis task, Claude pauses and drafts a copy-paste Codex prompt scoped to ONE system, ONE bug, or ONE decision. Sam runs Codex, hands back the answer, Claude implements.
+Before any large analysis task, Claude pauses and drafts a copy-paste analysis prompt scoped to ONE system, ONE bug, or ONE decision, runs it in a fresh Claude session (or hands it to Sam to run on Claude), saves the written decision under `docs/audits/`, and implements from it.
 
 ## Project Context: APEX-OS Website
 
@@ -76,4 +81,4 @@ Before any large analysis task, Claude pauses and drafts a copy-paste Codex prom
 
 ---
 
-**Last Updated:** 2026-05-14
+**Last Updated:** 2026-10-28 (Execution vs Analysis: everything runs on Claude)

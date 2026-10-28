@@ -5,6 +5,7 @@ import { gateResend } from "../_shared/resend-gate.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
 import { bodyAgentAllowed, callerUid, resolveCallerScope } from "../_shared/caller-binding.ts";
 import { escapeHtml } from "../_shared/notify-caller-policy.ts";
+import { DEPARTED_AGENT_COLUMNS, isDepartedAgent } from "../_shared/departed.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -89,14 +90,18 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Look up manager's email
     let managerEmail: string | null = null;
-    const managerId = agent.invited_by_manager_id || agent.manager_id;
+    // The inviting manager first, then the operational manager. A departed manager
+    // (terminated or deactivated) is skipped, never mailed: both pointers are kept for
+    // attribution after departure.
+    const managerCandidates = [agent.invited_by_manager_id, agent.manager_id].filter(Boolean) as string[];
     
-    if (managerId) {
+    for (const managerId of managerCandidates) {
       const { data: managerAgent } = await supabaseClient
         .from("agents")
-        .select("user_id")
+        .select(DEPARTED_AGENT_COLUMNS)
         .eq("id", managerId)
         .single();
+      if (isDepartedAgent(managerAgent)) continue;
 
       if (managerAgent?.user_id) {
         const { data: managerProfile } = await supabaseClient
@@ -109,6 +114,7 @@ const handler = async (req: Request): Promise<Response> => {
           console.log(`Manager found: ${managerProfile.full_name} (${managerEmail})`);
         }
       }
+      break;
     }
 
     // Build recipient list

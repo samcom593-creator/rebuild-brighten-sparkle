@@ -1,0 +1,183 @@
+/* APEX colour, motion and sound layer (2026-10-28).
+ *
+ * Sam, looking at the live Grow pages: "Lack of color. The text is small and ugly. No
+ * animation ... resembles a terminal ... Make it animated. Add the bubbles and effects
+ * ... and sound effects. Just make the entire website pleasant ... cute and easy to use,
+ * and very functional."
+ *
+ * Loaded by the authenticated shell only (src/components/layout/AuthenticatedShell.tsx),
+ * never by the public landing routes, so nothing here counts toward the landing CSS
+ * ceiling (scripts/check-landing-css-size.mjs).
+ *
+ * The rules live in docs/DESIGN_SYSTEM.md, "Colour, motion and sound":
+ *   - colour carries meaning: a tone names a state and the word is always beside it;
+ *   - motion is short and happens once: entrances 240-360ms, counts tween, presses spring;
+ *     the only looping motion is the ambient background and live indicators, and both stop
+ *     under prefers-reduced-motion;
+ *   - celebrations mark a win the person just made, never a page load.
+ */
+
+/* ── Tones: seven meaning-carrying colours, tuned per theme for contrast on cards ───────── */
+:root,
+:root.light {
+  --tone-good: 152 62% 34%;   /* going well: showed, producing, alive            */
+  --tone-warm: 33 92% 33%;    /* needs a nudge: warm lead, waiting, field training */
+  --tone-hot: 4 70% 44%;      /* act now: hot lead, no-show, dead lane            */
+  --tone-cool: 211 78% 42%;   /* new or scheduled: new lead, cold lead, booked    */
+  --tone-royal: 262 58% 50%;  /* paperwork: contracting, onboarding               */
+  --tone-gold: 42 70% 30%;    /* the brand moment: Monday start, hired, Sam's own */
+  --tone-slate: 220 10% 44%;  /* quiet: inactive, answered, not set               */
+  --ambient-opacity: 0.42;
+}
+:root.dark {
+  --tone-good: 150 62% 54%;
+  --tone-warm: 40 94% 60%;
+  --tone-hot: 6 86% 66%;
+  --tone-cool: 206 90% 68%;
+  --tone-royal: 262 82% 74%;
+  --tone-gold: 45 86% 58%;
+  --tone-slate: 220 10% 64%;
+  --ambient-opacity: 0.55;
+}
+
+/* ── Ambient bubbles: soft colour fields drifting behind the operating canvas ──────────── */
+/* The canvas is its own stacking context so a z-index of -1 sits above the shell's
+   background and below every card, row and control. Nothing here takes a click. */
+.apex-main-canvas {
+  isolation: isolate;
+}
+.apex-ambient {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: var(--ambient-opacity);
+}
+.apex-ambient > span {
+  position: absolute;
+  width: 46vmax;
+  height: 46vmax;
+  border-radius: 9999px;
+  will-change: transform;
+  animation: apex-drift var(--drift-time, 36s) ease-in-out infinite alternate;
+}
+.apex-ambient > span:nth-child(1) {
+  left: -14vmax; top: -12vmax;
+  background: radial-gradient(circle at center, hsl(var(--tone-gold) / 0.3), transparent 62%);
+  --drift-time: 38s;
+}
+.apex-ambient > span:nth-child(2) {
+  right: -18vmax; top: 6vmax;
+  background: radial-gradient(circle at center, hsl(var(--tone-cool) / 0.24), transparent 62%);
+  --drift-time: 46s; animation-delay: -12s;
+}
+.apex-ambient > span:nth-child(3) {
+  left: 18vmax; bottom: -24vmax;
+  background: radial-gradient(circle at center, hsl(var(--tone-good) / 0.22), transparent 62%);
+  --drift-time: 42s; animation-delay: -20s;
+}
+.apex-ambient > span:nth-child(4) {
+  right: 8vmax; bottom: -16vmax;
+  background: radial-gradient(circle at center, hsl(var(--tone-royal) / 0.2), transparent 62%);
+  --drift-time: 52s; animation-delay: -30s;
+}
+.apex-ambient > span:nth-child(5) {
+  left: 36vmax; top: -20vmax; width: 32vmax; height: 32vmax;
+  background: radial-gradient(circle at center, hsl(var(--tone-hot) / 0.16), transparent 62%);
+  --drift-time: 48s; animation-delay: -6s;
+}
+@keyframes apex-drift {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to   { transform: translate3d(6vmax, 4vmax, 0) scale(1.08); }
+}
+@media (max-width: 640px) {
+  .apex-ambient > span:nth-child(4),
+  .apex-ambient > span:nth-child(5) { display: none; }
+}
+
+/* ── Entrances: one rise for lists, tiles and sections, staggered by position ──────────── */
+@keyframes apex-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+.apex-rise {
+  animation: apex-rise 320ms var(--ease-standard, cubic-bezier(0.2, 0, 0, 1)) both;
+  animation-delay: calc(var(--rise-i, 0) * 40ms);
+}
+.apex-rise-list > * {
+  animation: apex-rise 320ms var(--ease-standard, cubic-bezier(0.2, 0, 0, 1)) both;
+}
+.apex-rise-list > :nth-child(1)  { animation-delay: 0ms; }
+.apex-rise-list > :nth-child(2)  { animation-delay: 40ms; }
+.apex-rise-list > :nth-child(3)  { animation-delay: 80ms; }
+.apex-rise-list > :nth-child(4)  { animation-delay: 120ms; }
+.apex-rise-list > :nth-child(5)  { animation-delay: 160ms; }
+.apex-rise-list > :nth-child(6)  { animation-delay: 200ms; }
+.apex-rise-list > :nth-child(7)  { animation-delay: 240ms; }
+.apex-rise-list > :nth-child(8)  { animation-delay: 280ms; }
+.apex-rise-list > :nth-child(9)  { animation-delay: 320ms; }
+.apex-rise-list > :nth-child(10) { animation-delay: 360ms; }
+.apex-rise-list > :nth-child(n + 11) { animation-delay: 400ms; }
+
+/* ── Pops and bumps: a number or bubble that just arrived or just changed ──────────────── */
+@keyframes apex-pop {
+  0%   { opacity: 0.4; transform: scale(0.92); }
+  60%  { transform: scale(1.05); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.apex-pop { animation: apex-pop 280ms var(--ease-emphasized, cubic-bezier(0.3, 0, 0.1, 1)) both; }
+
+@keyframes apex-bump {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.14); }
+  100% { transform: scale(1); }
+}
+.apex-bump { animation: apex-bump 360ms var(--ease-emphasized, cubic-bezier(0.3, 0, 0.1, 1)); }
+
+/* A live indicator may breathe: this is a state, not decoration. */
+@keyframes apex-breathe {
+  0%, 100% { box-shadow: 0 0 0 0 hsl(var(--tone-good) / 0.45); }
+  70%      { box-shadow: 0 0 0 7px hsl(var(--tone-good) / 0); }
+}
+.apex-breathe { animation: apex-breathe 1.8s ease-out infinite; }
+
+/* Lift on hover for rows and tiles that open something. Short, no glow. */
+.apex-lift {
+  transition: transform 160ms var(--ease-standard, cubic-bezier(0.2, 0, 0, 1)),
+              background-color 160ms var(--ease-standard, cubic-bezier(0.2, 0, 0, 1)),
+              border-color 160ms var(--ease-standard, cubic-bezier(0.2, 0, 0, 1));
+}
+@media (hover: hover) {
+  .apex-lift:hover { transform: translateY(-1px); }
+}
+
+/* ── Bigger operating type. Sam: "the text is small." Signed-in pages only. ────────────── */
+/* Tailwind's text-xs (12px) and text-sm (14px) are the two sizes almost every row, label and
+   hint on the operating surfaces use. They move to 13px and 15px here. An element that
+   already sets a breakpoint-specific size is left exactly as its author tuned it. */
+.apex-page-slot .text-xs:not([class*="sm:text-"]):not([class*="md:text-"]):not([class*="lg:text-"]) {
+  font-size: 13px;
+  line-height: 18px;
+}
+.apex-page-slot .text-sm:not([class*="sm:text-"]):not([class*="md:text-"]):not([class*="lg:text-"]) {
+  font-size: 15px;
+  line-height: 22px;
+}
+.apex-page-slot :is(.text-\[10px\], .text-\[11px\], .text-\[12px\], .text-11, .text-12):not([class*="sm:text-"]):not([class*="md:text-"]):not([class*="lg:text-"]) {
+  font-size: 13px;
+  line-height: 18px;
+}
+
+/* ── Reduced motion: every loop and entrance above stops; colour and layout stay ───────── */
+@media (prefers-reduced-motion: reduce) {
+  .apex-ambient > span,
+  .apex-rise,
+  .apex-rise-list > *,
+  .apex-pop,
+  .apex-bump,
+  .apex-breathe {
+    animation: none !important;
+  }
+  .apex-lift:hover { transform: none; }
+}

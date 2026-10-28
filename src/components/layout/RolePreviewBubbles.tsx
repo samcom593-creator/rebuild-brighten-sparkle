@@ -38,17 +38,18 @@ export function RolePreviewMenu() {
             // hover:bg-white/[0.04] hover:text-white — a dark-only hover. On
             // light the hover painted white text on a cream page, so the
             // control vanished at the moment the pointer reached it.
-            "h-8 gap-1.5 px-2 text-xs text-muted-foreground hover:bg-accent hover:text-foreground",
+            // Colour layer (2026-10-28): 44px like every other header control, 13px label.
+            "h-11 gap-1.5 px-3 text-[13px] text-muted-foreground hover:bg-accent hover:text-foreground",
             effectiveRole !== "admin" && "text-primary hover:text-primary",
           )}
           aria-label="Preview as role"
         >
-          <ActiveIcon className="h-3.5 w-3.5" />
+          <ActiveIcon className="h-4 w-4" />
           <span className="hidden xl:inline">{active?.label ?? "View as"}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-44">
-        <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <DropdownMenuLabel className="text-[13px] font-semibold text-muted-foreground">
           Preview as
         </DropdownMenuLabel>
         <DropdownMenuSeparator />

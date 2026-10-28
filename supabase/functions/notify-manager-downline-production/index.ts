@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { gateResend } from "../_shared/resend-gate.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
+import { DEPARTED_AGENT_COLUMNS, isDepartedAgent } from "../_shared/departed.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -76,13 +77,23 @@ serve(async (req: Request) => {
     // Get manager details
     const { data: manager } = await supabase
       .from("agents")
-      .select("profile_id")
+      .select(`profile_id, ${DEPARTED_AGENT_COLUMNS}`)
       .eq("id", agent.invited_by_manager_id)
       .single();
 
     if (!manager?.profile_id) {
       console.log("Manager has no profile - skipping");
       return new Response(JSON.stringify({ skipped: true, reason: "Manager no profile" }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // A departed manager (terminated or deactivated) is never alerted: the pointer is
+    // kept for attribution after departure.
+    if (isDepartedAgent(manager)) {
+      console.log("Manager has departed - skipping");
+      return new Response(JSON.stringify({ skipped: true, reason: "Manager departed" }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

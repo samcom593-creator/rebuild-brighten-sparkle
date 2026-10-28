@@ -7,6 +7,7 @@ import { findAuthUserByEmail, type AuthUserLister } from "../_shared/find-auth-u
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { gateResend } from "../_shared/resend-gate.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
+import { DEPARTED_AGENT_COLUMNS, isDepartedAgent } from "../_shared/departed.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -203,6 +204,29 @@ const handler = async (req: Request): Promise<Response> => {
       return new Response(
         JSON.stringify({ error: "Missing required fields: firstName, lastName, email, phone, managerId" }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // The target manager must still be with the agency. An admin can name any managerId;
+    // a departed one (terminated or deactivated) would route the new agent's onboarding,
+    // alerts and calendar traffic to someone who has left (AGENTS.md, 2026-08-17). Same
+    // refusal consume-invite-token gives for a departed upline.
+    const { data: targetManagerRow, error: targetManagerError } = await supabaseAdmin
+      .from("agents")
+      .select(DEPARTED_AGENT_COLUMNS)
+      .eq("id", managerId)
+      .maybeSingle();
+    if (targetManagerError) {
+      console.error("target_manager_lookup_failed", targetManagerError);
+      return new Response(
+        JSON.stringify({ error: "Could not confirm the manager. Try again.", code: "target_manager_lookup_failed" }),
+        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+    if (!targetManagerRow || isDepartedAgent(targetManagerRow)) {
+      return new Response(
+        JSON.stringify({ error: "That manager is no longer with the agency. Pick a current manager.", code: "target_manager_unavailable" }),
+        { status: 409, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 

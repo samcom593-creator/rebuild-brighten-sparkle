@@ -3,6 +3,7 @@ import { Resend } from "https://esm.sh/resend@2.0.0";
 import { gateResend } from "../_shared/resend-gate.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
+import { DEPARTED_AGENT_COLUMNS, isDepartedAgent } from "../_shared/departed.ts";
 
 const corsHeaders = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type" };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" } });
@@ -92,16 +93,21 @@ serve(async (req) => {
     const deals = production?.length ?? 0;
     const alp = (production ?? []).reduce((sum, row) => sum + Number(row.annual_premium || 0), 0);
     const agentName = String(agent.display_name || "Agent");
-    const managerId = agent.manager_id || agent.invited_by_manager_id;
+    // The operational manager first, then the inviting manager. A departed manager
+    // (terminated or deactivated) is skipped, never pushed or mailed: both pointers are
+    // kept for attribution after departure.
     let managerUserId: string | null = null;
     let managerEmail: string | null = null;
-    if (managerId) {
-      const { data: manager } = await admin.from("agents").select("user_id").eq("id", managerId).maybeSingle();
+    for (const managerId of [agent.manager_id, agent.invited_by_manager_id]) {
+      if (!managerId) continue;
+      const { data: manager } = await admin.from("agents").select(DEPARTED_AGENT_COLUMNS).eq("id", managerId).maybeSingle();
+      if (isDepartedAgent(manager)) continue;
       managerUserId = manager?.user_id ?? null;
       if (managerUserId) {
         const { data: profile } = await admin.from("profiles").select("email").eq("user_id", managerUserId).maybeSingle();
         managerEmail = profile?.email ?? null;
       }
+      break;
     }
     const push = await sendPush([agent.user_id, managerUserId].filter(Boolean) as string[], "Production submitted", `${agentName}: ${deals} policies, $${alp.toLocaleString()} ALP`);
     let email: unknown = { skipped: true };

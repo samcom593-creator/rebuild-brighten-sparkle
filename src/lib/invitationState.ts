@@ -12,6 +12,7 @@
  * Public recruiting links (/r/<slug>) are a different system and are not
  * modelled here — nothing in this file can expire them.
  */
+import type { Tone } from "@/lib/tones";
 
 export type InvitationStatus = "pending" | "accepted" | "expired" | "revoked" | "superseded";
 
@@ -23,13 +24,36 @@ export const INVITATION_STATUSES: readonly InvitationStatus[] = [
   "superseded",
 ] as const;
 
+/**
+ * The status word people read. The stored value stays what fn_invitation_status()
+ * returns ("superseded"); on screen it says what happened in plain words.
+ */
 export const INVITATION_STATUS_LABEL: Record<InvitationStatus, string> = {
   pending: "Pending",
   accepted: "Accepted",
   expired: "Expired",
   revoked: "Revoked",
-  superseded: "Superseded",
+  superseded: "Replaced",
 };
+
+/**
+ * The tone beside each status word (src/lib/tones.ts, 2026-10-28 colour layer): a pending
+ * link needs a nudge until someone uses it, an accepted one went well, and a closed link
+ * (expired, revoked, replaced) is quiet. The word always sits beside the colour; this map
+ * only tints it, and every surface that shows an invitation status reads from here.
+ */
+export const INVITATION_STATUS_TONE: Record<InvitationStatus, Tone> = {
+  pending: "warm",
+  accepted: "good",
+  expired: "slate",
+  revoked: "slate",
+  superseded: "slate",
+};
+
+/** The tone for a status string, quiet for a missing one or one this client does not know. */
+export function invitationStatusTone(status: string | null | undefined): Tone {
+  return (INVITATION_STATUS_TONE as Record<string, Tone | undefined>)[status ?? ""] ?? "slate";
+}
 
 export interface InvitationStatusInput {
   used_at?: string | null;
@@ -258,10 +282,17 @@ export function validateOfferTerms(draft: OfferTermsDraft, auth: OfferAuthority)
 /** Agency keys the server derives from the upline (fn_agent_subagency). */
 export type AgencyKey = "primary" | "vantage";
 
+/**
+ * The two known keys have display names. Any other key reads as its own words
+ * ("apex" → "Apex", "north_star" → "North Star") so a new agency never prints as
+ * "Unknown"; only a missing key is unknown.
+ */
 export function agencyLabel(key: string | null | undefined, primaryName: string): string {
   if (key === "vantage") return "Vantage Financial";
   if (key === "primary") return primaryName;
-  return "Unknown";
+  const words = (key ?? "").split(/[\s_-]+/).filter(Boolean);
+  if (words.length === 0) return "Unknown";
+  return words.map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
 }
 
 export function formatRole(role: string | null | undefined): string {

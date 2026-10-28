@@ -44,7 +44,13 @@ if (!wf) {
   problems.push(`${WF} is missing — cannot prove CI runs the gate at all.`);
 } else {
   const runLines = [...wf.matchAll(/^\s*run:\s*(.+)$/gm)].map((m) => m[1].trim());
-  const callsAll = allEntry && runLines.some((l) => l === `npm run ${allEntry[0]}` || l.includes(RUNNER));
+  // The run line may tee its output (verify-core.yml does since 2026-10-28, so the
+  // failure step can annotate each red link); what matters is that the non-masking
+  // entry is the command, so a trailing pipe or redirect is allowed, a different
+  // command is not.
+  const callsAll =
+    allEntry &&
+    runLines.some((l) => l === `npm run ${allEntry[0]}` || l.startsWith(`npm run ${allEntry[0]} `) || l.includes(RUNNER));
   const callsRaw = runLines.some((l) => /^npm run verify:core$/.test(l));
   if (!callsAll) {
     problems.push(

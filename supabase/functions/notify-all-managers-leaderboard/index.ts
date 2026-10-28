@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { isBannedUser } from "../_shared/departed.ts";
 import { sendEmail } from "../_shared/email.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -44,7 +45,8 @@ async function getAllManagerEmails(): Promise<Array<{ email: string; name: strin
 
   for (const role of roleData) {
     const { data: authData } = await supabaseAdmin.auth.admin.getUserById(role.user_id);
-    if (!authData?.user?.email || managersMap.has(authData.user.email)) continue;
+    // A banned login (GoTrue banned_until in the future) is never mailed, whatever role rows remain.
+    if (!authData?.user?.email || isBannedUser(authData.user) || managersMap.has(authData.user.email)) continue;
 
     const { data: profileData } = await supabaseAdmin
       .from("profiles")

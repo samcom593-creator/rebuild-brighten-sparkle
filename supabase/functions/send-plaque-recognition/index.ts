@@ -4,6 +4,7 @@ import { Resend } from "https://esm.sh/resend@2.0.0";
 import { gateResend } from "../_shared/resend-gate.ts";
 import { Resvg, initWasm } from "https://esm.sh/@resvg/resvg-wasm@2.6.2";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
+import { DEPARTED_AGENT_COLUMNS, isDepartedAgent } from "../_shared/departed.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -362,14 +363,15 @@ serve(async (req: Request) => {
           .eq("id", awardRow!.id);
       }
 
-      // Notify manager
+      // Notify manager. A departed manager (terminated or deactivated) is never
+      // notified: the pointer is kept for attribution after departure.
       if (agentData.invited_by_manager_id) {
         const { data: mgr } = await supabase
           .from("agents")
-          .select("profile_id")
+          .select(`profile_id, ${DEPARTED_AGENT_COLUMNS}`)
           .eq("id", agentData.invited_by_manager_id)
           .single();
-        if (mgr?.profile_id) {
+        if (mgr?.profile_id && !isDepartedAgent(mgr)) {
           const { data: mgrProf } = await supabase
             .from("profiles")
             .select("email")

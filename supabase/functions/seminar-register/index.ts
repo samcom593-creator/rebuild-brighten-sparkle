@@ -7,6 +7,7 @@
 
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { DEPARTED_AGENT_COLUMNS, isBannedUser, isDepartedAgent } from "../_shared/departed.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -133,11 +134,15 @@ async function managerFromAgent(agentId: string | null | undefined): Promise<Man
 
   const { data: agent } = await sb
     .from("agents")
-    .select("display_name, profile_id, user_id, manager_id")
+    .select(`display_name, profile_id, manager_id, ${DEPARTED_AGENT_COLUMNS}`)
     .eq("id", agentId)
     .maybeSingle();
 
-  const profile = await profileById((agent as any)?.profile_id ?? (agent as any)?.user_id);
+  // A departed agent (terminated or deactivated) never gets the alert: the pointer to
+  // them is kept for attribution, so the walk continues to their manager instead.
+  const profile = agent && !isDepartedAgent(agent as any)
+    ? await profileById((agent as any)?.profile_id ?? (agent as any)?.user_id)
+    : null;
   if (profile) {
     return {
       email: profile.email,
@@ -148,6 +153,15 @@ async function managerFromAgent(agentId: string | null | undefined): Promise<Man
   const managerAgentId = (agent as any)?.manager_id as string | null | undefined;
   if (!managerAgentId || managerAgentId === agentId) return null;
   return managerFromAgent(managerAgentId);
+}
+
+// hiring_manager_user_id is an auth user id: a banned login (GoTrue banned_until in the
+// future) is skipped so the alert falls through to the assigned agent's chain.
+async function hiringManagerProfile(userId: string | null | undefined): Promise<ManagerTarget | null> {
+  if (!userId) return null;
+  const { data } = await sb.auth.admin.getUserById(userId);
+  if (isBannedUser(data?.user)) return null;
+  return profileById(userId);
 }
 
 async function resolveManager(applicationId: string): Promise<{
@@ -165,7 +179,7 @@ async function resolveManager(applicationId: string): Promise<{
   }
 
   const manager =
-    await profileById((app as any).hiring_manager_user_id) ??
+    await hiringManagerProfile((app as any).hiring_manager_user_id) ??
     await managerFromAgent((app as any).assigned_agent_id) ??
     await managerFromAgent((app as any).recruiter_id) ??
     { email: "sam.com593@gmail.com", name: "Sam James" };

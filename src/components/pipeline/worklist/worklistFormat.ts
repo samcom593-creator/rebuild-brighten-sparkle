@@ -37,17 +37,78 @@ export function formatDay(value: string | null | undefined): string {
   return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" }).format(d);
 }
 
-/** "3h ago" / "in 2d" relative to now; exact time belongs in the title attribute. */
-export function formatRelative(value: string | null | undefined, now = Date.now()): string {
-  if (!value) return "—";
+/**
+ * Plain-English span for people who don't read "18d": "3 hours", "2 days", "3 weeks",
+ * "7 years". Every view shows elapsed and overdue time through this, so "4d ago" and
+ * "24h ago" cannot come back (Grow review, 2026-10-28).
+ */
+export function plainSpan(ms: number): string {
+  const mins = Math.max(1, Math.round(Math.max(0, ms) / 60_000));
+  if (mins < 60) return `${mins} ${mins === 1 ? "minute" : "minutes"}`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours} ${hours === 1 ? "hour" : "hours"}`;
+  const days = Math.round(hours / 24);
+  if (days < 14) return `${days} ${days === 1 ? "day" : "days"}`;
+  const weeks = Math.round(days / 7);
+  if (weeks < 9) return `${weeks} weeks`;
+  const months = Math.round(days / 30);
+  if (months < 24) return `${months} months`;
+  // 24 months is already 1.93 years, so this tier never reads "1 years".
+  return `${Math.round(days / 365.25)} years`;
+}
+
+/**
+ * A past moment as a cell or the start of a line: "Just now", "Today", "Yesterday",
+ * "4 days ago", "Never", "Unreadable date". A future-dated value (clock skew, a bulk
+ * stamp) reads as "Just now", never as negative time.
+ */
+export function formatAgo(value: string | null | undefined, now = Date.now()): string {
+  if (!value) return "Never";
   const ms = new Date(value).getTime();
   if (Number.isNaN(ms)) return "Unreadable date";
-  const diff = ms - now;
-  const abs = Math.abs(diff);
-  const mins = Math.round(abs / 60_000);
-  const label = mins < 60 ? `${mins}m` : mins < 60 * 48 ? `${Math.round(mins / 60)}h` : `${Math.round(mins / 1440)}d`;
-  if (mins < 1) return "now";
-  return diff < 0 ? `${label} ago` : `in ${label}`;
+  const elapsed = Math.max(0, now - ms);
+  if (elapsed < 60 * 60_000) return "Just now";
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+  if (ms >= startOfToday.getTime()) return "Today";
+  if (ms >= startOfToday.getTime() - 24 * 60 * 60_000) return "Yesterday";
+  return `${plainSpan(elapsed)} ago`;
+}
+
+/**
+ * The same words mid-sentence ("Last contact yesterday"): "never", "just now", "today",
+ * "yesterday", "3 days ago", "on an unreadable date". Derived from formatAgo so the
+ * list and the table can never describe one moment two ways.
+ */
+export function formatSince(value: string | null | undefined, now = Date.now()): string {
+  if (!value) return "never";
+  if (Number.isNaN(new Date(value).getTime())) return "on an unreadable date";
+  const words = formatAgo(value, now);
+  return words.charAt(0).toLowerCase() + words.slice(1);
+}
+
+/** "3:00 PM MST": the time with its zone, in the viewer's zone. */
+export function formatTimeWithZone(value: string | null | undefined, timeZone = VIEWER_ZONE): string {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "Unreadable date";
+  return new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit", timeZone, timeZoneName: "short" }).format(d);
+}
+
+/** A due time as people say it: "3:00 PM" today, "Tomorrow 10:00 AM", "Thu 10:00 AM", "Nov 12". */
+export function formatDueShort(value: string | null | undefined, now = Date.now()): string {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "Unreadable date";
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+  const dayMs = 24 * 60 * 60_000;
+  const time = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(d);
+  const offset = Math.floor((d.getTime() - startOfToday.getTime()) / dayMs);
+  if (offset === 0) return time;
+  if (offset === 1) return `Tomorrow ${time}`;
+  if (offset > 1 && offset < 7) return `${new Intl.DateTimeFormat(undefined, { weekday: "short" }).format(d)} ${time}`;
+  return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(d);
 }
 
 /** The person's current local time, only when a verified zone is stored. */
@@ -81,6 +142,18 @@ export function formatNextAction(action: string, setByPerson: boolean): string {
 export function humanizeKey(value: string | null | undefined): string {
   if (!value) return "—";
   return value.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/**
+ * The two letters inside a person's bubble (colour layer, 2026-10-28): the first letter of
+ * the first name and of the last name, "SA" for Sample A1. One letter when only one name is
+ * on file, and "" when neither is, so the bubble can show a plain person icon instead of
+ * inventing initials for "Name not provided".
+ */
+export function initialsOf(row: { first_name: string | null; last_name: string | null }): string {
+  const first = (row.first_name ?? "").trim();
+  const last = (row.last_name ?? "").trim();
+  return `${first.charAt(0)}${last.charAt(0)}`.toUpperCase();
 }
 
 export const VERIFIED_ZONE_OPTIONS = [

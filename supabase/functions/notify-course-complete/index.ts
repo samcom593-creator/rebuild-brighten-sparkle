@@ -8,6 +8,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { gateResend } from "../_shared/resend-gate.ts";
+import { DEPARTED_AGENT_COLUMNS, isDepartedAgent } from "../_shared/departed.ts";
 
 const resend = gateResend(new Resend(Deno.env.get("RESEND_API_KEY")));
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -122,14 +123,17 @@ const handler = async (req: Request): Promise<Response> => {
     // Get manager's email if exists (use invited_by_manager_id first, fallback to manager_id)
     let managerEmail: string | null = null;
     let managerName = "Galaxy Team";
-    const managerId = agent?.invited_by_manager_id || agent?.manager_id;
+    // A departed manager (terminated or deactivated) is skipped and the next pointer
+    // tried: both pointers are kept for attribution after departure.
+    const managerCandidates = [agent?.invited_by_manager_id, agent?.manager_id].filter(Boolean) as string[];
     
-    if (managerId) {
+    for (const managerId of managerCandidates) {
       const { data: manager } = await supabase
         .from("agents")
-        .select("profile_id")
+        .select(`profile_id, ${DEPARTED_AGENT_COLUMNS}`)
         .eq("id", managerId)
         .single();
+      if (isDepartedAgent(manager)) continue;
 
       if (manager?.profile_id) {
         const { data: managerProfile } = await supabase
@@ -142,6 +146,7 @@ const handler = async (req: Request): Promise<Response> => {
           managerName = managerProfile.full_name || "Manager";
         }
       }
+      break;
     }
 
     // Build recipient list for admin/manager notification

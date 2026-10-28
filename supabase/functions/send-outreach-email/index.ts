@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { gateResend } from "../_shared/resend-gate.ts";
+import { DEPARTED_AGENT_COLUMNS, isBannedUser, isDepartedAgent } from "../_shared/departed.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -49,11 +50,19 @@ async function getManagerEmailFromAgent(supabase: any, agentId: string): Promise
   try {
     const { data: agent } = await supabase.from("agents").select("user_id, invited_by_manager_id").eq("id", agentId).single();
     if (!agent) return null;
-    const managerId = agent.invited_by_manager_id || agentId;
-    const { data: manager } = await supabase.from("agents").select("user_id").eq("id", managerId).single();
-    if (!manager?.user_id) return null;
-    const { data: authData } = await supabase.auth.admin.getUserById(manager.user_id);
-    return authData?.user?.email || null;
+    // The inviting manager first, then the agent itself. A departed agent (terminated or
+    // deactivated) or a banned login is skipped, never CC'd: invited_by_manager_id is kept
+    // for attribution after departure, so the check belongs here, at send time.
+    const candidates = [agent.invited_by_manager_id, agentId].filter(Boolean) as string[];
+    for (const candidateId of candidates) {
+      const { data: manager } = await supabase.from("agents").select(DEPARTED_AGENT_COLUMNS).eq("id", candidateId).single();
+      if (!manager?.user_id || isDepartedAgent(manager)) continue;
+      const { data: authData } = await supabase.auth.admin.getUserById(manager.user_id);
+      const user = authData?.user;
+      if (!user?.email || isBannedUser(user)) continue;
+      return user.email;
+    }
+    return null;
   } catch (e) {
     console.error("Error resolving manager email:", e);
     return null;

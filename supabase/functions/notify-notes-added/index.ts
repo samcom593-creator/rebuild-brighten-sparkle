@@ -12,6 +12,7 @@ import { jsonResponse } from "../_shared/cors.ts";
 import { parseBody, v } from "../_shared/validate.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
 import { escapeHtml } from "../_shared/notify-caller-policy.ts";
+import { DEPARTED_AGENT_COLUMNS, isDepartedAgent } from "../_shared/departed.ts";
 
 const resend = gateResend(new Resend(Deno.env.get("RESEND_API_KEY")));
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -81,11 +82,16 @@ Deno.serve(
 
       const { data: managerAgent } = await supabase
         .from("agents")
-        .select("user_id")
+        .select(DEPARTED_AGENT_COLUMNS)
         .eq("id", agent.invited_by_manager_id)
         .maybeSingle();
 
       if (!managerAgent) throw new Error("Manager not found");
+      // A departed manager (terminated or deactivated) is never pushed or mailed: the
+      // pointer is kept for attribution after departure, so this reads as no manager.
+      if (isDepartedAgent(managerAgent)) {
+        return jsonResponse({ success: true, skipped: true });
+      }
 
       const { data: managerProfile } = await supabase
         .from("profiles")

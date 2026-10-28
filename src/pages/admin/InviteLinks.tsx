@@ -26,9 +26,8 @@
  * are never expired by anything here.
  */
 import { Link } from "react-router-dom";
-import { Link2, ShieldCheck } from "lucide-react";
+import { UserPlus } from "lucide-react";
 
-import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useAuth } from "@/hooks/useAuth";
@@ -39,33 +38,35 @@ export default function InviteLinksAdmin() {
   usePageTitle("Invite Agent");
   const { isAdmin } = useAuth();
 
+  // Grow redesign (2026-10-28): one plain title (the subtitle fits a 390px line whole), the form
+  // in four numbered steps, and the contracting fields copy-ready on every invitation. The
+  // license rule is said once, as the hint of the form's License step, never in a callout above
+  // step 1 (council findings 11 and 27).
+  //
+  // Colour layer (2026-10-28): the header bubble is royal, the paperwork tone, because an
+  // invitation is the first form of someone's contracting. The steps, pills and celebrations
+  // live in InviteAgentForm and InvitationsTable.
   return (
-    <div className="page-enter mx-auto max-w-6xl space-y-6 p-4 md:p-6">
+    <div className="page-enter mx-auto w-full max-w-5xl space-y-8 pb-24">
       <PageHeader
-        eyebrow="Contracting · Invite an agent"
-        eyebrowIcon={<Link2 className="h-3 w-3" />}
-        title="Invite Agent"
-        subtitle="One personal link per recruit, carrying the upline and the approved comp they accept."
+        title="Invite an agent"
+        subtitle="Fill in what you know, then send the link."
+        icon={<UserPlus />}
+        tone="royal"
       />
 
-      <Card>
-        <CardContent className="space-y-4 p-5">
-          <div className="flex items-start gap-3 rounded-md border border-border bg-muted/40 p-3" data-testid="license-routing">
-            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-            <p className="text-xs leading-relaxed text-muted-foreground">
-              <span className="font-medium text-foreground">License status is always required.</span>{" "}
-              Lock it here, or let the recruit choose Licensed or Unlicensed on the invite. Licensed starts contracting on acceptance; unlicensed starts the licensing roadmap.
-            </p>
-          </div>
-          <InviteAgentForm />
-        </CardContent>
-      </Card>
+      <section aria-label="New invitation" className="rounded-xl border border-border bg-card p-5 sm:p-8">
+        <InviteAgentForm licenseHint="License status is always required. Pick one, or let them choose." />
+      </section>
 
-      <div className="space-y-2">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-sm font-semibold text-foreground">Invitations</h2>
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-lg font-semibold text-foreground">Your invitations</h2>
           {isAdmin && (
-            <Link to="/dashboard/recruiting-links" className="text-xs text-muted-foreground underline-offset-4 hover:text-primary hover:underline">
+            <Link
+              to="/dashboard/recruiting-links"
+              className="inline-flex min-h-11 items-center text-sm text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
+            >
               Public recruiting links
             </Link>
           )}

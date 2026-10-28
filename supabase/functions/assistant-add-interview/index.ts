@@ -31,6 +31,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
+import { isBannedUser } from "../_shared/departed.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -267,7 +268,9 @@ Deno.serve(async (req: Request) => {
   // retry cannot create a second candidate in the working queue.
   let pipelineWarning: string | null = null;
   const { data: ownerAuth } = await supabase.auth.admin.getUserById(tokenRow.owner_user_id);
-  const ownerEmail = ownerAuth.user?.email?.trim().toLowerCase() ?? "";
+  // A banned token owner (GoTrue banned_until in the future) no longer owns a hiring
+  // queue: the candidate is mirrored without a recruiter rather than into theirs.
+  const ownerEmail = isBannedUser(ownerAuth?.user) ? "" : (ownerAuth.user?.email?.trim().toLowerCase() ?? "");
   const { data: hhOwner } = ownerEmail
     ? await supabase.from("hh_users").select("id").eq("email", ownerEmail).eq("active", true).maybeSingle()
     : { data: null };

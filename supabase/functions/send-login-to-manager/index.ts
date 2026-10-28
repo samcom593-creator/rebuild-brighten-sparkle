@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { gateResend } from "../_shared/resend-gate.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
+import { DEPARTED_AGENT_COLUMNS, isDepartedAgent } from "../_shared/departed.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -136,14 +137,16 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Get manager profile
+    // Get manager profile. A departed manager (terminated or deactivated) is never
+    // mailed: the pointer is kept for attribution after departure, so they read as
+    // not found here.
     const { data: managerAgent } = await supabaseClient
       .from("agents")
-      .select("user_id, profile_id")
+      .select(`profile_id, ${DEPARTED_AGENT_COLUMNS}`)
       .eq("id", agent.invited_by_manager_id)
       .single();
 
-    if (!managerAgent) {
+    if (!managerAgent || isDepartedAgent(managerAgent)) {
       return new Response(
         JSON.stringify({ success: false, error: "Manager not found" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }

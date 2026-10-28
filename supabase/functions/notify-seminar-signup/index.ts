@@ -10,6 +10,7 @@
 
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { DEPARTED_AGENT_COLUMNS, isBannedUser, isDepartedAgent } from "../_shared/departed.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -125,7 +126,12 @@ Deno.serve(async (req) => {
   // Resolve manager email: hiring_manager_user_id → profile, else assigned_agent_id → agent.profile
   let managerEmail: string | null = null;
   let managerName: string | null = null;
-  if (app.hiring_manager_user_id) {
+  // hiring_manager_user_id is an auth user id: a banned login (GoTrue banned_until in the
+  // future) is skipped so the alert falls through to the assigned agent, then Sam.
+  const hiringManagerBanned = app.hiring_manager_user_id
+    ? isBannedUser((await sb.auth.admin.getUserById(app.hiring_manager_user_id)).data?.user)
+    : false;
+  if (app.hiring_manager_user_id && !hiringManagerBanned) {
     const { data: p } = await sb.from("profiles").select("email, full_name").eq("id", app.hiring_manager_user_id).maybeSingle();
     if (p?.email) {
       managerEmail = p.email as string;
@@ -135,10 +141,11 @@ Deno.serve(async (req) => {
   if (!managerEmail && app.assigned_agent_id) {
     const { data: a } = await sb
       .from("agents")
-      .select("display_name, profile:profiles(email, full_name)")
+      .select(`display_name, ${DEPARTED_AGENT_COLUMNS}, profile:profiles(email, full_name)`)
       .eq("id", app.assigned_agent_id)
       .maybeSingle();
-    const p = (a as any)?.profile;
+    // A departed agent (terminated or deactivated) never gets the alert; it falls to Sam.
+    const p = a && !isDepartedAgent(a as any) ? (a as any)?.profile : null;
     if (p?.email) {
       managerEmail = p.email;
       managerName = p.full_name ?? (a as any)?.display_name ?? null;

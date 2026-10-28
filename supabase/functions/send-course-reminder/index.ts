@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { gateResend } from "../_shared/resend-gate.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
+import { DEPARTED_AGENT_COLUMNS, isDepartedAgent } from "../_shared/departed.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -171,14 +172,16 @@ serve(async (req) => {
 
     // Look up manager email for CC
     let managerEmail: string | null = null;
+    // A departed manager (terminated or deactivated) is never CC'd: the pointer is kept
+    // for attribution after departure.
     if (agent.invited_by_manager_id) {
       const { data: managerAgent } = await supabase
         .from("agents")
-        .select("profile_id")
+        .select(`profile_id, ${DEPARTED_AGENT_COLUMNS}`)
         .eq("id", agent.invited_by_manager_id)
         .single();
 
-      if (managerAgent?.profile_id) {
+      if (managerAgent?.profile_id && !isDepartedAgent(managerAgent)) {
         const { data: managerProfile } = await supabase
           .from("profiles")
           .select("email")

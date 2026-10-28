@@ -9,50 +9,177 @@
  *
  * Copy and Email draft are recorded as SHARES (record_invitation_share), never
  * as deliveries: nothing on this surface sends an email.
+ *
+ * Grow redesign (2026-10-28, council finding 28): under lg each invitation is a
+ * card (name, email, status in words, one "More" menu); from lg up the same rows
+ * are a table that fits a 1022px column with nothing clipped. Every action lives
+ * in the one labelled menu per row; Revoke and Replace are two-step through
+ * useConfirm. Status words come from INVITATION_STATUS_LABEL, so the server's
+ * "superseded" reads as "Replaced" everywhere here (finding 39).
+ *
+ * Colour layer (2026-10-28, docs/DESIGN_SYSTEM.md "Colour, motion and sound"): the status
+ * pill wears the tone INVITATION_STATUS_TONE gives its word (pending warm, accepted good,
+ * closed links quiet), the cards and rows rise in once, a copied link pops after the
+ * clipboard took it, a revoked link whooshes away, and a replaced link chimes from the menu
+ * item that was pressed. Nothing plays on load or on an error; every error toast is as before.
  */
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Ban, Copy, Mail, RefreshCw, Search } from "lucide-react";
+import { Ban, ChevronDown, ClipboardCopy, Copy, Loader2, Mail, RefreshCw, Search } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { resolveBrand } from "@/config/brand";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { TonePill } from "@/components/ui/delight/ToneBubble";
+import { RevealList } from "@/components/ui/delight/Reveal";
+import { formatDay } from "@/components/pipeline/worklist/worklistFormat";
 import { useConfirm } from "@/hooks/useConfirm";
+import { playSoundEffect } from "@/hooks/useSoundEffects";
+import { celebrate, type CelebrationOrigin } from "@/lib/celebrate";
 import {
   INVITATION_STATUS_LABEL,
   agencyLabel,
   formatRole,
   invitationActions,
   invitationMailto,
+  invitationStatusTone,
   type InvitationStatus,
 } from "@/lib/invitationState";
+import { contractingInfoFor, decodeInviteNote } from "@/lib/inviteContractingInfo";
+import { ContractingCopyCard } from "./ContractingCopyCard";
 import { inviteUrlFromPath, shareInvitation, useInvitations, type InvitationRow } from "./invitationApi";
 
 const BRAND = resolveBrand();
 
-const STATUS_CLASS: Record<InvitationStatus, string> = {
-  pending: "border-primary/30 bg-primary/10 text-primary",
-  accepted: "border-border bg-muted text-foreground",
-  expired: "border-border bg-muted text-muted-foreground",
-  revoked: "border-destructive/30 bg-destructive/10 text-destructive",
-  superseded: "border-border bg-muted text-muted-foreground",
-};
+/**
+ * Where the finger was, as a point, read the moment a menu item is picked: the menu closes
+ * and the item unmounts before the write resolves, and a point read now still puts the
+ * bubbles where it was. The control itself while it has no size (hidden, or under test).
+ */
+function pressOrigin(control: EventTarget | null): CelebrationOrigin {
+  if (!(control instanceof Element) || typeof window === "undefined") return null;
+  const r = control.getBoundingClientRect();
+  if (r.width === 0 && r.height === 0) return control;
+  const clamp = (v: number) => Math.min(1, Math.max(0, v));
+  return { x: clamp((r.left + r.width / 2) / window.innerWidth), y: clamp((r.top + r.height / 2) / window.innerHeight) };
+}
 
-const fmtDate = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleDateString() : "—");
+/** The server's status in the words people read; a status this client does not know is shown as it came, never hidden. */
+function statusWord(status: string | null | undefined): string {
+  if (!status) return "no longer pending";
+  return ((INVITATION_STATUS_LABEL as Record<string, string | undefined>)[status] ?? status).toLowerCase();
+}
+
+/** What happened and when: "Expires Nov 4, 2026", "Accepted Oct 30, 2026 · Pat Lee", "Replaced Oct 29, 2026". */
+function whenLine(row: InvitationRow): string {
+  const word = INVITATION_STATUS_LABEL[row.status];
+  switch (row.status) {
+    case "accepted":
+      return `${word} ${formatDay(row.used_at)}${row.accepted_agent_name ? ` · ${row.accepted_agent_name}` : ""}`;
+    case "superseded":
+      return `${word} ${formatDay(row.superseded_at)}`;
+    case "revoked":
+      return `${word} ${formatDay(row.revoked_at)}`;
+    case "expired":
+      return `${word} ${formatDay(row.expires_at)}`;
+    default:
+      return `Expires ${formatDay(row.expires_at)}`;
+  }
+}
+
+/** "Created Oct 28, 2026 by Sam James". */
+function createdLine(row: InvitationRow): string {
+  return `Created ${formatDay(row.created_at)}${row.created_by_name ? ` by ${row.created_by_name}` : ""}`;
+}
+
+/** "Shared 2 times", or nothing. Shares are copies and mail drafts, never deliveries. */
+function sharedLine(row: InvitationRow): string | null {
+  if (row.share_count <= 0) return null;
+  return `Shared ${row.share_count} ${row.share_count === 1 ? "time" : "times"}`;
+}
+
+const offerText = (row: InvitationRow) => (row.offered_comp_pct != null ? `${Number(row.offered_comp_pct)}% comp` : "No comp offer");
+
+const exceptionsText = (row: InvitationRow) =>
+  (row.carrier_exceptions ?? []).map((e) => `${e.carrier_name} ${Number(e.pct)}%`).join(", ");
 
 async function fetchLink(id: string): Promise<string | null> {
   const { data, error } = await supabase.rpc("invitation_link" as never, { p_id: id } as never);
   if (error) throw error;
   const link = data as unknown as { ok: boolean; path?: string; status?: string };
   if (!link?.ok || !link.path) {
-    toast.error(`This invitation is ${link?.status ?? "no longer pending"}; its link cannot be shared.`);
+    toast.error(`This invitation is ${statusWord(link?.status)}; its link cannot be shared.`);
     return null;
   }
   return inviteUrlFromPath(link.path);
+}
+
+interface RowMenuProps {
+  row: InvitationRow;
+  busy: boolean;
+  /** True while this row's contracting dialog is open, so closing the menu does not pull focus back out of it. */
+  infoOpen: boolean;
+  onInfo: () => void;
+  onCopy: () => void;
+  onEmail: () => void;
+  /** Receives where the menu item was pressed, so the new link's chime rises from there. */
+  onReplace: (origin: CelebrationOrigin) => void;
+  onRevoke: () => void;
+}
+
+/** The one control per row. Every item is a word, 44px tall; Revoke and Replace confirm before they act. */
+function RowMenu({ row, busy, infoOpen, onInfo, onCopy, onEmail, onReplace, onRevoke }: RowMenuProps) {
+  const actions = invitationActions(row.status);
+  const who = row.recipient_name || row.recipient_email || "this invitation";
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" className="h-11 px-3" disabled={busy} aria-label={`More actions for ${who}`}>
+          {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+          More <ChevronDown className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-60" onCloseAutoFocus={(e) => { if (infoOpen) e.preventDefault(); }}>
+        <DropdownMenuItem className="min-h-11 gap-2 text-base" onSelect={onInfo}>
+          <ClipboardCopy className="h-4 w-4" /> Contracting info
+        </DropdownMenuItem>
+        {actions.copy && (
+          <DropdownMenuItem className="min-h-11 gap-2 text-base" onSelect={onCopy}>
+            <Copy className="h-4 w-4" /> Copy link
+          </DropdownMenuItem>
+        )}
+        {actions.share && row.recipient_email && (
+          <DropdownMenuItem className="min-h-11 gap-2 text-base" onSelect={onEmail}>
+            <Mail className="h-4 w-4" /> Email draft
+          </DropdownMenuItem>
+        )}
+        {actions.regenerate && (
+          <DropdownMenuItem className="min-h-11 gap-2 text-base" onSelect={(e) => onReplace(pressOrigin(e.currentTarget))}>
+            <RefreshCw className="h-4 w-4" /> Replace link
+          </DropdownMenuItem>
+        )}
+        {actions.revoke && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="min-h-11 gap-2 text-base text-destructive focus:text-destructive" onSelect={onRevoke}>
+              <Ban className="h-4 w-4" /> Revoke link
+            </DropdownMenuItem>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 }
 
 export function InvitationsTable({
@@ -68,6 +195,7 @@ export function InvitationsTable({
   const [history, setHistory] = useState(false);
   const [search, setSearch] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [infoRow, setInfoRow] = useState<InvitationRow | null>(null);
   const list = useInvitations(history, history ? search : "");
 
   const rows = useMemo(() => {
@@ -92,6 +220,8 @@ export function InvitationsTable({
     const url = await fetchLink(row.id);
     if (!url) return;
     await navigator.clipboard.writeText(url);
+    // The clipboard has it: the pop marks that, so a blocked clipboard stays silent.
+    playSoundEffect("pop");
     await shareInvitation(row.id, "copy");
     toast.success("Link copied.");
     await refresh();
@@ -117,23 +247,25 @@ export function InvitationsTable({
 
   const revoke = (row: InvitationRow) => run(row.id, async () => {
     const ok = await askConfirm({
-      title: "Revoke this invitation?",
-      description: "The link stops working immediately. You can issue a new one with Regenerate.",
-      confirmText: "Revoke",
+      title: "Revoke this link?",
+      description: "The link stops working right away. You can make a new one with Replace link.",
+      confirmText: "Revoke link",
       tone: "danger",
     });
     if (!ok) return;
     const { error } = await supabase.rpc("revoke_invitation" as never, { p_id: row.id } as never);
     if (error) throw error;
     toast.success("Invitation revoked.");
+    // The link is gone: a quiet whoosh, only once the server said so.
+    playSoundEffect("whoosh");
     await refresh();
   });
 
-  const regenerate = (row: InvitationRow) => run(row.id, async () => {
+  const regenerate = (row: InvitationRow, origin: CelebrationOrigin) => run(row.id, async () => {
     const ok = await askConfirm({
-      title: "Issue a new link?",
-      description: "The current link is marked superseded and stops working. The new link carries the same terms.",
-      confirmText: "Regenerate",
+      title: "Replace this link?",
+      description: "The current link stops working and shows as Replaced. The new link carries the same terms.",
+      confirmText: "Replace link",
       tone: "primary",
     });
     if (!ok) return;
@@ -141,6 +273,8 @@ export function InvitationsTable({
     if (error) throw error;
     const fresh = data as unknown as { id?: string; path?: string };
     if (!fresh?.id || !fresh.path) throw new Error("The new link was not returned.");
+    // A new invitation exists (src/lib/celebrate.ts: "booked"), whether or not the clipboard takes it below.
+    void celebrate("booked", origin);
     const url = inviteUrlFromPath(fresh.path);
     try {
       await navigator.clipboard.writeText(url);
@@ -148,30 +282,57 @@ export function InvitationsTable({
       toast.success("New link created and copied.");
     } catch (err) {
       console.warn("clipboard blocked", err);
-      toast.success("New link created. Use Copy on the new row.");
+      toast.success("New link created. Use Copy link on the new row.");
     }
     await refresh();
   });
 
   const counts = list.data?.counts;
 
+  const menuFor = (row: InvitationRow) => (
+    <RowMenu
+      row={row}
+      busy={busyId === row.id}
+      infoOpen={infoRow?.id === row.id}
+      onInfo={() => setInfoRow(row)}
+      onCopy={() => void copy(row)}
+      onEmail={() => void emailDraft(row)}
+      onReplace={(origin) => void regenerate(row, origin)}
+      onRevoke={() => void revoke(row)}
+    />
+  );
+
+  /** The status word in its tone (INVITATION_STATUS_TONE). The word is the content; the dot and tint only help. */
+  const pillFor = (row: InvitationRow) => (
+    <TonePill tone={invitationStatusTone(row.status)} dot className="shrink-0">
+      {INVITATION_STATUS_LABEL[row.status]}
+    </TonePill>
+  );
+
+  /** A tab press is a view moved: one tick, and only when the view changes. */
+  const showHistory = (next: boolean) => {
+    if (next === history) return;
+    setHistory(next);
+    playSoundEffect("tick");
+  };
+
   return (
     <section className="space-y-3" aria-label={title}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-1 rounded-md border border-border p-0.5" role="tablist" aria-label="Invitation view">
-          <Button size="sm" variant={history ? "ghost" : "secondary"} className="h-7" role="tab" aria-selected={!history} onClick={() => setHistory(false)}>
+          <Button variant={history ? "ghost" : "secondary"} className="h-11 px-4 text-sm" role="tab" aria-selected={!history} onClick={() => showHistory(false)}>
             Active{counts ? ` · ${counts.pending}` : ""}
           </Button>
-          <Button size="sm" variant={history ? "secondary" : "ghost"} className="h-7" role="tab" aria-selected={history} onClick={() => setHistory(true)}>
+          <Button variant={history ? "secondary" : "ghost"} className="h-11 px-4 text-sm" role="tab" aria-selected={history} onClick={() => showHistory(true)}>
             History{counts ? ` · ${counts.total}` : ""}
           </Button>
         </div>
         {history && (
           <div className="relative w-full sm:w-64">
-            <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Search className="pointer-events-none absolute left-2.5 top-3.5 h-4 w-4 text-muted-foreground" />
             <Input
               aria-label="Search invitations"
-              className="h-9 pl-8"
+              className="h-11 pl-8 text-base"
               placeholder="Name, email or note"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -181,7 +342,7 @@ export function InvitationsTable({
       </div>
 
       {history && counts && (
-        <p className="text-xs text-muted-foreground" data-testid="invitation-counts">
+        <p className="text-sm text-muted-foreground" data-testid="invitation-counts">
           {(["pending", "accepted", "expired", "revoked", "superseded"] as InvitationStatus[])
             .map((s) => `${counts[s]} ${INVITATION_STATUS_LABEL[s].toLowerCase()}`)
             .join(" · ")}
@@ -203,100 +364,114 @@ export function InvitationsTable({
           {history ? "No invitations match." : "No pending invitations."}
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-md border border-border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Recipient</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Upline · agency</TableHead>
-                <TableHead>Offer</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Dates</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((row) => {
-                const actions = invitationActions(row.status);
-                const busy = busyId === row.id;
-                const exceptions = row.carrier_exceptions ?? [];
-                return (
-                  <TableRow key={row.id} data-testid={`invite-row-${row.id}`}>
-                    <TableCell className="min-w-[10rem]">
-                      <p className="text-sm font-medium text-foreground">{row.recipient_name || row.notes || "Open invitation"}</p>
-                      <p className="text-xs text-muted-foreground">{row.recipient_email ?? "Any email (legacy link)"}</p>
-                    </TableCell>
-                    <TableCell className="text-sm">{formatRole(row.target_role)}</TableCell>
-                    <TableCell className="text-sm">
-                      <p>{row.upline_name ?? "Set on join"}</p>
-                      <p className="text-xs text-muted-foreground">{row.agency_key ? agencyLabel(row.agency_key, BRAND.legalName) : "—"}</p>
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      <p>{row.offered_comp_pct != null ? `${Number(row.offered_comp_pct)}%` : "No offer"}</p>
-                      {exceptions.length > 0 && (
-                        <p className="text-xs text-muted-foreground">
-                          {exceptions.map((e) => `${e.carrier_name} ${Number(e.pct)}%`).join(", ")}
-                        </p>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={STATUS_CLASS[row.status]}>{INVITATION_STATUS_LABEL[row.status]}</Badge>
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      <p>Sent {fmtDate(row.created_at)}{row.created_by_name ? ` by ${row.created_by_name}` : ""}</p>
-                      <p>
-                        {row.status === "accepted"
-                          ? `Accepted ${fmtDate(row.used_at)}${row.accepted_agent_name ? ` · ${row.accepted_agent_name}` : ""}`
-                          : row.status === "superseded"
-                            ? `Replaced ${fmtDate(row.superseded_at)}`
-                            : row.status === "revoked"
-                              ? `Revoked ${fmtDate(row.revoked_at)}`
-                              : `Expires ${fmtDate(row.expires_at)}`}
-                      </p>
-                      {row.share_count > 0 && <p>Shared {row.share_count}× · last {fmtDate(row.last_shared_at)}</p>}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        {actions.copy && (
-                          <Button size="sm" variant="outline" disabled={busy} onClick={() => copy(row)} aria-label="Copy invitation link">
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                        )}
-                        {actions.share && row.recipient_email && (
-                          <Button size="sm" variant="outline" disabled={busy} onClick={() => emailDraft(row)} aria-label="Open email draft with invitation link">
-                            <Mail className="h-4 w-4" />
-                          </Button>
-                        )}
-                        {actions.regenerate && (
-                          <Button size="sm" variant="ghost" disabled={busy} onClick={() => regenerate(row)} aria-label="Regenerate invitation link">
-                            <RefreshCw className="h-4 w-4" />
-                          </Button>
-                        )}
-                        {actions.revoke && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            disabled={busy}
-                            onClick={() => revoke(row)}
-                            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                            aria-label="Revoke invitation"
-                          >
-                            <Ban className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
+        <>
+          {/* Phones and tablets: one card per invitation, rising in once, 40ms apart. */}
+          <RevealList as="ul" className="space-y-3 lg:hidden" data-testid="invite-cards">
+            {rows.map((row) => {
+              const freeNote = decodeInviteNote(row.notes).note;
+              const info = contractingInfoFor(row);
+              const agency = row.agency_key ? agencyLabel(row.agency_key, BRAND.legalName) : null;
+              const summary = [
+                formatRole(row.target_role),
+                row.upline_name ? `under ${row.upline_name}${agency ? ` (${agency})` : ""}` : "upline set on join",
+                offerText(row),
+              ].join(" · ");
+              const exceptions = exceptionsText(row);
+              return (
+                <li key={row.id} className="rounded-xl border border-border bg-card p-4" data-testid={`invite-card-${row.id}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-base font-semibold text-foreground">{row.recipient_name || freeNote || "Open invitation"}</p>
+                      <p className="break-words text-sm text-muted-foreground">{row.recipient_email ?? "Any email"}</p>
+                      {info.npn && <p className="text-sm text-muted-foreground">NPN {info.npn}</p>}
+                    </div>
+                    {pillFor(row)}
+                  </div>
+                  <p className="mt-2 text-sm text-foreground">{summary}</p>
+                  {exceptions && <p className="text-[13px] text-muted-foreground">{exceptions}</p>}
+                  {row.recipient_name && freeNote && <p className="text-sm italic text-muted-foreground">{freeNote}</p>}
+                  <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
+                    <div className="text-sm text-muted-foreground">
+                      <p>{whenLine(row)}</p>
+                      <p>{createdLine(row)}</p>
+                      {sharedLine(row) && <p>{sharedLine(row)}</p>}
+                    </div>
+                    {menuFor(row)}
+                  </div>
+                </li>
+              );
+            })}
+          </RevealList>
+
+          {/* Desktop: the same rows as a table. Text wraps; nothing is forced onto one line. */}
+          <div className="hidden rounded-md border border-border lg:block" data-testid="invite-table">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Person</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Upline</TableHead>
+                  <TableHead>Offer</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody className="apex-rise-list">
+                {rows.map((row) => {
+                  const freeNote = decodeInviteNote(row.notes).note;
+                  const info = contractingInfoFor(row);
+                  const exceptions = exceptionsText(row);
+                  return (
+                    <TableRow key={row.id} data-testid={`invite-row-${row.id}`}>
+                      <TableCell className="min-w-[12rem]">
+                        <p className="text-base font-medium text-foreground">{row.recipient_name || freeNote || "Open invitation"}</p>
+                        {/* overflow-wrap:anywhere, not break-all: the address stays on one line wherever there is room, and at
+                            the narrowest desktop width the column can still shrink instead of starving the Status column. */}
+                        <p className="text-sm text-muted-foreground [overflow-wrap:anywhere]">{row.recipient_email ?? "Any email"}</p>
+                        {info.npn && <p className="text-sm text-muted-foreground">NPN {info.npn}</p>}
+                        {row.recipient_name && freeNote && <p className="text-[13px] italic text-muted-foreground">{freeNote}</p>}
+                      </TableCell>
+                      <TableCell className="text-sm">{formatRole(row.target_role)}</TableCell>
+                      <TableCell className="text-sm">
+                        <p>{row.upline_name ?? "Set on join"}</p>
+                        <p className="text-[13px] text-muted-foreground">{row.agency_key ? agencyLabel(row.agency_key, BRAND.legalName) : "—"}</p>
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        <p>{offerText(row)}</p>
+                        {exceptions && <p className="text-[13px] text-muted-foreground">{exceptions}</p>}
+                      </TableCell>
+                      <TableCell>
+                        {pillFor(row)}
+                        <p className="mt-1 text-[13px] text-muted-foreground">{whenLine(row)}</p>
+                        <p className="text-[13px] text-muted-foreground">{createdLine(row)}</p>
+                        {sharedLine(row) && <p className="text-[13px] text-muted-foreground">{sharedLine(row)}</p>}
+                      </TableCell>
+                      <TableCell className="text-right">{menuFor(row)}</TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </>
       )}
       {list.data && list.data.rows.length >= list.data.limit && (
-        <p className="text-xs text-muted-foreground">Showing the newest {list.data.limit}. Search history to find older invitations.</p>
+        <p className="text-sm text-muted-foreground">Showing the newest {list.data.limit}. Search history to find older invitations.</p>
       )}
+
+      <Dialog open={infoRow !== null} onOpenChange={(open) => { if (!open) setInfoRow(null); }}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Contracting info</DialogTitle>
+            <DialogDescription>
+              {infoRow?.recipient_name ? `${infoRow.recipient_name} · copy each field into the carrier site.` : "Copy each field into the carrier site."}
+            </DialogDescription>
+            {/* The same status word and tone as the row it came from. */}
+            {infoRow && <div className="flex pt-1">{pillFor(infoRow)}</div>}
+          </DialogHeader>
+          {infoRow && <ContractingCopyCard info={contractingInfoFor(infoRow)} />}
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

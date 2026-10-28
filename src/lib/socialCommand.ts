@@ -1,6 +1,11 @@
 // Social Command Center (MP-308, 2026-10-28): one place for Sam and Aisha to work every
 // platform. Everything here is a pure helper over the social_command_center() payload so
 // the page stays a renderer and the rules are testable.
+//
+// Colour (2026-10-28 colour layer): every colour on the page comes from src/lib/tones.ts
+// through the mapping functions, so a bucket or a lane verdict is the same tone here as on
+// every other page. Nothing in this file names a colour by hand.
+import { inboxBucketTone, laneTone, tonePill, type Tone } from "@/lib/tones";
 
 export type Bucket = "hot" | "human_lane" | "waiting" | "booked" | "answered" | "silent";
 
@@ -83,13 +88,24 @@ export const BUCKET_ORDER: Bucket[] = ["hot", "human_lane", "waiting", "booked",
 export const BUCKET_LABEL: Record<Bucket, string> = {
   hot: "Hot", human_lane: "Sam's threads", waiting: "Waiting on us", booked: "Booked", answered: "Answered", silent: "Silent by design",
 };
+/** Pill classes per bucket: tint, text and hairline from the shared tone, never picked by hand. */
 export const BUCKET_TONE: Record<Bucket, string> = {
-  hot: "border-rose-500/40 bg-rose-500/10 text-rose-700 dark:text-rose-300",
-  human_lane: "border-primary/40 bg-primary/10 text-primary",
-  waiting: "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300",
-  booked: "border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-300",
-  answered: "border-border bg-muted text-muted-foreground",
-  silent: "border-border bg-muted text-muted-foreground",
+  hot: tonePill(inboxBucketTone("hot")),
+  human_lane: tonePill(inboxBucketTone("human_lane")),
+  waiting: tonePill(inboxBucketTone("waiting")),
+  booked: tonePill(inboxBucketTone("booked")),
+  answered: tonePill(inboxBucketTone("answered")),
+  silent: tonePill(inboxBucketTone("silent")),
+};
+
+/** One plain line under each bucket's number, matching the definitions above and in the view. */
+export const BUCKET_HINT: Record<Bucket, string> = {
+  hot: "Business intent, nobody answered",
+  human_lane: "Only Sam answers these",
+  waiting: "They wrote, we owe a reply",
+  booked: "Interview on the calendar",
+  answered: "We replied last",
+  silent: "Kept quiet on purpose",
 };
 
 export const PLATFORM_LABEL: Record<string, string> = {
@@ -126,6 +142,15 @@ export function replyRate(f: FunnelRow): number | null {
   return f.people_in > 0 ? f.people_replied / f.people_in : null;
 }
 
+/** How the reply rate reads: good from 70%, warm from 50%, hot below that; slate when nobody wrote in. */
+export function replyRateTone(f: Pick<FunnelRow, "people_in" | "people_replied">): Tone {
+  if (f.people_in <= 0) return "slate";
+  const rate = f.people_replied / f.people_in;
+  if (rate >= 0.7) return "good";
+  if (rate >= 0.5) return "warm";
+  return "hot";
+}
+
 export const pct = (n: number | null) => (n == null ? "" : `${Math.round(n * 100)}%`);
 export const num = (n: number | null | undefined) => (n == null ? "0" : Number(n).toLocaleString("en-US"));
 
@@ -137,11 +162,19 @@ export function silentFor(hours: number | null | undefined, verdict?: string): s
   return `${Math.floor(h / 24)}d ${h % 24}h`;
 }
 
+/** Pill classes per lane verdict, from the shared tone (alive = good, dead = hot, never built = warm). */
 export const LANE_TONE: Record<LaneRow["verdict"], string> = {
-  alive: "border-primary/40 bg-primary/10 text-primary",
-  dead: "border-rose-500/40 bg-rose-500/10 text-rose-700 dark:text-rose-300",
-  never: "border-border bg-muted text-muted-foreground",
+  alive: tonePill(laneTone("alive")),
+  dead: tonePill(laneTone("dead")),
+  never: tonePill(laneTone("never")),
 };
+
+/** The verdict in one plain word for the pill; laneStatus() keeps the timing beside it. */
+export function laneVerdictLabel(verdict: LaneRow["verdict"]): string {
+  if (verdict === "alive") return "Alive";
+  if (verdict === "dead") return "Dead";
+  return "Never built";
+}
 
 /** Dead lanes first, then alive, then never-built, each alphabetical. */
 export function sortLanes(lanes: LaneRow[]): LaneRow[] {

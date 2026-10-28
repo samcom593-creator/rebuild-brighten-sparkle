@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { gateResend } from "../_shared/resend-gate.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
+import { DEPARTED_AGENT_COLUMNS, isBannedUser, isDepartedAgent } from "../_shared/departed.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -42,7 +43,7 @@ function sanitizeHtml(str: string): string {
 async function getManagerInfo(agentId: string): Promise<{ email: string; name: string } | null> {
   const { data: agent, error: agentError } = await supabaseAdmin
     .from("agents")
-    .select("user_id")
+    .select(DEPARTED_AGENT_COLUMNS)
     .eq("id", agentId)
     .maybeSingle();
 
@@ -50,10 +51,14 @@ async function getManagerInfo(agentId: string): Promise<{ email: string; name: s
     console.error("Error fetching agent:", agentError);
     return null;
   }
+  // A departed manager (terminated or deactivated) or a banned login is never notified:
+  // the referral pointer is kept for attribution after departure.
+  if (isDepartedAgent(agent)) return null;
 
   // First try to get the canonical email from auth.users (most reliable source)
   const { data: authData, error: authError } = await supabaseAdmin.auth.admin.getUserById(agent.user_id);
   
+  if (authData?.user && isBannedUser(authData.user)) return null;
   if (!authError && authData?.user?.email) {
     // Get the name from profile
     const { data: profile } = await supabaseAdmin

@@ -67,6 +67,14 @@ export default {
         'base': '180ms',
         'slow': '240ms',
       },
+      // 2026-10-28 colour layer: the tone tints are 8% (a selected tile) and 12% (a bubble, a
+      // pill). Tailwind's default opacity scale steps 0, 5, 10, 15 … so `bg-tone-good/12` and
+      // `bg-tone-good/8` emitted nothing until these two steps existed (found by the shell pass
+      // with a Tailwind CLI probe). The modifier reads this scale, so the class names stay.
+      opacity: {
+        '8': '0.08',
+        '12': '0.12',
+      },
       colors: {
         // ── BLACK + GOLD REBRAND ────────────────────────────────────────────
         // The app shipped with a teal/emerald accent. Rather than rewrite the
@@ -150,6 +158,18 @@ export default {
           DEFAULT: "hsl(var(--gold))",
           bright: "hsl(var(--gold-bright))",
           dim: "hsl(var(--gold-dim))",
+        },
+        // 2026-10-28 colour layer: seven meaning-carrying tones (src/lib/tones.ts). The HSL
+        // values are set per theme in src/styles/delight.css, loaded by the signed-in shell.
+        // `bg-tone-good/12`, `text-tone-hot`, `border-tone-cool/35` all work.
+        tone: {
+          good: "hsl(var(--tone-good))",
+          warm: "hsl(var(--tone-warm))",
+          hot: "hsl(var(--tone-hot))",
+          cool: "hsl(var(--tone-cool))",
+          royal: "hsl(var(--tone-royal))",
+          gold: "hsl(var(--tone-gold))",
+          slate: "hsl(var(--tone-slate))",
         },
         muted: {
           DEFAULT: "hsl(var(--muted))",

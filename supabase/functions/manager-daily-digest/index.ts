@@ -155,18 +155,30 @@ serve(async (req) => {
 
       if (!teamAgents || teamAgents.length === 0) continue;
 
-      // ---- Uncalled Leads Report (from applications table, excluding aged leads) ----
-      const { data: uncalledApps } = await supabase
+      // ---- Never called (applications attributed to this manager) ----
+      // The Call list's definition (src/lib/recruitingQueues.ts, hasRecordedContact): a person
+      // is "never called" while no outcome was recorded (last_contact_outcome_at) and
+      // last_contacted_at is unset. The legacy contacted_at column is never read, so this
+      // digest cannot disagree with the list a manager opens from it. Same scope as the
+      // worklist: live, a real application, not a known duplicate.
+      const { data: uncalledApps, error: uncalledError } = await supabase
         .from("applications")
         .select("id, license_status")
         .eq("assigned_agent_id", manager.id)
-        .is("contacted_at", null)
+        .eq("record_type", "application")
+        .or("is_duplicate.is.null,is_duplicate.eq.false")
+        .is("last_contact_outcome_at", null)
+        .is("last_contacted_at", null)
         .is("terminated_at", null);
+      if (uncalledError) console.error("manager-daily-digest: never-called count failed", uncalledError);
 
-      const uncalledLicensed = uncalledApps?.filter(a => a.license_status === "licensed").length || 0;
-      const uncalledUnlicensed = uncalledApps?.filter(a => a.license_status === "unlicensed").length || 0;
-      const uncalledUnknown = uncalledApps?.filter(a => a.license_status !== "licensed" && a.license_status !== "unlicensed").length || 0;
-      const totalUncalled = (uncalledApps?.length || 0);
+      // A failed count is unknown, never zero: the section says so instead of hiding.
+      const uncalledKnown = !uncalledError && Array.isArray(uncalledApps);
+      const uncalledRows = uncalledKnown ? uncalledApps : [];
+      const uncalledLicensed = uncalledRows.filter(a => a.license_status === "licensed").length;
+      const uncalledUnlicensed = uncalledRows.filter(a => a.license_status === "unlicensed").length;
+      const uncalledUnknown = uncalledRows.filter(a => a.license_status !== "licensed" && a.license_status !== "unlicensed").length;
+      const totalUncalled = uncalledRows.length;
 
       const teamIds = teamAgents.map(a => a.id);
 
@@ -383,12 +395,22 @@ serve(async (req) => {
                         </table>
                         ` : ''}
                         
-                        ${totalUncalled > 0 ? `
-                        <!-- Uncalled Leads -->
+                        ${!uncalledKnown ? `
+                        <!-- Never called: count unavailable (unknown is never shown as zero) -->
                         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: rgba(255, 165, 0, 0.1); border: 1px solid rgba(255, 165, 0, 0.3); border-radius: 12px; margin-bottom: 16px;">
                           <tr>
                             <td style="padding: 20px;">
-                              <h3 style="color: #ffa500; font-size: 14px; margin: 0 0 12px; font-weight: 600;">📞 Uncalled Leads (${totalUncalled})</h3>
+                              <h3 style="color: #ffa500; font-size: 14px; margin: 0 0 8px; font-weight: 600;">📞 Never called</h3>
+                              <p style="color: #888; font-size: 14px; margin: 0;">The count could not be loaded for this digest. Open the Call list to see who is waiting.</p>
+                            </td>
+                          </tr>
+                        </table>
+                        ` : totalUncalled > 0 ? `
+                        <!-- Never called (same rule as the Call list) -->
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: rgba(255, 165, 0, 0.1); border: 1px solid rgba(255, 165, 0, 0.3); border-radius: 12px; margin-bottom: 16px;">
+                          <tr>
+                            <td style="padding: 20px;">
+                              <h3 style="color: #ffa500; font-size: 14px; margin: 0 0 12px; font-weight: 600;">📞 Never called (${totalUncalled})</h3>
                               <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                                 ${uncalledLicensed > 0 ? `<tr><td style="color: #888; padding: 4px 0;">Licensed</td><td style="color: #22c55e; font-weight: 700; text-align: right;">${uncalledLicensed}</td></tr>` : ''}
                                 ${uncalledUnlicensed > 0 ? `<tr><td style="color: #888; padding: 4px 0;">Unlicensed</td><td style="color: #ffa500; font-weight: 700; text-align: right;">${uncalledUnlicensed}</td></tr>` : ''}

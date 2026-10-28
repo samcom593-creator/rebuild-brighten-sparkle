@@ -1,13 +1,21 @@
 import { describe, expect, it } from "vitest";
 import {
+  AGENT_CLOUD_ACCOUNT_NAV,
   AGENT_CLOUD_PRIMARY_NAV,
+  APPLICANT_NAV,
+  NAV_SECTION_TONE,
   agentCloudGroupIsActive,
   agentCloudItemIsActive,
   agentCloudSearchMatches,
+  filterAgentCloudNav,
   initialGroupExpansion,
   isAgentCloudGroup,
   isApplicantViewer,
   isNavGroupOpen,
+  navHrefLocation,
+  navSectionForLocation,
+  navSectionTone,
+  navSectionToneForLocation,
   reconcileGroupExpansion,
   toggleNavGroup,
   type AgentCloudNavGroup,
@@ -144,5 +152,56 @@ describe("sidebar group expansion", () => {
   it("treats the active set as a set, not a sequence", () => {
     const state = initialGroupExpansion(["Sell", "Grow"]);
     expect(reconcileGroupExpansion(state, ["Grow", "Sell"])).toBe(state);
+  });
+});
+
+describe("section tones (colour layer, 2026-10-28)", () => {
+  const all = [...AGENT_CLOUD_PRIMARY_NAV, ...AGENT_CLOUD_ACCOUNT_NAV];
+
+  it("names a tone for every top-level section of every rail, and never hot (hot means act now)", () => {
+    for (const entry of [...all, ...APPLICANT_NAV]) expect(NAV_SECTION_TONE[entry.label], entry.label).toBeDefined();
+    expect(Object.values(NAV_SECTION_TONE)).not.toContain("hot");
+    expect(navSectionTone("Home")).toBe("gold");
+    expect(navSectionTone("My Day")).toBe("gold");
+    expect(navSectionTone("Sell")).toBe("good");
+    expect(navSectionTone("Grow")).toBe("royal");
+    expect(navSectionTone("Learn")).toBe("warm");
+    expect(navSectionTone("Team")).toBe("cool");
+    expect(navSectionTone("Owner")).toBe("slate");
+    expect(navSectionTone("Settings")).toBe("slate");
+    // Unknown and missing labels are quiet, never a guess.
+    expect(navSectionTone("Nowhere")).toBe("slate");
+    expect(navSectionTone(null)).toBe("slate");
+  });
+
+  it("splits an href into the pair the active rule reads", () => {
+    expect(navHrefLocation("/dashboard/team?view=contracting")).toEqual({ pathname: "/dashboard/team", search: "?view=contracting" });
+    expect(navHrefLocation("/dashboard")).toEqual({ pathname: "/dashboard", search: "" });
+  });
+
+  it("finds the section that owns a location by the rail's own active rule", () => {
+    expect(navSectionForLocation(at("/dashboard"), all)).toBe("Home");
+    expect(navSectionForLocation(at("/dashboard/call-center"), all)).toBe("Sell");
+    expect(navSectionForLocation(at("/dashboard/team"), all)).toBe("Team");
+    expect(navSectionForLocation(at("/dashboard/settings/security"), all)).toBe("Settings");
+    // Grow owns the nested recruiting routes the manifest lists under no item.
+    expect(navSectionForLocation(at("/dashboard/recruiting/pipeline"), all)).toBe("Grow");
+    // The breadcrumb overrides answer for routes listed under another path.
+    expect(navSectionForLocation(at("/dashboard/my-deals"), all)).toBe("My Business");
+    // No section, no guess.
+    expect(navSectionForLocation(at("/dashboard/admin"), all)).toBeNull();
+    expect(navSectionToneForLocation(at("/dashboard/admin"), all)).toBe("slate");
+    expect(navSectionToneForLocation(at("/dashboard/recruiting/pipeline"), all)).toBe("royal");
+  });
+
+  it("resolves against the entries the viewer sees: Calendar is Sell for a producer and Grow for staff", () => {
+    const producer = filterAgentCloudNav(all, { seesAll: false, viewMode: "agent" });
+    const staff = filterAgentCloudNav(all, { seesAll: false, viewMode: "va" });
+    expect(navSectionForLocation(at("/dashboard/calendar"), producer)).toBe("Sell");
+    expect(navSectionForLocation(at("/dashboard/calendar"), staff)).toBe("Grow");
+    expect(navSectionForLocation(at("/dashboard/team?view=contracting"), staff)).toBe("Grow");
+    expect(navSectionForLocation(at("/dashboard/team?view=contracting"), producer)).toBe("Team");
+    expect(navSectionForLocation(at("/get-licensed"), APPLICANT_NAV)).toBe("Get licensed");
+    expect(navSectionToneForLocation(at("/get-licensed"), APPLICANT_NAV)).toBe("royal");
   });
 });

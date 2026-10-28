@@ -31,6 +31,7 @@ import { Instagram,
   Mic, Milestone, Send, PhoneCall, Radar } from "lucide-react";
 
 import type { AccountMode } from "@/hooks/useAuth";
+import type { Tone } from "@/lib/tones";
 
 // The installed Lucide version has no MessageSquareDollar export.
 // Keep the requested symbol using its existing icon factory, without a dependency upgrade.
@@ -174,8 +175,11 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
       // Social Command Center (MP-308, 2026-10-28): every platform's messages ranked, the content queue, what
       // pulls applications, and the lane alarm. Sam + Aisha (can_view_sold_calls), like Sold Calls.
       { label: "Social Command", href: "/dashboard/social-command", icon: Radar, grant: "sold_calls" },
-      { label: "Recruit Stages", href: "/dashboard/recruits", icon: Milestone, modes: ["manager", "va", "va_manager"] },
-      { label: "Recruit Pipeline", href: "/dashboard/recruiting", icon: FolderKanban, modes: ["manager", "recruiter", "va", "va_manager"] },
+      // Plain names (Grow redesign, 2026-10-28): "Recruit Pipeline" and "Recruit Stages" read as
+      // the same thing and sat beside "Recruiting Pipeline" and Sell's "My Pipeline". The call
+      // list comes first because calling is the daily job. Routes and role gates are unchanged.
+      { label: "Call list", href: "/dashboard/recruiting", icon: FolderKanban, modes: ["manager", "recruiter", "va", "va_manager"] },
+      { label: "New hires", href: "/dashboard/recruits", icon: Milestone, modes: ["manager", "va", "va_manager"] },
       { label: "Invite an agent", href: "/admin/invite-links", icon: UserPlus, modes: ["manager"] },
       // Instagram command center (MP-305, 2026-10-28): every DM, comment and follow-up graded on deliveries. Sam-only route.
       { label: "Instagram", href: "/dashboard/inbox/instagram", icon: Instagram, modes: ["manager"] },
@@ -283,6 +287,43 @@ export const AGENT_CLOUD_ACCOUNT_NAV: AgentCloudNavEntry[] = [
   },
   { label: "Producer Profile", href: "/dashboard/profile", icon: IdCard, modes: PRODUCERS },
 ];
+
+/**
+ * One tone per top-level section (colour layer, 2026-10-28), defined here and nowhere else. The
+ * rail's bubbles, the active item's tint, a favourite's star and the phone tabs all read this
+ * map, so Grow is the same purple on the desktop rail, in the phone's Recruiting tab and on a
+ * pinned Call list. The meanings follow src/lib/tones.ts:
+ *
+ *   Home, My Day                 gold   the person's own day, the brand moment
+ *   Sell, My Business            good   money going well
+ *   Grow, Get licensed           royal  hiring and licensing are paperwork and promise
+ *   Learn, Training              warm   a nudge to get better
+ *   Team                         cool   people
+ *   Owner, Settings, Producer
+ *   Profile, Support desk        slate  quiet tooling; never hot, because hot means act now
+ *
+ * A label outside the map (the phone's Admin and Numbers tabs) is slate.
+ */
+export const NAV_SECTION_TONE: Readonly<Record<string, Tone>> = {
+  Home: "gold",
+  "My Day": "gold",
+  Sell: "good",
+  "My Business": "good",
+  Grow: "royal",
+  "Get licensed": "royal",
+  Learn: "warm",
+  Training: "warm",
+  Team: "cool",
+  Owner: "slate",
+  Settings: "slate",
+  "Producer Profile": "slate",
+  "Support desk": "slate",
+};
+
+/** The tone of a top-level section by label; slate for a label the map does not name. */
+export function navSectionTone(label: string | null | undefined): Tone {
+  return (label && NAV_SECTION_TONE[label]) || "slate";
+}
 
 export function isAgentCloudGroup(entry: AgentCloudNavEntry): entry is AgentCloudNavGroup {
   return "items" in entry;
@@ -409,8 +450,8 @@ const ROUTE_CRUMBS: Record<string, string[]> = {
   "/dashboard/contracting/history": ["Contracting", "Intake history"],
   "/dashboard/contracting/carriers": ["Contracting", "Carriers"],
   "/dashboard/contracting/documents": ["Contracting", "Writing numbers"],
-  "/dashboard/recruiting/pipeline": ["Grow", "Recruit Pipeline"],
-  "/dashboard/recruiting/hires": ["Grow", "Recruit Pipeline"],
+  "/dashboard/recruiting/pipeline": ["Grow", "Pipeline"],
+  "/dashboard/recruiting/hires": ["Grow", "Call list"],
   "/dashboard/book-of-business": ["My Business", "Retention"],
   "/dashboard/books": ["My Business", "Book Flips"],
   "/dashboard/my-deals": ["My Business", "Book of Business"],
@@ -437,6 +478,36 @@ export function agentCloudBreadcrumb(pathname: string): string[] {
   let final = segments.at(-1) ?? "Home";
   if (ID_SEGMENT.test(final)) final = segments.at(-2) ?? "Home";
   return [final.replace(/-/g, " ").replace(/\b\w/g, (character) => character.toUpperCase())];
+}
+
+/** Splits an href ("/dashboard/team?view=contracting") into the pair the active rule reads. */
+export function navHrefLocation(href: string): AgentCloudLocation {
+  const [pathname, query = ""] = href.split("?");
+  return { pathname, search: query ? `?${query}` : "" };
+}
+
+/**
+ * The top-level section a location sits in, by the same rule that lights the rail (path and
+ * declared params, Grow's nested recruiting routes included), walking the entries the viewer
+ * actually sees so a VA's Calendar resolves to Grow while a producer's resolves to Sell. The
+ * breadcrumb overrides answer for routes the manifest lists under no item. Null when no
+ * section owns the location.
+ */
+export function navSectionForLocation(location: AgentCloudLocation, entries: readonly AgentCloudNavEntry[]): string | null {
+  for (const entry of entries) {
+    if (isAgentCloudGroup(entry)) {
+      if (agentCloudGroupIsActive(location, entry)) return entry.label;
+    } else if (agentCloudItemIsActive(location, entry)) {
+      return entry.label;
+    }
+  }
+  const crumb = ROUTE_CRUMBS[location.pathname]?.[0];
+  return crumb && NAV_SECTION_TONE[crumb] !== undefined ? crumb : null;
+}
+
+/** The tone of the section that owns a location; slate when none does. */
+export function navSectionToneForLocation(location: AgentCloudLocation, entries: readonly AgentCloudNavEntry[]): Tone {
+  return navSectionTone(navSectionForLocation(location, entries));
 }
 
 export interface AgentCloudNavViewer {

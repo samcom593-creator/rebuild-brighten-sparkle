@@ -5,8 +5,10 @@ import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/hooks/useAuth";
 import { useRolePreview } from "@/hooks/useRolePreview";
+import { ToneBubble } from "@/components/ui/delight/ToneBubble";
 import {
-  APPLICANT_NAV, agentCloudItemIsActive, agentCloudSearchMatches, flattenAgentCloudNav, isApplicantViewer,
+  AGENT_CLOUD_ACCOUNT_NAV, AGENT_CLOUD_PRIMARY_NAV, APPLICANT_NAV, agentCloudItemIsActive, agentCloudSearchMatches,
+  filterAgentCloudNav, flattenAgentCloudNav, isApplicantViewer, navHrefLocation, navSectionToneForLocation,
   type AgentCloudLocation,
 } from "./agentCloudNavigation";
 
@@ -85,7 +87,7 @@ const staffNavItems: BottomNavItem[] = [
   { path: "/dashboard",                        icon: LayoutDashboard, label: "Home" },
   { path: "/dashboard/recruiting",             icon: Briefcase,       label: "Recruiting", ownsNested: true },
   { path: "/dashboard/calendar",               icon: CalendarClock,   label: "Calendar" },
-  { path: "/dashboard/recruits",               icon: Users,           label: "Stages" },
+  { path: "/dashboard/recruits",               icon: Users,           label: "New hires" },
   { path: "/dashboard/team?view=contracting",  icon: Library,         label: "Contracting", matchParams: ["view"] },
 ];
 
@@ -135,35 +137,49 @@ export function MobileBottomNav() {
     : effectiveMode === "va" || effectiveMode === "va_manager" ? staffNavItems
     : agentNavItems;
 
+  // Colour layer (2026-10-28): a tab's tone is its section's, from the one map in
+  // agentCloudNavigation.ts, resolved against the entries this viewer's rail shows. That is why
+  // a VA's Calendar tab is Grow's purple on the phone as on desktop, not Sell's green, and why
+  // the Admin tab (no section) is quiet slate.
+  const seesAll = isAdmin && !isPreviewing;
+  const toneEntries = isApplicant
+    ? APPLICANT_NAV
+    : filterAgentCloudNav([...AGENT_CLOUD_PRIMARY_NAV, ...AGENT_CLOUD_ACCOUNT_NAV], { seesAll, viewMode: effectiveMode });
+
   if (!isMobile) return null;
 
   return (
-    <nav aria-label="Primary mobile navigation" className="safe-area-bottom fixed inset-x-0 bottom-0 z-50 border-t border-border/80 bg-background/95 shadow-[0_-10px_28px_hsl(var(--background)/0.72)] backdrop-blur-xl lg:hidden">
+    <nav aria-label="Primary mobile navigation" className="safe-area-bottom fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background lg:hidden">
       <div className="flex h-16 items-center justify-around px-1">
         {navItems.map((item) => {
           const isActive = bottomNavItemIsActive(location, item);
+          const tone = navSectionToneForLocation(navHrefLocation(item.path), toneEntries);
+          const Icon = item.icon;
           return (
             <button
               key={item.label}
+              type="button"
               onClick={() => navigate(item.path)}
               aria-current={isActive ? "page" : undefined}
               className={cn(
                 "flex h-14 min-h-[48px] min-w-[52px] flex-1 flex-col items-center justify-center gap-0.5 rounded-md transition-colors",
                 isActive
-                  ? "text-primary"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "font-semibold text-foreground"
+                  : "font-medium text-muted-foreground hover:text-foreground"
               )}
             >
-              <div className={cn(
-                "relative p-1 rounded-lg transition-all",
-                isActive && "bg-primary/10"
-              )}>
-                <item.icon className="h-5 w-5" />
-                {isActive && (
-                  <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary" />
-                )}
-              </div>
-              <span className="text-[11px] font-medium leading-none">{item.label}</span>
+              {/* The active tab's icon sits in a bubble of its section's tone; the word below it carries the
+                  state. The bubble pops once when a tab becomes active, then holds still. */}
+              {isActive ? (
+                <ToneBubble tone={tone} size="sm" className="apex-pop [&>svg]:h-5 [&>svg]:w-5">
+                  <Icon />
+                </ToneBubble>
+              ) : (
+                <span aria-hidden="true" className="inline-flex h-8 w-8 items-center justify-center">
+                  <Icon className="h-5 w-5" />
+                </span>
+              )}
+              <span className="text-[13px] leading-4">{item.label}</span>
             </button>
           );
         })}

@@ -11,12 +11,26 @@ export interface ShippedItem {
 }
 
 export const SHIPPED: ShippedItem[] = [
-  { ts: "today", label: "Money Inbox: the texts that make Sam money, ranked, with one-tap approve-to-send from his Mac.", detail: "Sam-only page at /dashboard/money-inbox. A Mac daemon scans iMessage every 2 minutes, scores threads on payment, client, recruiting, mentorship and lead signals plus who is waiting on Sam, drafts a reply, and sends the approved text through Messages with a chat.db receipt. Nothing is marked sent without that receipt.", commit: "PL-MP309-MONEY-INBOX" },
+  {
+    ts: "Oct 28, 2026",
+    label: "Colour, motion and sound across the signed-in app: every page title and number sits in a tinted bubble, states are coloured words, tiles and rows rise in once, numbers count up, saving an outcome or adding an agent gives a small celebration with a sound you can turn off, and nothing is smaller than 13px.",
+    detail: "Sam, looking at the live Call list, New hires and Social Command Center: 'Lack of color. The text is small and ugly. No animation. It looks like a terminal at a checkout. Add the bubbles and effects, and sound effects.' Seven tones that mean something (good, warm, hot, cool, royal, gold, slate), mapped once per vocabulary in src/lib/tones.ts so the same state is the same colour on every page; ToneBubble, TonePill, CountUp and Reveal, plus five soft colour fields drifting behind every signed-in page; celebrations only after a save, a booking or a hire succeeds, never on load or on an error; short synthesised sounds behind one toggle in the header and in Profile settings; every movement stops under reduced motion. The Grow pages, the Social Command Center, the sidebar and the bottom nav carry it first; docs/DESIGN_SYSTEM.md holds the rules and the council checks them on every screen.",
+    commit: "GROW-DELIGHT-LAYER",
+  },
+  {
+    ts: "Oct 28, 2026",
+    label: "Money Inbox: the texts that make Sam money, ranked, with one-tap approve-to-send from his Mac.",
+    detail: "Sam-only page at /dashboard/money-inbox. A Mac daemon scans iMessage every 2 minutes, scores threads on payment, client, recruiting, mentorship and lead signals plus who is waiting on Sam, drafts a reply, and sends the approved text through Messages with a chat.db receipt. Nothing is marked sent without that receipt.",
+    commit: "PL-MP309-MONEY-INBOX",
+  },
   {
     ts: "Oct 28, 2026",
     label: "The Book of Business now knows every dialer call behind a client: sold on a recorded call, transcribed, graded, or never reached, with Active / Pending / Lapsing / Inactive / Unknown chips, and a Call Training page ranks the great calls.",
     detail: "MP-310. Sam: pull every ReadyMode transcript, match the book to the recordings, filter on whether a policy is alive, and surface the great calls as a training metric. The dialer log was dark since Oct 21 (the Chrome session had expired); 931 calls landed, and three dispositions nobody had pulled (Appointments, I Give Up, Spanish Speaker: 288 recordings) are transcribed on the hourly bot. Views v_book_row_calls / v_book_row_call_summary / v_sold_call_book_match link book rows to calls by phone, then name; readymode_call_analysis holds a six-part grade per call with objection moments, tactics and a coaching note (grade-calls.py, Haiku). Sold Calls gained a Not in book chip: the sales the book never got.",
     commit: "MP-310-BOOK-CALLS-TRAINING",
+  },
+  {
+    ts: "Oct 28, 2026",
     label: "Calendly, tuned for bookings and show-ups: the Licensed Call link in every licensing email went from two evenings a week to daily 8am–9pm Phoenix, every event type now keeps Phoenix time, names and descriptions say what the call is, and 20 minutes after each call ends Sam's phone gets one push with Showed / No-show / Hired / No answer links.",
     detail: "MP-309. Measured first: 113 Calendly bookings in 90 days, outcome recorded on 1; the email-funnel Licensed Call (1on1-call-clone) only opened Wed and Sat 7–10pm Chicago, so 12 bookings in 90 days with 58% on weekends; the DM-booked call was named 'Leader Call ' with an empty description; schedules were all in America/Chicago while Sam is in Phoenix (they would have shifted an hour on Nov 1). Availability set per event type through the Calendly API in America/Phoenix (recruiting calls daily 8–21, onboarding Mon–Sat 9–19, final-expense review Mon–Sat 8–19), both licensed calls named 'Licensed Call with Sam' with a real description, Manager Call described for agents. Outcome loop: fn_interview_outcome_ask on pg_cron every 15 min pushes signed one-tap links (interview-outcome, HMAC under the bot token) that call the same cc_dispose_interview the Interview Recovery page uses; a no-show is also marked on Calendly and the prospect gets their reschedule link by email. v_interview_outcome_truth is one row in every state.",
     commit: "MP-309-CALENDLY-TUNE",
@@ -50,6 +64,12 @@ export const SHIPPED: ShippedItem[] = [
     label: "Instagram command center: who is waiting, who to call, what is winning, all graded on real deliveries.",
     detail: "MP-305 Wave 4. /dashboard/inbox/instagram now reads one RPC (fn_ig_dashboard) instead of a table frozen since Sep 28: account status (token, Meta link restriction, bot last delivered, follow-up cron), today/7d/30d numbers (people in, replied in 24h, waiting on us, licensed leads, calls booked, applicants), action queues with one-tap Call/Text/Open on IG, winning reels with comment-keyword attribution, the bot lines that get replies, and the last 60 threads with a next action each.",
     commit: "MP-305-W4-IG-COMMAND-CENTER",
+  },
+  {
+    ts: "Oct 28, 2026",
+    label: "Grow is redesigned for anyone to use: four numbers, four lists and one gold button on every recruiting screen.",
+    detail: "The call list shows Call today, New, Worked today and Booked on top, four big lists with the other eight under More lists, one search box and one More menu. Rows say who, the plain facts and a status in words. The person panel goes Call, What happened, next step with quick picks, Save & next person; Do not contact needs a second tap. Pipeline and New hires got the same numbers-search-filters layout and the Grow tabs. Sidebar: Recruit Pipeline is now Call list and Recruit Stages is New hires. Nothing was removed: every list, view, filter, field and number is still one or two taps away.",
+    commit: "GROW-REDESIGN",
   },
   {
     ts: "Oct 27, 2026",

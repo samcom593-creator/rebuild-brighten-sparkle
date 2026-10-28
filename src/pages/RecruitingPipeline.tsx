@@ -1,18 +1,60 @@
-import { useMemo, useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Fragment, useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { BadgeCheck, CalendarCheck, ChevronDown, ClipboardList, Instagram, MessageSquare, Phone, RefreshCw, Route, Search, SlidersHorizontal, UserCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import { Card } from "@/components/ui/card";
+import { playSoundEffect } from "@/hooks/useSoundEffects";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PageHeader } from "@/components/ui/page-header";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { FilterChip } from "@/components/recruiting/FilterChip";
+import { GrowScoreboard } from "@/components/recruiting/GrowScoreboard";
+import { RevealList } from "@/components/ui/delight/Reveal";
+import { RecruitingWorkspaceNav } from "@/components/recruiting/RecruitingWorkspaceNav";
+import { StatusPill } from "@/components/recruiting/StatusPill";
+import type { RowStatus } from "@/components/pipeline/worklist/worklistStatus";
+import { formatDueShort, formatSince, formatTimeWithZone, plainSpan } from "@/components/pipeline/worklist/worklistFormat";
+import { phoenixDayBounds } from "@/lib/recruitingQueues";
+import { celebrate, type CelebrationOrigin } from "@/lib/celebrate";
+import { TONE_CLASS, intentTone, mondayTone, pipelineStageTone, tonePill, type Tone } from "@/lib/tones";
 import { toast } from "sonner";
-import { contactLinkProps, phoneHref, smsHref } from "@/lib/phone";
+import { contactLinkProps, formatPhoneDisplay, phoneHref, smsHref } from "@/lib/phone";
+import { cn } from "@/lib/utils";
 import { openAgentProfile } from "@/stores/agentProfileDrawer";
 
 // One unified operating view over applications + agents. Reads v_recruiting_pipeline,
 // writes through rp_pipeline_action (existing columns only). No rebuild.
+//
+// Grow redesign (2026-10-28): each row carried up to nine small buttons, a coloured
+// dot and an emoji; seven tiles and five dropdowns sat above the list. Now: four
+// numbers, one search box and one Filters button with the active filters as chips,
+// and per row the stage, Call, Text and one "Update" menu holding every other
+// action. Every action still writes through rp_pipeline_action exactly as before.
+//
+// Grow review (2026-10-28, findings 2/3/4/25/26/38/34): every number is computed with
+// the SAME predicate as the list its button opens, so "Expected Monday 1" can never
+// open "3 of 24 people"; a failed load is dashes and a reason with Retry, never four
+// zeros; the "Also" numbers are 44px chips; intent is a dropdown in words that writes
+// once per choice; a late follow-up says "Late · 1 day" and a bad date says so.
+//
+// Colour layer (2026-10-28, docs/DESIGN_SYSTEM.md "Colour, motion and sound"): the header
+// bubble is cool (the flow of new people; gold stays on the Monday tile), each row opens with
+// the person's initials in the colour of their stage, the stage select and the intent pill
+// wear their tones from src/lib/tones.ts, the "Also" chips carry a tone dot, and a write that
+// went through is marked from the control pressed: a hire or a Monday start is a celebration,
+// any other stage or intent move a tick, a kept note a pop. Nothing plays on load or on an
+// error; the error toast is unchanged.
 
 const STAGES = [
   "New Lead", "Contacted", "Call Scheduled", "Interested", "Confirmed",
@@ -20,15 +62,17 @@ const STAGES = [
   "Contracting In Progress", "Ready for Training", "Active Agent",
   "Inactive/No Longer With Us",
 ] as const;
+const INACTIVE_STAGE = "Inactive/No Longer With Us";
 
-const STAGE_COLOR: Record<string, string> = {
-  "New Lead": "bg-slate-500", "Contacted": "bg-sky-600", "Call Scheduled": "bg-indigo-600",
-  "Interested": "bg-violet-600", "Confirmed": "bg-purple-600", "Expected Monday": "bg-amber-600",
-  "Showed": "bg-emerald-600", "No Show": "bg-red-600", "Onboarding": "bg-teal-600",
-  "Contract Sent": "bg-cyan-600", "Contracting In Progress": "bg-blue-600",
-  "Ready for Training": "bg-lime-600", "Active Agent": "bg-green-700",
-  "Inactive/No Longer With Us": "bg-zinc-600",
-};
+// Two stages are "in contracting". One filter value opens both, so the Contracting
+// number and the list behind it share one definition instead of counting two stages
+// and filtering one.
+const CONTRACTING_FILTER = "contracting";
+const CONTRACTING_STAGES: readonly string[] = ["Contract Sent", "Contracting In Progress"];
+const STAGE_FILTER_LABELS: Record<string, string> = { [CONTRACTING_FILTER]: "Contracting (sent or in progress)" };
+const stageFilterLabel = (filter: string) => STAGE_FILTER_LABELS[filter] ?? filter;
+const stageMatches = (stage: string, filter: string) =>
+  filter === CONTRACTING_FILTER ? CONTRACTING_STAGES.includes(stage) : stage === filter;
 
 interface Row {
   person_key: string; person_type: string; name: string;
@@ -40,18 +84,165 @@ interface Row {
   intent_level: string | null;
 }
 
-const INTENT_ORDER = [null, "hot", "warm", "cold"] as const;
-const INTENT_STYLE: Record<string, { label: string; cls: string }> = {
-  hot: { label: "🔥 Hot", cls: "bg-red-500 text-white border-red-500" },
-  warm: { label: "Warm", cls: "bg-amber-500 text-white border-amber-500" },
-  cold: { label: "Cold", cls: "bg-sky-500 text-white border-sky-500" },
+// Words carry the meaning; the tint comes from the shared tones (intentTone in src/lib/tones.ts),
+// the same hot, warm and cool a person learns on the Call list.
+const INTENT_LABELS: Record<string, string> = { hot: "Hot", warm: "Warm", cold: "Cold" };
+// The empty value is "Not set"; it writes "clear" through the same RPC as before.
+const INTENT_OPTIONS = [
+  { value: "hot", label: "Hot" },
+  { value: "warm", label: "Warm" },
+  { value: "cold", label: "Cold" },
+  { value: "", label: "Not set" },
+] as const;
+const intentLabel = (value: string | null | undefined) => INTENT_LABELS[value ?? ""] ?? "Not set";
+
+const MONDAY_LABELS: Record<string, string> = {
+  expected: "Expected Monday",
+  confirmed: "Confirmed",
+  showed: "Showed",
+  no_show: "No show",
 };
 
-function fmt(ts: string | null): string {
-  if (!ts) return "—";
-  const d = new Date(ts);
-  if (isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+const igHandle = (value: string) => value.replace(/^@/, "");
+
+/** Two initials for the bubble beside a name. */
+const initialsOf = (name: string) =>
+  name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "?";
+
+// What a stage move means (src/lib/celebrate.ts): a hire is the full burst, a Monday start or
+// a show is the chime, any other move is a tick. Called only after rp_pipeline_action resolved
+// without error, with the select the person used as the origin.
+const HIRE_STAGES: readonly string[] = ["Active Agent", "Ready for Training"];
+const BOOKED_STAGES: readonly string[] = ["Showed", "Confirmed", "Expected Monday"];
+function stageMoved(stage: string, origin: CelebrationOrigin): void {
+  if (HIRE_STAGES.includes(stage)) void celebrate("hire", origin);
+  else if (BOOKED_STAGES.includes(stage)) void celebrate("booked", origin);
+  else playSoundEffect("tick");
+}
+
+/**
+ * Where the finger was, as a point. The note editor closes the moment Save is pressed, so by
+ * the time the write resolves the button is gone from the page; a point read now still puts
+ * the bubbles where it was. Null (the burst's default origin) when the control has no size.
+ */
+function pressPoint(control: Element): CelebrationOrigin {
+  if (typeof window === "undefined") return null;
+  const r = control.getBoundingClientRect();
+  if (r.width === 0 && r.height === 0) return null;
+  const clamp = (v: number) => Math.min(1, Math.max(0, v));
+  return { x: clamp((r.left + r.width / 2) / window.innerWidth), y: clamp((r.top + r.height / 2) / window.innerHeight) };
+}
+
+const WHO_LABELS: Record<string, string> = { applicant: "Prospects", agent: "Agents" };
+const SHOW_LABELS: Record<string, string> = { open: "Open only", all: "Include inactive", inactive: "Inactive only" };
+
+interface Filters {
+  search: string;
+  stage: string;
+  type: string;
+  monday: string;
+  active: string; // open | all | inactive
+  intent: string;
+}
+
+/** One predicate for the list AND for every number above it. */
+function matchesFilters(r: Row, f: Filters): boolean {
+  if (f.active === "open" && r.stage === INACTIVE_STAGE) return false;
+  if (f.active === "inactive" && r.stage !== INACTIVE_STAGE) return false;
+  if (f.stage && !stageMatches(r.stage, f.stage)) return false;
+  if (f.type && r.person_type !== f.type) return false;
+  if (f.monday && r.monday_status !== f.monday) return false;
+  if (f.intent && r.intent_level !== f.intent) return false;
+  const q = f.search.trim().toLowerCase();
+  if (q) {
+    const hay = `${r.name} ${r.phone ?? ""} ${r.email ?? ""} ${r.instagram ?? ""} ${r.lead_source ?? ""}`.toLowerCase();
+    if (!hay.includes(q)) return false;
+  }
+  return true;
+}
+
+// Every number on this page is a list. A pick is the filter state the number's button
+// sets; the number is counted with that same state, so a tile can never say 1 while
+// the list under it shows 3. Monday numbers are prospects only, so their pick says so.
+// The counts include inactive people, so the lists do too.
+type ListKey = "expected" | "confirmed" | "showed" | "noshow" | "onboarding" | "contracting" | "active";
+type ListPick = Pick<Filters, "monday" | "stage" | "type">;
+const LISTS: Record<ListKey, ListPick> = {
+  expected: { monday: "expected", stage: "", type: "applicant" },
+  confirmed: { monday: "confirmed", stage: "", type: "applicant" },
+  showed: { monday: "showed", stage: "", type: "applicant" },
+  noshow: { monday: "no_show", stage: "", type: "applicant" },
+  onboarding: { monday: "", stage: "Onboarding", type: "" },
+  contracting: { monday: "", stage: CONTRACTING_FILTER, type: "" },
+  active: { monday: "", stage: "Active Agent", type: "" },
+};
+const LIST_KEYS = Object.keys(LISTS) as ListKey[];
+const listFilters = (pick: ListPick): Filters => ({ search: "", intent: "", active: "all", ...pick });
+
+/**
+ * The row's one due date in the Call list's words and rules: late and unreadable in
+ * red, "today" by the Phoenix business day with the time's zone, a short future date
+ * otherwise. Null when nothing is due. An unreadable date is said, never shown as a dash.
+ */
+function dueWords(iso: string | null, now: number): RowStatus | null {
+  if (!iso) return null;
+  const due = new Date(iso).getTime();
+  if (Number.isNaN(due)) return { label: "Unreadable date", tone: "danger" };
+  if (due < now) return { label: `Late · ${plainSpan(now - due)}`, tone: "danger" };
+  if (due < phoenixDayBounds(new Date(now)).end) return { label: `Today · ${formatTimeWithZone(iso)}`, tone: "warning" };
+  return { label: formatDueShort(iso, now), tone: "neutral" };
+}
+
+function Segmented<T extends string>({ legend, value, options, onChange }: {
+  legend: string;
+  value: T;
+  options: Array<{ value: T; label: string }>;
+  onChange: (v: T) => void;
+}) {
+  return (
+    <fieldset>
+      <legend className="mb-2 text-sm font-semibold text-foreground">{legend}</legend>
+      <div className="flex flex-wrap gap-1.5">
+        {options.map((o) => (
+          <Button
+            key={o.value}
+            className="h-11 px-3"
+            variant={value === o.value ? "secondary" : "ghost"}
+            aria-pressed={value === o.value}
+            onClick={() => onChange(o.value)}
+          >
+            {o.label}
+          </Button>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
+/**
+ * A number that opens its list: a dot in the state's tone, the name and its count, the same chip
+ * as the Call list. A dash while the number is unknown. The dot is decoration; the word beside it
+ * is the meaning.
+ */
+function CountChip({ label, count, tone, active, onPick }: { label: string; count: number | null; tone: Tone; active: boolean; onPick: () => void }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      disabled={count === null}
+      onClick={onPick}
+      className={cn(
+        "inline-flex h-11 shrink-0 items-center gap-2.5 whitespace-nowrap rounded-lg border px-3.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)] disabled:opacity-60",
+        active
+          ? "border-primary/60 bg-primary/15 text-foreground"
+          : "border-border bg-card text-foreground hover:bg-muted/50",
+      )}
+    >
+      <span aria-hidden="true" className={cn("h-2 w-2 shrink-0 rounded-full", TONE_CLASS[tone].dot)} />
+      {label}
+      <span className={cn("tabular-nums", active ? "text-foreground" : "text-muted-foreground")}>{count === null ? "—" : count.toLocaleString()}</span>
+    </button>
+  );
 }
 
 export default function RecruitingPipeline() {
@@ -66,7 +257,7 @@ export default function RecruitingPipeline() {
   const [noteFor, setNoteFor] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
 
-  const { data: rows = [], isLoading } = useQuery<Row[]>({
+  const { data: rows = [], isLoading, isError, error, refetch } = useQuery<Row[]>({
     queryKey: ["recruiting-pipeline"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -77,42 +268,67 @@ export default function RecruitingPipeline() {
       return (data ?? []) as unknown as Row[];
     },
   });
+  // Loading and a failed read both show a dash, never a zero; only the failed read says why.
+  const unknown = isLoading || isError;
+  const failReason = isError ? (error as { message?: unknown } | null)?.message : null;
+  const failText = typeof failReason === "string" && failReason ? failReason : null;
 
+  // `msg` is said on success and `after` runs then too (a tick, a celebration); neither reaches
+  // the RPC, whose arguments are the same three as before.
   const action = useMutation({
-    mutationFn: async (v: { person_key: string; action: string; value?: string | null }) => {
+    mutationFn: async (v: { person_key: string; action: string; value?: string | null; msg?: string; after?: () => void }) => {
       const { error } = await supabase.rpc("rp_pipeline_action" as never, {
         p_person_key: v.person_key, p_action: v.action, p_value: v.value ?? null,
       } as never);
       if (error) throw error;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["recruiting-pipeline"] }); },
+    // Hook-level on purpose: TanStack keeps only the latest mutate() call's own callbacks, so a
+    // second action started while the first was still saving would lose the first one's toast
+    // and its celebration. These run once per write, after that write, and only when it succeeded.
+    onSuccess: (_data, v) => {
+      qc.invalidateQueries({ queryKey: ["recruiting-pipeline"] });
+      if (v.msg) toast.success(v.msg);
+      v.after?.();
+    },
     onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "Action failed"),
   });
 
-  const fire = (person_key: string, act: string, value?: string | null, msg?: string) => {
-    action.mutate({ person_key, action: act, value }, { onSuccess: () => { if (msg) toast.success(msg); qc.invalidateQueries({ queryKey: ["recruiting-pipeline"] }); } });
+  const fire = (person_key: string, act: string, value?: string | null, msg?: string, after?: () => void) => {
+    action.mutate({ person_key, action: act, value, msg, after });
   };
 
-  const cycleIntent = (r: Row) => {
-    const idx = INTENT_ORDER.indexOf((r.intent_level ?? null) as (typeof INTENT_ORDER)[number]);
-    const next = INTENT_ORDER[(idx + 1) % INTENT_ORDER.length];
-    fire(r.person_key, "intent", next ?? "clear", next ? `Intent: ${next}` : "Intent cleared");
+  // One write per choice, through the same RPC and value vocabulary as before
+  // ("hot" | "warm" | "cold" | "clear"). Picking the current value writes nothing.
+  const setIntent = (r: Row, value: string) => {
+    if ((r.intent_level ?? "") === value) return;
+    fire(r.person_key, "intent", value || "clear", value ? `Intent set to ${intentLabel(value)}` : "Intent cleared", () => playSoundEffect("tick"));
   };
 
-  // Monday / Start operating tiles.
-  const tiles = useMemo(() => {
-    const apps = rows.filter((r) => r.person_type === "applicant");
-    const count = (p: (r: Row) => boolean) => rows.filter(p).length;
-    return [
-      { key: "expected", label: "Expected Monday", n: apps.filter((r) => r.monday_status === "expected").length, filter: () => { setMondayFilter("expected"); setStageFilter(""); } },
-      { key: "confirmed", label: "Confirmed", n: apps.filter((r) => r.monday_status === "confirmed").length, filter: () => { setMondayFilter("confirmed"); setStageFilter(""); } },
-      { key: "showed", label: "Showed", n: apps.filter((r) => r.monday_status === "showed").length, filter: () => { setMondayFilter("showed"); setStageFilter(""); } },
-      { key: "noshow", label: "No Shows", n: apps.filter((r) => r.monday_status === "no_show").length, filter: () => { setMondayFilter("no_show"); setStageFilter(""); } },
-      { key: "onboarding", label: "Onboarding", n: count((r) => r.stage === "Onboarding"), filter: () => { setStageFilter("Onboarding"); setMondayFilter(""); } },
-      { key: "contracting", label: "Contracting", n: count((r) => r.stage === "Contract Sent" || r.stage === "Contracting In Progress"), filter: () => { setStageFilter("Contracting In Progress"); setMondayFilter(""); } },
-      { key: "active", label: "Active Agents", n: count((r) => r.stage === "Active Agent"), filter: () => { setStageFilter("Active Agent"); setMondayFilter(""); } },
-    ];
+  // A kept note is the small win. The editor closes at once, as before, so the origin is the
+  // point where Save (or the Enter key's input) sat, read before the write.
+  const saveNote = (r: Row, origin: CelebrationOrigin) => {
+    const text = noteDraft.trim();
+    if (!text) return;
+    fire(r.person_key, "note", text, "Note added", () => void celebrate("save", origin));
+    setNoteFor(null);
+  };
+
+  const counts = useMemo(() => {
+    const out = {} as Record<ListKey, number>;
+    for (const key of LIST_KEYS) out[key] = rows.filter((r) => matchesFilters(r, listFilters(LISTS[key]))).length;
+    return out;
   }, [rows]);
+
+  const current: Filters = { search, stage: stageFilter, type: typeFilter, monday: mondayFilter, active: activeFilter, intent: intentFilter };
+  const openList = (key: ListKey) => {
+    const want = listFilters(LISTS[key]);
+    setSearch(want.search); setStageFilter(want.stage); setTypeFilter(want.type);
+    setMondayFilter(want.monday); setActiveFilter(want.active); setIntentFilter(want.intent);
+  };
+  const listOn = (key: ListKey) => {
+    const want = listFilters(LISTS[key]);
+    return (Object.keys(want) as Array<keyof Filters>).every((f) => current[f] === want[f]);
+  };
 
   // Relevance rank: who needs action now + active agents first, inactive last.
   const rank = (r: Row): number => {
@@ -122,27 +338,14 @@ export default function RecruitingPipeline() {
       "Onboarding": 3, "Ready for Training": 3,
       "Interested": 4, "Call Scheduled": 4,
       "Active Agent": 5, "Contacted": 6, "New Lead": 7,
-      "Inactive/No Longer With Us": 99,
+      [INACTIVE_STAGE]: 99,
     };
     return byStage[r.stage] ?? 8;
   };
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    const list = rows.filter((r) => {
-      if (activeFilter === "open" && r.stage === "Inactive/No Longer With Us") return false;
-      if (activeFilter === "inactive" && r.stage !== "Inactive/No Longer With Us") return false;
-      if (stageFilter && r.stage !== stageFilter) return false;
-      if (typeFilter && r.person_type !== typeFilter) return false;
-      if (mondayFilter && r.monday_status !== mondayFilter) return false;
-      if (intentFilter && r.intent_level !== intentFilter) return false;
-      if (q) {
-        const hay = `${r.name} ${r.phone ?? ""} ${r.email ?? ""} ${r.instagram ?? ""} ${r.lead_source ?? ""}`.toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
-      return true;
-    });
-    return list.sort((a, b) => {
+    const f: Filters = { search, stage: stageFilter, type: typeFilter, monday: mondayFilter, active: activeFilter, intent: intentFilter };
+    return rows.filter((r) => matchesFilters(r, f)).sort((a, b) => {
       const dr = rank(a) - rank(b);
       if (dr !== 0) return dr;
       const at = a.last_contact ? Date.parse(a.last_contact) : 0;
@@ -152,166 +355,280 @@ export default function RecruitingPipeline() {
   }, [rows, search, stageFilter, typeFilter, mondayFilter, activeFilter, intentFilter]);
 
   const clearFilters = () => { setSearch(""); setStageFilter(""); setTypeFilter(""); setMondayFilter(""); setActiveFilter("open"); setIntentFilter(""); };
+  const filterCount = [stageFilter, typeFilter, mondayFilter, intentFilter, activeFilter !== "open" ? activeFilter : ""].filter(Boolean).length;
+  const now = Date.now();
 
   return (
-    <div className="p-4 md:p-6 max-w-[1400px] mx-auto space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div>
-          <h1 className="text-2xl font-bold">Recruiting Pipeline</h1>
-          <p className="text-sm text-muted-foreground">{rows.length} people · one place for who's next</p>
-        </div>
-      </div>
+    <div className="page-enter w-full space-y-5 pb-24">
+      <RecruitingWorkspaceNav />
+      <PageHeader
+        title="Pipeline"
+        subtitle="Everyone from first call to active agent."
+        icon={<Route />}
+        tone="cool"
+      />
 
-      {/* Monday / Start tiles */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
-        {tiles.map((t) => (
-          <button key={t.key} onClick={t.filter}
-            className="rounded-lg border bg-card p-3 text-left hover:border-primary transition-colors">
-            <div className="text-2xl font-bold">{t.n}</div>
-            <div className="text-xs text-muted-foreground leading-tight">{t.label}</div>
-          </button>
-        ))}
-      </div>
-
-      {/* Filters */}
+      <GrowScoreboard
+        label="Pipeline numbers"
+        notice={isError ? (
+          <span className="text-destructive">The pipeline did not load, so the numbers are hidden rather than shown as 0.</span>
+        ) : null}
+        tiles={[
+          { label: "Expected Monday", value: unknown ? null : counts.expected, hint: "Prospects due to start", onSelect: () => openList("expected"), active: listOn("expected"), emphasis: true, tone: "gold", icon: <CalendarCheck /> },
+          { label: "Showed", value: unknown ? null : counts.showed, hint: "Prospects who came", onSelect: () => openList("showed"), active: listOn("showed"), tone: "good", icon: <UserCheck /> },
+          { label: "Onboarding", value: unknown ? null : counts.onboarding, hint: "Getting set up", onSelect: () => openList("onboarding"), active: listOn("onboarding"), tone: "royal", icon: <ClipboardList /> },
+          { label: "Active agents", value: unknown ? null : counts.active, hint: "Writing business", onSelect: () => openList("active"), active: listOn("active"), tone: "good", icon: <BadgeCheck /> },
+        ]}
+      />
       <div className="flex flex-wrap items-center gap-2">
-        <Input placeholder="Search name, phone, email, IG…" value={search}
-          onChange={(e) => setSearch(e.target.value)} className="w-full sm:w-64" />
-        <Select value={stageFilter || "all"} onValueChange={(v) => setStageFilter(v === "all" ? "" : v)}>
-          <SelectTrigger aria-label="Filter by stage" className="h-9 w-auto min-w-[9rem] text-sm"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All stages</SelectItem>
-            {STAGES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={typeFilter || "everyone"} onValueChange={(v) => setTypeFilter(v === "everyone" ? "" : v)}>
-          <SelectTrigger aria-label="Filter by prospect or agent" className="h-9 w-auto min-w-[8rem] text-sm"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="everyone">Everyone</SelectItem>
-            <SelectItem value="applicant">Prospects</SelectItem>
-            <SelectItem value="agent">Agents</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={mondayFilter || "any"} onValueChange={(v) => setMondayFilter(v === "any" ? "" : v)}>
-          <SelectTrigger aria-label="Filter by Monday status" className="h-9 w-auto min-w-[8rem] text-sm"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="any">Any Monday</SelectItem>
-            <SelectItem value="expected">Expected</SelectItem>
-            <SelectItem value="confirmed">Confirmed</SelectItem>
-            <SelectItem value="showed">Showed</SelectItem>
-            <SelectItem value="no_show">No Show</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={activeFilter} onValueChange={setActiveFilter}>
-          <SelectTrigger aria-label="Filter by active status" className="h-9 w-auto min-w-[8rem] text-sm"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="open">Open only</SelectItem>
-            <SelectItem value="all">Include inactive</SelectItem>
-            <SelectItem value="inactive">Inactive only</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={intentFilter || "anyintent"} onValueChange={(v) => setIntentFilter(v === "anyintent" ? "" : v)}>
-          <SelectTrigger aria-label="Filter by intent" className="h-9 w-auto min-w-[7rem] text-sm"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="anyintent">Any intent</SelectItem>
-            <SelectItem value="hot">🔥 Hot</SelectItem>
-            <SelectItem value="warm">Warm</SelectItem>
-            <SelectItem value="cold">Cold</SelectItem>
-          </SelectContent>
-        </Select>
-        <Button variant="ghost" size="sm" onClick={clearFilters}>Clear</Button>
-        <span className="text-sm text-muted-foreground ml-auto">{filtered.length} shown</span>
+        <span className="text-sm text-muted-foreground">Also:</span>
+        <CountChip label="Confirmed" tone={mondayTone("confirmed")} count={unknown ? null : counts.confirmed} active={listOn("confirmed")} onPick={() => openList("confirmed")} />
+        <CountChip label="No shows" tone={mondayTone("no_show")} count={unknown ? null : counts.noshow} active={listOn("noshow")} onPick={() => openList("noshow")} />
+        <CountChip label="Contracting" tone={pipelineStageTone("Contract Sent")} count={unknown ? null : counts.contracting} active={listOn("contracting")} onPick={() => openList("contracting")} />
+      </div>
+
+      <div className="flex gap-2">
+        <div className="relative min-w-0 flex-1">
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search name, phone, email or Instagram"
+            aria-label="Search the pipeline"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="h-12 border-border bg-card pl-11 text-base"
+          />
+        </div>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="h-12 shrink-0 border-border bg-card px-4 text-base">
+              <SlidersHorizontal className="h-5 w-5" /> Filters{filterCount > 0 ? ` (${filterCount})` : ""}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-[22rem] space-y-5 p-4">
+            <label className="block">
+              <span className="mb-2 block text-sm font-semibold text-foreground">Stage</span>
+              <select
+                aria-label="Filter by stage"
+                value={stageFilter}
+                onChange={(e) => setStageFilter(e.target.value)}
+                className="h-11 w-full rounded-lg border border-border bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
+              >
+                <option value="">All stages</option>
+                {STAGES.map((s) => (
+                  <Fragment key={s}>
+                    <option value={s}>{s}</option>
+                    {s === "Contracting In Progress" && <option value={CONTRACTING_FILTER}>{stageFilterLabel(CONTRACTING_FILTER)}</option>}
+                  </Fragment>
+                ))}
+              </select>
+            </label>
+            <Segmented legend="Who" value={typeFilter} onChange={setTypeFilter}
+              options={[{ value: "", label: "Everyone" }, { value: "applicant", label: "Prospects" }, { value: "agent", label: "Agents" }]} />
+            <Segmented legend="Monday" value={mondayFilter} onChange={setMondayFilter}
+              options={[{ value: "", label: "Any" }, { value: "expected", label: "Expected" }, { value: "confirmed", label: "Confirmed" }, { value: "showed", label: "Showed" }, { value: "no_show", label: "No show" }]} />
+            <Segmented legend="Intent" value={intentFilter} onChange={setIntentFilter}
+              options={[{ value: "", label: "Any" }, { value: "hot", label: "Hot" }, { value: "warm", label: "Warm" }, { value: "cold", label: "Cold" }]} />
+            <Segmented legend="Show" value={activeFilter} onChange={setActiveFilter}
+              options={[{ value: "open", label: "Open only" }, { value: "all", label: "Include inactive" }, { value: "inactive", label: "Inactive only" }]} />
+          </PopoverContent>
+        </Popover>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+        <span>
+          {isError ? "People did not load" : isLoading ? "Loading people…" : (
+            <>
+              <span className="font-medium text-foreground">{filtered.length.toLocaleString()}</span> of {rows.length.toLocaleString()} people
+            </>
+          )}
+        </span>
+        {stageFilter && <FilterChip label={`Stage: ${stageFilterLabel(stageFilter)}`} onRemove={() => setStageFilter("")} />}
+        {typeFilter && <FilterChip label={WHO_LABELS[typeFilter] ?? typeFilter} onRemove={() => setTypeFilter("")} />}
+        {mondayFilter && <FilterChip label={`Monday: ${MONDAY_LABELS[mondayFilter] ?? mondayFilter}`} onRemove={() => setMondayFilter("")} />}
+        {intentFilter && <FilterChip label={`Intent: ${intentLabel(intentFilter)}`} onRemove={() => setIntentFilter("")} />}
+        {activeFilter !== "open" && <FilterChip label={SHOW_LABELS[activeFilter] ?? activeFilter} onRemove={() => setActiveFilter("open")} />}
+        {(filterCount > 0 || search) && (
+          <Button variant="ghost" className="h-11" onClick={clearFilters}>Clear all</Button>
+        )}
       </div>
 
       {/* People */}
-      <Card className="overflow-hidden">
-        {isLoading ? (
-          <div className="p-8 text-center text-muted-foreground">Loading…</div>
+      <section aria-label="People" className="overflow-hidden rounded-xl border border-border bg-card">
+        {isError ? (
+          <div role="alert" className="p-10 text-center">
+            <p className="text-base text-destructive">The pipeline did not load{failText ? `: ${failText}` : ""}.</p>
+            <Button variant="outline" className="mt-4 h-11" onClick={() => void refetch()}>
+              <RefreshCw className="h-4 w-4" /> Retry
+            </Button>
+          </div>
+        ) : isLoading ? (
+          <div className="p-10 text-center text-base text-muted-foreground">Loading…</div>
         ) : filtered.length === 0 ? (
-          <div className="p-8 text-center text-muted-foreground">No one matches these filters.</div>
+          <div className="p-10 text-center text-base text-muted-foreground">No one matches these filters.</div>
         ) : (
-          <div className="divide-y">
-            {filtered.slice(0, 400).map((r) => (
-              <div key={r.person_key} className="p-3 flex flex-col lg:flex-row lg:flex-wrap lg:items-center gap-2">
-                <div className="min-w-0 lg:w-60">
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      title="Click to set intent (hot → warm → cold → none)"
-                      onClick={() => cycleIntent(r)}
-                      className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold border ${r.intent_level && INTENT_STYLE[r.intent_level] ? INTENT_STYLE[r.intent_level].cls : "text-muted-foreground border-dashed"}`}>
-                      {r.intent_level && INTENT_STYLE[r.intent_level] ? INTENT_STYLE[r.intent_level].label : "Intent"}
-                    </button>
-                    {r.person_type === "agent" ? (
-                      <button className="font-semibold truncate text-left hover:text-primary hover:underline" onClick={() => openAgentProfile(r.person_key.split(":")[1])}>{r.name || "Unknown"}</button>
-                    ) : (
-                      <div className="font-semibold truncate">{r.name || "Unknown"}</div>
+          <RevealList as="ul" className="divide-y divide-border/60">
+            {filtered.slice(0, 400).map((r) => {
+              const name = r.name || "Unknown";
+              const stageTone = TONE_CLASS[pipelineStageTone(r.stage)];
+              const lastNote = r.notes?.split("\n").filter(Boolean).pop();
+              const due = dueWords(r.next_follow_up, now);
+              return (
+                // Bubble | name and facts, with the actions on their own full-width line on a phone and in a
+                // third column from lg up, so the 44px controls keep the whole width where it is scarce.
+                <li key={r.person_key} className="grid grid-cols-[2.5rem_minmax(0,1fr)] items-start gap-3 px-4 py-4 lg:grid-cols-[2.5rem_minmax(0,1fr)_auto] lg:gap-x-6">
+                  {/* The person's initials in the colour of their stage. Decoration: the name sits beside it and
+                      the stage select says the word, so it is hidden from assistive technology like every bubble. */}
+                  <span aria-hidden="true" className={cn("mt-0.5 inline-flex h-10 w-10 items-center justify-center rounded-full border text-sm font-bold", stageTone.soft, stageTone.text, stageTone.border)}>
+                    {initialsOf(name)}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="flex min-h-11 flex-wrap items-center gap-2">
+                      {r.person_type === "agent" ? (
+                        <button
+                          type="button"
+                          className="max-w-full truncate py-2.5 text-left text-base font-semibold leading-6 text-foreground hover:text-primary hover:underline"
+                          onClick={() => openAgentProfile(r.person_key.split(":")[1])}
+                        >
+                          {name}
+                        </button>
+                      ) : (
+                        <span className="truncate text-base font-semibold text-foreground">{name}</span>
+                      )}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="outline"
+                            aria-label={`Intent: ${intentLabel(r.intent_level)}. Change intent for ${name}`}
+                            className={cn(
+                              "h-11 shrink-0 rounded-full px-4 text-sm",
+                              tonePill(intentTone(r.intent_level)),
+                              !r.intent_level && "border-dashed",
+                            )}
+                          >
+                            Intent: {intentLabel(r.intent_level)} <ChevronDown className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-48">
+                          <DropdownMenuLabel>Intent</DropdownMenuLabel>
+                          <DropdownMenuRadioGroup value={r.intent_level ?? ""} onValueChange={(v) => setIntent(r, v)}>
+                            {INTENT_OPTIONS.map((o) => (
+                              <DropdownMenuRadioItem key={o.value || "none"} value={o.value} className="min-h-11">{o.label}</DropdownMenuRadioItem>
+                            ))}
+                          </DropdownMenuRadioGroup>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                    <p className="mt-0.5 truncate text-sm text-muted-foreground">
+                      {r.phone ? formatPhoneDisplay(r.phone) : "No phone"}
+                      {r.instagram ? ` · @${igHandle(r.instagram)}` : ""}
+                      {r.lead_source ? ` · ${r.lead_source}` : ""}
+                    </p>
+                    <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+                      <span className="text-foreground">Next: {r.next_action_display || "Follow up"}</span>
+                      <span aria-hidden="true">·</span>
+                      <span>Last contact {formatSince(r.last_contact, now)}</span>
+                      <span aria-hidden="true">·</span>
+                      {due === null ? (
+                        <span>No due date</span>
+                      ) : due.tone === "neutral" ? (
+                        <span>Due {due.label}</span>
+                      ) : (
+                        <StatusPill status={due} />
+                      )}
+                    </p>
+                    {lastNote && noteFor !== r.person_key && (
+                      <p className="mt-1 max-w-full truncate text-sm italic text-muted-foreground">Note: {lastNote}</p>
+                    )}
+                    {noteFor === r.person_key && (
+                      // On a phone the box takes its own line and Save and Cancel sit under it: beside the bubble
+                      // the column is 306px, and a box squeezed next to two buttons showed three words of a note.
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <Input autoFocus value={noteDraft} onChange={(e) => setNoteDraft(e.target.value)}
+                          aria-label={`Note for ${r.name}`}
+                          placeholder={`Note for ${r.name}…`} className="h-11 basis-full text-base sm:min-w-[12rem] sm:flex-1"
+                          onKeyDown={(e) => { if (e.key === "Enter" && noteDraft.trim()) saveNote(r, pressPoint(e.currentTarget)); }} />
+                        <Button className="h-11" disabled={!noteDraft.trim()}
+                          onClick={(e) => saveNote(r, pressPoint(e.currentTarget))}>Save</Button>
+                        <Button variant="ghost" className="h-11" onClick={() => setNoteFor(null)}>Cancel</Button>
+                      </div>
                     )}
                   </div>
-                  <div className="text-xs text-muted-foreground truncate">
-                    {r.phone || "no phone"}
-                    {r.instagram && <> · <a href={`https://instagram.com/${r.instagram.replace(/^@/, "")}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">@{r.instagram.replace(/^@/, "")}</a></>}
-                    {r.lead_source ? ` · ${r.lead_source}` : ""}
+
+                  <div className="col-span-2 flex flex-wrap items-center gap-2 lg:col-span-1 lg:flex-nowrap">
+                    {/* The stage's tone on the text and the hairline, so a glance down the list shows each stage's
+                        colour; the options and the write are exactly as before. */}
+                    <select
+                      aria-label={`Stage for ${name}`}
+                      title="Changing a stage sets a manual override that sticks until you clear it"
+                      className={cn("h-11 max-w-[13rem] rounded-lg border bg-card px-2 text-sm font-medium focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]", stageTone.text, stageTone.border)}
+                      value={STAGES.includes(r.stage as typeof STAGES[number]) ? r.stage : ""}
+                      onChange={(e) => {
+                        // Read the select now, before anything async, so the bubbles rise from it.
+                        const origin = e.currentTarget;
+                        const next = e.target.value;
+                        fire(r.person_key, "stage", next, "Stage updated", () => stageMoved(next, origin));
+                      }}>
+                      {!STAGES.includes(r.stage as typeof STAGES[number]) && <option value="">{r.stage}</option>}
+                      {STAGES.map((s) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                    {r.phone && (
+                      <Button asChild variant="outline" className="h-11 px-3">
+                        <a href={phoneHref(r.phone) ?? `tel:${r.phone}`} {...contactLinkProps(phoneHref(r.phone))} aria-label={`Call ${r.name}`}>
+                          <Phone className="h-4 w-4" /> Call
+                        </a>
+                      </Button>
+                    )}
+                    {r.phone && (
+                      <Button asChild variant="outline" className="h-11 px-3">
+                        <a href={smsHref(r.phone) ?? `sms:${r.phone}`} {...contactLinkProps(smsHref(r.phone))} aria-label={`Text ${r.name}`}>
+                          <MessageSquare className="h-4 w-4" /> Text
+                        </a>
+                      </Button>
+                    )}
+                    {/* The profile link used to be the 17px handle inside the contact line; it is a
+                        contact channel like Call and Text, so it sits with them at the same size. */}
+                    {r.instagram && (
+                      <Button asChild variant="outline" className="h-11 px-3">
+                        <a href={`https://instagram.com/${igHandle(r.instagram)}`} target="_blank" rel="noopener noreferrer" aria-label={`Open Instagram for ${name}`}>
+                          <Instagram className="h-4 w-4" /> Instagram
+                        </a>
+                      </Button>
+                    )}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="h-11 px-3" aria-label={`Update ${name}`}>
+                          Update <ChevronDown className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56" onCloseAutoFocus={(e) => { if (noteFor === r.person_key) e.preventDefault(); }}>
+                        {r.person_type === "applicant" && (
+                          <>
+                            <DropdownMenuLabel>Monday</DropdownMenuLabel>
+                            <DropdownMenuItem className="min-h-11" onSelect={() => fire(r.person_key, "monday", "expected", "Marked expected Monday")}>Expected Monday</DropdownMenuItem>
+                            <DropdownMenuItem className="min-h-11" onSelect={() => fire(r.person_key, "monday", "confirmed", "Confirmed")}>Confirmed for Monday</DropdownMenuItem>
+                            <DropdownMenuItem className="min-h-11" onSelect={() => fire(r.person_key, "monday", "showed", "Marked showed")}>Showed up</DropdownMenuItem>
+                            <DropdownMenuItem className="min-h-11" onSelect={() => fire(r.person_key, "monday", "no_show", "Marked no-show")}>Didn't show</DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                          </>
+                        )}
+                        <DropdownMenuItem className="min-h-11" onSelect={() => fire(r.person_key, "contacted", null, "Marked contacted")}>Mark contacted</DropdownMenuItem>
+                        <DropdownMenuItem className="min-h-11" onSelect={() => {
+                          const d = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+                          fire(r.person_key, "followup", d, "Follow-up set for tomorrow");
+                        }}>Follow up tomorrow</DropdownMenuItem>
+                        <DropdownMenuItem className="min-h-11" onSelect={() => { setNoteFor(r.person_key); setNoteDraft(""); }}>Add a note</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
-                </div>
-                <div className="lg:w-48 flex items-center gap-2">
-                  <span className={`inline-block h-2 w-2 rounded-full ${STAGE_COLOR[r.stage] ?? "bg-slate-500"}`} />
-                  <select
-                    className="h-8 rounded-md border bg-background px-1 text-xs max-w-[11rem]"
-                    value={STAGES.includes(r.stage as typeof STAGES[number]) ? r.stage : ""}
-                    onChange={(e) => fire(r.person_key, "stage", e.target.value, "Status updated")}>
-                    {!STAGES.includes(r.stage as typeof STAGES[number]) && <option value="">{r.stage}</option>}
-                    {STAGES.map((s) => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                </div>
-                <div className="lg:flex-1 text-xs text-muted-foreground min-w-0">
-                  <span className="font-medium text-foreground">Next: </span>{r.next_action_display || "Follow up"}
-                  <span className="mx-2">·</span>Last: {fmt(r.last_contact)}
-                  <span className="mx-2">·</span>Due: {fmt(r.next_follow_up)}
-                </div>
-                <div className="flex flex-wrap items-center gap-1">
-                  {r.phone && <Button asChild size="sm" variant="outline" className="h-7 px-2 text-xs"><a href={phoneHref(r.phone) ?? `tel:${r.phone}`} {...contactLinkProps(phoneHref(r.phone))}>Call</a></Button>}
-                  {r.phone && <Button asChild size="sm" variant="outline" className="h-7 px-2 text-xs"><a href={smsHref(r.phone) ?? `sms:${r.phone}`} {...contactLinkProps(smsHref(r.phone))}>Text</a></Button>}
-                  {r.person_type === "applicant" && <>
-                    <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => fire(r.person_key, "monday", "expected", "Marked expected Monday")}>Exp Mon</Button>
-                    <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => fire(r.person_key, "monday", "confirmed", "Confirmed")}>Confirm</Button>
-                    <Button size="sm" className="h-7 px-2 text-xs bg-emerald-600 hover:bg-emerald-700" onClick={() => fire(r.person_key, "monday", "showed", "Marked showed")}>Showed</Button>
-                    <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => fire(r.person_key, "monday", "no_show", "Marked no-show")}>No-show</Button>
-                  </>}
-                  <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => fire(r.person_key, "contacted", null, "Marked contacted")}>Contacted</Button>
-                  <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => {
-                    const d = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-                    fire(r.person_key, "followup", d, "Follow-up set for tomorrow");
-                  }}>+1d</Button>
-                  <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => { setNoteFor(noteFor === r.person_key ? null : r.person_key); setNoteDraft(""); }}>Note</Button>
-                </div>
-                {r.notes && noteFor !== r.person_key && (
-                  <button onClick={() => { setNoteFor(r.person_key); setNoteDraft(""); }}
-                    className="w-full lg:basis-full text-left text-xs text-muted-foreground italic truncate mt-0.5 hover:text-foreground">
-                    📝 {r.notes.split("\n").filter(Boolean).pop()}
-                  </button>
-                )}
-                {noteFor === r.person_key && (
-                  <div className="flex items-center gap-1 w-full lg:basis-full mt-1">
-                    <Input autoFocus value={noteDraft} onChange={(e) => setNoteDraft(e.target.value)}
-                      placeholder={`Note for ${r.name}…`} className="h-8 text-xs"
-                      onKeyDown={(e) => { if (e.key === "Enter" && noteDraft.trim()) { fire(r.person_key, "note", noteDraft.trim(), "Note added"); setNoteFor(null); } }} />
-                    <Button size="sm" className="h-8 px-3 text-xs" disabled={!noteDraft.trim()}
-                      onClick={() => { fire(r.person_key, "note", noteDraft.trim(), "Note added"); setNoteFor(null); }}>Save</Button>
-                    <Button size="sm" variant="ghost" className="h-8 px-2 text-xs" onClick={() => setNoteFor(null)}>Cancel</Button>
-                  </div>
-                )}
-              </div>
-            ))}
+                </li>
+              );
+            })}
             {filtered.length > 400 && (
-              <div className="p-3 text-center text-xs text-muted-foreground">Showing first 400 of {filtered.length}. Narrow with filters.</div>
+              <li className="p-4 text-center text-sm text-muted-foreground">Showing the first 400 of {filtered.length}. Search or filter to narrow it.</li>
             )}
-          </div>
+          </RevealList>
         )}
-      </Card>
-      <p className="text-xs text-muted-foreground">
-        <Badge variant="outline" className="mr-1">Note</Badge>
-        Changing a status here sets a manual override that sticks until you clear it. Everything writes to your existing records — no data is duplicated.
-      </p>
+      </section>
     </div>
   );
 }

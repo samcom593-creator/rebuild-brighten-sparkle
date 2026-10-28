@@ -19,6 +19,10 @@
  *     as the person's local time, never which queue the item is in.
  *   - Unknown never becomes zero: a row whose due timestamp cannot be parsed is not
  *     silently "not due"; it lands in the Needs-a-plan exception filter.
+ *   - Every number on the page is a list: the "Worked today" and "Booked" tiles open
+ *     queues whose predicates ARE the scoreboard's, so a tile can never disagree with
+ *     the rows behind it. "Worked today" is the one queue that is not a subset of the
+ *     open items: a "Not interested" saved today is still a call made today.
  */
 
 export const CONTACT_OUTCOMES = [
@@ -116,6 +120,7 @@ export interface WorklistRow {
 
 export const QUEUE_KEYS = [
   "likely",
+  "today",
   "all_open",
   "new",
   "uncontacted",
@@ -126,6 +131,8 @@ export const QUEUE_KEYS = [
   "mine",
   "needs_plan",
   "old",
+  "worked_today",
+  "booked",
 ] as const;
 export type QueueKey = (typeof QUEUE_KEYS)[number];
 
@@ -137,19 +144,35 @@ export interface QueueDefinition {
   scope: "organization" | "personal";
 }
 
+// Labels are plain English for people who do not live in software (Grow redesign,
+// 2026-10-28); keys, URL params and predicates are unchanged, so old links still work.
 export const QUEUE_DEFINITIONS: readonly QueueDefinition[] = [
   { key: "likely", label: "Likely to join", description: "Licensed or rated hot/warm and applied in the last 47 days, or anyone who applied in the last 14 days. From the conversion history: licensed applicants join 37% of the time vs 2% unlicensed, and 80% of joins happen within 47 days", scope: "organization" },
-  { key: "all_open", label: "All open", description: "Every open recruit you can see", scope: "organization" },
+  { key: "today", label: "Call today", description: "Next step due today or already late (Phoenix day): Due today plus Overdue", scope: "organization" },
+  { key: "all_open", label: "Everyone", description: "Every open recruit you can see", scope: "organization" },
   { key: "new", label: "New", description: "Applied in the last 7 days and not yet worked", scope: "organization" },
-  { key: "uncontacted", label: "Uncontacted", description: "No recorded contact, ever (bulk-stamped contacted_at ignored)", scope: "organization" },
+  { key: "uncontacted", label: "Never contacted", description: "No recorded contact, ever (bulk-stamped contacted_at ignored)", scope: "organization" },
   { key: "due_today", label: "Due today", description: "Next action or review due later today (Phoenix)", scope: "organization" },
   { key: "overdue", label: "Overdue", description: "Next action or review time has passed", scope: "organization" },
-  { key: "awaiting_reply", label: "Awaiting reply", description: "Parked on a documented waiting reason", scope: "organization" },
-  { key: "unassigned", label: "Unassigned", description: "No accountable owner yet", scope: "organization" },
-  { key: "mine", label: "My queue", description: "Open recruits where you are the accountable owner", scope: "personal" },
-  { key: "needs_plan", label: "Needs a plan", description: "Open but missing an owner, or a next action and due time, or a waiting reason and review date", scope: "organization" },
+  { key: "awaiting_reply", label: "Waiting on them", description: "Parked on a documented waiting reason", scope: "organization" },
+  { key: "unassigned", label: "No owner", description: "No accountable owner yet", scope: "organization" },
+  { key: "mine", label: "Mine", description: "Open recruits where you are the accountable owner", scope: "personal" },
+  // The label names both halves of the rule: this list also holds people who have a next
+  // step but no owner, so "No next step" alone read as wrong beside "Next: Call back".
+  { key: "needs_plan", label: "No owner or next step", description: "Open and missing an owner, or missing a next step: no next action with a due time and no waiting reason with a review date", scope: "organization" },
   { key: "old", label: "Older than 90 days", description: "Applied 90+ days ago with no follow-up set by a person. Only ~5% of joins ever come this late, so they stay out of the other queues", scope: "organization" },
+  { key: "worked_today", label: "Worked today", description: "An outcome was saved today (Phoenix day), including no answers and people who said no", scope: "organization" },
+  { key: "booked", label: "Booked", description: "Open recruits whose latest outcome is Appointment booked", scope: "organization" },
 ] as const;
+
+/** The two queues shown as big buttons; the rest sit behind "More lists" or on a tile. */
+export const PRIMARY_QUEUE_KEYS: readonly QueueKey[] = ["likely", "mine"];
+
+/**
+ * The queues opened from the "Today's numbers" tiles. Each list has one entry point:
+ * these are not repeated as buttons in the queue row or behind "More lists".
+ */
+export const TILE_QUEUE_KEYS: readonly QueueKey[] = ["today", "new", "worked_today", "booked"];
 
 export function isQueueKey(value: string | null | undefined): value is QueueKey {
   return !!value && (QUEUE_KEYS as readonly string[]).includes(value);
@@ -333,11 +356,23 @@ export function isStale(row: WorklistRow, nowMs: number): boolean {
   return age !== null && age >= OLD_AFTER_DAYS && !personFollowUp;
 }
 
-/** Queue membership. Every queue is a subset of the open items. */
+/** An outcome was saved inside the Phoenix business day containing `now`. An unreadable timestamp is never "today". */
+export function workedToday(row: WorklistRow, now: Date): boolean {
+  const at = parseTs(row.last_contact_outcome_at);
+  if (at === null || Number.isNaN(at)) return false;
+  const { start, end } = phoenixDayBounds(now);
+  return at >= start && at < end;
+}
+
+/** Queue membership. Every queue but "Worked today" is a subset of the open items. */
 export function inQueue(row: WorklistRow, queue: QueueKey, ctx: QueueContext): boolean {
+  // Work done today, open or closed, old or not: the same rule as the scoreboard tile.
+  if (queue === "worked_today") return workedToday(row, ctx.now);
   if (!isOpen(row)) return false;
   const nowMs = ctx.now.getTime();
   if (queue === "old") return isStale(row, nowMs);
+  // An open booking counts however old the application is: the same rule as the tile.
+  if (queue === "booked") return row.last_contact_outcome === "appointment_booked";
   if (queue !== "mine" && isStale(row, nowMs)) return false;
   switch (queue) {
     case "likely": {
@@ -345,6 +380,8 @@ export function inQueue(row: WorklistRow, queue: QueueKey, ctx: QueueContext): b
       if (age === null) return false;
       return (strongSignal(row) && age <= LIKELY_WINDOW_DAYS) || age <= FRESH_WINDOW_DAYS;
     }
+    case "today":
+      return inQueue(row, "due_today", ctx) || inQueue(row, "overdue", ctx);
     case "all_open":
       return true;
     case "new": {
@@ -394,12 +431,38 @@ export function computeQueueCounts(rows: readonly WorklistRow[], ctx: QueueConte
   return counts;
 }
 
+/**
+ * The four numbers on top of the worklist. Each one IS a queue count over the same full
+ * row set as the queue buttons, so a number can never disagree with the list its tile opens:
+ *   callToday   = the "today" queue (Due today + Overdue, which are disjoint)
+ *   newThisWeek = the "new" queue
+ *   workedToday = the "worked_today" queue: an outcome recorded inside the Phoenix business
+ *                 day, open or closed (a "Not interested" today is still work done today)
+ *   booked      = the "booked" queue: open recruits whose latest outcome is Appointment booked
+ * An unparseable outcome timestamp is not counted as today.
+ */
+export interface Scoreboard {
+  callToday: number;
+  newThisWeek: number;
+  workedToday: number;
+  booked: number;
+}
+
+export function computeScoreboard(counts: QueueCounts): Scoreboard {
+  return { callToday: counts.today, newThisWeek: counts.new, workedToday: counts.worked_today, booked: counts.booked };
+}
+
 /** Order inside a queue: most urgent first, unknown dates last, then newest applicant.
- *  "Likely to join" ranks by who converts: licensed / hot / warm first, then newest. */
+ *  "Likely to join" ranks by who converts: licensed / hot / warm first, then newest.
+ *  "Worked today" reads like today's log: the latest outcome first. */
 export function sortForQueue(rows: readonly WorklistRow[], queue?: QueueKey): WorklistRow[] {
   if (queue === "likely") {
     return [...rows].sort((a, b) => Number(strongSignal(b)) - Number(strongSignal(a))
       || (parseTs(b.created_at) ?? 0) - (parseTs(a.created_at) ?? 0) || a.id.localeCompare(b.id));
+  }
+  if (queue === "worked_today") {
+    return [...rows].sort((a, b) => (parseTs(b.last_contact_outcome_at) ?? 0) - (parseTs(a.last_contact_outcome_at) ?? 0)
+      || a.id.localeCompare(b.id));
   }
   return [...rows].sort((a, b) => {
     const da = effectiveDueMs(a);

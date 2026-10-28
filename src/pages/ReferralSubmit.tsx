@@ -1,13 +1,15 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ArrowLeft, Loader2, CheckCircle2 } from "lucide-react";
+import { BadgeDollarSign, Check, Gift, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { celebrate, type CelebrationOrigin } from "@/lib/celebrate";
+import { PageHeader } from "@/components/ui/page-header";
+import { ToneBubble } from "@/components/ui/delight/ToneBubble";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,38 +29,97 @@ import {
 // defaulting to "unknown" — we ask after first contact instead) and the
 // "How do you know them?" relationship dropdown (zero signal upfront).
 // Mobile-first vertical scan, one decision per line, ship in <30 seconds.
+//
+// Grow review 2026-10-28 (findings 30, 34): the page now sits in the standard
+// frame (PageHeader, no header button) instead of a marketing h1 with a 36px
+// Back button. The bonus is one quiet line in plain words, with no "AP". One
+// control scale: the gold Send referral is 48px, every other control is 44px,
+// every word is at least 13px. A failed send says so on the page and keeps
+// what was typed. The submit_referral RPC call is unchanged.
+//
+// Colour layer (2026-10-28, docs/DESIGN_SYSTEM.md "Colour, motion and sound"): the header
+// bubble is a gift in green (a referral is good news), the bonus line carries a gold bubble
+// (the brand moment), and a sent referral chimes from the Send button and pops its
+// confirmation in. A failed send plays nothing; its message is as before.
 const schema = z
   .object({
-    firstName: z.string().min(2, "First name required").max(50),
-    lastName: z.string().min(2, "Last name required").max(50),
-    email: z.string().email("Valid email").optional().or(z.literal("")),
+    firstName: z.string().min(2, "Enter their first name (at least 2 letters)").max(50, "First name is too long (50 letters at most)"),
+    lastName: z.string().min(2, "Enter their last name (at least 2 letters)").max(50, "Last name is too long (50 letters at most)"),
+    email: z.string().email("That email does not look right").optional().or(z.literal("")),
     phone: z.string().optional(),
-    state: z.string().min(2, "Pick a state"),
-    notes: z.string().max(2000).optional(),
+    state: z.string().min(2, "Choose their state"),
+    notes: z.string().max(2000, "Notes are too long (2,000 characters at most)").optional(),
   })
   .refine(
     (v) => (v.email && v.email.length > 0) || (v.phone && v.phone.length >= 10),
-    { message: "Need either email or phone", path: ["email"] },
+    { message: "Add a phone number or an email so we can reach them", path: ["email"] },
   );
 
 type FormData = z.infer<typeof schema>;
 
+type Confirmation = {
+  name: string;
+  isDup: boolean;
+  matchingApplicationId?: string | null;
+};
+
+/** Every field is 48px with 16px text at every width (Input drops to 14px from md up on its own). */
+const FIELD_CLASS = "h-12 text-base md:text-base";
+
+/**
+ * Where the finger was, as a point, read before the send: the confirmation replaces the form,
+ * so by the time the server answers the Send button is gone and a point still puts the bubbles
+ * where it stood. The control itself while it has no size (hidden, or under test).
+ */
+function pressOrigin(control: Element | null): CelebrationOrigin {
+  if (!control || typeof window === "undefined") return null;
+  const r = control.getBoundingClientRect();
+  if (r.width === 0 && r.height === 0) return control;
+  const clamp = (v: number) => Math.min(1, Math.max(0, v));
+  return { x: clamp((r.left + r.width / 2) / window.innerWidth), y: clamp((r.top + r.height / 2) / window.innerHeight) };
+}
+
+function sentCopy(c: Confirmation): string {
+  if (c.matchingApplicationId) {
+    return "They had already applied on their own. You are logged as the referrer: if they reach $10,000 in annual premium, the $300 is yours.";
+  }
+  if (c.isDup) {
+    return "We already had this person on file. Your referral is logged next to the earlier one.";
+  }
+  return "We make first contact within 24 hours. My Referrals shows where they stand.";
+}
+
+function FieldError({ id, message }: { id: string; message?: string }) {
+  if (!message) return null;
+  return (
+    <p id={id} role="alert" className="text-sm text-destructive">
+      {message}
+    </p>
+  );
+}
+
 export default function ReferralSubmit() {
-  usePageTitle("Submit a Referral · Galaxy");
+  usePageTitle("Refer a recruit · Galaxy");
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
-  const [confirmation, setConfirmation] = useState<null | {
-    name: string;
-    isDup: boolean;
-    matchingApplicationId?: string | null;
-  }>(null);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
+  const sendButton = useRef<HTMLButtonElement>(null);
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
+    // Every field starts as "" so zod reports all of the problems in one round. With State left
+    // undefined the object parse aborted, and "phone or email" only appeared on a second submit.
+    defaultValues: { firstName: "", lastName: "", email: "", phone: "", state: "", notes: "" },
   });
+  const { errors } = form.formState;
+  const stateValue = form.watch("state");
 
   async function onSubmit(values: FormData) {
     setSubmitting(true);
+    setSendError(null);
+    // Read now, before the round trip, so the celebration rises from the button that was pressed.
+    const origin = pressOrigin(sendButton.current);
     try {
       const { data, error } = await (supabase.rpc as any)("submit_referral", {
         p_first_name: values.firstName,
@@ -79,138 +140,192 @@ export default function ReferralSubmit() {
       });
       toast.success(
         row?.matching_application_id
-          ? "This person already applied — you're logged as referrer."
+          ? "They already applied. You are logged as the referrer."
           : row?.is_duplicate
-            ? "We already had this referral on file — you're still logged."
-            : "Referral submitted — we'll follow up within 24 hours.",
+            ? "We already had this person on file. Your referral is logged too."
+            : "Referral sent. We make first contact within 24 hours.",
       );
+      // The referral is on the list (an error threw above): bubbles and a chime from the Send button.
+      void celebrate("booked", origin);
     } catch (err: any) {
       console.error("[referral.submit]", err);
-      toast.error(err?.message ?? "Couldn't submit the referral.");
+      const message = typeof err?.message === "string" && err.message ? err.message : "the server did not answer";
+      // The form keeps what was typed; the reason sits on the page, not only in a toast that fades.
+      setSendError(message);
+      toast.error("The referral did not send. What you typed is still here.");
     } finally {
       setSubmitting(false);
     }
   }
 
-  if (confirmation) {
-    return (
-      <div className="p-4 sm:p-6 max-w-xl mx-auto">
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-          <Card>
-            <CardContent className="p-8 text-center space-y-3">
-              <div className="flex items-center justify-center gap-2 text-primary">
-                <CheckCircle2 className="h-6 w-6" />
-                <span className="text-xs uppercase tracking-wider">Submitted</span>
-              </div>
-              <h1 className="text-2xl font-bold">Thanks for sending {confirmation.name}</h1>
-              <p className="text-sm text-muted-foreground">
-                {confirmation.matchingApplicationId
-                  ? "This person already submitted an application. We logged you as the referrer — if they convert, the bonus is yours."
-                  : confirmation.isDup
-                    ? "We already had this person in the system — your name is logged in case they convert."
-                    : "We'll make first contact within 24 hours. You'll see the status update in your referrals list."}
-              </p>
-              <div className="flex flex-wrap gap-2 justify-center pt-2">
-                <Button variant="outline" onClick={() => setConfirmation(null)}>Submit another</Button>
-                <Button onClick={() => navigate("/dashboard/referrals/mine")}>See my referrals</Button>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
-    );
+  function referAnother() {
+    form.reset();
+    setSendError(null);
+    setConfirmation(null);
   }
 
   return (
-    <div className="p-4 sm:p-6 max-w-xl mx-auto">
-      <Button variant="ghost" size="sm" className="mb-4" onClick={() => navigate(-1)}>
-        <ArrowLeft className="h-4 w-4 mr-1" /> Back
-      </Button>
+    <div className="page-enter mx-auto w-full max-w-2xl space-y-5 pb-28">
+      <PageHeader
+        title="Refer a recruit"
+        subtitle="We contact your referral within 24 hours."
+        icon={<Gift />}
+        tone="good"
+        // The gold button is the form's Send referral. Declaring null keeps the header empty
+        // and turns off the legacy inference, so nothing can be promoted up here.
+        primaryAction={null}
+      />
 
-      <div className="mb-5 rounded-md border border-primary/40 bg-white dark:bg-card p-4">
-        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-primary">Referral bonus</p>
-        <h2 className="text-lg font-bold mt-1">$300 when your referral hits their first $10k in production.</h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          Paid automatically when the agent you sent crosses $10k AP. We track it for you in <span className="text-foreground">My Referrals</span>.
-        </p>
-      </div>
-
-      <Card>
-        <CardContent className="p-5 sm:p-6">
-          <h1 className="text-xl font-bold mb-1">Send us someone who could win.</h1>
-          <p className="text-sm text-muted-foreground mb-5">
-            First contact in 24 hours. Takes 30 seconds.
+      {confirmation ? (
+        // Pops in once, the moment the server said yes.
+        <Card className="apex-pop">
+          <CardContent className="space-y-4 p-5 sm:p-6">
+            <p className="flex items-center gap-2 text-sm font-semibold text-tone-good">
+              <ToneBubble tone="good" size="sm">
+                <Check />
+              </ToneBubble>
+              Sent
+            </p>
+            <h2 className="text-xl font-semibold leading-7">{confirmation.name} is on our list.</h2>
+            <p className="text-base text-muted-foreground">{sentCopy(confirmation)}</p>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Button className="h-12 text-base sm:flex-1" onClick={() => navigate("/dashboard/referrals/mine")}>
+                See my referrals
+              </Button>
+              <Button variant="outline" className="h-11 text-base sm:flex-1" onClick={referAnother}>
+                Refer someone else
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          <p className="flex items-start gap-3 rounded-[10px] border border-border bg-card px-4 py-3 text-base leading-snug text-muted-foreground">
+            <ToneBubble tone="gold" size="md" className="mt-0.5">
+              <BadgeDollarSign />
+            </ToneBubble>
+            <span>
+              <span className="font-semibold text-foreground">$300 referral bonus.</span> You get it once the person you
+              refer has sold $10,000 in annual premium (the yearly premium on the policies they sell). My Referrals shows
+              where each one stands.
+            </span>
           </p>
 
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
-            <div className="space-y-1.5">
-              <Label htmlFor="firstName">First name *</Label>
-              <Input id="firstName" autoComplete="given-name" {...form.register("firstName")} />
-              {form.formState.errors.firstName && (
-                <p className="text-xs text-destructive">{form.formState.errors.firstName.message}</p>
-              )}
-            </div>
+          <Card>
+            <CardContent className="p-5 sm:p-6">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5" noValidate>
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="firstName">First name</Label>
+                    <Input
+                      id="firstName"
+                      className={FIELD_CLASS}
+                      autoComplete="given-name"
+                      aria-invalid={errors.firstName ? true : undefined}
+                      aria-describedby={errors.firstName ? "firstName-error" : undefined}
+                      {...form.register("firstName")}
+                    />
+                    <FieldError id="firstName-error" message={errors.firstName?.message} />
+                  </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="lastName">Last name *</Label>
-              <Input id="lastName" autoComplete="family-name" {...form.register("lastName")} />
-              {form.formState.errors.lastName && (
-                <p className="text-xs text-destructive">{form.formState.errors.lastName.message}</p>
-              )}
-            </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lastName">Last name</Label>
+                    <Input
+                      id="lastName"
+                      className={FIELD_CLASS}
+                      autoComplete="family-name"
+                      aria-invalid={errors.lastName ? true : undefined}
+                      aria-describedby={errors.lastName ? "lastName-error" : undefined}
+                      {...form.register("lastName")}
+                    />
+                    <FieldError id="lastName-error" message={errors.lastName?.message} />
+                  </div>
+                </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="phone">Phone</Label>
-              <Input id="phone" type="tel" autoComplete="tel" {...form.register("phone")} />
-            </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone</Label>
+                  <Input id="phone" type="tel" inputMode="tel" className={FIELD_CLASS} autoComplete="tel" {...form.register("phone")} />
+                </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" autoComplete="email" {...form.register("email")} />
-              <p className="text-[12px] text-muted-foreground">Phone or email — at least one.</p>
-              {form.formState.errors.email && (
-                <p className="text-xs text-destructive">{form.formState.errors.email.message}</p>
-              )}
-            </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    inputMode="email"
+                    className={FIELD_CLASS}
+                    autoComplete="email"
+                    aria-invalid={errors.email ? true : undefined}
+                    aria-describedby={errors.email ? "email-help email-error" : "email-help"}
+                    {...form.register("email")}
+                  />
+                  <p id="email-help" className="text-sm text-muted-foreground">
+                    Phone or email. One is enough.
+                  </p>
+                  <FieldError id="email-error" message={errors.email?.message} />
+                </div>
 
-            <div className="space-y-1.5">
-              <Label>State *</Label>
-              <Select
-                value={form.watch("state")}
-                onValueChange={(v) => form.setValue("state", v, { shouldValidate: true })}
-              >
-                <SelectTrigger><SelectValue placeholder="Pick a state" /></SelectTrigger>
-                <SelectContent>
-                  {US_STATES.map((s: any) => (
-                    <SelectItem key={s.value ?? s} value={s.value ?? s}>{s.label ?? s}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {form.formState.errors.state && (
-                <p className="text-xs text-destructive">{form.formState.errors.state.message}</p>
-              )}
-            </div>
+                <div className="space-y-2">
+                  <Label htmlFor="state">State</Label>
+                  <Select
+                    value={stateValue}
+                    onValueChange={(v) => form.setValue("state", v, { shouldValidate: true, shouldDirty: true })}
+                  >
+                    <SelectTrigger
+                      id="state"
+                      className={FIELD_CLASS}
+                      aria-label="State"
+                      aria-invalid={errors.state ? true : undefined}
+                      aria-describedby={errors.state ? "state-error" : undefined}
+                    >
+                      <SelectValue placeholder="Choose a state" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {US_STATES.map((s) => (
+                        <SelectItem key={s.value} value={s.value} className="h-11 text-base">
+                          {s.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FieldError id="state-error" message={errors.state?.message} />
+                </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="notes">Notes (optional)</Label>
-              <Textarea
-                id="notes"
-                rows={3}
-                placeholder="Anything we should know? (background, why they'd be a fit, when to reach out)"
-                {...form.register("notes")}
-              />
-            </div>
+                <div className="space-y-2">
+                  <Label htmlFor="notes">Notes (optional)</Label>
+                  <Textarea
+                    id="notes"
+                    rows={3}
+                    className="min-h-[96px] text-base"
+                    placeholder="Anything that helps: what they do now, why they would do well, the best time to call"
+                    aria-invalid={errors.notes ? true : undefined}
+                    aria-describedby={errors.notes ? "notes-error" : undefined}
+                    {...form.register("notes")}
+                  />
+                  <FieldError id="notes-error" message={errors.notes?.message} />
+                </div>
 
-            <Button type="submit" disabled={submitting} className="w-full" size="lg">
-              {submitting ? (
-                <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Submitting…</span>
-              ) : (
-                "Submit referral"
-              )}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+                {sendError && (
+                  <p role="alert" className="text-sm text-destructive">
+                    The referral did not send: {sendError}. What you typed is still here, so fix anything needed and try again.
+                  </p>
+                )}
+
+                <Button ref={sendButton} type="submit" disabled={submitting} className="h-12 w-full text-base">
+                  {submitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                      Sending…
+                    </>
+                  ) : (
+                    "Send referral"
+                  )}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </>
+      )}
     </div>
   );
 }

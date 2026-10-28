@@ -56,15 +56,25 @@ vi.mock("@/shared/store/uiStore", () => ({
     selector({ setAskApexOpen: vi.fn() }), { getState: () => ({ setCommandPaletteOpen: searchOpen }) }),
 }));
 
+import { computeAccessibleName } from "dom-accessibility-api";
 import { GlobalSidebar } from "@/components/layout/GlobalSidebar";
+import { useFavoriteRoutes } from "@/components/layout/favoriteRoutes";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { TONE_CLASS, type Tone } from "@/lib/tones";
 
-function renderSidebar(pathname = "/dashboard", mobile = false) {
+// The collapsed rail wraps every row in a tooltip, which needs the provider the shell mounts.
+function renderSidebar(pathname = "/dashboard", mobile = false, isOpen = true) {
   return render(
-    <MemoryRouter initialEntries={[pathname]}>
-      <GlobalSidebar mobile={mobile} isOpen onToggle={() => {}} isFullscreen={false} onFullscreenToggle={() => {}} />
-    </MemoryRouter>,
+    <TooltipProvider>
+      <MemoryRouter initialEntries={[pathname]}>
+        <GlobalSidebar mobile={mobile} isOpen={isOpen} onToggle={() => {}} isFullscreen={false} onFullscreenToggle={() => {}} />
+      </MemoryRouter>
+    </TooltipProvider>,
   );
 }
+
+// The active link is tinted in its section's tone (colour layer, 2026-10-28); no other link is.
+const ACTIVE_TINT = /bg-tone-\w+\/12/;
 
 function link(name: string) {
   return screen.queryByRole("link", { name });
@@ -116,7 +126,7 @@ describe("GlobalSidebar · AgentCloud application navigation", () => {
     expect(link("Scripts")).toBeNull();
     expect(link("Agencies")).toBeNull();
     expect(link("VA Team")).toBeNull();
-    expect(link("Recruit Pipeline")?.getAttribute("href")).toBe("/dashboard/recruiting");
+    expect(link("Call list")?.getAttribute("href")).toBe("/dashboard/recruiting");
     expect(link("Invite an agent")?.getAttribute("href")).toBe("/admin/invite-links");
   });
 
@@ -128,16 +138,16 @@ describe("GlobalSidebar · AgentCloud application navigation", () => {
     setRoles(roles as Partial<typeof authState>);
     renderSidebar();
     expect(group("Grow")).toBeTruthy();
-    expect(link("Recruit Pipeline")).toBeTruthy();
+    expect(link("Call list")).toBeTruthy();
   });
 
   it("keeps high-frequency work discoverable to plain agents without internal contracting", () => {
     renderSidebar();
     expect(group("Grow")).toBeTruthy();
-    // Recruit Stages, Recruit Pipeline and invite links are guarded to
+    // New hires, Call list and invite links are guarded to
     // managers and recruiting staff; a plain agent gets the open referral form.
-    expect(link("Recruit Stages")).toBeNull();
-    expect(link("Recruit Pipeline")).toBeNull();
+    expect(link("New hires")).toBeNull();
+    expect(link("Call list")).toBeNull();
     expect(link("Invite an agent")).toBeNull();
     expect(link("Refer a recruit")?.getAttribute("href")).toBe("/dashboard/referrals/new");
     expect(group("Learn")).toBeTruthy();
@@ -165,11 +175,11 @@ describe("GlobalSidebar · AgentCloud application navigation", () => {
     setRoles({ isRecruiter: true, effectiveMode: "recruiter" as never });
     renderSidebar();
     expect(group("Grow")).toBeTruthy();
-    expect(link("Recruit Pipeline")).toBeTruthy();
+    expect(link("Call list")).toBeTruthy();
     expect(link("Calendar")?.getAttribute("href")).toBe("/dashboard/calendar");
     // /admin/invite-links and /dashboard/recruits do not admit recruiters.
     expect(link("Invite an agent")).toBeNull();
-    expect(link("Recruit Stages")).toBeNull();
+    expect(link("New hires")).toBeNull();
     expect(group("Sell")).toBeNull();
     expect(link("Book of Business")).toBeNull();
     expect(link("Quoter")).toBeNull();
@@ -224,7 +234,6 @@ describe("GlobalSidebar · AgentCloud application navigation", () => {
 
 describe("GlobalSidebar · recruiting active-state behavior", () => {
   const ACTIVE_GROUP_CLASS = "text-foreground";
-  const ACTIVE_LINK_CLASS = "bg-primary/15";
 
   it.each([
     "/dashboard/recruiting",
@@ -236,20 +245,23 @@ describe("GlobalSidebar · recruiting active-state behavior", () => {
     setRoles({ isAdmin: true });
     renderSidebar(pathname);
     expect(group("Grow")!.className).toContain(ACTIVE_GROUP_CLASS);
-    expect(link("Home")!.className).not.toContain(ACTIVE_LINK_CLASS);
+    expect(link("Home")!.className).not.toMatch(ACTIVE_TINT);
+    expect(link("Home")).not.toHaveAttribute("aria-current");
   });
 
   it("keeps a nested recruiting route from falsely marking the pipeline leaf", () => {
     setRoles({ isAdmin: true });
     renderSidebar("/dashboard/recruiting/training");
     expect(group("Grow")!.className).toContain(ACTIVE_GROUP_CLASS);
-    expect(link("Recruit Pipeline")!.className).not.toContain(ACTIVE_LINK_CLASS);
+    expect(link("Call list")!.className).not.toMatch(ACTIVE_TINT);
+    expect(link("Call list")).not.toHaveAttribute("aria-current");
   });
 
   it("Home is exact-match only", () => {
     setRoles({ isAdmin: true });
     renderSidebar("/dashboard");
-    expect(link("Home")!.className).toContain(ACTIVE_LINK_CLASS);
+    expect(link("Home")).toHaveAttribute("aria-current", "page");
+    expect(link("Home")!.className).toContain(TONE_CLASS.gold.soft);
   });
 });
 
@@ -351,18 +363,127 @@ describe("GlobalSidebar · one permanent Add Agent / Post a Deal pair (F37)", ()
 });
 
 describe("GlobalSidebar · query-aware active state (F25)", () => {
-  const ACTIVE_LINK_CLASS = "bg-primary/15";
-
   it("lights the VA's Contracting review on the contracting team view", () => {
     setRoles({ isVa: true });
     renderSidebar("/dashboard/team?view=contracting");
-    expect(link("Contracting review")!.className).toContain(ACTIVE_LINK_CLASS);
+    expect(link("Contracting review")).toHaveAttribute("aria-current", "page");
+    // Contracting review sits under Grow, so its tint is Grow's.
+    expect(link("Contracting review")!.className).toContain(TONE_CLASS.royal.soft);
     expect(group("Grow")!.className).toContain("text-foreground");
   });
 
   it("leaves it dark on an unrelated team view", () => {
     setRoles({ isVa: true });
     renderSidebar("/dashboard/team?view=link");
-    expect(link("Contracting review")!.className).not.toContain(ACTIVE_LINK_CLASS);
+    expect(link("Contracting review")).not.toHaveAttribute("aria-current");
+    expect(link("Contracting review")!.className).not.toMatch(ACTIVE_TINT);
+  });
+});
+
+describe("GlobalSidebar · section tones (colour layer, 2026-10-28)", () => {
+  // The first aria-hidden span in a row is its bubble (a lucide svg is aria-hidden too, but it is not a span).
+  const bubbleOf = (row: HTMLElement | null) => row?.querySelector('span[aria-hidden="true"]') ?? null;
+
+  it.each([
+    ["/dashboard", "Home", "gold", {}],
+    ["/dashboard/call-center", "Call Center", "good", {}],
+    ["/dashboard/recruiting", "Call list", "royal", { isManager: true }],
+    ["/dashboard/production", "Book of Business", "good", {}],
+    ["/dashboard/training/library", "Training Home", "warm", {}],
+    ["/dashboard/team", "My Team", "cool", {}],
+    ["/dashboard/settings/security", "Security", "slate", {}],
+  ] as const)("on %s the active item (%s) carries its section's tone, %s, and no other link is tinted", (pathname, label, tone, roles) => {
+    setRoles(roles as Partial<typeof authState>);
+    renderSidebar(pathname);
+    const active = link(label)!;
+    expect(active).toHaveAttribute("aria-current", "page");
+    expect(active.className).toContain(TONE_CLASS[tone as Tone].soft);
+    expect(active.className).toContain("font-semibold");
+    for (const other of screen.getAllByRole("link")) {
+      if (other !== active) expect(other.className).not.toMatch(ACTIVE_TINT);
+    }
+  });
+
+  it("puts every top-level section's icon in a bubble of its tone; a child keeps a plain icon", () => {
+    setRoles({ isAdmin: true });
+    renderSidebar("/dashboard/call-center");
+    const expected: Array<[HTMLElement | null, Tone]> = [
+      [link("Home"), "gold"], [link("My Day"), "gold"], [group("Sell"), "good"], [group("Grow"), "royal"],
+      [group("My Business"), "good"], [group("Learn"), "warm"], [group("Team"), "cool"], [group("Owner"), "slate"],
+      [group("Settings"), "slate"], [link("Producer Profile"), "slate"],
+    ];
+    for (const [row, tone] of expected) {
+      const bubble = bubbleOf(row);
+      expect(bubble, row?.textContent ?? "").not.toBeNull();
+      expect(bubble!.className).toContain(TONE_CLASS[tone].soft);
+      expect(bubble!.className).toContain(TONE_CLASS[tone].text);
+      expect(bubble!.className).toContain("rounded-full");
+    }
+    // A child row has no bubble: the active child shows its section's tone on the icon itself.
+    expect(link("Call Center")!.querySelector(".rounded-full.border")).toBeNull();
+    expect(link("Call Center")!.querySelector("svg")?.getAttribute("class")).toContain(TONE_CLASS.good.text);
+    expect(link("My Pipeline")!.querySelector("svg")?.getAttribute("class")).not.toContain(TONE_CLASS.good.text);
+    // The active group's label firms up; its words, not only its colour, say where the person is.
+    expect(group("Sell")!.className).toContain("font-semibold");
+    expect(group("Grow")!.className).not.toContain("font-semibold");
+  });
+
+  it("gives a favourite the tone of the section that owns its page", () => {
+    setRoles({ isManager: true });
+    useFavoriteRoutes.getState().toggleFavorite("/dashboard/recruiting", "Call list");
+    try {
+      renderSidebar("/dashboard/recruiting");
+      const rows = screen.getAllByRole("link", { name: "Call list" });
+      expect(rows).toHaveLength(2);
+      for (const row of rows) {
+        expect(row).toHaveAttribute("aria-current", "page");
+        expect(row.className).toContain(TONE_CLASS.royal.soft);
+      }
+    } finally {
+      useFavoriteRoutes.getState().toggleFavorite("/dashboard/recruiting", "Call list");
+    }
+  });
+
+  it("names every icon-only control when the rail is collapsed", () => {
+    setRoles({ isAdmin: true });
+    renderSidebar("/dashboard/recruiting", false, false);
+    const controls = [...screen.getAllByRole("link"), ...screen.getAllByRole("button")];
+    expect(controls.length).toBeGreaterThan(10);
+    for (const control of controls) {
+      // Icon-only: the label is not rendered, so the name must come from aria-label.
+      expect(control.textContent?.trim(), control.outerHTML.slice(0, 120)).toBe("");
+      expect(computeAccessibleName(control), control.outerHTML.slice(0, 120)).not.toBe("");
+    }
+    // Collapsed, a group shows only its bubble (its children stay hidden until the rail expands).
+    expect(screen.getByRole("button", { name: "Grow" })).toBeTruthy();
+    expect(link("Call list")).toBeNull();
+    expect(screen.getByRole("link", { name: "Home" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "APEX Financial" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Expand sidebar" })).toBeTruthy();
+  });
+
+  it("names every control in the expanded rail and the phone sheet too", () => {
+    setRoles({ isManager: true });
+    for (const mobile of [false, true]) {
+      const view = renderSidebar("/dashboard/recruiting", mobile);
+      for (const control of [...screen.getAllByRole("link"), ...screen.getAllByRole("button")]) {
+        expect(computeAccessibleName(control), control.outerHTML.slice(0, 120)).not.toBe("");
+      }
+      view.unmount();
+    }
+  });
+
+  it("colours the quick-action icons (Add Agent good, Post a Deal gold) and keeps both outline, never a second gold fill", () => {
+    setRoles({ isManager: true });
+    renderSidebar("/dashboard", true);
+    const addAgent = screen.getByRole("button", { name: "Add Agent" });
+    const postDeal = screen.getByRole("button", { name: "Post a Deal" });
+    expect(addAgent.querySelector("svg")?.getAttribute("class")).toContain(TONE_CLASS.good.text);
+    expect(postDeal.querySelector("svg")?.getAttribute("class")).toContain(TONE_CLASS.gold.text);
+    for (const button of [addAgent, postDeal]) {
+      expect(button.className).toContain("border-input");
+      expect(button.className).not.toContain("bg-primary");
+      expect(button.className).toContain("h-11");
+    }
   });
 });

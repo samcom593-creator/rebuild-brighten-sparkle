@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
-  bucketCounts, filterInbox, groupDrafts, laneLink, laneStatus, poolSummary, profileHref, replyRate, silentFor, sortLanes,
-  type DraftRow, type FunnelRow, type InboxRow, type LaneRow,
+  BUCKET_HINT, BUCKET_LABEL, BUCKET_ORDER, BUCKET_TONE, LANE_TONE, bucketCounts, filterInbox, groupDrafts, laneLink, laneStatus, laneVerdictLabel, poolSummary,
+  profileHref, replyRate, replyRateTone, silentFor, sortLanes,
+  type Bucket, type DraftRow, type FunnelRow, type InboxRow, type LaneRow,
 } from "@/lib/socialCommand";
+import { inboxBucketTone, laneTone, tonePill } from "@/lib/tones";
 
 let n = 0;
 const row = (over: Partial<InboxRow>): InboxRow => ({
@@ -84,6 +86,45 @@ describe("funnel and lanes", () => {
     });
     const g = groupDrafts([d("tiktok"), d("yt"), d("tiktok"), d("instagram"), d("tt"), d("youtube"), d("snap")]);
     expect(g.map((x) => [x.platform, x.drafts.length])).toEqual([["tiktok", 3], ["youtube", 2], ["instagram", 1], ["snapchat", 1]]);
+  });
+});
+
+describe("colour comes from the shared tones (2026-10-28 colour layer)", () => {
+  it("every bucket pill and lane pill is the shared tone's pill, never a colour picked by hand", () => {
+    for (const b of BUCKET_ORDER) expect(BUCKET_TONE[b]).toBe(tonePill(inboxBucketTone(b)));
+    expect(BUCKET_TONE.hot).toContain("text-tone-hot");
+    expect(BUCKET_TONE.human_lane).toContain("text-tone-gold");
+    expect(BUCKET_TONE.waiting).toContain("text-tone-warm");
+    expect(BUCKET_TONE.booked).toContain("text-tone-cool");
+    expect(BUCKET_TONE.answered).toContain("text-tone-slate");
+    for (const v of ["alive", "dead", "never"] as const) expect(LANE_TONE[v]).toBe(tonePill(laneTone(v)));
+    expect(LANE_TONE.dead).toContain("text-tone-hot");
+    expect(LANE_TONE.alive).toContain("text-tone-good");
+    // No raw palette classes anywhere in either map.
+    for (const cls of [...Object.values(BUCKET_TONE), ...Object.values(LANE_TONE)]) expect(cls).not.toMatch(/rose|amber|sky|primary|muted/);
+  });
+
+  it("gives every bucket a label and a plain hint, and the verdict a plain word", () => {
+    for (const b of BUCKET_ORDER) {
+      expect(BUCKET_LABEL[b as Bucket]).toBeTruthy();
+      expect(BUCKET_HINT[b as Bucket]).toBeTruthy();
+    }
+    expect(BUCKET_HINT.hot).toBe("Business intent, nobody answered");
+    expect(BUCKET_HINT.human_lane).toBe("Only Sam answers these");
+    expect(BUCKET_HINT.waiting).toBe("They wrote, we owe a reply");
+    expect(BUCKET_HINT.booked).toBe("Interview on the calendar");
+    expect(laneVerdictLabel("alive")).toBe("Alive");
+    expect(laneVerdictLabel("dead")).toBe("Dead");
+    expect(laneVerdictLabel("never")).toBe("Never built");
+  });
+
+  it("reads the reply rate as good from 70%, warm from 50%, hot below, and slate when nobody wrote in", () => {
+    expect(replyRateTone({ people_in: 100, people_replied: 70 })).toBe("good");
+    expect(replyRateTone({ people_in: 100, people_replied: 69 })).toBe("warm");
+    expect(replyRateTone({ people_in: 100, people_replied: 50 })).toBe("warm");
+    expect(replyRateTone({ people_in: 100, people_replied: 49 })).toBe("hot");
+    expect(replyRateTone({ people_in: 566, people_replied: 65 })).toBe("hot");
+    expect(replyRateTone({ people_in: 0, people_replied: 0 })).toBe("slate");
   });
 });
 

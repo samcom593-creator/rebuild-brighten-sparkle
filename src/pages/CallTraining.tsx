@@ -146,7 +146,7 @@ export default function CallTraining() {
   if (!canView) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Call Training" description="Graded dialer calls for training." />
+        <PageHeader title="Call Training" subtitle="Graded dialer calls for training." />
         <EmptyState icon={<Star className="h-6 w-6" />} title="Sam and Aisha only" description="Call grades carry client conversations, so they stay with the Sold Calls access list." />
       </div>
     );
@@ -156,7 +156,7 @@ export default function CallTraining() {
     <div className="space-y-6">
       <PageHeader
         title="Call Training"
-        description="Every transcribed dialer call graded on one rubric. Great calls first; play them for the team."
+        subtitle="Every transcribed dialer call graded on one rubric. Great calls first; play them for the team."
       />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

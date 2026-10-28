@@ -34,10 +34,19 @@ describe("preview anon-key fallback", () => {
     expect(payload.iss).toBe("supabase");
   });
 
-  it("applies only to Vercel preview builds that have no key, and never overrides a set key", () => {
-    const gate = /if \(process\.env\.VERCEL_ENV === "preview" && !process\.env\.VITE_SUPABASE_PUBLISHABLE_KEY\) \{\s*process\.env\.VITE_SUPABASE_PUBLISHABLE_KEY = PREVIEW_PUBLIC_ANON_KEY;\s*\}/;
+  it("pins the URL to the same project the key was minted for", () => {
+    const url = config.match(/const PREVIEW_PUBLIC_SUPABASE_URL = "([^"]+)";/);
+    expect(url).not.toBeNull();
+    expect(url![1]).toBe("https://xrzweoneiieddzxogewk.supabase.co");
+    const payload = decodeJwtPayload(match![1]);
+    expect(url![1]).toContain(`https://${payload.ref}.supabase.co`);
+  });
+
+  it("applies only to Vercel preview builds, fills only what is unset, and never overrides a set value", () => {
+    const gate = /if \(process\.env\.VERCEL_ENV === "preview"\) \{\s*if \(!process\.env\.VITE_SUPABASE_URL\) process\.env\.VITE_SUPABASE_URL = PREVIEW_PUBLIC_SUPABASE_URL;\s*if \(!process\.env\.VITE_SUPABASE_PUBLISHABLE_KEY\) process\.env\.VITE_SUPABASE_PUBLISHABLE_KEY = PREVIEW_PUBLIC_ANON_KEY;\s*\}/;
     expect(config).toMatch(gate);
-    // The constant is read in that one assignment and nowhere else (no define, no plugin).
+    // Each constant is read in that one assignment and nowhere else (no define, no plugin).
     expect(config.split("PREVIEW_PUBLIC_ANON_KEY").length - 1).toBe(2);
+    expect(config.split("PREVIEW_PUBLIC_SUPABASE_URL").length - 1).toBe(2);
   });
 });

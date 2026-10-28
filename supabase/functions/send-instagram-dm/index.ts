@@ -34,6 +34,7 @@
 
 import { isTokenDeadError, pageTokenDead } from "../_shared/instagram-token-dead.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
+import { raiseApexAlert } from "../_shared/alert-raise.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
@@ -47,7 +48,7 @@ const corsHeaders = {
 //   3. instagram_connections.access_token (latest unexpired) — uses
 //      whatever token Sam captured via the existing OAuth flow at
 //      /functions/v1/instagram-auth, no manual paste required.
-async function resolveSecrets(sb: ReturnType<typeof createClient>) {
+async function resolveSecrets(sb: any) {
   let token  = Deno.env.get("META_INSTAGRAM_TOKEN")   ?? null;
   let pageId = Deno.env.get("META_INSTAGRAM_PAGE_ID") ?? null;
 
@@ -55,8 +56,8 @@ async function resolveSecrets(sb: ReturnType<typeof createClient>) {
     const { data } = await sb.from("system_settings").select("key,value")
       .in("key", ["meta_instagram_token", "meta_instagram_page_id"]);
     for (const r of data ?? []) {
-      if (r.key === "meta_instagram_token" && !token && r.value) token = r.value;
-      if (r.key === "meta_instagram_page_id" && !pageId && r.value) pageId = r.value;
+      if (r.key === "meta_instagram_token" && !token && r.value) token = String(r.value);
+      if (r.key === "meta_instagram_page_id" && !pageId && r.value) pageId = String(r.value);
     }
   }
 
@@ -76,6 +77,84 @@ async function resolveSecrets(sb: ReturnType<typeof createClient>) {
     }
   }
   return { token, pageId };
+}
+
+// ── MP-305 (2026-10-28): what a Meta refusal actually means ────────────────
+// Measured 2026-09-28 → 10-27: every one of the 364 "Invalid message id" failures
+// carried a URL and Meta's real verdict underneath was code 508 / subcode 2534122,
+// "Link can't be shared ... your activity may not follow our Community Standards".
+// The account is link-restricted. A link reply can never land; strip the link,
+// say where it lives, and send again. "outside of allowed window" is just as
+// permanent for that message. Neither is ever queued again: the queue + drain
+// turned one failure into 173 attempts on one person.
+type MetaKind = "link_blocked" | "window_closed" | "token_dead" | "retryable";
+function classifyMetaError(err: any): MetaKind {
+  const msg = String(err?.message ?? "").toLowerCase();
+  const title = `${err?.error_user_title ?? ""} ${err?.error_user_msg ?? ""}`.toLowerCase();
+  const code = Number(err?.code ?? 0), sub = Number(err?.error_subcode ?? 0);
+  if (code === 508 || sub === 2534122 || /link can.?t be shared|share links/.test(title)) return "link_blocked";
+  if (/outside of allowed window|allowed window|24.?hour/.test(msg) || sub === 2534022) return "window_closed";
+  if (isTokenDeadError(err)) return "token_dead";
+  return "retryable";
+}
+export function stripLinks(msg: string): string {
+  return msg.replace(/https?:\/\/\S+/gi, (u) => {
+    const l = u.toLowerCase();
+    if (l.includes("/apply")) return "the apply link in my bio";
+    if (l.includes("/fitness")) return "the fitness link in my bio";
+    if (l.includes("/mentorship")) return "the mentorship link in my bio";
+    if (l.includes("/rentals")) return "the rentals link in my bio";
+    if (l.includes("calendly")) return "my calendar link in my bio";
+    return "the link in my bio";
+  }).replace(/:\s+(the |my )/g, ", $1").replace(/\s{2,}/g, " ").trim();
+}
+// Record the restriction so the brain stops writing links, and page Sam once per
+// 12h with the only fix there is (Instagram app → Settings → Account Status).
+async function noteLinkRestriction(sb: any, err: any): Promise<void> {
+  const now = new Date().toISOString();
+  try { await sb.from("system_settings").upsert({ key: "instagram_links_blocked_at", value: now }, { onConflict: "key" }); } catch (e) { console.error("[send-instagram-dm] links_blocked_at upsert failed", e); }
+  try {
+    const since = new Date(Date.now() - 12 * 3600_000).toISOString();
+    const { data: recent } = await sb.from("bot_alerts").select("id").eq("event_type", "instagram_link_restricted").gte("created_at", since).limit(1);
+    if (recent && recent.length) return;
+    const r = await raiseApexAlert({
+      source: "send-instagram-dm", eventType: "instagram_link_restricted", severity: "warn",
+      subject: "Instagram is blocking links in your DMs",
+      body: `Meta refused a DM because it had a link (code ${err?.code ?? "?"}: "${String(err?.error_user_msg ?? err?.message ?? "").slice(0, 200)}"). Replies are going out WITHOUT links ("the link's in my bio") until it clears. Fix: Instagram app > Settings > Account Status > request a review. First seen 2026-09-28.`,
+      channels: ["ntfy", "email"],
+    });
+    console.log("[send-instagram-dm] link restriction alert", r.receipt);
+  } catch (e) { console.error("[send-instagram-dm] link restriction alert failed", e); }
+}
+// The brain writes its outbound row BEFORE calling us and a success never wrote a
+// receipt, so "delivered" could not be told from "silently refused". Attach the
+// outcome (mid, or the refusal) to that row; if no caller row exists (nudges,
+// drains), write one so the thread shows what was actually sent.
+async function stampOutcome(sb: any, a: { externalId: string | null; message: string; patch: Record<string, unknown>; insertIfMissing?: boolean; tag?: string | null; commentId?: string | null }): Promise<void> {
+  const since = new Date(Date.now() - 15 * 60_000).toISOString();
+  const find = async (withExt: boolean) => {
+    let q = sb.from("inbox_messages").select("id, raw_payload").eq("source", "instagram").eq("direction", "outbound").eq("body", a.message)
+      .is("raw_payload->mid", null).gte("created_at", since).order("created_at", { ascending: false }).limit(1);
+    if (withExt && a.externalId) q = q.eq("external_id", a.externalId);
+    const { data } = await q;
+    return (data ?? [])[0] as { id: string; raw_payload: Record<string, unknown> | null } | undefined;
+  };
+  try {
+    const row = (await find(true)) ?? (await find(false));
+    if (row) {
+      const rp = { ...(row.raw_payload ?? {}), ...a.patch };
+      if (a.tag) rp.tag = a.tag;
+      await sb.from("inbox_messages").update({ raw_payload: rp }).eq("id", row.id);
+      return;
+    }
+    if (a.insertIfMissing) {
+      await sb.from("inbox_messages").insert({
+        source: "instagram", external_id: a.externalId, sender_handle: a.externalId, body: a.message, direction: "outbound",
+        auto_replied: true, intent: a.tag ? "nudge" : null,
+        raw_payload: { ...a.patch, path: "sender", tag: a.tag ?? undefined, comment_id: a.commentId ?? undefined },
+      });
+    }
+  } catch (e) { console.error("[send-instagram-dm] stampOutcome failed", e); }
 }
 
 Deno.serve(async (req) => {
@@ -167,16 +246,25 @@ Deno.serve(async (req) => {
     : commentId
       ? { recipient: { comment_id: commentId }, message: { text: message } }
       : { recipient: { id: recipientId }, messaging_type: "RESPONSE", message: { text: message } };   // 24h window after user's last msg
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${token}`,
-      "Content-Type":  "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  const result = await res.json().catch(() => ({}));
+  const tag: string | null = typeof body.tag === "string" ? body.tag : null;
+  const attempt = async (text: string) => {
+    const p = isPublic ? { message: text } : commentId
+      ? { recipient: { comment_id: commentId }, message: { text } }
+      : { recipient: { id: recipientId }, messaging_type: "RESPONSE", message: { text } };
+    const r = await fetch(url, { method: "POST", headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify(p) });
+    const j = await r.json().catch(() => ({}));
+    return { r, j };
+  };
+  void payload;
+  let { r: res, j: result } = await attempt(message);
+  let sentBody = message;
+  let linkStripped = false;
+  if (!res.ok && !isPublic && classifyMetaError(result?.error) === "link_blocked" && /https?:\/\//i.test(message)) {
+    await noteLinkRestriction(sb, result?.error);
+    sentBody = stripLinks(message);
+    linkStripped = true;
+    ({ r: res, j: result } = await attempt(sentBody));
+  }
   if (isPublic) {
     // Public replies are not thread messages: never queue them into inbox_messages.
     return new Response(JSON.stringify(res.ok ? { ok: true, id: result?.id ?? null, public: true } : { ok: false, error: result?.error?.message ?? `HTTP ${res.status}`, raw: result, public: true }),
@@ -184,6 +272,14 @@ Deno.serve(async (req) => {
   }
   if (!res.ok) {
     const errText: string = result?.error?.message ?? `HTTP ${res.status}`;
+    const kind = classifyMetaError(result?.error);
+    if (kind === "link_blocked" || kind === "window_closed") {
+      // Permanent for this message. Not queued, not retried: stamp the caller's row
+      // so v_ig_dm_delivery_truth counts it as a miss, and tell the caller why.
+      await stampOutcome(sb, { externalId, message, patch: { error: errText, send_failed_kind: kind, queued: "dead", settled_at: new Date().toISOString(), meta_code: result?.error?.code ?? null, meta_subcode: result?.error?.error_subcode ?? null }, tag, commentId });
+      return new Response(JSON.stringify({ ok: false, error: errText, kind, retryable: false, raw: result }),
+        { status: res.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     // A dead token (OAuthException 190) is not a per-message failure: nothing sent
     // through it can succeed until Sam reconnects. 2026-10-01: the drain
     // (dm_send_retry) re-sent every queued row every few hours, and this branch
@@ -210,6 +306,11 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ ok: false, error: errText, raw: result, queued: !tokenDead, held: tokenDead, page_receipt }),
       { status: res.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
-  return new Response(JSON.stringify({ ok: true, id: result?.message_id ?? null }),
+  const mid: string | null = result?.message_id ?? null;
+  await stampOutcome(sb, {
+    externalId, message, insertIfMissing: true, tag, commentId,
+    patch: { mid, delivered_at: new Date().toISOString(), ...(linkStripped ? { sent_body: sentBody, link_stripped: true } : {}), ...(commentId ? { comment_id: commentId } : {}) },
+  });
+  return new Response(JSON.stringify({ ok: true, id: mid, link_stripped: linkStripped }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 });

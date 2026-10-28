@@ -39,13 +39,21 @@ const CARRIER_GATEWAYS: Record<string, string> = {
 // suppressed, 10 bounced). This function logged every one of them as "sent",
 // and they were 70 of the domain's 368 bounces, on the same domain applicant
 // onboarding mail goes out on. Refuse like "no carrier on file": nothing sent,
-// status skipped, a reason the caller can route on. T-Mobile and Metro still
-// land some (13/202, 2/29), so they stay on. Graded daily by
+// status skipped, a reason the caller can route on. Graded daily by
 // business-ops/website-integrity-bot/scripts/resend-deliverability.py; a
-// gateway goes on this list only after it delivers 0 of >= 10 sends there.
+// gateway goes on this list only after it delivers 0 of >= 10 sends in that
+// script's window.
+// 2026-10-28: T-Mobile and Boost met the same bar. tmomail.net delivered 0 of
+// 39 in 7d (last delivery 2026-10-20 23:07Z; 12 of 190 over 30d, 172 bounced,
+// half of every bounce on the domain). sms.myboostmobile.com delivered 0 of 10
+// in 30d. Sam's own admin number is on T-Mobile, so his texts stop here too;
+// 5 of 93 reached him in 30d, and ntfy is his primary push. Metro (0/7 in 7d,
+// 2/35 in 30d) and US Cellular (12/12) stay on.
 const RETIRED_GATEWAYS: Record<string, string> = {
   att: "AT&T email-to-text is shut down (Resend delivered 0 of 60 in 30d)",
   verizon: "Verizon email-to-text does not deliver (Resend delivered 0 of 139 in 30d)",
+  tmobile: "T-Mobile email-to-text does not deliver (Resend delivered 0 of 39 in 7d, 172 of 190 bounced in 30d)",
+  boost: "Boost email-to-text does not deliver (Resend delivered 0 of 10 in 30d, all bounced)",
 };
 
 

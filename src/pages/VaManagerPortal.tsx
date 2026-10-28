@@ -1,3 +1,4 @@
+import { firstGrapheme, personInitials } from "@/lib/personInitials";
 import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Users, UserPlus, Loader2, Copy, RefreshCw, Check } from "lucide-react";
@@ -112,8 +113,7 @@ function stateOf(row: VaRow): { label: string; tone: Tone } {
 
 /** Two initials for the bubble beside a name; the first letter of the email when there is no name. */
 function initialsOf(row: VaRow): string {
-  const fromName = (row.full_name ?? "").split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("");
-  return (fromName || (row.email ?? "").charAt(0) || "?").toUpperCase();
+  return personInitials(row.full_name, firstGrapheme(row.email).toUpperCase() || "?");
 }
 
 /** The person's initials in the colour of their state. Decoration: the name sits beside it and the pill says the word. */

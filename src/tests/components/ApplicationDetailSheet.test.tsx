@@ -10,7 +10,7 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: { from: () => {
   return q;
 } } }));
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ isAdmin: false }) }));
-vi.mock("@/hooks/use-toast", () => ({ toast: mock.toast }));
+vi.mock("sonner", () => ({ toast: Object.assign(mock.toast, { error: mock.toast }) }));
 vi.mock("@/lib/logLeadActivity", () => ({ logLeadActivity: vi.fn() }));
 vi.mock("@/components/dashboard/LicensingDelegateSection", () => ({ LicensingDelegateSection: () => null }));
 vi.mock("@/components/dashboard/CallTranscriptsSection", () => ({ CallTranscriptsSection: () => null }));
@@ -33,17 +33,17 @@ it("keeps an unfinished draft through a background refresh", async () => {
 it("retains edits and unlocks Save after a thrown network failure, then saves successfully", async () => {
   mock.save.mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce({ data: { ...person, first_name: "My draft" }, error: null });
   mount(); await edit(); fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
-  await waitFor(() => expect(mock.toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Could not save changes" })));
+  await waitFor(() => expect(mock.toast).toHaveBeenCalledWith("Could not save changes", expect.objectContaining({ description: expect.any(String) })));
   expect(screen.getByLabelText("First Name")).toHaveValue("My draft");
   expect(screen.getByRole("button", { name: "Save Changes" })).toBeEnabled();
   fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
   await screen.findByRole("button", { name: /^Edit$/ });
-  expect(mock.toast).toHaveBeenCalledWith({ title: "Lead info updated" });
+  expect(mock.toast).toHaveBeenCalledWith("Lead info updated");
 });
 it("does not report success when no writable row is returned", async () => {
   mock.save.mockResolvedValue({ data: null, error: null }); mount(); await edit();
   fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
-  await waitFor(() => expect(mock.toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Could not save changes" })));
+  await waitFor(() => expect(mock.toast).toHaveBeenCalledWith("Could not save changes", expect.objectContaining({ description: expect.any(String) })));
   expect(screen.getByLabelText("First Name")).toHaveValue("My draft");
 });
 it("protects a draft when closing until discard is explicitly chosen", async () => {

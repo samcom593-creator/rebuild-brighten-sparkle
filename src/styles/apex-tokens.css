@@ -206,8 +206,9 @@ body {
   box-shadow: var(--apex-shadow-1);
 }
 
-/* Primary CTA stays white-on-emerald in both themes */
-:root.light .bg-primary,
+/* Gold buttons use the same contrasting ink in both themes. */
+:root.light .bg-primary { color: hsl(var(--primary-foreground)); }
+
 :root.light [class*="bg-emerald-"]:not([class*="text-emerald-"]) {
   color: white;
 }

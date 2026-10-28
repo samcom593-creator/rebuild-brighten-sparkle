@@ -667,7 +667,7 @@ export function PersonPanel({ row, userId, backendReady, canAssign, staff, staff
                 20px strip of scrolled text showing under the row. sm:flex-1, not flex-1: in the
                 stacked phone layout a flex-basis of 0 shrank the gold button below its h-12. */}
             {draft.outcome ? (
-              <div className="sticky bottom-0 z-10 -mx-5 flex flex-col gap-2 border-t border-border bg-card px-5 py-3 sm:flex-row">
+              <div className="sticky bottom-0 z-10 -mx-5 flex flex-col gap-2 border-t border-border bg-card px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] sm:flex-row">
                 <Button type="button" className="h-12 text-base sm:flex-1" disabled={saving || !backendReady} onClick={(e) => void submitOutcome(true, e.currentTarget)}>
                   {recordOutcome.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
                   Save &amp; next person
@@ -677,7 +677,7 @@ export function PersonPanel({ row, userId, backendReady, canAssign, staff, staff
                 </Button>
               </div>
             ) : (
-              <div className="sticky bottom-0 z-10 -mx-5 flex flex-col gap-2 border-t border-border bg-card px-5 py-3 sm:flex-row">
+              <div className="sticky bottom-0 z-10 -mx-5 flex flex-col gap-2 border-t border-border bg-card px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] sm:flex-row">
                 <Button type="button" className="h-12 text-base sm:flex-1" disabled={saving || !backendReady} onClick={(e) => void submitPlanOnly(e.currentTarget)}>
                   {setPlan.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
                   Save next step (no contact)

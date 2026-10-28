@@ -18,7 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { contactLinkProps, phoneHref } from "@/lib/phone";
 import { logLeadActivity } from "@/lib/logLeadActivity";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { LicensingDelegateSection } from "./LicensingDelegateSection";
 import { CallTranscriptsSection } from "./CallTranscriptsSection";
@@ -205,12 +205,12 @@ export function ApplicationDetailSheet({
       queryClient.setQueryData(["application-detail", applicationId, agentId], updated);
       setIsEditing(false);
       setConfirmDiscard(false);
-      toast({ title: "Lead info updated" });
+      toast("Lead info updated");
       logLeadActivity({ leadId: app.id, type: "note_added", title: "Lead info updated" });
       queryClient.invalidateQueries({ queryKey: ["application-detail", applicationId, agentId] });
       onRefresh?.();
     } catch (error) {
-      toast({ title: "Could not save changes", description: error instanceof Error ? error.message : "Your edits are still here. Please try again.", variant: "destructive" });
+      toast.error("Could not save changes", { description: error instanceof Error ? error.message : "Your edits are still here. Please try again." });
     } finally {
       setSavingEdit(false);
     }
@@ -230,11 +230,11 @@ export function ApplicationDetailSheet({
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      toast({ title: "Email updated ✅", description: `Email changed to ${acctNewEmail.trim()}.` });
+      toast("Email updated ✅", { description: `Email changed to ${acctNewEmail.trim()}.` });
       setAcctNewEmail("");
       queryClient.invalidateQueries({ queryKey: ["linked-agent-for-acct"] });
     } catch (err: any) {
-      toast({ title: "Email update failed", description: err.message, variant: "destructive" });
+      toast.error("Email update failed", { description: err.message });
     } finally {
       setAcctUpdatingEmail(false);
     }
@@ -249,10 +249,10 @@ export function ApplicationDetailSheet({
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      toast({ title: "Password reset ✅", description: "New password set for this agent." });
+      toast("Password reset ✅", { description: "New password set for this agent." });
       setAcctNewPassword("");
     } catch (err: any) {
-      toast({ title: "Password reset failed", description: err.message, variant: "destructive" });
+      toast.error("Password reset failed", { description: err.message });
     } finally {
       setAcctResettingPw(false);
     }
@@ -266,9 +266,9 @@ export function ApplicationDetailSheet({
         body: { agentId: linkedAgent.id },
       });
       if (error) throw error;
-      toast({ title: "Login sent ✅", description: "Portal login email sent to agent." });
+      toast("Login sent ✅", { description: "Portal login email sent to agent." });
     } catch (err: any) {
-      toast({ title: "Send failed", description: err.message, variant: "destructive" });
+      toast.error("Send failed", { description: err.message });
     } finally {
       setAcctSendingLogin(false);
     }
@@ -283,9 +283,9 @@ export function ApplicationDetailSheet({
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      toast({ title: "Link sent to manager ✅", description: data?.message || "Login link forwarded to manager." });
+      toast("Link sent to manager ✅", { description: data?.message || "Login link forwarded to manager." });
     } catch (err: any) {
-      toast({ title: "Send failed", description: err.message, variant: "destructive" });
+      toast.error("Send failed", { description: err.message });
     } finally {
       setAcctSendingToMgr(false);
     }

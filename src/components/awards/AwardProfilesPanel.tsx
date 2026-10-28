@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Instagram, Save, Camera, User, ChevronDown, Search,
@@ -132,10 +132,10 @@ export default function AwardProfilesPanel() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["award-agent-profiles-elite"] });
       setEditingId(null);
-      toast({ title: "Profile Saved ✅" });
+      toast("Profile Saved ✅");
     },
     onError: (err: Error) => {
-      toast({ title: "Save Failed", description: err.message, variant: "destructive" });
+      toast.error("Save Failed", { description: err.message });
     },
   });
 
@@ -157,10 +157,10 @@ export default function AwardProfilesPanel() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["award-agent-profiles-elite"] });
-      toast({ title: "Photo Updated 📸" });
+      toast("Photo Updated 📸");
     },
     onError: (err: Error) => {
-      toast({ title: "Upload Failed", description: err.message, variant: "destructive" });
+      toast.error("Upload Failed", { description: err.message });
     },
   });
 

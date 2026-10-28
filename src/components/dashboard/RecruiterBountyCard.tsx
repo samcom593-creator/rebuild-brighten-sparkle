@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Copy, Trophy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -70,14 +70,14 @@ export function RecruiterBountyCard({ agentId, className }: { agentId?: string |
   const copyLink = async () => {
     const url = bioUrl;
     if (!url) {
-      toast({ title: "No recruiting link yet", description: "Ask an admin to set up your ref link.", variant: "destructive" });
+      toast.error("No recruiting link yet", { description: "Ask an admin to set up your ref link." });
       return;
     }
     try {
       await navigator.clipboard.writeText(url);
-      toast({ title: "Link in bio copied", description: "Every application through it is credited to you." });
+      toast("Link in bio copied", { description: "Every application through it is credited to you." });
     } catch {
-      toast({ title: "Copy failed", description: "Select the link below and copy it manually.", variant: "destructive" });
+      toast.error("Copy failed", { description: "Select the link below and copy it manually." });
     }
   };
 

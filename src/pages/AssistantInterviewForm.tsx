@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PageHeader } from "@/components/ui/page-header";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { resolveBrand } from "@/config/brand";
 import { instagramProfileLink } from "@/lib/instagram";
@@ -81,7 +81,7 @@ export default function AssistantInterviewForm() {
   usePageTitle("Galaxy Interview Intake");
   const [searchParams] = useSearchParams();
   const token = searchParams.get("t") ?? "";
-  const { toast } = useToast();
+
 
   const [checking, setChecking] = useState(true);
   const [tokenOk, setTokenOk] = useState(false);
@@ -222,11 +222,7 @@ export default function AssistantInterviewForm() {
 
       if (!res.ok || !body.ok) {
         setErrorMsg(body.error ?? "Could not save. Try again.");
-        toast({
-          title: "Could not save",
-          description: body.error ?? "Try again.",
-          variant: "destructive",
-        });
+        toast.error("Could not save", { description: body.error ?? "Try again." });
         return;
       }
 
@@ -243,13 +239,9 @@ export default function AssistantInterviewForm() {
           ...prev,
         ].slice(0, 3),
       );
-      toast({
-        title: body.receipt?.replayed
+      (body.pipeline_added === false ? toast.error : toast)(body.receipt?.replayed
           ? "Booking already saved · receipt recovered"
-          : body.pipeline_added === false ? "Booked · staff review needed" : "Booked into the interview queue",
-        description: body.warning ?? (body.confirmation_sent ? "Candidate confirmation delivered; calendar event ready." : "Calendar event ready to add."),
-        variant: body.pipeline_added === false ? "destructive" : undefined,
-      });
+          : body.pipeline_added === false ? "Booked · staff review needed" : "Booked into the interview queue", { description: body.warning ?? (body.confirmation_sent ? "Candidate confirmation delivered; calendar event ready." : "Calendar event ready to add.") });
       pendingRequest.current = null;
 
       // Clear form for the next entry
@@ -264,11 +256,7 @@ export default function AssistantInterviewForm() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Network error";
       setErrorMsg(msg);
-      toast({
-        title: "Network error",
-        description: msg,
-        variant: "destructive",
-      });
+      toast.error("Network error", { description: msg });
     } finally {
       setSubmitting(false);
     }

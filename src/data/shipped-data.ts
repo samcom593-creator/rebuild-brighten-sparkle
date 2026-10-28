@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "Oct 28, 2026",
+    label: "Grow craft pass: motion only where it helps, one toaster built for phones, and every Grow page checked with zero errors",
+    detail: "Applied Emil Kowalski's animation standards and impeccable to the Grow colour, motion and sound layer, merging two independent reviews. Numbers show the real value at once and count up only when they change, inside 280ms; a bad number shows a dash, never NaN. Rows rise in faster and the stagger stops after 14 rows. Saving an outcome gives a smaller burst, booked, hired and win moments still celebrate, and nothing fires from someone else's update. Sounds wait until you have touched the page. On phones the scoreboard is a 2x2 grid so every number lines up, the sidebar Account label is readable, the Worklist list fits the visible iPhone screen, and a failed team lookup reports an error instead of passing as an empty team. The old Radix toaster is gone: Sonner is the only one, sits above the phone toolbar and swipes away. Crawled 576 page, data, theme, width and role combinations (216 failures before, 0 after) and 288 more with touch emulation (0 failures)",
+    commit: "GROW-CRAFT",
+  },
+  {
+    ts: "Oct 28, 2026",
     label: "Colour, motion and sound across the signed-in app: every page title and number sits in a tinted bubble, states are coloured words, tiles and rows rise in once, numbers count up, saving an outcome or adding an agent gives a small celebration with a sound you can turn off, and nothing is smaller than 13px.",
     detail: "Sam, looking at the live Call list, New hires and Social Command Center: 'Lack of color. The text is small and ugly. No animation. It looks like a terminal at a checkout. Add the bubbles and effects, and sound effects.' Seven tones that mean something (good, warm, hot, cool, royal, gold, slate), mapped once per vocabulary in src/lib/tones.ts so the same state is the same colour on every page; ToneBubble, TonePill, CountUp and Reveal, plus five soft colour fields drifting behind every signed-in page; celebrations only after a save, a booking or a hire succeeds, never on load or on an error; short synthesised sounds behind one toggle in the header and in Profile settings; every movement stops under reduced motion. The Grow pages, the Social Command Center, the sidebar and the bottom nav carry it first; docs/DESIGN_SYSTEM.md holds the rules and the council checks them on every screen.",
     commit: "GROW-DELIGHT-LAYER",

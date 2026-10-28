@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { safeInvoke } from "@/shared/api/safeInvoke";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 interface ResendLicensingButtonProps {
   recipientEmail: string;
@@ -56,19 +56,12 @@ export function ResendLicensingButton({
 
     if (error) {
       console.error(`[licensing-email] failed (req=${requestId}):`, error);
-      toast({
-        title: "Failed to Send",
-        description: error.message || "Could not send licensing email",
-        variant: "destructive",
-      });
+      toast.error("Failed to Send", { description: error.message || "Could not send licensing email" });
       return;
     }
 
     setJustSent(true);
-    toast({
-      title: "Email Sent!",
-      description: `Licensing instructions sent to ${recipientEmail}`,
-    });
+    toast("Email Sent!", { description: `Licensing instructions sent to ${recipientEmail}` });
     setTimeout(() => setJustSent(false), 3000);
   };
 

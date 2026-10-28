@@ -26,6 +26,17 @@ describe("sound preference", () => {
     expect(isSoundEnabled()).toBe(true);
   });
 
+  it("keeps the off choice when storage is unavailable", () => {
+    const get = vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => { throw new Error("blocked"); });
+    const set = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("blocked"); });
+    setSoundEnabled(false);
+    expect(isSoundEnabled()).toBe(false);
+    setSoundEnabled(true);
+    expect(isSoundEnabled()).toBe(true);
+    get.mockRestore();
+    set.mockRestore();
+  });
+
   it("a change made in another tab reaches this one", () => {
     const onChange = vi.fn();
     const unsubscribe = subscribeSoundPreference(onChange);

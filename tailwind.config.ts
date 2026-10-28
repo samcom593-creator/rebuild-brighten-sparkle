@@ -1,3 +1,4 @@
+import plugin from "tailwindcss/plugin";
 import type { Config } from "tailwindcss";
 
 export default {
@@ -283,5 +284,7 @@ export default {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [require("tailwindcss-animate"), plugin(({ addVariant }) => {
+    addVariant("hover", "@media (hover: hover) and (pointer: fine) { &:hover }");
+  })],
 } satisfies Config;

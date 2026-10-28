@@ -11,7 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 interface AgentRecord {
@@ -122,11 +122,11 @@ function AgedLeadDuplicates() {
       }
       const { error } = await supabase.from("aged_leads").delete().in("id", deleteIds);
       if (error) throw error;
-      toast({ title: "Duplicates removed", description: `Kept 1, deleted ${deleteIds.length} duplicate(s)` });
+      toast("Duplicates removed", { description: `Kept 1, deleted ${deleteIds.length} duplicate(s)` });
       queryClient.invalidateQueries({ queryKey: ["aged-lead-duplicates"] });
       queryClient.invalidateQueries();
     } catch (err: any) {
-      toast({ title: "Failed", description: err.message, variant: "destructive" });
+      toast.error("Failed", { description: err.message });
     }
   };
 
@@ -391,10 +391,7 @@ export function DuplicateMergeTool({ open, onClose, onMergeComplete }: Duplicate
       return response.data;
     },
     onSuccess: (data) => {
-      toast({
-        title: "Merge complete",
-        description: data?.message || "Production records have been consolidated and duplicates archived.",
-      });
+      toast("Merge complete", { description: data?.message || "Production records have been consolidated and duplicates archived." });
       // Invalidate ALL agent-related caches across every module
       queryClient.invalidateQueries({ queryKey: ["all-agents-for-merge"] });
       queryClient.invalidateQueries({ queryKey: ["command-center-agents"] });
@@ -411,22 +408,14 @@ export function DuplicateMergeTool({ open, onClose, onMergeComplete }: Duplicate
       onMergeComplete();
     },
     onError: (error) => {
-      toast({
-        title: "Merge failed",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast.error("Merge failed", { description: error.message });
     },
   });
 
   const handleAutoMerge = (group: DuplicateGroup) => {
     const primaryId = selectedPrimary[group.key];
     if (!primaryId) {
-      toast({
-        title: "Select primary",
-        description: "Please select which agent record to keep as primary.",
-        variant: "destructive",
-      });
+      toast.error("Select primary", { description: "Please select which agent record to keep as primary." });
       return;
     }
 
@@ -436,20 +425,12 @@ export function DuplicateMergeTool({ open, onClose, onMergeComplete }: Duplicate
 
   const handleManualMerge = () => {
     if (!manualPrimaryAgent) {
-      toast({
-        title: "Select primary",
-        description: "Please select which agent record to keep as primary.",
-        variant: "destructive",
-      });
+      toast.error("Select primary", { description: "Please select which agent record to keep as primary." });
       return;
     }
 
     if (manualSelectedAgents.length < 2) {
-      toast({
-        title: "Select agents",
-        description: "Please select at least 2 agents to merge.",
-        variant: "destructive",
-      });
+      toast.error("Select agents", { description: "Please select at least 2 agents to merge." });
       return;
     }
 

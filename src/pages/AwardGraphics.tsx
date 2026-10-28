@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -172,10 +172,10 @@ export default function AwardGraphics() {
       setEditIG(data.top_producer?.instagram || "");
       setEditAmount(String(data.top_producer?.amount || ""));
       queryClient.invalidateQueries({ queryKey: ["award-batches"] });
-      toast({ title: "Awards Generated! 🏆", description: `Winner: ${data.top_producer?.name}` });
+      toast("Awards Generated! 🏆", { description: `Winner: ${data.top_producer?.name}` });
     },
     onError: (err: Error) => {
-      toast({ title: "Generation Failed", description: err.message, variant: "destructive" });
+      toast.error("Generation Failed", { description: err.message });
     },
   });
 
@@ -190,10 +190,10 @@ export default function AwardGraphics() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["award-batches"] });
-      toast({ title: "Regenerated! 🔄", description: `Winner: ${data.top_producer?.name}` });
+      toast("Regenerated! 🔄", { description: `Winner: ${data.top_producer?.name}` });
     },
     onError: (err: Error) => {
-      toast({ title: "Regeneration Failed", description: err.message, variant: "destructive" });
+      toast.error("Regeneration Failed", { description: err.message });
     },
   });
 

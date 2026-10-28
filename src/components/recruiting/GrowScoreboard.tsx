@@ -35,22 +35,23 @@ export interface ScoreTile {
  *
  * Colour layer (2026-10-28): each tile carries a tone (src/lib/tones.ts) that colours its
  * icon bubble and its selected state; the number counts up when it changes; the four tiles
- * rise in one after the other on first paint.
+ * rise in one after the other on first paint (240ms each, 30ms apart) and a tile that is a
+ * button presses in (scale 0.98, 120ms) so it answers the finger before its list changes.
  */
 export function GrowScoreboard({ label, tiles, notice, className }: { label: string; tiles: ScoreTile[]; notice?: ReactNode; className?: string }) {
   return (
-    <section aria-label={label} className={cn("apex-rise-list grid grid-cols-4 overflow-hidden rounded-2xl border border-border bg-card", className)}>
+    <section aria-label={label} className={cn("apex-rise-list grid grid-cols-2 overflow-hidden sm:grid-cols-4 rounded-2xl border border-border bg-card", className)}>
       {notice ? (
-        <div role="status" className="col-span-4 flex flex-col gap-2 border-b border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+        <div role="status" className="col-span-2 flex sm:col-span-4 flex-col gap-2 border-b border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
           {notice}
         </div>
       ) : null}
-      {tiles.map((t) => {
+      {tiles.map((t, i) => {
         const tone: Tone = t.tone ?? "gold";
         const lit = t.emphasis && (t.value ?? 0) > 0;
         const body = (
           <>
-            <span className="flex min-h-10 flex-col items-start gap-1.5 sm:min-h-12 sm:flex-row sm:items-center sm:gap-2">
+            <span className="flex min-h-10 flex-row items-center gap-2 sm:min-h-12">
               {t.icon ? <ToneBubble tone={tone} size="sm">{t.icon}</ToneBubble> : null}
               <span className="block text-[13px] font-semibold leading-4 text-muted-foreground sm:text-[15px] sm:leading-5">{t.label}</span>
             </span>
@@ -67,6 +68,10 @@ export function GrowScoreboard({ label, tiles, notice, className }: { label: str
         // flex-col justify-start: a <button> centres its content vertically, so a tile whose hint
         // wrapped to more lines than its neighbours' lifted its number out of line with theirs.
         const base = "flex min-w-0 flex-col justify-start border-b-[3px] border-r border-b-transparent border-r-border p-3 text-left last:border-r-0 sm:p-5";
+        // Phones get a 2x2 grid (four tiles of ~80px squeezed every label onto two or three lines
+        // and set the numbers at different heights). The right column drops its right border,
+        // the second row gets a top divider, and from sm up it is one row of four again.
+        const cell = cn(base, i % 2 === 1 && i !== tiles.length - 1 && "border-r-0 sm:border-r", i % 2 === 1 && i === tiles.length - 1 && "border-r-0", i >= 2 && "border-t border-t-border sm:border-t-0");
         return t.onSelect ? (
           <button
             key={t.label}
@@ -75,15 +80,18 @@ export function GrowScoreboard({ label, tiles, notice, className }: { label: str
             aria-pressed={t.active ?? false}
             onClick={t.onSelect}
             className={cn(
-              base,
-              "apex-lift transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
+              cell,
+              // apex-lift (src/styles/delight.css) owns the tile's motion: a 1px lift for a real pointer,
+              // scale(0.98) on press, and the background and border colour transitions, so there is no
+              // second transition utility to disagree with it.
+              "apex-lift hover:bg-muted/40 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
               t.active && TONE_CLASS[tone].activeTile,
             )}
           >
             {body}
           </button>
         ) : (
-          <div key={t.label} title={t.definition} className={base}>
+          <div key={t.label} title={t.definition} className={cell}>
             {body}
           </div>
         );

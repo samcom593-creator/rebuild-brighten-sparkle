@@ -57,6 +57,13 @@ const Toaster = ({ ...props }: ToasterProps) => {
   return (
     <Sonner
       theme={theme}
+      position="bottom-right"
+      visibleToasts={3}
+      duration={5000}
+      closeButton
+      swipeDirections={["right", "bottom"]}
+      offset="24px"
+      mobileOffset={{ bottom: "calc(5rem + env(safe-area-inset-bottom, 0px))", left: "16px", right: "16px" }}
       // Sonner mounts a fixed-position container that can span the screen.
       // Keep the container non-interactive so it never blocks app clicks;
       // individual toast cards opt back in via `pointer-events-auto`.

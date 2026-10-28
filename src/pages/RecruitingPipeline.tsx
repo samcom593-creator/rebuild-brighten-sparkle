@@ -1,3 +1,4 @@
+import { personInitials } from "@/lib/personInitials";
 import { Fragment, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BadgeCheck, CalendarCheck, ChevronDown, ClipboardList, Instagram, MessageSquare, Phone, RefreshCw, Route, Search, SlidersHorizontal, UserCheck } from "lucide-react";
@@ -106,8 +107,7 @@ const MONDAY_LABELS: Record<string, string> = {
 const igHandle = (value: string) => value.replace(/^@/, "");
 
 /** Two initials for the bubble beside a name. */
-const initialsOf = (name: string) =>
-  name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "?";
+const initialsOf = personInitials;
 
 // What a stage move means (src/lib/celebrate.ts): a hire is the full burst, a Monday start or
 // a show is the chime, any other move is a tick. Called only after rp_pipeline_action resolved

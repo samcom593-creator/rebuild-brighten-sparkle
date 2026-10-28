@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { GlassCard } from "@/components/ui/glass-card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 interface Message {
@@ -36,7 +36,7 @@ export function LeadQualificationChat({ applicantContext, className }: LeadQuali
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { toast } = useToast();
+
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -73,11 +73,7 @@ export function LeadQualificationChat({ applicantContext, className }: LeadQuali
       setMessages(prev => [...prev, { role: 'assistant', content: data.content }]);
     } catch (error) {
       console.error('Chat error:', error);
-      toast({
-        title: "Error",
-        description: "Failed to get response. Please try again.",
-        variant: "destructive",
-      });
+      toast.error("Error", { description: "Failed to get response. Please try again." });
     } finally {
       setIsLoading(false);
     }

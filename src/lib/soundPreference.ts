@@ -9,13 +9,16 @@
 const KEY = "apex_sound_enabled";
 const EVENT = "apex:sound-preference";
 
+let memoryChoice: boolean | undefined;
+
 export function isSoundEnabled(): boolean {
   try {
     return localStorage.getItem(KEY) !== "false";
-  } catch { return true; } // empty-catch-allow:localstorage-incognito
+  } catch { return memoryChoice ?? true; } // empty-catch-allow:localstorage-incognito
 }
 
 export function setSoundEnabled(on: boolean): void {
+  memoryChoice = on;
   try {
     localStorage.setItem(KEY, String(on));
   } catch { /* private mode: the choice lasts for this page */ } // empty-catch-allow:localstorage-incognito

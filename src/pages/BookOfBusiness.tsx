@@ -65,7 +65,7 @@ import { AgentNameLink } from "@/components/dashboard/AgentNameLink";
 import { Link } from "react-router-dom";
 import { BookAuditPanel } from "@/components/dashboard/BookAuditPanel";
 import { AyroProductionPanel } from "@/components/dashboard/AyroProductionPanel";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -1245,10 +1245,7 @@ export default function BookOfBusiness() {
       next.add(id);
       return next;
     });
-    toast({
-      title: "Marked reviewed",
-      description: "Removed from your review queue.",
-    });
+    toast("Marked reviewed", { description: "Removed from your review queue." });
   }
 
   function exportCsv() {

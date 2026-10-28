@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, RefreshCw, User, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 interface Applicant {
@@ -31,7 +31,7 @@ export function ApplicantSummary({ applicant, className }: ApplicantSummaryProps
   const [summary, setSummary] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
-  const { toast } = useToast();
+
 
   const getSummary = async () => {
     if (summary && !isExpanded) {
@@ -67,11 +67,7 @@ export function ApplicantSummary({ applicant, className }: ApplicantSummaryProps
       setSummary(data.content);
     } catch (error) {
       console.error('Summary error:', error);
-      toast({
-        title: "Error",
-        description: "Failed to generate summary. Please try again.",
-        variant: "destructive",
-      });
+      toast.error("Error", { description: "Failed to generate summary. Please try again." });
     } finally {
       setIsLoading(false);
     }

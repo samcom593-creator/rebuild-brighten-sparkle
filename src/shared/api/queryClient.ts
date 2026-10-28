@@ -1,5 +1,5 @@
 import { QueryCache, MutationCache, QueryClient } from "@tanstack/react-query";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "@/shared/ui/lazyToast";
 
 // wave-19 (2026-06-04): supabase pulled out of module-scope static graph.
 // queryClient is one of App.tsx's eager imports; the supabase client was only
@@ -75,11 +75,7 @@ export const queryClient = new QueryClient({
       // Global toast unless the mutation opts out via meta.silent
       if (!mutation.meta?.silent) {
         const message = error instanceof Error ? error.message : "Something went wrong";
-        toast({
-          title: "Action failed",
-          description: message,
-          variant: "destructive",
-        });
+        toast.error("Action failed", { description: message });
       }
     },
   }),

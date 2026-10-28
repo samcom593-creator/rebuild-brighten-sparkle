@@ -35,7 +35,6 @@
     "src/components/ui/resizable.tsx",
     "src/components/ui/sidebar.tsx",
     "src/components/ui/toggle-group.tsx",
-    "src/components/ui/use-toast.ts",
     "src/hooks/useBoardAccess.ts",
     "src/hooks/useLeadCounter.ts",
     "src/hooks/useManagerRankChange.ts",

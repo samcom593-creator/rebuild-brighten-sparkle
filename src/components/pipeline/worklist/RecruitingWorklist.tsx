@@ -551,7 +551,7 @@ export function RecruitingWorklist() {
         <div
           ref={listRef}
           onScroll={onScroll}
-          className="max-h-[calc(100vh-14rem)] overflow-auto rounded-xl border border-border bg-card"
+          className="max-h-[calc(100vh-14rem)] supports-[height:100dvh]:max-h-[calc(100dvh-14rem)] overflow-auto rounded-xl border border-border bg-card"
         >
           {filtered.length === 0 ? (
             <p className="p-10 text-center text-base text-muted-foreground">
@@ -594,7 +594,7 @@ export function RecruitingWorklist() {
         {panelInline ? (
           // No bottom padding: the panel's sticky save row sits flush with the container's edge
           // (the panel pads its own bottom).
-          <aside aria-label="Selected person" className="sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto rounded-xl border border-border bg-card px-5 pt-5">
+          <aside aria-label="Selected person" className="sticky top-20 max-h-[calc(100dvh-6rem)] overflow-y-auto rounded-xl border border-border bg-card px-5 pt-5">
             {panel}
           </aside>
         ) : (

@@ -11,7 +11,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { advanceHireStage } from "@/components/hires/HireStageControl";
 import { useAuth } from "@/hooks/useAuth";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ConfettiCelebration } from "@/components/dashboard/ConfettiCelebration";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
@@ -126,10 +126,7 @@ export function OnboardingTracker({
           console.error("Error sending stage change notification:", err);
         }
         
-        toast({
-          title: `🎉 ${targetStage.label} Unlocked!`,
-          description: agentName ? `${agentName} is now in ${targetStage.label}` : `Advanced to ${targetStage.label}`,
-        });
+        toast(`🎉 ${targetStage.label} Unlocked!`, { description: agentName ? `${agentName} is now in ${targetStage.label}` : `Advanced to ${targetStage.label}` });
 
         // Special handling for going LIVE
         if (targetStage.key === "evaluated") {
@@ -138,10 +135,7 @@ export function OnboardingTracker({
               body: { agentId }
             });
             
-            toast({
-              title: "🚀 Portal Login Sent!",
-              description: "Agent will receive their dashboard credentials via email",
-            });
+            toast("🚀 Portal Login Sent!", { description: "Agent will receive their dashboard credentials via email" });
           } catch (err) {
             console.error("Error sending portal login:", err);
           }
@@ -150,21 +144,14 @@ export function OnboardingTracker({
         }
       } else {
         playSound("whoosh");
-        toast({
-          title: "Stage Updated",
-          description: `Moved back to ${targetStage.label}`,
-        });
+        toast("Stage Updated", { description: `Moved back to ${targetStage.label}` });
       }
 
       onStageUpdate?.();
     } catch (err: any) {
       console.error("Error changing stage:", err);
       playSound("error");
-      toast({
-        title: "Error",
-        description: `Failed to update: ${err.message || "something went wrong — try again"}`,
-        variant: "destructive",
-      });
+      toast.error("Error", { description: `Failed to update: ${err.message || "something went wrong — try again"}` });
     } finally {
       setLoading(false);
     }

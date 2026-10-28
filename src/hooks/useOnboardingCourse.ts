@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 /**
  * Total tries per module test: the first attempt plus 3 retakes.
@@ -72,7 +72,7 @@ export function useOnboardingCourse(agentId: string | null) {
   const [progress, setProgress] = useState<Record<string, OnboardingProgress>>({});
   const [currentModuleIndex, setCurrentModuleIndex] = useState(0);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
+
 
   /**
    * MP-365 — review mode.
@@ -286,11 +286,7 @@ export function useOnboardingCourse(agentId: string | null) {
     // is here so an exhausted agent gets a sentence instead of a raw Postgres
     // error, not because the client is trusted to enforce it.
     if (!existing?.passed && attempts > MAX_QUIZ_ATTEMPTS) {
-      toast({
-        title: "No attempts left",
-        description: `This test allows ${MAX_QUIZ_ATTEMPTS} tries. Ask your manager to reset it.`,
-        variant: "destructive",
-      });
+      toast.error("No attempts left", { description: `This test allows ${MAX_QUIZ_ATTEMPTS} tries. Ask your manager to reset it.` });
       return false;
     }
 
@@ -309,7 +305,7 @@ export function useOnboardingCourse(agentId: string | null) {
         .eq("id", existing.id);
 
       if (error) {
-        toast({ title: "Error saving quiz results", variant: "destructive" });
+        toast.error("Error saving quiz results");
         return false;
       }
     } else {
@@ -325,7 +321,7 @@ export function useOnboardingCourse(agentId: string | null) {
         }, { onConflict: "agent_id,module_id" });
 
       if (error) {
-        toast({ title: "Error saving quiz results", variant: "destructive" });
+        toast.error("Error saving quiz results");
         return false;
       }
     }
@@ -344,7 +340,7 @@ export function useOnboardingCourse(agentId: string | null) {
           await supabase.functions.invoke("notify-course-complete", {
             body: { agentId }
           });
-          toast({ title: "🎓 Course Complete!", description: "Congratulations! Moving to field training." });
+          toast("🎓 Course Complete!", { description: "Congratulations! Moving to field training." });
         } catch (error) {
           console.error("Failed to trigger course completion:", error);
         }

@@ -11,38 +11,65 @@
  *
  * The rules live in docs/DESIGN_SYSTEM.md, "Colour, motion and sound":
  *   - colour carries meaning: a tone names a state and the word is always beside it;
- *   - motion is short and happens once: entrances 240-360ms, counts tween, presses spring;
- *     the only looping motion is the ambient background and live indicators, and both stop
- *     under prefers-reduced-motion;
+ *   - motion is short and happens once: entrances 240ms, pops 220ms, presses 120ms, counts
+ *     tween; the only looping motion is the ambient background and one live indicator per
+ *     page, and both go still under prefers-reduced-motion;
  *   - celebrations mark a win the person just made, never a page load.
+ *
+ * Motion review (2026-10-28, docs/audits/2026-10-28-motion-review.md): every duration is
+ * inside the 300ms UI budget, entrances and presses run on a strong ease-out, the stagger
+ * is 30ms a row and stops at row 14, every loop animates transform and opacity only, hover
+ * motion is gated to a real pointer, and reduced motion keeps a 200ms fade instead of
+ * switching the layer off.
  */
+
+/* ── Motion tokens for this layer ──────────────────────────────────────────────────────── */
+/* index.css owns --motion-fast/--motion-base and the two Material curves (--ease-standard,
+   --ease-emphasized). Both start at zero velocity: measured at 4x in the harness, the standard
+   curve has covered 11% of the distance after 10% of the time and the first visible pixel moves
+   at 13%, which reads as a pause before an entrance. The strong ease-out below has covered 35%
+   at 10% and moves at 5%: it is the curve for anything that enters, pops or is pressed. It
+   belongs beside the others in index.css's motion scale when that file is next touched. */
+:root {
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+}
 
 /* ── Tones: seven meaning-carrying colours, tuned per theme for contrast on cards ───────── */
 :root,
 :root.light {
-  --tone-good: 152 62% 34%;   /* going well: showed, producing, alive            */
+  --tone-good: 152 62% 26%;   /* going well: showed, producing, alive            */
   --tone-warm: 33 92% 33%;    /* needs a nudge: warm lead, waiting, field training */
-  --tone-hot: 4 70% 44%;      /* act now: hot lead, no-show, dead lane            */
-  --tone-cool: 211 78% 42%;   /* new or scheduled: new lead, cold lead, booked    */
+  --tone-hot: 4 70% 36%;      /* act now: hot lead, no-show, dead lane            */
+  --tone-cool: 211 78% 35%;   /* new or scheduled: new lead, cold lead, booked    */
   --tone-royal: 262 58% 50%;  /* paperwork: contracting, onboarding               */
-  --tone-gold: 42 70% 30%;    /* the brand moment: Monday start, hired, Sam's own */
-  --tone-slate: 220 10% 44%;  /* quiet: inactive, answered, not set               */
+  --tone-gold: 42 70% 25%;    /* the brand moment: Monday start, hired, Sam's own */
+  --tone-slate: 220 10% 36%;  /* quiet: inactive, answered, not set               */
   --ambient-opacity: 0.42;
 }
 :root.dark {
   --tone-good: 150 62% 54%;
   --tone-warm: 40 94% 60%;
-  --tone-hot: 6 86% 66%;
+  --tone-hot: 6 86% 78%;
   --tone-cool: 206 90% 68%;
   --tone-royal: 262 82% 74%;
   --tone-gold: 45 86% 58%;
   --tone-slate: 220 10% 64%;
-  --ambient-opacity: 0.55;
+  --ambient-opacity: 0.7;
 }
 
 /* ── Ambient bubbles: soft colour fields drifting behind the operating canvas ──────────── */
 /* The canvas is its own stacking context so a z-index of -1 sits above the shell's
-   background and below every card, row and control. Nothing here takes a click. */
+   background and below every card, row and control. Nothing here takes a click, nothing
+   here is in the layout (position: fixed), and nothing here animates anything but
+   transform: each field is one composited layer rastered once.
+
+   Quiet by design (motion review): each field's peak stop is at most 0.16 alpha and the
+   layer is 0.55 (light) / 0.7 (dark), so the strongest tint under any text is 11% of a tone
+   colour; every centre sits outside the viewport, so only the soft tail of a field reaches
+   the page, and none of them sits under the page title, the subtitle or the tab row. There
+   is no violet field: a purple radial haze is the one background impeccable names as the
+   tell of a generated page. Measured with impeccable detect on both routes, both themes,
+   390x844 and 1440x900 (docs/audits/2026-10-28-motion-review.md). */
 .apex-main-canvas {
   isolation: isolate;
 }
@@ -59,37 +86,38 @@
   width: 46vmax;
   height: 46vmax;
   border-radius: 9999px;
-  will-change: transform;
   animation: apex-drift var(--drift-time, 36s) ease-in-out infinite alternate;
 }
 .apex-ambient > span:nth-child(1) {
-  left: -14vmax; top: -12vmax;
-  background: radial-gradient(circle at center, hsl(var(--tone-gold) / 0.3), transparent 62%);
+  right: -24vmax; top: -22vmax;
+  background: radial-gradient(circle at center, hsl(var(--tone-gold) / 0.16), transparent 62%);
   --drift-time: 38s;
 }
 .apex-ambient > span:nth-child(2) {
-  right: -18vmax; top: 6vmax;
-  background: radial-gradient(circle at center, hsl(var(--tone-cool) / 0.24), transparent 62%);
+  left: -10vmax; top: 34vmax;
+  background: radial-gradient(circle at center, hsl(var(--tone-cool) / 0.14), transparent 62%);
   --drift-time: 46s; animation-delay: -12s;
 }
 .apex-ambient > span:nth-child(3) {
-  left: 18vmax; bottom: -24vmax;
-  background: radial-gradient(circle at center, hsl(var(--tone-good) / 0.22), transparent 62%);
+  right: -8vmax; bottom: -22vmax;
+  background: radial-gradient(circle at center, hsl(var(--tone-good) / 0.12), transparent 62%);
   --drift-time: 42s; animation-delay: -20s;
 }
 .apex-ambient > span:nth-child(4) {
-  right: 8vmax; bottom: -16vmax;
-  background: radial-gradient(circle at center, hsl(var(--tone-royal) / 0.2), transparent 62%);
+  left: 30vmax; bottom: -26vmax;
+  background: radial-gradient(circle at center, hsl(var(--tone-warm) / 0.11), transparent 62%);
   --drift-time: 52s; animation-delay: -30s;
 }
 .apex-ambient > span:nth-child(5) {
-  left: 36vmax; top: -20vmax; width: 32vmax; height: 32vmax;
-  background: radial-gradient(circle at center, hsl(var(--tone-hot) / 0.16), transparent 62%);
+  left: 62vmax; top: -14vmax; width: 32vmax; height: 32vmax;
+  background: radial-gradient(circle at center, hsl(var(--tone-hot) / 0.1), transparent 62%);
   --drift-time: 48s; animation-delay: -6s;
 }
+/* An oscillation, so ease-in-out: the field slows into each turn instead of bouncing off it.
+   One full cycle is 76 to 104 seconds, far below the 0.2 Hz band that bothers people. */
 @keyframes apex-drift {
   from { transform: translate3d(0, 0, 0) scale(1); }
-  to   { transform: translate3d(6vmax, 4vmax, 0) scale(1.08); }
+  to   { transform: translate3d(-5vmax, 4vmax, 0) scale(1.06); }
 }
 @media (max-width: 640px) {
   .apex-ambient > span:nth-child(4),
@@ -97,60 +125,93 @@
 }
 
 /* ── Entrances: one rise for lists, tiles and sections, staggered by position ──────────── */
+/* 240ms on the strong ease-out: the row is moving on its first frame and settled well inside
+   the 300ms budget. The stagger is 30ms a row and only the first 14 rows take part: rows 15
+   and up are below the fold on every viewport and appear at once, so a 500-row list never
+   promotes 500 layers and never keeps a row invisible while it waits its turn. The stagger
+   is decorative: nothing waits for it, every row is clickable from its first frame. */
+/* Fill mode is `backwards`, never `both`: `both` would keep the last keyframe's transform
+   applied for the life of the element and silently cancel every hover lift and press on a
+   tile or row inside a list (an animation's value outranks a :hover or :active rule).
+   `backwards` only holds the hidden start state during the stagger delay. */
 @keyframes apex-rise {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: none; }
 }
 .apex-rise {
-  animation: apex-rise 320ms var(--ease-standard, cubic-bezier(0.2, 0, 0, 1)) both;
-  animation-delay: calc(var(--rise-i, 0) * 40ms);
+  animation: apex-rise 240ms var(--ease-out-strong) backwards;
+  animation-delay: calc(min(var(--rise-i, 0), 8) * 30ms);
 }
 .apex-rise-list > * {
-  animation: apex-rise 320ms var(--ease-standard, cubic-bezier(0.2, 0, 0, 1)) both;
+  animation: apex-rise 240ms var(--ease-out-strong) backwards;
 }
-.apex-rise-list > :nth-child(1)  { animation-delay: 0ms; }
-.apex-rise-list > :nth-child(2)  { animation-delay: 40ms; }
-.apex-rise-list > :nth-child(3)  { animation-delay: 80ms; }
-.apex-rise-list > :nth-child(4)  { animation-delay: 120ms; }
-.apex-rise-list > :nth-child(5)  { animation-delay: 160ms; }
-.apex-rise-list > :nth-child(6)  { animation-delay: 200ms; }
-.apex-rise-list > :nth-child(7)  { animation-delay: 240ms; }
-.apex-rise-list > :nth-child(8)  { animation-delay: 280ms; }
-.apex-rise-list > :nth-child(9)  { animation-delay: 320ms; }
-.apex-rise-list > :nth-child(10) { animation-delay: 360ms; }
-.apex-rise-list > :nth-child(n + 11) { animation-delay: 400ms; }
+.apex-rise-list > :nth-child(2)  { animation-delay: 30ms; }
+.apex-rise-list > :nth-child(3)  { animation-delay: 60ms; }
+.apex-rise-list > :nth-child(4)  { animation-delay: 90ms; }
+.apex-rise-list > :nth-child(5)  { animation-delay: 120ms; }
+.apex-rise-list > :nth-child(6)  { animation-delay: 150ms; }
+.apex-rise-list > :nth-child(7)  { animation-delay: 180ms; }
+.apex-rise-list > :nth-child(8)  { animation-delay: 210ms; }
+.apex-rise-list > :nth-child(9)  { animation-delay: 240ms; }
+.apex-rise-list > :nth-child(10) { animation-delay: 270ms; }
+.apex-rise-list > :nth-child(11) { animation-delay: 300ms; }
+.apex-rise-list > :nth-child(12) { animation-delay: 330ms; }
+.apex-rise-list > :nth-child(13) { animation-delay: 360ms; }
+.apex-rise-list > :nth-child(14) { animation-delay: 390ms; }
+.apex-rise-list > :nth-child(n + 15) { animation: none; }
 
 /* ── Pops and bumps: a number or bubble that just arrived or just changed ──────────────── */
+/* A bubble lands from 0.94, never from nothing, on the same strong ease-out as everything
+   else: no overshoot (a dashboard is crisp; a back curve reads as a bounce). */
 @keyframes apex-pop {
-  0%   { opacity: 0.4; transform: scale(0.92); }
-  60%  { transform: scale(1.05); }
-  100% { opacity: 1; transform: scale(1); }
+  from { opacity: 0; transform: scale(0.94); }
+  to   { opacity: 1; transform: none; }
 }
-.apex-pop { animation: apex-pop 280ms var(--ease-emphasized, cubic-bezier(0.3, 0, 0.1, 1)) both; }
+.apex-pop { animation: apex-pop 220ms var(--ease-out-strong) backwards; }
 
+/* A number that changed: up 8% and back inside 240ms. */
 @keyframes apex-bump {
   0%   { transform: scale(1); }
-  35%  { transform: scale(1.14); }
+  40%  { transform: scale(1.08); }
   100% { transform: scale(1); }
 }
-.apex-bump { animation: apex-bump 360ms var(--ease-emphasized, cubic-bezier(0.3, 0, 0.1, 1)); }
+.apex-bump { animation: apex-bump 240ms var(--ease-out-strong); }
 
-/* A live indicator may breathe: this is a state, not decoration. */
+/* A live indicator may breathe: this is a state, not decoration, and one per page. The ring
+   is a pseudo-element that scales and fades (transform and opacity only, composite-only),
+   not an animated box-shadow, which would repaint the element on every frame. The ring is
+   the element's own colour, so a good bubble breathes green and a hot one red. */
 @keyframes apex-breathe {
-  0%, 100% { box-shadow: 0 0 0 0 hsl(var(--tone-good) / 0.45); }
-  70%      { box-shadow: 0 0 0 7px hsl(var(--tone-good) / 0); }
+  from { transform: scale(1); opacity: 0.55; }
+  to   { transform: scale(1.5); opacity: 0; }
 }
-.apex-breathe { animation: apex-breathe 1.8s ease-out infinite; }
+.apex-breathe { position: relative; }
+.apex-breathe::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  border: 2px solid currentColor;
+  pointer-events: none;
+  animation: apex-breathe 1.8s var(--ease-out-strong) infinite;
+}
 
-/* Lift on hover for rows and tiles that open something. Short, no glow. */
-.apex-lift {
-  transition: transform 160ms var(--ease-standard, cubic-bezier(0.2, 0, 0, 1)),
-              background-color 160ms var(--ease-standard, cubic-bezier(0.2, 0, 0, 1)),
-              border-color 160ms var(--ease-standard, cubic-bezier(0.2, 0, 0, 1));
+/* ── Hover lift and press for rows and tiles that open something ──────────────────────── */
+/* The lift is 1px and only for a real pointer: a finger fires a false hover on every tap.
+   The press is the feedback every pressable owes: scale(0.98) over 120ms on the way in,
+   so the interface answers the finger before the row or tile opens. Colour changes stay on
+   plain `ease` (a hover is not an entrance). */
+.apex-lift,
+.apex-press {
+  transition: transform var(--motion-fast, 120ms) var(--ease-out-strong),
+              background-color 160ms ease,
+              border-color 160ms ease;
 }
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .apex-lift:hover { transform: translateY(-1px); }
 }
+.apex-lift:active:not(:disabled),
+.apex-press:active:not(:disabled) { transform: scale(0.98); }
 
 /* ── Bigger operating type. Sam: "the text is small." Signed-in pages only. ────────────── */
 /* Tailwind's text-xs (12px) and text-sm (14px) are the two sizes almost every row, label and
@@ -169,15 +230,55 @@
   line-height: 18px;
 }
 
-/* ── Reduced motion: every loop and entrance above stops; colour and layout stay ───────── */
+/* ── Reduced motion: gentler, not zero ─────────────────────────────────────────────────── */
+/* Every movement goes: the drift stands still, rows and bubbles no longer rise or scale,
+   the ring is gone, lift and press are flat. What stays is a 200ms fade on entrances and a
+   short dip on a number that changed, so a change is still legible. The !important is
+   needed because index.css's global reduced-motion rule forces every animation to 0.01ms;
+   a class selector beats its `*` at the same importance. */
+@keyframes apex-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes apex-dim {
+  0%   { opacity: 1; }
+  40%  { opacity: 0.55; }
+  100% { opacity: 1; }
+}
 @media (prefers-reduced-motion: reduce) {
-  .apex-ambient > span,
+  .apex-ambient > span { animation: none; }
   .apex-rise,
   .apex-rise-list > *,
-  .apex-pop,
-  .apex-bump,
-  .apex-breathe {
-    animation: none !important;
+  .apex-pop {
+    animation: apex-fade 200ms ease-out backwards !important;
+    animation-delay: 0ms !important;
   }
-  .apex-lift:hover { transform: none; }
+  .apex-rise-list > :nth-child(n + 15) { animation: none !important; }
+  .apex-bump { animation: apex-dim 200ms ease-out !important; }
+  .apex-breathe::after { animation: none; opacity: 0; }
+  /* Same selectors as the press above, so the same specificity: `.apex-lift:active` alone is
+     (0,2,0) and loses to `.apex-lift:active:not(:disabled)` (0,3,0), which kept the press
+     scaling under reduced motion. Later in the file at equal specificity, these win. */
+  .apex-lift:hover,
+  .apex-lift:active:not(:disabled),
+  .apex-press:active:not(:disabled) { transform: none; }
+}
+
+/* Operating-surface contrast measured on tinted rows as well as bare cards. */
+:root.light .apex-app-shell { --muted-foreground: 45 8% 33%; }
+.apex-app-shell .text-destructive { color: hsl(var(--tone-hot)); }
+:root.light .apex-app-shell .text-primary { color: hsl(var(--tone-gold)); }
+.apex-app-shell .nav-section-label { font-size: 13px; }
+
+/* Touch capability matters on tablets as well as narrow phones. */
+@media (pointer: coarse) {
+  .apex-app-shell :is(input, select, textarea, [role="combobox"]) { font-size: 16px !important; }
+  .apex-app-shell :is(button, [role="button"], [role="combobox"]) { min-height: 44px; min-width: 44px; }
+}
+.apex-app-shell :is(button, [role="button"], a) {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.apex-app-shell :is(button, [role="button"]):active {
+  opacity: 0.8;
 }

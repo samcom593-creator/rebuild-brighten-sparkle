@@ -44,7 +44,8 @@ function audio(): AudioContext | null {
   if (!Ctor) return null;
   if (!context) context = new Ctor();
   // iOS suspends a context created outside a gesture; every call here is inside one.
-  if (context.state === "suspended") void context.resume();
+  // empty-catch-allow:browser-audio-denial-is-optional-feedback
+  if (context.state === "suspended") void context.resume().catch(() => undefined);
   return context;
 }
 
@@ -100,9 +101,23 @@ const RECIPES: Record<SoundType, Note[]> = {
 };
 RECIPES.celebrate = RECIPES.fanfare;
 
+/**
+ * True while the page has never had a tap, click or key press. Nothing may sound then: not on
+ * load, not after a refetch, not from an effect. Without this, a note scheduled on a context
+ * the browser keeps suspended would wait and play at the person's first unrelated tap. Browsers
+ * without navigator.userActivation answer false and rely on the callers, which all fire from a
+ * completed action.
+ */
+function pageUntouched(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const activation = (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation;
+  return activation ? !activation.hasBeenActive : false;
+}
+
 /** Play one sound if the person has sounds on. Safe to call anywhere; never throws. */
 export function playSoundEffect(kind: SoundType): void {
   if (!isSoundEnabled()) return;
+  if (pageUntouched()) return;
   try {
     const ctx = audio();
     if (!ctx) return;

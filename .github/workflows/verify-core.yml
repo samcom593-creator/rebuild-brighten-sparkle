@@ -111,9 +111,20 @@ jobs:
         # verify:core itself, so it cannot drift -- and reports every failure.
         # Graded by check:verify-core-nonmasking; do not revert this to the
         # raw chain, that guard will fail the build if you do.
-        run: npm run verify:core:all
+        #
+        # The output is tee'd to verify-core.log so the failure step below can
+        # turn every red link into its own annotation (2026-10-28: PR #46 went
+        # red for hours and the only annotation said "read the log", while the
+        # raw log download sits on a host some networks refuse). An explicit
+        # bash shell runs with pipefail, so the step's verdict stays
+        # verify:core's, not tee's. check:verify-core-nonmasking and
+        # check-typecheck-authority both read this one line.
+        shell: bash
+        run: npm run verify:core:all 2>&1 | tee verify-core.log
 
       - name: Post failure summary
         if: failure()
+        shell: bash
         run: |
+          node scripts/annotate-verify-failures.mjs verify-core.log || true
           echo "::error::verify:core FAILED on ${{ github.sha }}. Read WHICH check failed in the log above before assuming a bypass. If it was check:tsc-error-count, pre-commit could NOT have caught it: since 2026-08-11 the type-check runs ONLY here, because locally it costs 881s (measured) and a 15-minute hook was training operators to abandon commits mid-gate. Reproduce it with 'npm run check:tsc-error-count' and budget ~15 minutes. For any OTHER check in the chain, .husky/pre-commit would have caught it before push if active — confirm core.hooksPath is set to .husky (run 'npm install' once after clone to auto-activate via the prepare script), then re-run that check locally."

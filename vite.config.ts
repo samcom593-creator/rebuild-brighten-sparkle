@@ -109,6 +109,27 @@ import { writeFileSync, mkdirSync } from "node:fs";
 const BUILD_ID = (process.env.VERCEL_GIT_COMMIT_SHA
   ?? (() => { try { return execSync("git rev-parse HEAD").toString().trim(); } catch { return "dev"; } })()
 ).slice(0, 8);
+// PL-PREVIEW-ANON-KEY (2026-10-27). Vercel's Preview environment carries
+// VITE_SUPABASE_URL but not VITE_SUPABASE_PUBLISHABLE_KEY (only Production
+// does), so every PR preview built with a URL and no key: the landing rendered
+// with dead data (every read 401), and the first authenticated route tripped the
+// error boundary ("Something went wrong"). The "Vercel - apex-financial: pass"
+// check never noticed, because a deployment that builds is a pass. Sam hit it
+// on PR #45's preview and could not get past the first screen.
+//
+// This is the PUBLIC anon key: it ships inside every production bundle already
+// and RLS is what protects the data, so a preview bundle carrying it changes
+// nothing about exposure. It applies only when Vercel says this is a preview
+// build AND nothing else set the key. Production and local builds are not
+// touched, and a key that IS set is never overridden. A unit test
+// (src/tests/lib/previewAnonKey.test.ts) pins the literal to role=anon on this
+// project so a service key or another project's key can never be pasted here.
+const PREVIEW_PUBLIC_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhyendlb25laWllZGR6eG9nZXdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1MjY4NDYsImV4cCI6MjA5MzEwMjg0Nn0.R9gV7aCXeNvW5KW0CpYlx2o5jWZEcVEmciajyBjKZyU";
+if (process.env.VERCEL_ENV === "preview" && !process.env.VITE_SUPABASE_PUBLISHABLE_KEY) {
+  process.env.VITE_SUPABASE_PUBLISHABLE_KEY = PREVIEW_PUBLIC_ANON_KEY;
+}
+
 const versionEmitPlugin = () => ({
   name: "apex-version-emit",
   closeBundle() {

@@ -1,5 +1,10 @@
 # Grow section redesign — execution prompt
 
+> **Status (2026-10-28): done.** Everything below shipped in PR #46 (`claude/grow-redesign-prompt`):
+> the Call list, person panel, Pipeline, New hires, Invite an agent (first name, last name, email,
+> phone, NPN, copy-ready for contracting), Refer a recruit, Staff accounts, and the plain-English
+> names. Keep this file as the design brief for follow-up work; do not paste it to redo the work.
+
 Paste this entire prompt into Claude Code in VS Code at the repository root.
 
 ---

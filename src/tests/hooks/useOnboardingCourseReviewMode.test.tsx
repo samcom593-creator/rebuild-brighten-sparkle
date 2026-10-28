@@ -36,9 +36,7 @@ vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => roles,
 }));
 
-vi.mock("@/hooks/use-toast", () => ({
-  useToast: () => ({ toast: vi.fn() }),
-}));
+vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { error: vi.fn() }) }));
 
 vi.mock("@/integrations/supabase/client", () => {
   const table = (name: string) => {

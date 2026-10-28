@@ -23,7 +23,7 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 interface LeadExporterProps {
   className?: string;
@@ -106,11 +106,7 @@ export function LeadExporter({ className }: LeadExporterProps) {
       if (error) throw error;
 
       if (!data || data.length === 0) {
-        toast({
-          title: "No Data",
-          description: "No leads match your filter criteria.",
-          variant: "destructive",
-        });
+        toast.error("No Data", { description: "No leads match your filter criteria." });
         setLoading(false);
         return;
       }
@@ -178,17 +174,10 @@ export function LeadExporter({ className }: LeadExporterProps) {
       URL.revokeObjectURL(url);
 
       setExportCount(data.length);
-      toast({
-        title: "Export Complete",
-        description: `Successfully exported ${data.length} leads to CSV.`,
-      });
+      toast("Export Complete", { description: `Successfully exported ${data.length} leads to CSV.` });
     } catch (err) {
       console.error("Export error:", err);
-      toast({
-        title: "Export Failed",
-        description: "Failed to export leads. Please try again.",
-        variant: "destructive",
-      });
+      toast.error("Export Failed", { description: "Failed to export leads. Please try again." });
     } finally {
       setLoading(false);
     }

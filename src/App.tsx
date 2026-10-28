@@ -6,9 +6,8 @@ import { PageSkeleton } from "@/components/ui/page-skeleton";
 // even though `/` never fires a toast — only post-navigation routes do.
 // Lazy-loading + idle-prefetch keeps user-fired toasts working without
 // the cold-landing CSS/JS cost.
-const ToasterShadcn = lazy(() =>
-  import("@/components/ui/toaster").then((m) => ({ default: m.Toaster })),
-);
+// GROW-CRAFT-4 (2026-10-28): the shadcn/Radix toaster is retired. Sonner is the
+// only toaster; every former useToast() caller now imports { toast } from "sonner".
 const SonnerToaster = lazy(() =>
   import("@/components/ui/sonner").then((m) => ({ default: m.Toaster })),
 );
@@ -346,7 +345,6 @@ function DeferredToasters() {
   if (!armed) return null;
   return (
     <Suspense fallback={null}>
-      <ToasterShadcn />
       <SonnerToaster />
     </Suspense>
   );

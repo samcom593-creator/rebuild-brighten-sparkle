@@ -21,7 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { advanceHireStage } from "@/components/hires/HireStageControl";
 import { cn } from "@/lib/utils";
 
@@ -203,18 +203,11 @@ export function AgentProfileEditor({ agent, open, onClose, onUpdate }: AgentProf
       if (agentError) throw agentError;
     },
     onSuccess: () => {
-      toast({
-        title: "Profile updated",
-        description: `${fullName} has been updated successfully.`,
-      });
+      toast("Profile updated", { description: `${fullName} has been updated successfully.` });
       onUpdate();
     },
     onError: (error) => {
-      toast({
-        title: "Update failed",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast.error("Update failed", { description: error.message });
     },
   });
 
@@ -235,17 +228,10 @@ export function AgentProfileEditor({ agent, open, onClose, onUpdate }: AgentProf
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({
-        title: "Portal link sent",
-        description: `Login link sent to ${email}`,
-      });
+      toast("Portal link sent", { description: `Login link sent to ${email}` });
     },
     onError: (error) => {
-      toast({
-        title: "Failed to send",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast.error("Failed to send", { description: error.message });
     },
   });
 
@@ -263,27 +249,20 @@ export function AgentProfileEditor({ agent, open, onClose, onUpdate }: AgentProf
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({
-        title: "Password reset sent",
-        description: `Reset link sent to ${email}`,
-      });
+      toast("Password reset sent", { description: `Reset link sent to ${email}` });
     },
     onError: (error) => {
-      toast({
-        title: "Failed to send reset",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast.error("Failed to send reset", { description: error.message });
     },
   });
 
   const handleSetPassword = async () => {
     if (!newPassword.trim() || newPassword.length < 6) {
-      toast({ title: "Password must be at least 6 characters", variant: "destructive" });
+      toast.error("Password must be at least 6 characters");
       return;
     }
     if (!agentDetails?.user_id) {
-      toast({ title: "Agent has no auth account yet", variant: "destructive" });
+      toast.error("Agent has no auth account yet");
       return;
     }
     setSettingPassword(true);
@@ -292,10 +271,10 @@ export function AgentProfileEditor({ agent, open, onClose, onUpdate }: AgentProf
         body: { targetUserId: agentDetails.user_id, newPassword: newPassword.trim() },
       });
       if (error) throw error;
-      toast({ title: "Password updated ✅", description: `Password set for ${fullName}` });
+      toast("Password updated ✅", { description: `Password set for ${fullName}` });
       setNewPassword("");
     } catch (err: any) {
-      toast({ title: "Failed to set password", description: err.message, variant: "destructive" });
+      toast.error("Failed to set password", { description: err.message });
     } finally {
       setSettingPassword(false);
     }

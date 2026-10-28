@@ -3,7 +3,7 @@ import { Camera, Loader2, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 interface AvatarUploadProps {
   userId: string;
@@ -51,11 +51,11 @@ export function AvatarUpload({ userId, currentAvatarUrl, fullName, onAvatarChang
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      toast({ title: "Invalid File", description: "Please select an image file (JPG, PNG, etc.)", variant: "destructive" });
+      toast.error("Invalid File", { description: "Please select an image file (JPG, PNG, etc.)" });
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      toast({ title: "File Too Large", description: "Please select an image under 5MB", variant: "destructive" });
+      toast.error("File Too Large", { description: "Please select an image under 5MB" });
       return;
     }
 
@@ -90,10 +90,10 @@ export function AvatarUpload({ userId, currentAvatarUrl, fullName, onAvatarChang
       if (updateError) throw updateError;
 
       onAvatarChange(newAvatarUrl);
-      toast({ title: "Avatar Updated", description: "Your profile photo has been updated successfully." });
+      toast("Avatar Updated", { description: "Your profile photo has been updated successfully." });
     } catch (err) {
       console.error("Error uploading avatar:", err);
-      toast({ title: "Upload Failed", description: "Could not upload your photo. Please try again.", variant: "destructive" });
+      toast.error("Upload Failed", { description: "Could not upload your photo. Please try again." });
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -114,10 +114,10 @@ export function AvatarUpload({ userId, currentAvatarUrl, fullName, onAvatarChang
 
       if (updateError) throw updateError;
       onAvatarChange(null);
-      toast({ title: "Avatar Removed", description: "Your profile photo has been removed." });
+      toast("Avatar Removed", { description: "Your profile photo has been removed." });
     } catch (err) {
       console.error("Error deleting avatar:", err);
-      toast({ title: "Delete Failed", description: "Could not remove your photo. Please try again.", variant: "destructive" });
+      toast.error("Delete Failed", { description: "Could not remove your photo. Please try again." });
     } finally {
       setDeleting(false);
     }

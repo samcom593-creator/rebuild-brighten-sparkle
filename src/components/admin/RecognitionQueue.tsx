@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { format, startOfWeek, startOfMonth } from "date-fns";
 
@@ -176,18 +176,11 @@ export function RecognitionQueue() {
       if (error) throw error;
     },
     onSuccess: (_, candidate) => {
-      toast({
-        title: "Recognition sent",
-        description: `${achievementConfig[candidate.achievement].label} plaque sent to ${candidate.agentName}`,
-      });
+      toast("Recognition sent", { description: `${achievementConfig[candidate.achievement].label} plaque sent to ${candidate.agentName}` });
       queryClient.invalidateQueries({ queryKey: ["recognition-candidates"] });
     },
     onError: (error) => {
-      toast({
-        title: "Failed to send",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast.error("Failed to send", { description: error.message });
     },
   });
 

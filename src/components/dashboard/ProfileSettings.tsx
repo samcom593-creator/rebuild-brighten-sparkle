@@ -26,7 +26,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { GlassCard } from "@/components/ui/glass-card";
 import { AvatarUpload } from "@/components/dashboard/AvatarUpload";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { getAllFlags, setFeatureFlag, FEATURE_FLAG_LABELS, type FeatureFlagName } from "@/lib/featureFlags";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CARRIER_OPTIONS } from "@/lib/carrierOptions";
@@ -73,9 +73,9 @@ function DiscordWebhookSection() {
           enabled: !!webhookUrl,
         } as any);
       }
-      toast({ title: "Discord webhook saved" });
+      toast("Discord webhook saved");
     } catch {
-      toast({ title: "Failed to save", variant: "destructive" });
+      toast.error("Failed to save");
     }
     setSaving(false);
   };
@@ -238,21 +238,14 @@ export function ProfileSettings() {
 
       await refreshProfile();
       setSaved(true);
-      toast({
-        title: "Profile Updated",
-        description: emailChanged 
+      toast("Profile Updated", { description: emailChanged 
           ? "Your profile and email have been saved successfully."
-          : "Your profile has been saved successfully.",
-      });
+          : "Your profile has been saved successfully." });
 
       setTimeout(() => setSaved(false), 3000);
     } catch (err: any) {
       console.error("Error updating profile:", err);
-      toast({
-        title: "Error",
-        description: err.message || "Failed to update profile. Please try again.",
-        variant: "destructive",
-      });
+      toast.error("Error", { description: err.message || "Failed to update profile. Please try again." });
     } finally {
       setLoading(false);
     }
@@ -260,20 +253,12 @@ export function ProfileSettings() {
 
   const handlePasswordChange = async () => {
     if (newPassword.length < 6) {
-      toast({
-        title: "Password Too Short",
-        description: "Password must be at least 6 characters.",
-        variant: "destructive",
-      });
+      toast.error("Password Too Short", { description: "Password must be at least 6 characters." });
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      toast({
-        title: "Passwords Don't Match",
-        description: "Please make sure both passwords match.",
-        variant: "destructive",
-      });
+      toast.error("Passwords Don't Match", { description: "Please make sure both passwords match." });
       return;
     }
 
@@ -296,10 +281,7 @@ export function ProfileSettings() {
       setNewPassword("");
       setConfirmPassword("");
       setPasswordSaved(true);
-      toast({
-        title: "Password Updated! 🔐",
-        description: "Your password has been changed successfully.",
-      });
+      toast("Password Updated! 🔐", { description: "Your password has been changed successfully." });
 
       // If this was a forced password change, redirect to dashboard
       if (forcePasswordChange) {
@@ -310,11 +292,7 @@ export function ProfileSettings() {
       setTimeout(() => setPasswordSaved(false), 3000);
     } catch (err: any) {
       console.error("Error updating password:", err);
-      toast({
-        title: "Error",
-        description: err.message || "Failed to update password. Please try again.",
-        variant: "destructive",
-      });
+      toast.error("Error", { description: err.message || "Failed to update password. Please try again." });
     } finally {
       setPasswordLoading(false);
     }
@@ -322,11 +300,7 @@ export function ProfileSettings() {
 
   const handlePasswordReset = async () => {
     if (!formData.email) {
-      toast({
-        title: "No Email",
-        description: "Please enter your email address first.",
-        variant: "destructive",
-      });
+      toast.error("No Email", { description: "Please enter your email address first." });
       return;
     }
 
@@ -339,17 +313,10 @@ export function ProfileSettings() {
 
       if (error) throw error;
 
-      toast({
-        title: "Password Reset Sent! 📧",
-        description: `Check ${formData.email} for a link to reset your password.`,
-      });
+      toast("Password Reset Sent! 📧", { description: `Check ${formData.email} for a link to reset your password.` });
     } catch (err: any) {
       console.error("Error sending password reset:", err);
-      toast({
-        title: "Error",
-        description: err.message || "Failed to send password reset. Please try again.",
-        variant: "destructive",
-      });
+      toast.error("Error", { description: err.message || "Failed to send password reset. Please try again." });
     } finally {
       setResetLoading(false);
     }
@@ -686,13 +653,13 @@ export function ProfileSettings() {
               onClick={async () => {
                 if (isSubscribed) {
                   await unsubscribe();
-                  toast({ title: "Notifications Disabled", description: "You won't receive push notifications anymore." });
+                  toast("Notifications Disabled", { description: "You won't receive push notifications anymore." });
                 } else {
                   const success = await subscribe();
                   if (success) {
-                    toast({ title: "Notifications Enabled! 🔔", description: "You'll now receive instant alerts." });
+                    toast("Notifications Enabled! 🔔", { description: "You'll now receive instant alerts." });
                   } else {
-                    toast({ title: "Permission Denied", description: "Please allow notifications in your browser settings.", variant: "destructive" });
+                    toast.error("Permission Denied", { description: "Please allow notifications in your browser settings." });
                   }
                 }
               }}

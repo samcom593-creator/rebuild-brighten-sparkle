@@ -33,7 +33,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { advanceHireStage } from "@/components/hires/HireStageControl";
@@ -333,11 +333,7 @@ export function AgentQuickEditDialog({
 
   const handleSaveChanges = async () => {
     if (!displayName.trim()) {
-      toast({
-        title: "Name required",
-        description: "Please enter a display name for this agent.",
-        variant: "destructive",
-      });
+      toast.error("Name required", { description: "Please enter a display name for this agent." });
       return;
     }
 
@@ -436,21 +432,13 @@ export function AgentQuickEditDialog({
         }
       }
 
-      toast({
-        title: "Changes saved",
-        description: contractingWarning ?? `Agent "${displayName.trim()}" updated successfully.${stageNote ? ` ${stageNote}` : ""}`,
-        variant: contractingWarning ? "destructive" : undefined,
-      });
+      (contractingWarning ? toast.warning : toast)("Changes saved", { description: contractingWarning ?? `Agent "${displayName.trim()}" updated successfully.${stageNote ? ` ${stageNote}` : ""}` });
       
       onUpdate?.();
       onOpenChange(false);
     } catch (error) {
       console.error("Error saving changes:", error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to save changes. Please try again.",
-        variant: "destructive",
-      });
+      toast.error("Error", { description: error instanceof Error ? error.message : "Failed to save changes. Please try again." });
     } finally {
       setSaving(false);
     }
@@ -458,7 +446,7 @@ export function AgentQuickEditDialog({
 
   const handleUpdateEmail = async () => {
     if (!newEmail.trim() || !newEmail.includes("@")) {
-      toast({ title: "Valid email required", variant: "destructive" });
+      toast.error("Valid email required");
       return;
     }
     if (!agentData?.user_id) return;
@@ -472,20 +460,13 @@ export function AgentQuickEditDialog({
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      toast({
-        title: "Email updated ✅",
-        description: `Email changed to ${newEmail.trim()}. Notifications sent.`,
-      });
+      toast("Email updated ✅", { description: `Email changed to ${newEmail.trim()}. Notifications sent.` });
       setEmail(newEmail.trim());
       setNewEmail("");
       onUpdate?.();
     } catch (error: any) {
       console.error("Error updating email:", error);
-      toast({
-        title: "Email update failed",
-        description: error.message || "Failed to update email.",
-        variant: "destructive",
-      });
+      toast.error("Email update failed", { description: error.message || "Failed to update email." });
     } finally {
       setUpdatingEmail(false);
     }
@@ -493,7 +474,7 @@ export function AgentQuickEditDialog({
 
   const handleSendResetLink = async () => {
     if (!email.trim()) {
-      toast({ title: "No email on file", variant: "destructive" });
+      toast.error("No email on file");
       return;
     }
     setSendingResetLink(true);
@@ -503,9 +484,9 @@ export function AgentQuickEditDialog({
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      toast({ title: "Reset link sent ✅", description: `Sent to ${email.trim()}.` });
+      toast("Reset link sent ✅", { description: `Sent to ${email.trim()}.` });
     } catch (error: any) {
-      toast({ title: "Reset link failed", description: error?.message || "Could not send the reset link.", variant: "destructive" });
+      toast.error("Reset link failed", { description: error?.message || "Could not send the reset link." });
     } finally {
       setSendingResetLink(false);
     }
@@ -513,7 +494,7 @@ export function AgentQuickEditDialog({
 
   const handleResetPassword = async () => {
     if (!newPassword.trim() || newPassword.length < 6) {
-      toast({ title: "Password must be at least 6 characters", variant: "destructive" });
+      toast.error("Password must be at least 6 characters");
       return;
     }
     if (!agentData?.user_id) return;
@@ -527,18 +508,11 @@ export function AgentQuickEditDialog({
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      toast({
-        title: "Password reset ✅",
-        description: "New password has been set for this agent.",
-      });
+      toast("Password reset ✅", { description: "New password has been set for this agent." });
       setNewPassword("");
     } catch (error: any) {
       console.error("Error resetting password:", error);
-      toast({
-        title: "Password reset failed",
-        description: error.message || "Failed to reset password.",
-        variant: "destructive",
-      });
+      toast.error("Password reset failed", { description: error.message || "Failed to reset password." });
     } finally {
       setResettingPassword(false);
     }
@@ -555,17 +529,10 @@ export function AgentQuickEditDialog({
 
       if (error) throw error;
 
-      toast({
-        title: "Login sent ✅",
-        description: "Portal login email sent to agent (includes Discord link).",
-      });
+      toast("Login sent ✅", { description: "Portal login email sent to agent (includes Discord link)." });
     } catch (error: any) {
       console.error("Error sending login:", error);
-      toast({
-        title: "Send failed",
-        description: error.message || "Failed to send login email.",
-        variant: "destructive",
-      });
+      toast.error("Send failed", { description: error.message || "Failed to send login email." });
     } finally {
       setSendingLogin(false);
     }
@@ -592,17 +559,10 @@ export function AgentQuickEditDialog({
       } as never);
       const res = data as { ok?: boolean; error?: string } | null;
       if (error || !res?.ok) throw new Error(res?.error || error?.message || "Mode switch failed");
-      toast({
-        title: "Account mode updated",
-        description: `${currentName} is now ${MODE_LABELS[mode] ?? mode}.`,
-      });
+      toast("Account mode updated", { description: `${currentName} is now ${MODE_LABELS[mode] ?? mode}.` });
     } catch (e) {
       setAccountMode(prev); // revert on failure
-      toast({
-        title: "Mode switch failed",
-        description: e instanceof Error ? e.message : "Could not switch account mode.",
-        variant: "destructive",
-      });
+      toast.error("Mode switch failed", { description: e instanceof Error ? e.message : "Could not switch account mode." });
     } finally {
       setSavingMode(false);
     }
@@ -616,17 +576,10 @@ export function AgentQuickEditDialog({
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      toast({
-        title: "Link sent to manager ✅",
-        description: data?.message || "Login link forwarded to the agent's manager.",
-      });
+      toast("Link sent to manager ✅", { description: data?.message || "Login link forwarded to the agent's manager." });
     } catch (error: any) {
       console.error("Error sending login to manager:", error);
-      toast({
-        title: "Send failed",
-        description: error.message || "Failed to send login link to manager.",
-        variant: "destructive",
-      });
+      toast.error("Send failed", { description: error.message || "Failed to send login link to manager." });
     } finally {
       setSendingLoginToManager(false);
     }
@@ -634,11 +587,11 @@ export function AgentQuickEditDialog({
 
   const handleMerge = async () => {
     if (!selectedMergeId) {
-      toast({ title: "Select an agent", description: "Please select an agent to merge with.", variant: "destructive" });
+      toast.error("Select an agent", { description: "Please select an agent to merge with." });
       return;
     }
     if (selectedMergeId === agentId) {
-      toast({ title: "Invalid selection", description: "You can't merge an agent into itself.", variant: "destructive" });
+      toast.error("Invalid selection", { description: "You can't merge an agent into itself." });
       return;
     }
 
@@ -651,12 +604,12 @@ export function AgentQuickEditDialog({
       if (error) throw new Error(error.message || "Edge function error");
       if (data?.error) throw new Error(data.error);
 
-      toast({ title: "Agents merged ✅", description: data?.message || "Records have been combined successfully." });
+      toast("Agents merged ✅", { description: data?.message || "Records have been combined successfully." });
       onUpdate?.();
       onOpenChange(false);
     } catch (error: any) {
       console.error("Error merging agents:", error);
-      toast({ title: "Merge failed", description: error?.message || "Failed to merge agent records.", variant: "destructive" });
+      toast.error("Merge failed", { description: error?.message || "Failed to merge agent records." });
     } finally {
       setMerging(false);
     }
@@ -670,14 +623,14 @@ export function AgentQuickEditDialog({
         .update({ is_inactive: true, status: "inactive" })
         .eq("id", agentId);
       if (error) throw error;
-      toast({ title: "Agent marked as inactive", description: `${currentName} is now hidden from leaderboards.` });
+      toast("Agent marked as inactive", { description: `${currentName} is now hidden from leaderboards.` });
       setShowDeleteConfirm(false);
       setDeleteStep("choice");
       onUpdate?.();
       onOpenChange(false);
     } catch (error) {
       console.error("Error inactivating agent:", error);
-      toast({ title: "Failed to inactivate", description: "Could not mark agent as inactive.", variant: "destructive" });
+      toast.error("Failed to inactivate", { description: "Could not mark agent as inactive." });
     } finally {
       setDeleting(false);
     }
@@ -712,14 +665,14 @@ export function AgentQuickEditDialog({
       const { error: agentError } = await supabase.from("agents").delete().eq("id", agentId);
       if (agentError) throw agentError;
 
-      toast({ title: "Agent deleted", description: `${currentName} and all associated records have been removed.` });
+      toast("Agent deleted", { description: `${currentName} and all associated records have been removed.` });
       setShowDeleteConfirm(false);
       setDeleteStep("choice");
       onUpdate?.();
       onOpenChange(false);
     } catch (error) {
       console.error("Error deleting agent:", error);
-      toast({ title: "Delete failed", description: "Failed to delete agent. Please try again.", variant: "destructive" });
+      toast.error("Delete failed", { description: "Failed to delete agent. Please try again." });
     } finally {
       setDeleting(false);
     }
@@ -727,11 +680,11 @@ export function AgentQuickEditDialog({
 
   const handleCreateAndSendLogin = async () => {
     if (!email.trim()) {
-      toast({ title: "Email required", description: "Please enter an email address.", variant: "destructive" });
+      toast.error("Email required", { description: "Please enter an email address." });
       return;
     }
     if (!displayName.trim()) {
-      toast({ title: "Name required", description: "Please enter a name.", variant: "destructive" });
+      toast.error("Name required", { description: "Please enter a name." });
       return;
     }
 
@@ -749,12 +702,12 @@ export function AgentQuickEditDialog({
 
       if (error) throw error;
 
-      toast({ title: "Login Sent! 🎉", description: `Portal access sent to ${email}. Agent is now LIVE.` });
+      toast("Login Sent! 🎉", { description: `Portal access sent to ${email}. Agent is now LIVE.` });
       onUpdate?.();
       onOpenChange(false);
     } catch (error: any) {
       console.error("Error creating agent login:", error);
-      toast({ title: "Creation failed", description: error.message || "Failed to create agent login.", variant: "destructive" });
+      toast.error("Creation failed", { description: error.message || "Failed to create agent login." });
     } finally {
       setCreating(false);
     }
@@ -858,8 +811,8 @@ export function AgentQuickEditDialog({
                 onClick={() => {
                   navigator.clipboard
                     .writeText(`https://apex-financial.org/r/${agentData.ref_slug}`)
-                    .then(() => toast({ title: "Link copied", description: "Applications through it credit and place under this person." }))
-                    .catch(() => toast({ title: "Could not copy", variant: "destructive" }));
+                    .then(() => toast("Link copied", { description: "Applications through it credit and place under this person." }))
+                    .catch(() => toast.error("Could not copy"));
                 }}
               >
                 Copy

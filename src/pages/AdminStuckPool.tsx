@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AlertTriangle, Compass, MessageSquare, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 type StuckRow = {
@@ -93,13 +93,13 @@ export default function AdminStuckPool() {
       metadata: { source: "admin_stuck_pool_button" },
     });
     if (error) {
-      toast({ title: "Failed to queue nudge", description: error.message, variant: "destructive" });
+      toast.error("Failed to queue nudge", { description: error.message });
       return;
     }
     // trg_next_step_messages_auto_dispatch sends the row on insert. This used to
     // also call the dispatcher's fan-out ({limit: 5}), which sent the 5 OLDEST
     // queued rows to other people and raced the trigger for this one.
-    toast({ title: "Nudge queued", description: `${row.first_name ?? "Person"} → ${row.derived_stage_key}` });
+    toast("Nudge queued", { description: `${row.first_name ?? "Person"} → ${row.derived_stage_key}` });
     refetch();
   }
 

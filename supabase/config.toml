@@ -771,6 +771,11 @@ verify_jwt = false
 [functions.instagram-comments-backfill]
 verify_jwt = false
 
+# MP-305 Wave 3: cron caller sends the apex_bot_token bearer (not a JWT); the
+# function checks it itself. Gateway verify_jwt would 401 every tick.
+[functions.instagram-dm-nudge]
+verify_jwt = false
+
 [functions.instagram-dm-replay]
 verify_jwt = false
 

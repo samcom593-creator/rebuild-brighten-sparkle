@@ -99,7 +99,10 @@ jobs:
       # commit is how a gate trains operators to reach for --no-verify. Same
       # reasoning that moved check:tsc-error-count to CI-only on 2026-08-11.
       - name: Run unit tests (vitest, 999 tests / 100 files)
-        run: npm test
+        # Tee'd for the same reason as verify:core below: a failing test is
+        # named in an annotation by the failure step (2026-10-28).
+        shell: bash
+        run: npm test 2>&1 | tee vitest.log
 
       - name: Run verify:core (full roster, every failure reported)
         # Mirrors the local pre-commit hook chain so a --no-verify or
@@ -126,5 +129,5 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          node scripts/annotate-verify-failures.mjs verify-core.log || true
+          node scripts/annotate-verify-failures.mjs verify-core.log vitest.log || true
           echo "::error::verify:core FAILED on ${{ github.sha }}. Read WHICH check failed in the log above before assuming a bypass. If it was check:tsc-error-count, pre-commit could NOT have caught it: since 2026-08-11 the type-check runs ONLY here, because locally it costs 881s (measured) and a 15-minute hook was training operators to abandon commits mid-gate. Reproduce it with 'npm run check:tsc-error-count' and budget ~15 minutes. For any OTHER check in the chain, .husky/pre-commit would have caught it before push if active — confirm core.hooksPath is set to .husky (run 'npm install' once after clone to auto-activate via the prepare script), then re-run that check locally."

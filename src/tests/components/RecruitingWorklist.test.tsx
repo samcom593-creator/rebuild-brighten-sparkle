@@ -74,6 +74,15 @@ vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({ user: { id: ME }, isAdmin: true, isManager: false, isVa: false, isVaManager: false, isRecruiter: false }),
 }));
 
+// The colour layer's side effects (2026-10-28) are mocked so a test can say exactly when they fire:
+// bubbles once after a confirmed save, from the button pressed, never on load and never after an
+// error; a tick when the list changes. prefersReducedMotion true makes CountUp paint the final
+// number at once.
+vi.mock("@/lib/celebrate", () => ({ celebrate: vi.fn(() => Promise.resolve()), prefersReducedMotion: () => true }));
+vi.mock("@/hooks/useSoundEffects", () => ({ playSoundEffect: vi.fn(), useSoundEffects: () => ({ playSound: vi.fn() }) }));
+
+import { celebrate } from "@/lib/celebrate";
+import { playSoundEffect } from "@/hooks/useSoundEffects";
 import { RecruitingWorklist } from "@/components/pipeline/worklist/RecruitingWorklist";
 
 function renderAt(path: string) {
@@ -95,7 +104,10 @@ beforeEach(() => {
   });
   window.sessionStorage.clear();
   db.rpcCalls = [];
+  db.rpc = () => ({ data: null, error: null });
   db.rows = [makeRow("a1"), makeRow("a2", { recruiting_owner_user_id: ME, next_action: "Call", next_action_due_at: "2020-01-01T00:00:00Z", next_action_set_at: "2019-12-31T00:00:00Z", last_contacted_at: "2019-12-30T00:00:00Z" })];
+  vi.mocked(celebrate).mockClear();
+  vi.mocked(playSoundEffect).mockClear();
 });
 
 afterEach(() => vi.restoreAllMocks());
@@ -104,6 +116,8 @@ describe("RecruitingWorklist", () => {
   it("shows full-dataset queue counts and keeps assigned-to-me distinct from org-wide", async () => {
     renderAt("/dashboard/recruiting?queue=likely");
     const queues = await screen.findByRole("navigation", { name: "Saved queues" });
+    // Nothing plays on page load.
+    expect(playSoundEffect).not.toHaveBeenCalled();
     // Two big lists are always visible. Call today, New, Worked today and Booked open from their
     // tiles and nowhere else (one entry point per list); the rest sit behind "More lists".
     expect(within(queues).getByRole("button", { name: /Mine\s*1/ })).toBeTruthy();
@@ -133,6 +147,65 @@ describe("RecruitingWorklist", () => {
     expect(callToday.getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByText(/Call today: 1 person\./)).toBeTruthy();
     expect(within(screen.getByRole("list", { name: "Queue" })).getByRole("button", { name: /Sample A2/ })).toBeTruthy();
+    // Moving to another list is one short tick; the tile itself wears the "act now" tone with a bubble the reader skips.
+    expect(playSoundEffect).toHaveBeenCalledTimes(1);
+    expect(playSoundEffect).toHaveBeenCalledWith("tick");
+    expect(callToday.querySelector("span[aria-hidden='true']")?.className).toMatch(/text-tone-hot/);
+    expect(within(board).getByRole("button", { name: /Worked today/ }).querySelector("span[aria-hidden='true']")?.className).toMatch(/text-tone-good/);
+    expect(within(board).getByRole("button", { name: /Booked/ }).querySelector("span[aria-hidden='true']")?.className).toMatch(/text-tone-cool/);
+  });
+
+  it("the open list wears the gold tint and says so with aria-pressed; a tap on another list ticks once", async () => {
+    renderAt("/dashboard/recruiting?queue=likely");
+    const queues = await screen.findByRole("navigation", { name: "Saved queues" });
+    const likely = within(queues).getByRole("button", { name: /Likely to join/ });
+    const mine = within(queues).getByRole("button", { name: /^Mine/ });
+    expect(likely).toHaveAttribute("aria-pressed", "true");
+    expect(likely.className).toMatch(/bg-tone-gold\/12/);
+    expect(likely.className).toMatch(/text-tone-gold/);
+    expect(likely.className).toMatch(/border-tone-gold\/35/);
+    expect(likely.className).toMatch(/\bh-11\b/);
+    expect(mine).toHaveAttribute("aria-pressed", "false");
+    expect(mine.className).not.toMatch(/tone-gold/);
+    expect(playSoundEffect).not.toHaveBeenCalled();
+
+    fireEvent.click(mine);
+    expect(playSoundEffect).toHaveBeenCalledTimes(1);
+    expect(playSoundEffect).toHaveBeenCalledWith("tick");
+    expect(within(queues).getByRole("button", { name: /^Mine/ })).toHaveAttribute("aria-pressed", "true");
+    expect(within(queues).getByRole("button", { name: /^Mine/ }).className).toMatch(/bg-tone-gold\/12/);
+    expect(within(queues).getByRole("button", { name: /Likely to join/ })).toHaveAttribute("aria-pressed", "false");
+    expect(within(queues).getByRole("button", { name: /Likely to join/ }).className).not.toMatch(/tone-gold/);
+    // Tapping the list that is already open changes nothing, so it makes no sound.
+    fireEvent.click(within(queues).getByRole("button", { name: /^Mine/ }));
+    expect(playSoundEffect).toHaveBeenCalledTimes(1);
+    expect(celebrate).not.toHaveBeenCalled();
+  });
+
+  it("each row has an initials bubble in the status tone that assistive technology skips; the name stays the row's name", async () => {
+    renderAt("/dashboard/recruiting?queue=all_open");
+    const list = await screen.findByRole("list", { name: "Queue" });
+    expect(list.className).toMatch(/apex-rise-list/);
+    const a2 = within(list).getByRole("button", { name: /Sample A2/ });
+    expect(a2).toHaveAccessibleName(/^Sample A2/);
+    expect(a2.className).toMatch(/apex-lift/);
+    const bubble = a2.querySelector("span[aria-hidden='true']");
+    expect(bubble?.textContent).toBe("SA");
+    expect(bubble?.className).toMatch(/\bh-10\b/);
+    // Late is "act now": the same tone the status pill beside the name wears.
+    expect(bubble?.className).toMatch(/text-tone-hot/);
+    expect(within(a2).getByText(/^Late · /).className).toMatch(/text-tone-hot/);
+    const a1 = within(list).getByRole("button", { name: /Sample A1/ });
+    expect(a1).toHaveAccessibleName(/^Sample A1/);
+    expect(a1.querySelector("span[aria-hidden='true']")?.className).toMatch(/text-tone-slate/); // no next step: quiet
+    // The panel header carries the same bubble, larger, beside a 20px name and the status in words.
+    // (The page opens the first person a tick after the list renders, so wait for the heading.)
+    const panel = screen.getByRole("complementary", { name: "Selected person" });
+    const title = await within(panel).findByRole("heading", { level: 2, name: "Sample A2" });
+    expect(title.className).toMatch(/\btext-xl\b/);
+    const big = panel.querySelector("span[aria-hidden='true'].h-12");
+    expect(big?.textContent).toBe("SA");
+    expect(big?.className).toMatch(/text-tone-hot/);
   });
 
   it("Worked today and Booked are lists too: each tile opens exactly the people it counts", async () => {
@@ -183,21 +256,28 @@ describe("RecruitingWorklist", () => {
     fireEvent.change(within(panel).getByLabelText("Due (your time)"), { target: { value: "2026-10-08T10:00" } });
 
     db.rpc = () => ({ data: null, error: { message: "conflict: another outcome (callback) was recorded at x", code: "40001" } });
-    fireEvent.click(within(panel).getByRole("button", { name: "Save" }));
+    const save = within(panel).getByRole("button", { name: "Save" });
+    fireEvent.click(save);
     expect(await within(panel).findByRole("alert")).toBeTruthy();
     expect(within(panel).getByRole("alert").textContent).toMatch(/Someone else updated/);
     expect((within(panel).getByLabelText("Notes") as HTMLTextAreaElement).value).toBe("Rang out twice, left voicemail");
     const stored = Object.keys(window.sessionStorage).find((k) => k.includes(":draft:") && k.endsWith(":a1"));
     expect(stored).toBeTruthy();
+    // A failed save is the error alone: no bubbles, no sound.
+    expect(celebrate).not.toHaveBeenCalled();
+    expect(playSoundEffect).not.toHaveBeenCalled();
 
     db.rpc = (fn, args) => ({
       data: { ...makeRow("a1"), last_contact_outcome: "no_answer", last_contact_outcome_at: "2026-10-06T19:00:00.123456+00:00", last_contacted_at: "2026-10-06T19:00:00Z", recruiting_owner_user_id: ME, next_action: args?.p_next_action, next_action_due_at: args?.p_next_action_due_at, next_action_set_at: "2026-10-06T19:00:00Z", log_id: "log-1" },
       error: null,
     });
-    fireEvent.click(within(panel).getByRole("button", { name: "Save" }));
+    fireEvent.click(save);
     // A confirmed save resets the form: the outcome is cleared, so the follow-up fields fold away.
     await waitFor(() => expect(within(panel).queryByLabelText("Notes")).toBeNull());
     expect(within(panel).getByRole("button", { name: "No answer" }).getAttribute("aria-pressed")).toBe("false");
+    // The win is marked once, after the server confirmed it, from the button that was pressed.
+    await waitFor(() => expect(celebrate).toHaveBeenCalledTimes(1));
+    expect(celebrate).toHaveBeenCalledWith("save", save);
 
     const call = db.rpcCalls.filter((c) => c.fn === "record_recruiting_outcome").at(-1);
     expect(call?.args).toMatchObject({
@@ -253,6 +333,76 @@ describe("RecruitingWorklist", () => {
       p_next_action: "Try again",
       p_next_action_due_at: new Date(expected).toISOString(),
     });
+  });
+
+  it("a booked appointment celebrates with the chime kind, once, after the save landed", async () => {
+    renderAt("/dashboard/recruiting?queue=uncontacted&person=a1");
+    const panel = await screen.findByRole("complementary", { name: "Selected person" });
+    const booked = within(panel).getByRole("button", { name: "Appointment booked" });
+    // Each outcome carries a small icon in its meaning's tone; the words are unchanged and the icon is skipped by a reader.
+    expect(booked.querySelector("svg")?.getAttribute("class")).toMatch(/text-tone-cool/);
+    expect(booked.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
+    expect(within(panel).getByRole("button", { name: "No answer" }).querySelector("svg")?.getAttribute("class")).toMatch(/text-tone-slate/);
+    expect(within(panel).getByRole("button", { name: "Callback" }).querySelector("svg")?.getAttribute("class")).toMatch(/text-tone-warm/);
+    expect(within(panel).getByRole("button", { name: "Interested" }).querySelector("svg")?.getAttribute("class")).toMatch(/text-tone-good/);
+    expect(within(panel).getByRole("button", { name: "Not interested" }).querySelector("svg")?.getAttribute("class")).toMatch(/text-tone-hot/);
+    expect(within(panel).getByRole("button", { name: "Wrong number" }).querySelector("svg")?.getAttribute("class")).toMatch(/text-tone-hot/);
+    fireEvent.click(booked);
+    expect(booked).toHaveAttribute("aria-pressed", "true");
+    expect(booked.className).toMatch(/bg-tone-cool\/12/);
+    expect(within(panel).getByRole("button", { name: "No answer" }).className).not.toMatch(/bg-tone-/);
+    expect(celebrate).not.toHaveBeenCalled();
+    fireEvent.change(within(panel).getByLabelText("Due (your time)"), { target: { value: "2026-11-02T10:00" } });
+
+    db.rpc = (fn, args) => ({
+      data: { ...makeRow("a1"), last_contact_outcome: "appointment_booked", last_contact_outcome_at: "2026-10-28T19:00:00Z", last_contacted_at: "2026-10-28T19:00:00Z", recruiting_owner_user_id: ME, next_action: args?.p_next_action, next_action_due_at: args?.p_next_action_due_at, next_action_set_at: "2026-10-28T19:00:00Z", log_id: "log-3" },
+      error: null,
+    });
+    const next = within(panel).getByRole("button", { name: /Save & next person/ });
+    fireEvent.click(next);
+    await waitFor(() => expect(celebrate).toHaveBeenCalledTimes(1));
+    expect(celebrate).toHaveBeenCalledWith("booked", next);
+    const call = db.rpcCalls.filter((c) => c.fn === "record_recruiting_outcome").at(-1);
+    expect(call?.args).toMatchObject({ p_outcome: "appointment_booked", p_next_action: "Interview" });
+  });
+
+  it("the quick pick whose time fills the field wears the gold tint; typing a time by hand clears it", async () => {
+    renderAt("/dashboard/recruiting?queue=uncontacted&person=a1");
+    const panel = await screen.findByRole("complementary", { name: "Selected person" });
+    fireEvent.click(within(panel).getByRole("button", { name: "No answer" }));
+    // No answer prefills tomorrow 10 AM, the same value as the quick pick, so that pick is the chosen one.
+    const tomorrow = within(panel).getByRole("button", { name: "Tomorrow 10 AM" });
+    expect(tomorrow).toHaveAttribute("aria-pressed", "true");
+    expect(tomorrow.className).toMatch(/bg-tone-gold\/12/);
+    const threeDays = within(panel).getByRole("button", { name: "In 3 days" });
+    expect(threeDays).toHaveAttribute("aria-pressed", "false");
+    expect(threeDays.className).not.toMatch(/tone-gold/);
+    fireEvent.click(threeDays);
+    expect(threeDays).toHaveAttribute("aria-pressed", "true");
+    expect(threeDays.className).toMatch(/bg-tone-gold\/12/);
+    expect(within(panel).getByRole("button", { name: "Tomorrow 10 AM" })).toHaveAttribute("aria-pressed", "false");
+    expect((within(panel).getByLabelText("Due (your time)") as HTMLInputElement).value).toMatch(/T10:00$/);
+    fireEvent.change(within(panel).getByLabelText("Due (your time)"), { target: { value: "2026-11-05T09:30" } });
+    for (const name of ["In 2 hours", "Tomorrow 10 AM", "In 3 days", "Next week"]) {
+      expect(within(panel).getByRole("button", { name })).toHaveAttribute("aria-pressed", "false");
+    }
+    expect(playSoundEffect).not.toHaveBeenCalled();
+  });
+
+  it("saving Do not contact records it without bubbles or a sound", async () => {
+    renderAt("/dashboard/recruiting?queue=uncontacted&person=a1");
+    const panel = await screen.findByRole("complementary", { name: "Selected person" });
+    fireEvent.click(within(panel).getByRole("button", { name: /Do not contact…/ }));
+    fireEvent.click(within(panel).getByRole("button", { name: "Yes, do not contact" }));
+    db.rpc = () => ({
+      data: { ...makeRow("a1"), last_contact_outcome: "do_not_contact", last_contact_outcome_at: "2026-10-28T19:00:00Z", last_contacted_at: "2026-10-28T19:00:00Z", do_not_contact_at: "2026-10-28T19:00:00Z", recruiting_owner_user_id: ME, log_id: "log-4" },
+      error: null,
+    });
+    fireEvent.click(within(panel).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(db.rpcCalls.some((c) => c.fn === "record_recruiting_outcome" && c.args?.p_outcome === "do_not_contact")).toBe(true));
+    await waitFor(() => expect(within(panel).queryByText(/Do not contact is selected/)).toBeNull());
+    expect(celebrate).not.toHaveBeenCalled();
+    expect(playSoundEffect).not.toHaveBeenCalled();
   });
 
   it("the channel stays one line, Reached by Call, until Change opens the five choices", async () => {

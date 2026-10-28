@@ -1,8 +1,9 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { AlertTriangle, ChevronDown, ChevronLeft, ChevronRight, Columns3, List, Phone, RefreshCw, Search, SlidersHorizontal, Table2 } from "lucide-react";
+import { AlertTriangle, CalendarCheck, ChevronDown, ChevronLeft, ChevronRight, Columns3, List, Phone, PhoneCall, PhoneMissed, RefreshCw, Search, SlidersHorizontal, Sparkles, Table2 } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
+import { playSoundEffect } from "@/hooks/useSoundEffects";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
@@ -29,6 +30,7 @@ import {
   type WorklistRow,
 } from "@/lib/recruitingQueues";
 import { errorMessage } from "@/lib/queryState";
+import { TONE_CLASS, type Tone } from "@/lib/tones";
 import { loadNumber, saveNumber, scrollKey } from "@/lib/worklistDraftStore";
 import { cn } from "@/lib/utils";
 import { loadColumns, saveColumns, type WorklistColumnKey } from "@/lib/worklistColumns";
@@ -82,6 +84,19 @@ function matchesSearch(row: WorklistRow, q: string): boolean {
   if (digits.length >= 3 && (row.phone ?? "").replace(/\D/g, "").includes(digits)) return true;
   return false;
 }
+
+/**
+ * What each of Today's numbers stands for, in the shared tones (src/lib/tones.ts, 2026-10-28):
+ * people who need a call are "act now", new people are "new", calls made today are "going
+ * well", a booked meeting is "scheduled". Written once, beside the tiles that read it, so the
+ * colour and the icon can never say one thing while the label and the list say another.
+ */
+const TILE_LOOK: Record<"today" | "new" | "worked_today" | "booked", { tone: Tone; icon: ReactNode }> = {
+  today: { tone: "hot", icon: <PhoneMissed /> },
+  new: { tone: "cool", icon: <Sparkles /> },
+  worked_today: { tone: "good", icon: <PhoneCall /> },
+  booked: { tone: "cool", icon: <CalendarCheck /> },
+};
 
 /**
  * The recruiting contact workspace: saved queues -> person -> contact -> outcome ->
@@ -280,7 +295,12 @@ export function RecruitingWorklist() {
   const secondaryChosen = secondaryQueues.some((q) => q.key === queue);
   // The secondary lists stay open while one of them is chosen, so the selection is never hidden.
   const secondaryOpen = moreListsOpen || secondaryChosen;
-  const pickQueue = (key: QueueKey) => setParam({ queue: key, person: null });
+  // A short tick when the list moves (tile, chip or the phone's picker), never on load and
+  // never for a tap that changes nothing.
+  const pickQueue = (key: QueueKey) => {
+    if (key !== queue) playSoundEffect("tick");
+    setParam({ queue: key, person: null });
+  };
   const board = computeScoreboard(counts);
   const definitionOf = (key: QueueKey) => QUEUE_DEFINITIONS.find((q) => q.key === key)?.description;
   const licenseLabel = LICENSE_FILTERS.find((f) => f.value === license)?.label ?? license;
@@ -328,6 +348,8 @@ export function RecruitingWorklist() {
       <PageHeader
         title="Call list"
         subtitle="Call people, record what happened, set the next step."
+        icon={<Phone />}
+        tone="gold"
         primaryAction={!panelInline && filtered.length > 0 ? (
           <Button size="lg" className="h-12 text-base" onClick={() => selectPerson(filtered[0].id)}>
             <Phone className="h-5 w-5" /> Start calling
@@ -389,10 +411,10 @@ export function RecruitingWorklist() {
         tiles={[
           // Hints are measured to two lines on a 390px phone (about ten characters a line); the full
           // rule is the tile's title and the "List rule" line under Data status.
-          { label: "Call today", value: score(board.callToday), hint: "Due today or late", definition: definitionOf("today"), onSelect: () => pickQueue("today"), active: queue === "today", emphasis: true },
-          { label: "New", value: score(board.newThisWeek), hint: "Not yet worked", definition: definitionOf("new"), onSelect: () => pickQueue("new"), active: queue === "new" },
-          { label: "Worked today", value: score(board.workedToday), hint: "Outcome saved", definition: definitionOf("worked_today"), onSelect: () => pickQueue("worked_today"), active: queue === "worked_today" },
-          { label: "Booked", value: score(board.booked), hint: "Meeting booked", definition: definitionOf("booked"), onSelect: () => pickQueue("booked"), active: queue === "booked" },
+          { label: "Call today", value: score(board.callToday), hint: "Due today or late", definition: definitionOf("today"), onSelect: () => pickQueue("today"), active: queue === "today", emphasis: true, ...TILE_LOOK.today },
+          { label: "New", value: score(board.newThisWeek), hint: "Not yet worked", definition: definitionOf("new"), onSelect: () => pickQueue("new"), active: queue === "new", ...TILE_LOOK.new },
+          { label: "Worked today", value: score(board.workedToday), hint: "Outcome saved", definition: definitionOf("worked_today"), onSelect: () => pickQueue("worked_today"), active: queue === "worked_today", ...TILE_LOOK.worked_today },
+          { label: "Booked", value: score(board.booked), hint: "Meeting booked", definition: definitionOf("booked"), onSelect: () => pickQueue("booked"), active: queue === "booked", ...TILE_LOOK.booked },
         ]}
       />
 
@@ -413,7 +435,7 @@ export function RecruitingWorklist() {
                 title={secondaryChosen ? "Pick another list to fold these away" : undefined}
                 onClick={() => setMoreListsOpen((open) => !open)}
                 className={cn(
-                  "inline-flex h-12 items-center gap-2 rounded-lg px-4 text-base font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)] disabled:cursor-default disabled:hover:bg-transparent",
+                  "inline-flex h-11 items-center gap-2 rounded-lg px-4 text-base font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)] disabled:cursor-default disabled:hover:bg-transparent",
                   secondaryOpen && "text-foreground",
                 )}
               >
@@ -580,7 +602,9 @@ export function RecruitingWorklist() {
             {/* bg-card and px-5 match the inline panel, so the buttons inside read the same on both
                 surfaces and the sticky save row (which bleeds into the side padding) lines up. No
                 bottom padding, for the same reason as the aside. */}
-            <SheetContent side="right" className="w-full overflow-y-auto bg-card px-5 pt-5 pb-0 sm:max-w-lg">
+            {/* apex-page-slot: the sheet is portalled outside the page slot, so without it the 13px
+                and 15px operating type (src/styles/delight.css) would not reach the person panel. */}
+            <SheetContent side="right" className="apex-page-slot w-full overflow-y-auto bg-card px-5 pt-5 pb-0 sm:max-w-lg">
               <SheetHeader className="sr-only">
                 <SheetTitle>{selected ? fullName(selected) : "Person"}</SheetTitle>
                 <SheetDescription>Contact, record the outcome and set the next step.</SheetDescription>
@@ -630,7 +654,11 @@ const LICENSE_FILTERS = [
   { value: "licensed", label: "Licensed (self-reported)" },
 ] as const;
 
-/** One list button: the name and its count, large enough to hit without aiming. */
+/**
+ * One list button: the name and its count, 44px tall so it can be hit without aiming. The
+ * chosen list wears the gold tint (the one brand moment on this row); its words and count
+ * are unchanged and aria-pressed still says which one is open.
+ */
 function QueueButton({ def, count, active, onPick, compact }: {
   def: QueueDefinition;
   count: number;
@@ -645,15 +673,15 @@ function QueueButton({ def, count, active, onPick, compact }: {
       aria-pressed={active}
       onClick={() => onPick(def.key)}
       className={cn(
-        "inline-flex shrink-0 items-center gap-2.5 whitespace-nowrap rounded-lg border font-medium transition-colors focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
-        compact ? "h-11 px-3.5 text-sm" : "h-12 px-4 text-base",
+        "inline-flex h-11 shrink-0 items-center gap-2.5 whitespace-nowrap rounded-lg border font-medium transition-colors focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
+        compact ? "px-3.5 text-sm" : "px-4 text-base",
         active
-          ? "border-primary/60 bg-primary/15 text-foreground"
+          ? cn(TONE_CLASS.gold.soft, TONE_CLASS.gold.text, TONE_CLASS.gold.border)
           : "border-border bg-card text-foreground hover:bg-muted/50",
       )}
     >
       {def.label}
-      <span className={cn("tabular-nums", active ? "text-foreground" : "text-muted-foreground")}>{count.toLocaleString()}</span>
+      <span className={cn("tabular-nums", !active && "text-muted-foreground")}>{count.toLocaleString()}</span>
     </button>
   );
 }

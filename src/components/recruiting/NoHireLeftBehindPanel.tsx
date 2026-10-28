@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ArrowRight, ChevronDown, UserCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { ToneBubble, TonePill } from "@/components/ui/delight/ToneBubble";
 import { OnboardingExceptionQueue } from "@/components/onboarding/OnboardingExceptionQueue";
 import { useOnboardingExceptionFacts } from "@/components/onboarding/useOnboardingExceptionFacts";
 import { buildExceptionQueue } from "@/lib/onboardingExceptions";
@@ -27,6 +28,11 @@ import { buildExceptionQueue } from "@/lib/onboardingExceptions";
  * Grow redesign (2026-10-28): under the recruiting worklist it was a second full
  * dashboard. It is now one summary row (title, counts, Open queue) with the preview
  * one tap away, so the page has one job until someone asks for this one.
+ *
+ * Colour layer (2026-10-28): the two counts are tone pills in the shared vocabulary
+ * (src/lib/tones.ts): open steps need a nudge, a hire blocked from writing business is
+ * "act now", and a zero on either reads as going well. Onboarding is paperwork, so the
+ * title's bubble is royal. The words are the same as before.
  */
 export function NoHireLeftBehindPanel() {
   const facts = useOnboardingExceptionFacts();
@@ -40,16 +46,22 @@ export function NoHireLeftBehindPanel() {
       <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <h2 id="nhlb-title" className="flex items-center gap-2 text-base font-semibold text-foreground">
-            <UserCheck className="h-5 w-5 text-primary" />No Hire Left Behind
+            <ToneBubble tone="royal" size="sm"><UserCheck /></ToneBubble>No Hire Left Behind
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            New hires with an open onboarding step.{" "}
-            {facts.isError
-              ? "The queue could not load. Open it to retry."
-              : facts.isLoading
-              ? "Counting them now."
-              : `${queue.length} ${queue.length === 1 ? "hire" : "hires"} with open steps · ${blocking} blocked from writing business.`}
+            New hires with an open onboarding step.
+            {facts.isError ? " The queue could not load. Open it to retry." : facts.isLoading ? " Counting them now." : ""}
           </p>
+          {!facts.isError && !facts.isLoading && (
+            <p className="mt-2 flex flex-wrap items-center gap-2">
+              <TonePill tone={queue.length > 0 ? "warm" : "good"}>
+                {queue.length} {queue.length === 1 ? "hire" : "hires"} with open steps
+              </TonePill>
+              <TonePill tone={blocking > 0 ? "hot" : "good"}>
+                {blocking} blocked from writing business
+              </TonePill>
+            </p>
+          )}
         </div>
         <div className="flex shrink-0 gap-2">
           <Button

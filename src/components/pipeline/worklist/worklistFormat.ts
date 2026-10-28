@@ -144,6 +144,18 @@ export function humanizeKey(value: string | null | undefined): string {
   return value.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+/**
+ * The two letters inside a person's bubble (colour layer, 2026-10-28): the first letter of
+ * the first name and of the last name, "SA" for Sample A1. One letter when only one name is
+ * on file, and "" when neither is, so the bubble can show a plain person icon instead of
+ * inventing initials for "Name not provided".
+ */
+export function initialsOf(row: { first_name: string | null; last_name: string | null }): string {
+  const first = (row.first_name ?? "").trim();
+  const last = (row.last_name ?? "").trim();
+  return `${first.charAt(0)}${last.charAt(0)}`.toUpperCase();
+}
+
 export const VERIFIED_ZONE_OPTIONS = [
   { value: "America/New_York", label: "Eastern" },
   { value: "America/Chicago", label: "Central" },

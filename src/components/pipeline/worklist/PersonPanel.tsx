@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { AlertTriangle, ChevronRight, Clock, Loader2, Mail, MessageSquare, Pencil, Phone, UserPlus } from "lucide-react";
+import { AlertTriangle, Ban, CalendarCheck, ChevronRight, Clock, Loader2, Mail, MessageSquare, Pencil, Phone, PhoneMissed, PhoneOff, ThumbsDown, ThumbsUp, UserPlus, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { celebrate, type CelebrationKind, type CelebrationOrigin } from "@/lib/celebrate";
+import { TONE_CLASS, type Tone } from "@/lib/tones";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +26,7 @@ import {
   planCheck,
   validateOutcomeDraft,
   type ContactChannel,
+  type ContactOutcome,
   type OutcomeDraft,
   type WorklistRow,
 } from "@/lib/recruitingQueues";
@@ -35,6 +38,7 @@ import {
   type StaffMember,
   type StageDefinition,
 } from "./useRecruitingWorklist";
+import { PersonBubble } from "./WorklistViews";
 import {
   VERIFIED_ZONE_OPTIONS,
   formatDay,
@@ -77,9 +81,10 @@ const tomorrowTen = (now: Date): Date => { const d = new Date(now); d.setDate(d.
  * "your time"). Each returns a datetime-local value, so the field below shows exactly
  * what will be saved and can still be edited by hand.
  */
+const TOMORROW_LABEL = "Tomorrow 10 AM";
 const QUICK_PICKS: Array<{ label: string; at: (now: Date) => Date }> = [
   { label: "In 2 hours", at: (now) => new Date(now.getTime() + 2 * 60 * 60 * 1000) },
-  { label: "Tomorrow 10 AM", at: tomorrowTen },
+  { label: TOMORROW_LABEL, at: tomorrowTen },
   { label: "In 3 days", at: (now) => { const d = new Date(now); d.setDate(d.getDate() + 3); d.setHours(10, 0, 0, 0); return d; } },
   { label: "Next week", at: (now) => { const d = new Date(now); d.setDate(d.getDate() + 7); d.setHours(10, 0, 0, 0); return d; } },
 ];
@@ -91,6 +96,57 @@ const QUICK_PICKS: Array<{ label: string; at: (now: Date) => Date }> = [
  */
 const RAISED = "border-border bg-background";
 
+/**
+ * What each outcome means, in the shared tones (src/lib/tones.ts, 2026-10-28), with a small
+ * icon beside the unchanged words: a booked meeting is "scheduled", a callback "needs a
+ * nudge", no answer quiet, a no or a bad number "act now", interest "going well". The chosen
+ * button wears its tint; the words still carry the meaning.
+ */
+const OUTCOME_LOOK: Record<ContactOutcome, { tone: Tone; icon: LucideIcon }> = {
+  no_answer: { tone: "slate", icon: PhoneMissed },
+  callback: { tone: "warm", icon: Clock },
+  interested: { tone: "good", icon: ThumbsUp },
+  appointment_booked: { tone: "cool", icon: CalendarCheck },
+  not_interested: { tone: "hot", icon: ThumbsDown },
+  wrong_number: { tone: "hot", icon: PhoneOff },
+  do_not_contact: { tone: "hot", icon: Ban },
+};
+
+/** A chosen button's hover, one step deeper than its resting tint. Written out so Tailwind can see each class. */
+const TONE_HOVER: Record<Tone, string> = {
+  good: "hover:bg-tone-good/20",
+  warm: "hover:bg-tone-warm/20",
+  hot: "hover:bg-tone-hot/20",
+  cool: "hover:bg-tone-cool/20",
+  royal: "hover:bg-tone-royal/20",
+  gold: "hover:bg-tone-gold/20",
+  slate: "hover:bg-tone-slate/20",
+};
+
+/** The tint, hairline and hover of a chosen choice button; the text stays the foreground so the words read on both themes. */
+const chosenLook = (tone: Tone): string => cn("border text-foreground", TONE_CLASS[tone].soft, TONE_CLASS[tone].border, TONE_HOVER[tone]);
+
+/**
+ * The celebration a saved outcome earns: a chime for a booked meeting, a pop for any other
+ * call recorded (a no answer or a no is still work done). Stopping all contact is nothing
+ * to cheer, so it gets no bubbles and no sound.
+ */
+export function celebrationFor(outcome: ContactOutcome | null): CelebrationKind | null {
+  if (!outcome || outcome === "do_not_contact") return null;
+  return outcome === "appointment_booked" ? "booked" : "save";
+}
+
+/**
+ * Where the finger was, read before the save: "Save & next person" swaps the panel for the
+ * next person while the bubbles are still loading, and a detached button has no position.
+ */
+function pressedAt(control: Element | null): CelebrationOrigin {
+  if (!control || typeof window === "undefined") return control;
+  const r = control.getBoundingClientRect();
+  if (r.width === 0 && r.height === 0) return control;
+  return { x: (r.left + r.width / 2) / window.innerWidth, y: (r.top + r.height / 2) / window.innerHeight };
+}
+
 /** A labelled fold: the header shows the current value, so most people never need to open it. */
 function Fold({ title, value, children, tone }: { title: string; value?: ReactNode; children: ReactNode; tone?: "warning" }) {
   return (
@@ -99,7 +155,7 @@ function Fold({ title, value, children, tone }: { title: string; value?: ReactNo
         <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-90" />
         <span className="font-medium text-foreground">{title}</span>
         {value !== undefined && (
-          <span className={cn("ml-auto min-w-0 truncate text-sm", tone === "warning" ? "text-warning" : "text-muted-foreground")}>{value}</span>
+          <span className={cn("ml-auto min-w-0 truncate text-sm", tone === "warning" ? TONE_CLASS.warm.text : "text-muted-foreground")}>{value}</span>
         )}
       </summary>
       <div className="space-y-3 px-4 pb-4">{children}</div>
@@ -119,6 +175,9 @@ export function PersonPanel({ row, userId, backendReady, canAssign, staff, staff
   const [channelOpen, setChannelOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [zoneChoice, setZoneChoice] = useState<string>("");
+  // The quick pick whose time sits in the field below, so it can wear the gold tint. Cleared
+  // when the time is typed by hand, the plan mode flips, or the save lands.
+  const [quickPick, setQuickPick] = useState<string | null>(null);
   const { recordOutcome, setPlan } = useWorklistMutations();
   const history = useContactHistory(row.id, backendReady);
 
@@ -157,6 +216,7 @@ export function PersonPanel({ row, userId, backendReady, canAssign, staff, staff
     // their time would write a false record.
     if (def?.suggestedAction && !def.closes && !def.requiresDatedAction && !draft.nextActionDue) {
       patch.nextActionDue = isoToLocalInput(tomorrowTen(new Date()).toISOString());
+      setQuickPick(TOMORROW_LABEL);
     }
     if (def?.requiresDatedAction) setPlanMode("action");
     setPlanOnly(false);
@@ -167,14 +227,22 @@ export function PersonPanel({ row, userId, backendReady, canAssign, staff, staff
 
   const noteChannel = (channel: ContactChannel) => update({ channel });
 
-  const pickTime = (at: Date) => {
+  const pickTime = (label: string, at: Date) => {
     const value = isoToLocalInput(at.toISOString());
+    setQuickPick(label);
     update(planMode === "action" ? { nextActionDue: value } : { nextReview: value });
   };
 
-  const submitOutcome = async (advance: boolean) => {
-    // Captured now: once the save lands this row may leave the queue and reorder it.
+  const flipPlanMode = () => {
+    setQuickPick(null);
+    setPlanMode(planMode === "action" ? "waiting" : "action");
+  };
+
+  const submitOutcome = async (advance: boolean, control: Element | null) => {
+    // Captured now: once the save lands this row may leave the queue and reorder it, and
+    // the button pressed may be gone.
     const advanceTo = nextId;
+    const origin = pressedAt(control);
     const problem = validateOutcomeDraft(draft, row);
     if (problem) {
       setError(problem);
@@ -199,7 +267,12 @@ export function PersonPanel({ row, userId, backendReady, canAssign, staff, staff
       });
       clearDraft(userId, row.id);
       setDraft(EMPTY_DRAFT);
+      setQuickPick(null);
       toast.success(`${outcomeLabel(draft.outcome)} saved for ${fullName(row)}`);
+      // Only now, after the server confirmed it: bubbles from the button pressed. Never on an
+      // error (the catch below keeps the draft and says what went wrong).
+      const kind = celebrationFor(draft.outcome);
+      if (kind) void celebrate(kind, origin);
       onSaved(advance, advanceTo);
     } catch (e) {
       // The draft is deliberately kept exactly as typed.
@@ -207,7 +280,8 @@ export function PersonPanel({ row, userId, backendReady, canAssign, staff, staff
     }
   };
 
-  const submitPlanOnly = async () => {
+  const submitPlanOnly = async (control: Element | null) => {
+    const origin = pressedAt(control);
     const hasAction = Boolean(draft.nextAction.trim()) && Boolean(draft.nextActionDue);
     const hasWait = Boolean(draft.waitingReason.trim()) && Boolean(draft.nextReview);
     if (planMode === "action" ? !hasAction : !hasWait) {
@@ -232,8 +306,10 @@ export function PersonPanel({ row, userId, backendReady, canAssign, staff, staff
       });
       clearDraft(userId, row.id);
       setDraft(EMPTY_DRAFT);
+      setQuickPick(null);
       setPlanOnly(false);
       toast.success("Next step updated — no contact was recorded");
+      void celebrate("save", origin);
       onSaved(false, null);
     } catch (e) {
       setError(describeSaveError(e instanceof Error ? e.message : String(e)).text);
@@ -313,13 +389,18 @@ export function PersonPanel({ row, userId, backendReady, canAssign, staff, staff
     // pb-5: the panel owns its bottom padding so the containers (the aside and the sheet) can
     // end flush with the sticky save row. See the note on that row.
     <div className="flex h-full flex-col gap-6 pb-5">
-      {/* Who */}
+      {/* Who: the initials bubble in the status tone, the name, the status in words, the facts. */}
       <header className="space-y-2">
-        <div className="flex items-start justify-between gap-3">
-          <h2 className="text-2xl font-semibold leading-tight tracking-[-0.01em] text-foreground">{fullName(row)}</h2>
-          <StatusPill status={status} className="mt-1" />
+        <div className="flex items-start gap-3">
+          <PersonBubble row={row} status={status} size="lg" className="apex-pop mt-0.5" />
+          <div className="min-w-0 flex-1 space-y-1">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <h2 className="min-w-0 text-xl font-semibold leading-7 tracking-[-0.01em] text-foreground">{fullName(row)}</h2>
+              <StatusPill status={status} />
+            </div>
+            <p className="text-base leading-6 text-muted-foreground">{who}</p>
+          </div>
         </div>
-        <p className="text-base leading-6 text-muted-foreground">{who}</p>
         {blockers.length > 0 && (
           <p className="flex flex-wrap gap-x-3 text-sm font-medium text-destructive">
             {blockers.map((b) => <span key={b.key}>{b.label}</span>)}
@@ -400,22 +481,27 @@ export function PersonPanel({ row, userId, backendReady, canAssign, staff, staff
         <div>
           <h3 id={`outcome-${row.id}`} className="text-base font-semibold text-foreground">What happened?</h3>
           <div role="group" aria-labelledby={`outcome-${row.id}`} className="mt-3 grid grid-cols-2 gap-2">
-            {OUTCOME_DEFINITIONS.filter((def) => def.value !== "do_not_contact").map((def) => (
-              <Button
-                key={def.value}
-                type="button"
-                variant={draft.outcome === def.value ? "secondary" : "outline"}
-                aria-pressed={draft.outcome === def.value}
-                title={def.hint}
-                className={cn(
-                  "h-12 justify-start text-base",
-                  draft.outcome === def.value ? "border border-primary/60 bg-primary/15 text-foreground hover:bg-primary/20" : RAISED,
-                )}
-                onClick={() => pickOutcome(def.value)}
-              >
-                {def.label}
-              </Button>
-            ))}
+            {OUTCOME_DEFINITIONS.filter((def) => def.value !== "do_not_contact").map((def) => {
+              const look = OUTCOME_LOOK[def.value];
+              const Icon = look.icon;
+              const chosen = draft.outcome === def.value;
+              return (
+                // min-h-12 and a wrapping label: "Appointment booked" with its icon is two lines on a
+                // 390px phone, and a clipped word would be a worse button than a taller one.
+                <Button
+                  key={def.value}
+                  type="button"
+                  variant={chosen ? "secondary" : "outline"}
+                  aria-pressed={chosen}
+                  title={def.hint}
+                  className={cn("h-auto min-h-12 justify-start whitespace-normal py-2 text-left text-base leading-5", chosen ? chosenLook(look.tone) : RAISED)}
+                  onClick={() => pickOutcome(def.value)}
+                >
+                  <Icon aria-hidden="true" className={cn("shrink-0", TONE_CLASS[look.tone].text)} />
+                  {def.label}
+                </Button>
+              );
+            })}
           </div>
           {/* What the chosen outcome does, in words under the buttons; the title tooltip alone needs a mouse. */}
           {selectedDef && draft.outcome !== "do_not_contact" && (
@@ -513,22 +599,33 @@ export function PersonPanel({ row, userId, backendReady, canAssign, staff, staff
                     <Input id={`wr-${row.id}`} className="h-12 text-base" value={draft.waitingReason} onChange={(e) => update({ waitingReason: e.target.value })} placeholder="Reply to text" />
                   </div>
                 )}
+                {/* The pick whose time is in the field below wears the gold tint; the field stays the record. */}
                 <div className="flex flex-wrap gap-1.5" role="group" aria-label="Pick a time">
-                  {QUICK_PICKS.map((p) => (
-                    <Button key={p.label} type="button" variant="outline" className={cn("h-11 px-3.5 text-sm", RAISED)} onClick={() => pickTime(p.at(new Date()))}>
-                      {p.label}
-                    </Button>
-                  ))}
+                  {QUICK_PICKS.map((p) => {
+                    const chosen = quickPick === p.label;
+                    return (
+                      <Button
+                        key={p.label}
+                        type="button"
+                        variant="outline"
+                        aria-pressed={chosen}
+                        className={cn("h-11 px-3.5 text-sm", chosen ? chosenLook("gold") : RAISED)}
+                        onClick={() => pickTime(p.label, p.at(new Date()))}
+                      >
+                        {p.label}
+                      </Button>
+                    );
+                  })}
                 </div>
                 {planMode === "action" ? (
                   <div className="space-y-1.5">
                     <Label htmlFor={`nad-${row.id}`} className="text-sm text-muted-foreground">Due (your time)</Label>
-                    <Input id={`nad-${row.id}`} className="h-12 text-base" type="datetime-local" value={draft.nextActionDue} onChange={(e) => update({ nextActionDue: e.target.value })} />
+                    <Input id={`nad-${row.id}`} className="h-12 text-base" type="datetime-local" value={draft.nextActionDue} onChange={(e) => { setQuickPick(null); update({ nextActionDue: e.target.value }); }} />
                   </div>
                 ) : (
                   <div className="space-y-1.5">
                     <Label htmlFor={`nr-${row.id}`} className="text-sm text-muted-foreground">Review by (your time)</Label>
-                    <Input id={`nr-${row.id}`} className="h-12 text-base" type="datetime-local" value={draft.nextReview} onChange={(e) => update({ nextReview: e.target.value })} />
+                    <Input id={`nr-${row.id}`} className="h-12 text-base" type="datetime-local" value={draft.nextReview} onChange={(e) => { setQuickPick(null); update({ nextReview: e.target.value }); }} />
                   </div>
                 )}
                 <Button
@@ -536,7 +633,7 @@ export function PersonPanel({ row, userId, backendReady, canAssign, staff, staff
                   variant="link"
                   className="h-11 px-0 text-sm"
                   disabled={planMode === "action" && (selectedDef?.requiresDatedAction ?? false)}
-                  onClick={() => setPlanMode(planMode === "action" ? "waiting" : "action")}
+                  onClick={flipPlanMode}
                 >
                   {planMode === "action" ? "They'll get back to me instead" : "Set a next step instead"}
                 </Button>
@@ -571,17 +668,17 @@ export function PersonPanel({ row, userId, backendReady, canAssign, staff, staff
                 stacked phone layout a flex-basis of 0 shrank the gold button below its h-12. */}
             {draft.outcome ? (
               <div className="sticky bottom-0 z-10 -mx-5 flex flex-col gap-2 border-t border-border bg-card px-5 py-3 sm:flex-row">
-                <Button type="button" className="h-12 text-base sm:flex-1" disabled={saving || !backendReady} onClick={() => submitOutcome(true)}>
+                <Button type="button" className="h-12 text-base sm:flex-1" disabled={saving || !backendReady} onClick={(e) => void submitOutcome(true, e.currentTarget)}>
                   {recordOutcome.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
                   Save &amp; next person
                 </Button>
-                <Button type="button" variant="outline" className={cn("h-12 text-base sm:w-28", RAISED)} disabled={saving || !backendReady} onClick={() => submitOutcome(false)}>
+                <Button type="button" variant="outline" className={cn("h-12 text-base sm:w-28", RAISED)} disabled={saving || !backendReady} onClick={(e) => void submitOutcome(false, e.currentTarget)}>
                   Save
                 </Button>
               </div>
             ) : (
               <div className="sticky bottom-0 z-10 -mx-5 flex flex-col gap-2 border-t border-border bg-card px-5 py-3 sm:flex-row">
-                <Button type="button" className="h-12 text-base sm:flex-1" disabled={saving || !backendReady} onClick={submitPlanOnly}>
+                <Button type="button" className="h-12 text-base sm:flex-1" disabled={saving || !backendReady} onClick={(e) => void submitPlanOnly(e.currentTarget)}>
                   {setPlan.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
                   Save next step (no contact)
                 </Button>

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 
@@ -25,6 +25,32 @@ describe("RecruitingWorkspaceNav", () => {
     renderNav("/dashboard/recruiting/pipeline");
     expect(screen.getByRole("link", { name: "Pipeline" }).getAttribute("aria-current")).toBe("page");
     expect(screen.getByRole("link", { name: "Call list" }).getAttribute("aria-current")).toBeNull();
+  });
+
+  it("colours only the open tab's icon, in its page's tone, under the gold underline, with 15px labels", () => {
+    renderNav("/dashboard/recruiting/pipeline");
+    const pipeline = screen.getByRole("link", { name: "Pipeline" });
+    expect(pipeline.querySelector("svg")?.getAttribute("class")).toMatch(/text-tone-cool/);
+    expect(pipeline.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
+    expect(pipeline.className).toMatch(/border-primary/);
+    for (const name of ["Call list", "New hires", "Calendar", "Galaxy Training"]) {
+      expect(screen.getByRole("link", { name }).querySelector("svg")?.getAttribute("class")).not.toMatch(/text-tone-/);
+    }
+    for (const link of screen.getAllByRole("link")) expect(link.className).toContain("text-[15px]");
+    // Each tab keeps its own page's tone, so the open icon always matches the header it leads to.
+    cleanup();
+    renderNav("/dashboard/recruiting");
+    expect(screen.getByRole("link", { name: "Call list" }).querySelector("svg")?.getAttribute("class")).toMatch(/text-tone-gold/);
+    expect(screen.getByRole("link", { name: "Pipeline" }).querySelector("svg")?.getAttribute("class")).not.toMatch(/text-tone-/);
+    cleanup();
+    renderNav("/dashboard/recruits");
+    expect(screen.getByRole("link", { name: "New hires" }).querySelector("svg")?.getAttribute("class")).toMatch(/text-tone-good/);
+    cleanup();
+    renderNav("/dashboard/calendar");
+    expect(screen.getByRole("link", { name: "Calendar" }).querySelector("svg")?.getAttribute("class")).toMatch(/text-tone-warm/);
+    cleanup();
+    renderNav("/dashboard/recruiting/training");
+    expect(screen.getByRole("link", { name: "Galaxy Training" }).querySelector("svg")?.getAttribute("class")).toMatch(/text-tone-royal/);
   });
 
   it("wraps onto a second row on a phone instead of scrolling sideways, and every tab is 44px tall", () => {

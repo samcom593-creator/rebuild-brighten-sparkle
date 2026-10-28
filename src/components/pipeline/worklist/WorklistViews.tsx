@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
-import { ChevronLeft, ChevronRight, Columns3 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Columns3, User } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RevealList } from "@/components/ui/delight/Reveal";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { formatPhoneDisplay } from "@/lib/phone";
+import { TONE_CLASS } from "@/lib/tones";
 import {
   blockersOf,
   fullName,
@@ -22,10 +24,10 @@ import {
   toggleColumn,
   type WorklistColumnKey,
 } from "@/lib/worklistColumns";
-import { StatusPill } from "@/components/recruiting/StatusPill";
+import { STATUS_TONE, StatusPill } from "@/components/recruiting/StatusPill";
 import type { StaffMember, StageDefinition } from "./useRecruitingWorklist";
-import { formatAgo, formatNextAction, formatSince, formatWhen, humanizeKey, ownerName } from "./worklistFormat";
-import { dueStatus, licenseWord, rowStatus, type StatusTone } from "./worklistStatus";
+import { formatAgo, formatNextAction, formatSince, formatWhen, humanizeKey, initialsOf, ownerName } from "./worklistFormat";
+import { dueStatus, licenseWord, rowStatus, type RowStatus, type StatusTone } from "./worklistStatus";
 
 interface ViewProps {
   rows: WorklistRow[];
@@ -38,6 +40,37 @@ interface ViewProps {
 }
 
 const TABLE_WINDOW = 200;
+
+const BUBBLE_SIZE = {
+  md: "h-10 w-10 text-[13px] [&>svg]:h-5 [&>svg]:w-5",
+  lg: "h-12 w-12 text-[15px] [&>svg]:h-6 [&>svg]:w-6",
+} as const;
+
+/**
+ * A person's initials in a round tint, the colour of their status (colour layer, 2026-10-28):
+ * the same classes as ToneBubble on a span with the two initials inside. Late or unreadable
+ * is "act now", due today "needs a nudge", new is "new", everything else quiet, through the
+ * one STATUS_TONE map the status pill reads. Decoration, so it is hidden from assistive
+ * technology; the name sits right beside it and carries the meaning. A person with no name
+ * on file gets a plain person icon rather than invented letters.
+ */
+export function PersonBubble({ row, status, size = "md", className }: {
+  row: Pick<WorklistRow, "first_name" | "last_name">;
+  status: RowStatus;
+  size?: keyof typeof BUBBLE_SIZE;
+  className?: string;
+}) {
+  const t = TONE_CLASS[STATUS_TONE[status.tone]];
+  const initials = initialsOf(row);
+  return (
+    <span
+      aria-hidden="true"
+      className={cn("inline-flex shrink-0 select-none items-center justify-center rounded-full border font-semibold leading-none", t.soft, t.text, t.border, BUBBLE_SIZE[size], className)}
+    >
+      {initials || <User />}
+    </span>
+  );
+}
 
 /** Text colour for a status in a table cell. The words carry the meaning; the colour only helps. */
 const STATUS_TEXT: Record<StatusTone, string> = {
@@ -165,10 +198,16 @@ export function WorklistTable({
                   selected && "bg-primary/10 hover:bg-primary/10",
                 )}
               >
-                {/* py-3 around a 20px line keeps every row at least 44px tall, the same hit size as the toolbar controls. */}
+                {/* py-3 around the 40px bubble keeps every row at least 64px tall, the same as the list it sits beside. */}
                 <td className="px-3 py-3">
-                  <div className="text-base font-semibold leading-6 text-foreground">{fullName(row)}</div>
-                  {needsPlan && <div className="text-sm text-muted-foreground">No next step</div>}
+                  <div className="flex items-center gap-3">
+                    <PersonBubble row={row} status={rowStatus(row, now)} />
+                    <div className="min-w-0">
+                      {/* One line: the auto-layout column grows for a long name rather than folding it beside the bubble. */}
+                      <div className="whitespace-nowrap text-base font-semibold leading-6 text-foreground">{fullName(row)}</div>
+                      {needsPlan && <div className="text-sm text-muted-foreground">No next step</div>}
+                    </div>
+                  </div>
                 </td>
                 {show.has("phone") && (
                   <td className="whitespace-nowrap px-2 py-3 tabular-nums text-foreground">{row.phone ? formatPhoneDisplay(row.phone) : "—"}</td>
@@ -264,13 +303,17 @@ function nextLine(row: WorklistRow): string | null {
  * It wraps instead of scrolling sideways, so it fits beside the person panel from
  * 1024px and reads as cards on a phone. Same rows, order, selection and window as the
  * table, so switching views never changes who is next.
+ *
+ * Colour layer (2026-10-28): a 40px initials bubble in the status tone at the left, the
+ * rows rise in once on first paint, and a row lifts a hair on hover because it opens the
+ * person. The words are unchanged; the status pill still says the state.
  */
 export function WorklistQueueList({ rows, selectedId, onSelect, now }: ViewProps) {
   const [visible, setVisible] = useState(TABLE_WINDOW);
   const shown = rows.slice(0, visible);
   return (
     <div>
-      <ul aria-label="Queue" className="divide-y divide-border/60">
+      <RevealList as="ul" aria-label="Queue" className="divide-y divide-border/60">
         {shown.map((row) => {
           const selected = row.id === selectedId;
           const blocker = blockersOf(row).find((b) => b.hard || b.key === "no_phone");
@@ -289,11 +332,12 @@ export function WorklistQueueList({ rows, selectedId, onSelect, now }: ViewProps
                 onClick={() => onSelect(row.id)}
                 aria-pressed={selected}
                 className={cn(
-                  "flex min-h-16 w-full items-start justify-between gap-4 border-l-[3px] border-l-transparent py-3.5 pl-[13px] pr-4 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
+                  "apex-lift flex min-h-16 w-full items-start gap-3 border-l-[3px] border-l-transparent py-3 pl-[13px] pr-4 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
                   selected && "border-l-primary bg-primary/10 hover:bg-primary/10",
                 )}
               >
-                <span className="min-w-0">
+                <PersonBubble row={row} status={status} className="mt-0.5" />
+                <span className="min-w-0 flex-1">
                   <span className="block truncate text-base font-semibold leading-6 text-foreground">{fullName(row)}</span>
                   <span className="mt-0.5 block text-sm leading-5 text-muted-foreground">{facts}</span>
                   {next && <span className="mt-0.5 block truncate text-sm leading-5 text-muted-foreground">{next}</span>}
@@ -308,7 +352,7 @@ export function WorklistQueueList({ rows, selectedId, onSelect, now }: ViewProps
             </li>
           );
         })}
-      </ul>
+      </RevealList>
       <ShowMore total={rows.length} visible={visible} onMore={() => setVisible((v) => v + TABLE_WINDOW)} />
     </div>
   );
@@ -410,7 +454,7 @@ export function WorklistBoard({ rows, selectedId, onSelect, staff, staffAvailabl
                         onClick={() => onSelect(row.id)}
                         aria-pressed={selected}
                         className={cn(
-                          "flex min-h-16 w-full flex-col items-start gap-1 border-l-[3px] border-l-transparent py-3 pl-[9px] pr-3 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
+                          "apex-lift flex min-h-16 w-full flex-col items-start gap-1 border-l-[3px] border-l-transparent py-3 pl-[9px] pr-3 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
                           selected && "border-l-primary bg-primary/10 hover:bg-primary/10",
                         )}
                       >

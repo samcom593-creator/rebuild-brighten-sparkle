@@ -81,4 +81,4 @@ Before any large analysis task, Claude pauses and drafts a copy-paste analysis p
 
 ---
 
-**Last Updated:** 2026-05-14
+**Last Updated:** 2026-10-28 (Execution vs Analysis: everything runs on Claude)

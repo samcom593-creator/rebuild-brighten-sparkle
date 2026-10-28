@@ -7,7 +7,7 @@
 | Applicants | `/dashboard/recruiting` | `applications` where `record_type = 'application'` | applicant activity / field timestamps |
 | Interviews | `/dashboard/recruiting/interviews` | `hh_applicants` through `interviews-pipeline` | versioned row + append-only `hh_activity` |
 | Follow-ups | `/dashboard/recruiting/follow-ups` | `v_interview_pipeline` / `interview_events` | `cc_dispose_interview` outcome |
-| Hires | `/dashboard/recruiting/hires?status=hired` | hired applications | `promote_applicant_to_agent` |
+| Hires | `/dashboard/recruiting/hires?status=hired` | hired applications | `add-agent` edge function through `src/lib/hireToOnboarding.ts` (creates the `agents` row, sets `applications.status='onboarding'`, `closed_at`, `source_application_id`); `promote_applicant_to_agent` is retired and `hiringLifecycleContract.test.ts` forbids it |
 | APEX Training | `/dashboard/recruiting/training` | `apex_agent_journeys` / `apex_agent_journey_steps` | persisted milestone receipt |
 
 Legacy `/dashboard/interviews`, `/dashboard/interview-recovery`, `/dashboard/recruit`, and `/recruit` URLs preserve their query string and redirect into this workspace. Interviews is not a separate sidebar item and no APEX screen links to the separately branded Headhunter origin.

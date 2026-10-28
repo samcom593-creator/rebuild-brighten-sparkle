@@ -11,11 +11,17 @@ posting flow a new agent completes on a phone without help.
 ## Read first
 
 - `src/pages/ClientPipeline.tsx` (`/dashboard/agent-pipeline`, "My Pipeline": clients and policies, not
-  recruits; the older prompt pack insists the two never be confused), `src/pages/CallCenter.tsx`
-  (`/dashboard/call-center`: queue by source, coverage per source, generation-guarded loads, page-local
-  keyboard shortcuts), `src/pages/CalendarPage.tsx` (`/dashboard/calendar`: interviews are booked here;
-  open to every signed-in user), the deal posting flow reached from the sidebar's "Post a Deal" quick action
-  (find the route and components in `ROUTE_BOARD.md`; `check:native-deals` watches it).
+  recruits; the older prompt pack insists the two never be confused), `src/pages/CalendarPage.tsx`
+  (`/dashboard/calendar`: interviews are booked here; open to every signed-in user), the deal posting flow
+  reached from the sidebar's "Post a Deal" quick action (find the route and components in `ROUTE_BOARD.md`;
+  `check:native-deals` watches it), and the Sell long tail (`ROUTE_BOARD.md` group 2):
+  `src/pages/ClientDetail.tsx` (`/dashboard/clients/:clientId`), `CallsTodayCockpit.tsx`
+  (`/dashboard/calls-today`), `AgentPipelineSimple.tsx` (`/dashboard/pipeline-simple`, a second client
+  pipeline), `Quoter.tsx`, `NeedsAnalysis.tsx`, `ClientMarketing.tsx` (its second tab is recruiting
+  funnels), `PurchaseLeads.tsx` (`/purchase-leads`).
+- **Call Center is not a Sell page.** `src/pages/CallCenter.tsx` (`/dashboard/call-center`, eyebrow
+  "Recruiting · Dial session") is the recruit dialer; area 03 owns it and folds its session mode into the
+  Call list. In this area, do not touch it beyond what area 01 did to its sidebar placement.
 - `docs/audits/apex-os-redesign-2026-10-05/06-calendar-interviews.md` (one-event model, Calendly as the
   authority for availability, the defects list) and `04-pipeline-contact-workspace.md` §1.3 (shared contact
   components).
@@ -51,11 +57,14 @@ table (the audit's warning).
    Four stage buttons plus "More stages". Rows: client name 16px; policy · carrier · premium 14px; one
    status pill. Detail panel: the policy facts, Call and Text, "What happened?" outcomes, next step with
    quick picks, notes, folds for history and documents. The board view stays behind More.
-2. **Call Center.** Keep the queue engine (sources, cursors, generations, coverage) and put the contract on
-   top: tiles per source that open that source's queue with its coverage verdict ("—" when a source failed
-   to count), one "Next call" gold button, the disposition buttons at 48px in two columns, the keyboard
-   shortcuts listed in a fold ("Keyboard") not in the toolbar. The session timer and the processing lock
-   stay; make the lock visible as words ("Saving…").
+2. **The client long tail.** `ClientDetail` becomes the detail panel My Pipeline opens (one component,
+   used inline on desktop and as a sheet on phones; the route stays for deep links). `AgentPipelineSimple`
+   and `CallsTodayCockpit` either become views of My Pipeline ("Simple" is the phone list; "Calls today" is
+   the Due today tile's list) or redirect, with the before→after table saying which. `Quoter` and
+   `NeedsAnalysis` become one "Quote" tool reached from the detail panel's More menu. `ClientMarketing`
+   keeps its templates as a fold of the detail panel and hands its recruiting-funnels tab to area 03.
+   `PurchaseLeads` meets the contract (one offer, one gold button, the price and what you get in plain
+   words) or is folded into Settings › Billing if H4 says agents should not buy from here.
 3. **Calendar.** Week on desktop, agenda list on a phone. One gold "Book interview" (licensed link vs
    unlicensed path chosen by the applicant's licence status, never by the booker's guess). Each event row:
    who, when in the viewer's zone with the abbreviation, status pill (Confirmed, No show, Rescheduled).

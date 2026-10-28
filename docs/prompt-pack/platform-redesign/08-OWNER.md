@@ -61,7 +61,19 @@ their owner's work has merged; then apply the contract in a follow-up commit on 
    council (type floor, one gold button, folds).
 6. **Legacy command centre (`/dashboard/admin`).** Either every surviving widget has a home on Sam's Home
    or Reports (then redirect this route, query preserved) or it stays as a plain list of links to those
-   homes. Decide from `ROUTE_BOARD.md` and the H5 answer; write the decision in the PR.
+   homes. Nine old URLs already redirect into it. Decide from `ROUTE_BOARD.md` and the H5 answer; write the
+   decision in the PR.
+6b. **Triage the fifty admin tools with no nav home** (`ROUTE_BOARD.md` group 10). For every route, one
+   of three verdicts, recorded in a table in the PR and in the board's Pattern column: **Keep** (a real
+   job Sam does weekly: give it the contract and a place, either a row on an "Owner tools" page reached
+   from Reports' More menu or a fold of the page it serves), **Fold** (its facts belong on an existing
+   page: health states onto System health, delivery logs onto one "Deliveries" page with Email log,
+   Notification hub and the inbox streams, agent admin onto My Team's drawer for admins, content tools
+   onto Launch Board, Stripe and lead payments onto Finances, AgentLink sync and vault onto one "Data
+   sources" page), or **Redirect** (dead, or duplicated by a kept page). Start with the control-heavy
+   ones: Agent management 23 (40), Day planner 25 (44), Notification hub 20 (59), Content command 20
+   (36), Social media bot 20 (37), Agent strikes 19 (51), Lead payments 13 (39). Nothing is deleted
+   without its facts having a new home listed in the table.
 7. **Social Command and Instagram.** Contract review only (see Scope), posted in the PR; coordinate in a
    note on the owning PRs.
 8. **Measure.** Controls on first screen before/after; tiles with a visible window and source: 100%.

@@ -26,7 +26,12 @@ blank while loading. After this area every home is one screen on a phone.
   `TrainingNextStep.tsx`, `WhatShippedTodayBanner.tsx`; `src/pages/AgentCommandDashboard.tsx` (agent),
   `AgencyOwnerHome.tsx`, `RecruiterHome.tsx`, `VaOpsCommandCenter.tsx`, the manager branch
   (`ManagerCommandView`), `MyDay.tsx` (`/dashboard/my-day`, Sam only), `Numbers.tsx` (`/numbers`, the
-  agent's phone tab).
+  agent's phone tab), and the home-shaped long tail from `ROUTE_BOARD.md` group 1: `/agent-portal`
+  (`AgentCommandDashboard` mounted on its own route), `/agent-portal/legacy` (`AgentPortal.tsx`, the old
+  card stack), `/dashboard/today` (`DashboardToday.tsx`, "Galaxy Today": income tasks, appointments, hot
+  prospects). After this area each role has one home: the long-tail routes redirect to `/dashboard` with
+  their query preserved, and anything they showed that the home does not is listed in the before→after
+  table with its new place.
 - Tests: `src/tests/hooks/productionRealtimeFeedbackLoop.test.ts` (the MP-431/MP-436 invalidation guards),
   every test under `src/tests/` that imports a home component, `check:realtime-invalidate-coalesce`,
   `check:realtime-feedback-loop`, `check:metric-truth`, `check:business-day-bounds`, `check:live-polling`.

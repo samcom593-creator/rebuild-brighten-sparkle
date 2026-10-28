@@ -17,7 +17,11 @@ funnel (clients, not recruits), and today its signals are spread over seven page
   `EasyResells.tsx` (`/dashboard/easy-resells`, admins and the `sold_calls` grant), `BookFlips.tsx`
   (`/dashboard/books`, admin and managers), `AyroBook.tsx` (`/dashboard/ayro-book`, a separate book with no
   per-deal dates), `SoldCalls.tsx` (`/dashboard/sold-calls`, grant), `MyCommissions.tsx`
-  (`/dashboard/my-commissions`), `Numbers.tsx` (`/numbers`, shared with area 04).
+  (`/dashboard/my-commissions`), `Numbers.tsx` (`/numbers`, shared with area 04), and the two unlisted
+  pages in `ROUTE_BOARD.md` group 4: `BookReconciliation.tsx` (`/dashboard/book-quality`, carrier records
+  vs the internal deal log) and `BulkDeals.tsx` (`/dashboard/bulk-deals`, paste raw deal text). Both become
+  views reached from Book of Business's More menu (admin and managers), meeting the contract, or redirect
+  there.
 - `docs/audits/apex-os-redesign-2026-10-05/03-headcount-production-data.md` (sources, defects, the
   definitions table), `docs/metric-registry.md`, `docs/prompt-pack/METRICS_AND_LEADERBOARDS.md`,
   `docs/vantage-production-api.md`, `docs/agent-link-mapping.md`.

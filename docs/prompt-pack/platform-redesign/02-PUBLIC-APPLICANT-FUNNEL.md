@@ -39,6 +39,17 @@ The pages above, their components under `src/components/landing/**`, `src/compon
 `Apply.tsx` keeps its steps), the applicant home, their tests, `ROUTE_BOARD.md`, the shipped log. No edge
 function changes in this area; if a leak needs one, write it up with the H9 evidence for a follow-up.
 
+The public long tail is in scope too (`ROUTE_BOARD.md` group 9, 41 public screens, every one LEGACY):
+`/careers/:state`, `/unlicensed-overview`, `/status/:applicationId`, `/vsl`, `/resources/licensing`,
+`/training` (public), `/schedule-call`, `/pending-approval`, `/links`, `/contact`, `/storefront`,
+`/data-deletion`, `/checkin`, `/agent-flow`, `/plaque/:slug`, `/share/:token`, `/agent/:userId`,
+`/assistant/interviews`, `/privacy`, `/terms`, `/disclosures`, and the sign-in family: `/login`,
+`/reset-password`, `/join`, `/join/:token`, `/claim` (`/activate`), `/magic-login`, `/agent-login`,
+`/signup`, `/agent-signup`. Each either meets the contract (one job, one gold button, plain words, 16px,
+phone first) or redirects to the page that does, with H9's measurements saying which paths are live.
+`/privacy-policy` and `/terms-of-service` sit inside the signed-in shell: redirect them to `/privacy` and
+`/terms` (query preserved) and delete the duplicates.
+
 ## Guardrails
 
 - The cold landing stays light: no Supabase query in a `queryFn` above the fold, no toast library, no
@@ -80,6 +91,12 @@ function changes in this area; if a leak needs one, write it up with the H9 evid
 7. **Applicant home.** Four links stay (`APPLICANT_NAV`). The home itself becomes one card: where they are
    in the path (applied → interview → licence → hired), the one next action, and who to contact. No
    producer widgets, no production numbers.
+7b. **One way in.** Six sign-in or join entrances exist (`/login`, `/join`, `/join/:token`, `/claim`,
+   `/magic-login`, `/agent-login`) plus two signups (`/signup`, `/agent-signup`). With H9's traffic
+   numbers, keep the ones with live paths (the hire link, the join link, the magic link from emails, the
+   claim flow for existing agents, the plain sign-in), give them one shared layout and one sentence each
+   about who they are for, and redirect the rest. Error messages read the same for a found and a not-found
+   email (`check:enumeration-oracle`).
 8. **Funnel strip.** With the H9 definitions, add a pure helper (unit-tested) that turns the measured
    counts into a six-step strip (Visited is unmeasured unless telemetry proves it: show "—" then) and
    render it on Sam's Home in area 04 and on the Call list in area 03. In this area, write the helper and

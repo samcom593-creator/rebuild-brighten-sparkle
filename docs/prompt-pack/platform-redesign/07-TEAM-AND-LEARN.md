@@ -59,6 +59,27 @@ training completion stays on the journey-step receipts.
    "Mark complete" that writes the receipt. Call Lab is reached from Training Home as a card.
 4. **Redirect the duplicate training paths** to the canonical ones; update the breadcrumb map and
    `check:sidebar-routes` inputs; keep the query string.
+4b. **The Team long tail** (`ROUTE_BOARD.md` group 6): `ManagerNextStepBoard` (`/dashboard/team/next-step`),
+   `AgentDetail` (`/dashboard/agents/:id`), `ManagerDashboard` (`/dashboard/admin/manager`),
+   `ProducerReactivation`, `InactiveAgents`, `TransferRequests`, `Announcements` (`/dashboard/community`),
+   `Challenges`, `AwardsGallery`, `HallOfFame`, `Rewards`, `MyPlaques`, `BoardLive` (`/board`), `MyStrikes`,
+   `TeamChat` (deprecated). `AgentDetail` becomes My Team's detail drawer (route kept for deep links).
+   Next-step board, Reactivation and Inactive agents become My Team tiles and lists ("Not selling 14+
+   days", "Went quiet", "Stalled") driven by one tested helper, then redirect. Recognition (Rewards, Plaques,
+   Hall of fame, Awards, Challenges, Announcements) becomes one "Recognition" page reached from the
+   Leaderboard's fold, each former page a section, or redirects to it. `BoardLive` stays (it is a
+   screenshot surface) and meets the type floor. `TeamChat` redirects to Support desk or is removed with a
+   note; its header already calls it deprecated. `TransferRequests` and `MyStrikes` meet the contract where
+   they are.
+4c. **The Learn long tail** (group 5): `CallLabLive`, `CallLabReport`, `TrainingHubCourse`,
+   `ApexCareerToolkit` (`/dashboard/training`), `CourseProgress`, `CourseContent`, `AnnuityTraining`,
+   `Scripts`, `AgentHandbook`. The course player and the Call Lab live and report pages meet the contract
+   (one action, big type, progress in words). Course progress and content become the manager's view of
+   Training Home behind Filters ("Show: my team's progress"). Scripts becomes a fold of the Call Lab and of
+   the person panel's Call button (area 03 wires the panel). Annuity training is a course in the library.
+   The handbook is a card in Training Home. The toolkit's four-stage path (licensing → certification →
+   launch → first sale) becomes the progress line on Training Home for everyone, reading the same journey
+   receipts.
 5. **Measure.** Unnamed controls before/after per page (the ratchet must fall), taps to "Continue"
    training, taps to call a team member.
 

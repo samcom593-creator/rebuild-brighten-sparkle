@@ -14,8 +14,14 @@ accident.
   `/settings/notifications`, `/settings/security`, `/settings/billing` (admin), `/settings/nova-pro`),
   `src/pages/ProducerProfile.tsx` (`/dashboard/profile`), `src/pages/HelpCenter.tsx` (`/dashboard/help`,
   `?tab=desk` is the support desk the sidebar links), `src/pages/Install.tsx` (`/install`, shared with area
-  02), `src/pages/NotificationHub.tsx` (find its route in `ROUTE_BOARD.md`; it carries five unnamed selects),
-  the `AGENT_CLOUD_ACCOUNT_NAV` group in `agentCloudNavigation.ts`.
+  02), `src/pages/MyNotifications.tsx` (`/dashboard/notifications/mine`, the person's own notifications),
+  `src/pages/NotificationHub.tsx` (`/dashboard/notifications`, admin-only: every push, SMS and email sent;
+  20 controls, 59 by prefix, five unnamed selects; area 08 decides whether it folds into a "Deliveries"
+  page, this area gives it the contract either way), `src/pages/CallingCards.tsx`
+  (`/dashboard/calling-cards`), `src/pages/MyLandingPage.tsx` (`/dashboard/landing-page`),
+  `src/pages/ContractingProfile.tsx` (`/dashboard/contracting-profile`, the five-field profile the
+  contracting email opens; `/start-contracting` redirects here), the Settings page's `?tab=integrations`
+  and `?tab=automation` views, the `AGENT_CLOUD_ACCOUNT_NAV` group in `agentCloudNavigation.ts`.
 - `docs/security-privacy.md`, `docs/multi_device.md`, `docs/siri_shortcut_setup.md`.
 - Guards: `check:credential-minting`, `check:enumeration-oracle`, `check:uncredentialed-pii-response`,
   `check:control-labels`, `check:icon-button-labels`, `check:blocking-modal`, `check:external-link-noopener`.
@@ -44,7 +50,11 @@ log. No auth flow changes; no billing provider calls from tests or the harness (
    read and mute as row actions; preferences behind one Filters-style popover with labelled controls (the
    five unnamed selects get names; the ratchet falls).
 3. **Producer profile.** Name, photo, phone, licence, states, public link, in that order, each row
-   editable in place; a preview card of what the public sees.
+   editable in place; a preview card of what the public sees. Calling cards and the personal landing page
+   become two sections of the profile ("Your card", "Your page"), each with a preview and one Copy link
+   button, and their routes redirect. The contracting profile becomes a four-step form (who you are,
+   licence, banking, confirm) with the same step component the invite form uses, and its route stays
+   because the email links to it.
 4. **Support desk.** One form (what happened, where, screenshot) and the list of past requests with status
    pills. The chat widget, if any, stays behind one button.
 5. **Install.** Shared with area 02; here only confirm the signed-in variant shows the same one-button page.

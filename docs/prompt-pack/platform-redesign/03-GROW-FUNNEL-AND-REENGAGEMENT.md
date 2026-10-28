@@ -91,6 +91,23 @@ harness (`?dry_run=1` exists on `instagram-dm-nudge`; use it).
    comparison noted in the PR). Then the two pages become redirects into the Call list queues with the query
    preserved (`LegacyWorkspaceRedirect`), their writes already live in the panel. Breadcrumbs and
    `check:sidebar-routes` inputs updated.
+4b. **The long tail: thirty screens become one Call list.** `ROUTE_BOARD.md` group 3 lists twenty-two
+   recruiting pages with no nav home, plus the recruit dialer filed under Sell (`/dashboard/call-center`,
+   `src/pages/CallCenter.tsx`, eyebrow "Recruiting · Dial session"): Stale recovery, Aged leads, Hiring
+   pipeline board, Referral pipeline, My referrals, My applicants, Add referral, Licensed inbox, License
+   push (`/admin/recovery-queue`), Unlicensed queue, Getting started, two Pre-licensing pages, Licensing
+   tracker, the recruit "My Pipeline" (`AgentPipeline.tsx`), Recruiter HQ, Seminar control, two Old
+   applicants pages, Interviews, Interview recovery, the onboarding queue. Every one is a place a recruit can
+   sit unseen. For each: (a) name the queue, filter or fold of the Call list, New hires or Calendar that
+   holds the same people (a `recruitingQueues.ts` predicate, unit-tested, with H1's stage definitions);
+   (b) prove parity on synthetic rows and once against the mirror (counts equal); (c) move any write the
+   page performs into the person panel (promote to agent, assign to a VA, dispose an interview) with its
+   receipt; (d) redirect the route with its query preserved and update the breadcrumb map. The Call Center's
+   dial-session mode (sources, cursors, coverage, dispositions) becomes the Call list's "Start calling"
+   session, keeping its guards (`check:contact-actions`, `check:sms-outcome-contract`); until that lands,
+   Call Center moves from Sell to Grow in the sidebar (area 01 has the label rule). Pages the analysis says
+   are dead (the retired seminar, the old-applicants pair) redirect without a replacement queue, and the PR
+   says so. Keep the audit's rule: nothing deleted, only moved; the before→after table lists all thirty.
 5. **New hires and the onboarding queue.** New hires' "Stuck" tiles name the real block (contracting,
    licensing, training, Slack, onboarding call) from `onboarding_exception_facts()`; each row's status pill is
    that block with its wait; the resolving button is the row's one action. The full queue page keeps its

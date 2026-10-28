@@ -31,7 +31,29 @@ whole app shares. After this area, no later area needs to touch the frame.
 `src/components/layout/**`, `src/components/command/**`, `src/components/ui/page-header.tsx` (only if a
 shared change is needed for the contract), `src/pages/Dashboard.tsx` (dispatch only, not the homes), the
 tests above, `docs/prompt-pack/platform-redesign/ROUTE_BOARD.md` (Pattern column), `src/data/shipped-data.ts`
-and the banner count. Routes, guards and hrefs in `src/App.tsx` do not change in this area.
+and the banner count. Routes and hrefs in `src/App.tsx` do not change in this area. Guards change only for
+the parity fixes in "Known defects" below, each after analysis H4 and each in its own commit.
+
+## Known defects from the inventory (`ROUTE_BOARD.md`, "Findings")
+
+- **Alias with a looser guard.** `/dashboard/instagram-inbox` is open to any signed-in user; its canonical
+  route `/dashboard/inbox/instagram` is Admin+Mgr. Every alias must carry its canonical route's guard.
+  Write a test that walks `App.tsx` and asserts it for all 36 aliases.
+- **Sidebar says admin-only, route admits more.** Reports (`/dashboard/analytics`) and Import
+  (`/dashboard/import`) are `adminOnly` in the sidebar while their routes admit managers (Import also VA
+  managers). Launch Board is `adminOnly` in the sidebar while its `ContentAccessGate` admits an invite
+  list. H4 says which side is right; make them agree.
+- **Pages with no route guard that restrict themselves in code:** `/dashboard/aged-leads`,
+  `/dashboard/recruiter`, `/dashboard/prelicensing`, `/dashboard/inactive-agents`. Give each the route
+  guard its own code implies, so a refused user sees the shared `AccessDeniedPanel`, not a page-specific
+  bounce.
+- **Names that do not match what they open:** "Retention" opens a page titled "Book of Business";
+  "Book of Business" opens "My Deals" / "Team Production"; "Nova Pro" opens "AI assistant"; "Call Center"
+  sits under Sell but is the recruiting dialer; two pages are titled "My Pipeline". The sidebar label, the
+  page title and the breadcrumb must be the same words (areas 03, 05 and 06 rename the pages; this area
+  renames the labels and asserts the match in a test that reads each page's `PageHeader` title).
+- **Two orphan page files** (`pages/ContentLibrary.tsx`, `pages/OnboardingCourse.tsx`) are imported by
+  nothing: delete them, or document why they stay.
 
 ## Guardrails
 

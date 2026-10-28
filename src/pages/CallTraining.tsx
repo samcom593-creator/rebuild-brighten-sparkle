@@ -88,7 +88,12 @@ const mmss = (s: number | null) => (s == null ? "" : `${Math.floor(s / 60)}:${St
 const shortDate = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "");
 const isTalk = (c: GradedCall) => c.stage_reached !== "voicemail" && c.stage_reached !== "no_contact";
 const scoreTone = (n: number | null) =>
-  n == null ? "text-muted-foreground" : n >= 80 ? "text-emerald-300" : n >= 60 ? "text-amber-300" : "text-rose-300";
+  n == null ? "text-muted-foreground" : n >= 80 ? "text-emerald-700 dark:text-emerald-300" : n >= 60 ? "text-amber-700 dark:text-amber-300" : "text-rose-700 dark:text-rose-300";
+
+/** ReadyMode appends " (deleted)" to removed users; it is not part of anyone's name. */
+const cleanAgentName = (name: string | null) => (name ? name.replace(/\s*\(deleted\)\s*$/i, "").trim() || name : name);
+/** A leaderboard place needs a real sample: one great call should not outrank eleven graded ones. */
+const MIN_RANKED = 3;
 
 async function fetchGraded(): Promise<GradedCall[]> {
   const { data, error } = await (looseSupabase
@@ -97,7 +102,7 @@ async function fetchGraded(): Promise<GradedCall[]> {
     .order("overall_score", { ascending: false, nullsFirst: false })
     .limit(600) as unknown as Promise<{ data: GradedCall[] | null; error: Error | null }>);
   if (error) throw error;
-  return data ?? [];
+  return (data ?? []).map((r) => ({ ...r, agent_name: cleanAgentName(r.agent_name) }));
 }
 async function fetchAgents(): Promise<AgentRow[]> {
   const { data, error } = await (looseSupabase
@@ -105,7 +110,10 @@ async function fetchAgents(): Promise<AgentRow[]> {
     .select("*")
     .order("avg_score", { ascending: false, nullsFirst: false }) as unknown as Promise<{ data: AgentRow[] | null; error: Error | null }>);
   if (error) throw error;
-  return (data ?? []).filter((a) => a.graded > 0);
+  return (data ?? [])
+    .filter((a) => a.graded > 0)
+    .map((a) => ({ ...a, agent_name: cleanAgentName(a.agent_name) }))
+    .sort((x, y) => Number(y.graded >= MIN_RANKED) - Number(x.graded >= MIN_RANKED) || (y.avg_score ?? -1) - (x.avg_score ?? -1) || y.graded - x.graded);
 }
 
 export default function CallTraining() {
@@ -161,9 +169,9 @@ export default function CallTraining() {
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Stat label="Graded calls" value={talk.length} />
-        <Stat label="Great calls" value={great} tone="text-amber-300" />
+        <Stat label="Great calls" value={great} tone="text-amber-700 dark:text-amber-300" />
         <Stat label="Average score" value={avg == null ? "—" : `${avg}/100`} />
-        <Stat label="Urgent flags" value={urgent} tone={urgent ? "text-rose-300" : undefined} />
+        <Stat label="Urgent flags" value={urgent} tone={urgent ? "text-rose-700 dark:text-rose-300" : undefined} />
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -210,7 +218,7 @@ export default function CallTraining() {
                     <td className="px-2 py-2 text-right tabular-nums">{a.great_calls}</td>
                     <td className="px-2 py-2 text-right tabular-nums">{a.avg_objection_handling ?? "—"}</td>
                     <td className="px-2 py-2 text-right tabular-nums">{a.avg_close ?? "—"}</td>
-                    <td className={cn("px-2 py-2 text-right tabular-nums", a.urgent_flags ? "text-rose-300" : "")}>{a.urgent_flags}</td>
+                    <td className={cn("px-2 py-2 text-right tabular-nums", a.urgent_flags ? "text-rose-700 dark:text-rose-300" : "")}>{a.urgent_flags}</td>
                   </tr>
                 ))}
               </tbody>
@@ -238,7 +246,7 @@ export default function CallTraining() {
                   {r.great_call && <Badge className="border-amber-500/40 bg-amber-500/15 text-amber-200"><Star className="mr-1 h-3 w-3" /> Great call</Badge>}
                   <span className="font-medium">{r.agent_name || "Unknown agent"}</span>
                   <span className="text-sm text-muted-foreground">{shortDate(r.call_started_at)} · {dispositionLabel(r.disposition)}{r.duration_seconds ? ` · ${mmss(r.duration_seconds)}` : ""}{r.lead_first_name ? ` · ${r.lead_first_name}` : ""}</span>
-                  {r.coaching_priority === "urgent" && <Badge variant="outline" className="border-rose-500/40 text-rose-300">Urgent</Badge>}
+                  {r.coaching_priority === "urgent" && <Badge variant="outline" className="border-rose-500/40 text-rose-700 dark:text-rose-300">Urgent</Badge>}
                   {moments.some((m) => m.worked) && <Badge variant="outline">Objection turned</Badge>}
                   <ChevronDown className={cn("ml-auto h-4 w-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
                   {r.summary && <p className="w-full text-sm text-muted-foreground">{r.summary}</p>}
@@ -262,7 +270,7 @@ export default function CallTraining() {
                             <li key={`${m.t}-${m.objection}`} className="rounded-md border border-border/60 bg-background/40 p-2">
                               <p><span className="font-mono text-xs text-muted-foreground">[{m.t}]</span> <span className="font-medium">Client:</span> {m.objection}</p>
                               <p className="mt-1"><span className="font-medium">Agent:</span> {m.response}</p>
-                              <p className="mt-1 text-xs text-muted-foreground">{m.technique} · {m.worked ? <span className="text-emerald-300">moved forward</span> : <span className="text-rose-300">did not land</span>}</p>
+                              <p className="mt-1 text-xs text-muted-foreground">{m.technique} · {m.worked ? <span className="text-emerald-700 dark:text-emerald-300">moved forward</span> : <span className="text-rose-700 dark:text-rose-300">did not land</span>}</p>
                             </li>
                           ))}
                         </ul>
@@ -282,7 +290,7 @@ export default function CallTraining() {
                       <Section title="Would have made it better"><ul className="list-disc space-y-0.5 pl-5">{(r.improvements ?? []).map((s) => <li key={s}>{s}</li>)}</ul></Section>
                     )}
                     {(r.compliance_flags ?? []).length > 0 && (
-                      <Section title="Compliance"><ul className="list-disc space-y-0.5 pl-5 text-rose-300">{(r.compliance_flags ?? []).map((s) => <li key={s}>{s}</li>)}</ul></Section>
+                      <Section title="Compliance"><ul className="list-disc space-y-0.5 pl-5 text-rose-700 dark:text-rose-300">{(r.compliance_flags ?? []).map((s) => <li key={s}>{s}</li>)}</ul></Section>
                     )}
                     {r.coaching_notes && <Section title="Coaching note"><p>{r.coaching_notes}</p></Section>}
                     <div className="flex flex-wrap items-center gap-4">

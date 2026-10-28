@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "Oct 28, 2026",
+    label: "Call Training: one row per person, ranked on a real sample, readable in light mode",
+    detail: "Sam: fix call trainings. The leaderboard split one person into two rows whenever ReadyMode spelled them differently (Marlyn Johnson and Marlyn Johnson (deleted)), counted voicemails as graded calls, and put a one-call score of 83 above an agent with eleven graded conversations. It now groups by agent, counts only real conversations, and ranks people with three or more graded calls first. ReadyMode's (deleted) suffix is gone from names, and every score colour now has a light-theme shade that passes contrast instead of pale amber on white.",
+    commit: "CALL-TRAINING-FIX",
+  },
+  {
+    ts: "Oct 28, 2026",
     label: "Links open the exact record: a sold call opens its book row and recording, a book row opens its sold call, and a failed team lookup says so",
     detail: "Sam: links should go to the actual ReadyMode call and the actual book of business, not the page itself, with no clutter. On Sold Calls, In the book now opens that client's exact row in the Book of Business. In the Book of Business call panel, Sold call opens that exact call, next to the recording link it already had. Six screens that read the team list (Manager view, Agent Management, Post a Deal, Pre-Licensing, Agency Owner home and the Dashboard) show one Couldn't load your team notice with Try again instead of passing a failed lookup off as an empty team. The unused Radix toast package is out of package.json and both lockfiles.",
     commit: "FOLLOWUPS-2026-10-28",

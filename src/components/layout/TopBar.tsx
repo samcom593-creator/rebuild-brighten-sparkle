@@ -70,15 +70,18 @@ export function TopBar() {
         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-accent hover:text-foreground" onClick={toggleSidebar} aria-label="Toggle navigation">
           <Menu className="h-4 w-4" />
         </Button>
+        {/* Colour layer (2026-10-28): the bar sits outside .apex-page-slot, so text-xs would still
+            render 12px here. The greeting is 15px, the date and the breadcrumb 13px, the current
+            crumb semibold. Nothing under 13px on a signed-in screen. */}
         {pathname === "/dashboard" ? (
           <div className="flex min-w-0 items-baseline gap-2">
-            <span className="truncate text-sm font-semibold text-foreground">Good {new Date().getHours() < 12 ? "morning" : new Date().getHours() < 17 ? "afternoon" : "evening"}, {firstName}</span>
-            <span className="truncate text-xs text-muted-foreground">{new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</span>
+            <span className="truncate text-[15px] font-semibold leading-5 text-foreground">Good {new Date().getHours() < 12 ? "morning" : new Date().getHours() < 17 ? "afternoon" : "evening"}, {firstName}</span>
+            <span className="truncate text-[13px] leading-5 text-muted-foreground">{new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</span>
           </div>
         ) : (
-          <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs">
+          <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-[13px] leading-5">
             <Link to="/dashboard" aria-label="Dashboard home" className="inline-flex min-h-6 min-w-6 items-center justify-center text-muted-foreground hover:text-foreground"><Home className="h-3.5 w-3.5" aria-hidden="true" /></Link>
-            {crumbs.map((crumb, index) => <span key={`${crumb}-${index}`} className={index === crumbs.length - 1 ? "font-medium text-foreground" : "text-muted-foreground"}>{index > 0 && <span className="mr-2 text-muted-foreground">/</span>}{crumb}</span>)}
+            {crumbs.map((crumb, index) => <span key={`${crumb}-${index}`} className={index === crumbs.length - 1 ? "font-semibold text-foreground" : "text-muted-foreground"}>{index > 0 && <span className="mr-2 text-muted-foreground">/</span>}{crumb}</span>)}
           </nav>
         )}
       </div>
@@ -107,7 +110,7 @@ export function TopBar() {
         <SoundToggle />
         <RolePreviewMenu />
         <Avatar className="ml-1 h-8 w-8 border border-border">
-          <AvatarFallback className="bg-card text-[11px] font-semibold text-foreground">{initials}</AvatarFallback>
+          <AvatarFallback className="bg-card text-[13px] font-semibold text-foreground">{initials}</AvatarFallback>
         </Avatar>
       </div>
     </header>

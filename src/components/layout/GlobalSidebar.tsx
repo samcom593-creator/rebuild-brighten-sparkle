@@ -7,7 +7,9 @@ import { useNavGrants } from "@/hooks/useNavGrants";
 import { useIsTouchDevice } from "@/hooks/useIsTouchDevice";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { ToneBubble } from "@/components/ui/delight/ToneBubble";
 import { cn } from "@/lib/utils";
+import { TONE_CLASS, type Tone } from "@/lib/tones";
 import { useBrand } from "@/hooks/useBrand";
 import {
   AGENT_CLOUD_ACCOUNT_NAV,
@@ -19,6 +21,9 @@ import {
   isAgentCloudGroup,
   isApplicantViewer,
   isNavGroupOpen,
+  navHrefLocation,
+  navSectionTone,
+  navSectionToneForLocation,
   reconcileGroupExpansion,
   toggleNavGroup,
   type AgentCloudNavEntry,
@@ -39,6 +44,16 @@ interface GlobalSidebarProps {
   onFullscreenToggle: () => void;
   /** Render inside the focus-trapped mobile Actions sheet, not as a fixed rail. */
   mobile?: boolean;
+}
+
+/** How one link row is drawn (colour layer, 2026-10-28). */
+interface LeafStyle {
+  /** The tone of the section the row belongs to (navSectionTone in agentCloudNavigation.ts). */
+  tone: Tone;
+  /** A child of a group: plain icon, tighter row, the section's tone only when active. */
+  nested?: boolean;
+  /** Top-level sections put their icon in a tinted bubble; a favourite keeps its plain star. */
+  bubble?: boolean;
 }
 
 export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }: GlobalSidebarProps) {
@@ -93,6 +108,9 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
   const isApplicant = isApplicantViewer({ authLoading, isAdmin, isManager, isAgent, hasAgentRecord, isPreviewing });
   const primary = isApplicant ? APPLICANT_NAV : filterEntries(AGENT_CLOUD_PRIMARY_NAV);
   const account = filterEntries(AGENT_CLOUD_ACCOUNT_NAV);
+  // Everything this viewer's rail shows, in order. A favourite takes the tone of the section
+  // that owns its page here, so a pinned Call list is Grow's purple like the item it points at.
+  const visible = [...primary, ...account];
 
   // Group expansion is explicit state. It starts from the route, a chevron
   // click is a choice that stands (for the active group too), and moving into
@@ -100,7 +118,7 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
   // during render so the first paint after a route change is already right;
   // reconcileGroupExpansion returns the same object when nothing changed, so
   // this cannot loop.
-  const activeGroups = [...primary, ...account]
+  const activeGroups = visible
     .filter(isAgentCloudGroup)
     .filter((group) => agentCloudGroupIsActive(here, group))
     .map((group) => group.label);
@@ -116,9 +134,11 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
   const canPostDeal = !isApplicant;
   // Both quick actions are outline buttons at 44px (screen contract, 2026-10-28): the one gold
   // button on any screen is the page's own primary action, and the rail must never compete
-  // with it. Before this the rail put a second gold button beside every page's primary.
+  // with it. Before this the rail put a second gold button beside every page's primary. Their
+  // icons carry a tone instead (Add Agent good, Post a Deal gold): colour on the glyph, never
+  // a second gold fill.
   const quickActionClass = cn(
-    "w-full gap-2",
+    "w-full gap-2 text-[15px]",
     mobile ? "h-11 justify-start gap-3 px-3" : collapsed ? "h-11 px-0" : "h-11 justify-start px-3",
   );
 
@@ -132,24 +152,40 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
     );
   };
 
-  const renderLeaf = (item: AgentCloudNavItem, nested = false) => {
+  // The active row's marker: a short bar in the section's tone beside the tinted row. Decorative
+  // (the row's aria-current and semibold label carry the state), so it is hidden from assistive
+  // technology.
+  const activeBar = (tone: Tone) => (
+    <span aria-hidden="true" className={cn("absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full", TONE_CLASS[tone].dot)} />
+  );
+
+  // Colour layer (2026-10-28): a top-level row carries its section's icon in a tinted bubble; the
+  // active row is tinted in the section's tone with a semibold label. Nothing animates: the rail
+  // persists across pages, so an entrance here would replay on every route. When the rail is
+  // collapsed the label is not rendered, so the row names itself with aria-label.
+  const renderLeaf = (item: AgentCloudNavItem, { tone, nested = false, bubble = !nested }: LeafStyle) => {
     const active = agentCloudItemIsActive(here, item);
     const Icon = item.icon;
+    const t = TONE_CLASS[tone];
     return withTooltip(item.label, (
       <Link
         to={item.href}
         aria-current={active ? "page" : undefined}
+        aria-label={collapsed ? item.label : undefined}
         onClick={mobile ? onToggle : undefined}
         className={cn(
-          "flex min-h-10 items-center rounded-lg text-sm font-medium transition-colors",
-          mobile && "min-h-11",
+          "relative flex items-center rounded-lg text-[15px] leading-5 transition-colors",
+          nested && !mobile ? "min-h-10" : "min-h-11",
           collapsed ? "justify-center px-2" : nested ? "gap-2.5 px-3" : "gap-3 px-3",
           active
-            ? "bg-primary/15 text-primary"
-            : "text-muted-foreground hover:bg-accent hover:text-foreground",
+            ? cn("font-semibold text-foreground", t.soft)
+            : "font-medium text-muted-foreground hover:bg-accent hover:text-foreground",
         )}
       >
-        {Icon && <Icon className={cn("h-[17px] w-[17px] shrink-0", active && "text-primary")} />}
+        {active && activeBar(tone)}
+        {Icon && (bubble
+          ? <ToneBubble tone={tone} size="sm"><Icon /></ToneBubble>
+          : <Icon className={cn("h-[17px] w-[17px] shrink-0", active && t.text)} />)}
         {!collapsed && <span className="truncate">{item.label}</span>}
       </Link>
     ));
@@ -158,22 +194,28 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
   const renderGroup = (group: AgentCloudNavGroup) => {
     const active = agentCloudGroupIsActive(here, group);
     const open = isNavGroupOpen(groupState, group.label);
+    const tone = navSectionTone(group.label);
     const Icon = group.icon;
+    // Expanded, the active child carries the tint; the trigger only firms up its label. Collapsed,
+    // the children are hidden, so the trigger itself shows where the person is.
+    const tintTrigger = active && collapsed;
     const trigger = (
       <button
         type="button"
         onClick={() => collapsed ? onToggle() : setExpansion((value) => toggleNavGroup(value, group.label))}
         aria-expanded={open}
+        aria-label={collapsed ? group.label : undefined}
         className={cn(
-          "flex min-h-10 w-full items-center rounded-lg text-sm font-medium transition-colors",
-          mobile && "min-h-11",
+          "relative flex min-h-11 w-full items-center rounded-lg text-[15px] leading-5 transition-colors",
           collapsed ? "justify-center px-2" : "gap-3 px-3",
-          active ? "text-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground",
+          active ? "font-semibold text-foreground" : "font-medium text-muted-foreground hover:bg-accent hover:text-foreground",
+          tintTrigger && TONE_CLASS[tone].soft,
         )}
       >
-        <Icon className={cn("h-[17px] w-[17px] shrink-0", active && "text-primary")} />
+        {tintTrigger && activeBar(tone)}
+        <ToneBubble tone={tone} size="sm"><Icon /></ToneBubble>
         {!collapsed && <span className="flex-1 text-left">{group.label}</span>}
-        {!collapsed && <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", !open && "-rotate-90")} />}
+        {!collapsed && <ChevronDown className={cn("h-4 w-4 shrink-0 transition-transform", !open && "-rotate-90")} />}
       </button>
     );
 
@@ -181,8 +223,9 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
       <div key={group.label} className="space-y-0.5">
         {withTooltip(group.label, trigger)}
         {!collapsed && open && (
-          <div className="ml-[20px] space-y-0.5 border-l border-border pl-2">
-            {group.items.map((item) => <div key={item.href}>{renderLeaf(item, true)}</div>)}
+          // The guide line hangs from the centre of the 32px bubble (12px padding + 16px).
+          <div className="ml-[27px] space-y-0.5 border-l border-border pl-2">
+            {group.items.map((item) => <div key={item.href}>{renderLeaf(item, { tone, nested: true })}</div>)}
           </div>
         )}
       </div>
@@ -190,7 +233,9 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
   };
 
   const renderEntries = (entries: AgentCloudNavEntry[]) => entries.map((entry) => (
-    <div key={entry.label}>{isAgentCloudGroup(entry) ? renderGroup(entry) : renderLeaf(entry)}</div>
+    <div key={entry.label}>
+      {isAgentCloudGroup(entry) ? renderGroup(entry) : renderLeaf(entry, { tone: navSectionTone(entry.label) })}
+    </div>
   ));
 
   return (
@@ -206,14 +251,18 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
     >
       <div className="flex h-full flex-col">
         <div className={cn("flex h-[60px] shrink-0 items-center border-b border-border", collapsed ? "justify-center" : "px-4", mobile && "pr-14")}>
-          <Link to="/dashboard" onClick={mobile ? onToggle : undefined} className="flex min-w-0 items-center gap-3">
+          <Link
+            to="/dashboard"
+            onClick={mobile ? onToggle : undefined}
+            aria-label={collapsed ? brand.legalName : undefined}
+            className="flex min-w-0 items-center gap-3"
+          >
             <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground">
               <Cloud className="h-[18px] w-[18px]" strokeWidth={2.25} />
             </span>
             {!collapsed && (
               <span className="min-w-0 leading-none">
                 <span className="block truncate text-[15px] font-semibold tracking-tight text-foreground">{brand.legalName}</span>
-                
               </span>
             )}
           </Link>
@@ -221,7 +270,7 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
 
         <div className="shrink-0 px-2 pt-3">
           <Button variant="outline" aria-label="Search people and pages" title="Search people and pages (Ctrl or Command K)"
-            className={cn("h-11 w-full gap-2", collapsed ? "px-0" : "justify-start px-3")}
+            className={cn("h-11 w-full gap-2 text-[15px] font-medium", collapsed ? "px-0" : "justify-start px-3")}
             onClick={() => { if (mobile) onToggle(); useUIStore.getState().setCommandPaletteOpen(true); }}>
             <Search className="h-4 w-4 shrink-0" />
             {!collapsed && <span>Search people & pages</span>}
@@ -230,15 +279,14 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
         <nav aria-label="Primary" className="min-h-0 flex-1 overflow-y-auto px-2 py-3 [scrollbar-width:thin]">
           {favorites.length > 0 && (
             <div className="mb-3">
-              {!collapsed && (
-                <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                  Favorites
-                </div>
-              )}
+              {!collapsed && <div className="nav-section-label px-3 pb-1.5">Favorites</div>}
               <div className="space-y-0.5">
                 {favorites.map((favorite) => (
                   <div key={favorite.href}>
-                    {renderLeaf({ label: favorite.label, href: favorite.href, icon: Star })}
+                    {renderLeaf(
+                      { label: favorite.label, href: favorite.href, icon: Star },
+                      { tone: navSectionToneForLocation(navHrefLocation(favorite.href), visible), bubble: false },
+                    )}
                   </div>
                 ))}
               </div>
@@ -247,22 +295,18 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
           )}
           <div className="space-y-0.5">{renderEntries(primary)}</div>
           <div className="my-3 border-t border-border" />
-          {!collapsed && <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Account</div>}
+          {!collapsed && <div className="nav-section-label px-3 pb-1.5">Account</div>}
           <div className="space-y-0.5">{renderEntries(account)}</div>
         </nav>
 
         {(canAddAgent || canPostDeal) && (
           <div className={cn("shrink-0 border-t border-border p-2", mobile ? "space-y-2" : "space-y-1")}>
-            {mobile && (
-              <div className="px-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                Quick actions
-              </div>
-            )}
+            {mobile && <div className="nav-section-label px-2 pt-1">Quick actions</div>}
             {canAddAgent && (
               <AddAgentModal
                 trigger={(
                   <Button size="sm" variant="outline" className={quickActionClass} aria-label="Add Agent">
-                    <UserPlus className="h-4 w-4 shrink-0" />
+                    <UserPlus className={cn("h-4 w-4 shrink-0", TONE_CLASS.good.text)} />
                     {!collapsed && <span>Add Agent</span>}
                   </Button>
                 )}
@@ -272,7 +316,7 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
               <SubmitDealDialog
                 trigger={(
                   <Button size="sm" variant="outline" className={quickActionClass} aria-label="Post a Deal">
-                    <HandCoins className="h-4 w-4 shrink-0" />
+                    <HandCoins className={cn("h-4 w-4 shrink-0", TONE_CLASS.gold.text)} />
                     {!collapsed && <span>Post a Deal</span>}
                   </Button>
                 )}
@@ -287,11 +331,11 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
             size="sm"
             onClick={() => void handleSignOut()}
             disabled={signingOut}
-            className={cn("h-9 text-muted-foreground hover:bg-destructive/10 hover:text-destructive", mobile && "h-11", collapsed ? "w-full px-0" : "w-full justify-start gap-3 px-3")}
+            className={cn("h-10 text-[15px] font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive", mobile && "h-11", collapsed ? "w-full px-0" : "w-full justify-start gap-3 px-3")}
             aria-label="Sign out"
           >
             {signingOut ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
-            {!collapsed && <span className="text-xs">{signingOut ? "Signing out…" : "Sign out"}</span>}
+            {!collapsed && <span>{signingOut ? "Signing out…" : "Sign out"}</span>}
           </Button>
         </div>
 
@@ -300,11 +344,11 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
             variant="ghost"
             size="sm"
             onClick={onToggle}
-            className={cn("h-8 text-muted-foreground hover:bg-accent hover:text-foreground", collapsed ? "w-full px-0" : "w-full justify-start gap-3 px-3")}
+            className={cn("h-9 text-[13px] font-medium text-muted-foreground hover:bg-accent hover:text-foreground", collapsed ? "w-full px-0" : "w-full justify-start gap-3 px-3")}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-            {!collapsed && <span className="text-xs">Collapse sidebar</span>}
+            {!collapsed && <span>Collapse sidebar</span>}
           </Button>
         </div>}
       </div>

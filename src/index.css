@@ -814,9 +814,11 @@ html, body, #root {
   background: hsl(var(--primary) / 0.4);
 }
 
-/* Section label for sidebar groups */
+/* Section label for sidebar groups (Favorites, Account, Quick actions). Colour layer 2026-10-28:
+   12px with 0.08em tracking and full muted ink, up from a 10px faded eyebrow. Spacing is set
+   where the label is used, so the one rule here is the type alone. */
 .nav-section-label {
-  @apply text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 px-3 pt-4 pb-1;
+  @apply text-[12px] font-semibold uppercase leading-4 tracking-[0.08em] text-muted-foreground;
 }
 
 /* Staggered entrance animation helper */

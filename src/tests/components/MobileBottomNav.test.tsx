@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
 // The bottom nav reads the resolved account mode and the applicant signals
@@ -20,6 +20,7 @@ vi.mock("@/hooks/useRolePreview", () => ({ useRolePreview: () => ({ ...preview }
 vi.mock("@/hooks/use-mobile", () => ({ useIsMobile: () => true }));
 
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
+import { TONE_CLASS, type Tone } from "@/lib/tones";
 
 function renderNav(url: string) {
   return render(
@@ -123,5 +124,65 @@ describe("MobileBottomNav · applicant ladder (F26)", () => {
     expect(tab("Contracting")).toBeTruthy();
     expect(tab("Admin")).toBeNull();
     expect(tab("Get licensed")).toBeNull();
+  });
+});
+
+describe("MobileBottomNav · section tones (colour layer, 2026-10-28)", () => {
+  const TINT = /bg-tone-\w+\/12/;
+  // The active tab's icon sits in a ToneBubble: the first aria-hidden span inside the tab.
+  const bubbleOf = (name: string) => tab(name)?.querySelector('span[aria-hidden="true"]') ?? null;
+  const asMode = (mode: string) =>
+    Object.assign(authState, { effectiveMode: mode, isAdmin: mode === "admin", isManager: mode === "manager", isAgent: mode === "agent" });
+
+  it.each([
+    ["admin", "/dashboard", "Home", "gold"],
+    ["admin", "/dashboard/recruiting/hires", "Recruiting", "royal"],
+    ["admin", "/dashboard/team", "Team", "cool"],
+    ["admin", "/dashboard/production", "Production", "good"],
+    ["admin", "/dashboard/admin", "Admin", "slate"],
+    ["manager", "/dashboard/training/library", "Training", "warm"],
+    ["recruiter", "/dashboard/settings/notifications", "Settings", "slate"],
+    ["agent", "/dashboard/agent-pipeline", "Pipeline", "good"],
+    ["agent", "/dashboard/profile", "Profile", "slate"],
+  ])("as %s on %s, the active %s tab's bubble is %s and no other tab is tinted", (mode, url, label, tone) => {
+    asMode(mode);
+    renderNav(url);
+    const active = tab(label)!;
+    expect(active.getAttribute("aria-current")).toBe("page");
+    const bubble = bubbleOf(label);
+    expect(bubble?.className).toContain(TONE_CLASS[tone as Tone].soft);
+    expect(bubble?.className).toContain("rounded-full");
+    for (const other of screen.getAllByRole("button")) {
+      if (other !== active) expect(other.innerHTML).not.toMatch(TINT);
+    }
+  });
+
+  it("gives a VA's Calendar tab Grow's tone, the section that lists Calendar for staff, not Sell's", () => {
+    asMode("va");
+    renderNav("/dashboard/calendar");
+    expect(bubbleOf("Calendar")?.className).toContain(TONE_CLASS.royal.soft);
+    expect(bubbleOf("Calendar")?.className).not.toContain(TONE_CLASS.good.soft);
+  });
+
+  it("gives an applicant's Get licensed tab royal (paperwork) and Training warm", () => {
+    authState.hasAgentRecord = false;
+    renderNav("/get-licensed");
+    expect(bubbleOf("Get licensed")?.className).toContain(TONE_CLASS.royal.soft);
+    cleanup();
+    renderNav("/dashboard/training/library");
+    expect(bubbleOf("Training")?.className).toContain(TONE_CLASS.warm.soft);
+  });
+
+  it("names every tab in words and keeps each one tall enough for a thumb", () => {
+    asMode("admin");
+    renderNav("/dashboard/team");
+    const tabs = screen.getAllByRole("button");
+    expect(tabs).toHaveLength(5);
+    for (const button of tabs) {
+      expect(button.textContent?.trim()).not.toBe("");
+      expect(button.className).toContain("h-14");
+      expect(button.className).toContain("min-h-[48px]");
+    }
+    expect(screen.getByRole("navigation", { name: "Primary mobile navigation" }).className).toContain("safe-area-bottom");
   });
 });

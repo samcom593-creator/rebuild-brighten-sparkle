@@ -4,7 +4,8 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { contractingBlock, displayPhone, type ContractingInfo } from "@/lib/inviteContractingInfo";
+import { formatPhoneDisplay } from "@/lib/phone";
+import { contractingBlock, type ContractingInfo } from "@/lib/inviteContractingInfo";
 
 const FIELDS: Array<{ key: keyof ContractingInfo; label: string }> = [
   { key: "firstName", label: "First name" },
@@ -46,7 +47,7 @@ export function ContractingCopyCard({ info, className }: { info: ContractingInfo
       <dl className="divide-y divide-border">
         {FIELDS.map((f) => {
           const raw = info[f.key];
-          const value = f.key === "phone" && raw ? displayPhone(raw) : raw;
+          const value = f.key === "phone" && raw ? formatPhoneDisplay(raw) || raw : raw;
           return (
             <div key={f.key} className="flex min-h-14 items-center gap-3 px-4 py-2">
               <dt className="w-[5.5rem] shrink-0 text-sm text-muted-foreground">{f.label}</dt>

@@ -6,7 +6,6 @@ import {
   contractingInfoFor,
   contractingLine,
   decodeInviteNote,
-  displayPhone,
   encodeInviteNote,
   freeNoteRoom,
   splitName,
@@ -56,6 +55,8 @@ describe("invite contracting info", () => {
     expect(info).toEqual({ firstName: "Mary Ann", lastName: "Smith", email: "mary@example.test", phone: "2569756155", npn: "12345678" });
     expect(contractingBlock(info)).toBe("First name: Mary Ann\nLast name: Smith\nEmail: mary@example.test\nPhone: (256) 975-6155\nNPN: 12345678");
     expect(contractingBlock({ ...info, phone: "", npn: "" })).toBe("First name: Mary Ann\nLast name: Smith\nEmail: mary@example.test");
-    expect(displayPhone("12569756155")).toBe("(256) 975-6155");
+    // Phone display comes from the one sanctioned formatter (check:phone-display-format), so an 11-digit
+    // stored value reads the same as a 10-digit one.
+    expect(contractingBlock({ ...info, phone: "12569756155" })).toContain("Phone: (256) 975-6155");
   });
 });

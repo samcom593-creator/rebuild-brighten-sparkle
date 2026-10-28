@@ -19,6 +19,7 @@
  * splitting recipient_name. A dedicated column is the proper long-term home.
  */
 import { normalizeNpn } from "@/lib/contractingIntake";
+import { formatPhoneDisplay } from "@/lib/phone";
 
 export const INVITE_NOTE_LIMIT = 200;
 const PREFIX = "Contracting: ";
@@ -110,20 +111,13 @@ export function contractingInfoFor(row: { recipient_name: string | null; recipie
   };
 }
 
-/** "(256) 975-6155" for ten digits; anything else as given. */
-export function displayPhone(digits: string): string {
-  const d = (digits ?? "").replace(/\D/g, "");
-  const ten = d.length === 11 && d.startsWith("1") ? d.slice(1) : d;
-  return ten.length === 10 ? `(${ten.slice(0, 3)}) ${ten.slice(3, 6)}-${ten.slice(6)}` : digits;
-}
-
-/** One block for "Copy all": one "Label: value" per line, skipping blanks. */
+/** One block for "Copy all": one "Label: value" per line, skipping blanks. Phone reads as the library formats it. */
 export function contractingBlock(info: ContractingInfo): string {
   return [
     ["First name", info.firstName],
     ["Last name", info.lastName],
     ["Email", info.email],
-    ["Phone", info.phone ? displayPhone(info.phone) : ""],
+    ["Phone", info.phone ? formatPhoneDisplay(info.phone) || info.phone : ""],
     ["NPN", info.npn],
   ]
     .filter(([, v]) => v)

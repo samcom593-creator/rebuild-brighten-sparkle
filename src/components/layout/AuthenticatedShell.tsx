@@ -46,6 +46,9 @@ import { ConfirmProvider } from "@/hooks/useConfirm";
 // first paint and undo the wave-39/46/51 landing work. AuthenticatedShell is
 // already lazy and every route under it pulls framer-motion anyway.
 import { MotionConfig } from "framer-motion";
+// 2026-10-28 colour, motion and sound layer. Imported here, inside the lazy shell, so the
+// public landing routes never download it and the landing CSS ceiling is untouched.
+import "@/styles/delight.css";
 
 function InnerPageLoader() {
   return <PageSkeleton />;

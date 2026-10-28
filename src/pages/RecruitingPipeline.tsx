@@ -1,6 +1,6 @@
 import { Fragment, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, Instagram, MessageSquare, Phone, RefreshCw, Search, SlidersHorizontal, X } from "lucide-react";
+import { BadgeCheck, CalendarCheck, ChevronDown, ClipboardList, Instagram, MessageSquare, Phone, RefreshCw, Route, Search, SlidersHorizontal, UserCheck, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { GrowScoreboard } from "@/components/recruiting/GrowScoreboard";
+import { RevealList } from "@/components/ui/delight/Reveal";
 import { RecruitingWorkspaceNav } from "@/components/recruiting/RecruitingWorkspaceNav";
 import { StatusPill } from "@/components/recruiting/StatusPill";
 import type { RowStatus } from "@/components/pipeline/worklist/worklistStatus";
@@ -318,6 +319,8 @@ export default function RecruitingPipeline() {
       <PageHeader
         title="Pipeline"
         subtitle="Everyone from first call to active agent."
+        icon={<Route />}
+        tone="gold"
       />
 
       <GrowScoreboard
@@ -326,10 +329,10 @@ export default function RecruitingPipeline() {
           <span className="text-destructive">The pipeline did not load, so the numbers are hidden rather than shown as 0.</span>
         ) : null}
         tiles={[
-          { label: "Expected Monday", value: unknown ? null : counts.expected, hint: "Prospects due to start", onSelect: () => openList("expected"), active: listOn("expected"), emphasis: true },
-          { label: "Showed", value: unknown ? null : counts.showed, hint: "Prospects who came", onSelect: () => openList("showed"), active: listOn("showed") },
-          { label: "Onboarding", value: unknown ? null : counts.onboarding, hint: "Getting set up", onSelect: () => openList("onboarding"), active: listOn("onboarding") },
-          { label: "Active agents", value: unknown ? null : counts.active, hint: "Writing business", onSelect: () => openList("active"), active: listOn("active") },
+          { label: "Expected Monday", value: unknown ? null : counts.expected, hint: "Prospects due to start", onSelect: () => openList("expected"), active: listOn("expected"), emphasis: true, tone: "gold", icon: <CalendarCheck /> },
+          { label: "Showed", value: unknown ? null : counts.showed, hint: "Prospects who came", onSelect: () => openList("showed"), active: listOn("showed"), tone: "good", icon: <UserCheck /> },
+          { label: "Onboarding", value: unknown ? null : counts.onboarding, hint: "Getting set up", onSelect: () => openList("onboarding"), active: listOn("onboarding"), tone: "royal", icon: <ClipboardList /> },
+          { label: "Active agents", value: unknown ? null : counts.active, hint: "Writing business", onSelect: () => openList("active"), active: listOn("active"), tone: "good", icon: <BadgeCheck /> },
         ]}
       />
       <div className="flex flex-wrap items-center gap-2">
@@ -418,7 +421,7 @@ export default function RecruitingPipeline() {
         ) : filtered.length === 0 ? (
           <div className="p-10 text-center text-base text-muted-foreground">No one matches these filters.</div>
         ) : (
-          <ul className="divide-y divide-border/60">
+          <RevealList as="ul" className="divide-y divide-border/60">
             {filtered.slice(0, 400).map((r) => {
               const intent = r.intent_level ? INTENT_STYLE[r.intent_level] : null;
               const name = r.name || "Unknown";
@@ -561,7 +564,7 @@ export default function RecruitingPipeline() {
             {filtered.length > 400 && (
               <li className="p-4 text-center text-sm text-muted-foreground">Showing the first 400 of {filtered.length}. Search or filter to narrow it.</li>
             )}
-          </ul>
+          </RevealList>
         )}
       </section>
     </div>

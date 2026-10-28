@@ -17,6 +17,7 @@ import { NotificationBell } from "@/components/layout/NotificationBell";
 import { RolePreviewMenu } from "@/components/layout/RolePreviewBubbles";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { SoundToggle } from "@/components/ui/delight/SoundToggle";
 import { agentCloudBreadcrumb } from "./agentCloudNavigation";
 import { favoriteLabelFor, useFavoriteRoutes } from "./favoriteRoutes";
 import { cn } from "@/lib/utils";
@@ -103,6 +104,7 @@ export function TopBar() {
         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-accent hover:text-foreground" onClick={() => setTheme(isDark ? "light" : "dark")} aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}>
           {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </Button>
+        <SoundToggle />
         <RolePreviewMenu />
         <Avatar className="ml-1 h-8 w-8 border border-border">
           <AvatarFallback className="bg-card text-[11px] font-semibold text-foreground">{initials}</AvatarFallback>

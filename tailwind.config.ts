@@ -151,6 +151,18 @@ export default {
           bright: "hsl(var(--gold-bright))",
           dim: "hsl(var(--gold-dim))",
         },
+        // 2026-10-28 colour layer: seven meaning-carrying tones (src/lib/tones.ts). The HSL
+        // values are set per theme in src/styles/delight.css, loaded by the signed-in shell.
+        // `bg-tone-good/12`, `text-tone-hot`, `border-tone-cool/35` all work.
+        tone: {
+          good: "hsl(var(--tone-good))",
+          warm: "hsl(var(--tone-warm))",
+          hot: "hsl(var(--tone-hot))",
+          cool: "hsl(var(--tone-cool))",
+          royal: "hsl(var(--tone-royal))",
+          gold: "hsl(var(--tone-gold))",
+          slate: "hsl(var(--tone-slate))",
+        },
         muted: {
           DEFAULT: "hsl(var(--muted))",
           foreground: "hsl(var(--muted-foreground))",

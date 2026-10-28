@@ -2,6 +2,8 @@ import { Children, Fragment, isValidElement, ReactElement, ReactNode, useId, use
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { ToneBubble } from "@/components/ui/delight/ToneBubble";
+import type { Tone } from "@/lib/tones";
 
 /**
  * PageHeader — the header band used across every operating-system route.
@@ -58,6 +60,14 @@ import { Button } from "@/components/ui/button";
 export interface PageHeaderProps {
   eyebrow?: string;
   eyebrowIcon?: ReactNode;
+  /**
+   * v7 (2026-10-28, colour layer): a lucide icon rendered in a tinted round bubble beside the
+   * title, in the page's `tone` (gold by default). The title is 22px on phones and 26px from sm
+   * up, the subtitle 15px, the eyebrow 14px (Sam: "the text is small"). The band stays compact:
+   * padding and the mobile clamp are unchanged and check:page-header-compact still grades it.
+   */
+  icon?: ReactNode;
+  tone?: Tone;
   title: ReactNode;
   subtitle?: ReactNode;
   /**
@@ -237,6 +247,8 @@ function ExplicitPageActions({ primaryAction, secondaryActions, actions }: Pick<
 export function PageHeader({
   eyebrow,
   eyebrowIcon,
+  icon,
+  tone = "gold",
   title,
   subtitle,
   actions,
@@ -264,27 +276,34 @@ export function PageHeader({
         )}
       />
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            {eyebrowIcon && <span className="text-muted-foreground">{eyebrowIcon}</span>}
-            <h1 className="text-xl font-semibold leading-7 tracking-[-0.02em] text-foreground">
-              {title}
-            </h1>
-            {eyebrow && (
-              <span
-                className={cn(
-                  "hidden sm:inline text-xs font-medium text-muted-foreground",
-                )}
-              >
-                · {eyebrow}
-              </span>
+        <div className="flex min-w-0 flex-1 items-start gap-3">
+          {icon ? (
+            <ToneBubble tone={tone} size="lg" className="apex-pop mt-0.5">
+              {icon}
+            </ToneBubble>
+          ) : null}
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              {!icon && eyebrowIcon && <span className="text-muted-foreground">{eyebrowIcon}</span>}
+              <h1 className="text-[22px] font-bold leading-7 tracking-[-0.02em] text-foreground sm:text-[26px] sm:leading-8">
+                {title}
+              </h1>
+              {eyebrow && (
+                <span
+                  className={cn(
+                    "hidden sm:inline text-sm font-medium text-muted-foreground",
+                  )}
+                >
+                  · {eyebrow}
+                </span>
+              )}
+            </div>
+            {subtitle && (
+              <p className="mt-1 max-w-3xl text-[15px] leading-snug text-muted-foreground line-clamp-1 sm:line-clamp-none sm:text-base">
+                {subtitle}
+              </p>
             )}
           </div>
-          {subtitle && (
-            <p className="mt-1 max-w-3xl text-sm text-muted-foreground leading-snug line-clamp-1 sm:line-clamp-none">
-              {subtitle}
-            </p>
-          )}
         </div>
         {explicit ? (
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">

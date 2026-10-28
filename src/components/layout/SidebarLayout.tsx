@@ -3,6 +3,7 @@ import { Cloud, Menu, Search } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { GlobalSidebar } from "./GlobalSidebar";
 import { TopBar } from "./TopBar";
+import { AmbientBubbles } from "./AmbientBubbles";
 import { ScrollProgress } from "./ScrollProgress";
 import { PhonePromptBanner } from "@/components/dashboard/PhonePromptBanner";
 import { Button } from "@/components/ui/button";
@@ -144,6 +145,7 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
           transition: isDesktop ? "margin-left 150ms ease-out" : "none"
         }}
       >
+        <AmbientBubbles />
         <TopBar />
         <div className="apex-content-frame px-3 py-3 sm:p-4 lg:p-5">
           <PageContent showPhoneBanner={showPhoneBanner}>

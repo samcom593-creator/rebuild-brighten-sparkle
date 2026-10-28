@@ -31,6 +31,7 @@ import { getAllFlags, setFeatureFlag, FEATURE_FLAG_LABELS, type FeatureFlagName 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CARRIER_OPTIONS } from "@/lib/carrierOptions";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { useSoundEnabled } from "@/hooks/useSoundEnabled";
 import { MessageSquare } from "lucide-react";
 
 function DiscordWebhookSection() {
@@ -145,9 +146,8 @@ export function ProfileSettings() {
     emailWeeklyDigest: false,
   });
 
-  const [soundEnabled, setSoundEnabled] = useState(() => {
-    try { return localStorage.getItem("apex_sound_enabled") !== "false"; } catch { return true; }
-  });
+  // One preference with the shell's sound toggle (src/lib/soundPreference.ts).
+  const [soundEnabled, setSoundEnabled] = useSoundEnabled();
 
   const [featureFlagsState, setFeatureFlagsState] = useState(() => getAllFlags());
 
@@ -795,10 +795,7 @@ export function ProfileSettings() {
           <Switch
             aria-label="Enable sound effects"
             checked={soundEnabled}
-            onCheckedChange={(checked) => {
-              setSoundEnabled(checked);
-              localStorage.setItem("apex_sound_enabled", String(checked));
-            }}
+            onCheckedChange={(checked) => setSoundEnabled(checked)}
           />
         </div>
       </GlassCard>

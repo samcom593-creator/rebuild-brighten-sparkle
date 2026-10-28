@@ -19,6 +19,17 @@ everything else.
 > easy function. I am pushing for a higher rate of actual hires and fixing the re-engagement funnels. I
 > still need access to all of the data.
 
+Addendum, 2026-10-28, looking at the live Grow pages:
+
+> Lack of color. The text is small and ugly. No animation. It looks like a terminal at a checkout. Make it
+> animated. Add the bubbles and effects, and sound effects. Just make the entire website pleasant, cute and
+> easy to use, and very functional.
+
+So: one job per screen **and** colour that means something, bigger type, one entrance animation, a bubble
+beside every title and tile, a celebration when the person finishes something, and quiet sounds with one
+toggle. `docs/DESIGN_SYSTEM.md`, "Colour, motion and sound", is the rulebook; the section "Type, size,
+colour" below is the checklist.
+
 How to read it: **every screen has one job**, says it in one sentence, and offers one obvious gold button.
 Nothing is deleted, only moved: anything that exists today is still reachable in at most two taps. Numbers
 are few, big, honest, and each one opens the list it counts. The person who has never used software knows
@@ -74,19 +85,31 @@ A screen is finished when all of this is true. The council (section 6) checks ev
   list is selected it stays visible (never a hidden selection).
 
 **Rows and detail**
-- Rows are at least 64px tall. Line one: the name at 16px semibold. Line two: three facts at 14px. Right:
-  one status pill that is words plus colour ("Late · 2 days", "Today · 3:00 PM", "New", "Waiting on them").
-  Nothing else on the row; the detail panel has the rest.
+- Rows are at least 64px tall. Line one: the name at 16px semibold. Line two: three facts at 15px. Right:
+  one `TonePill` that is words plus colour ("Late · 2 days", "Today · 3:00 PM", "New", "Waiting on them"),
+  in the tone the state maps to. Nothing else on the row; the detail panel has the rest.
 - Detail panels disclose progressively: contact actions, then "what happened", then the next step. Rare
   things live in closed folds whose header shows the current value ("Owner · Sam James").
 - Destructive or irreversible actions are a two-step confirm (`useConfirm` or an inline confirm), never one
   tap away, never red-filled by default.
 
-**Type, size, colour**
-- Body 16px, secondary 14px, nothing under 13px. Primary buttons 48px tall; every other control 44px.
-- Tokens only (`bg-card`, `border-border`, `text-muted-foreground`, `text-primary`). No gradients on
-  operating surfaces, no glass or `backdrop-blur`, no `shadow-xl`, no inset shadows (guarded), no neon, no
-  looping motion, no card inside a card, no card around one line of text. `rounded-xl` is the maximum.
+**Type, size, colour** (updated 2026-10-28; `docs/DESIGN_SYSTEM.md`, "Colour, motion and sound")
+- Body 16px, secondary 15px, nothing under 13px. Primary buttons 48px tall; every other control 44px.
+  Page title 22px on phones and 26px on desktop (`PageHeader` does this); scoreboard numbers 32px to 40px.
+- Tokens only (`bg-card`, `border-border`, `text-muted-foreground`, `text-primary`) plus the seven tones
+  from `src/lib/tones.ts` (`text-tone-good`, `bg-tone-hot/12`, `border-tone-cool/35`). The same state is
+  the same tone on every page: use `pipelineStageTone`, `intentTone`, `mondayTone`, `hireRungTone`,
+  `teamStageTone`, `laneTone`, `inboxBucketTone`, `platformTone`; never pick a colour by hand. The word is
+  always beside the colour.
+- Every page has colour and life: a `ToneBubble` icon on the `PageHeader` (`icon` + `tone`) and on each
+  scoreboard tile (`tone` + `icon`), `TonePill` for states, `CountUp` for numbers, `apex-rise-list` on
+  tiles and rows, `apex-lift` on rows that open something, and `celebrate("save" | "booked" | "hire",
+  event.currentTarget)` from the control the person pressed when they finish something. The ambient
+  bubbles come from the shell; pages add no backgrounds of their own.
+- Still banned on operating surfaces: `bg-gradient-to-*` on cards, glass or `backdrop-blur`, `shadow-xl`,
+  inset or glow shadows (guarded), neon, a card inside a card, a card around one line of text, looping
+  motion other than `apex-breathe` on a live state, sound on page load. `rounded-2xl` is the maximum for a
+  scoreboard, `rounded-xl` for cards.
 - Right in dark **and** light at 390, 768, 1024 and 1440. No horizontal scroll at 390.
 - Status is never colour alone. Icons are `lucide-react` only. Every icon-only control has an accessible
   name. Every `SelectTrigger` and `Switch` has a label (the ratchet in `scripts/data/control-labels-baseline.json`

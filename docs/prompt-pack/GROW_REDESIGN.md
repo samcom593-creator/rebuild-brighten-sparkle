@@ -4,6 +4,11 @@
 > the Call list, person panel, Pipeline, New hires, Invite an agent (first name, last name, email,
 > phone, NPN, copy-ready for contracting), Refer a recruit, Staff accounts, and the plain-English
 > names. Keep this file as the design brief for follow-up work; do not paste it to redo the work.
+>
+> **The whole-platform program that follows it lives in [`platform-redesign/`](platform-redesign/README.md):**
+> one master prompt, one prompt per layer (shell, public funnel, Grow follow-through, Home, Sell, My
+> Business, Team and Learn, Owner, Settings, phone and theme pass), the four-lens council gate, and the
+> analysis sessions. Start there.
 
 Paste this entire prompt into Claude Code in VS Code at the repository root.
 

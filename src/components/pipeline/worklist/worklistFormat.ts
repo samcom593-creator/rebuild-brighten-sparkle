@@ -1,3 +1,4 @@
+import { firstGrapheme } from "@/lib/personInitials";
 import type { StaffMember } from "./useRecruitingWorklist";
 
 /** Display helpers for the recruiting worklist. Times are always shown with an explicit zone. */
@@ -153,7 +154,7 @@ export function humanizeKey(value: string | null | undefined): string {
 export function initialsOf(row: { first_name: string | null; last_name: string | null }): string {
   const first = (row.first_name ?? "").trim();
   const last = (row.last_name ?? "").trim();
-  return `${first.charAt(0)}${last.charAt(0)}`.toUpperCase();
+  return `${firstGrapheme(first)}${firstGrapheme(last)}`.toUpperCase();
 }
 
 export const VERIFIED_ZONE_OPTIONS = [

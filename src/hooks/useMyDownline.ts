@@ -14,10 +14,8 @@ export function useMyDownline() {
     queryFn: async (): Promise<string[]> => {
       if (!user?.id) return [];
       const { data, error } = await supabase.rpc("my_downline_agent_ids" as any);
-      if (error) {
-        console.error("[downline]", error);
-        return [];
-      }
+      // Preserve React Query's error state; a failed lookup is not an empty team.
+      if (error) throw error;
       return (data ?? []).map((r: any) => r.agent_id);
     },
     enabled: !!user?.id,

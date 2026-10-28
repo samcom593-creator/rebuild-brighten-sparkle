@@ -1,3 +1,4 @@
+import { personInitials } from "@/lib/personInitials";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -119,8 +120,7 @@ const stepRank = (stageKey: string): number | null => STEP_RUNG[stageKey] ?? nul
 const rungWord = (rank: number): string | null => HIRE_RUNGS.find((rung) => rung.rank === rank)?.label ?? null;
 
 /** Two initials for the bubble beside a name. */
-const initialsOf = (name: string) =>
-  name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "?";
+const initialsOf = personInitials;
 
 type Rung = { tone: Tone; word: string | null };
 

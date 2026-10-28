@@ -294,6 +294,7 @@ const BookFlips = lazy(() => import("./pages/BookFlips"));
 const SoldCalls = lazy(() => import("./pages/SoldCalls"));
 const EasyResells = lazy(() => import("./pages/EasyResells"));
 const AyroBook = lazy(() => import("./pages/AyroBook"));
+const SocialCommandCenter = lazy(() => import("./pages/SocialCommandCenter"));
 const ReadyModeIntegration = lazy(() => import("./pages/ReadyModeIntegration"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const ContentWheel = lazy(() => import("./pages/ContentWheel"));
@@ -782,7 +783,7 @@ const App = () => (
                        <Route path="/terms-of-service" element={<TermsOfService />} />
                        <Route path="/bot-token" element={<ProtectedRoute requireAdmin><BotToken /></ProtectedRoute>} />
                        <Route path="/dashboard/bot-token" element={<ProtectedRoute requireAdmin><BotToken /></ProtectedRoute>} />
-                       <Route path="/dashboard/inbox/instagram" element={<ProtectedRoute requireAdmin><InstagramInbox /></ProtectedRoute>} />
+                       <Route path="/dashboard/inbox/instagram" element={<ProtectedRoute requireAdmin allowManagers><InstagramInbox /></ProtectedRoute>} />
                        <Route path="/dashboard/instagram-inbox" element={<ProtectedRoute><InstagramInbox /></ProtectedRoute>} />
                        {/* /today has aliased the Today page since 0ae97ee7. MP-230 pointed it at the
                            old command center when Today was removed; MP-239 restored /dashboard/today
@@ -855,6 +856,8 @@ const App = () => (
                            <Route path="/dashboard/sold-calls" element={<ProtectedRoute requireAdmin allowManagers><SoldCalls /></ProtectedRoute>} />
                            <Route path="/dashboard/easy-resells" element={<ProtectedRoute requireAdmin allowManagers><EasyResells /></ProtectedRoute>} />
                            <Route path="/dashboard/ayro-book" element={<ProtectedRoute requireAdmin allowManagers><AyroBook /></ProtectedRoute>} />
+                           {/* Social Command Center (MP-308): Sam + Aisha, same gate as Sold Calls (can_view_sold_calls in the RPC). */}
+                           <Route path="/dashboard/social-command" element={<ProtectedRoute requireAdmin allowManagers><SocialCommandCenter /></ProtectedRoute>} />
                            <Route path="/dashboard/admin/book-quality" element={<LegacyWorkspaceRedirect to="/dashboard/book-quality" />} />
                            {/* ReadyMode dialer integration — credentials live in system_settings */}
                            <Route path="/dashboard/readymode" element={<ProtectedRoute requireAdmin><ReadyModeIntegration /></ProtectedRoute>} />

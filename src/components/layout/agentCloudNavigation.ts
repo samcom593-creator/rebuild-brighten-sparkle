@@ -27,7 +27,7 @@ import { Instagram,
   UserPlus,
   Users,
   WalletCards,
-  Mic, Milestone, Send, PhoneCall } from "lucide-react";
+  Mic, Milestone, Send, PhoneCall, Radar } from "lucide-react";
 
 import type { AccountMode } from "@/hooks/useAuth";
 
@@ -161,6 +161,9 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
       // managers; /dashboard/recruiting adds recruiters; /admin/invite-links
       // admits managers only. A plain agent or agency owner gets the referral
       // form, which is open to every signed-in user.
+      // Social Command Center (MP-308, 2026-10-28): every platform's messages ranked, the content queue, what
+      // pulls applications, and the lane alarm. Sam + Aisha (can_view_sold_calls), like Sold Calls.
+      { label: "Social Command", href: "/dashboard/social-command", icon: Radar, grant: "sold_calls" },
       // Plain names (Grow redesign, 2026-10-28): "Recruit Pipeline" and "Recruit Stages" read as
       // the same thing and sat beside "Recruiting Pipeline" and Sell's "My Pipeline". The call
       // list comes first because calling is the daily job. Routes and role gates are unchanged.

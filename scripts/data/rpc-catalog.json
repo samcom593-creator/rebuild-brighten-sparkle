@@ -3833,7 +3833,7 @@
         ],
         "required": [],
         "unnamed": false,
-        "raw": "p_window text DEFAULT '7d'::text"
+        "raw": "p_window text DEFAULT '30d'::text"
       }
     ],
     "fn_ig_nudge_candidates": [
@@ -3842,6 +3842,69 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "fn_ig_phone10": [
+      {
+        "all": [
+          "p_text"
+        ],
+        "required": [
+          "p_text"
+        ],
+        "unnamed": false,
+        "raw": "p_text text"
+      }
+    ],
+    "fn_ig_reengage_candidates": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_ig_thread": [
+      {
+        "all": [
+          "p_external_id"
+        ],
+        "required": [
+          "p_external_id"
+        ],
+        "unnamed": false,
+        "raw": "p_external_id text"
+      }
+    ],
+    "fn_ig_thread_action": [
+      {
+        "all": [
+          "p_action",
+          "p_external_id",
+          "p_intent",
+          "p_meta",
+          "p_note",
+          "p_until"
+        ],
+        "required": [
+          "p_action",
+          "p_external_id"
+        ],
+        "unnamed": false,
+        "raw": "p_external_id text, p_action text, p_until timestamp with time zone DEFAULT NULL::timestamp with time zone, p_note text DEFAULT NULL::text, p_intent text DEFAULT NULL::text, p_meta jsonb DEFAULT '{}'::jsonb"
+      }
+    ],
+    "fn_ig_thread_action_latest": [
+      {
+        "all": [
+          "p_external_id",
+          "p_within"
+        ],
+        "required": [
+          "p_external_id"
+        ],
+        "unnamed": false,
+        "raw": "p_external_id text, p_within interval DEFAULT '14 days'::interval"
       }
     ],
     "fn_instagram_token_replay": [

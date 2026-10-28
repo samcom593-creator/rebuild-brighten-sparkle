@@ -68,9 +68,6 @@ export async function celebrate(kind: CelebrationKind, origin?: CelebrationOrigi
   const at = originOf(origin);
   const base = { origin: at, shapes: ["circle" as const], disableForReducedMotion: true, zIndex: 10000 };
   switch (kind) {
-    case "save":
-      confetti({ ...base, particleCount: 16, spread: 55, startVelocity: 18, gravity: 0.7, ticks: 80, scalar: 0.85, colors: [GOLD, GREEN, SKY] });
-      return;
     case "booked":
       confetti({ ...base, particleCount: 48, spread: 75, startVelocity: 26, gravity: 0.8, ticks: 120, scalar: 1, colors: [GOLD, SKY, VIOLET, CREAM] });
       return;

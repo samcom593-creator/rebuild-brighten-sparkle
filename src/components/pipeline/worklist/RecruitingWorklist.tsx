@@ -551,7 +551,7 @@ export function RecruitingWorklist() {
         <div
           ref={listRef}
           onScroll={onScroll}
-          className="max-h-[calc(100vh-14rem)] overflow-auto rounded-xl border border-border bg-card"
+          className="max-h-[calc(100vh-14rem)] supports-[height:100dvh]:max-h-[calc(100dvh-14rem)] overflow-auto rounded-xl border border-border bg-card"
         >
           {filtered.length === 0 ? (
             <p className="p-10 text-center text-base text-muted-foreground">

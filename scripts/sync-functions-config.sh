@@ -245,6 +245,10 @@ PUBLIC_ALLOWLIST=(
   "send-sam-morning-report"
   "cron-newhire-portal-login"
   "instagram-comments-backfill"
+  # instagram-dm-nudge (MP-305 wave 3): pg_cron apex-instagram-dm-nudge every 10 min sends the
+  # vault apex_bot_token, not a JWT; the function verifies it in-code. Already approved public by
+  # the security guard; listed here so a lost stanza can never flip it to verify_jwt=true.
+  "instagram-dm-nudge"
   "instagram-token-keepalive"
   # instagram-dm-replay: fired by trg on system_settings.meta_instagram_token (019db365); reviewed public per the security guard.
   "instagram-dm-replay"

@@ -1,6 +1,6 @@
 import type { ElementType } from "react";
 import { resolveBrand } from "@/config/brand";
-import {
+import { Instagram,
   BarChart3,
   BookOpen,
   BookOpenCheck,
@@ -164,6 +164,8 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
       { label: "Recruit Stages", href: "/dashboard/recruits", icon: Milestone, modes: ["manager", "va", "va_manager"] },
       { label: "Recruit Pipeline", href: "/dashboard/recruiting", icon: FolderKanban, modes: ["manager", "recruiter", "va", "va_manager"] },
       { label: "Invite an agent", href: "/admin/invite-links", icon: UserPlus, modes: ["manager"] },
+      // Instagram command center (MP-305, 2026-10-28): every DM, comment and follow-up graded on deliveries. Sam-only route.
+      { label: "Instagram", href: "/dashboard/inbox/instagram", icon: Instagram, modes: ["manager"] },
       { label: "Refer a recruit", href: "/dashboard/referrals/new", icon: Send, modes: ["agent", "agency_owner"] },
       // Interviews are booked from Calendar (open to every signed-in user).
       // Producers and managers reach it under Sell; the staff who book
@@ -386,6 +388,7 @@ export function toggleNavGroup(state: NavGroupExpansion, label: string): NavGrou
  * gives it (the favorites star saves this label too).
  */
 const ROUTE_CRUMBS: Record<string, string[]> = {
+  "/dashboard/inbox/instagram": ["Grow", "Instagram"],
   "/dashboard/contracting/requests": ["Contracting", "Requests"],
   "/dashboard/contracting/history": ["Contracting", "Intake history"],
   "/dashboard/contracting/carriers": ["Contracting", "Carriers"],

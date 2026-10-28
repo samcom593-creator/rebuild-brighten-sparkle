@@ -12,6 +12,12 @@ export interface ShippedItem {
 
 export const SHIPPED: ShippedItem[] = [
   {
+    ts: "Oct 28, 2026",
+    label: "Instagram command center: who is waiting, who to call, what is winning, all graded on real deliveries.",
+    detail: "MP-305 Wave 4. /dashboard/inbox/instagram now reads one RPC (fn_ig_dashboard) instead of a table frozen since Sep 28: account status (token, Meta link restriction, bot last delivered, follow-up cron), today/7d/30d numbers (people in, replied in 24h, waiting on us, licensed leads, calls booked, applicants), action queues with one-tap Call/Text/Open on IG, winning reels with comment-keyword attribution, the bot lines that get replies, and the last 60 threads with a next action each.",
+    commit: "MP-305-W4-IG-COMMAND-CENTER",
+  },
+  {
     ts: "Oct 27, 2026",
     label: "Production totals stay visible when a background refresh fails, with a timestamp and retry.",
     detail: "AC-P3 slice: the shared scoreboard now uses the existing loading, empty, error and stale-data primitive. A failed refresh retains its last successful totals and explicitly labels them stale; a first-load failure never invents zero totals or a missing producer profile. Extracted the existing KPI tile as KPIStat without changing its design. Full shell/primitive and role/viewport verification remains open.",

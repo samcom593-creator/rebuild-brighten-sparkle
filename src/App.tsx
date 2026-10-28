@@ -782,7 +782,7 @@ const App = () => (
                        <Route path="/terms-of-service" element={<TermsOfService />} />
                        <Route path="/bot-token" element={<ProtectedRoute requireAdmin><BotToken /></ProtectedRoute>} />
                        <Route path="/dashboard/bot-token" element={<ProtectedRoute requireAdmin><BotToken /></ProtectedRoute>} />
-                       <Route path="/dashboard/inbox/instagram" element={<ProtectedRoute><InstagramInbox /></ProtectedRoute>} />
+                       <Route path="/dashboard/inbox/instagram" element={<ProtectedRoute requireAdmin><InstagramInbox /></ProtectedRoute>} />
                        <Route path="/dashboard/instagram-inbox" element={<ProtectedRoute><InstagramInbox /></ProtectedRoute>} />
                        {/* /today has aliased the Today page since 0ae97ee7. MP-230 pointed it at the
                            old command center when Today was removed; MP-239 restored /dashboard/today

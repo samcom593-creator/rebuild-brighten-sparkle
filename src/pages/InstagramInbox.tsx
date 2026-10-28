@@ -73,6 +73,7 @@ function who(p: { handle?: string | null; name?: string | null; external_id?: st
 function n(v: number | null | undefined): string { return (v ?? 0).toLocaleString(); }
 function secs(v: number | null | undefined): string {
   if (v == null) return "n/a";
+  if (v < 1) return "<1s";
   if (v < 60) return `${Math.round(v)}s`;
   if (v < 3600) return `${Math.round(v / 60)}m`;
   return `${(v / 3600).toFixed(1)}h`;

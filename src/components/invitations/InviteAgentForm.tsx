@@ -18,6 +18,12 @@
  * last name, email, phone, NPN — with a copy-ready card on the created invite.
  * First and last go to the server as recipient_name; the four non-email fields
  * also ride in the internal note (src/lib/inviteContractingInfo.ts).
+ *
+ * One gold button per screen (council finding 27): once an invitation exists,
+ * its Copy link is the gold button and Create steps back to outline; as soon as
+ * the form changes (the next person is being typed) gold returns to Create and
+ * the card's Copy link goes quiet. The card itself stays until the next create,
+ * so a stray keystroke never loses the link.
  */
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -75,6 +81,39 @@ const INVITE_AS_LABEL: Record<InviteAs, string> = {
 
 type LicensePath = "recruit_chooses" | "licensed" | "unlicensed";
 
+type ExceptionRow = CarrierExceptionDraft & { rowKey: string };
+
+/** The fields Create clears once an invitation exists; role, license, upline and expiry carry over. */
+const CLEARED = {
+  firstName: "",
+  lastName: "",
+  npn: "",
+  recipientEmail: "",
+  recipientPhone: "",
+  compChoice: "none",
+  customComp: "",
+  exceptions: [] as ExceptionRow[],
+  note: "",
+};
+
+type FormValues = typeof CLEARED & {
+  inviteAs: InviteAs;
+  licensePath: LicensePath;
+  agencyKey: string;
+  uplineId: string;
+  expiresHours: number;
+};
+
+/** One string for everything the person can change, so "the form changed since this invitation was created" is one comparison. */
+function fingerprint(v: FormValues): string {
+  return JSON.stringify([
+    v.firstName, v.lastName, v.npn, v.recipientEmail, v.recipientPhone,
+    v.inviteAs, v.licensePath, v.agencyKey, v.uplineId,
+    v.compChoice, v.customComp, v.exceptions.map((e) => [e.carrier_id, e.pct, e.note ?? null]),
+    v.expiresHours, v.note,
+  ]);
+}
+
 const SELECT_CLASS =
   "h-12 w-full rounded-lg border border-border bg-card px-3 text-base text-foreground focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)] disabled:cursor-not-allowed disabled:opacity-50";
 const INPUT_CLASS = "h-12 border-border bg-card text-base";
@@ -96,9 +135,12 @@ function Step({ n, title, hint, children }: { n: number; title: string; hint?: s
 
 export function InviteAgentForm({
   defaultInviteAs = "agent",
+  licenseHint,
   onCreated,
 }: {
   defaultInviteAs?: InviteAs;
+  /** One line under the License step's title, e.g. the page's rule that license status is always required. */
+  licenseHint?: string;
   onCreated?: (created: CreatedInvitation) => void;
 }) {
   const queryClient = useQueryClient();
@@ -116,11 +158,12 @@ export function InviteAgentForm({
   const [uplineId, setUplineId] = useState<string>("");
   const [compChoice, setCompChoice] = useState<string>("none");
   const [customComp, setCustomComp] = useState("");
-  const [exceptions, setExceptions] = useState<Array<CarrierExceptionDraft & { rowKey: string }>>([]);
+  const [exceptions, setExceptions] = useState<ExceptionRow[]>([]);
   const [expiresHours, setExpiresHours] = useState(168);
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [created, setCreated] = useState<CreatedInvitation | null>(null);
+  const [createdFingerprint, setCreatedFingerprint] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [triedSubmit, setTriedSubmit] = useState(false);
 
@@ -206,16 +249,23 @@ export function InviteAgentForm({
 
   const chosenUpline = opts?.uplines.find((u) => u.id === uplineId) ?? null;
 
+  // The created card is "current" until the person changes anything; then the next invitation is the job,
+  // Create is gold again and the card's Copy link steps back.
+  const createdIsCurrent = created !== null && createdFingerprint === fingerprint({
+    firstName, lastName, npn, recipientEmail, recipientPhone, inviteAs, licensePath, agencyKey, uplineId,
+    compChoice, customComp, exceptions, expiresHours, note,
+  });
+
   function reset() {
-    setFirstName("");
-    setLastName("");
-    setNpn("");
-    setRecipientEmail("");
-    setRecipientPhone("");
-    setCompChoice("none");
-    setCustomComp("");
+    setFirstName(CLEARED.firstName);
+    setLastName(CLEARED.lastName);
+    setNpn(CLEARED.npn);
+    setRecipientEmail(CLEARED.recipientEmail);
+    setRecipientPhone(CLEARED.recipientPhone);
+    setCompChoice(CLEARED.compChoice);
+    setCustomComp(CLEARED.customComp);
     setExceptions([]);
-    setNote("");
+    setNote(CLEARED.note);
     setTriedSubmit(false);
   }
 
@@ -263,6 +313,8 @@ export function InviteAgentForm({
       };
       setCreated(result);
       setCopied(false);
+      // What the form looks like right after reset(), so any later change is detected.
+      setCreatedFingerprint(fingerprint({ ...CLEARED, inviteAs, licensePath, agencyKey, uplineId, expiresHours }));
       toast.success(result.recipient_name ? `Invitation created for ${result.recipient_name}.` : "Open invitation created. Anyone with the link can fill in their own details.");
       reset();
       void queryClient.invalidateQueries({ queryKey: ["invitations"] });
@@ -363,7 +415,7 @@ export function InviteAgentForm({
         </div>
       </Step>
 
-      <Step n={2} title="Their role and license">
+      <Step n={2} title="Their role and license" hint={licenseHint}>
         <div className="space-y-4">
           <div className="space-y-1.5 sm:max-w-xs">
             <Label htmlFor="invite-as" className="text-sm">Invite as</Label>
@@ -535,7 +587,13 @@ export function InviteAgentForm({
           {offeredComp != null && Number.isFinite(offeredComp) ? ` · offered ${offeredComp}%` : " · no comp offer"}
           {exceptions.length ? ` · ${exceptions.length} carrier exception${exceptions.length === 1 ? "" : "s"}` : ""}
         </p>
-        <Button onClick={submit} className="h-12 px-6 text-base" disabled={submitting || (triedSubmit && !canSubmit)} data-testid="create-invitation">
+        <Button
+          onClick={submit}
+          variant={createdIsCurrent ? "outline" : "default"}
+          className="h-12 px-6 text-base"
+          disabled={submitting || (triedSubmit && !canSubmit)}
+          data-testid="create-invitation"
+        >
           {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Link2 className="h-5 w-5" />}
           Create invitation
         </Button>
@@ -548,7 +606,7 @@ export function InviteAgentForm({
             <p className="mt-1 break-all font-mono text-sm text-muted-foreground">{inviteUrlFromPath(created.path)}</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button className="h-11" onClick={copyCreated}>
+            <Button variant={createdIsCurrent ? "default" : "outline"} className="h-11" onClick={copyCreated}>
               {copied ? <><Check className="h-4 w-4" /> Copied</> : <><Copy className="h-4 w-4" /> Copy link</>}
             </Button>
             {created.recipient_email && (

@@ -37,29 +37,29 @@ export default function InviteLinksAdmin() {
   usePageTitle("Invite Agent");
   const { isAdmin } = useAuth();
 
-  // Grow redesign (2026-10-28): one plain title, the form in four numbered steps, and the
-  // contracting fields copy-ready on every invitation. The license rule is said once, in
-  // the form's License step, instead of in a separate callout above it.
+  // Grow redesign (2026-10-28): one plain title (the subtitle fits a 390px line whole), the form
+  // in four numbered steps, and the contracting fields copy-ready on every invitation. The
+  // license rule is said once, as the hint of the form's License step, never in a callout above
+  // step 1 (council findings 11 and 27).
   return (
     <div className="page-enter mx-auto w-full max-w-5xl space-y-8 pb-24">
       <PageHeader
         title="Invite an agent"
-        subtitle="Fill in what you know, create the link, and send it. Contracting starts when they accept."
+        subtitle="Fill in what you know, then send the link."
       />
 
-      <section aria-label="New invitation" className="space-y-6 rounded-xl border border-border bg-card p-5 sm:p-8">
-        <p className="text-sm text-muted-foreground" data-testid="license-routing">
-          <span className="font-medium text-foreground">License status is always required.</span>{" "}
-          Set it in step 2, or let them choose on the invite.
-        </p>
-        <InviteAgentForm />
+      <section aria-label="New invitation" className="rounded-xl border border-border bg-card p-5 sm:p-8">
+        <InviteAgentForm licenseHint="License status is always required. Pick one, or let them choose." />
       </section>
 
       <div className="space-y-3">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-lg font-semibold text-foreground">Your invitations</h2>
           {isAdmin && (
-            <Link to="/dashboard/recruiting-links" className="text-sm text-muted-foreground underline-offset-4 hover:text-primary hover:underline">
+            <Link
+              to="/dashboard/recruiting-links"
+              className="inline-flex min-h-11 items-center text-sm text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
+            >
               Public recruiting links
             </Link>
           )}

@@ -23,12 +23,16 @@ export const INVITATION_STATUSES: readonly InvitationStatus[] = [
   "superseded",
 ] as const;
 
+/**
+ * The status word people read. The stored value stays what fn_invitation_status()
+ * returns ("superseded"); on screen it says what happened in plain words.
+ */
 export const INVITATION_STATUS_LABEL: Record<InvitationStatus, string> = {
   pending: "Pending",
   accepted: "Accepted",
   expired: "Expired",
   revoked: "Revoked",
-  superseded: "Superseded",
+  superseded: "Replaced",
 };
 
 export interface InvitationStatusInput {
@@ -258,10 +262,17 @@ export function validateOfferTerms(draft: OfferTermsDraft, auth: OfferAuthority)
 /** Agency keys the server derives from the upline (fn_agent_subagency). */
 export type AgencyKey = "primary" | "vantage";
 
+/**
+ * The two known keys have display names. Any other key reads as its own words
+ * ("apex" → "Apex", "north_star" → "North Star") so a new agency never prints as
+ * "Unknown"; only a missing key is unknown.
+ */
 export function agencyLabel(key: string | null | undefined, primaryName: string): string {
   if (key === "vantage") return "Vantage Financial";
   if (key === "primary") return primaryName;
-  return "Unknown";
+  const words = (key ?? "").split(/[\s_-]+/).filter(Boolean);
+  if (words.length === 0) return "Unknown";
+  return words.map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
 }
 
 export function formatRole(role: string | null | undefined): string {

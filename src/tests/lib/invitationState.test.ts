@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   DEAD_LINK_CODES,
   INVITATION_STATUSES,
+  INVITATION_STATUS_LABEL,
   acceptanceRefusalMessage,
   agencyLabel,
   deadLinkMessage,
@@ -197,10 +198,22 @@ describe("recipient-facing copy", () => {
     expect(maskEmail(null)).toBe("***");
   });
 
-  it("labels agencies from the server-derived key, unknown stays unknown", () => {
+  it("labels agencies from the server-derived key; any other key reads as its own words, only a missing key is unknown", () => {
     expect(agencyLabel("primary", "Org")).toBe("Org");
     expect(agencyLabel("vantage", "Org")).toBe("Vantage Financial");
+    expect(agencyLabel("apex", "Org")).toBe("Apex");
+    expect(agencyLabel("north_star", "Org")).toBe("North Star");
+    expect(agencyLabel("NEW-AGENCY", "Org")).toBe("New Agency");
     expect(agencyLabel(null, "Org")).toBe("Unknown");
+    expect(agencyLabel("  ", "Org")).toBe("Unknown");
+  });
+
+  it("says Replaced, never superseded, while the stored status value is unchanged", () => {
+    expect(INVITATION_STATUS_LABEL.superseded).toBe("Replaced");
+    expect(Object.values(INVITATION_STATUS_LABEL).map((l) => l.toLowerCase())).not.toContain("superseded");
+    // The server's value still drives the state machine and the actions.
+    expect(deriveInvitationStatus({ is_active: false, superseded_by: "x", expires_at: FUTURE }, NOW)).toBe("superseded");
+    expect(invitationActions("superseded").regenerate).toBe(false);
   });
 
   it("builds a mailto draft for the operator's own mail client (a share, not a send)", () => {

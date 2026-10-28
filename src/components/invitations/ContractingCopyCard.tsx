@@ -30,6 +30,10 @@ async function writeClipboard(text: string): Promise<boolean> {
  * The contracting fields, one per row, each with its own Copy button, so the team
  * can fill a carrier or SureLC page field by field without retyping. Values are
  * selectable text too. Phone copies as (256) 975-6155, which carrier forms accept.
+ *
+ * Under sm the label sits over the value and the value wraps (council finding 29):
+ * a phone or an email is never cut to "(256…" on a 390px screen, because the person
+ * must be able to read what they are about to copy.
  */
 export function ContractingCopyCard({ info, className }: { info: ContractingInfo; className?: string }) {
   const [copied, setCopied] = useState<string | null>(null);
@@ -49,18 +53,26 @@ export function ContractingCopyCard({ info, className }: { info: ContractingInfo
           const raw = info[f.key];
           const value = f.key === "phone" && raw ? formatPhoneDisplay(raw) || raw : raw;
           return (
-            <div key={f.key} className="flex min-h-14 items-center gap-3 px-4 py-2">
-              <dt className="w-[5.5rem] shrink-0 text-sm text-muted-foreground">{f.label}</dt>
-              <dd className={cn("min-w-0 flex-1 select-all truncate text-base", value ? "text-foreground" : "text-muted-foreground")} title={value || undefined}>
+            <div
+              key={f.key}
+              className="grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 px-4 py-2 sm:grid-cols-[5.5rem_minmax(0,1fr)_auto]"
+            >
+              <dt className="col-start-1 row-start-1 text-sm text-muted-foreground">{f.label}</dt>
+              <dd
+                className={cn(
+                  "col-start-1 row-start-2 min-w-0 select-all break-words text-base sm:col-start-2 sm:row-start-1",
+                  value ? "text-foreground" : "text-muted-foreground",
+                )}
+              >
                 {value || "Not given"}
               </dd>
               {value && (
                 <Button
                   type="button"
                   variant="outline"
-                  className="h-10 shrink-0 gap-1.5 px-3"
+                  className="col-start-2 row-span-2 row-start-1 h-11 shrink-0 gap-1.5 px-3 sm:col-start-3 sm:row-span-1"
                   onClick={() => void copy(f.key, f.label, value)}
-                  aria-label={`Copy ${f.label.toLowerCase()}`}
+                  aria-label={`Copy ${f.key === "npn" ? f.label : f.label.toLowerCase()}`}
                 >
                   {copied === f.key ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                   {copied === f.key ? "Copied" : "Copy"}

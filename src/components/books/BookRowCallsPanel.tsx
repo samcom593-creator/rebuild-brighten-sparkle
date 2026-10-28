@@ -82,13 +82,13 @@ export function BookRowCallsPanel({ flipKey }: { flipKey: string | null | undefi
             <li key={c.call_id} className="space-y-1 px-4 py-2 text-sm">
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <span className="font-medium">{shortDate(c.call_started_at)}</span>
-                <Badge variant="outline" className={c.disposition === "Completed Sale" ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300" : ""}>
+                <Badge variant="outline" className={c.disposition === "Completed Sale" ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : ""}>
                   {dispositionLabel(c.disposition)}
                 </Badge>
                 <span className="text-muted-foreground">{c.agent_name || "unknown agent"}</span>
                 {c.duration_seconds != null && c.duration_seconds > 0 && <span className="text-muted-foreground">{mmss(c.duration_seconds)}</span>}
                 {c.overall_score != null && c.stage_reached !== "voicemail" && c.stage_reached !== "no_contact" && (
-                  <span className={c.great_call ? "inline-flex items-center gap-1 font-semibold text-amber-300" : "text-muted-foreground"}>
+                  <span className={c.great_call ? "inline-flex items-center gap-1 font-semibold text-amber-700 dark:text-amber-300" : "text-muted-foreground"}>
                     {c.great_call && <Star className="h-3.5 w-3.5" />}
                     {c.overall_score}/100
                   </span>
@@ -101,7 +101,7 @@ export function BookRowCallsPanel({ flipKey }: { flipKey: string | null | undefi
                   </span>
                 )}
                 {c.approval_status && c.approval_status !== "not_said" && <span className="text-muted-foreground">agent said {c.approval_status}</span>}
-                {c.gave_ssn && c.gave_bank && <span className="text-emerald-300">gave SSN + bank</span>}
+                {c.gave_ssn && c.gave_bank && <span className="text-emerald-700 dark:text-emerald-300">gave SSN + bank</span>}
                 {c.work_status && <span className="text-muted-foreground">marked {c.work_status}</span>}
                 <span className="ml-auto flex items-center gap-3">
                   {c.disposition === "Completed Sale" && c.packet_id && (

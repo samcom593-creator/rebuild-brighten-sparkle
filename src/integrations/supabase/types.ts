@@ -14,6 +14,96 @@ export type Database = {
   }
   public: {
     Tables: {
+      money_inbox_threads: {
+        Row: {
+          id: string
+          chat_guid: string
+          chat_identifier: string | null
+          handle: string | null
+          display_name: string | null
+          is_group: boolean
+          category: string | null
+          money_score: number
+          money_reasons: string[]
+          rank: number | null
+          awaiting_reply: boolean
+          last_inbound_at: string | null
+          last_inbound_text: string | null
+          last_outbound_at: string | null
+          excerpt: Json
+          draft_reply: string | null
+          draft_engine: string | null
+          final_reply: string | null
+          status: string
+          approved_at: string | null
+          sent_at: string | null
+          send_receipt: string | null
+          send_error: string | null
+          muted: boolean
+          in_scan: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          chat_guid?: string
+          chat_identifier?: string | null
+          handle?: string | null
+          display_name?: string | null
+          is_group?: boolean
+          category?: string | null
+          money_score?: number
+          money_reasons?: string[]
+          rank?: number | null
+          awaiting_reply?: boolean
+          last_inbound_at?: string | null
+          last_inbound_text?: string | null
+          last_outbound_at?: string | null
+          excerpt?: Json
+          draft_reply?: string | null
+          draft_engine?: string | null
+          final_reply?: string | null
+          status?: string
+          approved_at?: string | null
+          sent_at?: string | null
+          send_receipt?: string | null
+          send_error?: string | null
+          muted?: boolean
+          in_scan?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          chat_guid?: string
+          chat_identifier?: string | null
+          handle?: string | null
+          display_name?: string | null
+          is_group?: boolean
+          category?: string | null
+          money_score?: number
+          money_reasons?: string[]
+          rank?: number | null
+          awaiting_reply?: boolean
+          last_inbound_at?: string | null
+          last_inbound_text?: string | null
+          last_outbound_at?: string | null
+          excerpt?: Json
+          draft_reply?: string | null
+          draft_engine?: string | null
+          final_reply?: string | null
+          status?: string
+          approved_at?: string | null
+          sent_at?: string | null
+          send_receipt?: string | null
+          send_error?: string | null
+          muted?: boolean
+          in_scan?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       _backup_20261014_contracting_sheet_fix: {
         Row: {
           agent_id: string | null

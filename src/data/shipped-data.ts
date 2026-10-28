@@ -11,6 +11,7 @@ export interface ShippedItem {
 }
 
 export const SHIPPED: ShippedItem[] = [
+  { ts: "today", label: "Money Inbox: the texts that make Sam money, ranked, with one-tap approve-to-send from his Mac.", detail: "Sam-only page at /dashboard/money-inbox. A Mac daemon scans iMessage every 2 minutes, scores threads on payment, client, recruiting, mentorship and lead signals plus who is waiting on Sam, drafts a reply, and sends the approved text through Messages with a chat.db receipt. Nothing is marked sent without that receipt.", commit: "PL-MP309-MONEY-INBOX" },
   {
     ts: "Oct 28, 2026",
     label: "The Book of Business now knows every dialer call behind a client: sold on a recorded call, transcribed, graded, or never reached, with Active / Pending / Lapsing / Inactive / Unknown chips, and a Call Training page ranks the great calls.",

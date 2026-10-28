@@ -217,10 +217,11 @@ describe("Recruiting Pipeline", () => {
 
   it("says a late follow-up in words and red, names an unreadable date, and has no footer", async () => {
     renderPage();
+    // "Act now" is the hot tone (src/lib/tones.ts); the words carry the meaning, the tint helps.
     const late = await screen.findByText("Late · 1 day");
-    expect(late.className).toMatch(/text-destructive/);
+    expect(late.className).toMatch(/text-tone-hot/);
     const bad = screen.getByText("Unreadable date");
-    expect(bad.className).toMatch(/text-destructive/);
+    expect(bad.className).toMatch(/text-tone-hot/);
     expect(screen.getByText("Last contact 3 days ago")).toBeInTheDocument();
     expect(screen.getAllByText("Last contact never").length).toBeGreaterThan(0);
     expect(screen.getAllByText("No due date").length).toBeGreaterThan(0);

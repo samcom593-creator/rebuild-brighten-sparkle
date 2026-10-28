@@ -802,3 +802,8 @@ verify_jwt = false
 # the handler refuses anything without the 64-hex feed key held in system_settings (social_lead_feed_key).
 [functions.social-lead-csv]
 verify_jwt = false
+
+# interview-outcome (2026-10-28, MP-309): one-tap links in Sam's "Did X show?" push; a tap carries no JWT, the handler
+# verifies an HMAC of id:outcome under the bot token before the service-role client does anything.
+[functions.interview-outcome]
+verify_jwt = false

@@ -344,16 +344,18 @@ LeadPayments 13 (39).
 4. **Sidebar and route guards disagree.** Reports and Import are admin-only in the sidebar but their
    routes admit managers (Import also VA managers). Launch Board is admin-only in the sidebar but anyone on
    its invite list can open it. The four `sold_calls` grant items are routed Admin+Mgr (the data is checked
-   server-side). `/dashboard/instagram-inbox` (alias) is open to any signed-in user while the canonical
-   route is Admin+Mgr. Four pages have no route guard and restrict themselves in code: `/dashboard/aged-leads`,
+   server-side). `/dashboard/instagram-inbox` (alias) was open to any signed-in user while the canonical
+   route is Admin+Mgr: **done 2026-10-28 (15c1591)**, the alias now redirects to the canonical route. Four
+   pages have no route guard and restrict themselves in code: `/dashboard/aged-leads`,
    `/dashboard/recruiter`, `/dashboard/prelicensing`, `/dashboard/inactive-agents`. Analysis H4 decides;
    area 01 applies.
 5. **Names that do not match what they open.** Sidebar "Retention" opens a page titled "Book of Business"
    (and has no retention view); sidebar "Book of Business" opens MyDeals ("My Deals" / "Team Production");
    "Nova Pro" opens a tab labelled "AI assistant"; Call Center sits under Sell but is the recruiting dialer;
    two pages are titled "My Pipeline" (ClientPipeline for clients, AgentPipeline for recruits).
-6. **Legal pages behind sign-in.** `/privacy-policy` and `/terms-of-service` sit inside the signed-in
-   shell; `/privacy` and `/terms` are the public ones. Area 02 redirects the shell pair to the public pair.
+6. **Legal pages behind sign-in.** `/privacy-policy` and `/terms-of-service` sat inside the signed-in
+   shell; `/privacy` and `/terms` are the public ones. **Done 2026-10-28 (15c1591)**: the shell pair
+   redirects to the public pair and the duplicate page files are gone.
 7. **Six ways to sign in or join**: `/login`, `/join`, `/join/:token`, `/claim` (`/activate`),
    `/magic-login`, `/agent-login`, plus `/signup` and `/agent-signup`. Area 02 maps which are live paths and
    folds the rest, with analysis H9's measurements.

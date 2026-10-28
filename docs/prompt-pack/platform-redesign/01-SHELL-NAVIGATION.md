@@ -36,9 +36,12 @@ the parity fixes in "Known defects" below, each after analysis H4 and each in it
 
 ## Known defects from the inventory (`ROUTE_BOARD.md`, "Findings")
 
-- **Alias with a looser guard.** `/dashboard/instagram-inbox` is open to any signed-in user; its canonical
-  route `/dashboard/inbox/instagram` is Admin+Mgr. Every alias must carry its canonical route's guard.
-  Write a test that walks `App.tsx` and asserts it for all 36 aliases.
+- **Alias with a looser guard.** `/dashboard/instagram-inbox` was open to any signed-in user; its canonical
+  route `/dashboard/inbox/instagram` is Admin+Mgr. Done 2026-10-28 (15c1591): the alias redirects to the
+  canonical route. Still to do here: a test that walks `App.tsx` and asserts, for every remaining alias,
+  that it carries its canonical route's guard or redirects to it.
+- **Sidebar quick actions.** Done 2026-10-28 (15c1591): Add Agent and Post a Deal are outline buttons at
+  44px, so the rail no longer puts a second gold button beside every page's primary. Keep it that way.
 - **Sidebar says admin-only, route admits more.** Reports (`/dashboard/analytics`) and Import
   (`/dashboard/import`) are `adminOnly` in the sidebar while their routes admit managers (Import also VA
   managers). Launch Board is `adminOnly` in the sidebar while its `ContentAccessGate` admits an invite

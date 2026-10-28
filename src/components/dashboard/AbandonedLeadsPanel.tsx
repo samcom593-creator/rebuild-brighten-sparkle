@@ -33,10 +33,15 @@ interface AbandonedLead {
 export function AbandonedLeadsPanel() {
   const [leads, setLeads] = useState<AbandonedLead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  // A failed load is its own state. Before 2026-10-28 it fell through to the empty
+  // branch and the panel celebrated "No abandoned applications" after an error
+  // (unknown is never shown as zero: funnel-and-reengagement-map.md, gap C16).
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [sendingFollowup, setSendingFollowup] = useState<string | null>(null);
 
   const fetchAbandonedLeads = async () => {
     setIsLoading(true);
+    setLoadError(null);
     try {
       // MP-354: this used to grade "abandoned" on converted_at alone. That
       // marker was written by an anon UPDATE that never landed (see
@@ -45,8 +50,9 @@ export function AbandonedLeadsPanel() {
       // "Send Followup" button beside it that would text someone who already
       // applied. The rule now lives in one place,
       // v_partial_applications_abandoned, which recover_partial_applications()
-      // (cron job 31) reads too, so the panel and the hourly SMS sender cannot
-      // disagree about who is abandoned.
+      // (hourly; it only stamps recovery_queued_at, nothing is sent from it)
+      // reads too, so the panel and the queue cannot disagree about who is
+      // abandoned.
       const { data, error } = await (supabase.rpc as any)(
         "list_abandoned_partial_applications",
       );
@@ -69,6 +75,7 @@ export function AbandonedLeadsPanel() {
       setLeads(mappedLeads);
     } catch (error) {
       console.error("Error fetching abandoned leads:", error);
+      setLoadError(error instanceof Error && error.message ? error.message : "The list could not be loaded.");
       toast.error("Failed to load abandoned leads");
     } finally {
       setIsLoading(false);
@@ -152,6 +159,10 @@ export function AbandonedLeadsPanel() {
 
       {isLoading ? (
         <div className="space-y-2"><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /></div>
+      ) : loadError ? (
+        <p role="alert" className="text-sm text-destructive">
+          The abandoned applications could not be loaded ({loadError}). The count above is unknown, not zero. Use Refresh to try again.
+        </p>
       ) : leads.length === 0 ? (
         <p className="text-muted-foreground text-sm">
           No abandoned applications. All leads are completing the form! 🎉

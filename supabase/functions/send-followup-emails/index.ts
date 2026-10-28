@@ -390,6 +390,11 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Checking for second unlicensed followup from:", sevenDaysAgoStart.toISOString(), "to", sevenDaysAgoEnd.toISOString());
 
     // Find unlicensed applicants from exactly 3 days ago who haven't received followup
+    // 2026-10-28: every drip below follows the Call list's truth rules
+    // (src/lib/recruitingQueues.ts): only live, non-duplicate applications; never anyone
+    // under do-not-contact or without email consent. The licensed drip also skips anyone
+    // a recruiter already reached (a recorded outcome or last_contacted_at), which it
+    // used to judge from the legacy contacted_at column that is never read.
     const { data: unlicensedApps, error: unlicensedError } = await supabaseAdmin
       .from("applications")
       .select("id, first_name, email")
@@ -397,6 +402,10 @@ const handler = async (req: Request): Promise<Response> => {
       .is("followup_sent_at", null)
       .is("closed_at", null)
       .is("terminated_at", null)
+      .eq("record_type", "application")
+      .or("is_duplicate.is.null,is_duplicate.eq.false")
+      .is("do_not_contact_at", null)
+      .or("email_consent_given.is.null,email_consent_given.eq.true")
       // 2026-09-07: day 3-4 window (was exact-day) so one missed run cannot skip a cohort; followup_sent_at keeps it idempotent.
       .gte("created_at", fourDaysAgoStart.toISOString())
       .lte("created_at", threeDaysAgoEnd.toISOString());
@@ -414,6 +423,10 @@ const handler = async (req: Request): Promise<Response> => {
       .is("followup_unlicensed_2_sent_at", null)
       .is("closed_at", null)
       .is("terminated_at", null)
+      .eq("record_type", "application")
+      .or("is_duplicate.is.null,is_duplicate.eq.false")
+      .is("do_not_contact_at", null)
+      .or("email_consent_given.is.null,email_consent_given.eq.true")
       .gte("created_at", new Date(sevenDaysAgoStart.getTime() - 86_400_000).toISOString()) // day 7-8 window, same reason
       .lte("created_at", sevenDaysAgoEnd.toISOString());
 
@@ -421,15 +434,20 @@ const handler = async (req: Request): Promise<Response> => {
       console.error("Error fetching second unlicensed apps:", unlicensedError2);
     }
 
-    // Find licensed applicants from 3-4 days ago who haven't been contacted and haven't received followup
+    // Find licensed applicants from 3-4 days ago nobody has reached yet and who haven't received followup
     const { data: licensedApps, error: licensedError } = await supabaseAdmin
       .from("applications")
       .select("id, first_name, email")
       .eq("license_status", "licensed")
       .is("followup_licensed_sent_at", null)
-      .is("contacted_at", null)
+      .is("last_contact_outcome_at", null)
+      .is("last_contacted_at", null)
       .is("closed_at", null)
       .is("terminated_at", null)
+      .eq("record_type", "application")
+      .or("is_duplicate.is.null,is_duplicate.eq.false")
+      .is("do_not_contact_at", null)
+      .or("email_consent_given.is.null,email_consent_given.eq.true")
       .gte("created_at", fourDaysAgoStart.toISOString())
       .lte("created_at", threeDaysAgoEnd.toISOString());
 

@@ -101,6 +101,22 @@ serve(async (req) => {
       .is("terminated_at", null)
       .is("contracted_at", null)
       .lt("created_at", threeDaysAgo)
+      // 2026-10-28: the audience follows the Call list's truth rules
+      // (src/lib/recruitingQueues.ts). Someone a recruiter already reached (a recorded
+      // outcome, or last_contacted_at) is not "stalled" and must not get an automated
+      // "still interested?"; nobody under do-not-contact or without email consent is
+      // emailed; only live, non-duplicate applications count. The send is now stamped
+      // on last_automated_email_at (migration 20260421000000, unwritten until today),
+      // so this block's own mark no longer reads as a human contact. contacted_at is
+      // kept ONLY as the legacy dedupe this block wrote before today, so nobody already
+      // emailed is emailed again; a backfill into last_automated_email_at retires it.
+      .eq("record_type", "application")
+      .or("is_duplicate.is.null,is_duplicate.eq.false")
+      .is("last_contact_outcome_at", null)
+      .is("last_contacted_at", null)
+      .is("do_not_contact_at", null)
+      .or("email_consent_given.is.null,email_consent_given.eq.true")
+      .is("last_automated_email_at", null)
       .is("contacted_at", null)
       // An address the provider has permanently refused can never succeed, and
       // this block runs every 15 minutes. One @example.com test row absorbed
@@ -112,7 +128,8 @@ serve(async (req) => {
       // MP-269: this block previously re-sent to the SAME applicants every 15 min forever
       // because it never recorded that it had contacted them. 24,806 duplicate sends to
       // 40 people in July alone, which exhausted the Resend monthly quota and silently
-      // killed every new-application notification. Send once, stamp contacted_at, verify.
+      // killed every new-application notification. Send once, stamp, verify. The stamp
+      // moved from contacted_at to last_automated_email_at on 2026-10-28 (see the query).
       let stampedCount = 0;
       const sendErrors: string[] = [];
 
@@ -123,8 +140,8 @@ serve(async (req) => {
       // 06-18: an accident, not a suppression. Filter BEFORE the slice so
       // opt-outs can never occupy the 10 slots and starve real applicants. If
       // the list cannot be read, hold every follow-up this tick (the outer catch
-      // reports degraded; contacted_at stays null so it retries in 15 min).
-      // Opt-outs are not stamped contacted_at: that column means contacted.
+      // reports degraded; the stamp stays null so it retries in 15 min).
+      // Opt-outs are never stamped: a stamp means an email went out.
       const { data: unsubRows, error: unsubError } = await supabase
         .from("email_unsubscribes")
         .select("email");
@@ -149,8 +166,8 @@ serve(async (req) => {
             })
           });
 
-          // A non-2xx is a failure. Do not stamp contacted_at, so it retries next tick
-          // instead of silently dropping the applicant.
+          // A non-2xx is a failure. Do not stamp, so it retries next tick instead of
+          // silently dropping the applicant.
           if (!res.ok) {
             // MP-269 made a non-2xx retry next tick rather than silently drop
             // the applicant. That is right for a TRANSIENT failure and wrong
@@ -188,12 +205,12 @@ serve(async (req) => {
 
           const { error: stampError } = await supabase
             .from("applications")
-            .update({ contacted_at: new Date().toISOString() })
+            .update({ last_automated_email_at: new Date().toISOString() })
             .eq("id", app.id);
 
           // If the stamp fails the loop would repeat, so surface it rather than swallow it.
           if (stampError) {
-            sendErrors.push(`${app.email}: sent but contacted_at not stamped — ${stampError.message}`);
+            sendErrors.push(`${app.email}: sent but last_automated_email_at not stamped — ${stampError.message}`);
             continue;
           }
 

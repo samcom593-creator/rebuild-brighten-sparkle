@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BadgeCheck, CalendarCheck, ChevronDown, ClipboardList, Instagram, MessageSquare, Phone, RefreshCw, Route, Search, SlidersHorizontal, UserCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { playSoundEffect } from "@/hooks/useSoundEffects";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
@@ -25,6 +26,8 @@ import { StatusPill } from "@/components/recruiting/StatusPill";
 import type { RowStatus } from "@/components/pipeline/worklist/worklistStatus";
 import { formatDueShort, formatSince, formatTimeWithZone, plainSpan } from "@/components/pipeline/worklist/worklistFormat";
 import { phoenixDayBounds } from "@/lib/recruitingQueues";
+import { celebrate, type CelebrationOrigin } from "@/lib/celebrate";
+import { TONE_CLASS, intentTone, mondayTone, pipelineStageTone, tonePill, type Tone } from "@/lib/tones";
 import { toast } from "sonner";
 import { contactLinkProps, formatPhoneDisplay, phoneHref, smsHref } from "@/lib/phone";
 import { cn } from "@/lib/utils";
@@ -44,6 +47,14 @@ import { openAgentProfile } from "@/stores/agentProfileDrawer";
 // open "3 of 24 people"; a failed load is dashes and a reason with Retry, never four
 // zeros; the "Also" numbers are 44px chips; intent is a dropdown in words that writes
 // once per choice; a late follow-up says "Late · 1 day" and a bad date says so.
+//
+// Colour layer (2026-10-28, docs/DESIGN_SYSTEM.md "Colour, motion and sound"): the header
+// bubble is cool (the flow of new people; gold stays on the Monday tile), each row opens with
+// the person's initials in the colour of their stage, the stage select and the intent pill
+// wear their tones from src/lib/tones.ts, the "Also" chips carry a tone dot, and a write that
+// went through is marked from the control pressed: a hire or a Monday start is a celebration,
+// any other stage or intent move a tick, a kept note a pop. Nothing plays on load or on an
+// error; the error toast is unchanged.
 
 const STAGES = [
   "New Lead", "Contacted", "Call Scheduled", "Interested", "Confirmed",
@@ -73,12 +84,9 @@ interface Row {
   intent_level: string | null;
 }
 
-// Words carry the meaning; the tint only helps. Tokens, not raw colours.
-const INTENT_STYLE: Record<string, { label: string; cls: string }> = {
-  hot: { label: "Hot", cls: "border-destructive/40 bg-destructive/10 text-destructive" },
-  warm: { label: "Warm", cls: "border-warning/40 bg-warning/10 text-warning" },
-  cold: { label: "Cold", cls: "border-border bg-muted/40 text-muted-foreground" },
-};
+// Words carry the meaning; the tint comes from the shared tones (intentTone in src/lib/tones.ts),
+// the same hot, warm and cool a person learns on the Call list.
+const INTENT_LABELS: Record<string, string> = { hot: "Hot", warm: "Warm", cold: "Cold" };
 // The empty value is "Not set"; it writes "clear" through the same RPC as before.
 const INTENT_OPTIONS = [
   { value: "hot", label: "Hot" },
@@ -86,7 +94,7 @@ const INTENT_OPTIONS = [
   { value: "cold", label: "Cold" },
   { value: "", label: "Not set" },
 ] as const;
-const intentLabel = (value: string | null | undefined) => INTENT_STYLE[value ?? ""]?.label ?? "Not set";
+const intentLabel = (value: string | null | undefined) => INTENT_LABELS[value ?? ""] ?? "Not set";
 
 const MONDAY_LABELS: Record<string, string> = {
   expected: "Expected Monday",
@@ -96,6 +104,34 @@ const MONDAY_LABELS: Record<string, string> = {
 };
 
 const igHandle = (value: string) => value.replace(/^@/, "");
+
+/** Two initials for the bubble beside a name. */
+const initialsOf = (name: string) =>
+  name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "?";
+
+// What a stage move means (src/lib/celebrate.ts): a hire is the full burst, a Monday start or
+// a show is the chime, any other move is a tick. Called only after rp_pipeline_action resolved
+// without error, with the select the person used as the origin.
+const HIRE_STAGES: readonly string[] = ["Active Agent", "Ready for Training"];
+const BOOKED_STAGES: readonly string[] = ["Showed", "Confirmed", "Expected Monday"];
+function stageMoved(stage: string, origin: CelebrationOrigin): void {
+  if (HIRE_STAGES.includes(stage)) void celebrate("hire", origin);
+  else if (BOOKED_STAGES.includes(stage)) void celebrate("booked", origin);
+  else playSoundEffect("tick");
+}
+
+/**
+ * Where the finger was, as a point. The note editor closes the moment Save is pressed, so by
+ * the time the write resolves the button is gone from the page; a point read now still puts
+ * the bubbles where it was. Null (the burst's default origin) when the control has no size.
+ */
+function pressPoint(control: Element): CelebrationOrigin {
+  if (typeof window === "undefined") return null;
+  const r = control.getBoundingClientRect();
+  if (r.width === 0 && r.height === 0) return null;
+  const clamp = (v: number) => Math.min(1, Math.max(0, v));
+  return { x: clamp((r.left + r.width / 2) / window.innerWidth), y: clamp((r.top + r.height / 2) / window.innerHeight) };
+}
 
 const WHO_LABELS: Record<string, string> = { applicant: "Prospects", agent: "Agents" };
 const SHOW_LABELS: Record<string, string> = { open: "Open only", all: "Include inactive", inactive: "Inactive only" };
@@ -183,8 +219,12 @@ function Segmented<T extends string>({ legend, value, options, onChange }: {
   );
 }
 
-/** A number that opens its list: the name and its count, the same chip as the Call list. A dash while the number is unknown. */
-function CountChip({ label, count, active, onPick }: { label: string; count: number | null; active: boolean; onPick: () => void }) {
+/**
+ * A number that opens its list: a dot in the state's tone, the name and its count, the same chip
+ * as the Call list. A dash while the number is unknown. The dot is decoration; the word beside it
+ * is the meaning.
+ */
+function CountChip({ label, count, tone, active, onPick }: { label: string; count: number | null; tone: Tone; active: boolean; onPick: () => void }) {
   return (
     <button
       type="button"
@@ -198,6 +238,7 @@ function CountChip({ label, count, active, onPick }: { label: string; count: num
           : "border-border bg-card text-foreground hover:bg-muted/50",
       )}
     >
+      <span aria-hidden="true" className={cn("h-2 w-2 shrink-0 rounded-full", TONE_CLASS[tone].dot)} />
       {label}
       <span className={cn("tabular-nums", active ? "text-foreground" : "text-muted-foreground")}>{count === null ? "—" : count.toLocaleString()}</span>
     </button>
@@ -232,26 +273,44 @@ export default function RecruitingPipeline() {
   const failReason = isError ? (error as { message?: unknown } | null)?.message : null;
   const failText = typeof failReason === "string" && failReason ? failReason : null;
 
+  // `msg` is said on success and `after` runs then too (a tick, a celebration); neither reaches
+  // the RPC, whose arguments are the same three as before.
   const action = useMutation({
-    mutationFn: async (v: { person_key: string; action: string; value?: string | null }) => {
+    mutationFn: async (v: { person_key: string; action: string; value?: string | null; msg?: string; after?: () => void }) => {
       const { error } = await supabase.rpc("rp_pipeline_action" as never, {
         p_person_key: v.person_key, p_action: v.action, p_value: v.value ?? null,
       } as never);
       if (error) throw error;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["recruiting-pipeline"] }); },
+    // Hook-level on purpose: TanStack keeps only the latest mutate() call's own callbacks, so a
+    // second action started while the first was still saving would lose the first one's toast
+    // and its celebration. These run once per write, after that write, and only when it succeeded.
+    onSuccess: (_data, v) => {
+      qc.invalidateQueries({ queryKey: ["recruiting-pipeline"] });
+      if (v.msg) toast.success(v.msg);
+      v.after?.();
+    },
     onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "Action failed"),
   });
 
-  const fire = (person_key: string, act: string, value?: string | null, msg?: string) => {
-    action.mutate({ person_key, action: act, value }, { onSuccess: () => { if (msg) toast.success(msg); qc.invalidateQueries({ queryKey: ["recruiting-pipeline"] }); } });
+  const fire = (person_key: string, act: string, value?: string | null, msg?: string, after?: () => void) => {
+    action.mutate({ person_key, action: act, value, msg, after });
   };
 
   // One write per choice, through the same RPC and value vocabulary as before
   // ("hot" | "warm" | "cold" | "clear"). Picking the current value writes nothing.
   const setIntent = (r: Row, value: string) => {
     if ((r.intent_level ?? "") === value) return;
-    fire(r.person_key, "intent", value || "clear", value ? `Intent set to ${intentLabel(value)}` : "Intent cleared");
+    fire(r.person_key, "intent", value || "clear", value ? `Intent set to ${intentLabel(value)}` : "Intent cleared", () => playSoundEffect("tick"));
+  };
+
+  // A kept note is the small win. The editor closes at once, as before, so the origin is the
+  // point where Save (or the Enter key's input) sat, read before the write.
+  const saveNote = (r: Row, origin: CelebrationOrigin) => {
+    const text = noteDraft.trim();
+    if (!text) return;
+    fire(r.person_key, "note", text, "Note added", () => void celebrate("save", origin));
+    setNoteFor(null);
   };
 
   const counts = useMemo(() => {
@@ -306,7 +365,7 @@ export default function RecruitingPipeline() {
         title="Pipeline"
         subtitle="Everyone from first call to active agent."
         icon={<Route />}
-        tone="gold"
+        tone="cool"
       />
 
       <GrowScoreboard
@@ -323,9 +382,9 @@ export default function RecruitingPipeline() {
       />
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm text-muted-foreground">Also:</span>
-        <CountChip label="Confirmed" count={unknown ? null : counts.confirmed} active={listOn("confirmed")} onPick={() => openList("confirmed")} />
-        <CountChip label="No shows" count={unknown ? null : counts.noshow} active={listOn("noshow")} onPick={() => openList("noshow")} />
-        <CountChip label="Contracting" count={unknown ? null : counts.contracting} active={listOn("contracting")} onPick={() => openList("contracting")} />
+        <CountChip label="Confirmed" tone={mondayTone("confirmed")} count={unknown ? null : counts.confirmed} active={listOn("confirmed")} onPick={() => openList("confirmed")} />
+        <CountChip label="No shows" tone={mondayTone("no_show")} count={unknown ? null : counts.noshow} active={listOn("noshow")} onPick={() => openList("noshow")} />
+        <CountChip label="Contracting" tone={pipelineStageTone("Contract Sent")} count={unknown ? null : counts.contracting} active={listOn("contracting")} onPick={() => openList("contracting")} />
       </div>
 
       <div className="flex gap-2">
@@ -409,13 +468,20 @@ export default function RecruitingPipeline() {
         ) : (
           <RevealList as="ul" className="divide-y divide-border/60">
             {filtered.slice(0, 400).map((r) => {
-              const intent = r.intent_level ? INTENT_STYLE[r.intent_level] : null;
               const name = r.name || "Unknown";
+              const stageTone = TONE_CLASS[pipelineStageTone(r.stage)];
               const lastNote = r.notes?.split("\n").filter(Boolean).pop();
               const due = dueWords(r.next_follow_up, now);
               return (
-                <li key={r.person_key} className="flex flex-col gap-3 px-4 py-4 lg:flex-row lg:items-start lg:gap-6">
-                  <div className="min-w-0 flex-1">
+                // Bubble | name and facts, with the actions on their own full-width line on a phone and in a
+                // third column from lg up, so the 44px controls keep the whole width where it is scarce.
+                <li key={r.person_key} className="grid grid-cols-[2.5rem_minmax(0,1fr)] items-start gap-3 px-4 py-4 lg:grid-cols-[2.5rem_minmax(0,1fr)_auto] lg:gap-x-6">
+                  {/* The person's initials in the colour of their stage. Decoration: the name sits beside it and
+                      the stage select says the word, so it is hidden from assistive technology like every bubble. */}
+                  <span aria-hidden="true" className={cn("mt-0.5 inline-flex h-10 w-10 items-center justify-center rounded-full border text-sm font-bold", stageTone.soft, stageTone.text, stageTone.border)}>
+                    {initialsOf(name)}
+                  </span>
+                  <div className="min-w-0">
                     <div className="flex min-h-11 flex-wrap items-center gap-2">
                       {r.person_type === "agent" ? (
                         <button
@@ -435,7 +501,8 @@ export default function RecruitingPipeline() {
                             aria-label={`Intent: ${intentLabel(r.intent_level)}. Change intent for ${name}`}
                             className={cn(
                               "h-11 shrink-0 rounded-full px-4 text-sm",
-                              intent ? intent.cls : "border-dashed border-border text-muted-foreground",
+                              tonePill(intentTone(r.intent_level)),
+                              !r.intent_level && "border-dashed",
                             )}
                           >
                             Intent: {intentLabel(r.intent_level)} <ChevronDown className="h-4 w-4" />
@@ -473,25 +540,34 @@ export default function RecruitingPipeline() {
                       <p className="mt-1 max-w-full truncate text-sm italic text-muted-foreground">Note: {lastNote}</p>
                     )}
                     {noteFor === r.person_key && (
-                      <div className="mt-2 flex items-center gap-2">
+                      // On a phone the box takes its own line and Save and Cancel sit under it: beside the bubble
+                      // the column is 306px, and a box squeezed next to two buttons showed three words of a note.
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
                         <Input autoFocus value={noteDraft} onChange={(e) => setNoteDraft(e.target.value)}
                           aria-label={`Note for ${r.name}`}
-                          placeholder={`Note for ${r.name}…`} className="h-11 text-base"
-                          onKeyDown={(e) => { if (e.key === "Enter" && noteDraft.trim()) { fire(r.person_key, "note", noteDraft.trim(), "Note added"); setNoteFor(null); } }} />
+                          placeholder={`Note for ${r.name}…`} className="h-11 basis-full text-base sm:min-w-[12rem] sm:flex-1"
+                          onKeyDown={(e) => { if (e.key === "Enter" && noteDraft.trim()) saveNote(r, pressPoint(e.currentTarget)); }} />
                         <Button className="h-11" disabled={!noteDraft.trim()}
-                          onClick={() => { fire(r.person_key, "note", noteDraft.trim(), "Note added"); setNoteFor(null); }}>Save</Button>
+                          onClick={(e) => saveNote(r, pressPoint(e.currentTarget))}>Save</Button>
                         <Button variant="ghost" className="h-11" onClick={() => setNoteFor(null)}>Cancel</Button>
                       </div>
                     )}
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2 lg:flex-nowrap">
+                  <div className="col-span-2 flex flex-wrap items-center gap-2 lg:col-span-1 lg:flex-nowrap">
+                    {/* The stage's tone on the text and the hairline, so a glance down the list shows each stage's
+                        colour; the options and the write are exactly as before. */}
                     <select
                       aria-label={`Stage for ${name}`}
                       title="Changing a stage sets a manual override that sticks until you clear it"
-                      className="h-11 max-w-[13rem] rounded-lg border border-border bg-card px-2 text-sm text-foreground focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
+                      className={cn("h-11 max-w-[13rem] rounded-lg border bg-card px-2 text-sm font-medium focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]", stageTone.text, stageTone.border)}
                       value={STAGES.includes(r.stage as typeof STAGES[number]) ? r.stage : ""}
-                      onChange={(e) => fire(r.person_key, "stage", e.target.value, "Stage updated")}>
+                      onChange={(e) => {
+                        // Read the select now, before anything async, so the bubbles rise from it.
+                        const origin = e.currentTarget;
+                        const next = e.target.value;
+                        fire(r.person_key, "stage", next, "Stage updated", () => stageMoved(next, origin));
+                      }}>
                       {!STAGES.includes(r.stage as typeof STAGES[number]) && <option value="">{r.stage}</option>}
                       {STAGES.map((s) => <option key={s} value={s}>{s}</option>)}
                     </select>

@@ -6,6 +6,13 @@
  * never zeros (4). The "Also" numbers are 44px chips (25). Intent is a 44px dropdown
  * in words that writes once per choice through the same rp_pipeline_action RPC (26).
  * A late follow-up says "Late · 1 day" in red and an unreadable date says so (38).
+ *
+ * Colour layer (2026-10-28): the header bubble is cool, each row's initials bubble and stage
+ * select wear the stage's tone and the intent pill its own (src/lib/tones.ts), the "Also"
+ * chips carry a tone dot, and a write that went through is marked from the control pressed:
+ * a move to Active Agent is one "hire" celebration from the select, a Monday stage the chime,
+ * any other stage or intent move a tick, a kept note a pop. A failed write is the error toast
+ * alone, and nothing plays on load.
  */
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -15,6 +22,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const db = vi.hoisted(() => ({
   rows: [] as unknown[],
   error: null as null | { message: string },
+  /** Returned by every rp_pipeline_action call while set: the write failed. */
+  rpcError: null as null | { message: string },
   reads: 0,
   rpcArgs: [] as Array<{ fn: string; args: unknown }>,
 }));
@@ -32,12 +41,26 @@ vi.mock("@/integrations/supabase/client", () => ({
     },
     rpc: (fn: string, args?: unknown) => {
       db.rpcArgs.push({ fn, args });
-      return Promise.resolve({ data: null, error: null });
+      return Promise.resolve({ data: null, error: db.rpcError });
     },
   },
 }));
+// CountUp reads prefersReducedMotion from the same module; true makes it paint the final number at once.
+vi.mock("@/lib/celebrate", () => ({ celebrate: vi.fn(() => Promise.resolve()), prefersReducedMotion: () => true }));
+vi.mock("@/hooks/useSoundEffects", () => ({ playSoundEffect: vi.fn(), useSoundEffects: () => ({ playSound: vi.fn() }) }));
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
+import { toast } from "sonner";
+import { celebrate } from "@/lib/celebrate";
+import { playSoundEffect } from "@/hooks/useSoundEffects";
 import RecruitingPipeline from "@/pages/RecruitingPipeline";
+
+const STAGES = [
+  "New Lead", "Contacted", "Call Scheduled", "Interested", "Confirmed",
+  "Expected Monday", "Showed", "No Show", "Onboarding", "Contract Sent",
+  "Contracting In Progress", "Ready for Training", "Active Agent",
+  "Inactive/No Longer With Us",
+];
 
 interface Person {
   person_key: string; person_type: string; name: string;
@@ -91,12 +114,21 @@ const peopleListed = () => within(screen.getByRole("region", { name: "People" })
 /** The "N of M people" line; the N sits in its own span, so match the whole element's text. */
 const scopeLine = () => screen.getByText((_, el) => el?.tagName === "SPAN" && /^\d+ of \d+ people$/.test(el.textContent ?? ""));
 const openMenu = (trigger: HTMLElement) => fireEvent.keyDown(trigger, { key: "Enter" });
+const stageSelect = (name: string) => screen.getByRole("combobox", { name: `Stage for ${name}` });
+const rowOf = (name: string) => screen.getByText(name).closest("li") as HTMLElement;
+/** The decorative bubble or dot inside a row or chip: the first aria-hidden span. */
+const bubbleIn = (el: HTMLElement) => el.querySelector('span[aria-hidden="true"]');
 
 beforeEach(() => {
   db.rows = EVERYONE;
   db.error = null;
+  db.rpcError = null;
   db.reads = 0;
   db.rpcArgs = [];
+  vi.mocked(celebrate).mockClear();
+  vi.mocked(playSoundEffect).mockClear();
+  vi.mocked(toast.success).mockClear();
+  vi.mocked(toast.error).mockClear();
   // Radix positions menus and popovers with ResizeObserver, which jsdom does not ship.
   vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
 });
@@ -176,13 +208,17 @@ describe("Recruiting Pipeline", () => {
     expect(tile("Expected Monday")).toHaveTextContent(/Expected Monday\s*2/);
   });
 
-  it("renders the Also numbers as 44px chips that say whether they are picked", async () => {
+  it("renders the Also numbers as 44px chips that say whether they are picked, each with its tone dot", async () => {
     renderPage();
     await screen.findByText("Ana Ruiz");
-    for (const label of ["Confirmed", "No shows", "Contracting"]) {
+    // Confirmed is a Monday start (gold), a no show is act now (hot), contracting is paperwork (royal):
+    // the same tones as everywhere else, on a dot beside the word, never instead of it.
+    for (const [label, dot] of [["Confirmed", "bg-tone-gold"], ["No shows", "bg-tone-hot"], ["Contracting", "bg-tone-royal"]] as const) {
       const chip = screen.getByRole("button", { name: new RegExp(`^${label}`) });
       expect(chip.className).toMatch(/\bh-11\b/);
       expect(chip).toHaveAttribute("aria-pressed", "false");
+      expect(bubbleIn(chip)?.className).toMatch(new RegExp(`\\b${dot}\\b`));
+      expect(bubbleIn(chip)?.textContent).toBe("");
     }
     fireEvent.click(screen.getByRole("button", { name: /^Confirmed/ }));
     expect(screen.getByRole("button", { name: /^Confirmed/ })).toHaveAttribute("aria-pressed", "true");
@@ -230,10 +266,13 @@ describe("Recruiting Pipeline", () => {
     expect(screen.queryByText(/manual override/)).toBeNull();
   });
 
-  it("keeps the subtitle short enough for one line on a phone", async () => {
+  it("keeps the subtitle short enough for one line on a phone, under a cool header bubble", async () => {
     renderPage();
     const subtitle = await screen.findByText("Everyone from first call to active agent.");
     expect((subtitle.textContent ?? "").length).toBeLessThanOrEqual(48);
+    // The Pipeline is the flow of new people (cool); gold stays on the Expected Monday tile.
+    const header = screen.getByRole("heading", { level: 1, name: "Pipeline" }).closest("header") as HTMLElement;
+    expect(header.querySelector('span[aria-hidden="true"].rounded-full')?.className).toMatch(/\btext-tone-cool\b/);
   });
 
   it("keeps every control at 44px or taller", async () => {
@@ -272,5 +311,94 @@ describe("Recruiting Pipeline", () => {
     expect(ig.className).toMatch(/\bh-11\b/);
     expect(screen.getByText(/\(601\) 555-1001 · @ana\.ruiz/)).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "@ana.ruiz" })).toBeNull();
+  });
+
+  it("colours each row by its stage: the initials bubble and the stage select wear the stage's tone, the intent pill its own", async () => {
+    renderPage();
+    await screen.findByText("Ana Ruiz");
+    // Expected Monday is the brand moment (gold), Active Agent is going well (good), No Show is act now (hot).
+    expect(stageSelect("Ana Ruiz").className).toMatch(/\btext-tone-gold\b/);
+    expect(stageSelect("Ana Ruiz").className).toMatch(/\bborder-tone-gold\/35\b/);
+    expect(stageSelect("Ivy Chan").className).toMatch(/\btext-tone-good\b/);
+    expect(stageSelect("Dee Park").className).toMatch(/\btext-tone-hot\b/);
+    // The colour never carries the meaning alone: the select still says the stage and offers every stage.
+    expect(stageSelect("Ana Ruiz")).toHaveValue("Expected Monday");
+    expect(within(stageSelect("Ana Ruiz")).getAllByRole("option").map((o) => o.textContent)).toEqual(STAGES);
+    // The bubble: two initials in the same tone, hidden from assistive technology; the name is right beside it.
+    const bubble = bubbleIn(rowOf("Ana Ruiz"));
+    expect(bubble?.textContent).toBe("AR");
+    expect(bubble?.className).toMatch(/\btext-tone-gold\b/);
+    expect(bubble?.className).toMatch(/\bh-10\b/);
+    // Intent in words with its tone: hot is hot, not set is quiet.
+    expect(screen.getByRole("button", { name: /^Intent: Hot/ }).className).toMatch(/\btext-tone-hot\b/);
+    expect(screen.getByRole("button", { name: /^Intent: Not set\. Change intent for Cal Moss/ }).className).toMatch(/\btext-tone-slate\b/);
+    // Nothing plays or bursts on load.
+    expect(celebrate).not.toHaveBeenCalled();
+    expect(playSoundEffect).not.toHaveBeenCalled();
+  });
+
+  it("celebrates a hire once, from the stage select, after a move to Active Agent saved", async () => {
+    renderPage();
+    await screen.findByText("Ana Ruiz");
+    const select = stageSelect("Ana Ruiz");
+    fireEvent.change(select, { target: { value: "Active Agent" } });
+    await waitFor(() => expect(celebrate).toHaveBeenCalledTimes(1));
+    expect(celebrate).toHaveBeenCalledWith("hire", select);
+    expect(db.rpcArgs).toEqual([{ fn: "rp_pipeline_action", args: { p_person_key: ana.person_key, p_action: "stage", p_value: "Active Agent" } }]);
+    expect(toast.success).toHaveBeenCalledWith("Stage updated");
+    expect(toast.error).not.toHaveBeenCalled();
+    expect(playSoundEffect).not.toHaveBeenCalled();
+  });
+
+  it("does not celebrate when the stage write fails: the error toast alone", async () => {
+    db.rpcError = { message: "not allowed" };
+    renderPage();
+    await screen.findByText("Ana Ruiz");
+    fireEvent.change(stageSelect("Ana Ruiz"), { target: { value: "Active Agent" } });
+    await waitFor(() => expect(toast.error).toHaveBeenCalledTimes(1));
+    expect(db.rpcArgs).toHaveLength(1);
+    expect(celebrate).not.toHaveBeenCalled();
+    expect(playSoundEffect).not.toHaveBeenCalled();
+    expect(toast.success).not.toHaveBeenCalled();
+  });
+
+  it("a Monday stage is the chime, another stage a tick, an intent change a tick, each after its own write", async () => {
+    renderPage();
+    await screen.findByText("Ana Ruiz");
+    const calSelect = stageSelect("Cal Moss");
+    fireEvent.change(calSelect, { target: { value: "Showed" } });
+    await waitFor(() => expect(celebrate).toHaveBeenCalledWith("booked", calSelect));
+    fireEvent.change(stageSelect("Hal Byrne"), { target: { value: "Contacted" } });
+    await waitFor(() => expect(playSoundEffect).toHaveBeenCalledWith("tick"));
+    openMenu(screen.getByRole("button", { name: /^Intent: Hot/ }));
+    fireEvent.click(await screen.findByRole("menuitemradio", { name: "Warm" }));
+    await waitFor(() => expect(playSoundEffect).toHaveBeenCalledTimes(2));
+    expect(playSoundEffect).toHaveBeenLastCalledWith("tick");
+    expect(celebrate).toHaveBeenCalledTimes(1);
+    expect(db.rpcArgs.map((c) => c.args)).toEqual([
+      { p_person_key: cal.person_key, p_action: "stage", p_value: "Showed" },
+      { p_person_key: hal.person_key, p_action: "stage", p_value: "Contacted" },
+      { p_person_key: ana.person_key, p_action: "intent", p_value: "warm" },
+    ]);
+  });
+
+  it("a kept note is the pop, from where Save sat, after the note saved", async () => {
+    renderPage();
+    await screen.findByText("Ana Ruiz");
+    openMenu(screen.getByRole("button", { name: "Update Ana Ruiz" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Add a note" }));
+    const input = await screen.findByRole("textbox", { name: "Note for Ana Ruiz" });
+    fireEvent.change(input, { target: { value: "Wants evenings" } });
+    const save = screen.getByRole("button", { name: "Save" });
+    // jsdom lays nothing out; give the button a place so the origin can be checked. The editor closes the
+    // moment Save is pressed, so the burst must come from where the button was, not from a gone element.
+    save.getBoundingClientRect = () => ({ x: 100, y: 200, left: 100, top: 200, width: 80, height: 44, right: 180, bottom: 244, toJSON: () => ({}) }) as DOMRect;
+    fireEvent.click(save);
+    expect(screen.queryByRole("textbox", { name: "Note for Ana Ruiz" })).toBeNull();
+    await waitFor(() => expect(celebrate).toHaveBeenCalledTimes(1));
+    expect(celebrate).toHaveBeenCalledWith("save", { x: 140 / window.innerWidth, y: 222 / window.innerHeight });
+    expect(db.rpcArgs.map((c) => c.args)).toEqual([{ p_person_key: ana.person_key, p_action: "note", p_value: "Wants evenings" }]);
+    expect(toast.success).toHaveBeenCalledWith("Note added");
+    expect(playSoundEffect).not.toHaveBeenCalled();
   });
 });

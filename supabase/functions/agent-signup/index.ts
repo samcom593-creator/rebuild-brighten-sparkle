@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { UPLINE_COLUMNS, walkToLiveUpline, type UplineRow } from "../_shared/departed.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -82,6 +83,23 @@ serve(async (req) => {
       );
     }
 
+    // The link may belong to a manager who has since left (an is_active row outlives a
+    // departure). Route the new agent to the first live manager up that chain, the rule
+    // resolve-ref-slug applies to /r/ links, and refuse only when nobody live is found.
+    // A recruit is never attached to a departed manager (AGENTS.md, 2026-08-17).
+    const liveUpline = await walkToLiveUpline(managerAgentId, async (id) => {
+      const { data } = await supabaseAdmin.from("agents").select(UPLINE_COLUMNS).eq("id", id).maybeSingle();
+      return (data as UplineRow | null) ?? null;
+    });
+    if (!liveUpline) {
+      return new Response(
+        JSON.stringify({ error: "This invite link belongs to a manager who is no longer with the agency. Ask your recruiter for a new link." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const uplineAgentId = liveUpline.agent.id;
+    if (liveUpline.redirected) console.log("agent-signup: departed manager link redirected up the chain", { from: managerAgentId, to: uplineAgentId });
+
     // Create the auth user with service role (bypasses email confirmation)
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
@@ -107,7 +125,7 @@ serve(async (req) => {
       .from("agents")
       .insert({
         user_id: userId,
-        invited_by_manager_id: managerAgentId,
+        invited_by_manager_id: uplineAgentId,
         status: "active",
         license_status: "unlicensed",
         onboarding_stage: "onboarding",

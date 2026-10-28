@@ -25,6 +25,44 @@ export function isDepartedAgent(row: DepartedAgentRow | null | undefined): boole
   return row.is_deactivated === true || row.status === "terminated";
 }
 
+export interface UplineRow extends DepartedAgentRow {
+  id: string;
+  manager_id?: string | null;
+  canonical_agent_id?: string | null;
+}
+
+export type UplineLookup = (id: string) => Promise<UplineRow | null>;
+
+/** Columns walkToLiveUpline needs on each row it is handed. */
+export const UPLINE_COLUMNS = "id, manager_id, canonical_agent_id, is_deactivated, status";
+
+/**
+ * The first agent still with the company at or above `startId`: the row itself when it
+ * is live, else its canonical row (when the upline is a duplicate) or its manager, at
+ * most `maxHops` up. This is resolve-ref-slug's rule for a terminated manager's /r/ link
+ * (PL-TERMINATION-RECODE, 2026-10-25), shared so every entry point that attaches a new
+ * agent to a manager behaves the same way. Null when nobody live is found: callers must
+ * then refuse, never attach the recruit to the departed row or to a silent default.
+ */
+export async function walkToLiveUpline(
+  startId: string,
+  lookup: UplineLookup,
+  maxHops = 4,
+): Promise<{ agent: UplineRow; redirected: boolean } | null> {
+  let row = await lookup(startId);
+  let hops = 0;
+  let redirected = false;
+  while (row && isDepartedAgent(row) && hops < maxHops) {
+    const upId = row.canonical_agent_id ?? row.manager_id ?? null;
+    if (!upId || upId === row.id) return null;
+    row = await lookup(upId);
+    redirected = true;
+    hops++;
+  }
+  if (!row || isDepartedAgent(row)) return null;
+  return { agent: row, redirected };
+}
+
 export interface BannableUser {
   banned_until?: string | null;
 }

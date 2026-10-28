@@ -5,11 +5,41 @@
 //
 // Run: deno test supabase/functions/_shared/departed.test.ts
 
-import { isBannedUser, isDepartedAgent } from "./departed.ts";
+import { isBannedUser, isDepartedAgent, walkToLiveUpline, type UplineRow } from "./departed.ts";
 
 function expect(cond: boolean, msg: string) {
   if (!cond) throw new Error(msg);
 }
+
+const live = (id: string, manager_id: string | null = null): UplineRow => ({ id, manager_id, is_deactivated: false, status: "active" });
+const gone = (id: string, manager_id: string | null = null, canonical_agent_id: string | null = null): UplineRow =>
+  ({ id, manager_id, canonical_agent_id, is_deactivated: true, status: "terminated" });
+const table = (rows: UplineRow[]) => async (id: string) => rows.find((r) => r.id === id) ?? null;
+
+Deno.test("a live manager is their own upline; a departed one routes to the first live manager above", async () => {
+  const rows = [live("sam"), live("lead", "sam"), gone("kj", "lead")];
+  const self = await walkToLiveUpline("lead", table(rows));
+  expect(self?.agent.id === "lead" && self.redirected === false, "a live row resolves to itself");
+  const up = await walkToLiveUpline("kj", table(rows));
+  expect(up?.agent.id === "lead" && up.redirected === true, "a departed row resolves to its live manager");
+});
+
+Deno.test("a duplicate's canonical row wins over its manager, and a dead chain refuses", async () => {
+  const rows = [live("canon"), gone("dupe", "sam", "canon"), live("sam")];
+  const viaCanonical = await walkToLiveUpline("dupe", table(rows));
+  expect(viaCanonical?.agent.id === "canon", "canonical_agent_id is followed first");
+  const dead = [gone("a", "b"), gone("b", null)];
+  expect((await walkToLiveUpline("a", table(dead))) === null, "no live upline must refuse");
+  expect((await walkToLiveUpline("missing", table(dead))) === null, "an unknown start must refuse");
+});
+
+Deno.test("the walk stops after maxHops and refuses a cycle", async () => {
+  const chain = [gone("a", "b"), gone("b", "c"), gone("c", "d"), gone("d", "e"), gone("e", "f"), live("f")];
+  expect((await walkToLiveUpline("a", table(chain), 4)) === null, "five hops exceed the cap of four");
+  expect((await walkToLiveUpline("a", table(chain), 5))?.agent.id === "f", "a cap of five reaches the live row");
+  const cycle = [gone("x", "y"), gone("y", "x")];
+  expect((await walkToLiveUpline("x", table(cycle))) === null, "a cycle of departed rows must refuse");
+});
 
 Deno.test("a terminated or deactivated agent is departed; an active one is not", () => {
   expect(isDepartedAgent({ is_deactivated: true, status: "active" }), "deactivated must count as departed");

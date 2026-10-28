@@ -39,7 +39,10 @@ supabase/.temp/
 # tailwind.config.landing.cjs + src/index.css via scripts/build-landing-css.mjs.
 # Not a source file — gitignored so `git status` stays clean post-build.
 public/landing.css
-.claude/
+# .claude/ stays local (settings.local.json etc.) except the project skills,
+# which are committed so every session (local and cloud) gets the same set.
+.claude/*
+!.claude/skills/
 
 # TypeScript incremental build artifacts
 *.tsbuildinfo

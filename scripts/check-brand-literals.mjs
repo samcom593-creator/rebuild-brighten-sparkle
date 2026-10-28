@@ -81,7 +81,11 @@ const SRC = join(ROOT, "src");
 // changelog length, not white-label debt: a history entry cannot be routed through resolveBrand(),
 // every wave that writes one can move the count, and 51 points of slack from a prose edit would let a
 // real component regression pass green (MP-356). It is exempt below for the same reason tests are.
-const BASELINE = 27;
+// 2026-10-28 — 27 → 21. The signed-in duplicates of the legal pages, src/pages/PrivacyPolicy.tsx
+// (1) and src/pages/TermsOfService.tsx (5), were deleted in the Grow redesign: /privacy-policy and
+// /terms-of-service now redirect to the public pages, which already carry the same text through the
+// brand config. No component was edited to move this count; six literals left with the two files.
+const BASELINE = 21;
 // shipped-data.ts: a record of what shipped, under whatever name the agency had at the time. Prose,
 // not a brand slot. See the 2026-10-11 note above.
 const EXEMPT = new Set(["src/config/brand.ts", "src/data/shipped-data.ts"]);

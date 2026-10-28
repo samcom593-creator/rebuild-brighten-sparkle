@@ -41,10 +41,10 @@ const UNGATED_SDK = new Set([]);
 const RAW_REST = new Set([
   "apex-outbox-dispatcher/index.ts", "brand-collab/index.ts", "check-early-performance/index.ts",
   "check-low-aop-friday/index.ts", "detect-dropped-leads/index.ts", "detect-production-gaps/index.ts",
-  "manychat-webhook/index.ts", "monday-starter-reminders/index.ts", "notify-all-managers-leaderboard/index.ts",
+  "manychat-webhook/index.ts", "monday-starter-reminders/index.ts",
   "notify-hire-announcement/index.ts", "notify-seminar-signup/index.ts", "notify-test-reminder/index.ts",
   "notify-test-scheduled/index.ts", "onboarding-call-invites/index.ts", "outreach-sender/index.ts",
-  "schedule-auto-populate/index.ts", "schedule-interview/index.ts", "seminar-register/index.ts",
+  "schedule-interview/index.ts", "seminar-register/index.ts",
   "send-agent-onboarding-email/index.ts", "send-bulk-unlicensed-outreach/index.ts", "send-calendly-invite/index.ts",
   "send-candidate-confirmation/index.ts", "send-couldnt-reach-email/index.ts", "send-daily-producer-spotlight/index.ts",
   "send-proactive-coaching/index.ts", "welcome-new-agent/index.ts",

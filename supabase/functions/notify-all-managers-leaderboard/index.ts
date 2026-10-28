@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { sendEmail } from "../_shared/email.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -218,25 +219,20 @@ const handler = async (req: Request): Promise<Response> => {
       if (!RESEND_API_KEY) break;
 
       try {
-        const response = await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${RESEND_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            from: "Galaxy Financial <notifications@apex-financial.org>",
-            to: [manager.email],
-            subject,
-            html,
-          }),
+        // sendEmail drops suppressed and non-routable recipients before Resend sees them.
+        const res = await sendEmail({
+          from: "Galaxy Financial <notifications@apex-financial.org>",
+          to: manager.email,
+          subject,
+          html,
+          tagName: "notify-all-managers-leaderboard",
         });
 
-        if (response.ok) {
+        if (res.ok) {
           sentCount++;
           console.log(`[Leaderboard] ✅ Sent to ${manager.email}`);
         } else {
-          console.error(`[Leaderboard] Failed: ${manager.email}`, await response.text());
+          console.error(`[Leaderboard] Not sent: ${manager.email}`, res.refused ?? "", res.error);
         }
       } catch (error) {
         console.error(`[Leaderboard] Error: ${manager.email}`, error);

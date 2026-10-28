@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "Oct 28, 2026",
+    label: "Links open the exact record: a sold call opens its book row and recording, a book row opens its sold call, and a failed team lookup says so",
+    detail: "Sam: links should go to the actual ReadyMode call and the actual book of business, not the page itself, with no clutter. On Sold Calls, In the book now opens that client's exact row in the Book of Business, and a Recording button plays the ReadyMode call when one exists. In the Book of Business call panel, Sold call opens that exact call. Six screens that read the team list (Manager view, Agent Management, Post a Deal, Pre-Licensing, Agency Owner home and the Dashboard) show one Couldn't load your team notice with Try again instead of passing a failed lookup off as an empty team. The unused Radix toast package is out of package.json and both lockfiles.",
+    commit: "FOLLOWUPS-2026-10-28",
+  },
+  {
+    ts: "Oct 28, 2026",
     label: "Grow craft pass: motion only where it helps, one toaster built for phones, and every Grow page checked with zero errors",
     detail: "Applied Emil Kowalski's animation standards and impeccable to the Grow colour, motion and sound layer, merging two independent reviews. Numbers show the real value at once and count up only when they change, inside 280ms; a bad number shows a dash, never NaN. Rows rise in faster and the stagger stops after 14 rows. Saving an outcome gives a smaller burst, booked, hired and win moments still celebrate, and nothing fires from someone else's update. Sounds wait until you have touched the page. On phones the scoreboard is a 2x2 grid so every number lines up, the sidebar Account label is readable, the Worklist list fits the visible iPhone screen, and a failed team lookup reports an error instead of passing as an empty team. The old Radix toaster is gone: Sonner is the only one, sits above the phone toolbar and swipes away. Crawled 576 page, data, theme, width and role combinations (216 failures before, 0 after) and 288 more with touch emulation (0 failures)",
     commit: "GROW-CRAFT",

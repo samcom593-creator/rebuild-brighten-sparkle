@@ -110,7 +110,7 @@ export default function SocialCommandCenter() {
         icon={<Radio />}
         tone="royal"
         title="Social Command Center"
-        subtitle="Every platform in one place: who to answer first, what to post, what actually pulls applications, and which lane is dead."
+        subtitle="Who to answer first, and which lane is dead."
       />
 
       <GrowScoreboard

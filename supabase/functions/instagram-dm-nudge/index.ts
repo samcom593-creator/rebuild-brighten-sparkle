@@ -69,18 +69,18 @@ Deno.serve(async (req) => {
     if (dryRun) { receipts.push({ partial_id: p.id, email: p.email, dry_run: true }); continue; }
     const link = "https://apex-financial.org/apply?utm_source=instagram&utm_medium=dm&utm_campaign=recovery";
     try {
-      // Through the shared sender, not api.resend.com directly: it honours unsubscribes and
-      // refuses dead domains, which is what check:resend-gate exists to guarantee.
-      const r = await sendEmail({
+      // sendEmail drops suppressed and non-routable recipients before Resend sees them;
+      // a refusal stays unstamped, so it reads as not sent, never as recovered.
+      const res = await sendEmail({
         from: "Sam James <alerts@apex-financial.org>", reply_to: "info@kingofsales.net", to: p.email,
         subject: "you started the application, sam",
         text: `yo${p.first_name ? ` ${p.first_name}` : ""}, it's sam from ig.\n\nyou started the application and didn't finish. takes 2 minutes, finish it here and i'll reach out:\n${link}\n\nif something's not clear just reply here.\n\nsam`,
-        tagName: "ig-recovery",
+        tagName: "instagram-dm-nudge",
       });
-      if (r.ok && r.id) {
+      if (res.ok && res.id) {
         await sb.from("partial_applications").update({ recovery_email_sent_at: new Date().toISOString() }).eq("id", p.id);
-        emailed++; receipts.push({ partial_id: p.id, email: p.email, resend_id: r.id });
-      } else receipts.push({ partial_id: p.id, email: p.email, error: (r.error ?? "not sent").slice(0, 160) });
+        emailed++; receipts.push({ partial_id: p.id, email: p.email, resend_id: res.id });
+      } else receipts.push({ partial_id: p.id, email: p.email, error: (res.error ?? "not sent").slice(0, 160), refused: res.refused ?? null });
     } catch (e) { receipts.push({ partial_id: p.id, error: String(e).slice(0, 160) }); }
   }
 

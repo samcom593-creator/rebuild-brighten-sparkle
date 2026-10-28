@@ -246,7 +246,10 @@ describe("RecruitingWorklist failed loads (review)", () => {
     await screen.findByRole("list", { name: "Queue" });
 
     db.rowsFail = true;
-    fireEvent.click(screen.getByRole("button", { name: /Reload/ }));
+    // The coverage warning's Reload (the scoreboard notice carries one too; both refetch).
+    const coverageBanner = screen.getByText(/not in this list/).closest("[role=status]");
+    if (!coverageBanner) throw new Error("coverage warning is not a live region");
+    fireEvent.click(within(coverageBanner as HTMLElement).getByRole("button", { name: /Reload/ }));
     const stale = await screen.findByText(/The latest reload failed/);
     expect(stale.textContent).toMatch(/^Showing records loaded /);
     const notice = stale.closest("[role=status]");
@@ -341,6 +344,10 @@ describe("RecruitingWorklist data status (F29)", () => {
     // Nothing is missing, so no warning anywhere on the page.
     expect(screen.queryByText(/not in this list/)).toBeNull();
     expect(screen.queryByText(/counts disagree/)).toBeNull();
+    // Today's numbers show only because the load reconciled with the eligible count.
+    const board = screen.getByRole("region", { name: "Today's numbers" });
+    expect(board.textContent).not.toContain("—");
+    expect(screen.queryByText(/Today's numbers are hidden/)).toBeNull();
   });
 
   it("an eligible record that did not load is a warning with a reload, outside the disclosure, never hidden", async () => {
@@ -355,6 +362,11 @@ describe("RecruitingWorklist data status (F29)", () => {
     expect(within(banner as HTMLElement).getByRole("button", { name: /Reload/ })).toBeTruthy();
     expect(dataStatus().querySelector("summary")?.textContent).toContain("incomplete, 1 of 3 eligible records not loaded");
     expect(screen.getByText(/Everyone: 2 people\./)).toBeTruthy();
+    // A number computed from a short load is never shown as today's number: a dash, the reason, a reload.
+    const board = screen.getByRole("region", { name: "Today's numbers" });
+    expect(within(board).getAllByText("—")).toHaveLength(4);
+    expect(within(board).getByText(/Today's numbers are hidden until every eligible record is loaded/)).toBeTruthy();
+    expect(within(board).getByRole("button", { name: /Reload/ })).toBeTruthy();
   });
 
   it("a failed count reads Unavailable with a retry, never a zero", async () => {
@@ -370,5 +382,10 @@ describe("RecruitingWorklist data status (F29)", () => {
     expect(within(details).getByRole("button", { name: /Retry the counts/ })).toBeTruthy();
     expect(details.textContent).not.toMatch(/\b0 marked duplicate\b/);
     expect(screen.queryByText(/not in this list/)).toBeNull();
+    // Unverified is not zero: the scoreboard withholds all four numbers and says why.
+    const board = screen.getByRole("region", { name: "Today's numbers" });
+    expect(within(board).getAllByText("—")).toHaveLength(4);
+    expect(within(board).getByText(/Today's numbers are hidden because the record counts could not be checked/)).toBeTruthy();
+    expect(within(board).getByRole("button", { name: /Reload/ })).toBeTruthy();
   });
 });

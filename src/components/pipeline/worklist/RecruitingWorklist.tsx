@@ -282,6 +282,11 @@ export function RecruitingWorklist() {
   // incomplete load is a visible warning, not a clause inside a paragraph.
   const coverage = assessCoverage(rows.length, worklist.data?.coverage);
   const warning = coverageWarning(coverage);
+  // Today's numbers are computed from the loaded rows, so they are only as true as the load.
+  // They show once the rows reconcile with the eligible count; a short load, a disagreement
+  // or a failed count shows a dash and says why, never a number that looks complete.
+  const verified = coverage.kind === "complete";
+  const score = (value: number): number | null => (verified ? value : null);
 
   const panel = selected ? (
     <PersonPanel
@@ -360,14 +365,26 @@ export function RecruitingWorklist() {
         </div>
       )}
 
-      {/* The numbers that matter, over every loaded row (same rules as the lists). */}
+      {/* The numbers that matter, over every loaded row (same rules as the lists), shown only once the load is verified complete. */}
       <GrowScoreboard
         label="Today's numbers"
+        notice={verified ? null : (
+          <>
+            <span>
+              {coverage.kind === "unknown"
+                ? "Today's numbers are hidden because the record counts could not be checked."
+                : "Today's numbers are hidden until every eligible record is loaded."}
+            </span>
+            <Button size="sm" variant="outline" className="shrink-0" onClick={() => void worklist.refetch()}>
+              <RefreshCw className="h-4 w-4" /> Reload
+            </Button>
+          </>
+        )}
         tiles={[
-          { label: "Call today", value: board.callToday, hint: "Due today or late", definition: QUEUE_DEFINITIONS.find((q) => q.key === "today")?.description, onSelect: () => pickQueue("today"), active: queue === "today", emphasis: true },
-          { label: "New", value: board.newThisWeek, hint: "Applied this week, not yet worked", definition: QUEUE_DEFINITIONS.find((q) => q.key === "new")?.description, onSelect: () => pickQueue("new"), active: queue === "new" },
-          { label: "Worked today", value: board.workedToday, hint: "People with an outcome saved today", definition: "People whose latest outcome was saved today (Phoenix day), including no answers and people who said no" },
-          { label: "Booked", value: board.booked, hint: "Open, appointment booked", definition: "Open recruits whose latest outcome is Appointment booked" },
+          { label: "Call today", value: score(board.callToday), hint: "Due today or late", definition: QUEUE_DEFINITIONS.find((q) => q.key === "today")?.description, onSelect: () => pickQueue("today"), active: queue === "today", emphasis: true },
+          { label: "New", value: score(board.newThisWeek), hint: "Applied this week, not yet worked", definition: QUEUE_DEFINITIONS.find((q) => q.key === "new")?.description, onSelect: () => pickQueue("new"), active: queue === "new" },
+          { label: "Worked today", value: score(board.workedToday), hint: "People with an outcome saved today", definition: "People whose latest outcome was saved today (Phoenix day), including no answers and people who said no" },
+          { label: "Booked", value: score(board.booked), hint: "Open, appointment booked", definition: "Open recruits whose latest outcome is Appointment booked" },
         ]}
       />
 

@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { cn } from "@/lib/utils";
 
 export interface ScoreTile {
@@ -19,11 +21,17 @@ export interface ScoreTile {
  * The few numbers that matter, large and calm (Grow redesign, 2026-10-28). A tile
  * with `onSelect` is a button that opens exactly the people it counts, so the number
  * and the list cannot disagree. Four across at every width; the hint line drops on
- * phones so the strip stays one row.
+ * phones so the strip stays one row. `notice` is a full-width line under the tiles
+ * for the one case the numbers are withheld, so a dash is never left unexplained.
  */
-export function GrowScoreboard({ label, tiles, className }: { label: string; tiles: ScoreTile[]; className?: string }) {
+export function GrowScoreboard({ label, tiles, notice, className }: { label: string; tiles: ScoreTile[]; notice?: ReactNode; className?: string }) {
   return (
     <section aria-label={label} className={cn("grid grid-cols-4 overflow-hidden rounded-xl border border-border bg-card", className)}>
+      {notice ? (
+        <div role="status" className="col-span-4 flex flex-col gap-2 border-b border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+          {notice}
+        </div>
+      ) : null}
       {tiles.map((t) => {
         const body = (
           <>

@@ -199,7 +199,10 @@ export function InviteAgentForm({
   const recipientName = `${firstName.trim()} ${lastName.trim()}`.trim();
   const contractingFields = { firstName, lastName, phone: recipientPhone, npn };
   const noteRoom = freeNoteRoom(contractingFields);
-  const canSubmit = !!opts && emailOk && !npnIssue && issues.length === 0 && !submitting;
+  // Typing a name, phone or NPN after the note shrinks the room the server leaves for it. The
+  // note is never cut behind the person's back: it is flagged and the invitation waits until it fits.
+  const noteOver = Math.max(0, note.trim().length - noteRoom);
+  const canSubmit = !!opts && emailOk && !npnIssue && noteOver === 0 && issues.length === 0 && !submitting;
 
   const chosenUpline = opts?.uplines.find((u) => u.id === uplineId) ?? null;
 
@@ -451,8 +454,22 @@ export function InviteAgentForm({
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="invite-note" className="text-sm">Team note <span className="font-normal text-muted-foreground">(only your team sees it)</span></Label>
-              <Input id="invite-note" className={INPUT_CLASS} value={note} onChange={(e) => setNote(e.target.value.slice(0, noteRoom))} maxLength={noteRoom} />
-              {note.length > noteRoom - 20 && <p className="text-[13px] text-muted-foreground">{Math.max(0, noteRoom - note.length)} characters left</p>}
+              <Input
+                id="invite-note"
+                className={INPUT_CLASS}
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                maxLength={noteRoom}
+                aria-invalid={noteOver > 0 || undefined}
+                aria-describedby={noteOver > 0 ? "invite-note-over" : undefined}
+              />
+              {noteOver > 0 ? (
+                <p id="invite-note-over" role="alert" className="text-sm text-destructive">
+                  The note is {noteOver} character{noteOver === 1 ? "" : "s"} too long now that the contracting details take part of its space. Shorten it to create the invitation.
+                </p>
+              ) : note.length > noteRoom - 20 ? (
+                <p className="text-[13px] text-muted-foreground">{noteRoom - note.length} characters left</p>
+              ) : null}
             </div>
           </div>
 

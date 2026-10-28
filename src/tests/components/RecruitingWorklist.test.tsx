@@ -29,17 +29,22 @@ function makeRow(id: string, patch: Row = {}): Row {
 
 vi.mock("@/integrations/supabase/client", () => {
   function from(table: string) {
-    const q: Record<string, unknown> & { head: boolean; range_: [number, number] | null } = { head: false, range_: null };
+    // Every fixture row is a live, non-duplicate application, so the duplicate and
+    // non-application head counts (the ones narrowed by is_duplicate / neq record_type)
+    // are 0 and the live count equals the rows: coverage reconciles as complete.
+    const q: Record<string, unknown> & { head: boolean; narrow: boolean; range_: [number, number] | null } = { head: false, narrow: false, range_: null };
     const chain = (fn?: (...a: unknown[]) => void) => (...a: unknown[]) => { fn?.(...a); return q; };
     Object.assign(q, {
       select: chain((_c: unknown, opts: unknown) => { q.head = Boolean((opts as { head?: boolean } | undefined)?.head); }),
-      eq: chain(), neq: chain(), is: chain(), or: chain(), order: chain(),
+      eq: chain((col: unknown) => { if (col === "is_duplicate") q.narrow = true; }),
+      neq: chain(() => { q.narrow = true; }),
+      is: chain(), or: chain(), order: chain(),
       range: chain((a: unknown, b: unknown) => { q.range_ = [a as number, b as number]; }),
       then(resolve: (v: unknown) => unknown, reject: (e: unknown) => unknown) {
         let result: unknown;
         if (table === "applications") {
           result = q.head
-            ? { data: null, error: null, count: db.rows.length }
+            ? { data: null, error: null, count: q.narrow ? 0 : db.rows.length }
             : { data: db.rows.slice(q.range_?.[0] ?? 0, (q.range_?.[1] ?? 999) + 1), error: null };
         } else if (table === "next_step_stages") {
           result = { data: [{ stage_key: "applied", display_name: "Applied", order_index: 1, is_terminal: false }], error: null };

@@ -18,6 +18,7 @@ import { Instagram,
   LayoutGrid,
   ListChecks,
   Megaphone,
+  createLucideIcon,
   ScrollText,
   Settings,
   Shield,
@@ -31,6 +32,14 @@ import { Instagram,
 
 import type { AccountMode } from "@/hooks/useAuth";
 import type { Tone } from "@/lib/tones";
+
+// The installed Lucide version has no MessageSquareDollar export.
+// Keep the requested symbol using its existing icon factory, without a dependency upgrade.
+const MessageSquareDollar = createLucideIcon("MessageSquareDollar", [
+  ["path", { d: "M21 15a4 4 0 0 1-4 4H7l-4 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z", key: "bubble" }],
+  ["path", { d: "M12 6v12m3-10h-4a2 2 0 0 0 0 4h2a2 2 0 0 1 0 4H9", key: "dollar" }],
+]);
+
 
 /**
  * MP-332 mode allowlists. `modes` names the account modes that see an entry;
@@ -50,6 +59,7 @@ export interface AgentCloudNavItem {
   href: string;
   icon?: ElementType;
   adminOnly?: boolean;
+  samOnly?: boolean;
   /** A role fallback that duplicates an entry the all-seeing viewer already has elsewhere. */
   hideWhenSeesAll?: boolean;
   /** Account modes that see this item. Omit = everyone. Admin always sees it. */
@@ -201,6 +211,8 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
       { label: "Ayro Book", href: "/dashboard/ayro-book", icon: Building2, grant: "sold_calls" },
       // Admins and Aisha (can_view_sold_calls); she works in manager mode, so a mode list could not reach her.
       { label: "Sold Calls", href: "/dashboard/sold-calls", icon: PhoneCall, grant: "sold_calls" },
+      // Graded dialer calls for training (MP-310, 2026-10-28): the great calls and the objections turned. Same access as Sold Calls.
+      { label: "Call Training", href: "/dashboard/call-training", icon: GraduationCap, grant: "sold_calls" },
       { label: "My Commissions", href: "/dashboard/my-commissions", icon: WalletCards },
       { label: "Retention", href: "/dashboard/retention", icon: Shield },
     ],
@@ -233,6 +245,7 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
     label: "Owner",
     icon: Building2,
     items: [
+      { label: "Money Inbox", href: "/dashboard/money-inbox", icon: MessageSquareDollar, adminOnly: true, samOnly: true },
       { label: "Launch Board", href: "/dashboard/launch-board", icon: Megaphone, adminOnly: true },
       { label: "Reports", href: "/dashboard/analytics", icon: BarChart3, adminOnly: true },
       { label: "Finances", href: "/dashboard/finances", icon: WalletCards, adminOnly: true },
@@ -498,6 +511,7 @@ export function navSectionToneForLocation(location: AgentCloudLocation, entries:
 }
 
 export interface AgentCloudNavViewer {
+  isSam?: boolean;
   /** Admin outside role preview: sees every entry. */
   seesAll: boolean;
   /** Account mode the entries are filtered for (the previewed mode while previewing). */
@@ -519,10 +533,11 @@ export function filterAgentCloudNav(entries: AgentCloudNavEntry[], viewer: Agent
   const grantAllows = (item: { grant?: AgentCloudNavGrant }) => !item.grant || viewer.seesAll || Boolean(viewer.grants?.has(item.grant));
   return entries
     .filter((entry) => !(!isAgentCloudGroup(entry) && entry.adminOnly && !viewer.seesAll))
+    .filter((entry) => isAgentCloudGroup(entry) || (!entry.samOnly || viewer.isSam))
     .filter((entry) => isAgentCloudGroup(entry) || grantAllows(entry))
     .filter((entry) => modeAllows(entry.modes))
     .map((entry) => (isAgentCloudGroup(entry)
-      ? { ...entry, items: entry.items.filter((item) => (!item.adminOnly || viewer.seesAll) && modeAllows(item.modes) && notDuplicateForOwner(item) && grantAllows(item)) }
+      ? { ...entry, items: entry.items.filter((item) => (!item.adminOnly || viewer.seesAll) && (!item.samOnly || viewer.isSam) && modeAllows(item.modes) && notDuplicateForOwner(item) && grantAllows(item)) }
       : entry))
     .filter((entry) => !isAgentCloudGroup(entry) || entry.items.length > 0);
 }

@@ -313,6 +313,9 @@ const PUBLIC_ALLOWLIST = new Set([
   // social-lead-csv (2026-10-28, MP-308 wave 2): the two call-list downloads; same feed-key gate as
   //   contracting-sheet-csv (`key !== expected` → 403) before the service-role client does anything.
   "social-lead-csv",
+  // interview-outcome (2026-10-28, MP-309): the one-tap outcome links; HMAC(id:outcome) under APEX_BOT_TOKEN verified
+  //   in constant time (`verify` → 401) before the service-role client does anything.
+  "interview-outcome",
   // MP-415 — the eight that turned this bucket red on 2026-09-30, each
   // classified in PUBLIC_CONTRACT below. Seven gate their caller in code and
   // the detector confirms it on every run; brand-collab is a public form. They
@@ -568,6 +571,7 @@ const PUBLIC_CONTRACT = {
   "contracting-sheet-sync": "in_handler_gate",
   "contracting-sheet-csv": "in_handler_gate",
   "social-lead-csv": "in_handler_gate",
+  "interview-outcome": "in_handler_gate",
   // cron-newhire-portal-login + cron-inbound-brain-health: x-cron-secret
   // compared against the environment as the handler's first statement, probed
   // live 401 on a bare POST and on a wrong secret (MP-413).

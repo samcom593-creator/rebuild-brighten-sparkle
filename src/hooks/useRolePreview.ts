@@ -1,3 +1,4 @@
+import { isSamEmail } from "@/lib/samOnly";
 import { useSearchParams } from "react-router-dom";
 import { useAuth, type AccountMode } from "@/hooks/useAuth";
 
@@ -11,16 +12,6 @@ export function isRolePreview(value: string | null): value is RolePreview {
   return Boolean(value && PREVIEW_ROLES.includes(value as RolePreview));
 }
 
-// PL-015: the role-preview bubbles are a dev/internal-only tool. Showing them
-// to every admin was confusing — agents on staff with admin grants saw the
-// switcher and thought it was a feature. Restrict to Sam (the only operator
-// who actually previews flows). Identification by email keeps the gate
-// declarative + portable (no hard-coded user_id in source).
-const SAM_EMAILS = new Set<string>([
-  "sam.com593@gmail.com",
-  "sam@apex-financial.org",
-]);
-
 export function useRolePreview() {
   const { user, effectiveMode } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -30,7 +21,7 @@ export function useRolePreview() {
   // silently routed recruiters and agency owners to the agent home.
   const actualRole: RolePreview = effectiveMode;
 
-  const isSam = !!(user?.email && SAM_EMAILS.has(user.email.toLowerCase()));
+  const isSam = isSamEmail(user?.email);
   const previewRole = isSam && isRolePreview(requestedPreview) ? requestedPreview : null;
 
   const setPreviewRole = (role: RolePreview | null) => {

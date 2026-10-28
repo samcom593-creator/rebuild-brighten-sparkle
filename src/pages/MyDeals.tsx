@@ -11,6 +11,10 @@ import { SubmitDealDialog } from "@/components/deals/SubmitDealDialog";
 import { SoldCallPanel } from "@/components/clients/SoldCallPanel";
 import { ClientContactLine } from "@/components/clients/ClientContactLine";
 import { BookRowWork } from "@/components/books/BookRowWork";
+import { BookRowCallsPanel } from "@/components/books/BookRowCallsPanel";
+import { dispositionLabel } from "@/lib/readymodeDispositions";
+import { looseSupabase } from "@/lib/looseSupabase";
+import { parseStatusGroup, STATUS_GROUP_CHIPS, statusGroupFilter, type StatusGroupKey } from "@/lib/policyStatusGroup";
 import { splitClientName } from "@/lib/clientFacts";
 import { useBookClientDetails, type BookClientDetails } from "@/hooks/useBookClientDetails";
 import { useSoldCallKeys } from "@/hooks/useSoldCallKeys";
@@ -19,7 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { QueryState, describeQuery, errorMessage } from "@/components/ui/query-state";
 import { PageHeader } from "@/components/ui/page-header";
-import { DollarSign, ChevronDown, ChevronRight, FilePlus2 } from "lucide-react";
+import { DollarSign, ChevronDown, ChevronRight, FilePlus2, PhoneCall, Star } from "lucide-react";
 import { format, formatDistanceToNowStrict } from "date-fns";
 import { shiftDateKey } from "@/lib/businessClock";
 import {
@@ -57,6 +61,49 @@ type DealRow = {
 
 /** One server page of the book, with the server's exact count of rows matching from its cursor on. */
 type DealsPage = { rows: DealRow[]; matching: number | null };
+
+/** What the dialer knows about one book row (v_book_row_call_summary, MP-310). Sam + Aisha only. */
+type CallSummary = {
+  flip_key: string;
+  policy_number: string | null;
+  client_key: string | null;
+  calls_total: number;
+  sold_calls: number;
+  objection_calls: number;
+  appointment_calls: number;
+  dnc_calls: number;
+  transcripts: number;
+  last_call_at: string | null;
+  last_disposition: string | null;
+  last_agent: string | null;
+  matched_by_phone: boolean;
+  packet_id: string | null;
+  latest_summary: string | null;
+  best_grade: number | null;
+  has_great_call: boolean;
+  gave_ssn_and_bank: boolean;
+  last_approval_said: string | null;
+};
+type DialerChip = "all" | "sold_call" | "transcript" | "great_call" | "no_call";
+const DIALER_CHIPS: { key: DialerChip; label: string }[] = [
+  { key: "all", label: "Every row" },
+  { key: "sold_call", label: "Sold on a call" },
+  { key: "transcript", label: "Has transcript" },
+  { key: "great_call", label: "Great call" },
+  { key: "no_call", label: "No dialer call" },
+];
+const nameKey = (s: string | null | undefined) => (s ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+/** The summary for a book row: by policy number + client name (what the row itself carries), then by its Book Flips key. */
+function callsFor(map: Map<string, CallSummary> | undefined, d: DealRow, client?: BookClientDetails): CallSummary | null {
+  if (!map) return null;
+  const byRow = map.get(`row:${(d.policy_number ?? "").trim()}|${nameKey(d.client_name)}`);
+  if (byRow) return byRow;
+  if (client?.flip_carrier && client.flip_policy_number) {
+    const key = [client.flip_carrier, client.flip_policy_number, client.flip_client_key].filter((v) => v != null).join("|");
+    return map.get(`flip:${key.replace(/\|+$/, "")}`) ?? null;
+  }
+  return null;
+}
 
 const statusColor = (s: string | null) => {
   switch ((s ?? "unknown").toLowerCase()) {
@@ -163,6 +210,7 @@ function DealRowItem({
   clientFailed = false,
   hasSoldCall,
   canWork = false,
+  calls = null,
 }: {
   d: DealRow;
   isOpen: boolean;
@@ -176,6 +224,8 @@ function DealRowItem({
   hasSoldCall?: (phone?: string | null, first?: string | null, last?: string | null) => boolean;
   /** Admin or manager: may log call outcomes (book_flip_set enforces the same rule). */
   canWork?: boolean;
+  /** MP-310: what the dialer knows about this client; null without sold-call access or without a match. */
+  calls?: CallSummary | null;
 }) {
   const { firstName, lastName } = splitClientName(d.client_name);
   // A client-level row: something a person can be called about and resold. Aggregate rows
@@ -242,6 +292,26 @@ function DealRowItem({
           <BookRowWork clientName={d.client_name} details={client} canWork={canWork} />
         </div>
       )}
+      {/* MP-310: the dialer's history with this client in one line; the calls themselves open with the row. */}
+      {calls && calls.calls_total > 0 && (
+        <div className="px-3 pb-3 md:pl-11">
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+            <PhoneCall className="h-3.5 w-3.5 text-primary" aria-hidden />
+            <span>{calls.calls_total} dialer {calls.calls_total === 1 ? "call" : "calls"}{calls.sold_calls > 0 ? ` · ${calls.sold_calls} sold` : ""}</span>
+            <span>· last {dispositionLabel(calls.last_disposition)}{calls.last_call_at ? ` ${format(new Date(calls.last_call_at), "MMM d")}` : ""}{calls.last_agent ? ` by ${calls.last_agent}` : ""}</span>
+            {calls.transcripts > 0 && <span>· {calls.transcripts} transcribed</span>}
+            {calls.last_approval_said && <span>· agent said {calls.last_approval_said}</span>}
+            {calls.gave_ssn_and_bank && <span className="text-emerald-700 dark:text-emerald-300">· gave SSN + bank</span>}
+            {calls.best_grade != null && (
+              <span className={calls.has_great_call ? "inline-flex items-center gap-0.5 font-semibold text-amber-700 dark:text-amber-300" : ""}>
+                · best call {calls.best_grade}/100{calls.has_great_call && <Star className="h-3 w-3" aria-label="great call" />}
+              </span>
+            )}
+            {!calls.matched_by_phone && <span>· matched by name</span>}
+          </p>
+          {calls.latest_summary && <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{calls.latest_summary}</p>}
+        </div>
+      )}
       {/* The client's ReadyMode sold-call packet (SSN, bank, beneficiaries, health) sits
           on the row itself, never behind the expand. Only admins and Aisha get keys, and
           the panel renders only for a client with a sold call on file. */}
@@ -282,6 +352,9 @@ function DealRowItem({
               <p className="font-semibold line-clamp-2">{d.row_key}</p>
             </div>
           </div>
+          {calls && calls.calls_total > 0 && (
+            <div className="px-4 pb-4"><BookRowCallsPanel flipKey={calls.flip_key} /></div>
+          )}
         </>
       )}
     </div>
@@ -307,6 +380,8 @@ export default function MyDeals() {
   // The status filter lives in the URL so a tile selection survives a reload and
   // can be shared. Only a known bucket name is accepted; anything else is no filter.
   const statusBucket = parseStatusBucket(searchParams.get("status"));
+  // MP-310: the coarse question (active / pending / lapsing / inactive / unknown), also in the URL.
+  const statusGroup = parseStatusGroup(searchParams.get("group"));
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [visible, setVisible] = useState(PAGE);
   const [moreStatuses, setMoreStatuses] = useState(false);
@@ -332,6 +407,7 @@ export default function MyDeals() {
   const scopeReady = fullBook || (!identityLoading && teamListReady && scopedAgentIds.length > 0);
   const enabled = Boolean(user?.id) && scopeReady;
   const statusFilter = statusBucket ? statusBucketFilter(statusBucket) : null;
+  const groupFilter = statusGroup ? statusGroupFilter(statusGroup) : null;
 
   // One deduped source for imported production and native APEX submissions.
   // The rows, exact count, KPI totals, status tiles and agency split all read
@@ -345,7 +421,7 @@ export default function MyDeals() {
   // so each page also carries the server's exact count of the rows matching
   // from its cursor on, and the list continues while a page holds fewer.
   const dealsQuery = useInfiniteQuery({
-    queryKey: ["deals", scopeKey, statusBucket ?? "all"],
+    queryKey: ["deals", scopeKey, statusBucket ?? "all", statusGroup ?? "all"],
     enabled,
     initialPageParam: null as DealsCursor | null,
     queryFn: async ({ pageParam }): Promise<DealsPage> => {
@@ -357,6 +433,7 @@ export default function MyDeals() {
         .limit(3000);
       if (!fullBook) query = query.in("agent_id", scopedAgentIds);
       if (statusFilter) query = query.or(statusFilter);
+      if (groupFilter) query = query.or(groupFilter);
       if (pageParam) query = query.or(dealsPageCursorFilter(pageParam));
       const { data, error, count } = await query;
       if (error) throw error;
@@ -377,12 +454,13 @@ export default function MyDeals() {
   // head:true fetches no rows, only the Content-Range count. Same scope and the
   // same status filter as the list, so "loaded N of M" compares like with like.
   const countQuery = useQuery({
-    queryKey: ["deals-count", scopeKey, statusBucket ?? "all"],
+    queryKey: ["deals-count", scopeKey, statusBucket ?? "all", statusGroup ?? "all"],
     enabled,
     queryFn: async () => {
       let query = supabase.from("v_production_unified").select("row_key", { count: "exact", head: true });
       if (!fullBook) query = query.in("agent_id", scopedAgentIds);
       if (statusFilter) query = query.or(statusFilter);
+      if (groupFilter) query = query.or(groupFilter);
       const { count, error } = await query;
       if (error) throw error;
       if (count === null) throw new Error("The server did not return a deal count.");
@@ -438,6 +516,14 @@ export default function MyDeals() {
     const next = new URLSearchParams(searchParams);
     if (nextBucket) next.set("status", nextBucket);
     else next.delete("status");
+    setSearchParams(next, { replace: true });
+    setVisible(PAGE);
+    setExpandedId(null);
+  };
+  const setStatusGroup = (nextGroup: StatusGroupKey | null) => {
+    const next = new URLSearchParams(searchParams);
+    if (nextGroup) next.set("group", nextGroup);
+    else next.delete("group");
     setSearchParams(next, { replace: true });
     setVisible(PAGE);
     setExpandedId(null);
@@ -573,6 +659,42 @@ export default function MyDeals() {
   const clientDetails = useBookClientDetails(shownRefs, enabled);
   const soldKeys = useSoldCallKeys();
   const canWorkBook = Boolean(isAdmin || isManager);
+
+  // MP-310 (Sam, 2026-10-28): what the dialer knows about every book row, so each sale is matched to its
+  // transcript and the list can be filtered by it. v_book_row_call_summary is security_invoker over tables
+  // gated by can_view_sold_calls(), so only Sam's admin logins and Aisha read rows; nobody else sends the query.
+  // Admins at once; Aisha once her sold-call keys answered (the same can_view_sold_calls() the view enforces).
+  const canViewCalls = !!isAdmin || soldKeys.ready;
+  const callSummaryQuery = useQuery({
+    queryKey: ["book-row-call-summary"],
+    enabled: canViewCalls && enabled,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await (looseSupabase
+        .from("v_book_row_call_summary")
+        .select("flip_key, policy_number, client_key, calls_total, sold_calls, objection_calls, appointment_calls, dnc_calls, transcripts, last_call_at, last_disposition, last_agent, matched_by_phone, packet_id, latest_summary, best_grade, has_great_call, gave_ssn_and_bank, last_approval_said")
+        .limit(5000) as unknown as Promise<{ data: CallSummary[] | null; error: { message: string } | null }>);
+      if (error) throw new Error(error.message);
+      const map = new Map<string, CallSummary>();
+      for (const r of data ?? []) {
+        map.set(`flip:${r.flip_key.replace(/\|+$/, "")}`, r);
+        if (r.policy_number) map.set(`row:${r.policy_number.trim()}|${r.client_key ?? ""}`, r);
+      }
+      return map;
+    },
+  });
+  const callSummaries = callSummaryQuery.data;
+  const [dialerChip, setDialerChip] = useState<DialerChip>("all");
+  const dialerMatch = (d: DealRow): boolean => {
+    if (dialerChip === "all") return true;
+    const c = callsFor(callSummaries, d, clientDetails.byKey.get(d.row_key));
+    if (!c) return false;
+    if (dialerChip === "sold_call") return c.sold_calls > 0;
+    if (dialerChip === "transcript") return c.transcripts > 0;
+    if (dialerChip === "great_call") return c.has_great_call;
+    return c.calls_total === 0;
+  };
+  const visibleDeals = dialerChip === "all" ? deals : deals.filter(dialerMatch);
 
   // Why the list is not shown yet, for a login whose scope is not resolved.
   // A failed read says so with a retry; it is never shown as an empty book.
@@ -844,6 +966,7 @@ export default function MyDeals() {
                         clientFailed={clientDetails.failedKeys.has(focusRow.row_key)}
                         hasSoldCall={soldKeys.has}
                         canWork={canWorkBook}
+                        calls={callsFor(callSummaries, focusRow, clientDetails.byKey.get(focusRow.row_key))}
                       />
                     </div>
                   </div>
@@ -856,6 +979,31 @@ export default function MyDeals() {
             <span>Looking for the deal you opened.</span>
           )}
           <Button size="sm" variant="ghost" onClick={clearFocus}>Show all deals</Button>
+        </div>
+      )}
+
+      {/* MP-310: is this policy alive? One chip per status group (server-side and in the URL, like the tiles),
+          and for sold-call viewers what the dialer knows: sold on a recorded call, transcribed, graded great, never reached. */}
+      <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter the deal list by policy status group">
+        <Button type="button" size="sm" variant={statusGroup ? "outline" : "default"} className="h-8 px-2.5 text-xs" aria-pressed={!statusGroup} onClick={() => setStatusGroup(null)}>
+          Every status
+        </Button>
+        {STATUS_GROUP_CHIPS.map((c) => (
+          <Button key={c.key} type="button" size="sm" variant={statusGroup === c.key ? "default" : "outline"} className="h-8 px-2.5 text-xs" aria-pressed={statusGroup === c.key} onClick={() => setStatusGroup(statusGroup === c.key ? null : c.key)}>
+            {c.label}
+          </Button>
+        ))}
+      </div>
+      {canViewCalls && callSummaries && (
+        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter the deal list by dialer history">
+          {DIALER_CHIPS.map((c) => (
+            <Button key={c.key} type="button" size="sm" variant={dialerChip === c.key ? "default" : "outline"} className="h-8 px-2.5 text-xs" aria-pressed={dialerChip === c.key} onClick={() => { setDialerChip(c.key); setVisible(PAGE); }}>
+              {c.label}
+            </Button>
+          ))}
+          {dialerChip !== "all" && (
+            <span className="text-xs text-muted-foreground">{visibleDeals.length.toLocaleString()} of the {deals.length.toLocaleString()} loaded rows</span>
+          )}
         </div>
       )}
 
@@ -915,7 +1063,7 @@ export default function MyDeals() {
                   </div>
                 )}
                 <div className="divide-y divide-border">
-                  {deals.slice(0, visible).map((d) => (
+                  {visibleDeals.slice(0, visible).map((d) => (
                     <DealRowItem
                       key={d.row_key}
                       d={d}
@@ -929,18 +1077,19 @@ export default function MyDeals() {
                       clientFailed={clientDetails.failedKeys.has(d.row_key)}
                       hasSoldCall={soldKeys.has}
                       canWork={canWorkBook}
+                      calls={callsFor(callSummaries, d, clientDetails.byKey.get(d.row_key))}
                     />
                   ))}
                 </div>
-                {(visible < deals.length || dealsQuery.hasNextPage || shortLoaded) && (
+                {(visible < visibleDeals.length || dealsQuery.hasNextPage || shortLoaded) && (
                   <div className="flex flex-wrap items-center justify-center gap-3 border-t border-border p-3">
                     <span className="text-xs text-muted-foreground">
-                      Showing {Math.min(visible, deals.length).toLocaleString()} of {exactCount} · {deals.length.toLocaleString()} loaded
+                      Showing {Math.min(visible, visibleDeals.length).toLocaleString()} of {exactCount} · {deals.length.toLocaleString()} loaded
                     </span>
-                    {visible < deals.length ? (
+                    {visible < visibleDeals.length ? (
                       <>
                         <Button size="sm" variant="outline" onClick={() => setVisible((v) => v + PAGE * 4)}>Show more</Button>
-                        <Button size="sm" variant="ghost" onClick={() => setVisible(deals.length)}>Show all loaded</Button>
+                        <Button size="sm" variant="ghost" onClick={() => setVisible(visibleDeals.length)}>Show all loaded</Button>
                       </>
                     ) : dealsQuery.hasNextPage ? (
                       <Button

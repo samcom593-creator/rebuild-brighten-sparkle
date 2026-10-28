@@ -62,6 +62,18 @@ describe("sidebar items only reach routes their audience can open", () => {
     expect(admin.some((link) => link.href === "/dashboard/sold-calls")).toBe(true);
   });
 
+  it("shows Money Inbox only to Sam with admin navigation, ahead of Launch Board", () => {
+    const links = (isSam?: boolean, seesAll = true) =>
+      flattenAgentCloudNav(filterAgentCloudNav(AGENT_CLOUD_PRIMARY_NAV, { seesAll, viewMode: "admin", isSam }))
+        .map((link) => link.href);
+    expect(links()).not.toContain("/dashboard/money-inbox");
+    expect(links(false)).not.toContain("/dashboard/money-inbox");
+    expect(links(true, false)).not.toContain("/dashboard/money-inbox");
+    const samLinks = links(true);
+    expect(samLinks).toContain("/dashboard/money-inbox");
+    expect(samLinks.indexOf("/dashboard/money-inbox")).toBe(samLinks.indexOf("/dashboard/launch-board") - 1);
+  });
+
   it("never offers a retired destination", () => {
     for (const mode of Object.keys(MODE_ROLE)) {
       const hrefs = hrefsFor(mode as AccountMode);

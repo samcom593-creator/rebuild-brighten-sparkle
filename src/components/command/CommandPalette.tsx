@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/command";
 import { useUIStore } from "@/shared/store/uiStore";
 import { supabase } from "@/integrations/supabase/client";
+import { isSamEmail } from "@/lib/samOnly";
 import { useAuth } from "@/hooks/useAuth";
 import { useAgentProfileDrawer } from "@/stores/agentProfileDrawer";
 import { useRolePreview } from "@/hooks/useRolePreview";
@@ -101,15 +102,15 @@ export function CommandPalette() {
     const seesAll = isAdmin && !isPreviewing;
     // One applicant rule for palette, sidebar and phone nav (F26).
     const isApplicant = isApplicantViewer({ authLoading, isAdmin, isManager, isAgent, hasAgentRecord, isPreviewing });
-    const primary = isApplicant ? APPLICANT_NAV : filterAgentCloudNav(AGENT_CLOUD_PRIMARY_NAV, { seesAll, viewMode, grants: navGrants });
-    const account = filterAgentCloudNav(AGENT_CLOUD_ACCOUNT_NAV, { seesAll, viewMode, grants: navGrants });
+    const primary = isApplicant ? APPLICANT_NAV : filterAgentCloudNav(AGENT_CLOUD_PRIMARY_NAV, { seesAll, viewMode, grants: navGrants, isSam: isSamEmail(user?.email) });
+    const account = filterAgentCloudNav(AGENT_CLOUD_ACCOUNT_NAV, { seesAll, viewMode, grants: navGrants, isSam: isSamEmail(user?.email) });
     return flattenAgentCloudNav([...primary, ...account]).map((link) => ({
       label: link.label,
       path: link.href,
       icon: (link.icon ?? LayoutDashboard) as RouteEntry["icon"],
       group: "Navigate",
     }));
-  }, [authLoading, effectiveMode, effectiveRole, hasAgentRecord, isAdmin, isAgent, isManager, isPreviewing, navGrants]);
+  }, [authLoading, effectiveMode, effectiveRole, hasAgentRecord, isAdmin, isAgent, isManager, isPreviewing, navGrants, user?.email]);
 
   // Only show extra routes the current role can actually open. Previously this
   // exposed every admin route to every user, leading to access-denied bounces.

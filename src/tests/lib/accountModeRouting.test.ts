@@ -59,7 +59,7 @@ describe("account mode → home screen routing", () => {
     // with viewMode = the previewed role when Sam is previewing, else the real mode.
     expect(nav).toContain("modes.includes(viewer.viewMode)");
     const sidebar = src("components/layout/GlobalSidebar.tsx");
-    expect(sidebar).toContain("filterAgentCloudNav(entries, { seesAll, viewMode, grants: navGrants })");
+    expect(sidebar).toContain("filterAgentCloudNav(entries, { seesAll, viewMode, grants: navGrants, isSam: isSamEmail(user?.email) })");
     expect(sidebar).not.toContain("modes.includes(viewMode)");
     expect(sidebar).toContain("const viewMode = isPreviewing ? effectiveRole : effectiveMode;");
     expect(sidebar).toContain("const seesAll = isAdmin && !isPreviewing;");

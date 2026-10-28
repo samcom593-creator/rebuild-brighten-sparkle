@@ -14,6 +14,96 @@ export type Database = {
   }
   public: {
     Tables: {
+      money_inbox_threads: {
+        Row: {
+          id: string
+          chat_guid: string
+          chat_identifier: string | null
+          handle: string | null
+          display_name: string | null
+          is_group: boolean
+          category: string | null
+          money_score: number
+          money_reasons: string[]
+          rank: number | null
+          awaiting_reply: boolean
+          last_inbound_at: string | null
+          last_inbound_text: string | null
+          last_outbound_at: string | null
+          excerpt: Json
+          draft_reply: string | null
+          draft_engine: string | null
+          final_reply: string | null
+          status: string
+          approved_at: string | null
+          sent_at: string | null
+          send_receipt: string | null
+          send_error: string | null
+          muted: boolean
+          in_scan: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          chat_guid?: string
+          chat_identifier?: string | null
+          handle?: string | null
+          display_name?: string | null
+          is_group?: boolean
+          category?: string | null
+          money_score?: number
+          money_reasons?: string[]
+          rank?: number | null
+          awaiting_reply?: boolean
+          last_inbound_at?: string | null
+          last_inbound_text?: string | null
+          last_outbound_at?: string | null
+          excerpt?: Json
+          draft_reply?: string | null
+          draft_engine?: string | null
+          final_reply?: string | null
+          status?: string
+          approved_at?: string | null
+          sent_at?: string | null
+          send_receipt?: string | null
+          send_error?: string | null
+          muted?: boolean
+          in_scan?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          chat_guid?: string
+          chat_identifier?: string | null
+          handle?: string | null
+          display_name?: string | null
+          is_group?: boolean
+          category?: string | null
+          money_score?: number
+          money_reasons?: string[]
+          rank?: number | null
+          awaiting_reply?: boolean
+          last_inbound_at?: string | null
+          last_inbound_text?: string | null
+          last_outbound_at?: string | null
+          excerpt?: Json
+          draft_reply?: string | null
+          draft_engine?: string | null
+          final_reply?: string | null
+          status?: string
+          approved_at?: string | null
+          sent_at?: string | null
+          send_receipt?: string | null
+          send_error?: string | null
+          muted?: boolean
+          in_scan?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       _backup_20261014_contracting_sheet_fix: {
         Row: {
           agent_id: string | null
@@ -35,6 +125,27 @@ export type Database = {
           old_manager_id?: string | null
           old_pct?: number | null
           taken_at?: string | null
+        }
+        Relationships: []
+      }
+      _backup_20261025_jr_kj_termination: {
+        Row: {
+          kind: string | null
+          ref_id: string | null
+          row: Json | null
+          created_at: string | null
+        }
+        Insert: {
+          kind?: string | null
+          ref_id?: string | null
+          row?: Json | null
+          created_at?: string | null
+        }
+        Update: {
+          kind?: string | null
+          ref_id?: string | null
+          row?: Json | null
+          created_at?: string | null
         }
         Relationships: []
       }
@@ -62749,6 +62860,39 @@ export type Database = {
         }
         Relationships: []
       }
+      ig_thread_actions: {
+        Row: {
+          id: string | null
+          external_id: string | null
+          action: string | null
+          snoozed_until: string | null
+          note: string | null
+          meta: Json | null
+          actor_id: string | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string | null
+          external_id?: string | null
+          action?: string | null
+          snoozed_until?: string | null
+          note?: string | null
+          meta?: Json | null
+          actor_id?: string | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string | null
+          external_id?: string | null
+          action?: string | null
+          snoozed_until?: string | null
+          note?: string | null
+          meta?: Json | null
+          actor_id?: string | null
+          created_at?: string | null
+        }
+        Relationships: []
+      }
       inactive_agent_queue: {
         Row: {
           agent_id: string
@@ -80542,6 +80686,48 @@ export type Database = {
         }
         Relationships: []
       }
+      manager_transition_notices: {
+        Row: {
+          email: string | null
+          person_kind: string | null
+          person_id: string | null
+          first_name: string | null
+          former_manager: string | null
+          status: string | null
+          skip_reason: string | null
+          sent_at: string | null
+          resend_id: string | null
+          error: string | null
+          created_at: string | null
+        }
+        Insert: {
+          email?: string | null
+          person_kind?: string | null
+          person_id?: string | null
+          first_name?: string | null
+          former_manager?: string | null
+          status?: string | null
+          skip_reason?: string | null
+          sent_at?: string | null
+          resend_id?: string | null
+          error?: string | null
+          created_at?: string | null
+        }
+        Update: {
+          email?: string | null
+          person_kind?: string | null
+          person_id?: string | null
+          first_name?: string | null
+          former_manager?: string | null
+          status?: string | null
+          skip_reason?: string | null
+          sent_at?: string | null
+          resend_id?: string | null
+          error?: string | null
+          created_at?: string | null
+        }
+        Relationships: []
+      }
       manual_interview_entries: {
         Row: {
           assistant_token_id: string | null
@@ -97045,6 +97231,33 @@ export type Database = {
         }
         Relationships: []
       }
+      social_lane_alert_state: {
+        Row: {
+          lane: string | null
+          tier: string | null
+          verdict: string | null
+          dead_since: string | null
+          last_alerted_at: string | null
+          checked_at: string | null
+        }
+        Insert: {
+          lane?: string | null
+          tier?: string | null
+          verdict?: string | null
+          dead_since?: string | null
+          last_alerted_at?: string | null
+          checked_at?: string | null
+        }
+        Update: {
+          lane?: string | null
+          tier?: string | null
+          verdict?: string | null
+          dead_since?: string | null
+          last_alerted_at?: string | null
+          checked_at?: string | null
+        }
+        Relationships: []
+      }
       social_snapshots: {
         Row: {
           created_at: string
@@ -109091,6 +109304,19 @@ export type Database = {
         }
         Relationships: []
       }
+      v_agent_winback_pool: {
+        Row: {
+          agent_id: string | null
+          display_name: string | null
+          email: string | null
+          phone: string | null
+          status: string | null
+          deactivation_reason: string | null
+          inactive_since: string | null
+          notes: string | null
+        }
+        Relationships: []
+      }
       v_agent_with_downline_production: {
         Row: {
           agent_id: string | null
@@ -117331,6 +117557,91 @@ export type Database = {
         }
         Relationships: []
       }
+      v_book_row_call_detail: {
+        Row: {
+          agent_id: string | null
+          agent_name: string | null
+          agent_raw: string | null
+          approval_status: string | null
+          bank_objection: boolean | null
+          call_id: string | null
+          call_started_at: string | null
+          call_summary: string | null
+          coaching_notes: string | null
+          disposition: string | null
+          duration_seconds: number | null
+          external_call_id: string | null
+          flip_key: string | null
+          gave_bank: boolean | null
+          gave_ssn: boolean | null
+          grade_summary: string | null
+          great_call: boolean | null
+          has_transcript: boolean | null
+          matched_by: string | null
+          mortgage_protection: boolean | null
+          other_opportunities: string[] | null
+          overall_score: number | null
+          packet_carrier: string | null
+          packet_id: string | null
+          packet_monthly_premium: number | null
+          packet_policy_number: string | null
+          packet_product: string | null
+          packet_status: string | null
+          price_objection: boolean | null
+          recording_url: string | null
+          resell_summary: string | null
+          spouse_coverage: boolean | null
+          ssn_objection: boolean | null
+          stage_reached: string | null
+          training_tags: string[] | null
+          word_count: number | null
+          work_status: string | null
+        }
+        Relationships: []
+      }
+      v_book_row_call_summary: {
+        Row: {
+          appointment_calls: number | null
+          best_grade: number | null
+          calls_total: number | null
+          carrier: string | null
+          client_key: string | null
+          dnc_calls: number | null
+          flip_key: string | null
+          gave_ssn_and_bank: boolean | null
+          has_great_call: boolean | null
+          last_agent: string | null
+          last_approval_said: string | null
+          last_call_at: string | null
+          last_disposition: string | null
+          latest_summary: string | null
+          latest_transcript_call_id: string | null
+          matched_by_phone: boolean | null
+          objection_calls: number | null
+          packet_id: string | null
+          policy_number: string | null
+          sold_calls: number | null
+          transcripts: number | null
+        }
+        Relationships: []
+      }
+      v_book_row_calls: {
+        Row: {
+          agent_id: string | null
+          agent_raw: string | null
+          call_id: string | null
+          call_started_at: string | null
+          disposition: string | null
+          duration_seconds: number | null
+          external_call_id: string | null
+          flip_key: string | null
+          lead_first_name: string | null
+          lead_last_name: string | null
+          matched_by: string | null
+          recording_url: string | null
+        }
+        Relationships: []
+      }
       v_book_status_segments: {
         Row: {
           alp_30d: number | null
@@ -118619,6 +118930,58 @@ export type Database = {
           title: string | null
           updated_at: string | null
           was_rescheduled: boolean | null
+        }
+        Relationships: []
+      }
+      v_call_training: {
+        Row: {
+          agent_id: string | null
+          agent_name: string | null
+          agent_raw: string | null
+          analysis_id: string | null
+          analyzed_at: string | null
+          call_id: string | null
+          call_started_at: string | null
+          coaching_notes: string | null
+          coaching_priority: string | null
+          compliance_flags: Json | null
+          disposition: string | null
+          duration_seconds: number | null
+          external_call_id: string | null
+          great_call: boolean | null
+          has_packet: boolean | null
+          improvements: string[] | null
+          key_quotes: Json | null
+          lead_first_name: string | null
+          objection_moments: Json | null
+          outcome_quality: string | null
+          overall_score: number | null
+          recording_url: string | null
+          resell_summary: string | null
+          scores: Json | null
+          sentiment: string | null
+          stage_reached: string | null
+          strengths: string[] | null
+          summary: string | null
+          tactics: string[] | null
+          training_tags: string[] | null
+        }
+        Relationships: []
+      }
+      v_call_training_agents: {
+        Row: {
+          agent_id: string | null
+          agent_name: string | null
+          agent_raw: string | null
+          avg_close: number | null
+          avg_objection_handling: number | null
+          avg_score: number | null
+          calls_total: number | null
+          graded: number | null
+          great_calls: number | null
+          last_call_at: string | null
+          sold: number | null
+          urgent_flags: number | null
         }
         Relationships: []
       }
@@ -128051,6 +128414,34 @@ export type Database = {
         }
         Relationships: []
       }
+      v_ig_dm_delivery_truth: {
+        Row: {
+          day: string | null
+          inbound_msgs: number | null
+          inbound_people: number | null
+          delivered_msgs: number | null
+          delivered_by_bot: number | null
+          delivered_by_sam: number | null
+          failed_rows: number | null
+          people_without_delivered_reply_24h: number | null
+        }
+        Relationships: []
+      }
+      v_ig_followup_truth: {
+        Row: {
+          day: string | null
+          nudge1_delivered: number | null
+          nudge2_delivered: number | null
+          nudges_refused: number | null
+          replied_within_6h: number | null
+          recovery_emails_sent: number | null
+          nudge3_delivered: number | null
+          nudge3_refused: number | null
+          reengage_emails: number | null
+          reengage_no_channel: number | null
+        }
+        Relationships: []
+      }
       v_imo_by_agency: {
         Row: {
           agency: string | null
@@ -130952,6 +131343,17 @@ export type Database = {
           matched_on: string | null
           scheduled_at: string | null
           signals: number | null
+        }
+        Relationships: []
+      }
+      v_interview_outcome_truth: {
+        Row: {
+          calls_ended_7d: number | null
+          outcomes_7d: number | null
+          asked_7d: number | null
+          unasked_now: number | null
+          oldest_unasked_h: number | null
+          last_ask_at: string | null
         }
         Relationships: []
       }
@@ -146589,6 +146991,24 @@ export type Database = {
         }
         Relationships: []
       }
+      v_readymode_lead_pool: {
+        Row: {
+          application_id: string | null
+          first_name: string | null
+          last_name: string | null
+          phone: string | null
+          phone10: string | null
+          email: string | null
+          state: string | null
+          applied_on: string | null
+          licensed: boolean | null
+          app_status: string | null
+          last_contacted: string | null
+          last_contact_outcome: string | null
+          utm_source: string | null
+        }
+        Relationships: []
+      }
       v_readymode_lead_source_roi: {
         Row: {
           applications: number | null
@@ -151225,6 +151645,58 @@ export type Database = {
         }
         Relationships: []
       }
+      v_social_funnel_30d: {
+        Row: {
+          platform: string | null
+          posts: number | null
+          views: number | null
+          post_comments: number | null
+          messages_in: number | null
+          people_in: number | null
+          people_replied: number | null
+          partials_abandoned: number | null
+          applications: number | null
+          licensed: number | null
+          booked_or_further: number | null
+        }
+        Relationships: []
+      }
+      v_social_inbox_priority: {
+        Row: {
+          source: string | null
+          sender_handle: string | null
+          sender_name: string | null
+          avatar: string | null
+          last_in: string | null
+          last_out: string | null
+          inbound_count: number | null
+          last_intent: string | null
+          sam_touched: boolean | null
+          last_text: string | null
+          application_id: string | null
+          lead_score: number | null
+          media_id: string | null
+          waiting_on_us: boolean | null
+          bucket: string | null
+          application_status: string | null
+          application_license: string | null
+        }
+        Relationships: []
+      }
+      v_social_lane_health: {
+        Row: {
+          lane: string | null
+          tier: string | null
+          last_seen: string | null
+          expires_at: string | null
+          owner: string | null
+          fix: string | null
+          verdict: string | null
+          hours_silent: number | null
+          hours_left: number | null
+        }
+        Relationships: []
+      }
       v_social_latest: {
         Row: {
           engagement_rate: number | null
@@ -151239,6 +151711,44 @@ export type Database = {
           source: string | null
           taken_at: string | null
           views_7d: number | null
+        }
+        Relationships: []
+      }
+      v_social_what_pulls_90d: {
+        Row: {
+          platform: string | null
+          lever: string | null
+          applications: number | null
+          licensed: number | null
+          booked_or_further: number | null
+          last_30d: number | null
+          last_application: string | null
+        }
+        Relationships: []
+      }
+      v_sold_call_book_match: {
+        Row: {
+          agent_id: string | null
+          agent_raw: string | null
+          book_carrier: string | null
+          book_client_name: string | null
+          book_policy_number: string | null
+          book_status: string | null
+          call_id: string | null
+          call_started_at: string | null
+          external_call_id: string | null
+          flip_key: string | null
+          in_book: boolean | null
+          lead_first_name: string | null
+          lead_last_name: string | null
+          matched_by: string | null
+          packet_carrier: string | null
+          packet_id: string | null
+          packet_monthly_premium: number | null
+          packet_policy_number: string | null
+          packet_status: string | null
+          status_group: string | null
+          work_status: string | null
         }
         Relationships: []
       }

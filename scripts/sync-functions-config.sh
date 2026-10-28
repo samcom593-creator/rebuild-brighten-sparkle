@@ -128,6 +128,8 @@ PUBLIC_ALLOWLIST=(
   "contracting-sheet-csv"
   # social-lead-csv (MP-308 wave 2): same contract, feed key social_lead_feed_key; a download link carries no JWT.
   "social-lead-csv"
+  # interview-outcome (MP-309): signed one-tap outcome links from Sam's phone; HMAC under the bot token in-handler.
+  "interview-outcome"
   # MP-415 — the eight classified in check-function-contracts.mjs's
   # PUBLIC_CONTRACT. Seven refuse an unproven caller in code (verified against
   # scripts/lib/in-handler-gate.mjs on every run); brand-collab is the public

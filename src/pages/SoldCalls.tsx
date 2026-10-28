@@ -93,6 +93,7 @@ interface PacketExtra {
   booked_policy_number: string | null;
 }
 interface Sensitive { packet_id: string; ssn: string | null; bank_account: string | null; bank_routing: string | null }
+interface BookMatch { call_id: string; in_book: boolean; book_status: string | null; book_policy_number: string | null; book_client_name: string | null }
 
 const STATUS_META: Record<string, { label: string; tone: string }> = {
   no_recording: { label: "No recording", tone: "bg-muted text-muted-foreground" },
@@ -106,10 +107,10 @@ const STATUS_META: Record<string, { label: string; tone: string }> = {
 
 // The database still calls a finished sale "booked" (status, booked_at,
 // booking_packet_mark_booked); everything a person reads says resold, which is Sam's word.
-type FilterKey = "to_resell" | "leads" | "numbers" | "contacted" | "pushback" | "coming" | "no_packet" | "resold" | "all";
+type FilterKey = "to_resell" | "leads" | "numbers" | "contacted" | "pushback" | "coming" | "no_packet" | "not_in_book" | "resold" | "all";
 // "Numbers to check" needs the decrypted numbers, so its rule reads the set of packets whose SSN,
 // routing or account number cannot be right as heard (see checkNumber).
-const FILTERS: Array<{ key: FilterKey; label: string; match: (r: SoldRow, badNumbers: ReadonlySet<string>) => boolean }> = [
+const FILTERS: Array<{ key: FilterKey; label: string; match: (r: SoldRow, badNumbers: ReadonlySet<string>, notInBook: ReadonlySet<string>) => boolean }> = [
   { key: "to_resell", label: "To resell", match: (r) => (r.packet_status === "ready" || r.packet_status === "needs_review") && r.work_status !== "resold" },
   { key: "leads", label: "Resell leads", match: (r) => isResellLead(r) && r.work_status !== "resold" },
   { key: "numbers", label: "Numbers to check", match: (r, badNumbers) => !!r.packet_id && badNumbers.has(r.packet_id) },
@@ -117,6 +118,8 @@ const FILTERS: Array<{ key: FilterKey; label: string; match: (r: SoldRow, badNum
   { key: "pushback", label: "Pushback", match: (r) => r.work_status === "pushback" },
   { key: "coming", label: "Packet coming", match: (r) => r.packet_status === "transcribing" || r.packet_status === "downloading" },
   { key: "no_packet", label: "No packet", match: (r) => r.packet_status === "no_recording" || r.packet_status === "short_call" },
+  // MP-310: a sale the book never got. v_sold_call_book_match looks every sold call up by phone, then name.
+  { key: "not_in_book", label: "Not in book", match: (r, _bad, notInBook) => notInBook.has(r.call_id) },
   { key: "resold", label: "Resold", match: (r) => r.packet_status === "booked" || r.work_status === "resold" },
   { key: "all", label: "All", match: () => true },
 ];
@@ -147,6 +150,15 @@ async function fetchExtras(): Promise<Map<string, PacketExtra>> {
     .select("packet_id, client_dob, client_phone, client_email, client_street, client_city, client_zip, tobacco, health_notes, bank_name, booked_policy_number") as unknown as Promise<{ data: PacketExtra[] | null; error: Error | null }>);
   if (error) throw error;
   return new Map((data ?? []).map((p) => [p.packet_id, p]));
+}
+
+async function fetchBookMatch(): Promise<Map<string, BookMatch>> {
+  const { data, error } = await (looseSupabase
+    .from("v_sold_call_book_match")
+    .select("call_id, in_book, book_status, book_policy_number, book_client_name")
+    .limit(5000) as unknown as Promise<{ data: BookMatch[] | null; error: Error | null }>);
+  if (error) throw error;
+  return new Map((data ?? []).map((m) => [m.call_id, m]));
 }
 
 async function fetchSensitive(): Promise<Map<string, Sensitive>> {
@@ -187,6 +199,14 @@ export default function SoldCalls() {
   });
 
   const [filter, setFilter] = useState<FilterKey>("to_resell");
+  // MP-310: which sold calls never became a book row (by phone, then name). A failed read leaves the
+  // set empty, so the chip reads 0 and nothing is called "not in book" on a guess.
+  const bookMatch = useQuery({ queryKey: ["sold-calls-book-match"], queryFn: fetchBookMatch, staleTime: 60_000, enabled: canView });
+  const notInBook = useMemo(() => {
+    const out = new Set<string>();
+    for (const [id, m] of bookMatch.data ?? new Map<string, BookMatch>()) if (!m.in_book) out.add(id);
+    return out;
+  }, [bookMatch.data]);
   const [params, setParams] = useSearchParams();
   // ?call=<call id> (an id, never client data) opens on that one call; Easy Resells links here.
   const onlyCall = params.get("call");
@@ -220,12 +240,12 @@ export default function SoldCalls() {
   const numbersKnown = sensitive.data !== undefined;
 
   const counts = useMemo(() => {
-    const out: Record<FilterKey, number> = { to_resell: 0, leads: 0, numbers: 0, contacted: 0, pushback: 0, coming: 0, no_packet: 0, resold: 0, all: rows.length };
+    const out: Record<FilterKey, number> = { to_resell: 0, leads: 0, numbers: 0, contacted: 0, pushback: 0, coming: 0, no_packet: 0, not_in_book: 0, resold: 0, all: rows.length };
     for (const r of rows) {
-      for (const f of FILTERS) if (f.key !== "all" && f.match(r, badNumbers)) out[f.key] += 1;
+      for (const f of FILTERS) if (f.key !== "all" && f.match(r, badNumbers, notInBook)) out[f.key] += 1;
     }
     return out;
-  }, [rows, badNumbers]);
+  }, [rows, badNumbers, notInBook]);
 
   const filtered = useMemo(() => {
     const active = FILTERS.find((f) => f.key === filter) ?? FILTERS[FILTERS.length - 1];
@@ -233,7 +253,7 @@ export default function SoldCalls() {
     const termDigits = term.replace(/\D/g, "");
     if (onlyCall) return rows.filter((r) => r.call_id === onlyCall);
     return rows.filter((r) => {
-      if (!active.match(r, badNumbers)) return false;
+      if (!active.match(r, badNumbers, notInBook)) return false;
       if (!term) return true;
       const extra = r.packet_id ? extras.data?.get(r.packet_id) : undefined;
       if (termDigits.length >= 4 && [r.lead_phone, extra?.client_phone].some((p) => (p ?? "").replace(/\D/g, "").includes(termDigits))) return true;
@@ -241,7 +261,7 @@ export default function SoldCalls() {
         .filter(Boolean)
         .some((v) => String(v).toLowerCase().includes(term));
     });
-  }, [rows, filter, search, extras.data, badNumbers, onlyCall]);
+  }, [rows, filter, search, extras.data, badNumbers, notInBook, onlyCall]);
 
   // The newest sale with a packet for each phone, so a short or unrecorded sale can
   // point at the same client's full call instead of looking like a lost sale.
@@ -344,6 +364,7 @@ export default function SoldCalls() {
               secretLoading={sensitive.isPending || (sensitive.isFetching && !!r.packet_id && !sensitive.data?.has(r.packet_id))}
               secretFailed={sensitive.isError && !!r.packet_id && !sensitive.data?.has(r.packet_id)}
               twin={r.packet_id ? undefined : packetByPhone.get(phone10(r.lead_phone))}
+              book={bookMatch.data?.get(r.call_id)}
               onOpenTwin={(t) => { setFilter("all"); setSearch(phone10(t.lead_phone)); if (onlyCall) clearOnlyCall(); }}
             />
           ))}
@@ -432,7 +453,7 @@ function Heard({ seconds }: { seconds: number | undefined }) {
   return <span className="text-xs text-muted-foreground">heard at {mmss(seconds)}</span>;
 }
 
-function SoldCallCard({ row, extra, secret, secretLoading, secretFailed = false, twin, onOpenTwin }: {
+function SoldCallCard({ row, extra, secret, secretLoading, secretFailed = false, twin, onOpenTwin, book }: {
   row: SoldRow;
   extra: PacketExtra | undefined;
   secret: Sensitive | undefined;
@@ -441,6 +462,8 @@ function SoldCallCard({ row, extra, secret, secretLoading, secretFailed = false,
   secretFailed?: boolean;
   twin?: SoldRow;
   onOpenTwin: (twin: SoldRow) => void;
+  /** MP-310: the book row this sale became, if any. Undefined until the match read answers. */
+  book?: BookMatch;
 }) {
   const dialPhone = row.lead_phone ?? extra?.client_phone ?? null;
   const callHref = phoneHref(dialPhone);
@@ -471,6 +494,15 @@ function SoldCallCard({ row, extra, secret, secretLoading, secretFailed = false,
           <p className="mt-0.5 text-xs text-muted-foreground">
             {row.agent_raw ? `Sold by ${row.agent_raw}` : "Agent not on file"}{row.duration_seconds ?? row.rec_seconds ? ` · ${mmss(row.duration_seconds ?? row.rec_seconds)} call` : ""}
           </p>
+          {book && (
+            <p className="mt-0.5 text-xs">
+              {book.in_book ? (
+                <span className="text-muted-foreground">In the book{book.book_status ? ` · ${book.book_status}` : ""}{book.book_policy_number ? ` · #${book.book_policy_number}` : ""}</span>
+              ) : (
+                <span className="font-medium text-amber-700 dark:text-amber-300">Not in the book: no policy row matches this client by phone or name.</span>
+              )}
+            </p>
+          )}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1 text-right">
           <span className="text-sm font-semibold tabular-nums">{callStamp(row.call_at)}</span>

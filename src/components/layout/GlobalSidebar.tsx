@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ChevronDown, ChevronLeft, ChevronRight, Cloud, HandCoins, Loader2, LogOut, Search, Star, UserPlus } from "lucide-react";
+import { isSamEmail } from "@/lib/samOnly";
 import { useAuth } from "@/hooks/useAuth";
 import { useRolePreview } from "@/hooks/useRolePreview";
 import { useNavGrants } from "@/hooks/useNavGrants";
@@ -61,7 +62,7 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
   const { pathname, search } = useLocation();
   const here = { pathname, search };
   const navigate = useNavigate();
-  const { isAdmin, isManager, isAgent, hasAgentRecord, isLoading: authLoading, effectiveMode, signOut } = useAuth();
+  const { user, isAdmin, isManager, isAgent, hasAgentRecord, isLoading: authLoading, effectiveMode, signOut } = useAuth();
   // MP-332: when Sam previews a role, the nav follows the preview too —
   // otherwise "Recruiter View" showed the recruiter home under the full admin
   // sidebar and told him nothing about what a recruiter actually sees.
@@ -99,7 +100,7 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
   // One rule for the sidebar and the palette (agentCloudNavigation.ts): the inline copy that lived here drifted the
   // moment a flag (hideWhenSeesAll) was added to the shared one, so the owner's rail kept the VA fallbacks.
   const navGrants = useNavGrants();
-  const filterEntries = (entries: AgentCloudNavEntry[]) => filterAgentCloudNav(entries, { seesAll, viewMode, grants: navGrants });
+  const filterEntries = (entries: AgentCloudNavEntry[]) => filterAgentCloudNav(entries, { seesAll, viewMode, grants: navGrants, isSam: isSamEmail(user?.email) });
 
   // An applicant is a role-agent login with no agents row (applying mints the
   // login). They get four real next steps, not the producer's Sell/Grow/Book

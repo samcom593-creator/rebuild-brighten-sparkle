@@ -177,13 +177,13 @@ describe("New hires", () => {
     expect(tile("Stuck 7+ days")).toHaveAttribute("aria-pressed", "true");
     expect(peopleShown()).toBe(2);
     expect(shownLine()).toHaveTextContent("2 shown");
-    expect(screen.getByRole("button", { name: "Clear Stuck 7+ days" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove Stuck 7+ days filter" })).toBeInTheDocument();
     // With the idle filter on, the chips count within it, so a chip is still exactly its list.
     expect(within(chips).getByRole("button", { name: /^All\s*2$/ })).toBeInTheDocument();
     fireEvent.click(within(chips).getByRole("button", { name: /^Contacted\s*1$/ }));
     expect(peopleShown()).toBe(1);
     expect(screen.getByText("Bo Lee")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Clear Step: Contacted" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove Step: Contacted filter" })).toBeInTheDocument();
 
     // Closed people are hidden until asked for.
     expect(screen.queryByText("Ed Kim")).toBeNull();

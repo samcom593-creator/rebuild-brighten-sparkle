@@ -117,9 +117,9 @@ describe("Recruiting Pipeline", () => {
     expect(listed.some((t) => t.includes("Eli Stone"))).toBe(false);
     expect(scopeLine()).toHaveTextContent("2 of 9 people");
     // The list is described in words: prospects, Monday, inactive included.
-    expect(screen.getByRole("button", { name: "Clear Prospects" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Clear Monday: Expected Monday" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Clear Include inactive" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove Prospects filter" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove Monday: Expected Monday filter" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove Include inactive filter" })).toBeInTheDocument();
   });
 
   it("counts Contracting over both contracting stages and its list shows the same people", async () => {
@@ -134,7 +134,7 @@ describe("Recruiting Pipeline", () => {
     expect(listed.some((t) => t.includes("Fay Quinn"))).toBe(true);
     expect(listed.some((t) => t.includes("Gus Reed"))).toBe(true);
     expect(scopeLine()).toHaveTextContent("2 of 9 people");
-    expect(screen.getByRole("button", { name: "Clear Stage: Contracting (sent or in progress)" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove Stage: Contracting (sent or in progress) filter" })).toBeInTheDocument();
   });
 
   it("keeps every number equal to its list, including Confirmed, No shows and the other tiles", async () => {
@@ -245,7 +245,7 @@ describe("Recruiting Pipeline", () => {
     }
     fireEvent.click(screen.getByRole("button", { name: "Prospects" }));
     expect(screen.getByRole("button", { name: "Clear all" }).className).toMatch(/\bh-11\b/);
-    expect(screen.getByRole("button", { name: "Clear Prospects" }).className).toMatch(/\bh-11\b/);
+    expect(screen.getByRole("button", { name: "Remove Prospects filter" }).className).toMatch(/\bh-11\b/);
     expect(screen.getByRole("button", { name: /^Intent: Hot/ }).className).toMatch(/\bh-11\b/);
     expect(screen.getByRole("button", { name: "Update Ana Ruiz" }).className).toMatch(/\bh-11\b/);
     expect(screen.getByRole("combobox", { name: "Stage for Ana Ruiz" }).className).toMatch(/\bh-11\b/);

@@ -1,6 +1,6 @@
 import { Fragment, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BadgeCheck, CalendarCheck, ChevronDown, ClipboardList, Instagram, MessageSquare, Phone, RefreshCw, Route, Search, SlidersHorizontal, UserCheck, X } from "lucide-react";
+import { BadgeCheck, CalendarCheck, ChevronDown, ClipboardList, Instagram, MessageSquare, Phone, RefreshCw, Route, Search, SlidersHorizontal, UserCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { FilterChip } from "@/components/recruiting/FilterChip";
 import { GrowScoreboard } from "@/components/recruiting/GrowScoreboard";
 import { RevealList } from "@/components/ui/delight/Reveal";
 import { RecruitingWorkspaceNav } from "@/components/recruiting/RecruitingWorkspaceNav";
@@ -179,21 +180,6 @@ function Segmented<T extends string>({ legend, value, options, onChange }: {
         ))}
       </div>
     </fieldset>
-  );
-}
-
-/** An active filter. The whole chip is the button that clears it (same as the Call list). */
-function FilterChip({ label, onClear }: { label: string; onClear: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClear}
-      aria-label={`Clear ${label}`}
-      className="inline-flex h-11 items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 pl-4 pr-3 text-sm font-medium text-foreground transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
-    >
-      {label}
-      <X aria-hidden="true" className="h-4 w-4" />
-    </button>
   );
 }
 
@@ -397,11 +383,11 @@ export default function RecruitingPipeline() {
             </>
           )}
         </span>
-        {stageFilter && <FilterChip label={`Stage: ${stageFilterLabel(stageFilter)}`} onClear={() => setStageFilter("")} />}
-        {typeFilter && <FilterChip label={WHO_LABELS[typeFilter] ?? typeFilter} onClear={() => setTypeFilter("")} />}
-        {mondayFilter && <FilterChip label={`Monday: ${MONDAY_LABELS[mondayFilter] ?? mondayFilter}`} onClear={() => setMondayFilter("")} />}
-        {intentFilter && <FilterChip label={`Intent: ${intentLabel(intentFilter)}`} onClear={() => setIntentFilter("")} />}
-        {activeFilter !== "open" && <FilterChip label={SHOW_LABELS[activeFilter] ?? activeFilter} onClear={() => setActiveFilter("open")} />}
+        {stageFilter && <FilterChip label={`Stage: ${stageFilterLabel(stageFilter)}`} onRemove={() => setStageFilter("")} />}
+        {typeFilter && <FilterChip label={WHO_LABELS[typeFilter] ?? typeFilter} onRemove={() => setTypeFilter("")} />}
+        {mondayFilter && <FilterChip label={`Monday: ${MONDAY_LABELS[mondayFilter] ?? mondayFilter}`} onRemove={() => setMondayFilter("")} />}
+        {intentFilter && <FilterChip label={`Intent: ${intentLabel(intentFilter)}`} onRemove={() => setIntentFilter("")} />}
+        {activeFilter !== "open" && <FilterChip label={SHOW_LABELS[activeFilter] ?? activeFilter} onRemove={() => setActiveFilter("open")} />}
         {(filterCount > 0 || search) && (
           <Button variant="ghost" className="h-11" onClick={clearFilters}>Clear all</Button>
         )}

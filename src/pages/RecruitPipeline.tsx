@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { PageSkeleton } from "@/components/ui/page-skeleton";
 import { PageHeader } from "@/components/ui/page-header";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { FilterChip } from "@/components/recruiting/FilterChip";
 import { GrowScoreboard } from "@/components/recruiting/GrowScoreboard";
 import { RecruitingWorkspaceNav } from "@/components/recruiting/RecruitingWorkspaceNav";
 import { StatusPill } from "@/components/recruiting/StatusPill";
@@ -103,21 +104,6 @@ const CHECKBOX = "relative h-5 w-5 !min-h-0 before:absolute before:-inset-3.5 be
 // line of text and is pulled back with -my-3 so the line does not grow to 44px.
 const QUIET_LINK = "inline-flex min-h-11 items-center text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]";
 const SENTENCE_LINK = cn(QUIET_LINK, "-my-3");
-
-/** An active filter, visible and removable in one tap; the whole chip is the 44px button. */
-function FilterChip({ label, onClear }: { label: string; onClear: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClear}
-      aria-label={`Clear ${label}`}
-      className="inline-flex h-11 items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 pl-4 pr-3 text-sm font-medium text-foreground transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
-    >
-      {label}
-      <X aria-hidden="true" className="h-4 w-4" />
-    </button>
-  );
-}
 
 export default function RecruitPipeline() {
   const qc = useQueryClient();
@@ -539,11 +525,11 @@ export default function RecruitPipeline() {
               <><span className="font-medium text-foreground">{visible.length.toLocaleString()}</span> shown</>
             )}
           </span>
-          {stageFilter && <FilterChip label={`Step: ${stageName(stageFilter)}`} onClear={() => setStageFilter(null)} />}
-          {idle !== "all" && <FilterChip label={`Stuck ${IDLE_LABELS[idle]}`} onClear={() => setIdle("all")} />}
-          {link !== "all" && <FilterChip label={`Link: ${LINK_LABELS[link]}`} onClear={() => setLink("all")} />}
-          {managerFilter !== "all" && <FilterChip label={`Manager: ${managerFilter === "none" ? "Unassigned" : managerFilter}`} onClear={() => setManagerFilter("all")} />}
-          {showClosed && <FilterChip label="Including closed" onClear={() => setShowClosed(false)} />}
+          {stageFilter && <FilterChip label={`Step: ${stageName(stageFilter)}`} onRemove={() => setStageFilter(null)} />}
+          {idle !== "all" && <FilterChip label={`Stuck ${IDLE_LABELS[idle]}`} onRemove={() => setIdle("all")} />}
+          {link !== "all" && <FilterChip label={`Link: ${LINK_LABELS[link]}`} onRemove={() => setLink("all")} />}
+          {managerFilter !== "all" && <FilterChip label={`Manager: ${managerFilter === "none" ? "Unassigned" : managerFilter}`} onRemove={() => setManagerFilter("all")} />}
+          {showClosed && <FilterChip label="Including closed" onRemove={() => setShowClosed(false)} />}
         </div>
 
         {selectedRows.length > 0 && (

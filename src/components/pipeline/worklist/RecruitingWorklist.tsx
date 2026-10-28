@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { AlertTriangle, ChevronDown, ChevronLeft, ChevronRight, Columns3, List, Phone, RefreshCw, Search, SlidersHorizontal, Table2, X } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronLeft, ChevronRight, Columns3, List, Phone, RefreshCw, Search, SlidersHorizontal, Table2 } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { PageSkeleton } from "@/components/ui/page-skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { FilterChip } from "@/components/recruiting/FilterChip";
 import { GrowScoreboard } from "@/components/recruiting/GrowScoreboard";
 import {
   PRIMARY_QUEUE_KEYS,
@@ -516,10 +517,10 @@ export function RecruitingWorklist() {
           {filtersOn ? " with these filters" : ""}.
         </span>
         {license !== "all" && (
-          <FilterChip label={`License: ${licenseLabel}`} onClear={() => setParam({ license: null })} />
+          <FilterChip label={`License: ${licenseLabel}`} onRemove={() => setParam({ license: null })} />
         )}
-        {layout === "board" && <FilterChip label="Board view" onClear={() => setParam({ view: null })} />}
-        {layout === "table" && <FilterChip label="Table view" onClear={() => setParam({ view: null })} />}
+        {layout === "board" && <FilterChip label="Board view" onRemove={() => setParam({ view: null })} />}
+        {layout === "table" && <FilterChip label="Table view" onRemove={() => setParam({ view: null })} />}
       </div>
 
       {/* items-start: the list sizes to its rows. Stretched to the panel's height, a one-person
@@ -653,22 +654,6 @@ function QueueButton({ def, count, active, onPick, compact }: {
     >
       {def.label}
       <span className={cn("tabular-nums", active ? "text-foreground" : "text-muted-foreground")}>{count.toLocaleString()}</span>
-    </button>
-  );
-}
-
-/** An active filter, visible and removable in one tap, so hidden state never surprises anyone.
- *  The whole chip is the button (44px tall), so the tap target is never a 24px cross. */
-function FilterChip({ label, onClear }: { label: string; onClear: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClear}
-      aria-label={`Clear ${label}`}
-      className="inline-flex h-11 items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 pl-4 pr-3 text-sm font-medium text-foreground transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
-    >
-      {label}
-      <X aria-hidden="true" className="h-4 w-4" />
     </button>
   );
 }

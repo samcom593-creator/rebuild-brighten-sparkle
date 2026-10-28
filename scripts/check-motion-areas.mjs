@@ -87,12 +87,21 @@ const AREAS = [
 ];
 
 const ARBITRARY_RX = /duration-\[(\d+)ms\]/;
+// 2026-10-28: under this config `duration-[Xms]` is never emitted (tailwindcss-animate also
+// registers `duration-*`, so Tailwind reports the arbitrary class as ambiguous and drops it).
+// The form that compiles is the arbitrary property `[transition-duration:Xms]` (Button uses
+// it), so the budget has to read that form too, or a slow UI duration walks past this guard.
+const PROPERTY_RX = /\[(?:transition|animation)-duration:(\d+(?:\.\d+)?)(ms|s)\]/g;
 const CHUNKY_RX = /\bduration-(300|500|700|1000|1500|2000)\b/;
 const ALLOW_RX = /motion-budget-allow/;
 
 function isOverBudget(line) {
   const arb = line.match(ARBITRARY_RX);
   if (arb && Number(arb[1]) > 200) return true;
+  for (const m of line.matchAll(PROPERTY_RX)) {
+    const ms = m[2] === "s" ? Number(m[1]) * 1000 : Number(m[1]);
+    if (ms > 200) return true;
+  }
   if (CHUNKY_RX.test(line)) return true;
   return false;
 }
@@ -147,11 +156,12 @@ for (const area of AREAS) {
     `\n✗ check:motion-areas — ${result.dir} ${result.count} over-budget motions exceeds baseline ${result.baseline} (Δ +${result.count - result.baseline})\n`,
   );
   console.error("The v22 §10 motion-fast budget banned-pattern is:");
-  console.error("  (1) arbitrary > 200ms       `duration-[300ms]`, `duration-[500ms]`");
+  console.error("  (1) arbitrary > 200ms       `duration-[300ms]`, `[transition-duration:300ms]`");
   console.error("  (2) chunky Tailwind default `duration-300`, `duration-500`, etc.");
   console.error("v22 motion-fast budget = 120ms; --motion-base ceiling = 200ms.");
   console.error("\nEither:");
-  console.error("  (a) Drop to `duration-150` or `duration-200` (or `duration-[120ms]`), OR");
+  console.error("  (a) Drop to `duration-150` or `duration-200` (or `[transition-duration:120ms]`;");
+  console.error("      `duration-[120ms]` is never emitted under this config), OR");
   console.error("  (b) Tag the line with `motion-budget-allow:<reason>` if this is");
   console.error("      a progress-bar fill, animation, or brand-decor stroke draw.");
   console.error("\nNewest hits (showing first 12):");

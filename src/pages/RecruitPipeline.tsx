@@ -358,6 +358,11 @@ export default function RecruitPipeline() {
   const IDLE_LABELS: Record<IdleFilter, string> = { all: "Any", "7": "7+ days", "21": "21+ days", "60": "60+ days" };
   const LINK_LABELS: Record<LinkFilter, string> = { all: "Any", not_sent: "Not sent", sent: "Sent, not clicked", clicked: "Clicked" };
   const filterCount = [idle !== "all", link !== "all", managerFilter !== "all", showClosed].filter(Boolean).length;
+  // A number opens exactly the people it counts (active recruits by idle time): every other filter clears.
+  const onlyIdle = (k: IdleFilter) => {
+    setIdle(k); setStageFilter(null); setLink("all"); setManagerFilter("all"); setShowClosed(false); setSearch("");
+  };
+  const tileOn = (k: IdleFilter) => idle === k && !stageFilter && link === "all" && managerFilter === "all" && !showClosed && !search;
   const filterChip = (label: string, onClear: () => void) => (
     <span key={label} className="inline-flex h-8 items-center gap-1 rounded-full border border-primary/40 bg-primary/10 pl-3 pr-1 text-[13px] font-medium text-foreground">
       {label}
@@ -386,9 +391,9 @@ export default function RecruitPipeline() {
       <GrowScoreboard
         label="New hire numbers"
         tiles={[
-          { label: "In progress", value: active.length, hint: "Hired, not yet producing", onSelect: () => { setIdle("all"); setStageFilter(null); }, active: idle === "all" && !stageFilter },
-          { label: "Stuck 7+ days", value: idle7, hint: "Same step a week or more", onSelect: () => setIdle("7"), active: idle === "7", emphasis: true },
-          { label: "Stuck 60+ days", value: idle60, hint: "Same step two months", onSelect: () => setIdle("60"), active: idle === "60" },
+          { label: "In progress", value: active.length, hint: "Hired, not yet producing", onSelect: () => onlyIdle("all"), active: tileOn("all") },
+          { label: "Stuck 7+ days", value: idle7, hint: "Same step a week or more", onSelect: () => onlyIdle("7"), active: tileOn("7"), emphasis: true },
+          { label: "Stuck 60+ days", value: idle60, hint: "Same step two months", onSelect: () => onlyIdle("60"), active: tileOn("60") },
           { label: "Open onboarding", value: factsQuery.isSuccess ? hiresWithOpenItems : null, hint: "Hires with an open step", definition: "Hires with at least one open onboarding requirement (No Hire Left Behind)" },
         ]}
       />
@@ -471,7 +476,8 @@ export default function RecruitPipeline() {
         </div>
 
         {selectedRows.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 rounded-md border border-primary/40 bg-primary/10 px-3 py-2">
+          // Sticky so it stays in reach after ticking people far down the page.
+          <div className="sticky top-2 z-10 flex flex-wrap items-center gap-2 rounded-lg border border-primary/40 bg-card px-4 py-3">
             <span className="text-sm font-medium">{selectedRows.length} selected</span>
             <Select value={bulkStage} onValueChange={setBulkStage}>
               <SelectTrigger className="h-8 w-full text-xs sm:w-56" aria-label="Move selected to stage"><SelectValue placeholder="Move to stage…" /></SelectTrigger>

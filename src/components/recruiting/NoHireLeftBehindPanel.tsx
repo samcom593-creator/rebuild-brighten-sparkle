@@ -44,7 +44,9 @@ export function NoHireLeftBehindPanel() {
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Live Milver + VA handoff queue.{" "}
-            {facts.isLoading || facts.isError
+            {facts.isError
+              ? "The queue could not load. Open it to retry."
+              : facts.isLoading
               ? "New hires with an open onboarding step, most urgent first."
               : `${queue.length} hires with open steps · ${blocking} blocked from writing business.`}
           </p>
@@ -65,11 +67,9 @@ export function NoHireLeftBehindPanel() {
           </Button>
         </div>
       </div>
-      {open && (
-        <div id="nhlb-preview" className="border-t border-border p-3 sm:p-4">
-          <OnboardingExceptionQueue rows={facts.data} isLoading={facts.isLoading} error={facts.error} mode="compact" limit={8} />
-        </div>
-      )}
+      <div id="nhlb-preview" hidden={!open} className="border-t border-border p-3 sm:p-4">
+        {open && <OnboardingExceptionQueue rows={facts.data} isLoading={facts.isLoading} error={facts.error} mode="compact" limit={8} />}
+      </div>
     </section>
   );
 }

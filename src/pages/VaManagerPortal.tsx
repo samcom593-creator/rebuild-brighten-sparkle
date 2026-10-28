@@ -7,6 +7,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { useConfirm } from "@/hooks/useConfirm";
 import { toast } from "sonner";
 import { GlassCard } from "@/components/ui/glass-card";
+import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -145,41 +146,35 @@ export default function VaManagerPortal() {
   const disabledCount = vas.length - activeCount;
 
   return (
-    <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-5">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-info">
-            <ShieldCheck className="h-3.5 w-3.5" /> Staff accounts
-          </div>
-          <h1 className="mt-1 flex items-center gap-2 text-2xl font-bold">
-            <Users className="h-6 w-6 text-primary" /> Virtual Assistants
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Create VA logins, monitor activity, and disable or restore access anytime.
-          </p>
-        </div>
-        <Button
-          onClick={() => {
-            setCreated(null);
-            setCreateOpen(true);
-          }}
-          className="gap-1.5"
-        >
-          <UserPlus className="h-4 w-4" /> New VA
-        </Button>
-      </div>
+    <div className="page-enter mx-auto w-full max-w-5xl space-y-5 pb-24">
+      {/* Grow redesign (2026-10-28): one plain title, one gold button, counts in words. */}
+      <PageHeader
+        title="Staff accounts"
+        subtitle="Create logins for your assistants, see when they last signed in, and turn access off or back on."
+        primaryAction={
+          <Button
+            onClick={() => {
+              setCreated(null);
+              setCreateOpen(true);
+            }}
+            className="h-11 gap-1.5 text-base"
+          >
+            <UserPlus className="h-5 w-5" /> New assistant
+          </Button>
+        }
+      />
 
-      <div className="flex flex-wrap gap-2 text-xs">
-        <Badge variant="outline">{vas.length} total</Badge>
-        <Badge variant="outline" className="border-emerald-500/30 text-emerald-400">
-          {activeCount} active
-        </Badge>
+      <p className="text-sm text-muted-foreground">
+        <span className="font-medium text-foreground">{vas.length}</span> {vas.length === 1 ? "account" : "accounts"}
+        {" · "}
+        <span className="font-medium text-foreground">{activeCount}</span> active
         {disabledCount > 0 && (
-          <Badge variant="outline" className="border-rose-500/30 text-rose-400">
-            {disabledCount} disabled
-          </Badge>
+          <>
+            {" · "}
+            <span className="font-medium text-destructive">{disabledCount}</span> turned off
+          </>
         )}
-      </div>
+      </p>
 
       <GlassCard className="overflow-hidden p-0">
         {isLoading ? (
@@ -187,14 +182,14 @@ export default function VaManagerPortal() {
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
           </div>
         ) : error ? (
-          <p className="p-8 text-center text-sm text-rose-400">
+          <p className="p-8 text-center text-sm text-destructive">
             Couldn't load VAs. {error instanceof Error ? error.message : ""}
           </p>
         ) : vas.length === 0 ? (
           <div className="p-10 text-center">
             <Users className="mx-auto mb-3 h-10 w-10 text-muted-foreground/50" />
             <p className="text-sm text-muted-foreground">
-              No VAs yet. Click <span className="font-medium text-foreground">New VA</span> to create the first account.
+              No assistants yet. Tap <span className="font-medium text-foreground">New assistant</span> to create the first login.
             </p>
           </div>
         ) : (
@@ -223,9 +218,9 @@ export default function VaManagerPortal() {
                     </td>
                     <td className="px-4 py-3">
                       {v.disabled ? (
-                        <Badge className="border-rose-500/30 bg-rose-500/15 text-rose-300">Disabled</Badge>
+                        <Badge variant="outline" className="border-destructive/40 bg-destructive/10 text-destructive">Turned off</Badge>
                       ) : (
-                        <Badge className="border-emerald-500/30 bg-emerald-500/15 text-emerald-300">Active</Badge>
+                        <Badge variant="outline" className="border-success/40 bg-success/10 text-success">Active</Badge>
                       )}
                     </td>
                     <td className="px-4 py-3 text-right">

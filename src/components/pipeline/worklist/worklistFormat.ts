@@ -78,6 +78,14 @@ export function formatSince(value: string | null | undefined, now = Date.now()):
   return `${plainSpan(elapsed)} ago`;
 }
 
+/** "3:00 PM MST": the time with its zone, in the viewer's zone. */
+export function formatTimeWithZone(value: string | null | undefined, timeZone = VIEWER_ZONE): string {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "Unreadable date";
+  return new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit", timeZone, timeZoneName: "short" }).format(d);
+}
+
 /** A due time as people say it: "3:00 PM" today, "Tomorrow 10:00 AM", "Thu 10:00 AM", "Nov 12". */
 export function formatDueShort(value: string | null | undefined, now = Date.now()): string {
   if (!value) return "—";

@@ -125,7 +125,10 @@ export function PersonPanel({ row, userId, backendReady, canAssign, staff, staff
   const saving = recordOutcome.isPending || setPlan.isPending;
   const showPlan = Boolean(draft.outcome) || planOnly || Boolean(draft.notes.trim());
   const owner = ownerName(row.recruiting_owner_user_id, staff, staffAvailable);
-  const lastEntry = (history.data ?? []).find((h) => h.contact_outcome || h.notes);
+  // Only a recorded contact counts as "last time": owner, plan and time-zone saves also write
+  // history rows (with notes), and must never read as a conversation that just happened.
+  const lastEntry = (history.data ?? []).find((h) => h.contact_outcome);
+  const historyCount = (history.data ?? []).length;
 
   const update = (patch: Partial<OutcomeDraft>) => {
     setError(null);
@@ -235,7 +238,10 @@ export function PersonPanel({ row, userId, backendReady, canAssign, staff, staff
       });
       toast.success(ownerId ? `Owner set to ${ownerName(ownerId, staff, staffAvailable)}` : "Owner cleared");
     } catch (e) {
-      setError(describeSaveError(e instanceof Error ? e.message : String(e)).text);
+      // The inline alert sits with the outcome form, which may be folded away; say it out loud too.
+      const text = describeSaveError(e instanceof Error ? e.message : String(e)).text;
+      setError(text);
+      toast.error(text);
     }
   };
 
@@ -258,7 +264,9 @@ export function PersonPanel({ row, userId, backendReady, canAssign, staff, staff
       setZoneChoice("");
       toast.success("Time zone confirmed");
     } catch (e) {
-      setError(describeSaveError(e instanceof Error ? e.message : String(e)).text);
+      const text = describeSaveError(e instanceof Error ? e.message : String(e)).text;
+      setError(text);
+      toast.error(text);
     }
   };
 
@@ -297,19 +305,18 @@ export function PersonPanel({ row, userId, backendReady, canAssign, staff, staff
         )}
       </header>
 
-      {/* Last time: the one fact a caller needs before dialling. */}
+      {/* Last time: the one fact a caller needs before dialling. A history entry wins as a whole
+          (outcome, time, who, note); the row's own outcome is the fallback while history loads. */}
       {(lastEntry || row.last_contact_outcome) && (
         <p className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm leading-6 text-foreground">
           <span className="font-semibold">Last time</span>
           <span className="text-muted-foreground">
             {" · "}
-            {formatSince(lastEntry?.logged_at ?? row.last_contact_outcome_at)}
+            {lastEntry ? formatSince(lastEntry.logged_at) : formatSince(row.last_contact_outcome_at)}
             {lastEntry ? ` · ${actorName(lastEntry.logged_by, staff)}` : ""}
           </span>
           {": "}
-          {outcomeLabel(lastEntry?.contact_outcome ?? row.last_contact_outcome) !== "—"
-            ? outcomeLabel(lastEntry?.contact_outcome ?? row.last_contact_outcome)
-            : "Note"}
+          {outcomeLabel(lastEntry ? lastEntry.contact_outcome : row.last_contact_outcome)}
           {lastEntry?.notes ? <span className="text-muted-foreground"> — “{lastEntry.notes}”</span> : null}
         </p>
       )}
@@ -623,7 +630,16 @@ export function PersonPanel({ row, userId, backendReady, canAssign, staff, staff
           )}
         </Fold>
 
-        <Fold title="History" value={history.isLoading ? "Loading…" : `${(history.data ?? []).length} ${(history.data ?? []).length === 1 ? "entry" : "entries"}`}>
+        <Fold
+          title="History"
+          value={history.isLoading
+            ? "Loading…"
+            : history.isError
+              ? "Couldn't load"
+              : historyCount >= 50
+                ? "Newest 50"
+                : `${historyCount} ${historyCount === 1 ? "entry" : "entries"}`}
+        >
           {history.isLoading ? (
             <p className="text-sm text-muted-foreground">Loading history…</p>
           ) : history.isError ? (

@@ -6,7 +6,7 @@ import {
   planCheck,
   type WorklistRow,
 } from "@/lib/recruitingQueues";
-import { formatDueShort, plainSpan } from "./worklistFormat";
+import { formatDueShort, formatTimeWithZone, plainSpan } from "./worklistFormat";
 
 export type StatusTone = "danger" | "warning" | "primary" | "neutral";
 
@@ -33,7 +33,9 @@ export function rowStatus(row: WorklistRow, now: number): RowStatus {
   if (due !== null && Number.isNaN(due)) return { label: "Date unreadable", tone: "danger" };
   if (due !== null && due < now) return { label: `Late · ${plainSpan(now - due)}`, tone: "danger" };
   const { end } = phoenixDayBounds(new Date(now));
-  if (due !== null && due < end) return { label: `Today · ${formatDueShort(iso, now)}`, tone: "warning" };
+  // "Today" is the Phoenix business day (same as the queues); the time carries its zone so a
+  // viewer in another zone is never told "today" with an unlabelled time from their tomorrow.
+  if (due !== null && due < end) return { label: `Today · ${formatTimeWithZone(iso)}`, tone: "warning" };
   const created = new Date(row.created_at).getTime();
   if (!Number.isNaN(created) && created >= now - NEW_WINDOW_DAYS * DAY_MS && !row.last_contact_outcome_at) {
     return { label: "New", tone: "primary" };

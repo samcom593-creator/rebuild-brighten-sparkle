@@ -94,7 +94,7 @@ export default function ReferralSubmit() {
 
   if (confirmation) {
     return (
-      <div className="p-4 sm:p-6 max-w-xl mx-auto">
+      <div className="mx-auto w-full max-w-xl pb-24">
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
           <Card>
             <CardContent className="p-8 text-center space-y-3">
@@ -122,13 +122,13 @@ export default function ReferralSubmit() {
   }
 
   return (
-    <div className="p-4 sm:p-6 max-w-xl mx-auto">
+    <div className="mx-auto w-full max-w-xl pb-24">
       <Button variant="ghost" size="sm" className="mb-4" onClick={() => navigate(-1)}>
         <ArrowLeft className="h-4 w-4 mr-1" /> Back
       </Button>
 
       <div className="mb-5 rounded-md border border-primary/40 bg-white dark:bg-card p-4">
-        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-primary">Referral bonus</p>
+        <p className="text-[13px] font-bold uppercase tracking-[0.12em] text-primary">Referral bonus</p>
         <h2 className="text-lg font-bold mt-1">$300 when your referral hits their first $10k in production.</h2>
         <p className="text-sm text-muted-foreground mt-1">
           Paid automatically when the agent you sent crosses $10k AP. We track it for you in <span className="text-foreground">My Referrals</span>.
@@ -143,9 +143,10 @@ export default function ReferralSubmit() {
           </p>
 
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="firstName">First name *</Label>
-              <Input id="firstName" autoComplete="given-name" {...form.register("firstName")} />
+              <Input id="firstName" className="h-12 text-base" autoComplete="given-name" {...form.register("firstName")} />
               {form.formState.errors.firstName && (
                 <p className="text-xs text-destructive">{form.formState.errors.firstName.message}</p>
               )}
@@ -153,21 +154,23 @@ export default function ReferralSubmit() {
 
             <div className="space-y-1.5">
               <Label htmlFor="lastName">Last name *</Label>
-              <Input id="lastName" autoComplete="family-name" {...form.register("lastName")} />
+              <Input id="lastName" className="h-12 text-base" autoComplete="family-name" {...form.register("lastName")} />
               {form.formState.errors.lastName && (
                 <p className="text-xs text-destructive">{form.formState.errors.lastName.message}</p>
               )}
             </div>
 
+            </div>
+
             <div className="space-y-1.5">
               <Label htmlFor="phone">Phone</Label>
-              <Input id="phone" type="tel" autoComplete="tel" {...form.register("phone")} />
+              <Input id="phone" type="tel" className="h-12 text-base" autoComplete="tel" {...form.register("phone")} />
             </div>
 
             <div className="space-y-1.5">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" autoComplete="email" {...form.register("email")} />
-              <p className="text-[12px] text-muted-foreground">Phone or email — at least one.</p>
+              <Input id="email" type="email" className="h-12 text-base" autoComplete="email" {...form.register("email")} />
+              <p className="text-[13px] text-muted-foreground">Phone or email — at least one.</p>
               {form.formState.errors.email && (
                 <p className="text-xs text-destructive">{form.formState.errors.email.message}</p>
               )}
@@ -179,7 +182,7 @@ export default function ReferralSubmit() {
                 value={form.watch("state")}
                 onValueChange={(v) => form.setValue("state", v, { shouldValidate: true })}
               >
-                <SelectTrigger><SelectValue placeholder="Pick a state" /></SelectTrigger>
+                <SelectTrigger className="h-12 text-base" aria-label="State"><SelectValue placeholder="Pick a state" /></SelectTrigger>
                 <SelectContent>
                   {US_STATES.map((s: any) => (
                     <SelectItem key={s.value ?? s} value={s.value ?? s}>{s.label ?? s}</SelectItem>
@@ -201,7 +204,7 @@ export default function ReferralSubmit() {
               />
             </div>
 
-            <Button type="submit" disabled={submitting} className="w-full" size="lg">
+            <Button type="submit" disabled={submitting} className="h-12 w-full text-base" size="lg">
               {submitting ? (
                 <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Submitting…</span>
               ) : (

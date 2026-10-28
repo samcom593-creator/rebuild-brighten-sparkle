@@ -176,8 +176,15 @@ export default function RecruitingPipeline() {
     };
   }, [rows]);
 
-  const pickMonday = (v: string) => { setMondayFilter(v); setStageFilter(""); };
-  const pickStage = (v: string) => { setStageFilter(v); setMondayFilter(""); };
+  // A number opens exactly the people it counts: every other filter is cleared, and the
+  // counts include inactive people, so the list does too.
+  const onlyFilter = (monday: string, stage: string) => {
+    setMondayFilter(monday); setStageFilter(stage); setSearch(""); setTypeFilter(""); setIntentFilter(""); setActiveFilter("all");
+  };
+  const pickMonday = (v: string) => onlyFilter(v, "");
+  const pickStage = (v: string) => onlyFilter("", v);
+  const tileOn = (monday: string, stage: string) =>
+    mondayFilter === monday && stageFilter === stage && !search && !typeFilter && !intentFilter && activeFilter === "all";
 
   // Relevance rank: who needs action now + active agents first, inactive last.
   const rank = (r: Row): number => {
@@ -230,10 +237,10 @@ export default function RecruitingPipeline() {
       <GrowScoreboard
         label="Pipeline numbers"
         tiles={[
-          { label: "Expected Monday", value: isLoading ? null : counts.expected, hint: "Prospects due to start", onSelect: () => pickMonday("expected"), active: mondayFilter === "expected", emphasis: true },
-          { label: "Showed", value: isLoading ? null : counts.showed, hint: "Prospects who came", onSelect: () => pickMonday("showed"), active: mondayFilter === "showed" },
-          { label: "Onboarding", value: isLoading ? null : counts.onboarding, hint: "Getting set up", onSelect: () => pickStage("Onboarding"), active: stageFilter === "Onboarding" },
-          { label: "Active agents", value: isLoading ? null : counts.active, hint: "Writing business", onSelect: () => pickStage("Active Agent"), active: stageFilter === "Active Agent" },
+          { label: "Expected Monday", value: isLoading ? null : counts.expected, hint: "Prospects due to start", onSelect: () => pickMonday("expected"), active: tileOn("expected", ""), emphasis: true },
+          { label: "Showed", value: isLoading ? null : counts.showed, hint: "Prospects who came", onSelect: () => pickMonday("showed"), active: tileOn("showed", "") },
+          { label: "Onboarding", value: isLoading ? null : counts.onboarding, hint: "Getting set up", onSelect: () => pickStage("Onboarding"), active: tileOn("", "Onboarding") },
+          { label: "Active agents", value: isLoading ? null : counts.active, hint: "Writing business", onSelect: () => pickStage("Active Agent"), active: tileOn("", "Active Agent") },
         ]}
       />
       {!isLoading && (
@@ -394,7 +401,7 @@ export default function RecruitingPipeline() {
                           Update <ChevronDown className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-56">
+                      <DropdownMenuContent align="end" className="w-56" onCloseAutoFocus={(e) => { if (noteFor === r.person_key) e.preventDefault(); }}>
                         {r.person_type === "applicant" && (
                           <>
                             <DropdownMenuLabel>Monday</DropdownMenuLabel>

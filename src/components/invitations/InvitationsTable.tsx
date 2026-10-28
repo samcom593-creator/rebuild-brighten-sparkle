@@ -12,7 +12,7 @@
  */
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Ban, Copy, Mail, RefreshCw, Search } from "lucide-react";
+import { Ban, ClipboardCopy, Copy, Mail, RefreshCw, Search } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -20,6 +20,7 @@ import { resolveBrand } from "@/config/brand";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useConfirm } from "@/hooks/useConfirm";
 import {
@@ -30,6 +31,8 @@ import {
   invitationMailto,
   type InvitationStatus,
 } from "@/lib/invitationState";
+import { contractingInfoFor, decodeInviteNote } from "@/lib/inviteContractingInfo";
+import { ContractingCopyCard } from "./ContractingCopyCard";
 import { inviteUrlFromPath, shareInvitation, useInvitations, type InvitationRow } from "./invitationApi";
 
 const BRAND = resolveBrand();
@@ -159,10 +162,10 @@ export function InvitationsTable({
     <section className="space-y-3" aria-label={title}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-1 rounded-md border border-border p-0.5" role="tablist" aria-label="Invitation view">
-          <Button size="sm" variant={history ? "ghost" : "secondary"} className="h-7" role="tab" aria-selected={!history} onClick={() => setHistory(false)}>
+          <Button size="sm" variant={history ? "ghost" : "secondary"} className="h-10 px-4 text-sm" role="tab" aria-selected={!history} onClick={() => setHistory(false)}>
             Active{counts ? ` · ${counts.pending}` : ""}
           </Button>
-          <Button size="sm" variant={history ? "secondary" : "ghost"} className="h-7" role="tab" aria-selected={history} onClick={() => setHistory(true)}>
+          <Button size="sm" variant={history ? "secondary" : "ghost"} className="h-10 px-4 text-sm" role="tab" aria-selected={history} onClick={() => setHistory(true)}>
             History{counts ? ` · ${counts.total}` : ""}
           </Button>
         </div>
@@ -171,7 +174,7 @@ export function InvitationsTable({
             <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               aria-label="Search invitations"
-              className="h-9 pl-8"
+              className="h-11 pl-8 text-base"
               placeholder="Name, email or note"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -209,10 +212,9 @@ export function InvitationsTable({
               <TableRow>
                 <TableHead>Recipient</TableHead>
                 <TableHead>Role</TableHead>
-                <TableHead>Upline · agency</TableHead>
+                <TableHead>Upline</TableHead>
                 <TableHead>Offer</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Dates</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -221,16 +223,21 @@ export function InvitationsTable({
                 const actions = invitationActions(row.status);
                 const busy = busyId === row.id;
                 const exceptions = row.carrier_exceptions ?? [];
+                // The internal note may lead with the contracting line; show only the free note here.
+                const freeNote = decodeInviteNote(row.notes).note;
+                const info = contractingInfoFor(row);
                 return (
                   <TableRow key={row.id} data-testid={`invite-row-${row.id}`}>
-                    <TableCell className="min-w-[10rem]">
-                      <p className="text-sm font-medium text-foreground">{row.recipient_name || row.notes || "Open invitation"}</p>
-                      <p className="text-xs text-muted-foreground">{row.recipient_email ?? "Any email (legacy link)"}</p>
+                    <TableCell className="min-w-[12rem]">
+                      <p className="text-base font-medium text-foreground">{row.recipient_name || freeNote || "Open invitation"}</p>
+                      <p className="text-sm text-muted-foreground">{row.recipient_email ?? "Any email"}</p>
+                      {info.npn && <p className="text-sm text-muted-foreground">NPN {info.npn}</p>}
+                      {row.recipient_name && freeNote && <p className="text-[13px] italic text-muted-foreground">{freeNote}</p>}
                     </TableCell>
                     <TableCell className="text-sm">{formatRole(row.target_role)}</TableCell>
                     <TableCell className="text-sm">
-                      <p>{row.upline_name ?? "Set on join"}</p>
-                      <p className="text-xs text-muted-foreground">{row.agency_key ? agencyLabel(row.agency_key, BRAND.legalName) : "—"}</p>
+                      <p className="whitespace-nowrap">{row.upline_name ?? "Set on join"}</p>
+                      <p className="text-[13px] text-muted-foreground">{row.agency_key ? agencyLabel(row.agency_key, BRAND.legalName) : "—"}</p>
                     </TableCell>
                     <TableCell className="text-sm">
                       <p>{row.offered_comp_pct != null ? `${Number(row.offered_comp_pct)}%` : "No offer"}</p>
@@ -240,12 +247,12 @@ export function InvitationsTable({
                         </p>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="min-w-[9rem]">
                       <Badge variant="outline" className={STATUS_CLASS[row.status]}>{INVITATION_STATUS_LABEL[row.status]}</Badge>
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      <p>Sent {fmtDate(row.created_at)}{row.created_by_name ? ` by ${row.created_by_name}` : ""}</p>
-                      <p>
+                      <p
+                        className="mt-1 whitespace-nowrap text-[13px] text-muted-foreground"
+                        title={`Sent ${fmtDate(row.created_at)}${row.created_by_name ? ` by ${row.created_by_name}` : ""}${row.share_count > 0 ? ` · shared ${row.share_count}× · last ${fmtDate(row.last_shared_at)}` : ""}`}
+                      >
                         {row.status === "accepted"
                           ? `Accepted ${fmtDate(row.used_at)}${row.accepted_agent_name ? ` · ${row.accepted_agent_name}` : ""}`
                           : row.status === "superseded"
@@ -254,22 +261,35 @@ export function InvitationsTable({
                               ? `Revoked ${fmtDate(row.revoked_at)}`
                               : `Expires ${fmtDate(row.expires_at)}`}
                       </p>
-                      {row.share_count > 0 && <p>Shared {row.share_count}× · last {fmtDate(row.last_shared_at)}</p>}
+                      <p className="whitespace-nowrap text-[13px] text-muted-foreground">
+                        Sent {fmtDate(row.created_at)}{row.share_count > 0 ? ` · shared ${row.share_count}×` : ""}
+                      </p>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button size="sm" variant="outline" className="h-10 gap-1.5" aria-label={`Contracting info for ${row.recipient_name || "this invitation"}`}>
+                              <ClipboardCopy className="h-4 w-4" /> Info
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent align="end" className="w-[34rem] max-w-[calc(100vw-2rem)] p-3">
+                            <p className="mb-2 px-1 text-sm font-semibold text-foreground">Contracting info</p>
+                            <ContractingCopyCard info={info} />
+                          </PopoverContent>
+                        </Popover>
                         {actions.copy && (
-                          <Button size="sm" variant="outline" disabled={busy} onClick={() => copy(row)} aria-label="Copy invitation link">
+                          <Button size="sm" variant="outline" className="h-10 w-10 px-0" disabled={busy} onClick={() => copy(row)} aria-label="Copy invitation link">
                             <Copy className="h-4 w-4" />
                           </Button>
                         )}
                         {actions.share && row.recipient_email && (
-                          <Button size="sm" variant="outline" disabled={busy} onClick={() => emailDraft(row)} aria-label="Open email draft with invitation link">
+                          <Button size="sm" variant="outline" className="h-10 w-10 px-0" disabled={busy} onClick={() => emailDraft(row)} aria-label="Open email draft with invitation link">
                             <Mail className="h-4 w-4" />
                           </Button>
                         )}
                         {actions.regenerate && (
-                          <Button size="sm" variant="ghost" disabled={busy} onClick={() => regenerate(row)} aria-label="Regenerate invitation link">
+                          <Button size="sm" variant="ghost" className="h-10 w-10 px-0" disabled={busy} onClick={() => regenerate(row)} aria-label="Regenerate invitation link">
                             <RefreshCw className="h-4 w-4" />
                           </Button>
                         )}
@@ -279,7 +299,7 @@ export function InvitationsTable({
                             variant="ghost"
                             disabled={busy}
                             onClick={() => revoke(row)}
-                            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            className="h-10 w-10 px-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
                             aria-label="Revoke invitation"
                           >
                             <Ban className="h-4 w-4" />

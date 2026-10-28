@@ -382,9 +382,12 @@ export function RecruitingWorklist() {
               <button
                 type="button"
                 aria-expanded={secondaryOpen}
+                // While one of these lists is chosen they stay open, so the choice is never hidden.
+                disabled={!PRIMARY_QUEUE_KEYS.includes(queue)}
+                title={!PRIMARY_QUEUE_KEYS.includes(queue) ? "Pick one of the four lists to fold these away" : undefined}
                 onClick={() => setMoreListsOpen((open) => !open)}
                 className={cn(
-                  "inline-flex h-12 items-center gap-2 rounded-lg px-4 text-base font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
+                  "inline-flex h-12 items-center gap-2 rounded-lg px-4 text-base font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)] disabled:cursor-default disabled:hover:bg-transparent",
                   secondaryOpen && "text-foreground",
                 )}
               >

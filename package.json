@@ -135,7 +135,7 @@
     "check:public-fetch-jwt": "node scripts/check-public-fetch-jwt.mjs",
     "check:orphan-mirror-containment": "node scripts/check-orphan-mirror-containment.mjs",
     "check:rpc-args": "node scripts/check-rpc-args.mjs",
-    "check:migration-statement-terminators": "node scripts/check-migration-statement-terminators.mjs",
+    "check:migration-statement-terminators": "node scripts/check-migration-statement-terminators.mjs && node scripts/check-migration-statement-terminators.mjs --selftest",
     "check:unsent-receipt-marker": "node scripts/check-unsent-receipt-marker.mjs",
     "check:pg-anon-bearer": "node scripts/check-pg-anon-bearer.mjs",
     "check:theme-literals": "node scripts/check-theme-literals.mjs",

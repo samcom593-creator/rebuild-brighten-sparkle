@@ -87,18 +87,96 @@ function terminatesBeforeNextStatement(text, at) {
  * Walk the file tracking dollar-quoted bodies. Returns the offsets at which a body closed.
  * Scanning for the tag pair (rather than regexing `END $tag$`) is what lets this see a body
  * that ends on any statement, not just one whose last keyword happens to be END.
+ *
+ * Outside a body, `--` and `/* *\/` comments and quoted literals are skipped, because
+ * Postgres never reads a dollar tag there. Until 2026-10-27 this regexed `$tag$` anywhere,
+ * so a migration whose COMMENT mentioned `$h$` (20261026063000, 998ba93f) opened a phantom
+ * body at the comment and reported an unterminated one; the author had to reword the
+ * comment to get past it. Inside a body, only the matching close tag counts: Postgres does
+ * not lex comments inside a dollar quote either, so a `-- ...` line there is body text.
  */
+const TAG_AT = /\$([A-Za-z_][A-Za-z0-9_]*)?\$/y;
+
 function closingOffsets(sql) {
   const closes = [];
-  const tagRe = /\$([A-Za-z_][A-Za-z0-9_]*)?\$/g;
-  let m, openTag = null, openEnd = 0;
-  while ((m = tagRe.exec(sql)) !== null) {
-    const tag = m[1] ?? '';
-    if (openTag === null) { openTag = tag; openEnd = m.index + m[0].length; continue; }
-    if (tag === openTag) { closes.push(m.index + m[0].length); openTag = null; }
+  let i = 0;
+  while (i < sql.length) {
+    const c = sql[i];
+    if (c === '-' && sql[i + 1] === '-') {
+      const nl = sql.indexOf('\n', i);
+      i = nl === -1 ? sql.length : nl + 1; continue;
+    }
+    if (c === '/' && sql[i + 1] === '*') {            // block comments nest in Postgres
+      let depth = 1, j = i + 2;
+      while (j < sql.length && depth > 0) {
+        if (sql[j] === '/' && sql[j + 1] === '*') { depth++; j += 2; continue; }
+        if (sql[j] === '*' && sql[j + 1] === '/') { depth--; j += 2; continue; }
+        j++;
+      }
+      i = j; continue;
+    }
+    if (c === "'" || c === '"') {                     // '' / "" doubling; E'' backslash escapes
+      const escapes = c === "'" && /[eE]/.test(sql[i - 1] ?? '') && !/[A-Za-z0-9_]/.test(sql[i - 2] ?? '');
+      let j = i + 1;
+      while (j < sql.length) {
+        if (escapes && sql[j] === '\\') { j += 2; continue; }
+        if (sql[j] === c && sql[j + 1] === c) { j += 2; continue; }
+        if (sql[j] === c) break;
+        j++;
+      }
+      i = j + 1; continue;
+    }
+    if (c === '$' && !/[A-Za-z0-9_]/.test(sql[i - 1] ?? '')) {  // `a$b$` is an identifier
+      TAG_AT.lastIndex = i;
+      const m = TAG_AT.exec(sql);
+      if (m) {
+        const close = sql.indexOf(m[0], i + m[0].length);
+        if (close === -1) { closes.push(-(i + m[0].length)); return closes; }
+        closes.push(close + m[0].length);
+        i = close + m[0].length; continue;
+      }
+    }
+    i++;
   }
-  if (openTag !== null) closes.push(-openEnd);
   return closes;
+}
+
+/**
+ * --selftest: each fixture carries the verdict the scanner must reach. The first three are
+ * the shapes that used to read as a body; the rest pin what the rewrite must keep doing.
+ */
+const FIXTURES = [
+  ['tag in a -- comment', "-- body uses a $h$ literal\nCREATE TABLE t(a int);\n", 0],
+  ['tag in a /* */ comment', "/* $fn$ /* nested */ $x$ */\nCREATE TABLE t(a int);\n", 0],
+  ['tag in a string literal', "COMMENT ON TABLE t IS 'quoted $fn$ here';\nCREATE TABLE u(a int);\n", 0],
+  ['tag in an E-string with \\\'', "SELECT E'it\\'s $q$';\nCREATE TABLE u(a int);\n", 0],
+  ['terminated body', "CREATE FUNCTION f() RETURNS int AS $$ SELECT 1 $$ LANGUAGE sql;\nCREATE TABLE t(a int);\n", 0],
+  ['body passed to cron.schedule', "SELECT cron.schedule('j', '* * * * *', $$ SELECT 1 $$);\nCREATE TABLE t(a int);\n", 0],
+  ['-- comment inside a body is body text', "CREATE FUNCTION f() RETURNS int AS $b$\n-- note\nSELECT 1 $b$ LANGUAGE sql;\nCREATE TABLE t(a int);\n", 0],
+  ['unterminated body', "CREATE FUNCTION f() RETURNS int AS $function$ BEGIN RETURN 1; END $function$\nCREATE TABLE t(a int);\n", 1],
+  ['unterminated after a commented tag', "-- see $h$\nCREATE FUNCTION f() RETURNS int AS $h$ SELECT 1 $h$\nCREATE TABLE t(a int);\n", 1],
+  ['never-closed body', "CREATE FUNCTION f() RETURNS int AS $x$ SELECT 1;\n", 1],
+];
+
+function violationsIn(sql) {
+  let n = 0;
+  for (const off of closingOffsets(sql)) {
+    if (off < 0 || !terminatesBeforeNextStatement(sql, off).ok) n++;
+  }
+  return n;
+}
+
+if (process.argv.includes('--selftest')) {
+  let bad = 0;
+  for (const [name, sql, want] of FIXTURES) {
+    const got = violationsIn(sql);
+    const pass = got === want;
+    if (!pass) bad++;
+    console.log(`${pass ? 'PASS' : 'FAIL'}  ${name}: ${got} violation(s), want ${want}`);
+  }
+  if (bad) { console.error(`check-migration-statement-terminators --selftest: ${bad} of ${FIXTURES.length} FAILED`); process.exit(1); }
+  console.log(`check-migration-statement-terminators --selftest: ${FIXTURES.length}/${FIXTURES.length} PASS`);
+  process.exit(0);
 }
 
 let files;

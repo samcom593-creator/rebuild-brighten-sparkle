@@ -54,10 +54,10 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
   const marginLeft = isDesktop ? (isFullscreen ? 0 : sidebarWidth) : 0;
 
   return (
-    <div className="apex-app-shell agentcloud-parity min-h-screen relative bg-background">
+    <div className="apex-app-shell agentcloud-parity min-h-dvh relative bg-background">
       {/* Mobile Header - only visible on small screens */}
       <header className="fixed left-0 right-0 top-0 z-50 border-b border-border bg-background lg:hidden">
-        <div className="flex h-[60px] items-center justify-between px-3 pt-[env(safe-area-inset-top)]">
+        <div className="flex h-[calc(60px+env(safe-area-inset-top,0px))] items-center justify-between px-3 pt-[env(safe-area-inset-top)]">
           <Link to="/dashboard" className="flex min-w-0 items-center gap-2">
             {/* 2026-08-23 light/dark wave: the brand name was text-white on a
                 bg-background header. Light mode's background is cream
@@ -138,7 +138,7 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
           // Mobile header = p-4 (16+16) + h-10 icon row (40) = 72px base (4.5rem),
           // plus env(safe-area-inset-top) on notched iPhones. Reserving the real
           // height keeps the first page heading from sliding under the fixed header.
-          "apex-main-canvas min-h-screen pb-[calc(5rem+env(safe-area-inset-bottom,0px))] pt-[calc(3.75rem+env(safe-area-inset-top,0px))] lg:pb-0 lg:pt-0"
+          "apex-main-canvas min-h-dvh pb-[calc(5rem+env(safe-area-inset-bottom,0px))] pt-[calc(3.75rem+env(safe-area-inset-top,0px))] lg:pb-0 lg:pt-0"
         )}
         style={{
           marginLeft: isDesktop ? `${marginLeft}px` : 0,

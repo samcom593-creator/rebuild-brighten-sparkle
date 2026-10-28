@@ -20,19 +20,19 @@
 /* ── Tones: seven meaning-carrying colours, tuned per theme for contrast on cards ───────── */
 :root,
 :root.light {
-  --tone-good: 152 62% 34%;   /* going well: showed, producing, alive            */
+  --tone-good: 152 62% 26%;   /* going well: showed, producing, alive            */
   --tone-warm: 33 92% 33%;    /* needs a nudge: warm lead, waiting, field training */
-  --tone-hot: 4 70% 44%;      /* act now: hot lead, no-show, dead lane            */
-  --tone-cool: 211 78% 42%;   /* new or scheduled: new lead, cold lead, booked    */
+  --tone-hot: 4 70% 36%;      /* act now: hot lead, no-show, dead lane            */
+  --tone-cool: 211 78% 35%;   /* new or scheduled: new lead, cold lead, booked    */
   --tone-royal: 262 58% 50%;  /* paperwork: contracting, onboarding               */
-  --tone-gold: 42 70% 30%;    /* the brand moment: Monday start, hired, Sam's own */
-  --tone-slate: 220 10% 44%;  /* quiet: inactive, answered, not set               */
+  --tone-gold: 42 70% 25%;    /* the brand moment: Monday start, hired, Sam's own */
+  --tone-slate: 220 10% 36%;  /* quiet: inactive, answered, not set               */
   --ambient-opacity: 0.42;
 }
 :root.dark {
   --tone-good: 150 62% 54%;
   --tone-warm: 40 94% 60%;
-  --tone-hot: 6 86% 66%;
+  --tone-hot: 6 86% 78%;
   --tone-cool: 206 90% 68%;
   --tone-royal: 262 82% 74%;
   --tone-gold: 45 86% 58%;
@@ -167,4 +167,23 @@
     animation: none !important;
   }
   .apex-lift:hover { transform: none; }
+}
+
+/* Operating-surface contrast measured on tinted rows as well as bare cards. */
+:root.light .apex-app-shell { --muted-foreground: 45 8% 33%; }
+.apex-app-shell .text-destructive { color: hsl(var(--tone-hot)); }
+:root.light .apex-app-shell .text-primary { color: hsl(var(--tone-gold)); }
+.apex-app-shell .nav-section-label { font-size: 13px; }
+
+/* Touch capability matters on tablets as well as narrow phones. */
+@media (pointer: coarse) {
+  .apex-app-shell :is(input, select, textarea, [role="combobox"]) { font-size: 16px !important; }
+  .apex-app-shell :is(button, [role="button"], [role="combobox"]) { min-height: 44px; min-width: 44px; }
+}
+.apex-app-shell :is(button, [role="button"], a) {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.apex-app-shell :is(button, [role="button"]):active {
+  opacity: 0.8;
 }

@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "Oct 28, 2026",
+    label: "YouTube comments are answered again: the channel was reconnected from Sam's own Google session, the OAuth app was pushed to production so the token no longer dies every 7 days, and the first pull brought in 9 new comments. Money questions ('how do you make a lot of money') now route to the recruit lane on every platform.",
+    detail: "MP-306 wave 1 + MP-307 wave 1 (brain half). Driven from Sam's signed-in Chrome cookies with Playwright: the first consent attached a 4-video spare channel (deleted), the primary account owns @sell4daddy; Google Cloud Branding filled (developer contact, app links, apex-financial.org as an authorized domain) and Audience published: Testing → In production, then re-consented so the stored refresh token is production-issued. The youtube_oauth lane now reads the OLDEST refresh across connections, so a spare channel can never keep it alive while the real token is dead (migration 20261028070000). The brain accepts the bot token for real events so the TikTok Studio ingest can post through it.",
+    commit: "MP-306-W1-YOUTUBE-BACK",
+  },
+  {
+    ts: "Oct 28, 2026",
     label: "The DM brain now answers everyone it should: former agents get a call back, agents' contracting questions reach Sam, pitches get the partnership link, and no real DM is left on read. Two call lists (old applicants for ReadyMode, former agents to bring back) download from the Social Command Center.",
     detail: "MP-308 wave 2, measured first: business DMs were answered inside 10 minutes, but 'How bro I'm 18 and I need help' (a recruit), 'let me know when you can get jacks contract' (an agent), a virtual-assistant pitch and 'Bro got ai' all fell to casual and silence; the 1,028 'failed' sends were comment private-replies Meta refuses after 24h, already settled dead. New lanes in _shared/brain-lanes.ts (win-back, agent support, vendor, bot check, need-help) with 6 tests; casual threads get one steer instead of silence; dry_run mode so apex-doctor Check #105 can grade the deployed brain on ten canned messages. Lane instagram_brain_answers pages Sam if a business DM waits 15 minutes. v_readymode_lead_pool (664 dialable old applicants, 75 already licensed) and v_agent_winback_pool (66 former agents) as CSV behind a feed key. 870 unapproved drafts older than 14 days archived, weekly from now on.",
     commit: "MP-308-W2-BRAIN-LANES",

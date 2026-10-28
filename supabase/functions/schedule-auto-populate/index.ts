@@ -10,6 +10,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { isBannedUser, isDepartedAgent } from "../_shared/departed.ts";
 import { type AgentRow, type Manager, managerForAgent, managerForApplication, type ProfileRow } from "./manager-resolve.ts";
+import { sendEmail } from "../_shared/email.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -467,30 +468,22 @@ async function sendManagerSummaries(eventsToEmail: PlannedEvent[], onlyManagerEm
         </body>
       </html>`;
 
-    let res: Response | null = null;
-    let errorText = "";
+    // sendEmail drops suppressed and non-routable recipients before Resend sees them.
+    let res: Awaited<ReturnType<typeof sendEmail>> = { ok: false, id: null, error: "send failed" };
     for (let attempt = 0; attempt < 2; attempt++) {
-      res = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${RESEND_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from: "Galaxy Schedule <notifications@apex-financial.org>",
-          to: [email],
-          subject: `Galaxy schedule auto-fill: ${events.length} item${events.length === 1 ? "" : "s"} added`,
-          html,
-        }),
+      res = await sendEmail({
+        from: "Galaxy Schedule <notifications@apex-financial.org>",
+        to: email,
+        subject: `Galaxy schedule auto-fill: ${events.length} item${events.length === 1 ? "" : "s"} added`,
+        html,
+        tagName: "schedule-auto-populate",
       });
-      if (res.ok) break;
-      errorText = await res.text();
-      if (res.status !== 429) break;
+      if (res.ok || res.refused || !/rate.?limit|429/i.test(res.error ?? "")) break;
       await sleep(1_200);
     }
 
-    if (res?.ok) sent++;
-    else errors.push({ email, error: errorText || "send failed" });
+    if (res.ok) sent++;
+    else errors.push({ email, error: res.refused ? `refused: ${res.refused}` : (res.error || "send failed") });
     await sleep(250);
   }
 

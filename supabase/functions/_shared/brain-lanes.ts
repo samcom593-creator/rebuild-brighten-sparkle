@@ -20,7 +20,7 @@ export const BOT_CHECK_RE =
 // A prospect who wants in but has no vocabulary for it yet ("i need help",
 // "how do u this all"). Recruit lane, not casual.
 export const NEED_HELP_RE =
-  /\b(i need help|need help (with|getting|making)|help me (out|make|get)|how (do|did|does|can) (u|you|he|sam) (do|get|make) (all )?(this|that|it|dis)|how (u|you) (do|doing) (all )?(this|dis|that)|how do u this|put me on|how do i get (on|in|started))\b/i;
+  /\b(i need help|need help (with|getting|making)|help me (out|make|get)|how (do|did|does|can) (u|you|he|sam) (do|get|make) (all )?(this|that|it|dis)|how (u|you) (do|doing) (all )?(this|dis|that)|how do u this|put me on|how do i get (on|in|started)|how (do|did|does|can|are|is) (u|you|he|sam|y'?all) (make|making|get|getting|pull|pulling) (a lot of |so much |that much |all that |this much |your |the |that |yo )?(money|bread|bag|bank|cash|racks|a bag)|(what|how) (do|did) (u|you) do for (money|work|a living)|teach me how to make money)\b/i;
 
 // A former agent asking to come back. "licensed" still wins when they say so
 // (classify checks LICENSED first); this catches the ones who only say "come back".

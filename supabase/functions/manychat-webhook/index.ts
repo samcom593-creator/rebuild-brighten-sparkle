@@ -1139,7 +1139,10 @@ Deno.serve(async (req) => {
   const botTok = Deno.env.get("APEX_BOT_TOKEN") ?? "";
   const bearerTok = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
   const secretOk = headerSecret === secret || bodySecret === secret;
-  if (!secretOk && !(dryRun && botTok && bearerTok === botTok)) {
+  // The bot token also admits REAL events (MP-307 wave 1, 2026-10-28): the TikTok Studio ingest runs on Sam's Mac,
+  // where the ManyChat secret does not live; the vault token is the same strength and already gates youtube-comments.
+  const botOk = !!botTok && bearerTok === botTok;
+  if (!secretOk && !botOk) {
     return new Response(JSON.stringify({ error: "forbidden" }), {
       status: 403,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

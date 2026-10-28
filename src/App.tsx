@@ -293,6 +293,7 @@ const BookReconciliation = lazy(() => import("./pages/BookReconciliation"));
 const BookFlips = lazy(() => import("./pages/BookFlips"));
 const SoldCalls = lazy(() => import("./pages/SoldCalls"));
 const EasyResells = lazy(() => import("./pages/EasyResells"));
+const CallTraining = lazy(() => import("./pages/CallTraining"));
 const AyroBook = lazy(() => import("./pages/AyroBook"));
 const SocialCommandCenter = lazy(() => import("./pages/SocialCommandCenter"));
 const ReadyModeIntegration = lazy(() => import("./pages/ReadyModeIntegration"));
@@ -855,6 +856,7 @@ const App = () => (
                            <Route path="/dashboard/books" element={<ProtectedRoute requireAdmin allowManagers><BookFlips /></ProtectedRoute>} />
                            <Route path="/dashboard/sold-calls" element={<ProtectedRoute requireAdmin allowManagers><SoldCalls /></ProtectedRoute>} />
                            <Route path="/dashboard/easy-resells" element={<ProtectedRoute requireAdmin allowManagers><EasyResells /></ProtectedRoute>} />
+                           <Route path="/dashboard/call-training" element={<ProtectedRoute requireAdmin allowManagers><CallTraining /></ProtectedRoute>} />
                            <Route path="/dashboard/ayro-book" element={<ProtectedRoute requireAdmin allowManagers><AyroBook /></ProtectedRoute>} />
                            {/* Social Command Center (MP-308): Sam + Aisha, same gate as Sold Calls (can_view_sold_calls in the RPC). */}
                            <Route path="/dashboard/social-command" element={<ProtectedRoute requireAdmin allowManagers><SocialCommandCenter /></ProtectedRoute>} />

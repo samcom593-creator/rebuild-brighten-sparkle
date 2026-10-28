@@ -197,6 +197,8 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
       { label: "Ayro Book", href: "/dashboard/ayro-book", icon: Building2, grant: "sold_calls" },
       // Admins and Aisha (can_view_sold_calls); she works in manager mode, so a mode list could not reach her.
       { label: "Sold Calls", href: "/dashboard/sold-calls", icon: PhoneCall, grant: "sold_calls" },
+      // Graded dialer calls for training (MP-310, 2026-10-28): the great calls and the objections turned. Same access as Sold Calls.
+      { label: "Call Training", href: "/dashboard/call-training", icon: GraduationCap, grant: "sold_calls" },
       { label: "My Commissions", href: "/dashboard/my-commissions", icon: WalletCards },
       { label: "Retention", href: "/dashboard/retention", icon: Shield },
     ],

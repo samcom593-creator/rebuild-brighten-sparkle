@@ -1,6 +1,4 @@
--- Mirrored 2026-10-28 from supabase_migrations.schema_migrations (applied via MCP by a parallel session; the file must exist
--- under the recorded version or `supabase db push` refuses every later migration: see apex_mcp_migrations_must_mirror).
--- MP-309 (2026-10-28, Sam: "match as much book of business to the transcriptions as possible, add filters like is this
+-- MP-310 (2026-10-28, Sam: "match as much book of business to the transcriptions as possible, add filters like is this
 -- policy active / inactive / do we not know, and find the great calls for training").
 -- 1. Match keys on dialer calls, trigger-maintained (upsert_readymode_dialer_calls lists its columns and
 --    fn_readymode_ingest populates the whole record, so a generated column would break the webhook path).
@@ -184,4 +182,3 @@ left join public.agents ag on ag.id = c.agent_id
 left join public.readymode_call_analysis a on a.call_id = c.id and a.model = 'grade-v1'
 where c.call_started_at > now() - interval '90 days' and c.disposition <> 'Not Available'
 group by 1, 2, 3;
-

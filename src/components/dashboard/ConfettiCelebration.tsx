@@ -23,6 +23,7 @@ const isIOSDevice = () => {
 };
 
 export function ConfettiCelebration({ trigger, onComplete }: ConfettiCelebrationProps) {
+  const completionRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasTriggeredRef = useRef(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const confettiInstanceRef = useRef<ReturnType<typeof confetti.create> | null>(null);
@@ -52,6 +53,8 @@ export function ConfettiCelebration({ trigger, onComplete }: ConfettiCelebration
     });
     
     return () => {
+      if (completionRef.current !== null) clearTimeout(completionRef.current);
+      confettiInstanceRef.current?.reset();
       // Cleanup on unmount
       if (canvasRef.current && document.body.contains(canvasRef.current)) {
         document.body.removeChild(canvasRef.current);
@@ -94,7 +97,7 @@ export function ConfettiCelebration({ trigger, onComplete }: ConfettiCelebration
     });
 
     // Callback after animation
-    setTimeout(() => {
+    completionRef.current = setTimeout(() => {
       onComplete?.();
     }, 1500);
   }, [onComplete]);
@@ -103,9 +106,10 @@ export function ConfettiCelebration({ trigger, onComplete }: ConfettiCelebration
     if (trigger && !hasTriggeredRef.current) {
       hasTriggeredRef.current = true;
       // Small delay to let React finish render cycle first
-      requestAnimationFrame(() => {
+      const frame = requestAnimationFrame(() => {
         fireConfetti();
       });
+      return () => cancelAnimationFrame(frame);
     } else if (!trigger) {
       hasTriggeredRef.current = false;
     }

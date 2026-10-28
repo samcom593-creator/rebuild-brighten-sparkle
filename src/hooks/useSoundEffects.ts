@@ -44,7 +44,8 @@ function audio(): AudioContext | null {
   if (!Ctor) return null;
   if (!context) context = new Ctor();
   // iOS suspends a context created outside a gesture; every call here is inside one.
-  if (context.state === "suspended") void context.resume();
+  // empty-catch-allow:browser-audio-denial-is-optional-feedback
+  if (context.state === "suspended") void context.resume().catch(() => undefined);
   return context;
 }
 
@@ -102,7 +103,8 @@ RECIPES.celebrate = RECIPES.fanfare;
 
 /** Play one sound if the person has sounds on. Safe to call anywhere; never throws. */
 export function playSoundEffect(kind: SoundType): void {
-  if (!isSoundEnabled()) return;
+  // A suspended or background context must never be woken by a subscription or load.
+  if (!isSoundEnabled() || typeof navigator === "undefined" || !navigator.userActivation?.isActive) return;
   try {
     const ctx = audio();
     if (!ctx) return;

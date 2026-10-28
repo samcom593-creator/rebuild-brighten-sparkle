@@ -25,6 +25,15 @@ describe("tone bubble and pill", () => {
 });
 
 describe("CountUp", () => {
+  it("keeps rapidly changing counts equal to the current list and never renders NaN", () => {
+    const { rerender } = render(<CountUp value={10} />);
+    rerender(<CountUp value={500} />);
+    expect(screen.getByText("500")).toBeInTheDocument();
+    rerender(<CountUp value={1} />);
+    expect(screen.getByText("1")).toBeInTheDocument();
+    rerender(<CountUp value={Number.NaN} />);
+    expect(screen.getByText("—")).toBeInTheDocument();
+  });
   it("shows the real number at once, and a dash when the number is unknown", () => {
     const { rerender } = render(<CountUp value={1234} />);
     expect(screen.getByText("1,234")).toBeInTheDocument();

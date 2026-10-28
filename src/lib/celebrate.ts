@@ -55,7 +55,10 @@ export const CELEBRATION_SOUND: Record<CelebrationKind, "pop" | "chime" | "fanfa
 
 export async function celebrate(kind: CelebrationKind, origin?: CelebrationOrigin): Promise<void> {
   playSoundEffect(CELEBRATION_SOUND[kind]);
-  if (prefersReducedMotion()) return;
+  // Saving outcomes is a high-frequency action. Keyboard and non-gesture actions
+  // keep their ordinary success receipt without decorative movement.
+  if (kind === "save" || prefersReducedMotion() || typeof navigator === "undefined" || !navigator.userActivation?.hasBeenActive) return;
+  if (typeof document !== "undefined" && document.activeElement?.matches(":focus-visible")) return;
   let confetti: typeof import("canvas-confetti").default;
   try {
     confetti = (await import("canvas-confetti")).default;

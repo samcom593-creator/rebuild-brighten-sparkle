@@ -59,7 +59,6 @@
   width: 46vmax;
   height: 46vmax;
   border-radius: 9999px;
-  will-change: transform;
   animation: apex-drift var(--drift-time, 36s) ease-in-out infinite alternate;
 }
 .apex-ambient > span:nth-child(1) {
@@ -102,23 +101,11 @@
   to   { opacity: 1; transform: none; }
 }
 .apex-rise {
-  animation: apex-rise 320ms var(--ease-standard, cubic-bezier(0.2, 0, 0, 1)) both;
+  animation: apex-rise 200ms var(--ease-standard, cubic-bezier(0.2, 0, 0, 1)) both;
   animation-delay: calc(var(--rise-i, 0) * 40ms);
 }
-.apex-rise-list > * {
-  animation: apex-rise 320ms var(--ease-standard, cubic-bezier(0.2, 0, 0, 1)) both;
-}
-.apex-rise-list > :nth-child(1)  { animation-delay: 0ms; }
-.apex-rise-list > :nth-child(2)  { animation-delay: 40ms; }
-.apex-rise-list > :nth-child(3)  { animation-delay: 80ms; }
-.apex-rise-list > :nth-child(4)  { animation-delay: 120ms; }
-.apex-rise-list > :nth-child(5)  { animation-delay: 160ms; }
-.apex-rise-list > :nth-child(6)  { animation-delay: 200ms; }
-.apex-rise-list > :nth-child(7)  { animation-delay: 240ms; }
-.apex-rise-list > :nth-child(8)  { animation-delay: 280ms; }
-.apex-rise-list > :nth-child(9)  { animation-delay: 320ms; }
-.apex-rise-list > :nth-child(10) { animation-delay: 360ms; }
-.apex-rise-list > :nth-child(n + 11) { animation-delay: 400ms; }
+/* Lists change during search, keyboard navigation and frequent queue switches.
+   Keep their rows still; the surrounding page already supplies the arrival cue. */
 
 /* ── Pops and bumps: a number or bubble that just arrived or just changed ──────────────── */
 @keyframes apex-pop {
@@ -133,12 +120,12 @@
   35%  { transform: scale(1.14); }
   100% { transform: scale(1); }
 }
-.apex-bump { animation: apex-bump 360ms var(--ease-emphasized, cubic-bezier(0.3, 0, 0.1, 1)); }
+.apex-bump { animation: apex-bump 200ms var(--ease-emphasized, cubic-bezier(0.3, 0, 0.1, 1)); }
 
 /* A live indicator may breathe: this is a state, not decoration. */
 @keyframes apex-breathe {
-  0%, 100% { box-shadow: 0 0 0 0 hsl(var(--tone-good) / 0.45); }
-  70%      { box-shadow: 0 0 0 7px hsl(var(--tone-good) / 0); }
+  0%, 100% { opacity: 1; }
+  70%      { opacity: 0.65; }
 }
 .apex-breathe { animation: apex-breathe 1.8s ease-out infinite; }
 
@@ -148,7 +135,7 @@
               background-color 160ms var(--ease-standard, cubic-bezier(0.2, 0, 0, 1)),
               border-color 160ms var(--ease-standard, cubic-bezier(0.2, 0, 0, 1));
 }
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .apex-lift:hover { transform: translateY(-1px); }
 }
 

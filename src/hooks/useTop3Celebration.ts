@@ -1,5 +1,4 @@
 import { useRef, useCallback } from "react";
-import { useSoundEffects } from "./useSoundEffects";
 
 interface UseTop3CelebrationOptions {
   currentAgentId?: string;
@@ -11,7 +10,6 @@ interface UseTop3CelebrationOptions {
  */
 export function useTop3Celebration({ currentAgentId }: UseTop3CelebrationOptions) {
   const previousRankRef = useRef<number | null>(null);
-  const { playSound } = useSoundEffects();
 
   const checkForCelebration = useCallback(
     (currentRank: number | null): boolean => {
@@ -31,14 +29,12 @@ export function useTop3Celebration({ currentAgentId }: UseTop3CelebrationOptions
       previousRankRef.current = currentRank;
 
       if (shouldCelebrate) {
-        // Play celebration sound
-        playSound("celebrate");
         return true;
       }
 
       return false;
     },
-    [currentAgentId, playSound]
+    [currentAgentId]
   );
 
   const resetTracking = useCallback(() => {

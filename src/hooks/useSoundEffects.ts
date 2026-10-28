@@ -101,10 +101,23 @@ const RECIPES: Record<SoundType, Note[]> = {
 };
 RECIPES.celebrate = RECIPES.fanfare;
 
+/**
+ * True while the page has never had a tap, click or key press. Nothing may sound then: not on
+ * load, not after a refetch, not from an effect. Without this, a note scheduled on a context
+ * the browser keeps suspended would wait and play at the person's first unrelated tap. Browsers
+ * without navigator.userActivation answer false and rely on the callers, which all fire from a
+ * completed action.
+ */
+function pageUntouched(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const activation = (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation;
+  return activation ? !activation.hasBeenActive : false;
+}
+
 /** Play one sound if the person has sounds on. Safe to call anywhere; never throws. */
 export function playSoundEffect(kind: SoundType): void {
-  // A suspended or background context must never be woken by a subscription or load.
-  if (!isSoundEnabled() || typeof navigator === "undefined" || !navigator.userActivation?.isActive) return;
+  if (!isSoundEnabled()) return;
+  if (pageUntouched()) return;
   try {
     const ctx = audio();
     if (!ctx) return;

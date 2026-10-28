@@ -4,8 +4,18 @@ import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
 
+// Press feedback (motion review, 2026-10-28): every pressable scales to 0.97 on :active over
+// 120ms on a strong ease-out, so the button answers the finger on pointer-down, before the
+// click lands. The properties are named one by one (never `all`), the scale is skipped under
+// prefers-reduced-motion (the brightness dip stays as the press signal), and the transition
+// runs on transform and paint-only properties, so nothing here reflows the page.
+//
+// The duration and the curve are arbitrary properties, not `duration-[140ms]` / `ease-[...]`:
+// with tailwindcss-animate installed this config does not emit those two arbitrary utilities
+// (checked with the Tailwind CLI), so the shipped `duration-[140ms]` had always fallen back to
+// the 150ms default. `[transition-duration:…]` compiles under every config, the landing one too.
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-[background,box-shadow,filter] duration-[140ms] focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)] disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-[background-color,box-shadow,filter,transform] [transition-duration:120ms] [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)] disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {

@@ -35,7 +35,8 @@ export interface ScoreTile {
  *
  * Colour layer (2026-10-28): each tile carries a tone (src/lib/tones.ts) that colours its
  * icon bubble and its selected state; the number counts up when it changes; the four tiles
- * rise in one after the other on first paint.
+ * rise in one after the other on first paint (240ms each, 30ms apart) and a tile that is a
+ * button presses in (scale 0.98, 120ms) so it answers the finger before its list changes.
  */
 export function GrowScoreboard({ label, tiles, notice, className }: { label: string; tiles: ScoreTile[]; notice?: ReactNode; className?: string }) {
   return (
@@ -76,7 +77,10 @@ export function GrowScoreboard({ label, tiles, notice, className }: { label: str
             onClick={t.onSelect}
             className={cn(
               base,
-              "apex-lift transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
+              // apex-lift (src/styles/delight.css) owns the tile's motion: a 1px lift for a real pointer,
+              // scale(0.98) on press, and the background and border colour transitions, so there is no
+              // second transition utility to disagree with it.
+              "apex-lift hover:bg-muted/40 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
               t.active && TONE_CLASS[tone].activeTile,
             )}
           >

@@ -45,6 +45,7 @@ const EXEMPT = new Map([
   ["src/pages/AssistantInterviewForm.tsx", "write: submits an interview, returns a status"],
   ["src/pages/admin/IntegrationsSettings.tsx", "operator SQL console; showing real rows IS the feature"],
   ["src/pages/SharePage.tsx", "public share token page; content library, not the book"],
+  ["src/pages/InstagramInbox.tsx", "builds the instagram-auth reconnect link (an OAuth redirect); never reads a body"],
 ]);
 
 const files = execSync(

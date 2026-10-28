@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { AlertTriangle, ChevronDown, ChevronRight, Columns3, List, Phone, RefreshCw, Search, SlidersHorizontal, Table2, X } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronLeft, ChevronRight, Columns3, List, Phone, RefreshCw, Search, SlidersHorizontal, Table2, X } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ import {
   personFromParams,
   queueFromLegacyParams,
   sortForQueue,
+  TILE_QUEUE_KEYS,
   type QueueDefinition,
   type QueueKey,
   type WorklistRow,
@@ -252,7 +253,7 @@ export function RecruitingWorklist() {
           <AlertTriangle className="h-4 w-4" /> The recruiting worklist could not load.
         </p>
         <p className="mt-1 text-muted-foreground">{errorMessage(worklist.error)}</p>
-        <Button className="mt-3" variant="outline" size="sm" onClick={() => worklist.refetch()}>
+        <Button className="mt-3 h-11" variant="outline" onClick={() => worklist.refetch()}>
           <RefreshCw className="h-4 w-4" /> Try again
         </Button>
       </div>
@@ -272,11 +273,15 @@ export function RecruitingWorklist() {
   // the compact rows, and the List toggle says so.
   const worklistOn = layout === "split" || layout === "stack";
   const primaryQueues = QUEUE_DEFINITIONS.filter((q) => PRIMARY_QUEUE_KEYS.includes(q.key));
-  const secondaryQueues = QUEUE_DEFINITIONS.filter((q) => !PRIMARY_QUEUE_KEYS.includes(q.key));
+  // Each list has one entry point: the tile lists (Call today, New, Worked today, Booked) open
+  // from Today's numbers and are not repeated here.
+  const secondaryQueues = QUEUE_DEFINITIONS.filter((q) => !PRIMARY_QUEUE_KEYS.includes(q.key) && !TILE_QUEUE_KEYS.includes(q.key));
+  const secondaryChosen = secondaryQueues.some((q) => q.key === queue);
   // The secondary lists stay open while one of them is chosen, so the selection is never hidden.
-  const secondaryOpen = moreListsOpen || !PRIMARY_QUEUE_KEYS.includes(queue);
+  const secondaryOpen = moreListsOpen || secondaryChosen;
   const pickQueue = (key: QueueKey) => setParam({ queue: key, person: null });
-  const board = computeScoreboard(rows, ctx, counts);
+  const board = computeScoreboard(counts);
+  const definitionOf = (key: QueueKey) => QUEUE_DEFINITIONS.find((q) => q.key === key)?.description;
   const licenseLabel = LICENSE_FILTERS.find((f) => f.value === license)?.label ?? license;
   // F29: the loaded rows are compared with the eligible count on every render, so an
   // incomplete load is a visible warning, not a clause inside a paragraph.
@@ -320,7 +325,7 @@ export function RecruitingWorklist() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Recruiting"
+        title="Call list"
         subtitle="Call people, record what happened, set the next step."
         primaryAction={!panelInline && filtered.length > 0 ? (
           <Button size="lg" className="h-12 text-base" onClick={() => selectPerson(filtered[0].id)}>
@@ -345,7 +350,7 @@ export function RecruitingWorklist() {
             <AlertTriangle className="h-4 w-4 shrink-0" />
             Showing records loaded {formatWhen(worklist.data.loadedAt)}. The latest reload failed: {errorMessage(worklist.error)}
           </p>
-          <Button size="sm" variant="outline" className="shrink-0" onClick={() => void worklist.refetch()}>
+          <Button variant="outline" className="h-11 shrink-0" onClick={() => void worklist.refetch()}>
             <RefreshCw className="h-4 w-4" /> Retry
           </Button>
         </div>
@@ -359,7 +364,7 @@ export function RecruitingWorklist() {
           <p className="flex items-center gap-2 font-semibold">
             <AlertTriangle className="h-4 w-4 shrink-0" /> {warning}
           </p>
-          <Button size="sm" variant="outline" className="shrink-0" onClick={() => void worklist.refetch()}>
+          <Button variant="outline" className="h-11 shrink-0" onClick={() => void worklist.refetch()}>
             <RefreshCw className="h-4 w-4" /> Reload
           </Button>
         </div>
@@ -375,20 +380,23 @@ export function RecruitingWorklist() {
                 ? "Today's numbers are hidden because the record counts could not be checked."
                 : "Today's numbers are hidden until every eligible record is loaded."}
             </span>
-            <Button size="sm" variant="outline" className="shrink-0" onClick={() => void worklist.refetch()}>
+            <Button variant="outline" className="h-11 shrink-0" onClick={() => void worklist.refetch()}>
               <RefreshCw className="h-4 w-4" /> Reload
             </Button>
           </>
         )}
         tiles={[
-          { label: "Call today", value: score(board.callToday), hint: "Due today or late", definition: QUEUE_DEFINITIONS.find((q) => q.key === "today")?.description, onSelect: () => pickQueue("today"), active: queue === "today", emphasis: true },
-          { label: "New", value: score(board.newThisWeek), hint: "Applied this week, not yet worked", definition: QUEUE_DEFINITIONS.find((q) => q.key === "new")?.description, onSelect: () => pickQueue("new"), active: queue === "new" },
-          { label: "Worked today", value: score(board.workedToday), hint: "People with an outcome saved today", definition: "People whose latest outcome was saved today (Phoenix day), including no answers and people who said no" },
-          { label: "Booked", value: score(board.booked), hint: "Open, appointment booked", definition: "Open recruits whose latest outcome is Appointment booked" },
+          // Hints are measured to two lines on a 390px phone (about ten characters a line); the full
+          // rule is the tile's title and the "List rule" line under Data status.
+          { label: "Call today", value: score(board.callToday), hint: "Due today or late", definition: definitionOf("today"), onSelect: () => pickQueue("today"), active: queue === "today", emphasis: true },
+          { label: "New", value: score(board.newThisWeek), hint: "Not yet worked", definition: definitionOf("new"), onSelect: () => pickQueue("new"), active: queue === "new" },
+          { label: "Worked today", value: score(board.workedToday), hint: "Outcome saved", definition: definitionOf("worked_today"), onSelect: () => pickQueue("worked_today"), active: queue === "worked_today" },
+          { label: "Booked", value: score(board.booked), hint: "Meeting booked", definition: definitionOf("booked"), onSelect: () => pickQueue("booked"), active: queue === "booked" },
         ]}
       />
 
-      {/* Lists — counts are over every row loaded, not a page. Four big ones; the rest one tap away. */}
+      {/* Lists — counts are over every row loaded, not a page. Two big ones (the tiles above open
+          four more); the rest one tap away. */}
       <nav aria-label="Saved queues">
         {isWide ? (
           <div className="space-y-2">
@@ -400,8 +408,8 @@ export function RecruitingWorklist() {
                 type="button"
                 aria-expanded={secondaryOpen}
                 // While one of these lists is chosen they stay open, so the choice is never hidden.
-                disabled={!PRIMARY_QUEUE_KEYS.includes(queue)}
-                title={!PRIMARY_QUEUE_KEYS.includes(queue) ? "Pick one of the four lists to fold these away" : undefined}
+                disabled={secondaryChosen}
+                title={secondaryChosen ? "Pick another list to fold these away" : undefined}
                 onClick={() => setMoreListsOpen((open) => !open)}
                 className={cn(
                   "inline-flex h-12 items-center gap-2 rounded-lg px-4 text-base font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)] disabled:cursor-default disabled:hover:bg-transparent",
@@ -449,28 +457,29 @@ export function RecruitingWorklist() {
           />
         </div>
         {layout === "table" && <WorklistColumnChooser columns={tableColumns} onChange={setTableColumns} />}
+        {/* Same name as the Pipeline and New hires pages: "Filters" holds the view and the license filter. */}
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" className="h-12 shrink-0 border-border bg-card px-4 text-base">
-              <SlidersHorizontal className="h-5 w-5" /> More
+            <Button variant="outline" className="h-12 shrink-0 border-border bg-card px-4 text-base" aria-label="Filters">
+              <SlidersHorizontal className="h-5 w-5" /> Filters
             </Button>
           </PopoverTrigger>
           <PopoverContent align="end" className="w-80 space-y-5 p-4">
             <fieldset>
               <legend className="mb-2 text-sm font-semibold text-foreground">Show as</legend>
               <div className="flex flex-wrap gap-1.5">
-                <Button size="sm" className="h-10" variant={worklistOn ? "secondary" : "ghost"} aria-pressed={worklistOn} onClick={() => setParam({ view: null })}>
+                <Button className="h-11 px-3" variant={worklistOn ? "secondary" : "ghost"} aria-pressed={worklistOn} onClick={() => setParam({ view: null })}>
                   <List className="h-4 w-4" /> List
                 </Button>
                 {/* The table needs 1024px, so its toggle exists only where it can render. It is a
                     full-width view with the person in a sheet, so the selection is cleared on the
                     way in; otherwise the sheet would open over the table on the first render. */}
                 {isWide && (
-                  <Button size="sm" className="h-10" variant={layout === "table" ? "secondary" : "ghost"} aria-pressed={layout === "table"} onClick={() => setParam({ view: "table", person: null })}>
+                  <Button className="h-11 px-3" variant={layout === "table" ? "secondary" : "ghost"} aria-pressed={layout === "table"} onClick={() => setParam({ view: "table", person: null })}>
                     <Table2 className="h-4 w-4" /> Table
                   </Button>
                 )}
-                <Button size="sm" className="h-10" variant={layout === "board" ? "secondary" : "ghost"} aria-pressed={layout === "board"} onClick={() => setParam({ view: "board" })}>
+                <Button className="h-11 px-3" variant={layout === "board" ? "secondary" : "ghost"} aria-pressed={layout === "board"} onClick={() => setParam({ view: "board" })}>
                   <Columns3 className="h-4 w-4" /> Board
                 </Button>
               </div>
@@ -481,8 +490,7 @@ export function RecruitingWorklist() {
                 {LICENSE_FILTERS.map((f) => (
                   <Button
                     key={f.value}
-                    size="sm"
-                    className="h-10"
+                    className="h-11 px-3"
                     variant={license === f.value ? "secondary" : "ghost"}
                     aria-pressed={license === f.value}
                     onClick={() => setParam({ license: f.value === "all" ? null : f.value })}
@@ -492,7 +500,7 @@ export function RecruitingWorklist() {
                 ))}
               </div>
             </fieldset>
-            <Link to="/dashboard/recruiting?view=classic" className="block text-sm font-medium text-primary underline-offset-2 hover:underline">
+            <Link to="/dashboard/recruiting?view=classic" className="inline-flex min-h-11 items-center text-sm font-medium text-primary underline-offset-2 hover:underline">
               Classic applicants view
             </Link>
           </PopoverContent>
@@ -561,16 +569,25 @@ export function RecruitingWorklist() {
         </div>
 
         {panelInline ? (
-          <aside aria-label="Selected person" className="sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto rounded-xl border border-border bg-card p-5">
+          // No bottom padding: the panel's sticky save row sits flush with the container's edge
+          // (the panel pads its own bottom).
+          <aside aria-label="Selected person" className="sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto rounded-xl border border-border bg-card px-5 pt-5">
             {panel}
           </aside>
         ) : (
           <Sheet open={Boolean(selectedId)} onOpenChange={(open) => { if (!open) setParam({ person: null }); }}>
-            <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-lg">
+            {/* bg-card and px-5 match the inline panel, so the buttons inside read the same on both
+                surfaces and the sticky save row (which bleeds into the side padding) lines up. No
+                bottom padding, for the same reason as the aside. */}
+            <SheetContent side="right" className="w-full overflow-y-auto bg-card px-5 pt-5 pb-0 sm:max-w-lg">
               <SheetHeader className="sr-only">
                 <SheetTitle>{selected ? fullName(selected) : "Person"}</SheetTitle>
                 <SheetDescription>Contact, record the outcome and set the next step.</SheetDescription>
               </SheetHeader>
+              {/* The sheet fills a phone screen, so the way back is a real button with words, not only the corner X. */}
+              <Button type="button" variant="ghost" className="-ml-2 mb-4 h-11 px-2 text-base" onClick={() => setParam({ person: null })}>
+                <ChevronLeft className="h-5 w-5" /> Back to list
+              </Button>
               {panel}
             </SheetContent>
           </Sheet>
@@ -595,7 +612,7 @@ export function RecruitingWorklist() {
           </dl>
           <p>“Today” is the Phoenix business day. Loaded {formatWhen(worklist.data?.loadedAt)}.</p>
           {coverage.kind === "unknown" && (
-            <Button size="sm" variant="outline" onClick={() => void worklist.refetch()}>
+            <Button variant="outline" className="h-11" onClick={() => void worklist.refetch()}>
               <RefreshCw className="h-4 w-4" /> Retry the counts
             </Button>
           )}
@@ -640,20 +657,19 @@ function QueueButton({ def, count, active, onPick, compact }: {
   );
 }
 
-/** An active filter, visible and removable in one tap, so hidden state never surprises anyone. */
+/** An active filter, visible and removable in one tap, so hidden state never surprises anyone.
+ *  The whole chip is the button (44px tall), so the tap target is never a 24px cross. */
 function FilterChip({ label, onClear }: { label: string; onClear: () => void }) {
   return (
-    <span className="inline-flex h-8 items-center gap-1 rounded-full border border-primary/40 bg-primary/10 pl-3 pr-1 text-[13px] font-medium text-foreground">
+    <button
+      type="button"
+      onClick={onClear}
+      aria-label={`Clear ${label}`}
+      className="inline-flex h-11 items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 pl-4 pr-3 text-sm font-medium text-foreground transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
+    >
       {label}
-      <button
-        type="button"
-        onClick={onClear}
-        aria-label={`Clear ${label}`}
-        className="grid h-6 w-6 place-items-center rounded-full hover:bg-primary/20 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
-      >
-        <X className="h-3.5 w-3.5" />
-      </button>
-    </span>
+      <X aria-hidden="true" className="h-4 w-4" />
+    </button>
   );
 }
 

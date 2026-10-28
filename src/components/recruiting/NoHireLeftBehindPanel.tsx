@@ -43,12 +43,12 @@ export function NoHireLeftBehindPanel() {
             <UserCheck className="h-5 w-5 text-primary" />No Hire Left Behind
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Live Milver + VA handoff queue.{" "}
+            New hires with an open onboarding step.{" "}
             {facts.isError
               ? "The queue could not load. Open it to retry."
               : facts.isLoading
-              ? "New hires with an open onboarding step, most urgent first."
-              : `${queue.length} hires with open steps · ${blocking} blocked from writing business.`}
+              ? "Counting them now."
+              : `${queue.length} ${queue.length === 1 ? "hire" : "hires"} with open steps · ${blocking} blocked from writing business.`}
           </p>
         </div>
         <div className="flex shrink-0 gap-2">

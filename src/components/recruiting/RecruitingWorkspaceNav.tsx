@@ -14,13 +14,17 @@ const WORKSPACE_VIEWS = [
   { label: trainingLabel, detail: "Ramp to field", href: "/dashboard/recruiting/training", icon: BookOpenCheck },
 ] as const;
 
-/** One URL-addressable recruiting journey; no second product or sidebar island. */
+/**
+ * One URL-addressable recruiting journey; no second product or sidebar island. On a
+ * phone the five tabs wrap onto two rows: a sideways-scrolling strip cut "Calendar" to
+ * "C" with no sign that anything was there. From sm up they sit on one row.
+ */
 export function RecruitingWorkspaceNav() {
   const { pathname } = useLocation();
 
   return (
-    <nav aria-label="Recruiting workspace" className="overflow-x-auto border-b border-border">
-      <div className="flex min-w-max gap-1">
+    <nav aria-label="Recruiting workspace" className="border-b border-border sm:overflow-x-auto">
+      <div className="flex flex-wrap gap-1 sm:min-w-max sm:flex-nowrap">
         {WORKSPACE_VIEWS.map((view) => {
           // Interviews and follow-ups are no longer separate destinations: interviews are booked
           // from Calendar and the worklist, follow-ups are the worklist's due and overdue queues.

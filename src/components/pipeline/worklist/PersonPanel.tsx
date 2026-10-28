@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { AlertTriangle, ChevronRight, Clock, Loader2, Mail, MessageSquare, Phone, UserPlus } from "lucide-react";
+import { AlertTriangle, ChevronRight, Clock, Loader2, Mail, MessageSquare, Pencil, Phone, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -69,6 +69,9 @@ function actorName(actorId: string | null, staff: StaffMember[]): string {
   return staff.find((s) => s.user_id === actorId)?.display_name ?? "Another user";
 }
 
+/** Tomorrow at 10:00 in the viewer's clock: the quick pick, and the time a suggested follow-up starts with. */
+const tomorrowTen = (now: Date): Date => { const d = new Date(now); d.setDate(d.getDate() + 1); d.setHours(10, 0, 0, 0); return d; };
+
 /**
  * Quick picks for the next step, in the viewer's own clock (the field is labelled
  * "your time"). Each returns a datetime-local value, so the field below shows exactly
@@ -76,10 +79,17 @@ function actorName(actorId: string | null, staff: StaffMember[]): string {
  */
 const QUICK_PICKS: Array<{ label: string; at: (now: Date) => Date }> = [
   { label: "In 2 hours", at: (now) => new Date(now.getTime() + 2 * 60 * 60 * 1000) },
-  { label: "Tomorrow 10 AM", at: (now) => { const d = new Date(now); d.setDate(d.getDate() + 1); d.setHours(10, 0, 0, 0); return d; } },
+  { label: "Tomorrow 10 AM", at: tomorrowTen },
   { label: "In 3 days", at: (now) => { const d = new Date(now); d.setDate(d.getDate() + 3); d.setHours(10, 0, 0, 0); return d; } },
   { label: "Next week", at: (now) => { const d = new Date(now); d.setDate(d.getDate() + 7); d.setHours(10, 0, 0, 0); return d; } },
 ];
+
+/**
+ * The panel sits on a card. The outline variant is transparent with the input border,
+ * which in light mode is within one lightness step of the card, so the buttons read as
+ * a list of words. A page-background fill and the border token raise them on both themes.
+ */
+const RAISED = "border-border bg-background";
 
 /** A labelled fold: the header shows the current value, so most people never need to open it. */
 function Fold({ title, value, children, tone }: { title: string; value?: ReactNode; children: ReactNode; tone?: "warning" }) {
@@ -105,6 +115,8 @@ export function PersonPanel({ row, userId, backendReady, canAssign, staff, staff
   const [planOnly, setPlanOnly] = useState(false);
   // "Do not contact" stops all outreach and only an admin can undo it, so it takes a second tap.
   const [confirmingDnc, setConfirmingDnc] = useState(false);
+  // The channel is one line ("Reached by Call · Change") until someone asks to change it.
+  const [channelOpen, setChannelOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [zoneChoice, setZoneChoice] = useState<string>("");
   const { recordOutcome, setPlan } = useWorklistMutations();
@@ -139,9 +151,17 @@ export function PersonPanel({ row, userId, backendReady, canAssign, staff, staff
     const def = outcomeDefinition(value);
     const patch: Partial<OutcomeDraft> = { outcome: value };
     if (def?.suggestedAction && !draft.nextAction.trim()) patch.nextAction = def.suggestedAction;
+    // A suggested follow-up ("Try again") gets a suggested time too, the same value as the
+    // "Tomorrow 10 AM" quick pick and just as editable, so "No answer" saves in one tap.
+    // Outcomes whose time the person named (a callback, an appointment) stay blank: guessing
+    // their time would write a false record.
+    if (def?.suggestedAction && !def.closes && !def.requiresDatedAction && !draft.nextActionDue) {
+      patch.nextActionDue = isoToLocalInput(tomorrowTen(new Date()).toISOString());
+    }
     if (def?.requiresDatedAction) setPlanMode("action");
     setPlanOnly(false);
     setConfirmingDnc(false);
+    setChannelOpen(false);
     update(patch);
   };
 
@@ -290,7 +310,9 @@ export function PersonPanel({ row, userId, backendReady, canAssign, staff, staff
   ].filter(Boolean).join(" · ");
 
   return (
-    <div className="flex h-full flex-col gap-6">
+    // pb-5: the panel owns its bottom padding so the containers (the aside and the sheet) can
+    // end flush with the sticky save row. See the note on that row.
+    <div className="flex h-full flex-col gap-6 pb-5">
       {/* Who */}
       <header className="space-y-2">
         <div className="flex items-start justify-between gap-3">
@@ -325,35 +347,35 @@ export function PersonPanel({ row, userId, backendReady, canAssign, staff, staff
       <section aria-label="Contact" className="space-y-2">
         <div className="grid grid-cols-3 gap-2">
           {callHref ? (
-            <Button asChild variant={callVariant} className="h-12 text-base" onClick={() => noteChannel("call")}>
+            <Button asChild variant={callVariant} className={cn("h-12 text-base", callVariant === "outline" && RAISED)} onClick={() => noteChannel("call")}>
               <a href={callHref} {...contactLinkProps(callHref)} aria-label={`Call ${fullName(row)}`}>
                 <Phone className="h-5 w-5" /> Call
               </a>
             </Button>
           ) : (
-            <Button variant="outline" className="h-12 text-base" disabled title={availability.call.reason ?? undefined} aria-label="Call unavailable">
+            <Button variant="outline" className={cn("h-12 text-base", RAISED)} disabled title={availability.call.reason ?? undefined} aria-label="Call unavailable">
               <Phone className="h-5 w-5" /> Call
             </Button>
           )}
           {textHref ? (
-            <Button asChild variant="outline" className="h-12 text-base" onClick={() => noteChannel("sms")}>
+            <Button asChild variant="outline" className={cn("h-12 text-base", RAISED)} onClick={() => noteChannel("sms")}>
               <a href={textHref} {...contactLinkProps(textHref)} aria-label={`Text ${fullName(row)}`}>
                 <MessageSquare className="h-5 w-5" /> Text
               </a>
             </Button>
           ) : (
-            <Button variant="outline" className="h-12 text-base" disabled title={availability.sms.reason ?? undefined} aria-label="Text unavailable">
+            <Button variant="outline" className={cn("h-12 text-base", RAISED)} disabled title={availability.sms.reason ?? undefined} aria-label="Text unavailable">
               <MessageSquare className="h-5 w-5" /> Text
             </Button>
           )}
           {emailHref ? (
-            <Button asChild variant="outline" className="h-12 text-base" onClick={() => noteChannel("email")}>
+            <Button asChild variant="outline" className={cn("h-12 text-base", RAISED)} onClick={() => noteChannel("email")}>
               <a href={emailHref} aria-label={`Email ${fullName(row)}`}>
                 <Mail className="h-5 w-5" /> Email
               </a>
             </Button>
           ) : (
-            <Button variant="outline" className="h-12 text-base" disabled title={availability.email.reason ?? undefined} aria-label="Email unavailable">
+            <Button variant="outline" className={cn("h-12 text-base", RAISED)} disabled title={availability.email.reason ?? undefined} aria-label="Email unavailable">
               <Mail className="h-5 w-5" /> Email
             </Button>
           )}
@@ -387,7 +409,7 @@ export function PersonPanel({ row, userId, backendReady, canAssign, staff, staff
                 title={def.hint}
                 className={cn(
                   "h-12 justify-start text-base",
-                  draft.outcome === def.value && "border-primary/60 bg-primary/15 text-foreground hover:bg-primary/20",
+                  draft.outcome === def.value ? "border border-primary/60 bg-primary/15 text-foreground hover:bg-primary/20" : RAISED,
                 )}
                 onClick={() => pickOutcome(def.value)}
               >
@@ -395,11 +417,15 @@ export function PersonPanel({ row, userId, backendReady, canAssign, staff, staff
               </Button>
             ))}
           </div>
+          {/* What the chosen outcome does, in words under the buttons; the title tooltip alone needs a mouse. */}
+          {selectedDef && draft.outcome !== "do_not_contact" && (
+            <p className="mt-2 text-sm text-muted-foreground">{selectedDef.label}: {selectedDef.hint}.</p>
+          )}
 
           {draft.outcome === "do_not_contact" ? (
             <p className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
               <span>Do not contact is selected. Saving stops all outreach.</span>
-              <Button type="button" variant="ghost" size="sm" onClick={() => update({ outcome: null })}>Undo</Button>
+              <Button type="button" variant="ghost" className="h-11" onClick={() => update({ outcome: null })}>Undo</Button>
             </p>
           ) : confirmingDnc ? (
             <div role="group" aria-label="Confirm do not contact" className="mt-3 space-y-3 rounded-lg border border-destructive/40 bg-destructive/5 p-4">
@@ -407,8 +433,8 @@ export function PersonPanel({ row, userId, backendReady, canAssign, staff, staff
                 Stop all calls, texts and emails to {fullName(row)}? This includes automated email, and only an admin can undo it.
               </p>
               <div className="flex flex-wrap gap-2">
-                <Button type="button" variant="destructive" onClick={() => pickOutcome("do_not_contact")}>Yes, do not contact</Button>
-                <Button type="button" variant="ghost" onClick={() => setConfirmingDnc(false)}>Cancel</Button>
+                <Button type="button" variant="destructive" className="h-11" onClick={() => pickOutcome("do_not_contact")}>Yes, do not contact</Button>
+                <Button type="button" variant="ghost" className="h-11" onClick={() => setConfirmingDnc(false)}>Cancel</Button>
               </div>
             </div>
           ) : (
@@ -425,29 +451,47 @@ export function PersonPanel({ row, userId, backendReady, canAssign, staff, staff
 
         {showPlan && (
           <div className="space-y-5 border-t border-border pt-5">
+            {/* The channel defaults to the button they tapped (Call, Text, Email) and stays one
+                line; the five chips only appear when someone asks to change it. */}
             {draft.outcome && (
-              <div>
-                <p className="text-sm font-medium text-foreground">How did you reach them?</p>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {CONTACT_CHANNELS.map((ch) => {
-                    const allowed = draft.outcome === "do_not_contact" || availability[ch].allowed;
-                    return (
-                      <Button
-                        key={ch}
-                        type="button"
-                        variant={draft.channel === ch ? "secondary" : "ghost"}
-                        aria-pressed={draft.channel === ch}
-                        disabled={!allowed}
-                        title={allowed ? undefined : availability[ch].reason ?? undefined}
-                        className="h-11 px-4 text-sm"
-                        onClick={() => update({ channel: ch })}
-                      >
-                        {CHANNEL_LABELS[ch]}
-                      </Button>
-                    );
-                  })}
+              channelOpen ? (
+                <div>
+                  <p id={`channel-${row.id}`} className="text-sm font-medium text-foreground">How did you reach them?</p>
+                  <div role="group" aria-labelledby={`channel-${row.id}`} className="mt-2 flex flex-wrap gap-1.5">
+                    {CONTACT_CHANNELS.map((ch) => {
+                      const allowed = draft.outcome === "do_not_contact" || availability[ch].allowed;
+                      return (
+                        <Button
+                          key={ch}
+                          type="button"
+                          variant={draft.channel === ch ? "secondary" : "outline"}
+                          aria-pressed={draft.channel === ch}
+                          disabled={!allowed}
+                          title={allowed ? undefined : availability[ch].reason ?? undefined}
+                          className={cn("h-11 px-4 text-sm", draft.channel !== ch && RAISED)}
+                          onClick={() => { update({ channel: ch }); setChannelOpen(false); }}
+                        >
+                          {CHANNEL_LABELS[ch]}
+                        </Button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="flex flex-wrap items-center gap-x-2 text-sm text-foreground">
+                  <span>Reached by {CHANNEL_LABELS[draft.channel]}</span>
+                  <span aria-hidden="true">·</span>
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="h-11 px-0 text-sm"
+                    aria-label={`Change how you reached them (now ${CHANNEL_LABELS[draft.channel]})`}
+                    onClick={() => setChannelOpen(true)}
+                  >
+                    <Pencil className="h-4 w-4" /> Change
+                  </Button>
+                </div>
+              )
             )}
 
             {!closes && (
@@ -471,7 +515,7 @@ export function PersonPanel({ row, userId, backendReady, canAssign, staff, staff
                 )}
                 <div className="flex flex-wrap gap-1.5" role="group" aria-label="Pick a time">
                   {QUICK_PICKS.map((p) => (
-                    <Button key={p.label} type="button" variant="outline" className="h-11 px-3.5 text-sm" onClick={() => pickTime(p.at(new Date()))}>
+                    <Button key={p.label} type="button" variant="outline" className={cn("h-11 px-3.5 text-sm", RAISED)} onClick={() => pickTime(p.at(new Date()))}>
                       {p.label}
                     </Button>
                   ))}
@@ -518,19 +562,26 @@ export function PersonPanel({ row, userId, backendReady, canAssign, staff, staff
               </p>
             )}
 
+            {/* The save row sticks to the bottom of the panel's scroll (and the sheet's), so on a
+                900px laptop or a phone it is never below the fold once an outcome is picked. The
+                negative side margins let it span the container's px-5 on the card colour; the
+                containers carry no bottom padding (this panel does, see the root), because the
+                browser pins bottom-0 to the scroller's content edge and a padded bottom left a
+                20px strip of scrolled text showing under the row. sm:flex-1, not flex-1: in the
+                stacked phone layout a flex-basis of 0 shrank the gold button below its h-12. */}
             {draft.outcome ? (
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Button type="button" className="h-12 flex-1 text-base" disabled={saving || !backendReady} onClick={() => submitOutcome(true)}>
+              <div className="sticky bottom-0 z-10 -mx-5 flex flex-col gap-2 border-t border-border bg-card px-5 py-3 sm:flex-row">
+                <Button type="button" className="h-12 text-base sm:flex-1" disabled={saving || !backendReady} onClick={() => submitOutcome(true)}>
                   {recordOutcome.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
                   Save &amp; next person
                 </Button>
-                <Button type="button" variant="outline" className="h-12 text-base sm:w-28" disabled={saving || !backendReady} onClick={() => submitOutcome(false)}>
+                <Button type="button" variant="outline" className={cn("h-12 text-base sm:w-28", RAISED)} disabled={saving || !backendReady} onClick={() => submitOutcome(false)}>
                   Save
                 </Button>
               </div>
             ) : (
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Button type="button" className="h-12 flex-1 text-base" disabled={saving || !backendReady} onClick={submitPlanOnly}>
+              <div className="sticky bottom-0 z-10 -mx-5 flex flex-col gap-2 border-t border-border bg-card px-5 py-3 sm:flex-row">
+                <Button type="button" className="h-12 text-base sm:flex-1" disabled={saving || !backendReady} onClick={submitPlanOnly}>
                   {setPlan.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
                   Save next step (no contact)
                 </Button>
@@ -568,7 +619,7 @@ export function PersonPanel({ row, userId, backendReady, canAssign, staff, staff
             <div className="flex items-center justify-between gap-2 text-base">
               <span className="text-foreground">{owner}</span>
               {backendReady && !row.recruiting_owner_user_id && userId && (
-                <Button variant="outline" className="h-11" disabled={saving} onClick={() => changeOwner(userId)}>
+                <Button variant="outline" className={cn("h-11", RAISED)} disabled={saving} onClick={() => changeOwner(userId)}>
                   <UserPlus className="h-4 w-4" /> Take it
                 </Button>
               )}
@@ -625,7 +676,7 @@ export function PersonPanel({ row, userId, backendReady, canAssign, staff, staff
                   ))}
                 </SelectContent>
               </Select>
-              <Button variant="outline" className="h-11" disabled={!zoneChoice || saving} onClick={confirmZone}>Confirm</Button>
+              <Button variant="outline" className={cn("h-11", RAISED)} disabled={!zoneChoice || saving} onClick={confirmZone}>Confirm</Button>
             </div>
           )}
         </Fold>

@@ -6,7 +6,7 @@ export interface ScoreTile {
   label: string;
   /** null renders "—": unknown is never shown as zero. */
   value: number | null;
-  /** One short line saying what the number counts. Hidden on phones. */
+  /** One short line saying what the number counts. Shown at every width; keep it to two lines on a phone. */
   hint: string;
   /** Full definition for the tooltip. */
   definition?: string;
@@ -20,9 +20,11 @@ export interface ScoreTile {
 /**
  * The few numbers that matter, large and calm (Grow redesign, 2026-10-28). A tile
  * with `onSelect` is a button that opens exactly the people it counts, so the number
- * and the list cannot disagree. Four across at every width; the hint line drops on
- * phones so the strip stays one row. `notice` is a full-width line under the tiles
- * for the one case the numbers are withheld, so a dash is never left unexplained.
+ * and the list cannot disagree. Four across at every width. The label and the hint
+ * each get a fixed two-line box, so when one label wraps ("Worked today") the big
+ * numbers still sit on one line across the strip, and the hint keeps its meaning on a
+ * phone instead of disappearing. `notice` is a full-width line under the tiles for the
+ * one case the numbers are withheld, so a dash is never left unexplained.
  */
 export function GrowScoreboard({ label, tiles, notice, className }: { label: string; tiles: ScoreTile[]; notice?: ReactNode; className?: string }) {
   return (
@@ -35,19 +37,21 @@ export function GrowScoreboard({ label, tiles, notice, className }: { label: str
       {tiles.map((t) => {
         const body = (
           <>
-            <span className="block text-[13px] font-medium leading-4 text-muted-foreground sm:text-sm">{t.label}</span>
+            <span className="block min-h-8 text-[13px] font-medium leading-4 text-muted-foreground sm:min-h-10 sm:text-sm sm:leading-5">{t.label}</span>
             <span
               className={cn(
-                "mt-1.5 block text-2xl font-semibold tabular-nums leading-none tracking-[-0.02em] sm:text-[2rem]",
+                "mt-1 block text-2xl font-semibold tabular-nums leading-none tracking-[-0.02em] sm:text-[2rem]",
                 t.emphasis && (t.value ?? 0) > 0 ? "text-primary" : "text-foreground",
               )}
             >
               {t.value === null ? "—" : t.value.toLocaleString()}
             </span>
-            <span className="mt-1.5 hidden text-[13px] leading-4 text-muted-foreground sm:block">{t.hint}</span>
+            <span className="mt-1.5 block min-h-8 text-[13px] leading-4 text-muted-foreground">{t.hint}</span>
           </>
         );
-        const base = "min-w-0 border-b-2 border-r border-b-transparent border-r-border p-3 text-left last:border-r-0 sm:p-5";
+        // flex-col justify-start: a <button> centres its content vertically, so a tile whose hint
+        // wrapped to more lines than its neighbours' lifted its number out of line with theirs.
+        const base = "flex min-w-0 flex-col justify-start border-b-2 border-r border-b-transparent border-r-border p-3 text-left last:border-r-0 sm:p-5";
         return t.onSelect ? (
           <button
             key={t.label}

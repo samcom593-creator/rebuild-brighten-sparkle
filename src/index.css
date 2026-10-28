@@ -1121,10 +1121,12 @@ button.bg-primary:active,
   transform: translateY(1px);
 }
 
-/* Outline button hover — tinted bg, brighter border */
-.border-input:hover,
-button[class*="variant-outline"]:hover,
-[class*="border-border"]:hover {
+/* Outline button hover — brighter border. Interactive elements only (2026-10-28): the
+   old `[class*="border-border"]:hover` recoloured every bordered container gold under the
+   mouse, so the fold boxes and cards lit up like buttons. :where() keeps the specificity
+   at (0,2,0), the same as before, so Tailwind hover utilities still win on a tie. */
+:where(button, a, [role="button"], [role="tab"], [role="menuitem"], [tabindex]:not([tabindex="-1"]), label, select, input, summary):is(.border-input, [class*="border-border"]):hover,
+button[class*="variant-outline"]:hover {
   border-color: hsl(var(--primary) / 0.5);
 }
 

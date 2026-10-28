@@ -27,7 +27,8 @@ describe("hire monitoring and recruiting income contract", () => {
     const facts = source("src/components/onboarding/useOnboardingExceptionFacts.ts");
     const applicants = source("src/pages/DashboardApplicants.tsx");
     expect(panel).toContain("No Hire Left Behind");
-    expect(panel).toContain("Live Milver + VA handoff queue");
+    // The panel still describes the live queue, in product words rather than a staff name and an acronym.
+    expect(panel).toContain("New hires with an open onboarding step.");
     // APEX OS §6: the panel is an actionable exception queue now, fed by one
     // facts RPC with realtime on the hot tables (moved into the shared hook).
     expect(panel).toContain("useOnboardingExceptionFacts");

@@ -12,6 +12,7 @@ import {
   PRIMARY_QUEUE_KEYS,
   QUEUE_DEFINITIONS,
   QUEUE_KEYS,
+  TILE_QUEUE_KEYS,
   blockersOf,
   channelAvailability,
   computeQueueCounts,
@@ -204,12 +205,23 @@ describe("queue predicates", () => {
     ];
     const counts = computeQueueCounts(rows, ctx);
     for (const q of QUEUE_KEYS) expect(counts[q]).toBe(rows.filter((r) => inQueue(r, q, ctx)).length);
-    expect(counts).toMatchObject({ all_open: 3, new: 1, uncontacted: 1, overdue: 1, awaiting_reply: 1, unassigned: 1, mine: 1, needs_plan: 1 });
+    expect(counts).toMatchObject({ all_open: 3, new: 1, uncontacted: 1, overdue: 1, awaiting_reply: 1, unassigned: 1, mine: 1, needs_plan: 1, worked_today: 0, booked: 0 });
   });
 
   it("every queue key has a definition, and only My queue is personal", () => {
     expect(QUEUE_DEFINITIONS.map((d) => d.key)).toEqual([...QUEUE_KEYS]);
     expect(QUEUE_DEFINITIONS.filter((d) => d.scope === "personal").map((d) => d.key)).toEqual(["mine"]);
+  });
+
+  it("the exception list is named for both halves of its rule: a missing owner or a missing next step", () => {
+    const def = QUEUE_DEFINITIONS.find((d) => d.key === "needs_plan");
+    expect(def?.label).toBe("No owner or next step");
+    expect(def?.description).toMatch(/owner/);
+    expect(def?.description).toMatch(/next step/);
+    // A person with a next step but no owner is in the list, which the old label "No next step" denied.
+    const plannedButUnowned = row({ next_action: "Call back", next_action_due_at: "2026-10-07T00:00:00Z", next_action_set_at: "2026-10-05T00:00:00Z" });
+    expect(planCheck(plannedButUnowned).missing).toEqual(["owner"]);
+    expect(inQueue(plannedButUnowned, "needs_plan", ctx)).toBe(true);
   });
 
   it("Call today is exactly Due today plus Overdue, which never overlap", () => {
@@ -229,8 +241,11 @@ describe("queue predicates", () => {
     expect(rows.filter((r) => inQueue(r, "today", ctx)).map((r) => r.id)).toEqual(["later", "past"]);
   });
 
-  it("the primary queues are real queue keys", () => {
+  it("the primary and tile queues are real queue keys and never overlap: one entry point per list", () => {
     for (const k of PRIMARY_QUEUE_KEYS) expect(QUEUE_KEYS).toContain(k);
+    for (const k of TILE_QUEUE_KEYS) expect(QUEUE_KEYS).toContain(k);
+    expect(PRIMARY_QUEUE_KEYS.filter((k) => TILE_QUEUE_KEYS.includes(k))).toEqual([]);
+    expect(TILE_QUEUE_KEYS).toEqual(["today", "new", "worked_today", "booked"]);
   });
 });
 
@@ -251,14 +266,39 @@ describe("scoreboard", () => {
       row({ id: "garbled", last_contact_outcome: "no_answer", last_contact_outcome_at: "not-a-date" }),
     ];
     const counts = computeQueueCounts(rows, ctx);
-    const board = computeScoreboard(rows, ctx, counts);
+    const board = computeScoreboard(counts);
     expect(board.callToday).toBe(counts.today);
     expect(board.newThisWeek).toBe(counts.new);
     expect(board).toEqual({ callToday: 1, newThisWeek: 1, workedToday: 2, booked: 1 });
   });
 
+  it("Worked today and Booked are lists with exactly the tiles' rules, so the count equals the rows shown", () => {
+    const rows = [
+      row({ id: "fresh", created_at: "2026-10-05T00:00:00Z" }),
+      row({ id: "booked-today", last_contact_outcome: "appointment_booked", last_contact_outcome_at: "2026-10-06T17:00:00Z", next_action: "Interview", next_action_due_at: "2026-10-08T17:00:00Z", next_action_set_at: "2026-10-06T17:00:00Z" }),
+      // Said no today: closed, and still a call made today. The only queue a closed person can be in.
+      row({ id: "no-today", last_contact_outcome: "not_interested", last_contact_outcome_at: "2026-10-06T08:00:00Z" }),
+      row({ id: "yesterday", last_contact_outcome: "no_answer", last_contact_outcome_at: "2026-10-06T06:59:00Z", next_action: "Try again", next_action_due_at: "2026-10-09T17:00:00Z" }),
+      row({ id: "booked-closed", last_contact_outcome: "appointment_booked", last_contact_outcome_at: "2026-10-02T17:00:00Z", status: "rejected" }),
+      // Booked 100+ days ago with no follow-up set by a person: out of the other lists, still an open booking.
+      row({ id: "booked-old", created_at: "2026-06-01T12:00:00Z", last_contact_outcome: "appointment_booked", last_contact_outcome_at: "2026-06-10T17:00:00Z" }),
+      row({ id: "garbled", last_contact_outcome: "no_answer", last_contact_outcome_at: "not-a-date" }),
+    ];
+    const counts = computeQueueCounts(rows, ctx);
+    const board = computeScoreboard(counts);
+    expect(counts.worked_today).toBe(board.workedToday);
+    expect(counts.booked).toBe(board.booked);
+    expect(rows.filter((r) => inQueue(r, "worked_today", ctx)).map((r) => r.id).sort()).toEqual(["booked-today", "no-today"]);
+    expect(rows.filter((r) => inQueue(r, "booked", ctx)).map((r) => r.id).sort()).toEqual(["booked-old", "booked-today"]);
+    expect(board).toMatchObject({ workedToday: 2, booked: 2 });
+    expect(inQueue(rows[5], "all_open", ctx)).toBe(false);
+    for (const q of QUEUE_KEYS) if (q !== "worked_today") expect(inQueue(rows[2], q, ctx)).toBe(false);
+    // Worked today reads like today's log: the latest outcome first.
+    expect(sortForQueue(rows.filter((r) => inQueue(r, "worked_today", ctx)), "worked_today").map((r) => r.id)).toEqual(["booked-today", "no-today"]);
+  });
+
   it("an empty set is all zeros, not an error", () => {
-    expect(computeScoreboard([], ctx, computeQueueCounts([], ctx))).toEqual({ callToday: 0, newThisWeek: 0, workedToday: 0, booked: 0 });
+    expect(computeScoreboard(computeQueueCounts([], ctx))).toEqual({ callToday: 0, newThisWeek: 0, workedToday: 0, booked: 0 });
   });
 
   it("sorts most urgent first and puts unknown dates last", () => {

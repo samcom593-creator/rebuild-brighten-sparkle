@@ -121,11 +121,11 @@ function renderAt(path: string) {
   );
 }
 
-/** The More menu holds the view switch, the license filter and the classic view link. */
+/** The Filters menu (same name as the sibling pages) holds the view switch, the license filter and the classic view link. */
 function openMore() {
   // Radix positions the popover with ResizeObserver, which jsdom does not ship.
   vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
-  fireEvent.click(screen.getByRole("button", { name: "More" }));
+  fireEvent.click(screen.getByRole("button", { name: "Filters" }));
 }
 
 function dataStatus(): HTMLDetailsElement {
@@ -207,6 +207,17 @@ describe("RecruitingWorklist layout (F28)", () => {
     fireEvent.click(within(list).getByRole("button", { name: /Sample A1/ }));
     const sheet = await screen.findByRole("dialog");
     expect((await within(sheet).findAllByText(/Sample A1/)).length).toBeGreaterThan(0);
+  });
+
+  it("phone: the sheet has a visible Back to list button that closes it", async () => {
+    setViewport("phone");
+    renderAt("/dashboard/recruiting?queue=all_open");
+    const list = await screen.findByRole("list", { name: "Queue" });
+    fireEvent.click(within(list).getByRole("button", { name: /Sample A1/ }));
+    const sheet = await screen.findByRole("dialog");
+    fireEvent.click(within(sheet).getByRole("button", { name: /Back to list/ }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(screen.getByRole("list", { name: "Queue" })).toBeTruthy();
   });
 
   it("tablet default: cards with the person in a sheet, not the split, and nothing auto-opens", async () => {
@@ -327,9 +338,11 @@ describe("RecruitingWorklist data status (F29)", () => {
     setViewport("desktop");
     renderAt("/dashboard/recruiting?queue=all_open");
     await screen.findByRole("list", { name: "Queue" });
+    // The page is called what the tab, sidebar and breadcrumb call it.
+    expect(screen.getByRole("heading", { level: 1, name: "Call list" })).toBeTruthy();
     expect(screen.getByText(/^Organization-wide/)).toBeTruthy();
     expect(screen.getByText(/Everyone: 3 people\./)).toBeTruthy();
-    // The classic view is one tap away, behind More.
+    // The classic view is one tap away, behind Filters.
     openMore();
     expect(screen.getByRole("link", { name: "Classic applicants view" })).toBeTruthy();
 

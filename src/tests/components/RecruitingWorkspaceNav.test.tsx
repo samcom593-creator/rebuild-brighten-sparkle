@@ -26,4 +26,15 @@ describe("RecruitingWorkspaceNav", () => {
     expect(screen.getByRole("link", { name: "Pipeline" }).getAttribute("aria-current")).toBe("page");
     expect(screen.getByRole("link", { name: "Call list" }).getAttribute("aria-current")).toBeNull();
   });
+
+  it("wraps onto a second row on a phone instead of scrolling sideways, and every tab is 44px tall", () => {
+    renderNav("/dashboard/recruiting");
+    const nav = screen.getByRole("navigation", { name: "Recruiting workspace" });
+    const strip = nav.firstElementChild as HTMLElement;
+    expect(strip.className).toContain("flex-wrap");
+    // Sideways scrolling and the no-wrap width are sm-and-up only.
+    expect(strip.className).not.toMatch(/(^|\s)min-w-max/);
+    expect(nav.className).not.toMatch(/(^|\s)overflow-x-auto/);
+    for (const link of screen.getAllByRole("link")) expect(link.className).toContain("min-h-11");
+  });
 });

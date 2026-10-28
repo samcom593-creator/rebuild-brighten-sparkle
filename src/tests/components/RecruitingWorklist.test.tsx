@@ -104,9 +104,12 @@ describe("RecruitingWorklist", () => {
   it("shows full-dataset queue counts and keeps assigned-to-me distinct from org-wide", async () => {
     renderAt("/dashboard/recruiting?queue=likely");
     const queues = await screen.findByRole("navigation", { name: "Saved queues" });
-    // Four big lists are always visible; the rest sit one tap away behind "More lists".
+    // Two big lists are always visible. Call today, New, Worked today and Booked open from their
+    // tiles and nowhere else (one entry point per list); the rest sit behind "More lists".
     expect(within(queues).getByRole("button", { name: /Mine\s*1/ })).toBeTruthy();
-    expect(within(queues).getByRole("button", { name: /Call today\s*1/ })).toBeTruthy();
+    expect(within(queues).getByRole("button", { name: /Likely to join\s*0/ })).toBeTruthy();
+    expect(within(queues).queryByRole("button", { name: /Call today/ })).toBeNull();
+    expect(within(queues).queryByRole("button", { name: /^New\b/ })).toBeNull();
     expect(within(queues).queryByRole("button", { name: /Everyone/ })).toBeNull();
     const more = within(queues).getByRole("button", { name: /More lists/ });
     expect(more.getAttribute("aria-expanded")).toBe("false");
@@ -116,14 +119,58 @@ describe("RecruitingWorklist", () => {
     expect(within(queues).getByRole("button", { name: /Never contacted\s*1/ })).toBeTruthy();
     expect(within(queues).getByRole("button", { name: /Overdue\s*1/ })).toBeTruthy();
     expect(within(queues).getByRole("button", { name: /No owner\s*1/ })).toBeTruthy();
+    expect(within(queues).getByRole("button", { name: /No owner or next step\s*1/ })).toBeTruthy();
+    expect(within(queues).queryByRole("button", { name: /Call today/ })).toBeNull();
+    expect(within(queues).queryByRole("button", { name: /Worked today/ })).toBeNull();
+    expect(within(queues).queryByRole("button", { name: /Booked/ })).toBeNull();
     expect(screen.getByText(/Organization-wide/)).toBeTruthy();
-    // The scoreboard reads the same full set: one person is late, so one call today.
+    // The scoreboard reads the same full set: one person is late, so one call today, and the
+    // tile is how that list opens.
     const board = screen.getByRole("region", { name: "Today's numbers" });
     const callToday = within(board).getByRole("button", { name: /Call today/ });
     expect(callToday.textContent).toContain("1");
     fireEvent.click(callToday);
     expect(callToday.getAttribute("aria-pressed")).toBe("true");
-    expect(within(queues).getByRole("button", { name: /Call today\s*1/ }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByText(/Call today: 1 person\./)).toBeTruthy();
+    expect(within(screen.getByRole("list", { name: "Queue" })).getByRole("button", { name: /Sample A2/ })).toBeTruthy();
+  });
+
+  it("Worked today and Booked are lists too: each tile opens exactly the people it counts", async () => {
+    const now = new Date().toISOString();
+    db.rows = [
+      makeRow("a1"),
+      makeRow("b1", { last_contact_outcome: "appointment_booked", last_contact_outcome_at: "2026-09-20T17:00:00Z", last_contacted_at: "2026-09-20T17:00:00Z", recruiting_owner_user_id: ME, next_action: "Interview", next_action_due_at: "2099-01-01T17:00:00Z", next_action_set_at: "2026-09-20T17:00:00Z" }),
+      makeRow("w1", { last_contact_outcome: "no_answer", last_contact_outcome_at: now, last_contacted_at: now, recruiting_owner_user_id: ME, next_action: "Try again", next_action_due_at: "2099-01-02T17:00:00Z", next_action_set_at: now }),
+      // Said no today: closed, and still a call made today.
+      makeRow("n1", { last_contact_outcome: "not_interested", last_contact_outcome_at: now, last_contacted_at: now, recruiting_owner_user_id: ME }),
+    ];
+    renderAt("/dashboard/recruiting?queue=all_open");
+    await screen.findByRole("list", { name: "Queue" });
+    const board = screen.getByRole("region", { name: "Today's numbers" });
+
+    const booked = within(board).getByRole("button", { name: /Booked/ });
+    expect(booked.textContent).toContain("1");
+    fireEvent.click(booked);
+    expect(booked.getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByText(/Booked: 1 person\./)).toBeTruthy();
+    let list = screen.getByRole("list", { name: "Queue" });
+    expect(within(list).getByRole("button", { name: /Sample B1/ })).toBeTruthy();
+    expect(within(list).queryByRole("button", { name: /Sample A1/ })).toBeNull();
+
+    const worked = within(board).getByRole("button", { name: /Worked today/ });
+    expect(worked.textContent).toContain("2");
+    fireEvent.click(worked);
+    expect(worked.getAttribute("aria-pressed")).toBe("true");
+    expect(booked.getAttribute("aria-pressed")).toBe("false");
+    expect(screen.getByText(/Worked today: 2 people\./)).toBeTruthy();
+    list = screen.getByRole("list", { name: "Queue" });
+    expect(within(list).getByRole("button", { name: /Sample W1/ })).toBeTruthy();
+    expect(within(list).getByRole("button", { name: /Sample N1/ })).toBeTruthy();
+    expect(within(list).queryByRole("button", { name: /Sample B1/ })).toBeNull();
+    // The queue row does not repeat the tile lists, so each has one entry point.
+    const queues = screen.getByRole("navigation", { name: "Saved queues" });
+    expect(within(queues).queryByRole("button", { name: /Worked today/ })).toBeNull();
+    expect(within(queues).queryByRole("button", { name: /Booked/ })).toBeNull();
   });
 
   it("a failed save keeps the typed note and shows the error; a retry sends the conflict guard and clears the draft", async () => {
@@ -178,6 +225,48 @@ describe("RecruitingWorklist", () => {
     fireEvent.click(within(panel).getByRole("button", { name: "Tomorrow 10 AM" }));
     expect(due.value).toMatch(/^\d{4}-\d{2}-\d{2}T10:00$/);
     expect((within(panel).getByLabelText("What to do") as HTMLInputElement).value).toBe("Call back");
+  });
+
+  it("No answer prefills Try again for tomorrow 10 AM, so one tap saves it", async () => {
+    renderAt("/dashboard/recruiting?queue=uncontacted&person=a1");
+    const panel = await screen.findByRole("complementary", { name: "Selected person" });
+    fireEvent.click(within(panel).getByRole("button", { name: "No answer" }));
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const expected = `${tomorrow.getFullYear()}-${pad(tomorrow.getMonth() + 1)}-${pad(tomorrow.getDate())}T10:00`;
+    expect((within(panel).getByLabelText("Due (your time)") as HTMLInputElement).value).toBe(expected);
+    expect((within(panel).getByLabelText("What to do") as HTMLInputElement).value).toBe("Try again");
+    // What the outcome does is written under the buttons, not only in a hover title.
+    expect(within(panel).getByText("No answer: Rang out, voicemail, or no reply.")).toBeTruthy();
+
+    db.rpc = (fn, args) => ({
+      data: { ...makeRow("a1"), last_contact_outcome: "no_answer", last_contact_outcome_at: "2026-10-28T19:00:00Z", last_contacted_at: "2026-10-28T19:00:00Z", recruiting_owner_user_id: ME, next_action: args?.p_next_action, next_action_due_at: args?.p_next_action_due_at, next_action_set_at: "2026-10-28T19:00:00Z", log_id: "log-2" },
+      error: null,
+    });
+    fireEvent.click(within(panel).getByRole("button", { name: /Save & next person/ }));
+    await waitFor(() => expect(db.rpcCalls.some((c) => c.fn === "record_recruiting_outcome")).toBe(true));
+    const call = db.rpcCalls.filter((c) => c.fn === "record_recruiting_outcome").at(-1);
+    expect(call?.args).toMatchObject({
+      p_outcome: "no_answer",
+      p_channel: "call",
+      p_next_action: "Try again",
+      p_next_action_due_at: new Date(expected).toISOString(),
+    });
+  });
+
+  it("the channel stays one line, Reached by Call, until Change opens the five choices", async () => {
+    renderAt("/dashboard/recruiting?queue=uncontacted&person=a1");
+    const panel = await screen.findByRole("complementary", { name: "Selected person" });
+    fireEvent.click(within(panel).getByRole("button", { name: "No answer" }));
+    expect(within(panel).getByText("Reached by Call")).toBeTruthy();
+    expect(within(panel).queryByRole("group", { name: "How did you reach them?" })).toBeNull();
+    fireEvent.click(within(panel).getByRole("button", { name: /Change how you reached them/ }));
+    const choices = within(panel).getByRole("group", { name: "How did you reach them?" });
+    expect(within(choices).getByRole("button", { name: "Call" }).getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(within(choices).getByRole("button", { name: "Text" }));
+    expect(within(panel).queryByRole("group", { name: "How did you reach them?" })).toBeNull();
+    expect(within(panel).getByText("Reached by Text")).toBeTruthy();
   });
 
   it("do not contact takes a second, explicit tap", async () => {

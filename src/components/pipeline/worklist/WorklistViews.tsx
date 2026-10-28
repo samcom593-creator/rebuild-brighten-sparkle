@@ -1,7 +1,6 @@
-import { useMemo, useState } from "react";
-import { SlidersHorizontal } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { ChevronLeft, ChevronRight, Columns3 } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -9,7 +8,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { formatPhoneDisplay } from "@/lib/phone";
 import {
   blockersOf,
-  effectiveDueMs,
   fullName,
   outcomeLabel,
   planCheck,
@@ -26,8 +24,8 @@ import {
 } from "@/lib/worklistColumns";
 import { StatusPill } from "@/components/recruiting/StatusPill";
 import type { StaffMember, StageDefinition } from "./useRecruitingWorklist";
-import { formatNextAction, formatRelative, formatSince, formatWhen, humanizeKey, ownerName } from "./worklistFormat";
-import { licenseWord, rowStatus } from "./worklistStatus";
+import { formatAgo, formatNextAction, formatSince, formatWhen, humanizeKey, ownerName } from "./worklistFormat";
+import { dueStatus, licenseWord, rowStatus, type StatusTone } from "./worklistStatus";
 
 interface ViewProps {
   rows: WorklistRow[];
@@ -41,14 +39,24 @@ interface ViewProps {
 
 const TABLE_WINDOW = 200;
 
+/** Text colour for a status in a table cell. The words carry the meaning; the colour only helps. */
+const STATUS_TEXT: Record<StatusTone, string> = {
+  danger: "font-semibold text-destructive",
+  warning: "font-medium text-warning",
+  primary: "font-medium text-primary",
+  neutral: "text-foreground",
+};
+
+/** "Late · 2 days", "Today · 3:00 PM MST", "Nov 12": the same words as the status pill, exact time on hover. */
 function DueCell({ row, now }: { row: WorklistRow; now: number }) {
-  const due = effectiveDueMs(row);
-  const iso = row.next_action_due_at ?? row.next_review_at;
-  if (due === null) return <span className="text-muted-foreground">—</span>;
-  if (Number.isNaN(due)) return <span className="text-destructive">Unreadable</span>;
+  const status = dueStatus(row, now);
+  if (!status) return <span className="text-muted-foreground">—</span>;
   return (
-    <span className={cn("tabular-nums", due < now ? "font-semibold text-destructive" : "text-foreground")} title={formatWhen(iso)}>
-      {formatRelative(iso, now)}
+    <span
+      className={cn("whitespace-nowrap tabular-nums", STATUS_TEXT[status.tone])}
+      title={formatWhen(row.next_action_due_at ?? row.next_review_at)}
+    >
+      {status.label}
     </span>
   );
 }
@@ -67,24 +75,33 @@ function stageLabel(row: WorklistRow, stagesByKey: Map<string, StageDefinition>)
   return stagesByKey.get(row.next_step_stage_key)?.display_name ?? humanizeKey(row.next_step_stage_key);
 }
 
+/** "No answer · 4 days ago", "Yesterday", or "Never": the last recorded human contact, in words. */
 function LastContact({ row, now }: { row: WorklistRow; now: number }) {
   if (row.last_contact_outcome) {
+    const at = row.last_contact_outcome_at ?? row.last_contacted_at;
     return (
-      <span title={formatWhen(row.last_contact_outcome_at)}>
-        {outcomeLabel(row.last_contact_outcome)} · {formatRelative(row.last_contact_outcome_at, now)}
+      <span title={formatWhen(at)}>
+        {outcomeLabel(row.last_contact_outcome)} · {formatAgo(at, now)}
       </span>
     );
   }
-  if (row.last_contacted_at) return <span title={formatWhen(row.last_contacted_at)}>{formatRelative(row.last_contacted_at, now)}</span>;
+  if (row.last_contacted_at) return <span title={formatWhen(row.last_contacted_at)}>{formatAgo(row.last_contacted_at, now)}</span>;
   return <span className="text-muted-foreground">Never</span>;
+}
+
+/** The one blocker worth a column, in words plus colour: "Phone bad" in red, "No phone" in grey. */
+function BlockerWords({ row }: { row: WorklistRow }) {
+  const blocker = blockersOf(row).find((b) => b.hard || b.key === "no_phone");
+  if (!blocker) return <span className="text-muted-foreground">—</span>;
+  return <span className={cn("font-medium", blocker.hard ? "text-destructive" : "text-muted-foreground")}>{blocker.label}</span>;
 }
 
 function ShowMore({ total, visible, onMore }: { total: number; visible: number; onMore: () => void }) {
   if (total <= visible) return null;
   return (
-    <div className="flex items-center justify-between border-t border-border px-3 py-2 text-xs text-muted-foreground">
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3 text-sm text-muted-foreground">
       <span>Showing {visible.toLocaleString()} of {total.toLocaleString()} in this queue</span>
-      <Button size="sm" variant="outline" onClick={onMore}>Show {Math.min(TABLE_WINDOW, total - visible)} more</Button>
+      <Button variant="outline" className="h-11 px-4" onClick={onMore}>Show {Math.min(TABLE_WINDOW, total - visible)} more</Button>
     </div>
   );
 }
@@ -95,6 +112,10 @@ function ShowMore({ total, visible, onMore }: { total: number; visible: number; 
  * identity. Header and body both consult the same set, so they cannot drift.
  * The minimum width follows the columns shown: 980px with all ten, less as
  * columns are hidden, so hiding columns is how the table fits without panning.
+ *
+ * Grow review (2026-10-28): 14px cells and headers with 16px names, rows at least
+ * 44px tall, and every date in words ("No answer · 4 days ago", "Late · 2 days")
+ * rather than "4d ago", so the table reads like the list it sits beside.
  */
 export function WorklistTable({
   rows, selectedId, onSelect, staff, staffAvailable, stagesByKey, now, columns = DEFAULT_WORKLIST_COLUMNS,
@@ -104,25 +125,27 @@ export function WorklistTable({
   const show = new Set<WorklistColumnKey>(columns);
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-left text-xs" style={{ minWidth: tableMinWidth(columns) }}>
-        <thead className="sticky top-0 z-10 bg-card text-[12px] uppercase tracking-wide text-muted-foreground">
+      <table className="w-full text-left text-sm" style={{ minWidth: tableMinWidth(columns) }}>
+        <thead className="sticky top-0 z-10 bg-card text-sm text-muted-foreground">
           <tr className="border-b border-border">
-            <th scope="col" className="px-3 py-2 font-semibold">Name</th>
-            {show.has("phone") && <th scope="col" className="px-2 py-2 font-semibold">Phone</th>}
-            {show.has("state") && <th scope="col" className="px-2 py-2 font-semibold">State</th>}
-            {show.has("license") && <th scope="col" className="px-2 py-2 font-semibold">License</th>}
-            {show.has("stage") && <th scope="col" className="px-2 py-2 font-semibold">Stage</th>}
-            {show.has("owner") && <th scope="col" className="px-2 py-2 font-semibold">Owner</th>}
-            {show.has("last_contact") && <th scope="col" className="px-2 py-2 font-semibold">Last contact</th>}
-            {show.has("next_action") && <th scope="col" className="px-2 py-2 font-semibold">Next action</th>}
-            {show.has("due") && <th scope="col" className="px-2 py-2 font-semibold">Due</th>}
-            {show.has("blocker") && <th scope="col" className="px-2 py-2 font-semibold">Blocker</th>}
+            {/* Each header carries its column's floor (the same floors that add up to the table's
+                minimum width), so a 16px name or "Interview set" is not squeezed onto two lines
+                while a wide neighbour takes the room. */}
+            {WORKLIST_TABLE_COLUMNS.filter((col) => col.locked || show.has(col.key)).map((col) => (
+              <th
+                key={col.key}
+                scope="col"
+                style={{ minWidth: col.minWidth }}
+                className={cn("py-3 font-semibold", col.key === "name" ? "px-3" : "px-2")}
+              >
+                {col.label}
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>
           {shown.map((row) => {
             const selected = row.id === selectedId;
-            const blockers = blockersOf(row).filter((b) => b.hard || b.key === "no_phone");
             const needsPlan = !planCheck(row).ok;
             return (
               <tr
@@ -142,33 +165,28 @@ export function WorklistTable({
                   selected && "bg-primary/10 hover:bg-primary/10",
                 )}
               >
-                <td className="px-3 py-2">
-                  <div className="font-medium text-foreground">{fullName(row)}</div>
-                  {needsPlan && <div className="text-xs font-medium text-muted-foreground">No next step</div>}
+                {/* py-3 around a 20px line keeps every row at least 44px tall, the same hit size as the toolbar controls. */}
+                <td className="px-3 py-3">
+                  <div className="text-base font-semibold leading-6 text-foreground">{fullName(row)}</div>
+                  {needsPlan && <div className="text-sm text-muted-foreground">No next step</div>}
                 </td>
                 {show.has("phone") && (
-                  <td className="whitespace-nowrap px-2 py-2 tabular-nums text-foreground">{row.phone ? formatPhoneDisplay(row.phone) : "—"}</td>
+                  <td className="whitespace-nowrap px-2 py-3 tabular-nums text-foreground">{row.phone ? formatPhoneDisplay(row.phone) : "—"}</td>
                 )}
-                {show.has("state") && <td className="px-2 py-2 text-foreground">{row.state ?? "—"}</td>}
-                {show.has("license") && <td className="px-2 py-2 text-foreground">{humanizeKey(row.license_status)}</td>}
-                {show.has("stage") && <td className="px-2 py-2 text-foreground">{stageLabel(row, stagesByKey)}</td>}
+                {show.has("state") && <td className="px-2 py-3 text-foreground">{row.state ?? "—"}</td>}
+                {show.has("license") && <td className="px-2 py-3 text-foreground">{humanizeKey(row.license_status)}</td>}
+                {show.has("stage") && <td className="px-2 py-3 text-foreground">{stageLabel(row, stagesByKey)}</td>}
                 {show.has("owner") && (
-                  <td className="px-2 py-2 text-foreground">{ownerName(row.recruiting_owner_user_id, staff, staffAvailable)}</td>
+                  <td className="px-2 py-3 text-foreground">{ownerName(row.recruiting_owner_user_id, staff, staffAvailable)}</td>
                 )}
                 {show.has("last_contact") && (
-                  <td className="whitespace-nowrap px-2 py-2 text-foreground"><LastContact row={row} now={now} /></td>
+                  <td className="whitespace-nowrap px-2 py-3 text-foreground"><LastContact row={row} now={now} /></td>
                 )}
                 {show.has("next_action") && (
-                  <td className="max-w-[200px] truncate px-2 py-2 text-foreground"><NextActionText row={row} /></td>
+                  <td className="max-w-[220px] truncate px-2 py-3 text-foreground"><NextActionText row={row} /></td>
                 )}
-                {show.has("due") && <td className="whitespace-nowrap px-2 py-2"><DueCell row={row} now={now} /></td>}
-                {show.has("blocker") && (
-                  <td className="px-2 py-2">
-                    {blockers.length === 0
-                      ? <span className="text-muted-foreground">—</span>
-                      : <Badge variant={blockers[0].hard ? "destructive" : "outline"}>{blockers[0].label}</Badge>}
-                  </td>
-                )}
+                {show.has("due") && <td className="whitespace-nowrap px-2 py-3"><DueCell row={row} now={now} /></td>}
+                {show.has("blocker") && <td className="px-2 py-3"><BlockerWords row={row} /></td>}
               </tr>
             );
           })}
@@ -183,6 +201,8 @@ export function WorklistTable({
  * Which Table columns show. One labelled checkbox per column; Name is locked so
  * a row never loses its identity. The choice is the viewer's and persists with
  * them (see src/lib/worklistColumns.ts), so the button says how many are hidden.
+ * The button matches its neighbour, More, in height and face so the toolbar reads
+ * as one row; each checkbox row is a 44px tap target through its label.
  */
 export function WorklistColumnChooser({
   columns,
@@ -196,31 +216,32 @@ export function WorklistColumnChooser({
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button size="sm" variant="outline" className="shrink-0">
-          <SlidersHorizontal className="h-4 w-4" /> Columns{hidden > 0 ? ` (${hidden} hidden)` : ""}
+        <Button variant="outline" className="h-12 shrink-0 border-border bg-card px-4 text-base">
+          <Columns3 className="h-5 w-5" /> Columns{hidden > 0 ? ` (${hidden} hidden)` : ""}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-60 p-3">
-        <fieldset className="space-y-2">
-          <legend className="mb-2 text-xs font-semibold text-foreground">Table columns</legend>
+      <PopoverContent align="end" className="w-72 p-4">
+        <fieldset>
+          <legend className="mb-1 text-base font-semibold text-foreground">Table columns</legend>
           {WORKLIST_TABLE_COLUMNS.map((col) => {
             const id = `worklist-column-${col.key}`;
             return (
-              <div key={col.key} className="flex items-center gap-2">
+              <div key={col.key} className="flex min-h-11 items-center gap-3">
                 <Checkbox
                   id={id}
+                  className="h-5 w-5"
                   checked={show.has(col.key)}
                   disabled={col.locked}
                   onCheckedChange={(value) => onChange(toggleColumn(columns, col.key, value === true))}
                 />
-                <Label htmlFor={id} className="text-xs font-normal text-foreground">
+                <Label htmlFor={id} className="flex-1 cursor-pointer text-base font-normal leading-5 text-foreground">
                   {col.label}{col.locked ? " (always shown)" : ""}
                 </Label>
               </div>
             );
           })}
         </fieldset>
-        <Button size="sm" variant="ghost" className="mt-2" disabled={hidden === 0} onClick={() => onChange([...DEFAULT_WORKLIST_COLUMNS])}>
+        <Button variant="outline" className="mt-3 h-11 w-full" disabled={hidden === 0} onClick={() => onChange([...DEFAULT_WORKLIST_COLUMNS])}>
           Show all
         </Button>
       </PopoverContent>
@@ -296,9 +317,37 @@ export function WorklistQueueList({ rows, selectedId, onSelect, now }: ViewProps
 const BOARD_COLUMN_WINDOW = 40;
 const NOT_STAGED = "__not_staged__";
 
-/** Same rows, filters and stage definitions as the table, grouped by recruiting stage. Read-only. */
+/**
+ * True while the lanes are wider than their scroller. Measured, not guessed, so the
+ * "scroll sideways" cue appears exactly when a lane is off screen and never otherwise.
+ * Re-measured when the lane count or the scroller's size changes; jsdom (no layout,
+ * often no ResizeObserver) reads as not scrolling.
+ */
+function useScrollsSideways(ref: RefObject<HTMLDivElement>, laneCount: number): boolean {
+  const [scrolls, setScrolls] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => setScrolls(el.scrollWidth > el.clientWidth + 1);
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [ref, laneCount]);
+  return scrolls;
+}
+
+/**
+ * Same rows, filters and stage definitions as the table, grouped by recruiting stage.
+ * Read-only. Lanes are plain columns (no box inside a box): each is at least 208px and
+ * they share the width, so three fit beside the person panel at 1440px; past that the
+ * lanes scroll sideways behind a one-line cue with 44px scroll buttons. Cards carry the
+ * name at 16px, the owner at 14px, and the same status pill as the list.
+ */
 export function WorklistBoard({ rows, selectedId, onSelect, staff, staffAvailable, stages, now }: Omit<ViewProps, "stagesByKey"> & { stages: StageDefinition[] }) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const scroller = useRef<HTMLDivElement>(null);
   const columns = useMemo(() => {
     const known = new Set(stages.map((s) => s.stage_key));
     const groups = new Map<string, WorklistRow[]>();
@@ -314,50 +363,76 @@ export function WorklistBoard({ rows, selectedId, onSelect, staff, staffAvailabl
     const loose = groups.get(NOT_STAGED) ?? [];
     return loose.length > 0 ? [{ key: NOT_STAGED, label: "Not staged", rows: loose }, ...ordered] : ordered;
   }, [rows, stages]);
+  const scrolls = useScrollsSideways(scroller, columns.length);
 
   if (columns.length === 0) {
-    return <p className="p-6 text-center text-sm text-muted-foreground">Nobody in this queue.</p>;
+    return <p className="p-6 text-center text-base text-muted-foreground">Nobody in this queue.</p>;
   }
 
+  const page = (direction: -1 | 1) => {
+    const el = scroller.current;
+    if (!el) return;
+    el.scrollBy({ left: direction * Math.max(208, el.clientWidth * 0.8), behavior: "smooth" });
+  };
+
   return (
-    <div className="flex gap-3 overflow-x-auto p-3">
-      {columns.map((col) => {
-        const open = expanded[col.key] ?? false;
-        const shown = open ? col.rows : col.rows.slice(0, BOARD_COLUMN_WINDOW);
-        return (
-          <section key={col.key} aria-label={col.label} className="flex w-64 shrink-0 flex-col rounded-lg border border-border bg-muted/30">
-            <header className="flex items-center justify-between border-b border-border px-3 py-2">
-              <h3 className="truncate text-xs font-semibold text-foreground">{col.label}</h3>
-              <span className="text-xs tabular-nums text-muted-foreground">{col.rows.length}</span>
-            </header>
-            <div className="flex max-h-[60vh] flex-col gap-1.5 overflow-y-auto p-2">
-              {shown.map((row) => (
-                <button
-                  key={row.id}
-                  type="button"
-                  onClick={() => onSelect(row.id)}
-                  aria-pressed={row.id === selectedId}
-                  className={cn(
-                    "rounded-md border border-border bg-card p-2 text-left text-xs transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
-                    row.id === selectedId && "border-primary/50 bg-primary/10",
-                  )}
-                >
-                  <div className="font-medium text-foreground">{fullName(row)}</div>
-                  <div className="mt-0.5 flex items-center justify-between gap-2 text-muted-foreground">
-                    <span className="truncate">{ownerName(row.recruiting_owner_user_id, staff, staffAvailable)}</span>
-                    <DueCell row={row} now={now} />
-                  </div>
-                </button>
-              ))}
+    <div>
+      {scrolls && (
+        <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-2">
+          <p className="text-sm text-muted-foreground">Scroll sideways to see all {columns.length} lists.</p>
+          <div className="flex gap-2">
+            <Button variant="outline" className="h-11 w-11 p-0" aria-label="Scroll left" onClick={() => page(-1)}>
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+            <Button variant="outline" className="h-11 w-11 p-0" aria-label="Scroll right" onClick={() => page(1)}>
+              <ChevronRight className="h-5 w-5" />
+            </Button>
+          </div>
+        </div>
+      )}
+      <div ref={scroller} className="flex divide-x divide-border overflow-x-auto">
+        {columns.map((col) => {
+          const open = expanded[col.key] ?? false;
+          const shown = open ? col.rows : col.rows.slice(0, BOARD_COLUMN_WINDOW);
+          return (
+            <section key={col.key} aria-label={col.label} className="flex min-w-52 flex-1 flex-col pb-2 pt-3">
+              <header className="flex items-baseline justify-between gap-2 border-b border-border px-3 pb-2">
+                <h3 className="truncate text-sm font-semibold text-foreground">{col.label}</h3>
+                <span className="text-sm tabular-nums text-muted-foreground">{col.rows.length}</span>
+              </header>
+              <ul className="flex max-h-[60vh] flex-col divide-y divide-border/60 overflow-y-auto">
+                {shown.map((row) => {
+                  const selected = row.id === selectedId;
+                  return (
+                    <li key={row.id} data-row-id={row.id}>
+                      <button
+                        type="button"
+                        onClick={() => onSelect(row.id)}
+                        aria-pressed={selected}
+                        className={cn(
+                          "flex min-h-16 w-full flex-col items-start gap-1 border-l-[3px] border-l-transparent py-3 pl-[9px] pr-3 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
+                          selected && "border-l-primary bg-primary/10 hover:bg-primary/10",
+                        )}
+                      >
+                        <span className="block w-full truncate text-base font-semibold leading-6 text-foreground">{fullName(row)}</span>
+                        <span className="block w-full truncate text-sm leading-5 text-muted-foreground">
+                          {ownerName(row.recruiting_owner_user_id, staff, staffAvailable)}
+                        </span>
+                        <StatusPill status={rowStatus(row, now)} />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
               {col.rows.length > BOARD_COLUMN_WINDOW && (
-                <Button size="sm" variant="ghost" onClick={() => setExpanded((p) => ({ ...p, [col.key]: !open }))}>
+                <Button variant="ghost" className="mx-3 mt-1 h-11" onClick={() => setExpanded((p) => ({ ...p, [col.key]: !open }))}>
                   {open ? "Show fewer" : `Show all ${col.rows.length}`}
                 </Button>
               )}
-            </div>
-          </section>
-        );
-      })}
+            </section>
+          );
+        })}
+      </div>
     </div>
   );
 }

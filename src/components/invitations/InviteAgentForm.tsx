@@ -24,6 +24,12 @@
  * the form changes (the next person is being typed) gold returns to Create and
  * the card's Copy link goes quiet. The card itself stays until the next create,
  * so a stray keystroke never loses the link.
+ *
+ * Colour layer (2026-10-28, docs/DESIGN_SYSTEM.md "Colour, motion and sound"): the four
+ * step numbers sit in 44px bubbles, royal for paperwork ahead, gold for the step in hand
+ * (the one the person last touched) and green with a check for a step they left in good
+ * order. A created invitation chimes from the Create button and its card pops in; a copied
+ * link pops once the clipboard has it. Nothing plays on load or on an error.
  */
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -38,6 +44,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { EmailTypoHint } from "@/components/ui/email-typo-hint";
+import { ToneBubble } from "@/components/ui/delight/ToneBubble";
+import { playSoundEffect } from "@/hooks/useSoundEffects";
+import { celebrate } from "@/lib/celebrate";
+import type { Tone } from "@/lib/tones";
+import { cn } from "@/lib/utils";
 import { isPlausibleEmail, normalizeEmailInput } from "@/lib/emailValidation";
 import { npnProblem } from "@/lib/contractReview";
 import { encodeInviteNote, freeNoteRoom, type ContractingInfo } from "@/lib/inviteContractingInfo";
@@ -118,17 +129,36 @@ const SELECT_CLASS =
   "h-12 w-full rounded-lg border border-border bg-card px-3 text-base text-foreground focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)] disabled:cursor-not-allowed disabled:opacity-50";
 const INPUT_CLASS = "h-12 border-border bg-card text-base";
 
-function Step({ n, title, hint, children }: { n: number; title: string; hint?: string; children: ReactNode }) {
+type StepState = "todo" | "current" | "done";
+
+/** Paperwork ahead is royal, the step in hand gold, a step left behind in good order green (src/lib/tones.ts). */
+const STEP_TONE: Record<StepState, Tone> = { todo: "royal", current: "gold", done: "good" };
+
+const STEP_COUNT = 4;
+
+function Step({ n, title, hint, state, onEnter, children }: {
+  n: number;
+  title: string;
+  hint?: string;
+  state: StepState;
+  /** Called when a control inside the step takes focus or a finger lands on it: this is now the step in hand. */
+  onEnter: () => void;
+  children: ReactNode;
+}) {
   return (
-    <section className="space-y-4" aria-label={title}>
+    <section className="space-y-4" aria-label={title} onFocus={onEnter} onPointerDown={onEnter}>
       <div className="flex items-start gap-3">
-        <span aria-hidden="true" className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary/15 text-sm font-semibold text-primary">{n}</span>
-        <div>
-          <h3 className="text-base font-semibold text-foreground">{title}</h3>
-          {hint && <p className="text-sm text-muted-foreground">{hint}</p>}
+        {/* The number, or the check once the step is done, is decoration: the title beside it is the
+            step's name and its accessible text (ToneBubble is aria-hidden). */}
+        <ToneBubble tone={STEP_TONE[state]} size="md" className={cn("h-11 w-11 text-base font-bold", state === "done" && "apex-pop")}>
+          {state === "done" ? <Check /> : n}
+        </ToneBubble>
+        <div className="min-w-0 pt-2.5">
+          <h3 className="text-lg font-semibold leading-6 text-foreground">{title}</h3>
+          {hint && <p className="mt-1 text-sm text-muted-foreground">{hint}</p>}
         </div>
       </div>
-      <div className="sm:pl-10">{children}</div>
+      <div className="sm:pl-14">{children}</div>
     </section>
   );
 }
@@ -166,6 +196,14 @@ export function InviteAgentForm({
   const [createdFingerprint, setCreatedFingerprint] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [triedSubmit, setTriedSubmit] = useState(false);
+  // The step in hand (gold) and the steps the person has been in. A step they left turns green
+  // once it is valid; one they never touched stays royal. Both start over with each invitation.
+  const [currentStep, setCurrentStep] = useState(1);
+  const [visitedSteps, setVisitedSteps] = useState<number[]>([1]);
+  const enterStep = (n: number) => {
+    setCurrentStep(n);
+    setVisitedSteps((seen) => (seen.includes(n) ? seen : [...seen, n]));
+  };
 
   const agencies = useMemo(() => {
     const keys = new Set((opts?.uplines ?? []).map((u) => u.agency_key));
@@ -249,6 +287,17 @@ export function InviteAgentForm({
 
   const chosenUpline = opts?.uplines.find((u) => u.id === uplineId) ?? null;
 
+  // Step 1 is all optional, so blank is in good order (an open link); the others are in good order
+  // when the same pre-flight checks that gate Create find nothing wrong with their fields.
+  const stepValid: Record<number, boolean> = {
+    1: emailOk && !npnIssue,
+    2: !issueFor("target_role"),
+    3: !issueFor("target_manager_id"),
+    4: !issueFor("offered_comp_pct") && !issueFor("carrier_exceptions") && noteOver === 0,
+  };
+  const stepState = (n: number): StepState =>
+    n === currentStep ? "current" : visitedSteps.includes(n) && stepValid[n] ? "done" : "todo";
+
   // The created card is "current" until the person changes anything; then the next invitation is the job,
   // Create is gold again and the card's Copy link steps back.
   const createdIsCurrent = created !== null && createdFingerprint === fingerprint({
@@ -267,9 +316,12 @@ export function InviteAgentForm({
     setExceptions([]);
     setNote(CLEARED.note);
     setTriedSubmit(false);
+    setCurrentStep(1);
+    setVisitedSteps([1]);
   }
 
-  async function submit() {
+  /** `button` is the Create button the person pressed, read before the round trip so the chime rises from it. */
+  async function submit(button: HTMLButtonElement | null) {
     setTriedSubmit(true);
     if (!canSubmit) return;
     setSubmitting(true);
@@ -317,6 +369,8 @@ export function InviteAgentForm({
       setCreatedFingerprint(fingerprint({ ...CLEARED, inviteAs, licensePath, agencyKey, uplineId, expiresHours }));
       toast.success(result.recipient_name ? `Invitation created for ${result.recipient_name}.` : "Open invitation created. Anyone with the link can fill in their own details.");
       reset();
+      // The invitation exists (the two returns above never reach here): bubbles and a chime from the button.
+      void celebrate("booked", button);
       void queryClient.invalidateQueries({ queryKey: ["invitations"] });
       onCreated?.(result);
     } finally {
@@ -334,6 +388,8 @@ export function InviteAgentForm({
       toast.error("Clipboard blocked. Select the link and copy it manually.");
       return;
     }
+    // The clipboard has it; a blocked clipboard returned above, silent.
+    playSoundEffect("pop");
     setCopied(true);
     toast.success("Link copied.");
     try {
@@ -376,7 +432,7 @@ export function InviteAgentForm({
 
   return (
     <div className="space-y-8" data-testid="invite-agent-form">
-      <Step n={1} title="Who are you inviting?" hint="All optional. Leave it blank for an open link they fill in themselves.">
+      <Step n={1} title="Who are you inviting?" hint="All optional. Leave it blank for an open link they fill in themselves." state={stepState(1)} onEnter={() => enterStep(1)}>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label htmlFor="invite-first-name" className="text-sm">First name</Label>
@@ -415,7 +471,7 @@ export function InviteAgentForm({
         </div>
       </Step>
 
-      <Step n={2} title="Their role and license" hint={licenseHint}>
+      <Step n={2} title="Their role and license" hint={licenseHint} state={stepState(2)} onEnter={() => enterStep(2)}>
         <div className="space-y-4">
           <div className="space-y-1.5 sm:max-w-xs">
             <Label htmlFor="invite-as" className="text-sm">Invite as</Label>
@@ -449,7 +505,7 @@ export function InviteAgentForm({
         </div>
       </Step>
 
-      <Step n={3} title="Who they'll work under">
+      <Step n={3} title="Who they'll work under" state={stepState(3)} onEnter={() => enterStep(3)}>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div className="space-y-1.5">
             <Label htmlFor="invite-agency" className="text-sm">Agency</Label>
@@ -471,7 +527,7 @@ export function InviteAgentForm({
         </div>
       </Step>
 
-      <Step n={4} title="The offer">
+      <Step n={STEP_COUNT} title="The offer" state={stepState(STEP_COUNT)} onEnter={() => enterStep(STEP_COUNT)}>
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="space-y-1.5">
@@ -588,7 +644,7 @@ export function InviteAgentForm({
           {exceptions.length ? ` · ${exceptions.length} carrier exception${exceptions.length === 1 ? "" : "s"}` : ""}
         </p>
         <Button
-          onClick={submit}
+          onClick={(e) => void submit(e.currentTarget)}
           variant={createdIsCurrent ? "outline" : "default"}
           className="h-12 px-6 text-base"
           disabled={submitting || (triedSubmit && !canSubmit)}
@@ -600,10 +656,16 @@ export function InviteAgentForm({
       </div>
 
       {created && (
-        <div className="space-y-4 rounded-xl border border-primary/40 bg-primary/5 p-5" data-testid="invitation-created">
-          <div>
-            <p className="text-base font-semibold">Invitation ready{created.recipient_name ? ` for ${created.recipient_name}` : ""}</p>
-            <p className="mt-1 break-all font-mono text-sm text-muted-foreground">{inviteUrlFromPath(created.path)}</p>
+        // Keyed by the invitation so each new one pops in; the previous card is replaced, never animated twice.
+        <div key={created.id} className="apex-pop space-y-4 rounded-xl border border-primary/40 bg-primary/5 p-5" data-testid="invitation-created">
+          <div className="flex items-start gap-3">
+            <ToneBubble tone="gold" size="md" className="mt-0.5">
+              <Check />
+            </ToneBubble>
+            <div className="min-w-0">
+              <p className="text-lg font-semibold leading-6">Invitation ready{created.recipient_name ? ` for ${created.recipient_name}` : ""}</p>
+              <p className="mt-1 break-all font-mono text-sm text-muted-foreground">{inviteUrlFromPath(created.path)}</p>
+            </div>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button variant={createdIsCurrent ? "default" : "outline"} className="h-11" onClick={copyCreated}>

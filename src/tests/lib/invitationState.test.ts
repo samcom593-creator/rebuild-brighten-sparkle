@@ -4,12 +4,14 @@ import {
   DEAD_LINK_CODES,
   INVITATION_STATUSES,
   INVITATION_STATUS_LABEL,
+  INVITATION_STATUS_TONE,
   acceptanceRefusalMessage,
   agencyLabel,
   deadLinkMessage,
   deriveInvitationStatus,
   invitationActions,
   invitationMailto,
+  invitationStatusTone,
   isTerminalStatus,
   maskEmail,
   validateOfferTerms,
@@ -68,6 +70,21 @@ describe("invitationActions", () => {
   });
   it("marks every non-pending state terminal", () => {
     expect(INVITATION_STATUSES.filter(isTerminalStatus)).toEqual(["accepted", "expired", "revoked", "superseded"]);
+  });
+});
+
+describe("status tones (the colour beside each status word, 2026-10-28)", () => {
+  it("gives every status exactly one tone: pending warm, accepted good, every closed link quiet", () => {
+    expect(INVITATION_STATUS_TONE).toEqual({ pending: "warm", accepted: "good", expired: "slate", revoked: "slate", superseded: "slate" });
+    expect(Object.keys(INVITATION_STATUS_TONE).sort()).toEqual([...INVITATION_STATUSES].sort());
+    for (const status of INVITATION_STATUSES) expect(invitationStatusTone(status)).toBe(INVITATION_STATUS_TONE[status]);
+  });
+
+  it("is quiet, never alarming, for a missing status or one this client does not know", () => {
+    expect(invitationStatusTone(null)).toBe("slate");
+    expect(invitationStatusTone(undefined)).toBe("slate");
+    expect(invitationStatusTone("")).toBe("slate");
+    expect(invitationStatusTone("something_new")).toBe("slate");
   });
 });
 

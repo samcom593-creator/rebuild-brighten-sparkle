@@ -12,6 +12,7 @@
  * Public recruiting links (/r/<slug>) are a different system and are not
  * modelled here — nothing in this file can expire them.
  */
+import type { Tone } from "@/lib/tones";
 
 export type InvitationStatus = "pending" | "accepted" | "expired" | "revoked" | "superseded";
 
@@ -34,6 +35,25 @@ export const INVITATION_STATUS_LABEL: Record<InvitationStatus, string> = {
   revoked: "Revoked",
   superseded: "Replaced",
 };
+
+/**
+ * The tone beside each status word (src/lib/tones.ts, 2026-10-28 colour layer): a pending
+ * link needs a nudge until someone uses it, an accepted one went well, and a closed link
+ * (expired, revoked, replaced) is quiet. The word always sits beside the colour; this map
+ * only tints it, and every surface that shows an invitation status reads from here.
+ */
+export const INVITATION_STATUS_TONE: Record<InvitationStatus, Tone> = {
+  pending: "warm",
+  accepted: "good",
+  expired: "slate",
+  revoked: "slate",
+  superseded: "slate",
+};
+
+/** The tone for a status string, quiet for a missing one or one this client does not know. */
+export function invitationStatusTone(status: string | null | undefined): Tone {
+  return (INVITATION_STATUS_TONE as Record<string, Tone | undefined>)[status ?? ""] ?? "slate";
+}
 
 export interface InvitationStatusInput {
   used_at?: string | null;

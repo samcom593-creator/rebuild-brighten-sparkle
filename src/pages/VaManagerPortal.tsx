@@ -1,20 +1,24 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Users, UserPlus, Loader2, Copy, RefreshCw } from "lucide-react";
+import { Users, UserPlus, Loader2, Copy, RefreshCw, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useConfirm } from "@/hooks/useConfirm";
+import { playSoundEffect } from "@/hooks/useSoundEffects";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { celebrate, type CelebrationOrigin } from "@/lib/celebrate";
+import { TONE_CLASS, type Tone } from "@/lib/tones";
 import { GlassCard } from "@/components/ui/glass-card";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { StatusPill } from "@/components/recruiting/StatusPill";
-import type { RowStatus } from "@/components/pipeline/worklist/worklistStatus";
+import { CountUp } from "@/components/ui/delight/CountUp";
+import { RevealList } from "@/components/ui/delight/Reveal";
+import { ToneBubble, TonePill } from "@/components/ui/delight/ToneBubble";
 import { formatAgo, formatDay, formatSince } from "@/components/pipeline/worklist/worklistFormat";
 import {
   Dialog,
@@ -93,8 +97,58 @@ async function invokeReason(error: { message: string; context?: unknown }): Prom
   return error.message || "unknown error";
 }
 
-function statusOf(row: VaRow): RowStatus {
-  return row.disabled ? { label: "Turned off", tone: "danger" } : { label: "Active", tone: "neutral" };
+/**
+ * The account's state in words, with its tone from the shared vocabulary (src/lib/tones.ts,
+ * 2026-10-28): an account that can sign in is going well; one turned off is quiet, the same
+ * slate as Inactive on the Pipeline. The word is always beside the colour.
+ */
+const ACCOUNT_STATE_TONE: Record<"active" | "disabled", Tone> = { active: "good", disabled: "slate" };
+
+function stateOf(row: VaRow): { label: string; tone: Tone } {
+  return row.disabled
+    ? { label: "Turned off", tone: ACCOUNT_STATE_TONE.disabled }
+    : { label: "Active", tone: ACCOUNT_STATE_TONE.active };
+}
+
+/** Two initials for the bubble beside a name; the first letter of the email when there is no name. */
+function initialsOf(row: VaRow): string {
+  const fromName = (row.full_name ?? "").split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("");
+  return (fromName || (row.email ?? "").charAt(0) || "?").toUpperCase();
+}
+
+/** The person's initials in the colour of their state. Decoration: the name sits beside it and the pill says the word. */
+function InitialsBubble({ row, className }: { row: VaRow; className?: string }) {
+  const t = TONE_CLASS[stateOf(row).tone];
+  return (
+    <span
+      aria-hidden="true"
+      className={cn("inline-flex h-11 w-11 shrink-0 select-none items-center justify-center rounded-full border text-base font-bold leading-none", t.soft, t.text, t.border, className)}
+    >
+      {initialsOf(row)}
+    </span>
+  );
+}
+
+function StatePill({ row, className }: { row: VaRow; className?: string }) {
+  const state = stateOf(row);
+  return (
+    <TonePill tone={state.tone} dot className={className}>
+      {state.label}
+    </TonePill>
+  );
+}
+
+/**
+ * Where the finger was, as a point, read before the round trip: the dialog swaps the form for
+ * the created login, so the Create button is gone by the time the server answers and a point
+ * still puts the bubbles where it stood. The control itself while it has no size (under test).
+ */
+function pressOrigin(control: Element | null): CelebrationOrigin {
+  if (!control || typeof window === "undefined") return null;
+  const r = control.getBoundingClientRect();
+  if (r.width === 0 && r.height === 0) return control;
+  const clamp = (v: number) => Math.min(1, Math.max(0, v));
+  return { x: clamp((r.left + r.width / 2) / window.innerWidth), y: clamp((r.top + r.height / 2) / window.innerHeight) };
 }
 
 function lastSignInSentence(row: VaRow): string {
@@ -130,6 +184,12 @@ function AccessButton({ row, busy, onToggle, className }: { row: VaRow; busy: bo
  * characters, per the recovered prod mirror) and shown exactly once (32); rows are cards
  * under sm and a table from sm up, with one 44px outline Turn off / Turn on button (33);
  * one control scale, h-12 primary and h-11 everything else, nothing under 13px (34).
+ *
+ * Colour layer (2026-10-28, docs/DESIGN_SYSTEM.md "Colour, motion and sound"): the header
+ * bubble is cool (people being set up), each row opens with the person's initials in the
+ * colour of their state, the state is a pill in words with that tone, the rows rise in once,
+ * the counts tween when they change, a created login pops its bubbles from the Create button,
+ * a copied password pops, and a changed access ticks. Nothing plays on load or on an error.
  */
 export default function VaManagerPortal() {
   usePageTitle("Staff accounts · Galaxy");
@@ -144,6 +204,7 @@ export default function VaManagerPortal() {
   const [creating, setCreating] = useState(false);
   const [created, setCreated] = useState<{ email: string; password: string } | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const createButton = useRef<HTMLButtonElement>(null);
 
   const {
     data: vas,
@@ -176,7 +237,8 @@ export default function VaManagerPortal() {
     setCreateOpen(false);
   }
 
-  async function handleCreate() {
+  /** `origin` is where Create login was pressed, read before the round trip (see pressOrigin). */
+  async function handleCreate(origin: CelebrationOrigin) {
     const fullName = name.trim();
     const address = email.trim().toLowerCase();
     if (!fullName || !address) {
@@ -202,6 +264,8 @@ export default function VaManagerPortal() {
       setEmail("");
       qc.invalidateQueries({ queryKey: ["my-vas"] });
       toast.success("Login created.");
+      // The login exists (a refusal threw above): a few bubbles and a pop from the button.
+      void celebrate("save", origin);
     } catch (e) {
       const sentence = `The login was not created: ${messageOf(e)}.`;
       setFormError(sentence);
@@ -232,6 +296,8 @@ export default function VaManagerPortal() {
       if (data?.error) throw new Error(String(data.error));
       await qc.invalidateQueries({ queryKey: ["my-vas"] });
       toast.success(turningOff ? `${label} is turned off.` : `${label} is back on.`);
+      // Access moved: one quiet tick, only once the server said so.
+      playSoundEffect("tick");
     } catch (e) {
       toast.error(`Access did not change: ${messageOf(e)}.`);
     } finally {
@@ -243,6 +309,8 @@ export default function VaManagerPortal() {
     if (!created) return;
     try {
       await navigator.clipboard.writeText(created.password);
+      // The clipboard has it; a blocked clipboard lands in the catch, silent.
+      playSoundEffect("pop");
       toast.success("Password copied.");
     } catch {
       toast.error("Copy is blocked here. Write the password down instead.");
@@ -265,7 +333,11 @@ export default function VaManagerPortal() {
       {/* Grow redesign (2026-10-28): one plain title, one gold button, counts in words. */}
       <PageHeader
         title="Staff accounts"
-        subtitle="Add assistant logins and turn them on or off."
+        // 35 characters: with the 48px bubble beside it, a 390px phone holds about 36 on one line (the
+        // earlier 45-character sentence clamped to "…on or…" the moment the bubble arrived).
+        subtitle="Add logins and turn them on or off."
+        icon={<Users />}
+        tone="cool"
         primaryAction={
           <Button size="lg" onClick={openCreate} className="h-12 gap-1.5 text-base">
             <UserPlus className="h-5 w-5" /> New assistant
@@ -288,14 +360,15 @@ export default function VaManagerPortal() {
           </Button>
         </div>
       ) : loaded ? (
+        // Each number tweens when it changes (CountUp); the first paint is the real number at once.
         <p className="text-base text-muted-foreground">
-          <span className="font-semibold text-foreground">{rows.length}</span> {rows.length === 1 ? "account" : "accounts"}
+          <CountUp value={rows.length} className="font-semibold text-foreground" /> {rows.length === 1 ? "account" : "accounts"}
           {" · "}
-          <span className="font-semibold text-foreground">{activeCount}</span> active
+          <CountUp value={activeCount} className={cn("font-semibold", TONE_CLASS[ACCOUNT_STATE_TONE.active].text)} /> active
           {disabledCount > 0 && (
             <>
               {" · "}
-              <span className="font-semibold text-destructive">{disabledCount}</span> turned off
+              <CountUp value={disabledCount} className={cn("font-semibold", TONE_CLASS[ACCOUNT_STATE_TONE.disabled].text)} /> turned off
             </>
           )}
         </p>
@@ -313,29 +386,34 @@ export default function VaManagerPortal() {
         </GlassCard>
       ) : loaded && rows.length === 0 ? (
         <GlassCard className="p-10 text-center">
-          <Users className="mx-auto mb-3 h-10 w-10 text-muted-foreground" aria-hidden />
+          <div className="mb-3 flex justify-center">
+            <ToneBubble tone="cool" size="lg">
+              <Users />
+            </ToneBubble>
+          </div>
           <p className="text-base text-muted-foreground">
             No assistants yet. Tap <span className="font-medium text-foreground">New assistant</span> to add the first login.
           </p>
         </GlassCard>
       ) : loaded ? (
         <GlassCard className="overflow-hidden p-0">
-          {/* Phones: one card per person. Nothing is truncated, so nothing is clipped at 390px. */}
-          <ul className="divide-y divide-border sm:hidden" aria-label="Assistant accounts">
+          {/* Phones: one card per person, rising in once. Nothing is truncated, so nothing is clipped at 390px. */}
+          <RevealList as="ul" className="divide-y divide-border sm:hidden" aria-label="Assistant accounts">
             {rows.map((v) => (
               <li key={v.user_id} className="flex flex-col gap-3 p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="break-words text-base font-medium text-foreground">{v.full_name || "No name"}</p>
+                <div className="flex items-start gap-3">
+                  <InitialsBubble row={v} className="mt-0.5" />
+                  <div className="min-w-0 flex-1">
+                    <p className="break-words text-base font-semibold text-foreground">{v.full_name || "No name"}</p>
                     <p className="break-all text-sm text-muted-foreground">{v.email || "No email"}</p>
                   </div>
-                  <StatusPill status={statusOf(v)} className="shrink-0" />
+                  <StatePill row={v} className="shrink-0" />
                 </div>
                 <p className="text-sm text-muted-foreground">{lastSignInSentence(v)}</p>
                 <AccessButton row={v} busy={busyId === v.user_id} onToggle={(row) => void toggleAccess(row)} className="w-full" />
               </li>
             ))}
-          </ul>
+          </RevealList>
 
           {/* From sm up: the same people as a table, Created only once there is room for it. */}
           <div className="hidden overflow-x-auto sm:block">
@@ -352,15 +430,20 @@ export default function VaManagerPortal() {
                   </th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="apex-rise-list">
                 {rows.map((v) => (
                   <tr key={v.user_id} className="border-b border-border last:border-0">
-                    <td className="px-4 py-3 text-base font-medium text-foreground">{v.full_name || "No name"}</td>
+                    <td className="px-4 py-3 text-base font-semibold text-foreground">
+                      <span className="flex items-center gap-3">
+                        <InitialsBubble row={v} className="h-10 w-10 text-sm" />
+                        {v.full_name || "No name"}
+                      </span>
+                    </td>
                     <td className="break-all px-4 py-3 text-muted-foreground">{v.email || "No email"}</td>
                     <td className="hidden whitespace-nowrap px-4 py-3 text-muted-foreground md:table-cell">{formatDay(v.created_at)}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatAgo(v.last_sign_in_at)}</td>
                     <td className="px-4 py-3">
-                      <StatusPill status={statusOf(v)} />
+                      <StatePill row={v} />
                     </td>
                     <td className="px-4 py-3 text-right">
                       <AccessButton row={v} busy={busyId === v.user_id} onToggle={(row) => void toggleAccess(row)} />
@@ -392,7 +475,14 @@ export default function VaManagerPortal() {
             </DialogDescription>
           </DialogHeader>
           {created ? (
-            <div className="space-y-4">
+            // Pops in once, the moment the server stored the login.
+            <div className="apex-pop space-y-4">
+              <div className="flex items-center gap-2 text-sm font-semibold text-tone-good">
+                <ToneBubble tone="good" size="sm">
+                  <Check />
+                </ToneBubble>
+                Ready to share
+              </div>
               <dl className="space-y-3 rounded-md border border-border bg-card p-4">
                 <div>
                   <dt className="text-sm text-muted-foreground">Email</dt>
@@ -418,7 +508,8 @@ export default function VaManagerPortal() {
               className="space-y-4"
               onSubmit={(event) => {
                 event.preventDefault();
-                void handleCreate();
+                // Read the button now, before the round trip, so the bubbles rise from it.
+                void handleCreate(pressOrigin(createButton.current));
               }}
             >
               <div className="space-y-2">
@@ -453,7 +544,7 @@ export default function VaManagerPortal() {
                 <Button type="button" variant="outline" className="h-11" onClick={closeCreate} disabled={creating}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={creating} className="h-12 gap-1.5 text-base">
+                <Button ref={createButton} type="submit" disabled={creating} className="h-12 gap-1.5 text-base">
                   {creating ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden /> : <UserPlus className="h-5 w-5" aria-hidden />}
                   Create login
                 </Button>

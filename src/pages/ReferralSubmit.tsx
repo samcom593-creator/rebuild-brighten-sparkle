@@ -1,13 +1,15 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { CheckCircle2, Loader2 } from "lucide-react";
+import { BadgeDollarSign, Check, Gift, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { celebrate, type CelebrationOrigin } from "@/lib/celebrate";
 import { PageHeader } from "@/components/ui/page-header";
+import { ToneBubble } from "@/components/ui/delight/ToneBubble";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,6 +36,11 @@ import {
 // control scale: the gold Send referral is 48px, every other control is 44px,
 // every word is at least 13px. A failed send says so on the page and keeps
 // what was typed. The submit_referral RPC call is unchanged.
+//
+// Colour layer (2026-10-28, docs/DESIGN_SYSTEM.md "Colour, motion and sound"): the header
+// bubble is a gift in green (a referral is good news), the bonus line carries a gold bubble
+// (the brand moment), and a sent referral chimes from the Send button and pops its
+// confirmation in. A failed send plays nothing; its message is as before.
 const schema = z
   .object({
     firstName: z.string().min(2, "Enter their first name (at least 2 letters)").max(50, "First name is too long (50 letters at most)"),
@@ -58,6 +65,19 @@ type Confirmation = {
 
 /** Every field is 48px with 16px text at every width (Input drops to 14px from md up on its own). */
 const FIELD_CLASS = "h-12 text-base md:text-base";
+
+/**
+ * Where the finger was, as a point, read before the send: the confirmation replaces the form,
+ * so by the time the server answers the Send button is gone and a point still puts the bubbles
+ * where it stood. The control itself while it has no size (hidden, or under test).
+ */
+function pressOrigin(control: Element | null): CelebrationOrigin {
+  if (!control || typeof window === "undefined") return null;
+  const r = control.getBoundingClientRect();
+  if (r.width === 0 && r.height === 0) return control;
+  const clamp = (v: number) => Math.min(1, Math.max(0, v));
+  return { x: clamp((r.left + r.width / 2) / window.innerWidth), y: clamp((r.top + r.height / 2) / window.innerHeight) };
+}
 
 function sentCopy(c: Confirmation): string {
   if (c.matchingApplicationId) {
@@ -84,6 +104,7 @@ export default function ReferralSubmit() {
   const [submitting, setSubmitting] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
+  const sendButton = useRef<HTMLButtonElement>(null);
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -97,6 +118,8 @@ export default function ReferralSubmit() {
   async function onSubmit(values: FormData) {
     setSubmitting(true);
     setSendError(null);
+    // Read now, before the round trip, so the celebration rises from the button that was pressed.
+    const origin = pressOrigin(sendButton.current);
     try {
       const { data, error } = await (supabase.rpc as any)("submit_referral", {
         p_first_name: values.firstName,
@@ -122,6 +145,8 @@ export default function ReferralSubmit() {
             ? "We already had this person on file. Your referral is logged too."
             : "Referral sent. We make first contact within 24 hours.",
       );
+      // The referral is on the list (an error threw above): bubbles and a chime from the Send button.
+      void celebrate("booked", origin);
     } catch (err: any) {
       console.error("[referral.submit]", err);
       const message = typeof err?.message === "string" && err.message ? err.message : "the server did not answer";
@@ -144,16 +169,21 @@ export default function ReferralSubmit() {
       <PageHeader
         title="Refer a recruit"
         subtitle="We contact your referral within 24 hours."
+        icon={<Gift />}
+        tone="good"
         // The gold button is the form's Send referral. Declaring null keeps the header empty
         // and turns off the legacy inference, so nothing can be promoted up here.
         primaryAction={null}
       />
 
       {confirmation ? (
-        <Card>
+        // Pops in once, the moment the server said yes.
+        <Card className="apex-pop">
           <CardContent className="space-y-4 p-5 sm:p-6">
-            <p className="flex items-center gap-2 text-sm font-semibold text-primary">
-              <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
+            <p className="flex items-center gap-2 text-sm font-semibold text-tone-good">
+              <ToneBubble tone="good" size="sm">
+                <Check />
+              </ToneBubble>
               Sent
             </p>
             <h2 className="text-xl font-semibold leading-7">{confirmation.name} is on our list.</h2>
@@ -170,10 +200,15 @@ export default function ReferralSubmit() {
         </Card>
       ) : (
         <>
-          <p className="rounded-[10px] border border-border bg-card px-4 py-3 text-base leading-snug text-muted-foreground">
-            <span className="font-semibold text-foreground">$300 referral bonus.</span> You get it once the person you
-            refer has sold $10,000 in annual premium (the yearly premium on the policies they sell). My Referrals shows
-            where each one stands.
+          <p className="flex items-start gap-3 rounded-[10px] border border-border bg-card px-4 py-3 text-base leading-snug text-muted-foreground">
+            <ToneBubble tone="gold" size="md" className="mt-0.5">
+              <BadgeDollarSign />
+            </ToneBubble>
+            <span>
+              <span className="font-semibold text-foreground">$300 referral bonus.</span> You get it once the person you
+              refer has sold $10,000 in annual premium (the yearly premium on the policies they sell). My Referrals shows
+              where each one stands.
+            </span>
           </p>
 
           <Card>
@@ -276,7 +311,7 @@ export default function ReferralSubmit() {
                   </p>
                 )}
 
-                <Button type="submit" disabled={submitting} className="h-12 w-full text-base">
+                <Button ref={sendButton} type="submit" disabled={submitting} className="h-12 w-full text-base">
                   {submitting ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />

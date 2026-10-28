@@ -9,6 +9,11 @@
  * sm up, status is words, and the one access button per row is a 44px outline Turn off in red
  * behind a confirm (33). One control scale: h-12 primary, h-11 everything else, nothing under
  * 13px (34). Every count equals the rows shown. The two edge-function contracts are unchanged.
+ *
+ * Colour layer (2026-10-28): the state is a pill in the shared tones (Active good, Turned off
+ * quiet slate, like Inactive on the Pipeline), each row opens with an initials bubble in that
+ * tone, the rows rise in once, a created login celebrates once from Create login after the
+ * server answered and never after a refusal, a copied password pops, a changed access ticks.
  */
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -21,8 +26,15 @@ const confirmMock = vi.hoisted(() => vi.fn(async (_opts: unknown) => true));
 vi.mock("@/hooks/useConfirm", () => ({ useConfirm: () => confirmMock }));
 const toastMock = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
 vi.mock("sonner", () => ({ toast: toastMock }));
+// The colour layer's side effects are observed, never run: canvas-confetti has no canvas in jsdom,
+// and with reduced motion CountUp shows a changed number at once instead of tweening on jsdom's
+// animation-frame clock (which does not share performance.now()'s base).
+vi.mock("@/lib/celebrate", () => ({ celebrate: vi.fn(() => Promise.resolve()), prefersReducedMotion: () => true }));
+vi.mock("@/hooks/useSoundEffects", () => ({ playSoundEffect: vi.fn(), useSoundEffects: () => ({ playSound: vi.fn() }) }));
 
 import VaManagerPortal, { generateLoginPassword } from "@/pages/VaManagerPortal";
+import { celebrate } from "@/lib/celebrate";
+import { playSoundEffect } from "@/hooks/useSoundEffects";
 
 type VaRow = {
   user_id: string;
@@ -86,6 +98,8 @@ beforeEach(() => {
   confirmMock.mockResolvedValue(true);
   toastMock.success.mockReset();
   toastMock.error.mockReset();
+  vi.mocked(celebrate).mockClear();
+  vi.mocked(playSoundEffect).mockClear();
   rpc().mockReset();
   rpc().mockResolvedValue(TWO as never);
   invoke().mockReset();
@@ -100,11 +114,16 @@ describe("Staff accounts", () => {
     await waitForCounts();
     expect(document.title).toBe("Staff accounts · Galaxy");
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
-    const subtitle = within(header()).getByText("Add assistant logins and turn them on or off.");
+    const subtitle = within(header()).getByText("Add logins and turn them on or off.");
     expect(subtitle.textContent!.split(/[.!?]\s/).length).toBe(1);
-    // 11: 15px text on a 390px phone holds about 46 characters on one line; the old 97-character
-    // sentence was clamped to "…they last…".
-    expect(subtitle.textContent!.length).toBeLessThanOrEqual(46);
+    // 11: 15px text on a 390px phone holds about 46 characters on one line, and about 36 beside the
+    // header's 48px bubble (2026-10-28 colour layer); the old 97-character sentence was clamped to
+    // "…they last…", and the 45-character one that followed clamped to "…on or…" once the bubble arrived.
+    expect(subtitle.textContent!.length).toBeLessThanOrEqual(36);
+    // The bubble is decoration beside the title: hidden from assistive technology, in the cool tone.
+    const bubble = Array.from(header().querySelectorAll('[aria-hidden="true"]')).find((el) => el.querySelector("svg")) as HTMLElement;
+    expect(bubble).toBeDefined();
+    expect(bubble.className).toMatch(/\btext-tone-cool\b/);
 
     const gold = goldButtons();
     expect(gold).toHaveLength(1);
@@ -158,10 +177,26 @@ describe("Staff accounts", () => {
     expect(within(cards[0]).getByText("ana@example.test").className).toMatch(/\bbreak-all\b/);
     expect(within(cards[0]).getByText("Active")).toBeInTheDocument();
     expect(within(cards[0]).getByText("Last signed in 10 days ago")).toBeInTheDocument();
-    // "Turned off" is a status, so it speaks the shared tones: act-now is hot (src/lib/tones.ts).
-    expect(within(cards[1]).getByText("Turned off").className).toMatch(/\btext-tone-hot\b/);
+    // The state is words in the shared tones (src/lib/tones.ts): an account that can sign in is going
+    // well (good); one turned off is quiet (slate), the same tone as Inactive on the Pipeline. A tint
+    // and a hairline, never a solid fill behind the word.
+    expect(within(cards[0]).getByText("Active").className).toMatch(/\btext-tone-good\b/);
+    expect(within(cards[0]).getByText("Active").className).toMatch(/\bbg-tone-good\/12\b/);
+    expect(within(cards[1]).getByText("Turned off").className).toMatch(/\btext-tone-slate\b/);
     expect(within(cards[1]).getByText("Never signed in")).toBeInTheDocument();
     expect(list.className).toMatch(/\bsm:hidden\b/);
+    // Each card opens with the person's initials in the colour of their state: decoration, hidden
+    // from assistive technology, with the name right beside it.
+    const bubbleOf = (card: HTMLElement) => card.querySelector('[aria-hidden="true"]') as HTMLElement;
+    expect(bubbleOf(cards[0])).toHaveTextContent("AR");
+    expect(bubbleOf(cards[0]).className).toMatch(/\btext-tone-good\b/);
+    expect(bubbleOf(cards[0]).className).toMatch(/\bh-11\b/);
+    expect(bubbleOf(cards[1])).toHaveTextContent("BL");
+    expect(bubbleOf(cards[1]).className).toMatch(/\btext-tone-slate\b/);
+    // The rows rise in once; nothing played on load.
+    expect(list.className).toMatch(/\bapex-rise-list\b/);
+    expect(playSoundEffect).not.toHaveBeenCalled();
+    expect(celebrate).not.toHaveBeenCalled();
 
     const turnOff = within(cards[0]).getByRole("button", { name: "Turn off" });
     expect(turnOff.className).toMatch(/\bh-11\b/);
@@ -177,9 +212,11 @@ describe("Staff accounts", () => {
     expect((table.parentElement as HTMLElement).className).toMatch(/\bhidden\b.*\bsm:block\b/);
     expect(within(table).getAllByRole("columnheader").map((th) => th.textContent)).toEqual(["Name", "Email", "Created", "Last sign-in", "Status", "Access"]);
     const bodyRows = within(table.querySelector("tbody") as HTMLElement).getAllByRole("row");
+    expect((table.querySelector("tbody") as HTMLElement).className).toMatch(/\bapex-rise-list\b/);
     expect(bodyRows).toHaveLength(2);
     expect(within(bodyRows[0]).getByText("10 days ago")).toBeInTheDocument();
     expect(within(bodyRows[1]).getByText("Never")).toBeInTheDocument();
+    expect(within(bodyRows[1]).getByText("Turned off").className).toMatch(/\btext-tone-slate\b/);
     expect(within(bodyRows[0]).getByRole("button", { name: "Turn off" }).className).toMatch(/\bh-11\b/);
     expect(within(bodyRows[1]).getByRole("button", { name: "Turn on" }).className).toMatch(/\bh-11\b/);
 
@@ -200,6 +237,8 @@ describe("Staff accounts", () => {
     await waitFor(() => expect(confirmMock).toHaveBeenCalledTimes(1));
     expect(confirmMock.mock.calls[0][0]).toMatchObject({ title: "Turn off Ana Ruiz?", confirmText: "Turn off", tone: "danger" });
     expect(invoke()).not.toHaveBeenCalled();
+    // Nothing changed, so nothing played.
+    expect(playSoundEffect).not.toHaveBeenCalled();
 
     invoke().mockResolvedValue({ data: { ok: true, disabled: true }, error: null } as never);
     rpc().mockResolvedValue({ data: [{ ...ANA, disabled: true }, BO], error: null } as never);
@@ -208,6 +247,10 @@ describe("Staff accounts", () => {
     expect(invoke().mock.calls[0]).toEqual(["set-va-account", { body: { va_user_id: "va-1", action: "disable" } }]);
     await waitFor(() => expect(toastMock.success).toHaveBeenCalledWith("Ana Ruiz is turned off."));
     await waitFor(() => expect(countsLine().textContent).toBe("2 accounts · 0 active · 2 turned off"));
+    // Access moved: one tick, after the server said so; an access change is never a celebration.
+    expect(playSoundEffect).toHaveBeenCalledTimes(1);
+    expect(playSoundEffect).toHaveBeenCalledWith("tick");
+    expect(celebrate).not.toHaveBeenCalled();
 
     // Turning back on asks too, in the primary tone, and sends "enable".
     fireEvent.click(within(cards[1]).getByRole("button", { name: "Turn on" }));
@@ -298,6 +341,47 @@ describe("Staff accounts", () => {
     expect(await within(dialog).findByText("server-kept-this-one")).toBeInTheDocument();
     const sent = (invoke().mock.calls[0][1] as { body: { password: string } }).body.password;
     expect(dialog.textContent).not.toContain(sent);
+  });
+
+  it("celebrates once, from Create login, after the server stored the login, and never after a refusal; Copy password pops only once the clipboard has it", async () => {
+    renderPage();
+    await waitForCounts();
+    fireEvent.click(screen.getByRole("button", { name: "New assistant" }));
+    const dialog = await screen.findByRole("dialog");
+    const create = within(dialog).getByRole("button", { name: "Create login" });
+
+    // Refused: the reason on the page as before, and no celebration.
+    invoke().mockResolvedValueOnce({
+      data: null,
+      error: { message: "Edge Function returned a non-2xx status code", context: { json: async () => ({ error: "That email is already registered." }) } },
+    } as never);
+    fireEvent.change(within(dialog).getByLabelText("Full name"), { target: { value: "Ed Kim" } });
+    fireEvent.change(within(dialog).getByLabelText("Email"), { target: { value: "ana@example.test" } });
+    fireEvent.click(create);
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("The login was not created: That email is already registered.");
+    expect(celebrate).not.toHaveBeenCalled();
+    expect(playSoundEffect).not.toHaveBeenCalled();
+
+    // Stored: one celebration, from the Create login button that was pressed, and the login pops in.
+    invoke().mockResolvedValueOnce({ data: { ok: true, user_id: "va-9", email: "ed@example.test", password: "kept-by-server" }, error: null } as never);
+    fireEvent.change(within(dialog).getByLabelText("Email"), { target: { value: "ed@example.test" } });
+    fireEvent.click(create);
+    const createdHeading = await within(dialog).findByRole("heading", { name: "Login created" });
+    expect(celebrate).toHaveBeenCalledTimes(1);
+    expect(celebrate).toHaveBeenCalledWith("save", create);
+    expect(within(dialog).getByText("kept-by-server").closest(".apex-pop")).not.toBeNull();
+    expect(createdHeading).toBeInTheDocument();
+
+    // Copy pops once the clipboard has the password, and stays silent with its message when it is blocked.
+    fireEvent.click(within(dialog).getByRole("button", { name: "Copy password" }));
+    await waitFor(() => expect(clipboard.writeText).toHaveBeenCalledWith("kept-by-server"));
+    await waitFor(() => expect(playSoundEffect).toHaveBeenCalledWith("pop"));
+    expect(playSoundEffect).toHaveBeenCalledTimes(1);
+    clipboard.writeText.mockRejectedValueOnce(new Error("blocked"));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Copy password" }));
+    await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith("Copy is blocked here. Write the password down instead."));
+    expect(playSoundEffect).toHaveBeenCalledTimes(1);
+    expect(celebrate).toHaveBeenCalledTimes(1);
   });
 
   it("a failed create keeps what was typed and says the server's reason on the page", async () => {

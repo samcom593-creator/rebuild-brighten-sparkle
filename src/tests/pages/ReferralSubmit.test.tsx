@@ -7,6 +7,10 @@
  * Every control is at least 44px, every word at least 13px (34). Errors are 14px words
  * (30). A failed send keeps what was typed and says why on the page. The
  * submit_referral RPC call is unchanged.
+ *
+ * Colour layer (2026-10-28): a sent referral celebrates once, from the Send button, after the
+ * RPC resolved; a failed send celebrates nothing; the confirmation pops in; the header bubble is
+ * decoration beside a title that stays the accessible name.
  */
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -15,8 +19,13 @@ import { supabase } from "@/integrations/supabase/client";
 
 const toastMock = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
 vi.mock("sonner", () => ({ toast: toastMock }));
+// The colour layer's side effects are observed, never run: canvas-confetti has no canvas in jsdom.
+vi.mock("@/lib/celebrate", () => ({ celebrate: vi.fn(() => Promise.resolve()), prefersReducedMotion: () => true }));
+vi.mock("@/hooks/useSoundEffects", () => ({ playSoundEffect: vi.fn(), useSoundEffects: () => ({ playSound: vi.fn() }) }));
 
 import ReferralSubmit from "@/pages/ReferralSubmit";
+import { celebrate } from "@/lib/celebrate";
+import { playSoundEffect } from "@/hooks/useSoundEffects";
 
 type RpcAnswer = { data: unknown; error: null | { message: string } };
 const SENT: RpcAnswer = {
@@ -55,6 +64,8 @@ function typeInto(label: string, value: string) {
 beforeEach(() => {
   toastMock.success.mockReset();
   toastMock.error.mockReset();
+  vi.mocked(celebrate).mockClear();
+  vi.mocked(playSoundEffect).mockClear();
   vi.mocked(supabase.rpc).mockReset();
   vi.mocked(supabase.rpc).mockResolvedValue(SENT as never);
   // Radix positions the Select list with ResizeObserver and scrolls the focused option into view; jsdom has neither.
@@ -238,5 +249,34 @@ describe("Refer a recruit", () => {
     fireEvent.click(sendButton());
     expect(await screen.findByRole("heading", { level: 2, name: "Di Park is on our list." })).toBeInTheDocument();
     expect(screen.queryByText(/did not send/)).toBeNull();
+  });
+
+  it("celebrates once, from the Send button, after submit_referral resolved, and not on a failed send", async () => {
+    renderPage();
+    // The header bubble is decoration beside the title (a gift, in green); the h1 is still the only name.
+    const bubble = Array.from(header().querySelectorAll('[aria-hidden="true"]')).find((el) => el.querySelector("svg")) as HTMLElement;
+    expect(bubble).toBeDefined();
+    expect(bubble.className).toMatch(/\btext-tone-good\b/);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Refer a recruit");
+
+    vi.mocked(supabase.rpc).mockResolvedValueOnce({ data: null, error: { message: "No agent record for user" } } as never);
+    typeInto("First name", "Ana");
+    typeInto("Last name", "Ruiz");
+    typeInto("Phone", "6015551001");
+    await chooseState("Texas");
+    const button = sendButton();
+    fireEvent.click(button);
+    await screen.findByText(/The referral did not send: No agent record for user\./);
+    expect(celebrate).not.toHaveBeenCalled();
+    expect(playSoundEffect).not.toHaveBeenCalled();
+
+    // The same button, pressed again, and this time the server says yes: one celebration from it.
+    fireEvent.click(sendButton());
+    const heading = await screen.findByRole("heading", { level: 2, name: "Ana Ruiz is on our list." });
+    expect(celebrate).toHaveBeenCalledTimes(1);
+    expect(celebrate).toHaveBeenCalledWith("booked", button);
+    expect(heading.closest(".apex-pop")).not.toBeNull();
+    expect(screen.getByText("Sent").className).toMatch(/\btext-tone-good\b/);
+    expect(playSoundEffect).not.toHaveBeenCalled();
   });
 });

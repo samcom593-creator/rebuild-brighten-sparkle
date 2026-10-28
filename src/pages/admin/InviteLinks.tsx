@@ -26,6 +26,7 @@
  * are never expired by anything here.
  */
 import { Link } from "react-router-dom";
+import { UserPlus } from "lucide-react";
 
 import { PageHeader } from "@/components/ui/page-header";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -41,11 +42,17 @@ export default function InviteLinksAdmin() {
   // in four numbered steps, and the contracting fields copy-ready on every invitation. The
   // license rule is said once, as the hint of the form's License step, never in a callout above
   // step 1 (council findings 11 and 27).
+  //
+  // Colour layer (2026-10-28): the header bubble is royal, the paperwork tone, because an
+  // invitation is the first form of someone's contracting. The steps, pills and celebrations
+  // live in InviteAgentForm and InvitationsTable.
   return (
     <div className="page-enter mx-auto w-full max-w-5xl space-y-8 pb-24">
       <PageHeader
         title="Invite an agent"
         subtitle="Fill in what you know, then send the link."
+        icon={<UserPlus />}
+        tone="royal"
       />
 
       <section aria-label="New invitation" className="rounded-xl border border-border bg-card p-5 sm:p-8">

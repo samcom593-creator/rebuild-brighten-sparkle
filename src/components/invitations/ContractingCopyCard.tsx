@@ -3,6 +3,7 @@ import { Check, Copy } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { playSoundEffect } from "@/hooks/useSoundEffects";
 import { cn } from "@/lib/utils";
 import { formatPhoneDisplay } from "@/lib/phone";
 import { contractingBlock, type ContractingInfo } from "@/lib/inviteContractingInfo";
@@ -34,6 +35,9 @@ async function writeClipboard(text: string): Promise<boolean> {
  * Under sm the label sits over the value and the value wraps (council finding 29):
  * a phone or an email is never cut to "(256…" on a 390px screen, because the person
  * must be able to read what they are about to copy.
+ *
+ * Every Copy pops once the clipboard has the value (2026-10-28 colour layer); a blocked
+ * clipboard keeps its message above and stays silent.
  */
 export function ContractingCopyCard({ info, className }: { info: ContractingInfo; className?: string }) {
   const [copied, setCopied] = useState<string | null>(null);
@@ -41,6 +45,7 @@ export function ContractingCopyCard({ info, className }: { info: ContractingInfo
 
   const copy = async (key: string, label: string, text: string) => {
     if (!(await writeClipboard(text))) return;
+    playSoundEffect("pop");
     setCopied(key);
     toast.success(`${label} copied.`);
     window.setTimeout(() => setCopied((c) => (c === key ? null : c)), 2000);

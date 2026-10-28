@@ -16,6 +16,12 @@
  * in the one labelled menu per row; Revoke and Replace are two-step through
  * useConfirm. Status words come from INVITATION_STATUS_LABEL, so the server's
  * "superseded" reads as "Replaced" everywhere here (finding 39).
+ *
+ * Colour layer (2026-10-28, docs/DESIGN_SYSTEM.md "Colour, motion and sound"): the status
+ * pill wears the tone INVITATION_STATUS_TONE gives its word (pending warm, accepted good,
+ * closed links quiet), the cards and rows rise in once, a copied link pops after the
+ * clipboard took it, a revoked link whooshes away, and a replaced link chimes from the menu
+ * item that was pressed. Nothing plays on load or on an error; every error toast is as before.
  */
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -35,16 +41,19 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { StatusPill } from "@/components/recruiting/StatusPill";
-import type { StatusTone } from "@/components/pipeline/worklist/worklistStatus";
+import { TonePill } from "@/components/ui/delight/ToneBubble";
+import { RevealList } from "@/components/ui/delight/Reveal";
 import { formatDay } from "@/components/pipeline/worklist/worklistFormat";
 import { useConfirm } from "@/hooks/useConfirm";
+import { playSoundEffect } from "@/hooks/useSoundEffects";
+import { celebrate, type CelebrationOrigin } from "@/lib/celebrate";
 import {
   INVITATION_STATUS_LABEL,
   agencyLabel,
   formatRole,
   invitationActions,
   invitationMailto,
+  invitationStatusTone,
   type InvitationStatus,
 } from "@/lib/invitationState";
 import { contractingInfoFor, decodeInviteNote } from "@/lib/inviteContractingInfo";
@@ -53,14 +62,18 @@ import { inviteUrlFromPath, shareInvitation, useInvitations, type InvitationRow 
 
 const BRAND = resolveBrand();
 
-/** The tint behind each status word. The word carries the meaning; the colour only helps. */
-const STATUS_TONE: Record<InvitationStatus, StatusTone> = {
-  pending: "primary",
-  accepted: "neutral",
-  expired: "warning",
-  revoked: "danger",
-  superseded: "neutral",
-};
+/**
+ * Where the finger was, as a point, read the moment a menu item is picked: the menu closes
+ * and the item unmounts before the write resolves, and a point read now still puts the
+ * bubbles where it was. The control itself while it has no size (hidden, or under test).
+ */
+function pressOrigin(control: EventTarget | null): CelebrationOrigin {
+  if (!(control instanceof Element) || typeof window === "undefined") return null;
+  const r = control.getBoundingClientRect();
+  if (r.width === 0 && r.height === 0) return control;
+  const clamp = (v: number) => Math.min(1, Math.max(0, v));
+  return { x: clamp((r.left + r.width / 2) / window.innerWidth), y: clamp((r.top + r.height / 2) / window.innerHeight) };
+}
 
 /** The server's status in the words people read; a status this client does not know is shown as it came, never hidden. */
 function statusWord(status: string | null | undefined): string {
@@ -120,7 +133,8 @@ interface RowMenuProps {
   onInfo: () => void;
   onCopy: () => void;
   onEmail: () => void;
-  onReplace: () => void;
+  /** Receives where the menu item was pressed, so the new link's chime rises from there. */
+  onReplace: (origin: CelebrationOrigin) => void;
   onRevoke: () => void;
 }
 
@@ -151,7 +165,7 @@ function RowMenu({ row, busy, infoOpen, onInfo, onCopy, onEmail, onReplace, onRe
           </DropdownMenuItem>
         )}
         {actions.regenerate && (
-          <DropdownMenuItem className="min-h-11 gap-2 text-base" onSelect={onReplace}>
+          <DropdownMenuItem className="min-h-11 gap-2 text-base" onSelect={(e) => onReplace(pressOrigin(e.currentTarget))}>
             <RefreshCw className="h-4 w-4" /> Replace link
           </DropdownMenuItem>
         )}
@@ -206,6 +220,8 @@ export function InvitationsTable({
     const url = await fetchLink(row.id);
     if (!url) return;
     await navigator.clipboard.writeText(url);
+    // The clipboard has it: the pop marks that, so a blocked clipboard stays silent.
+    playSoundEffect("pop");
     await shareInvitation(row.id, "copy");
     toast.success("Link copied.");
     await refresh();
@@ -240,10 +256,12 @@ export function InvitationsTable({
     const { error } = await supabase.rpc("revoke_invitation" as never, { p_id: row.id } as never);
     if (error) throw error;
     toast.success("Invitation revoked.");
+    // The link is gone: a quiet whoosh, only once the server said so.
+    playSoundEffect("whoosh");
     await refresh();
   });
 
-  const regenerate = (row: InvitationRow) => run(row.id, async () => {
+  const regenerate = (row: InvitationRow, origin: CelebrationOrigin) => run(row.id, async () => {
     const ok = await askConfirm({
       title: "Replace this link?",
       description: "The current link stops working and shows as Replaced. The new link carries the same terms.",
@@ -255,6 +273,8 @@ export function InvitationsTable({
     if (error) throw error;
     const fresh = data as unknown as { id?: string; path?: string };
     if (!fresh?.id || !fresh.path) throw new Error("The new link was not returned.");
+    // A new invitation exists (src/lib/celebrate.ts: "booked"), whether or not the clipboard takes it below.
+    void celebrate("booked", origin);
     const url = inviteUrlFromPath(fresh.path);
     try {
       await navigator.clipboard.writeText(url);
@@ -277,23 +297,33 @@ export function InvitationsTable({
       onInfo={() => setInfoRow(row)}
       onCopy={() => void copy(row)}
       onEmail={() => void emailDraft(row)}
-      onReplace={() => void regenerate(row)}
+      onReplace={(origin) => void regenerate(row, origin)}
       onRevoke={() => void revoke(row)}
     />
   );
 
+  /** The status word in its tone (INVITATION_STATUS_TONE). The word is the content; the dot and tint only help. */
   const pillFor = (row: InvitationRow) => (
-    <StatusPill status={{ label: INVITATION_STATUS_LABEL[row.status], tone: STATUS_TONE[row.status] }} className="shrink-0" />
+    <TonePill tone={invitationStatusTone(row.status)} dot className="shrink-0">
+      {INVITATION_STATUS_LABEL[row.status]}
+    </TonePill>
   );
+
+  /** A tab press is a view moved: one tick, and only when the view changes. */
+  const showHistory = (next: boolean) => {
+    if (next === history) return;
+    setHistory(next);
+    playSoundEffect("tick");
+  };
 
   return (
     <section className="space-y-3" aria-label={title}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-1 rounded-md border border-border p-0.5" role="tablist" aria-label="Invitation view">
-          <Button variant={history ? "ghost" : "secondary"} className="h-11 px-4 text-sm" role="tab" aria-selected={!history} onClick={() => setHistory(false)}>
+          <Button variant={history ? "ghost" : "secondary"} className="h-11 px-4 text-sm" role="tab" aria-selected={!history} onClick={() => showHistory(false)}>
             Active{counts ? ` · ${counts.pending}` : ""}
           </Button>
-          <Button variant={history ? "secondary" : "ghost"} className="h-11 px-4 text-sm" role="tab" aria-selected={history} onClick={() => setHistory(true)}>
+          <Button variant={history ? "secondary" : "ghost"} className="h-11 px-4 text-sm" role="tab" aria-selected={history} onClick={() => showHistory(true)}>
             History{counts ? ` · ${counts.total}` : ""}
           </Button>
         </div>
@@ -335,8 +365,8 @@ export function InvitationsTable({
         </p>
       ) : (
         <>
-          {/* Phones and tablets: one card per invitation. */}
-          <ul className="space-y-3 lg:hidden" data-testid="invite-cards">
+          {/* Phones and tablets: one card per invitation, rising in once, 40ms apart. */}
+          <RevealList as="ul" className="space-y-3 lg:hidden" data-testid="invite-cards">
             {rows.map((row) => {
               const freeNote = decodeInviteNote(row.notes).note;
               const info = contractingInfoFor(row);
@@ -371,7 +401,7 @@ export function InvitationsTable({
                 </li>
               );
             })}
-          </ul>
+          </RevealList>
 
           {/* Desktop: the same rows as a table. Text wraps; nothing is forced onto one line. */}
           <div className="hidden rounded-md border border-border lg:block" data-testid="invite-table">
@@ -386,7 +416,7 @@ export function InvitationsTable({
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody>
+              <TableBody className="apex-rise-list">
                 {rows.map((row) => {
                   const freeNote = decodeInviteNote(row.notes).note;
                   const info = contractingInfoFor(row);
@@ -436,6 +466,8 @@ export function InvitationsTable({
             <DialogDescription>
               {infoRow?.recipient_name ? `${infoRow.recipient_name} · copy each field into the carrier site.` : "Copy each field into the carrier site."}
             </DialogDescription>
+            {/* The same status word and tone as the row it came from. */}
+            {infoRow && <div className="flex pt-1">{pillFor(infoRow)}</div>}
           </DialogHeader>
           {infoRow && <ContractingCopyCard info={contractingInfoFor(infoRow)} />}
         </DialogContent>

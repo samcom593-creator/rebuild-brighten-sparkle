@@ -4,6 +4,10 @@
  * server's "superseded" reads as "Replaced"; an agency key this client does not know prints as
  * its own words, never "Unknown"; contracting values open in a dialog in full with 44px Copy
  * buttons; Copy link records a share and never sends anything.
+ *
+ * Colour layer (2026-10-28): the status pill wears the tone of its word through one map in
+ * src/lib/invitationState.ts; a copied link pops, a revoked one whooshes, a replaced one chimes
+ * from the menu item pressed, a tab moved ticks; nothing plays on load or before a confirm.
  */
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -23,14 +27,20 @@ vi.mock("@/integrations/supabase/client", () => ({
       if (fn === "invitation_link") return Promise.resolve({ data: { ok: true, path: "/hire/tok-1" }, error: null });
       if (fn === "record_invitation_share") return Promise.resolve({ data: { ok: true, status: "pending" }, error: null });
       if (fn === "revoke_invitation") return Promise.resolve({ data: { ok: true }, error: null });
+      if (fn === "regenerate_invitation") return Promise.resolve({ data: { id: "inv-5", path: "/hire/tok-5" }, error: null });
       return Promise.resolve({ data: null, error: null });
     },
   },
 }));
+// The colour layer's side effects are observed, never run: canvas-confetti has no canvas in jsdom.
+vi.mock("@/lib/celebrate", () => ({ celebrate: vi.fn(() => Promise.resolve()), prefersReducedMotion: () => true }));
+vi.mock("@/hooks/useSoundEffects", () => ({ playSoundEffect: vi.fn(), useSoundEffects: () => ({ playSound: vi.fn() }) }));
 
 import { ConfirmProvider } from "@/hooks/useConfirm";
 import { InvitationsTable } from "@/components/invitations/InvitationsTable";
 import type { InvitationRow } from "@/components/invitations/invitationApi";
+import { celebrate } from "@/lib/celebrate";
+import { playSoundEffect } from "@/hooks/useSoundEffects";
 
 function row(over: Partial<InvitationRow> & { id: string; status: InvitationRow["status"] }): InvitationRow {
   return {
@@ -74,6 +84,8 @@ const revokeCalls = () => calls.filter((c) => c.fn === "revoke_invitation");
 
 beforeEach(() => {
   calls.length = 0;
+  vi.mocked(celebrate).mockClear();
+  vi.mocked(playSoundEffect).mockClear();
   db.rows = [pending, accepted, replaced, revoked];
   db.counts = { total: 4, pending: 1, accepted: 1, expired: 0, revoked: 1, superseded: 1 };
   // Radix positions menus with ResizeObserver, which jsdom does not ship.
@@ -148,6 +160,8 @@ describe("InvitationsTable", () => {
     fireEvent.click(within(first).getByRole("button", { name: "Cancel" }));
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
     expect(revokeCalls()).toHaveLength(0);
+    // Nothing happened, so nothing played.
+    expect(playSoundEffect).not.toHaveBeenCalled();
 
     openMenu(card("inv-1").getByRole("button", { name: "More actions for Mary Ann Smith" }));
     fireEvent.click(await screen.findByRole("menuitem", { name: "Revoke link" }));
@@ -155,6 +169,10 @@ describe("InvitationsTable", () => {
     fireEvent.click(within(second).getByRole("button", { name: "Revoke link" }));
     await waitFor(() => expect(revokeCalls()).toHaveLength(1));
     expect(revokeCalls()[0].args).toEqual({ p_id: "inv-1" });
+    // The link is gone: one whoosh, only after the server said so.
+    await waitFor(() => expect(playSoundEffect).toHaveBeenCalledWith("whoosh"));
+    expect(playSoundEffect).toHaveBeenCalledTimes(1);
+    expect(celebrate).not.toHaveBeenCalled();
   });
 
   it("Copy link fetches the link, copies it and records a share — it sends nothing", async () => {
@@ -168,6 +186,54 @@ describe("InvitationsTable", () => {
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(`${window.location.origin}/hire/tok-1`);
     expect(calls.find((c) => c.fn === "record_invitation_share")?.args).toEqual({ p_id: "inv-1", p_channel: "copy" });
     expect(calls.map((c) => c.fn)).not.toContain("send_invitation");
+    // The clipboard has it: one pop.
+    await waitFor(() => expect(playSoundEffect).toHaveBeenCalledWith("pop"));
+    expect(playSoundEffect).toHaveBeenCalledTimes(1);
+  });
+
+  it("Replace link chimes from the menu item pressed once the new link exists, and not when the confirm is cancelled", async () => {
+    renderTable();
+    await screen.findByTestId("invite-card-inv-1");
+
+    openMenu(card("inv-1").getByRole("button", { name: "More actions for Mary Ann Smith" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Replace link" }));
+    const first = await screen.findByRole("alertdialog");
+    fireEvent.click(within(first).getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(calls.some((c) => c.fn === "regenerate_invitation")).toBe(false);
+    expect(celebrate).not.toHaveBeenCalled();
+
+    openMenu(card("inv-1").getByRole("button", { name: "More actions for Mary Ann Smith" }));
+    const item = await screen.findByRole("menuitem", { name: "Replace link" });
+    fireEvent.click(item);
+    const second = await screen.findByRole("alertdialog");
+    fireEvent.click(within(second).getByRole("button", { name: "Replace link" }));
+    await waitFor(() => expect(celebrate).toHaveBeenCalledTimes(1));
+    expect(calls.find((c) => c.fn === "regenerate_invitation")?.args).toEqual({ p_id: "inv-1" });
+    const [kind, origin] = vi.mocked(celebrate).mock.calls[0];
+    expect(kind).toBe("booked");
+    // The item has no size in jsdom, so the origin is the item itself; in a browser it is the point under the finger.
+    expect(origin).toBe(item);
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(`${window.location.origin}/hire/tok-5`);
+  });
+
+  it("the status pill speaks the shared tones through one map: pending warm, accepted good, a closed link quiet", async () => {
+    renderTable();
+    await screen.findByTestId("invite-card-inv-1");
+    expect(card("inv-1").getByText("Pending").className).toMatch(/\btext-tone-warm\b/);
+    expect(card("inv-2").getByText("Accepted").className).toMatch(/\btext-tone-good\b/);
+    expect(card("inv-3").getByText("Replaced").className).toMatch(/\btext-tone-slate\b/);
+    expect(card("inv-4").getByText("Revoked").className).toMatch(/\btext-tone-slate\b/);
+    expect(tableRow("inv-1").getByText("Pending").className).toMatch(/\btext-tone-warm\b/);
+    expect(tableRow("inv-4").getByText("Revoked").className).toMatch(/\btext-tone-slate\b/);
+    // A tint and a hairline, never a solid fill behind the word; the dot beside it is decoration.
+    expect(card("inv-1").getByText("Pending").className).toMatch(/\bbg-tone-warm\/12\b/);
+    expect(card("inv-1").getByText("Pending").querySelector('[aria-hidden="true"]')).not.toBeNull();
+    // Both layouts rise in once; nothing played on load.
+    expect(screen.getByTestId("invite-cards").className).toMatch(/\bapex-rise-list\b/);
+    expect(screen.getByTestId("invite-table").querySelector("tbody")?.className).toMatch(/\bapex-rise-list\b/);
+    expect(playSoundEffect).not.toHaveBeenCalled();
+    expect(celebrate).not.toHaveBeenCalled();
   });
 
   it("opens the contracting info in a dialog with each value in full and a 44px Copy per value", async () => {
@@ -184,6 +250,13 @@ describe("InvitationsTable", () => {
     for (const label of ["Copy first name", "Copy last name", "Copy email", "Copy phone", "Copy NPN"]) {
       expect(within(dialog).getByRole("button", { name: label }).className).toMatch(/\bh-11\b/);
     }
+    // The same status word and tone as the row it came from.
+    expect(within(dialog).getByText("Pending").className).toMatch(/\btext-tone-warm\b/);
+    // Copy phone pops once the clipboard has the value.
+    fireEvent.click(within(dialog).getByRole("button", { name: "Copy phone" }));
+    await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith("(256) 975-6155"));
+    await waitFor(() => expect(playSoundEffect).toHaveBeenCalledWith("pop"));
+    expect(playSoundEffect).toHaveBeenCalledTimes(1);
   });
 
   it("the History view counts every state in the same words", async () => {
@@ -194,5 +267,10 @@ describe("InvitationsTable", () => {
     fireEvent.click(historyTab);
     const counts = await screen.findByTestId("invitation-counts");
     expect(counts.textContent).toBe("1 pending · 1 accepted · 0 expired · 1 revoked · 1 replaced");
+    // A view moved is one tick; pressing the tab already open plays nothing more.
+    expect(playSoundEffect).toHaveBeenCalledTimes(1);
+    expect(playSoundEffect).toHaveBeenCalledWith("tick");
+    fireEvent.click(historyTab);
+    expect(playSoundEffect).toHaveBeenCalledTimes(1);
   });
 });

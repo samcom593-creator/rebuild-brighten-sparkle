@@ -1,8 +1,8 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowRight, ChevronDown, Download, Instagram, Mail, MessageSquare, Phone, RefreshCw, Search, SlidersHorizontal, UserX, X } from "lucide-react";
+import { ArrowRight, ChevronDown, ClipboardList, Clock, Download, GraduationCap, Handshake, Hourglass, Instagram, Mail, MessageSquare, Phone, RefreshCw, Search, SlidersHorizontal, UserX, X } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -12,16 +12,22 @@ import { Input } from "@/components/ui/input";
 import { PageSkeleton } from "@/components/ui/page-skeleton";
 import { PageHeader } from "@/components/ui/page-header";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { RevealList } from "@/components/ui/delight/Reveal";
+import { TonePill } from "@/components/ui/delight/ToneBubble";
 import { FilterChip } from "@/components/recruiting/FilterChip";
 import { GrowScoreboard } from "@/components/recruiting/GrowScoreboard";
 import { RecruitingWorkspaceNav } from "@/components/recruiting/RecruitingWorkspaceNav";
-import { StatusPill } from "@/components/recruiting/StatusPill";
+import { STATUS_TONE, StatusPill } from "@/components/recruiting/StatusPill";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LicenseProgressSelector } from "@/components/dashboard/LicenseProgressSelector";
 import { formatSince } from "@/components/pipeline/worklist/worklistFormat";
 import { cn } from "@/lib/utils";
 import { contactLinkProps, formatPhoneDisplay, phoneHref, smsHref } from "@/lib/phone";
 import { markNoLongerWithUs } from "@/lib/noLongerWithUs";
+import { celebrate, type CelebrationOrigin } from "@/lib/celebrate";
+import { HIRE_RUNGS, OFF_LADDER_STAGES, stageLabel, stageRank } from "@/lib/hireLadder";
+import { TONE_CLASS, hireRungTone, type Tone } from "@/lib/tones";
+import { playSoundEffect } from "@/hooks/useSoundEffects";
 import { useAuth } from "@/hooks/useAuth";
 import { useConfirm } from "@/hooks/useConfirm";
 import { buildExceptionQueue, type OnboardingFacts } from "@/lib/onboardingExceptions";
@@ -43,6 +49,17 @@ import { useOnboardingExceptionFacts } from "@/components/onboarding/useOnboardi
  *
  * "Stalled" from the engine fires at 24-48h and so tags ~97% of rows; the page
  * grades idle time instead (7d / 21d / 60d) so the flag means something.
+ *
+ * Colour layer (2026-10-28, docs/DESIGN_SYSTEM.md "Colour, motion and sound"): the hire
+ * ladder in src/lib/hireLadder.ts is the order that is true, so every colour here comes from
+ * a rung through hireRungTone: the tiles' bubbles, the stage chips' dots and selected tint,
+ * each row's initials bubble and the rung said in words beside the name. A hire's rung is the
+ * onboarding_stage from the onboarding facts when it is on file; otherwise the row's step is
+ * placed on the ladder (STEP_RUNG, the same correspondence v_next_step_current derives from
+ * agent facts). Time on a step keeps the page's own rule: a warning, never red. A move that
+ * went through is marked from the control pressed: up to Producing the full burst, any other
+ * step a pop, a bulk move one success note, and anything that closes or removes stays quiet.
+ * Nothing plays on load or on an error.
  */
 type Row = {
   person_type: "applicant" | "agent";
@@ -82,6 +99,52 @@ const PAGE = 40;
 const personKey = (r: Row) => r.application_id ?? r.agent_id ?? r.display_name;
 const igUrl = (h: string) => `https://instagram.com/${encodeURIComponent(h)}`;
 const linkState = (r: Row): LinkFilter => (r.link_used_at || r.last_sign_in_at ? "clicked" : r.link_sent_at ? "sent" : "not_sent");
+
+// The Next Step Engine's agent steps placed on the new-hire ladder (src/lib/hireLadder.ts),
+// whose order is the truth: not yet licensed is Hired, licensed with no course is Onboarding,
+// the course is In course, infield training is Field training and everything from a first
+// appointment on is Producing. The applicant steps are not rungs, and neither is a close.
+const STEP_RUNG: Record<string, number> = {
+  hired_unlicensed: 0,
+  hired: 1,
+  course_started: 2,
+  course_completed: 2,
+  infield_training: 3,
+  first_appointment: 4,
+  first_deal: 4,
+  first_10k_week: 4,
+};
+const PRODUCING_RANK = 4;
+const stepRank = (stageKey: string): number | null => STEP_RUNG[stageKey] ?? null;
+const rungWord = (rank: number): string | null => HIRE_RUNGS.find((rung) => rung.rank === rank)?.label ?? null;
+
+/** Two initials for the bubble beside a name. */
+const initialsOf = (name: string) =>
+  name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "?";
+
+type Rung = { tone: Tone; word: string | null };
+
+/**
+ * A person's rung and its tone. The onboarding_stage from the onboarding facts is the ladder
+ * truth when it is on file: an off-ladder flag (needs follow-up, inactive) is "act now" in its
+ * own words, a rung is its word. Without it the row's step is placed on the ladder; an
+ * applicant has no rung yet, so the bubble is quiet and nothing is claimed in words.
+ */
+function rungOf(r: Row, facts: OnboardingFacts | undefined): Rung {
+  const stage = (facts?.onboarding_stage ?? "").trim().toLowerCase();
+  if (stage && OFF_LADDER_STAGES.has(stage)) return { tone: "hot", word: stageLabel(stage) };
+  const rank = stage ? stageRank(stage) : stepRank(r.stage_key);
+  if (rank === null) return { tone: hireRungTone(null), word: stage ? stageLabel(stage) : null };
+  return { tone: hireRungTone(rank), word: rungWord(rank) };
+}
+
+// What a finished move means (src/lib/celebrate.ts): up to Producing is the full burst, any
+// other step the small pop, and a close is quiet. Called only after set_recruit_stage came
+// back without an error and the person landed where they were sent, from the control pressed.
+function stageMoved(toStage: string, origin: CelebrationOrigin): void {
+  if (toStage === "closed_lost") return;
+  void celebrate(stepRank(toStage) === PRODUCING_RANK ? "hire" : "save", origin);
+}
 
 // Red means one thing on this page: the action that removes a person. Time on a step is
 // a warning, and the words ("70 days on this step") carry the meaning at every tier
@@ -125,6 +188,9 @@ export default function RecruitPipeline() {
   const [igEditing, setIgEditing] = useState<string | null>(null);
   const [stateEditing, setStateEditing] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  // Each row's stage select, by person, so a move picked there can celebrate from the control
+  // that was pressed (Radix hands onValueChange the value alone, not the trigger).
+  const stageTriggers = useRef(new Map<string, HTMLButtonElement>());
 
   const stagesQuery = useQuery({
     queryKey: ["next-step-stages"],
@@ -222,8 +288,10 @@ export default function RecruitPipeline() {
 
   const refresh = useCallback(() => qc.invalidateQueries({ queryKey: ["recruit-pipeline"] }), [qc]);
 
+  // `origin` is the control the person pressed, read before the write; it never reaches the RPC,
+  // whose arguments are the same four as before. An undo is a correction and stays quiet.
   const setStage = useCallback(
-    async (r: Row, toStage: string, opts?: { silentUndo?: boolean }) => {
+    async (r: Row, toStage: string, opts?: { silentUndo?: boolean; origin?: CelebrationOrigin }) => {
       if (toStage === r.stage_key) return;
       setBusy(personKey(r));
       const { data, error } = await supabase.rpc("set_recruit_stage" as never, {
@@ -244,6 +312,7 @@ export default function RecruitPipeline() {
         toast.success(`${r.display_name} → ${finalName}`, {
           action: { label: "Undo", onClick: () => void setStage({ ...r, stage_key: res.final ?? toStage }, before, { silentUndo: true }) },
         });
+        stageMoved(res.final ?? toStage, opts?.origin);
       }
       await refresh();
     },
@@ -277,9 +346,13 @@ export default function RecruitPipeline() {
       if (res.kept) parts.push(`${res.kept} kept where evidence puts them`);
       if (res.refused) parts.push(`${res.refused} refused`);
       if (res.failed) parts.push(`${res.failed} failed`);
-      ((res.refused ?? 0) + (res.failed ?? 0) > 0 ? toast.warning : toast.success)(parts.join(" · "), {
+      const partly = (res.refused ?? 0) + (res.failed ?? 0) > 0;
+      (partly ? toast.warning : toast.success)(parts.join(" · "), {
         description: res.messages?.slice(0, 2).join(" "),
       });
+      // One note for the whole group once everyone asked for moved, never one per person; a
+      // close is quiet, and a move that was partly refused is the warning alone.
+      if (!partly && (res.moved ?? 0) > 0 && toStage !== "closed_lost") playSoundEffect("success");
       setSelected(new Set()); setBulkStage("");
       await refresh();
     },
@@ -393,10 +466,16 @@ export default function RecruitPipeline() {
     if (stagesQuery.isError) void stagesQuery.refetch();
   };
 
-  const chip = (on: boolean) =>
+  // A chosen chip wears its rung's tint and hairline (the words stay in the foreground colour);
+  // a step with no rung, and All, keep the page's plain "switched on" tint.
+  const chip = (on: boolean, tone: Tone | null = null) =>
     cn(
       "inline-flex h-11 items-center gap-2 rounded-lg border px-3.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
-      on ? "border-primary/60 bg-primary/15 text-foreground" : "border-border bg-card text-foreground hover:bg-muted/50",
+      on
+        ? tone
+          ? cn(TONE_CLASS[tone].soft, TONE_CLASS[tone].border, "text-foreground")
+          : "border-primary/60 bg-primary/15 text-foreground"
+        : "border-border bg-card text-foreground hover:bg-muted/50",
     );
   const IDLE_LABELS: Record<IdleFilter, string> = { all: "Any", "7": "7+ days", "21": "21+ days", "60": "60+ days" };
   const LINK_LABELS: Record<LinkFilter, string> = { all: "Any", not_sent: "Not sent", sent: "Sent, not clicked", clicked: "Clicked" };
@@ -404,8 +483,11 @@ export default function RecruitPipeline() {
   // A number opens exactly the people it counts (active recruits by idle time): every other filter clears.
   const onlyIdle = (k: IdleFilter) => {
     setIdle(k); setStageFilter(null); setLink("all"); setManagerFilter("all"); setShowClosed(false); setSearch("");
+    playSoundEffect("tick");
   };
   const tileOn = (k: IdleFilter) => idle === k && !stageFilter && link === "all" && managerFilter === "all" && !showClosed && !search;
+  // A step chip moves one filter: a tick, from the shared sounds.
+  const pickStage = (key: string | null) => { setStageFilter(key); playSoundEffect("tick"); };
 
   // Grow redesign (2026-10-28): the subtitle's sentence of counts became four numbers,
   // the strip of segmented toggles became one Filters button with removable chips, and
@@ -417,46 +499,58 @@ export default function RecruitPipeline() {
       <PageHeader
         title="New hires"
         subtitle="From hire to first deal, one step at a time."
+        icon={<GraduationCap />}
+        tone="good"
         // No gold button here on purpose: there is no one thing this page exists to do.
         // Declaring null also turns off the legacy inference, so nothing can be promoted.
         primaryAction={null}
       />
 
+      {/* Each tile's colour is a rung's (hireRungTone): In progress is the Hired rung, Open onboarding
+          the Onboarding rung. Time on a step is a warning on this page (finding 19), so the two Stuck
+          tiles take the warning tone of src/components/recruiting/StatusPill.tsx, never red. */}
       <GrowScoreboard
         label="New hire numbers"
         notice={numbersUnknown ? (
           <span className="text-destructive">The recruit list did not load, so the numbers are hidden rather than shown as 0.</span>
         ) : null}
         tiles={[
-          { label: "In progress", value: numbersUnknown ? null : active.length, hint: "Hired, not yet producing", onSelect: () => onlyIdle("all"), active: tileOn("all") },
-          { label: "Stuck 7+ days", value: numbersUnknown ? null : idle7, hint: "Same step a week or more", onSelect: () => onlyIdle("7"), active: tileOn("7"), emphasis: true },
-          { label: "Stuck 60+ days", value: numbersUnknown ? null : idle60, hint: "Same step two months", onSelect: () => onlyIdle("60"), active: tileOn("60") },
+          { label: "In progress", value: numbersUnknown ? null : active.length, hint: "Hired, not yet producing", onSelect: () => onlyIdle("all"), active: tileOn("all"), tone: hireRungTone(0), icon: <Handshake /> },
+          { label: "Stuck 7+ days", value: numbersUnknown ? null : idle7, hint: "Same step a week or more", onSelect: () => onlyIdle("7"), active: tileOn("7"), emphasis: true, tone: STATUS_TONE.warning, icon: <Clock /> },
+          { label: "Stuck 60+ days", value: numbersUnknown ? null : idle60, hint: "Same step two months", onSelect: () => onlyIdle("60"), active: tileOn("60"), tone: STATUS_TONE.warning, icon: <Hourglass /> },
           {
             label: "Open onboarding",
             value: factsQuery.isSuccess ? hiresWithOpenItems : null,
             hint: "Hires with an open step",
             definition: "Hires with at least one open onboarding requirement. Opens the onboarding queue (No Hire Left Behind).",
             onSelect: () => navigate("/dashboard/onboarding-ladder"),
+            tone: hireRungTone(1),
+            icon: <ClipboardList />,
           },
         ]}
       />
 
       {!listFailed && (
-        <nav aria-label="Stages" className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => setStageFilter(null)} className={chip(!stageFilter)} aria-pressed={!stageFilter}>
+        // The chips rise once, in order. A step on the hire ladder carries a dot in its rung's colour
+        // and takes that tint when chosen; the word beside the dot is what it means.
+        <nav aria-label="Stages" className="apex-rise-list flex flex-wrap gap-2">
+          <button type="button" onClick={() => pickStage(null)} className={chip(!stageFilter)} aria-pressed={!stageFilter}>
             All <span className="tabular-nums text-muted-foreground">{unstaged.length}</span>
           </button>
           {stages.filter((s) => s.stage_key !== "closed_lost" && (counts.get(s.stage_key)?.n ?? 0) > 0).map((s) => {
             const c = counts.get(s.stage_key);
+            const rank = stepRank(s.stage_key);
+            const tone = rank === null ? null : hireRungTone(rank);
             return (
               <button
                 key={s.stage_key}
                 type="button"
                 aria-pressed={stageFilter === s.stage_key}
-                onClick={() => setStageFilter(stageFilter === s.stage_key ? null : s.stage_key)}
-                className={chip(stageFilter === s.stage_key)}
+                onClick={() => pickStage(stageFilter === s.stage_key ? null : s.stage_key)}
+                className={chip(stageFilter === s.stage_key, tone)}
                 title={c?.idle21 ? `${c.idle21} stuck 21+ days` : undefined}
               >
+                {tone && <span aria-hidden="true" className={cn("h-2 w-2 shrink-0 rounded-full", TONE_CLASS[tone].dot)} />}
                 {s.display_name} <span className="tabular-nums text-muted-foreground">{c?.n ?? 0}</span>
               </button>
             );
@@ -532,9 +626,17 @@ export default function RecruitPipeline() {
           {showClosed && <FilterChip label="Including closed" onRemove={() => setShowClosed(false)} />}
         </div>
 
+      </div>
+
+      {/* One block for the bulk bar and the list, so the bar's sticky reach is the whole list: a sticky
+          element travels only within its parent, and it used to sit in the toolbar above, whose bottom
+          edge is where the list begins, so it scrolled away the moment the list did. The page root's
+          children are pinned relative by .page-enter > * (index.css), so the bar cannot be one of them.
+          Its top clears the 60px header (fixed on phones, sticky on desktop) plus the notch. */}
+      <div className="space-y-5">
         {selectedRows.length > 0 && (
           // Sticky so it stays in reach after ticking people far down the page.
-          <div className="sticky top-2 z-10 flex flex-wrap items-center gap-2 rounded-lg border border-primary/40 bg-card px-4 py-3">
+          <div className="sticky top-[calc(3.75rem+env(safe-area-inset-top,0px)+0.5rem)] z-10 flex flex-wrap items-center gap-2 rounded-lg border border-primary/40 bg-card px-4 py-3">
             <span className="text-sm font-medium">{selectedRows.length} selected</span>
             <Select value={bulkStage} onValueChange={setBulkStage}>
               <SelectTrigger className="h-11 w-full text-sm sm:w-60" aria-label="Move selected to stage"><SelectValue placeholder="Move to stage…" /></SelectTrigger>
@@ -557,7 +659,6 @@ export default function RecruitPipeline() {
             <Button variant="ghost" className="h-11 gap-1" onClick={() => setSelected(new Set())}><X className="h-4 w-4" aria-hidden="true" /> Clear</Button>
           </div>
         )}
-      </div>
 
       {listFailed ? (
         <div role="alert" className="rounded-xl border border-border bg-card p-10 text-center">
@@ -589,10 +690,11 @@ export default function RecruitPipeline() {
                       onCheckedChange={(v) => toggleMany(full, v === true)}
                       className={CHECKBOX}
                     />
-                    <h2 className="text-base font-semibold">{s.display_name}</h2>
+                    <h2 className="text-lg font-semibold leading-6">{s.display_name}</h2>
                     <span className="text-sm text-muted-foreground">{full.length}</span>
                   </div>
-                  <div className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card">
+                  {/* The rows rise once, one after the other, on first paint. */}
+                  <RevealList as="ul" className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card">
                     {list.map((r) => {
                       const name = r.display_name;
                       const key = personKey(r);
@@ -610,22 +712,32 @@ export default function RecruitPipeline() {
                       const isSel = selected.has(key);
                       const info = r.person_type === "agent" && r.agent_id ? factsByAgent.get(r.agent_id) : undefined;
                       const showMore = canRemove && r.person_type === "agent" && !!r.agent_id;
+                      const rung = rungOf(r, info?.facts);
+                      const bubble = TONE_CLASS[rung.tone];
                       return (
-                        <div
+                        <li
                           key={key}
                           className={cn(
-                            // Phone: one column. Tablet: the actions sit on their own line under the
-                            // person. Wide: four columns, nothing wraps under the Move button.
-                            "grid items-center gap-x-4 gap-y-3 px-4 py-4 sm:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)] xl:grid-cols-[auto_minmax(0,1.1fr)_minmax(0,1.3fr)_auto]",
+                            // Phone: the tick box and bubble in a narrow first column, the person beside them,
+                            // then the contact line and the actions each on a full line. Tablet: the actions
+                            // sit on their own line under the person. Wide: four columns, nothing wraps under
+                            // the Move button.
+                            "grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-3 px-4 py-4 sm:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)] sm:gap-x-4 xl:grid-cols-[auto_minmax(0,1.1fr)_minmax(0,1.3fr)_auto]",
                             isSel && "bg-primary/[0.06]",
                           )}
                         >
-                          <div className="flex items-center self-start sm:self-center">
+                          <div className="flex items-center gap-3 self-start sm:self-center">
                             <Checkbox aria-label={`Select ${name}`} checked={isSel} onCheckedChange={() => toggle(r)} className={CHECKBOX} />
+                            {/* The person's initials in the colour of their rung. Decoration: the name sits beside it
+                                and the pill says the rung in words, so it is hidden from assistive technology. */}
+                            <span aria-hidden="true" className={cn("relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-sm font-bold", bubble.soft, bubble.text, bubble.border)}>
+                              {initialsOf(name)}
+                            </span>
                           </div>
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
                               <span className="line-clamp-2 text-base font-semibold">{name}</span>
+                              {rung.word && <TonePill tone={rung.tone}>{rung.word}</TonePill>}
                               {r.person_type === "agent" && (r.license_status === "licensed" ? (
                                 <StatusPill status={{ label: "Licensed", tone: "primary" }} />
                               ) : (
@@ -679,7 +791,7 @@ export default function RecruitPipeline() {
                               </div>
                             )}
                           </div>
-                          <div className="flex flex-wrap items-center gap-2 text-sm">
+                          <div className="col-span-2 flex flex-wrap items-center gap-2 text-sm sm:col-span-1">
                             {tel ? (
                               <>
                                 <span className="whitespace-nowrap tabular-nums">{formatPhoneDisplay(r.phone)}</span>
@@ -739,9 +851,15 @@ export default function RecruitPipeline() {
                               <span className="inline-flex min-h-11 items-center text-sm text-muted-foreground">Start date unknown (did not load)</span>
                             ) : null)}
                           </div>
-                          <div className="flex flex-wrap items-center gap-2 sm:col-span-2 sm:col-start-2 xl:col-span-1 xl:col-start-auto xl:flex-nowrap xl:justify-self-end">
-                            <Select value={r.stage_key} onValueChange={(v) => void setStage(r, v)} disabled={isBusy}>
-                              <SelectTrigger className="h-11 w-full text-sm sm:w-[220px]" aria-label={`Stage for ${name}`}>
+                          <div className="col-span-2 flex flex-wrap items-center gap-2 sm:col-start-2 xl:col-span-1 xl:col-start-auto xl:flex-nowrap xl:justify-self-end">
+                            <Select value={r.stage_key} onValueChange={(v) => void setStage(r, v, { origin: stageTriggers.current.get(key) ?? null })} disabled={isBusy}>
+                              <SelectTrigger
+                                aria-label={`Stage for ${name}`}
+                                className="h-11 w-full text-sm sm:w-[220px]"
+                                // aria-label sits first: check:control-labels reads the tag up to the first ">",
+                                // and the arrow in this ref would otherwise hide the label from it.
+                                ref={(el) => { if (el) stageTriggers.current.set(key, el); else stageTriggers.current.delete(key); }}
+                              >
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -754,7 +872,8 @@ export default function RecruitPipeline() {
                               </SelectContent>
                             </Select>
                             {next ? (
-                              <Button variant="outline" className="h-11 gap-1.5 px-3" disabled={isBusy} onClick={() => void setStage(r, next.stage_key)}>
+                              // The button is read before the write so the bubbles rise from it.
+                              <Button variant="outline" className="h-11 gap-1.5 px-3" disabled={isBusy} onClick={(e) => { const origin = e.currentTarget; void setStage(r, next.stage_key, { origin }); }}>
                                 Move to {next.display_name} <ArrowRight className="h-4 w-4" aria-hidden="true" />
                               </Button>
                             ) : (
@@ -776,24 +895,27 @@ export default function RecruitPipeline() {
                               </DropdownMenu>
                             )}
                           </div>
-                        </div>
+                        </li>
                       );
                     })}
                     {full.length > list.length && (
-                      <button
-                        type="button"
-                        className="min-h-11 w-full px-4 py-2 text-center text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
-                        onClick={() => setExpanded((prev) => new Set(prev).add(s.stage_key))}
-                      >
-                        Show all {full.length} in {s.display_name}
-                      </button>
+                      <li>
+                        <button
+                          type="button"
+                          className="min-h-11 w-full px-4 py-2 text-center text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
+                          onClick={() => setExpanded((prev) => new Set(prev).add(s.stage_key))}
+                        >
+                          Show all {full.length} in {s.display_name}
+                        </button>
+                      </li>
                     )}
-                  </div>
+                  </RevealList>
                 </section>
               );
             })}
         </div>
       )}
+      </div>
     </div>
   );
 }

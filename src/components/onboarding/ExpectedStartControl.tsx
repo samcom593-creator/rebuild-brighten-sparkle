@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { celebrate, type CelebrationOrigin } from "@/lib/celebrate";
 import { cn } from "@/lib/utils";
 import {
   EXPECTED_START_LABEL,
@@ -29,11 +30,29 @@ type StartFacts = Pick<
 >;
 
 /**
+ * Where the finger was, as a point (src/lib/celebrate.ts takes either). The popover closes the
+ * moment a save goes through, so by the time the bubbles rise the button is gone from the page;
+ * a point read before the write still puts them where it sat. Null when the control has no
+ * size, which is the burst's default origin.
+ */
+function pressPoint(control: Element): CelebrationOrigin {
+  if (typeof window === "undefined") return null;
+  const r = control.getBoundingClientRect();
+  if (r.width === 0 && r.height === 0) return null;
+  const clamp = (v: number) => Math.min(1, Math.max(0, v));
+  return { x: clamp((r.left + r.width / 2) / window.innerWidth), y: clamp((r.top + r.height / 2) / window.innerHeight) };
+}
+
+/**
  * Expected start (Confirmed / Likely / Awaiting response / Not attending) and,
  * once the date has arrived, the actual outcome (Attended / No-show /
  * Rescheduled). Writes go through set_expected_start / record_start_outcome,
  * which audit to agent_stage_moves and never touch employment status: a
  * no-show here does not make anyone inactive or departed.
+ *
+ * Colour layer (2026-10-28): a start date that saved is a booked thing, so it gets the
+ * chime from where Save sat; a start recorded as attended is the full burst; a refusal
+ * keeps its message and nothing plays; a no-show or a "not attending" answer is kept quietly.
  */
 export function ExpectedStartControl({ facts, compact = false }: { facts: StartFacts; compact?: boolean }) {
   const qc = useQueryClient();
@@ -61,9 +80,11 @@ export function ExpectedStartControl({ facts, compact = false }: { facts: StartF
     await qc.invalidateQueries({ queryKey: ONBOARDING_FACTS_KEY });
   };
 
-  const save = async () => {
+  // `control` is the button pressed; its place is read before the write and never reaches the RPC.
+  const save = async (control: Element) => {
     if (!status) { toast.error("Pick a start status."); return; }
     if ((status === "confirmed" || status === "likely") && !date) { toast.error("A confirmed or likely start needs a date."); return; }
+    const origin = pressPoint(control);
     setBusy(true);
     const { error } = await supabase.rpc("set_expected_start" as never, {
       p_agent_id: facts.agent_id,
@@ -75,10 +96,13 @@ export function ExpectedStartControl({ facts, compact = false }: { facts: StartF
     if (error) { toast.error(`${name}: ${error.message}`); return; }
     toast.success(`${name}: expected start ${EXPECTED_START_LABEL[status].toLowerCase()}${date ? ` for ${date}` : ""}.`);
     setOpen(false);
+    // A date on file is a booked thing; "not attending" is an answer, not a booking.
+    if (date && status !== "not_attending") void celebrate("booked", origin);
     await done();
   };
 
-  const recordOutcome = async (o: StartOutcome) => {
+  const recordOutcome = async (o: StartOutcome, control: Element) => {
+    const origin = pressPoint(control);
     setBusy(true);
     const { error } = await supabase.rpc("record_start_outcome" as never, {
       p_agent_id: facts.agent_id,
@@ -94,6 +118,9 @@ export function ExpectedStartControl({ facts, compact = false }: { facts: StartF
         : `${name}: ${START_OUTCOME_LABEL[o].toLowerCase()} recorded. Employment status unchanged.`,
     );
     setOpen(false);
+    // A start that happened is the win; a new date is booked again; a no-show is kept quietly.
+    if (o === "attended") void celebrate("win", origin);
+    else if (o === "rescheduled" && newDate) void celebrate("booked", origin);
     await done();
   };
 
@@ -135,7 +162,7 @@ export function ExpectedStartControl({ facts, compact = false }: { facts: StartF
           </Select>
         </div>
         <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Note (optional)" aria-label="Note" className="h-11 text-sm" maxLength={280} />
-        <Button className="h-12 w-full" disabled={busy} onClick={() => void save()}>
+        <Button className="h-12 w-full" disabled={busy} onClick={(e) => void save(e.currentTarget)}>
           {busy ? "Saving…" : "Save expected start"}
         </Button>
 
@@ -148,8 +175,8 @@ export function ExpectedStartControl({ facts, compact = false }: { facts: StartF
               <p className="text-sm text-muted-foreground">Attended or no-show can be recorded once the date arrives. A reschedule can be recorded now.</p>
             ) : null}
             <div className="flex flex-wrap gap-2">
-              <Button variant="outline" className="h-11 text-sm" disabled={busy || !dateArrived} onClick={() => void recordOutcome("attended")}>Attended</Button>
-              <Button variant="outline" className="h-11 text-sm" disabled={busy || !dateArrived} onClick={() => void recordOutcome("no_show")}>No-show</Button>
+              <Button variant="outline" className="h-11 text-sm" disabled={busy || !dateArrived} onClick={(e) => void recordOutcome("attended", e.currentTarget)}>Attended</Button>
+              <Button variant="outline" className="h-11 text-sm" disabled={busy || !dateArrived} onClick={(e) => void recordOutcome("no_show", e.currentTarget)}>No-show</Button>
             </div>
             <div className="flex items-center gap-2">
               <Input
@@ -159,7 +186,7 @@ export function ExpectedStartControl({ facts, compact = false }: { facts: StartF
                 aria-label="New start date for the reschedule"
                 className="h-11 flex-1 text-sm"
               />
-              <Button variant="outline" className="h-11 text-sm" disabled={busy} onClick={() => void recordOutcome("rescheduled")}>Rescheduled</Button>
+              <Button variant="outline" className="h-11 text-sm" disabled={busy} onClick={(e) => void recordOutcome("rescheduled", e.currentTarget)}>Rescheduled</Button>
             </div>
           </div>
         )}

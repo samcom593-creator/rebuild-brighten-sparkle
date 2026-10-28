@@ -10,6 +10,13 @@
  * "Move to X" or "Last step", and the chips carry no numeric prefixes (23). The Open
  * onboarding tile opens the onboarding queue (24). Every count on a button is the rows a
  * tap on it shows.
+ *
+ * Colour layer (2026-10-28, docs/DESIGN_SYSTEM.md "Colour, motion and sound"): every colour
+ * is a rung of src/lib/hireLadder.ts through hireRungTone; the rung is said in words beside
+ * the name and the initials bubble is hidden from assistive technology; a move up to
+ * Producing is the full burst once, from the pressed button, any other step the pop, a bulk
+ * move one success note, a close quiet, and a failed write the error toast alone. Nothing
+ * plays on load.
  */
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -24,6 +31,11 @@ const db = vi.hoisted(() => ({
   facts: [] as Row[],
   factsError: null as null | { message: string },
   rpcCalls: [] as Array<{ fn: string; args: unknown }>,
+  /** What set_recruit_stage answers: an error, or a body such as { matched: false }. */
+  writeError: null as null | { message: string },
+  writeResult: null as null | Record<string, unknown>,
+  /** What set_recruit_stage_bulk answers. */
+  bulkResult: { moved: 2 } as Record<string, unknown>,
 }));
 const confirmMock = vi.hoisted(() => vi.fn(async (_opts: unknown) => true));
 const removed = vi.hoisted(() => ({ calls: [] as unknown[] }));
@@ -54,6 +66,8 @@ vi.mock("@/integrations/supabase/client", () => ({
       db.rpcCalls.push({ fn, args });
       if (fn === "recruit_pipeline_list") return Promise.resolve(db.rowsError ? { data: null, error: db.rowsError } : { data: db.rows, error: null });
       if (fn === "onboarding_exception_facts") return Promise.resolve(db.factsError ? { data: null, error: db.factsError } : { data: db.facts, error: null });
+      if (fn === "set_recruit_stage") return Promise.resolve(db.writeError ? { data: null, error: db.writeError } : { data: db.writeResult, error: null });
+      if (fn === "set_recruit_stage_bulk") return Promise.resolve(db.writeError ? { data: null, error: db.writeError } : { data: db.bulkResult, error: null });
       return Promise.resolve({ data: null, error: null });
     },
     channel: () => { const c = { on: () => c, subscribe: () => c }; return c; },
@@ -68,8 +82,15 @@ vi.mock("@/hooks/useConfirm", () => ({ useConfirm: () => confirmMock }));
 vi.mock("@/lib/noLongerWithUs", () => ({
   markNoLongerWithUs: async (args: unknown) => { removed.calls.push(args); return { ok: true, message: "removed", emailFailed: false }; },
 }));
+// The burst and the sounds are spied, never run: jsdom has no canvas and no audio.
+vi.mock("@/lib/celebrate", () => ({ celebrate: vi.fn(() => Promise.resolve()), prefersReducedMotion: () => true }));
+vi.mock("@/hooks/useSoundEffects", () => ({ playSoundEffect: vi.fn(), useSoundEffects: () => ({ playSound: vi.fn() }) }));
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn() } }));
 
 import RecruitPipeline from "@/pages/RecruitPipeline";
+import { celebrate } from "@/lib/celebrate";
+import { playSoundEffect } from "@/hooks/useSoundEffects";
+import { toast } from "sonner";
 
 const DAY = 24 * 60 * 60 * 1000;
 const daysAgo = (n: number) => new Date(Date.now() - n * DAY).toISOString();
@@ -134,6 +155,11 @@ const peopleShown = () => screen.getAllByRole("checkbox", { name: /^Select (?!ev
 /** The "N shown" line; the N sits in its own span, so match the whole element's text. */
 const shownLine = () => screen.getByText((_, el) => el?.tagName === "SPAN" && /^\d+ shown$/.test(el.textContent ?? ""));
 const writes = () => db.rpcCalls.filter((c) => c.fn !== "recruit_pipeline_list" && c.fn !== "onboarding_exception_facts");
+/** A person's row (an li), and the initials bubble in it: the one 40px round span. */
+const rowOf = (name: string) => screen.getByText(name).closest("li") as HTMLElement;
+const bubbleIn = (row: HTMLElement) => row.querySelector("span.h-10.w-10.rounded-full") as HTMLElement;
+/** The tinted bubble around a lucide icon, by the icon's class. */
+const iconBubble = (root: HTMLElement, icon: string) => root.querySelector(`svg.lucide-${icon}`)?.parentElement as HTMLElement | undefined;
 
 beforeEach(() => {
   db.rows = EVERYONE;
@@ -141,9 +167,17 @@ beforeEach(() => {
   db.facts = [DI_FACTS];
   db.factsError = null;
   db.rpcCalls = [];
+  db.writeError = null;
+  db.writeResult = null;
+  db.bulkResult = { moved: 2 };
   removed.calls = [];
   confirmMock.mockReset();
   confirmMock.mockResolvedValue(true);
+  vi.mocked(celebrate).mockClear();
+  vi.mocked(playSoundEffect).mockClear();
+  vi.mocked(toast.success).mockClear();
+  vi.mocked(toast.error).mockClear();
+  vi.mocked(toast.warning).mockClear();
   // Radix positions menus and popovers with ResizeObserver, which jsdom does not ship.
   vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
   if (!Element.prototype.scrollIntoView) Element.prototype.scrollIntoView = () => {};
@@ -375,5 +409,139 @@ describe("New hires", () => {
     h11(screen.getByRole("button", { name: "Clear" }));
     // The bulk Move is the one gold button on the screen.
     expect(document.querySelectorAll("button.bg-primary")).toHaveLength(1);
+  });
+
+  it("every colour is a rung: the header and tile bubbles, the rung in words beside each hire, an aria-hidden initials bubble in the same tone; nothing plays on load", async () => {
+    const flo = person({ display_name: "Flo Nash", person_type: "agent", stage_key: "hired_unlicensed", agent_id: "agent-flo", phone: "6015551006" });
+    db.rows = [...EVERYONE, flo];
+    db.facts = [
+      DI_FACTS,
+      { ...DI_FACTS, agent_id: "agent-cy", agent_name: "Cy Dunn", onboarding_stage: "in_field_training" },
+      { ...DI_FACTS, agent_id: "agent-flo", agent_name: "Flo Nash", onboarding_stage: "need_followup" },
+    ];
+    renderPage();
+    await screen.findByText("Ana Ruiz");
+    expect(celebrate).not.toHaveBeenCalled();
+    expect(playSoundEffect).not.toHaveBeenCalled();
+
+    // The header: a graduation cap in the "going well" tone, a bubble and not a button.
+    const header = screen.getByRole("heading", { level: 1, name: "New hires" }).closest("header") as HTMLElement;
+    const cap = iconBubble(header, "graduation-cap");
+    expect(cap).toHaveAttribute("aria-hidden", "true");
+    expect(cap!.className).toMatch(/\btext-tone-good\b/);
+    expect(within(header).queryAllByRole("button")).toHaveLength(0);
+
+    // The tiles: the Hired rung's gold handshake, the warning tone for time stuck (never red on
+    // this page), the Onboarding rung's royal clipboard. The numbers are exactly as before.
+    expect(iconBubble(tile("In progress"), "handshake")!.className).toMatch(/\btext-tone-gold\b/);
+    expect(iconBubble(tile("Stuck 7+ days"), "clock")!.className).toMatch(/\btext-tone-warm\b/);
+    expect(iconBubble(tile("Stuck 60+ days"), "hourglass")!.className).toMatch(/\btext-tone-warm\b/);
+    expect(iconBubble(tile("Open onboarding"), "clipboard-list")!.className).toMatch(/\btext-tone-royal\b/);
+    expect(tile("In progress")).toHaveTextContent(/In progress\s*5/);
+    expect(board().querySelectorAll(".text-tone-hot, .text-destructive")).toHaveLength(0);
+
+    // Cy's onboarding facts put him in field training: the pill says so, in the warm tone, and the
+    // bubble beside his name matches it, hidden from assistive technology.
+    const cy = rowOf("Cy Dunn");
+    const cyPill = within(cy).getByText("Field training");
+    expect(cyPill.className).toMatch(/\btext-tone-warm\b/);
+    expect(cyPill.className).toMatch(/\bbg-tone-warm\/12\b/);
+    const cyBubble = bubbleIn(cy);
+    expect(cyBubble.textContent).toBe("CD");
+    expect(cyBubble).toHaveAttribute("aria-hidden", "true");
+    expect(cyBubble.className).toMatch(/\btext-tone-warm\b/);
+    // Di has no onboarding_stage on file, so her First deal step places her at Producing.
+    expect(within(rowOf("Di Park")).getByText("Producing").className).toMatch(/\btext-tone-good\b/);
+    expect(bubbleIn(rowOf("Di Park")).textContent).toBe("DP");
+    // An off-ladder flag is "act now", in its own words.
+    expect(within(rowOf("Flo Nash")).getByText("Needs follow-up").className).toMatch(/\btext-tone-hot\b/);
+    expect(bubbleIn(rowOf("Flo Nash")).className).toMatch(/\btext-tone-hot\b/);
+    // An applicant has no rung yet: a quiet bubble and no rung claimed in words.
+    const ana = rowOf("Ana Ruiz");
+    expect(bubbleIn(ana).className).toMatch(/\btext-tone-slate\b/);
+    expect(within(ana).queryByText(/^(Hired|Onboarding|In course|Field training|Producing)$/)).toBeNull();
+    // Red is still only the remove action.
+    expect(screen.getByRole("region", { name: "People" }).querySelectorAll(".text-destructive")).toHaveLength(0);
+
+    // The chips: a step on the hire ladder carries its rung's dot and takes that tint when chosen;
+    // an applicant step carries neither. The counts and aria-pressed are as before.
+    const chips = screen.getByRole("navigation", { name: "Stages" });
+    expect(chips.className).toMatch(/\bapex-rise-list\b/);
+    const hired = within(chips).getByRole("button", { name: /^Hired, unlicensed\s*2$/ });
+    expect(hired.querySelector(".bg-tone-gold")).not.toBeNull();
+    expect(within(chips).getByRole("button", { name: /^Applied\s*1$/ }).querySelector('[class*="bg-tone-"]')).toBeNull();
+    const firstDeal = within(chips).getByRole("button", { name: /^First deal\s*1$/ });
+    fireEvent.click(firstDeal);
+    expect(firstDeal).toHaveAttribute("aria-pressed", "true");
+    expect(firstDeal.className).toMatch(/\bbg-tone-good\/12\b/);
+    expect(firstDeal.className).toMatch(/\bh-11\b/);
+    expect(peopleShown()).toBe(1);
+    // A filter moved is a tick; a burst is only ever an action that finished.
+    expect(playSoundEffect).toHaveBeenCalledTimes(1);
+    expect(playSoundEffect).toHaveBeenCalledWith("tick");
+    expect(celebrate).not.toHaveBeenCalled();
+  });
+
+  it("a move up to Producing is the full burst, once, from the pressed button; another step is the pop; a kept or failed write is its message alone", async () => {
+    const gus = person({ display_name: "Gus Hale", person_type: "agent", stage_key: "licensed", agent_id: "agent-gus", phone: "6015551007", license_status: "licensed" });
+    db.rows = [ana, gus];
+    renderPage();
+    await screen.findByText("Gus Hale");
+
+    // First deal is the ladder's Producing (live) rung.
+    const toProducing = screen.getByRole("button", { name: "Move to First deal" });
+    fireEvent.click(toProducing);
+    await waitFor(() => expect(celebrate).toHaveBeenCalledTimes(1));
+    expect(celebrate).toHaveBeenCalledWith("hire", toProducing);
+    expect(writes()).toEqual([{ fn: "set_recruit_stage", args: { p_application_id: null, p_agent_id: "agent-gus", p_to_stage: "first_deal", p_reason: null } }]);
+    expect(toast.success).toHaveBeenCalledTimes(1);
+    expect(playSoundEffect).not.toHaveBeenCalled();
+
+    // Any other step is the small pop, from its own button.
+    const toContacted = screen.getByRole("button", { name: "Move to Contacted" });
+    fireEvent.click(toContacted);
+    await waitFor(() => expect(celebrate).toHaveBeenCalledTimes(2));
+    expect(celebrate).toHaveBeenLastCalledWith("save", toContacted);
+
+    // Kept where the evidence puts them: the warning, no burst.
+    db.writeResult = { ok: true, final: "licensed", matched: false, message: "Evidence keeps Gus at Licensed." };
+    fireEvent.click(screen.getByRole("button", { name: "Move to First deal" }));
+    await waitFor(() => expect(toast.warning).toHaveBeenCalledTimes(1));
+    expect(celebrate).toHaveBeenCalledTimes(2);
+
+    // Refused: the error toast alone.
+    db.writeResult = null;
+    db.writeError = { message: "not allowed" };
+    fireEvent.click(screen.getByRole("button", { name: "Move to First deal" }));
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Gus Hale: not allowed"));
+    expect(celebrate).toHaveBeenCalledTimes(2);
+    expect(playSoundEffect).not.toHaveBeenCalled();
+  });
+
+  it("a bulk move over several people is one success note after it saved; closing them is quiet", async () => {
+    renderPage();
+    await screen.findByText("Ana Ruiz");
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select Ana Ruiz" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select Bo Lee" }));
+    const picker = screen.getByRole("combobox", { name: "Move selected to stage" });
+    fireEvent.keyDown(picker, { key: "ArrowDown" });
+    fireEvent.keyDown(await screen.findByRole("option", { name: "Interview booked" }), { key: "Enter" });
+    await waitFor(() => expect(picker).toHaveTextContent("Interview booked"));
+    fireEvent.click(screen.getByRole("button", { name: "Move" }));
+    await waitFor(() => expect(playSoundEffect).toHaveBeenCalledWith("success"));
+    expect(playSoundEffect).toHaveBeenCalledTimes(1);
+    expect(celebrate).not.toHaveBeenCalled();
+    expect(writes()).toEqual([{
+      fn: "set_recruit_stage_bulk",
+      args: { p_people: [{ application_id: ana.application_id, agent_id: null }, { application_id: bo.application_id, agent_id: null }], p_to_stage: "interview_booked", p_reason: null },
+    }]);
+
+    // Closing people went through too, and nothing plays for it.
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select Ana Ruiz" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close all 1" }));
+    await waitFor(() => expect(writes()).toHaveLength(2));
+    expect(writes()[1].args).toMatchObject({ p_to_stage: "closed_lost" });
+    expect(playSoundEffect).toHaveBeenCalledTimes(1);
+    expect(celebrate).not.toHaveBeenCalled();
   });
 });

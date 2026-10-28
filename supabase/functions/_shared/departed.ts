@@ -64,6 +64,11 @@ export async function walkToLiveUpline(
 }
 
 export interface BannableUser {
+  // `id` is here so GoTrue's own `User` type is assignable: with banned_until as the only
+  // (optional) member, TypeScript's weak-type rule refused `User` ("no properties in
+  // common"), which is how seven senders failed check:deno-typecheck on 2026-10-28 while
+  // every local tsc run stayed green (the browser build never compiles these files).
+  id?: string;
   banned_until?: string | null;
 }
 

@@ -13,6 +13,9 @@ Deno.test("the unanswered DMs of 2026-10-27 each land in a lane", () => {
   assertEquals(brainLane("was wondering if u were looking for a virtual assistant"), "vendor");
   assertEquals(brainLane("Bro got ai"), "bot_check");
   assertEquals(brainLane("Hey bro how do u this all"), "need_help");
+  // 2026-10-28 06:05Z, the first YouTube pull after the reconnect: this landed in casual and got nothing.
+  assertEquals(brainLane("How do you make a lot of money"), "need_help");
+  assertEquals(brainLane("what do u do for a living"), "need_help");
 });
 
 Deno.test("a former agent asking to come back is win-back, and wins over support words", () => {

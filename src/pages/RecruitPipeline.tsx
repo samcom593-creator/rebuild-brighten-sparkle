@@ -166,7 +166,9 @@ const CHECKBOX = "relative h-5 w-5 !min-h-0 before:absolute before:-inset-3.5 be
 // an underline, never red. 44px tall so it is tappable. SENTENCE_LINK sits inside a 20px
 // line of text and is pulled back with -my-3 so the line does not grow to 44px.
 const QUIET_LINK = "inline-flex min-h-11 items-center text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]";
-const SENTENCE_LINK = cn(QUIET_LINK, "-my-3");
+// A two-letter state is 17-22px wide, so the same ::before trick as the checkbox widens its
+// tap area by 14px each side (45-50px) without moving a word of the sentence (2026-10-28).
+const SENTENCE_LINK = cn(QUIET_LINK, "relative -my-3 before:absolute before:inset-y-0 before:-inset-x-3.5 before:content-['']");
 
 export default function RecruitPipeline() {
   const qc = useQueryClient();

@@ -221,8 +221,6 @@ const NeedsAnalysis = lazy(() => import("./pages/NeedsAnalysis"));
 const Quoter = lazy(() => import("./pages/Quoter"));
 const AwardsGallery = lazy(() => import("./pages/AwardsGallery"));
 const HallOfFame = lazy(() => import("./pages/HallOfFame"));
-const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
-const TermsOfService = lazy(() => import("./pages/TermsOfService"));
 const DataDeletion = lazy(() => import("./pages/DataDeletion"));
 const Contact = lazy(() => import("./pages/Contact"));
 const BotToken = lazy(() => import("./pages/BotToken"));
@@ -778,13 +776,19 @@ const App = () => (
                        <Route path="/dashboard/awards" element={<ProtectedRoute><AwardsGallery /></ProtectedRoute>} />
                        <Route path="/dashboard/hall-of-fame" element={<ProtectedRoute><HallOfFame /></ProtectedRoute>} />
                        <Route path="/hall-of-fame" element={<HallOfFame />} />
-                       {/* /privacy and /terms are public routes above — don't duplicate here */}
-                       <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-                       <Route path="/terms-of-service" element={<TermsOfService />} />
+                       {/* /privacy and /terms are the public legal pages above. These two older URLs sat
+                           inside the signed-in shell (a visitor had to log in to read the privacy policy) and
+                           rendered a second copy whose "Last updated" was always today's date. One hop to the
+                           public page, query preserved (platform redesign route board, 2026-10-28). */}
+                       <Route path="/privacy-policy" element={<LegacyWorkspaceRedirect to="/privacy" />} />
+                       <Route path="/terms-of-service" element={<LegacyWorkspaceRedirect to="/terms" />} />
                        <Route path="/bot-token" element={<ProtectedRoute requireAdmin><BotToken /></ProtectedRoute>} />
                        <Route path="/dashboard/bot-token" element={<ProtectedRoute requireAdmin><BotToken /></ProtectedRoute>} />
                        <Route path="/dashboard/inbox/instagram" element={<ProtectedRoute requireAdmin allowManagers><InstagramInbox /></ProtectedRoute>} />
-                       <Route path="/dashboard/instagram-inbox" element={<ProtectedRoute><InstagramInbox /></ProtectedRoute>} />
+                       {/* The alias carried a looser guard than the canonical route (any signed-in user vs
+                           admin + manager). An alias never renders the page itself now: one hop to the
+                           canonical route, which owns the gate (route board finding 4, 2026-10-28). */}
+                       <Route path="/dashboard/instagram-inbox" element={<LegacyWorkspaceRedirect to="/dashboard/inbox/instagram" />} />
                        {/* /today has aliased the Today page since 0ae97ee7. MP-230 pointed it at the
                            old command center when Today was removed; MP-239 restored /dashboard/today
                            but left this alias behind, so it opened the wrong surface until 2026-10-15. */}

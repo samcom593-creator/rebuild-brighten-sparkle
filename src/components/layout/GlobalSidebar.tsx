@@ -114,9 +114,12 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
   // agents row to post a deal under, so the pair is absent for them.
   const canAddAgent = isAdmin || isManager;
   const canPostDeal = !isApplicant;
+  // Both quick actions are outline buttons at 44px (screen contract, 2026-10-28): the one gold
+  // button on any screen is the page's own primary action, and the rail must never compete
+  // with it. Before this the rail put a second gold button beside every page's primary.
   const quickActionClass = cn(
     "w-full gap-2",
-    mobile ? "h-11 justify-start gap-3 px-3" : collapsed ? "h-9 px-0" : "h-9 justify-start px-3",
+    mobile ? "h-11 justify-start gap-3 px-3" : collapsed ? "h-11 px-0" : "h-11 justify-start px-3",
   );
 
   const withTooltip = (label: string, child: ReactNode) => {
@@ -258,7 +261,7 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
             {canAddAgent && (
               <AddAgentModal
                 trigger={(
-                  <Button size="sm" className={quickActionClass} aria-label="Add Agent">
+                  <Button size="sm" variant="outline" className={quickActionClass} aria-label="Add Agent">
                     <UserPlus className="h-4 w-4 shrink-0" />
                     {!collapsed && <span>Add Agent</span>}
                   </Button>
@@ -268,7 +271,7 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
             {canPostDeal && (
               <SubmitDealDialog
                 trigger={(
-                  <Button size="sm" variant={canAddAgent ? "outline" : "default"} className={quickActionClass} aria-label="Post a Deal">
+                  <Button size="sm" variant="outline" className={quickActionClass} aria-label="Post a Deal">
                     <HandCoins className="h-4 w-4 shrink-0" />
                     {!collapsed && <span>Post a Deal</span>}
                   </Button>

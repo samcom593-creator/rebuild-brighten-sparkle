@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
 import { escapeHtml } from "../_shared/notify-caller-policy.ts";
+import { DEPARTED_AGENT_COLUMNS, isDepartedAgent } from "../_shared/departed.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -86,7 +87,7 @@ Deno.serve(async (req: Request) => {
     // Get application details + assigned agent
     const { data: app, error: appError } = await supabase
       .from("applications")
-      .select("*, agents!applications_assigned_agent_id_fkey(id, user_id, invited_by_manager_id)")
+      .select("*, agents!applications_assigned_agent_id_fkey(id, user_id, invited_by_manager_id, is_deactivated, status)")
       .eq("id", applicationId)
       .single();
 
@@ -122,7 +123,9 @@ Deno.serve(async (req: Request) => {
     // Collect CC emails: admin + assigned agent + direct manager + ALL managers
     const ccEmails: string[] = [ADMIN_EMAIL];
 
-    if (app.agents?.user_id) {
+    // Neither the assigned agent nor their manager is CC'd once departed (terminated or
+    // deactivated): both pointers are kept for attribution after departure.
+    if (app.agents?.user_id && !isDepartedAgent(app.agents)) {
       const { data: agentProfile } = await supabase
         .from("profiles")
         .select("email")
@@ -134,10 +137,10 @@ Deno.serve(async (req: Request) => {
     if (app.agents?.invited_by_manager_id) {
       const { data: managerAgent } = await supabase
         .from("agents")
-        .select("user_id")
+        .select(DEPARTED_AGENT_COLUMNS)
         .eq("id", app.agents.invited_by_manager_id)
         .single();
-      if (managerAgent?.user_id) {
+      if (managerAgent?.user_id && !isDepartedAgent(managerAgent)) {
         const { data: managerProfile } = await supabase
           .from("profiles")
           .select("email")

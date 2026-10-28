@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
+import { DEPARTED_AGENT_COLUMNS, isDepartedAgent } from "../_shared/departed.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -76,14 +77,16 @@ const handler = async (req: Request): Promise<Response> => {
             .eq("id", app.assigned_agent_id)
             .single();
 
+          // A departed manager (terminated or deactivated) is never CC'd: the pointer is
+          // kept for attribution after departure.
           if (managerAgent?.invited_by_manager_id) {
             const { data: managerProfile } = await supabase
               .from("agents")
-              .select("profile_id")
+              .select(`profile_id, ${DEPARTED_AGENT_COLUMNS}`)
               .eq("id", managerAgent.invited_by_manager_id)
               .single();
 
-            if (managerProfile?.profile_id) {
+            if (managerProfile?.profile_id && !isDepartedAgent(managerProfile)) {
               const { data: profile } = await supabase
                 .from("profiles")
                 .select("email")

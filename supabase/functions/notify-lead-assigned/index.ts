@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { gateResend } from "../_shared/resend-gate.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
+import { DEPARTED_AGENT_COLUMNS, isBannedUser, isDepartedAgent } from "../_shared/departed.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -32,14 +33,17 @@ async function getAgentInfo(agentId: string): Promise<{ email: string; name: str
   try {
     const { data: agent, error: agentError } = await supabaseAdmin
       .from("agents")
-      .select("user_id")
+      .select(DEPARTED_AGENT_COLUMNS)
       .eq("id", agentId)
       .single();
     
     if (agentError || !agent?.user_id) return null;
+    // A departed agent (terminated or deactivated) or a banned login is never notified.
+    if (isDepartedAgent(agent)) return null;
     
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.getUserById(agent.user_id);
     
+    if (authData?.user && isBannedUser(authData.user)) return null;
     if (!authError && authData?.user?.email) {
       const { data: profile } = await supabaseAdmin
         .from("profiles")
@@ -77,10 +81,13 @@ async function getManagerInfo(agentId: string): Promise<{ email: string; userId:
   try {
     const { data: agent } = await supabaseAdmin.from("agents").select("invited_by_manager_id").eq("id", agentId).single();
     if (!agent?.invited_by_manager_id) return null;
-    const { data: manager } = await supabaseAdmin.from("agents").select("user_id").eq("id", agent.invited_by_manager_id).single();
-    if (!manager?.user_id) return null;
+    // A departed manager (terminated or deactivated) or a banned login is never pushed or
+    // CC'd: invited_by_manager_id is kept for attribution after departure.
+    const { data: manager } = await supabaseAdmin.from("agents").select(DEPARTED_AGENT_COLUMNS).eq("id", agent.invited_by_manager_id).single();
+    if (!manager?.user_id || isDepartedAgent(manager)) return null;
     const { data: authData } = await supabaseAdmin.auth.admin.getUserById(manager.user_id);
-    return authData?.user?.email ? { email: authData.user.email, userId: manager.user_id } : null;
+    const user = authData?.user;
+    return user?.email && !isBannedUser(user) ? { email: user.email, userId: manager.user_id } : null;
   } catch (e) {
     console.error("Error resolving manager info:", e);
     return null;

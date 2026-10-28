@@ -18,6 +18,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
+import { DEPARTED_AGENT_COLUMNS, isDepartedAgent } from "../_shared/departed.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -71,12 +72,15 @@ async function getPhoneFor(agent: AgentRow): Promise<{ phone: string | null; nam
   };
 }
 
-async function getManagerContact(managerAgentId: string): Promise<{ phone: string | null; email: string | null; name: string }> {
+// null when the manager has departed (terminated or deactivated): no SMS, no task.
+// invited_by_manager_id / manager_id are kept for attribution after departure.
+async function getManagerContact(managerAgentId: string): Promise<{ phone: string | null; email: string | null; name: string } | null> {
   const { data: mgrAgent } = await supabase
     .from("agents")
-    .select("profile:profiles!agents_profile_id_fkey(full_name, phone, email)")
+    .select(`${DEPARTED_AGENT_COLUMNS}, profile:profiles!agents_profile_id_fkey(full_name, phone, email)`)
     .eq("id", managerAgentId)
     .maybeSingle();
+  if (isDepartedAgent(mgrAgent as any)) return null;
   const p = (mgrAgent as any)?.profile;
   return {
     phone: p?.phone ?? null,
@@ -230,10 +234,15 @@ async function sweep(dryRun: boolean, limit: number) {
         if (agentContact.phone) await sendAgentSMS(agentContact.phone, agentContact.name, age, a.id);
       }
       if (p.action === "agent_and_manager" || p.action === "manager_only") {
-        if (p.manager_agent_id) {
-          const mgr = await getManagerContact(p.manager_agent_id);
+        // The inviting manager, then the operational manager: the first one still with
+        // the company gets the SMS and the task.
+        for (const managerAgentId of [a.invited_by_manager_id, a.manager_id]) {
+          if (!managerAgentId) continue;
+          const mgr = await getManagerContact(managerAgentId);
+          if (!mgr) continue;
           if (mgr.phone) await sendManagerSMS(mgr.phone, mgr.name, agentContact.name, age);
-          await createManagerTask(p.manager_agent_id, a.id, agentContact.name, age);
+          await createManagerTask(managerAgentId, a.id, agentContact.name, age);
+          break;
         }
       }
       if (p.action === "terminate") {

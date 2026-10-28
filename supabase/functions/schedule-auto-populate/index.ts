@@ -8,6 +8,8 @@
 
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { isBannedUser, isDepartedAgent } from "../_shared/departed.ts";
+import { type AgentRow, type Manager, managerForAgent, managerForApplication, type ProfileRow } from "./manager-resolve.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -25,26 +27,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-type AgentRow = {
-  id: string;
-  user_id: string | null;
-  invited_by_manager_id: string | null;
-  manager_id: string | null;
-  display_name: string | null;
-  agent_code: string | null;
-};
-
-type ProfileRow = {
-  user_id: string;
-  email: string | null;
-  full_name: string | null;
-};
-
-type Manager = {
-  userId: string | null;
-  email: string | null;
-  name: string;
-};
+// AgentRow, ProfileRow and Manager live in ./manager-resolve.ts with the owner rule.
 
 type PlannedEvent = {
   externalId: string;
@@ -198,7 +181,7 @@ async function fetchAgents(agentIds: Set<string>): Promise<Map<string, AgentRow>
   for (const ids of chunk(firstPass, 200)) {
     const { data, error } = await sb
       .from("agents")
-      .select("id, user_id, invited_by_manager_id, manager_id, display_name, agent_code")
+      .select("id, user_id, invited_by_manager_id, manager_id, display_name, agent_code, is_deactivated, status")
       .in("id", ids);
     if (error) throw error;
     for (const row of (data ?? []) as AgentRow[]) agents.set(row.id, row);
@@ -213,7 +196,7 @@ async function fetchAgents(agentIds: Set<string>): Promise<Map<string, AgentRow>
   for (const ids of chunk(missing, 200)) {
     const { data, error } = await sb
       .from("agents")
-      .select("id, user_id, invited_by_manager_id, manager_id, display_name, agent_code")
+      .select("id, user_id, invited_by_manager_id, manager_id, display_name, agent_code, is_deactivated, status")
       .in("id", ids);
     if (error) throw error;
     for (const row of (data ?? []) as AgentRow[]) agents.set(row.id, row);
@@ -258,34 +241,27 @@ async function fallbackAdmin(profiles: Map<string, ProfileRow>): Promise<Manager
   };
 }
 
-function managerForAgent(agentId: string | null | undefined, agents: Map<string, AgentRow>, profiles: Map<string, ProfileRow>, fallback: Manager): Manager {
-  if (!agentId) return fallback;
-  const agent = agents.get(agentId);
-  if (!agent) return fallback;
-
-  const managerAgentId = agent.invited_by_manager_id ?? agent.manager_id;
-  const managerAgent = managerAgentId ? agents.get(managerAgentId) : null;
-  const userId = managerAgent?.user_id ?? agent.user_id ?? fallback.userId;
-  if (!userId) return fallback;
-
-  const profile = profiles.get(userId);
-  return {
-    userId,
-    email: profile?.email ?? fallback.email,
-    name: profile?.full_name ?? managerAgent?.display_name ?? agent.display_name ?? fallback.name,
-  };
-}
-
-function managerForApplication(app: any, agents: Map<string, AgentRow>, profiles: Map<string, ProfileRow>, fallback: Manager): Manager {
-  if (app.hiring_manager_user_id) {
-    const profile = profiles.get(app.hiring_manager_user_id);
-    return {
-      userId: app.hiring_manager_user_id,
-      email: profile?.email ?? fallback.email,
-      name: profile?.full_name ?? fallback.name,
-    };
+// Hiring managers who must not own an item. hiring_manager_user_id is an auth user id,
+// so the agents map answers only when that user's agent row was loaded (every loaded
+// row departed; a live duplicate row keeps them); the GoTrue ban (banned_until in the
+// future) is the authority for the rest. An unreadable lookup counts as unavailable.
+async function departedHiringManagers(appRows: any[], agents: Map<string, AgentRow>): Promise<Set<string>> {
+  const live = new Set<string>();
+  const dead = new Set<string>();
+  for (const agent of agents.values()) {
+    if (!agent.user_id) continue;
+    (isDepartedAgent(agent) ? dead : live).add(agent.user_id);
   }
-  return managerForAgent(app.assigned_agent_id ?? app.recruiter_id, agents, profiles, fallback);
+  const departed = new Set<string>([...dead].filter((id) => !live.has(id)));
+  const hiringManagerIds = new Set<string>();
+  for (const app of appRows) if (app.hiring_manager_user_id) hiringManagerIds.add(app.hiring_manager_user_id);
+  for (const userId of hiringManagerIds) {
+    if (departed.has(userId)) continue;
+    const { data, error } = await sb.auth.admin.getUserById(userId);
+    if (error) console.error("schedule-auto-populate: hiring manager lookup failed, treated as unavailable", userId, error.message);
+    if (isBannedUser(data?.user)) departed.add(userId);
+  }
+  return departed;
 }
 
 async function existingExternalIds(ids: string[]): Promise<Set<string>> {
@@ -393,7 +369,7 @@ function planDraftEvents(rows: any[], sourceTable: "agentlink_book_of_business" 
   return events;
 }
 
-function planPostTestEvents(appRows: any[], now: Date, lookaheadDays: number, agents: Map<string, AgentRow>, profiles: Map<string, ProfileRow>, fallback: Manager): PlannedEvent[] {
+function planPostTestEvents(appRows: any[], now: Date, lookaheadDays: number, agents: Map<string, AgentRow>, profiles: Map<string, ProfileRow>, fallback: Manager, departedUserIds: Set<string>): PlannedEvent[] {
   const events: PlannedEvent[] = [];
   const postTestStages = new Set(["passed_test", "fingerprints_done", "waiting_on_license"]);
   const startToday = atUtcHour(now.toISOString().slice(0, 10), 0);
@@ -408,7 +384,7 @@ function planPostTestEvents(appRows: any[], now: Date, lookaheadDays: number, ag
     const anchorIso = dateOnly(app.exam_passed_at ?? app.updated_at ?? app.created_at);
     if (!anchorIso) continue;
     const name = `${app.first_name ?? ""} ${app.last_name ?? ""}`.trim() || app.email || "Applicant";
-    const manager = managerForApplication(app, agents, profiles, fallback);
+    const manager = managerForApplication(app, agents, profiles, fallback, departedUserIds);
 
     for (let day = 3; day <= 30; day += 3) {
       const dueDate = addDays(atUtcHour(anchorIso, 15), day);
@@ -562,11 +538,12 @@ Deno.serve(async (req) => {
     for (const agent of agents.values()) if (agent.user_id) userIds.add(agent.user_id);
     const profiles = await fetchProfiles(userIds);
     const fallback = await fallbackAdmin(profiles);
+    const departedUserIds = await departedHiringManagers(appRows, agents);
 
     const planned = [
       ...planDraftEvents(bookRows, "agentlink_book_of_business", now, lookaheadDays, agents, profiles, fallback),
       ...planDraftEvents(carrierRows, "carrier_policies", now, lookaheadDays, agents, profiles, fallback),
-      ...planPostTestEvents(appRows, now, lookaheadDays, agents, profiles, fallback),
+      ...planPostTestEvents(appRows, now, lookaheadDays, agents, profiles, fallback, departedUserIds),
     ];
 
     const bySemanticKey = new Map<string, PlannedEvent>();

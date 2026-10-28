@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.2";
 import { Resend } from "npm:resend@2.0.0";
 import { gateResend } from "../_shared/resend-gate.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
+import { DEPARTED_AGENT_COLUMNS, isDepartedAgent } from "../_shared/departed.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -92,7 +93,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const { data: manager } = await supabaseAdmin
       .from("agents")
-      .select("user_id")
+      .select(DEPARTED_AGENT_COLUMNS)
       .eq("id", agent.invited_by_manager_id)
       .single();
 
@@ -101,6 +102,16 @@ const handler = async (req: Request): Promise<Response> => {
       return new Response(
         JSON.stringify({ error: "Manager not found" }),
         { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // A departed manager (terminated or deactivated) is never mailed: the pointer is
+    // kept for attribution after departure, so this reads as no manager.
+    if (isDepartedAgent(manager)) {
+      console.log("Manager has departed");
+      return new Response(
+        JSON.stringify({ message: "No manager to notify" }),
+        { headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 

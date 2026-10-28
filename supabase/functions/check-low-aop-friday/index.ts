@@ -1,6 +1,7 @@
 import { serve } from "npm:@hono/node-server@1.13.8";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
+import { isDepartedAgent } from "../_shared/departed.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -106,7 +107,7 @@ serve(async (req: Request) => {
     if (managerAgentIds.length > 0) {
       const { data: managerAgents } = await supabase
         .from("agents")
-        .select("id, user_id")
+        .select("id, user_id, is_deactivated, status")
         .in("id", managerAgentIds);
 
       const managerUserIds = managerAgents?.map((a) => a.user_id).filter(Boolean) || [];
@@ -117,6 +118,9 @@ serve(async (req: Request) => {
           .in("user_id", managerUserIds);
 
         managerAgents?.forEach((ma) => {
+          // A departed manager (terminated or deactivated) is never CC'd: the pointer is
+          // kept for attribution after departure.
+          if (isDepartedAgent(ma)) return;
           const p = mProfiles?.find((p) => p.user_id === ma.user_id);
           if (p) managerProfiles[ma.id] = { email: p.email, name: p.full_name };
         });

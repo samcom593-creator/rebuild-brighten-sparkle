@@ -9,6 +9,7 @@ import { SCHEDULING_LINKS } from "../_shared/apex.ts";
 import { CONTRACTING_PROFILE_URL, NOT_CONTRACTED_YET } from "../_shared/contracting-profile.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
 import { escapeHtml } from "../_shared/notify-caller-policy.ts";
+import { isDepartedAgent } from "../_shared/departed.ts";
 
 const resend = gateResend(new Resend(Deno.env.get("RESEND_API_KEY")));
 const ADMIN_EMAIL = "info@kingofsales.net";
@@ -138,11 +139,13 @@ const handler = async (req: Request): Promise<Response> => {
         if (agentData?.manager_id) {
           const { data: managerData } = await supabase
             .from("agents")
-            .select("profiles!agents_profile_id_fkey(email)")
+            .select("is_deactivated, status, profiles!agents_profile_id_fkey(email)")
             .eq("id", agentData.manager_id)
             .single();
 
-          resolvedManagerEmail = (managerData as any)?.profiles?.email;
+          // A departed manager (terminated or deactivated) is never CC'd: manager_id is
+          // kept for attribution after departure.
+          resolvedManagerEmail = isDepartedAgent(managerData as any) ? undefined : (managerData as any)?.profiles?.email;
           console.log(`[send-licensing-instructions] Resolved manager email: ${resolvedManagerEmail}`);
         }
       } catch (e) {

@@ -37,6 +37,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { findAuthUserByEmail, type AuthUserLister } from "../_shared/find-auth-user.ts";
 import { nanpTenDigits, nanpRefusalReason } from "../_shared/nanp-phone.ts";
 import { postNtfyGraded } from "../_shared/ntfy-post.ts";
+import { isDepartedAgent } from "../_shared/departed.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -190,8 +191,9 @@ serve(async (req) => {
   }
 
   // Resolve the upline once and fail closed when a manager-scoped token points
-  // at a missing/deactivated row. Silently falling back to the default manager
-  // makes the recruit disappear from the link creator's account.
+  // at a missing or departed (terminated or deactivated) row. Silently falling
+  // back to the default manager makes the recruit disappear from the link
+  // creator's account; routing them to a departed manager loses them outright.
   let targetManager: { id: string; user_id: string | null } | null = null;
   // A personal Add Agent link defaults to the creator when no explicit upline
   // was selected. Null must never mean “create an orphan recruit.”
@@ -199,7 +201,7 @@ serve(async (req) => {
   if (resolvedManagerId) {
     const { data: managerRow, error: managerErr } = await admin
       .from("agents")
-      .select("id, user_id, is_deactivated")
+      .select("id, user_id, is_deactivated, status")
       .eq("id", resolvedManagerId)
       .maybeSingle();
 
@@ -207,7 +209,7 @@ serve(async (req) => {
       console.error("target_manager_lookup_failed", managerErr);
       return json({ ok: false, error: "target_manager_lookup_failed" }, 500);
     }
-    if (!managerRow?.id || managerRow.is_deactivated === true) {
+    if (!managerRow?.id || isDepartedAgent(managerRow)) {
       return json({ ok: false, error: "target_manager_unavailable" }, 409);
     }
     targetManager = { id: managerRow.id, user_id: managerRow.user_id };

@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
+import { DEPARTED_AGENT_COLUMNS, isDepartedAgent } from "../_shared/departed.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -86,15 +87,17 @@ Deno.serve(async (req) => {
           .eq("id", app.assigned_agent_id)
           .single();
 
+        // A departed manager (terminated or deactivated) is never CC'd or pushed: the
+        // pointer is kept for attribution after departure.
         if (agent?.invited_by_manager_id) {
           managerAgentId = agent.invited_by_manager_id;
           const { data: mgrAgent } = await supabase
             .from("agents")
-            .select("user_id")
+            .select(DEPARTED_AGENT_COLUMNS)
             .eq("id", agent.invited_by_manager_id)
             .single();
 
-          if (mgrAgent?.user_id) {
+          if (mgrAgent?.user_id && !isDepartedAgent(mgrAgent)) {
             const { data: mgrProfile } = await supabase
               .from("profiles")
               .select("email")

@@ -11,6 +11,7 @@ import { createHandler } from "../_shared/handler.ts";
 import { jsonResponse } from "../_shared/cors.ts";
 import { parseBody, v } from "../_shared/validate.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
+import { DEPARTED_AGENT_COLUMNS, isDepartedAgent } from "../_shared/departed.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -72,8 +73,9 @@ Deno.serve(
 
       let managerEmail: string | null = null;
       if (agent.invited_by_manager_id) {
-        const { data: managerAgent } = await supabase.from("agents").select("user_id").eq("id", agent.invited_by_manager_id).maybeSingle();
-        if (managerAgent?.user_id) {
+        // A departed manager (terminated or deactivated) is never CC'd: the pointer is kept for attribution after departure.
+        const { data: managerAgent } = await supabase.from("agents").select(DEPARTED_AGENT_COLUMNS).eq("id", agent.invited_by_manager_id).maybeSingle();
+        if (managerAgent?.user_id && !isDepartedAgent(managerAgent)) {
           const { data: managerProfile } = await supabase.from("profiles").select("email").eq("user_id", managerAgent.user_id).maybeSingle();
           managerEmail = managerProfile?.email || null;
         }

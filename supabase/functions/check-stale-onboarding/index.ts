@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { gateResend } from "../_shared/resend-gate.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
+import { isDepartedAgent } from "../_shared/departed.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -101,7 +102,7 @@ serve(async (req) => {
     if (managerIds.length > 0) {
       const { data: managerAgents } = await supabase
         .from("agents")
-        .select("id, user_id")
+        .select("id, user_id, is_deactivated, status")
         .in("id", managerIds);
 
       if (managerAgents?.length) {
@@ -112,6 +113,9 @@ serve(async (req) => {
           .in("user_id", managerUserIds);
 
         managerAgents.forEach(ma => {
+          // A departed manager (terminated or deactivated) is never mailed: the pointer
+          // is kept for attribution after departure.
+          if (isDepartedAgent(ma)) return;
           const mp = managerProfiles?.find(p => p.user_id === ma.user_id);
           if (mp) {
             managerMap.set(ma.id, { name: mp.full_name || "Manager", email: mp.email });

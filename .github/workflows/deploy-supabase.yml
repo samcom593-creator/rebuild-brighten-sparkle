@@ -592,5 +592,14 @@ jobs:
       # Measured 2026-09-09: 16 functions were serving stale code, including the
       # whole magic-link/portal-login cluster MP-443 shipped to fix "we can't
       # log in", one of them 33 days behind its own source.
+      # On a pull_request ref the deploy job withholds prod writes (see "Prod
+      # writes withheld" above), so every function the PR touches is stale in
+      # prod BY DESIGN until the merge deploys it, and once the PR's commits age
+      # past DEPLOY_GRACE_MIN this step reads as permanently red on any PR that
+      # touches a function: 42 of them on PR #46 (2026-10-28), none of which
+      # prod could have had. That is the permanently-red disease the script's
+      # own header names. On PRs it runs in --report mode: the table still
+      # prints, nothing is hidden, and the verdict that can fail is the one on
+      # main, where the deploy actually ran.
       - name: Verify prod is running the code this repo committed
-        run: node scripts/check-deployed-function-freshness.mjs
+        run: node scripts/check-deployed-function-freshness.mjs ${{ github.event_name == 'pull_request' && '--report' || '' }}

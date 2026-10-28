@@ -15,7 +15,7 @@ export function SoundToggle({ className }: { className?: string }) {
       type="button"
       variant="ghost"
       size="icon"
-      className={cn("h-8 w-8 hover:bg-accent hover:text-foreground", on ? "text-primary hover:text-primary" : "text-muted-foreground", className)}
+      className={cn("h-11 w-11 hover:bg-accent hover:text-foreground", on ? "text-primary hover:text-primary" : "text-muted-foreground", className)}
       aria-pressed={on}
       aria-label={on ? "Turn sounds off" : "Turn sounds on"}
       title={on ? "Sounds are on" : "Sounds are off"}
@@ -25,7 +25,7 @@ export function SoundToggle({ className }: { className?: string }) {
         if (next) playSoundEffect("pop");
       }}
     >
-      {on ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+      {on ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
     </Button>
   );
 }

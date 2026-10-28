@@ -34,8 +34,8 @@ export function NotificationBell({ collapsed, className }: NotificationBellProps
       {count > 0 && (
         <span
           className={cn(
-            "absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full",
-            "bg-destructive text-destructive-foreground text-[11px] font-bold",
+            "absolute right-0.5 top-0.5 h-[18px] min-w-[18px] px-1 rounded-full",
+            "bg-destructive text-destructive-foreground text-[13px] font-bold leading-none",
             "flex items-center justify-center border border-background",
             "animate-in zoom-in-50"
           )}

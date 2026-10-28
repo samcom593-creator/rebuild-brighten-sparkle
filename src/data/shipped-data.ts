@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "Oct 28, 2026",
+    label: "Error screens fixed: the Instagram desk matches its data again, and an update no longer crashes open tabs",
+    detail: "Sam sent the Something went wrong screen. error_logs held two causes. The Instagram page still read queues.waiting from fn_ig_dashboard, which this morning's MP-305 rewrite replaced with needs, later, everyone and status; the matching page was committed but never pushed, so it ships now (checked against the live function's keys). Every other crash was a tab left open across a deploy: the chunk-recovery handler swallowed the failed import even when it would not reload, so React.lazy crashed on .default instead of reloading. It now swallows only when it reloads, recognises that crash in Chrome and Safari wording, and shows Loading the latest version while it reloads.",
+    commit: "ERROR-SCREENS-FIX",
+  },
+  {
+    ts: "Oct 28, 2026",
     label: "Call Training: one row per person, ranked on a real sample, readable in light mode",
     detail: "Sam: fix call trainings. The leaderboard split one person into two rows whenever ReadyMode spelled them differently (Marlyn Johnson and Marlyn Johnson (deleted)), counted voicemails as graded calls, and put a one-call score of 83 above an agent with eleven graded conversations. It now groups by agent, counts only real conversations, and ranks people with three or more graded calls first. ReadyMode's (deleted) suffix is gone from names, and every score colour now has a light-theme shade that passes contrast instead of pale amber on white.",
     commit: "CALL-TRAINING-FIX",

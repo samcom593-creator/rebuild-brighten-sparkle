@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { invalidateOperationalTruth } from "@/lib/invalidateOperationalTruth";
 import { normalizePolicyNumber, sanitizePolicyInput, isWithinPolicyNumberGrace } from "@/lib/policyNumber";
 import { enqueue, isOffline, isTransportError } from "@/lib/offlineQueue";
+import { TeamLookupError } from "@/components/shared/TeamLookupError";
 
 type PremiumMode = "annual" | "semiannual" | "quarterly" | "monthly" | "single_pay" | "other";
 type PaymentMethod = "" | "bank_draft" | "credit_card" | "debit_card" | "direct_express" | "check" | "social_security";
@@ -748,6 +749,7 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
             </button>
           )}
         </DialogHeader>
+        <TeamLookupError className="mx-5 mt-3 w-auto" />
 
         {receipt ? (
           <div className="overflow-y-auto px-5 py-8">

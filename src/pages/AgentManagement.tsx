@@ -31,6 +31,7 @@ import { usePortalLoginSender } from "@/hooks/usePortalLoginSender";
 import { getBusinessMonthBounds, getBusinessWeekBounds } from "@/lib/dateUtils";
 import { DEAL_TRUTH_STATUS_FILTER, dealTruthWindowOr, getDealTruthTimestamp } from "@/lib/dealTruth";
 import { contactLinkProps, phoneHref, smsHref } from "@/lib/phone";
+import { TeamLookupError } from "@/components/shared/TeamLookupError";
 
 // ─── Types ─────────────────────────────────────────────────────
 interface AgentRow {
@@ -321,6 +322,7 @@ export default function AgentManagement() {
         title="Agent Management"
         subtitle={isAdmin ? "All agents in your agency · roles, contact, license state, downline" : "Your downline · roles, contact, license state"}
       />
+      <TeamLookupError />
       <div className="flex items-center justify-end flex-wrap gap-3">
         <div className="flex items-center gap-1 rounded-lg border border-border p-0.5">
           {[

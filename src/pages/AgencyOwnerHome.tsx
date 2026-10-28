@@ -24,6 +24,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/ui/page-header";
 import { RecruiterBountyCard } from "@/components/dashboard/RecruiterBountyCard";
 import { FreeLeadsStatusCard } from "@/components/dashboard/FreeLeadsStatusCard";
+import { TeamLookupError } from "@/components/shared/TeamLookupError";
 
 /**
  * AgencyOwnerHome — MP-332 (2026-08-27)
@@ -218,6 +219,7 @@ export default function AgencyOwnerHome() {
           </Button>
         )}
       />
+      <TeamLookupError />
 
       {/* Roster tiles */}
       {loadingRoster ? (

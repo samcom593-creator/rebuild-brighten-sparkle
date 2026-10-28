@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { ManagerPostCounter } from "@/components/dashboard/ManagerPostCounter";
 import { MyReferralLinkCard } from "@/components/agent/MyReferralLinkCard";
+import { TeamLookupError } from "@/components/shared/TeamLookupError";
 
 interface AgentRow {
   id: string;
@@ -158,6 +159,7 @@ export default function ManagerCommandView() {
             : `${downlineIds.length} agents · AgentLink history only. This month's posted and Discord deals are on the Leaderboard.`
         }
       />
+      <TeamLookupError />
 
       <MyReferralLinkCard />
 

@@ -13,9 +13,21 @@ booked, no-showed or stalled is forgotten, and no one is touched twice in a day 
 
 ## Read first
 
+- `docs/audits/platform-redesign-2026-10/funnel-and-reengagement-map.md`: the read-only map of what the
+  code records at each funnel stage, every re-engagement mechanism with its trigger, audience, receipt and
+  guardrails, eighteen gaps, and the 25-file map. It is the list of stones for this area. The gaps that
+  change what you build: no-show follow-ups never reach the Call list (C1); "Hired" from Follow-ups or
+  Calendar creates no agent (C2); four definitions of "booked" (C3); "today" is Phoenix, Chicago or UTC
+  depending on the surface (C4); the same person can be reached twice in a day because the unused 24h guard
+  `applicant_contacted_recently()` has no caller (C5); bots skip consent and DNC that humans must respect
+  (C6, C7); nine edge functions and eight pages still read `contacted_at` (C9); bulk and bot writers of
+  `last_contacted_at` move people out of "Never contacted" with no outcome (C10); seven stages have no
+  automated re-engagement (C13); migrations still schedule senders whose headers say nothing calls them
+  (C14); the departed manager can be CC'd on applicant follow-ups through `invited_by_manager_id` (C15);
+  unknown rendered as 0 in six places (C16).
 - Run analyses **H1 (funnel definitions)** and **H2 (re-engagement rules, recruits)** from
-  `12-ANALYSIS-SESSIONS.md` first, in separate sessions, and save both answers. Nothing in "Required work"
-  steps 1 and 3 is implemented before those answers exist.
+  `12-ANALYSIS-SESSIONS.md` next, in separate sessions, starting from that map, and save both answers
+  beside it. Nothing in "Required work" steps 1 and 3 is implemented before those answers exist.
 - `docs/prompt-pack/GROW_REDESIGN.md` and the PR #46 files it lists (the contract this area extends).
 - Audits: `docs/audits/apex-os-redesign-2026-10-05/04-pipeline-contact-workspace.md`,
   `05-recruit-stages-nhlb-onboarding.md`, `06-calendar-interviews.md`, `07-invitations-comp-links.md`,
@@ -78,6 +90,17 @@ harness (`?dry_run=1` exists on `instagram-dm-nudge`; use it).
    offers Showed and No show; both write through `cc_dispose_interview` with its receipt and set the next
    step (Showed → contracting hand-off; No show → the re-engagement rule's next touch). The Calendar's
    interview rows show the same status pill and link to the person.
+2b. **Close the dead ends the map found before adding anything.** (a) No-show and missed-interview people
+   enter the Call list: the worklist reads `interview_events.followup_due_at` and the hh `no_show` stage into
+   the due and overdue queues (C1). (b) "Hired" from the panel, Follow-ups or Calendar goes through the one
+   canonical hire path (`src/lib/hireToOnboarding.ts` → `add-agent`), never a status flip alone (C2);
+   `cc_dispose_interview('hired')` either calls it or is removed from the UI. (c) One definition of "booked"
+   per H1, and recording `appointment_booked` in the panel creates or links the interview row it claims (C3).
+   (d) One "today" for recruiting surfaces: Phoenix, including `InterviewRecovery`'s buckets while they still
+   render (C4). (e) Every writer of `last_contacted_at` that is not a recorded outcome (bulk "mark contacted",
+   self check-in, `cc_dispose_interview`) stops moving people out of "Never contacted", or records an outcome
+   (C10). (f) The departed-manager CC leak in `send-followup-emails` is closed with a status check and a test
+   (C15); this one is small and ships first.
 3. **One re-engagement engine.** From H2, `src/lib/reengagement/rules.ts` holds the rule table as data
    (stage × days silent → channel, message family, cap per week, quiet hours in the person's zone, stop
    conditions) and `nextTouch(person, now)` returns the one due touch or none, with the reason. The Call

@@ -24,6 +24,8 @@ Preamble for every analysis session:
 
 ## H1 · The hiring-funnel definitions (before area 03)
 
+> Start from `docs/audits/platform-redesign-2026-10/funnel-and-reengagement-map.md` (section A lists where
+> each stage is recorded today and the four competing definitions of "booked"; section C the gaps).
 > Define, as SQL-level rules that become pure TypeScript predicates and one view, each stage of the hiring
 > funnel and the conversion between stages: Applied (`applications.created_at`, `record_type =
 > 'application'`, not duplicate), Reached (first `last_contact_outcome_at` with a human outcome), Booked
@@ -36,7 +38,10 @@ Preamble for every analysis session:
 
 ## H2 · Re-engagement rules, recruits (before area 03)
 
-> Audit every mechanism that re-contacts a recruit: `supabase/functions/instagram-dm-nudge` with
+> Start from `docs/audits/platform-redesign-2026-10/funnel-and-reengagement-map.md` section B (sixteen
+> mechanisms with trigger, audience, receipt, guardrails) and section C (the conflicts: C5, C6, C7, C13,
+> C14, C15). Measure what it could not: which crons are live, how many people each mechanism touched in the
+> last 30 days, how many were touched twice in a day. Then audit every mechanism that re-contacts a recruit: `supabase/functions/instagram-dm-nudge` with
 > `fn_ig_nudge_candidates` and `fn_ig_abandoned_partials`, the partial-application recovery email, the
 > worklist's due and overdue queues, interview no-show follow-ups, the No Hire Left Behind queue, any cron
 > that sends SMS or email to applicants. For each: trigger, audience predicate, channel, dedupe and window

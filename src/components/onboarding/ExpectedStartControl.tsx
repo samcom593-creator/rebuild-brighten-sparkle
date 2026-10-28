@@ -100,21 +100,22 @@ export function ExpectedStartControl({ facts, compact = false }: { facts: StartF
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
+        {/* Row control: 44px tall, 14px words, like every other control on the New hires row
+            (Grow review 2026-10-28, finding 21). */}
         <Button
-          size="sm"
           variant="outline"
-          className={cn("h-7 gap-1 px-2 text-xs", !text && "text-muted-foreground")}
+          className={cn("h-11 gap-1.5 px-3 text-sm", !text && "text-muted-foreground")}
           aria-label={`Expected start for ${name}`}
         >
-          <CalendarClock className="h-3.5 w-3.5" />
+          <CalendarClock className="h-4 w-4" />
           {compact ? (text ? text.split(" · ")[0] : "Set start") : (text ?? "Set expected start")}
           {outcome && <span className="text-muted-foreground"> · {START_OUTCOME_LABEL[outcome]}</span>}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-80 space-y-3">
+      <PopoverContent align="start" className="w-[22rem] max-w-[calc(100vw-2rem)] space-y-3">
         <div>
-          <p className="text-sm font-semibold">Expected start</p>
-          <p className="text-xs text-muted-foreground">Their answer about a start date. It never changes employment status.</p>
+          <p className="text-base font-semibold">Expected start</p>
+          <p className="text-sm text-muted-foreground">Their answer about a start date. It never changes employment status.</p>
         </div>
         <div className="grid grid-cols-2 gap-2">
           <Input
@@ -122,43 +123,43 @@ export function ExpectedStartControl({ facts, compact = false }: { facts: StartF
             value={date}
             onChange={(e) => setDate(e.target.value)}
             aria-label="Expected start date"
-            className="h-8 text-xs"
+            className="h-11 text-sm"
           />
           <Select value={status} onValueChange={(v) => setStatus(v as ExpectedStartStatus)}>
-            <SelectTrigger className="h-8 text-xs" aria-label="Expected start status"><SelectValue placeholder="Status" /></SelectTrigger>
+            <SelectTrigger className="h-11 text-sm" aria-label="Expected start status"><SelectValue placeholder="Status" /></SelectTrigger>
             <SelectContent>
               {EXPECTED_START_STATUSES.map((s) => (
-                <SelectItem key={s} value={s} className="text-xs">{EXPECTED_START_LABEL[s]}</SelectItem>
+                <SelectItem key={s} value={s} className="min-h-11">{EXPECTED_START_LABEL[s]}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
-        <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Note (optional)" aria-label="Note" className="h-8 text-xs" maxLength={280} />
-        <Button size="sm" className="h-8 w-full" disabled={busy} onClick={() => void save()}>
+        <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Note (optional)" aria-label="Note" className="h-11 text-sm" maxLength={280} />
+        <Button className="h-12 w-full" disabled={busy} onClick={() => void save()}>
           {busy ? "Saving…" : "Save expected start"}
         </Button>
 
         {facts.expected_start_on && (
           <div className="space-y-2 border-t border-border pt-3">
-            <p className="text-sm font-semibold">What happened on {facts.expected_start_on}</p>
+            <p className="text-base font-semibold">What happened on {facts.expected_start_on}</p>
             {outcome ? (
-              <p className="text-xs text-muted-foreground">Recorded: {START_OUTCOME_LABEL[outcome]}.</p>
+              <p className="text-sm text-muted-foreground">Recorded: {START_OUTCOME_LABEL[outcome]}.</p>
             ) : !dateArrived ? (
-              <p className="text-xs text-muted-foreground">Attended or no-show can be recorded once the date arrives. A reschedule can be recorded now.</p>
+              <p className="text-sm text-muted-foreground">Attended or no-show can be recorded once the date arrives. A reschedule can be recorded now.</p>
             ) : null}
-            <div className="flex flex-wrap gap-1.5">
-              <Button size="sm" variant="outline" className="h-7 text-xs" disabled={busy || !dateArrived} onClick={() => void recordOutcome("attended")}>Attended</Button>
-              <Button size="sm" variant="outline" className="h-7 text-xs" disabled={busy || !dateArrived} onClick={() => void recordOutcome("no_show")}>No-show</Button>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" className="h-11 text-sm" disabled={busy || !dateArrived} onClick={() => void recordOutcome("attended")}>Attended</Button>
+              <Button variant="outline" className="h-11 text-sm" disabled={busy || !dateArrived} onClick={() => void recordOutcome("no_show")}>No-show</Button>
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2">
               <Input
                 type="date"
                 value={newDate}
                 onChange={(e) => setNewDate(e.target.value)}
                 aria-label="New start date for the reschedule"
-                className="h-7 flex-1 text-xs"
+                className="h-11 flex-1 text-sm"
               />
-              <Button size="sm" variant="outline" className="h-7 text-xs" disabled={busy} onClick={() => void recordOutcome("rescheduled")}>Rescheduled</Button>
+              <Button variant="outline" className="h-11 text-sm" disabled={busy} onClick={() => void recordOutcome("rescheduled")}>Rescheduled</Button>
             </div>
           </div>
         )}

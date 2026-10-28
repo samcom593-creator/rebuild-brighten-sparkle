@@ -1,27 +1,28 @@
 import { useCallback, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowRight, Download, Instagram, Mail, MessageSquare, Phone, Search, SlidersHorizontal, UserX, X } from "lucide-react";
+import { ArrowRight, ChevronDown, Download, Instagram, Mail, MessageSquare, Phone, RefreshCw, Search, SlidersHorizontal, UserX, X } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { PageSkeleton } from "@/components/ui/page-skeleton";
 import { PageHeader } from "@/components/ui/page-header";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { GrowScoreboard } from "@/components/recruiting/GrowScoreboard";
 import { RecruitingWorkspaceNav } from "@/components/recruiting/RecruitingWorkspaceNav";
+import { StatusPill } from "@/components/recruiting/StatusPill";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LicenseProgressSelector } from "@/components/dashboard/LicenseProgressSelector";
+import { formatSince } from "@/components/pipeline/worklist/worklistFormat";
 import { cn } from "@/lib/utils";
 import { contactLinkProps, formatPhoneDisplay, phoneHref, smsHref } from "@/lib/phone";
 import { markNoLongerWithUs } from "@/lib/noLongerWithUs";
 import { useAuth } from "@/hooks/useAuth";
 import { useConfirm } from "@/hooks/useConfirm";
-import { formatTimeAgo } from "@/lib/dateUtils";
 import { buildExceptionQueue, type OnboardingFacts } from "@/lib/onboardingExceptions";
 import { ExpectedStartControl } from "@/components/onboarding/ExpectedStartControl";
 import { useOnboardingExceptionFacts } from "@/components/onboarding/useOnboardingExceptionFacts";
@@ -79,16 +80,48 @@ const DERIVED_ONLY = new Set(["watched_vsl", "completed_application"]);
 const PAGE = 40;
 const personKey = (r: Row) => r.application_id ?? r.agent_id ?? r.display_name;
 const igUrl = (h: string) => `https://instagram.com/${encodeURIComponent(h)}`;
+const linkState = (r: Row): LinkFilter => (r.link_used_at || r.last_sign_in_at ? "clicked" : r.link_sent_at ? "sent" : "not_sent");
 
+// Red means one thing on this page: the action that removes a person. Time on a step is
+// a warning, and the words ("70 days on this step") carry the meaning at every tier
+// (Grow review 2026-10-28, finding 19).
 function heatClass(days: number) {
-  if (days >= 60) return "text-destructive font-medium";
-  if (days >= 21) return "text-destructive";
+  if (days >= 60) return "text-warning font-semibold";
+  if (days >= 21) return "text-warning font-medium";
   if (days >= 7) return "text-foreground font-medium";
   return "text-muted-foreground";
 }
 
+// index.css gives every <button> min-height:44px under 640px, which turned a 20px
+// checkbox into a tall pill. !min-h-0 keeps the box square; the ::before pseudo-element
+// gives it the 44px tap target the screen contract asks for without moving anything.
+// inset is measured from the padding edge, inside the 1px border, so 14px each side
+// makes a 46px square (measured in headless chromium: 12px gave 42px).
+const CHECKBOX = "relative h-5 w-5 !min-h-0 before:absolute before:-inset-3.5 before:content-['']";
+// A quiet link for data that is missing or changeable (state, Instagram): muted words with
+// an underline, never red. 44px tall so it is tappable. SENTENCE_LINK sits inside a 20px
+// line of text and is pulled back with -my-3 so the line does not grow to 44px.
+const QUIET_LINK = "inline-flex min-h-11 items-center text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]";
+const SENTENCE_LINK = cn(QUIET_LINK, "-my-3");
+
+/** An active filter, visible and removable in one tap; the whole chip is the 44px button. */
+function FilterChip({ label, onClear }: { label: string; onClear: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClear}
+      aria-label={`Clear ${label}`}
+      className="inline-flex h-11 items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 pl-4 pr-3 text-sm font-medium text-foreground transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
+    >
+      {label}
+      <X aria-hidden="true" className="h-4 w-4" />
+    </button>
+  );
+}
+
 export default function RecruitPipeline() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const askConfirm = useConfirm();
   const { isAdmin, isManager } = useAuth();
   const canRemove = !!(isAdmin || isManager);
@@ -151,41 +184,37 @@ export default function RecruitPipeline() {
   const all = useMemo(() => rowsQuery.data ?? [], [rowsQuery.data]);
   const stageName = useCallback((key: string) => stages.find((s) => s.stage_key === key)?.display_name ?? key, [stages]);
   // First agent stage; everything below it is applicant territory.
-  // Contracting flags per hired agent, from the same server calculation as My Team. The server only answers managers
-  // and staff; for everyone else this is empty and nothing is drawn.
-  const { isAdmin: rpAdmin, isManager: rpManager, isVaManager: rpVaManager, isVa: rpVa } = useAuth();
   const agentFloor = useMemo(() => stages.find((s) => s.stage_key === "hired_unlicensed")?.order_index ?? stages.find((s) => s.stage_key === "hired")?.order_index ?? 12, [stages]);
-  const linkState = (r: Row): LinkFilter => (r.link_used_at || r.last_sign_in_at ? "clicked" : r.link_sent_at ? "sent" : "not_sent");
 
   const managers = useMemo(
     () => Array.from(new Set(all.map((r) => r.manager_name).filter((m): m is string => !!m))).sort(),
     [all],
   );
 
-  const visible = useMemo(() => {
+  // Every filter except the stage chip. The chips count over exactly this set, so the
+  // number on a chip is always the rows a tap on it shows, whatever else is switched on.
+  const matchesExceptStage = useCallback((r: Row) => {
     const q = search.trim().toLowerCase();
     const minDays = idle === "all" ? 0 : Number(idle);
-    return all.filter((r) => {
-      if (!showClosed && r.status !== "active") return false;
-      if (r.days_in_stage < minDays) return false;
-      if (link !== "all" && (r.person_type !== "agent" || linkState(r) !== link)) return false;
-      if (stageFilter && r.stage_key !== stageFilter) return false;
-      if (managerFilter === "none" ? !!r.manager_name : managerFilter !== "all" && r.manager_name !== managerFilter) return false;
-      if (q && !`${r.display_name} ${r.manager_name ?? ""} ${r.phone ?? ""} ${r.email ?? ""} ${r.stage_name} ${r.instagram ?? ""} ${r.resident_state ?? ""}`.toLowerCase().includes(q)) return false;
-      return true;
-    });
-  }, [all, search, idle, link, stageFilter, managerFilter, showClosed]);
+    if (!showClosed && r.status !== "active") return false;
+    if (r.days_in_stage < minDays) return false;
+    if (link !== "all" && (r.person_type !== "agent" || linkState(r) !== link)) return false;
+    if (managerFilter === "none" ? !!r.manager_name : managerFilter !== "all" && r.manager_name !== managerFilter) return false;
+    if (q && !`${r.display_name} ${r.manager_name ?? ""} ${r.phone ?? ""} ${r.email ?? ""} ${r.stage_name} ${r.instagram ?? ""} ${r.resident_state ?? ""}`.toLowerCase().includes(q)) return false;
+    return true;
+  }, [search, idle, link, managerFilter, showClosed]);
+  const unstaged = useMemo(() => all.filter(matchesExceptStage), [all, matchesExceptStage]);
+  const visible = useMemo(() => (stageFilter ? unstaged.filter((r) => r.stage_key === stageFilter) : unstaged), [unstaged, stageFilter]);
 
   const counts = useMemo(() => {
     const m = new Map<string, { n: number; idle21: number }>();
-    for (const r of all) {
-      if (r.status !== "active") continue;
+    for (const r of unstaged) {
       const c = m.get(r.stage_key) ?? { n: 0, idle21: 0 };
       c.n += 1; if (r.days_in_stage >= 21) c.idle21 += 1;
       m.set(r.stage_key, c);
     }
     return m;
-  }, [all]);
+  }, [unstaged]);
 
   const optionsFor = useCallback(
     (r: Row) =>
@@ -271,6 +300,21 @@ export default function RecruitPipeline() {
     [selectedRows, stageName, refresh],
   );
 
+  // Closing many people at once is destructive, so it is two steps like every other
+  // destructive action on the page.
+  const bulkClose = useCallback(async () => {
+    const n = selectedRows.length;
+    if (n === 0) return;
+    const ok = await askConfirm({
+      title: `Close ${n} ${n === 1 ? "person" : "people"}?`,
+      description: "They move to Closed / dropped and leave the active list.",
+      confirmText: `Close ${n}`,
+      tone: "danger",
+    });
+    if (!ok) return;
+    await bulkMove("closed_lost");
+  }, [askConfirm, bulkMove, selectedRows.length]);
+
   const saveInstagram = useCallback(
     async (r: Row, handle: string) => {
       const { data, error } = await supabase.rpc("set_recruit_instagram" as never, {
@@ -350,9 +394,22 @@ export default function RecruitPipeline() {
 
   if (rowsQuery.isLoading || stagesQuery.isLoading) return <PageSkeleton />;
 
+  // A failed read is a dash and a reason, never a zero: the tiles go blank, the stage
+  // chips (whose counts would all read 0) are withheld, and the list says what failed
+  // with a Retry (Grow review 2026-10-28, finding 5).
+  const numbersUnknown = rowsQuery.isError;
+  const listFailed = rowsQuery.isError || stagesQuery.isError;
+  const failReason = ((rowsQuery.error ?? stagesQuery.error) as { message?: unknown } | null)?.message;
+  const failText = typeof failReason === "string" && failReason ? failReason : null;
+  const retrying = rowsQuery.isFetching || stagesQuery.isFetching;
+  const retryLoad = () => {
+    if (rowsQuery.isError) void rowsQuery.refetch();
+    if (stagesQuery.isError) void stagesQuery.refetch();
+  };
+
   const chip = (on: boolean) =>
     cn(
-      "inline-flex h-10 items-center gap-2 rounded-lg border px-3.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
+      "inline-flex h-11 items-center gap-2 rounded-lg border px-3.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
       on ? "border-primary/60 bg-primary/15 text-foreground" : "border-border bg-card text-foreground hover:bg-muted/50",
     );
   const IDLE_LABELS: Record<IdleFilter, string> = { all: "Any", "7": "7+ days", "21": "21+ days", "60": "60+ days" };
@@ -363,61 +420,63 @@ export default function RecruitPipeline() {
     setIdle(k); setStageFilter(null); setLink("all"); setManagerFilter("all"); setShowClosed(false); setSearch("");
   };
   const tileOn = (k: IdleFilter) => idle === k && !stageFilter && link === "all" && managerFilter === "all" && !showClosed && !search;
-  const filterChip = (label: string, onClear: () => void) => (
-    <span key={label} className="inline-flex h-8 items-center gap-1 rounded-full border border-primary/40 bg-primary/10 pl-3 pr-1 text-[13px] font-medium text-foreground">
-      {label}
-      <button type="button" onClick={onClear} aria-label={`Clear ${label}`} className="grid h-6 w-6 place-items-center rounded-full hover:bg-primary/20 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]">
-        <X className="h-3.5 w-3.5" />
-      </button>
-    </span>
-  );
 
   // Grow redesign (2026-10-28): the subtitle's sentence of counts became four numbers,
   // the strip of segmented toggles became one Filters button with removable chips, and
-  // the CSV export moved to the header. Rows keep every action they had.
+  // the CSV export sits with the filters it exports. The header carries no button at
+  // all: this page has no single primary action, every action lives on a row.
   return (
     <div className="page-enter w-full space-y-5 pb-28">
       <RecruitingWorkspaceNav />
       <PageHeader
         title="New hires"
-        subtitle="From hire to first deal. Move each person forward one step at a time."
-        secondaryActions={
-          <Button variant="outline" className="h-11 gap-1.5" onClick={downloadCsv}>
-            <Download className="h-4 w-4" /> Download CSV
-          </Button>
-        }
+        subtitle="From hire to first deal, one step at a time."
+        // No gold button here on purpose: there is no one thing this page exists to do.
+        // Declaring null also turns off the legacy inference, so nothing can be promoted.
+        primaryAction={null}
       />
 
       <GrowScoreboard
         label="New hire numbers"
+        notice={numbersUnknown ? (
+          <span className="text-destructive">The recruit list did not load, so the numbers are hidden rather than shown as 0.</span>
+        ) : null}
         tiles={[
-          { label: "In progress", value: active.length, hint: "Hired, not yet producing", onSelect: () => onlyIdle("all"), active: tileOn("all") },
-          { label: "Stuck 7+ days", value: idle7, hint: "Same step a week or more", onSelect: () => onlyIdle("7"), active: tileOn("7"), emphasis: true },
-          { label: "Stuck 60+ days", value: idle60, hint: "Same step two months", onSelect: () => onlyIdle("60"), active: tileOn("60") },
-          { label: "Open onboarding", value: factsQuery.isSuccess ? hiresWithOpenItems : null, hint: "Hires with an open step", definition: "Hires with at least one open onboarding requirement (No Hire Left Behind)" },
+          { label: "In progress", value: numbersUnknown ? null : active.length, hint: "Hired, not yet producing", onSelect: () => onlyIdle("all"), active: tileOn("all") },
+          { label: "Stuck 7+ days", value: numbersUnknown ? null : idle7, hint: "Same step a week or more", onSelect: () => onlyIdle("7"), active: tileOn("7"), emphasis: true },
+          { label: "Stuck 60+ days", value: numbersUnknown ? null : idle60, hint: "Same step two months", onSelect: () => onlyIdle("60"), active: tileOn("60") },
+          {
+            label: "Open onboarding",
+            value: factsQuery.isSuccess ? hiresWithOpenItems : null,
+            hint: "Hires with an open step",
+            definition: "Hires with at least one open onboarding requirement. Opens the onboarding queue (No Hire Left Behind).",
+            onSelect: () => navigate("/dashboard/onboarding-ladder"),
+          },
         ]}
       />
 
-      <nav aria-label="Stages" className="flex flex-wrap gap-2">
-        <button type="button" onClick={() => setStageFilter(null)} className={chip(!stageFilter)} aria-pressed={!stageFilter}>
-          All <span className="tabular-nums text-muted-foreground">{active.length}</span>
-        </button>
-        {stages.filter((s) => s.stage_key !== "closed_lost" && (counts.get(s.stage_key)?.n ?? 0) > 0).map((s) => {
-          const c = counts.get(s.stage_key);
-          return (
-            <button
-              key={s.stage_key}
-              type="button"
-              aria-pressed={stageFilter === s.stage_key}
-              onClick={() => setStageFilter(stageFilter === s.stage_key ? null : s.stage_key)}
-              className={chip(stageFilter === s.stage_key)}
-              title={c?.idle21 ? `${c.idle21} idle 21d+` : undefined}
-            >
-              {s.order_index}. {s.display_name} <span className="tabular-nums text-muted-foreground">{c?.n ?? 0}</span>
-            </button>
-          );
-        })}
-      </nav>
+      {!listFailed && (
+        <nav aria-label="Stages" className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => setStageFilter(null)} className={chip(!stageFilter)} aria-pressed={!stageFilter}>
+            All <span className="tabular-nums text-muted-foreground">{unstaged.length}</span>
+          </button>
+          {stages.filter((s) => s.stage_key !== "closed_lost" && (counts.get(s.stage_key)?.n ?? 0) > 0).map((s) => {
+            const c = counts.get(s.stage_key);
+            return (
+              <button
+                key={s.stage_key}
+                type="button"
+                aria-pressed={stageFilter === s.stage_key}
+                onClick={() => setStageFilter(stageFilter === s.stage_key ? null : s.stage_key)}
+                className={chip(stageFilter === s.stage_key)}
+                title={c?.idle21 ? `${c.idle21} stuck 21+ days` : undefined}
+              >
+                {s.display_name} <span className="tabular-nums text-muted-foreground">{c?.n ?? 0}</span>
+              </button>
+            );
+          })}
+        </nav>
+      )}
 
       <div className="space-y-3">
         <div className="flex gap-2">
@@ -431,12 +490,14 @@ export default function RecruitPipeline() {
                 <SlidersHorizontal className="h-5 w-5" /> Filters{filterCount > 0 ? ` (${filterCount})` : ""}
               </Button>
             </PopoverTrigger>
-            <PopoverContent align="end" className="w-[22rem] space-y-5 p-4">
+            {/* Capped to the room Radix measures under the button and scrolls inside, so the
+                export at its foot is reachable on a short screen instead of running off it. */}
+            <PopoverContent align="end" className="max-h-[var(--radix-popover-content-available-height)] w-[22rem] max-w-[calc(100vw-2rem)] space-y-5 overflow-y-auto p-4">
               <fieldset>
                 <legend className="mb-2 text-sm font-semibold text-foreground">Time on the same step</legend>
                 <div className="flex flex-wrap gap-1.5">
                   {(["all", "7", "21", "60"] as IdleFilter[]).map((k) => (
-                    <Button key={k} size="sm" className="h-10" variant={idle === k ? "secondary" : "ghost"} aria-pressed={idle === k} onClick={() => setIdle(k)}>{IDLE_LABELS[k]}</Button>
+                    <Button key={k} className="h-11 px-3" variant={idle === k ? "secondary" : "ghost"} aria-pressed={idle === k} onClick={() => setIdle(k)}>{IDLE_LABELS[k]}</Button>
                   ))}
                 </div>
               </fieldset>
@@ -444,7 +505,7 @@ export default function RecruitPipeline() {
                 <legend className="mb-2 text-sm font-semibold text-foreground">Portal login link <span className="font-normal text-muted-foreground">(hired agents)</span></legend>
                 <div className="flex flex-wrap gap-1.5">
                   {(["all", "not_sent", "sent", "clicked"] as LinkFilter[]).map((k) => (
-                    <Button key={k} size="sm" className="h-10" variant={link === k ? "secondary" : "ghost"} aria-pressed={link === k} onClick={() => setLink(k)}>{LINK_LABELS[k]}</Button>
+                    <Button key={k} className="h-11 px-3" variant={link === k ? "secondary" : "ghost"} aria-pressed={link === k} onClick={() => setLink(k)}>{LINK_LABELS[k]}</Button>
                   ))}
                 </div>
               </fieldset>
@@ -461,18 +522,28 @@ export default function RecruitPipeline() {
                   {managers.map((m) => <option key={m} value={m}>{m}</option>)}
                 </select>
               </label>
-              <Button variant={showClosed ? "secondary" : "outline"} className="h-10" aria-pressed={showClosed} onClick={() => setShowClosed((v) => !v)}>
+              <Button variant={showClosed ? "secondary" : "outline"} className="h-11" aria-pressed={showClosed} onClick={() => setShowClosed((v) => !v)}>
                 {showClosed ? "Showing closed people" : "Show closed people too"}
               </Button>
+              <div className="border-t border-border pt-4">
+                <Button variant="outline" className="h-11 w-full gap-1.5" onClick={downloadCsv} disabled={listFailed}>
+                  <Download className="h-4 w-4" /> Download this list (CSV)
+                </Button>
+              </div>
             </PopoverContent>
           </Popover>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-          <span><span className="font-medium text-foreground">{visible.length.toLocaleString()}</span> shown</span>
-          {idle !== "all" && filterChip(`Stuck ${IDLE_LABELS[idle]}`, () => setIdle("all"))}
-          {link !== "all" && filterChip(`Link: ${LINK_LABELS[link]}`, () => setLink("all"))}
-          {managerFilter !== "all" && filterChip(`Manager: ${managerFilter === "none" ? "Unassigned" : managerFilter}`, () => setManagerFilter("all"))}
-          {showClosed && filterChip("Including closed", () => setShowClosed(false))}
+          <span>
+            {listFailed ? "People did not load" : (
+              <><span className="font-medium text-foreground">{visible.length.toLocaleString()}</span> shown</>
+            )}
+          </span>
+          {stageFilter && <FilterChip label={`Step: ${stageName(stageFilter)}`} onClear={() => setStageFilter(null)} />}
+          {idle !== "all" && <FilterChip label={`Stuck ${IDLE_LABELS[idle]}`} onClear={() => setIdle("all")} />}
+          {link !== "all" && <FilterChip label={`Link: ${LINK_LABELS[link]}`} onClear={() => setLink("all")} />}
+          {managerFilter !== "all" && <FilterChip label={`Manager: ${managerFilter === "none" ? "Unassigned" : managerFilter}`} onClear={() => setManagerFilter("all")} />}
+          {showClosed && <FilterChip label="Including closed" onClear={() => setShowClosed(false)} />}
         </div>
 
         {selectedRows.length > 0 && (
@@ -480,229 +551,262 @@ export default function RecruitPipeline() {
           <div className="sticky top-2 z-10 flex flex-wrap items-center gap-2 rounded-lg border border-primary/40 bg-card px-4 py-3">
             <span className="text-sm font-medium">{selectedRows.length} selected</span>
             <Select value={bulkStage} onValueChange={setBulkStage}>
-              <SelectTrigger className="h-8 w-full text-xs sm:w-56" aria-label="Move selected to stage"><SelectValue placeholder="Move to stage…" /></SelectTrigger>
+              <SelectTrigger className="h-11 w-full text-sm sm:w-60" aria-label="Move selected to stage"><SelectValue placeholder="Move to stage…" /></SelectTrigger>
               <SelectContent>
                 {bulkOptions.map((o) => (
-                  <SelectItem key={o.stage_key} value={o.stage_key} className="text-xs">
-                    {o.stage_key === "closed_lost" ? "Closed / dropped" : `${o.order_index}. ${o.display_name}`}
+                  <SelectItem key={o.stage_key} value={o.stage_key} className="min-h-11">
+                    {o.stage_key === "closed_lost" ? "Closed / dropped" : o.display_name}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <Button size="sm" className="h-8" disabled={!bulkStage || busy === "bulk"} onClick={() => bulkMove(bulkStage)}>
-              {busy === "bulk" ? "Moving…" : "Apply"}
+            <Button className="h-12 px-5" disabled={!bulkStage || busy === "bulk"} onClick={() => void bulkMove(bulkStage)}>
+              {busy === "bulk" ? "Moving…" : "Move"}
             </Button>
             {bulkOptions.some((o) => o.stage_key === "closed_lost") && (
-              <Button size="sm" variant="outline" className="h-8 text-destructive" disabled={busy === "bulk"} onClick={() => bulkMove("closed_lost")}>
+              <Button variant="outline" className="h-11 text-destructive hover:text-destructive" disabled={busy === "bulk"} onClick={() => void bulkClose()}>
                 Close all {selectedRows.length}
               </Button>
             )}
-            <Button size="sm" variant="ghost" className="h-8 gap-1 text-xs" onClick={() => setSelected(new Set())}><X className="h-3.5 w-3.5" /> Clear</Button>
+            <Button variant="ghost" className="h-11 gap-1" onClick={() => setSelected(new Set())}><X className="h-4 w-4" aria-hidden="true" /> Clear</Button>
           </div>
         )}
       </div>
 
-      {rowsQuery.isError || stagesQuery.isError ? (
-        <p className="text-sm text-destructive">
-          {rowsQuery.isError ? "The recruit list" : "The stage ladder"} did not load. Nothing is being guessed at in its place; refresh to retry.
-        </p>
+      {listFailed ? (
+        <div role="alert" className="rounded-xl border border-border bg-card p-10 text-center">
+          <p className="text-base text-destructive">
+            {rowsQuery.isError ? "The recruit list" : "The stage ladder"} did not load{failText ? `: ${failText}` : ""}. Nothing is shown in its place.
+          </p>
+          <Button variant="outline" className="mt-4 h-11" onClick={retryLoad} disabled={retrying}>
+            <RefreshCw className="h-4 w-4" /> {retrying ? "Retrying…" : "Retry"}
+          </Button>
+        </div>
       ) : visible.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">Nobody matches these filters.</p>
+        <p className="rounded-lg border border-dashed border-border p-8 text-center text-base text-muted-foreground">Nobody matches these filters.</p>
       ) : (
-        stages
-          .filter((s) => visible.some((r) => r.stage_key === s.stage_key))
-          .map((s) => {
-            const full = visible.filter((r) => r.stage_key === s.stage_key).sort((a, b) => a.days_in_stage - b.days_in_stage);
-            const open = expanded.has(s.stage_key) || !!search || !!stageFilter || idle !== "all" || link !== "all";
-            const list = open ? full : full.slice(0, PAGE);
-            const allSelected = full.every((r) => selected.has(personKey(r)));
-            const someSelected = !allSelected && full.some((r) => selected.has(personKey(r)));
-            return (
-              <section key={s.stage_key} className="space-y-1.5">
-                <div className="flex items-center gap-2 pt-2">
-                  <Checkbox
-                    aria-label={`Select everyone at ${s.display_name}`}
-                    checked={allSelected ? true : someSelected ? "indeterminate" : false}
-                    onCheckedChange={(v) => toggleMany(full, v === true)}
-                    className="h-5 w-5 !min-h-0"
-                  />
-                  <h2 className="text-base font-semibold">{s.order_index}. {s.display_name}</h2>
-                  <span className="text-sm text-muted-foreground">{full.length}</span>
-                </div>
-                <div className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card">
-                  {list.map((r) => {
-                    const tel = phoneHref(r.phone);
-                    const next = nextStageFor(r);
-                    const isBusy = busy === personKey(r) || busy === "bulk";
-                    const contact = r.person_type === "applicant" && r.last_contacted_at ? formatTimeAgo(r.last_contacted_at) : null;
-                    const isSel = selected.has(personKey(r));
-                    return (
-                      <div
-                        key={personKey(r)}
-                        className={cn(
-                          "grid items-center gap-x-4 gap-y-2 px-4 py-3.5 sm:grid-cols-[auto_minmax(0,1.1fr)_minmax(0,1.3fr)_auto_auto]",
-                          isSel && "bg-primary/[0.06]",
-                        )}
-                      >
-                        {/* index.css gives every <button> min-height:44px under 640px; a 16px-wide
-                            checkbox became a tall pill. Keep the box square, keep the tap area padded. */}
-                        <div className="-m-2 flex items-center self-start p-2 sm:self-center">
-                          <Checkbox aria-label={`Select ${r.display_name}`} checked={isSel} onCheckedChange={() => toggle(r)} className="h-5 w-5 !min-h-0" />
-                        </div>
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <span className="line-clamp-2 text-base font-semibold">{r.display_name}</span>
-                            {r.person_type === "agent" && (r.license_status === "licensed" ? (
-                              <Badge variant="outline" className="text-[11px] text-primary">Licensed</Badge>
-                            ) : (
-                              <LicenseProgressSelector
-                                agentId={r.agent_id ?? undefined}
-                                currentProgress={(r.license_progress || "unlicensed") as never}
-                                onProgressUpdated={() => void refresh()}
-                                className="h-6 text-[11px]"
-                              />
-                            ))}
+        <div role="region" aria-label="People" className="space-y-5">
+          {stages
+            .filter((s) => visible.some((r) => r.stage_key === s.stage_key))
+            .map((s) => {
+              const full = visible.filter((r) => r.stage_key === s.stage_key).sort((a, b) => a.days_in_stage - b.days_in_stage);
+              const open = expanded.has(s.stage_key) || !!search || !!stageFilter || idle !== "all" || link !== "all";
+              const list = open ? full : full.slice(0, PAGE);
+              const allSelected = full.every((r) => selected.has(personKey(r)));
+              const someSelected = !allSelected && full.some((r) => selected.has(personKey(r)));
+              return (
+                <section key={s.stage_key} className="space-y-1.5">
+                  <div className="flex items-center gap-3 pt-2">
+                    <Checkbox
+                      aria-label={`Select everyone at ${s.display_name}`}
+                      checked={allSelected ? true : someSelected ? "indeterminate" : false}
+                      onCheckedChange={(v) => toggleMany(full, v === true)}
+                      className={CHECKBOX}
+                    />
+                    <h2 className="text-base font-semibold">{s.display_name}</h2>
+                    <span className="text-sm text-muted-foreground">{full.length}</span>
+                  </div>
+                  <div className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card">
+                    {list.map((r) => {
+                      const name = r.display_name;
+                      const key = personKey(r);
+                      const tel = phoneHref(r.phone);
+                      const sms = smsHref(r.phone);
+                      const next = nextStageFor(r);
+                      const options = optionsFor(r);
+                      // A person whose current step is not on their ladder (an agent record still
+                      // on an applicant step) keeps their step's name in the box and gets no
+                      // invented next step, instead of a blank box and a false "Last step".
+                      const onLadder = options.some((s) => s.stage_key === r.stage_key);
+                      const isBusy = busy === key || busy === "bulk";
+                      const days = Math.round(r.days_in_stage);
+                      const contact = r.person_type === "applicant" && r.last_contacted_at ? formatSince(r.last_contacted_at) : null;
+                      const isSel = selected.has(key);
+                      const info = r.person_type === "agent" && r.agent_id ? factsByAgent.get(r.agent_id) : undefined;
+                      const showMore = canRemove && r.person_type === "agent" && !!r.agent_id;
+                      return (
+                        <div
+                          key={key}
+                          className={cn(
+                            // Phone: one column. Tablet: the actions sit on their own line under the
+                            // person. Wide: four columns, nothing wraps under the Move button.
+                            "grid items-center gap-x-4 gap-y-3 px-4 py-4 sm:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)] xl:grid-cols-[auto_minmax(0,1.1fr)_minmax(0,1.3fr)_auto]",
+                            isSel && "bg-primary/[0.06]",
+                          )}
+                        >
+                          <div className="flex items-center self-start sm:self-center">
+                            <Checkbox aria-label={`Select ${name}`} checked={isSel} onCheckedChange={() => toggle(r)} className={CHECKBOX} />
                           </div>
-                          <div className="text-sm text-muted-foreground">
-                            {r.manager_name ? `under ${r.manager_name}` : "unassigned"}
-                            {" · "}
-                            {r.resident_state ? (
-                              <button type="button" className="font-medium text-foreground hover:underline" title="Resident state (click to change)" onClick={() => setStateEditing(personKey(r))}>{r.resident_state}</button>
-                            ) : stateEditing === personKey(r) ? null : (
-                              <button type="button" className="text-destructive hover:underline" onClick={() => setStateEditing(personKey(r))} aria-label={`Add state for ${r.display_name}`}>add state</button>
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="line-clamp-2 text-base font-semibold">{name}</span>
+                              {r.person_type === "agent" && (r.license_status === "licensed" ? (
+                                <StatusPill status={{ label: "Licensed", tone: "primary" }} />
+                              ) : (
+                                <LicenseProgressSelector
+                                  agentId={r.agent_id ?? undefined}
+                                  currentProgress={(r.license_progress || "unlicensed") as never}
+                                  onProgressUpdated={() => void refresh()}
+                                  className="h-11 text-sm"
+                                />
+                              ))}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {r.manager_name ? `under ${r.manager_name}` : "unassigned"}
+                              {" · "}
+                              {r.resident_state ? (
+                                <button type="button" className={cn(SENTENCE_LINK, "font-medium text-foreground")} title="Resident state (tap to change)" onClick={() => setStateEditing(key)} aria-label={`Change state for ${name}, now ${r.resident_state}`}>{r.resident_state}</button>
+                              ) : (
+                                <button type="button" className={SENTENCE_LINK} onClick={() => setStateEditing(key)} aria-label={`Add state for ${name}`}>Add state</button>
+                              )}
+                              {" · "}
+                              <span className={heatClass(r.days_in_stage)}>{days} {days === 1 ? "day" : "days"} on this step</span>
+                              {contact && <> · last contact {contact}</>}
+                              {r.person_type === "agent" && (
+                                <>
+                                  {" · "}
+                                  {linkState(r) === "clicked" ? (
+                                    <span className="text-foreground">login link clicked {formatSince(r.link_used_at ?? r.last_sign_in_at)}</span>
+                                  ) : linkState(r) === "sent" ? (
+                                    <span className="font-medium text-foreground">login link sent {formatSince(r.link_sent_at)}, not clicked</span>
+                                  ) : (
+                                    <span>login link not sent</span>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                            {stateEditing === key && (
+                              <div className="mt-2 flex flex-wrap items-center gap-2">
+                                <Input
+                                  autoFocus
+                                  maxLength={2}
+                                  placeholder="WI"
+                                  aria-label={`State for ${name}`}
+                                  className="h-11 w-20 text-center text-base uppercase"
+                                  onBlur={(e) => { const v = e.target.value.trim(); if (v) void saveState(r, v); else setStateEditing(null); }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") { const v = (e.target as HTMLInputElement).value.trim(); if (v) void saveState(r, v); else setStateEditing(null); }
+                                    if (e.key === "Escape") setStateEditing(null);
+                                  }}
+                                />
+                                <span className="text-sm text-muted-foreground">Two letters. Enter saves, Esc cancels.</span>
+                              </div>
                             )}
-                            {stateEditing === personKey(r) && (
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2 text-sm">
+                            {tel ? (
+                              <>
+                                <span className="whitespace-nowrap tabular-nums">{formatPhoneDisplay(r.phone)}</span>
+                                <Button asChild variant="outline" className="h-11 px-3">
+                                  <a href={tel} {...contactLinkProps(tel)} aria-label={`Call ${name}`}><Phone className="h-4 w-4" /> Call</a>
+                                </Button>
+                                <Button asChild variant="outline" className="h-11 px-3">
+                                  <a href={sms ?? undefined} {...contactLinkProps(sms)} aria-label={`Text ${name}`}><MessageSquare className="h-4 w-4" /> Text</a>
+                                </Button>
+                              </>
+                            ) : r.email ? (
+                              <a href={`mailto:${r.email}`} className={cn(QUIET_LINK, "max-w-full gap-1.5 truncate")}>
+                                <Mail className="h-4 w-4 shrink-0" aria-hidden="true" /> {r.email}
+                              </a>
+                            ) : (
+                              <span className="inline-flex min-h-11 items-center text-sm text-muted-foreground">No phone or email</span>
+                            )}
+                            {r.instagram ? (
+                              <Button asChild variant="outline" className="h-11 gap-1.5 px-3">
+                                <a href={igUrl(r.instagram)} target="_blank" rel="noopener noreferrer" aria-label={`Instagram ${name}`}>
+                                  <Instagram className="h-4 w-4" /> @{r.instagram}
+                                </a>
+                              </Button>
+                            ) : igEditing === key ? (
                               <Input
                                 autoFocus
-                                maxLength={2}
-                                placeholder="WI"
-                                className="ml-1 inline-block h-6 w-12 px-1 text-center text-xs uppercase"
-                                onBlur={(e) => { const v = e.target.value.trim(); if (v) void saveState(r, v); else setStateEditing(null); }}
+                                placeholder="@handle"
+                                aria-label={`Instagram handle for ${name}`}
+                                className="h-11 w-44 text-base"
+                                onBlur={(e) => { const v = e.target.value.trim(); if (v) void saveInstagram(r, v); else setIgEditing(null); }}
                                 onKeyDown={(e) => {
-                                  if (e.key === "Enter") { const v = (e.target as HTMLInputElement).value.trim(); if (v) void saveState(r, v); else setStateEditing(null); }
-                                  if (e.key === "Escape") setStateEditing(null);
+                                  if (e.key === "Enter") { const v = (e.target as HTMLInputElement).value.trim(); if (v) void saveInstagram(r, v); else setIgEditing(null); }
+                                  if (e.key === "Escape") setIgEditing(null);
                                 }}
                               />
+                            ) : (
+                              <button type="button" className={cn(QUIET_LINK, "gap-1.5")} onClick={() => setIgEditing(key)} aria-label={`Add Instagram for ${name}`}>
+                                <Instagram className="h-4 w-4" aria-hidden="true" /> Add Instagram
+                              </button>
                             )}
-                            {" · "}
-                            <span className={heatClass(r.days_in_stage)}>{Math.round(r.days_in_stage)} {Math.round(r.days_in_stage) === 1 ? "day" : "days"} on this step</span>
-                            {contact && <> · last contact {contact}</>}
-                            {r.person_type === "agent" && (
-                              <>
-                                {" · "}
-                                {linkState(r) === "clicked" ? (
-                                  <span className="text-foreground">link clicked {formatTimeAgo(r.link_used_at ?? r.last_sign_in_at)}</span>
-                                ) : linkState(r) === "sent" ? (
-                                  <span className="font-medium text-foreground">link sent {formatTimeAgo(r.link_sent_at)}, not clicked</span>
-                                ) : (
-                                  <span className="text-destructive">link not sent</span>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2 text-sm">
-                          {tel ? (
-                            <>
-                              <span className="whitespace-nowrap text-sm tabular-nums">{formatPhoneDisplay(r.phone)}</span>
-                              <Button asChild size="sm" variant="outline" className="h-10 w-10 px-0"><a href={tel} {...contactLinkProps(tel)} aria-label={`Call ${r.display_name}`}><Phone className="h-4 w-4" /></a></Button>
-                              <Button asChild size="sm" variant="outline" className="h-10 w-10 px-0"><a href={smsHref(r.phone) ?? undefined} {...contactLinkProps(smsHref(r.phone))} aria-label={`Text ${r.display_name}`}><MessageSquare className="h-4 w-4" /></a></Button>
-                            </>
-                          ) : r.email ? (
-                            <a href={`mailto:${r.email}`} className="inline-flex items-center gap-1 truncate text-xs text-muted-foreground hover:text-foreground">
-                              <Mail className="h-3.5 w-3.5 shrink-0" /> {r.email}
-                            </a>
-                          ) : (
-                            <span className="text-xs text-destructive">no phone or email</span>
-                          )}
-                          {r.instagram ? (
-                            <Button asChild size="sm" variant="outline" className="h-7 gap-1 px-2 text-xs">
-                              <a href={igUrl(r.instagram)} target="_blank" rel="noopener noreferrer" aria-label={`Instagram ${r.display_name}`}>
-                                <Instagram className="h-3.5 w-3.5" /> @{r.instagram}
-                              </a>
-                            </Button>
-                          ) : igEditing === personKey(r) ? (
-                            <Input
-                              autoFocus
-                              placeholder="@handle"
-                              className="h-7 w-36 text-xs"
-                              onBlur={(e) => { const v = e.target.value.trim(); if (v) void saveInstagram(r, v); else setIgEditing(null); }}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") { const v = (e.target as HTMLInputElement).value.trim(); if (v) void saveInstagram(r, v); else setIgEditing(null); }
-                                if (e.key === "Escape") setIgEditing(null);
-                              }}
-                            />
-                          ) : (
-                            <button type="button" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground" onClick={() => setIgEditing(personKey(r))} aria-label={`Add Instagram for ${r.display_name}`}>
-                              <Instagram className="h-3.5 w-3.5" /> add IG
-                            </button>
-                          )}
-                          {r.person_type === "agent" && r.agent_id && (() => {
-                            const info = factsByAgent.get(r.agent_id);
-                            if (!info) {
-                              // Outside the live onboarding population (paused,
-                              // departed, placeholder) or the facts did not load.
-                              return factsQuery.isError ? <span className="text-xs text-muted-foreground">start unknown</span> : null;
-                            }
-                            return (
+                            {r.person_type === "agent" && r.agent_id && (info ? (
                               <>
                                 <ExpectedStartControl facts={info.facts} />
                                 {info.open > 0 && (
                                   <Link
-                                    to={`/dashboard/onboarding-ladder`}
-                                    className={cn("text-xs hover:underline", info.blocking > 0 ? "font-medium text-destructive" : "text-muted-foreground")}
+                                    to="/dashboard/onboarding-ladder"
+                                    className={cn(QUIET_LINK, info.blocking > 0 && "font-medium text-warning hover:text-warning")}
                                     title="Open the onboarding queue"
                                   >
-                                    {info.open} open item{info.open === 1 ? "" : "s"}
+                                    {info.open} open {info.open === 1 ? "item" : "items"}{info.blocking > 0 ? ` (${info.blocking} blocking)` : ""}
                                   </Link>
                                 )}
                               </>
-                            );
-                          })()}
+                            ) : factsQuery.isError ? (
+                              // Outside the live onboarding population (paused, departed, placeholder)
+                              // nothing is drawn; when the facts failed to load, say so rather than hide it.
+                              <span className="inline-flex min-h-11 items-center text-sm text-muted-foreground">Start date unknown (did not load)</span>
+                            ) : null)}
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2 sm:col-span-2 sm:col-start-2 xl:col-span-1 xl:col-start-auto xl:flex-nowrap xl:justify-self-end">
+                            <Select value={r.stage_key} onValueChange={(v) => void setStage(r, v)} disabled={isBusy}>
+                              <SelectTrigger className="h-11 w-full text-sm sm:w-[220px]" aria-label={`Stage for ${name}`}>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {!onLadder && <SelectItem value={r.stage_key} disabled className="min-h-11">{r.stage_name}</SelectItem>}
+                                {options.map((o) => (
+                                  <SelectItem key={o.stage_key} value={o.stage_key} className="min-h-11">
+                                    {o.stage_key === "closed_lost" ? "Closed / dropped" : o.display_name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {next ? (
+                              <Button variant="outline" className="h-11 gap-1.5 px-3" disabled={isBusy} onClick={() => void setStage(r, next.stage_key)}>
+                                Move to {next.display_name} <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                              </Button>
+                            ) : (
+                              <Button variant="outline" className="h-11 px-3" disabled>{onLadder ? "Last step" : "No next step"}</Button>
+                            )}
+                            {showMore && (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="outline" className="h-11 px-3" aria-label={`More for ${name}`} disabled={isBusy}>
+                                    More <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-56">
+                                  {/* Two steps: this opens the confirm dialog, nothing happens until it is accepted. */}
+                                  <DropdownMenuItem className="min-h-11 gap-2 text-destructive focus:text-destructive" onSelect={() => void removeAgent(r)}>
+                                    <UserX className="h-4 w-4" aria-hidden="true" /> No longer with us
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            )}
+                          </div>
                         </div>
-                        <Select value={r.stage_key} onValueChange={(v) => void setStage(r, v)} disabled={isBusy}>
-                          <SelectTrigger className="h-10 w-full text-sm sm:w-[220px]" aria-label={`Stage for ${r.display_name}`}>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {optionsFor(r).map((o) => (
-                              <SelectItem key={o.stage_key} value={o.stage_key} className="text-xs">
-                                {o.stage_key === "closed_lost" ? "Closed / dropped" : `${o.order_index}. ${o.display_name}`}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Button size="sm" variant="outline" className="h-10 gap-1 text-sm" disabled={!next || isBusy} onClick={() => next && void setStage(r, next.stage_key)} title={next ? `Move to ${next.display_name}` : "Last stage"}>
-                          {next ? next.display_name : "Done"} <ArrowRight className="h-3.5 w-3.5" />
-                        </Button>
-                        {canRemove && r.person_type === "agent" && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-8 gap-1 text-xs text-destructive hover:text-destructive/80 sm:col-start-5 sm:justify-self-end"
-                            disabled={isBusy}
-                            aria-label={`No longer with us: ${r.display_name}`}
-                            onClick={() => void removeAgent(r)}
-                          >
-                            <UserX className="h-3.5 w-3.5" /> No longer with us
-                          </Button>
-                        )}
-                      </div>
-                    );
-                  })}
-                  {full.length > list.length && (
-                    <button
-                      type="button"
-                      className="min-h-11 w-full px-4 py-2 text-center text-sm font-medium text-primary hover:underline"
-                      onClick={() => setExpanded((prev) => new Set(prev).add(s.stage_key))}
-                    >
-                      Show all {full.length} in {s.display_name}
-                    </button>
-                  )}
-                </div>
-              </section>
-            );
-          })
+                      );
+                    })}
+                    {full.length > list.length && (
+                      <button
+                        type="button"
+                        className="min-h-11 w-full px-4 py-2 text-center text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
+                        onClick={() => setExpanded((prev) => new Set(prev).add(s.stage_key))}
+                      >
+                        Show all {full.length} in {s.display_name}
+                      </button>
+                    )}
+                  </div>
+                </section>
+              );
+            })}
+        </div>
       )}
     </div>
   );

@@ -44,6 +44,13 @@ two seconds or had to read a menu, fail it. Then check: any text under 13px (mea
 the class list); any control under 44px; any meaning carried only by a hover `title`; any jargon on the
 first screen; more than one gold button; any irreversible action one tap away; any colour-only status.
 
+Then the warmth check (Sam, 2026-10-28: "it looks like a terminal at a checkout"): does the page have
+colour that means something (a tone bubble on the title and on each tile, states as tinted words, the same
+state the same colour as on the other pages)? Does anything move once when it arrives (tiles and rows rise,
+numbers count)? Does finishing the page's core action give a small celebration from the control pressed?
+Is the body text 15px and the title 22px on a phone? A grey page of 14px text with no bubble and no
+celebration fails this lens even when every number is right.
+
 ### Lens 2 · Operator (60 calls a day, or an agent writing business)
 
 Count taps for the page's core task as the area file defines it (for the Call list: call, record "No
@@ -68,7 +75,12 @@ guard baseline raised; any behavioural assertion deleted; any element that rende
 duplicated state between a page and a helper; any layout that clips, misaligns or scrolls sideways at 390
 or 1440; dark or light theme wrong; any inset shadow, gradient, glass, nested card; any new `${…} ago`
 template without a clamp; any icon-only control without a name; any `SelectTrigger`/`Switch` without a
-label.
+label. For the colour, motion and sound layer (`docs/DESIGN_SYSTEM.md`): fail a tone picked by hand
+instead of through a mapping function in `src/lib/tones.ts`; a `celebrate()` or `playSoundEffect()` call
+that can run on load, on an error, in a render, or before the mutation resolved; any looping animation
+other than `apex-breathe` on a live indicator; a page that paints its own background; a `duration-*`
+utility over 200ms where an `apex-*` class should carry the choreography; any entrance that still moves
+with `prefers-reduced-motion: reduce` (emulate it in Playwright and screenshot again).
 
 ## Verdict
 

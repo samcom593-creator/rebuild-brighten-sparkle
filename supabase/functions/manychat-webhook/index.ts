@@ -1189,11 +1189,16 @@ Deno.serve(async (req) => {
   if (subscriberId && channel !== "comment" && channel !== "youtube_comment" && channel !== "tiktok_comment") {
     const since = new Date(Date.now() - 14 * 86400000).toISOString();
     const { data: manual } = await supabase.from("inbox_messages").select("id").eq("external_id", subscriberId).eq("intent", "sam_manual").gte("created_at", since).limit(1);
+    // MP-305 W5 (2026-10-28): "it's mine" on the IG desk writes ig_thread_actions(action='mine'). Read
+    // it here so the desk's "bot's out for 14 days" is true from the tap, not from whenever Sam last
+    // typed in the app. A read failure is treated as "not claimed" and logged, never as a crash.
+    const { data: claimed, error: claimedErr } = await supabase.from("ig_thread_actions").select("id").eq("external_id", subscriberId).eq("action", "mine").gte("created_at", since).limit(1);
+    if (claimedErr) console.error("[manychat-webhook] ig_thread_actions read failed", claimedErr);
     // ...except a direct business question, which still gets answered (Sam 2026-09-28).
     const bc = classify(text);
     const businessAsk = !!bc.reply_path && ["apply", "licensed", "licensed_team", "fitness", "mentorship", "rentals", "partnership", "license_explain"].includes(bc.reply_path) &&
       /\?|\b(how|what|where|when|can i|could i|do i|i want|i need|interested|sign me up|put me on|teach me|licen[cs]\w*)\b/i.test(text);
-    if (manual?.length && !businessAsk) {
+    if ((manual?.length || claimed?.length) && !businessAsk) {
       if (!dryRun) try { await supabase.from("inbox_messages").insert({ source, direction: "inbound", external_id: subscriberId, sender_handle: senderHandle, body: text, intent: "sam_thread", auto_replied: false, raw_payload: { muted: "sam_manual" } }); } catch (e) { console.error("[manychat-webhook] muted inbound log failed", e); }
       return new Response(JSON.stringify({ ok: true, intent: "sam_thread", auto_reply: null, reply_path: null, muted: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }

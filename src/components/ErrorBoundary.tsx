@@ -1,6 +1,6 @@
 import { Component, ErrorInfo, ReactNode } from "react";
 import { AlertTriangle, RefreshCw } from "lucide-react";
-import { isChunkLoadError, recoverFromChunkError } from "@/lib/chunkRecovery";
+import { canRecoverFromChunkError, isChunkLoadError, isChunkRecoveryReloading, recoverFromChunkError } from "@/lib/chunkRecovery";
 // wave-18 (2026-06-04): replaced shadcn <Button> with native <button>. Button
 // imports @radix-ui/react-slot for asChild — that single edge dragged the
 // entire vendor-radix slice (TooltipProvider, popper transitive graph, etc.)
@@ -17,6 +17,8 @@ interface State {
   hasError: boolean;
   error: Error | null;
   retryCount: number;
+  /** A stale-chunk error that this tab is reloading to fix: show "loading", not "went wrong". */
+  recovering: boolean;
 }
 
 const MAX_RETRIES = 2;
@@ -26,10 +28,13 @@ export class ErrorBoundary extends Component<Props, State> {
     hasError: false,
     error: null,
     retryCount: 0,
+    recovering: false,
   };
 
   public static getDerivedStateFromError(error: Error): Partial<State> {
-    return { hasError: true, error };
+    // Read-only checks: componentDidCatch starts the reload; this only picks which screen shows.
+    const recovering = isChunkLoadError(error) && (canRecoverFromChunkError() || isChunkRecoveryReloading());
+    return { hasError: true, error, recovering };
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
@@ -87,6 +92,24 @@ export class ErrorBoundary extends Component<Props, State> {
 
   public render() {
     if (this.state.hasError) {
+      if (this.state.recovering) {
+        return (
+          <div className="min-h-[50vh] bg-background flex items-center justify-center p-4">
+            <div className="max-w-md w-full text-center space-y-4" role="status" aria-live="polite">
+              <RefreshCw className="mx-auto h-8 w-8 animate-spin text-primary motion-reduce:animate-none" aria-hidden="true" />
+              <h1 className="text-xl font-semibold text-foreground">Loading the latest version</h1>
+              <p className="text-muted-foreground">The app was just updated. This page reloads on its own in a moment.</p>
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="inline-flex h-10 items-center justify-center rounded-md border border-border px-4 text-sm font-medium text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                Reload now
+              </button>
+            </div>
+          </div>
+        );
+      }
       if (this.props.fallback) {
         return this.props.fallback;
       }

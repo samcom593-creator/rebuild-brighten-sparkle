@@ -1,15 +1,15 @@
 # APEX Function Contract Matrix
 
-Generated: 2026-10-28T03:31:46.560Z
-Repository: `/private/tmp/mp305-w4`
+Generated: 2026-10-28T06:00:10.313Z
+Repository: `/private/tmp/mp305-page`
 
 ## Inventory Summary
 
-- Total Local Edge Functions: **245**
-- Configured in `config.toml`: **246**
-- Invoked Edge Functions in Source: **96**
-- Invoked RPC Calls in Source: **220**
-- SQL Functions in Migrations: **728**
+- Total Local Edge Functions: **246**
+- Configured in `config.toml`: **247**
+- Invoked Edge Functions in Source: **97**
+- Invoked RPC Calls in Source: **223**
+- SQL Functions in Migrations: **738**
 
 ## Edge Function Auth & Verification Contracts
 
@@ -236,6 +236,7 @@ Repository: `/private/tmp/mp305-w4`
 | `slack-identity-admin` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `slack-integration-health` | Yes | Yes | `true` | Authenticated JWT | PASS |
 | `slack-unlicensed-welcome` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
+| `social-lead-csv` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `stripe-sync` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `stripe-webhook-lead-purchase` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `submit-application` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
@@ -269,6 +270,6 @@ applied by hand through bot-sql and never round-tripped into
 `supabase/migrations`, so this directory does not model the deployed database.
 `apex-doctor` queries `pg_proc` and is the authority on deployed state.
 
-- Invoked RPCs: **220**
-- Also declared in this commit's migrations: **212**
+- Invoked RPCs: **223**
+- Also declared in this commit's migrations: **215**
 - Declared only in the database: **8**

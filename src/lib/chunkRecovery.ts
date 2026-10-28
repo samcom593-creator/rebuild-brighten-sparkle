@@ -2,8 +2,26 @@ const RECOVERY_KEY = "apex.chunk-recovery.started-at";
 const RECOVERY_QUERY = "_apex_refresh";
 const RECOVERY_COOLDOWN_MS = 2 * 60 * 1000;
 
+// The last two alternatives are what React.lazy throws when a stale chunk import resolved to
+// nothing: Chrome "Cannot read properties of undefined (reading 'default')", Safari "undefined is
+// not an object (evaluating 's._result.default')". They were 25 crash screens in error_logs
+// (2026-10-26..28), all after a deploy, all unrecognised here, so no reload ever ran.
 const CHUNK_ERROR_PATTERN =
-  /failed to fetch dynamically imported module|error loading dynamically imported module|importing a module script failed|unable to preload css|loading chunk \d+ failed/i;
+  /failed to fetch dynamically imported module|error loading dynamically imported module|importing a module script failed|unable to preload css|loading chunk \d+ failed|reading 'default'|_result\.default/i
+
+let reloading = false;
+
+/** True once this tab has started its recovery reload. */
+export function isChunkRecoveryReloading(): boolean {
+  return reloading;
+}
+
+/** True when this tab may start a recovery reload now (outside the cooldown). */
+export function canRecoverFromChunkError(): boolean {
+  if (typeof window === "undefined") return false;
+  const startedAt = Number(window.sessionStorage.getItem(RECOVERY_KEY) ?? 0);
+  return !(Number.isFinite(startedAt) && Date.now() - startedAt < RECOVERY_COOLDOWN_MS);
+};
 
 export function isChunkLoadError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error ?? "");
@@ -19,12 +37,10 @@ export function isChunkLoadError(error: unknown): boolean {
 export async function recoverFromChunkError(error: unknown): Promise<boolean> {
   if (!isChunkLoadError(error) || typeof window === "undefined") return false;
 
-  const startedAt = Number(window.sessionStorage.getItem(RECOVERY_KEY) ?? 0);
-  if (Number.isFinite(startedAt) && Date.now() - startedAt < RECOVERY_COOLDOWN_MS) {
-    return false;
-  }
+  if (!canRecoverFromChunkError()) return false;
 
   window.sessionStorage.setItem(RECOVERY_KEY, String(Date.now()));
+  reloading = true;
 
   try {
     if ("serviceWorker" in navigator) {
@@ -52,6 +68,10 @@ export function installChunkRecovery(): void {
   if (typeof window === "undefined") return;
 
   window.addEventListener("vite:preloadError", (event) => {
+    // Swallow the error only when this tab is about to reload. preventDefault makes Vite resolve
+    // the import to undefined; without a reload React.lazy then crashed on ".default" and the
+    // tab showed "Something went wrong" instead of a real, recoverable chunk error.
+    if (!reloading && !canRecoverFromChunkError()) return;
     event.preventDefault();
     const payload = (event as Event & { payload?: unknown }).payload;
     void recoverFromChunkError(payload);

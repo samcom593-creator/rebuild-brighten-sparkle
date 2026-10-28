@@ -114,9 +114,12 @@ buckets).
     do the rest (`submit-application:62-75`, the digest's `status='active'`, `fn_agent_is_roster_excluded`, a
     daily `fn_access_violation_alert`). The IDs are hardcoded only on production, IMO and Slack surfaces (e.g.
     20260822222000:189, 20260907020000:70). **Leak:** that migration left `invited_by_manager_id` untouched
-    (:128-129), and `send-followup-emails:42-56` CCs that manager's email with no status check, so the departed
-    manager can be CC'd on applicant follow-ups. No re-engagement test covers the exclusion, and the
-    banned-prospect check runs only at submit and import.
+    (:128-129), and `send-followup-emails:42-56` CC'd that manager's email with no status check, so the
+    departed manager could be CC'd on applicant follow-ups. **Closed 2026-10-28:** `_shared/departed.ts`
+    (`isDepartedAgent`, `isBannedUser`) is applied in `send-followup-emails` (9490d52) and in 36 other
+    senders that resolve a manager pointer (85dbee1); `consume-invite-token` refuses a departed upline. Still
+    open: `agent-signup` honours a departed manager's active invite link, `add-agent` takes an admin-supplied
+    `managerId` unchecked, and the banned-prospect check runs only at submit and import.
 16. **Unknown shown as 0:** `InstagramInbox.tsx:73` `(v ?? 0)`; `AbandonedLeadsPanel.tsx:157` says "No
     abandoned applications" after a failed load; `manager-daily-digest:165-168` `|| 0`;
     `onboarding_exception_facts` `coalesce(cc.active_n,0)` and `onboardingExceptions.ts:319-320,460` `?? 0`;

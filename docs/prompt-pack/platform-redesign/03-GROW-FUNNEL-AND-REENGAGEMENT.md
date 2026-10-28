@@ -99,8 +99,13 @@ harness (`?dry_run=1` exists on `instagram-dm-nudge`; use it).
    (d) One "today" for recruiting surfaces: Phoenix, including `InterviewRecovery`'s buckets while they still
    render (C4). (e) Every writer of `last_contacted_at` that is not a recorded outcome (bulk "mark contacted",
    self check-in, `cc_dispose_interview`) stops moving people out of "Never contacted", or records an outcome
-   (C10). (f) The departed-manager CC leak in `send-followup-emails` is closed with a status check and a test
-   (C15); this one is small and ships first.
+   (C10). (f) The departed-manager CC leak (C15) is closed: `send-followup-emails` (9490d52) and a sweep of
+   36 other senders (85dbee1) skip departed or banned managers through `supabase/functions/_shared/departed.ts`.
+   Three product decisions remain and belong to this area: a departed manager's still-active
+   `manager_invite_links` row would attribute a new agent to them (`agent-signup/index.ts:63-68,110`; refuse,
+   or redirect up the chain as `resolve-ref-slug` does); `add-agent/index.ts:452-453` takes an admin-supplied
+   `managerId` without a departure check; `trigger-new-hire-flow/index.ts:141-146,166-171` keys its manager
+   lookup wrong and is dead today.
 3. **One re-engagement engine.** From H2, `src/lib/reengagement/rules.ts` holds the rule table as data
    (stage × days silent → channel, message family, cap per week, quiet hours in the person's zone, stop
    conditions) and `nextTouch(person, now)` returns the one due touch or none, with the reason. The Call

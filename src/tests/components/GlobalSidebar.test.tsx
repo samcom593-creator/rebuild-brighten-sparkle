@@ -116,7 +116,7 @@ describe("GlobalSidebar · AgentCloud application navigation", () => {
     expect(link("Scripts")).toBeNull();
     expect(link("Agencies")).toBeNull();
     expect(link("VA Team")).toBeNull();
-    expect(link("Recruit Pipeline")?.getAttribute("href")).toBe("/dashboard/recruiting");
+    expect(link("Call list")?.getAttribute("href")).toBe("/dashboard/recruiting");
     expect(link("Invite an agent")?.getAttribute("href")).toBe("/admin/invite-links");
   });
 
@@ -128,16 +128,16 @@ describe("GlobalSidebar · AgentCloud application navigation", () => {
     setRoles(roles as Partial<typeof authState>);
     renderSidebar();
     expect(group("Grow")).toBeTruthy();
-    expect(link("Recruit Pipeline")).toBeTruthy();
+    expect(link("Call list")).toBeTruthy();
   });
 
   it("keeps high-frequency work discoverable to plain agents without internal contracting", () => {
     renderSidebar();
     expect(group("Grow")).toBeTruthy();
-    // Recruit Stages, Recruit Pipeline and invite links are guarded to
+    // New hires, Call list and invite links are guarded to
     // managers and recruiting staff; a plain agent gets the open referral form.
-    expect(link("Recruit Stages")).toBeNull();
-    expect(link("Recruit Pipeline")).toBeNull();
+    expect(link("New hires")).toBeNull();
+    expect(link("Call list")).toBeNull();
     expect(link("Invite an agent")).toBeNull();
     expect(link("Refer a recruit")?.getAttribute("href")).toBe("/dashboard/referrals/new");
     expect(group("Learn")).toBeTruthy();
@@ -165,11 +165,11 @@ describe("GlobalSidebar · AgentCloud application navigation", () => {
     setRoles({ isRecruiter: true, effectiveMode: "recruiter" as never });
     renderSidebar();
     expect(group("Grow")).toBeTruthy();
-    expect(link("Recruit Pipeline")).toBeTruthy();
+    expect(link("Call list")).toBeTruthy();
     expect(link("Calendar")?.getAttribute("href")).toBe("/dashboard/calendar");
     // /admin/invite-links and /dashboard/recruits do not admit recruiters.
     expect(link("Invite an agent")).toBeNull();
-    expect(link("Recruit Stages")).toBeNull();
+    expect(link("New hires")).toBeNull();
     expect(group("Sell")).toBeNull();
     expect(link("Book of Business")).toBeNull();
     expect(link("Quoter")).toBeNull();
@@ -243,7 +243,7 @@ describe("GlobalSidebar · recruiting active-state behavior", () => {
     setRoles({ isAdmin: true });
     renderSidebar("/dashboard/recruiting/training");
     expect(group("Grow")!.className).toContain(ACTIVE_GROUP_CLASS);
-    expect(link("Recruit Pipeline")!.className).not.toContain(ACTIVE_LINK_CLASS);
+    expect(link("Call list")!.className).not.toContain(ACTIVE_LINK_CLASS);
   });
 
   it("Home is exact-match only", () => {

@@ -116,6 +116,7 @@ export interface WorklistRow {
 
 export const QUEUE_KEYS = [
   "likely",
+  "today",
   "all_open",
   "new",
   "uncontacted",
@@ -137,19 +138,25 @@ export interface QueueDefinition {
   scope: "organization" | "personal";
 }
 
+// Labels are plain English for people who do not live in software (Grow redesign,
+// 2026-10-28); keys, URL params and predicates are unchanged, so old links still work.
 export const QUEUE_DEFINITIONS: readonly QueueDefinition[] = [
   { key: "likely", label: "Likely to join", description: "Licensed or rated hot/warm and applied in the last 47 days, or anyone who applied in the last 14 days. From the conversion history: licensed applicants join 37% of the time vs 2% unlicensed, and 80% of joins happen within 47 days", scope: "organization" },
-  { key: "all_open", label: "All open", description: "Every open recruit you can see", scope: "organization" },
+  { key: "today", label: "Call today", description: "Next step due today or already late (Phoenix day): Due today plus Overdue", scope: "organization" },
+  { key: "all_open", label: "Everyone", description: "Every open recruit you can see", scope: "organization" },
   { key: "new", label: "New", description: "Applied in the last 7 days and not yet worked", scope: "organization" },
-  { key: "uncontacted", label: "Uncontacted", description: "No recorded contact, ever (bulk-stamped contacted_at ignored)", scope: "organization" },
+  { key: "uncontacted", label: "Never contacted", description: "No recorded contact, ever (bulk-stamped contacted_at ignored)", scope: "organization" },
   { key: "due_today", label: "Due today", description: "Next action or review due later today (Phoenix)", scope: "organization" },
   { key: "overdue", label: "Overdue", description: "Next action or review time has passed", scope: "organization" },
-  { key: "awaiting_reply", label: "Awaiting reply", description: "Parked on a documented waiting reason", scope: "organization" },
-  { key: "unassigned", label: "Unassigned", description: "No accountable owner yet", scope: "organization" },
-  { key: "mine", label: "My queue", description: "Open recruits where you are the accountable owner", scope: "personal" },
-  { key: "needs_plan", label: "Needs a plan", description: "Open but missing an owner, or a next action and due time, or a waiting reason and review date", scope: "organization" },
+  { key: "awaiting_reply", label: "Waiting on them", description: "Parked on a documented waiting reason", scope: "organization" },
+  { key: "unassigned", label: "No owner", description: "No accountable owner yet", scope: "organization" },
+  { key: "mine", label: "Mine", description: "Open recruits where you are the accountable owner", scope: "personal" },
+  { key: "needs_plan", label: "No next step", description: "Open but missing an owner, or a next action and due time, or a waiting reason and review date", scope: "organization" },
   { key: "old", label: "Older than 90 days", description: "Applied 90+ days ago with no follow-up set by a person. Only ~5% of joins ever come this late, so they stay out of the other queues", scope: "organization" },
 ] as const;
+
+/** The four queues shown as big buttons; the rest sit behind "More lists". */
+export const PRIMARY_QUEUE_KEYS: readonly QueueKey[] = ["likely", "today", "new", "mine"];
 
 export function isQueueKey(value: string | null | undefined): value is QueueKey {
   return !!value && (QUEUE_KEYS as readonly string[]).includes(value);
@@ -345,6 +352,8 @@ export function inQueue(row: WorklistRow, queue: QueueKey, ctx: QueueContext): b
       if (age === null) return false;
       return (strongSignal(row) && age <= LIKELY_WINDOW_DAYS) || age <= FRESH_WINDOW_DAYS;
     }
+    case "today":
+      return inQueue(row, "due_today", ctx) || inQueue(row, "overdue", ctx);
     case "all_open":
       return true;
     case "new": {
@@ -392,6 +401,35 @@ export function computeQueueCounts(rows: readonly WorklistRow[], ctx: QueueConte
     }
   }
   return counts;
+}
+
+/**
+ * The four numbers on top of the worklist. Each one is computed over the same full
+ * row set as the queue chips, so a number can never disagree with its list:
+ *   callToday  = the "today" queue (Due today + Overdue, which are disjoint)
+ *   newThisWeek = the "new" queue
+ *   workedToday = people with an outcome recorded inside the Phoenix business day,
+ *                 open or closed (a "Not interested" today is still work done today)
+ *   booked      = open recruits whose latest outcome is Appointment booked
+ * An unparseable outcome timestamp is not counted as today.
+ */
+export interface Scoreboard {
+  callToday: number;
+  newThisWeek: number;
+  workedToday: number;
+  booked: number;
+}
+
+export function computeScoreboard(rows: readonly WorklistRow[], ctx: QueueContext, counts: QueueCounts): Scoreboard {
+  const { start, end } = phoenixDayBounds(ctx.now);
+  let workedToday = 0;
+  let booked = 0;
+  for (const row of rows) {
+    const at = parseTs(row.last_contact_outcome_at);
+    if (at !== null && !Number.isNaN(at) && at >= start && at < end) workedToday += 1;
+    if (row.last_contact_outcome === "appointment_booked" && isOpen(row)) booked += 1;
+  }
+  return { callToday: counts.today, newThisWeek: counts.new, workedToday, booked };
 }
 
 /** Order inside a queue: most urgent first, unknown dates last, then newest applicant.

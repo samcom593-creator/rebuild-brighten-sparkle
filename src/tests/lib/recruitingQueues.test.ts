@@ -9,11 +9,13 @@ import {
   CONTACT_OUTCOMES,
   EMPTY_DRAFT,
   OUTCOME_DEFINITIONS,
+  PRIMARY_QUEUE_KEYS,
   QUEUE_DEFINITIONS,
   QUEUE_KEYS,
   blockersOf,
   channelAvailability,
   computeQueueCounts,
+  computeScoreboard,
   describeSaveError,
   inQueue,
   isClosed,
@@ -208,6 +210,55 @@ describe("queue predicates", () => {
   it("every queue key has a definition, and only My queue is personal", () => {
     expect(QUEUE_DEFINITIONS.map((d) => d.key)).toEqual([...QUEUE_KEYS]);
     expect(QUEUE_DEFINITIONS.filter((d) => d.scope === "personal").map((d) => d.key)).toEqual(["mine"]);
+  });
+
+  it("Call today is exactly Due today plus Overdue, which never overlap", () => {
+    const rows = [
+      row({ id: "later", next_action: "Call", next_action_due_at: "2026-10-06T23:00:00Z" }),
+      row({ id: "past", next_action: "Call", next_action_due_at: "2026-10-06T15:00:00Z" }),
+      row({ id: "tomorrow", next_action: "Call", next_action_due_at: "2026-10-07T08:00:00Z" }),
+      row({ id: "garbled", next_action: "Call", next_action_due_at: "not-a-date" }),
+      row({ id: "none" }),
+    ];
+    for (const r of rows) {
+      expect(inQueue(r, "due_today", ctx) && inQueue(r, "overdue", ctx)).toBe(false);
+      expect(inQueue(r, "today", ctx)).toBe(inQueue(r, "due_today", ctx) || inQueue(r, "overdue", ctx));
+    }
+    const counts = computeQueueCounts(rows, ctx);
+    expect(counts.today).toBe(counts.due_today + counts.overdue);
+    expect(rows.filter((r) => inQueue(r, "today", ctx)).map((r) => r.id)).toEqual(["later", "past"]);
+  });
+
+  it("the primary queues are real queue keys", () => {
+    for (const k of PRIMARY_QUEUE_KEYS) expect(QUEUE_KEYS).toContain(k);
+  });
+});
+
+describe("scoreboard", () => {
+  it("each number agrees with its queue or its stated rule, over the whole set", () => {
+    const rows = [
+      row({ id: "fresh", created_at: "2026-10-05T00:00:00Z" }),
+      row({ id: "late", next_action: "Call", next_action_due_at: "2026-10-06T15:00:00Z", last_contacted_at: "2026-10-01T00:00:00Z" }),
+      // Worked today (Phoenix day starts 07:00Z), still open, booked.
+      row({ id: "booked-today", last_contact_outcome: "appointment_booked", last_contact_outcome_at: "2026-10-06T17:00:00Z", next_action: "Interview", next_action_due_at: "2026-10-08T17:00:00Z", next_action_set_at: "2026-10-06T17:00:00Z" }),
+      // Worked today and closed by it: counts as work, not as booked.
+      row({ id: "no-today", last_contact_outcome: "not_interested", last_contact_outcome_at: "2026-10-06T08:00:00Z" }),
+      // Yesterday evening Phoenix time (before 07:00Z) is not today.
+      row({ id: "yesterday", last_contact_outcome: "no_answer", last_contact_outcome_at: "2026-10-06T06:59:00Z", next_action: "Try again", next_action_due_at: "2026-10-09T17:00:00Z" }),
+      // Booked but since closed: not an open booking.
+      row({ id: "booked-closed", last_contact_outcome: "appointment_booked", last_contact_outcome_at: "2026-10-02T17:00:00Z", status: "rejected" }),
+      // An unreadable timestamp is never "today".
+      row({ id: "garbled", last_contact_outcome: "no_answer", last_contact_outcome_at: "not-a-date" }),
+    ];
+    const counts = computeQueueCounts(rows, ctx);
+    const board = computeScoreboard(rows, ctx, counts);
+    expect(board.callToday).toBe(counts.today);
+    expect(board.newThisWeek).toBe(counts.new);
+    expect(board).toEqual({ callToday: 1, newThisWeek: 1, workedToday: 2, booked: 1 });
+  });
+
+  it("an empty set is all zeros, not an error", () => {
+    expect(computeScoreboard([], ctx, computeQueueCounts([], ctx))).toEqual({ callToday: 0, newThisWeek: 0, workedToday: 0, booked: 0 });
   });
 
   it("sorts most urgent first and puts unknown dates last", () => {

@@ -85,7 +85,7 @@ const staffNavItems: BottomNavItem[] = [
   { path: "/dashboard",                        icon: LayoutDashboard, label: "Home" },
   { path: "/dashboard/recruiting",             icon: Briefcase,       label: "Recruiting", ownsNested: true },
   { path: "/dashboard/calendar",               icon: CalendarClock,   label: "Calendar" },
-  { path: "/dashboard/recruits",               icon: Users,           label: "Stages" },
+  { path: "/dashboard/recruits",               icon: Users,           label: "New hires" },
   { path: "/dashboard/team?view=contracting",  icon: Library,         label: "Contracting", matchParams: ["view"] },
 ];
 

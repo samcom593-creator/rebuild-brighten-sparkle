@@ -161,8 +161,11 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
       // managers; /dashboard/recruiting adds recruiters; /admin/invite-links
       // admits managers only. A plain agent or agency owner gets the referral
       // form, which is open to every signed-in user.
-      { label: "Recruit Stages", href: "/dashboard/recruits", icon: Milestone, modes: ["manager", "va", "va_manager"] },
-      { label: "Recruit Pipeline", href: "/dashboard/recruiting", icon: FolderKanban, modes: ["manager", "recruiter", "va", "va_manager"] },
+      // Plain names (Grow redesign, 2026-10-28): "Recruit Pipeline" and "Recruit Stages" read as
+      // the same thing and sat beside "Recruiting Pipeline" and Sell's "My Pipeline". The call
+      // list comes first because calling is the daily job. Routes and role gates are unchanged.
+      { label: "Call list", href: "/dashboard/recruiting", icon: FolderKanban, modes: ["manager", "recruiter", "va", "va_manager"] },
+      { label: "New hires", href: "/dashboard/recruits", icon: Milestone, modes: ["manager", "va", "va_manager"] },
       { label: "Invite an agent", href: "/admin/invite-links", icon: UserPlus, modes: ["manager"] },
       { label: "Refer a recruit", href: "/dashboard/referrals/new", icon: Send, modes: ["agent", "agency_owner"] },
       // Interviews are booked from Calendar (open to every signed-in user).
@@ -390,8 +393,8 @@ const ROUTE_CRUMBS: Record<string, string[]> = {
   "/dashboard/contracting/history": ["Contracting", "Intake history"],
   "/dashboard/contracting/carriers": ["Contracting", "Carriers"],
   "/dashboard/contracting/documents": ["Contracting", "Writing numbers"],
-  "/dashboard/recruiting/pipeline": ["Grow", "Recruit Pipeline"],
-  "/dashboard/recruiting/hires": ["Grow", "Recruit Pipeline"],
+  "/dashboard/recruiting/pipeline": ["Grow", "Call list"],
+  "/dashboard/recruiting/hires": ["Grow", "Call list"],
   "/dashboard/book-of-business": ["My Business", "Retention"],
   "/dashboard/books": ["My Business", "Book Flips"],
   "/dashboard/my-deals": ["My Business", "Book of Business"],

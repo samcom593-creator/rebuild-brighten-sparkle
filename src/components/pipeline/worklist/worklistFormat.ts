@@ -50,6 +50,50 @@ export function formatRelative(value: string | null | undefined, now = Date.now(
   return diff < 0 ? `${label} ago` : `in ${label}`;
 }
 
+/** Plain-English span for people who don't read "18d": "3 hours", "2 days", "3 weeks". */
+export function plainSpan(ms: number): string {
+  const mins = Math.max(1, Math.round(Math.max(0, ms) / 60_000));
+  if (mins < 60) return `${mins} ${mins === 1 ? "minute" : "minutes"}`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours} ${hours === 1 ? "hour" : "hours"}`;
+  const days = Math.round(hours / 24);
+  if (days < 14) return `${days} ${days === 1 ? "day" : "days"}`;
+  const weeks = Math.round(days / 7);
+  if (weeks < 9) return `${weeks} weeks`;
+  const months = Math.round(days / 30);
+  return `${months} months`;
+}
+
+/** "today", "yesterday", "3 days ago" for a past moment. Future or unreadable values say so. */
+export function formatSince(value: string | null | undefined, now = Date.now()): string {
+  if (!value) return "never";
+  const ms = new Date(value).getTime();
+  if (Number.isNaN(ms)) return "on an unreadable date";
+  const elapsed = Math.max(0, now - ms);
+  if (elapsed < 60 * 60_000) return "just now";
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+  if (ms >= startOfToday.getTime()) return "today";
+  if (ms >= startOfToday.getTime() - 24 * 60 * 60_000) return "yesterday";
+  return `${plainSpan(elapsed)} ago`;
+}
+
+/** A due time as people say it: "3:00 PM" today, "Tomorrow 10:00 AM", "Thu 10:00 AM", "Nov 12". */
+export function formatDueShort(value: string | null | undefined, now = Date.now()): string {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "Unreadable date";
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+  const dayMs = 24 * 60 * 60_000;
+  const time = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(d);
+  const offset = Math.floor((d.getTime() - startOfToday.getTime()) / dayMs);
+  if (offset === 0) return time;
+  if (offset === 1) return `Tomorrow ${time}`;
+  if (offset > 1 && offset < 7) return `${new Intl.DateTimeFormat(undefined, { weekday: "short" }).format(d)} ${time}`;
+  return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(d);
+}
+
 /** The person's current local time, only when a verified zone is stored. */
 export function personLocalTime(timeZone: string | null | undefined, now = new Date()): string | null {
   if (!timeZone) return null;

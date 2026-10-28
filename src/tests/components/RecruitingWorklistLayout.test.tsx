@@ -121,6 +121,13 @@ function renderAt(path: string) {
   );
 }
 
+/** The More menu holds the view switch, the license filter and the classic view link. */
+function openMore() {
+  // Radix positions the popover with ResizeObserver, which jsdom does not ship.
+  vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
+  fireEvent.click(screen.getByRole("button", { name: "More" }));
+}
+
 function dataStatus(): HTMLDetailsElement {
   const details = screen.getByText("Data status").closest("details");
   if (!details) throw new Error("Data status disclosure not rendered");
@@ -158,19 +165,19 @@ describe("RecruitingWorklist layout (F28)", () => {
     expect(screen.queryByRole("table")).toBeNull();
     expect(await screen.findByRole("complementary", { name: "Selected person" })).toBeTruthy();
 
-    // Identity with state, stage and owner, last contact, next action and due: all in the row.
+    // Grow redesign: the row says who, the plain facts, the next step and a status in words.
+    // Stage and owner moved to the person panel (Details / Owner) and the Table view.
     const a2 = within(list).getByRole("button", { name: /Sample A2/ });
     expect(a2.textContent).toContain("TX");
     expect(a2.textContent).toContain("Unlicensed");
-    expect(a2.textContent).toContain("Applied · Test Staffer");
-    expect(a2.textContent).toContain("Last contact:");
+    expect(a2.textContent).toMatch(/Last contact .+ ago/);
     expect(a2.textContent).toContain("Next: Call back");
-    expect(a2.textContent).toMatch(/ago/);
+    expect(a2.textContent).toMatch(/Late · /);
     const a3 = within(list).getByRole("button", { name: /Sample A3/ });
     expect(a3.textContent).toContain("No phone");
-    expect(a3.textContent).toContain("Unassigned");
-    expect(a3.textContent).toContain("Last contact: Never");
-    expect(a3.textContent).toContain("Next: None");
+    expect(a3.textContent).toContain("Never contacted");
+    expect(a3.textContent).toContain("No next step");
+    expect(a3.textContent).not.toContain("Next:");
   });
 
   it("desktop ?view=table: the full table takes the whole width and nothing auto-opens", async () => {
@@ -180,6 +187,7 @@ describe("RecruitingWorklist layout (F28)", () => {
     expect(screen.queryByRole("list", { name: "Queue" })).toBeNull();
     expect(screen.queryByRole("complementary", { name: "Selected person" })).toBeNull();
     expect(screen.queryByRole("dialog")).toBeNull();
+    openMore();
     expect(screen.getByRole("button", { name: "Table" }).getAttribute("aria-pressed")).toBe("true");
   });
 
@@ -188,11 +196,14 @@ describe("RecruitingWorklist layout (F28)", () => {
     renderAt("/dashboard/recruiting?queue=all_open&view=table");
     const list = await screen.findByRole("list", { name: "Queue" });
     expect(screen.queryByRole("table")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Table" })).toBeNull();
-    // The toggles follow what renders, not the URL: the cards are the Worklist view.
-    expect(screen.getByRole("button", { name: "Worklist" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.queryByRole("complementary", { name: "Selected person" })).toBeNull();
     expect(screen.queryByRole("dialog")).toBeNull();
+    openMore();
+    expect(screen.queryByRole("button", { name: "Table" })).toBeNull();
+    // The toggles follow what renders, not the URL: the cards are the List view.
+    expect(screen.getByRole("button", { name: "List" }).getAttribute("aria-pressed")).toBe("true");
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("button", { name: "List" })).toBeNull());
     fireEvent.click(within(list).getByRole("button", { name: /Sample A1/ }));
     const sheet = await screen.findByRole("dialog");
     expect((await within(sheet).findAllByText(/Sample A1/)).length).toBeGreaterThan(0);
@@ -212,8 +223,9 @@ describe("RecruitingWorklist layout (F28)", () => {
     renderAt("/dashboard/recruiting?queue=all_open&view=table");
     await screen.findByRole("list", { name: "Queue" });
     expect(screen.queryByRole("table")).toBeNull();
+    openMore();
     expect(screen.queryByRole("button", { name: "Table" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Worklist" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "List" }).getAttribute("aria-pressed")).toBe("true");
   });
 });
 
@@ -313,7 +325,9 @@ describe("RecruitingWorklist data status (F29)", () => {
     renderAt("/dashboard/recruiting?queue=all_open");
     await screen.findByRole("list", { name: "Queue" });
     expect(screen.getByText(/^Organization-wide/)).toBeTruthy();
-    expect(screen.getByText(/All open: 3 people\./)).toBeTruthy();
+    expect(screen.getByText(/Everyone: 3 people\./)).toBeTruthy();
+    // The classic view is one tap away, behind More.
+    openMore();
     expect(screen.getByRole("link", { name: "Classic applicants view" })).toBeTruthy();
 
     const details = dataStatus();
@@ -322,7 +336,7 @@ describe("RecruitingWorklist data status (F29)", () => {
     expect(within(details).getByText("Live records you can see").nextElementSibling?.textContent).toBe("5");
     expect(within(details).getByText("Marked duplicate, not shown").nextElementSibling?.textContent).toBe("1");
     expect(within(details).getByText("Interview bookings or tests, not shown").nextElementSibling?.textContent).toBe("1");
-    expect(within(details).getByText(/Queue rule: Every open recruit you can see\./)).toBeTruthy();
+    expect(within(details).getByText(/List rule: Every open recruit you can see\./)).toBeTruthy();
     expect(within(details).getByText(/Phoenix business day/)).toBeTruthy();
     // Nothing is missing, so no warning anywhere on the page.
     expect(screen.queryByText(/not in this list/)).toBeNull();
@@ -340,7 +354,7 @@ describe("RecruitingWorklist data status (F29)", () => {
     if (!banner) throw new Error("warning is not a live region");
     expect(within(banner as HTMLElement).getByRole("button", { name: /Reload/ })).toBeTruthy();
     expect(dataStatus().querySelector("summary")?.textContent).toContain("incomplete, 1 of 3 eligible records not loaded");
-    expect(screen.getByText(/All open: 2 people\./)).toBeTruthy();
+    expect(screen.getByText(/Everyone: 2 people\./)).toBeTruthy();
   });
 
   it("a failed count reads Unavailable with a retry, never a zero", async () => {

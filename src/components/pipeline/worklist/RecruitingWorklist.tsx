@@ -1,17 +1,20 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { AlertTriangle, ChevronRight, Columns3, List, RefreshCw, Search, Table2 } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronRight, Columns3, List, Phone, RefreshCw, Search, SlidersHorizontal, Table2, X } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageSkeleton } from "@/components/ui/page-skeleton";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { GrowScoreboard } from "@/components/recruiting/GrowScoreboard";
 import {
+  PRIMARY_QUEUE_KEYS,
   QUEUE_DEFINITIONS,
   computeQueueCounts,
+  computeScoreboard,
   fullName,
   inQueue,
   isQueueKey,
@@ -19,6 +22,7 @@ import {
   personFromParams,
   queueFromLegacyParams,
   sortForQueue,
+  type QueueDefinition,
   type QueueKey,
   type WorklistRow,
 } from "@/lib/recruitingQueues";
@@ -89,6 +93,7 @@ export function RecruitingWorklist() {
   const isWide = useMediaQuery(WIDE_QUERY);
   const listRef = useRef<HTMLDivElement | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const [moreListsOpen, setMoreListsOpen] = useState(false);
 
   const orgWide = isAdmin || isVa || isVaManager || isRecruiter;
   const canAssign = orgWide || isManager;
@@ -254,17 +259,25 @@ export function RecruitingWorklist() {
     );
   }
 
-  const scopeLabel = orgWide
-    ? "Organization-wide: every eligible application, licensed or not, any age"
+  const scopeLabel = orgWide ? "Organization-wide" : isManager ? "Your team" : "Your applicants";
+  const scopeDetail = orgWide
+    ? "Every eligible application, licensed or not, any age"
     : isManager
-      ? "Your team: applications attributed to you and the agents you manage"
+      ? "Applications attributed to you and the agents you manage"
       : "Applications attributed to you";
   const activeDef = QUEUE_DEFINITIONS.find((q) => q.key === queue);
   const scopeText = activeDef?.scope === "personal" ? "Assigned to you" : scopeLabel;
   const filtersOn = search.trim() !== "" || license !== "all";
   // The toggles read the resolved layout, not the URL: a phone opening ?view=table gets
-  // the compact rows, and the Worklist toggle says so.
+  // the compact rows, and the List toggle says so.
   const worklistOn = layout === "split" || layout === "stack";
+  const primaryQueues = QUEUE_DEFINITIONS.filter((q) => PRIMARY_QUEUE_KEYS.includes(q.key));
+  const secondaryQueues = QUEUE_DEFINITIONS.filter((q) => !PRIMARY_QUEUE_KEYS.includes(q.key));
+  // The secondary lists stay open while one of them is chosen, so the selection is never hidden.
+  const secondaryOpen = moreListsOpen || !PRIMARY_QUEUE_KEYS.includes(queue);
+  const pickQueue = (key: QueueKey) => setParam({ queue: key, person: null });
+  const board = computeScoreboard(rows, ctx, counts);
+  const licenseLabel = LICENSE_FILTERS.find((f) => f.value === license)?.label ?? license;
   // F29: the loaded rows are compared with the eligible count on every render, so an
   // incomplete load is a visible warning, not a clause inside a paragraph.
   const coverage = assessCoverage(rows.length, worklist.data?.coverage);
@@ -300,47 +313,19 @@ export function RecruitingWorklist() {
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <PageHeader
         title="Recruiting"
-        subtitle="Contact applicants, save outcomes, and schedule the next step."
-        viewControls={
-          <div className="flex items-center gap-1 rounded-lg border border-border bg-card p-1">
-            <Button
-              size="sm"
-              variant={worklistOn ? "secondary" : "ghost"}
-              aria-pressed={worklistOn}
-              onClick={() => setParam({ view: null })}
-            >
-              <List className="h-4 w-4" /> Worklist
-            </Button>
-            {/* The table needs 1024px, so its toggle exists only where it can render. It is a
-                full-width view with the person in a sheet, so the selection is cleared on the
-                way in; otherwise the sheet would open over the table on the first render. */}
-            {isWide && (
-              <Button
-                size="sm"
-                variant={layout === "table" ? "secondary" : "ghost"}
-                aria-pressed={layout === "table"}
-                onClick={() => setParam({ view: "table", person: null })}
-              >
-                <Table2 className="h-4 w-4" /> Table
-              </Button>
-            )}
-            <Button
-              size="sm"
-              variant={layout === "board" ? "secondary" : "ghost"}
-              aria-pressed={layout === "board"}
-              onClick={() => setParam({ view: "board" })}
-            >
-              <Columns3 className="h-4 w-4" /> Board
-            </Button>
-          </div>
-        }
+        subtitle="Call people, record what happened, set the next step."
+        primaryAction={!panelInline && filtered.length > 0 ? (
+          <Button size="lg" className="h-12 text-base" onClick={() => selectPerson(filtered[0].id)}>
+            <Phone className="h-5 w-5" /> Start calling
+          </Button>
+        ) : null}
       />
 
       {!backendReady && (
-        <p role="status" className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
+        <p role="status" className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
           Read-only: the workspace database update (owners, outcomes, waiting reasons) is not applied yet, so outcomes cannot be saved and
           every queue that depends on them shows people as unassigned and unplanned.
         </p>
@@ -349,7 +334,7 @@ export function RecruitingWorklist() {
       {worklist.isError && worklist.data !== undefined && (
         <div
           role="status"
-          className="flex flex-col gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive sm:flex-row sm:items-center sm:justify-between"
+          className="flex flex-col gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive sm:flex-row sm:items-center sm:justify-between"
         >
           <p className="flex items-center gap-2 font-semibold">
             <AlertTriangle className="h-4 w-4 shrink-0" />
@@ -361,46 +346,10 @@ export function RecruitingWorklist() {
         </div>
       )}
 
-      {/* Saved queues — counts are over every row loaded, not a page. */}
-      <nav aria-label="Saved queues" className="flex gap-1.5 overflow-x-auto py-1 [scrollbar-width:thin]">
-        {QUEUE_DEFINITIONS.map((q) => (
-          <button
-            key={q.key}
-            type="button"
-            title={q.description}
-            aria-pressed={queue === q.key}
-            onClick={() => setParam({ queue: q.key, person: null })}
-            className={cn(
-              "inline-flex min-h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-md border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
-              queue === q.key
-                ? "border-primary/50 bg-primary/10 text-foreground"
-                : "border-border bg-card text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-              q.key === "needs_plan" && counts.needs_plan > 0 && queue !== q.key && "text-destructive",
-            )}
-          >
-            {q.label}
-            <span className="tabular-nums">{counts[q.key].toLocaleString()}</span>
-          </button>
-        ))}
-      </nav>
-
-      {/* One scope and count line. Provenance lives in the Data status disclosure below;
-          an incomplete load is a warning of its own and is never folded into it. */}
-      <div className="flex flex-col gap-2 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-        <p className="min-w-0">
-          <span className="font-semibold text-foreground">{scopeText}.</span>{" "}
-          {activeDef?.label}: {filtered.length.toLocaleString()} {filtered.length === 1 ? "person" : "people"}
-          {filtersOn ? " with these filters" : ""}.
-        </p>
-        <Link to="/dashboard/recruiting?view=classic" className="shrink-0 text-primary underline-offset-2 hover:underline">
-          Classic applicants view
-        </Link>
-      </div>
-
       {warning && (
         <div
           role="status"
-          className="flex flex-col gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive sm:flex-row sm:items-center sm:justify-between"
+          className="flex flex-col gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive sm:flex-row sm:items-center sm:justify-between"
         >
           <p className="flex items-center gap-2 font-semibold">
             <AlertTriangle className="h-4 w-4 shrink-0" /> {warning}
@@ -411,41 +360,150 @@ export function RecruitingWorklist() {
         </div>
       )}
 
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+      {/* The numbers that matter, over every loaded row (same rules as the lists). */}
+      <GrowScoreboard
+        label="Today's numbers"
+        tiles={[
+          { label: "Call today", value: board.callToday, hint: "Due today or late", definition: QUEUE_DEFINITIONS.find((q) => q.key === "today")?.description, onSelect: () => pickQueue("today"), active: queue === "today", emphasis: true },
+          { label: "New", value: board.newThisWeek, hint: "Applied this week, not yet worked", definition: QUEUE_DEFINITIONS.find((q) => q.key === "new")?.description, onSelect: () => pickQueue("new"), active: queue === "new" },
+          { label: "Worked today", value: board.workedToday, hint: "People with an outcome saved today", definition: "People whose latest outcome was saved today (Phoenix day), including no answers and people who said no" },
+          { label: "Booked", value: board.booked, hint: "Open, appointment booked", definition: "Open recruits whose latest outcome is Appointment booked" },
+        ]}
+      />
+
+      {/* Lists — counts are over every row loaded, not a page. Four big ones; the rest one tap away. */}
+      <nav aria-label="Saved queues">
+        {isWide ? (
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {primaryQueues.map((q) => (
+                <QueueButton key={q.key} def={q} count={counts[q.key]} active={queue === q.key} onPick={pickQueue} />
+              ))}
+              <button
+                type="button"
+                aria-expanded={secondaryOpen}
+                onClick={() => setMoreListsOpen((open) => !open)}
+                className={cn(
+                  "inline-flex h-12 items-center gap-2 rounded-lg px-4 text-base font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
+                  secondaryOpen && "text-foreground",
+                )}
+              >
+                More lists
+                <ChevronDown aria-hidden="true" className={cn("h-4 w-4 transition-transform", secondaryOpen && "rotate-180")} />
+              </button>
+            </div>
+            {secondaryOpen && (
+              <div className="flex flex-wrap gap-2 rounded-xl border border-border bg-muted/20 p-2">
+                {secondaryQueues.map((q) => (
+                  <QueueButton key={q.key} def={q} count={counts[q.key]} active={queue === q.key} onPick={pickQueue} compact />
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <label className="block">
+            <span className="sr-only">Which list</span>
+            <select
+              value={queue}
+              onChange={(e) => pickQueue(e.target.value as QueueKey)}
+              aria-label="Which list"
+              className="h-12 w-full rounded-lg border border-border bg-card px-3 text-base font-medium text-foreground focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
+            >
+              {QUEUE_DEFINITIONS.map((q) => (
+                <option key={q.key} value={q.key}>{q.label} ({counts[q.key].toLocaleString()})</option>
+              ))}
+            </select>
+          </label>
+        )}
+      </nav>
+
+      <div className="flex gap-2">
+        <div className="relative min-w-0 flex-1">
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={search}
             onChange={(e) => setParam({ q: e.target.value })}
-            placeholder="Search name, email or phone"
-            className="pl-8"
+            placeholder="Search name or phone"
+            className="h-12 border-border bg-card pl-11 text-base"
             aria-label="Search the queue"
           />
         </div>
-        <Select value={license} onValueChange={(v) => setParam({ license: v === "all" ? null : v })}>
-          <SelectTrigger className="sm:w-48" aria-label="License status filter">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Any license status</SelectItem>
-            <SelectItem value="unlicensed">Unlicensed</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="licensed">Licensed (self-reported)</SelectItem>
-          </SelectContent>
-        </Select>
         {layout === "table" && <WorklistColumnChooser columns={tableColumns} onChange={setTableColumns} />}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="h-12 shrink-0 border-border bg-card px-4 text-base">
+              <SlidersHorizontal className="h-5 w-5" /> More
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-80 space-y-5 p-4">
+            <fieldset>
+              <legend className="mb-2 text-sm font-semibold text-foreground">Show as</legend>
+              <div className="flex flex-wrap gap-1.5">
+                <Button size="sm" className="h-10" variant={worklistOn ? "secondary" : "ghost"} aria-pressed={worklistOn} onClick={() => setParam({ view: null })}>
+                  <List className="h-4 w-4" /> List
+                </Button>
+                {/* The table needs 1024px, so its toggle exists only where it can render. It is a
+                    full-width view with the person in a sheet, so the selection is cleared on the
+                    way in; otherwise the sheet would open over the table on the first render. */}
+                {isWide && (
+                  <Button size="sm" className="h-10" variant={layout === "table" ? "secondary" : "ghost"} aria-pressed={layout === "table"} onClick={() => setParam({ view: "table", person: null })}>
+                    <Table2 className="h-4 w-4" /> Table
+                  </Button>
+                )}
+                <Button size="sm" className="h-10" variant={layout === "board" ? "secondary" : "ghost"} aria-pressed={layout === "board"} onClick={() => setParam({ view: "board" })}>
+                  <Columns3 className="h-4 w-4" /> Board
+                </Button>
+              </div>
+            </fieldset>
+            <fieldset>
+              <legend className="mb-2 text-sm font-semibold text-foreground">License</legend>
+              <div className="flex flex-wrap gap-1.5">
+                {LICENSE_FILTERS.map((f) => (
+                  <Button
+                    key={f.value}
+                    size="sm"
+                    className="h-10"
+                    variant={license === f.value ? "secondary" : "ghost"}
+                    aria-pressed={license === f.value}
+                    onClick={() => setParam({ license: f.value === "all" ? null : f.value })}
+                  >
+                    {f.label}
+                  </Button>
+                ))}
+              </div>
+            </fieldset>
+            <Link to="/dashboard/recruiting?view=classic" className="block text-sm font-medium text-primary underline-offset-2 hover:underline">
+              Classic applicants view
+            </Link>
+          </PopoverContent>
+        </Popover>
+      </div>
+
+      {/* One quiet line: whose records, which list, how many. Active filters show as chips. */}
+      <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+        <span className="font-medium text-foreground" title={activeDef?.scope === "personal" ? undefined : scopeDetail}>{scopeText}</span>
+        <span aria-hidden="true">·</span>
+        <span>
+          {activeDef?.label}: {filtered.length.toLocaleString()} {filtered.length === 1 ? "person" : "people"}
+          {filtersOn ? " with these filters" : ""}.
+        </span>
+        {license !== "all" && (
+          <FilterChip label={`License: ${licenseLabel}`} onClear={() => setParam({ license: null })} />
+        )}
+        {layout === "board" && <FilterChip label="Board view" onClear={() => setParam({ view: null })} />}
+        {layout === "table" && <FilterChip label="Table view" onClear={() => setParam({ view: null })} />}
       </div>
 
       {/* items-start: the list sizes to its rows. Stretched to the panel's height, a one-person
           queue drew a tall empty card beside the panel. */}
-      <div className={cn("grid items-start gap-4", panelInline && "lg:grid-cols-[minmax(0,1fr)_400px]")}>
+      <div className={cn("grid items-start gap-5", panelInline && "lg:grid-cols-[minmax(0,1fr)_440px]")}>
         <div
           ref={listRef}
           onScroll={onScroll}
-          className="max-h-[calc(100vh-18rem)] overflow-auto rounded-xl border border-border bg-card"
+          className="max-h-[calc(100vh-14rem)] overflow-auto rounded-xl border border-border bg-card"
         >
           {filtered.length === 0 ? (
-            <p className="p-8 text-center text-sm text-muted-foreground">
+            <p className="p-10 text-center text-base text-muted-foreground">
               Nobody in “{activeDef?.label}”{search || license !== "all" ? " with these filters" : ""}.
             </p>
           ) : layout === "board" ? (
@@ -483,12 +541,12 @@ export function RecruitingWorklist() {
         </div>
 
         {panelInline ? (
-          <aside aria-label="Selected person" className="sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto rounded-xl border border-border bg-card p-4">
+          <aside aria-label="Selected person" className="sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto rounded-xl border border-border bg-card p-5">
             {panel}
           </aside>
         ) : (
           <Sheet open={Boolean(selectedId)} onOpenChange={(open) => { if (!open) setParam({ person: null }); }}>
-            <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-md">
+            <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-lg">
               <SheetHeader className="sr-only">
                 <SheetTitle>{selected ? fullName(selected) : "Person"}</SheetTitle>
                 <SheetDescription>Contact, record the outcome and set the next step.</SheetDescription>
@@ -498,14 +556,15 @@ export function RecruitingWorklist() {
           </Sheet>
         )}
       </div>
-      <details className="group rounded-lg border border-border bg-card text-xs text-muted-foreground">
-        <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2 [&::-webkit-details-marker]:hidden">
-          <ChevronRight aria-hidden="true" className="h-3.5 w-3.5 shrink-0 transition-transform group-open:rotate-90" />
+      <details className="group rounded-lg border border-border bg-card text-sm text-muted-foreground">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-3 py-2 [&::-webkit-details-marker]:hidden">
+          <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 transition-transform group-open:rotate-90" />
           <span className="font-semibold text-foreground">Data status</span>
           <span>· {coverageSummary(coverage)}</span>
         </summary>
         <div className="space-y-2 border-t border-border px-3 py-2">
-          <p>Queue rule: {activeDef?.description}.</p>
+          <p>Who is counted: {scopeDetail}.</p>
+          <p>List rule: {activeDef?.description}.</p>
           <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
             {coverageFacts(rows.length, worklist.data?.coverage).map((fact) => (
               <Fragment key={fact.label}>
@@ -523,6 +582,58 @@ export function RecruitingWorklist() {
         </div>
       </details>
     </div>
+  );
+}
+
+const LICENSE_FILTERS = [
+  { value: "all", label: "Any" },
+  { value: "unlicensed", label: "Unlicensed" },
+  { value: "pending", label: "Pending" },
+  { value: "licensed", label: "Licensed (self-reported)" },
+] as const;
+
+/** One list button: the name and its count, large enough to hit without aiming. */
+function QueueButton({ def, count, active, onPick, compact }: {
+  def: QueueDefinition;
+  count: number;
+  active: boolean;
+  onPick: (key: QueueKey) => void;
+  compact?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      title={def.description}
+      aria-pressed={active}
+      onClick={() => onPick(def.key)}
+      className={cn(
+        "inline-flex shrink-0 items-center gap-2.5 whitespace-nowrap rounded-lg border font-medium transition-colors focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
+        compact ? "h-11 px-3.5 text-sm" : "h-12 px-4 text-base",
+        active
+          ? "border-primary/60 bg-primary/15 text-foreground"
+          : "border-border bg-card text-foreground hover:bg-muted/50",
+      )}
+    >
+      {def.label}
+      <span className={cn("tabular-nums", active ? "text-foreground" : "text-muted-foreground")}>{count.toLocaleString()}</span>
+    </button>
+  );
+}
+
+/** An active filter, visible and removable in one tap, so hidden state never surprises anyone. */
+function FilterChip({ label, onClear }: { label: string; onClear: () => void }) {
+  return (
+    <span className="inline-flex h-8 items-center gap-1 rounded-full border border-primary/40 bg-primary/10 pl-3 pr-1 text-[13px] font-medium text-foreground">
+      {label}
+      <button
+        type="button"
+        onClick={onClear}
+        aria-label={`Clear ${label}`}
+        className="grid h-6 w-6 place-items-center rounded-full hover:bg-primary/20 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
+      >
+        <X className="h-3.5 w-3.5" />
+      </button>
+    </span>
   );
 }
 

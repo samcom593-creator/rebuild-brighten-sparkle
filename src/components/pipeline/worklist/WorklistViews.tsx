@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { SlidersHorizontal } from "lucide-react";
 
-import { Badge, badgeVariants } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -24,8 +24,10 @@ import {
   toggleColumn,
   type WorklistColumnKey,
 } from "@/lib/worklistColumns";
+import { StatusPill } from "@/components/recruiting/StatusPill";
 import type { StaffMember, StageDefinition } from "./useRecruitingWorklist";
-import { formatNextAction, formatRelative, formatWhen, humanizeKey, ownerName } from "./worklistFormat";
+import { formatNextAction, formatRelative, formatSince, formatWhen, humanizeKey, ownerName } from "./worklistFormat";
+import { licenseWord, rowStatus } from "./worklistStatus";
 
 interface ViewProps {
   rows: WorklistRow[];
@@ -142,7 +144,7 @@ export function WorklistTable({
               >
                 <td className="px-3 py-2">
                   <div className="font-medium text-foreground">{fullName(row)}</div>
-                  {needsPlan && <div className="text-[11px] font-medium text-muted-foreground">Needs a plan</div>}
+                  {needsPlan && <div className="text-xs font-medium text-muted-foreground">No next step</div>}
                 </td>
                 {show.has("phone") && (
                   <td className="whitespace-nowrap px-2 py-2 tabular-nums text-foreground">{row.phone ? formatPhoneDisplay(row.phone) : "—"}</td>
@@ -226,13 +228,23 @@ export function WorklistColumnChooser({
   );
 }
 
+/** "Next: Call back" in plain words, or nothing when no step is set. */
+function nextLine(row: WorklistRow): string | null {
+  if (row.next_action) return `Next: ${formatNextAction(row.next_action, Boolean(row.next_action_set_at))}`;
+  if (row.waiting_reason) return `Waiting for: ${row.waiting_reason}`;
+  return null;
+}
+
 /**
- * The compact queue list (F28): identity with state, stage and owner, last contact,
- * next action and due. It wraps instead of scrolling sideways, so it fits beside the
- * person panel from 1024px and reads as cards on a phone. Same rows, order, selection
- * and window as the table, so switching views never changes who is next.
+ * The queue list, redesigned for people who don't live in software (2026-10-28): the
+ * name large, one line of plain facts (license, state, when they were last contacted),
+ * the next step, and a status in words on the right ("Late · 2 days", "Today · 3:00 PM",
+ * "New"). Stage, owner and the full dates live in the person panel and the Table view.
+ * It wraps instead of scrolling sideways, so it fits beside the person panel from
+ * 1024px and reads as cards on a phone. Same rows, order, selection and window as the
+ * table, so switching views never changes who is next.
  */
-export function WorklistQueueList({ rows, selectedId, onSelect, staff, staffAvailable, stagesByKey, now }: ViewProps) {
+export function WorklistQueueList({ rows, selectedId, onSelect, now }: ViewProps) {
   const [visible, setVisible] = useState(TABLE_WINDOW);
   const shown = rows.slice(0, visible);
   return (
@@ -240,8 +252,15 @@ export function WorklistQueueList({ rows, selectedId, onSelect, staff, staffAvai
       <ul aria-label="Queue" className="divide-y divide-border/60">
         {shown.map((row) => {
           const selected = row.id === selectedId;
-          const blockers = blockersOf(row).filter((b) => b.hard || b.key === "no_phone");
-          const needsPlan = !planCheck(row).ok;
+          const blocker = blockersOf(row).find((b) => b.hard || b.key === "no_phone");
+          const status = rowStatus(row, now);
+          const contacted = row.last_contact_outcome_at ?? row.last_contacted_at;
+          const facts = [
+            licenseWord(row.license_status),
+            row.state,
+            contacted ? `Last contact ${formatSince(contacted, now)}` : "Never contacted",
+          ].filter(Boolean).join(" · ");
+          const next = nextLine(row);
           return (
             <li key={row.id} data-row-id={row.id}>
               <button
@@ -249,30 +268,20 @@ export function WorklistQueueList({ rows, selectedId, onSelect, staff, staffAvai
                 onClick={() => onSelect(row.id)}
                 aria-pressed={selected}
                 className={cn(
-                  "block w-full px-3 py-2.5 text-left text-xs transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
-                  selected && "bg-primary/10 hover:bg-primary/10",
+                  "flex min-h-16 w-full items-start justify-between gap-4 border-l-[3px] border-l-transparent py-3.5 pl-[13px] pr-4 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
+                  selected && "border-l-primary bg-primary/10 hover:bg-primary/10",
                 )}
               >
-                <span className="flex items-start justify-between gap-3">
-                  <span className="min-w-0">
-                    <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                      <span className="font-medium text-foreground">{fullName(row)}</span>
-                      {row.state && <span className="text-muted-foreground">{row.state}</span>}
-                      <span className="text-muted-foreground">{row.license_status ? humanizeKey(row.license_status) : "License unknown"}</span>
-                      {blockers.length > 0 && (
-                        <span className={badgeVariants({ variant: blockers[0].hard ? "destructive" : "outline" })}>{blockers[0].label}</span>
-                      )}
-                      {needsPlan && <span className="text-[11px] font-medium text-muted-foreground">Needs a plan</span>}
-                    </span>
-                    <span className="mt-0.5 block text-muted-foreground">
-                      {stageLabel(row, stagesByKey)} · {ownerName(row.recruiting_owner_user_id, staff, staffAvailable)}
-                    </span>
-                  </span>
-                  <span className="shrink-0 text-right"><DueCell row={row} now={now} /></span>
+                <span className="min-w-0">
+                  <span className="block truncate text-base font-semibold leading-6 text-foreground">{fullName(row)}</span>
+                  <span className="mt-0.5 block text-sm leading-5 text-muted-foreground">{facts}</span>
+                  {next && <span className="mt-0.5 block truncate text-sm leading-5 text-muted-foreground">{next}</span>}
                 </span>
-                <span className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-muted-foreground">
-                  <span>Last contact: <LastContact row={row} now={now} /></span>
-                  <span className="min-w-0 max-w-full truncate">Next: <NextActionText row={row} /></span>
+                <span className="flex shrink-0 flex-col items-end gap-1.5 pt-0.5">
+                  <StatusPill status={status} />
+                  {blocker && (
+                    <span className={cn("text-[13px] font-medium", blocker.hard ? "text-destructive" : "text-muted-foreground")}>{blocker.label}</span>
+                  )}
                 </span>
               </button>
             </li>

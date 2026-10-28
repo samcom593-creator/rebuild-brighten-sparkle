@@ -33,9 +33,14 @@ export function CountUp({
       setShown(value);
       return;
     }
-    const started = performance.now();
+    // The clock is the first frame's own timestamp, not performance.now(): browsers share one
+    // time origin between the two, but jsdom hands requestAnimationFrame a different base, so a
+    // start read from performance.now() made the tween run backwards under vitest ("-0 turned
+    // off" in the Staff suite). One source of time, and the first frame is progress 0 anywhere.
+    let started: number | null = null;
     let frame = 0;
     const step = (now: number) => {
+      if (started === null) started = now;
       const progress = Math.min(1, (now - started) / TWEEN_MS);
       const eased = 1 - Math.pow(1 - progress, 3);
       setShown(Math.round(from + (value - from) * eased));

@@ -2620,6 +2620,14 @@
         "raw": "p_agent_id uuid"
       }
     ],
+    "fn_access_violation_alert": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "fn_agent_contract_pct": [
       {
         "all": [
@@ -3323,6 +3331,14 @@
         "raw": "p_limit integer DEFAULT 200"
       }
     ],
+    "fn_commission_advance_factor": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "fn_commission_rate": [
       {
         "all": [
@@ -3783,6 +3799,22 @@
       }
     ],
     "fn_identity_collision_observe": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_ig_abandoned_partials": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_ig_nudge_candidates": [
       {
         "all": [],
         "required": [],

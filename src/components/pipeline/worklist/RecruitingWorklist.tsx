@@ -436,11 +436,13 @@ export function RecruitingWorklist() {
         {layout === "table" && <WorklistColumnChooser columns={tableColumns} onChange={setTableColumns} />}
       </div>
 
-      <div className={cn("grid gap-4", panelInline && "lg:grid-cols-[minmax(0,1fr)_400px]")}>
+      {/* items-start: the list sizes to its rows. Stretched to the panel's height, a one-person
+          queue drew a tall empty card beside the panel. */}
+      <div className={cn("grid items-start gap-4", panelInline && "lg:grid-cols-[minmax(0,1fr)_400px]")}>
         <div
           ref={listRef}
           onScroll={onScroll}
-          className="max-h-[calc(100vh-18rem)] min-h-[320px] overflow-auto rounded-xl border border-border bg-card"
+          className="max-h-[calc(100vh-18rem)] overflow-auto rounded-xl border border-border bg-card"
         >
           {filtered.length === 0 ? (
             <p className="p-8 text-center text-sm text-muted-foreground">

@@ -6,6 +6,7 @@ import { gateResend } from "../_shared/resend-gate.ts";
 import { SCHEDULING_LINKS } from "../_shared/apex.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
 import { safeEqual } from "../_shared/send-floor.ts";
+import { DEPARTED_AGENT_COLUMNS, isBannedUser, isDepartedAgent } from "../_shared/departed.ts";
 
 // PL-WIB-DIGEST-GATE (2026-10-25). verify_jwt is false and this handler read no
 // credential, so any POST ran the applicant drip. The followup_*_sent_at stamps
@@ -47,11 +48,20 @@ async function getManagerEmailForApp(appId: string): Promise<string | null> {
     if (!app?.assigned_agent_id) return null;
     const { data: agent } = await supabaseAdmin.from("agents").select("user_id, invited_by_manager_id").eq("id", app.assigned_agent_id).single();
     if (!agent) return null;
-    const managerId = agent.invited_by_manager_id || app.assigned_agent_id;
-    const { data: manager } = await supabaseAdmin.from("agents").select("user_id").eq("id", managerId).single();
-    if (!manager?.user_id) return null;
-    const { data: authData } = await supabaseAdmin.auth.admin.getUserById(manager.user_id);
-    return authData?.user?.email || null;
+    // The inviting manager first, then the assigned agent. A departed agent (terminated or
+    // deactivated) or a banned login is skipped, never CC'd: the 2026-08-17 departure
+    // migration left invited_by_manager_id pointing at the departed manager on purpose
+    // (historical attribution), so the check has to happen here, at send time.
+    const candidates = [agent.invited_by_manager_id, app.assigned_agent_id].filter(Boolean) as string[];
+    for (const managerId of candidates) {
+      const { data: manager } = await supabaseAdmin.from("agents").select(DEPARTED_AGENT_COLUMNS).eq("id", managerId).single();
+      if (!manager?.user_id || isDepartedAgent(manager)) continue;
+      const { data: authData } = await supabaseAdmin.auth.admin.getUserById(manager.user_id);
+      const user = authData?.user;
+      if (!user?.email || isBannedUser(user)) continue;
+      return user.email;
+    }
+    return null;
   } catch (e) {
     console.error("Error resolving manager email for app:", e);
     return null;

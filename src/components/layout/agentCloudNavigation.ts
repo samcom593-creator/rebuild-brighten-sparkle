@@ -393,7 +393,7 @@ const ROUTE_CRUMBS: Record<string, string[]> = {
   "/dashboard/contracting/history": ["Contracting", "Intake history"],
   "/dashboard/contracting/carriers": ["Contracting", "Carriers"],
   "/dashboard/contracting/documents": ["Contracting", "Writing numbers"],
-  "/dashboard/recruiting/pipeline": ["Grow", "Call list"],
+  "/dashboard/recruiting/pipeline": ["Grow", "Pipeline"],
   "/dashboard/recruiting/hires": ["Grow", "Call list"],
   "/dashboard/book-of-business": ["My Business", "Retention"],
   "/dashboard/books": ["My Business", "Book Flips"],

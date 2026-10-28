@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowRight, Download, Instagram, Mail, MessageSquare, Phone, Search, UserX, X } from "lucide-react";
+import { ArrowRight, Download, Instagram, Mail, MessageSquare, Phone, Search, SlidersHorizontal, UserX, X } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { PageSkeleton } from "@/components/ui/page-skeleton";
 import { PageHeader } from "@/components/ui/page-header";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { GrowScoreboard } from "@/components/recruiting/GrowScoreboard";
+import { RecruitingWorkspaceNav } from "@/components/recruiting/RecruitingWorkspaceNav";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LicenseProgressSelector } from "@/components/dashboard/LicenseProgressSelector";
 import { cn } from "@/lib/utils";
@@ -348,20 +351,51 @@ export default function RecruitPipeline() {
   if (rowsQuery.isLoading || stagesQuery.isLoading) return <PageSkeleton />;
 
   const chip = (on: boolean) =>
-    cn("rounded-full border px-3 py-1 text-xs transition", on ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground hover:text-foreground");
+    cn(
+      "inline-flex h-10 items-center gap-2 rounded-lg border px-3.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
+      on ? "border-primary/60 bg-primary/15 text-foreground" : "border-border bg-card text-foreground hover:bg-muted/50",
+    );
+  const IDLE_LABELS: Record<IdleFilter, string> = { all: "Any", "7": "7+ days", "21": "21+ days", "60": "60+ days" };
+  const LINK_LABELS: Record<LinkFilter, string> = { all: "Any", not_sent: "Not sent", sent: "Sent, not clicked", clicked: "Clicked" };
+  const filterCount = [idle !== "all", link !== "all", managerFilter !== "all", showClosed].filter(Boolean).length;
+  const filterChip = (label: string, onClear: () => void) => (
+    <span key={label} className="inline-flex h-8 items-center gap-1 rounded-full border border-primary/40 bg-primary/10 pl-3 pr-1 text-[13px] font-medium text-foreground">
+      {label}
+      <button type="button" onClick={onClear} aria-label={`Clear ${label}`} className="grid h-6 w-6 place-items-center rounded-full hover:bg-primary/20 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]">
+        <X className="h-3.5 w-3.5" />
+      </button>
+    </span>
+  );
 
+  // Grow redesign (2026-10-28): the subtitle's sentence of counts became four numbers,
+  // the strip of segmented toggles became one Filters button with removable chips, and
+  // the CSV export moved to the header. Rows keep every action they had.
   return (
-    <div className="page-enter mx-auto w-full max-w-6xl space-y-4 px-4 pb-28 sm:px-6">
+    <div className="page-enter w-full space-y-5 pb-28">
+      <RecruitingWorkspaceNav />
       <PageHeader
-        accent="cyan"
-        eyebrow="Grow"
-        title="Recruit Stages"
-        subtitle={`${active.length} recruits · ${idle7} idle 7d+ · ${idle60} idle 60d+${factsQuery.isSuccess ? ` · ${hiresWithOpenItems} hires with open onboarding items` : ""}`}
+        title="New hires"
+        subtitle="From hire to first deal. Move each person forward one step at a time."
+        secondaryActions={
+          <Button variant="outline" className="h-11 gap-1.5" onClick={downloadCsv}>
+            <Download className="h-4 w-4" /> Download CSV
+          </Button>
+        }
       />
 
-      <div className="flex flex-wrap gap-1.5">
-        <button type="button" onClick={() => setStageFilter(null)} className={chip(!stageFilter)}>
-          All <span className="tabular-nums opacity-70">{active.length}</span>
+      <GrowScoreboard
+        label="New hire numbers"
+        tiles={[
+          { label: "In progress", value: active.length, hint: "Hired, not yet producing", onSelect: () => { setIdle("all"); setStageFilter(null); }, active: idle === "all" && !stageFilter },
+          { label: "Stuck 7+ days", value: idle7, hint: "Same step a week or more", onSelect: () => setIdle("7"), active: idle === "7", emphasis: true },
+          { label: "Stuck 60+ days", value: idle60, hint: "Same step two months", onSelect: () => setIdle("60"), active: idle === "60" },
+          { label: "Open onboarding", value: factsQuery.isSuccess ? hiresWithOpenItems : null, hint: "Hires with an open step", definition: "Hires with at least one open onboarding requirement (No Hire Left Behind)" },
+        ]}
+      />
+
+      <nav aria-label="Stages" className="flex flex-wrap gap-2">
+        <button type="button" onClick={() => setStageFilter(null)} className={chip(!stageFilter)} aria-pressed={!stageFilter}>
+          All <span className="tabular-nums text-muted-foreground">{active.length}</span>
         </button>
         {stages.filter((s) => s.stage_key !== "closed_lost" && (counts.get(s.stage_key)?.n ?? 0) > 0).map((s) => {
           const c = counts.get(s.stage_key);
@@ -369,47 +403,71 @@ export default function RecruitPipeline() {
             <button
               key={s.stage_key}
               type="button"
+              aria-pressed={stageFilter === s.stage_key}
               onClick={() => setStageFilter(stageFilter === s.stage_key ? null : s.stage_key)}
               className={chip(stageFilter === s.stage_key)}
               title={c?.idle21 ? `${c.idle21} idle 21d+` : undefined}
             >
-              {s.order_index}. {s.display_name} <span className="tabular-nums opacity-70">{c?.n ?? 0}</span>
+              {s.order_index}. {s.display_name} <span className="tabular-nums text-muted-foreground">{c?.n ?? 0}</span>
             </button>
           );
         })}
-      </div>
+      </nav>
 
-      <div className="sticky top-0 z-10 -mx-4 space-y-2 border-b border-border bg-background/95 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name, manager, phone, stage" className="h-9 pl-8" />
+      <div className="space-y-3">
+        <div className="flex gap-2">
+          <div className="relative min-w-0 flex-1">
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name, manager, phone or stage" aria-label="Search new hires" className="h-12 border-border bg-card pl-11 text-base" />
           </div>
-          <div className="flex rounded-md border border-border p-0.5">
-            {([["all", "Everyone"], ["7", "7d+"], ["21", "21d+"], ["60", "60d+"]] as [IdleFilter, string][]).map(([k, label]) => (
-              <Button key={k} size="sm" variant={idle === k ? "default" : "ghost"} className="h-8 px-2.5 text-xs" onClick={() => setIdle(k)}>{label}</Button>
-            ))}
-          </div>
-          <div className="flex rounded-md border border-border p-0.5" title="Portal login link, hired agents only">
-            {([["all", "Any link"], ["not_sent", "Not sent"], ["sent", "Sent, not clicked"], ["clicked", "Clicked"]] as [LinkFilter, string][]).map(([k, label]) => (
-              <Button key={k} size="sm" variant={link === k ? "default" : "ghost"} className="h-8 px-2.5 text-xs" onClick={() => setLink(k)}>{label}</Button>
-            ))}
-          </div>
-          <Select value={managerFilter} onValueChange={setManagerFilter}>
-            <SelectTrigger className="h-9 w-full text-xs sm:w-44" aria-label="Filter by manager"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all" className="text-xs">All managers</SelectItem>
-              <SelectItem value="none" className="text-xs">Unassigned</SelectItem>
-              {managers.map((m) => <SelectItem key={m} value={m} className="text-xs">{m}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Button size="sm" variant={showClosed ? "secondary" : "ghost"} className="h-9 text-xs" onClick={() => setShowClosed((v) => !v)}>
-            {showClosed ? "Hide closed" : "Show closed"}
-          </Button>
-          <Button size="sm" variant="ghost" className="h-9 gap-1 text-xs" onClick={downloadCsv}>
-            <Download className="h-3.5 w-3.5" /> CSV
-          </Button>
-          <span className="ml-auto text-xs text-muted-foreground">{visible.length} shown</span>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="h-12 shrink-0 border-border bg-card px-4 text-base">
+                <SlidersHorizontal className="h-5 w-5" /> Filters{filterCount > 0 ? ` (${filterCount})` : ""}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-[22rem] space-y-5 p-4">
+              <fieldset>
+                <legend className="mb-2 text-sm font-semibold text-foreground">Time on the same step</legend>
+                <div className="flex flex-wrap gap-1.5">
+                  {(["all", "7", "21", "60"] as IdleFilter[]).map((k) => (
+                    <Button key={k} size="sm" className="h-10" variant={idle === k ? "secondary" : "ghost"} aria-pressed={idle === k} onClick={() => setIdle(k)}>{IDLE_LABELS[k]}</Button>
+                  ))}
+                </div>
+              </fieldset>
+              <fieldset>
+                <legend className="mb-2 text-sm font-semibold text-foreground">Portal login link <span className="font-normal text-muted-foreground">(hired agents)</span></legend>
+                <div className="flex flex-wrap gap-1.5">
+                  {(["all", "not_sent", "sent", "clicked"] as LinkFilter[]).map((k) => (
+                    <Button key={k} size="sm" className="h-10" variant={link === k ? "secondary" : "ghost"} aria-pressed={link === k} onClick={() => setLink(k)}>{LINK_LABELS[k]}</Button>
+                  ))}
+                </div>
+              </fieldset>
+              <label className="block">
+                <span className="mb-2 block text-sm font-semibold text-foreground">Manager</span>
+                <select
+                  aria-label="Filter by manager"
+                  value={managerFilter}
+                  onChange={(e) => setManagerFilter(e.target.value)}
+                  className="h-11 w-full rounded-lg border border-border bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
+                >
+                  <option value="all">All managers</option>
+                  <option value="none">Unassigned</option>
+                  {managers.map((m) => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </label>
+              <Button variant={showClosed ? "secondary" : "outline"} className="h-10" aria-pressed={showClosed} onClick={() => setShowClosed((v) => !v)}>
+                {showClosed ? "Showing closed people" : "Show closed people too"}
+              </Button>
+            </PopoverContent>
+          </Popover>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          <span><span className="font-medium text-foreground">{visible.length.toLocaleString()}</span> shown</span>
+          {idle !== "all" && filterChip(`Stuck ${IDLE_LABELS[idle]}`, () => setIdle("all"))}
+          {link !== "all" && filterChip(`Link: ${LINK_LABELS[link]}`, () => setLink("all"))}
+          {managerFilter !== "all" && filterChip(`Manager: ${managerFilter === "none" ? "Unassigned" : managerFilter}`, () => setManagerFilter("all"))}
+          {showClosed && filterChip("Including closed", () => setShowClosed(false))}
         </div>
 
         {selectedRows.length > 0 && (
@@ -462,8 +520,8 @@ export default function RecruitPipeline() {
                     onCheckedChange={(v) => toggleMany(full, v === true)}
                     className="h-5 w-5 !min-h-0"
                   />
-                  <h2 className="text-sm font-semibold">{s.order_index}. {s.display_name}</h2>
-                  <span className="text-xs text-muted-foreground">{full.length}</span>
+                  <h2 className="text-base font-semibold">{s.order_index}. {s.display_name}</h2>
+                  <span className="text-sm text-muted-foreground">{full.length}</span>
                 </div>
                 <div className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card">
                   {list.map((r) => {
@@ -476,7 +534,7 @@ export default function RecruitPipeline() {
                       <div
                         key={personKey(r)}
                         className={cn(
-                          "grid items-center gap-x-3 gap-y-1.5 px-3 py-2 sm:grid-cols-[auto_minmax(0,1.1fr)_minmax(0,1.3fr)_auto_auto]",
+                          "grid items-center gap-x-4 gap-y-2 px-4 py-3.5 sm:grid-cols-[auto_minmax(0,1.1fr)_minmax(0,1.3fr)_auto_auto]",
                           isSel && "bg-primary/[0.06]",
                         )}
                       >
@@ -487,7 +545,7 @@ export default function RecruitPipeline() {
                         </div>
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-1.5">
-                            <span className="line-clamp-2 font-medium">{r.display_name}</span>
+                            <span className="line-clamp-2 text-base font-semibold">{r.display_name}</span>
                             {r.person_type === "agent" && (r.license_status === "licensed" ? (
                               <Badge variant="outline" className="text-[11px] text-primary">Licensed</Badge>
                             ) : (
@@ -499,7 +557,7 @@ export default function RecruitPipeline() {
                               />
                             ))}
                           </div>
-                          <div className="text-xs text-muted-foreground">
+                          <div className="text-sm text-muted-foreground">
                             {r.manager_name ? `under ${r.manager_name}` : "unassigned"}
                             {" · "}
                             {r.resident_state ? (
@@ -521,7 +579,7 @@ export default function RecruitPipeline() {
                               />
                             )}
                             {" · "}
-                            <span className={heatClass(r.days_in_stage)}>{Math.round(r.days_in_stage)}d in stage</span>
+                            <span className={heatClass(r.days_in_stage)}>{Math.round(r.days_in_stage)} {Math.round(r.days_in_stage) === 1 ? "day" : "days"} on this step</span>
                             {contact && <> · last contact {contact}</>}
                             {r.person_type === "agent" && (
                               <>
@@ -540,9 +598,9 @@ export default function RecruitPipeline() {
                         <div className="flex flex-wrap items-center gap-2 text-sm">
                           {tel ? (
                             <>
-                              <span className="whitespace-nowrap font-mono text-xs tabular-nums">{formatPhoneDisplay(r.phone)}</span>
-                              <Button asChild size="sm" variant="outline" className="h-7 px-2"><a href={tel} {...contactLinkProps(tel)} aria-label={`Call ${r.display_name}`}><Phone className="h-3.5 w-3.5" /></a></Button>
-                              <Button asChild size="sm" variant="outline" className="h-7 px-2"><a href={smsHref(r.phone) ?? undefined} {...contactLinkProps(smsHref(r.phone))} aria-label={`Text ${r.display_name}`}><MessageSquare className="h-3.5 w-3.5" /></a></Button>
+                              <span className="whitespace-nowrap text-sm tabular-nums">{formatPhoneDisplay(r.phone)}</span>
+                              <Button asChild size="sm" variant="outline" className="h-10 w-10 px-0"><a href={tel} {...contactLinkProps(tel)} aria-label={`Call ${r.display_name}`}><Phone className="h-4 w-4" /></a></Button>
+                              <Button asChild size="sm" variant="outline" className="h-10 w-10 px-0"><a href={smsHref(r.phone) ?? undefined} {...contactLinkProps(smsHref(r.phone))} aria-label={`Text ${r.display_name}`}><MessageSquare className="h-4 w-4" /></a></Button>
                             </>
                           ) : r.email ? (
                             <a href={`mailto:${r.email}`} className="inline-flex items-center gap-1 truncate text-xs text-muted-foreground hover:text-foreground">
@@ -597,7 +655,7 @@ export default function RecruitPipeline() {
                           })()}
                         </div>
                         <Select value={r.stage_key} onValueChange={(v) => void setStage(r, v)} disabled={isBusy}>
-                          <SelectTrigger className="h-8 w-full text-xs sm:w-[220px]" aria-label={`Stage for ${r.display_name}`}>
+                          <SelectTrigger className="h-10 w-full text-sm sm:w-[220px]" aria-label={`Stage for ${r.display_name}`}>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -608,7 +666,7 @@ export default function RecruitPipeline() {
                             ))}
                           </SelectContent>
                         </Select>
-                        <Button size="sm" variant="ghost" className="h-8 gap-1 text-xs" disabled={!next || isBusy} onClick={() => next && void setStage(r, next.stage_key)} title={next ? `Move to ${next.display_name}` : "Last stage"}>
+                        <Button size="sm" variant="outline" className="h-10 gap-1 text-sm" disabled={!next || isBusy} onClick={() => next && void setStage(r, next.stage_key)} title={next ? `Move to ${next.display_name}` : "Last stage"}>
                           {next ? next.display_name : "Done"} <ArrowRight className="h-3.5 w-3.5" />
                         </Button>
                         {canRemove && r.person_type === "agent" && (
@@ -629,7 +687,7 @@ export default function RecruitPipeline() {
                   {full.length > list.length && (
                     <button
                       type="button"
-                      className="w-full px-3 py-2 text-center text-xs text-primary hover:underline"
+                      className="min-h-11 w-full px-4 py-2 text-center text-sm font-medium text-primary hover:underline"
                       onClick={() => setExpanded((prev) => new Set(prev).add(s.stage_key))}
                     >
                       Show all {full.length} in {s.display_name}

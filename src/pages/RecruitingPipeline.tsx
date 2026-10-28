@@ -1,18 +1,35 @@
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { ChevronDown, MessageSquare, Phone, Search, SlidersHorizontal, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PageHeader } from "@/components/ui/page-header";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { GrowScoreboard } from "@/components/recruiting/GrowScoreboard";
+import { RecruitingWorkspaceNav } from "@/components/recruiting/RecruitingWorkspaceNav";
 import { toast } from "sonner";
-import { contactLinkProps, phoneHref, smsHref } from "@/lib/phone";
+import { contactLinkProps, formatPhoneDisplay, phoneHref, smsHref } from "@/lib/phone";
+import { cn } from "@/lib/utils";
 import { openAgentProfile } from "@/stores/agentProfileDrawer";
 
 // One unified operating view over applications + agents. Reads v_recruiting_pipeline,
 // writes through rp_pipeline_action (existing columns only). No rebuild.
+//
+// Grow redesign (2026-10-28): each row carried up to nine small buttons, a coloured
+// dot and an emoji; seven tiles and five dropdowns sat above the list. Now: four
+// numbers, one search box and one Filters button with the active filters as chips,
+// and per row the stage, Call, Text and one "Update" menu holding every other
+// action. Every action still writes through rp_pipeline_action exactly as before.
 
 const STAGES = [
   "New Lead", "Contacted", "Call Scheduled", "Interested", "Confirmed",
@@ -20,15 +37,6 @@ const STAGES = [
   "Contracting In Progress", "Ready for Training", "Active Agent",
   "Inactive/No Longer With Us",
 ] as const;
-
-const STAGE_COLOR: Record<string, string> = {
-  "New Lead": "bg-slate-500", "Contacted": "bg-sky-600", "Call Scheduled": "bg-indigo-600",
-  "Interested": "bg-violet-600", "Confirmed": "bg-purple-600", "Expected Monday": "bg-amber-600",
-  "Showed": "bg-emerald-600", "No Show": "bg-red-600", "Onboarding": "bg-teal-600",
-  "Contract Sent": "bg-cyan-600", "Contracting In Progress": "bg-blue-600",
-  "Ready for Training": "bg-lime-600", "Active Agent": "bg-green-700",
-  "Inactive/No Longer With Us": "bg-zinc-600",
-};
 
 interface Row {
   person_key: string; person_type: string; name: string;
@@ -41,17 +49,71 @@ interface Row {
 }
 
 const INTENT_ORDER = [null, "hot", "warm", "cold"] as const;
+// Words carry the meaning; the tint only helps. Tokens, not raw colours.
 const INTENT_STYLE: Record<string, { label: string; cls: string }> = {
-  hot: { label: "🔥 Hot", cls: "bg-red-500 text-white border-red-500" },
-  warm: { label: "Warm", cls: "bg-amber-500 text-white border-amber-500" },
-  cold: { label: "Cold", cls: "bg-sky-500 text-white border-sky-500" },
+  hot: { label: "Hot", cls: "border-destructive/40 bg-destructive/10 text-destructive" },
+  warm: { label: "Warm", cls: "border-warning/40 bg-warning/10 text-warning" },
+  cold: { label: "Cold", cls: "border-border bg-muted/40 text-muted-foreground" },
 };
+
+const MONDAY_LABELS: Record<string, string> = {
+  expected: "Expected Monday",
+  confirmed: "Confirmed",
+  showed: "Showed",
+  no_show: "No show",
+};
+
+const WHO_LABELS: Record<string, string> = { applicant: "Prospects", agent: "Agents" };
+const SHOW_LABELS: Record<string, string> = { open: "Open only", all: "Include inactive", inactive: "Inactive only" };
 
 function fmt(ts: string | null): string {
   if (!ts) return "—";
   const d = new Date(ts);
   if (isNaN(d.getTime())) return "—";
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function Segmented<T extends string>({ legend, value, options, onChange }: {
+  legend: string;
+  value: T;
+  options: Array<{ value: T; label: string }>;
+  onChange: (v: T) => void;
+}) {
+  return (
+    <fieldset>
+      <legend className="mb-2 text-sm font-semibold text-foreground">{legend}</legend>
+      <div className="flex flex-wrap gap-1.5">
+        {options.map((o) => (
+          <Button
+            key={o.value}
+            size="sm"
+            className="h-10"
+            variant={value === o.value ? "secondary" : "ghost"}
+            aria-pressed={value === o.value}
+            onClick={() => onChange(o.value)}
+          >
+            {o.label}
+          </Button>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
+function Chip({ label, onClear }: { label: string; onClear: () => void }) {
+  return (
+    <span className="inline-flex h-8 items-center gap-1 rounded-full border border-primary/40 bg-primary/10 pl-3 pr-1 text-[13px] font-medium text-foreground">
+      {label}
+      <button
+        type="button"
+        onClick={onClear}
+        aria-label={`Clear ${label}`}
+        className="grid h-6 w-6 place-items-center rounded-full hover:bg-primary/20 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
+      >
+        <X className="h-3.5 w-3.5" />
+      </button>
+    </span>
+  );
 }
 
 export default function RecruitingPipeline() {
@@ -99,20 +161,23 @@ export default function RecruitingPipeline() {
     fire(r.person_key, "intent", next ?? "clear", next ? `Intent: ${next}` : "Intent cleared");
   };
 
-  // Monday / Start operating tiles.
-  const tiles = useMemo(() => {
+  // Monday / Start numbers. Each one filters the list to exactly the people it counts.
+  const counts = useMemo(() => {
     const apps = rows.filter((r) => r.person_type === "applicant");
     const count = (p: (r: Row) => boolean) => rows.filter(p).length;
-    return [
-      { key: "expected", label: "Expected Monday", n: apps.filter((r) => r.monday_status === "expected").length, filter: () => { setMondayFilter("expected"); setStageFilter(""); } },
-      { key: "confirmed", label: "Confirmed", n: apps.filter((r) => r.monday_status === "confirmed").length, filter: () => { setMondayFilter("confirmed"); setStageFilter(""); } },
-      { key: "showed", label: "Showed", n: apps.filter((r) => r.monday_status === "showed").length, filter: () => { setMondayFilter("showed"); setStageFilter(""); } },
-      { key: "noshow", label: "No Shows", n: apps.filter((r) => r.monday_status === "no_show").length, filter: () => { setMondayFilter("no_show"); setStageFilter(""); } },
-      { key: "onboarding", label: "Onboarding", n: count((r) => r.stage === "Onboarding"), filter: () => { setStageFilter("Onboarding"); setMondayFilter(""); } },
-      { key: "contracting", label: "Contracting", n: count((r) => r.stage === "Contract Sent" || r.stage === "Contracting In Progress"), filter: () => { setStageFilter("Contracting In Progress"); setMondayFilter(""); } },
-      { key: "active", label: "Active Agents", n: count((r) => r.stage === "Active Agent"), filter: () => { setStageFilter("Active Agent"); setMondayFilter(""); } },
-    ];
+    return {
+      expected: apps.filter((r) => r.monday_status === "expected").length,
+      confirmed: apps.filter((r) => r.monday_status === "confirmed").length,
+      showed: apps.filter((r) => r.monday_status === "showed").length,
+      noshow: apps.filter((r) => r.monday_status === "no_show").length,
+      onboarding: count((r) => r.stage === "Onboarding"),
+      contracting: count((r) => r.stage === "Contract Sent" || r.stage === "Contracting In Progress"),
+      active: count((r) => r.stage === "Active Agent"),
+    };
   }, [rows]);
+
+  const pickMonday = (v: string) => { setMondayFilter(v); setStageFilter(""); };
+  const pickStage = (v: string) => { setStageFilter(v); setMondayFilter(""); };
 
   // Relevance rank: who needs action now + active agents first, inactive last.
   const rank = (r: Row): number => {
@@ -152,165 +217,214 @@ export default function RecruitingPipeline() {
   }, [rows, search, stageFilter, typeFilter, mondayFilter, activeFilter, intentFilter]);
 
   const clearFilters = () => { setSearch(""); setStageFilter(""); setTypeFilter(""); setMondayFilter(""); setActiveFilter("open"); setIntentFilter(""); };
+  const filterCount = [stageFilter, typeFilter, mondayFilter, intentFilter, activeFilter !== "open" ? activeFilter : ""].filter(Boolean).length;
 
   return (
-    <div className="p-4 md:p-6 max-w-[1400px] mx-auto space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div>
-          <h1 className="text-2xl font-bold">Recruiting Pipeline</h1>
-          <p className="text-sm text-muted-foreground">{rows.length} people · one place for who's next</p>
+    <div className="page-enter w-full space-y-5 pb-24">
+      <RecruitingWorkspaceNav />
+      <PageHeader
+        title="Pipeline"
+        subtitle="Everyone from first call to active agent, and who starts Monday."
+      />
+
+      <GrowScoreboard
+        label="Pipeline numbers"
+        tiles={[
+          { label: "Expected Monday", value: isLoading ? null : counts.expected, hint: "Prospects due to start", onSelect: () => pickMonday("expected"), active: mondayFilter === "expected", emphasis: true },
+          { label: "Showed", value: isLoading ? null : counts.showed, hint: "Prospects who came", onSelect: () => pickMonday("showed"), active: mondayFilter === "showed" },
+          { label: "Onboarding", value: isLoading ? null : counts.onboarding, hint: "Getting set up", onSelect: () => pickStage("Onboarding"), active: stageFilter === "Onboarding" },
+          { label: "Active agents", value: isLoading ? null : counts.active, hint: "Writing business", onSelect: () => pickStage("Active Agent"), active: stageFilter === "Active Agent" },
+        ]}
+      />
+      {!isLoading && (
+        <p className="flex flex-wrap items-center gap-x-1 text-sm text-muted-foreground">
+          <span>Also:</span>
+          <Button variant="link" className="h-9 px-1 text-sm text-foreground" onClick={() => pickMonday("confirmed")}>Confirmed {counts.confirmed}</Button>
+          <span aria-hidden="true">·</span>
+          <Button variant="link" className="h-9 px-1 text-sm text-foreground" onClick={() => pickMonday("no_show")}>No shows {counts.noshow}</Button>
+          <span aria-hidden="true">·</span>
+          <Button variant="link" className="h-9 px-1 text-sm text-foreground" onClick={() => pickStage("Contracting In Progress")}>Contracting {counts.contracting}</Button>
+        </p>
+      )}
+
+      <div className="flex gap-2">
+        <div className="relative min-w-0 flex-1">
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search name, phone, email or Instagram"
+            aria-label="Search the pipeline"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="h-12 border-border bg-card pl-11 text-base"
+          />
         </div>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="h-12 shrink-0 border-border bg-card px-4 text-base">
+              <SlidersHorizontal className="h-5 w-5" /> Filters{filterCount > 0 ? ` (${filterCount})` : ""}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-[22rem] space-y-5 p-4">
+            <label className="block">
+              <span className="mb-2 block text-sm font-semibold text-foreground">Stage</span>
+              <select
+                aria-label="Filter by stage"
+                value={stageFilter}
+                onChange={(e) => setStageFilter(e.target.value)}
+                className="h-11 w-full rounded-lg border border-border bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
+              >
+                <option value="">All stages</option>
+                {STAGES.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </label>
+            <Segmented legend="Who" value={typeFilter} onChange={setTypeFilter}
+              options={[{ value: "", label: "Everyone" }, { value: "applicant", label: "Prospects" }, { value: "agent", label: "Agents" }]} />
+            <Segmented legend="Monday" value={mondayFilter} onChange={setMondayFilter}
+              options={[{ value: "", label: "Any" }, { value: "expected", label: "Expected" }, { value: "confirmed", label: "Confirmed" }, { value: "showed", label: "Showed" }, { value: "no_show", label: "No show" }]} />
+            <Segmented legend="Intent" value={intentFilter} onChange={setIntentFilter}
+              options={[{ value: "", label: "Any" }, { value: "hot", label: "Hot" }, { value: "warm", label: "Warm" }, { value: "cold", label: "Cold" }]} />
+            <Segmented legend="Show" value={activeFilter} onChange={setActiveFilter}
+              options={[{ value: "open", label: "Open only" }, { value: "all", label: "Include inactive" }, { value: "inactive", label: "Inactive only" }]} />
+          </PopoverContent>
+        </Popover>
       </div>
 
-      {/* Monday / Start tiles */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
-        {tiles.map((t) => (
-          <button key={t.key} onClick={t.filter}
-            className="rounded-lg border bg-card p-3 text-left hover:border-primary transition-colors">
-            <div className="text-2xl font-bold">{t.n}</div>
-            <div className="text-xs text-muted-foreground leading-tight">{t.label}</div>
-          </button>
-        ))}
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-2">
-        <Input placeholder="Search name, phone, email, IG…" value={search}
-          onChange={(e) => setSearch(e.target.value)} className="w-full sm:w-64" />
-        <Select value={stageFilter || "all"} onValueChange={(v) => setStageFilter(v === "all" ? "" : v)}>
-          <SelectTrigger aria-label="Filter by stage" className="h-9 w-auto min-w-[9rem] text-sm"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All stages</SelectItem>
-            {STAGES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={typeFilter || "everyone"} onValueChange={(v) => setTypeFilter(v === "everyone" ? "" : v)}>
-          <SelectTrigger aria-label="Filter by prospect or agent" className="h-9 w-auto min-w-[8rem] text-sm"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="everyone">Everyone</SelectItem>
-            <SelectItem value="applicant">Prospects</SelectItem>
-            <SelectItem value="agent">Agents</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={mondayFilter || "any"} onValueChange={(v) => setMondayFilter(v === "any" ? "" : v)}>
-          <SelectTrigger aria-label="Filter by Monday status" className="h-9 w-auto min-w-[8rem] text-sm"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="any">Any Monday</SelectItem>
-            <SelectItem value="expected">Expected</SelectItem>
-            <SelectItem value="confirmed">Confirmed</SelectItem>
-            <SelectItem value="showed">Showed</SelectItem>
-            <SelectItem value="no_show">No Show</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={activeFilter} onValueChange={setActiveFilter}>
-          <SelectTrigger aria-label="Filter by active status" className="h-9 w-auto min-w-[8rem] text-sm"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="open">Open only</SelectItem>
-            <SelectItem value="all">Include inactive</SelectItem>
-            <SelectItem value="inactive">Inactive only</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={intentFilter || "anyintent"} onValueChange={(v) => setIntentFilter(v === "anyintent" ? "" : v)}>
-          <SelectTrigger aria-label="Filter by intent" className="h-9 w-auto min-w-[7rem] text-sm"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="anyintent">Any intent</SelectItem>
-            <SelectItem value="hot">🔥 Hot</SelectItem>
-            <SelectItem value="warm">Warm</SelectItem>
-            <SelectItem value="cold">Cold</SelectItem>
-          </SelectContent>
-        </Select>
-        <Button variant="ghost" size="sm" onClick={clearFilters}>Clear</Button>
-        <span className="text-sm text-muted-foreground ml-auto">{filtered.length} shown</span>
+      <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+        <span>
+          <span className="font-medium text-foreground">{filtered.length.toLocaleString()}</span> of {rows.length.toLocaleString()} people
+        </span>
+        {stageFilter && <Chip label={`Stage: ${stageFilter}`} onClear={() => setStageFilter("")} />}
+        {typeFilter && <Chip label={WHO_LABELS[typeFilter] ?? typeFilter} onClear={() => setTypeFilter("")} />}
+        {mondayFilter && <Chip label={`Monday: ${MONDAY_LABELS[mondayFilter] ?? mondayFilter}`} onClear={() => setMondayFilter("")} />}
+        {intentFilter && <Chip label={`Intent: ${INTENT_STYLE[intentFilter]?.label ?? intentFilter}`} onClear={() => setIntentFilter("")} />}
+        {activeFilter !== "open" && <Chip label={SHOW_LABELS[activeFilter] ?? activeFilter} onClear={() => setActiveFilter("open")} />}
+        {(filterCount > 0 || search) && (
+          <Button variant="ghost" size="sm" className="h-8" onClick={clearFilters}>Clear all</Button>
+        )}
       </div>
 
       {/* People */}
-      <Card className="overflow-hidden">
+      <section aria-label="People" className="overflow-hidden rounded-xl border border-border bg-card">
         {isLoading ? (
-          <div className="p-8 text-center text-muted-foreground">Loading…</div>
+          <div className="p-10 text-center text-base text-muted-foreground">Loading…</div>
         ) : filtered.length === 0 ? (
-          <div className="p-8 text-center text-muted-foreground">No one matches these filters.</div>
+          <div className="p-10 text-center text-base text-muted-foreground">No one matches these filters.</div>
         ) : (
-          <div className="divide-y">
-            {filtered.slice(0, 400).map((r) => (
-              <div key={r.person_key} className="p-3 flex flex-col lg:flex-row lg:flex-wrap lg:items-center gap-2">
-                <div className="min-w-0 lg:w-60">
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      title="Click to set intent (hot → warm → cold → none)"
-                      onClick={() => cycleIntent(r)}
-                      className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold border ${r.intent_level && INTENT_STYLE[r.intent_level] ? INTENT_STYLE[r.intent_level].cls : "text-muted-foreground border-dashed"}`}>
-                      {r.intent_level && INTENT_STYLE[r.intent_level] ? INTENT_STYLE[r.intent_level].label : "Intent"}
-                    </button>
-                    {r.person_type === "agent" ? (
-                      <button className="font-semibold truncate text-left hover:text-primary hover:underline" onClick={() => openAgentProfile(r.person_key.split(":")[1])}>{r.name || "Unknown"}</button>
-                    ) : (
-                      <div className="font-semibold truncate">{r.name || "Unknown"}</div>
+          <ul className="divide-y divide-border/60">
+            {filtered.slice(0, 400).map((r) => {
+              const intent = r.intent_level ? INTENT_STYLE[r.intent_level] : null;
+              const lastNote = r.notes?.split("\n").filter(Boolean).pop();
+              return (
+                <li key={r.person_key} className="flex flex-col gap-3 px-4 py-4 lg:flex-row lg:items-start lg:gap-6">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {r.person_type === "agent" ? (
+                        <button className="truncate text-left text-base font-semibold text-foreground hover:text-primary hover:underline" onClick={() => openAgentProfile(r.person_key.split(":")[1])}>{r.name || "Unknown"}</button>
+                      ) : (
+                        <span className="truncate text-base font-semibold text-foreground">{r.name || "Unknown"}</span>
+                      )}
+                      <button
+                        type="button"
+                        title="Tap to change intent: hot, warm, cold, none"
+                        aria-label={`Intent for ${r.name || "this person"}: ${intent?.label ?? "not set"}. Tap to change.`}
+                        onClick={() => cycleIntent(r)}
+                        className={cn(
+                          "inline-flex h-7 shrink-0 items-center rounded-full border px-2.5 text-[13px] font-medium",
+                          intent ? intent.cls : "border-dashed border-border text-muted-foreground",
+                        )}
+                      >
+                        {intent?.label ?? "Set intent"}
+                      </button>
+                    </div>
+                    <p className="mt-0.5 truncate text-sm text-muted-foreground">
+                      {r.phone ? formatPhoneDisplay(r.phone) : "No phone"}
+                      {r.instagram && <> · <a href={`https://instagram.com/${r.instagram.replace(/^@/, "")}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">@{r.instagram.replace(/^@/, "")}</a></>}
+                      {r.lead_source ? ` · ${r.lead_source}` : ""}
+                    </p>
+                    <p className="mt-0.5 text-sm text-muted-foreground">
+                      <span className="text-foreground">Next: {r.next_action_display || "Follow up"}</span>
+                      {" · "}Last contact {fmt(r.last_contact)}{" · "}Due {fmt(r.next_follow_up)}
+                    </p>
+                    {lastNote && noteFor !== r.person_key && (
+                      <button onClick={() => { setNoteFor(r.person_key); setNoteDraft(""); }}
+                        className="mt-1 block max-w-full truncate text-left text-sm italic text-muted-foreground hover:text-foreground">
+                        Note: {lastNote}
+                      </button>
+                    )}
+                    {noteFor === r.person_key && (
+                      <div className="mt-2 flex items-center gap-2">
+                        <Input autoFocus value={noteDraft} onChange={(e) => setNoteDraft(e.target.value)}
+                          aria-label={`Note for ${r.name}`}
+                          placeholder={`Note for ${r.name}…`} className="h-11 text-base"
+                          onKeyDown={(e) => { if (e.key === "Enter" && noteDraft.trim()) { fire(r.person_key, "note", noteDraft.trim(), "Note added"); setNoteFor(null); } }} />
+                        <Button className="h-11" disabled={!noteDraft.trim()}
+                          onClick={() => { fire(r.person_key, "note", noteDraft.trim(), "Note added"); setNoteFor(null); }}>Save</Button>
+                        <Button variant="ghost" className="h-11" onClick={() => setNoteFor(null)}>Cancel</Button>
+                      </div>
                     )}
                   </div>
-                  <div className="text-xs text-muted-foreground truncate">
-                    {r.phone || "no phone"}
-                    {r.instagram && <> · <a href={`https://instagram.com/${r.instagram.replace(/^@/, "")}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">@{r.instagram.replace(/^@/, "")}</a></>}
-                    {r.lead_source ? ` · ${r.lead_source}` : ""}
+
+                  <div className="flex flex-wrap items-center gap-2 lg:flex-nowrap">
+                    <select
+                      aria-label={`Stage for ${r.name || "this person"}`}
+                      title="Changing a stage sets a manual override that sticks until you clear it"
+                      className="h-11 max-w-[13rem] rounded-lg border border-border bg-card px-2 text-sm text-foreground focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
+                      value={STAGES.includes(r.stage as typeof STAGES[number]) ? r.stage : ""}
+                      onChange={(e) => fire(r.person_key, "stage", e.target.value, "Stage updated")}>
+                      {!STAGES.includes(r.stage as typeof STAGES[number]) && <option value="">{r.stage}</option>}
+                      {STAGES.map((s) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                    {r.phone && (
+                      <Button asChild variant="outline" className="h-11 px-3">
+                        <a href={phoneHref(r.phone) ?? `tel:${r.phone}`} {...contactLinkProps(phoneHref(r.phone))} aria-label={`Call ${r.name}`}>
+                          <Phone className="h-4 w-4" /> Call
+                        </a>
+                      </Button>
+                    )}
+                    {r.phone && (
+                      <Button asChild variant="outline" className="h-11 px-3">
+                        <a href={smsHref(r.phone) ?? `sms:${r.phone}`} {...contactLinkProps(smsHref(r.phone))} aria-label={`Text ${r.name}`}>
+                          <MessageSquare className="h-4 w-4" /> Text
+                        </a>
+                      </Button>
+                    )}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="h-11 px-3" aria-label={`Update ${r.name || "this person"}`}>
+                          Update <ChevronDown className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56">
+                        {r.person_type === "applicant" && (
+                          <>
+                            <DropdownMenuLabel>Monday</DropdownMenuLabel>
+                            <DropdownMenuItem className="min-h-10" onSelect={() => fire(r.person_key, "monday", "expected", "Marked expected Monday")}>Expected Monday</DropdownMenuItem>
+                            <DropdownMenuItem className="min-h-10" onSelect={() => fire(r.person_key, "monday", "confirmed", "Confirmed")}>Confirmed for Monday</DropdownMenuItem>
+                            <DropdownMenuItem className="min-h-10" onSelect={() => fire(r.person_key, "monday", "showed", "Marked showed")}>Showed up</DropdownMenuItem>
+                            <DropdownMenuItem className="min-h-10" onSelect={() => fire(r.person_key, "monday", "no_show", "Marked no-show")}>Didn't show</DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                          </>
+                        )}
+                        <DropdownMenuItem className="min-h-10" onSelect={() => fire(r.person_key, "contacted", null, "Marked contacted")}>Mark contacted</DropdownMenuItem>
+                        <DropdownMenuItem className="min-h-10" onSelect={() => {
+                          const d = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+                          fire(r.person_key, "followup", d, "Follow-up set for tomorrow");
+                        }}>Follow up tomorrow</DropdownMenuItem>
+                        <DropdownMenuItem className="min-h-10" onSelect={() => { setNoteFor(r.person_key); setNoteDraft(""); }}>Add a note</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
-                </div>
-                <div className="lg:w-48 flex items-center gap-2">
-                  <span className={`inline-block h-2 w-2 rounded-full ${STAGE_COLOR[r.stage] ?? "bg-slate-500"}`} />
-                  <select
-                    className="h-8 rounded-md border bg-background px-1 text-xs max-w-[11rem]"
-                    value={STAGES.includes(r.stage as typeof STAGES[number]) ? r.stage : ""}
-                    onChange={(e) => fire(r.person_key, "stage", e.target.value, "Status updated")}>
-                    {!STAGES.includes(r.stage as typeof STAGES[number]) && <option value="">{r.stage}</option>}
-                    {STAGES.map((s) => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                </div>
-                <div className="lg:flex-1 text-xs text-muted-foreground min-w-0">
-                  <span className="font-medium text-foreground">Next: </span>{r.next_action_display || "Follow up"}
-                  <span className="mx-2">·</span>Last: {fmt(r.last_contact)}
-                  <span className="mx-2">·</span>Due: {fmt(r.next_follow_up)}
-                </div>
-                <div className="flex flex-wrap items-center gap-1">
-                  {r.phone && <Button asChild size="sm" variant="outline" className="h-7 px-2 text-xs"><a href={phoneHref(r.phone) ?? `tel:${r.phone}`} {...contactLinkProps(phoneHref(r.phone))}>Call</a></Button>}
-                  {r.phone && <Button asChild size="sm" variant="outline" className="h-7 px-2 text-xs"><a href={smsHref(r.phone) ?? `sms:${r.phone}`} {...contactLinkProps(smsHref(r.phone))}>Text</a></Button>}
-                  {r.person_type === "applicant" && <>
-                    <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => fire(r.person_key, "monday", "expected", "Marked expected Monday")}>Exp Mon</Button>
-                    <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => fire(r.person_key, "monday", "confirmed", "Confirmed")}>Confirm</Button>
-                    <Button size="sm" className="h-7 px-2 text-xs bg-emerald-600 hover:bg-emerald-700" onClick={() => fire(r.person_key, "monday", "showed", "Marked showed")}>Showed</Button>
-                    <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => fire(r.person_key, "monday", "no_show", "Marked no-show")}>No-show</Button>
-                  </>}
-                  <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => fire(r.person_key, "contacted", null, "Marked contacted")}>Contacted</Button>
-                  <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => {
-                    const d = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-                    fire(r.person_key, "followup", d, "Follow-up set for tomorrow");
-                  }}>+1d</Button>
-                  <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => { setNoteFor(noteFor === r.person_key ? null : r.person_key); setNoteDraft(""); }}>Note</Button>
-                </div>
-                {r.notes && noteFor !== r.person_key && (
-                  <button onClick={() => { setNoteFor(r.person_key); setNoteDraft(""); }}
-                    className="w-full lg:basis-full text-left text-xs text-muted-foreground italic truncate mt-0.5 hover:text-foreground">
-                    📝 {r.notes.split("\n").filter(Boolean).pop()}
-                  </button>
-                )}
-                {noteFor === r.person_key && (
-                  <div className="flex items-center gap-1 w-full lg:basis-full mt-1">
-                    <Input autoFocus value={noteDraft} onChange={(e) => setNoteDraft(e.target.value)}
-                      placeholder={`Note for ${r.name}…`} className="h-8 text-xs"
-                      onKeyDown={(e) => { if (e.key === "Enter" && noteDraft.trim()) { fire(r.person_key, "note", noteDraft.trim(), "Note added"); setNoteFor(null); } }} />
-                    <Button size="sm" className="h-8 px-3 text-xs" disabled={!noteDraft.trim()}
-                      onClick={() => { fire(r.person_key, "note", noteDraft.trim(), "Note added"); setNoteFor(null); }}>Save</Button>
-                    <Button size="sm" variant="ghost" className="h-8 px-2 text-xs" onClick={() => setNoteFor(null)}>Cancel</Button>
-                  </div>
-                )}
-              </div>
-            ))}
+                </li>
+              );
+            })}
             {filtered.length > 400 && (
-              <div className="p-3 text-center text-xs text-muted-foreground">Showing first 400 of {filtered.length}. Narrow with filters.</div>
+              <li className="p-4 text-center text-sm text-muted-foreground">Showing the first 400 of {filtered.length}. Search or filter to narrow it.</li>
             )}
-          </div>
+          </ul>
         )}
-      </Card>
-      <p className="text-xs text-muted-foreground">
-        <Badge variant="outline" className="mr-1">Note</Badge>
-        Changing a status here sets a manual override that sticks until you clear it. Everything writes to your existing records — no data is duplicated.
+      </section>
+      <p className="text-sm text-muted-foreground">
+        Changing a stage here sets a manual override that sticks until you clear it. Everything writes to your existing records — no data is duplicated.
       </p>
     </div>
   );

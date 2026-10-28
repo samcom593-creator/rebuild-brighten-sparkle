@@ -14,7 +14,7 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "Oct 28, 2026",
     label: "Links open the exact record: a sold call opens its book row and recording, a book row opens its sold call, and a failed team lookup says so",
-    detail: "Sam: links should go to the actual ReadyMode call and the actual book of business, not the page itself, with no clutter. On Sold Calls, In the book now opens that client's exact row in the Book of Business, and a Recording button plays the ReadyMode call when one exists. In the Book of Business call panel, Sold call opens that exact call. Six screens that read the team list (Manager view, Agent Management, Post a Deal, Pre-Licensing, Agency Owner home and the Dashboard) show one Couldn't load your team notice with Try again instead of passing a failed lookup off as an empty team. The unused Radix toast package is out of package.json and both lockfiles.",
+    detail: "Sam: links should go to the actual ReadyMode call and the actual book of business, not the page itself, with no clutter. On Sold Calls, In the book now opens that client's exact row in the Book of Business. In the Book of Business call panel, Sold call opens that exact call, next to the recording link it already had. Six screens that read the team list (Manager view, Agent Management, Post a Deal, Pre-Licensing, Agency Owner home and the Dashboard) show one Couldn't load your team notice with Try again instead of passing a failed lookup off as an empty team. The unused Radix toast package is out of package.json and both lockfiles.",
     commit: "FOLLOWUPS-2026-10-28",
   },
   {

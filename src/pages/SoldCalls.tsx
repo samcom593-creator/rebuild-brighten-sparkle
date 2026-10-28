@@ -21,7 +21,7 @@ import { useMemo, useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  AlertTriangle, Copy, MessageSquare, Phone, RefreshCw, Search, ShieldAlert, Headphones } from "lucide-react";
+  AlertTriangle, Copy, MessageSquare, Phone, RefreshCw, Search, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { looseSupabase } from "@/lib/looseSupabase";
@@ -33,7 +33,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
-import { externalHref } from "@/lib/externalHref";
 import { contactLinkProps, formatPhoneDisplay, isDialablePhone, nationalDigits, phoneHref, smsHref } from "@/lib/phone";
 import { bookingGaps, checkNumber, clientAsks, draftDayLabel, formatDob, formatSsn, paymentLabel, withNumberAsks, type NumberCheck, type NumberField } from "@/lib/soldCallPacket";
 import { FixNumber } from "@/components/soldcalls/FixNumber";
@@ -483,7 +482,6 @@ function SoldCallCard({ row, extra, secret, secretLoading, secretFailed = false,
 
   const age = ageEquation(extra?.client_dob);
 
-  const recording = externalHref(row.recording_url);
   return (
     <article className="rounded-xl border border-border/70 bg-card p-4 shadow-sm sm:p-5" aria-label={`Sold call: ${clientName(row)}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -531,11 +529,6 @@ function SoldCallCard({ row, extra, secret, secretLoading, secretFailed = false,
         {textHref && (
           <Button asChild size="sm" variant="outline" className="h-9">
             <a href={textHref} {...contactLinkProps(textHref)}><MessageSquare className="mr-1.5 h-4 w-4" />Text</a>
-          </Button>
-        )}
-        {recording && (
-          <Button asChild size="sm" variant="outline" className="h-9">
-            <a href={recording} target="_blank" rel="noopener noreferrer"><Headphones className="mr-1.5 h-4 w-4" aria-hidden="true" />Recording</a>
           </Button>
         )}
       </div>

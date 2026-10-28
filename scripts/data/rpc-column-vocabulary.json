@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-rpc-column-vocabulary.sh (bot_sql -> pg_proc + pg_rewrite)",
- "_generated_at": "2026-10-16T20:54:10Z",
+ "_generated_at": "2026-10-28T03:32:28Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "check-enum-filter-literals.mjs grades literals inside supabase.from().eq() chains. This is the other half of the same class: a status word that arrives from an RPC and is compared in JavaScript, where the return type is text and every wrong word type-checks. Per (function, returned column) this records the relation columns of that name reachable from the function body and the literals the function synthesises itself. It deliberately records CANDIDATES rather than one resolved source: provenance from a body regex is a guess, so check-rpc-status-literals.mjs refuses a literal only when NO candidate vocabulary and no body literal accepts it.",
  "_vocabulary_source": "scripts/data/enum-catalog.json (check_vocab + column_enum + enums). Not copied here on purpose, so the two guards read one snapshot and cannot drift.",
@@ -91,6 +91,9 @@
   "auto_pass_quizless_module": "trigger",
   "auto_set_first_deal": "trigger",
   "autoposter_leak_watchdog": "jsonb",
+  "ayro_book": "jsonb",
+  "ayro_carrier_name": "text",
+  "ayro_set_client_names": "jsonb",
   "backfill_monthly_awards": "jsonb",
   "backfill_plaque_images": "jsonb",
   "block_duplicate_agent_per_email": "trigger",
@@ -205,6 +208,7 @@
   "finances_overview": "jsonb",
   "finances_overview_base": "jsonb",
   "flex_hire": "jsonb",
+  "fn_access_violation_alert": "integer",
   "fn_agent_contracting_matched_by_npn": "boolean",
   "fn_agent_deprovision": "trigger",
   "fn_agent_is_placeholder": "boolean",
@@ -262,6 +266,7 @@
   "fn_client_pipeline_create": "uuid",
   "fn_client_pipeline_update": "jsonb",
   "fn_close_communication_gaps": "jsonb",
+  "fn_commission_advance_factor": "numeric",
   "fn_contact_log_stamp_application": "trigger",
   "fn_contract_review_events_append_only": "trigger",
   "fn_contract_review_my_agent": "uuid",
@@ -298,6 +303,7 @@
   "fn_hire_stage_rank": "integer",
   "fn_identity_collision_anchor": "timestamp with time zone",
   "fn_identity_collision_observe": "integer",
+  "fn_ig_dashboard": "jsonb",
   "fn_instagram_token_replay": "trigger",
   "fn_insuracloud_lane_verdict": "text",
   "fn_insuracloud_refusal_anchor": "timestamp with time zone",
@@ -331,11 +337,14 @@
   "fn_next_step_agents_recompute_trigger": "trigger",
   "fn_next_step_applications_recompute_trigger": "trigger",
   "fn_next_step_cadence_due": "text",
+  "fn_next_step_cadence_due_local": "text",
   "fn_next_step_deal_first_check": "trigger",
   "fn_next_step_manual_advance": "jsonb",
   "fn_next_step_messages_auto_dispatch": "trigger",
   "fn_next_step_rank": "integer",
   "fn_next_step_recompute_one": "void",
+  "fn_next_step_send_ok": "boolean",
+  "fn_next_step_send_zones": "text[]",
   "fn_normalize_contracting_email": "text",
   "fn_normalize_contracting_npn": "text",
   "fn_normalize_contracting_phone": "text",
@@ -404,6 +413,7 @@
   "fn_touch_manual_interview_entries_updated_at": "trigger",
   "fn_touch_messaging_updated_at": "trigger",
   "fn_unlicensed_slack_digest": "text",
+  "fn_us_state_send_zones": "text[]",
   "fn_weekdays_valid": "boolean",
   "fn_work_weekdays_on": "smallint[]",
   "fn_workday_apply": "jsonb",
@@ -7293,6 +7303,48 @@
     "va_manager"
    ]
   },
+  "fn_cron_jobs_active.active": {
+   "candidates": [],
+   "body_literals": [
+    "cron",
+    "pg_catalog"
+   ]
+  },
+  "fn_cron_jobs_active.jobname": {
+   "candidates": [],
+   "body_literals": [
+    "cron",
+    "pg_catalog"
+   ]
+  },
+  "fn_cron_jobs_schedule.active": {
+   "candidates": [],
+   "body_literals": [
+    "cron",
+    "pg_catalog"
+   ]
+  },
+  "fn_cron_jobs_schedule.jobname": {
+   "candidates": [],
+   "body_literals": [
+    "cron",
+    "pg_catalog"
+   ]
+  },
+  "fn_cron_jobs_schedule.schedule": {
+   "candidates": [],
+   "body_literals": [
+    "cron",
+    "pg_catalog"
+   ]
+  },
+  "fn_cron_jobs_schedule.timezone": {
+   "candidates": [],
+   "body_literals": [
+    "cron",
+    "pg_catalog"
+   ]
+  },
   "fn_dedupe_phantom_lead_purchases.archived_count": {
    "candidates": [],
    "body_literals": [
@@ -7409,6 +7461,246 @@
     "public"
    ]
   },
+  "fn_ig_abandoned_partials.email": {
+   "candidates": [
+    "applications.email",
+    "partial_applications.email"
+   ],
+   "body_literals": [
+    "inbound_dm",
+    "partial_application_id",
+    "public"
+   ]
+  },
+  "fn_ig_abandoned_partials.first_name": {
+   "candidates": [
+    "applications.first_name",
+    "partial_applications.first_name"
+   ],
+   "body_literals": [
+    "inbound_dm",
+    "partial_application_id",
+    "public"
+   ]
+  },
+  "fn_ig_abandoned_partials.id": {
+   "candidates": [
+    "applications.id",
+    "inbox_messages.id",
+    "partial_applications.id"
+   ],
+   "body_literals": [
+    "inbound_dm",
+    "partial_application_id",
+    "public"
+   ]
+  },
+  "fn_ig_abandoned_partials.step": {
+   "candidates": [
+    "partial_applications.step"
+   ],
+   "body_literals": [
+    "inbound_dm",
+    "partial_application_id",
+    "public"
+   ]
+  },
+  "fn_ig_nudge_candidates.business": {
+   "candidates": [],
+   "body_literals": [
+    "assistant_ask",
+    "error",
+    "fitness",
+    "followup",
+    "inbound",
+    "instagram",
+    "licensed",
+    "licensed_team",
+    "mentorship",
+    "mid",
+    "opportunity",
+    "outbound",
+    "partnership",
+    "public",
+    "queued",
+    "rentals",
+    "sam_manual",
+    "sam_thread",
+    "tag"
+   ]
+  },
+  "fn_ig_nudge_candidates.external_id": {
+   "candidates": [
+    "inbox_messages.external_id"
+   ],
+   "body_literals": [
+    "assistant_ask",
+    "error",
+    "fitness",
+    "followup",
+    "inbound",
+    "instagram",
+    "licensed",
+    "licensed_team",
+    "mentorship",
+    "mid",
+    "opportunity",
+    "outbound",
+    "partnership",
+    "public",
+    "queued",
+    "rentals",
+    "sam_manual",
+    "sam_thread",
+    "tag"
+   ]
+  },
+  "fn_ig_nudge_candidates.last_in": {
+   "candidates": [],
+   "body_literals": [
+    "assistant_ask",
+    "error",
+    "fitness",
+    "followup",
+    "inbound",
+    "instagram",
+    "licensed",
+    "licensed_team",
+    "mentorship",
+    "mid",
+    "opportunity",
+    "outbound",
+    "partnership",
+    "public",
+    "queued",
+    "rentals",
+    "sam_manual",
+    "sam_thread",
+    "tag"
+   ]
+  },
+  "fn_ig_nudge_candidates.last_out": {
+   "candidates": [],
+   "body_literals": [
+    "assistant_ask",
+    "error",
+    "fitness",
+    "followup",
+    "inbound",
+    "instagram",
+    "licensed",
+    "licensed_team",
+    "mentorship",
+    "mid",
+    "opportunity",
+    "outbound",
+    "partnership",
+    "public",
+    "queued",
+    "rentals",
+    "sam_manual",
+    "sam_thread",
+    "tag"
+   ]
+  },
+  "fn_ig_nudge_candidates.last_out_body": {
+   "candidates": [],
+   "body_literals": [
+    "assistant_ask",
+    "error",
+    "fitness",
+    "followup",
+    "inbound",
+    "instagram",
+    "licensed",
+    "licensed_team",
+    "mentorship",
+    "mid",
+    "opportunity",
+    "outbound",
+    "partnership",
+    "public",
+    "queued",
+    "rentals",
+    "sam_manual",
+    "sam_thread",
+    "tag"
+   ]
+  },
+  "fn_ig_nudge_candidates.nudges": {
+   "candidates": [],
+   "body_literals": [
+    "assistant_ask",
+    "error",
+    "fitness",
+    "followup",
+    "inbound",
+    "instagram",
+    "licensed",
+    "licensed_team",
+    "mentorship",
+    "mid",
+    "opportunity",
+    "outbound",
+    "partnership",
+    "public",
+    "queued",
+    "rentals",
+    "sam_manual",
+    "sam_thread",
+    "tag"
+   ]
+  },
+  "fn_ig_nudge_candidates.sender_handle": {
+   "candidates": [
+    "inbox_messages.sender_handle"
+   ],
+   "body_literals": [
+    "assistant_ask",
+    "error",
+    "fitness",
+    "followup",
+    "inbound",
+    "instagram",
+    "licensed",
+    "licensed_team",
+    "mentorship",
+    "mid",
+    "opportunity",
+    "outbound",
+    "partnership",
+    "public",
+    "queued",
+    "rentals",
+    "sam_manual",
+    "sam_thread",
+    "tag"
+   ]
+  },
+  "fn_ig_nudge_candidates.stage": {
+   "candidates": [],
+   "body_literals": [
+    "assistant_ask",
+    "error",
+    "fitness",
+    "followup",
+    "inbound",
+    "instagram",
+    "licensed",
+    "licensed_team",
+    "mentorship",
+    "mid",
+    "opportunity",
+    "outbound",
+    "partnership",
+    "public",
+    "queued",
+    "rentals",
+    "sam_manual",
+    "sam_thread",
+    "tag"
+   ]
+  },
   "fn_invite_caller.agent_id": {
    "candidates": [],
    "body_literals": [
@@ -7515,6 +7807,7 @@
     "cadence",
     "day",
     "public",
+    "send_zones",
     "step",
     "telegram"
    ]

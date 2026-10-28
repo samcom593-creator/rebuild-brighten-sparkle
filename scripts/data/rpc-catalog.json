@@ -3814,6 +3814,16 @@
         "raw": ""
       }
     ],
+    "fn_ig_dashboard": [
+      {
+        "all": [
+          "p_window"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_window text DEFAULT '7d'::text"
+      }
+    ],
     "fn_ig_nudge_candidates": [
       {
         "all": [],

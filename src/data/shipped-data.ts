@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "Oct 28, 2026",
+    label: "Instagram command center: who is waiting, who to call, what is winning, all graded on real deliveries.",
+    detail: "MP-305 Wave 4. /dashboard/inbox/instagram now reads one RPC (fn_ig_dashboard) instead of a table frozen since Sep 28: account status (token, Meta link restriction, bot last delivered, follow-up cron), today/7d/30d numbers (people in, replied in 24h, waiting on us, licensed leads, calls booked, applicants), action queues with one-tap Call/Text/Open on IG, winning reels with comment-keyword attribution, the bot lines that get replies, and the last 60 threads with a next action each.",
+    commit: "MP-305-W4-IG-COMMAND-CENTER",
+  },
+  {
+    ts: "Oct 28, 2026",
     label: "Grow is redesigned for anyone to use: four numbers, four lists and one gold button on every recruiting screen.",
     detail: "The call list shows Call today, New, Worked today and Booked on top, four big lists with the other eight under More lists, one search box and one More menu. Rows say who, the plain facts and a status in words. The person panel goes Call, What happened, next step with quick picks, Save & next person; Do not contact needs a second tap. Pipeline and New hires got the same numbers-search-filters layout and the Grow tabs. Sidebar: Recruit Pipeline is now Call list and Recruit Stages is New hires. Nothing was removed: every list, view, filter, field and number is still one or two taps away.",
     commit: "GROW-REDESIGN",

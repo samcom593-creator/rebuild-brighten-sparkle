@@ -1,15 +1,15 @@
 # APEX Function Contract Matrix
 
-Generated: 2026-10-25T22:20:49.942Z
-Repository: `/private/tmp/wib111`
+Generated: 2026-10-28T03:31:46.560Z
+Repository: `/private/tmp/mp305-w4`
 
 ## Inventory Summary
 
-- Total Local Edge Functions: **244**
-- Configured in `config.toml`: **245**
+- Total Local Edge Functions: **245**
+- Configured in `config.toml`: **246**
 - Invoked Edge Functions in Source: **96**
-- Invoked RPC Calls in Source: **217**
-- SQL Functions in Migrations: **723**
+- Invoked RPC Calls in Source: **220**
+- SQL Functions in Migrations: **728**
 
 ## Edge Function Auth & Verification Contracts
 
@@ -102,6 +102,7 @@ Repository: `/private/tmp/wib111`
 | `ig-voice-broadcast` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `instagram-auth` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `instagram-comments-backfill` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
+| `instagram-dm-nudge` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `instagram-dm-replay` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `instagram-token-keepalive` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `instagram-webhook` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
@@ -268,6 +269,6 @@ applied by hand through bot-sql and never round-tripped into
 `supabase/migrations`, so this directory does not model the deployed database.
 `apex-doctor` queries `pg_proc` and is the authority on deployed state.
 
-- Invoked RPCs: **217**
-- Also declared in this commit's migrations: **209**
+- Invoked RPCs: **220**
+- Also declared in this commit's migrations: **212**
 - Declared only in the database: **8**

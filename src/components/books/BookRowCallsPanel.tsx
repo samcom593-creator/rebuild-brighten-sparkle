@@ -105,7 +105,7 @@ export function BookRowCallsPanel({ flipKey }: { flipKey: string | null | undefi
                 {c.work_status && <span className="text-muted-foreground">marked {c.work_status}</span>}
                 <span className="ml-auto flex items-center gap-3">
                   {c.disposition === "Completed Sale" && c.packet_id && (
-                    <Link to="/dashboard/sold-calls" className="text-primary hover:underline">Sold Calls</Link>
+                    <Link to={`/dashboard/sold-calls?call=${encodeURIComponent(c.call_id)}`} className="text-primary hover:underline">Sold call</Link>
                   )}
                   {recording && (
                     <a href={recording} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">

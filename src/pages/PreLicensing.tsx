@@ -33,6 +33,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { XcelIngestDialog } from "@/components/admin/XcelIngestDialog";
 import { contactLinkProps, formatPhoneDisplay, phoneHref } from "@/lib/phone";
+import { TeamLookupError } from "@/components/shared/TeamLookupError";
 
 interface Report {
   id: string;
@@ -272,6 +273,7 @@ export default function PreLicensing() {
           );
         })()}
       />
+      <TeamLookupError />
 
       {/* P2: stale-feed banner — surfaces the known-dead XCEL Gmail pull
           so Sam doesn't mistake the page's stale data for fresh data. */}

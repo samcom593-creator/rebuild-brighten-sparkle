@@ -18,11 +18,10 @@
 // so reads go through looseSupabase.
 
 import { useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  AlertTriangle, Copy, MessageSquare, Phone, RefreshCw, Search, ShieldAlert,
-} from "lucide-react";
+  AlertTriangle, Copy, MessageSquare, Phone, RefreshCw, Search, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { looseSupabase } from "@/lib/looseSupabase";
@@ -93,7 +92,7 @@ interface PacketExtra {
   booked_policy_number: string | null;
 }
 interface Sensitive { packet_id: string; ssn: string | null; bank_account: string | null; bank_routing: string | null }
-interface BookMatch { call_id: string; in_book: boolean; book_status: string | null; book_policy_number: string | null; book_client_name: string | null }
+interface BookMatch { call_id: string; in_book: boolean; book_status: string | null; book_policy_number: string | null; book_client_name: string | null; flip_key: string | null }
 
 const STATUS_META: Record<string, { label: string; tone: string }> = {
   no_recording: { label: "No recording", tone: "bg-muted text-muted-foreground" },
@@ -155,7 +154,7 @@ async function fetchExtras(): Promise<Map<string, PacketExtra>> {
 async function fetchBookMatch(): Promise<Map<string, BookMatch>> {
   const { data, error } = await (looseSupabase
     .from("v_sold_call_book_match")
-    .select("call_id, in_book, book_status, book_policy_number, book_client_name")
+    .select("call_id, in_book, book_status, book_policy_number, book_client_name, flip_key")
     .limit(5000) as unknown as Promise<{ data: BookMatch[] | null; error: Error | null }>);
   if (error) throw error;
   return new Map((data ?? []).map((m) => [m.call_id, m]));
@@ -497,7 +496,14 @@ function SoldCallCard({ row, extra, secret, secretLoading, secretFailed = false,
           {book && (
             <p className="mt-0.5 text-xs">
               {book.in_book ? (
-                <span className="text-muted-foreground">In the book{book.book_status ? ` · ${book.book_status}` : ""}{book.book_policy_number ? ` · #${book.book_policy_number}` : ""}</span>
+                book.flip_key ? (
+                  // Opens this client's exact row in the Book of Business, not the whole book.
+                  <Link to={`/dashboard/production?flip=${encodeURIComponent(book.flip_key)}`} className="text-primary hover:underline">
+                    In the book{book.book_status ? ` · ${book.book_status}` : ""}{book.book_policy_number ? ` · #${book.book_policy_number}` : ""}
+                  </Link>
+                ) : (
+                  <span className="text-muted-foreground">In the book{book.book_status ? ` · ${book.book_status}` : ""}{book.book_policy_number ? ` · #${book.book_policy_number}` : ""}</span>
+                )
               ) : (
                 <span className="font-medium text-amber-700 dark:text-amber-300">Not in the book: no policy row matches this client by phone or name.</span>
               )}

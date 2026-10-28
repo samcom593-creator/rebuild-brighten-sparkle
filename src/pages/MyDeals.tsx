@@ -493,6 +493,35 @@ export default function MyDeals() {
     },
   });
 
+  // ?flip=<carrier|policy|client> is how Sold Calls opens "this client's row". Resolve it to a
+  // row_key and hand it to ?deal= above. Policy numbers repeat (72 shared), so a row is chosen
+  // only when the client also matches, or when the policy number is unique in this scope.
+  const focusFlip = searchParams.get("flip");
+  const flipLookup = useQuery({
+    queryKey: ["deal-by-flip", scopeKey, focusFlip],
+    enabled: Boolean(focusFlip) && enabled && !focusDealId,
+    queryFn: async () => {
+      const [, policy = "", client = ""] = (focusFlip ?? "").split("|");
+      if (!policy.trim()) return null;
+      let query = supabase.from("v_production_unified").select("row_key, client_name").eq("policy_number", policy.trim()).limit(25);
+      if (!fullBook) query = query.in("agent_id", scopedAgentIds);
+      const { data, error } = await query;
+      if (error) throw error;
+      const rows = (data ?? []) as Array<{ row_key: string; client_name: string | null }>;
+      const exact = client ? rows.find((r) => nameKey(r.client_name) === client) : undefined;
+      return exact?.row_key ?? (rows.length === 1 ? rows[0].row_key : null);
+    },
+  });
+  useEffect(() => {
+    if (!focusFlip || flipLookup.data === undefined) return;
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete("flip");
+      if (flipLookup.data) next.set("deal", flipLookup.data);
+      return next;
+    }, { replace: true });
+  }, [focusFlip, flipLookup.data, setSearchParams]);
+
   useEffect(() => {
     if (!focusDealId || focusIndex < 0) return;
     if (focusHandled.current === focusDealId) return;

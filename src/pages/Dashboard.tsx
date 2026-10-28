@@ -91,6 +91,7 @@ import { ReferralLinkCard } from "@/components/dashboard/ReferralLinkCard";
 import { AgentCloudHome } from "@/components/dashboard/AgentCloudHome";
 import { ScopedProductionScoreboard } from "@/components/dashboard/ScopedProductionScoreboard";
 import { APPLICATION_RECORD_TYPE } from "@/shared/api/applicationRecordType";
+import { TeamLookupError } from "@/components/shared/TeamLookupError";
 
 type IntegrationState = "ok" | "warning" | "critical" | "unavailable";
 
@@ -832,6 +833,7 @@ function ExecutiveDashboard({
           </>
         }
       />
+      <TeamLookupError />
 
       {/* THE AGENT CLOUD HOME, mirrored. Sam: "dashboard still not good, mirror
           agent cloud". Every number here comes from ONE server-side RPC

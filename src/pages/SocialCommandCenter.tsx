@@ -8,7 +8,7 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Activity, Archive, CheckCircle2, ExternalLink, Loader2, Search, ShieldAlert, XCircle } from "lucide-react";
+import { Activity, Archive, CheckCircle2, Download, ExternalLink, Loader2, Search, ShieldAlert, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -22,7 +22,7 @@ import { formatTimeAgo } from "@/lib/dateUtils";
 import { cn } from "@/lib/utils";
 import {
   BUCKET_LABEL, BUCKET_ORDER, BUCKET_TONE, LANE_TONE, SOCIAL_COMMAND_KEY, bucketCounts, filterInbox, fmtWhen, groupDrafts, laneLink, laneStatus, num, pct,
-  platformLabel, profileHref, replyRate, sortLanes,
+  platformLabel, poolSummary, profileHref, replyRate, sortLanes,
   type Bucket, type CommandCenterPayload, type DraftRow, type InboxRow,
 } from "@/lib/socialCommand";
 
@@ -109,6 +109,32 @@ export default function SocialCommandCenter() {
                 ? `Alarm last ran ${fmtWhen(q.data.alarm.checked_at)}${q.data.alarm.last_alert_at ? `; last page ${fmtWhen(q.data.alarm.last_alert_at)}: ${q.data.alarm.last_alert_subject ?? ""}` : "; it has not had to page yet"}.`
                 : "The alarm has not run yet."}
             </p>
+          </section>
+
+          {/* Call lists the brain keeps warm: old applicants for ReadyMode, former agents to bring back */}
+          <section className="mb-4 rounded-xl border border-border bg-card p-4" aria-label="Call lists">
+            <h2 className="text-lg font-bold text-foreground">Call lists</h2>
+            <p className="text-sm text-muted-foreground">Built live from the application book and the roster, minus Do Not Call numbers, bad phones and anyone already on the team. Download, load into ReadyMode, dial.</p>
+            <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+              <li className="rounded-lg border border-border px-3 py-2 text-sm">
+                <p className="font-semibold text-foreground">ReadyMode: old applicants</p>
+                <p className="text-xs text-muted-foreground">{poolSummary(q.data?.pools).readymode || "Not available"}</p>
+                {q.data?.pools?.readymode_csv_url && (
+                  <a href={q.data.pools.readymode_csv_url} className="mt-2 inline-flex h-9 items-center gap-1.5 rounded-md border border-border px-3 text-sm font-medium text-foreground hover:bg-muted">
+                    <Download className="h-4 w-4" aria-hidden /> Download CSV
+                  </a>
+                )}
+              </li>
+              <li className="rounded-lg border border-border px-3 py-2 text-sm">
+                <p className="font-semibold text-foreground">Win-back: former agents</p>
+                <p className="text-xs text-muted-foreground">{poolSummary(q.data?.pools).winback || "Not available"}</p>
+                {q.data?.pools?.winback_csv_url && (
+                  <a href={q.data.pools.winback_csv_url} className="mt-2 inline-flex h-9 items-center gap-1.5 rounded-md border border-border px-3 text-sm font-medium text-foreground hover:bg-muted">
+                    <Download className="h-4 w-4" aria-hidden /> Download CSV
+                  </a>
+                )}
+              </li>
+            </ul>
           </section>
 
           {/* Conversions per platform, 30 days */}

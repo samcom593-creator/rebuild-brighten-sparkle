@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  bucketCounts, filterInbox, groupDrafts, laneLink, laneStatus, profileHref, replyRate, silentFor, sortLanes,
+  bucketCounts, filterInbox, groupDrafts, laneLink, laneStatus, poolSummary, profileHref, replyRate, silentFor, sortLanes,
   type DraftRow, type FunnelRow, type InboxRow, type LaneRow,
 } from "@/lib/socialCommand";
 
@@ -84,5 +84,14 @@ describe("funnel and lanes", () => {
     });
     const g = groupDrafts([d("tiktok"), d("yt"), d("tiktok"), d("instagram"), d("tt"), d("youtube"), d("snap")]);
     expect(g.map((x) => [x.platform, x.drafts.length])).toEqual([["tiktok", 3], ["youtube", 2], ["instagram", 1], ["snapchat", 1]]);
+  });
+});
+
+describe("call lists", () => {
+  it("summarises the two pools in one line each and says nothing when absent", () => {
+    const p = poolSummary({ readymode_leads: 664, readymode_licensed: 75, readymode_never_contacted: 2, winback_agents: 66, winback_with_phone: 51, readymode_csv_url: "https://x/csv?list=readymode&k=1", winback_csv_url: null });
+    expect(p.readymode).toBe("664 old applicants with a dialable number, 75 already licensed, 2 never called");
+    expect(p.winback).toBe("66 former agents worth a call, 51 with a phone on file");
+    expect(poolSummary(null)).toEqual({ readymode: "", winback: "" });
   });
 });

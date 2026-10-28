@@ -43,6 +43,8 @@ const PARTNER_URL    = "https://kingofsales-brand.vercel.app/#f-collab";
 // Someone who wants a POLICY (a client, not a recruit) — the help-center intake
 // is the no-lost-leads pipeline Sam works personally.
 import { describeNtfyRefusal } from "../_shared/ntfy-post.ts";
+import { AGENT_SUPPORT_RE, BOT_CHECK_RE, LANE_REPLIES, NEED_HELP_RE, VENDOR_RE, WINBACK_RE } from "../_shared/brain-lanes.ts";
+import { escapeLikePattern } from "../_shared/like-escape.ts";
 
 const NTFY_TOPIC = "https://ntfy.sh/sams-agent-yrkv9kbqp9e987nb";
 
@@ -224,7 +226,7 @@ const MONEY_PATTERNS = [
   /\b(make money|money can (i|you|we) make|how much (money )?(can|do|could|would) (i|you|we|someone) (make|earn)|earn(ing)?s?\b|income|get paid|commission)\b/i,
 ];
 
-type ReplyPath = "license_explain" | "trust" | "why_us" | "licensed" | "licensed_team" | "fitness" | "apply" | "partnership" | "assistant" | "rentals" | "mentorship" | "route" | "license_q" | "license_yes" | "license_no" | "llm" | "props";
+type ReplyPath = "license_explain" | "trust" | "why_us" | "licensed" | "licensed_team" | "fitness" | "apply" | "partnership" | "assistant" | "rentals" | "mentorship" | "route" | "license_q" | "license_yes" | "license_no" | "llm" | "props" | "winback" | "agent_support";
 
 interface Classification {
   intent: string;
@@ -260,8 +262,10 @@ function classify(body: string): Classification {
     if (TEAM_PATTERNS.some((r) => r.test(t)))         return { intent: "licensed_team", lead_score: 99, reply_path: "licensed_team", urgent: true };
     return { intent: "licensed", lead_score: 95, reply_path: "licensed", urgent: true };
   }
-  if (PARTNER_PATTERNS.some((r) => r.test(t)))        return { intent: "partnership", lead_score: 50, reply_path: "partnership", urgent: false };
-  if (ASSISTANT_ASK_PATTERNS.some((r) => r.test(t)))  return { intent: "assistant_ask", lead_score: 40, reply_path: "assistant", urgent: false };
+  // Sam 2026-10-28 ("bring back as many agents as possible"): a former agent asking to come back books like a licensed lead.
+  if (WINBACK_RE.test(t))                             return { intent: "winback", lead_score: 90, reply_path: "winback", urgent: false };
+  if (PARTNER_PATTERNS.some((r) => r.test(t)) || VENDOR_RE.test(t)) return { intent: "partnership", lead_score: 50, reply_path: "partnership", urgent: false };
+  if (ASSISTANT_ASK_PATTERNS.some((r) => r.test(t)) || BOT_CHECK_RE.test(t)) return { intent: "assistant_ask", lead_score: 40, reply_path: "assistant", urgent: false };
   if (HOUSING_RE.test(t))                             return { intent: "casual", lead_score: 5, reply_path: null, urgent: false };
   if (RENTALS_PATTERNS.some((r) => r.test(t)))        return { intent: "rentals", lead_score: 45, reply_path: "rentals", urgent: false };
   if (FITNESS_PATTERNS.some((r) => r.test(t)))        return { intent: "fitness", lead_score: 55, reply_path: "fitness", urgent: false };
@@ -269,7 +273,7 @@ function classify(body: string): Classification {
   // Sam 2026-09-27: NOBODY buys a policy through his DMs. "life insurance",
   // "policy", "insurance" in any form = wants to join the team. There is no
   // policy-buyer lane and no Policy Help Center link in this brain. Ever.
-  if (RECRUIT_STRONG_PATTERNS.some((r) => r.test(t)) || MONEY_PATTERNS.some((r) => r.test(t)) || INSURANCE_MENTION.test(t)) {
+  if (RECRUIT_STRONG_PATTERNS.some((r) => r.test(t)) || MONEY_PATTERNS.some((r) => r.test(t)) || INSURANCE_MENTION.test(t) || NEED_HELP_RE.test(t)) {
     return { intent: "opportunity", lead_score: 60, reply_path: "apply", urgent: false };
   }
   // Someone saying YES to the pitch ("interested", "tell me more", "I'm down") —
@@ -296,6 +300,9 @@ function replyFor(path: ReplyPath, rawSource: string, _firstName?: string): stri
     // need to sell life insurance", ASK_PHONE_RE needs "what's your number".
     licensed:      `say less, you're licensed? let's talk today. what's your number?`,
     licensed_team: `licensed with a team? that's the call i want. what's your number?`,
+    // Sam 2026-10-28: former agents come back through a call; an active agent's question is his, the bot only acks.
+    winback:       LANE_REPLIES.winback,
+    agent_support: LANE_REPLIES.agent_support,
     license_q:     `say less 🙏 quick one, you got your life insurance license already or nah?`,
     license_yes:   `perfect, let's talk today. what's your number?`,
     license_no:    `all good, that's the easy part, i get you licensed. ${L(apply, "tap the apply link in my bio")}. or drop your email and i'll send it to you`,
@@ -331,7 +338,7 @@ const NO_PATTERNS = [
   /^\s*(no|nope|nah|not yet|negative)\b/i,
   /\b(no i (don'?t|dont)|i (don'?t|dont) have|haven'?t|havent|not licensed|no licen[cs]e|working on it|studying|in progress|taking the (test|exam)|need to get)\b/i,
 ];
-const BUSINESS_INTENTS = new Set(["opportunity", "licensed", "licensed_team", "fitness", "mentorship", "rentals", "partnership", "assistant_ask", "followup"]);
+const BUSINESS_INTENTS = new Set(["opportunity", "licensed", "licensed_team", "fitness", "mentorship", "rentals", "partnership", "assistant_ask", "followup", "winback", "agent_support"]);
 const PHONE_RE = /(\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}\b/;
 const ASK_PHONE_RE = /what'?s your number/i;
 const ASK_TIME_RE = /when'?s good|what time/i;
@@ -597,6 +604,7 @@ async function llmReply(history: HistoryRow[], text: string, st: ReturnType<type
     "Nobody buys a policy through his DMs. Anyone who mentions life insurance, a policy, or insurance in any form wants to JOIN THE TEAM. Never offer a quote, never mention buying coverage.",
     "Style: first person as Sam. Only if asked point-blank whether this is a bot: 'it's me and my assistant on here, i read everything'. Every reply ends with a question unless a call is already booked.",
     "Never invent prices, commission numbers, dates, or guarantees. If you don't know, say you'll go over it on the call.",
+    "A former agent who wants back on the team: 'say less, let's get you back on. what's your number?'. An agent already on the team asking about their contract, carriers, pay or portal: 'gotchu, let me check and get right back to you' and nothing else; Sam answers those himself.",
     "When a link fits the question, include exactly one of these:",
     `- joining the team / getting licensed / applying: ${applyUrl(rawSource)}`,
     "- already licensed: ask for their number so Sam can call them",
@@ -821,6 +829,21 @@ function commentFlavor(text: string): string {
   return "";
 }
 
+// Sam 2026-10-28: an active agent's question ("get jacks contract", "my carrier appointment") is his to
+// answer, not the bot's. ManyChat hands us the subscriber id as the handle, so the match is on the display
+// name against profiles.full_name, joined to an ACTIVE agents row. Pattern-escaped (MP-277): a name is user input.
+async function isKnownAgent(senderName: string | null): Promise<boolean> {
+  const n = (senderName ?? "").trim();
+  if (n.length < 3) return false;
+  try {
+    const { data } = await supabase.from("profiles").select("user_id").ilike("full_name", escapeLikePattern(n)).limit(5);
+    const ids = ((data ?? []) as Array<{ user_id: string | null }>).map((r) => r.user_id).filter(Boolean) as string[];
+    if (!ids.length) return false;
+    const { data: ag } = await supabase.from("agents").select("id").in("user_id", ids).eq("status", "active").limit(1);
+    return !!(ag && ag.length);
+  } catch (e) { console.error("[manychat-webhook] isKnownAgent failed", e); return false; }
+}
+
 async function decide(text: string, rawSource: string, firstName: string | undefined, externalId: string | null, handle: string | null, channel: string, senderName: string | null): Promise<Decision> {
   const base = classify(text);
   if (base.intent === "spam" || base.intent === "not_interested") return { ...base, auto_reply: null };
@@ -840,6 +863,22 @@ async function decide(text: string, rawSource: string, firstName: string | undef
   const firstInbound = history.find((h) => h.direction === "inbound")?.body?.slice(0, 120);
   const who = [senderName, handle].filter(Boolean).join(" ") || externalId || "someone";
   const silent = (intent: string): Decision => ({ ...base, intent, reply_path: null, auto_reply: null });
+
+  // Sam 2026-10-28. Two lanes that are his, not the funnel's:
+  //  - a former agent wanting back on: one line in his voice, number, and his phone gets a ping (win-back);
+  //  - an active agent asking about contracting / carriers / pay / portal: one ack, then page Sam and step
+  //    back for 6h so the bot never fakes an answer about someone's money.
+  if (base.intent === "winback") {
+    return { ...base, auto_reply: replyFor("winback", rawSource, firstName), notify: `Win-back: ${who} wants back on the team` };
+  }
+  if (AGENT_SUPPORT_RE.test(text) && !LICENSED_PATTERNS.some((r) => r.test(text)) && !RECRUIT_STRONG_PATTERNS.some((r) => r.test(text))) {
+    const strong = /\b(my (contract|contracting|carrier|carriers|npn|writing number|release|upline|portal|deals?|policies|policy)|release (letter|form)|(jack|jr|kj|jack'?s|jr'?s|kj'?s) (contract|contracts|release|downline)|contracting (link|form|portal|packet)|appointed with|carrier (appointment|contracting|appointments)|(didn'?t|did not|not|haven'?t|havent) (get|got|been|getting) paid|wasn'?t paid)\b/i.test(text);
+    if (strong || await isKnownAgent(senderName)) {
+      const ackRecently = history.some((h) => h.direction === "outbound" && h.intent === "agent_support" && Date.now() - new Date(h.created_at).getTime() < 6 * 3600_000);
+      return { intent: "agent_support", lead_score: 30, reply_path: ackRecently ? null : "agent_support", urgent: false,
+        auto_reply: ackRecently ? null : replyFor("agent_support", rawSource, firstName), notify: ackRecently ? null : `Agent needs you: ${who}` };
+    }
+  }
 
   // 0a) They asked what the license is (or, with the gate open, asked anything
   //     that isn't yes/no): explain it and start the licensing path. Tyler's
@@ -1004,9 +1043,17 @@ async function decide(text: string, rawSource: string, firstName: string | undef
   // three such turns); a thread Sam has typed in is his conversation, not the bot's.
   const humanHere = history.some((h) => h.intent === "sam_manual" || h.intent === "sam_thread");
   const casualTurns = history.filter((h) => h.direction === "outbound" && h.intent === "casual").length;
-  if (!humanHere && casualTurns < 3) {
+  const saidBefore = (line: string) => history.some((h) => h.direction === "outbound" && (h.body ?? "").trim() === line);
+  if (!humanHere && casualTurns < 5) {
     const llm = await llmReply(history, text, st, rawSource, "casual");
     if (llm) return { ...base, intent: "casual", lead_score: 15, reply_path: "llm", urgent: false, auto_reply: llm };
+    // Sam 2026-10-28: "take the stress of responding to DMs off me". A question or a real sentence never
+    // gets silence; one steer, once, and only pure acks stay quiet.
+    if ((/\?/.test(text) || text.trim().split(/\s+/).length >= 4) && !isAck(text) && !saidBefore(LANE_REPLIES.casual_fallback)) {
+      return { ...base, intent: "casual", lead_score: 15, reply_path: "llm", urgent: false, auto_reply: LANE_REPLIES.casual_fallback };
+    }
+  } else if (!humanHere && casualTurns >= 5 && !saidBefore(LANE_REPLIES.casual_close)) {
+    return { ...base, intent: "casual", lead_score: 15, reply_path: "llm", urgent: false, auto_reply: LANE_REPLIES.casual_close };
   }
   return { ...base, intent: "casual", reply_path: null, auto_reply: null };
 }
@@ -1086,7 +1133,13 @@ Deno.serve(async (req) => {
   let body: Record<string, unknown> = {};
   try { body = await req.json(); } catch (_e) { body = {}; }
   const bodySecret = (body?.secret as string) ?? "";
-  if (headerSecret !== secret && bodySecret !== secret) {
+  // dry_run (MP-308 wave 2, 2026-10-28): apex-doctor probes the brain with canned messages and reads the
+  // decision back with no send, no row and no page. The bot token is the credential for that mode only.
+  const dryRun = body?.dry_run === true;
+  const botTok = Deno.env.get("APEX_BOT_TOKEN") ?? "";
+  const bearerTok = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
+  const secretOk = headerSecret === secret || bodySecret === secret;
+  if (!secretOk && !(dryRun && botTok && bearerTok === botTok)) {
     return new Response(JSON.stringify({ error: "forbidden" }), {
       status: 403,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -1138,7 +1191,7 @@ Deno.serve(async (req) => {
     const businessAsk = !!bc.reply_path && ["apply", "licensed", "licensed_team", "fitness", "mentorship", "rentals", "partnership", "license_explain"].includes(bc.reply_path) &&
       /\?|\b(how|what|where|when|can i|could i|do i|i want|i need|interested|sign me up|put me on|teach me|licen[cs]\w*)\b/i.test(text);
     if (manual?.length && !businessAsk) {
-      try { await supabase.from("inbox_messages").insert({ source, direction: "inbound", external_id: subscriberId, sender_handle: senderHandle, body: text, intent: "sam_thread", auto_replied: false, raw_payload: { muted: "sam_manual" } }); } catch (e) { console.error("[manychat-webhook] muted inbound log failed", e); }
+      if (!dryRun) try { await supabase.from("inbox_messages").insert({ source, direction: "inbound", external_id: subscriberId, sender_handle: senderHandle, body: text, intent: "sam_thread", auto_replied: false, raw_payload: { muted: "sam_manual" } }); } catch (e) { console.error("[manychat-webhook] muted inbound log failed", e); }
       return new Response(JSON.stringify({ ok: true, intent: "sam_thread", auto_reply: null, reply_path: null, muted: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
   }
@@ -1235,9 +1288,12 @@ Deno.serve(async (req) => {
   if (isTest) { decision.urgent = false; decision.email = null; decision.notify = null; }
   // Two emails per licensed lead at most: "licensed" and "call booked". The rest is phone push only.
   if (decision.email && !/^(LICENSED lead|CALL BOOKED)/.test(decision.email.subject)) decision.email = null;
+  if (dryRun) {
+    return new Response(JSON.stringify({ ok: true, dry_run: true, intent: decision.intent, lead_score: decision.lead_score, reply_path: decision.reply_path, urgent: decision.urgent, auto_reply: decision.auto_reply, public_reply: decision.public_reply ?? null, notify: decision.notify ?? null, booking: decision.booking ?? null }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
   const { intent, lead_score, reply_path, urgent, auto_reply, alert_text, notify } = decision;
   if (decision.email) await emailSam(decision.email.subject, decision.email.body);
-  const shouldTrackLead = intent !== "spam" && intent !== "not_interested" && lead_score >= 20;
+  const shouldTrackLead = intent !== "spam" && intent !== "not_interested" && intent !== "agent_support" && intent !== "winback" && lead_score >= 20;
   const sessionId = `${source}:${subscriberId ?? senderHandle ?? crypto.randomUUID()}`;
   let partialApplicationId: string | null = null;
 

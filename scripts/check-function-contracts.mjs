@@ -310,6 +310,9 @@ const PUBLIC_ALLOWLIST = new Set([
   // contracting-sheet-csv (2026-10-14): Google IMPORTDATA sends no headers; the handler gates on the 64-hex feed key
   //   from system_settings (`key !== expected` → 403) before touching the service-role client.
   "contracting-sheet-csv",
+  // social-lead-csv (2026-10-28, MP-308 wave 2): the two call-list downloads; same feed-key gate as
+  //   contracting-sheet-csv (`key !== expected` → 403) before the service-role client does anything.
+  "social-lead-csv",
   // MP-415 — the eight that turned this bucket red on 2026-09-30, each
   // classified in PUBLIC_CONTRACT below. Seven gate their caller in code and
   // the detector confirms it on every run; brand-collab is a public form. They
@@ -564,6 +567,7 @@ const PUBLIC_CONTRACT = {
   "slack-announce": "in_handler_gate",
   "contracting-sheet-sync": "in_handler_gate",
   "contracting-sheet-csv": "in_handler_gate",
+  "social-lead-csv": "in_handler_gate",
   // cron-newhire-portal-login + cron-inbound-brain-health: x-cron-secret
   // compared against the environment as the handler's first statement, probed
   // live 401 on a bare POST and on a wrong secret (MP-413).

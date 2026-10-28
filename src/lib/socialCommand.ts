@@ -60,9 +60,20 @@ export interface DraftRow {
   hook: string | null; cta: string | null; status: string; approved_at: string | null; shipped_at: string | null; notes: string | null; created_at: string;
 }
 
+/** The two call lists the brain keeps warm for the dialer: old applicants for ReadyMode and former agents to bring back. */
+export interface PoolState {
+  readymode_leads: number;
+  readymode_licensed: number;
+  readymode_never_contacted: number;
+  winback_agents: number;
+  winback_with_phone: number;
+  readymode_csv_url: string | null;
+  winback_csv_url: string | null;
+}
+
 export interface CommandCenterPayload {
   inbox: InboxRow[]; funnel: FunnelRow[]; pulls: PullRow[]; lanes: LaneRow[]; drafts: DraftRow[];
-  alarm?: AlarmState | null; youtube_reconnect_url?: string | null; generated_at: string;
+  alarm?: AlarmState | null; pools?: PoolState | null; youtube_reconnect_url?: string | null; generated_at: string;
 }
 
 export const SOCIAL_COMMAND_KEY = "social-command-center";
@@ -177,6 +188,15 @@ export function groupDrafts(drafts: DraftRow[]): { platform: string; drafts: Dra
   return [...m.entries()]
     .map(([platform, list]) => ({ platform, drafts: list }))
     .sort((a, b) => b.drafts.length - a.drafts.length || a.platform.localeCompare(b.platform));
+}
+
+/** One line per list: "664 old applicants, 75 already licensed, 2 never called". */
+export function poolSummary(p: PoolState | null | undefined): { readymode: string; winback: string } {
+  if (!p) return { readymode: "", winback: "" };
+  return {
+    readymode: `${num(p.readymode_leads)} old applicants with a dialable number, ${num(p.readymode_licensed)} already licensed, ${num(p.readymode_never_contacted)} never called`,
+    winback: `${num(p.winback_agents)} former agents worth a call, ${num(p.winback_with_phone)} with a phone on file`,
+  };
 }
 
 export function fmtWhen(iso: string | null | undefined): string {

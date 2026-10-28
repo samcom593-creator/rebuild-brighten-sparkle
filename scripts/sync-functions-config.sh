@@ -126,6 +126,8 @@ PUBLIC_ALLOWLIST=(
   # pg_cron caller presents the vault bot token, which the gateway would refuse before the handler ran.
   "contracting-sheet-sync"
   "contracting-sheet-csv"
+  # social-lead-csv (MP-308 wave 2): same contract, feed key social_lead_feed_key; a download link carries no JWT.
+  "social-lead-csv"
   # MP-415 — the eight classified in check-function-contracts.mjs's
   # PUBLIC_CONTRACT. Seven refuse an unproven caller in code (verified against
   # scripts/lib/in-handler-gate.mjs on every run); brand-collab is the public

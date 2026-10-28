@@ -797,3 +797,8 @@ verify_jwt = false
 # demand a JWT; the handler refuses anything without the 64-hex feed key held in system_settings.
 [functions.contracting-sheet-csv]
 verify_jwt = false
+
+# social-lead-csv (2026-10-28, MP-308 wave 2): a download link on /dashboard/social-command, so the browser sends no JWT;
+# the handler refuses anything without the 64-hex feed key held in system_settings (social_lead_feed_key).
+[functions.social-lead-csv]
+verify_jwt = false

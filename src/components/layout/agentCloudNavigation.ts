@@ -27,7 +27,7 @@ import { Instagram,
   UserPlus,
   Users,
   WalletCards,
-  Mic, Milestone, Send, PhoneCall } from "lucide-react";
+  Mic, Milestone, Send, PhoneCall, Radar } from "lucide-react";
 
 import type { AccountMode } from "@/hooks/useAuth";
 
@@ -161,6 +161,9 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
       // managers; /dashboard/recruiting adds recruiters; /admin/invite-links
       // admits managers only. A plain agent or agency owner gets the referral
       // form, which is open to every signed-in user.
+      // Social Command Center (MP-308, 2026-10-28): every platform's messages ranked, the content queue, what
+      // pulls applications, and the lane alarm. Sam + Aisha (can_view_sold_calls), like Sold Calls.
+      { label: "Social Command", href: "/dashboard/social-command", icon: Radar, grant: "sold_calls" },
       { label: "Recruit Stages", href: "/dashboard/recruits", icon: Milestone, modes: ["manager", "va", "va_manager"] },
       { label: "Recruit Pipeline", href: "/dashboard/recruiting", icon: FolderKanban, modes: ["manager", "recruiter", "va", "va_manager"] },
       { label: "Invite an agent", href: "/admin/invite-links", icon: UserPlus, modes: ["manager"] },

@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "Oct 28, 2026",
+    label: "Social Command Center: every platform's messages ranked hottest first, the content queue with one-tap approve, conversions per platform, what pulls applications, and an alarm that pages Sam when a lane dies.",
+    detail: "MP-308. One read (social_command_center, Sam + Aisha only) behind /dashboard/social-command: Instagram DMs, TikTok comments and YouTube comments as one row per person in six buckets (hot = business intent nobody answered); the 30-day funnel per platform (posts, views, people who wrote in, replied, abandoned, applications, licensed, booked); what pulled applications in 90 days by campaign and landing page; the content queue with Approve / Archive / Reject. The never-again layer: v_social_lane_health grades 16 lanes (YouTube OAuth refresh, Instagram token expiry, Instagram webhook, ManyChat DM inbound, DM replies, TikTok ingest, Metricool, content stats) with thresholds set from the measured max gap while each lane was alive; fn_social_lane_alert runs every 30 minutes on pg_cron, pages Sam once when a page-tier lane dies and once a day until fixed, each page carrying the fix, and writes its own receipt so apex-doctor Check #104 grades the alarm on the alarm's own log. Measured when it shipped: YouTube's refresh token died Oct 5 (Testing-mode OAuth app, 7-day expiry) while pg_cron recorded 144/144 'succeeded'; TikTok ingest ran one week (813 comments) and stopped; Metricool wrote empty rows since Aug 25.",
+    commit: "MP-308-SOCIAL-COMMAND",
+  },
+  {
+    ts: "Oct 28, 2026",
     label: "Instagram command center: who is waiting, who to call, what is winning, all graded on real deliveries.",
     detail: "MP-305 Wave 4. /dashboard/inbox/instagram now reads one RPC (fn_ig_dashboard) instead of a table frozen since Sep 28: account status (token, Meta link restriction, bot last delivered, follow-up cron), today/7d/30d numbers (people in, replied in 24h, waiting on us, licensed leads, calls booked, applicants), action queues with one-tap Call/Text/Open on IG, winning reels with comment-keyword attribution, the bot lines that get replies, and the last 60 threads with a next action each.",
     commit: "MP-305-W4-IG-COMMAND-CENTER",

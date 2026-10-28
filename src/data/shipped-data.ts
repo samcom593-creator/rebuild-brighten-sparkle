@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "Oct 28, 2026",
+    label: "The DM brain now answers everyone it should: former agents get a call back, agents' contracting questions reach Sam, pitches get the partnership link, and no real DM is left on read. Two call lists (old applicants for ReadyMode, former agents to bring back) download from the Social Command Center.",
+    detail: "MP-308 wave 2, measured first: business DMs were answered inside 10 minutes, but 'How bro I'm 18 and I need help' (a recruit), 'let me know when you can get jacks contract' (an agent), a virtual-assistant pitch and 'Bro got ai' all fell to casual and silence; the 1,028 'failed' sends were comment private-replies Meta refuses after 24h, already settled dead. New lanes in _shared/brain-lanes.ts (win-back, agent support, vendor, bot check, need-help) with 6 tests; casual threads get one steer instead of silence; dry_run mode so apex-doctor Check #105 can grade the deployed brain on ten canned messages. Lane instagram_brain_answers pages Sam if a business DM waits 15 minutes. v_readymode_lead_pool (664 dialable old applicants, 75 already licensed) and v_agent_winback_pool (66 former agents) as CSV behind a feed key. 870 unapproved drafts older than 14 days archived, weekly from now on.",
+    commit: "MP-308-W2-BRAIN-LANES",
+  },
+  {
+    ts: "Oct 28, 2026",
     label: "Managers can open the Instagram command center the sidebar already offered them.",
     detail: "The Grow sidebar showed Instagram to manager mode while the route admitted admins only, so a manager (Aisha) got a refusal page; fn_ig_dashboard itself admits managers. Route now matches the RPC. This was the one failing unit test on main (agentCloudNavigationGuards: sidebar items only reach routes their audience can open).",
     commit: "MP-305-W4-MANAGER-ROUTE",

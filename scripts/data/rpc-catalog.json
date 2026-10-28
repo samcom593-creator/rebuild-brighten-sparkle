@@ -2215,6 +2215,18 @@
         "raw": ""
       }
     ],
+    "csv_cell": [
+      {
+        "all": [
+          "t"
+        ],
+        "required": [
+          "t"
+        ],
+        "unnamed": false,
+        "raw": "t text"
+      }
+    ],
     "current_agent_id": [
       {
         "all": [],
@@ -4858,6 +4870,22 @@
       }
     ],
     "fn_sms_receipt_fix_anchor": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_social_drafts_archive_stale": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_social_lane_alert": [
       {
         "all": [],
         "required": [],
@@ -8259,6 +8287,57 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "social_command_center": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "social_draft_set_status": [
+      {
+        "all": [
+          "p_id",
+          "p_note",
+          "p_status"
+        ],
+        "required": [
+          "p_id",
+          "p_status"
+        ],
+        "unnamed": false,
+        "raw": "p_id bigint, p_status text, p_note text DEFAULT NULL::text"
+      }
+    ],
+    "social_lead_csv": [
+      {
+        "all": [
+          "p_list"
+        ],
+        "required": [
+          "p_list"
+        ],
+        "unnamed": false,
+        "raw": "p_list text"
+      }
+    ],
+    "social_source_of": [
+      {
+        "all": [
+          "landing",
+          "referrer",
+          "utm"
+        ],
+        "required": [
+          "landing",
+          "referrer",
+          "utm"
+        ],
+        "unnamed": false,
+        "raw": "utm text, landing text, referrer text"
       }
     ],
     "sold_call_set_status": [

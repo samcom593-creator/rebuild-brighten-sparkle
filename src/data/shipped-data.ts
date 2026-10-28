@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "Oct 28, 2026",
+    label: "Managers can open the Instagram command center the sidebar already offered them.",
+    detail: "The Grow sidebar showed Instagram to manager mode while the route admitted admins only, so a manager (Aisha) got a refusal page; fn_ig_dashboard itself admits managers. Route now matches the RPC. This was the one failing unit test on main (agentCloudNavigationGuards: sidebar items only reach routes their audience can open).",
+    commit: "MP-305-W4-MANAGER-ROUTE",
+  },
+  {
+    ts: "Oct 28, 2026",
     label: "Social Command Center: every platform's messages ranked hottest first, the content queue with one-tap approve, conversions per platform, what pulls applications, and an alarm that pages Sam when a lane dies.",
     detail: "MP-308. One read (social_command_center, Sam + Aisha only) behind /dashboard/social-command: Instagram DMs, TikTok comments and YouTube comments as one row per person in six buckets (hot = business intent nobody answered); the 30-day funnel per platform (posts, views, people who wrote in, replied, abandoned, applications, licensed, booked); what pulled applications in 90 days by campaign and landing page; the content queue with Approve / Archive / Reject. The never-again layer: v_social_lane_health grades 16 lanes (YouTube OAuth refresh, Instagram token expiry, Instagram webhook, ManyChat DM inbound, DM replies, TikTok ingest, Metricool, content stats) with thresholds set from the measured max gap while each lane was alive; fn_social_lane_alert runs every 30 minutes on pg_cron, pages Sam once when a page-tier lane dies and once a day until fixed, each page carrying the fix, and writes its own receipt so apex-doctor Check #104 grades the alarm on the alarm's own log. Measured when it shipped: YouTube's refresh token died Oct 5 (Testing-mode OAuth app, 7-day expiry) while pg_cron recorded 144/144 'succeeded'; TikTok ingest ran one week (813 comments) and stopped; Metricool wrote empty rows since Aug 25.",
     commit: "MP-308-SOCIAL-COMMAND",

@@ -163,3 +163,45 @@ export function linkLifetimeTone(lifetime: string | null | undefined): Tone {
     default: return "slate";
   }
 }
+
+/**
+ * The Instagram desk (OVERHAUL-instagram): a row's state and the facts beside it. Act now is hot
+ * (a number to call, a window about to close, told "locked in" with nothing booked, a no-show);
+ * waiting on us is warm; a booked call is cool, like Booked everywhere; done, showed, applied and
+ * licensed are good; hired is the gold moment; your own thread is royal; small talk is slate.
+ */
+export function igDeskTone(state: string | null | undefined): Tone {
+  switch (norm(state)) {
+    case "call":
+    case "closing":
+    case "no_show":
+    case "locked_in_gap":
+    case "refused":
+      return "hot";
+    case "reply":
+    case "tag_it":
+    case "closed":
+    case "did_they_show":
+    case "wants_in":
+    case "following_up":
+    case "gave_number":
+    case "queued":
+      return "warm";
+    case "booked":
+    case "booked_before":
+    case "gave_email":
+      return "cool";
+    case "handled":
+    case "showed":
+    case "applied":
+    case "licensed":
+    case "delivered":
+      return "good";
+    case "hired":
+      return "gold";
+    case "your_thread":
+      return "royal";
+    default:
+      return "slate";
+  }
+}

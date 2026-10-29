@@ -1,17 +1,20 @@
-// Zone 1: the one list. Up to five ranked business rows, '+n more' for the rest, and two collapsed
-// disclosures underneath (everyone else, later). Empty = good news, with a next move.
-import { useState } from "react";
+// The Needs you tab (OVERHAUL-instagram, 2026-10-28): the one person to deal with first, as a big card
+// with the screen's only gold button, then everyone else waiting in the server's order, every card
+// with its whole story. Small talk and snoozed threads sit folded underneath, counted, one tap away.
+// Empty is good news, with the next move.
+import { useState, type ReactNode } from "react";
 import { CheckCircle2, ChevronDown } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { RevealList } from "@/components/ui/delight/Reveal";
 import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
 import { BUTTON, EMPTY, SECTION } from "./igCopy";
 import { IgRow, type IgRowActionExtra, type IgRowActionKind } from "./IgRow";
 import type { IgRow as IgRowData } from "./igTypes";
 
-export const NEEDS_VISIBLE = 5;
+/** Cards shown before "Show more" on each list: a long list never renders all at once. */
+export const PAGE_SIZE = 20;
 
 export interface IgNeedsYouProps {
   needs: IgRowData[];
@@ -19,86 +22,105 @@ export interface IgNeedsYouProps {
   later: IgRowData[];
   humanAgentSupported: boolean;
   onAction: (kind: IgRowActionKind, row: IgRowData, extra?: IgRowActionExtra) => void;
-  onMore: () => void;
   now: number;
+  /** The lever card, placed under the list. */
+  footer?: ReactNode;
 }
 
-function Disclosure({ label, children, open, onOpenChange }: { label: string; children: React.ReactNode; open: boolean; onOpenChange: (v: boolean) => void }) {
+function Fold({ label, hint, children, open, onOpenChange }: { label: string; hint: string; children: ReactNode; open: boolean; onOpenChange: (v: boolean) => void }) {
   return (
-    <Collapsible open={open} onOpenChange={onOpenChange}>
+    <Collapsible open={open} onOpenChange={onOpenChange} className="rounded-xl border border-border bg-card">
       <CollapsibleTrigger asChild>
-        <Button variant="ghost" className="h-11 w-full justify-start px-2 text-sm text-muted-foreground sm:h-9">
-          <ChevronDown className={cn("h-4 w-4 transition-transform", open && "rotate-180")} />
-          {label}
-        </Button>
+        <button
+          type="button"
+          className="flex min-h-14 w-full items-center gap-3 rounded-xl px-4 py-3 text-left focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
+        >
+          <span className="min-w-0 flex-1">
+            <span className="block text-base font-semibold text-foreground">{label}</span>
+            <span className="block text-[13px] leading-[18px] text-muted-foreground">{hint}</span>
+          </span>
+          <ChevronDown className={cn("h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-200", open && "rotate-180")} aria-hidden />
+        </button>
       </CollapsibleTrigger>
-      <CollapsibleContent>{children}</CollapsibleContent>
+      <CollapsibleContent className="border-t border-border px-3 py-3">{children}</CollapsibleContent>
     </Collapsible>
   );
 }
 
-export function IgNeedsYou({ needs, everyone, later, humanAgentSupported, onAction, onMore, now }: IgNeedsYouProps) {
-  const [everyoneOpen, setEveryoneOpen] = useState(false);
+function Paged({ rows, render }: { rows: IgRowData[]; render: (row: IgRowData) => ReactNode }) {
+  const [shown, setShown] = useState(PAGE_SIZE);
+  const rest = rows.length - shown;
+  return (
+    <>
+      <RevealList as="ul" className="space-y-3">
+        {rows.slice(0, shown).map((row) => <li key={row.external_id}>{render(row)}</li>)}
+      </RevealList>
+      {rest > 0 ? (
+        <Button variant="outline" className="mt-3 h-11 w-full" onClick={() => setShown((n) => n + PAGE_SIZE)}>
+          {BUTTON.showMore(Math.min(PAGE_SIZE, rest))}
+        </Button>
+      ) : null}
+    </>
+  );
+}
+
+export function IgNeedsYou({ needs, everyone, later, humanAgentSupported, onAction, now, footer }: IgNeedsYouProps) {
+  const [chattingOpen, setChattingOpen] = useState(false);
   const [laterOpen, setLaterOpen] = useState(false);
-  const visible = needs.slice(0, NEEDS_VISIBLE);
-  const rest = needs.length - visible.length;
+  const [first, ...rest] = needs;
 
   return (
-    <section aria-labelledby="ig-needs-heading" className="space-y-2">
-      <div className="flex items-center justify-between gap-2">
-        <h2 id="ig-needs-heading" className="flex items-center gap-2 text-sm font-semibold tracking-tight">
-          {SECTION.needsYou}
-          <Badge variant="secondary" className="tabular-nums">{needs.length}</Badge>
-        </h2>
-        {rest > 0 && (
-          <Button variant="ghost" className="h-9 px-2 text-sm text-muted-foreground" onClick={onMore}>
-            {BUTTON.nMore(rest)}
-          </Button>
+    <div className="space-y-6">
+      <section aria-labelledby="ig-needs-heading" className="space-y-3 scroll-mt-32">
+        {first ? (
+          <>
+            <div className="flex items-baseline justify-between gap-2">
+              <h2 id="ig-needs-heading" className="text-xl font-bold text-foreground">{SECTION.upNext}</h2>
+              <span className="text-sm tabular-nums text-muted-foreground">1 of {needs.length}</span>
+            </div>
+            <IgRow row={first} context="list" humanAgentSupported={humanAgentSupported} onAction={onAction} now={now} featured />
+          </>
+        ) : (
+          <>
+            <h2 id="ig-needs-heading" className="sr-only">{SECTION.upNext}</h2>
+            <EmptyState
+              variant="success"
+              icon={<CheckCircle2 className="h-7 w-7" />}
+              title={EMPTY.nobodyWaiting}
+              description={EMPTY.goPost}
+              actions={everyone.length > 0 ? (
+                <Button variant="outline" className="h-11" onClick={() => setChattingOpen(true)}>{BUTTON.seeChatting(everyone.length)}</Button>
+              ) : null}
+            />
+          </>
         )}
-      </div>
+      </section>
 
-      {visible.length === 0 ? (
-        <EmptyState
-          variant="success"
-          icon={<CheckCircle2 className="h-7 w-7" />}
-          title={EMPTY.nobodyWaiting}
-          description={EMPTY.goPost}
-          actions={
-            everyone.length > 0 ? (
-              <Button variant="outline" className="h-11 sm:h-9" onClick={() => setEveryoneOpen(true)}>
-                {BUTTON.seeEveryoneElse}
-              </Button>
-            ) : null
-          }
-        />
-      ) : (
-        <div>
-          {visible.map((row) => (
-            <IgRow key={row.external_id} row={row} context="list" humanAgentSupported={humanAgentSupported} onAction={onAction} now={now} />
-          ))}
-        </div>
-      )}
+      {rest.length > 0 ? (
+        <section aria-labelledby="ig-also-heading" className="space-y-3">
+          <h2 id="ig-also-heading" className="text-xl font-bold text-foreground">{SECTION.alsoWaiting(rest.length)}</h2>
+          <Paged rows={rest} render={(row) => <IgRow row={row} context="list" humanAgentSupported={humanAgentSupported} onAction={onAction} now={now} />} />
+        </section>
+      ) : null}
 
-      <div className="space-y-1 pt-1">
-        <Disclosure label={SECTION.everyoneElse(everyone.length)} open={everyoneOpen} onOpenChange={setEveryoneOpen}>
+      {footer}
+
+      <div className="space-y-3">
+        <Fold label={SECTION.chatting(everyone.length)} hint={SECTION.chattingHint} open={chattingOpen} onOpenChange={setChattingOpen}>
           {everyone.length === 0 ? (
-            <p className="px-2 py-2 text-xs text-muted-foreground">{EMPTY.nobodyHere}</p>
+            <p className="px-1 py-2 text-sm text-muted-foreground">{EMPTY.nobodyHere}</p>
           ) : (
-            everyone.map((row) => (
-              <IgRow key={row.external_id} row={row} context="everyone" humanAgentSupported={humanAgentSupported} onAction={onAction} now={now} />
-            ))
+            <Paged rows={everyone} render={(row) => <IgRow row={row} context="everyone" humanAgentSupported={humanAgentSupported} onAction={onAction} now={now} />} />
           )}
-        </Disclosure>
-        <Disclosure label={SECTION.later(later.length)} open={laterOpen} onOpenChange={setLaterOpen}>
+        </Fold>
+        <Fold label={SECTION.later(later.length)} hint={SECTION.laterHint} open={laterOpen} onOpenChange={setLaterOpen}>
           {later.length === 0 ? (
-            <p className="px-2 py-2 text-xs text-muted-foreground">{EMPTY.nobodyHere}</p>
+            <p className="px-1 py-2 text-sm text-muted-foreground">{EMPTY.nobodyHere}</p>
           ) : (
-            later.map((row) => (
-              <IgRow key={row.external_id} row={row} context="later" humanAgentSupported={humanAgentSupported} onAction={onAction} now={now} />
-            ))
+            <Paged rows={later} render={(row) => <IgRow row={row} context="later" humanAgentSupported={humanAgentSupported} onAction={onAction} now={now} />} />
           )}
-        </Disclosure>
+        </Fold>
       </div>
-    </section>
+    </div>
   );
 }

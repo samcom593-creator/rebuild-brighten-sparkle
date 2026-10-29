@@ -22,6 +22,11 @@ export interface ScoreTile {
   tone?: Tone;
   /** A lucide icon for the bubble beside the label. */
   icon?: ReactNode;
+  /**
+   * Optional comparison printed after the hint ("up from 2"), in its own tone. The words carry the
+   * meaning; the tone only repeats them (OVERHAUL-instagram, 2026-10-28).
+   */
+  trend?: { text: string; tone: Tone };
 }
 
 /**
@@ -62,7 +67,10 @@ export function GrowScoreboard({ label, tiles, notice, className }: { label: str
                 lit ? TONE_CLASS[tone].text : "text-foreground",
               )}
             />
-            <span className="mt-2 block min-h-8 text-[13px] leading-4 text-muted-foreground sm:text-sm sm:leading-[18px]">{t.hint}</span>
+            <span className="mt-2 block min-h-8 text-[13px] leading-4 text-muted-foreground sm:text-sm sm:leading-[18px]">
+              {t.hint}
+              {t.trend ? <>{t.hint ? " · " : null}<span className={cn("font-semibold", TONE_CLASS[t.trend.tone].text)}>{t.trend.text}</span></> : null}
+            </span>
           </>
         );
         // flex-col justify-start: a <button> centres its content vertically, so a tile whose hint

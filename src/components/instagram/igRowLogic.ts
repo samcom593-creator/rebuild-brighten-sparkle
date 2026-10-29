@@ -1,19 +1,19 @@
-// Pure decisions for one IG desk row: the status word's icon, the gold/outline button pair, the
-// line-3 meta and the 'more' menu visibility. Pure so the test pins them without rendering.
+// Pure decisions for one IG desk row: the effective status, the main and second button, and the
+// 'more' menu. Pure so the tests pin them without rendering. The words a row shows (who they are,
+// what they said, what we did, what to do next) live in igStory.ts.
 import type { LucideIcon } from "lucide-react";
 import {
   CalendarCheck, Check, Clock, FileCheck, Hourglass, Lock, MessageCircle, MessagesSquare, Phone, Send, Tag,
 } from "lucide-react";
-import { formatPhoneDisplay } from "@/lib/phone";
-import { META, STATUS_WORD } from "./igCopy";
-import { phoenixDayTime, phoenixTime, shortAge } from "./igFormat";
+import { META } from "./igCopy";
 import type { IgRow, IgRowContext, IgStatusWord } from "./igTypes";
 
 export type IgButtonKind = "call" | "text" | "open_ig" | "send" | "nudge" | "showed" | "no_show" | "done" | "bring_back";
 
+/** `gold` is the row's main action (filled gold only on the one featured row), `outline` the second. */
 export interface IgButtonPair { gold: IgButtonKind; outline: IgButtonKind | null }
 
-/** Business threads only get the converting buttons; everything else gets the app. */
+/** The icon beside each status word. Decorative: the word carries the meaning. */
 export const STATUS_ICON: Record<IgStatusWord, LucideIcon> = {
   call: Phone,
   today: CalendarCheck,
@@ -29,6 +29,7 @@ export const STATUS_ICON: Record<IgStatusWord, LucideIcon> = {
   applied: FileCheck,
 };
 
+/** The handle when it is a real one, else the name, else a plain fallback. Never "Unknown". */
 export function who(row: Pick<IgRow, "handle" | "name">): string {
   const h = (row.handle ?? "").trim();
   if (h && !/^\d+$/.test(h.replace(/^@/, ""))) return h.startsWith("@") ? h : `@${h}`;
@@ -43,9 +44,9 @@ export function isPastUnmarked(row: IgRow, now: number = Date.now()): boolean {
 }
 
 /**
- * The status word the row renders: the server's word, except that a 'today' row whose slot has
- * passed WITH an outcome reads 'booked' (there is nothing left to tap), and a 'tag it' row reads
- * 'closed' until the sender supports HUMAN_AGENT (0 attempts ever; never assumed).
+ * The status the row renders: the server's word, except that a 'today' row whose slot has passed
+ * WITH an outcome reads 'booked' (there is nothing left to tap), and a 'tag it' row reads 'closed'
+ * until the sender supports HUMAN_AGENT (0 attempts ever; never assumed).
  */
 export function effectiveStatus(row: IgRow, humanAgentSupported: boolean, now: number = Date.now()): IgStatusWord {
   if (row.status === "tag_it" && !humanAgentSupported) return "closed";
@@ -54,10 +55,6 @@ export function effectiveStatus(row: IgRow, humanAgentSupported: boolean, now: n
     if (ev && new Date(ev.scheduled_at).getTime() < now && ev.outcome != null) return "booked";
   }
   return row.status;
-}
-
-export function statusWordText(status: IgStatusWord): string {
-  return STATUS_WORD[status];
 }
 
 export function buttonPair(row: IgRow, humanAgentSupported: boolean, now: number = Date.now()): IgButtonPair {
@@ -87,54 +84,6 @@ export function buttonPair(row: IgRow, humanAgentSupported: boolean, now: number
     default:
       return { gold: "open_ig", outline: null };
   }
-}
-
-/** Line 3, left side. The number is visible before the tap (feedback_no_hidden_working_data). */
-export function metaText(row: IgRow, humanAgentSupported: boolean, now: number = Date.now()): string {
-  const status = effectiveStatus(row, humanAgentSupported, now);
-  const parts: string[] = [];
-  const age = shortAge(row.last_inbound_at ?? row.last_at, now);
-  switch (status) {
-    case "call":
-      if (row.phone) parts.push(formatPhoneDisplay(row.phone));
-      if (age) parts.push(age);
-      break;
-    case "today": {
-      const ev = row.booked_event;
-      if (ev) {
-        const t = new Date(ev.scheduled_at).getTime();
-        if (t < now && ev.outcome == null) parts.push(META.wasAgo(shortAge(t, now)));
-        else parts.push(META.az(phoenixDayTime(ev.scheduled_at)));
-      }
-      if (row.phone) parts.push(formatPhoneDisplay(row.phone));
-      break;
-    }
-    case "closing":
-      if (row.window_closes_at) parts.push(META.closes(phoenixTime(row.window_closes_at)));
-      else if (age) parts.push(age);
-      break;
-    case "closed":
-      if (age) parts.push(age);
-      parts.push(META.windowClosed);
-      break;
-    case "snoozed":
-      if (row.snoozed_until) parts.push(META.till(phoenixTime(row.snoozed_until)));
-      break;
-    case "handled":
-      if (row.handled_at) parts.push(META.handledAgo(shortAge(row.handled_at, now)));
-      break;
-    case "booked": {
-      const ev = row.booked_event;
-      if (ev?.outcome) parts.push(ev.outcome.replace(/_/g, "-"));
-      else if (age) parts.push(age);
-      if (row.phone) parts.push(formatPhoneDisplay(row.phone));
-      break;
-    }
-    default:
-      if (age) parts.push(age);
-  }
-  if (row.human_lane) parts.push(META.yourThread);
-  return parts.join(" · ");
 }
 
 /** Rows synthesized from applications / interview_events / partials have no DM thread to act on. */

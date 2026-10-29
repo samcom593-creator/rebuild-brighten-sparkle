@@ -6,7 +6,7 @@
 import type { EvidenceSubject } from "@/lib/resellEvidence";
 import { resellBucketTone, tonePill } from "@/lib/tones";
 
-export type ResellBucket = "ready_to_finish" | "lapsing" | "dropped" | "vantage" | "agent_left" | "warm_objection";
+export type ResellBucket = "ready_to_finish" | "sold_not_booked" | "lapsing" | "dropped" | "vantage" | "agent_left" | "warm_objection";
 
 /** The react-query key for the list. Every page that marks a person marks it stale, so the queue never shows someone just closed. */
 export const EASY_RESELLS_KEY = "easy-resells";
@@ -56,6 +56,7 @@ export interface EasyResell {
 /** What each bucket is called on a row, easiest first. */
 export const BUCKET_LABEL: Record<ResellBucket, string> = {
   ready_to_finish: "Ready to finish",
+  sold_not_booked: "Bought, never booked",
   lapsing: "Lapsing",
   dropped: "Dropped",
   vantage: "Vantage client",
@@ -66,6 +67,7 @@ export const BUCKET_LABEL: Record<ResellBucket, string> = {
 /** Each kind's pill, in its tone (src/lib/tones.ts resellBucketTone): the words always beside the colour. */
 export const BUCKET_TONE: Record<ResellBucket, string> = {
   ready_to_finish: tonePill(resellBucketTone("ready_to_finish")),
+  sold_not_booked: tonePill(resellBucketTone("sold_not_booked")),
   lapsing: tonePill(resellBucketTone("lapsing")),
   dropped: tonePill(resellBucketTone("dropped")),
   vantage: tonePill(resellBucketTone("vantage")),
@@ -82,6 +84,8 @@ export type ResellFilter = "all" | "vantage_any" | ResellBucket;
 export const RESELL_FILTERS: Array<{ key: ResellFilter; label: string }> = [
   { key: "all", label: "Everyone" },
   { key: "ready_to_finish", label: "Ready to finish" },
+  // 2026-10-29 (MP-310): bought on a dialer call and never booked, without both SSN and bank on the call.
+  { key: "sold_not_booked", label: "Bought, never booked" },
   { key: "lapsing", label: "Lapsing" },
   { key: "dropped", label: "Dropped" },
   { key: "vantage_any", label: "Everyone under Vantage" },

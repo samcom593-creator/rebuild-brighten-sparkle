@@ -271,6 +271,7 @@ export function bookStandingTone(standing: string | null | undefined): Tone {
 export function resellBucketTone(bucket: string | null | undefined): Tone {
   switch (norm(bucket)) {
     case "ready_to_finish": return "good";
+    case "sold_not_booked": return "good";
     case "lapsing": return bookStandingTone("lapsing");
     case "dropped": return bookStandingTone("gone");
     case "vantage": return "royal";

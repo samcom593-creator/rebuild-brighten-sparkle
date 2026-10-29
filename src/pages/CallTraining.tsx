@@ -39,6 +39,7 @@ import { ReviewQueueCard } from "@/components/calltraining/ReviewQueueCard";
 import { WeeklyDigestCard } from "@/components/calltraining/WeeklyDigestCard";
 import { ScriptStepImpactCard } from "@/components/calltraining/ScriptStepImpactCard";
 import { MyCallsPanel } from "@/components/calltraining/MyCallsPanel";
+import { BusinessQualityCard } from "@/components/calltraining/BusinessQualityCard";
 
 interface ObjectionMoment { t: string; objection: string; response: string; technique: string; worked: boolean }
 interface KeyQuote { t: string; who: "agent" | "client"; quote: string }
@@ -260,6 +261,8 @@ export default function CallTraining() {
       </GlassCard>
 
       <ScriptStepImpactCard />
+
+      <BusinessQualityCard onPickAgent={pickAgent} canOpenSoldCalls={leadership} />
 
       <DialerActivityCard />
 

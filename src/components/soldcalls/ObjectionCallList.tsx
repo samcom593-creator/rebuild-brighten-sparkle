@@ -14,6 +14,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { contactLinkProps, formatPhoneDisplay, phoneHref, smsHref } from "@/lib/phone";
 import { cn } from "@/lib/utils";
 import { ResellSignals, WorkActions } from "@/components/soldcalls/ResellWork";
+import { CallAudioPlayer } from "@/components/calls/CallAudioPlayer";
 import { callStamp, isResellLead, type ResellFields } from "@/lib/resellSignals";
 
 export interface ObjectionRow extends ResellFields {
@@ -164,6 +165,8 @@ function ObjectionCard({ row }: { row: ObjectionRow }) {
         )}
         {row.lead_email && <span className="text-xs text-muted-foreground">{row.lead_email}</span>}
       </div>
+      {/* The recording, loaded on tap (MP-310): hear how the objection went before calling back. */}
+      {row.download_status === "ok" && <div className="mt-3"><CallAudioPlayer callId={row.call_id} compact /></div>}
       <ResellSignals data={row} hasTranscript={Boolean(row.has_transcript) || transcribing} />
       <WorkActions callId={row.call_id} data={row} clientLabel={name} />
     </article>

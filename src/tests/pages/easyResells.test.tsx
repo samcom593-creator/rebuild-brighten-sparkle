@@ -222,6 +222,22 @@ describe("Easy Resells", () => {
     });
   });
 
+  it("lists a sale that never reached the book as Bought, never booked, with its own chip", async () => {
+    db.rows = [...db.rows, row({ item_key: "call:unbooked", bucket: "sold_not_booked", tier: 2,
+      reason: "Bought on the call, and no application was found in the book or the posted deals. Hear the call, then call back to finish it.",
+      client_name: "Nora Never", phone: "6025550107", call_id: "call-2", flip_carrier: null, flip_policy_number: null, flip_client_key: null,
+      flip_status: null, policy_status: "Sold on the call", event_at: "2026-10-20T17:00:00Z" })];
+    renderPage();
+    await screen.findByRole("listitem", { name: "Resell: Nora Never" });
+    expect(card("Nora Never").getByText("Bought, never booked")).toBeInTheDocument();
+    expect(card("Nora Never").getByText(/no application was found/)).toBeInTheDocument();
+    expect(card("Nora Never").getByRole("link", { name: /Full call card/ })).toHaveAttribute("href", "/dashboard/sold-calls?call=call-2");
+    const chip = screen.getByRole("button", { name: /Bought, never booked/ });
+    expect(chip).toHaveTextContent("1");
+    fireEvent.click(chip);
+    expect(names()).toEqual(["Resell: Nora Never"]);
+  });
+
   it("stays closed to anyone who is not an admin or Aisha", () => {
     auth.current = { user: { id: "someone" }, isAdmin: false };
     renderPage();

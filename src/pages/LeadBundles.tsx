@@ -23,7 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
-import { formatPhoneDisplay, phoneHref } from "@/lib/phone";
+import { contactLinkProps, formatPhoneDisplay, phoneHref } from "@/lib/phone";
 import { CALLED_LEAD_TIERS, canDial, formatLabel, leadStatusLabel, tierLabel } from "@/lib/leadBundles";
 import { closerOptionLabel, fetchClosers, type CloserOption } from "@/lib/closers";
 import { cn } from "@/lib/utils";
@@ -291,7 +291,7 @@ function BundleCard({ b, closers }: { b: Bundle; closers: CloserOption[] }) {
                 <li key={l.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-1.5">
                   <span className="font-medium">{[l.first_name, l.last_name].filter(Boolean).join(" ") || "Name not on file"}</span>
                   {href ? (
-                    <a href={href} className="inline-flex items-center gap-1 text-primary hover:underline"><Phone className="h-3.5 w-3.5" />{formatPhoneDisplay(l.phone10)}</a>
+                    <a href={href} {...contactLinkProps(href)} className="inline-flex items-center gap-1 text-primary hover:underline"><Phone className="h-3.5 w-3.5" />{formatPhoneDisplay(l.phone10)}</a>
                   ) : (
                     <span className="text-muted-foreground">{formatPhoneDisplay(l.phone10)} · do not call</span>
                   )}

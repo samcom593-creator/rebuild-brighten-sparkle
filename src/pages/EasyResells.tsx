@@ -35,6 +35,7 @@ import { splitClientName } from "@/lib/clientFacts";
 import { shortDate, type FlipStatus } from "@/lib/bookFlips";
 import { celebrate } from "@/lib/celebrate";
 import { cn } from "@/lib/utils";
+import { CallAudioPlayer } from "@/components/calls/CallAudioPlayer";
 import { resellBucketTone } from "@/lib/tones";
 import {
   BUCKET_LABEL, EASY_RESELLS_KEY, RESELL_FILTERS, closesBookRow, closesCallRow, matchesResellFilter, matchesResellSearch,
@@ -271,6 +272,8 @@ function ResellRow({ r, rank, evidence, evidenceKnown, gold }: { r: EasyResell; 
       <div className="order-5">
         {facts && <p className="mt-3 break-words text-sm text-muted-foreground">{facts}</p>}
         {touched && <p className="mt-1 text-[13px] font-medium leading-[18px] text-muted-foreground">{touched}</p>}
+        {/* A sold or objection call plays here (loads on tap), so "hear the call" needs no other page. */}
+        {r.call_id && <div className="mt-2"><CallAudioPlayer callId={r.call_id} compact /></div>}
       </div>
 
       <div className="order-3 mt-3 flex flex-wrap items-center gap-2 sm:order-4">
@@ -347,7 +350,7 @@ function CallMarks({ r, cardRef }: { r: EasyResell; cardRef: CardRef }) {
         title="Post the new policy"
         description="Posting counts the sale in production and marks this call resold."
         initialClient={{ firstName, lastName, phone: r.phone ?? "", dob: r.dob ?? "" }}
-        initialDeal={r.bucket === "ready_to_finish" || r.bucket === "vantage"
+        initialDeal={r.bucket === "ready_to_finish" || r.bucket === "sold_not_booked" || r.bucket === "vantage"
           ? { carrierName: r.carrier, product: r.product, monthlyPremium: r.monthly_premium }
           : undefined}
         onPosted={(receipt) => void mark("resold", receipt)}

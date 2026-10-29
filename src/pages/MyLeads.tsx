@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
-import { formatPhoneDisplay, phoneHref } from "@/lib/phone";
+import { contactLinkProps, formatPhoneDisplay, phoneHref } from "@/lib/phone";
 import { dispositionLabel } from "@/lib/readymodeDispositions";
 import { LEAD_STATUS_BUTTONS, canDial, formatLabel, isOpenLead, leadStatusLabel, tierLabel } from "@/lib/leadBundles";
 
@@ -113,7 +113,7 @@ export default function MyLeads() {
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                           <span className="font-medium">{[l.first_name, l.last_name].filter(Boolean).join(" ") || "Name not on file"}</span>
                           {href ? (
-                            <a href={href} className="inline-flex items-center gap-1 font-medium text-primary hover:underline"><Phone className="h-3.5 w-3.5" />{formatPhoneDisplay(l.phone10)}</a>
+                            <a href={href} {...contactLinkProps(href)} className="inline-flex items-center gap-1 font-medium text-primary hover:underline"><Phone className="h-3.5 w-3.5" />{formatPhoneDisplay(l.phone10)}</a>
                           ) : (
                             <span className="text-muted-foreground">{formatPhoneDisplay(l.phone10)} · do not call</span>
                           )}

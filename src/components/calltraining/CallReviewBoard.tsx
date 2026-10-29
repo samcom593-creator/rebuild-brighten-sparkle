@@ -11,7 +11,7 @@ import { ChevronDown, Phone } from "lucide-react";
 import { looseSupabase } from "@/lib/looseSupabase";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
-import { formatPhoneDisplay, phoneHref } from "@/lib/phone";
+import { contactLinkProps, formatPhoneDisplay, phoneHref } from "@/lib/phone";
 import { dispositionLabel } from "@/lib/readymodeDispositions";
 import { cn } from "@/lib/utils";
 import { HandoffButton } from "@/components/calltraining/HandoffButton";
@@ -44,7 +44,7 @@ function CallLink({ phone, dnc }: { phone: string | null; dnc?: boolean | null }
   if (!phone) return null;
   const href = dnc ? null : phoneHref(phone);
   return href ? (
-    <a href={href} className="inline-flex items-center gap-1 font-medium text-primary hover:underline"><Phone className="h-3.5 w-3.5" />{formatPhoneDisplay(phone)}</a>
+    <a href={href} {...contactLinkProps(href)} className="inline-flex items-center gap-1 font-medium text-primary hover:underline"><Phone className="h-3.5 w-3.5" />{formatPhoneDisplay(phone)}</a>
   ) : (
     <span className="text-muted-foreground">{formatPhoneDisplay(phone)} · asked not to be called</span>
   );

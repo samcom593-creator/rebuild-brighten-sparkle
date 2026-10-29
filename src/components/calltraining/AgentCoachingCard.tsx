@@ -42,21 +42,21 @@ function Points({ title, items, tone }: { title: string; items: string[] | null;
   );
 }
 
-export function AgentCoachingCard({ agentName, onClear }: { agentName: string; onClear: () => void }) {
+export function AgentCoachingCard({ agentName, onClear, title }: { agentName: string; onClear?: () => void; title?: string }) {
   const q = useQuery({ queryKey: ["agent-coaching", agentName], queryFn: () => fetchCoaching(agentName), staleTime: 5 * 60_000 });
   const c = q.data;
   return (
     <GlassCard className="space-y-3 border-primary/30 p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <p className="inline-flex items-center gap-2 text-sm font-semibold"><Sparkles className="h-4 w-4 text-primary" /> Coaching for {agentName}</p>
+          <p className="inline-flex items-center gap-2 text-sm font-semibold"><Sparkles className="h-4 w-4 text-primary" /> {title ?? `Coaching for ${agentName}`}</p>
           {c && (
             <p className="text-xs text-muted-foreground">
               From {c.source_count ?? 0} graded calls{c.generated_at ? ` · written ${new Date(c.generated_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}` : ""}
             </p>
           )}
         </div>
-        <Button type="button" size="sm" variant="ghost" onClick={onClear}><X className="mr-1 h-3.5 w-3.5" /> Every agent</Button>
+        {onClear && <Button type="button" size="sm" variant="ghost" onClick={onClear}><X className="mr-1 h-3.5 w-3.5" /> Every agent</Button>}
       </div>
       {q.isLoading ? (
         <p className="text-sm text-muted-foreground">Loading the coaching summary…</p>

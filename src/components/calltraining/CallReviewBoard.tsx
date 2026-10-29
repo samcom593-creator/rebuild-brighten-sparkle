@@ -6,7 +6,7 @@
 // one security_invoker view and loads when opened: Sam and Aisha see the agency, an upline sees their own team (RLS
 // through my_downline_agent_ids). Do-not-call numbers are left out of the call lists or shown without a Call link.
 import { useState, type ReactNode } from "react";
-import { useQuery, type UseQueryResult } from "@tanstack/react-query";
+import { useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import { ChevronDown, Phone } from "lucide-react";
 import { looseSupabase } from "@/lib/looseSupabase";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { formatPhoneDisplay, phoneHref } from "@/lib/phone";
 import { dispositionLabel } from "@/lib/readymodeDispositions";
 import { cn } from "@/lib/utils";
+import { HandoffButton } from "@/components/calltraining/HandoffButton";
 
 type Key = "closers" | "table" | "slump" | "easy" | "coverage" | "risk";
 const SECTIONS: Array<{ key: Key; title: string; blurb: string }> = [
@@ -146,7 +147,8 @@ function Slumps({ onPickAgent }: { onPickAgent: (n: string) => void }) {
 }
 
 interface EasyRow { phone10: string | null; first_name: string | null; last_name: string | null; call_id: string; disposition: string | null; call_started_at: string | null; agent_name: string | null; what_happened: string | null; call_grade: number | null }
-function EasyCloses() {
+function EasyCloses({ canHandOff }: { canHandOff: boolean }) {
+  const qc = useQueryClient();
   const q = useQuery(view("easy", () => rows<EasyRow>(looseSupabase.from("v_easy_closes").select("phone10, first_name, last_name, call_id, disposition, call_started_at, agent_name, what_happened, call_grade").eq("in_a_bundle", false).order("call_started_at", { ascending: false }).limit(60)))) as UseQueryResult<EasyRow[]>;
   return (
     <State q={q} empty="No warm leads waiting.">
@@ -157,6 +159,9 @@ function EasyCloses() {
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                 <span className="font-medium">{[r.first_name, r.last_name].filter(Boolean).join(" ") || "Name not on file"}</span>
                 <CallLink phone={r.phone10} />
+                {canHandOff && r.phone10 && (
+                  <HandoffButton phone10={r.phone10} leadName={[r.first_name, r.last_name].filter(Boolean).join(" ") || "This lead"} onDone={() => void qc.invalidateQueries({ queryKey: ["call-review", "easy"] })} />
+                )}
                 <span className="text-muted-foreground">{dispositionLabel(r.disposition)} · {ago(r.call_started_at)} · {r.agent_name}{r.call_grade != null ? ` · call graded ${r.call_grade}` : ""}</span>
               </div>
               {r.what_happened && <p className="text-muted-foreground">{r.what_happened}</p>}
@@ -230,7 +235,7 @@ function DropoffRisk() {
   );
 }
 
-export function CallReviewBoard({ onPickAgent }: { onPickAgent: (name: string) => void }) {
+export function CallReviewBoard({ onPickAgent, canHandOff = false }: { onPickAgent: (name: string) => void; canHandOff?: boolean }) {
   const [open, setOpen] = useState<Key | null>(null);
   return (
     <GlassCard className="p-0">
@@ -250,7 +255,7 @@ export function CallReviewBoard({ onPickAgent }: { onPickAgent: (name: string) =
                 {s.key === "closers" ? <Closers onPickAgent={onPickAgent} />
                   : s.key === "table" ? <LeftOnTable onPickAgent={onPickAgent} />
                   : s.key === "slump" ? <Slumps onPickAgent={onPickAgent} />
-                  : s.key === "easy" ? <EasyCloses />
+                  : s.key === "easy" ? <EasyCloses canHandOff={canHandOff} />
                   : s.key === "coverage" ? <MoreCoverage />
                   : <DropoffRisk />}
               </div>

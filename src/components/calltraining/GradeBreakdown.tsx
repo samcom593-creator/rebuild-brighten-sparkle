@@ -7,6 +7,7 @@
 import { Check, Minus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { seekCall } from "@/lib/callAudio";
+import { GradeReview } from "@/components/calltraining/GradeReview";
 
 interface Reason { reason?: string; t?: string; quote?: string }
 interface Step { step?: string; status?: string; t?: string; note?: string }
@@ -29,7 +30,7 @@ function Stamp({ callId, t }: { callId?: string; t?: string }) {
 const tone = (n: number | null | undefined) =>
   n == null ? "text-muted-foreground" : n >= 8 ? "text-emerald-700 dark:text-emerald-300" : n >= 6 ? "text-amber-700 dark:text-amber-300" : "text-rose-700 dark:text-rose-300";
 
-export function GradeBreakdown({ callId, scores, reasons, scriptScore, scriptFollowed, steps }: {
+export function GradeBreakdown({ callId, scores, reasons, scriptScore, scriptFollowed, steps, canReview = false }: {
   /** When set, every timestamp plays that moment of this call. */
   callId?: string;
   scores: Record<string, number> | null;
@@ -37,10 +38,13 @@ export function GradeBreakdown({ callId, scores, reasons, scriptScore, scriptFol
   scriptScore: number | null;
   scriptFollowed: string | null;
   steps: Step[] | null;
+  /** Sam, Aisha and the agent's upline can mark the grade right, too high or too low. */
+  canReview?: boolean;
 }) {
   const rs = reasons ?? {};
   const list = steps ?? [];
-  if (Object.keys(rs).length === 0 && list.length === 0) return null;
+  const review = canReview && callId ? <GradeReview callId={callId} /> : null;
+  if (Object.keys(rs).length === 0 && list.length === 0) return review;
   return (
     <div className="space-y-3">
       <div className="overflow-x-auto">
@@ -94,6 +98,7 @@ export function GradeBreakdown({ callId, scores, reasons, scriptScore, scriptFol
           </ol>
         </div>
       )}
+      {review}
     </div>
   );
 }

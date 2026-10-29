@@ -93149,6 +93149,39 @@ export type Database = {
           },
         ]
       }
+      readymode_grade_feedback: {
+        Row: {
+          id: string | null
+          call_id: string | null
+          verdict: string | null
+          corrected_score: number | null
+          note: string | null
+          graded_score: number | null
+          created_by: string | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string | null
+          call_id?: string | null
+          verdict?: string | null
+          corrected_score?: number | null
+          note?: string | null
+          graded_score?: number | null
+          created_by?: string | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string | null
+          call_id?: string | null
+          verdict?: string | null
+          corrected_score?: number | null
+          note?: string | null
+          graded_score?: number | null
+          created_by?: string | null
+          created_at?: string | null
+        }
+        Relationships: []
+      }
       readymode_packet_access_log: {
         Row: {
           accessed_at: string
@@ -151697,6 +151730,21 @@ export type Database = {
             referencedColumns: ["user_id"]
           },
         ]
+      }
+      v_script_step_impact: {
+        Row: {
+          script_followed: string | null
+          step: string | null
+          step_order: number | null
+          calls: number | null
+          done: number | null
+          partly: number | null
+          skipped: number | null
+          skipped_pct: number | null
+          close_pct_when_done: number | null
+          close_pct_when_missed: number | null
+        }
+        Relationships: []
       }
       v_seminar_dashboard: {
         Row: {

@@ -8,6 +8,8 @@
 // v_call_training and v_call_training_agents are security_invoker over tables gated by
 // can_view_sold_calls(), so anyone else reads zero rows. Grades are written by
 // ~/business-ops/readymode-bot/scripts/grade-calls.py on the hourly bot (readymode_call_analysis, model grade-v1).
+// 2026-10-29: a daily review list, grade checks the grader learns from, a weekly digest, script-step impact, a
+// one-tap handoff of a warm lead to a closer, and each agent's own calls and coaching.
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, ChevronDown, Search, Star, Users } from "lucide-react";
@@ -33,6 +35,10 @@ import { momentsFrom } from "@/lib/callAudio";
 import { cn } from "@/lib/utils";
 import { dispositionLabel } from "@/lib/readymodeDispositions";
 import { DialerActivityCard } from "@/components/calltraining/DialerActivityCard";
+import { ReviewQueueCard } from "@/components/calltraining/ReviewQueueCard";
+import { WeeklyDigestCard } from "@/components/calltraining/WeeklyDigestCard";
+import { ScriptStepImpactCard } from "@/components/calltraining/ScriptStepImpactCard";
+import { MyCallsPanel } from "@/components/calltraining/MyCallsPanel";
 
 interface ObjectionMoment { t: string; objection: string; response: string; technique: string; worked: boolean }
 interface KeyQuote { t: string; who: "agent" | "client"; quote: string }
@@ -168,9 +174,13 @@ export default function CallTraining() {
   const avg = talk.length ? Math.round(talk.reduce((a, r) => a + (r.overall_score ?? 0), 0) / talk.length) : null;
   const great = rows.filter((r) => r.great_call).length;
   const urgent = rows.filter((r) => r.coaching_priority === "urgent").length;
+  const pickAgent = (name: string) => {
+    setAgent(name);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   // Agents get the team library: training calls with muted audio, no client data, no coaching notes.
-  if (!canView) return <TrainingLibrary />;
+  if (!canView) return <TrainingLibrary top={<MyCallsPanel />} />;
 
   return (
     <div className="space-y-6">
@@ -186,7 +196,11 @@ export default function CallTraining() {
         <Stat label="Urgent flags" value={urgent} tone={urgent ? "text-rose-700 dark:text-rose-300" : undefined} />
       </div>
 
-      <CallReviewBoard onPickAgent={(name) => { setAgent(name); window.scrollTo({ top: 0, behavior: "smooth" }); }} />
+      <ReviewQueueCard />
+
+      <WeeklyDigestCard onPickAgent={pickAgent} />
+
+      <CallReviewBoard onPickAgent={pickAgent} canHandOff={leadership} />
 
       <div className="flex flex-wrap items-center gap-2">
         {VIEWS.map((f) => (
@@ -245,6 +259,8 @@ export default function CallTraining() {
         )}
       </GlassCard>
 
+      <ScriptStepImpactCard />
+
       <DialerActivityCard />
 
       {q.isLoading ? (
@@ -275,7 +291,7 @@ export default function CallTraining() {
                   <div className="space-y-4 border-t border-border/60 px-4 py-3 text-sm">
                     <CallAudioPlayer callId={r.call_id} moments={[...moments.map((m) => ({ t: m.t, label: m.objection })), ...momentsFrom(r.key_quotes)]} />
                     {leadership && <CallClientPanel callId={r.call_id} />}
-                    <GradeBreakdown callId={r.call_id} scores={r.scores} reasons={r.score_reasons} scriptScore={r.script_score} scriptFollowed={r.script_followed} steps={r.script_steps} />
+                    <GradeBreakdown callId={r.call_id} scores={r.scores} reasons={r.score_reasons} scriptScore={r.script_score} scriptFollowed={r.script_followed} steps={r.script_steps} canReview />
                     <div className="flex flex-wrap gap-x-4 gap-y-1">
                       {RUBRIC.map((k) => (
                         <span key={k.key} className="text-muted-foreground">{k.label} <span className={cn("font-semibold", scoreTone(r.scores?.[k.key] == null ? null : r.scores[k.key] * 10))}>{r.scores?.[k.key] ?? "—"}</span>/10</span>

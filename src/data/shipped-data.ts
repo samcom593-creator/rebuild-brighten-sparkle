@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "Oct 29, 2026",
+    label: "Call Training runs itself now: 5 calls a day picked for each manager to hear, a right / too high / too low check on every grade that the grader learns from, which script steps win or lose sales, a weekly digest, agents hear their own calls and read their own coaching, and Lead Bundles plus My Leads put a warm lead with a stronger closer in one tap.",
+    detail: "MP-310. call_review_queue() picks each reviewer's calls (Sam and Aisha the agency, an upline their team): compliance flags first, then urgent coaching, off script, the lowest scores. grade_feedback_set() stores the check with the score it should have been; grade-calls.py reads the newest corrections into its prompt and now grades the last 14 days first. v_script_step_impact shows how often each step of the agency scripts is skipped and the close rate done against skipped. call_training_digest() compares the last 7 days with the 7 before, in the app, with nothing sent out. Agents see only their own graded calls (muted audio) and coaching. Lead Bundles (Sam and Aisha) builds bundles by tier or POS and gives or takes back access; My Leads lists what you were given with one-tap outcomes; a do-not-call number never gets a Call link. Hand to a closer on Easy closes puts the lead on that closer's My Leads.",
+    commit: "MP-310-CALL-TRAINING-100X",
+  },
+  {
+    ts: "Oct 29, 2026",
     label: "Call Training: tap any timestamp in a grade or a script step to hear that moment, agents see the same script checklist and reasons in their library, new Bad calls and Off script filters, and an Agents in a slump list on the review board.",
     detail: "MP-310. Timestamps in the score reasons and the script steps play that part of the call (the player loads the recording if it is not open yet). call_training_library() now carries the rubric v2 breakdown, so agents learn from the same evidence Sam sees. Bad calls = graded conversations under 45 or with a compliance flag; Off script = an on-script score of 4 or lower. Agents in a slump compares each agent's last 2 weeks with their own prior 6.",
     commit: "MP-310-CALL-TRAINING-3",

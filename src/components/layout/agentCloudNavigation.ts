@@ -1,6 +1,7 @@
 import type { ElementType } from "react";
 import { resolveBrand } from "@/config/brand";
-import { Instagram,
+import {
+  Instagram,
   BarChart3,
   BookOpen,
   BookOpenCheck,
@@ -28,7 +29,14 @@ import { Instagram,
   UserPlus,
   Users,
   WalletCards,
-  Mic, Milestone, Send, PhoneCall, Radar } from "lucide-react";
+  Mic,
+  Milestone,
+  Send,
+  PhoneCall,
+  Radar,
+  Boxes,
+  Inbox,
+} from "lucide-react";
 
 import type { AccountMode } from "@/hooks/useAuth";
 import type { Tone } from "@/lib/tones";
@@ -213,6 +221,10 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
       { label: "Sold Calls", href: "/dashboard/sold-calls", icon: PhoneCall, grant: "sold_calls" },
       // Graded dialer calls for training (MP-310, 2026-10-28): the great calls and the objections turned. Same access as Sold Calls.
       { label: "Call Training", href: "/dashboard/call-training", icon: GraduationCap },
+      // Lead bundles (MP-310 wave 3): Sam and Aisha package dialer leads by quality and pick who works them.
+      { label: "Lead Bundles", href: "/dashboard/lead-bundles", icon: Boxes, grant: "sold_calls" },
+      // The leads given to you to work (MP-310 wave 3). Every producer.
+      { label: "My Leads", href: "/dashboard/my-leads", icon: Inbox },
       { label: "My Commissions", href: "/dashboard/my-commissions", icon: WalletCards },
       { label: "Retention", href: "/dashboard/retention", icon: Shield },
     ],

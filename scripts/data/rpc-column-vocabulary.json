@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-rpc-column-vocabulary.sh (bot_sql -> pg_proc + pg_rewrite)",
- "_generated_at": "2026-10-29T15:28:35Z",
+ "_generated_at": "2026-10-29T15:50:36Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "check-enum-filter-literals.mjs grades literals inside supabase.from().eq() chains. This is the other half of the same class: a status word that arrives from an RPC and is compared in JavaScript, where the return type is text and every wrong word type-checks. Per (function, returned column) this records the relation columns of that name reachable from the function body and the literals the function synthesises itself. It deliberately records CANDIDATES rather than one resolved source: provenance from a body regex is a guess, so check-rpc-status-literals.mjs refuses a literal only when NO candidate vocabulary and no body literal accepts it.",
  "_vocabulary_source": "scripts/data/enum-catalog.json (check_vocab + column_enum + enums). Not copied here on purpose, so the two guards read one snapshot and cannot drift.",
@@ -120,6 +120,7 @@
   "calendar_interview_reminders_enabled": "boolean",
   "calendar_is_scheduling_staff": "boolean",
   "calendar_valid_tz": "boolean",
+  "call_training_digest": "jsonb",
   "can_play_call_audio": "boolean",
   "can_view_sold_calls": "boolean",
   "can_work_application": "boolean",
@@ -450,6 +451,7 @@
   "gin_extract_value_trgm": "internal",
   "gin_trgm_consistent": "boolean",
   "gin_trgm_triconsistent": "\"char\"",
+  "grade_feedback_set": "jsonb",
   "gtrgm_compress": "internal",
   "gtrgm_consistent": "boolean",
   "gtrgm_decompress": "internal",
@@ -503,6 +505,7 @@
   "lead_bundle_archive": "jsonb",
   "lead_bundle_create": "jsonb",
   "lead_bundle_grant": "jsonb",
+  "lead_bundle_handoff": "jsonb",
   "lead_bundle_item_set": "jsonb",
   "lead_bundle_remove_item": "jsonb",
   "lead_bundle_revoke": "jsonb",
@@ -3264,6 +3267,163 @@
     "public"
    ]
   },
+  "call_review_queue.agent_name": {
+   "candidates": [],
+   "body_literals": [
+    "Compliance flag",
+    "Lowest score lately",
+    "Off script",
+    "Urgent coaching",
+    "Weak close or warm deal lost",
+    "array",
+    "grade-v1",
+    "high",
+    "no_contact",
+    "normal",
+    "public",
+    "urgent",
+    "voicemail"
+   ]
+  },
+  "call_review_queue.call_id": {
+   "candidates": [
+    "readymode_call_analysis.call_id",
+    "readymode_grade_feedback.call_id"
+   ],
+   "body_literals": [
+    "Compliance flag",
+    "Lowest score lately",
+    "Off script",
+    "Urgent coaching",
+    "Weak close or warm deal lost",
+    "array",
+    "grade-v1",
+    "high",
+    "no_contact",
+    "normal",
+    "public",
+    "urgent",
+    "voicemail"
+   ]
+  },
+  "call_review_queue.call_started_at": {
+   "candidates": [
+    "readymode_dialer_calls.call_started_at"
+   ],
+   "body_literals": [
+    "Compliance flag",
+    "Lowest score lately",
+    "Off script",
+    "Urgent coaching",
+    "Weak close or warm deal lost",
+    "array",
+    "grade-v1",
+    "high",
+    "no_contact",
+    "normal",
+    "public",
+    "urgent",
+    "voicemail"
+   ]
+  },
+  "call_review_queue.coaching_priority": {
+   "candidates": [
+    "readymode_call_analysis.coaching_priority"
+   ],
+   "body_literals": [
+    "Compliance flag",
+    "Lowest score lately",
+    "Off script",
+    "Urgent coaching",
+    "Weak close or warm deal lost",
+    "array",
+    "grade-v1",
+    "high",
+    "no_contact",
+    "normal",
+    "public",
+    "urgent",
+    "voicemail"
+   ]
+  },
+  "call_review_queue.disposition": {
+   "candidates": [
+    "readymode_dialer_calls.disposition"
+   ],
+   "body_literals": [
+    "Compliance flag",
+    "Lowest score lately",
+    "Off script",
+    "Urgent coaching",
+    "Weak close or warm deal lost",
+    "array",
+    "grade-v1",
+    "high",
+    "no_contact",
+    "normal",
+    "public",
+    "urgent",
+    "voicemail"
+   ]
+  },
+  "call_review_queue.overall_score": {
+   "candidates": [
+    "readymode_call_analysis.overall_score"
+   ],
+   "body_literals": [
+    "Compliance flag",
+    "Lowest score lately",
+    "Off script",
+    "Urgent coaching",
+    "Weak close or warm deal lost",
+    "array",
+    "grade-v1",
+    "high",
+    "no_contact",
+    "normal",
+    "public",
+    "urgent",
+    "voicemail"
+   ]
+  },
+  "call_review_queue.reason": {
+   "candidates": [],
+   "body_literals": [
+    "Compliance flag",
+    "Lowest score lately",
+    "Off script",
+    "Urgent coaching",
+    "Weak close or warm deal lost",
+    "array",
+    "grade-v1",
+    "high",
+    "no_contact",
+    "normal",
+    "public",
+    "urgent",
+    "voicemail"
+   ]
+  },
+  "call_review_queue.script_score": {
+   "candidates": [
+    "readymode_call_analysis.script_score"
+   ],
+   "body_literals": [
+    "Compliance flag",
+    "Lowest score lately",
+    "Off script",
+    "Urgent coaching",
+    "Weak close or warm deal lost",
+    "array",
+    "grade-v1",
+    "high",
+    "no_contact",
+    "normal",
+    "public",
+    "urgent",
+    "voicemail"
+   ]
+  },
   "call_training_library.agent_name": {
    "candidates": [],
    "body_literals": [
@@ -3432,6 +3592,43 @@
    ],
    "body_literals": [
     "grade-v1",
+    "public"
+   ]
+  },
+  "closer_candidates.agent_name": {
+   "candidates": [
+    "v_agent_business_quality.agent_name",
+    "v_best_closers.agent_name",
+    "v_call_training_agents.agent_name",
+    "v_readymode_agent_daily.agent_name",
+    "v_readymode_agent_scorecard.agent_name",
+    "v_sold_call_quality.agent_name"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "closer_candidates.close_pct_all": {
+   "candidates": [
+    "v_best_closers.close_pct_all"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "closer_candidates.sticky_close_score": {
+   "candidates": [
+    "v_best_closers.sticky_close_score"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "closer_candidates.user_id": {
+   "candidates": [
+    "agents.user_id"
+   ],
+   "body_literals": [
     "public"
    ]
   },

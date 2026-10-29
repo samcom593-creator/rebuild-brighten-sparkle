@@ -1528,6 +1528,24 @@
         "raw": "p_call_ids uuid[]"
       }
     ],
+    "call_review_queue": [
+      {
+        "all": [
+          "p_limit"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_limit integer DEFAULT 5"
+      }
+    ],
+    "call_training_digest": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "call_training_library": [
       {
         "all": [],
@@ -1763,6 +1781,14 @@
       }
     ],
     "client_birthday_wisher": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "closer_candidates": [
       {
         "all": [],
         "required": [],
@@ -5606,6 +5632,22 @@
         "raw": "internal, smallint, text, integer, internal, internal, internal"
       }
     ],
+    "grade_feedback_set": [
+      {
+        "all": [
+          "p_call_id",
+          "p_corrected_score",
+          "p_note",
+          "p_verdict"
+        ],
+        "required": [
+          "p_call_id",
+          "p_verdict"
+        ],
+        "unnamed": false,
+        "raw": "p_call_id uuid, p_verdict text, p_corrected_score integer DEFAULT NULL::integer, p_note text DEFAULT NULL::text"
+      }
+    ],
     "gtrgm_compress": [
       {
         "all": [],
@@ -6311,6 +6353,21 @@
         ],
         "unnamed": false,
         "raw": "p_bundle uuid, p_user uuid, p_note text DEFAULT NULL::text"
+      }
+    ],
+    "lead_bundle_handoff": [
+      {
+        "all": [
+          "p_note",
+          "p_phone10",
+          "p_user"
+        ],
+        "required": [
+          "p_phone10",
+          "p_user"
+        ],
+        "unnamed": false,
+        "raw": "p_phone10 text, p_user uuid, p_note text DEFAULT NULL::text"
       }
     ],
     "lead_bundle_item_set": [

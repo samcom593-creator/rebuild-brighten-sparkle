@@ -6148,6 +6148,16 @@
       "recording_url",
       "updated_at"
     ],
+    "readymode_grade_feedback": [
+      "call_id",
+      "corrected_score",
+      "created_at",
+      "created_by",
+      "graded_score",
+      "id",
+      "note",
+      "verdict"
+    ],
     "readymode_packet_access_log": [
       "accessed_at",
       "accessed_by",
@@ -12092,6 +12102,18 @@
       "title",
       "updated_at",
       "user_id"
+    ],
+    "v_script_step_impact": [
+      "calls",
+      "close_pct_when_done",
+      "close_pct_when_missed",
+      "done",
+      "partly",
+      "script_followed",
+      "skipped",
+      "skipped_pct",
+      "step",
+      "step_order"
     ],
     "v_seminar_dashboard": [
       "application_id",

@@ -5,7 +5,7 @@
 // page, and one-tap snippets at each moment. Spoken numbers are muted in the team's copy. call_training_library()
 // returns training fields only, never client contact data or coaching notes, and the audio policy allows only the
 // muted copy of a training call.
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { GraduationCap, Star } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -58,7 +58,7 @@ async function fetchLibrary(): Promise<LibraryRow[]> {
   return (Array.isArray(data) ? data : []) as LibraryRow[];
 }
 
-export function TrainingLibrary() {
+export function TrainingLibrary({ top }: { top?: ReactNode } = {}) {
   const q = useQuery({ queryKey: ["call-training-library"], queryFn: fetchLibrary, staleTime: 5 * 60_000 });
   const [view, setView] = useState<ViewKey>("great");
   const [openId, setOpenId] = useState<string | null>(null);
@@ -69,6 +69,7 @@ export function TrainingLibrary() {
   return (
     <div className="space-y-6">
       <PageHeader title="Call Training" subtitle="Hear the calls worth learning from. Tap a moment to play that part of the call." />
+      {top}
       <div className="flex flex-wrap gap-2">
         {VIEWS.map((v) => (
           <Button key={v.key} size="sm" variant={view === v.key ? "default" : "outline"} aria-pressed={view === v.key} onClick={() => setView(v.key)}>{v.label}</Button>

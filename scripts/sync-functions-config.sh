@@ -258,6 +258,12 @@ PUBLIC_ALLOWLIST=(
   "instagram-dm-replay"
   "youtube-auth"
   "youtube-comments"
+  # money-inbox-classify (MP-309b): the money-inbox daemon calls it with the service-role key and
+  # the handler refuses every other caller with 401 (presentsServiceKey). Reviewed public by the guard.
+  "money-inbox-classify"
+  # ig-trial-reel-publish (MP-311): reviewed in_handler_gate by the security guard; listed here so
+  # the writer and the guard agree.
+  "ig-trial-reel-publish"
 )
 
 is_public() {

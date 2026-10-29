@@ -14,6 +14,168 @@ export type Database = {
   }
   public: {
     Tables: {
+      lead_bundle_events: {
+        Row: {
+          id: number | null
+          bundle_id: string | null
+          item_id: string | null
+          user_id: string | null
+          actor: string | null
+          action: string | null
+          detail: Json | null
+          at: string | null
+        }
+        Insert: {
+          id?: number | null
+          bundle_id?: string | null
+          item_id?: string | null
+          user_id?: string | null
+          actor?: string | null
+          action?: string | null
+          detail?: Json | null
+          at?: string | null
+        }
+        Update: {
+          id?: number | null
+          bundle_id?: string | null
+          item_id?: string | null
+          user_id?: string | null
+          actor?: string | null
+          action?: string | null
+          detail?: Json | null
+          at?: string | null
+        }
+        Relationships: []
+      }
+      lead_bundle_grants: {
+        Row: {
+          id: string | null
+          bundle_id: string | null
+          user_id: string | null
+          granted_by: string | null
+          granted_at: string | null
+          revoked_by: string | null
+          revoked_at: string | null
+          note: string | null
+        }
+        Insert: {
+          id?: string | null
+          bundle_id?: string | null
+          user_id?: string | null
+          granted_by?: string | null
+          granted_at?: string | null
+          revoked_by?: string | null
+          revoked_at?: string | null
+          note?: string | null
+        }
+        Update: {
+          id?: string | null
+          bundle_id?: string | null
+          user_id?: string | null
+          granted_by?: string | null
+          granted_at?: string | null
+          revoked_by?: string | null
+          revoked_at?: string | null
+          note?: string | null
+        }
+        Relationships: []
+      }
+      lead_bundle_items: {
+        Row: {
+          id: string | null
+          bundle_id: string | null
+          phone10: string | null
+          first_name: string | null
+          last_name: string | null
+          email: string | null
+          quality_tier: string | null
+          quality_reason: string | null
+          attempts: number | null
+          last_dialed_at: string | null
+          last_disposition: string | null
+          last_agent: string | null
+          added_at: string | null
+          removed_at: string | null
+          status: string | null
+          status_note: string | null
+          status_by: string | null
+          status_at: string | null
+        }
+        Insert: {
+          id?: string | null
+          bundle_id?: string | null
+          phone10?: string | null
+          first_name?: string | null
+          last_name?: string | null
+          email?: string | null
+          quality_tier?: string | null
+          quality_reason?: string | null
+          attempts?: number | null
+          last_dialed_at?: string | null
+          last_disposition?: string | null
+          last_agent?: string | null
+          added_at?: string | null
+          removed_at?: string | null
+          status?: string | null
+          status_note?: string | null
+          status_by?: string | null
+          status_at?: string | null
+        }
+        Update: {
+          id?: string | null
+          bundle_id?: string | null
+          phone10?: string | null
+          first_name?: string | null
+          last_name?: string | null
+          email?: string | null
+          quality_tier?: string | null
+          quality_reason?: string | null
+          attempts?: number | null
+          last_dialed_at?: string | null
+          last_disposition?: string | null
+          last_agent?: string | null
+          added_at?: string | null
+          removed_at?: string | null
+          status?: string | null
+          status_note?: string | null
+          status_by?: string | null
+          status_at?: string | null
+        }
+        Relationships: []
+      }
+      lead_bundles: {
+        Row: {
+          id: string | null
+          name: string | null
+          format: string | null
+          criteria: Json | null
+          note: string | null
+          created_by: string | null
+          created_at: string | null
+          archived_at: string | null
+        }
+        Insert: {
+          id?: string | null
+          name?: string | null
+          format?: string | null
+          criteria?: Json | null
+          note?: string | null
+          created_by?: string | null
+          created_at?: string | null
+          archived_at?: string | null
+        }
+        Update: {
+          id?: string | null
+          name?: string | null
+          format?: string | null
+          criteria?: Json | null
+          note?: string | null
+          created_by?: string | null
+          created_at?: string | null
+          archived_at?: string | null
+        }
+        Relationships: []
+      }
       money_inbox_sources: {
         Row: {
           source: string
@@ -103255,6 +103417,27 @@ export type Database = {
         }
         Relationships: []
       }
+      v_agent_business_quality: {
+        Row: {
+          agent_name: string | null
+          agent_id: string | null
+          agent_raw: string | null
+          sold_calls: number | null
+          in_book: number | null
+          not_in_book: number | null
+          active: number | null
+          pending: number | null
+          lapsing: number | null
+          fell_off: number | null
+          status_unknown: number | null
+          compliance_flagged: number | null
+          urgent_flags: number | null
+          declined_after_ssn_bank: number | null
+          fall_off_pct: number | null
+          last_sale_at: string | null
+        }
+        Relationships: []
+      }
       v_agent_canonical_map: {
         Row: {
           agent_id: string | null
@@ -108127,6 +108310,30 @@ export type Database = {
           is_deactivated: boolean | null
           is_inactive: boolean | null
           status: Database["public"]["Enums"]["agent_status"] | null
+        }
+        Relationships: []
+      }
+      v_agent_slump: {
+        Row: {
+          agent_name: string | null
+          agent_id: string | null
+          agent_raw: string | null
+          recent_contacts: number | null
+          recent_sold: number | null
+          recent_objections: number | null
+          recent_bank: number | null
+          recent_ssn: number | null
+          recent_gave_up: number | null
+          base_contacts: number | null
+          base_sold: number | null
+          base_objections: number | null
+          last_contact_day: string | null
+          recent_close_pct: number | null
+          base_close_pct: number | null
+          recent_objection_pct: number | null
+          base_objection_pct: number | null
+          top_objection: string | null
+          verdict: string | null
         }
         Relationships: []
       }
@@ -133491,6 +133698,24 @@ export type Database = {
         }
         Relationships: []
       }
+      v_lead_bundle_summary: {
+        Row: {
+          bundle_id: string | null
+          name: string | null
+          format: string | null
+          criteria: Json | null
+          note: string | null
+          created_at: string | null
+          archived_at: string | null
+          live_items: number | null
+          untouched: number | null
+          appointments: number | null
+          sold: number | null
+          closed_out: number | null
+          holders: Json | null
+        }
+        Relationships: []
+      }
       v_lead_purchases_today: {
         Row: {
           agent_id: string | null
@@ -147162,6 +147387,24 @@ export type Database = {
         }
         Relationships: []
       }
+      v_readymode_lead_quality: {
+        Row: {
+          phone10: string | null
+          first_name: string | null
+          last_name: string | null
+          email: string | null
+          attempts: number | null
+          first_dialed_at: string | null
+          last_dialed_at: string | null
+          last_disposition: string | null
+          last_agent: string | null
+          campaign: string | null
+          quality_tier: string | null
+          quality_reason: string | null
+          days_since_dialed: number | null
+        }
+        Relationships: []
+      }
       v_readymode_lead_source_roi: {
         Row: {
           applications: number | null
@@ -152028,6 +152271,38 @@ export type Database = {
             referencedColumns: ["call_id"]
           },
         ]
+      }
+      v_sold_call_quality: {
+        Row: {
+          call_id: string | null
+          external_call_id: string | null
+          call_started_at: string | null
+          agent_name: string | null
+          agent_id: string | null
+          agent_raw: string | null
+          lead_first_name: string | null
+          lead_last_name: string | null
+          in_book: boolean | null
+          book_status: string | null
+          status_group: string | null
+          book_carrier: string | null
+          book_policy_number: string | null
+          packet_id: string | null
+          packet_carrier: string | null
+          packet_monthly_premium: number | null
+          work_status: string | null
+          overall_score: number | null
+          coaching_priority: string | null
+          compliance_flags: Json | null
+          coaching_notes: string | null
+          approval_status: string | null
+          declined_after_ssn_bank: boolean | null
+          price_objection: boolean | null
+          resell_summary: string | null
+          compliance_flag_count: number | null
+          quality_verdict: string | null
+        }
+        Relationships: []
       }
       v_sold_calls_queue: {
         Row: {

@@ -3,19 +3,23 @@ import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { BadgeDollarSign, Check, Gift, Loader2 } from "lucide-react";
+import { BadgeDollarSign, Check, ChevronDown, Gift, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { useAuth } from "@/hooks/useAuth";
 import { celebrate, type CelebrationOrigin } from "@/lib/celebrate";
 import { PageHeader } from "@/components/ui/page-header";
 import { ToneBubble } from "@/components/ui/delight/ToneBubble";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { US_STATES } from "@/lib/constants";
+import { cn } from "@/lib/utils";
+import { InviteAgentForm } from "@/components/invitations/InviteAgentForm";
+import { InvitationsTable } from "@/components/invitations/InvitationsTable";
+import { MyLinkCard } from "@/components/invitations/MyLinkCard";
 import {
   Select,
   SelectContent,
@@ -30,17 +34,25 @@ import {
 // "How do you know them?" relationship dropdown (zero signal upfront).
 // Mobile-first vertical scan, one decision per line, ship in <30 seconds.
 //
-// Grow review 2026-10-28 (findings 30, 34): the page now sits in the standard
-// frame (PageHeader, no header button) instead of a marketing h1 with a 36px
-// Back button. The bonus is one quiet line in plain words, with no "AP". One
-// control scale: the gold Send referral is 48px, every other control is 44px,
-// every word is at least 13px. A failed send says so on the page and keeps
-// what was typed. The submit_referral RPC call is unchanged.
+// Grow review 2026-10-28 (findings 30, 34): the page sits in the standard frame (PageHeader,
+// no header button). The bonus is one quiet line in plain words, with no "AP". One control
+// scale: the gold button is 48px, every other control is 44px, every word is at least 13px.
+// A failed send says so on the page and keeps what was typed. The submit_referral RPC call
+// is unchanged.
 //
-// Colour layer (2026-10-28, docs/DESIGN_SYSTEM.md "Colour, motion and sound"): the header
-// bubble is a gift in green (a referral is good news), the bonus line carries a gold bubble
-// (the brand moment), and a sent referral chimes from the Send button and pops its
-// confirmation in. A failed send plays nothing; its message is as before.
+// OVERHAUL-1 (2026-10-29), Sam: "Give them an option: either put their first name, last name,
+// email, NPN, phone number... Or an option, just click attach a link, and they just tap it."
+// The page now leads with links, the way people actually recruit:
+//   1. Your link: the permanent /r/<slug> link, Copy and Share, one tap (MyLinkCard).
+//   2. Make a link: a prospect join link (/join/<token>) for one person, Quick link or With
+//      details, Licensed or Not licensed yet, Permanent or Temporary, credited to you.
+//   3. Rather we call them?: the referral form, folded, exactly as before inside. Opening it
+//      hands the one gold button to Send referral; the link maker goes quiet.
+//   4. Links you made: appears with the first link.
+//
+// Colour layer (docs/DESIGN_SYSTEM.md "Colour, motion and sound"): the header bubble is a gift
+// in green (a referral is good news), the bonus line carries a gold bubble, and a sent referral
+// chimes from the Send button and pops its confirmation in. A failed send plays nothing.
 const schema = z
   .object({
     firstName: z.string().min(2, "Enter their first name (at least 2 letters)").max(50, "First name is too long (50 letters at most)"),
@@ -101,6 +113,9 @@ function FieldError({ id, message }: { id: string; message?: string }) {
 export default function ReferralSubmit() {
   usePageTitle("Refer a recruit · Galaxy");
   const navigate = useNavigate();
+  const { isAdmin, isManager } = useAuth();
+  const linksHeading = isAdmin || isManager ? "Personal links" : "Links you made";
+  const [callOpen, setCallOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
@@ -168,164 +183,185 @@ export default function ReferralSubmit() {
     <div className="page-enter mx-auto w-full max-w-2xl space-y-5 pb-28">
       <PageHeader
         title="Refer a recruit"
-        subtitle="We contact your referral within 24 hours."
+        subtitle="Send your link, or make one for one person."
         icon={<Gift />}
         tone="good"
-        // The gold button is the form's Send referral. Declaring null keeps the header empty
-        // and turns off the legacy inference, so nothing can be promoted up here.
+        // The gold button is the link maker's Make link (or Send referral once that is open).
+        // Declaring null keeps the header empty and turns off the legacy inference.
         primaryAction={null}
       />
 
-      {confirmation ? (
-        // Pops in once, the moment the server said yes.
-        <Card className="apex-pop">
-          <CardContent className="space-y-4 p-5 sm:p-6">
-            <p className="flex items-center gap-2 text-sm font-semibold text-tone-good">
-              <ToneBubble tone="good" size="sm">
-                <Check />
-              </ToneBubble>
-              Sent
-            </p>
-            <h2 className="text-xl font-semibold leading-7">{confirmation.name} is on our list.</h2>
-            <p className="text-base text-muted-foreground">{sentCopy(confirmation)}</p>
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Button className="h-12 text-base sm:flex-1" onClick={() => navigate("/dashboard/referrals/mine")}>
-                See my referrals
-              </Button>
-              <Button variant="outline" className="h-11 text-base sm:flex-1" onClick={referAnother}>
-                Refer someone else
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <>
-          <p className="flex items-start gap-3 rounded-[10px] border border-border bg-card px-4 py-3 text-base leading-snug text-muted-foreground">
-            <ToneBubble tone="gold" size="md" className="mt-0.5">
-              <BadgeDollarSign />
-            </ToneBubble>
-            <span>
-              <span className="font-semibold text-foreground">$300 referral bonus.</span> You get it once the person you
-              refer has sold $10,000 in annual premium (the yearly premium on the policies they sell). My Referrals shows
-              where each one stands.
-            </span>
-          </p>
+      <MyLinkCard blurb="Anyone who applies through it is credited to you." />
 
-          <Card>
-            <CardContent className="p-5 sm:p-6">
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5" noValidate>
-                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName">First name</Label>
-                    <Input
-                      id="firstName"
-                      className={FIELD_CLASS}
-                      autoComplete="given-name"
-                      aria-invalid={errors.firstName ? true : undefined}
-                      aria-describedby={errors.firstName ? "firstName-error" : undefined}
-                      {...form.register("firstName")}
-                    />
-                    <FieldError id="firstName-error" message={errors.firstName?.message} />
+      {/* While the referral form is open it holds the page's one gold button. */}
+      <InviteAgentForm kind="join" framed quiet={callOpen} />
+
+      <section aria-labelledby="refer-call-title" className="rounded-xl border border-border bg-card" data-testid="refer-call">
+        <button
+          type="button"
+          className="flex min-h-12 w-full items-center gap-3 rounded-xl px-4 py-3 text-left focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)] sm:px-5"
+          aria-expanded={callOpen}
+          aria-controls="refer-call-body"
+          onClick={() => setCallOpen((open) => !open)}
+        >
+          <ToneBubble tone="gold" size="md">
+            <BadgeDollarSign />
+          </ToneBubble>
+          <span className="min-w-0 flex-1">
+            <span id="refer-call-title" className="block text-base font-semibold leading-6 text-foreground">Rather we call them?</span>
+            <span className="block text-sm text-muted-foreground">Send their name and number. We call within 24 hours, and you can earn a $300 bonus.</span>
+          </span>
+          <ChevronDown className={cn("h-5 w-5 shrink-0 text-muted-foreground transition-transform", callOpen && "rotate-180")} aria-hidden="true" />
+        </button>
+
+        {callOpen && (
+          <div id="refer-call-body" className="space-y-5 border-t border-border px-4 pb-5 pt-4 sm:px-5">
+            {confirmation ? (
+              // Pops in once, the moment the server said yes.
+              <div className="apex-pop space-y-4">
+                <p className="flex items-center gap-2 text-sm font-semibold text-tone-good">
+                  <ToneBubble tone="good" size="sm">
+                    <Check />
+                  </ToneBubble>
+                  Sent
+                </p>
+                <h2 className="text-xl font-semibold leading-7">{confirmation.name} is on our list.</h2>
+                <p className="text-base text-muted-foreground">{sentCopy(confirmation)}</p>
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <Button className="h-12 text-base sm:flex-1" onClick={() => navigate("/dashboard/referrals/mine")}>
+                    See my referrals
+                  </Button>
+                  <Button variant="outline" className="h-11 text-base sm:flex-1" onClick={referAnother}>
+                    Refer someone else
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <p className="text-base leading-snug text-muted-foreground" data-testid="referral-bonus">
+                  <span className="font-semibold text-foreground">$300 referral bonus.</span> You get it once the person you
+                  refer has sold $10,000 in annual premium (the yearly premium on the policies they sell). My Referrals shows
+                  where each one stands.
+                </p>
+
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5" noValidate>
+                  <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="firstName">First name</Label>
+                      <Input
+                        id="firstName"
+                        className={FIELD_CLASS}
+                        autoComplete="given-name"
+                        aria-invalid={errors.firstName ? true : undefined}
+                        aria-describedby={errors.firstName ? "firstName-error" : undefined}
+                        {...form.register("firstName")}
+                      />
+                      <FieldError id="firstName-error" message={errors.firstName?.message} />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="lastName">Last name</Label>
+                      <Input
+                        id="lastName"
+                        className={FIELD_CLASS}
+                        autoComplete="family-name"
+                        aria-invalid={errors.lastName ? true : undefined}
+                        aria-describedby={errors.lastName ? "lastName-error" : undefined}
+                        {...form.register("lastName")}
+                      />
+                      <FieldError id="lastName-error" message={errors.lastName?.message} />
+                    </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="lastName">Last name</Label>
-                    <Input
-                      id="lastName"
-                      className={FIELD_CLASS}
-                      autoComplete="family-name"
-                      aria-invalid={errors.lastName ? true : undefined}
-                      aria-describedby={errors.lastName ? "lastName-error" : undefined}
-                      {...form.register("lastName")}
-                    />
-                    <FieldError id="lastName-error" message={errors.lastName?.message} />
+                    <Label htmlFor="phone">Phone</Label>
+                    <Input id="phone" type="tel" inputMode="tel" className={FIELD_CLASS} autoComplete="tel" {...form.register("phone")} />
                   </div>
-                </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone</Label>
-                  <Input id="phone" type="tel" inputMode="tel" className={FIELD_CLASS} autoComplete="tel" {...form.register("phone")} />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    inputMode="email"
-                    className={FIELD_CLASS}
-                    autoComplete="email"
-                    aria-invalid={errors.email ? true : undefined}
-                    aria-describedby={errors.email ? "email-help email-error" : "email-help"}
-                    {...form.register("email")}
-                  />
-                  <p id="email-help" className="text-sm text-muted-foreground">
-                    Phone or email. One is enough.
-                  </p>
-                  <FieldError id="email-error" message={errors.email?.message} />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="state">State</Label>
-                  <Select
-                    value={stateValue}
-                    onValueChange={(v) => form.setValue("state", v, { shouldValidate: true, shouldDirty: true })}
-                  >
-                    <SelectTrigger
-                      id="state"
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      inputMode="email"
                       className={FIELD_CLASS}
-                      aria-label="State"
-                      aria-invalid={errors.state ? true : undefined}
-                      aria-describedby={errors.state ? "state-error" : undefined}
+                      autoComplete="email"
+                      aria-invalid={errors.email ? true : undefined}
+                      aria-describedby={errors.email ? "email-help email-error" : "email-help"}
+                      {...form.register("email")}
+                    />
+                    <p id="email-help" className="text-sm text-muted-foreground">
+                      Phone or email. One is enough.
+                    </p>
+                    <FieldError id="email-error" message={errors.email?.message} />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="state">State</Label>
+                    <Select
+                      value={stateValue}
+                      onValueChange={(v) => form.setValue("state", v, { shouldValidate: true, shouldDirty: true })}
                     >
-                      <SelectValue placeholder="Choose a state" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {US_STATES.map((s) => (
-                        <SelectItem key={s.value} value={s.value} className="h-11 text-base">
-                          {s.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FieldError id="state-error" message={errors.state?.message} />
-                </div>
+                      <SelectTrigger
+                        id="state"
+                        className={FIELD_CLASS}
+                        aria-label="State"
+                        aria-invalid={errors.state ? true : undefined}
+                        aria-describedby={errors.state ? "state-error" : undefined}
+                      >
+                        <SelectValue placeholder="Choose a state" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {US_STATES.map((s) => (
+                          <SelectItem key={s.value} value={s.value} className="h-11 text-base">
+                            {s.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FieldError id="state-error" message={errors.state?.message} />
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="notes">Notes (optional)</Label>
-                  <Textarea
-                    id="notes"
-                    rows={3}
-                    className="min-h-[96px] text-base"
-                    placeholder="Anything that helps: what they do now, why they would do well, the best time to call"
-                    aria-invalid={errors.notes ? true : undefined}
-                    aria-describedby={errors.notes ? "notes-error" : undefined}
-                    {...form.register("notes")}
-                  />
-                  <FieldError id="notes-error" message={errors.notes?.message} />
-                </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="notes">Notes (optional)</Label>
+                    <Textarea
+                      id="notes"
+                      rows={3}
+                      className="min-h-[96px] text-base"
+                      placeholder="Anything that helps: what they do now, why they would do well, the best time to call"
+                      aria-invalid={errors.notes ? true : undefined}
+                      aria-describedby={errors.notes ? "notes-error" : undefined}
+                      {...form.register("notes")}
+                    />
+                    <FieldError id="notes-error" message={errors.notes?.message} />
+                  </div>
 
-                {sendError && (
-                  <p role="alert" className="text-sm text-destructive">
-                    The referral did not send: {sendError}. What you typed is still here, so fix anything needed and try again.
-                  </p>
-                )}
-
-                <Button ref={sendButton} type="submit" disabled={submitting} className="h-12 w-full text-base">
-                  {submitting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                      Sending…
-                    </>
-                  ) : (
-                    "Send referral"
+                  {sendError && (
+                    <p role="alert" className="text-sm text-destructive">
+                      The referral did not send: {sendError}. What you typed is still here, so fix anything needed and try again.
+                    </p>
                   )}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-        </>
-      )}
+
+                  <Button ref={sendButton} type="submit" disabled={submitting} className="h-12 w-full text-base">
+                    {submitting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                        Sending…
+                      </>
+                    ) : (
+                      "Send referral"
+                    )}
+                  </Button>
+                </form>
+              </>
+            )}
+          </div>
+        )}
+      </section>
+
+      {/* An agent sees only the links they made; an admin or manager sees their team's too, so the
+          heading says what the list is for each. */}
+      <InvitationsTable kind="join" title={linksHeading} heading={linksHeading} hideWhenEmpty cardsOnly />
     </div>
   );
 }

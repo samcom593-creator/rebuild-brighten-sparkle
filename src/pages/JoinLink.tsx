@@ -42,13 +42,17 @@ interface Prefill {
   phone?: string | null;
   email?: string | null;
   state?: string | null;
+  license_status?: string | null;
+  license_status_locked?: boolean | null;
 }
 
 interface PrefillResponse {
   ok: boolean;
   reason?: string;
   kind?: string;
-  expires_at?: string;
+  /** Null for a permanent link (OVERHAUL-1): it never expires, so no date is printed. */
+  expires_at?: string | null;
+  permanent?: boolean;
   prefill?: Prefill;
 }
 
@@ -74,6 +78,10 @@ export default function JoinLink() {
   const [email, setEmail] = useState("");
   const [state, setState] = useState("");
   const [licensed, setLicensed] = useState(false);
+  // OVERHAUL-1: the person who made the link picked Licensed or Not licensed yet. The server
+  // applies that path (consume-invite-token reads the claimed row), so the page shows it instead
+  // of a toggle that would not count.
+  const [lockedLicense, setLockedLicense] = useState<"licensed" | "unlicensed" | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -111,6 +119,10 @@ export default function JoinLink() {
         if (pf.phone) setPhone(maskPhone(pf.phone));
         if (pf.email) setEmail(pf.email);
         if (pf.state) setState(pf.state.toUpperCase().slice(0, 2));
+        if (pf.license_status_locked && (pf.license_status === "licensed" || pf.license_status === "unlicensed")) {
+          setLockedLicense(pf.license_status);
+          setLicensed(pf.license_status === "licensed");
+        }
         if (resp.expires_at) setExpiresAt(resp.expires_at);
         setLoadingPrefill(false);
       } catch {
@@ -306,30 +318,46 @@ export default function JoinLink() {
               />
             </div>
 
-            <div className="flex items-start gap-3 rounded-lg border border-border bg-card/60 p-3">
-              <BadgeCheck className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-              <div className="flex-1">
-                <div className="flex items-center justify-between gap-3">
-                  <Label
-                    htmlFor="join-licensed"
-                    className="text-sm font-medium cursor-pointer"
-                  >
-                    I already have a life insurance license
-                  </Label>
-                  <Switch
-                    id="join-licensed"
-                    checked={licensed}
-                    onCheckedChange={setLicensed}
-                    data-testid="join-licensed-toggle"
-                  />
+            {lockedLicense ? (
+              <div className="flex items-start gap-3 rounded-lg border border-primary/40 bg-primary/10 p-3" data-testid="join-license-locked">
+                <BadgeCheck className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold">
+                    {lockedLicense === "licensed" ? "Licensed agent" : "Not licensed yet"}
+                  </p>
+                  <p className="text-[12px] text-muted-foreground mt-1">
+                    {lockedLicense === "licensed"
+                      ? "Your manager gets pinged immediately — expect a call."
+                      : "No license yet is fine. We'll walk you through it."}
+                  </p>
                 </div>
-                <p className="text-[12px] text-muted-foreground mt-1">
-                  {licensed
-                    ? "Your manager gets pinged immediately — expect a call."
-                    : "No license yet is fine. We'll walk you through it."}
-                </p>
               </div>
-            </div>
+            ) : (
+              <div className="flex items-start gap-3 rounded-lg border border-border bg-card/60 p-3">
+                <BadgeCheck className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                <div className="flex-1">
+                  <div className="flex items-center justify-between gap-3">
+                    <Label
+                      htmlFor="join-licensed"
+                      className="text-sm font-medium cursor-pointer"
+                    >
+                      I already have a life insurance license
+                    </Label>
+                    <Switch
+                      id="join-licensed"
+                      checked={licensed}
+                      onCheckedChange={setLicensed}
+                      data-testid="join-licensed-toggle"
+                    />
+                  </div>
+                  <p className="text-[12px] text-muted-foreground mt-1">
+                    {licensed
+                      ? "Your manager gets pinged immediately — expect a call."
+                      : "No license yet is fine. We'll walk you through it."}
+                  </p>
+                </div>
+              </div>
+            )}
 
             <GradientButton
               type="submit"

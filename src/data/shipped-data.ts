@@ -22,6 +22,9 @@ export const SHIPPED: ShippedItem[] = [
     label: "Money Inbox v2: Arizona dates, private-content exclusion, unified channels and immediate sending",
     detail: "Compact opportunity cards with source and topic filters, priority, editable approvals, calling, snooze and done. Apple seconds/nanoseconds are normalized at ingest and stored excerpts repaired. Private threads are denied by RLS. The Mac listens for approvals independently of scanning; delivery is measured from Messages receipts. Social channels show their actual ingest and send availability.",
     commit: "MP-309b",
+    label: "Call Training, the Book of Business call panels and Sold Calls book links show their data",
+    detail: "Sam: Call Training has nothing there. Six views from this morning's ReadyMode work had no read permission for signed-in users, so every read failed with permission denied: Call Training, the Book of Business call panels and the Sold Calls In the book links all came back empty. Granted read access; row security still decides who sees what (tested: Sam sees every row, an ordinary user sees none).",
+    commit: "MP310-GRANTS",
   },
   {
     ts: "Oct 28, 2026",

@@ -10,6 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ToneBubble } from "@/components/ui/delight/ToneBubble";
+import { TONE_CLASS, type Tone } from "@/lib/tones";
 import { cn } from "@/lib/utils";
 import { TRAINING_ROUTES } from "@/lib/trainingRoutes";
 import { useAuth } from "@/hooks/useAuth";
@@ -39,25 +41,33 @@ interface OperationsData {
 }
 
 // The contracting tile reads the review (the only contracting truth): people who still have a circle to confirm.
-const money = (value: number) => `$${Math.round(Number(value || 0)).toLocaleString()}`;
+//
+// OVERHAUL-home (2026-10-29): the tiles carry the delight layer (a tone bubble per workspace, the
+// number in its tone when it needs you) and their hints wrap instead of being cut off mid-word
+// ("10 uncontact..."). A tone names the state (src/lib/tones.ts): new is cool, an interview needs
+// a nudge (warm), paperwork is royal, hired is the gold moment, a sale is good, and anything that
+// needs action now is hot.
 function MetricLink({
-  to, icon: Icon, label, value, detail, danger = false,
+  to, icon: Icon, label, value, detail, tone, danger = false,
 }: {
-  to: string; icon: typeof UsersRound; label: string; value: string | number; detail: string; danger?: boolean;
+  to: string; icon: typeof UsersRound; label: string; value: string | number; detail: string; tone: Tone; danger?: boolean;
 }) {
+  const shown: Tone = danger ? "hot" : tone;
   return (
-    <Link to={to} className="group min-w-0">
-      <Card className={cn("h-full transition-colors group-hover:border-primary/50", danger && "border-rose-500/35 bg-rose-500/[0.04]")}> 
-        <CardContent className="p-3.5">
-          <div className="flex items-center justify-between gap-2">
-            <Icon className={cn("h-4 w-4 text-muted-foreground", danger && "text-rose-400")} />
-            <ArrowRight className="h-3.5 w-3.5 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-          </div>
-          <p className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
-          <p className={cn("mt-0.5 text-2xl font-bold tabular-nums", danger && "text-rose-400")}>{value}</p>
-          <p className="mt-0.5 truncate text-[12px] text-muted-foreground">{detail}</p>
-        </CardContent>
-      </Card>
+    <Link
+      to={to}
+      className={cn(
+        "apex-lift group flex min-w-0 flex-col rounded-xl border border-border bg-card p-3 hover:bg-muted/40 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)] sm:p-3.5",
+        danger && "border-tone-hot/35",
+      )}
+    >
+      <span className="flex items-center gap-2">
+        <ToneBubble tone={shown} size="sm"><Icon /></ToneBubble>
+        <span className="min-w-0 flex-1 text-[13px] font-semibold leading-4 text-muted-foreground sm:text-sm sm:leading-5">{label}</span>
+        <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+      </span>
+      <span className={cn("mt-2 text-2xl font-bold leading-none tabular-nums", danger ? TONE_CLASS.hot.text : "text-foreground")}>{value}</span>
+      <span className="mt-1.5 text-[13px] leading-4 text-muted-foreground">{detail}</span>
     </Link>
   );
 }
@@ -135,11 +145,11 @@ export function OperationsCommandCenter() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-        <MetricLink to="/dashboard/recruiting?queue=new" icon={UserRoundSearch} label="New recruits" value={recruitTile.value} detail={recruitTile.detail} danger={recruitTile.danger} />
-        <MetricLink to="/dashboard/recruiting/pipeline" icon={CalendarCheck2} label="Interviews" value={d.recruiting.interview} detail="live hiring pipeline" />
-        <MetricLink to="/dashboard/team" icon={UserCheck2} label="Hired" value={d.recruiting.hired} detail={`${d.recruiting.contracting} at contracting`} />
-        <MetricLink to={TRAINING_ROUTES.teamProgress} icon={UsersRound} label="Onboarding" value={d.onboarding.stalled} detail={`${d.onboarding.carrier_contracting} at contracting`} danger={d.onboarding.stalled > 0} />
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-2 2xl:grid-cols-3">
+        <MetricLink to="/dashboard/recruiting?queue=new" icon={UserRoundSearch} label="New recruits" value={recruitTile.value} detail={recruitTile.detail} danger={recruitTile.danger} tone="cool" />
+        <MetricLink to="/dashboard/recruiting/pipeline" icon={CalendarCheck2} label="In interviews" value={d.recruiting.interview} detail="at the interview step now" tone="warm" />
+        <MetricLink to="/dashboard/team" icon={UserCheck2} label="Hired" value={d.recruiting.hired} detail={`${d.recruiting.contracting} at contracting`} tone="gold" />
+        <MetricLink to={TRAINING_ROUTES.teamProgress} icon={UsersRound} label="Stuck in onboarding" value={d.onboarding.stalled} detail={`${d.onboarding.carrier_contracting} at carrier contracting`} danger={d.onboarding.stalled > 0} tone="royal" />
         <MetricLink
           to="/dashboard/contracting"
           icon={FileCheck2}
@@ -147,9 +157,10 @@ export function OperationsCommandCenter() {
           value={contractingTile.value}
           detail={contractingTile.detail}
           danger={contractingTile.danger}
+          tone="royal"
         />
-        <MetricLink to="/dashboard/production" icon={PhoneCall} label="Sold today" value={d.sales.sold_today} detail={`${d.sales.expected_to_sell} expected producers`} />
-        <MetricLink to="/dashboard/help?tab=desk" icon={HelpCircle} label="Support" value={d.support.open} detail={d.support.urgent ? `${d.support.urgent} urgent` : "open requests"} danger={d.support.urgent > 0} />
+        <MetricLink to="/dashboard/production" icon={PhoneCall} label="Sold today" value={d.sales.sold_today} detail={`${d.sales.expected_to_sell} expected producers`} tone="good" />
+        <MetricLink to="/dashboard/help?tab=desk" icon={HelpCircle} label="Support" value={d.support.open} detail={d.support.urgent ? `${d.support.urgent} urgent` : "open requests"} danger={d.support.urgent > 0} tone="slate" />
       </div>
 
     </section>

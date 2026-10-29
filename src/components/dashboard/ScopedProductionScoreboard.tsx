@@ -549,7 +549,8 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
           <div className="p-4 text-sm text-muted-foreground">Your login is not linked to a producer profile yet. Ask an administrator to connect it before production can be attributed.</div>
         ) : (
           <>
-            <div className={isAdmin ? "grid sm:grid-cols-2 lg:grid-cols-4" : "grid sm:grid-cols-3"}>
+            {/* OVERHAUL-home: four across only from 1280px; at 1024 beside the sidebar the four money numbers were cut to "$245,3...". */}
+            <div className={isAdmin ? "grid sm:grid-cols-2 xl:grid-cols-4" : "grid sm:grid-cols-3"}>
               <KPIStat
                 detail={`${policies(data.personal.policies)} you sold`}
                 icon={TrendingUp}
@@ -571,7 +572,10 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
               {isAdmin && data.imo && (
                 <KPIStat
                   accent
-                  detail={`${policies(data.imo.policies)} · ${plural(data.imo.agents_current ?? data.imo.agents, "current agent")} incl. you${data.imo.agents_current != null ? ` (${data.imo.agents} on record)` : ""}`}
+                  // OVERHAUL-home (2026-10-29): "135 current agents incl. you (213 on record)" was a
+                  // roster count beside a production number, the same disease as Home's old
+                  // "Roster 68". The producers here are the rows of "Who sold" below, same window.
+                  detail={`${policies(data.imo.policies)} · ${plural(data.by_agent.length, "producer")} in this window`}
                   icon={Building2}
                   label="IMO total"
                   value={money(data.imo.ap)}

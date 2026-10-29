@@ -24,6 +24,14 @@ describe("scoped production scoreboard", () => {
     expect(scoreboardWindow("last_month", "2026-03-01")).toMatchObject({ start: "2026-02-01", end: "2026-03-01" });
   });
 
+  it("OVERHAUL-home: the IMO tile counts the producers in its own window (the Who sold rows), not a roster", () => {
+    const component = source("components/dashboard/ScopedProductionScoreboard.tsx");
+    expect(component).toContain('${plural(data.by_agent.length, "producer")} in this window');
+    expect(component).toContain("{data.by_agent.length} producers ·");
+    // "135 current agents incl. you (213 on record)" was a roster count beside a production number.
+    expect(component).not.toContain('"current agent")} incl. you');
+  });
+
   it("MP-372: an empty window explains itself instead of reading as broken", () => {
     const component = source("components/dashboard/ScopedProductionScoreboard.tsx");
     expect(component).toContain('{ key: "last_month", label: "Last month" }');

@@ -93,7 +93,8 @@ export function RecruiterBountyCard({ agentId, className }: { agentId?: string |
             </p>
           </div>
         </div>
-        <Button onClick={copyLink} disabled={link.isLoading || !bioUrl} className="shrink-0 gap-2 font-bold">
+        {/* OVERHAUL-home: outline, so each home keeps one gold button (its own page action). */}
+        <Button onClick={copyLink} disabled={link.isLoading || !bioUrl} variant="outline" className="shrink-0 gap-2 font-bold">
           <Copy className="h-3.5 w-3.5" /> Copy Link in Bio
         </Button>
       </div>

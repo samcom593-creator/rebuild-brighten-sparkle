@@ -13,6 +13,12 @@
  * F24: the analytics panel module is not imported and the panel is not
  * rendered until the disclosure opens, and it stays mounted afterwards.
  *
+ * OVERHAUL-home (2026-10-29): the conversion strip leads the owner's Home and
+ * Selling agents replaces the "Roster 68 · No sale yet 59" tiles; the all-time
+ * Ayro block is off Home (it stays on Book of Business). The trend and policy
+ * status panel is now the only reader of apex_admin_home_dashboard on Home, so
+ * the RPC waits until that panel is opened.
+ *
  * Every sibling panel is stubbed: this file grades the Home frame, not the
  * children, and the real ones each open their own queries.
  */
@@ -40,7 +46,10 @@ vi.mock("@/components/dashboard/ScopedProductionScoreboard", () => ({
     </div>
   ),
 }));
-vi.mock("@/components/dashboard/AyroProductionPanel", () => ({ AyroProductionPanel: () => <div data-testid="ayro" /> }));
+vi.mock("@/components/dashboard/HomeConversions", () => ({
+  HomeConversions: () => <div data-testid="conversions" />,
+  SellingAgentsTile: () => <div data-testid="selling-agents" />,
+}));
 vi.mock("@/components/dashboard/OperationsCommandCenter", () => ({ OperationsCommandCenter: () => <div data-testid="ops" /> }));
 vi.mock("@/components/dashboard/HomeOperationsSummary", () => ({ HomeOperationsSummary: () => <div data-testid="ops-summary" /> }));
 vi.mock("@/components/dashboard/RecordsAndBounties", () => ({ RecordsAndBounties: () => <div data-testid="records" /> }));
@@ -103,101 +112,25 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+/** Opens Reports and its "Trend and policy status" disclosure, the panel that reads the RPC. */
+function showOverview() {
+  fireEvent.mouseDown(screen.getByRole("tab", { name: "Overview" }), { button: 0, ctrlKey: false });
+}
+
+function openAnalytics(container: HTMLElement) {
+  fireEvent.mouseDown(screen.getByRole("tab", { name: "Reports" }), { button: 0, ctrlKey: false });
+  const details = container.querySelector("details") as HTMLDetailsElement;
+  expect(details).not.toBeNull();
+  details.open = true;
+  fireEvent(details, new Event("toggle"));
+  return details;
+}
+
 describe("AgentCloudHome", () => {
-  it("F23: keeps the date bar, Ayro and every daily block on screen while the RPC loads; the Operations and Reports tabs hold the rest", () => {
-    rpc.mockReturnValue(new Promise(() => undefined) as never);
-    renderHome();
-    expect(screen.getByRole("button", { name: "Year to date" })).toBeInTheDocument();
-    expect(screen.getByText("Total IMO by agency")).toBeInTheDocument();
-    expect(screen.getByRole("status")).toHaveAttribute("aria-busy", "true");
-    // Ayro stays on the block beside the scoreboard (MP-AYRO-2, Sam: "make it live on the block").
-    for (const id of ["join-your-team", "scoreboard", "ayro", "ops"]) {
-      expect(screen.getByTestId(id)).toBeInTheDocument();
-    }
-    for (const id of ["ops-summary", "records"]) expect(screen.queryByTestId(id)).not.toBeInTheDocument();
-    fireEvent.mouseDown(screen.getByRole("tab", { name: "Operations" }), { button: 0, ctrlKey: false });
-    expect(screen.getByTestId("ops-summary")).toBeInTheDocument();
-    expect(screen.getByTestId("scoreboard")).toBeInTheDocument();
-    fireEvent.mouseDown(screen.getByRole("tab", { name: "Reports" }), { button: 0, ctrlKey: false });
-    expect(screen.getByTestId("records")).toBeInTheDocument();
-    expect(screen.getByTestId("scoreboard")).toBeInTheDocument();
-    expect(screen.getByTestId("ayro")).toBeInTheDocument();
-  });
-
-  it("one date bar: the RPC and Total IMO by agency read the scoreboard's month-to-date window", async () => {
-    rpc.mockResolvedValue({ data: HOME, error: null } as never);
-    renderHome();
-    expect(await screen.findByText("215")).toBeInTheDocument();
-    const board = screen.getByTestId("scoreboard");
-    expect(board).toHaveAttribute("data-period", "month");
-    expect(board).toHaveAttribute("data-through", "2026-10-14");
-    // F22: the Phoenix business day 2026-10-14 gives Oct 1 through Oct 14, end-exclusive.
-    expect(rpcCalls()).toEqual([{ p_start: "2026-10-01", p_end: "2026-10-15" }]);
-    const imo = screen.getByTestId("imo");
-    expect(imo).toHaveAttribute("data-start", "2026-10-01");
-    expect(imo).toHaveAttribute("data-end", "2026-10-15");
-    expect(imo).toHaveTextContent("Oct 1, 2026 – Oct 14, 2026");
-    expect(screen.getByText(/same dates as the scoreboard/)).toBeInTheDocument();
-    // The old second picker is gone.
-    expect(screen.queryByRole("button", { name: "This month" })).not.toBeInTheDocument();
-  });
-
-  it("rolls to the new business day at Phoenix midnight, but keeps a date someone picked", async () => {
-    rpc.mockResolvedValue({ data: HOME, error: null } as never);
-    const { client, rerender } = renderHome();
-    expect(await screen.findByText("215")).toBeInTheDocument();
-    expect(screen.getByTestId("scoreboard")).toHaveAttribute("data-through", "2026-10-14");
-    const tree = () => (
-      <QueryClientProvider client={client}>
-        <AgentCloudHome />
-      </QueryClientProvider>
-    );
-    // Midnight passes (useBusinessToday re-renders with the new key): Home follows it.
-    businessDay.key = "2026-10-15";
-    rerender(tree());
-    expect(screen.getByTestId("scoreboard")).toHaveAttribute("data-through", "2026-10-15");
-    expect(rpcCalls().at(-1)).toEqual({ p_start: "2026-10-01", p_end: "2026-10-16" });
-    // A picked date is a choice, not "today": it stays through the next rollover.
-    fireEvent.click(screen.getByRole("button", { name: "Through Oct 10" }));
-    businessDay.key = "2026-10-16";
-    rerender(tree());
-    expect(screen.getByTestId("scoreboard")).toHaveAttribute("data-through", "2026-10-10");
-  });
-
-  it("changing the scoreboard's period or date moves every production block on Home", async () => {
-    rpc.mockResolvedValue({ data: HOME, error: null } as never);
-    renderHome();
-    expect(await screen.findByText("215")).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "Year to date" }));
-    expect(rpcCalls().at(-1)).toEqual({ p_start: "2026-01-01", p_end: "2026-10-15" });
-    expect(screen.getByTestId("imo")).toHaveAttribute("data-start", "2026-01-01");
-
-    fireEvent.click(screen.getByRole("button", { name: "Through Oct 10" }));
-    expect(rpcCalls().at(-1)).toEqual({ p_start: "2026-01-01", p_end: "2026-10-11" });
-    expect(screen.getByTestId("imo")).toHaveAttribute("data-end", "2026-10-11");
-    expect(screen.getByTestId("scoreboard")).toHaveAttribute("data-through", "2026-10-10");
-  });
-
-  it("F23: a failed load shows the error with Retry and leaves the date bar in place", async () => {
-    vi.useFakeTimers();
-    rpc.mockResolvedValue({ data: null, error: { message: "permission denied", code: "42501" } } as never);
-    renderHome();
-    // retry: 1 with retryDelay 4s is part of the component's contract (MP-431).
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(5_000);
-    });
-    const alert = screen.getByRole("alert");
-    expect(alert).toHaveTextContent("could not load.");
-    expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Year to date" })).toBeInTheDocument();
-    expect(screen.queryByText("215")).not.toBeInTheDocument();
-  });
-
   it("F24: does not import or render the analytics panel until the disclosure opens, then keeps it mounted", async () => {
     rpc.mockResolvedValue({ data: HOME, error: null } as never);
     const { container } = renderHome();
-    expect(await screen.findByText("215")).toBeInTheDocument();
+    expect(screen.getByTestId("conversions")).toBeInTheDocument();
     expect(panel.imported).toBe(false);
     expect(panel.renders).toBe(0);
     expect(screen.queryByTestId("analytics-panel")).not.toBeInTheDocument();
@@ -217,6 +150,123 @@ describe("AgentCloudHome", () => {
     expect(panel.renders).toBe(rendersAfterOpen);
   });
 
+  it("F23 / OVERHAUL-home: conversions lead, the date bar and every daily block are on screen; no all-time Ayro block and no roster tiles", () => {
+    rpc.mockReturnValue(new Promise(() => undefined) as never);
+    renderHome();
+    expect(screen.getByRole("button", { name: "Year to date" })).toBeInTheDocument();
+    expect(screen.getByText("Total IMO by agency")).toBeInTheDocument();
+    for (const id of ["join-your-team", "conversions", "scoreboard", "selling-agents", "ops"]) {
+      expect(screen.getByTestId(id)).toBeInTheDocument();
+    }
+    // The strip comes before production, so the funnel is the first thing Sam reads.
+    const order = ["conversions", "scoreboard", "selling-agents"].map((id) => screen.getByTestId(id));
+    expect(order[0].compareDocumentPosition(order[1]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(order[1].compareDocumentPosition(order[2]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // Removed from Home: the all-time Ayro block and the vanity roster counts.
+    expect(screen.queryByTestId("ayro")).not.toBeInTheDocument();
+    for (const gone of ["Roster", "No sale yet", "agents on the team", "active, no production yet"]) {
+      expect(screen.queryByText(gone)).not.toBeInTheDocument();
+    }
+    for (const id of ["ops-summary", "records"]) expect(screen.queryByTestId(id)).not.toBeInTheDocument();
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Operations" }), { button: 0, ctrlKey: false });
+    expect(screen.getByTestId("ops-summary")).toBeInTheDocument();
+    expect(screen.getByTestId("scoreboard")).toBeInTheDocument();
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Reports" }), { button: 0, ctrlKey: false });
+    expect(screen.getByTestId("records")).toBeInTheDocument();
+    expect(screen.getByTestId("scoreboard")).toBeInTheDocument();
+    expect(screen.getByTestId("conversions")).toBeInTheDocument();
+  });
+
+  it("OVERHAUL-home: apex_admin_home_dashboard (~2.2s) is not called until its panel is opened", async () => {
+    rpc.mockResolvedValue({ data: HOME, error: null } as never);
+    const { container } = renderHome();
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(rpc).not.toHaveBeenCalled();
+    openAnalytics(container);
+    expect(await screen.findByTestId("analytics-panel")).toBeInTheDocument();
+    expect(rpcCalls()).toEqual([{ p_start: "2026-10-01", p_end: "2026-10-15" }]);
+  });
+
+  it("one date bar: the RPC and Total IMO by agency read the scoreboard's month-to-date window", async () => {
+    rpc.mockResolvedValue({ data: HOME, error: null } as never);
+    const { container } = renderHome();
+    const board = screen.getByTestId("scoreboard");
+    expect(board).toHaveAttribute("data-period", "month");
+    expect(board).toHaveAttribute("data-through", "2026-10-14");
+    const imo = screen.getByTestId("imo");
+    // F22: the Phoenix business day 2026-10-14 gives Oct 1 through Oct 14, end-exclusive.
+    expect(imo).toHaveAttribute("data-start", "2026-10-01");
+    expect(imo).toHaveAttribute("data-end", "2026-10-15");
+    expect(imo).toHaveTextContent("Oct 1, 2026 – Oct 14, 2026");
+    expect(screen.getByText(/same dates as the scoreboard/)).toBeInTheDocument();
+    openAnalytics(container);
+    expect(await screen.findByTestId("analytics-panel")).toBeInTheDocument();
+    expect(rpcCalls()).toEqual([{ p_start: "2026-10-01", p_end: "2026-10-15" }]);
+    // The old second picker is gone.
+    expect(screen.queryByRole("button", { name: "This month" })).not.toBeInTheDocument();
+  });
+
+  it("rolls to the new business day at Phoenix midnight, but keeps a date someone picked", async () => {
+    rpc.mockResolvedValue({ data: HOME, error: null } as never);
+    const { client, rerender, container } = renderHome();
+    openAnalytics(container);
+    expect(await screen.findByTestId("analytics-panel")).toBeInTheDocument();
+    showOverview();
+    expect(screen.getByTestId("scoreboard")).toHaveAttribute("data-through", "2026-10-14");
+    const tree = () => (
+      <QueryClientProvider client={client}>
+        <AgentCloudHome />
+      </QueryClientProvider>
+    );
+    // Midnight passes (useBusinessToday re-renders with the new key): Home follows it.
+    businessDay.key = "2026-10-15";
+    rerender(tree());
+    expect(screen.getByTestId("scoreboard")).toHaveAttribute("data-through", "2026-10-15");
+    expect(screen.getByTestId("imo")).toHaveAttribute("data-end", "2026-10-16");
+    expect(rpcCalls().at(-1)).toEqual({ p_start: "2026-10-01", p_end: "2026-10-16" });
+    // A picked date is a choice, not "today": it stays through the next rollover.
+    fireEvent.click(screen.getByRole("button", { name: "Through Oct 10" }));
+    businessDay.key = "2026-10-16";
+    rerender(tree());
+    expect(screen.getByTestId("scoreboard")).toHaveAttribute("data-through", "2026-10-10");
+  });
+
+  it("changing the scoreboard's period or date moves every production block on Home", async () => {
+    rpc.mockResolvedValue({ data: HOME, error: null } as never);
+    const { container } = renderHome();
+    openAnalytics(container);
+    expect(await screen.findByTestId("analytics-panel")).toBeInTheDocument();
+    showOverview();
+
+    fireEvent.click(screen.getByRole("button", { name: "Year to date" }));
+    expect(rpcCalls().at(-1)).toEqual({ p_start: "2026-01-01", p_end: "2026-10-15" });
+    expect(screen.getByTestId("imo")).toHaveAttribute("data-start", "2026-01-01");
+
+    fireEvent.click(screen.getByRole("button", { name: "Through Oct 10" }));
+    expect(rpcCalls().at(-1)).toEqual({ p_start: "2026-01-01", p_end: "2026-10-11" });
+    expect(screen.getByTestId("imo")).toHaveAttribute("data-end", "2026-10-11");
+    expect(screen.getByTestId("scoreboard")).toHaveAttribute("data-through", "2026-10-10");
+  });
+
+  it("F23: a failed load shows the error with Retry and leaves the date bar in place", async () => {
+    vi.useFakeTimers();
+    rpc.mockResolvedValue({ data: null, error: { message: "permission denied", code: "42501" } } as never);
+    const { container } = renderHome();
+    openAnalytics(container);
+    // retry: 1 with retryDelay 4s is part of the component's contract (MP-431).
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000);
+    });
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent("Unavailable");
+    expect(alert).toHaveTextContent("You do not have permission to view this.");
+    expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Year to date" })).toBeInTheDocument();
+    expect(screen.queryByTestId("analytics-panel")).not.toBeInTheDocument();
+  });
+
   it("F24 / F22: the Home module carries no Recharts import and no browser-local date construction", () => {
     const home = source("components/dashboard/AgentCloudHome.tsx");
     expect(home).not.toContain('from "recharts"');
@@ -227,5 +277,9 @@ describe("AgentCloudHome", () => {
     expect(home).not.toContain("toLocaleDateString");
     expect(home).toContain("useBusinessToday()");
     expect(source("components/dashboard/HomeAnalyticsPanel.tsx")).toContain('from "recharts"');
+    // OVERHAUL-home: the all-time Ayro block and the roster tiles are not rendered on Home.
+    expect(home).not.toContain("<AyroProductionPanel");
+    expect(home).not.toContain("RosterTiles");
+    expect(home).toContain("<HomeConversions />");
   });
 });

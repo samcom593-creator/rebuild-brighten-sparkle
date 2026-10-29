@@ -470,6 +470,7 @@
   "hh_rate_limit": "boolean",
   "hh_touch_applicant": "trigger",
   "hh_touch_user": "trigger",
+  "home_conversion_people": "jsonb",
   "ig_bucket": "text",
   "in_course_peer_pressure": "jsonb",
   "ingest_ayro_sales_deal": "jsonb",

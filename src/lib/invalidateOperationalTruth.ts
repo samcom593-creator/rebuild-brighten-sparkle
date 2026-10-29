@@ -40,6 +40,9 @@ export const OPERATIONAL_TRUTH_QUERY_KEYS = [
   "book-truth-production",
   "deal-by-key",
   "resolved-downline",
+  // OVERHAUL-home (2026-10-29): Home's conversion strip and Selling agents. A first deal, a
+  // hire or a license change elsewhere in the tab moves these numbers too.
+  "home-conversions",
 ] as const;
 
 export interface InvalidateOperationalTruthOptions {

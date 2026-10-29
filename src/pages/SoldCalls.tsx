@@ -41,6 +41,8 @@ import { ageEquation } from "@/lib/clientFacts";
 import { ResellSignals, WorkActions } from "@/components/soldcalls/ResellWork";
 import { callStamp, isResellLead, type ResellFields } from "@/lib/resellSignals";
 import { ObjectionCallList } from "@/components/soldcalls/ObjectionCallList";
+import { CallAudioPlayer } from "@/components/calls/CallAudioPlayer";
+import { momentsFrom } from "@/lib/callAudio";
 import { DialerLeadsList } from "@/components/soldcalls/DialerLeadsList";
 
 interface Beneficiary { name?: string; relationship?: string; pct?: number | string; contingent?: boolean; dob?: string }
@@ -539,6 +541,7 @@ function SoldCallCard({ row, extra, secret, secretLoading, secretFailed = false,
       </div>
 
       <ResellSignals data={row} gaveSsn={row.has_ssn} gaveBank={row.has_bank} hasTranscript={Boolean(row.has_transcript)} />
+      <CallAudioPlayer callId={row.call_id} compact moments={momentsFrom((row as unknown as { key_moments?: unknown }).key_moments)} />
 
       {!row.packet_id ? (
         <div className="mt-3 space-y-2 text-sm text-muted-foreground">

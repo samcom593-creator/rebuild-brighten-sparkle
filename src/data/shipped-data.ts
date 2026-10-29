@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "Oct 28, 2026",
+    label: "Calls play on the site now. Call Training, Sold Calls and Book of Business rows carry the recording itself with one-tap snippets at each moment, instead of a ReadyMode link nobody could open, and every agent gets a training library of the best calls.",
+    detail: "MP-310. A ReadyMode recording link opens only for whoever holds the ReadyMode login, and ReadyMode allows one session per login, so the team could not hear a single call. The bot now publishes every downloaded recording to a private bucket: a copy with spoken digits (SSN, bank, card, date of birth) muted for the team, and an unmuted sold-call copy for Sam and Aisha to confirm numbers by ear. Agents hear only training calls (graded great or 70+, or an objection turned, with no compliance flag). Proven: an agent cannot open an unmuted file or a call outside the library.",
+    commit: "MP-310-CALL-AUDIO",
+  },
+  {
+    ts: "Oct 28, 2026",
     label: "Recruiting links: your own link at the top, and a link for one person in three taps (quick or with details, licensed or not yet, permanent or temporary)",
     detail: "Sam: give them an option to put in first name, last name, email, NPN and phone, or just make a link they tap; licensed or not licensed yet, either or; a permanent or a temporary link. Invite an agent and Refer a recruit now open with Your link, the permanent /r/ link with Copy and Share (the phone's own share sheet). Make a link asks three things: Quick link or With details, Licensed or Not licensed yet (required, They choose is gone), and Permanent or Temporary, with the moment a temporary link stops working shown before and after it is made. Once made: Copy, Share, Text and Email in one row. Invite an agent makes hire links as before, with the team and offer folded into one line; Refer a recruit makes a prospect link credited to you, and the call-us referral form is still there under Rather we call them. A permanent link never expires but still lets one person in, each page lists and counts only its own kind of link, every grant was proven in a rolled-back transaction as Sam, an agent, a visitor and the server, and /r/ attribution is pinned by a test from the card to the hire.",
     commit: "OVERHAUL-1",

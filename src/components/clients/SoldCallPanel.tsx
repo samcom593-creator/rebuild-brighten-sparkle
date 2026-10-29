@@ -12,7 +12,7 @@
 
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, CheckCircle2, ChevronDown, Headphones, MessageSquare, Phone, PhoneCall } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronDown, MessageSquare, Phone, PhoneCall } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { looseSupabase } from "@/lib/looseSupabase";
 import { Button } from "@/components/ui/button";
@@ -20,13 +20,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { externalHref } from "@/lib/externalHref";
 import { useAuth } from "@/hooks/useAuth";
 import { SOLD_CALL_EXTRA_UID } from "@/hooks/useSoldCallKeys";
+import { CallAudioPlayer } from "@/components/calls/CallAudioPlayer";
 import { contactLinkProps, formatPhoneDisplay, isDialablePhone, nationalDigits, phoneHref, smsHref } from "@/lib/phone";
 import { bookingGaps, checkNumber, clientAsks, draftDayLabel, formatDob, formatSsn, paymentLabel, withNumberAsks, type NumberCheck, type NumberField } from "@/lib/soldCallPacket";
 import { FixNumber } from "@/components/soldcalls/FixNumber";
 
 interface Beneficiary { name?: string; relationship?: string; pct?: number | string; contingent?: boolean }
 interface Packet {
-  packet_id: string; call_at: string | null; agent_raw: string | null;
+  packet_id: string; call_id: string | null; call_at: string | null; agent_raw: string | null;
   client_first_name: string | null; client_last_name: string | null; client_state: string | null;
   client_dob: string | null; client_phone: string | null; client_street: string | null;
   client_city: string | null; client_zip: string | null; client_email: string | null;
@@ -155,7 +156,7 @@ export function SoldCallPanel({ phone, firstName, lastName, doNotCall = false }:
             )}
             {recordingHref && (
               <Button asChild variant="outline" size="sm">
-                <a href={recordingHref} target="_blank" rel="noopener noreferrer"><Headphones className="mr-1.5 h-3.5 w-3.5" />Recording {mmss(p.duration_seconds)}</a>
+                <CallAudioPlayer callId={p.call_id ?? ""} compact />
               </Button>
             )}
             {p.status === "booked" ? (

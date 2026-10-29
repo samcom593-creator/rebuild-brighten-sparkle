@@ -1506,6 +1506,38 @@
         "raw": "p_from date, p_to date"
       }
     ],
+    "call_audio_for": [
+      {
+        "all": [
+          "p_call_ids"
+        ],
+        "required": [
+          "p_call_ids"
+        ],
+        "unnamed": false,
+        "raw": "p_call_ids uuid[]"
+      }
+    ],
+    "call_training_library": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "can_play_call_audio": [
+      {
+        "all": [
+          "p_path"
+        ],
+        "required": [
+          "p_path"
+        ],
+        "unnamed": false,
+        "raw": "p_path text"
+      }
+    ],
     "can_view_sold_calls": [
       {
         "all": [],
@@ -2116,6 +2148,7 @@
           "p_license_status",
           "p_notes",
           "p_offered_comp_pct",
+          "p_permanent",
           "p_recipient_email",
           "p_recipient_name",
           "p_recipient_phone",
@@ -2124,7 +2157,7 @@
         ],
         "required": [],
         "unnamed": false,
-        "raw": "p_kind text DEFAULT 'hire'::text, p_target_role text DEFAULT 'hired_unlicensed'::text, p_target_manager_id uuid DEFAULT NULL::uuid, p_recipient_email text DEFAULT NULL::text, p_recipient_name text DEFAULT NULL::text, p_recipient_phone text DEFAULT NULL::text, p_license_status text DEFAULT NULL::text, p_offered_comp_pct numeric DEFAULT NULL::numeric, p_carrier_exceptions jsonb DEFAULT '[]'::jsonb, p_expires_hours integer DEFAULT 168, p_notes text DEFAULT NULL::text"
+        "raw": "p_kind text DEFAULT 'hire'::text, p_target_role text DEFAULT 'hired_unlicensed'::text, p_target_manager_id uuid DEFAULT NULL::uuid, p_recipient_email text DEFAULT NULL::text, p_recipient_name text DEFAULT NULL::text, p_recipient_phone text DEFAULT NULL::text, p_license_status text DEFAULT NULL::text, p_offered_comp_pct numeric DEFAULT NULL::numeric, p_carrier_exceptions jsonb DEFAULT '[]'::jsonb, p_expires_hours integer DEFAULT 168, p_notes text DEFAULT NULL::text, p_permanent boolean DEFAULT false"
       }
     ],
     "crm_agent_contacts": [
@@ -3951,6 +3984,14 @@
         "raw": ""
       }
     ],
+    "fn_interview_outcome_ask": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "fn_invitation_status": [
       {
         "all": [
@@ -4233,6 +4274,22 @@
       }
     ],
     "fn_missed_opportunity_digest": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_money_inbox_guard": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_money_inbox_touch": [
       {
         "all": [],
         "required": [],
@@ -4870,6 +4927,14 @@
         ],
         "unnamed": false,
         "raw": "p_roles app_role[], p_allow_presenter boolean DEFAULT false"
+      }
+    ],
+    "fn_rmd_match_keys": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
       }
     ],
     "fn_rpc_single_flight": [
@@ -5965,6 +6030,14 @@
         "raw": "p_invitation_id uuid, p_claim_id uuid"
       }
     ],
+    "is_active_agent_login": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "is_agency_staff": [
       {
         "all": [],
@@ -6174,6 +6247,103 @@
         "raw": ""
       }
     ],
+    "lead_bundle_archive": [
+      {
+        "all": [
+          "p_bundle"
+        ],
+        "required": [
+          "p_bundle"
+        ],
+        "unnamed": false,
+        "raw": "p_bundle uuid"
+      }
+    ],
+    "lead_bundle_create": [
+      {
+        "all": [
+          "p_format",
+          "p_limit",
+          "p_min_days_since_dialed",
+          "p_name",
+          "p_note",
+          "p_tiers"
+        ],
+        "required": [
+          "p_format",
+          "p_name",
+          "p_tiers"
+        ],
+        "unnamed": false,
+        "raw": "p_name text, p_format text, p_tiers text[], p_min_days_since_dialed integer DEFAULT 7, p_limit integer DEFAULT 100, p_note text DEFAULT NULL::text"
+      }
+    ],
+    "lead_bundle_grant": [
+      {
+        "all": [
+          "p_bundle",
+          "p_note",
+          "p_user"
+        ],
+        "required": [
+          "p_bundle",
+          "p_user"
+        ],
+        "unnamed": false,
+        "raw": "p_bundle uuid, p_user uuid, p_note text DEFAULT NULL::text"
+      }
+    ],
+    "lead_bundle_item_set": [
+      {
+        "all": [
+          "p_item",
+          "p_note",
+          "p_status"
+        ],
+        "required": [
+          "p_item",
+          "p_status"
+        ],
+        "unnamed": false,
+        "raw": "p_item uuid, p_status text, p_note text DEFAULT NULL::text"
+      }
+    ],
+    "lead_bundle_pool": [
+      {
+        "all": [
+          "p_min_days_since_dialed"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_min_days_since_dialed integer DEFAULT 7"
+      }
+    ],
+    "lead_bundle_remove_item": [
+      {
+        "all": [
+          "p_item"
+        ],
+        "required": [
+          "p_item"
+        ],
+        "unnamed": false,
+        "raw": "p_item uuid"
+      }
+    ],
+    "lead_bundle_revoke": [
+      {
+        "all": [
+          "p_bundle",
+          "p_user"
+        ],
+        "required": [
+          "p_bundle",
+          "p_user"
+        ],
+        "unnamed": false,
+        "raw": "p_bundle uuid, p_user uuid"
+      }
+    ],
     "leaderboard_board": [
       {
         "all": [
@@ -6237,12 +6407,13 @@
       {
         "all": [
           "p_include_history",
+          "p_kind",
           "p_limit",
           "p_search"
         ],
         "required": [],
         "unnamed": false,
-        "raw": "p_include_history boolean DEFAULT false, p_search text DEFAULT NULL::text, p_limit integer DEFAULT 200"
+        "raw": "p_include_history boolean DEFAULT false, p_search text DEFAULT NULL::text, p_limit integer DEFAULT 200, p_kind text DEFAULT NULL::text"
       }
     ],
     "list_my_vas": [
@@ -6465,6 +6636,14 @@
         "required": [],
         "unnamed": false,
         "raw": "p_days integer DEFAULT 60"
+      }
+    ],
+    "my_lead_bundles": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
       }
     ],
     "my_new_hire_showup": [
@@ -7255,6 +7434,14 @@
         ],
         "unnamed": false,
         "raw": "p_application_id uuid"
+      }
+    ],
+    "refresh_call_audio_team_visible": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
       }
     ],
     "refresh_mat_production_unified_if_needed": [

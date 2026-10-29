@@ -92094,6 +92094,42 @@ export type Database = {
           },
         ]
       }
+      readymode_call_audio: {
+        Row: {
+          call_id: string | null
+          external_call_id: string | null
+          raw_path: string | null
+          redacted_path: string | null
+          duration_seconds: number | null
+          muted_ranges: Json | null
+          muted_seconds: number | null
+          team_visible: boolean | null
+          published_at: string | null
+        }
+        Insert: {
+          call_id?: string | null
+          external_call_id?: string | null
+          raw_path?: string | null
+          redacted_path?: string | null
+          duration_seconds?: number | null
+          muted_ranges?: Json | null
+          muted_seconds?: number | null
+          team_visible?: boolean | null
+          published_at?: string | null
+        }
+        Update: {
+          call_id?: string | null
+          external_call_id?: string | null
+          raw_path?: string | null
+          redacted_path?: string | null
+          duration_seconds?: number | null
+          muted_ranges?: Json | null
+          muted_seconds?: number | null
+          team_visible?: boolean | null
+          published_at?: string | null
+        }
+        Relationships: []
+      }
       readymode_call_insights: {
         Row: {
           approval_quote: string | null

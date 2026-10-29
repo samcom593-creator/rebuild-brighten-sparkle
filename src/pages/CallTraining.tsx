@@ -10,7 +10,7 @@
 // ~/business-ops/readymode-bot/scripts/grade-calls.py on the hourly bot (readymode_call_analysis, model grade-v1).
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, ChevronDown, Headphones, Search, Star, Users } from "lucide-react";
+import { AlertTriangle, ChevronDown, Search, Star, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { looseSupabase } from "@/lib/looseSupabase";
 import { useAuth } from "@/hooks/useAuth";
@@ -23,7 +23,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
-import { externalHref } from "@/lib/externalHref";
+import { CallAudioPlayer } from "@/components/calls/CallAudioPlayer";
+import { TrainingLibrary } from "@/components/calltraining/TrainingLibrary";
+import { momentsFrom } from "@/lib/callAudio";
 import { cn } from "@/lib/utils";
 import { dispositionLabel } from "@/lib/readymodeDispositions";
 import { DialerActivityCard } from "@/components/calltraining/DialerActivityCard";
@@ -152,14 +154,8 @@ export default function CallTraining() {
   const great = rows.filter((r) => r.great_call).length;
   const urgent = rows.filter((r) => r.coaching_priority === "urgent").length;
 
-  if (!canView) {
-    return (
-      <div className="space-y-6">
-        <PageHeader title="Call Training" subtitle="Graded dialer calls for training." />
-        <EmptyState icon={<Star className="h-6 w-6" />} title="Sam and Aisha only" description="Call grades carry client conversations, so they stay with the Sold Calls access list." />
-      </div>
-    );
-  }
+  // Agents and managers get the team library: training calls with muted audio, no client data, no coaching notes.
+  if (!canView) return <TrainingLibrary />;
 
   return (
     <div className="space-y-6">
@@ -240,7 +236,6 @@ export default function CallTraining() {
         <div className="space-y-2">
           {filtered.map((r) => {
             const open = openId === r.call_id;
-            const recording = externalHref(r.recording_url);
             const moments = r.objection_moments ?? [];
             return (
               <GlassCard key={r.call_id} className={cn("p-0", r.great_call && "border-amber-500/40")}>
@@ -256,6 +251,7 @@ export default function CallTraining() {
                 </button>
                 {open && (
                   <div className="space-y-4 border-t border-border/60 px-4 py-3 text-sm">
+                    <CallAudioPlayer callId={r.call_id} moments={[...moments.map((m) => ({ t: m.t, label: m.objection })), ...momentsFrom(r.key_quotes)]} />
                     <div className="flex flex-wrap gap-x-4 gap-y-1">
                       {RUBRIC.map((k) => (
                         <span key={k.key} className="text-muted-foreground">{k.label} <span className={cn("font-semibold", scoreTone(r.scores?.[k.key] == null ? null : r.scores[k.key] * 10))}>{r.scores?.[k.key] ?? "—"}</span>/10</span>
@@ -297,9 +293,6 @@ export default function CallTraining() {
                     )}
                     {r.coaching_notes && <Section title="Coaching note"><p>{r.coaching_notes}</p></Section>}
                     <div className="flex flex-wrap items-center gap-4">
-                      {recording && (
-                        <a href={recording} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline"><Headphones className="h-4 w-4" /> Listen on ReadyMode</a>
-                      )}
                       {r.disposition === "Completed Sale" && r.has_packet && <Link to="/dashboard/sold-calls" className="text-primary hover:underline">Open in Sold Calls</Link>}
                     </div>
                   </div>

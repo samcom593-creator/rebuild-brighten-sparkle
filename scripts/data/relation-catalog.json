@@ -465,6 +465,7 @@
     "public.readymode_booking_packets",
     "public.readymode_bot_state",
     "public.readymode_call_analysis",
+    "public.readymode_call_audio",
     "public.readymode_call_insights",
     "public.readymode_call_transcripts",
     "public.readymode_dialer_calls",

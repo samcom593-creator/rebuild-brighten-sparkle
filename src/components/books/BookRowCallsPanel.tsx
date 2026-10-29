@@ -5,10 +5,10 @@
 // v_book_row_call_detail is security_invoker over tables gated by can_view_sold_calls(), so anyone
 // else gets zero rows and the panel renders nothing.
 import { useQuery } from "@tanstack/react-query";
-import { Headphones, PhoneCall, Star } from "lucide-react";
+import { PhoneCall, Star } from "lucide-react";
 import { Link } from "react-router-dom";
 import { looseSupabase } from "@/lib/looseSupabase";
-import { externalHref } from "@/lib/externalHref";
+import { CallAudioPlayer } from "@/components/calls/CallAudioPlayer";
 import { Badge } from "@/components/ui/badge";
 import { dispositionLabel } from "@/lib/readymodeDispositions";
 
@@ -77,7 +77,6 @@ export function BookRowCallsPanel({ flipKey }: { flipKey: string | null | undefi
       <ul className="divide-y divide-border/60 border-t border-border/60">
         {calls.map((c) => {
           const summary = c.call_summary || c.resell_summary || c.grade_summary;
-          const recording = externalHref(c.recording_url);
           return (
             <li key={c.call_id} className="space-y-1 px-4 py-2 text-sm">
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -107,16 +106,12 @@ export function BookRowCallsPanel({ flipKey }: { flipKey: string | null | undefi
                   {c.disposition === "Completed Sale" && c.packet_id && (
                     <Link to={`/dashboard/sold-calls?call=${encodeURIComponent(c.call_id)}`} className="text-primary hover:underline">Sold call</Link>
                   )}
-                  {recording && (
-                    <a href={recording} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
-                      <Headphones className="h-3.5 w-3.5" /> Recording
-                    </a>
-                  )}
                 </span>
               </div>
               {summary ? <p className="text-muted-foreground">{summary}</p> : !c.has_transcript && c.duration_seconds != null && c.duration_seconds > 60 ? (
                 <p className="text-xs text-muted-foreground">No transcript yet.</p>
               ) : null}
+              <CallAudioPlayer callId={c.call_id} compact />
             </li>
           );
         })}

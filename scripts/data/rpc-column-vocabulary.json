@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-rpc-column-vocabulary.sh (bot_sql -> pg_proc + pg_rewrite)",
- "_generated_at": "2026-10-28T06:00:07Z",
+ "_generated_at": "2026-10-29T05:10:24Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "check-enum-filter-literals.mjs grades literals inside supabase.from().eq() chains. This is the other half of the same class: a status word that arrives from an RPC and is compared in JavaScript, where the return type is text and every wrong word type-checks. Per (function, returned column) this records the relation columns of that name reachable from the function body and the literals the function synthesises itself. It deliberately records CANDIDATES rather than one resolved source: provenance from a body regex is a guess, so check-rpc-status-literals.mjs refuses a literal only when NO candidate vocabulary and no body literal accepts it.",
  "_vocabulary_source": "scripts/data/enum-catalog.json (check_vocab + column_enum + enums). Not copied here on purpose, so the two guards read one snapshot and cannot drift.",
@@ -120,6 +120,7 @@
   "calendar_interview_reminders_enabled": "boolean",
   "calendar_is_scheduling_staff": "boolean",
   "calendar_valid_tz": "boolean",
+  "can_play_call_audio": "boolean",
   "can_view_sold_calls": "boolean",
   "can_work_application": "boolean",
   "can_work_recruiting_application": "boolean",
@@ -313,6 +314,7 @@
   "fn_insuracloud_lane_verdict": "text",
   "fn_insuracloud_refusal_anchor": "timestamp with time zone",
   "fn_interview_events_classify_onboarding": "trigger",
+  "fn_interview_outcome_ask": "jsonb",
   "fn_invitation_status": "text",
   "fn_invite_authorize": "jsonb",
   "fn_invite_can_manage": "boolean",
@@ -336,6 +338,8 @@
   "fn_milestone_state": "jsonb",
   "fn_mirror_licensing_tracker": "trigger",
   "fn_missed_opportunity_digest": "jsonb",
+  "fn_money_inbox_guard": "trigger",
+  "fn_money_inbox_touch": "trigger",
   "fn_next_onboarding_window": "timestamp with time zone",
   "fn_next_seminar_date": "date",
   "fn_next_seminar_slot": "timestamp with time zone",
@@ -390,6 +394,7 @@
   "fn_reissue_40d_html": "text",
   "fn_reissue_40d_text": "text",
   "fn_require_caller_role": "void",
+  "fn_rmd_match_keys": "trigger",
   "fn_rpc_single_flight": "jsonb",
   "fn_run_applicant_nudges": "jsonb",
   "fn_seminar_registration_ntfy": "trigger",
@@ -476,6 +481,7 @@
   "invitation_link": "jsonb",
   "invitation_mint_options": "jsonb",
   "invitation_release": "boolean",
+  "is_active_agent_login": "boolean",
   "is_agency_staff": "boolean",
   "is_first_monday_of_month": "boolean",
   "is_fresh_deal_close": "boolean",
@@ -493,6 +499,12 @@
   "landing_live_stats": "jsonb",
   "landing_next_step_for": "jsonb",
   "landing_unclaimed_summary": "jsonb",
+  "lead_bundle_archive": "jsonb",
+  "lead_bundle_create": "jsonb",
+  "lead_bundle_grant": "jsonb",
+  "lead_bundle_item_set": "jsonb",
+  "lead_bundle_remove_item": "jsonb",
+  "lead_bundle_revoke": "jsonb",
   "list_abandoned_partial_applications": "SETOF v_partial_applications_abandoned",
   "list_invitations": "jsonb",
   "log_contact_attempt": "uuid",
@@ -561,6 +573,7 @@
   "recruiting_income_estimate": "jsonb",
   "recruiting_tier": "jsonb",
   "recruiting_worklist_row": "jsonb",
+  "refresh_call_audio_team_visible": "integer",
   "refresh_mat_production_unified_if_needed": "jsonb",
   "refresh_production_truth": "jsonb",
   "refresh_sync_health": "void",
@@ -3175,6 +3188,178 @@
   "calendar_window_counts.n": {
    "candidates": [],
    "body_literals": [
+    "public"
+   ]
+  },
+  "call_audio_for.call_id": {
+   "candidates": [
+    "readymode_call_audio.call_id"
+   ],
+   "body_literals": [
+    "full",
+    "numbers_muted",
+    "public"
+   ]
+  },
+  "call_audio_for.duration_seconds": {
+   "candidates": [
+    "readymode_call_audio.duration_seconds"
+   ],
+   "body_literals": [
+    "full",
+    "numbers_muted",
+    "public"
+   ]
+  },
+  "call_audio_for.muted_ranges": {
+   "candidates": [
+    "readymode_call_audio.muted_ranges"
+   ],
+   "body_literals": [
+    "full",
+    "numbers_muted",
+    "public"
+   ]
+  },
+  "call_audio_for.path": {
+   "candidates": [],
+   "body_literals": [
+    "full",
+    "numbers_muted",
+    "public"
+   ]
+  },
+  "call_audio_for.variant": {
+   "candidates": [],
+   "body_literals": [
+    "full",
+    "numbers_muted",
+    "public"
+   ]
+  },
+  "call_training_library.agent_name": {
+   "candidates": [],
+   "body_literals": [
+    "grade-v1",
+    "public"
+   ]
+  },
+  "call_training_library.call_id": {
+   "candidates": [
+    "readymode_call_analysis.call_id",
+    "readymode_call_audio.call_id"
+   ],
+   "body_literals": [
+    "grade-v1",
+    "public"
+   ]
+  },
+  "call_training_library.call_started_at": {
+   "candidates": [
+    "readymode_dialer_calls.call_started_at"
+   ],
+   "body_literals": [
+    "grade-v1",
+    "public"
+   ]
+  },
+  "call_training_library.disposition": {
+   "candidates": [
+    "readymode_dialer_calls.disposition"
+   ],
+   "body_literals": [
+    "grade-v1",
+    "public"
+   ]
+  },
+  "call_training_library.duration_seconds": {
+   "candidates": [
+    "readymode_call_audio.duration_seconds",
+    "readymode_dialer_calls.duration_seconds"
+   ],
+   "body_literals": [
+    "grade-v1",
+    "public"
+   ]
+  },
+  "call_training_library.great_call": {
+   "candidates": [
+    "readymode_call_analysis.great_call"
+   ],
+   "body_literals": [
+    "grade-v1",
+    "public"
+   ]
+  },
+  "call_training_library.key_quotes": {
+   "candidates": [
+    "readymode_call_analysis.key_quotes"
+   ],
+   "body_literals": [
+    "grade-v1",
+    "public"
+   ]
+  },
+  "call_training_library.objection_moments": {
+   "candidates": [
+    "readymode_call_analysis.objection_moments"
+   ],
+   "body_literals": [
+    "grade-v1",
+    "public"
+   ]
+  },
+  "call_training_library.overall_score": {
+   "candidates": [
+    "readymode_call_analysis.overall_score"
+   ],
+   "body_literals": [
+    "grade-v1",
+    "public"
+   ]
+  },
+  "call_training_library.stage_reached": {
+   "candidates": [
+    "readymode_call_analysis.stage_reached"
+   ],
+   "body_literals": [
+    "grade-v1",
+    "public"
+   ]
+  },
+  "call_training_library.strengths": {
+   "candidates": [
+    "readymode_call_analysis.strengths"
+   ],
+   "body_literals": [
+    "grade-v1",
+    "public"
+   ]
+  },
+  "call_training_library.summary": {
+   "candidates": [
+    "readymode_call_analysis.summary"
+   ],
+   "body_literals": [
+    "grade-v1",
+    "public"
+   ]
+  },
+  "call_training_library.tactics": {
+   "candidates": [
+    "readymode_call_analysis.tactics"
+   ],
+   "body_literals": [
+    "grade-v1",
+    "public"
+   ]
+  },
+  "call_training_library.training_tags": {
+   "candidates": [
+    "readymode_call_analysis.training_tags"
+   ],
+   "body_literals": [
+    "grade-v1",
     "public"
    ]
   },
@@ -9222,6 +9407,60 @@
     "public"
    ]
   },
+  "lead_bundle_pool.available": {
+   "candidates": [],
+   "body_literals": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "blocked",
+    "pos",
+    "public"
+   ]
+  },
+  "lead_bundle_pool.in_live_bundles": {
+   "candidates": [],
+   "body_literals": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "blocked",
+    "pos",
+    "public"
+   ]
+  },
+  "lead_bundle_pool.quality_reason": {
+   "candidates": [
+    "lead_bundle_items.quality_reason",
+    "v_readymode_lead_quality.quality_reason"
+   ],
+   "body_literals": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "blocked",
+    "pos",
+    "public"
+   ]
+  },
+  "lead_bundle_pool.quality_tier": {
+   "candidates": [
+    "lead_bundle_items.quality_tier",
+    "v_readymode_lead_quality.quality_tier"
+   ],
+   "body_literals": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "blocked",
+    "pos",
+    "public"
+   ]
+  },
   "leaderboard_board.agency": {
    "candidates": [
     "mv_production_comp_truth.agency"
@@ -9912,6 +10151,241 @@
     "v_hire_activity.onboarding_stage"
    ],
    "body_literals": [
+    "public"
+   ]
+  },
+  "my_lead_bundles.attempts": {
+   "candidates": [
+    "lead_bundle_items.attempts"
+   ],
+   "body_literals": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "Do Not Call",
+    "pos",
+    "public"
+   ]
+  },
+  "my_lead_bundles.bundle_id": {
+   "candidates": [
+    "lead_bundle_grants.bundle_id",
+    "lead_bundle_items.bundle_id"
+   ],
+   "body_literals": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "Do Not Call",
+    "pos",
+    "public"
+   ]
+  },
+  "my_lead_bundles.bundle_name": {
+   "candidates": [],
+   "body_literals": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "Do Not Call",
+    "pos",
+    "public"
+   ]
+  },
+  "my_lead_bundles.email": {
+   "candidates": [
+    "lead_bundle_items.email"
+   ],
+   "body_literals": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "Do Not Call",
+    "pos",
+    "public"
+   ]
+  },
+  "my_lead_bundles.first_name": {
+   "candidates": [
+    "lead_bundle_items.first_name"
+   ],
+   "body_literals": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "Do Not Call",
+    "pos",
+    "public"
+   ]
+  },
+  "my_lead_bundles.format": {
+   "candidates": [
+    "lead_bundles.format"
+   ],
+   "body_literals": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "Do Not Call",
+    "pos",
+    "public"
+   ]
+  },
+  "my_lead_bundles.granted_at": {
+   "candidates": [
+    "lead_bundle_grants.granted_at"
+   ],
+   "body_literals": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "Do Not Call",
+    "pos",
+    "public"
+   ]
+  },
+  "my_lead_bundles.item_id": {
+   "candidates": [],
+   "body_literals": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "Do Not Call",
+    "pos",
+    "public"
+   ]
+  },
+  "my_lead_bundles.last_dialed_at": {
+   "candidates": [
+    "lead_bundle_items.last_dialed_at"
+   ],
+   "body_literals": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "Do Not Call",
+    "pos",
+    "public"
+   ]
+  },
+  "my_lead_bundles.last_disposition": {
+   "candidates": [
+    "lead_bundle_items.last_disposition"
+   ],
+   "body_literals": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "Do Not Call",
+    "pos",
+    "public"
+   ]
+  },
+  "my_lead_bundles.last_name": {
+   "candidates": [
+    "lead_bundle_items.last_name"
+   ],
+   "body_literals": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "Do Not Call",
+    "pos",
+    "public"
+   ]
+  },
+  "my_lead_bundles.phone10": {
+   "candidates": [
+    "lead_bundle_items.phone10"
+   ],
+   "body_literals": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "Do Not Call",
+    "pos",
+    "public"
+   ]
+  },
+  "my_lead_bundles.quality_reason": {
+   "candidates": [
+    "lead_bundle_items.quality_reason"
+   ],
+   "body_literals": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "Do Not Call",
+    "pos",
+    "public"
+   ]
+  },
+  "my_lead_bundles.quality_tier": {
+   "candidates": [
+    "lead_bundle_items.quality_tier"
+   ],
+   "body_literals": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "Do Not Call",
+    "pos",
+    "public"
+   ]
+  },
+  "my_lead_bundles.status": {
+   "candidates": [
+    "lead_bundle_items.status"
+   ],
+   "body_literals": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "Do Not Call",
+    "pos",
+    "public"
+   ]
+  },
+  "my_lead_bundles.status_at": {
+   "candidates": [
+    "lead_bundle_items.status_at"
+   ],
+   "body_literals": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "Do Not Call",
+    "pos",
+    "public"
+   ]
+  },
+  "my_lead_bundles.status_note": {
+   "candidates": [
+    "lead_bundle_items.status_note"
+   ],
+   "body_literals": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "Do Not Call",
+    "pos",
     "public"
    ]
   },

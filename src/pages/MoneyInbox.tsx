@@ -1,272 +1,599 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { phoneHref, contactLinkProps } from "@/lib/phone";
 import { isSamEmail } from "@/lib/samOnly";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  absoluteTime,
+  relativeTime,
+  phoenixDay,
+  contactLabel,
+  TOPICS,
+  SOURCES,
+} from "@/lib/moneyInbox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-// This live table has not reached the generated database types yet.
 const db = supabase as unknown as SupabaseClient;
-
 interface Thread {
   id: string;
   handle: string | null;
   display_name: string | null;
-  is_group: boolean;
-  category: string | null;
-  money_score: number;
-  money_reasons: string[];
-  rank: number | null;
+  source: string;
+  topics: string[];
+  priority: number;
+  private: boolean;
+  classified_at: string | null;
   awaiting_reply: boolean;
   last_inbound_at: string | null;
   last_inbound_text: string | null;
   excerpt: { t: string; from: "me" | "them"; text: string }[];
   draft_reply: string | null;
   final_reply: string | null;
-  status: "pending" | "approved" | "sending" | "sent" | "failed" | "skipped";
+  status: string;
   sent_at: string | null;
-  send_receipt: string | null;
+  delivered_at: string | null;
+  delivery_latency_ms: number | null;
   send_error: string | null;
   updated_at: string;
+  snoozed_until: string | null;
+  send_supported: boolean;
+  source_url: string | null;
 }
-
-type ThreadUpdate = {
+interface Source {
+  source: string;
+  connected: boolean;
+  reason: string;
+  last_ingested_at: string | null;
+  checked_at: string;
+}
+type Patch = {
   final_reply?: string;
-  status?: "approved" | "skipped";
+  status?: string;
   approved_at?: string;
+  snoozed_until?: string | null;
   muted?: boolean;
 };
-
-function timeLabel(value: string): string {
-  return new Date(value).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+function Time({ value }: { value: string | null }) {
+  return (
+    <span className="text-xs text-muted-foreground">
+      <span className="font-medium text-foreground">{relativeTime(value)}</span>{" "}
+      · {absoluteTime(value)}
+    </span>
+  );
 }
-
-function ThreadCard({ row, refresh }: { row: Thread; refresh: () => Promise<unknown> }) {
-  const [showThread, setShowThread] = useState(false);
-  const [edit, setEdit] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const actionInFlight = useRef(false);
+function ThreadCard({
+  row,
+  act,
+}: {
+  row: Thread;
+  act: (row: Thread, patch: Patch) => Promise<void>;
+}) {
+  const [expanded, setExpanded] = useState(false),
+    [editing, setEditing] = useState(false),
+    [edit, setEdit] = useState<string | null>(null),
+    [error, setError] = useState<string | null>(null),
+    [busy, setBusy] = useState(false);
+  const lock = useRef(false),
+    input = useRef<HTMLTextAreaElement>(null);
   const reply = edit ?? row.final_reply ?? row.draft_reply ?? "";
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  useLayoutEffect(() => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-    const resize = () => {
-      textarea.style.height = "auto";
-      textarea.style.height = `${textarea.scrollHeight}px`;
-    };
-    resize();
-    const observer = new ResizeObserver(resize);
-    observer.observe(textarea);
-    return () => observer.disconnect();
-  }, [reply]);
-  const editable = row.status === "pending" || row.status === "failed";
-  const waitingHours = row.last_inbound_at
-    ? Math.max(0, (Date.now() - new Date(row.last_inbound_at).getTime()) / 3_600_000)
-    : null;
-
-  async function update(patch: ThreadUpdate) {
-    if (actionInFlight.current) return;
-    actionInFlight.current = true;
+  const editable = ["pending", "failed"].includes(row.status);
+  async function update(patch: Patch) {
+    if (lock.current) return;
+    lock.current = true;
     setBusy(true);
     setError(null);
     try {
-      // A stale tab must not re-approve a send already claimed by the daemon.
-      const { data, error: updateError } = await db.from("money_inbox_threads")
-        .update(patch).eq("id", row.id).eq("status", row.status)
-        .eq("updated_at", row.updated_at).select("id");
-      if (updateError) throw updateError;
-      if (!data?.length) throw new Error("This thread changed. Review the refreshed thread and try again.");
-      setEdit(null);
-    } catch (cause) {
-      console.warn("Money Inbox update failed", cause);
-      setError(cause instanceof Error ? cause.message : "Could not update this thread. Please try again.");
+      await act(row, patch);
+      setEditing(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not save. Try again.");
     } finally {
-      await refresh();
-      actionInFlight.current = false;
+      lock.current = false;
       setBusy(false);
     }
   }
-
-  async function copyReply() {
-    try {
-      await navigator.clipboard.writeText(reply);
-      toast.success("Reply copied");
-    } catch (cause) {
-      console.warn("Money Inbox copy failed", cause);
-      setError("Could not copy. Select the reply text and copy it manually.");
-    }
-  }
-
+  const call =
+    row.source === "imessage" &&
+    row.handle &&
+    /^\+?[\d ()-]{10,}$/.test(row.handle);
   return (
-    <Card className="min-w-0 border-primary/20 bg-card">
-      <CardContent className="space-y-4 p-4 sm:p-5">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge className="bg-primary text-primary-foreground">#{row.rank ?? "—"}</Badge>
-          <h2 className="min-w-0 flex-1 break-words text-base font-semibold">
-            {row.is_group ? "Group: " : ""}{row.display_name || row.handle || "Unknown contact"}
-          </h2>
-          <Badge variant="outline" className="capitalize">{row.category ?? "intent"}</Badge>
-          <span className="text-sm font-semibold text-primary">Score {row.money_score}</span>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {(row.money_reasons ?? []).map((reason) => (
-            <Badge key={reason} variant="secondary" className="max-w-full whitespace-normal break-words">{reason}</Badge>
-          ))}
-          {row.awaiting_reply && waitingHours !== null && (
-            <span className="text-sm text-primary">waiting {waitingHours.toFixed(1)}h</span>
-          )}
-        </div>
-        {row.last_inbound_text && (
-          <blockquote className="whitespace-pre-wrap break-words border-l-2 border-primary/60 pl-3 text-sm leading-relaxed">
-            {row.last_inbound_text}
-          </blockquote>
-        )}
-        <Button variant="ghost" className="min-h-11 px-0" onClick={() => setShowThread(!showThread)}
-          aria-expanded={showThread} aria-controls={`thread-${row.id}`}>
-          {showThread ? "Hide thread" : "Show thread"}
-        </Button>
-        {showThread && (
-          <div id={`thread-${row.id}`} className="space-y-3 rounded-lg bg-muted/40 p-3">
-            {(row.excerpt ?? []).length === 0 && <p className="text-sm text-muted-foreground">No thread excerpt yet.</p>}
-            {(row.excerpt ?? []).map((message, index) => (
-              <div key={`${message.t}-${message.from}-${index}`} className={message.from === "me" ? "border-l-2 border-primary pl-3" : "border-l-2 border-border pl-3"}>
-                <p className="text-xs text-muted-foreground">{message.from === "me" ? "Me" : "Them"} · {timeLabel(message.t)}</p>
-                <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{message.text}</p>
-              </div>
-            ))}
+    <article className="min-w-0 space-y-3 rounded-2xl border border-primary/20 bg-card p-4 sm:p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="mb-1 flex flex-wrap gap-2">
+            <Badge variant="outline">{SOURCES[row.source] ?? row.source}</Badge>
+            <Badge
+              className={
+                row.priority === 1
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground"
+              }
+            >
+              {row.priority === 1
+                ? "High priority"
+                : row.priority === 2
+                  ? "Follow up"
+                  : "Other"}
+            </Badge>
           </div>
-        )}
-        <div className="space-y-2">
-          <label htmlFor={`reply-${row.id}`} className="text-sm font-medium">Reply</label>
-          <Textarea ref={textareaRef} id={`reply-${row.id}`} value={reply} onChange={(event) => setEdit(event.target.value)}
-            placeholder="Draft on the way…" readOnly={!editable} disabled={busy}
-            className="min-h-32 resize-none overflow-hidden text-base leading-relaxed"
-            rows={Math.max(4, reply.split("\n").length)} />
+          <h2 className="break-words text-lg font-semibold">
+            {contactLabel(row.display_name, row.handle)}
+          </h2>
         </div>
-        <div aria-live="polite" className="space-y-2 text-sm">
-          {row.status === "approved" && <p className="text-primary">Queued — waiting for your Mac.</p>}
-          {row.status === "sending" && <p className="text-primary">Sending from your Mac…</p>}
-          {row.status === "sent" && (
-            <div className="space-y-1">
-              <p className="font-medium text-primary">Sent{row.sent_at ? ` · ${timeLabel(row.sent_at)}` : ""}</p>
-              {row.send_receipt && <p className="whitespace-pre-wrap break-words text-muted-foreground">{row.send_receipt}</p>}
+        <span className="shrink-0 text-xs text-primary">
+          {row.awaiting_reply ? "Unanswered" : "Replied"}
+        </span>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {(row.topics ?? ["other"]).map((t) => (
+          <Badge key={t} variant="secondary">
+            {TOPICS[t] ?? t}
+          </Badge>
+        ))}
+      </div>
+      <p className="line-clamp-3 whitespace-pre-wrap break-words text-sm leading-relaxed">
+        {row.last_inbound_text || "No text content"}
+      </p>
+      <Time value={row.last_inbound_at} />
+      <div>
+        <button
+          className="min-h-10 text-sm text-primary underline-offset-4 hover:underline"
+          onClick={() => setExpanded(!expanded)}
+          aria-expanded={expanded}
+        >
+          {expanded ? "Hide conversation" : "View conversation"}
+        </button>
+      </div>
+      {expanded && (
+        <div className="max-h-96 space-y-4 overflow-auto rounded-xl bg-muted/40 p-3">
+          {row.excerpt.map((m, i) => (
+            <div
+              key={`${m.t}-${i}`}
+              className={
+                m.from === "me"
+                  ? "ml-5 border-l-2 border-primary pl-3"
+                  : "mr-5 border-l-2 border-border pl-3"
+              }
+            >
+              <p className="text-xs font-semibold">
+                {m.from === "me" ? "You" : "Them"}
+              </p>
+              <p className="whitespace-pre-wrap break-words text-sm">
+                {m.text}
+              </p>
+              <Time value={m.t} />
             </div>
-          )}
-          {row.status === "skipped" && <p className="text-muted-foreground">Skipped</p>}
-          {row.status === "failed" && <p className="whitespace-pre-wrap break-words text-destructive">{row.send_error || "Send failed. Retry when your Mac is available."}</p>}
-          {error && <p role="alert" className="text-destructive">{error}</p>}
+          ))}
         </div>
-        <div className="flex flex-wrap gap-2">
-          {row.status === "pending" && (
-            <Button className="min-h-11 flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
-              disabled={busy || !reply.trim()}
-              onClick={() => update({ final_reply: reply, status: "approved", approved_at: new Date().toISOString() })}>
-              {busy ? "Saving…" : "Approve & send"}
-            </Button>
+      )}
+      {editable && row.send_supported && (
+        <div className="rounded-xl bg-primary/5 p-3">
+          <label
+            htmlFor={`reply-${row.id}`}
+            className="text-xs font-semibold text-primary"
+          >
+            Your reply
+          </label>
+          {editing || !reply ? (
+            <Textarea
+              ref={input}
+              id={`reply-${row.id}`}
+              value={reply}
+              onChange={(e) => setEdit(e.target.value)}
+              placeholder="Write your reply…"
+              className="mt-2 min-h-24 text-base"
+              disabled={busy}
+            />
+          ) : (
+            <p className="mt-1 whitespace-pre-wrap break-words text-sm">
+              {reply}
+            </p>
           )}
-          {row.status === "failed" && (
+        </div>
+      )}
+      {!row.send_supported && (
+        <p className="text-xs text-muted-foreground">
+          Approve-to-send is not connected for this{" "}
+          {row.source === "imessage" ? "group conversation" : "channel"}.{" "}
+          {row.source_url && (
+            <a
+              className="text-primary underline"
+              href={row.source_url}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Reply in {SOURCES[row.source] ?? row.source}
+            </a>
+          )}
+        </p>
+      )}
+      <div aria-live="polite" className="text-sm">
+        {row.status === "approved" && (
+          <p className="text-primary">Approved · dispatching to your Mac…</p>
+        )}
+        {row.status === "sending" && (
+          <p className="text-primary">Sending from your Mac…</p>
+        )}
+        {row.status === "sent" && (
+          <p className="text-primary">
+            {row.delivered_at
+              ? "Delivered"
+              : "Sent · delivery not yet confirmed"}{" "}
+            · {absoluteTime(row.delivered_at ?? row.sent_at)}
+          </p>
+        )}
+        {row.status === "skipped" && <p>Done</p>}
+        {row.status === "failed" && (
+          <p className="text-destructive">{row.send_error || "Send failed"}</p>
+        )}
+        {error && (
+          <p role="alert" className="text-destructive">
+            {error}
+          </p>
+        )}
+      </div>
+      {editable && (
+        <div className="flex flex-wrap gap-2">
+          {row.send_supported && (
             <>
-              <Button className="min-h-11" disabled={busy || !reply.trim()}
-                onClick={() => update({ final_reply: reply, status: "approved", approved_at: new Date().toISOString() })}>Retry</Button>
-              <Button variant="outline" className="min-h-11" disabled={!reply} onClick={copyReply}>Copy text</Button>
+              <Button
+                className="min-h-11 flex-1"
+                disabled={busy || !reply.trim()}
+                onClick={() =>
+                  update({
+                    final_reply: reply,
+                    status: "approved",
+                    approved_at: new Date().toISOString(),
+                  })
+                }
+              >
+                {row.status === "failed" ? "Retry send" : "Approve send"}
+              </Button>
+              <Button
+                variant="outline"
+                className="min-h-11"
+                disabled={busy}
+                onClick={() => {
+                  setEditing(true);
+                  setTimeout(() => input.current?.focus(), 0);
+                }}
+              >
+                Edit
+              </Button>
             </>
           )}
-          {editable && <Button variant="outline" className="min-h-11" disabled={busy} onClick={() => update({ status: "skipped" })}>Skip</Button>}
-          <Button variant="ghost" className="min-h-11" disabled={busy} onClick={() => update({ muted: true })}>Not money</Button>
+          {call && (
+            <Button variant="outline" className="min-h-11" asChild>
+              <a href={phoneHref(row.handle) ?? undefined} {...contactLinkProps(phoneHref(row.handle))}>Call</a>
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            className="min-h-11"
+            disabled={busy}
+            onClick={() =>
+              update({
+                snoozed_until: new Date(Date.now() + 86400000).toISOString(),
+              })
+            }
+          >
+            Snooze 1d
+          </Button>
+          <Button
+            variant="ghost"
+            className="min-h-11"
+            disabled={busy}
+            onClick={() => update({ status: "skipped" })}
+          >
+            Done
+          </Button>
         </div>
-      </CardContent>
-    </Card>
+      )}
+    </article>
   );
 }
-
 export default function MoneyInbox() {
   const { user } = useAuth();
   usePageTitle("Money Inbox");
-  const isSam = isSamEmail(user?.email);
+  const isSam = isSamEmail(user?.email),
+    client = useQueryClient();
+  const key = ["money-inbox", user?.id];
+  const [topic, setTopic] = useState("all"),
+    [source, setSource] = useState("all"),
+    [unanswered, setUnanswered] = useState(false),
+    [today, setToday] = useState(false),
+    [tab, setTab] = useState("open"),
+    [limit, setLimit] = useState(24),
+    [sort, setSort] = useState("recent"),
+    [, tick] = useState(0);
   const query = useQuery({
-    queryKey: ["money-inbox", user?.id],
+    queryKey: key,
     enabled: isSam,
     queryFn: async () => {
-      const { data, error } = await db.from("money_inbox_threads").select("*")
-        .eq("in_scan", true).eq("muted", false).order("rank", { ascending: true, nullsFirst: false });
+      const { data, error } = await db
+        .from("money_inbox_threads")
+        .select("*")
+        .eq("in_scan", true)
+        .eq("muted", false)
+        .eq("private", false)
+        .order("last_inbound_at", { ascending: false, nullsFirst: false });
       if (error) throw error;
       return (data ?? []) as Thread[];
     },
-    refetchInterval: 30_000,
   });
-
+  const sources = useQuery({
+    queryKey: ["money-inbox-sources", user?.id],
+    enabled: isSam,
+    queryFn: async () => {
+      const { data, error } = await db
+        .from("money_inbox_sources")
+        .select("*")
+        .order("source");
+      if (error) throw error;
+      return (data ?? []) as Source[];
+    },
+  });
+  useEffect(() => {
+    if (!isSam) return;
+    const channel = db
+      .channel(`money-inbox-ui-${user?.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "money_inbox_threads" },
+        () => {
+          void client.invalidateQueries({
+            queryKey: ["money-inbox", user?.id],
+          });
+        },
+      )
+      .subscribe();
+    const timer = setInterval(() => tick((n) => n + 1), 30000);
+    return () => {
+      clearInterval(timer);
+      void db.removeChannel(channel);
+    };
+  }, [isSam, user?.id, client]);
+  async function act(row: Thread, patch: Patch) {
+    await client.cancelQueries({ queryKey: key });
+    client.setQueryData<Thread[]>(key, (old) =>
+      old?.map((r) => (r.id === row.id ? { ...r, ...patch } : r)),
+    );
+    try {
+      const { data, error } = await db
+        .from("money_inbox_threads")
+        .update(patch)
+        .eq("id", row.id)
+        .eq("status", row.status)
+        .eq("updated_at", row.updated_at)
+        .select("id");
+      if (error) throw error;
+      if (!data?.length)
+        throw new Error("This thread changed. Review it and try again.");
+    } catch (error) {
+      client.setQueryData<Thread[]>(key, (old) =>
+        old?.map((r) => (r.id === row.id ? row : r)),
+      );
+      throw error;
+    } finally {
+      await client.invalidateQueries({ queryKey: key });
+    }
+  }
   if (!isSam) return <Navigate to="/dashboard" replace />;
-
-  const rows = query.data ?? [];
-  const queued = rows.filter((row) => row.status === "approved" || row.status === "sending");
-  const needsReply = rows.filter((row) => row.status === "pending" && row.awaiting_reply);
-  const sentToday = rows.filter((row) => row.status === "sent" && row.sent_at
-    && new Date(row.sent_at).toDateString() === new Date().toDateString()).length;
-  const tabs = [
-    { id: "needs", label: "Needs reply", rows: needsReply },
-    { id: "open", label: "All open", rows: rows.filter((row) => row.status === "pending") },
-    { id: "sent", label: "Sent", rows: rows.filter((row) => row.status === "sent") },
-    { id: "closed", label: "Skipped & failed", rows: rows.filter((row) => row.status === "skipped" || row.status === "failed") },
-  ];
-  const stats = [
-    { id: "needs", label: "Needs reply", value: needsReply.length },
-    { id: "queued", label: "Queued", value: queued.length },
-    { id: "sent", label: "Sent today", value: sentToday },
-    { id: "failed", label: "Failed", value: rows.filter((row) => row.status === "failed").length },
-  ];
-
+  const all = (query.data ?? []).filter((r) => !r.private && r.classified_at);
+  const rows = all.filter(
+    (r) =>
+      (topic === "all" || r.topics.includes(topic)) &&
+      (source === "all" || r.source === source) &&
+      (!unanswered || r.awaiting_reply) &&
+      (!today ||
+        (r.last_inbound_at &&
+          phoenixDay(r.last_inbound_at) === phoenixDay())) &&
+      (tab === "done"
+        ? ["sent", "skipped"].includes(r.status)
+        : tab === "snoozed"
+          ? r.snoozed_until && Date.parse(r.snoozed_until) > Date.now()
+          : !["sent", "skipped"].includes(r.status) &&
+            (!r.snoozed_until || Date.parse(r.snoozed_until) <= Date.now())),
+  );
   return (
-    <main className="mx-auto w-full max-w-4xl space-y-5 p-4 pb-24 text-foreground sm:p-6">
-      <header className="space-y-2">
-        <h1 className="text-2xl font-bold tracking-tight">Money Inbox</h1>
-        <p className="text-sm text-muted-foreground">Texts that make you money, ranked. Approve a reply and your Mac sends it from your number.</p>
+    <main className="mx-auto w-full max-w-5xl space-y-5 p-4 pb-24 sm:p-6">
+      <header>
+        <p className="text-xs font-semibold uppercase tracking-widest text-primary">
+          Your next opportunity
+        </p>
+        <h1 className="mt-1 text-3xl font-bold">Money Inbox</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          The conversations that move business forward. Only you can approve a
+          reply.
+        </p>
       </header>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {stats.map((row) => (
-          <Card key={row.id} className="border-primary/20">
-            <CardContent className="p-3">
-              <p className="text-xs text-muted-foreground">{row.label}</p>
-              <p className="text-2xl font-semibold text-primary">{query.isPending ? "—" : row.value}</p>
-            </CardContent>
-          </Card>
+      <section
+        aria-label="Channel connections"
+        className="flex flex-wrap gap-2"
+      >
+        {sources.isPending ? (
+          <p>Checking connections…</p>
+        ) : sources.isError ? (
+          <p role="alert">
+            Channel status unavailable — connection could not be verified.
+          </p>
+        ) : (
+          Object.keys(SOURCES)
+            .concat(
+              (sources.data ?? [])
+                .map((s) => s.source)
+                .filter((s) => !SOURCES[s]),
+            )
+            .map((id) => {
+              const s = sources.data?.find((s) => s.source === id),
+                fresh = s && Date.now() - Date.parse(s.checked_at) < 10 * 60000;
+              return (
+                <details
+                  key={id}
+                  className="max-w-full rounded-lg border border-border px-3 py-2 text-xs"
+                >
+                  <summary className="cursor-pointer">
+                    {SOURCES[id] ?? id} ·{" "}
+                    {s?.connected && fresh ? "Connected" : "Not connected"}
+                  </summary>
+                  <p className="mt-2 max-w-sm">
+                    {!fresh ? "Connection status is stale or unverified. " : ""}
+                    {s?.reason ?? "No working ingest has been verified."}
+                  </p>
+                  {s?.last_ingested_at && (
+                    <p className="mt-1">
+                      Last inbound: {absoluteTime(s.last_ingested_at)}
+                    </p>
+                  )}
+                </details>
+              );
+            })
+        )}
+      </section>
+      <section
+        aria-label="Filters"
+        className="flex flex-wrap items-center gap-3 rounded-xl border border-primary/20 bg-card p-3"
+      >
+        <label className="text-sm">
+          Topic{" "}
+          <select
+            aria-label="Topic"
+            className="ml-2 max-w-48 rounded-md border bg-background p-2"
+            value={topic}
+            onChange={(e) => setTopic(e.target.value)}
+          >
+            <option value="all">All topics</option>
+            {Object.entries(TOPICS).map(([v, l]) => (
+              <option key={v} value={v}>
+                {l}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="text-sm">
+          Source{" "}
+          <select
+            aria-label="Source"
+            className="ml-2 rounded-md border bg-background p-2"
+            value={source}
+            onChange={(e) => setSource(e.target.value)}
+          >
+            <option value="all">All sources</option>
+            {Object.entries(SOURCES).map(([v, l]) => (
+              <option key={v} value={v}>
+                {l}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="text-sm">
+          Sort{" "}
+          <select
+            aria-label="Sort"
+            className="ml-2 rounded-md border bg-background p-2"
+            value={sort}
+            onChange={(e) => setSort(e.target.value)}
+          >
+            <option value="recent">Newest inbound</option>
+            <option value="priority">High priority first</option>
+          </select>
+        </label>
+        <label className="flex min-h-11 items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={unanswered}
+            onChange={(e) => setUnanswered(e.target.checked)}
+          />
+          Unanswered
+        </label>
+        <label className="flex min-h-11 items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={today}
+            onChange={(e) => setToday(e.target.checked)}
+          />
+          Today · MST
+        </label>
+      </section>
+      <div
+        className="flex flex-wrap gap-2"
+        role="group"
+        aria-label="Conversation status"
+      >
+        {[
+          ["open", "Open"],
+          ["snoozed", "Snoozed"],
+          ["done", "Done & sent"],
+        ].map(([v, l]) => (
+          <Button
+            key={v}
+            variant={tab === v ? "default" : "outline"}
+            onClick={() => setTab(v)}
+          >
+            {l}
+          </Button>
         ))}
+        <Button
+          variant="ghost"
+          className="ml-auto"
+          onClick={() => {
+            void query.refetch();
+            void sources.refetch();
+          }}
+        >
+          Refresh
+        </Button>
       </div>
-      {query.isError && (
-        <div role="alert" className="space-y-2 rounded-lg border border-destructive p-4">
-          <p>Could not refresh Money Inbox. {query.error.message}</p>
-          <Button variant="outline" onClick={() => query.refetch()}>Try again</Button>
+      {query.isError ? (
+        <div role="alert">
+          Could not load Money Inbox. {query.error.message}
         </div>
+      ) : query.isPending ? (
+        <p role="status">Loading conversations…</p>
+      ) : (
+        <>
+          <p className="text-xs text-muted-foreground">
+            {rows.length} conversations ·{" "}
+            {sort === "recent"
+              ? "newest inbound first"
+              : "high priority, then newest inbound"}{" "}
+            · all times Arizona
+          </p>
+          <div className="grid items-start gap-4 md:grid-cols-2">
+            {[...rows]
+              .sort((a, b) =>
+                sort === "priority"
+                  ? a.priority - b.priority ||
+                    Date.parse(b.last_inbound_at ?? "") -
+                      Date.parse(a.last_inbound_at ?? "")
+                  : 0,
+              )
+              .slice(0, limit)
+              .map((row) => (
+                <ThreadCard key={row.id} row={row} act={act} />
+              ))}
+          </div>
+          {rows.length > limit && (
+            <Button
+              variant="outline"
+              className="w-full min-h-11"
+              onClick={() => setLimit((n) => n + 24)}
+            >
+              Show more conversations
+            </Button>
+          )}
+          {!rows.length && (
+            <p className="rounded-xl border p-8 text-center text-muted-foreground">
+              No conversations match these filters.
+            </p>
+          )}
+        </>
       )}
-      {query.isPending && <p role="status" className="text-muted-foreground">Loading your threads…</p>}
-      {queued.length > 0 && (
-        <section aria-label="Queued replies" className="space-y-3">
-          <h2 className="text-sm font-semibold text-primary">Queued replies</h2>
-          {queued.map((row) => <ThreadCard key={row.id} row={row} refresh={query.refetch} />)}
-        </section>
-      )}
-      <Tabs defaultValue="needs">
-        <TabsList aria-label="Filter money threads">
-          {tabs.map((row) => <TabsTrigger key={row.id} value={row.id}>{row.label}</TabsTrigger>)}
-        </TabsList>
-        {tabs.map((row) => (
-          <TabsContent key={row.id} value={row.id} className="space-y-4">
-            {row.rows.map((row) => <ThreadCard key={row.id} row={row} refresh={query.refetch} />)}
-            {!query.isPending && !query.isError && row.rows.length === 0 && (
-              <Card><CardContent className="p-6 text-center text-muted-foreground">Nothing waiting. The scanner runs every 2 minutes.</CardContent></Card>
-            )}
-          </TabsContent>
-        ))}
-      </Tabs>
     </main>
   );
 }

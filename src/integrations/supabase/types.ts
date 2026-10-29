@@ -14,8 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      money_inbox_sources: {
+        Row: {
+          source: string
+          connected: boolean
+          reason: string
+          last_ingested_at: string | null
+          checked_at: string
+        }
+        Insert: {
+          source: string
+          connected: boolean
+          reason: string
+          last_ingested_at?: string | null
+          checked_at?: string
+        }
+        Update: {
+          source?: string
+          connected?: boolean
+          reason?: string
+          last_ingested_at?: string | null
+          checked_at?: string
+        }
+        Relationships: []
+      }
       money_inbox_threads: {
         Row: {
+          source: string
+          topics: string[]
+          priority: number
+          private: boolean
+          privacy_reason: string | null
+          classified_at: string | null
+          snoozed_until: string | null
+          source_url: string | null
+          send_supported: boolean
+          send_started_at: string | null
+          delivered_at: string | null
+          delivery_latency_ms: number | null
           id: string
           chat_guid: string
           chat_identifier: string | null
@@ -45,6 +81,18 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          source?: string
+          topics?: string[]
+          priority?: number
+          private?: boolean
+          privacy_reason?: string | null
+          classified_at?: string | null
+          snoozed_until?: string | null
+          source_url?: string | null
+          send_supported?: boolean
+          send_started_at?: string | null
+          delivered_at?: string | null
+          delivery_latency_ms?: number | null
           id?: string
           chat_guid?: string
           chat_identifier?: string | null
@@ -74,6 +122,18 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          source?: string
+          topics?: string[]
+          priority?: number
+          private?: boolean
+          privacy_reason?: string | null
+          classified_at?: string | null
+          snoozed_until?: string | null
+          source_url?: string | null
+          send_supported?: boolean
+          send_started_at?: string | null
+          delivered_at?: string | null
+          delivery_latency_ms?: number | null
           id?: string
           chat_guid?: string
           chat_identifier?: string | null

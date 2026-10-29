@@ -398,6 +398,7 @@
     "public.messaging_workspace_installations",
     "public.metric_definitions",
     "public.monday_starter_notifications",
+    "public.money_inbox_sources",
     "public.money_inbox_threads",
     "public.mv_agent_truth",
     "public.mv_hierarchy_hops",

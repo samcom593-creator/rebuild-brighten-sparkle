@@ -807,3 +807,6 @@ verify_jwt = false
 # verifies an HMAC of id:outcome under the bot token before the service-role client does anything.
 [functions.interview-outcome]
 verify_jwt = false
+
+[functions.money-inbox-classify]
+verify_jwt = false

@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "Oct 28, 2026",
+    label: "Money Inbox v2: Arizona dates, private-content exclusion, unified channels and immediate sending",
+    detail: "Compact opportunity cards with source and topic filters, priority, editable approvals, calling, snooze and done. Apple seconds/nanoseconds are normalized at ingest and stored excerpts repaired. Private threads are denied by RLS. The Mac listens for approvals independently of scanning; delivery is measured from Messages receipts. Social channels show their actual ingest and send availability.",
+    commit: "MP-309b",
+  },
+  {
+    ts: "Oct 28, 2026",
     label: "Error screens fixed: the Instagram desk matches its data again, and an update no longer crashes open tabs",
     detail: "Sam sent the Something went wrong screen. error_logs held two causes. The Instagram page still read queues.waiting from fn_ig_dashboard, which this morning's MP-305 rewrite replaced with needs, later, everyone and status; the matching page was committed but never pushed, so it ships now (checked against the live function's keys). Every other crash was a tab left open across a deploy: the chunk-recovery handler swallowed the failed import even when it would not reload, so React.lazy crashed on .default instead of reloading. It now swallows only when it reloads, recognises that crash in Chrome and Safari wording, and shows Loading the latest version while it reloads.",
     commit: "ERROR-SCREENS-FIX",

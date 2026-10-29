@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "Oct 28, 2026",
+    label: "Sold Calls has a Dialer leads tab: every number the dialer ever called, one row each, sorted into the lists worth working (reached and never sold, appointment not sold, objected not sold, never reached, sold), with a CSV per list. Call Training shows each dialer seat's last 30 days.",
+    detail: "MP-310 wave 2. ReadyMode's agent, dialer and user report screens are JavaScript apps the bot cannot read headless, and ReadyMode has no lead-list URL, so the same numbers come from the full call log: one row per number dialed (20,621 numbers, 2,488 reached, 132 sold, 1,367 do not call), plus daily and 30-day activity per seat. Do not call numbers are listed so they are honored: they never get a Call link and never appear in another list. Transcript reads and call grades now follow the token governor.",
+    commit: "MP-310-W2-DIALER-LEADS",
+  },
+  {
+    ts: "Oct 28, 2026",
     label: "Money Inbox v2: Arizona dates, private-content exclusion, unified channels and immediate sending",
     detail: "Compact opportunity cards with source and topic filters, priority, editable approvals, calling, snooze and done. Apple seconds/nanoseconds are normalized at ingest and stored excerpts repaired. Private threads are denied by RLS. The Mac listens for approvals independently of scanning; delivery is measured from Messages receipts. Social channels show their actual ingest and send availability.",
     commit: "MP-309b",

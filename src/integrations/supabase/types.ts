@@ -146049,6 +146049,45 @@ export type Database = {
           },
         ]
       }
+      v_readymode_agent_daily: {
+        Row: {
+          agent_name: string | null
+          agent_id: string | null
+          agent_raw: string | null
+          day: string | null
+          calls: number | null
+          contacts: number | null
+          sold: number | null
+          appointments: number | null
+          objections: number | null
+          dnc: number | null
+          talk_seconds: number | null
+          first_call_at: string | null
+          last_call_at: string | null
+        }
+        Relationships: []
+      }
+      v_readymode_agent_scorecard: {
+        Row: {
+          agent_name: string | null
+          agent_id: string | null
+          agent_raw: string | null
+          calls_30d: number | null
+          contacts_30d: number | null
+          sold_30d: number | null
+          appointments_30d: number | null
+          talk_seconds_30d: number | null
+          days_dialed_30d: number | null
+          calls_all: number | null
+          contacts_all: number | null
+          sold_all: number | null
+          dnc_all: number | null
+          sold_per_100_contacts: number | null
+          first_day: string | null
+          last_call_at: string | null
+        }
+        Relationships: []
+      }
       v_readymode_agent_today: {
         Row: {
           agent_id: string | null
@@ -147130,6 +147169,26 @@ export type Database = {
           lead_source: string | null
           leads_touched: number | null
           total_calls: number | null
+        }
+        Relationships: []
+      }
+      v_readymode_leads: {
+        Row: {
+          phone10: string | null
+          first_name: string | null
+          last_name: string | null
+          email: string | null
+          attempts: number | null
+          first_dialed_at: string | null
+          last_dialed_at: string | null
+          last_disposition: string | null
+          last_agent: string | null
+          ever_sold: boolean | null
+          do_not_call: boolean | null
+          ever_objection: boolean | null
+          ever_appointment: boolean | null
+          ever_reached: boolean | null
+          campaign: string | null
         }
         Relationships: []
       }

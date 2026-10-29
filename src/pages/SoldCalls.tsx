@@ -41,6 +41,7 @@ import { ageEquation } from "@/lib/clientFacts";
 import { ResellSignals, WorkActions } from "@/components/soldcalls/ResellWork";
 import { callStamp, isResellLead, type ResellFields } from "@/lib/resellSignals";
 import { ObjectionCallList } from "@/components/soldcalls/ObjectionCallList";
+import { DialerLeadsList } from "@/components/soldcalls/DialerLeadsList";
 
 interface Beneficiary { name?: string; relationship?: string; pct?: number | string; contingent?: boolean; dob?: string }
 interface SoldRow extends ResellFields {
@@ -214,12 +215,13 @@ export default function SoldCalls() {
     next.delete("call");
     setParams(next, { replace: true });
   };
-  const view = params.get("view") === "objections" ? "objections" : "sold";
-  const setView = (v: "sold" | "objections") => {
+  const viewParam = params.get("view");
+  const view = viewParam === "objections" ? "objections" : viewParam === "leads" ? "leads" : "sold";
+  const setView = (v: "sold" | "objections" | "leads") => {
     const next = new URLSearchParams(params);
     // A call id belongs to one list; carried to the other tab it would match nothing.
     if (v !== view) next.delete("call");
-    if (v === "objections") next.set("view", "objections"); else next.delete("view");
+    if (v === "sold") next.delete("view"); else next.set("view", v);
     setParams(next, { replace: true });
   };
   const [search, setSearch] = useState("");
@@ -294,6 +296,9 @@ export default function SoldCalls() {
         <Button role="tab" aria-selected={view === "objections"} variant={view === "objections" ? "default" : "outline"} onClick={() => setView("objections")}>
           Bank &amp; SSN objections
         </Button>
+        <Button role="tab" aria-selected={view === "leads"} variant={view === "leads" ? "default" : "outline"} onClick={() => setView("leads")}>
+          Dialer leads
+        </Button>
       </div>
 
       {onlyCall && (
@@ -302,7 +307,7 @@ export default function SoldCalls() {
           <Button size="sm" variant="outline" onClick={clearOnlyCall}>Show all</Button>
         </div>
       )}
-      {view === "objections" ? <ObjectionCallList onlyCallId={onlyCall} onClearOnlyCall={clearOnlyCall} /> : (<>
+      {view === "leads" ? <DialerLeadsList /> : view === "objections" ? <ObjectionCallList onlyCallId={onlyCall} onClearOnlyCall={clearOnlyCall} /> : (<>
 
       <div className="z-30 -mx-4 mb-4 border-b border-border/60 bg-background/95 px-4 py-3 backdrop-blur lg:sticky lg:top-[60px]">
         <div className="flex flex-wrap items-center gap-2">

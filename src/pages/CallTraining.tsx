@@ -26,6 +26,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { externalHref } from "@/lib/externalHref";
 import { cn } from "@/lib/utils";
 import { dispositionLabel } from "@/lib/readymodeDispositions";
+import { DialerActivityCard } from "@/components/calltraining/DialerActivityCard";
 
 interface ObjectionMoment { t: string; objection: string; response: string; technique: string; worked: boolean }
 interface KeyQuote { t: string; who: "agent" | "client"; quote: string }
@@ -226,6 +227,8 @@ export default function CallTraining() {
           </div>
         )}
       </GlassCard>
+
+      <DialerActivityCard />
 
       {q.isLoading ? (
         <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={`sk-${i}`} className="h-20 w-full" />)}</div>

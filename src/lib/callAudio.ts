@@ -24,3 +24,10 @@ export function momentsFrom(list: unknown): AudioMoment[] {
   }
   return out;
 }
+
+/** Ask the player for this call to jump to a transcript stamp and play a snippet (it loads the audio first if needed). */
+export function seekCall(callId: string, t: string | null | undefined): void {
+  const seconds = toSeconds(t);
+  if (seconds == null || typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent("call-audio-seek", { detail: { callId, seconds } }));
+}

@@ -85,6 +85,8 @@ const VIEWS: Array<{ key: string; label: string }> = [
   { key: "great", label: "Great calls" },
   { key: "objections", label: "Objections turned" },
   { key: "coaching", label: "Needs coaching" },
+  { key: "bad", label: "Bad calls" },
+  { key: "offscript", label: "Off script" },
   { key: "sold", label: "Sold calls" },
   { key: "all", label: "All graded" },
 ];
@@ -154,6 +156,8 @@ export default function CallTraining() {
         if (view === "great") return r.great_call;
         if (view === "objections") return (r.objection_moments ?? []).some((m) => m.worked);
         if (view === "coaching") return r.coaching_priority === "urgent" || r.coaching_priority === "high";
+        if (view === "bad") return isTalk(r) && ((r.overall_score ?? 100) < 45 || (r.compliance_flags ?? []).length > 0);
+        if (view === "offscript") return isTalk(r) && r.script_score != null && r.script_score <= 4;
         if (view === "sold") return r.disposition === "Completed Sale";
         return isTalk(r);
       })
@@ -271,7 +275,7 @@ export default function CallTraining() {
                   <div className="space-y-4 border-t border-border/60 px-4 py-3 text-sm">
                     <CallAudioPlayer callId={r.call_id} moments={[...moments.map((m) => ({ t: m.t, label: m.objection })), ...momentsFrom(r.key_quotes)]} />
                     {leadership && <CallClientPanel callId={r.call_id} />}
-                    <GradeBreakdown scores={r.scores} reasons={r.score_reasons} scriptScore={r.script_score} scriptFollowed={r.script_followed} steps={r.script_steps} />
+                    <GradeBreakdown callId={r.call_id} scores={r.scores} reasons={r.score_reasons} scriptScore={r.script_score} scriptFollowed={r.script_followed} steps={r.script_steps} />
                     <div className="flex flex-wrap gap-x-4 gap-y-1">
                       {RUBRIC.map((k) => (
                         <span key={k.key} className="text-muted-foreground">{k.label} <span className={cn("font-semibold", scoreTone(r.scores?.[k.key] == null ? null : r.scores[k.key] * 10))}>{r.scores?.[k.key] ?? "—"}</span>/10</span>

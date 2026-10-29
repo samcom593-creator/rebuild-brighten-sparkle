@@ -6,6 +6,7 @@
 // The overall score is computed from fixed weights by readymode-bot/scripts/grade-calls.py, shown beside each part.
 import { Check, Minus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { seekCall } from "@/lib/callAudio";
 
 interface Reason { reason?: string; t?: string; quote?: string }
 interface Step { step?: string; status?: string; t?: string; note?: string }
@@ -17,10 +18,20 @@ const PARTS: Array<{ key: string; label: string; weight: number }> = [
   { key: "close", label: "Close", weight: 2 },
   { key: "compliance", label: "Compliance", weight: 0.5 },
 ];
+function Stamp({ callId, t }: { callId?: string; t?: string }) {
+  if (!t) return null;
+  return callId ? (
+    <button type="button" className="mr-1 font-mono text-xs text-primary hover:underline" title="Play this moment" onClick={() => seekCall(callId, t)}>[{t}]</button>
+  ) : (
+    <span className="mr-1 font-mono text-xs text-muted-foreground">[{t}]</span>
+  );
+}
 const tone = (n: number | null | undefined) =>
   n == null ? "text-muted-foreground" : n >= 8 ? "text-emerald-700 dark:text-emerald-300" : n >= 6 ? "text-amber-700 dark:text-amber-300" : "text-rose-700 dark:text-rose-300";
 
-export function GradeBreakdown({ scores, reasons, scriptScore, scriptFollowed, steps }: {
+export function GradeBreakdown({ callId, scores, reasons, scriptScore, scriptFollowed, steps }: {
+  /** When set, every timestamp plays that moment of this call. */
+  callId?: string;
   scores: Record<string, number> | null;
   reasons: Record<string, Reason> | null;
   scriptScore: number | null;
@@ -47,7 +58,7 @@ export function GradeBreakdown({ scores, reasons, scriptScore, scriptFollowed, s
                   <td className={cn("px-2 text-right font-semibold tabular-nums", tone(s))}>{s ?? ""}/10</td>
                   <td className="px-2">
                     {r.reason ?? ""}
-                    {r.quote ? <span className="block text-xs text-muted-foreground">{r.t ? `[${r.t}] ` : ""}“{r.quote}”</span> : null}
+                    {r.quote ? <span className="block text-xs text-muted-foreground"><Stamp callId={callId} t={r.t} />“{r.quote}”</span> : null}
                   </td>
                 </tr>
               );
@@ -75,7 +86,7 @@ export function GradeBreakdown({ scores, reasons, scriptScore, scriptFollowed, s
                 )}
                 <span>
                   <span className="font-medium">{st.step}</span>
-                  {st.t ? <span className="ml-1 font-mono text-xs text-muted-foreground">[{st.t}]</span> : null}
+                  {st.t ? <span className="ml-1"><Stamp callId={callId} t={st.t} /></span> : null}
                   {st.note ? <span className="block text-xs text-muted-foreground">{st.note}</span> : null}
                 </span>
               </li>

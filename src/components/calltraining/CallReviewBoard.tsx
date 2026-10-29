@@ -15,10 +15,11 @@ import { formatPhoneDisplay, phoneHref } from "@/lib/phone";
 import { dispositionLabel } from "@/lib/readymodeDispositions";
 import { cn } from "@/lib/utils";
 
-type Key = "closers" | "table" | "easy" | "coverage" | "risk";
+type Key = "closers" | "table" | "slump" | "easy" | "coverage" | "risk";
 const SECTIONS: Array<{ key: Key; title: string; blurb: string }> = [
   { key: "closers", title: "Best closers", blurb: "Close rate on calls that reached someone, adjusted for how many of their sales stuck. Tap a name for their coaching." },
   { key: "table", title: "Deals left on the table", blurb: "Warm leads each agent reached (stopped at bank or SSN, booked an appointment, or gave up) that never bought." },
+  { key: "slump", title: "Agents in a slump", blurb: "Each agent's last 2 weeks against their own prior 6: closing half as often, or objections climbing. Tap a name for their coaching." },
   { key: "easy", title: "Easy closes for a stronger closer", blurb: "People who got to bank or SSN, or booked an appointment, and never bought. Newest first." },
   { key: "coverage", title: "More coverage left on the table", blurb: "Buyers who also wanted a spouse, mortgage, children or more coverage covered." },
   { key: "risk", title: "Drop-off and chargeback risk", blurb: "Sales that fell off, are lapsing, were declined after SSN and bank, carry a compliance flag, sit pending, or never reached the book." },
@@ -97,6 +98,44 @@ function LeftOnTable({ onPickAgent }: { onPickAgent: (n: string) => void }) {
                 <td className="px-2 text-right tabular-nums">{r.gave_up}</td>
                 <td className="px-2 text-right tabular-nums">{r.appointment_not_sold}</td>
                 <td className="px-2 text-right tabular-nums">{r.last_30d}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </State>
+  );
+}
+
+interface SlumpRow { agent_name: string | null; verdict: string | null; recent_contacts: number | null; recent_close_pct: number | null; base_close_pct: number | null; recent_objection_pct: number | null; base_objection_pct: number | null; top_objection: string | null }
+const VERDICT: Record<string, string> = {
+  slump_objections: "Closing half as often, and objections are up",
+  slump: "Closing half as often",
+  objections_rising: "Objections rising",
+  steady: "Steady",
+  new: "New: not enough history",
+  too_few_calls: "Under 20 conversations in 2 weeks",
+};
+const TOP: Record<string, string> = { bank: "bank details", ssn: "SSN", gave_up: "agent gave up" };
+const RANK: Record<string, number> = { slump_objections: 0, slump: 1, objections_rising: 2, steady: 3, new: 4, too_few_calls: 5 };
+function Slumps({ onPickAgent }: { onPickAgent: (n: string) => void }) {
+  const q = useQuery(view("slump", () => rows<SlumpRow>(looseSupabase.from("v_agent_slump").select("agent_name, verdict, recent_contacts, recent_close_pct, base_close_pct, recent_objection_pct, base_objection_pct, top_objection").order("recent_contacts", { ascending: false }).limit(80)))) as UseQueryResult<SlumpRow[]>;
+  return (
+    <State q={q} empty="No dialer activity in the last 8 weeks.">
+      {(list) => (
+        <table className="w-full text-sm">
+          <thead className="text-left text-xs uppercase tracking-wide text-muted-foreground">
+            <tr><th className="py-1 pr-2">Agent</th><th className="px-2">Trend</th><th className="px-2 text-right">Close, last 2 weeks</th><th className="px-2 text-right">Before</th><th className="px-2 text-right">Objections now / before</th><th className="px-2">Top objection</th></tr>
+          </thead>
+          <tbody>
+            {[...list].sort((a, b) => (RANK[a.verdict ?? ""] ?? 9) - (RANK[b.verdict ?? ""] ?? 9)).map((r) => (
+              <tr key={r.agent_name ?? "unknown"} className="border-t border-border/40">
+                <td className="py-1.5 pr-2"><button type="button" className="text-left font-medium text-primary hover:underline" onClick={() => r.agent_name && onPickAgent(r.agent_name)}>{r.agent_name}</button></td>
+                <td className={cn("px-2", (RANK[r.verdict ?? ""] ?? 9) <= 2 ? "font-semibold text-rose-700 dark:text-rose-300" : "text-muted-foreground")}>{VERDICT[r.verdict ?? ""] ?? r.verdict}</td>
+                <td className="px-2 text-right tabular-nums">{r.recent_close_pct == null ? "" : `${r.recent_close_pct}%`} <span className="text-xs text-muted-foreground">{r.recent_contacts ?? 0} reached</span></td>
+                <td className="px-2 text-right tabular-nums">{r.base_close_pct == null ? "" : `${r.base_close_pct}%`}</td>
+                <td className="px-2 text-right tabular-nums">{r.recent_objection_pct ?? ""}% / {r.base_objection_pct ?? ""}%</td>
+                <td className="px-2">{r.top_objection ? TOP[r.top_objection] ?? r.top_objection : ""}</td>
               </tr>
             ))}
           </tbody>
@@ -210,6 +249,7 @@ export function CallReviewBoard({ onPickAgent }: { onPickAgent: (name: string) =
               <div className="overflow-x-auto border-t border-border/60 px-4 py-3 text-sm">
                 {s.key === "closers" ? <Closers onPickAgent={onPickAgent} />
                   : s.key === "table" ? <LeftOnTable onPickAgent={onPickAgent} />
+                  : s.key === "slump" ? <Slumps onPickAgent={onPickAgent} />
                   : s.key === "easy" ? <EasyCloses />
                   : s.key === "coverage" ? <MoreCoverage />
                   : <DropoffRisk />}

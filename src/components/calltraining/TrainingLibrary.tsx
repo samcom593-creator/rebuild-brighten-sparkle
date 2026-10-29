@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CallAudioPlayer } from "@/components/calls/CallAudioPlayer";
+import { GradeBreakdown } from "@/components/calltraining/GradeBreakdown";
 import { momentsFrom } from "@/lib/callAudio";
 import { dispositionLabel } from "@/lib/readymodeDispositions";
 import { cn } from "@/lib/utils";
@@ -32,6 +33,11 @@ interface LibraryRow {
   objection_moments: unknown;
   key_quotes: unknown;
   summary: string | null;
+  scores: Record<string, number> | null;
+  score_reasons: Record<string, { reason?: string; t?: string; quote?: string }> | null;
+  script_score: number | null;
+  script_followed: string | null;
+  script_steps: Array<{ step?: string; status?: string; t?: string; note?: string }> | null;
 }
 interface Turn { t: string; objection: string; response: string; technique: string; worked: boolean }
 type ViewKey = "great" | "objections" | "all";
@@ -84,6 +90,7 @@ export function TrainingLibrary() {
                 <button type="button" onClick={() => setOpenId(open ? null : r.call_id)} aria-expanded={open} className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 text-left">
                   <span className="w-12 text-2xl font-bold tabular-nums">{r.overall_score ?? ""}</span>
                   {r.great_call && <Badge className="border-amber-500/40 bg-amber-500/15 text-amber-700 dark:text-amber-200"><Star className="mr-1 h-3 w-3" /> Great call</Badge>}
+                  {r.script_score != null && <Badge variant="outline">On script {r.script_score}/10</Badge>}
                   <span className="font-medium">{r.agent_name || "Agent"}</span>
                   <span className="text-sm text-muted-foreground">
                     {r.call_started_at ? new Date(r.call_started_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : ""} · {dispositionLabel(r.disposition)}
@@ -93,6 +100,7 @@ export function TrainingLibrary() {
                 {open && (
                   <div className="space-y-3 border-t border-border/60 px-4 py-3 text-sm">
                     <CallAudioPlayer callId={r.call_id} moments={[...ts.map((m) => ({ t: m.t, label: m.objection })), ...momentsFrom(r.key_quotes)]} />
+                    <GradeBreakdown callId={r.call_id} scores={r.scores} reasons={r.score_reasons} scriptScore={r.script_score} scriptFollowed={r.script_followed} steps={r.script_steps} />
                     {ts.length > 0 && (
                       <ul className="space-y-2">
                         {ts.map((m) => (

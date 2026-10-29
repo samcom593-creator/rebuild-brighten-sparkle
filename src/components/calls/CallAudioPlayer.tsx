@@ -5,7 +5,7 @@
 // call. The bot publishes each downloaded recording to the private readymode-audio bucket (publish-call-audio.py): a
 // copy with spoken digits muted for the team, and an unmuted sold-call copy for Sam and Aisha. call_audio_for() picks
 // the file this viewer may play and the storage policy enforces the same rule. A moment button plays a short snippet.
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Play } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,6 +31,7 @@ export function CallAudioPlayer({ callId, moments = [], compact = false }: { cal
   const q = useQuery({ queryKey: ["call-audio", callId], queryFn: () => fetchAudio(callId), enabled: armed && !!callId, staleTime: 50 * 60_000 });
   const ref = useRef<HTMLAudioElement | null>(null);
   const stopAt = useRef<number | null>(null);
+  const pendingSeek = useRef<number | null>(null);
 
   const playFrom = (seconds: number) => {
     const a = ref.current;
@@ -46,6 +47,22 @@ export function CallAudioPlayer({ callId, moments = [], compact = false }: { cal
       a.load();
     } else go();
   };
+
+  // A timestamp anywhere on the page (score reasons, script steps) asks this player to play that moment.
+  useEffect(() => {
+    const onSeek = (e: Event) => {
+      const d = (e as CustomEvent<{ callId?: string; seconds?: number }>).detail;
+      if (!d || d.callId !== callId || typeof d.seconds !== "number") return;
+      if (!armed || !ref.current) {
+        pendingSeek.current = d.seconds;
+        setArmed(true);
+        return;
+      }
+      playFrom(d.seconds);
+    };
+    window.addEventListener("call-audio-seek", onSeek);
+    return () => window.removeEventListener("call-audio-seek", onSeek);
+  });
 
   if (!armed) {
     return (
@@ -66,6 +83,13 @@ export function CallAudioPlayer({ callId, moments = [], compact = false }: { cal
         preload="metadata"
         src={q.data.url}
         className="w-full"
+        onLoadedMetadata={() => {
+          if (pendingSeek.current != null) {
+            const seconds = pendingSeek.current;
+            pendingSeek.current = null;
+            playFrom(seconds);
+          }
+        }}
         onTimeUpdate={(e) => {
           if (stopAt.current != null && e.currentTarget.currentTime >= stopAt.current) {
             e.currentTarget.pause();

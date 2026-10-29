@@ -51,9 +51,16 @@ Deno.serve(async (req) => {
       const p = await gpost(`${igId}/media_publish`, { creation_id: row.container_id });
       const e = errText(p);
       if (e || !p?.id) {
-        failed++;
-        await sb.from("ig_trial_reel_queue").update({ status: "failed", error: `media_publish: ${e ?? JSON.stringify(p).slice(0, 300)}` }).eq("id", row.id);
-        receipts.push({ id: row.id, publish_error: e });
+        // Codes 1/2/4/9007 are Meta's "retry later" family (seen live 2026-10-28: code 2 on a
+        // FINISHED container). Keep the container open and retry next tick; the 2h stuck rule
+        // below is the backstop. Anything else is permanent.
+        const transient = [1, 2, 4, 9007, 9004].includes(Number(p?.error?.code)) || p?.error?.is_transient === true;
+        if (!transient) failed++;
+        await sb.from("ig_trial_reel_queue").update(transient
+          ? { error: `media_publish (will retry): ${e}` }
+          : { status: "failed", error: `media_publish: ${e ?? JSON.stringify(p).slice(0, 300)}` }).eq("id", row.id);
+        receipts.push({ id: row.id, publish_error: e, retry: transient });
+        if (transient) receipts.push({ id: row.id, waiting: "PUBLISH_RETRY" });
         continue;
       }
       const m = await gget(`${p.id}?fields=permalink`);

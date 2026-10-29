@@ -52,7 +52,11 @@ const selectClass = "h-9 rounded-md border border-border bg-background px-2 text
 async function fetchPool(days: number): Promise<PoolRow[]> {
   const { data, error } = await supabase.rpc("lead_bundle_pool" as never, { p_min_days_since_dialed: days } as never);
   if (error) throw new Error(error.message);
-  return ((Array.isArray(data) ? data : []) as PoolRow[]).sort((a, b) => TIER_ORDER.indexOf(a.quality_tier) - TIER_ORDER.indexOf(b.quality_tier));
+  // Do-not-call numbers are counted by the pool but can never be bundled (lead_bundle_create refuses them), so they are
+  // not offered here.
+  return ((Array.isArray(data) ? data : []) as PoolRow[])
+    .filter((r) => r.quality_tier !== "blocked")
+    .sort((a, b) => TIER_ORDER.indexOf(a.quality_tier) - TIER_ORDER.indexOf(b.quality_tier));
 }
 async function fetchBundles(): Promise<Bundle[]> {
   const { data, error } = await looseSupabase
@@ -147,6 +151,7 @@ function CreateBundle() {
               ))}
             </tbody>
           </table>
+          <p className="mt-1 text-xs text-muted-foreground">Do-not-call numbers are left out and never go in a bundle.</p>
         </div>
       )}
       <div className="grid gap-3 md:grid-cols-3">

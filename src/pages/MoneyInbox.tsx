@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { externalHref } from "@/lib/externalHref";
 const db = supabase as unknown as SupabaseClient;
 interface Thread {
   id: string;
@@ -200,10 +201,10 @@ function ThreadCard({
         <p className="text-xs text-muted-foreground">
           Approve-to-send is not connected for this{" "}
           {row.source === "imessage" ? "group conversation" : "channel"}.{" "}
-          {row.source_url && (
+          {externalHref(row.source_url) && (
             <a
               className="text-primary underline"
-              href={row.source_url}
+              href={externalHref(row.source_url) ?? undefined}
               target="_blank"
               rel="noopener noreferrer"
             >

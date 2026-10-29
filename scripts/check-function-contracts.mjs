@@ -162,6 +162,11 @@ const undefinedRpcs = Array.from(allRpcCalls)
 
 // Allowed public functions (must have explicit rationale)
 const PUBLIC_ALLOWLIST = new Set([
+  // MP-309b — money-inbox-classify is the internal fallback classifier the money-inbox daemon
+  // calls with the service-role key; the handler refuses every other caller with 401
+  // (presentsServiceKey), so the gateway JWT check is not its boundary. Probed live 2026-10-28:
+  // POST without the service key -> HTTP 401.
+  "money-inbox-classify",
   // MP-491 — three functions that authenticate a caller-presented bot token
   // in-handler, so verify_jwt = true could never be their boundary: the gateway
   // refuses `Bearer <apex_bot_token>` (64-char hex, not a JWT) with
@@ -555,6 +560,7 @@ const PUBLIC_ALLOWLIST = new Set([
 // instead of hiding inside a flat list.
 const PUBLIC_CONTRACT = {
   // --- gates its caller in code; CHECKED every run -----------------------
+  "money-inbox-classify": "in_handler_gate",
   "agentlink-clients-sync": "in_handler_gate",
   "content-library": "in_handler_gate",
   "content-thumb": "in_handler_gate",

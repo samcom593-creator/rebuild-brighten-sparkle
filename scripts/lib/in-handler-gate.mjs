@@ -93,6 +93,9 @@ export const CRED_PATTERNS = [
   // the opts object is necessarily at a lower offset than the handler.
   /requireAuth\s*:\s*true/g,
   /requireSendAuth\s*\(/g,
+  // presentsServiceKey (_shared/send-floor.ts) is the constant-time service-key compare that
+  // requireSendAuth runs inside; functions that call it directly gate the same way.
+  /presentsServiceKey\s*\(/g,
   /headers\s*\.\s*get\s*\(\s*["'`]\s*[Aa]uthorization/g,
   /auth\s*\.\s*get(User|Claims)\s*\(/g,
 ];

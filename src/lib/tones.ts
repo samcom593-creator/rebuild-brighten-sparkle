@@ -246,3 +246,18 @@ export function xcelTone(kind: string | null | undefined): Tone {
     default: return "slate";
   }
 }
+
+/**
+ * Where a policy stands on the Book of Business (src/lib/bookStanding.ts, OVERHAUL-book, 2026-10-29):
+ * in force is going well, on its way is new, a missed payment needs a nudge, off the books is the dead
+ * state (red, like a dead lane and Book Flips' "Not in force"), and no status from the carrier is quiet.
+ */
+export function bookStandingTone(standing: string | null | undefined): Tone {
+  switch (norm(standing)) {
+    case "active": return "good";
+    case "pending": return "cool";
+    case "lapsing": return "warm";
+    case "gone": return "hot";
+    default: return "slate";
+  }
+}

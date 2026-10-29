@@ -38,8 +38,11 @@ export function ClientContactLine({ phone, dob, state, city, doNotCall, badNumbe
           <PhoneOff className="h-3.5 w-3.5" aria-hidden /> Bad number{phone ? ` · ${formatPhoneDisplay(phone)}` : ""}
         </span>
       ) : callHref ? (
-        <a href={callHref} {...contactLinkProps(callHref)} className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
-          <Phone className="h-3.5 w-3.5" aria-hidden /> Call {formatPhoneDisplay(phone)}
+        // OVERHAUL-book (2026-10-29): an outlined Call, not a gold one. Every row has a Call, and gold
+        // is the one button a screen gets (DESIGN.md, The One Gold Button Rule); the phone icon in the
+        // good tone still marks it as the way to reach the client.
+        <a href={callHref} {...contactLinkProps(callHref)} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-card px-3 text-sm font-semibold text-foreground hover:bg-muted">
+          <Phone className="h-3.5 w-3.5 text-tone-good" aria-hidden /> Call {formatPhoneDisplay(phone)}
         </a>
       ) : (
         <span>No phone on file</span>

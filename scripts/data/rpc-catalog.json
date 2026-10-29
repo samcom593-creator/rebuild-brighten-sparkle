@@ -1212,6 +1212,16 @@
         "raw": "p_scheduled_at timestamp with time zone, p_event_tz text, p_application_id uuid DEFAULT NULL::uuid, p_agent_id uuid DEFAULT NULL::uuid, p_invitee_name text DEFAULT NULL::text, p_invitee_email text DEFAULT NULL::text, p_kind text DEFAULT 'interview'::text, p_duration_minutes integer DEFAULT 30, p_meeting_link text DEFAULT NULL::text, p_notes text DEFAULT NULL::text, p_owner_user_id uuid DEFAULT NULL::uuid"
       }
     ],
+    "book_of_business_counts": [
+      {
+        "all": [
+          "p_agent_ids"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_agent_ids uuid[] DEFAULT NULL::uuid[]"
+      }
+    ],
     "booking_packet_fix_number": [
       {
         "all": [

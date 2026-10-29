@@ -601,6 +601,7 @@
     "public.v_book_concentration",
     "public.v_book_flip_carrier_counts",
     "public.v_book_flip_worklist",
+    "public.v_book_of_business",
     "public.v_book_persistency",
     "public.v_book_premium_parity",
     "public.v_book_row_call_detail",

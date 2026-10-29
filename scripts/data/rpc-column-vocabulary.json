@@ -2237,6 +2237,28 @@
     "row_key"
    ]
   },
+  "book_of_business_counts.n": {
+   "candidates": [],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "book_of_business_counts.standing": {
+   "candidates": [
+    "v_book_of_business.standing"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "book_of_business_counts.status_key": {
+   "candidates": [
+    "v_book_of_business.status_key"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
   "booking_packet_reveal_sensitive.bank_account": {
    "candidates": [],
    "body_literals": [

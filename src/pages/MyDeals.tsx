@@ -6,41 +6,43 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAgentIdentity } from "@/hooks/useAgentIdentity";
 import { useFullBookReader } from "@/hooks/useFullBookReader";
 import { useResolvedDownline } from "@/hooks/useResolvedDownline";
-import { useBusinessToday } from "@/hooks/useBusinessToday";
 import { SubmitDealDialog } from "@/components/deals/SubmitDealDialog";
 import { SoldCallPanel } from "@/components/clients/SoldCallPanel";
 import { ClientContactLine } from "@/components/clients/ClientContactLine";
 import { BookRowWork } from "@/components/books/BookRowWork";
 import { BookRowCallsPanel } from "@/components/books/BookRowCallsPanel";
+import { BookStandingBoard } from "@/components/books/BookStandingBoard";
 import { dispositionLabel } from "@/lib/readymodeDispositions";
 import { looseSupabase } from "@/lib/looseSupabase";
-import { parseStatusGroup, STATUS_GROUP_CHIPS, statusGroupFilter, type StatusGroupKey } from "@/lib/policyStatusGroup";
 import { splitClientName } from "@/lib/clientFacts";
+import { resolveBrand } from "@/config/brand";
 import { useBookClientDetails, type BookClientDetails } from "@/hooks/useBookClientDetails";
 import { useSoldCallKeys } from "@/hooks/useSoldCallKeys";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { TonePill } from "@/components/ui/delight/ToneBubble";
 import { QueryState, describeQuery, errorMessage } from "@/components/ui/query-state";
 import { PageHeader } from "@/components/ui/page-header";
-import { DollarSign, ChevronDown, ChevronRight, FilePlus2, PhoneCall, Star } from "lucide-react";
+import { BookOpen, ChevronDown, ChevronRight, FilePlus2, PhoneCall, Star } from "lucide-react";
 import { format, formatDistanceToNowStrict } from "date-fns";
-import { shiftDateKey } from "@/lib/businessClock";
+import { bookStandingTone } from "@/lib/tones";
+import { formatAsOf } from "@/lib/queryState";
+import { prefersReducedMotion } from "@/lib/celebrate";
 import {
-  AGENCY_PERIODS,
-  agencyPeriodRangeLabel,
-  countStatusBucketsInScope,
+  KNOWN_STANDINGS_IN_LIST,
+  STANDING_META,
+  readStandingParams,
+  statusKeyLabel,
+  summarizeStanding,
+  type BookStanding,
+  type StandingCountRow,
+} from "@/lib/bookStanding";
+import {
   dealsCursorAfter,
   dealsPageCursorFilter,
   dealsPageMayContinue,
-  parseStatusBucket,
-  splitStatusTiles,
-  statusBucketFilter,
-  summarizeAgencyPeriod,
-  type AgencyPeriod,
-  type AgencyPeriodRow,
   type DealsCursor,
-  type StatusBucket,
 } from "@/lib/productionBook";
 
 type DealRow = {
@@ -57,6 +59,10 @@ type DealRow = {
   effective_date: string | null;
   status: string | null;
   synced_at: string | null;
+  /** The status in one key ("issued_not_paid"), from v_book_of_business. */
+  status_key: string | null;
+  /** active / pending / lapsing / gone / unknown, from v_book_of_business. */
+  standing: string | null;
 };
 
 /** One server page of the book, with the server's exact count of rows matching from its cursor on. */
@@ -105,98 +111,19 @@ function callsFor(map: Map<string, CallSummary> | undefined, d: DealRow, client?
   return null;
 }
 
-const statusColor = (s: string | null) => {
-  switch ((s ?? "unknown").toLowerCase()) {
-    case "active": return "bg-success/15 text-success border-success/30";
-    case "submitted": return "bg-primary/15 text-primary border-primary/30";
-    case "draft": return "bg-muted text-muted-foreground";
-    case "lapsed": case "cancelled": return "bg-destructive/15 text-destructive border-destructive/30";
-    case "charged_back": return "bg-warning/15 text-warning border-warning/30";
-    default: return "bg-muted";
-  }
-};
-
-/** "submitted" -> "Submitted", "charged_back" -> "Charged back"; blank reads as "Not reported". */
-function policyStatusLabel(s: string | null): string {
-  const t = (s ?? "").trim().replace(/_/g, " ");
-  return t ? t.charAt(0).toUpperCase() + t.slice(1).toLowerCase() : "Not reported";
-}
-
 function fmtMoney(n: number | null | undefined): string {
   if (n === null || n === undefined) return "—";
   return `$${Number(n).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 }
 
+const policiesWord = (n: number) => (n === 1 ? "policy" : "policies");
+
 // How many rows to paint at once. The header count is the TRUE total (imported
-// Vantage production plus native APEX posts); the list windows the DOM and grows on
-// demand so a 1,700-row book never has to render all at once, and never gets
-// silently truncated to a fixed number the way the old .limit(100) did.
+// Vantage production, native deals and the policies that left the books); the
+// list windows the DOM and grows on demand so a 1,700-row book never has to
+// render all at once, and never gets silently truncated to a fixed number the
+// way the old .limit(100) did.
 const PAGE = 60;
-
-// Agent Cloud's POLICY STATUS 10-tile grid, sourced from the unified book
-// (v_book_status_tiles over v_production_unified) with semantic tints. The keys
-// are the view's bucket names; src/lib/productionBook.ts mirrors the view's CASE
-// so a tile click lists exactly the rows the tile counted.
-const POLICY_STATUS: { key: StatusBucket; label: string; cls: string }[] = [
-  { key: "active", label: "Active", cls: "border-success/30 bg-success/10 text-success" },
-  { key: "issued_not_paid", label: "Issued, Not Paid", cls: "border-success/30 bg-success/10 text-success" },
-  { key: "in_review", label: "In Review", cls: "border-info/30 bg-info/10 text-info" },
-  { key: "lapse_pending", label: "Lapse Pending", cls: "border-warning/30 bg-warning/10 text-warning" },
-  { key: "lapsed", label: "Lapsed", cls: "border-destructive/30 bg-destructive/10 text-destructive" },
-  { key: "cancelled", label: "Cancelled", cls: "border-destructive/30 bg-destructive/10 text-destructive" },
-  { key: "withdrawn", label: "Withdrawn", cls: "border-border bg-muted/40 text-muted-foreground" },
-  { key: "not_taken", label: "Not Taken", cls: "border-warning/30 bg-warning/10 text-warning" },
-  { key: "postponed", label: "Postponed", cls: "border-warning/30 bg-warning/10 text-warning" },
-  { key: "carrier_na", label: "Carrier N/A", cls: "border-border bg-muted/40 text-muted-foreground" },
-];
-
-type StatusTile = { bucket: string | null; n: number | null };
-
-function PolicyStatusTiles({
-  tiles,
-  active,
-  expanded,
-  onToggleExpanded,
-  onSelect,
-}: {
-  tiles: StatusTile[];
-  active: StatusBucket | null;
-  expanded: boolean;
-  onToggleExpanded: () => void;
-  onSelect: (bucket: StatusBucket | null) => void;
-}) {
-  // A bucket the view omits had no rows: that is a complete read, so 0 is true here.
-  const countByBucket = new Map(tiles.map((t) => [t.bucket, t.n ?? 0]));
-  const countOf = (key: StatusBucket) => countByBucket.get(key) ?? 0;
-  const { shown, folded } = splitStatusTiles(POLICY_STATUS, countOf, active);
-  const visibleTiles = expanded ? POLICY_STATUS : shown;
-  return (
-    <>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5" role="group" aria-label="Filter the deal list by policy status">
-        {visibleTiles.map((s) => {
-          const isActive = active === s.key;
-          return (
-            <button
-              key={s.key}
-              type="button"
-              aria-pressed={isActive}
-              onClick={() => onSelect(isActive ? null : s.key)}
-              className={`rounded-md border p-3 text-left ${s.cls} ${isActive ? "outline outline-2 -outline-offset-2 outline-primary" : ""}`}
-            >
-              <p className="text-2xl font-bold tabular-nums">{countOf(s.key).toLocaleString()}</p>
-              <p className="text-xs font-medium opacity-90">{s.label}</p>
-            </button>
-          );
-        })}
-      </div>
-      {folded.length > 0 && (
-        <Button type="button" size="sm" variant="ghost" className="mt-2 h-8 px-2 text-xs" aria-expanded={expanded} onClick={onToggleExpanded}>
-          {expanded ? "Fewer statuses" : `More statuses (${folded.length})`}
-        </Button>
-      )}
-    </>
-  );
-}
 
 function DealRowItem({
   d,
@@ -240,34 +167,36 @@ function DealRowItem({
       <button
         type="button"
         onClick={onToggle}
-        className="w-full text-left p-3 grid grid-cols-1 md:grid-cols-[20px_1fr_auto_auto_auto] gap-3 items-center"
+        className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2 p-3 text-left md:grid-cols-[20px_minmax(0,1fr)_7rem_8.5rem_minmax(11.5rem,auto)] md:items-center"
         aria-expanded={isOpen}
       >
-        <span className="text-muted-foreground hidden md:block">
+        <span className="hidden text-muted-foreground md:block">
           {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         </span>
-        <div>
-          <p className="font-medium text-sm">{d.client_name || "Client not on file"}</p>
-          <p className="text-xs text-muted-foreground">
+        <div className="min-w-0">
+          <p className="font-medium text-sm [overflow-wrap:anywhere]">{d.client_name || "Client not on file"}</p>
+          <p className="text-xs text-muted-foreground [overflow-wrap:anywhere]">
             {d.carrier || "—"} · {d.product || "Product not on file"} · #{d.policy_number || "no policy #"}
           </p>
           {teamView && (
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Writing agent: {d.agent_name || "Unassigned"}
             </p>
           )}
         </div>
+        {/* The policy's status, in the tone of where it stands (Active green, Pending blue, Lapsing
+            amber, Gone red, no status grey), always with the words. Top right on a phone. */}
+        <div className="flex flex-col items-end gap-1 md:order-last">
+          <span className="text-xs text-muted-foreground">Policy status</span>
+          <TonePill tone={bookStandingTone(d.standing)} dot className="whitespace-nowrap">{statusKeyLabel(d.status_key)}</TonePill>
+        </div>
         <div className="text-xs text-muted-foreground">
           {d.posted_date ? format(new Date(`${d.posted_date}T12:00:00`), "MMM d, yyyy") : "not on file"}
-          <span className="block text-[11px] opacity-70">posted</span>
+          <span className="block text-xs opacity-70">posted</span>
         </div>
         <div className="text-right">
-          <p className="font-semibold text-sm">{fmtMoney(d.annual_premium)}</p>
-          <p className="text-[11px] text-muted-foreground">annual premium</p>
-        </div>
-        <div className="flex flex-col items-end gap-1">
-          <span className="text-[11px] text-muted-foreground">Policy status</span>
-          <Badge variant="outline" className={statusColor(d.status)}>{policyStatusLabel(d.status)}</Badge>
+          <p className="font-semibold text-sm tabular-nums">{fmtMoney(d.annual_premium)}</p>
+          <p className="text-xs text-muted-foreground">annual premium</p>
         </div>
       </button>
       {isClientRow && (
@@ -324,32 +253,32 @@ function DealRowItem({
         <>
           <div className="px-4 pb-4 pt-1 grid grid-cols-2 md:grid-cols-4 gap-3 text-xs bg-muted/10">
             <div>
-              <p className="text-muted-foreground uppercase tracking-wider text-[11px]">Producer</p>
+              <p className="text-xs text-muted-foreground">Producer</p>
               <p className="font-semibold">{d.agent_name || "Unassigned"}</p>
             </div>
             <div>
-              <p className="text-muted-foreground uppercase tracking-wider text-[11px]">Policy</p>
-              <p className="font-semibold">{d.policy_number || "—"}</p>
+              <p className="text-xs text-muted-foreground">Policy</p>
+              <p className="font-semibold [overflow-wrap:anywhere]">{d.policy_number || "—"}</p>
             </div>
             <div>
-              <p className="text-muted-foreground uppercase tracking-wider text-[11px]">Product</p>
+              <p className="text-xs text-muted-foreground">Product</p>
               <p className="font-semibold">{d.product || "—"}</p>
             </div>
             <div>
-              <p className="text-muted-foreground uppercase tracking-wider text-[11px]">Effective</p>
+              <p className="text-xs text-muted-foreground">Effective</p>
               <p className="font-semibold">{d.effective_date ? format(new Date(`${d.effective_date}T12:00:00`), "MMM d, yyyy") : "not on file"}</p>
             </div>
             <div>
-              <p className="text-muted-foreground uppercase tracking-wider text-[11px]">Source</p>
-              <p className="font-semibold">{d.origin === "apex_native" ? "Galaxy native" : "Live production feed"}</p>
+              <p className="text-xs text-muted-foreground">Source</p>
+              <p className="font-semibold">{d.origin === "apex_native" ? `Posted on ${resolveBrand().platformName}` : "Live production feed"}</p>
             </div>
             <div>
-              <p className="text-muted-foreground uppercase tracking-wider text-[11px]">Last synced</p>
+              <p className="text-xs text-muted-foreground">Last synced</p>
               <p className="font-semibold">{d.synced_at ? format(new Date(d.synced_at), "MMM d, h:mm a") : "—"}</p>
             </div>
             <div>
-              <p className="text-muted-foreground uppercase tracking-wider text-[11px]">Row ID</p>
-              <p className="font-semibold line-clamp-2">{d.row_key}</p>
+              <p className="text-xs text-muted-foreground">Row ID</p>
+              <p className="font-semibold line-clamp-2 [overflow-wrap:anywhere]">{d.row_key}</p>
             </div>
           </div>
           {calls && calls.calls_total > 0 && (
@@ -374,18 +303,14 @@ export default function MyDeals() {
   // row `me` resolved, and a failed read is an error, never an empty team.
   const isTeamManager = isManager && !fullBook;
   const downline = useResolvedDownline(me.identity, isTeamManager);
-  const todayKey = useBusinessToday();
   const [searchParams, setSearchParams] = useSearchParams();
   const focusDealId = searchParams.get("deal");
-  // The status filter lives in the URL so a tile selection survives a reload and
-  // can be shared. Only a known bucket name is accepted; anything else is no filter.
-  const statusBucket = parseStatusBucket(searchParams.get("status"));
-  // MP-310: the coarse question (active / pending / lapsing / inactive / unknown), also in the URL.
-  const statusGroup = parseStatusGroup(searchParams.get("group"));
+  // OVERHAUL-book: which part of the book the list shows lives in the URL, so a tile selection
+  // survives a reload and can be shared. ?standing= is one of the four tiles (or "unknown"),
+  // ?status= one status inside it; the page's older ?group= and ?status= links still read.
+  const { standing, statusKey } = readStandingParams(searchParams);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [visible, setVisible] = useState(PAGE);
-  const [moreStatuses, setMoreStatuses] = useState(false);
-  const [agencyPeriod, setAgencyPeriod] = useState<AgencyPeriod>("mtd");
   const focusRef = useRef<HTMLDivElement | null>(null);
   const focusHandled = useRef<string | null>(null);
 
@@ -396,6 +321,7 @@ export default function MyDeals() {
     ...(selfAgentId ? [selfAgentId] : []),
   ]));
   const scopeKey = fullBook ? "all" : scopedAgentIds.join(",");
+  const productionScopeKey = fullBook ? "agency" : scopedAgentIds.join(",") || "self-unresolved";
 
   // The book is read once its scope is known: admins at once, managers once
   // their own record and their team list have both answered, agents only with
@@ -406,12 +332,13 @@ export default function MyDeals() {
   const teamListReady = !isTeamManager || downline.ids !== undefined;
   const scopeReady = fullBook || (!identityLoading && teamListReady && scopedAgentIds.length > 0);
   const enabled = Boolean(user?.id) && scopeReady;
-  const statusFilter = statusBucket ? statusBucketFilter(statusBucket) : null;
-  const groupFilter = statusGroup ? statusGroupFilter(statusGroup) : null;
+  const filterKey = `${standing ?? "everyone"}:${statusKey ?? "all"}`;
 
-  // One deduped source for imported production and native APEX submissions.
-  // The rows, exact count, KPI totals, status tiles and agency split all read
-  // this same view, so a number cannot be live in one place and stale in another.
+  // One source for the whole book: v_book_of_business is every row of the
+  // unified production book (imported production and native posts, deduped)
+  // plus the policies that left the books, each with its standing. The rows,
+  // the exact count and the four tiles all read it with the same filters, so a
+  // number cannot be live in one place and stale in another.
   //
   // F09: the book is read in server pages, ordered by (posted_date desc, row_key
   // asc) so ties on a posted date cannot skip or repeat a row between pages.
@@ -421,23 +348,24 @@ export default function MyDeals() {
   // so each page also carries the server's exact count of the rows matching
   // from its cursor on, and the list continues while a page holds fewer.
   const dealsQuery = useInfiniteQuery({
-    queryKey: ["deals", scopeKey, statusBucket ?? "all", statusGroup ?? "all"],
+    queryKey: ["deals", scopeKey, filterKey],
     enabled,
     initialPageParam: null as DealsCursor | null,
     queryFn: async ({ pageParam }): Promise<DealsPage> => {
       let query = supabase
-        .from("v_production_unified")
+        .from("v_book_of_business")
         .select("*", { count: "exact" })
         .order("posted_date", { ascending: false, nullsFirst: false })
         .order("row_key", { ascending: true })
         .limit(3000);
       if (!fullBook) query = query.in("agent_id", scopedAgentIds);
-      if (statusFilter) query = query.or(statusFilter);
-      if (groupFilter) query = query.or(groupFilter);
+      if (standing === "unknown") query = query.not("standing", "in", KNOWN_STANDINGS_IN_LIST);
+      else if (standing) query = query.eq("standing", standing);
+      if (statusKey) query = query.eq("status_key", statusKey);
       if (pageParam) query = query.or(dealsPageCursorFilter(pageParam));
       const { data, error, count } = await query;
       if (error) throw error;
-      if (!Array.isArray(data)) throw new Error("The deal read returned no result set.");
+      if (!Array.isArray(data)) throw new Error("The book read returned no result set.");
       return { rows: data as unknown as DealRow[], matching: typeof count === "number" ? count : null };
     },
     getNextPageParam: (lastPage) => {
@@ -450,23 +378,48 @@ export default function MyDeals() {
   // have failed since; the rows on hand still answer "is that deal loaded?".
   const dealsLoaded = dealsQuery.data !== undefined;
 
-  // Exact total for the header, independent of how many rows the list holds.
+  // Exact total for the list heading, independent of how many rows the list holds.
   // head:true fetches no rows, only the Content-Range count. Same scope and the
-  // same status filter as the list, so "loaded N of M" compares like with like.
+  // same filters as the list, so "loaded N of M" compares like with like.
   const countQuery = useQuery({
-    queryKey: ["deals-count", scopeKey, statusBucket ?? "all", statusGroup ?? "all"],
+    queryKey: ["deals-count", scopeKey, filterKey],
     enabled,
     queryFn: async () => {
-      let query = supabase.from("v_production_unified").select("row_key", { count: "exact", head: true });
+      let query = supabase.from("v_book_of_business").select("row_key", { count: "exact", head: true });
       if (!fullBook) query = query.in("agent_id", scopedAgentIds);
-      if (statusFilter) query = query.or(statusFilter);
-      if (groupFilter) query = query.or(groupFilter);
+      if (standing === "unknown") query = query.not("standing", "in", KNOWN_STANDINGS_IN_LIST);
+      else if (standing) query = query.eq("standing", standing);
+      if (statusKey) query = query.eq("status_key", statusKey);
       const { count, error } = await query;
       if (error) throw error;
-      if (count === null) throw new Error("The server did not return a deal count.");
+      if (count === null) throw new Error("The server did not return a policy count.");
       return count;
     },
   });
+
+  // OVERHAUL-book (Sam, 2026-10-28: "it should be breakdown of people who are here and not people
+  // who aren't here"): the four tiles. book_of_business_counts() counts v_book_of_business by
+  // standing and status inside the caller's scope, and a manager or agent passes the same agent
+  // list the rows are filtered by, so each tile equals the list it opens.
+  const standingQuery = useQuery({
+    queryKey: ["book-standing", productionScopeKey],
+    enabled,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("book_of_business_counts", fullBook ? {} : { p_agent_ids: scopedAgentIds });
+      if (error) throw error;
+      if (!Array.isArray(data)) throw new Error("The book counts returned no result set.");
+      return summarizeStanding(data as StandingCountRow[]);
+    },
+  });
+  const standingSummary = standingQuery.data ?? null;
+  // A failed read with nothing on hand shows dashes and why; a failed refresh keeps the last
+  // numbers and says how old they are. Either way Try again is beside it, and nothing reads 0.
+  const standingNotice = standingQuery.isError
+    ? standingSummary
+      ? `These counts are from ${formatAsOf(standingQuery.dataUpdatedAt)}. The latest read failed: ${errorMessage(standingQuery.error)}`
+      : `The book counts did not load: ${errorMessage(standingQuery.error)}`
+    : null;
 
   // "View deal" on the post-a-deal receipt navigates here as
   // /dashboard/production?deal=<id>. Open the row, widen the window far enough
@@ -484,7 +437,7 @@ export default function MyDeals() {
     queryFn: async () => {
       const key = focusDealId;
       if (!key) throw new Error("No deal id to look up.");
-      let query = supabase.from("v_production_unified").select("*").eq("row_key", key).limit(1);
+      let query = supabase.from("v_book_of_business").select("*").eq("row_key", key).limit(1);
       if (!fullBook) query = query.in("agent_id", scopedAgentIds);
       const { data, error } = await query;
       if (error) throw error;
@@ -503,7 +456,7 @@ export default function MyDeals() {
     queryFn: async () => {
       const [, policy = "", client = ""] = (focusFlip ?? "").split("|");
       if (!policy.trim()) return null;
-      let query = supabase.from("v_production_unified").select("row_key, client_name").eq("policy_number", policy.trim()).limit(25);
+      let query = supabase.from("v_book_of_business").select("row_key, client_name").eq("policy_number", policy.trim()).limit(25);
       if (!fullBook) query = query.in("agent_id", scopedAgentIds);
       const { data, error } = await query;
       if (error) throw error;
@@ -541,21 +494,30 @@ export default function MyDeals() {
     setSearchParams(next, { replace: true });
   };
 
-  const setStatusBucket = (nextBucket: StatusBucket | null) => {
+  // Choosing a tile (or Everyone) sets ?standing= and drops any status inside the old one;
+  // choosing a status inside the tile sets ?status=. The page's older params go either way.
+  const showBook = (nextStanding: BookStanding | null, nextStatus: string | null = null) => {
     const next = new URLSearchParams(searchParams);
-    if (nextBucket) next.set("status", nextBucket);
+    next.delete("group");
+    if (nextStanding) next.set("standing", nextStanding);
+    else next.delete("standing");
+    if (nextStatus) next.set("status", nextStatus);
     else next.delete("status");
     setSearchParams(next, { replace: true });
     setVisible(PAGE);
     setExpandedId(null);
   };
-  const setStatusGroup = (nextGroup: StatusGroupKey | null) => {
-    const next = new URLSearchParams(searchParams);
-    if (nextGroup) next.set("group", nextGroup);
-    else next.delete("group");
-    setSearchParams(next, { replace: true });
-    setVisible(PAGE);
-    setExpandedId(null);
+  // A tile opens its list. On a phone the list starts below the four tiles, so bring it up to
+  // where the person is looking; on a wide screen it is already in view and nothing moves.
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const openStanding = (nextStanding: BookStanding | null) => {
+    showBook(nextStanding);
+    if (!nextStanding) return;
+    requestAnimationFrame(() => {
+      const el = listRef.current;
+      if (!el || el.getBoundingClientRect().top < window.innerHeight * 0.6) return;
+      el.scrollIntoView?.({ block: "start", behavior: prefersReducedMotion() ? "auto" : "smooth" });
+    });
   };
 
   const latestSync = deals.reduce<string | null>((acc, d) => {
@@ -564,110 +526,7 @@ export default function MyDeals() {
     return !acc || t > acc ? t : acc;
   }, null);
 
-  const productionTitle = fullBook ? "Agency Production" : isManager ? "Team Production" : "My Deals";
-  const productionListLabel = fullBook ? "Agency production" : isManager ? "Team production" : "My deals";
-  const productionScopeKey = fullBook ? "agency" : scopedAgentIds.join(",") || "self-unresolved";
-
-  // Production dollars, straight from the unified book-truth view (Phoenix tz,
-  // posted-date, dead excluded, the documented source of truth). The header's
-  // deal COUNT is every row; these are the ALP totals. Rolling 30d is the
-  // number Sam reads production by; calendar MTD understates it mid-month.
-  // These totals are agency-wide for EVERY viewer: v_agentlink_book_truth reads
-  // v_production_unified, which runs with its owner's rights and has no caller
-  // filter, so a manager gets the agency's numbers, not the team's. The block
-  // says so on screen.
-  const bookQuery = useQuery({
-    queryKey: ["book-truth-production", productionScopeKey],
-    enabled: teamView,
-    staleTime: 60_000,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("v_agentlink_book_truth" as never)
-        .select("premium_30d, deals_30d, premium_prior_30d, premium_this_month, deals_this_month, total_annual_premium, total_deals")
-        .maybeSingle();
-      if (error) throw error;
-      return data as unknown as {
-        premium_30d: number; deals_30d: number; premium_prior_30d: number;
-        premium_this_month: number; deals_this_month: number;
-        total_annual_premium: number; total_deals: number;
-      } | null;
-    },
-  });
-  const book = bookQuery.data ?? null;
-
-  // What the tiles deliberately leave out (no agent identity on the roster, or an excluded external
-  // producer), all-time so the tiles reconcile with the deal list below. Shown, never summed in.
-  const notCountedQuery = useQuery({
-    queryKey: ["production-attribution-exceptions", "all-time", todayKey],
-    enabled: Boolean(isAdmin),
-    staleTime: 60_000,
-    queryFn: async () => {
-      // p_end is exclusive: everything posted through tomorrow (one day of
-      // margin), counted from the Phoenix day key, not the browser's UTC date.
-      const end = shiftDateKey(todayKey, 2);
-      const { data, error } = await supabase.rpc("production_attribution_exceptions" as never, { p_start: "2000-01-01", p_end: end } as never);
-      if (error) throw error;
-      return (data ?? []) as unknown as Array<{ kind: string; policies: number; alp: number }>;
-    },
-  });
-  const notCounted = notCountedQuery.data ?? [];
-
-  const prod30dDelta = book && book.premium_prior_30d > 0
-    ? ((book.premium_30d - book.premium_prior_30d) / book.premium_prior_30d) * 100
-    : null;
-
-  // Policy-status tiles from the real book (Active / In Review / Lapsed / ...),
-  // counted in the scope the list below shows (F11). v_book_status_tiles reads
-  // the whole unified book, so it serves the admin's agency view only. A
-  // manager's tiles are exact counts over their team using the same bucket
-  // filters the list applies, so a tile click lists what its tile counted.
-  const tilesQuery = useQuery({
-    queryKey: ["book-status-tiles", productionScopeKey],
-    enabled: teamView && scopeReady,
-    staleTime: 60_000,
-    queryFn: async (): Promise<StatusTile[]> => {
-      if (!fullBook) return countStatusBucketsInScope(supabase, scopedAgentIds);
-      const { data, error } = await supabase.from("v_book_status_tiles").select("bucket, n");
-      if (error) throw error;
-      if (!Array.isArray(data)) throw new Error("The policy status read returned no result set.");
-      return data;
-    },
-  });
-
-  // APEX (direct) vs Vantage production, rolled up from the same unified
-  // hierarchy used by the rows and headline totals. The view carries three
-  // periods per agency, computed in one statement from the same Phoenix day,
-  // so whichever period is chosen, amount, bar, sort and total agree (F08).
-  // Agency-level totals are part of the full book: shown to full-book readers only.
-  const imoQuery = useQuery({
-    queryKey: ["imo-by-agency", productionScopeKey],
-    enabled: fullBook,
-    staleTime: 60_000,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("v_imo_by_agency")
-        .select("agency, is_primary, policies, alp, alp_mtd, policies_mtd, policies_30d, alp_30d");
-      if (error) throw error;
-      if (!Array.isArray(data)) throw new Error("The agency production read returned no result set.");
-      return data
-        .map((row) => ({
-          agency: row.agency,
-          is_primary: row.is_primary,
-          policies: row.policies,
-          alp: row.alp,
-          alp_mtd: row.alp_mtd,
-          policies_mtd: row.policies_mtd,
-          policies_30d: row.policies_30d,
-          alp_30d: row.alp_30d,
-        }))
-        .filter((row): row is AgencyPeriodRow => typeof row.agency === "string");
-    },
-  });
-  const agencySummary = imoQuery.data ? summarizeAgencyPeriod(imoQuery.data, agencyPeriod) : null;
-  const agencyPeriodLabel = AGENCY_PERIODS.find((p) => p.key === agencyPeriod)?.label ?? "This month";
-  // Null for All time, which has no bounds to show.
-  const agencyRangeLabel = agencyPeriodRangeLabel(agencyPeriod, todayKey);
-  const activeStatus = statusBucket ? POLICY_STATUS.find((s) => s.key === statusBucket) ?? null : null;
+  const scopeWords = fullBook ? "across the agency" : isManager ? "on your team" : "for your clients";
   const nextPageError = dealsQuery.isFetchNextPageError ? errorMessage(dealsQuery.error) : null;
   const exactCount = countQuery.data !== undefined ? countQuery.data.toLocaleString() : "an unknown total";
   // The exact count says more rows match than the list holds and no next page
@@ -717,13 +576,17 @@ export default function MyDeals() {
   const dialerMatch = (d: DealRow): boolean => {
     if (dialerChip === "all") return true;
     const c = callsFor(callSummaries, d, clientDetails.byKey.get(d.row_key));
+    // A row the dialer never touched has no summary at all: that is "No dialer call", not a miss.
+    if (dialerChip === "no_call") return !c || c.calls_total === 0;
     if (!c) return false;
     if (dialerChip === "sold_call") return c.sold_calls > 0;
     if (dialerChip === "transcript") return c.transcripts > 0;
-    if (dialerChip === "great_call") return c.has_great_call;
-    return c.calls_total === 0;
+    return c.has_great_call;
   };
   const visibleDeals = dialerChip === "all" ? deals : deals.filter(dialerMatch);
+  // The dialer filter is for the people who can read the calls, once there are rows to filter
+  // (or one is already chosen, so it can always be turned back off).
+  const showDialerFilter = Boolean(canViewCalls && callSummaries && (deals.length > 0 || dialerChip !== "all"));
 
   // Why the list is not shown yet, for a login whose scope is not resolved.
   // A failed read says so with a retry; it is never shown as an empty book.
@@ -733,7 +596,7 @@ export default function MyDeals() {
       identityBlock = <QueryState status="loading" label={isTeamManager ? "your team" : "your agent record"} />;
     } else if (isTeamManager && downline.isError) {
       // The team list could not be read. The list is withheld rather than
-      // narrowed to the manager's own deals under a Team Production title.
+      // narrowed to the manager's own deals under a team heading.
       identityBlock = (
         <div className="space-y-3">
           {me.identity?.status === "error" && (
@@ -757,27 +620,33 @@ export default function MyDeals() {
     }
   }
 
-  const clearFilterButton = (
-    <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setStatusBucket(null)}>
-      Clear filter
+  // The list heading names what is showing, in the tile's own words.
+  const standingMeta = standing ? STANDING_META[standing] : null;
+  const listTitle = standingMeta ? standingMeta.label : "Everyone";
+  const statusLabel = statusKey ? statusKeyLabel(statusKey) : null;
+  const emptyTitle = statusLabel
+    ? `No ${statusLabel.toLowerCase()} policies ${scopeWords}`
+    : standingMeta
+      ? `${standingMeta.emptyTitle} ${scopeWords}`
+      : "Nothing on the book yet";
+  // The statuses inside the chosen tile, from the same counts, so each chip equals its list.
+  const standingStatuses = standing && standingSummary ? standingSummary.statuses[standing] : [];
+  const showEveryoneButton = (
+    <Button type="button" size="sm" variant="outline" className="h-9 px-3" onClick={() => showBook(null)}>
+      Show everyone
     </Button>
   );
 
   return (
-    <div className="space-y-6 p-4 md:p-6 page-enter max-w-5xl">
+    <div className="space-y-5 p-4 md:p-6 page-enter max-w-5xl">
       {/* F37: from lg up the shell's sidebar rail always shows Post a Deal, so the
           page's own button shows only below lg, where the shell keeps its copy
           inside the Actions sheet. One visible creation button per viewport. */}
       <PageHeader
-        eyebrow={fullBook ? "Production · Agency" : isManager ? "Production · Team" : "Production · My Deals"}
-        eyebrowIcon={<DollarSign className="h-3 w-3" />}
-        title={productionTitle}
-        subtitle={
-          <>
-            Source: <span className="font-medium text-foreground">Vantage live feed</span> + native Galaxy
-            {latestSync && <> · last sync {formatDistanceToNowStrict(new Date(latestSync), { addSuffix: true })}</>}
-          </>
-        }
+        icon={<BookOpen />}
+        tone="good"
+        title="Book of Business"
+        subtitle={`Who is on the books and who is not, ${scopeWords}. Tap a number to see them.`}
         primaryAction={
           <SubmitDealDialog
             trigger={(
@@ -790,180 +659,21 @@ export default function MyDeals() {
         }
       />
 
-      {teamView && (
-        <QueryState
-          {...describeQuery(bookQuery)}
-          label="production totals"
-          onRetry={() => void bookQuery.refetch()}
-          asOf={bookQuery.dataUpdatedAt}
-          title="No production totals for this scope yet"
-          body="Totals appear once the book holds a deal in your scope."
-        >
-          {book && (
-            <>
-              <p className="mb-2 text-xs text-muted-foreground">
-                {fullBook ? "Agency-wide totals." : isManager ? "Your team's totals." : "Your totals."}
-              </p>
-              <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-                <div className="rounded-md border border-border p-4">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Last 30 days</p>
-                  <p className="text-2xl font-bold tabular-nums mt-0.5">{fmtMoney(book.premium_30d)}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {book.deals_30d} deals
-                    {prod30dDelta !== null && (
-                      <span className={prod30dDelta >= 0 ? "text-success" : "text-destructive"}> · {prod30dDelta >= 0 ? "+" : ""}{prod30dDelta.toFixed(1)}% vs prior 30d</span>
-                    )}
-                  </p>
-                </div>
-                <div className="rounded-md border border-border p-4">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider">This month</p>
-                  <p className="text-2xl font-bold tabular-nums mt-0.5">{fmtMoney(book.premium_this_month)}</p>
-                  <p className="text-xs text-muted-foreground">{book.deals_this_month} deals · calendar MTD</p>
-                </div>
-                <div className="rounded-md border border-border p-4">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Total book</p>
-                  <p className="text-2xl font-bold tabular-nums mt-0.5">{fmtMoney(book.total_annual_premium)}</p>
-                  <p className="text-xs text-muted-foreground">{book.total_deals.toLocaleString()} deals all-time</p>
-                </div>
-                <div className="rounded-md border border-border p-4">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Avg per deal</p>
-                  {/* No deals means there is no average: never a made-up $0. */}
-                  <p className="text-2xl font-bold tabular-nums mt-0.5">
-                    {book.deals_30d > 0 ? fmtMoney(Math.round(book.premium_30d / book.deals_30d)) : "No deals"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">{book.deals_30d > 0 ? "last 30 days" : "in the last 30 days"}</p>
-                </div>
-              </div>
-            </>
-          )}
-        </QueryState>
-      )}
-      {teamView && book && notCountedQuery.isError && (
-        <QueryState
-          compact
-          status="error"
-          label="attribution exceptions"
-          error={notCountedQuery.error}
-          onRetry={() => void notCountedQuery.refetch()}
-          className="-mt-3"
+      {/* OVERHAUL-book: the money flow Sam asked to remove (the premium totals, the "not counted"
+          line and the split by agency) is gone from this page. The same numbers live on Home:
+          the production scoreboard and Total IMO by agency. */}
+      {scopeReady ? (
+        <BookStandingBoard
+          summary={standingSummary}
+          notice={standingNotice}
+          onRetry={() => void standingQuery.refetch()}
+          selected={standing}
+          onSelect={openStanding}
         />
-      )}
-      {teamView && book && notCounted.length > 0 && (
-        <p className="-mt-3 text-xs text-muted-foreground" role="note">
-          Not counted above:{" "}
-          {notCounted.map((x, i) => (
-            <span key={x.kind}>
-              {i > 0 ? " · " : ""}
-              {x.policies} {x.policies === 1 ? "deal" : "deals"} ({fmtMoney(Number(x.alp))})
-              {x.kind === "no_agent_identity" ? " with no agent on the roster" : " from producers outside the roster"}
-            </span>
-          ))}
-          . They still appear in the deal list below.
-        </p>
-      )}
-
-      {teamView && (
-        <div>
-          <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">Policy Status</p>
-            {activeStatus ? (
-              <p className="flex items-center gap-1 text-xs text-muted-foreground">
-                Listing <span className="font-medium text-foreground">{activeStatus.label}</span> deals below.
-                {clearFilterButton}
-              </p>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                {fullBook ? "Agency-wide counts." : isManager ? "Counts for your team." : "Counts for your deals."} Select one to filter the list below.
-              </p>
-            )}
-          </div>
-          {scopeReady ? (
-            <QueryState
-              {...describeQuery(tilesQuery)}
-              label="policy status counts"
-              compact
-              onRetry={() => void tilesQuery.refetch()}
-              asOf={tilesQuery.dataUpdatedAt}
-              title="No policy status counts yet"
-              body="The book has no rows to count."
-            >
-              {tilesQuery.data && (
-                <PolicyStatusTiles
-                  tiles={tilesQuery.data}
-                  active={statusBucket}
-                  expanded={moreStatuses}
-                  onToggleExpanded={() => setMoreStatuses((v) => !v)}
-                  onSelect={setStatusBucket}
-                />
-              )}
-            </QueryState>
-          ) : identityLoading ? (
-            <QueryState status="loading" compact label="policy status counts" />
-          ) : (
-            <p className="text-xs text-muted-foreground">Counts appear once your team is known. The deal list below says what is missing.</p>
-          )}
-        </div>
-      )}
-
-      {fullBook && (
-        <div>
-          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">Production by Agency</p>
-            <div className="flex flex-wrap items-center gap-1" role="group" aria-label="Production by Agency period">
-              {AGENCY_PERIODS.map((p) => (
-                <Button
-                  key={p.key}
-                  type="button"
-                  size="sm"
-                  variant={agencyPeriod === p.key ? "default" : "outline"}
-                  className="h-7 px-2 text-xs"
-                  aria-pressed={agencyPeriod === p.key}
-                  onClick={() => setAgencyPeriod(p.key)}
-                >
-                  {p.label}
-                </Button>
-              ))}
-            </div>
-          </div>
-          <QueryState
-            {...describeQuery(imoQuery)}
-            label="production by agency"
-            onRetry={() => void imoQuery.refetch()}
-            asOf={imoQuery.dataUpdatedAt}
-            title="No agency production on the book yet"
-            body="Rows appear once an agency has a posted deal."
-          >
-            {agencySummary && (
-              <Card>
-                <CardContent className="space-y-3 p-4">
-                  <p className="text-xs text-muted-foreground">
-                    {agencyPeriodLabel}
-                    {agencyRangeLabel && <> · {agencyRangeLabel}</>} · Agency-wide ·{" "}
-                    <span className="font-semibold text-foreground">{fmtMoney(agencySummary.total)} ALP</span> across{" "}
-                    {agencySummary.policies.toLocaleString()} policies
-                  </p>
-                  {agencySummary.rows.map((a) => (
-                    <div key={a.agency}>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="flex items-center gap-2 font-medium">
-                          {a.agency}
-                          {a.is_primary && <Badge variant="outline" className="border-primary/30 bg-primary/15 text-primary text-[11px]">PRIMARY</Badge>}
-                        </span>
-                        <span className="font-semibold tabular-nums">{fmtMoney(a.alp)}</span>
-                      </div>
-                      <div className="mt-1 h-2 overflow-hidden rounded-full bg-muted" aria-hidden>
-                        <div className="h-full rounded-full bg-primary" style={{ width: `${a.share * 100}%` }} />
-                      </div>
-                      <p className="mt-0.5 text-[12px] text-muted-foreground">
-                        {a.policies === null ? "Policy count unavailable" : `${a.policies.toLocaleString()} policies`} · {agencyPeriodLabel.toLowerCase()}
-                      </p>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
-          </QueryState>
-        </div>
+      ) : identityLoading ? (
+        <QueryState status="loading" compact label="who is on the books" />
+      ) : (
+        <p className="text-sm text-muted-foreground">The counts appear once your book is known. The list below says what is missing.</p>
       )}
 
       {focusDealId && enabled && (
@@ -982,7 +692,7 @@ export default function MyDeals() {
               >
                 {focusRow && (
                   <div>
-                    <p className="mb-2">The deal you opened. It is not among the rows loaded below (older than the loaded pages, or hidden by the status filter), so here it is directly.</p>
+                    <p className="mb-2">The deal you opened. It is not among the rows loaded below (older than the loaded pages, or in another part of the book), so here it is directly.</p>
                     <div className="rounded-md border border-border bg-card">
                       <DealRowItem
                         d={focusRow}
@@ -1011,42 +721,71 @@ export default function MyDeals() {
         </div>
       )}
 
-      {/* MP-310: is this policy alive? One chip per status group (server-side and in the URL, like the tiles),
-          and for sold-call viewers what the dialer knows: sold on a recorded call, transcribed, graded great, never reached. */}
-      <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter the deal list by policy status group">
-        <Button type="button" size="sm" variant={statusGroup ? "outline" : "default"} className="h-8 px-2.5 text-xs" aria-pressed={!statusGroup} onClick={() => setStatusGroup(null)}>
-          Every status
-        </Button>
-        {STATUS_GROUP_CHIPS.map((c) => (
-          <Button key={c.key} type="button" size="sm" variant={statusGroup === c.key ? "default" : "outline"} className="h-8 px-2.5 text-xs" aria-pressed={statusGroup === c.key} onClick={() => setStatusGroup(statusGroup === c.key ? null : c.key)}>
-            {c.label}
-          </Button>
-        ))}
-      </div>
-      {canViewCalls && callSummaries && (
-        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter the deal list by dialer history">
-          {DIALER_CHIPS.map((c) => (
-            <Button key={c.key} type="button" size="sm" variant={dialerChip === c.key ? "default" : "outline"} className="h-8 px-2.5 text-xs" aria-pressed={dialerChip === c.key} onClick={() => { setDialerChip(c.key); setVisible(PAGE); }}>
-              {c.label}
-            </Button>
-          ))}
-          {dialerChip !== "all" && (
-            <span className="text-xs text-muted-foreground">{visibleDeals.length.toLocaleString()} of the {deals.length.toLocaleString()} loaded rows</span>
+      <Card ref={listRef} className="scroll-mt-20">
+        <CardHeader className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
+              <CardTitle className="text-base">
+                {listTitle}
+                {statusLabel && <span className="font-normal text-muted-foreground"> · {statusLabel}</span>}
+              </CardTitle>
+              {enabled && (
+                <div className="text-sm text-muted-foreground">
+                  <QueryState {...describeQuery(countQuery)} label="policy count" compact onRetry={() => void countQuery.refetch()}>
+                    <span>{exactCount} {policiesWord(countQuery.data ?? 0)}</span>
+                  </QueryState>
+                </div>
+              )}
+            </div>
+            {(standing || showDialerFilter) && (
+              <div className="flex flex-wrap items-center gap-2">
+                {showDialerFilter && (
+                  <Select value={dialerChip} onValueChange={(v) => { setDialerChip(v as DialerChip); setVisible(PAGE); }}>
+                    <SelectTrigger aria-label="Filter by dialer calls" className="h-9 w-auto min-w-[12rem] gap-2">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DIALER_CHIPS.map((c) => (
+                        <SelectItem key={c.key} value={c.key}>{c.key === "all" ? "Dialer calls: every row" : c.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {standing && showEveryoneButton}
+              </div>
+            )}
+          </div>
+          {showDialerFilter && dialerChip !== "all" && (
+            <p className="text-sm text-muted-foreground">
+              {DIALER_CHIPS.find((c) => c.key === dialerChip)?.label}: {visibleDeals.length.toLocaleString()} of the {deals.length.toLocaleString()} loaded rows.
+            </p>
           )}
-        </div>
-      )}
-
-      <Card>
-        <CardHeader className="flex flex-row flex-wrap items-baseline gap-2 space-y-0">
-          <CardTitle className="text-sm">
-            {productionListLabel}
-            {activeStatus && <span className="font-normal text-muted-foreground"> · {activeStatus.label}</span>}
-          </CardTitle>
-          {enabled && (
-            <div className="text-sm text-muted-foreground">
-              <QueryState {...describeQuery(countQuery)} label="deal count" compact onRetry={() => void countQuery.refetch()}>
-                <span>{exactCount} deals</span>
-              </QueryState>
+          {standingMeta && <p className="text-sm text-muted-foreground">{standingMeta.definition}</p>}
+          {standing && standingStatuses.length > 1 && (
+            <div className="flex flex-wrap items-center gap-2" role="group" aria-label={`${standingMeta?.label ?? ""} by status`}>
+              <Button
+                type="button"
+                size="sm"
+                variant={statusKey ? "outline" : "secondary"}
+                className="h-9 px-3"
+                aria-pressed={!statusKey}
+                onClick={() => showBook(standing)}
+              >
+                All <span className="ml-1 tabular-nums text-muted-foreground">{standingSummary?.byStanding[standing].toLocaleString()}</span>
+              </Button>
+              {standingStatuses.map((s) => (
+                <Button
+                  key={s.key}
+                  type="button"
+                  size="sm"
+                  variant={statusKey === s.key ? "secondary" : "outline"}
+                  className="h-9 px-3"
+                  aria-pressed={statusKey === s.key}
+                  onClick={() => showBook(standing, statusKey === s.key ? null : s.key)}
+                >
+                  {s.label} <span className="ml-1 tabular-nums text-muted-foreground">{s.n.toLocaleString()}</span>
+                </Button>
+              ))}
             </div>
           )}
         </CardHeader>
@@ -1078,12 +817,12 @@ export default function MyDeals() {
                   error: dealsQuery.error,
                   isEmpty: deals.length === 0,
                 })}
-                label="deals"
+                label="the book"
                 onRetry={() => void dealsQuery.refetch()}
                 asOf={dealsQuery.dataUpdatedAt}
                 className="p-4"
-                title={activeStatus ? `No ${activeStatus.label} deals in this view` : "No deals logged yet"}
-                body={activeStatus ? <>Every other status is hidden by the filter. {clearFilterButton}</> : "Use Post a Deal to record the first one."}
+                title={emptyTitle}
+                body={standing ? <>The rest of the book is still here. {showEveryoneButton}</> : "Use Post a Deal to record the first one."}
               >
                 {clientDetails.failed && (
                   <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2 text-xs" role="status">
@@ -1156,6 +895,10 @@ export default function MyDeals() {
           )}
         </CardContent>
       </Card>
+      <p className="text-[13px] text-muted-foreground">
+        Source: Vantage live feed + deals posted on {resolveBrand().platformName}
+        {latestSync && <> · last sync {formatDistanceToNowStrict(new Date(latestSync), { addSuffix: true })}</>}
+      </p>
     </div>
   );
 }

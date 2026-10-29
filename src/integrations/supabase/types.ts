@@ -117954,6 +117954,26 @@ export type Database = {
           },
         ]
       }
+      v_book_of_business: {
+        Row: {
+          agent_id: string | null
+          agent_name: string | null
+          annual_premium: number | null
+          carrier: string | null
+          client_name: string | null
+          effective_date: string | null
+          origin: string | null
+          policy_number: string | null
+          posted_date: string | null
+          product: string | null
+          row_key: string | null
+          standing: string | null
+          status: string | null
+          status_key: string | null
+          synced_at: string | null
+        }
+        Relationships: []
+      }
       v_book_persistency: {
         Row: {
           calc_note: string | null
@@ -157472,6 +157492,14 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      book_of_business_counts: {
+        Args: { p_agent_ids?: string[] }
+        Returns: {
+          n: number
+          standing: string
+          status_key: string
+        }[]
       }
       booking_packet_fix_number: {
         Args: { p_field: string; p_packet_id: string; p_value: string }

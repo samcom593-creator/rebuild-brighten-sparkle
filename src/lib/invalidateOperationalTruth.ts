@@ -34,10 +34,10 @@ export const OPERATIONAL_TRUTH_QUERY_KEYS = [
   "crm-agent-roster",
   "crm-roster-segments",
   "team-facts",
-  // PL-GALAXY-MAP: Production now filters its list by status tile and opens a
-  // deal by key, and a hire changes a manager's resolved team.
-  "book-status-tiles",
-  "book-truth-production",
+  // PL-GALAXY-MAP: Book of Business opens a deal by key, and a hire changes a
+  // manager's resolved team. OVERHAUL-book (2026-10-29): its four tiles (Active,
+  // Pending, Lapsing, Gone) replaced the status tiles and the production totals.
+  "book-standing",
   "deal-by-key",
   "resolved-downline",
   // OVERHAUL-home (2026-10-29): Home's conversion strip and Selling agents. A first deal, a

@@ -87,8 +87,10 @@ const requirements = [
   [crmScopeMigration, "from public.v_production_unified b", "CRM uses unified production truth"],
   [crmScopeMigration, "and public.crm_can_read_agent_scope(a.id)", "manager CRM is team scoped"],
   [crmScopeMigration, "v_self or public.crm_can_read_agent_scope(p_agent_id)", "producer profiles are team scoped"],
-  [production, 'isManager ? "Team Production"', "manager production title"],
-  [production, '"book-truth-production", productionScopeKey', "production cache is scope keyed"],
+  // OVERHAUL-book (2026-10-29): the page is Book of Business for every login; a manager's page says
+  // the book is the team's, and the standing counts (which replaced the totals) are cached per scope.
+  [production, 'isManager ? "on your team"', "manager book is labelled the team's"],
+  [production, '"book-standing", productionScopeKey', "book counts cache is scope keyed"],
 ];
 
 const missing = requirements.filter(([source, needle]) => !source.includes(needle));

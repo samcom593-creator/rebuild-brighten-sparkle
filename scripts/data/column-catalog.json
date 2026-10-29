@@ -8054,6 +8054,23 @@
       "state",
       "status_group"
     ],
+    "v_book_of_business": [
+      "agent_id",
+      "agent_name",
+      "annual_premium",
+      "carrier",
+      "client_name",
+      "effective_date",
+      "origin",
+      "policy_number",
+      "posted_date",
+      "product",
+      "row_key",
+      "standing",
+      "status",
+      "status_key",
+      "synced_at"
+    ],
     "v_book_persistency": [
       "calc_note",
       "carrier",

@@ -18,7 +18,8 @@ const SNIPPET_SECONDS = 45;
 async function fetchAudio(callId: string): Promise<{ url: string; variant: string } | null> {
   const { data, error } = await supabase.rpc("call_audio_for" as never, { p_call_ids: [callId] } as never);
   if (error) throw new Error((error as { message?: string }).message ?? "The recording lookup failed.");
-  const row = (Array.isArray(data) ? data[0] : null) as AudioRow | null;
+  const rows = data as unknown as AudioRow[] | null;
+  const row = (Array.isArray(rows) ? rows[0] : null) ?? null;
   if (!row) return null;
   const signed = await supabase.storage.from("readymode-audio").createSignedUrl(row.path, 3600);
   if (signed.error || !signed.data?.signedUrl) throw new Error(signed.error?.message ?? "The recording could not be opened.");

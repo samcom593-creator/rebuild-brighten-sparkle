@@ -810,3 +810,6 @@ verify_jwt = false
 
 [functions.money-inbox-classify]
 verify_jwt = false
+
+[functions.ig-trial-reel-publish]
+verify_jwt = false

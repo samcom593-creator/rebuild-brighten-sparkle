@@ -1,15 +1,15 @@
 # APEX Function Contract Matrix
 
-Generated: 2026-10-28T06:00:10.313Z
-Repository: `/private/tmp/mp305-page`
+Generated: 2026-10-29T03:18:04.145Z
+Repository: `/Users/samjames/projects/wt-trial-reels`
 
 ## Inventory Summary
 
-- Total Local Edge Functions: **246**
-- Configured in `config.toml`: **247**
+- Total Local Edge Functions: **248**
+- Configured in `config.toml`: **249**
 - Invoked Edge Functions in Source: **97**
 - Invoked RPC Calls in Source: **223**
-- SQL Functions in Migrations: **738**
+- SQL Functions in Migrations: **743**
 
 ## Edge Function Auth & Verification Contracts
 
@@ -99,6 +99,7 @@ Repository: `/private/tmp/mp305-page`
 | `get-public-recruiters` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `get-vapid-public-key` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `ics-feed` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
+| `ig-trial-reel-publish` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `ig-voice-broadcast` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `instagram-auth` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `instagram-comments-backfill` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
@@ -108,6 +109,7 @@ Repository: `/private/tmp/mp305-page`
 | `instagram-webhook` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `insuracloud-outbox` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `insuracloud-sync` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `interview-outcome` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `interviews-outcome` | Yes | Yes | `true` | Authenticated JWT | PASS |
 | `interviews-pipeline` | Yes | Yes | `true` | Authenticated JWT | PASS |
 | `license-milestone-sms-drain` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |

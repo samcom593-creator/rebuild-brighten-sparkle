@@ -333,6 +333,7 @@
     "public.idempotency_keys",
     "public.identity_collision_seen",
     "public.ig_comment_events",
+    "public.ig_trial_reel_queue",
     "public.ig_reels_cache",
     "public.ig_thread_actions",
     "public.inactive_agent_queue",

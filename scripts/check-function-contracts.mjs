@@ -335,6 +335,9 @@ const PUBLIC_ALLOWLIST = new Set([
   "monday-starter-reminders",
   "cron-newhire-portal-login",
   "instagram-comments-backfill",
+  // MP-311 (2026-10-28): Trial Reels publisher. pg_cron presents the apex_bot_token
+  // bearer; the handler compares it to APEX_BOT_TOKEN and answers 401 otherwise.
+  "ig-trial-reel-publish",
   // MP-305 Wave 3 (2026-10-28): the follow-up engine. pg_cron presents the
   // apex_bot_token bearer; the handler compares it to APEX_BOT_TOKEN itself and
   // answers {"ok":false,"error":"unauthorized"} (401) to anything else. Probed
@@ -579,6 +582,7 @@ const PUBLIC_CONTRACT = {
   "cron-inbound-brain-health": "in_handler_gate",
   "monday-starter-reminders": "in_handler_gate",
   "instagram-comments-backfill": "in_handler_gate",
+  "ig-trial-reel-publish": "in_handler_gate",
   "instagram-dm-nudge": "in_handler_gate",
   "instagram-token-keepalive": "in_handler_gate",
   "instagram-dm-replay": "in_handler_gate",

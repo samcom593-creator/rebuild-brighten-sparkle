@@ -62881,6 +62881,60 @@ export type Database = {
         }
         Relationships: []
       }
+      ig_trial_reel_queue: {
+        Row: {
+          id: string
+          source_path: string
+          storage_path: string
+          video_url: string
+          caption: string
+          duration_s: number | null
+          status: string
+          container_id: string | null
+          container_at: string | null
+          media_id: string | null
+          permalink: string | null
+          attempts: number
+          error: string | null
+          created_at: string
+          published_at: string | null
+        }
+        Insert: {
+          id?: string
+          source_path: string
+          storage_path: string
+          video_url: string
+          caption?: string
+          duration_s?: number | null
+          status?: string
+          container_id?: string | null
+          container_at?: string | null
+          media_id?: string | null
+          permalink?: string | null
+          attempts?: number
+          error?: string | null
+          created_at?: string
+          published_at?: string | null
+        }
+        Update: {
+          id?: string
+          source_path?: string
+          storage_path?: string
+          video_url?: string
+          caption?: string
+          duration_s?: number | null
+          status?: string
+          container_id?: string | null
+          container_at?: string | null
+          media_id?: string | null
+          permalink?: string | null
+          attempts?: number
+          error?: string | null
+          created_at?: string
+          published_at?: string | null
+        }
+        Relationships: []
+      }
       ig_reels_cache: {
         Row: {
           caption: string | null

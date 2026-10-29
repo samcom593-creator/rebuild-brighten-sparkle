@@ -54,7 +54,10 @@ Deno.serve(async (req) => {
       const IG_ID = Deno.env.get("INSTAGRAM_APP_ID") ?? APP_ID;
       // instagram_business_manage_insights added 2026-10-08 so the token can read reel views/reach
       // (apex-instagram-sync.py); without it /insights returns 403 and the Launch Board shows likes/comments only.
-      const scopes = "instagram_business_basic,instagram_business_manage_messages,instagram_business_manage_comments,instagram_business_manage_insights";
+      // ?publish=1 adds instagram_business_content_publish (MP-311, 2026-10-28) so ig-trial-reel-publish
+      // can post Trial Reels. Kept opt-in: if Meta refuses the scope, the DM reconnect link must still work.
+      const scopes = "instagram_business_basic,instagram_business_manage_messages,instagram_business_manage_comments,instagram_business_manage_insights"
+        + (url.searchParams.get("publish") === "1" ? ",instagram_business_content_publish" : "");
       const link = `https://www.instagram.com/oauth/authorize?client_id=${encodeURIComponent(IG_ID)}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=${scopes}&force_reauth=true`;
       if (url.searchParams.get("format") === "json") {
         return new Response(JSON.stringify({ ok: true, link, redirect_uri: REDIRECT_URI }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });

@@ -48,12 +48,17 @@ const money = (n: number | null, cents = false) =>
 const mmss = (s: number | null | undefined) => (s == null ? "" : `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`);
 const dateStr = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) : "date unknown");
 
-export function SoldCallPanel({ phone, firstName, lastName, doNotCall = false }: {
+export function SoldCallPanel({ phone, firstName, lastName, doNotCall = false, showContact = true }: {
   phone?: string | null;
   firstName?: string | null;
   lastName?: string | null;
   /** Do not call on the record or as a Book Flips outcome: no Call or Text from the panel. */
   doNotCall?: boolean;
+  /**
+   * False when the card around the panel already has Call and Text for this person (Book Flips), so the
+   * card does not carry two Call buttons. A number heard on the call that differs still shows as its own line.
+   */
+  showContact?: boolean;
 }) {
   const { isAdmin, user } = useAuth();
   const canView = !!isAdmin || user?.id === SOLD_CALL_EXTRA_UID;
@@ -111,14 +116,15 @@ export function SoldCallPanel({ phone, firstName, lastName, doNotCall = false }:
   const dialPhone = [phone, p.client_phone].find((n) => isDialablePhone(n)) ?? null;
   const saidOnCall = p.client_phone && isDialablePhone(p.client_phone) && nationalDigits(p.client_phone) !== nationalDigits(dialPhone)
     ? p.client_phone : null;
-  const callHref = doNotCall ? null : phoneHref(dialPhone);
-  const textHref = doNotCall ? null : smsHref(dialPhone);
+  const dialHref = doNotCall ? null : phoneHref(dialPhone);
+  const callHref = showContact ? dialHref : null;
+  const textHref = doNotCall || !showContact ? null : smsHref(dialPhone);
   const s = secret.data;
   const ssnCheck = checkNumber("ssn", s?.ssn);
   const routingCheck = checkNumber("bank_routing", s?.bank_routing);
   const accountCheck = checkNumber("bank_account", s?.bank_account);
   // A number heard wrong is asked as "Confirm the SSN: 10 digits, ...", in place of the generic ask.
-  const asks = withNumberAsks(clientAsks(p.missing_fields, Boolean(callHref)), [ssnCheck, routingCheck, accountCheck]);
+  const asks = withNumberAsks(clientAsks(p.missing_fields, Boolean(dialHref)), [ssnCheck, routingCheck, accountCheck]);
   const gaps = bookingGaps(p.missing_fields);
   const pointers = p.sensitive_pointers ?? {};
   const heardAt = (s: number | undefined) =>

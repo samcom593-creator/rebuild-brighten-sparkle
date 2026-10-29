@@ -1,8 +1,12 @@
 // Books page (2026-10-07): working carrier books for rewrites ("flips").
 // Pure helpers so the page, its counts and the tests share one set of rules.
 // The rows come from v_book_flip_worklist (one row per carrier + policy number + client).
+// OVERHAUL-resells (2026-10-29): the page opens on "Best evidence first" (src/lib/resellEvidence.ts) and
+// every state pill takes its colour from a tone mapping (src/lib/tones.ts), never a hand-picked colour.
 import { inferStateFromPhone } from "@/lib/inboundLeads";
 import { US_STATES } from "@/lib/contractReview";
+import type { EvidenceSubject } from "@/lib/resellEvidence";
+import { bookStandingTone, flipStatusTone, tonePill } from "@/lib/tones";
 
 export type StatusGroup = "active" | "unknown" | "lapsing" | "pending" | "dead";
 export type FlipStatus =
@@ -33,6 +37,8 @@ export interface BookPolicy {
   monthly_premium: number | null;
   annual_premium: number | null;
   effective_date: string | null;
+  /** The day the policy was posted; the start date when the carrier sent no effective date. */
+  posted_date?: string | null;
   months_in_force: number | null;
   agent_name: string | null;
   agent_gone: boolean;
@@ -59,7 +65,7 @@ export const PRIORITY_CARRIERS: { carrier: string; priority: "High" | "Good" }[]
 
 export type BookFilter = "departed" | "workable" | "active" | "unknown" | "lapsing" | "all";
 export type FlipFilter = "to_call" | "callbacks" | "appointments" | "resold" | "closed" | "all";
-export type SortKey = "priority" | "oldest" | "premium" | "face" | "name";
+export type SortKey = "evidence" | "priority" | "oldest" | "premium" | "face" | "name";
 
 export const BOOK_FILTERS: { key: BookFilter; label: string }[] = [
   { key: "departed", label: "Departed writers" },
@@ -86,7 +92,8 @@ export const FLIP_FILTERS: { key: FlipFilter; label: string }[] = [
   { key: "all", label: "All" },
 ];
 export const SORTS: { key: SortKey; label: string }[] = [
-  { key: "priority", label: "Priority (departed writers first)" },
+  { key: "evidence", label: "Best evidence first" },
+  { key: "priority", label: "Departed writers first" },
   { key: "oldest", label: "Longest in force first" },
   { key: "premium", label: "Highest premium" },
   { key: "face", label: "Highest face amount" },
@@ -103,15 +110,16 @@ export const FLIP_LABEL: Record<FlipStatus, string> = {
   do_not_call: "Do not call",
   bad_number: "Bad number",
 };
+/** Each outcome's pill in its tone (src/lib/tones.ts flipStatusTone), the label always beside it. */
 export const FLIP_TONE: Record<FlipStatus, string> = {
-  to_call: "border-border bg-muted text-foreground",
-  no_answer: "border-amber-400/40 bg-amber-500/15 text-amber-700 dark:text-amber-300",
-  callback: "border-sky-400/40 bg-sky-500/15 text-sky-700 dark:text-sky-300",
-  appointment: "border-violet-400/40 bg-violet-500/15 text-violet-700 dark:text-violet-300",
-  resold: "border-emerald-400/40 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
-  not_interested: "border-border bg-muted text-muted-foreground",
-  do_not_call: "border-red-400/40 bg-red-500/15 text-red-700 dark:text-red-300",
-  bad_number: "border-border bg-muted text-muted-foreground",
+  to_call: tonePill(flipStatusTone("to_call")),
+  no_answer: tonePill(flipStatusTone("no_answer")),
+  callback: tonePill(flipStatusTone("callback")),
+  appointment: tonePill(flipStatusTone("appointment")),
+  resold: tonePill(flipStatusTone("resold")),
+  not_interested: tonePill(flipStatusTone("not_interested")),
+  do_not_call: tonePill(flipStatusTone("do_not_call")),
+  bad_number: tonePill(flipStatusTone("bad_number")),
 };
 export const GROUP_LABEL: Record<StatusGroup, string> = {
   active: "Active",
@@ -120,13 +128,8 @@ export const GROUP_LABEL: Record<StatusGroup, string> = {
   pending: "Pending",
   dead: "Not in force",
 };
-export const GROUP_TONE: Record<StatusGroup, string> = {
-  active: "border-emerald-400/40 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
-  unknown: "border-border bg-muted text-muted-foreground",
-  lapsing: "border-amber-400/40 bg-amber-500/15 text-amber-700 dark:text-amber-300",
-  pending: "border-sky-400/40 bg-sky-500/15 text-sky-700 dark:text-sky-300",
-  dead: "border-red-400/40 bg-red-500/10 text-red-700 dark:text-red-300",
-};
+/** The book status pill's tone: the Book of Business standing tones, where a dead policy is "gone". */
+export const groupTone = (group: StatusGroup) => bookStandingTone(group === "dead" ? "gone" : group);
 
 const CLOSED: FlipStatus[] = ["not_interested", "do_not_call", "bad_number"];
 
@@ -160,14 +163,6 @@ export const PRIORITY_LABEL: Record<PriorityTier, string> = {
   4: "Lapsed: reinstate or rewrite",
   5: "Status unknown",
   6: "",
-};
-export const PRIORITY_TONE: Record<PriorityTier, string> = {
-  1: "border-red-400/40 bg-red-500/15 text-red-700 dark:text-red-300",
-  2: "border-sky-400/40 bg-sky-500/15 text-sky-700 dark:text-sky-300",
-  3: "border-amber-400/40 bg-amber-500/15 text-amber-700 dark:text-amber-300",
-  4: "border-violet-400/40 bg-violet-500/15 text-violet-700 dark:text-violet-300",
-  5: "border-border bg-muted text-muted-foreground",
-  6: "border-border bg-muted text-muted-foreground",
 };
 
 export function isCallbackDue(p: Pick<BookPolicy, "flip_status" | "callback_at">, now: Date = new Date()): boolean {
@@ -249,15 +244,47 @@ export function matchesSearch(p: Pick<BookPolicy, "client_name" | "phone" | "pol
 
 const num = (n: number | null | undefined) => (typeof n === "number" && Number.isFinite(n) ? n : null);
 
-export function sortPolicies<T extends Pick<BookPolicy, "months_in_force" | "monthly_premium" | "annual_premium" | "face_amount" | "client_name" | "flip_key" | "status_group" | "agent_gone" | "book_status">>(
-  list: T[], key: SortKey,
+/**
+ * A policy the caller can dial from the card: a phone on file, not do-not-call, not marked bad number.
+ * The evidence order puts these first, so the top of the list is always somebody to call.
+ */
+export function isCallable(p: Pick<BookPolicy, "phone" | "do_not_call" | "flip_status">): boolean {
+  return digits(p.phone).length >= 10 && !p.do_not_call && p.flip_status !== "do_not_call" && p.flip_status !== "bad_number";
+}
+
+/** What the evidence is asked about one policy: its number and name, and its lapse if it is lapsing. */
+export function policySubject(
+  p: Pick<BookPolicy, "phone" | "client_first_name" | "client_last_name" | "client_name" | "status_group" | "book_status" | "effective_date"> & { posted_date?: string | null },
+): EvidenceSubject {
+  return {
+    phone: p.phone,
+    firstName: p.client_first_name,
+    lastName: p.client_last_name,
+    fullName: p.client_name,
+    lapse: p.status_group === "lapsing" ? { status: p.book_status, startedOn: p.effective_date ?? p.posted_date ?? null } : null,
+  };
+}
+
+/**
+ * "evidence" (the default): somebody callable first, then the highest evidence score (scoreOf), then the
+ * departed-writer priority and the biggest annual premium, the order the page used before.
+ */
+export function sortPolicies<T extends Pick<BookPolicy, "months_in_force" | "monthly_premium" | "annual_premium" | "face_amount" | "client_name" | "flip_key" | "status_group" | "agent_gone" | "book_status"> & Partial<Pick<BookPolicy, "phone" | "do_not_call" | "flip_status">>>(
+  list: T[], key: SortKey, scoreOf: (p: T) => number = () => 0,
 ): T[] {
   const name = (p: T) => (p.client_name ?? "").toLowerCase();
   const byDesc = (a: number | null, b: number | null) => (a === null ? (b === null ? 0 : 1) : b === null ? -1 : b - a);
   const tie = (a: T, b: T) => name(a).localeCompare(name(b)) || a.flip_key.localeCompare(b.flip_key);
+  const callable = (p: T) => (isCallable({ phone: p.phone ?? null, do_not_call: !!p.do_not_call, flip_status: p.flip_status ?? "to_call" }) ? 0 : 1);
   const out = [...list];
   out.sort((a, b) => {
     switch (key) {
+      case "evidence":
+        return callable(a) - callable(b)
+          || scoreOf(b) - scoreOf(a)
+          || priorityTier(a) - priorityTier(b)
+          || byDesc(num(a.annual_premium), num(b.annual_premium))
+          || byDesc(num(a.months_in_force), num(b.months_in_force)) || tie(a, b);
       case "priority":
         return priorityTier(a) - priorityTier(b)
           || byDesc(num(a.annual_premium), num(b.annual_premium))

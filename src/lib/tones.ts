@@ -261,3 +261,51 @@ export function bookStandingTone(standing: string | null | undefined): Tone {
     default: return "slate";
   }
 }
+
+/**
+ * Easy Resells (OVERHAUL-resells, 2026-10-29): what kind of resell a person is. Ready to finish is
+ * going well (they already gave SSN and bank); lapsing needs a nudge and dropped is the dead state, the
+ * same two tones as the Book of Business; a Vantage client is paperwork with another agency; an agent who
+ * left is quiet; a warm call is a fresh conversation.
+ */
+export function resellBucketTone(bucket: string | null | undefined): Tone {
+  switch (norm(bucket)) {
+    case "ready_to_finish": return "good";
+    case "lapsing": return bookStandingTone("lapsing");
+    case "dropped": return bookStandingTone("gone");
+    case "vantage": return "royal";
+    case "warm_objection": return "cool";
+    default: return "slate";
+  }
+}
+
+/**
+ * A Book Flips call outcome (book_flips.flip_status): resold is going well, a callback is scheduled,
+ * an appointment is paperwork to come, no answer needs a nudge, do not call is a stop, and a policy
+ * not called yet, not interested or a bad number is quiet.
+ */
+export function flipStatusTone(status: string | null | undefined): Tone {
+  switch (norm(status)) {
+    case "resold": return "good";
+    case "callback": return "cool";
+    case "appointment": return "royal";
+    case "no_answer": return "warm";
+    case "do_not_call": return "hot";
+    default: return "slate";
+  }
+}
+
+/**
+ * The evidence a resell ranks on (src/lib/resellEvidence.ts): SSN and bank given is going well, a sale on
+ * a call is the gold moment, a lapse needs a nudge (the Book of Business lapsing tone), a phone somebody
+ * answered is a live line (cool), and a phone nobody answers is quiet.
+ */
+export function evidenceTone(key: string | null | undefined): Tone {
+  switch (norm(key)) {
+    case "ssn_bank": return "good";
+    case "sold_call": return "gold";
+    case "lapse": return bookStandingTone("lapsing");
+    case "answered": return "cool";
+    default: return "slate";
+  }
+}

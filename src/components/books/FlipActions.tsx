@@ -23,13 +23,18 @@ function defaultCallbackLocal(): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-export function FlipActions({ idBase, status, busy, client, onSet }: {
+export function FlipActions({ idBase, status, busy, client, onSet, resoldVariant = "default" }: {
   /** Unique per policy; used for the callback and note field ids. */
   idBase: string;
   status: FlipStatus;
   busy: boolean;
   client: { firstName: string; lastName: string; phone: string; dob: string };
   onSet: (status: FlipStatus, opts?: FlipSetOptions) => Promise<boolean>;
+  /**
+   * The Resold trigger's look. A list that shows these buttons on every card (Book Flips, Easy Resells)
+   * passes "outline", so the screen keeps its one gold button (the first card's Call).
+   */
+  resoldVariant?: "default" | "outline";
 }) {
   const [panel, setPanel] = useState<"none" | "callback" | "note" | "more">("none");
   const [cb, setCb] = useState(defaultCallbackLocal);
@@ -45,7 +50,7 @@ export function FlipActions({ idBase, status, busy, client, onSet }: {
         </Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={() => void onSet("appointment", { countAttempt: true })}>Appointment</Button>
         <SubmitDealDialog
-          trigger={<Button size="sm" disabled={busy}>Resold</Button>}
+          trigger={<Button size="sm" variant={resoldVariant} disabled={busy}>Resold</Button>}
           title="Post the new policy"
           description="Posting counts the sale in production and marks this policy resold."
           initialClient={client}

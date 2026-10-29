@@ -7661,6 +7661,19 @@
         "raw": ""
       }
     ],
+    "resell_evidence": [
+      {
+        "all": [
+          "p_names",
+          "p_phones"
+        ],
+        "required": [
+          "p_phones"
+        ],
+        "unnamed": false,
+        "raw": "p_phones text[], p_names text[] DEFAULT '{}'::text[]"
+      }
+    ],
     "reset_quiz_attempts": [
       {
         "all": [

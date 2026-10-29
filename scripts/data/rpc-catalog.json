@@ -6405,6 +6405,44 @@
         "raw": "p_start date, p_end date"
       }
     ],
+    "leaderboard_set_cheer": [
+      {
+        "all": [
+          "p_agent_key",
+          "p_cheer",
+          "p_month"
+        ],
+        "required": [
+          "p_agent_key",
+          "p_cheer",
+          "p_month"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_key text, p_month date, p_cheer boolean"
+      }
+    ],
+    "leaderboard_team_board": [
+      {
+        "all": [
+          "p_end",
+          "p_start"
+        ],
+        "required": [
+          "p_end",
+          "p_start"
+        ],
+        "unnamed": false,
+        "raw": "p_start date, p_end date"
+      }
+    ],
+    "leaderboard_viewer_is_teammate": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "list_abandoned_partial_applications": [
       {
         "all": [],

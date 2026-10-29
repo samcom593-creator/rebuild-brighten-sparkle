@@ -200,7 +200,12 @@ const repoRoot = path.resolve(import.meta.dirname, "..");
 // legacy page-typing errors; lock the measured lower floor.
 // 2026-09-04: the usage-drain release's typed PerformanceObserver entries and
 // nullable RPC normalization reduced the verified project graph from 86 to 85.
-const BASELINE = 75; // 2026-10-10 (PL-WIB-TSC-FLOOR-75): 82 -> 75. CI printed
+const BASELINE = 71; // 2026-10-29 (OVERHAUL-leaderboards): 75 -> 71. The four were all
+// in the old src/pages/Leaderboard.tsx, TS2352 casts of reads whose relation types.ts could not
+// infer (v_agentlink_book_freshness, v_agent_canonical_map, v_top_legs_excl_sam,
+// readymode_dialer_calls); the rebuilt page reads none of them. Measured with this gate's
+// `tsc -b --noEmit --force` on the old page and the new one, same tree otherwise.
+// Prior: 2026-10-10 (PL-WIB-TSC-FLOOR-75): 82 -> 75. CI printed
 // "Ratchet drop available" from 10-06 (76) and 10-09 (75) and nobody locked it,
 // so any 7 new errors would have passed green (MP-356: a count floor is
 // fungible). Attributed by diffing the full error list at f5f74b5d (82) against

@@ -44,7 +44,10 @@ describe("scoped production scoreboard", () => {
     expect(migration).toContain("public.v_production_comp_truth");
     expect(migration).toContain("origin is distinct from 'external_daily_gap'");
     expect(migration).toContain("public.apex_is_admin() or public.crm_can_read_agent_scope(t.agent_id)");
-    expect(source("pages/Leaderboard.tsx")).toContain('<TabsTrigger value="last_month">Last Month</TabsTrigger>');
+    // The Leaderboard always offers last month too (OVERHAUL-leaderboards: one window switch,
+    // Today · This week · This month · Last month), so the 1st of a month is never a dead end.
+    expect(source("lib/leaderboardBoard.ts")).toContain('{ key: "last_month", label: "Last month" }');
+    expect(source("pages/Leaderboard.tsx")).toContain("BOARD_WINDOWS.map(");
   });
 
   it("MP-394: warns staff when Discord-only production cannot reach the ledger", () => {

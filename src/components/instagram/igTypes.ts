@@ -1,6 +1,8 @@
-// Shape of fn_ig_dashboard v2 (migration 20261028053436). Cast ONCE at the query boundary in
-// InstagramInbox.tsx; types.ts cannot be regenerated (the Supabase PAT is dead), so this file is
-// the contract and the RPC header comment is its twin.
+// Shape of fn_ig_dashboard (migration 20261029070000, which adds each row's context to the v2 shape
+// of 20261028053436). Cast ONCE at the query boundary in InstagramInbox.tsx; types.ts cannot be
+// regenerated (the Supabase PAT is dead), so this file is the contract and the RPC header comment is
+// its twin. Every key added after v2 is optional: a row built outside the thread table (a booking,
+// an application or a recovery email with no DM thread) carries none of them.
 export type IgStatusWord =
   | "call" | "today" | "closing" | "reply" | "tag_it" | "closed"
   | "casual" | "open" | "snoozed" | "handled" | "booked" | "applied";
@@ -13,6 +15,31 @@ export interface IgBookedEvent {
   outcome: string | null;
   event_type_name?: string | null;
 }
+
+/** Our newest send to this person, ours or the bot's, with its delivery truth. */
+export interface IgLastOut {
+  body: string | null;
+  at: string;
+  by: "bot" | "you";
+  /** 'delivered' only on a Meta mid; 'handed' = a bot send with no receipt (the ManyChat path). */
+  state: "delivered" | "handed" | "refused" | "queued" | "no_receipt";
+  /** send_failed_kind when Meta refused it (window_closed, link_blocked, ...). */
+  kind: string | null;
+}
+
+/** The newest desk action on the thread that is not a note. */
+export interface IgLastAction { action: string; at: string; until: string | null }
+
+/** How they first came in, inside the 61-day read: a comment (with its post), a story reply or a DM. */
+export interface IgCameFrom {
+  channel: string | null;
+  media_id: string | null;
+  reel_title?: string | null;
+  reel_url?: string | null;
+}
+
+/** The funnel stages this person reached in the window (people[] rows only). */
+export interface IgRowStages { business: boolean; licensed: boolean; number: boolean; booked: boolean }
 
 export interface IgRow {
   external_id: string;
@@ -44,6 +71,18 @@ export interface IgRow {
   told_locked_in?: boolean;
   recovered?: boolean;
   sent_at?: string | null;
+  /** Their newest words, even when we spoke after them. */
+  last_in_body?: string | null;
+  last_out?: IgLastOut | null;
+  last_action?: IgLastAction | null;
+  first_in_at?: string | null;
+  in_count?: number | null;
+  came_from?: IgCameFrom | null;
+  application_status?: string | null;
+  applied_at?: string | null;
+  agent_status?: string | null;
+  hired_at?: string | null;
+  stages?: IgRowStages;
 }
 
 export interface IgStatus {

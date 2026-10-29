@@ -62,7 +62,7 @@ export function TrainingLibrary() {
   );
   return (
     <div className="space-y-6">
-      <PageHeader title="Call Training" description="Hear the calls worth learning from. Tap a moment to play that part of the call." />
+      <PageHeader title="Call Training" subtitle="Hear the calls worth learning from. Tap a moment to play that part of the call." />
       <div className="flex flex-wrap gap-2">
         {VIEWS.map((v) => (
           <Button key={v.key} size="sm" variant={view === v.key ? "default" : "outline"} aria-pressed={view === v.key} onClick={() => setView(v.key)}>{v.label}</Button>

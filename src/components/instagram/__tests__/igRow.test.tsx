@@ -1,16 +1,18 @@
 /**
- * IG desk row contract (MP-305 W5).
+ * IG desk row contract (MP-305 W5, rebuilt for OVERHAUL-instagram).
  *
- * Pins (1) the gold/outline button pair per status word, (2) that 'delivered' is said only when the
+ * Pins (1) the main/second button pair per status word, (2) that 'delivered' is said only when the
  * sender's response carries a Meta mid (the 465-row fake-success lesson applied to DMs), (3) the
- * lever's text prefill by key, and (4) that a rendered 'call' row shows the number before the tap,
- * its tel/Google Voice anchor spreads contactLinkProps, and every IG link carries noopener.
+ * lever's text prefill by key, (4) that a rendered 'call' row shows the number before the tap, its
+ * tel/Google Voice anchor spreads contactLinkProps, and every IG link carries noopener, and (5) that
+ * a list card never fills a button gold: only the one featured Up next card does.
  */
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { classifySendResponse } from "../igActions";
 import { SEND_RESULT, SMS, leverSmsBody } from "../igCopy";
-import { buttonPair, effectiveStatus, metaText, who } from "../igRowLogic";
+import { buttonPair, effectiveStatus, who } from "../igRowLogic";
+import { nextFor, pillFor } from "../igStory";
 import { IgRow } from "../IgRow";
 import type { IgRow as IgRowData } from "../igTypes";
 
@@ -26,7 +28,7 @@ function row(over: Partial<IgRowData>): IgRowData {
   };
 }
 
-describe("buttonPair: one gold + one outline per status word", () => {
+describe("buttonPair: one main + one second button per status word", () => {
   it("call -> call + text", () => {
     expect(buttonPair(row({ status: "call", phone: "4803277544" }), false, NOW)).toEqual({ gold: "call", outline: "text" });
   });
@@ -35,30 +37,32 @@ describe("buttonPair: one gold + one outline per status word", () => {
     expect(buttonPair(up, false, NOW)).toEqual({ gold: "call", outline: "text" });
     const past = row({ status: "today", phone: "4803277544", booked_event: { id: "e1", scheduled_at: "2026-10-28T04:00:00Z", invitee_phone: null, invitee_name: null, outcome: null } });
     expect(buttonPair(past, false, NOW)).toEqual({ gold: "showed", outline: "no_show" });
-    expect(metaText(past, false, NOW)).toContain("did they show?");
+    expect(pillFor(past, false, NOW).text).toBe("Did they show?");
+    expect(nextFor(past, false, NOW).text).toMatch(/showed or no-show/);
     const marked = row({ status: "today", booked_event: { id: "e1", scheduled_at: "2026-10-28T04:00:00Z", invitee_phone: null, invitee_name: null, outcome: "completed" } });
     expect(effectiveStatus(marked, false, NOW)).toBe("booked");
+    expect(pillFor(marked, false, NOW).text).toBe("Showed");
   });
-  it("closing / reply -> send + open ig", () => {
+  it("closing / reply -> reply + open in Instagram", () => {
     expect(buttonPair(row({ status: "closing" }), false, NOW)).toEqual({ gold: "send", outline: "open_ig" });
     expect(buttonPair(row({ status: "reply" }), false, NOW)).toEqual({ gold: "send", outline: "open_ig" });
   });
-  it("tag it -> nudge only when the sender supports HUMAN_AGENT; otherwise the row is closed", () => {
+  it("tag it -> follow up only when the sender supports HUMAN_AGENT; otherwise the row is closed", () => {
     expect(buttonPair(row({ status: "tag_it" }), true, NOW)).toEqual({ gold: "nudge", outline: "open_ig" });
     expect(effectiveStatus(row({ status: "tag_it" }), false, NOW)).toBe("closed");
     expect(buttonPair(row({ status: "tag_it" }), false, NOW)).toEqual({ gold: "open_ig", outline: "done" });
   });
-  it("closed -> open ig + (text when a phone exists, else done)", () => {
+  it("closed -> open in Instagram + (text when a phone exists, else done)", () => {
     expect(buttonPair(row({ status: "closed", phone: "4803277544" }), false, NOW)).toEqual({ gold: "open_ig", outline: "text" });
     expect(buttonPair(row({ status: "closed" }), false, NOW)).toEqual({ gold: "open_ig", outline: "done" });
-    expect(metaText(row({ status: "closed" }), false, NOW)).toContain("window closed");
+    expect(pillFor(row({ status: "closed" }), false, NOW).text).toBe("Window closed");
   });
-  it("casual -> open ig + done; snoozed -> open ig + bring back", () => {
+  it("casual -> open in Instagram + done; snoozed -> open in Instagram + bring back", () => {
     expect(buttonPair(row({ status: "casual", intent: "casual" }), false, NOW)).toEqual({ gold: "open_ig", outline: "done" });
     expect(buttonPair(row({ status: "snoozed" }), false, NOW)).toEqual({ gold: "open_ig", outline: "bring_back" });
   });
   it("never 'Unknown' for who()", () => {
-    expect(who({ handle: null, name: null })).toBe("someone on ig");
+    expect(who({ handle: null, name: null })).toBe("Someone on Instagram");
     expect(who({ handle: "1234", name: "Kev" })).toBe("Kev");
     expect(who({ handle: "kevin", name: null })).toBe("@kevin");
   });
@@ -97,10 +101,15 @@ describe("leverSmsBody", () => {
   });
 });
 
+/** Buttons and button-styled links filled with the brand gold. */
+function goldButtons(container: HTMLElement): Element[] {
+  return Array.from(container.querySelectorAll("a, button")).filter((el) => el.classList.contains("bg-primary"));
+}
+
 describe("IgRow render", () => {
   it("a call row prints the number before the tap and links carry noopener", () => {
     render(<IgRow row={row({ status: "call", phone: "4803277544" })} context="list" humanAgentSupported={false} onAction={() => undefined} now={NOW} />);
-    // The number is printed in the meta line AND on the button: visible before the tap, twice.
+    // The number is printed in the next step AND on the button: visible before the tap, twice.
     expect(screen.getAllByText(/\(480\) 327-7544/).length).toBeGreaterThanOrEqual(2);
     const call = screen.getByRole("link", { name: /call @kevin/i });
     expect(call.getAttribute("href")).toMatch(/voice\.google\.com|^tel:/);
@@ -108,17 +117,42 @@ describe("IgRow render", () => {
       expect(call).toHaveAttribute("target", "_blank");
       expect(call).toHaveAttribute("rel", "noopener noreferrer");
     }
-    expect(screen.getByText("call")).toBeInTheDocument();
+    expect(screen.getByText("Call them")).toBeInTheDocument();
   });
-  it("a closed row's gold button is open ig with rel noopener and a thread deep link", () => {
+  it("a closed row's main button is Open in Instagram with rel noopener and a thread deep link", () => {
     render(<IgRow row={row({ status: "closed" })} context="list" humanAgentSupported={false} onAction={() => undefined} now={NOW} />);
     const ig = screen.getByRole("link", { name: /open @kevin on instagram/i });
     expect(ig).toHaveAttribute("href", "https://ig.me/m/kevin");
     expect(ig).toHaveAttribute("rel", "noopener noreferrer");
-    expect(screen.getByText(/window closed/)).toBeInTheDocument();
+    expect(screen.getByText("Window closed")).toBeInTheDocument();
   });
-  it("our last line is prefixed 'you: '", () => {
+  it("when the server sends one side only and ours is newest, the row says what we said without claiming delivery", () => {
     render(<IgRow row={row({ status: "open", last_direction: "outbound", last_body: "what's your number?" })} context="people" humanAgentSupported={false} onAction={() => undefined} now={NOW} />);
-    expect(screen.getByText("you:")).toBeInTheDocument();
+    expect(screen.getByText("We said")).toBeInTheDocument();
+    expect(screen.getByText("“what's your number?”")).toBeInTheDocument();
+    expect(screen.queryByText(/delivered/i)).toBeNull();
+  });
+  it("shows what they said and what we did on the same card", () => {
+    render(
+      <IgRow
+        row={row({
+          status: "call", phone: "4803277544", last_in_body: "we still on for the call?",
+          last_out: { body: "locked in, talk soon", at: "2026-10-27T07:00:00Z", by: "bot", state: "handed", kind: null },
+        })}
+        context="list" humanAgentSupported={false} onAction={() => undefined} now={NOW}
+      />,
+    );
+    expect(screen.getByText("“we still on for the call?”")).toBeInTheDocument();
+    expect(screen.getByText("“locked in, talk soon”")).toBeInTheDocument();
+    expect(screen.getByText("Bot said")).toBeInTheDocument();
+    expect(screen.getByText("no receipt")).toBeInTheDocument();
+  });
+  it("a list card fills no button gold; the featured Up next card fills exactly one", () => {
+    const r = row({ status: "call", phone: "4803277544" });
+    const { container, unmount } = render(<IgRow row={r} context="list" humanAgentSupported={false} onAction={() => undefined} now={NOW} />);
+    expect(goldButtons(container)).toHaveLength(0);
+    unmount();
+    const featured = render(<IgRow row={r} context="list" humanAgentSupported={false} onAction={() => undefined} now={NOW} featured />);
+    expect(goldButtons(featured.container)).toHaveLength(1);
   });
 });

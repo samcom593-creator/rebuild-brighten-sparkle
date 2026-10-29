@@ -27,6 +27,30 @@ export function shortAgo(from: string | number | Date | null | undefined, now: n
   return a ? `${a} ago` : "never";
 }
 
+/**
+ * '4m ago' / '2d ago', or 'just now' under a minute; '' when unknown. The row lines read this, so a
+ * message that just landed never says '0m ago'. The age is shortAge's, clamped at 0.
+ */
+export function agoWords(from: string | number | Date | null | undefined, now: number = Date.now()): string {
+  const t = ms(from);
+  if (t == null) return "";
+  if (Math.max(0, now - t) < 60_000) return "just now";
+  return shortAgo(t, now);
+}
+
+/** Each sentence's first letter up, the rest as written: the server's lever sentence is lowercase. */
+export function sentenceCase(text: string | null | undefined): string {
+  return (text ?? "").trim().replace(/(^|[.!?]\s+)([a-z])/g, (_m, lead: string, ch: string) => `${lead}${ch.toUpperCase()}`);
+}
+
+/** 'Up from 12' / 'Down from 9' / 'Same as before', or null when either side is unknown. */
+export function trendOf(count: number | null | undefined, prior: number | null | undefined): { dir: "up" | "down" | "same"; prior: number } | null {
+  if (count == null || prior == null || !Number.isFinite(count) || !Number.isFinite(prior)) return null;
+  if (count > prior) return { dir: "up", prior };
+  if (count < prior) return { dir: "down", prior };
+  return { dir: "same", prior };
+}
+
 /** 'in 4h' / 'in 2d' for a future instant; '' when past or unknown. */
 export function shortUntil(to: string | number | Date | null | undefined, now: number = Date.now()): string {
   const t = ms(to);

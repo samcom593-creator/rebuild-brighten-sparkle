@@ -80,33 +80,40 @@ export function IgCompose({ open, onOpenChange, row, mode, status, onResult }: I
 
   const body = (
     <div className="flex flex-col gap-3 px-4 pb-4">
-      <p className="text-xs text-muted-foreground">{windowLine}</p>
-      <div className="grid gap-2">
-        {CANNED.map((line) => (
-          <Button key={line} type="button" variant="outline" className="h-11 justify-start sm:h-9" onClick={() => setMessage(line)}>
-            {line}
-          </Button>
-        ))}
+      <p className="text-sm text-muted-foreground">{windowLine}</p>
+      <div className="space-y-2">
+        <p className="text-sm font-semibold text-foreground">{COMPOSE.quick}</p>
+        <div className="grid gap-2">
+          {CANNED.map((line) => (
+            <Button key={line} type="button" variant="outline" className="h-11 justify-start text-left sm:h-10" onClick={() => setMessage(line)}>
+              {line}
+            </Button>
+          ))}
+        </div>
       </div>
-      <Textarea
-        value={message}
-        maxLength={MAX_CHARS}
-        onChange={(e) => setMessage(e.target.value)}
-        placeholder={COMPOSE.placeholder}
-        rows={3}
-        aria-label="message"
-        className="text-base"
-      />
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
+      <div className="space-y-1.5">
+        <label htmlFor="ig-compose-message" className="text-sm font-semibold text-foreground">{COMPOSE.message}</label>
+        <Textarea
+          id="ig-compose-message"
+          value={message}
+          maxLength={MAX_CHARS}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder={COMPOSE.placeholder}
+          rows={3}
+          enterKeyHint="send"
+          className="text-base"
+        />
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
         <span>{words > MAX_WORDS ? COMPOSE.longForYou : COMPOSE.words(words)}</span>
-        {linkRefused ? <span className="text-destructive">{COMPOSE.linksRefused}</span> : null}
+        {linkRefused ? <span role="alert" className="text-destructive">{COMPOSE.linksRefused}</span> : null}
       </div>
       <div style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
-        <Button type="button" className="h-11 w-full sm:h-9" disabled={!canSend} onClick={submit}>
-          {sending ? "sending…" : mode === "nudge" ? BUTTON.nudge : BUTTON.send}
+        <Button type="button" className="h-12 w-full" disabled={!canSend} onClick={submit}>
+          {sending ? COMPOSE.sending : mode === "nudge" ? BUTTON.nudge : BUTTON.send}
         </Button>
         {result ? (
-          <p className={cn("mt-2 text-sm", result.ok ? "text-foreground" : "text-destructive")} role="status">{result.line}</p>
+          <p className={cn("mt-2 text-[15px]", result.ok ? "text-foreground" : "text-destructive")} role="status">{result.line}</p>
         ) : null}
       </div>
     </div>

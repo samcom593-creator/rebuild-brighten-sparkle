@@ -11,9 +11,15 @@
  * onboarding tile opens the onboarding queue (24). Every count on a button is the rows a
  * tap on it shows.
  *
- * Colour layer (2026-10-28, docs/DESIGN_SYSTEM.md "Colour, motion and sound"): every colour
- * is a rung of src/lib/hireLadder.ts through hireRungTone; the rung is said in words beside
- * the name and the initials bubble is hidden from assistive technology; a move up to
+ * Recruit tracking (OVERHAUL-recruits, 2026-10-29): every row says when the person applied,
+ * draws the seven-step bar filled to their step in that step's tone with the step in words
+ * beside it, says licensed or not, and carries their Xcel badge: bought (email or phone),
+ * possible match (name only), or the "has not bought Xcel yet" nudge, which waits for a fresh
+ * report. The chips are the seven steps and the Xcel choices carry counts, each equal to the
+ * rows a tap shows. The definitions themselves are pinned in src/tests/lib/recruitJourney.test.ts.
+ *
+ * Colour: every row colour is its step's (recruitStepTone); the initials bubble is hidden from
+ * assistive technology; an off-ladder onboarding flag says itself in the hot tone; a move up to
  * Producing is the full burst once, from the pressed button, any other step the pop, a bulk
  * move one success note, a close quiet, and a failed write the error toast alone. Nothing
  * plays on load.
@@ -22,6 +28,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { formatRecruitDay } from "@/lib/recruitJourney";
 
 type Row = Record<string, unknown>;
 
@@ -40,17 +47,19 @@ const db = vi.hoisted(() => ({
 const confirmMock = vi.hoisted(() => vi.fn(async (_opts: unknown) => true));
 const removed = vi.hoisted(() => ({ calls: [] as unknown[] }));
 
+// The Next Step Engine's own stage keys (next_step_stages), so every row lands on the step the
+// live page would put it on.
 const STAGES = [
   { stage_key: "applied", order_index: 1, display_name: "Applied", is_terminal: false, retired_at: null },
-  { stage_key: "contacted", order_index: 2, display_name: "Contacted", is_terminal: false, retired_at: null },
   // Derived only: the engine sets it from evidence, so "Move to" skips over it.
-  { stage_key: "watched_vsl", order_index: 3, display_name: "Watched video", is_terminal: false, retired_at: null },
-  { stage_key: "interview_booked", order_index: 4, display_name: "Interview booked", is_terminal: false, retired_at: null },
+  { stage_key: "watched_vsl", order_index: 2, display_name: "Watched video", is_terminal: false, retired_at: null },
+  { stage_key: "contacted", order_index: 4, display_name: "Contacted", is_terminal: false, retired_at: null },
   // Retired: kept in the table for history, never shown or offered.
-  { stage_key: "seminar_booked", order_index: 5, display_name: "Seminar booked", is_terminal: false, retired_at: "2026-01-01T00:00:00Z" },
+  { stage_key: "booked_seminar", order_index: 5, display_name: "Seminar booked", is_terminal: false, retired_at: "2026-01-01T00:00:00Z" },
+  { stage_key: "started_prelicense", order_index: 7, display_name: "In Pre-License", is_terminal: false, retired_at: null },
   { stage_key: "hired_unlicensed", order_index: 12, display_name: "Hired, unlicensed", is_terminal: false, retired_at: null },
-  { stage_key: "licensed", order_index: 13, display_name: "Licensed", is_terminal: false, retired_at: null },
-  { stage_key: "first_deal", order_index: 14, display_name: "First deal", is_terminal: true, retired_at: null },
+  { stage_key: "hired", order_index: 13, display_name: "Hired — Agent", is_terminal: false, retired_at: null },
+  { stage_key: "first_deal", order_index: 18, display_name: "First deal", is_terminal: true, retired_at: null },
   { stage_key: "closed_lost", order_index: 99, display_name: "Closed", is_terminal: true, retired_at: null },
 ];
 
@@ -94,6 +103,9 @@ import { toast } from "sonner";
 
 const DAY = 24 * 60 * 60 * 1000;
 const daysAgo = (n: number) => new Date(Date.now() - n * DAY).toISOString();
+/** A calendar date n days before today in the recruiting zone, as Xcel reports it. */
+const phoenixDate = (n: number) =>
+  new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "America/Phoenix" }).format(new Date(Date.now() - n * DAY));
 let seq = 0;
 function person(over: Row & { display_name: string; person_type: "applicant" | "agent"; stage_key: string }): Row {
   seq += 1;
@@ -106,16 +118,21 @@ function person(over: Row & { display_name: string; person_type: "applicant" | "
     manager_name: "Sam James", license_status: null, license_progress: null, npn: null, last_contacted_at: null,
     manual_stage_key: null, status: "active", instagram: null, link_sent_at: null, link_used_at: null,
     last_sign_in_at: null, resident_state: "TX",
+    applied_at: over.person_type === "applicant" ? daysAgo(9) : null,
+    interview_at: null, interview_booked_at: null,
+    xcel_match: null, xcel_enrolled_on: null, xcel_pct: null, xcel_completed_on: null, xcel_last_login_on: null, xcel_course: null,
+    xcel_report_on: phoenixDate(1),
     ...over,
   };
 }
 
-// Ana: applicant on the first step, no state on file. Bo: applicant 25 days on a step, email only.
-// Cy: hired, unlicensed agent 70 days on a step, no login link sent. Di: licensed agent on the
-// last step. Ed: closed, so hidden unless "Show closed people too" is on.
-const ana = person({ display_name: "Ana Ruiz", person_type: "applicant", stage_key: "applied", phone: "6015551001", resident_state: null, last_contacted_at: daysAgo(3) });
-const bo = person({ display_name: "Bo Lee", person_type: "applicant", stage_key: "contacted", days_in_stage: 25, email: "bo@example.test" });
-const cy = person({ display_name: "Cy Dunn", person_type: "agent", stage_key: "hired_unlicensed", agent_id: "agent-cy", days_in_stage: 70, phone: "6015551003", license_status: "unlicensed", license_progress: "course_purchased", manager_name: null });
+// Ana: applicant on the first step, no state on file, not licensed. Bo: applicant 25 days at
+// Contacted, email only, not licensed and no Xcel on file, so the nudge. Cy: hired, unlicensed
+// agent 70 days on a step who bought Xcel (matched by phone), no login link sent. Di: licensed
+// agent on the last step. Ed: closed, so hidden unless "Show closed people too" is on.
+const ana = person({ display_name: "Ana Ruiz", person_type: "applicant", stage_key: "applied", phone: "6015551001", resident_state: null, last_contacted_at: daysAgo(3), license_status: "unlicensed" });
+const bo = person({ display_name: "Bo Lee", person_type: "applicant", stage_key: "contacted", days_in_stage: 25, email: "bo@example.test", license_status: "unlicensed" });
+const cy = person({ display_name: "Cy Dunn", person_type: "agent", stage_key: "hired_unlicensed", agent_id: "agent-cy", days_in_stage: 70, phone: "6015551003", license_status: "unlicensed", license_progress: "course_purchased", manager_name: null, xcel_match: "phone", xcel_enrolled_on: phoenixDate(30), xcel_pct: 45 });
 const di = person({ display_name: "Di Park", person_type: "agent", stage_key: "first_deal", agent_id: "agent-di", days_in_stage: 1, phone: "6015551004", license_status: "licensed", license_progress: "licensed", link_used_at: daysAgo(1), instagram: "di.park" });
 const ed = person({ display_name: "Ed Kim", person_type: "applicant", stage_key: "closed_lost", status: "closed", days_in_stage: 5 });
 const EVERYONE = [ana, bo, cy, di, ed];
@@ -151,15 +168,22 @@ function renderPage(path = "/dashboard/recruits") {
 
 const board = () => screen.getByRole("region", { name: "New hire numbers" });
 const tile = (label: string) => within(board()).getByRole("button", { name: new RegExp(`^${label.replace("+", "\\+")}`) });
-const peopleShown = () => screen.getAllByRole("checkbox", { name: /^Select (?!everyone)/ }).length;
+const peopleShown = () => screen.queryAllByRole("checkbox", { name: /^Select (?!everyone)/ }).length;
 /** The "N shown" line; the N sits in its own span, so match the whole element's text. */
 const shownLine = () => screen.getByText((_, el) => el?.tagName === "SPAN" && /^\d+ shown$/.test(el.textContent ?? ""));
 const writes = () => db.rpcCalls.filter((c) => c.fn !== "recruit_pipeline_list" && c.fn !== "onboarding_exception_facts");
 /** A person's row (an li), and the initials bubble in it: the one 40px round span. */
 const rowOf = (name: string) => screen.getByText(name).closest("li") as HTMLElement;
 const bubbleIn = (row: HTMLElement) => row.querySelector("span.h-10.w-10.rounded-full") as HTMLElement;
+/** The seven-step bar in a row: how many segments it fills. */
+const barIn = (row: HTMLElement) => row.querySelector("[data-filled]") as HTMLElement;
 /** The tinted bubble around a lucide icon, by the icon's class. */
 const iconBubble = (root: HTMLElement, icon: string) => root.querySelector(`svg.lucide-${icon}`)?.parentElement as HTMLElement | undefined;
+const chips = () => screen.getByRole("navigation", { name: "Stages" });
+const openFilters = async () => {
+  fireEvent.click(screen.getByRole("button", { name: /^Filters/ }));
+  return screen.findByRole("group", { name: "Xcel pre-licensing" });
+};
 
 beforeEach(() => {
   db.rows = EVERYONE;
@@ -186,25 +210,29 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("New hires", () => {
-  it("every number is a list: tiles and chips count exactly the rows a tap shows, with no numeric prefixes", async () => {
+  it("every number is a list: tiles and step chips count exactly the rows a tap shows, with no numeric prefixes", async () => {
     renderPage();
     await screen.findByText("Ana Ruiz");
 
     expect(tile("In progress")).toHaveTextContent(/In progress\s*4/);
     expect(tile("Stuck 7+ days")).toHaveTextContent(/Stuck 7\+ days\s*2/);
-    expect(tile("Stuck 60+ days")).toHaveTextContent(/Stuck 60\+ days\s*1/);
+    expect(tile("Need Xcel")).toHaveTextContent(/Need Xcel\s*1/);
     expect(peopleShown()).toBe(4);
     expect(shownLine()).toHaveTextContent("4 shown");
 
-    const chips = screen.getByRole("navigation", { name: "Stages" });
-    expect(within(chips).getByRole("button", { name: /^All\s*4$/ })).toBeInTheDocument();
-    expect(within(chips).getByRole("button", { name: /^Applied\s*1$/ })).toBeInTheDocument();
-    expect(within(chips).getByRole("button", { name: /^Hired, unlicensed\s*1$/ })).toBeInTheDocument();
-    for (const b of within(chips).getAllByRole("button")) expect(b.textContent).not.toMatch(/^\d+\./);
-    expect(within(chips).queryByRole("button", { name: /Seminar booked/ })).toBeNull();
-    expect(within(chips).queryByRole("button", { name: /^Closed/ })).toBeNull();
+    // The chips are the steps, each with the people on it; a step with nobody on it is not drawn.
+    expect(within(chips()).getByRole("button", { name: /^All\s*4$/ })).toBeInTheDocument();
+    expect(within(chips()).getByRole("button", { name: /^Applied\s*1$/ })).toBeInTheDocument();
+    expect(within(chips()).getByRole("button", { name: /^Contacted\s*1$/ })).toBeInTheDocument();
+    expect(within(chips()).getByRole("button", { name: /^Licensing\s*1$/ })).toBeInTheDocument();
+    expect(within(chips()).getByRole("button", { name: /^First deal\s*1$/ })).toBeInTheDocument();
+    expect(within(chips()).queryByRole("button", { name: /^Interview/ })).toBeNull();
+    for (const b of within(chips()).getAllByRole("button")) expect(b.textContent).not.toMatch(/^\d+\./);
+    expect(within(chips()).queryByRole("button", { name: /Seminar booked/ })).toBeNull();
+    expect(within(chips()).queryByRole("button", { name: /^Closed/ })).toBeNull();
     // Section headings carry the step's name, not its number.
     expect(screen.getByRole("heading", { level: 2, name: "Applied" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Licensing" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { level: 2, name: /^\d+\./ })).toBeNull();
 
     fireEvent.click(tile("Stuck 7+ days"));
@@ -213,11 +241,19 @@ describe("New hires", () => {
     expect(shownLine()).toHaveTextContent("2 shown");
     expect(screen.getByRole("button", { name: "Remove Stuck 7+ days filter" })).toBeInTheDocument();
     // With the idle filter on, the chips count within it, so a chip is still exactly its list.
-    expect(within(chips).getByRole("button", { name: /^All\s*2$/ })).toBeInTheDocument();
-    fireEvent.click(within(chips).getByRole("button", { name: /^Contacted\s*1$/ }));
+    expect(within(chips()).getByRole("button", { name: /^All\s*2$/ })).toBeInTheDocument();
+    fireEvent.click(within(chips()).getByRole("button", { name: /^Contacted\s*1$/ }));
     expect(peopleShown()).toBe(1);
     expect(screen.getByText("Bo Lee")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Remove Step: Contacted filter" })).toBeInTheDocument();
+
+    // Need Xcel opens exactly the people it counts, and clears every other filter.
+    fireEvent.click(tile("Need Xcel"));
+    expect(tile("Need Xcel")).toHaveAttribute("aria-pressed", "true");
+    expect(peopleShown()).toBe(1);
+    expect(screen.getByText("Bo Lee")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove Xcel: Has not bought yet filter" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Remove Step: Contacted filter" })).toBeNull();
 
     // Closed people are hidden until asked for.
     expect(screen.queryByText("Ed Kim")).toBeNull();
@@ -260,7 +296,7 @@ describe("New hires", () => {
     const header = screen.getByRole("heading", { level: 1, name: "New hires" }).closest("header") as HTMLElement;
     expect(within(header).queryAllByRole("button")).toHaveLength(0);
     expect(within(header).queryByText(/Download/)).toBeNull();
-    const subtitle = screen.getByText("From hire to first deal, one step at a time.");
+    const subtitle = screen.getByText("Every recruit, from application to first deal.");
     expect(subtitle.textContent!.length).toBeLessThanOrEqual(48);
     // No gold button anywhere on the screen until something is selected.
     expect(document.querySelectorAll("button.bg-primary, a.bg-primary")).toHaveLength(0);
@@ -268,6 +304,144 @@ describe("New hires", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Filters/ }));
     const download = await screen.findByRole("button", { name: "Download this list (CSV)" });
     expect(download.className).toMatch(/\bh-11\b/);
+  });
+
+  it("every row says when they applied, fills the seven-step bar to their step and says the step in words", async () => {
+    const noApp = person({ display_name: "Jo Agent", person_type: "agent", stage_key: "hired", agent_id: "agent-jo", license_status: "licensed", applied_at: null });
+    db.rows = [...EVERYONE, noApp];
+    renderPage();
+    await screen.findByText("Ana Ruiz");
+
+    const appliedDay = formatRecruitDay(ana.applied_at as string, Date.now());
+    expect(within(rowOf("Ana Ruiz")).getByText(`Applied ${appliedDay}`)).toBeInTheDocument();
+    // A hire with no application on file says so instead of a date.
+    expect(within(rowOf("Jo Agent")).getByText("No application on file")).toBeInTheDocument();
+
+    // The bar fills to the step; the step is written beside it, with the step number for a screen reader.
+    expect(barIn(rowOf("Ana Ruiz"))).toHaveAttribute("data-filled", "1");
+    expect(barIn(rowOf("Bo Lee"))).toHaveAttribute("data-filled", "2");
+    expect(barIn(rowOf("Cy Dunn"))).toHaveAttribute("data-filled", "4");
+    expect(barIn(rowOf("Jo Agent"))).toHaveAttribute("data-filled", "6");
+    expect(barIn(rowOf("Di Park"))).toHaveAttribute("data-filled", "7");
+    expect(barIn(rowOf("Cy Dunn"))).toHaveAttribute("aria-hidden", "true");
+    expect(within(rowOf("Cy Dunn")).getByText("Step 4 of 7:")).toHaveClass("sr-only");
+    expect(within(rowOf("Cy Dunn")).getByText("Licensing")).toBeInTheDocument();
+    // The engine's finer stage is said beside the step when it adds something, never repeated.
+    expect(within(rowOf("Cy Dunn")).getByText(/·\sHired, unlicensed/)).toBeInTheDocument();
+    expect(within(rowOf("Jo Agent")).getByText("Contracted")).toBeInTheDocument();
+    expect(within(rowOf("Ana Ruiz")).queryByText(/·\sApplied/)).toBeNull();
+    // Filled segments wear the step's tone; the rest are quiet.
+    const filled = barIn(rowOf("Cy Dunn")).querySelectorAll(".bg-tone-royal");
+    expect(filled).toHaveLength(4);
+    expect(barIn(rowOf("Cy Dunn")).children).toHaveLength(7);
+  });
+
+  it("licensed or not is said on every row, and a hire who still needs it can set where they are on it", async () => {
+    renderPage();
+    await screen.findByText("Ana Ruiz");
+    expect(within(rowOf("Ana Ruiz")).getByText("Not licensed")).toBeInTheDocument();
+    expect(within(rowOf("Bo Lee")).getByText("Not licensed")).toBeInTheDocument();
+    expect(within(rowOf("Di Park")).getByText("Licensed").className).toMatch(/\btext-tone-good\b/);
+    expect(within(rowOf("Cy Dunn")).getByText("Not licensed").className).toMatch(/\btext-tone-cool\b/);
+    // The license progress control stays on an unlicensed hire's row.
+    expect(within(rowOf("Cy Dunn")).getByRole("button", { name: /Course Started/ })).toBeInTheDocument();
+    expect(within(rowOf("Di Park")).queryByRole("button", { name: /Course Started|Unlicensed/ })).toBeNull();
+  });
+
+  it("Xcel: a badge when they bought it, a possible match on a name alone, the nudge when they should have; Filters counts equal the rows", async () => {
+    const hal = person({ display_name: "Hal Moss", person_type: "applicant", stage_key: "contacted", license_status: "unlicensed", xcel_match: "name", xcel_enrolled_on: phoenixDate(3) });
+    db.rows = [...EVERYONE, hal];
+    renderPage();
+    await screen.findByText("Ana Ruiz");
+
+    const cyRow = rowOf("Cy Dunn");
+    expect(within(cyRow).getByText("Bought Xcel").className).toMatch(/\btext-tone-good\b/);
+    expect(within(cyRow).getByText(/^Xcel enrolled .+, 45% done$/)).toBeInTheDocument();
+    expect(within(rowOf("Hal Moss")).getByText("Possible Xcel match")).toBeInTheDocument();
+    expect(within(rowOf("Hal Moss")).getByText("Xcel matched on the name only")).toBeInTheDocument();
+    expect(within(rowOf("Hal Moss")).queryByText("Bought Xcel")).toBeNull();
+    expect(within(rowOf("Bo Lee")).getByText("Has not bought Xcel yet").className).toMatch(/\btext-tone-warm\b/);
+    // Nobody has talked to Ana yet, and Di is licensed: no nudge for either.
+    expect(within(rowOf("Ana Ruiz")).queryByText(/Xcel/)).toBeNull();
+    expect(within(rowOf("Di Park")).queryByText(/Xcel/)).toBeNull();
+
+    const group = await openFilters();
+    expect(within(group).getByRole("button", { name: /^Any\s*5$/ })).toBeInTheDocument();
+    expect(within(group).getByRole("button", { name: /^Bought Xcel\s*1$/ })).toBeInTheDocument();
+    expect(within(group).getByRole("button", { name: /^Possible match\s*1$/ })).toBeInTheDocument();
+    const missing = within(group).getByRole("button", { name: /^Has not bought yet\s*1$/ });
+    fireEvent.click(missing);
+    expect(missing).toHaveAttribute("aria-pressed", "true");
+    expect(peopleShown()).toBe(1);
+    expect(screen.getByText("Bo Lee")).toBeInTheDocument();
+    fireEvent.click(within(group).getByRole("button", { name: /^Bought Xcel\s*1$/ }));
+    expect(peopleShown()).toBe(1);
+    expect(screen.getByText("Cy Dunn")).toBeInTheDocument();
+  });
+
+  it('a stale Xcel report hides the nudge and the Need Xcel number and says why; bought stays true', async () => {
+    db.rows = EVERYONE.map((r) => ({ ...r, xcel_report_on: phoenixDate(9) }));
+    renderPage();
+    await screen.findByText("Ana Ruiz");
+    expect(tile("Need Xcel")).toHaveTextContent(/Need Xcel\s*—/);
+    expect(within(board()).getByText(/Xcel's daily report has not arrived since .+, so "Has not bought Xcel yet" is hidden until it does\./)).toBeInTheDocument();
+    expect(screen.queryByText("Has not bought Xcel yet")).toBeNull();
+    expect(within(rowOf("Cy Dunn")).getByText("Bought Xcel")).toBeInTheDocument();
+    const group = await openFilters();
+    expect(within(group).getByRole("button", { name: /^Has not bought yet\s*—$/ })).toBeDisabled();
+  });
+
+  it("a list without the new columns claims nothing about Xcel or dates", async () => {
+    const strip = (r: Row) => {
+      const copy = { ...r };
+      for (const k of ["applied_at", "interview_at", "interview_booked_at", "xcel_match", "xcel_enrolled_on", "xcel_pct", "xcel_completed_on", "xcel_last_login_on", "xcel_course", "xcel_report_on"]) delete copy[k];
+      return copy;
+    };
+    db.rows = EVERYONE.map(strip);
+    renderPage();
+    await screen.findByText("Ana Ruiz");
+    expect(screen.queryByText(/Xcel/, { selector: "li *" })).toBeNull();
+    expect(screen.queryByText(/^Applied /)).toBeNull();
+    expect(screen.queryByText("No application on file")).toBeNull();
+    expect(tile("Need Xcel")).toHaveTextContent(/Need Xcel\s*—/);
+    expect(within(board()).getByText(/Xcel purchases did not come with this list/)).toBeInTheDocument();
+    // The steps still come from the engine's stage.
+    expect(barIn(rowOf("Cy Dunn"))).toHaveAttribute("data-filled", "4");
+  });
+
+  it("an interview booking moves an applicant to Interview, and a licensed one past it to Licensed; the chips count them", async () => {
+    const ivy = person({ display_name: "Ivy Cole", person_type: "applicant", stage_key: "applied", license_status: "unlicensed", interview_at: daysAgo(-2), interview_booked_at: daysAgo(1), days_in_stage: 40 });
+    const lux = person({ display_name: "Lux Hart", person_type: "applicant", stage_key: "applied", license_status: "licensed", interview_at: daysAgo(4), interview_booked_at: daysAgo(10), days_in_stage: 30 });
+    db.rows = [...EVERYONE, ivy, lux];
+    renderPage();
+    await screen.findByText("Ivy Cole");
+
+    expect(barIn(rowOf("Ivy Cole"))).toHaveAttribute("data-filled", "3");
+    expect(within(rowOf("Ivy Cole")).getByText("Interview")).toBeInTheDocument();
+    expect(within(rowOf("Ivy Cole")).getByText(/·\sbooked for /)).toBeInTheDocument();
+    // Days on the step count from the booking, not the 40 days the engine has them at Applied.
+    expect(within(rowOf("Ivy Cole")).getByText("1 day on this step")).toBeInTheDocument();
+    expect(barIn(rowOf("Lux Hart"))).toHaveAttribute("data-filled", "5");
+    expect(within(rowOf("Lux Hart")).getByText(/·\sinterview was on /)).toBeInTheDocument();
+    expect(within(rowOf("Lux Hart")).getByText("4 days on this step")).toBeInTheDocument();
+
+    expect(within(chips()).getByRole("button", { name: /^Interview\s*1$/ })).toBeInTheDocument();
+    const licensed = within(chips()).getByRole("button", { name: /^Licensed\s*1$/ });
+    fireEvent.click(licensed);
+    expect(peopleShown()).toBe(1);
+    expect(screen.getByText("Lux Hart")).toBeInTheDocument();
+  });
+
+  it("What the steps mean says every step in words, the license source and the Xcel rule", async () => {
+    renderPage();
+    await screen.findByText("Ana Ruiz");
+    fireEvent.click(screen.getByRole("button", { name: "What the steps mean" }));
+    const legend = await screen.findByRole("dialog");
+    for (const word of ["Applied.", "Contacted.", "Interview.", "Licensing.", "Licensed.", "Contracted.", "First deal."]) {
+      expect(within(legend).getByText(word)).toBeInTheDocument();
+    }
+    expect(within(legend).getByText(/matched by email first, then phone/)).toBeInTheDocument();
+    expect(within(legend).getByText(/never bought/)).toBeInTheDocument();
   });
 
   it("Call and Text are labelled 44px buttons through the shared phone helpers, and a tap records nothing", async () => {
@@ -302,7 +476,7 @@ describe("New hires", () => {
     renderPage();
     await screen.findByText("Ana Ruiz");
     expect(screen.getByRole("button", { name: "Move to Contacted" })).toBeEnabled();
-    expect(screen.getByRole("button", { name: "Move to Interview booked" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Move to In Pre-License" })).toBeEnabled();
     expect(screen.queryByRole("button", { name: /Watched video/ })).toBeNull();
     const last = screen.getByRole("button", { name: "Last step" });
     expect(last).toBeDisabled();
@@ -391,13 +565,14 @@ describe("New hires", () => {
     h11(screen.getByRole("combobox", { name: "Stage for Ana Ruiz" }));
     h11(screen.getByRole("button", { name: "Move to Contacted" }));
     h11(screen.getByRole("button", { name: "Expected start for Di Park" }));
+    h11(screen.getByRole("button", { name: "What the steps mean" }));
     expect(screen.getByRole("button", { name: "Expected start for Di Park" })).toHaveTextContent("Confirmed · 2026-11-02");
     const addIg = screen.getByRole("button", { name: "Add Instagram for Ana Ruiz" });
     expect(addIg).toHaveTextContent("Add Instagram");
     expect(addIg.className).toMatch(/\bmin-h-11\b/);
     expect(addIg.className).toMatch(/\btext-sm\b/);
     expect(screen.getByText("Licensed", { selector: "span" }).className).toMatch(/text-\[13px\]/);
-    for (const chip of within(screen.getByRole("navigation", { name: "Stages" })).getAllByRole("button")) h11(chip);
+    for (const chip of within(chips()).getAllByRole("button")) h11(chip);
 
     const people = screen.getByRole("region", { name: "People" });
     expect(people.querySelectorAll('[class*="text-xs"], [class*="text-[11px]"], [class*="text-[12px]"], [class*="text-[10px]"]')).toHaveLength(0);
@@ -411,8 +586,8 @@ describe("New hires", () => {
     expect(document.querySelectorAll("button.bg-primary")).toHaveLength(1);
   });
 
-  it("every colour is a rung: the header and tile bubbles, the rung in words beside each hire, an aria-hidden initials bubble in the same tone; nothing plays on load", async () => {
-    const flo = person({ display_name: "Flo Nash", person_type: "agent", stage_key: "hired_unlicensed", agent_id: "agent-flo", phone: "6015551006" });
+  it("every colour is a step: the header and tile bubbles, the step's tone on each bubble, bar and word, an off-ladder flag in the hot tone; nothing plays on load", async () => {
+    const flo = person({ display_name: "Flo Nash", person_type: "agent", stage_key: "hired_unlicensed", agent_id: "agent-flo", phone: "6015551006", license_status: "unlicensed" });
     db.rows = [...EVERYONE, flo];
     db.facts = [
       DI_FACTS,
@@ -432,45 +607,40 @@ describe("New hires", () => {
     expect(within(header).queryAllByRole("button")).toHaveLength(0);
 
     // The tiles: the Hired rung's gold handshake, the warning tone for time stuck (never red on
-    // this page), the Onboarding rung's royal clipboard. The numbers are exactly as before.
+    // this page), the nudge tone for Need Xcel, the Onboarding rung's royal clipboard.
     expect(iconBubble(tile("In progress"), "handshake")!.className).toMatch(/\btext-tone-gold\b/);
     expect(iconBubble(tile("Stuck 7+ days"), "clock")!.className).toMatch(/\btext-tone-warm\b/);
-    expect(iconBubble(tile("Stuck 60+ days"), "hourglass")!.className).toMatch(/\btext-tone-warm\b/);
+    expect(iconBubble(tile("Need Xcel"), "book-open")!.className).toMatch(/\btext-tone-warm\b/);
     expect(iconBubble(tile("Open onboarding"), "clipboard-list")!.className).toMatch(/\btext-tone-royal\b/);
     expect(tile("In progress")).toHaveTextContent(/In progress\s*5/);
     expect(board().querySelectorAll(".text-tone-hot, .text-destructive")).toHaveLength(0);
 
-    // Cy's onboarding facts put him in field training: the pill says so, in the warm tone, and the
-    // bubble beside his name matches it, hidden from assistive technology.
-    const cy = rowOf("Cy Dunn");
-    const cyPill = within(cy).getByText("Field training");
-    expect(cyPill.className).toMatch(/\btext-tone-warm\b/);
-    expect(cyPill.className).toMatch(/\bbg-tone-warm\/12\b/);
-    const cyBubble = bubbleIn(cy);
+    // Cy is at Licensing: the bubble, the bar and the word all wear the royal tone, hidden bubble.
+    const cyRow = rowOf("Cy Dunn");
+    const cyBubble = bubbleIn(cyRow);
     expect(cyBubble.textContent).toBe("CD");
     expect(cyBubble).toHaveAttribute("aria-hidden", "true");
-    expect(cyBubble.className).toMatch(/\btext-tone-warm\b/);
-    // Di has no onboarding_stage on file, so her First deal step places her at Producing.
-    expect(within(rowOf("Di Park")).getByText("Producing").className).toMatch(/\btext-tone-good\b/);
-    expect(bubbleIn(rowOf("Di Park")).textContent).toBe("DP");
+    expect(cyBubble.className).toMatch(/\btext-tone-royal\b/);
+    expect(within(cyRow).getByText("Licensing").className).toMatch(/\btext-tone-royal\b/);
+    // One stage vocabulary per row: the onboarding rung is not said again beside the name.
+    expect(within(cyRow).queryByText("Field training")).toBeNull();
+    // Di is at First deal, in the going-well tone (the stage box beside it says the engine's stage).
+    expect(within(rowOf("Di Park")).getAllByText("First deal").some((el) => /\btext-tone-good\b/.test(el.className))).toBe(true);
+    expect(bubbleIn(rowOf("Di Park")).className).toMatch(/\btext-tone-good\b/);
     // An off-ladder flag is "act now", in its own words.
     expect(within(rowOf("Flo Nash")).getByText("Needs follow-up").className).toMatch(/\btext-tone-hot\b/);
-    expect(bubbleIn(rowOf("Flo Nash")).className).toMatch(/\btext-tone-hot\b/);
-    // An applicant has no rung yet: a quiet bubble and no rung claimed in words.
-    const ana = rowOf("Ana Ruiz");
-    expect(bubbleIn(ana).className).toMatch(/\btext-tone-slate\b/);
-    expect(within(ana).queryByText(/^(Hired|Onboarding|In course|Field training|Producing)$/)).toBeNull();
+    // An applicant who only applied is quiet.
+    expect(bubbleIn(rowOf("Ana Ruiz")).className).toMatch(/\btext-tone-slate\b/);
     // Red is still only the remove action.
     expect(screen.getByRole("region", { name: "People" }).querySelectorAll(".text-destructive")).toHaveLength(0);
 
-    // The chips: a step on the hire ladder carries its rung's dot and takes that tint when chosen;
-    // an applicant step carries neither. The counts and aria-pressed are as before.
-    const chips = screen.getByRole("navigation", { name: "Stages" });
-    expect(chips.className).toMatch(/\bapex-rise-list\b/);
-    const hired = within(chips).getByRole("button", { name: /^Hired, unlicensed\s*2$/ });
-    expect(hired.querySelector(".bg-tone-gold")).not.toBeNull();
-    expect(within(chips).getByRole("button", { name: /^Applied\s*1$/ }).querySelector('[class*="bg-tone-"]')).toBeNull();
-    const firstDeal = within(chips).getByRole("button", { name: /^First deal\s*1$/ });
+    // The chips: each step carries its dot in its tone and takes that tint when chosen. The counts
+    // and aria-pressed are as before.
+    expect(chips().className).toMatch(/\bapex-rise-list\b/);
+    const licensing = within(chips()).getByRole("button", { name: /^Licensing\s*2$/ });
+    expect(licensing.querySelector(".bg-tone-royal")).not.toBeNull();
+    expect(within(chips()).getByRole("button", { name: /^Applied\s*1$/ }).querySelector(".bg-tone-slate")).not.toBeNull();
+    const firstDeal = within(chips()).getByRole("button", { name: /^First deal\s*1$/ });
     fireEvent.click(firstDeal);
     expect(firstDeal).toHaveAttribute("aria-pressed", "true");
     expect(firstDeal.className).toMatch(/\bbg-tone-good\/12\b/);
@@ -483,7 +653,7 @@ describe("New hires", () => {
   });
 
   it("a move up to Producing is the full burst, once, from the pressed button; another step is the pop; a kept or failed write is its message alone", async () => {
-    const gus = person({ display_name: "Gus Hale", person_type: "agent", stage_key: "licensed", agent_id: "agent-gus", phone: "6015551007", license_status: "licensed" });
+    const gus = person({ display_name: "Gus Hale", person_type: "agent", stage_key: "hired", agent_id: "agent-gus", phone: "6015551007", license_status: "licensed" });
     db.rows = [ana, gus];
     renderPage();
     await screen.findByText("Gus Hale");
@@ -504,7 +674,7 @@ describe("New hires", () => {
     expect(celebrate).toHaveBeenLastCalledWith("save", toContacted);
 
     // Kept where the evidence puts them: the warning, no burst.
-    db.writeResult = { ok: true, final: "licensed", matched: false, message: "Evidence keeps Gus at Licensed." };
+    db.writeResult = { ok: true, final: "hired", matched: false, message: "Evidence keeps Gus at Hired." };
     fireEvent.click(screen.getByRole("button", { name: "Move to First deal" }));
     await waitFor(() => expect(toast.warning).toHaveBeenCalledTimes(1));
     expect(celebrate).toHaveBeenCalledTimes(2);
@@ -525,15 +695,15 @@ describe("New hires", () => {
     fireEvent.click(screen.getByRole("checkbox", { name: "Select Bo Lee" }));
     const picker = screen.getByRole("combobox", { name: "Move selected to stage" });
     fireEvent.keyDown(picker, { key: "ArrowDown" });
-    fireEvent.keyDown(await screen.findByRole("option", { name: "Interview booked" }), { key: "Enter" });
-    await waitFor(() => expect(picker).toHaveTextContent("Interview booked"));
+    fireEvent.keyDown(await screen.findByRole("option", { name: "In Pre-License" }), { key: "Enter" });
+    await waitFor(() => expect(picker).toHaveTextContent("In Pre-License"));
     fireEvent.click(screen.getByRole("button", { name: "Move" }));
     await waitFor(() => expect(playSoundEffect).toHaveBeenCalledWith("success"));
     expect(playSoundEffect).toHaveBeenCalledTimes(1);
     expect(celebrate).not.toHaveBeenCalled();
     expect(writes()).toEqual([{
       fn: "set_recruit_stage_bulk",
-      args: { p_people: [{ application_id: ana.application_id, agent_id: null }, { application_id: bo.application_id, agent_id: null }], p_to_stage: "interview_booked", p_reason: null },
+      args: { p_people: [{ application_id: ana.application_id, agent_id: null }, { application_id: bo.application_id, agent_id: null }], p_to_stage: "started_prelicense", p_reason: null },
     }]);
 
     // Closing people went through too, and nothing plays for it.

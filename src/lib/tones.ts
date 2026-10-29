@@ -205,3 +205,44 @@ export function igDeskTone(state: string | null | undefined): Tone {
       return "slate";
   }
 }
+
+/**
+ * A recruit's step on the journey of src/lib/recruitJourney.ts (OVERHAUL-recruits, 2026-10-29).
+ * One tone per step so the bar, the chip and the bubble say the same thing: an application on
+ * its own is quiet, a first conversation is new, an interview needs a nudge to happen, licensing
+ * is paperwork, licensed is going well, contracted is the hire moment, a first deal is going well.
+ */
+export function recruitStepTone(step: string | null | undefined): Tone {
+  switch (norm(step)) {
+    case "applied": return "slate";
+    case "contacted": return "cool";
+    case "interview": return "warm";
+    case "licensing": return "royal";
+    case "licensed": return "good";
+    case "contracted": return "gold";
+    case "first_deal": return "good";
+    default: return "slate";
+  }
+}
+
+/**
+ * A person's license as their record states it: licensed is going well and not licensed yet is
+ * someone starting out, the same two tones as a recruiting link's license path; pending needs a nudge.
+ */
+export function licenseStatusTone(status: string | null | undefined): Tone {
+  switch (norm(status)) {
+    case "licensed": return licensePathTone("licensed");
+    case "unlicensed": return licensePathTone("unlicensed");
+    case "pending": return "warm";
+    default: return "slate";
+  }
+}
+
+/** An Xcel pre-licensing purchase on a recruit's row: bought, a nudge to buy, or a possible match. */
+export function xcelTone(kind: string | null | undefined): Tone {
+  switch (norm(kind)) {
+    case "bought": return "good";
+    case "missing": return "warm";
+    default: return "slate";
+  }
+}

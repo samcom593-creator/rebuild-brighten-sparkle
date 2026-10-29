@@ -238,6 +238,19 @@ describe("Easy Resells", () => {
     expect(names()).toEqual(["Resell: Nora Never"]);
   });
 
+  it("explains the order in plain words, naming every kind in the order ties keep", async () => {
+    renderPage();
+    await screen.findByRole("listitem", { name: "Resell: Kathy Smith" });
+    fireEvent.click(screen.getByRole("button", { name: "How the order works" }));
+    const legend = screen.getByText(/The people with the most evidence come first/).parentElement as HTMLElement;
+    expect(legend).toHaveTextContent("Gave SSN and bank on a call: 40");
+    expect(legend).toHaveTextContent("Sold on a ReadyMode call: 30");
+    // Every kind the list can hold, in tier order (easy_resells() tiers 1-7).
+    expect(legend).toHaveTextContent(
+      "Equal scores keep the usual order: ready to finish, bought but never booked, lapsing, dropped, Vantage clients, agent left, warm calls",
+    );
+  });
+
   it("stays closed to anyone who is not an admin or Aisha", () => {
     auth.current = { user: { id: "someone" }, isAdmin: false };
     renderPage();

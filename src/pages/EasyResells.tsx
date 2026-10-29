@@ -208,7 +208,7 @@ export default function EasyResells() {
             ranked={evidenceKnown}
             only={proof}
             onShowAll={() => { setProof(null); setShown(PAGE); }}
-            tieBreak="the usual order: ready to finish, lapsing, dropped, Vantage clients, agent left, warm calls, and nobody called yet before the rest"
+            tieBreak="the usual order: ready to finish, bought but never booked, lapsing, dropped, Vantage clients, agent left, warm calls, and nobody called yet before the rest"
           />
           <ul className="apex-rise-list flex flex-col gap-3">
             {visible.slice(0, shown).map((r, i) => (

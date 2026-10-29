@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "Oct 29, 2026",
+    label: "Easy Resells: How the order works now names Bought, never booked in the tie order, so the explanation covers every kind on the list",
+    detail: "Follow-up to the evidence ranking. When two people have the same points the list keeps the database's order of kinds; the explanation under How the order works listed six kinds and left out Bought, never booked, which MP-310 added as the second kind today. It now reads: ready to finish, bought but never booked, lapsing, dropped, Vantage clients, agent left, warm calls. A test opens the explanation and checks the full order.",
+    commit: "OVERHAUL-resells-2",
+  },
+  {
+    ts: "Oct 29, 2026",
     label: "Easy Resells now lists the people who bought on a dialer call and were never booked, right after Ready to finish, with the call to play on the card. Call Training gets a Business quality card that follows each agent's sales to the book, and objection calls on Sold Calls play their recording.",
     detail: "MP-310. easy_resells() tier 2 (bucket sold_not_booked): a Completed Sale that never reached the book or the posted deals, where the call did not capture a usable SSN and bank or no packet was built; an outside deal by the same agent within 3 days is said out loud. Merged with the same day's OVERHAUL-resells rewrite (20261029230001): the fast body plus tier 2, the book match computed for sold calls only, the same 868 rows as before, 0.64 s as Sam. The do-not-call set, the dialable-number rule and one row per phone apply to the new rows (apex-doctor Check #103 clean). Business quality reads v_agent_business_quality and v_sold_call_quality per seat, with each sale listed. Call links on My Leads, Lead Bundles and the call review lists now open the dialer the way the rest of the site does.",
     commit: "MP-310-RESELL-UNBOOKED",

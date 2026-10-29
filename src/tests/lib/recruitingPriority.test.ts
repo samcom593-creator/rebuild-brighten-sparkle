@@ -12,7 +12,7 @@ const row = (id: string, ageDays: number, extra: Partial<WorklistRow> = {}): Wor
      next_step_due_at: null, phone_bad_at: null, email_bad_at: null, sms_consent_given: null, email_consent_given: null, do_not_contact_at: null,
      ...extra }) as WorklistRow;
 
-describe("Likely to join / Older than 90 days (conversion-history priority)", () => {
+describe("Best leads (queue key likely) / Older than 90 days (conversion-history priority)", () => {
   it("licensed or hot/warm within 47 days, or anyone within 14 days, is likely", () => {
     expect(inQueue(row("lic", 30, { license_status: "licensed" }), "likely", ctx)).toBe(true);
     expect(inQueue(row("warm", 40, { ai_score_tier: "warm" }), "likely", ctx)).toBe(true);

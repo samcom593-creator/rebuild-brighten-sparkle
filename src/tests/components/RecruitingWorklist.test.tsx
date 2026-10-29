@@ -103,6 +103,8 @@ beforeEach(() => {
     value: (q: string) => ({ matches: q === "(min-width: 1024px)", media: q, addEventListener: () => {}, removeEventListener: () => {} }),
   });
   window.sessionStorage.clear();
+  // jsdom has no layout, so no scrollIntoView; the page calls it to bring the next person's row into view.
+  Element.prototype.scrollIntoView = vi.fn();
   db.rpcCalls = [];
   db.rpc = () => ({ data: null, error: null });
   db.rows = [makeRow("a1"), makeRow("a2", { recruiting_owner_user_id: ME, next_action: "Call", next_action_due_at: "2020-01-01T00:00:00Z", next_action_set_at: "2019-12-31T00:00:00Z", last_contacted_at: "2019-12-30T00:00:00Z" })];
@@ -121,7 +123,7 @@ describe("RecruitingWorklist", () => {
     // Two big lists are always visible. Call today, New, Worked today and Booked open from their
     // tiles and nowhere else (one entry point per list); the rest sit behind "More lists".
     expect(within(queues).getByRole("button", { name: /Mine\s*1/ })).toBeTruthy();
-    expect(within(queues).getByRole("button", { name: /Likely to join\s*0/ })).toBeTruthy();
+    expect(within(queues).getByRole("button", { name: /Best leads\s*0/ })).toBeTruthy();
     expect(within(queues).queryByRole("button", { name: /Call today/ })).toBeNull();
     expect(within(queues).queryByRole("button", { name: /^New\b/ })).toBeNull();
     expect(within(queues).queryByRole("button", { name: /Everyone/ })).toBeNull();
@@ -158,7 +160,7 @@ describe("RecruitingWorklist", () => {
   it("the open list wears the gold tint and says so with aria-pressed; a tap on another list ticks once", async () => {
     renderAt("/dashboard/recruiting?queue=likely");
     const queues = await screen.findByRole("navigation", { name: "Saved queues" });
-    const likely = within(queues).getByRole("button", { name: /Likely to join/ });
+    const likely = within(queues).getByRole("button", { name: /Best leads/ });
     const mine = within(queues).getByRole("button", { name: /^Mine/ });
     expect(likely).toHaveAttribute("aria-pressed", "true");
     expect(likely.className).toMatch(/bg-tone-gold\/12/);
@@ -174,8 +176,8 @@ describe("RecruitingWorklist", () => {
     expect(playSoundEffect).toHaveBeenCalledWith("tick");
     expect(within(queues).getByRole("button", { name: /^Mine/ })).toHaveAttribute("aria-pressed", "true");
     expect(within(queues).getByRole("button", { name: /^Mine/ }).className).toMatch(/bg-tone-gold\/12/);
-    expect(within(queues).getByRole("button", { name: /Likely to join/ })).toHaveAttribute("aria-pressed", "false");
-    expect(within(queues).getByRole("button", { name: /Likely to join/ }).className).not.toMatch(/tone-gold/);
+    expect(within(queues).getByRole("button", { name: /Best leads/ })).toHaveAttribute("aria-pressed", "false");
+    expect(within(queues).getByRole("button", { name: /Best leads/ }).className).not.toMatch(/tone-gold/);
     // Tapping the list that is already open changes nothing, so it makes no sound.
     fireEvent.click(within(queues).getByRole("button", { name: /^Mine/ }));
     expect(playSoundEffect).toHaveBeenCalledTimes(1);
@@ -457,6 +459,74 @@ describe("RecruitingWorklist", () => {
       expect(within(queues).getByRole("button", { name: /Everyone/ }).getAttribute("aria-pressed")).toBe("true");
       view.unmount();
     }
+  });
+
+  it("opens on Mine when one of your own people is late, and on Best leads when none is", async () => {
+    // a2 is owned by the viewer and late.
+    const first = renderAt("/dashboard/recruiting");
+    let queues = await screen.findByRole("navigation", { name: "Saved queues" });
+    await waitFor(() => expect(within(queues).getByRole("button", { name: /^Mine/ })).toHaveAttribute("aria-pressed", "true"));
+    first.unmount();
+    // Owning someone whose step is next week is not a reason to open on them.
+    db.rows = [makeRow("a1", { created_at: new Date(Date.now() - 2 * 864e5).toISOString() }), makeRow("a2", { recruiting_owner_user_id: ME, next_action: "Call", next_action_due_at: "2099-01-01T00:00:00Z", next_action_set_at: "2026-09-01T00:00:00Z", last_contacted_at: "2026-09-01T00:00:00Z" })];
+    renderAt("/dashboard/recruiting");
+    queues = await screen.findByRole("navigation", { name: "Saved queues" });
+    await waitFor(() => expect(within(queues).getByRole("button", { name: /Best leads/ })).toHaveAttribute("aria-pressed", "true"));
+  });
+
+  it("the list says what it is at its top, in plain words, and Data status gives its order", async () => {
+    renderAt("/dashboard/recruiting?queue=all_open");
+    const list = await screen.findByRole("region", { name: /^Everyone: 2 people\.$/ });
+    expect(within(list).getByText(/Everyone: 2 people\./)).toBeTruthy();
+    expect(within(list).getByText("Every open recruit you can see.")).toBeTruthy();
+    const details = screen.getByText("Data status").closest("details");
+    expect(details?.textContent).toMatch(/Order: Follow-ups someone set come first/);
+  });
+
+  it("the panel says who is up next and what to do, and Skip moves on without recording anything", async () => {
+    renderAt("/dashboard/recruiting?queue=all_open");
+    const panel = await screen.findByRole("complementary", { name: "Selected person" });
+    // a2 has a step a person set, so it leads the list; a1 was never reached.
+    await within(panel).findByRole("heading", { level: 2, name: "Sample A2" });
+    expect(panel.textContent).toMatch(/Up next · 1 of 2 in Everyone/);
+    const todo = within(panel).getByRole("region", { name: "What to do next" });
+    expect(todo.textContent).toMatch(/^Call/);
+    expect(todo.textContent).toMatch(/Was due .+ ago\./);
+    fireEvent.click(within(panel).getByRole("button", { name: /Skip/ }));
+    await within(panel).findByRole("heading", { level: 2, name: "Sample A1" });
+    // The list brings the new person's row into view.
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
+    expect(panel.textContent).toMatch(/2 of 2 in Everyone/);
+    expect(panel.textContent).not.toMatch(/Up next ·/);
+    expect(within(panel).getByRole("region", { name: "What to do next" }).textContent).toMatch(/^First call/);
+    // The last person has nobody to skip to.
+    expect(within(panel).getByRole("button", { name: /Skip/ })).toBeDisabled();
+    expect(db.rpcCalls.some((c) => c.fn === "record_recruiting_outcome" || c.fn === "set_recruiting_plan")).toBe(false);
+  });
+
+  it("the row says what to do next: a person's plan keeps 'Next:', a suggestion is the action itself", async () => {
+    renderAt("/dashboard/recruiting?queue=all_open");
+    const list = await screen.findByRole("list", { name: "Queue" });
+    expect(within(list).getByRole("button", { name: /Sample A2/ }).textContent).toContain("Next: Call");
+    const a1 = within(list).getByRole("button", { name: /Sample A1/ }).textContent ?? "";
+    expect(a1).toMatch(/First call · applied .+ ago/);
+    expect(a1).not.toContain("Next:");
+  });
+
+  it("the save bar names who comes next", async () => {
+    renderAt("/dashboard/recruiting?queue=all_open&person=a2");
+    const panel = await screen.findByRole("complementary", { name: "Selected person" });
+    fireEvent.click(within(panel).getByRole("button", { name: "No answer" }));
+    expect(within(panel).getByText(/Next up:/).textContent).toBe("Next up: Sample A1");
+  });
+
+  it("an empty list points to everyone, with the same count the list will show", async () => {
+    renderAt("/dashboard/recruiting?queue=booked");
+    await screen.findByRole("region", { name: /^Booked: 0 people\.$/ });
+    expect(screen.getByText(/Nobody in “Booked”\./)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "See everyone (2)" }));
+    await waitFor(() => expect(screen.getByText(/Everyone: 2 people\./)).toBeTruthy());
+    expect(within(screen.getByRole("list", { name: "Queue" })).getAllByRole("button")).toHaveLength(2);
   });
 
   it("says so when a linked person is not in the viewer's worklist instead of opening someone else", async () => {

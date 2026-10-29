@@ -68,6 +68,8 @@ const WATCHED = [
   "src/pages/StaleRecovery.tsx",
   // APEX OS §5 (2026-10-06): the recruiting worklist's person panel.
   "src/components/pipeline/worklist/PersonPanel.tsx",
+  // OVERHAUL-calllist (2026-10-29): the Up next card's Call, the Call list's one gold button on phones.
+  "src/components/pipeline/worklist/UpNext.tsx",
 ];
 
 // Surfaces where a raw tel:/sms: is the CORRECT behaviour. Exempt with a reason,

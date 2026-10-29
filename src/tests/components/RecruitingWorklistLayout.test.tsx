@@ -240,6 +240,49 @@ describe("RecruitingWorklist layout (F28)", () => {
   });
 });
 
+describe("RecruitingWorklist Up next (OVERHAUL-calllist)", () => {
+  it("phone: the first person in the list sits on top with what to do and one gold Call; calling opens them and records nothing", async () => {
+    setViewport("phone");
+    renderAt("/dashboard/recruiting?queue=all_open");
+    const list = await screen.findByRole("list", { name: "Queue" });
+    const first = within(list).getAllByRole("button")[0];
+    expect(first).toHaveAccessibleName(/^Sample A2/);
+    const card = screen.getByRole("region", { name: /Up next: Sample A2/ });
+    expect(within(card).getByRole("region", { name: "What to do next" }).textContent).toMatch(/^Call back/);
+    // The page's one gold button is on the card; the header has none.
+    expect(screen.queryByRole("button", { name: /Start calling/ })).toBeNull();
+    const call = within(card).getByRole("link", { name: "Call Sample A2" });
+    expect(call.getAttribute("href")).toBeTruthy();
+    expect(call.className).toMatch(/bg-primary/);
+    fireEvent.click(call);
+    const sheet = await screen.findByRole("dialog");
+    expect((await within(sheet).findAllByRole("heading", { level: 2, name: "Sample A2" })).length).toBeGreaterThan(0);
+    // Position and Skip ride on the sheet's top row.
+    expect(sheet.textContent).toMatch(/1 of 3/);
+    expect(within(sheet).getByRole("button", { name: /Skip/ })).toBeTruthy();
+  });
+
+  it("phone: See details opens the person without dialing; a person with no phone gets Email for a working number", async () => {
+    setViewport("phone");
+    db.rows = [makeRow("a3", { state: null, phone: null })];
+    renderAt("/dashboard/recruiting?queue=all_open");
+    const card = await screen.findByRole("region", { name: /Up next: Sample A3/ });
+    expect(within(card).getByRole("region", { name: "What to do next" }).textContent).toMatch(/^Email for a working number/);
+    const email = within(card).getByRole("link", { name: "Email Sample A3" });
+    expect(email.getAttribute("href")).toBe("mailto:a3@example.test");
+    expect(within(card).queryByRole("link", { name: /^Call/ })).toBeNull();
+    fireEvent.click(within(card).getByRole("button", { name: "See details" }));
+    expect(await screen.findByRole("dialog")).toBeTruthy();
+  });
+
+  it("desktop: no Up next card, the panel beside the list is the person to call", async () => {
+    setViewport("desktop");
+    renderAt("/dashboard/recruiting?queue=all_open");
+    await screen.findByRole("complementary", { name: "Selected person" });
+    expect(screen.queryByRole("region", { name: /Up next:/ })).toBeNull();
+  });
+});
+
 describe("RecruitingWorklist failed loads (review)", () => {
   it("a failed first load replaces the page with the error and a retry", async () => {
     setViewport("desktop");

@@ -139,30 +139,44 @@ export type QueueKey = (typeof QUEUE_KEYS)[number];
 export interface QueueDefinition {
   key: QueueKey;
   label: string;
+  /** The full rule: the list button's title and "List rule" under Data status. */
   description: string;
+  /**
+   * The rule in one short plain sentence, shown on the page beside the open list so nobody has to
+   * hover to learn what a list means (OVERHAUL-calllist, 2026-10-29). Same rule as the predicate.
+   */
+  hint: string;
   /** "personal" queues depend on who is looking; the rest are organisation-wide. */
   scope: "organization" | "personal";
 }
 
+// Conversion history (2026-10-06, 854 applications, 71 joined): median 5 days to join, 80% within 47,
+// 95% within 97. Licensed 37% vs unlicensed 2%; ai_score_tier hot/warm ~50% vs cool/none ~4%.
+export const LIKELY_WINDOW_DAYS = 47;
+export const FRESH_WINDOW_DAYS = 14;
+export const OLD_AFTER_DAYS = 90;
+
 // Labels are plain English for people who do not live in software (Grow redesign,
 // 2026-10-28); keys, URL params and predicates are unchanged, so old links still work.
+// "Likely to join" became "Best leads" (OVERHAUL-calllist, 2026-10-29): Sam asked for words a
+// VA understands. ?queue=likely still opens it.
 export const QUEUE_DEFINITIONS: readonly QueueDefinition[] = [
-  { key: "likely", label: "Likely to join", description: "Licensed or rated hot/warm and applied in the last 47 days, or anyone who applied in the last 14 days. From the conversion history: licensed applicants join 37% of the time vs 2% unlicensed, and 80% of joins happen within 47 days", scope: "organization" },
-  { key: "today", label: "Call today", description: "Next step due today or already late (Phoenix day): Due today plus Overdue", scope: "organization" },
-  { key: "all_open", label: "Everyone", description: "Every open recruit you can see", scope: "organization" },
-  { key: "new", label: "New", description: "Applied in the last 7 days and not yet worked", scope: "organization" },
-  { key: "uncontacted", label: "Never contacted", description: "No recorded contact, ever (bulk-stamped contacted_at ignored)", scope: "organization" },
-  { key: "due_today", label: "Due today", description: "Next action or review due later today (Phoenix)", scope: "organization" },
-  { key: "overdue", label: "Overdue", description: "Next action or review time has passed", scope: "organization" },
-  { key: "awaiting_reply", label: "Waiting on them", description: "Parked on a documented waiting reason", scope: "organization" },
-  { key: "unassigned", label: "No owner", description: "No accountable owner yet", scope: "organization" },
-  { key: "mine", label: "Mine", description: "Open recruits where you are the accountable owner", scope: "personal" },
+  { key: "likely", label: "Best leads", description: "Licensed or rated hot/warm and applied in the last 47 days, or anyone who applied in the last 14 days. From the conversion history: licensed applicants join 37% of the time vs 2% unlicensed, and 80% of joins happen within 47 days", hint: `Licensed or high-scoring people from the last ${LIKELY_WINDOW_DAYS} days, and everyone from the last ${FRESH_WINDOW_DAYS}. They join most often.`, scope: "organization" },
+  { key: "today", label: "Call today", description: "Next step due today or already late (Phoenix day): Due today plus Overdue", hint: "Their next step is due today or already late.", scope: "organization" },
+  { key: "all_open", label: "Everyone", description: "Every open recruit you can see", hint: "Every open recruit you can see.", scope: "organization" },
+  { key: "new", label: "New", description: "Applied in the last 7 days and not yet worked", hint: "Applied in the last 7 days, and nobody has worked them yet.", scope: "organization" },
+  { key: "uncontacted", label: "Never contacted", description: "No recorded contact, ever (bulk-stamped contacted_at ignored)", hint: "Nobody has reached them yet.", scope: "organization" },
+  { key: "due_today", label: "Due today", description: "Next action or review due later today (Phoenix)", hint: "Their next step is due later today.", scope: "organization" },
+  { key: "overdue", label: "Overdue", description: "Next action or review time has passed", hint: "Their next step is late.", scope: "organization" },
+  { key: "awaiting_reply", label: "Waiting on them", description: "Parked on a documented waiting reason", hint: "We are waiting for them to get back to us.", scope: "organization" },
+  { key: "unassigned", label: "No owner", description: "No accountable owner yet", hint: "Nobody owns them yet.", scope: "organization" },
+  { key: "mine", label: "Mine", description: "Open recruits where you are the accountable owner", hint: "People you own.", scope: "personal" },
   // The label names both halves of the rule: this list also holds people who have a next
   // step but no owner, so "No next step" alone read as wrong beside "Next: Call back".
-  { key: "needs_plan", label: "No owner or next step", description: "Open and missing an owner, or missing a next step: no next action with a due time and no waiting reason with a review date", scope: "organization" },
-  { key: "old", label: "Older than 90 days", description: "Applied 90+ days ago with no follow-up set by a person. Only ~5% of joins ever come this late, so they stay out of the other queues", scope: "organization" },
-  { key: "worked_today", label: "Worked today", description: "An outcome was saved today (Phoenix day), including no answers and people who said no", scope: "organization" },
-  { key: "booked", label: "Booked", description: "Open recruits whose latest outcome is Appointment booked", scope: "organization" },
+  { key: "needs_plan", label: "No owner or next step", description: "Open and missing an owner, or missing a next step: no next action with a due time and no waiting reason with a review date", hint: "Missing an owner, a next step, or both.", scope: "organization" },
+  { key: "old", label: "Older than 90 days", description: "Applied 90+ days ago with no follow-up set by a person. Only ~5% of joins ever come this late, so they stay out of the other queues", hint: `Applied ${OLD_AFTER_DAYS} or more days ago, and no person planned a follow-up.`, scope: "organization" },
+  { key: "worked_today", label: "Worked today", description: "An outcome was saved today (Phoenix day), including no answers and people who said no", hint: "Someone saved what happened today, even a no answer or a no.", scope: "organization" },
+  { key: "booked", label: "Booked", description: "Open recruits whose latest outcome is Appointment booked", hint: "Their last call booked an interview.", scope: "organization" },
 ] as const;
 
 /** The two queues shown as big buttons; the rest sit behind "More lists" or on a tile. */
@@ -238,7 +252,7 @@ const CONVERTED_STATUSES = new Set(["contracting", "onboarding", "paid", "approv
 export function isClosed(row: WorklistRow): boolean {
   if (row.do_not_contact_at) return true;
   // Already joined: an agent row exists, or the application moved past recruiting.
-  // "Likely to join" used to rank people who had already joined first.
+  // "Best leads" (then called "Likely to join") used to rank people who had already joined first.
   if (row.has_agent) return true;
   if (CONVERTED_STATUSES.has((row.status ?? "").toLowerCase())) return true;
   if (row.last_contact_outcome === "not_interested") return true;
@@ -335,11 +349,6 @@ export interface QueueContext {
   userId: string | null;
 }
 
-// Conversion history (2026-10-06, 854 applications, 71 joined): median 5 days to join, 80% within 47,
-// 95% within 97. Licensed 37% vs unlicensed 2%; ai_score_tier hot/warm ~50% vs cool/none ~4%.
-export const LIKELY_WINDOW_DAYS = 47;
-export const FRESH_WINDOW_DAYS = 14;
-export const OLD_AFTER_DAYS = 90;
 const ageDays = (row: WorklistRow, nowMs: number): number | null => {
   const created = parseTs(row.created_at);
   return created === null || Number.isNaN(created) ? null : (nowMs - created) / DAY_MS;
@@ -432,6 +441,17 @@ export function computeQueueCounts(rows: readonly WorklistRow[], ctx: QueueConte
 }
 
 /**
+ * The list the Call list opens on when the link names none (OVERHAUL-calllist, 2026-10-29): your
+ * own people when one of them is due today or late, otherwise Best leads. It used to be Mine
+ * whenever the viewer owned anyone, so on 2026-10-29 Sam, who owns one person with nothing due,
+ * opened on a one-person list while 19 best leads waited. The page decides once per visit, so a
+ * save that makes the viewer an owner never moves the list under them.
+ */
+export function defaultQueueFor(rows: readonly WorklistRow[], ctx: QueueContext): QueueKey {
+  return rows.some((r) => inQueue(r, "mine", ctx) && inQueue(r, "today", ctx)) ? "mine" : "likely";
+}
+
+/**
  * The four numbers on top of the worklist. Each one IS a queue count over the same full
  * row set as the queue buttons, so a number can never disagree with the list its tile opens:
  *   callToday   = the "today" queue (Due today + Overdue, which are disjoint)
@@ -452,29 +472,64 @@ export function computeScoreboard(counts: QueueCounts): Scoreboard {
   return { callToday: counts.today, newThisWeek: counts.new, workedToday: counts.worked_today, booked: counts.booked };
 }
 
-/** Order inside a queue: most urgent first, unknown dates last, then newest applicant.
- *  "Likely to join" ranks by who converts: licensed / hot / warm first, then newest.
- *  "Worked today" reads like today's log: the latest outcome first. */
+/** A follow-up a person set: next_action_set_at (written only by record_recruiting_outcome and
+ *  set_recruiting_plan, the same signal isStale reads) with a due or review time on the row. */
+function hasPromisedTime(row: WorklistRow): boolean {
+  return Boolean(row.next_action_set_at) && effectiveDueMs(row) !== null;
+}
+
+const createdKey = (row: WorklistRow): number => {
+  const t = parseTs(row.created_at);
+  return t === null || Number.isNaN(t) ? 0 : t;
+};
+const dueKey = (row: WorklistRow): number => {
+  const d = effectiveDueMs(row);
+  return d === null || Number.isNaN(d) ? Number.POSITIVE_INFINITY : d;
+};
+
+/**
+ * Order inside a queue (OVERHAUL-calllist, 2026-10-29): follow-ups a PERSON set come first, most
+ * urgent first, with an unreadable date at the end of them; then everyone else, newest applicant
+ * first. The automation stamp (MANAGER_CALL_72H_ESCALATION, due 72 hours after applying) is a
+ * timer, not a promise. Ranking by it put the oldest applicants on top: on Sam's live list that
+ * day "Call today" opened on an 88-day-old lead while the people who applied that week waited at
+ * the bottom, and 80% of joins happen within 47 days. Membership and counts do not change.
+ *  "Best leads" ranks by who converts: licensed / hot / warm first, then newest.
+ *  "Worked today" reads like today's log: the latest outcome first.
+ */
 export function sortForQueue(rows: readonly WorklistRow[], queue?: QueueKey): WorklistRow[] {
   if (queue === "likely") {
     return [...rows].sort((a, b) => Number(strongSignal(b)) - Number(strongSignal(a))
-      || (parseTs(b.created_at) ?? 0) - (parseTs(a.created_at) ?? 0) || a.id.localeCompare(b.id));
+      || createdKey(b) - createdKey(a) || a.id.localeCompare(b.id));
   }
   if (queue === "worked_today") {
     return [...rows].sort((a, b) => (parseTs(b.last_contact_outcome_at) ?? 0) - (parseTs(a.last_contact_outcome_at) ?? 0)
       || a.id.localeCompare(b.id));
   }
   return [...rows].sort((a, b) => {
-    const da = effectiveDueMs(a);
-    const db = effectiveDueMs(b);
-    const ka = da === null || Number.isNaN(da) ? Number.POSITIVE_INFINITY : da;
-    const kb = db === null || Number.isNaN(db) ? Number.POSITIVE_INFINITY : db;
-    if (ka !== kb) return ka - kb;
-    const ca = parseTs(a.created_at) ?? 0;
-    const cb = parseTs(b.created_at) ?? 0;
-    if (ca !== cb) return cb - ca;
+    const pa = hasPromisedTime(a);
+    const pb = hasPromisedTime(b);
+    if (pa !== pb) return pa ? -1 : 1;
+    const ka = dueKey(a);
+    const kb = dueKey(b);
+    const ca = createdKey(a);
+    const cb = createdKey(b);
+    if (pa) {
+      if (ka !== kb) return ka - kb;
+      if (ca !== cb) return cb - ca;
+    } else {
+      if (ca !== cb) return cb - ca;
+      if (ka !== kb) return ka - kb;
+    }
     return a.id.localeCompare(b.id);
   });
+}
+
+/** The order rule in one plain sentence, for Data status: the same rule as sortForQueue. */
+export function queueOrderText(queue: QueueKey): string {
+  if (queue === "likely") return "Licensed and high-scoring people first, then the newest.";
+  if (queue === "worked_today") return "The latest saved outcome first.";
+  return "Follow-ups someone set come first, the most urgent on top; then everyone else, the newest first.";
 }
 
 export interface OutcomeDraft {

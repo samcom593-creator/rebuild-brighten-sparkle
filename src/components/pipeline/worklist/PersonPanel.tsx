@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { StatusPill } from "@/components/recruiting/StatusPill";
-import { contactLinkProps, formatPhoneDisplay, phoneHref, smsHref } from "@/lib/phone";
+import { contactLinkProps, formatPhoneDisplay, isDialablePhone, phoneHref, smsHref } from "@/lib/phone";
 import {
   CHANNEL_LABELS,
   CONTACT_CHANNELS,
@@ -38,7 +38,8 @@ import {
   type StaffMember,
   type StageDefinition,
 } from "./useRecruitingWorklist";
-import { PersonBubble } from "./WorklistViews";
+import { NextStepCallout } from "./UpNext";
+import { FactLine, PersonBubble } from "./WorklistViews";
 import {
   VERIFIED_ZONE_OPTIONS,
   formatDay,
@@ -50,6 +51,7 @@ import {
   ownerName,
   personLocalTime,
 } from "./worklistFormat";
+import { nextStepFor } from "./worklistNextStep";
 import { licenseWord, rowStatus } from "./worklistStatus";
 
 const UNASSIGNED = "__unassigned__";
@@ -64,6 +66,8 @@ interface PersonPanelProps {
   stagesByKey: Map<string, StageDefinition>;
   /** The person after this one in the current queue order, as rendered when the save was clicked. */
   nextId: string | null;
+  /** That person's name, said under the save buttons so the caller knows who comes up next. */
+  nextName?: string | null;
   /** Called after a confirmed save; `advance` moves the queue to `nextId` captured at click time. */
   onSaved: (advance: boolean, nextId: string | null) => void;
 }
@@ -163,7 +167,7 @@ function Fold({ title, value, children, tone }: { title: string; value?: ReactNo
   );
 }
 
-export function PersonPanel({ row, userId, backendReady, canAssign, staff, staffAvailable, stagesByKey, nextId, onSaved }: PersonPanelProps) {
+export function PersonPanel({ row, userId, backendReady, canAssign, staff, staffAvailable, stagesByKey, nextId, nextName = null, onSaved }: PersonPanelProps) {
   const [draft, setDraft] = useState<OutcomeDraft>(() => loadDraft(userId, row.id) ?? EMPTY_DRAFT);
   const [planMode, setPlanMode] = useState<"action" | "waiting">(() =>
     draft.waitingReason && !draft.nextAction ? "waiting" : "action");
@@ -189,6 +193,9 @@ export function PersonPanel({ row, userId, backendReady, canAssign, staff, staff
   const blockers = useMemo(() => blockersOf(row).filter((b) => b.hard), [row]);
   const plan = useMemo(() => planCheck(row), [row]);
   const status = rowStatus(row, Date.now());
+  // The one thing to do next with this person, from the record (worklistNextStep.ts), on the same
+  // clock as the status pill so "Due today" turns "Was due" when the time passes.
+  const step = nextStepFor(row, Date.now());
   const selectedDef = outcomeDefinition(draft.outcome);
   const closes = selectedDef?.closes ?? false;
   const stage = row.next_step_stage_key ? stagesByKey.get(row.next_step_stage_key) : null;
@@ -369,9 +376,12 @@ export function PersonPanel({ row, userId, backendReady, canAssign, staff, staff
   const callHref = availability.call.allowed ? phoneHref(row.phone) : null;
   const textHref = availability.sms.allowed ? smsHref(row.phone) : null;
   const emailHref = availability.email.allowed && row.email ? `mailto:${row.email}` : null;
+  // A number on file that is too short or garbled to dial builds no link; say so instead of
+  // leaving a grey Call button with no reason (OVERHAUL-calllist).
+  const undialable = availability.call.allowed && !isDialablePhone(row.phone) ? "The number on file can't be dialed" : null;
   // Older users don't hover, so a blocked channel says why in words, not only in a tooltip.
   const blockedReasons = [
-    !callHref && availability.call.reason ? `Call: ${availability.call.reason}` : null,
+    !callHref && (availability.call.reason ?? undialable) ? `Call: ${availability.call.reason ?? undialable}` : null,
     !textHref && availability.sms.reason && availability.sms.reason !== availability.call.reason ? `Text: ${availability.sms.reason}` : null,
     !emailHref && availability.email.reason ? `Email: ${availability.email.reason}` : null,
   ].filter(Boolean) as string[];
@@ -383,7 +393,7 @@ export function PersonPanel({ row, userId, backendReady, canAssign, staff, staff
     localTime ? `${localTime} their time` : null,
     row.state,
     licenseWord(row.license_status),
-  ].filter(Boolean).join(" · ");
+  ];
 
   return (
     // pb-5: the panel owns its bottom padding so the containers (the aside and the sheet) can
@@ -398,7 +408,7 @@ export function PersonPanel({ row, userId, backendReady, canAssign, staff, staff
               <h2 className="min-w-0 text-xl font-semibold leading-7 tracking-[-0.01em] text-foreground">{fullName(row)}</h2>
               <StatusPill status={status} />
             </div>
-            <p className="text-base leading-6 text-muted-foreground">{who}</p>
+            <p className="text-base leading-6 text-muted-foreground"><FactLine facts={who} /></p>
           </div>
         </div>
         {blockers.length > 0 && (
@@ -423,6 +433,10 @@ export function PersonPanel({ row, userId, backendReady, canAssign, staff, staff
           {lastEntry?.notes ? <span className="text-muted-foreground"> — “{lastEntry.notes}”</span> : null}
         </p>
       )}
+
+      {/* What to do: the one next action, worked out from the record, right before the buttons
+          that do it. After "Last time", so the caller reads what happened, then what to do now. */}
+      <NextStepCallout step={step} />
 
       {/* Reach them — opening a link records nothing; the outcome below is the record. */}
       <section aria-label="Contact" className="space-y-2">
@@ -664,25 +678,33 @@ export function PersonPanel({ row, userId, backendReady, canAssign, staff, staff
                 negative side margins let it span the container's px-5 on the card colour; the
                 containers carry no bottom padding (this panel does, see the root), because the
                 browser pins bottom-0 to the scroller's content edge and a padded bottom left a
-                20px strip of scrolled text showing under the row. sm:flex-1, not flex-1: in the
-                stacked phone layout a flex-basis of 0 shrank the gold button below its h-12. */}
+                20px strip of scrolled text showing under the row. */}
             {draft.outcome ? (
-              <div className="sticky bottom-0 z-10 -mx-5 flex flex-col gap-2 border-t border-border bg-card px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] sm:flex-row">
-                <Button type="button" className="h-12 text-base sm:flex-1" disabled={saving || !backendReady} onClick={(e) => void submitOutcome(true, e.currentTarget)}>
-                  {recordOutcome.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-                  Save &amp; next person
-                </Button>
-                <Button type="button" variant="outline" className={cn("h-12 text-base sm:w-28", RAISED)} disabled={saving || !backendReady} onClick={(e) => void submitOutcome(false, e.currentTarget)}>
-                  Save
-                </Button>
+              <div className="sticky bottom-0 z-10 -mx-5 border-t border-border bg-card px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]">
+                {/* Side by side at every width: on a 390px phone the two fit in one row, which keeps the
+                    sticky bar short enough to leave the form visible above it. */}
+                <div className="flex gap-2">
+                  <Button type="button" className="h-12 min-w-0 flex-1 text-base" disabled={saving || !backendReady} onClick={(e) => void submitOutcome(true, e.currentTarget)}>
+                    {recordOutcome.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                    Save &amp; next person
+                  </Button>
+                  <Button type="button" variant="outline" className={cn("h-12 w-24 shrink-0 text-base", RAISED)} disabled={saving || !backendReady} onClick={(e) => void submitOutcome(false, e.currentTarget)}>
+                    Save
+                  </Button>
+                </div>
+                {nextId && nextName && (
+                  <p className="mt-2 truncate text-sm text-muted-foreground">
+                    Next up: <span className="font-medium text-foreground">{nextName}</span>
+                  </p>
+                )}
               </div>
             ) : (
-              <div className="sticky bottom-0 z-10 -mx-5 flex flex-col gap-2 border-t border-border bg-card px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] sm:flex-row">
-                <Button type="button" className="h-12 text-base sm:flex-1" disabled={saving || !backendReady} onClick={(e) => void submitPlanOnly(e.currentTarget)}>
+              <div className="sticky bottom-0 z-10 -mx-5 flex gap-2 border-t border-border bg-card px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]">
+                <Button type="button" className="h-12 min-w-0 flex-1 text-base" disabled={saving || !backendReady} onClick={(e) => void submitPlanOnly(e.currentTarget)}>
                   {setPlan.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-                  Save next step (no contact)
+                  <span className="truncate">Save next step (no contact)</span>
                 </Button>
-                <Button type="button" variant="ghost" className="h-12 text-base" onClick={() => { setPlanOnly(false); setError(null); }}>
+                <Button type="button" variant="ghost" className="h-12 shrink-0 text-base" onClick={() => { setPlanOnly(false); setError(null); }}>
                   Cancel
                 </Button>
               </div>

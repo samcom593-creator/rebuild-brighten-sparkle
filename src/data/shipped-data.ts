@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "Oct 28, 2026",
+    label: "Call Training reviews the calls for you: best closers, the deals each agent leaves on the table, easy closes to hand a stronger closer, buyers who wanted more coverage, and sales at risk of dropping off or charging back. Tap an agent for a coaching summary, open any call's client in one tap, and uplines now see their own team's calls.",
+    detail: "MP-310. Five lists read security_invoker views over the whole dialer history (best closers adjusted for how many sales stuck; warm leads that never bought per agent; the warm leads themselves with what happened; buyers who also wanted spouse, mortgage or more coverage; sales that fell off, are lapsing, were declined after SSN and bank, carry a compliance flag, sit pending or never reached the book). Coaching profiles are written per agent from their graded calls (habits, watch-outs, tips, next-call focus). The Client button shows everything the call picked up, with the full SSN and bank packet one tap away for Sam and Aisha. Managers and uplines read only their own team through the same downline the rest of the site uses; Aisha reads the agency.",
+    commit: "MP-310-CALL-REVIEW",
+  },
+  {
+    ts: "Oct 28, 2026",
     label: "Calls play on the site now. Call Training, Sold Calls and Book of Business rows carry the recording itself with one-tap snippets at each moment, instead of a ReadyMode link nobody could open, and every agent gets a training library of the best calls.",
     detail: "MP-310. A ReadyMode recording link opens only for whoever holds the ReadyMode login, and ReadyMode allows one session per login, so the team could not hear a single call. The bot now publishes every downloaded recording to a private bucket: a copy with spoken digits (SSN, bank, card, date of birth) muted for the team, and an unmuted sold-call copy for Sam and Aisha to confirm numbers by ear. Agents hear only training calls (graded great or 70+, or an objection turned, with no compliance flag). Proven: an agent cannot open an unmuted file or a call outside the library.",
     commit: "MP-310-CALL-AUDIO",

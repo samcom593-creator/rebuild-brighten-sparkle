@@ -91709,6 +91709,48 @@ export type Database = {
         }
         Relationships: []
       }
+      readymode_agent_coaching: {
+        Row: {
+          agent_name: string | null
+          summary: string | null
+          habits: string[] | null
+          watch_outs: string[] | null
+          coaching_tips: string[] | null
+          strengths: string[] | null
+          next_call_focus: string | null
+          source_count: number | null
+          last_graded_at: string | null
+          model: string | null
+          generated_at: string | null
+        }
+        Insert: {
+          agent_name?: string | null
+          summary?: string | null
+          habits?: string[] | null
+          watch_outs?: string[] | null
+          coaching_tips?: string[] | null
+          strengths?: string[] | null
+          next_call_focus?: string | null
+          source_count?: number | null
+          last_graded_at?: string | null
+          model?: string | null
+          generated_at?: string | null
+        }
+        Update: {
+          agent_name?: string | null
+          summary?: string | null
+          habits?: string[] | null
+          watch_outs?: string[] | null
+          coaching_tips?: string[] | null
+          strengths?: string[] | null
+          next_call_focus?: string | null
+          source_count?: number | null
+          last_graded_at?: string | null
+          model?: string | null
+          generated_at?: string | null
+        }
+        Relationships: []
+      }
       readymode_booking_packets: {
         Row: {
           agent_id: string | null
@@ -117625,6 +117667,32 @@ export type Database = {
         }
         Relationships: []
       }
+      v_best_closers: {
+        Row: {
+          agent_name: string | null
+          calls_30d: number | null
+          reached_30d: number | null
+          sold_30d: number | null
+          close_pct_30d: number | null
+          calls_all: number | null
+          reached_all: number | null
+          sold_all: number | null
+          close_pct_all: number | null
+          avg_grade: number | null
+          great_calls: number | null
+          avg_objection_handling: number | null
+          avg_close: number | null
+          dialer_sales: number | null
+          active: number | null
+          lapsing: number | null
+          fell_off: number | null
+          compliance_flagged: number | null
+          fall_off_pct: number | null
+          sticky_close_score: number | null
+          last_call_at: string | null
+        }
+        Relationships: []
+      }
       v_blacklisted_carrier_deals: {
         Row: {
           al_user_id: number | null
@@ -119287,6 +119355,57 @@ export type Database = {
           title: string | null
           updated_at: string | null
           was_rescheduled: boolean | null
+        }
+        Relationships: []
+      }
+      v_call_client: {
+        Row: {
+          call_id: string | null
+          external_call_id: string | null
+          call_started_at: string | null
+          disposition: string | null
+          agent_raw: string | null
+          lead_first_name: string | null
+          lead_last_name: string | null
+          lead_phone10: string | null
+          lead_email: string | null
+          packet_id: string | null
+          client_first_name: string | null
+          client_last_name: string | null
+          client_dob: string | null
+          client_phone: string | null
+          client_email: string | null
+          client_street: string | null
+          client_city: string | null
+          client_state: string | null
+          client_zip: string | null
+          carrier: string | null
+          product: string | null
+          face_amount: number | null
+          monthly_premium: number | null
+          draft_day: string | null
+          payment_method_type: string | null
+          bank_name: string | null
+          policy_number: string | null
+          beneficiaries: Json | null
+          health_notes: string | null
+          tobacco: boolean | null
+          missing_fields: string[] | null
+          call_summary: string | null
+          key_points: Json | null
+          ssn_last4: string | null
+          resell_angle: string | null
+          approval_status: string | null
+          approval_quote: string | null
+          gave_ssn: boolean | null
+          gave_bank: boolean | null
+          price_objection: boolean | null
+          bank_objection: boolean | null
+          ssn_objection: boolean | null
+          spouse_coverage: boolean | null
+          mortgage_protection: boolean | null
+          other_opportunities: string[] | null
+          do_not_call: boolean | null
         }
         Relationships: []
       }
@@ -125008,6 +125127,18 @@ export type Database = {
           },
         ]
       }
+      v_deals_left_on_table: {
+        Row: {
+          agent_name: string | null
+          warm_not_sold: number | null
+          stopped_at_bank: number | null
+          stopped_at_ssn: number | null
+          gave_up: number | null
+          appointment_not_sold: number | null
+          last_30d: number | null
+        }
+        Relationships: []
+      }
       v_deals_needing_real_policy: {
         Row: {
           agent_id: string | null
@@ -125614,6 +125745,29 @@ export type Database = {
         }
         Relationships: []
       }
+      v_dropoff_risk: {
+        Row: {
+          call_id: string | null
+          call_started_at: string | null
+          agent_name: string | null
+          first_name: string | null
+          last_name: string | null
+          phone10: string | null
+          quality_verdict: string | null
+          book_status: string | null
+          status_group: string | null
+          book_carrier: string | null
+          packet_monthly_premium: number | null
+          compliance_flag_count: number | null
+          approval_status: string | null
+          declined_after_ssn_bank: boolean | null
+          coaching_notes: string | null
+          what_happened: string | null
+          risk: string | null
+          do_not_call: boolean | null
+        }
+        Relationships: []
+      }
       v_dunning_classification: {
         Row: {
           alt_active_sub_ids: string[] | null
@@ -125672,6 +125826,29 @@ export type Database = {
           est_pending_if_issued: number | null
           in_force_deals: number | null
           manager: string | null
+        }
+        Relationships: []
+      }
+      v_easy_closes: {
+        Row: {
+          phone10: string | null
+          first_name: string | null
+          last_name: string | null
+          call_id: string | null
+          disposition: string | null
+          call_started_at: string | null
+          agent_name: string | null
+          days_ago: number | null
+          what_happened: string | null
+          approval_status: string | null
+          price_objection: boolean | null
+          bank_objection: boolean | null
+          ssn_objection: boolean | null
+          gave_ssn: boolean | null
+          gave_bank: boolean | null
+          opportunities: string | null
+          call_grade: number | null
+          in_a_bundle: boolean | null
         }
         Relationships: []
       }
@@ -136271,6 +136448,26 @@ export type Database = {
           people: number | null
           sort_order: number | null
           why: string | null
+        }
+        Relationships: []
+      }
+      v_more_coverage: {
+        Row: {
+          call_id: string | null
+          call_started_at: string | null
+          agent_name: string | null
+          first_name: string | null
+          last_name: string | null
+          phone10: string | null
+          in_book: boolean | null
+          book_status: string | null
+          status_group: string | null
+          packet_carrier: string | null
+          packet_monthly_premium: number | null
+          spouse_coverage: boolean | null
+          mortgage_protection: boolean | null
+          opportunities: string | null
+          what_happened: string | null
         }
         Relationships: []
       }

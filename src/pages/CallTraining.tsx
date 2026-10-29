@@ -25,6 +25,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CallAudioPlayer } from "@/components/calls/CallAudioPlayer";
 import { TrainingLibrary } from "@/components/calltraining/TrainingLibrary";
+import { AgentCoachingCard } from "@/components/calltraining/AgentCoachingCard";
+import { CallReviewBoard } from "@/components/calltraining/CallReviewBoard";
+import { CallClientPanel } from "@/components/calls/CallClientPanel";
 import { momentsFrom } from "@/lib/callAudio";
 import { cn } from "@/lib/utils";
 import { dispositionLabel } from "@/lib/readymodeDispositions";
@@ -120,8 +123,10 @@ async function fetchAgents(): Promise<AgentRow[]> {
 }
 
 export default function CallTraining() {
-  const { isAdmin, user } = useAuth();
-  const canView = !!isAdmin || user?.id === SOLD_CALL_EXTRA_UID;
+  const { isAdmin, isManager, user } = useAuth();
+  // Sam and Aisha see the agency; an upline sees their own team (RLS through my_downline_agent_ids); agents get the library.
+  const leadership = !!isAdmin || user?.id === SOLD_CALL_EXTRA_UID;
+  const canView = leadership || !!isManager;
   usePageTitle("Call Training");
   const q = useQuery({ queryKey: ["call-training"], queryFn: fetchGraded, staleTime: 60_000, enabled: canView });
   const agentsQ = useQuery({ queryKey: ["call-training-agents"], queryFn: fetchAgents, staleTime: 60_000, enabled: canView });
@@ -154,7 +159,7 @@ export default function CallTraining() {
   const great = rows.filter((r) => r.great_call).length;
   const urgent = rows.filter((r) => r.coaching_priority === "urgent").length;
 
-  // Agents and managers get the team library: training calls with muted audio, no client data, no coaching notes.
+  // Agents get the team library: training calls with muted audio, no client data, no coaching notes.
   if (!canView) return <TrainingLibrary />;
 
   return (
@@ -171,12 +176,15 @@ export default function CallTraining() {
         <Stat label="Urgent flags" value={urgent} tone={urgent ? "text-rose-700 dark:text-rose-300" : undefined} />
       </div>
 
+      <CallReviewBoard onPickAgent={(name) => { setAgent(name); window.scrollTo({ top: 0, behavior: "smooth" }); }} />
+
       <div className="flex flex-wrap items-center gap-2">
         {VIEWS.map((f) => (
           <Button key={f.key} size="sm" variant={view === f.key ? "default" : "outline"} onClick={() => setView(f.key)}>{f.label}</Button>
         ))}
         <select value={agent} onChange={(e) => setAgent(e.target.value)} aria-label="Agent" className="h-9 rounded-md border border-border bg-background px-2 text-sm">
           <option value="all">Every agent</option>
+          {agent !== "all" && !agentNames.includes(agent) && <option value={agent}>{agent}</option>}
           {agentNames.map((a) => <option key={a} value={a}>{a}</option>)}
         </select>
         <select value={tag} onChange={(e) => setTag(e.target.value)} aria-label="Training tag" className="h-9 rounded-md border border-border bg-background px-2 text-sm">
@@ -188,6 +196,9 @@ export default function CallTraining() {
           <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search agent, tactic, note" className="h-9 pl-8" />
         </div>
       </div>
+
+      {agent !== "all" && <AgentCoachingCard agentName={agent} onClear={() => setAgent("all")} />}
+
 
       <GlassCard className="p-0">
         <button type="button" onClick={() => setShowAgents((v) => !v)} aria-expanded={showAgents} className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-semibold">
@@ -207,7 +218,7 @@ export default function CallTraining() {
               <tbody>
                 {(agentsQ.data ?? []).map((a) => (
                   <tr key={a.agent_name ?? "unknown"} className="border-t border-border/40">
-                    <td className="px-4 py-2 font-medium">{a.agent_name ?? "Unknown"}</td>
+                    <td className="px-4 py-2 font-medium"><button type="button" className="text-left text-primary hover:underline" onClick={() => { setAgent(a.agent_name ?? "all"); window.scrollTo({ top: 0, behavior: "smooth" }); }}>{a.agent_name ?? "Unknown"}</button></td>
                     <td className="px-2 py-2 text-right tabular-nums">{a.calls_total}</td>
                     <td className="px-2 py-2 text-right tabular-nums">{a.sold}</td>
                     <td className="px-2 py-2 text-right tabular-nums">{a.graded}</td>
@@ -252,6 +263,7 @@ export default function CallTraining() {
                 {open && (
                   <div className="space-y-4 border-t border-border/60 px-4 py-3 text-sm">
                     <CallAudioPlayer callId={r.call_id} moments={[...moments.map((m) => ({ t: m.t, label: m.objection })), ...momentsFrom(r.key_quotes)]} />
+                    {leadership && <CallClientPanel callId={r.call_id} />}
                     <div className="flex flex-wrap gap-x-4 gap-y-1">
                       {RUBRIC.map((k) => (
                         <span key={k.key} className="text-muted-foreground">{k.label} <span className={cn("font-semibold", scoreTone(r.scores?.[k.key] == null ? null : r.scores[k.key] * 10))}>{r.scores?.[k.key] ?? "—"}</span>/10</span>

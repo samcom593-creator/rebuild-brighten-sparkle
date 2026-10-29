@@ -1,7 +1,10 @@
 // Easy resells (2026-10-16): one ranked list of the people easiest to resell, read from easy_resells().
 // Sam: "all pages overwhelming so much info to crawl, hard to prioritize easy resells like everyone
-// under vantage". The database ranks (tier 1 easiest) and keeps one row per phone; these are the
-// shared display rules for the page and its tests.
+// under vantage". The database keeps one row per phone and sorts by kind (tier 1 easiest); since
+// OVERHAUL-resells (2026-10-29) the page ranks by evidence first (src/lib/resellEvidence.ts) and the
+// kind breaks ties. These are the shared display rules for the page and its tests.
+import type { EvidenceSubject } from "@/lib/resellEvidence";
+import { resellBucketTone, tonePill } from "@/lib/tones";
 
 export type ResellBucket = "ready_to_finish" | "lapsing" | "dropped" | "vantage" | "agent_left" | "warm_objection";
 
@@ -60,13 +63,14 @@ export const BUCKET_LABEL: Record<ResellBucket, string> = {
   warm_objection: "Warm call",
 };
 
+/** Each kind's pill, in its tone (src/lib/tones.ts resellBucketTone): the words always beside the colour. */
 export const BUCKET_TONE: Record<ResellBucket, string> = {
-  ready_to_finish: "border-emerald-500/50 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
-  lapsing: "border-amber-500/50 bg-amber-500/15 text-amber-700 dark:text-amber-300",
-  dropped: "border-red-500/40 bg-red-500/10 text-red-700 dark:text-red-300",
-  vantage: "border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-300",
-  agent_left: "border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-300",
-  warm_objection: "border-border bg-muted text-foreground",
+  ready_to_finish: tonePill(resellBucketTone("ready_to_finish")),
+  lapsing: tonePill(resellBucketTone("lapsing")),
+  dropped: tonePill(resellBucketTone("dropped")),
+  vantage: tonePill(resellBucketTone("vantage")),
+  agent_left: tonePill(resellBucketTone("agent_left")),
+  warm_objection: tonePill(resellBucketTone("warm_objection")),
 };
 
 export type ResellFilter = "all" | "vantage_any" | ResellBucket;
@@ -76,7 +80,7 @@ export type ResellFilter = "all" | "vantage_any" | ResellBucket;
  * still lapsing), so the 4th-tier "vantage" bucket has no chip of its own.
  */
 export const RESELL_FILTERS: Array<{ key: ResellFilter; label: string }> = [
-  { key: "all", label: "Easiest first" },
+  { key: "all", label: "Everyone" },
   { key: "ready_to_finish", label: "Ready to finish" },
   { key: "lapsing", label: "Lapsing" },
   { key: "dropped", label: "Dropped" },
@@ -133,6 +137,31 @@ export function sortResells<T extends Pick<EasyResell, "tier" | "last_touch_at" 
     }
     return a.item_key.localeCompare(b.item_key);
   });
+}
+
+/**
+ * What the evidence is asked about one row: its number and name, and, for a lapsing book policy, the
+ * book's status and the day the policy started (event_at is the effective or posted date on book rows).
+ */
+export function resellSubject(r: Pick<EasyResell, "bucket" | "phone" | "client_name" | "policy_status" | "event_at">): EvidenceSubject {
+  return {
+    phone: r.phone,
+    fullName: r.client_name,
+    lapse: r.bucket === "lapsing" ? { status: r.policy_status, startedOn: r.event_at } : null,
+  };
+}
+
+/**
+ * The page's order (OVERHAUL-resells): the most evidence first; between equal scores, the database's
+ * order (sortResells: easiest kind, nobody called yet, longest since a call, newest).
+ */
+export function rankResells<T extends Pick<EasyResell, "tier" | "last_touch_at" | "event_at" | "item_key">>(
+  list: readonly T[],
+  scoreOf: (row: T) => number,
+): T[] {
+  const base = sortResells(list);
+  const position = new Map(base.map((r, i) => [r.item_key, i]));
+  return base.sort((a, b) => scoreOf(b) - scoreOf(a) || (position.get(a.item_key) ?? 0) - (position.get(b.item_key) ?? 0));
 }
 
 const WORK_WORD: Record<string, string> = { contacted: "Contacted", pushed: "Pushed", resold: "Resold", pushback: "Pushback" };

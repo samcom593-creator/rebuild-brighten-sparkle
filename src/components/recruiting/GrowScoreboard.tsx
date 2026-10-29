@@ -45,11 +45,23 @@ export interface ScoreTile {
  * rise in one after the other on first paint (240ms each, 30ms apart) and a tile that is a
  * button presses in (scale 0.98, 120ms) so it answers the finger before its list changes.
  */
-export function GrowScoreboard({ label, tiles, notice, className }: { label: string; tiles: ScoreTile[]; notice?: ReactNode; className?: string }) {
+export function GrowScoreboard({ label, tiles, notice, className, compactOnPhone = false }: {
+  label: string;
+  tiles: ScoreTile[];
+  notice?: ReactNode;
+  className?: string;
+  /**
+   * OVERHAUL-resells (2026-10-29): on a phone, one short row of four (small icon, number, label; the hint
+   * stays in the tooltip) instead of the 2x2 grid, for a page whose job is the list under it: the 2x2
+   * pushed the first person to call below the first screen. From sm up it is the usual strip.
+   */
+  compactOnPhone?: boolean;
+}) {
+  const compact = compactOnPhone;
   return (
-    <section aria-label={label} className={cn("apex-rise-list grid grid-cols-2 overflow-hidden sm:grid-cols-4 rounded-2xl border border-border bg-card", className)}>
+    <section aria-label={label} className={cn("apex-rise-list grid overflow-hidden sm:grid-cols-4 rounded-2xl border border-border bg-card", compact ? "grid-cols-4" : "grid-cols-2", className)}>
       {notice ? (
-        <div role="status" className="col-span-2 flex sm:col-span-4 flex-col gap-2 border-b border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+        <div role="status" className={cn("flex sm:col-span-4 flex-col gap-2 border-b border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between", compact ? "col-span-4" : "col-span-2")}>
           {notice}
         </div>
       ) : null}
@@ -58,19 +70,20 @@ export function GrowScoreboard({ label, tiles, notice, className }: { label: str
         const lit = t.emphasis && (t.value ?? 0) > 0;
         const body = (
           <>
-            <span className="flex min-h-10 flex-row items-center gap-2 sm:min-h-12">
-              {t.icon ? <ToneBubble tone={tone} size="sm">{t.icon}</ToneBubble> : null}
+            <span className={cn("flex flex-row items-center gap-2 sm:min-h-12", compact ? "min-h-0" : "min-h-10")}>
+              {t.icon ? <ToneBubble tone={tone} size="sm" className={compact ? "hidden sm:inline-flex" : undefined}>{t.icon}</ToneBubble> : null}
               <span className="block text-[13px] font-semibold leading-4 text-muted-foreground sm:text-[15px] sm:leading-5">{t.label}</span>
             </span>
             <CountUp
               value={t.value}
               format={t.format}
               className={cn(
-                "mt-1.5 block text-[2rem] font-bold leading-none tracking-[-0.02em] sm:text-[2.5rem]",
+                "block font-bold leading-none tracking-[-0.02em] sm:mt-1.5 sm:text-[2.5rem]",
+                compact ? "-order-1 mb-1 text-[1.5rem] sm:order-none sm:mb-0" : "mt-1.5 text-[2rem]",
                 lit ? TONE_CLASS[tone].text : "text-foreground",
               )}
             />
-            <span className="mt-2 block min-h-8 text-[13px] leading-4 text-muted-foreground sm:text-sm sm:leading-[18px]">
+            <span className={cn("mt-2 min-h-8 text-[13px] leading-4 text-muted-foreground sm:block sm:text-sm sm:leading-[18px]", compact ? "hidden" : "block")}>
               {t.hint}
               {t.trend ? <>{t.hint ? " · " : null}<span className={cn("font-semibold", TONE_CLASS[t.trend.tone].text)}>{t.trend.text}</span></> : null}
             </span>
@@ -78,11 +91,11 @@ export function GrowScoreboard({ label, tiles, notice, className }: { label: str
         );
         // flex-col justify-start: a <button> centres its content vertically, so a tile whose hint
         // wrapped to more lines than its neighbours' lifted its number out of line with theirs.
-        const base = "flex min-w-0 flex-col justify-start border-b-[3px] border-r border-b-transparent border-r-border p-3 text-left last:border-r-0 sm:p-5";
+        const base = cn("flex min-w-0 flex-col justify-start border-b-[3px] border-r border-b-transparent border-r-border text-left last:border-r-0 sm:p-5", compact ? "p-2.5" : "p-3");
         // Phones get a 2x2 grid (four tiles of ~80px squeezed every label onto two or three lines
         // and set the numbers at different heights). The right column drops its right border,
         // the second row gets a top divider, and from sm up it is one row of four again.
-        const cell = cn(base, i % 2 === 1 && i !== tiles.length - 1 && "border-r-0 sm:border-r", i % 2 === 1 && i === tiles.length - 1 && "border-r-0", i >= 2 && "border-t border-t-border sm:border-t-0");
+        const cell = compact ? base : cn(base, i % 2 === 1 && i !== tiles.length - 1 && "border-r-0 sm:border-r", i % 2 === 1 && i === tiles.length - 1 && "border-r-0", i >= 2 && "border-t border-t-border sm:border-t-0");
         return t.onSelect ? (
           <button
             key={t.label}

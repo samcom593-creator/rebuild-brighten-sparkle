@@ -160787,6 +160787,19 @@ export type Database = {
         }
       }
       rescue_stale_applications: { Args: never; Returns: Json }
+      resell_evidence: {
+        Args: { p_names?: string[]; p_phones: string[] }
+        Returns: {
+          answered: number
+          dials: number
+          gave_ssn_and_bank: boolean
+          kind: string
+          last_answered_at: string
+          last_sold_at: string
+          match_key: string
+          sold_calls: number
+        }[]
+      }
       reset_quiz_attempts: {
         Args: { p_agent_id: string; p_module_id: string }
         Returns: number

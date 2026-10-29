@@ -81,9 +81,10 @@ verified claim; nothing in the repository records a competitor comparison.
   one step at a time"; Invite an agent "Fill in what you know, then send the link"; Social Command Center "Who to
   answer first, and which lane is dead"; Refer a recruit "We contact your referral within 24 hours"; Staff
   accounts "Add logins and turn them on or off".
-- Vocabulary: Call list, New hires, Never called, No next step, Waiting on them, Worked today, Booked, Expected
-  Monday, Showed, No show, Onboarding, Contracting, Producing; the seven tones good / warm / hot / cool / royal /
-  gold / slate (src/lib/tones.ts). Plain words over jargon ("Never called", not "Uncontacted").
+- Vocabulary: Call list, Up next, Best leads, New hires, Never called, No next step, Waiting on them, Worked today,
+  Booked, Expected Monday, Showed, No show, Onboarding, Contracting, Producing; the seven tones good / warm / hot /
+  cool / royal / gold / slate (src/lib/tones.ts). Plain words over jargon ("Never called", not "Uncontacted";
+  "Best leads", not "Likely to join").
 - Constraints on change: UI-only by default; schema, RPC and cron changes, metric definitions, permission logic
   and re-engagement rules go through a separate read-only analysis session first (00-MASTER.md §9; AGENTS.md).
   117 guard scripts are ratchets (icon-button labels, control labels, theme literals, brand literals, forbidden

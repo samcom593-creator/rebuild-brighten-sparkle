@@ -17,6 +17,7 @@ import {
   channelAvailability,
   computeQueueCounts,
   computeScoreboard,
+  defaultQueueFor,
   describeSaveError,
   inQueue,
   isClosed,
@@ -24,6 +25,7 @@ import {
   phoenixDayBounds,
   planCheck,
   queueFromLegacyParams,
+  queueOrderText,
   sortForQueue,
   validateOutcomeDraft,
   type WorklistRow,
@@ -453,5 +455,59 @@ describe("deep links into the worklist", () => {
     const lapsed = row({ status: "lapsed", next_step_stage_key: "contacted" });
     expect(isClosed(lapsed)).toBe(true);
     expect(inQueue(lapsed, "all_open", { now: NOW, userId: ME })).toBe(false);
+  });
+});
+
+describe("the Call list makeover (OVERHAUL-calllist): names, order and the opening list", () => {
+  it("Likely to join is called Best leads, ?queue=likely still opens it, and every list explains itself in one plain sentence", () => {
+    const likely = QUEUE_DEFINITIONS.find((d) => d.key === "likely");
+    expect(likely?.label).toBe("Best leads");
+    expect(QUEUE_DEFINITIONS.some((d) => /likely to join/i.test(d.label))).toBe(false);
+    for (const d of QUEUE_DEFINITIONS) {
+      expect(d.hint.trim().length).toBeGreaterThan(8);
+      expect(d.hint).toMatch(/\.$/);
+      // Plain words for a caller: no column names or internal codes.
+      expect(d.hint).not.toMatch(/_|contacted_at|Phoenix|ai_score/);
+    }
+    // The hint states the same windows the predicate uses.
+    expect(likely?.hint).toContain("47 days");
+    expect(likely?.hint).toContain("last 14");
+    expect(QUEUE_DEFINITIONS.find((d) => d.key === "old")?.hint).toContain("90");
+  });
+
+  it("opens on Mine only when one of your own people is due today or late; otherwise Best leads", () => {
+    const mineLate = row({ id: "m1", recruiting_owner_user_id: ME, next_action: "Call", next_action_due_at: "2026-10-06T15:00:00Z", next_action_set_at: "2026-10-05T00:00:00Z" });
+    const mineLater = row({ id: "m2", recruiting_owner_user_id: ME, next_action: "Call", next_action_due_at: "2026-10-09T15:00:00Z", next_action_set_at: "2026-10-05T00:00:00Z" });
+    const othersLate = row({ id: "o1", recruiting_owner_user_id: OTHER, next_action: "Call", next_action_due_at: "2026-10-06T15:00:00Z", next_action_set_at: "2026-10-05T00:00:00Z" });
+    expect(defaultQueueFor([mineLate, othersLate], ctx)).toBe("mine");
+    // Owning someone with nothing due is not a reason to open on a one-person list.
+    expect(defaultQueueFor([mineLater, othersLate], ctx)).toBe("likely");
+    expect(defaultQueueFor([othersLate], ctx)).toBe("likely");
+    expect(defaultQueueFor([], ctx)).toBe("likely");
+    // A closed person you own is not work due.
+    expect(defaultQueueFor([{ ...mineLate, do_not_contact_at: "2026-10-01T00:00:00Z" }], ctx)).toBe("likely");
+  });
+
+  it("follow-ups a person set come first, most urgent on top; everyone else is newest first, so a timer never ranks anyone", () => {
+    // Automation stamps: due 72h after applying, set by no person (next_action_set_at null).
+    const stampOld = row({ id: "stamp-old", created_at: "2026-07-10T12:00:00Z", next_action: "MANAGER_CALL_72H_ESCALATION", next_action_due_at: "2026-07-13T12:00:00Z" });
+    const stampNew = row({ id: "stamp-new", created_at: "2026-10-01T12:00:00Z", next_action: "MANAGER_CALL_72H_ESCALATION", next_action_due_at: "2026-10-04T12:00:00Z" });
+    const noPlan = row({ id: "no-plan", created_at: "2026-10-05T12:00:00Z" });
+    const promisedLater = row({ id: "promised-later", created_at: "2026-08-01T12:00:00Z", next_action: "Call back", next_action_due_at: "2026-10-06T23:00:00Z", next_action_set_at: "2026-10-05T12:00:00Z" });
+    const promisedLate = row({ id: "promised-late", created_at: "2026-06-01T12:00:00Z", next_action: "Call back", next_action_due_at: "2026-10-06T15:00:00Z", next_action_set_at: "2026-10-05T12:00:00Z" });
+    const promisedGarbled = row({ id: "promised-garbled", next_action: "Call back", next_action_due_at: "not-a-date", next_action_set_at: "2026-10-05T12:00:00Z" });
+    const all = [stampOld, noPlan, promisedGarbled, stampNew, promisedLater, promisedLate];
+    expect(sortForQueue(all).map((r) => r.id)).toEqual([
+      "promised-late", "promised-later", "promised-garbled", "no-plan", "stamp-new", "stamp-old",
+    ]);
+    // Call today keeps its membership (Due today plus Overdue); only who is on top changed. The
+    // 88-day-old lead with a stamp from July used to open the list; it is now at the bottom.
+    const today = sortForQueue(all.filter((r) => inQueue(r, "today", ctx)), "today").map((r) => r.id);
+    expect(today).toEqual(["promised-late", "promised-later", "stamp-new", "stamp-old"]);
+    expect(computeQueueCounts(all, ctx).today).toBe(today.length);
+    // Best leads and Worked today keep their own order.
+    expect(queueOrderText("likely")).toMatch(/Licensed/);
+    expect(queueOrderText("worked_today")).toMatch(/latest/);
+    expect(queueOrderText("today")).toMatch(/Follow-ups someone set come first/);
   });
 });

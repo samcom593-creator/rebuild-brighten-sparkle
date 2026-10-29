@@ -17,12 +17,14 @@ import {
   QUEUE_DEFINITIONS,
   computeQueueCounts,
   computeScoreboard,
+  defaultQueueFor,
   fullName,
   inQueue,
   isQueueKey,
   PERSON_PARAM_ALIASES,
   personFromParams,
   queueFromLegacyParams,
+  queueOrderText,
   sortForQueue,
   TILE_QUEUE_KEYS,
   type QueueDefinition,
@@ -44,8 +46,10 @@ import {
   worklistViewFromParam,
 } from "@/lib/worklistLayout";
 import { PersonPanel } from "./PersonPanel";
+import { UpNextCard } from "./UpNext";
 import { formatWhen } from "./worklistFormat";
 import { WorklistBoard, WorklistColumnChooser, WorklistQueueList, WorklistTable } from "./WorklistViews";
+import { nextStepFor } from "./worklistNextStep";
 import {
   useRecruitingStaff,
   useRecruitingStages,
@@ -139,9 +143,10 @@ export function RecruitingWorklist() {
   const legacyQueue = queueFromLegacyParams(params);
   // The default is decided once, from the first load. Re-deciding on every render made the
   // page jump from "Likely to join" to a one-person "My queue" after Sam's first save
-  // (saving makes him the owner, so counts.mine went 0 -> 1).
+  // (saving makes him the owner, so counts.mine went 0 -> 1). Mine opens first only when one
+  // of the viewer's own people is due today or late (defaultQueueFor).
   const defaultQueue = useRef<QueueKey | null>(null);
-  if (defaultQueue.current === null && rows.length > 0) defaultQueue.current = counts.mine > 0 ? "mine" : "likely";
+  if (defaultQueue.current === null && rows.length > 0) defaultQueue.current = defaultQueueFor(rows, ctx);
   const queue: QueueKey = isQueueKey(queueParam)
     ? queueParam
     : legacyQueue ?? defaultQueue.current ?? "likely";
@@ -257,6 +262,15 @@ export function RecruitingWorklist() {
     [setParam],
   );
 
+  // A new person starts at the top of the panel and of the phone's sheet. After "Save & next
+  // person" both kept the old scroll position and opened the next person below their name.
+  const asideRef = useRef<HTMLElement | null>(null);
+  const sheetRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (asideRef.current) asideRef.current.scrollTop = 0;
+    if (sheetRef.current) sheetRef.current.scrollTop = 0;
+  }, [selectedId]);
+
   if (worklist.isLoading) return <PageSkeleton />;
 
   // Only a load that never produced rows replaces the page. A refetch that fails keeps
@@ -314,6 +328,22 @@ export function RecruitingWorklist() {
   const verified = coverage.kind === "complete";
   const score = (value: number): number | null => (verified ? value : null);
 
+  const nextId = selected ? nextAfter(selected.id) : null;
+  const nextRow = nextId ? filtered.find((r) => r.id === nextId) ?? null : null;
+  // Where the open person sits in the list, and who Skip moves to: the next person in the same
+  // order, recording nothing. The last person has nobody to skip to.
+  const selectedIndex = selected ? filtered.findIndex((r) => r.id === selected.id) : -1;
+  const skipTo = selectedIndex >= 0 ? filtered[selectedIndex + 1]?.id ?? null : null;
+  const position = selectedIndex >= 0 && activeDef
+    ? { index: selectedIndex, total: filtered.length, label: activeDef.label }
+    : null;
+  const skip = () => { if (skipTo) onSaved(true, skipTo); };
+  // The first person in the open list, by that list's own order: who the page says to call now.
+  // Not offered on the Worked today log, which lists calls already made.
+  const upNext = !panelInline && queue !== "worked_today" ? filtered[0] ?? null : null;
+  const upNextStep = upNext ? nextStepFor(upNext, now) : null;
+  const allOpenCount = counts.all_open;
+
   const panel = selected ? (
     <PersonPanel
       key={selected.id}
@@ -324,7 +354,8 @@ export function RecruitingWorklist() {
       staff={staff}
       staffAvailable={staffAvailable}
       stagesByKey={stagesByKey}
-      nextId={nextAfter(selected.id)}
+      nextId={nextId}
+      nextName={nextRow ? fullName(nextRow) : null}
       onSaved={onSaved}
     />
   ) : selectedId ? (
@@ -345,16 +376,14 @@ export function RecruitingWorklist() {
 
   return (
     <div className="space-y-5">
+      {/* No header button: the one gold button is the Call on the Up next card (phones and tablets)
+          or in the person panel beside the list (desktop). */}
       <PageHeader
         title="Call list"
         subtitle="Call people, record what happened, set the next step."
         icon={<Phone />}
         tone="gold"
-        primaryAction={!panelInline && filtered.length > 0 ? (
-          <Button size="lg" className="h-12 text-base" onClick={() => selectPerson(filtered[0].id)}>
-            <Phone className="h-5 w-5" /> Start calling
-          </Button>
-        ) : null}
+        primaryAction={null}
       />
 
       {!backendReady && (
@@ -393,6 +422,10 @@ export function RecruitingWorklist() {
         </div>
       )}
 
+      {/* Up next: who to call now and what to do, first on a phone or tablet. Keyed by person so a
+          new person rises in after a save. */}
+      {upNext && upNextStep && <UpNextCard key={upNext.id} row={upNext} step={upNextStep} now={now} onOpen={selectPerson} />}
+
       {/* The numbers that matter, over every loaded row (same rules as the lists), shown only once the load is verified complete. */}
       <GrowScoreboard
         label="Today's numbers"
@@ -418,184 +451,215 @@ export function RecruitingWorklist() {
         ]}
       />
 
-      {/* Lists — counts are over every row loaded, not a page. Two big ones (the tiles above open
-          four more); the rest one tap away. */}
-      <nav aria-label="Saved queues">
-        {isWide ? (
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              {primaryQueues.map((q) => (
-                <QueueButton key={q.key} def={q} count={counts[q.key]} active={queue === q.key} onPick={pickQueue} />
-              ))}
-              <button
-                type="button"
-                aria-expanded={secondaryOpen}
-                // While one of these lists is chosen they stay open, so the choice is never hidden.
-                disabled={secondaryChosen}
-                title={secondaryChosen ? "Pick another list to fold these away" : undefined}
-                onClick={() => setMoreListsOpen((open) => !open)}
-                className={cn(
-                  "inline-flex h-11 items-center gap-2 rounded-lg px-4 text-base font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)] disabled:cursor-default disabled:hover:bg-transparent",
-                  secondaryOpen && "text-foreground",
-                )}
-              >
-                More lists
-                <ChevronDown aria-hidden="true" className={cn("h-4 w-4 transition-transform", secondaryOpen && "rotate-180")} />
-              </button>
+      {/* Which list, and find someone: one toolbar. From 1280px the search sits on the lists' row. */}
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-start">
+        {/* Lists — counts are over every row loaded, not a page. Two big ones (the tiles above open
+            four more); the rest one tap away. */}
+        <nav aria-label="Saved queues" className="min-w-0 xl:flex-1">
+          {isWide ? (
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                {primaryQueues.map((q) => (
+                  <QueueButton key={q.key} def={q} count={counts[q.key]} active={queue === q.key} onPick={pickQueue} />
+                ))}
+                <button
+                  type="button"
+                  aria-expanded={secondaryOpen}
+                  // While one of these lists is chosen they stay open, so the choice is never hidden.
+                  disabled={secondaryChosen}
+                  title={secondaryChosen ? "Pick another list to fold these away" : undefined}
+                  onClick={() => setMoreListsOpen((open) => !open)}
+                  className={cn(
+                    "inline-flex h-11 items-center gap-2 rounded-lg px-4 text-base font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)] disabled:cursor-default disabled:hover:bg-transparent",
+                    secondaryOpen && "text-foreground",
+                  )}
+                >
+                  More lists
+                  <ChevronDown aria-hidden="true" className={cn("h-4 w-4 transition-transform", secondaryOpen && "rotate-180")} />
+                </button>
+              </div>
+              {secondaryOpen && (
+                <div className="flex flex-wrap gap-2 rounded-xl border border-border bg-muted/20 p-2">
+                  {secondaryQueues.map((q) => (
+                    <QueueButton key={q.key} def={q} count={counts[q.key]} active={queue === q.key} onPick={pickQueue} compact />
+                  ))}
+                </div>
+              )}
             </div>
-            {secondaryOpen && (
-              <div className="flex flex-wrap gap-2 rounded-xl border border-border bg-muted/20 p-2">
-                {secondaryQueues.map((q) => (
-                  <QueueButton key={q.key} def={q} count={counts[q.key]} active={queue === q.key} onPick={pickQueue} compact />
+          ) : (
+            <label className="block">
+              <span className="sr-only">Which list</span>
+              <select
+                value={queue}
+                onChange={(e) => pickQueue(e.target.value as QueueKey)}
+                aria-label="Which list"
+                className="h-12 w-full rounded-lg border border-border bg-card px-3 text-base font-medium text-foreground focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
+              >
+                {QUEUE_DEFINITIONS.map((q) => (
+                  <option key={q.key} value={q.key}>{q.label} ({counts[q.key].toLocaleString()})</option>
                 ))}
-              </div>
-            )}
+              </select>
+            </label>
+          )}
+        </nav>
+
+        <div className={cn("flex gap-2 xl:shrink-0", layout === "table" ? "xl:w-[36rem]" : "xl:w-[28rem]")}>
+          <div className="relative min-w-0 flex-1">
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setParam({ q: e.target.value })}
+              placeholder="Search name or phone"
+              className="h-12 border-border bg-card pl-11 text-base"
+              aria-label="Search the queue"
+            />
           </div>
-        ) : (
-          <label className="block">
-            <span className="sr-only">Which list</span>
-            <select
-              value={queue}
-              onChange={(e) => pickQueue(e.target.value as QueueKey)}
-              aria-label="Which list"
-              className="h-12 w-full rounded-lg border border-border bg-card px-3 text-base font-medium text-foreground focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
-            >
-              {QUEUE_DEFINITIONS.map((q) => (
-                <option key={q.key} value={q.key}>{q.label} ({counts[q.key].toLocaleString()})</option>
-              ))}
-            </select>
-          </label>
-        )}
-      </nav>
-
-      <div className="flex gap-2">
-        <div className="relative min-w-0 flex-1">
-          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setParam({ q: e.target.value })}
-            placeholder="Search name or phone"
-            className="h-12 border-border bg-card pl-11 text-base"
-            aria-label="Search the queue"
-          />
+          {layout === "table" && <WorklistColumnChooser columns={tableColumns} onChange={setTableColumns} />}
+          {/* Same name as the Pipeline and New hires pages: "Filters" holds the view and the license filter. */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="h-12 shrink-0 border-border bg-card px-4 text-base" aria-label="Filters">
+                <SlidersHorizontal className="h-5 w-5" /> Filters
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-80 space-y-5 p-4">
+              <fieldset>
+                <legend className="mb-2 text-sm font-semibold text-foreground">Show as</legend>
+                <div className="flex flex-wrap gap-1.5">
+                  <Button className="h-11 px-3" variant={worklistOn ? "secondary" : "ghost"} aria-pressed={worklistOn} onClick={() => setParam({ view: null })}>
+                    <List className="h-4 w-4" /> List
+                  </Button>
+                  {/* The table needs 1024px, so its toggle exists only where it can render. It is a
+                      full-width view with the person in a sheet, so the selection is cleared on the
+                      way in; otherwise the sheet would open over the table on the first render. */}
+                  {isWide && (
+                    <Button className="h-11 px-3" variant={layout === "table" ? "secondary" : "ghost"} aria-pressed={layout === "table"} onClick={() => setParam({ view: "table", person: null })}>
+                      <Table2 className="h-4 w-4" /> Table
+                    </Button>
+                  )}
+                  <Button className="h-11 px-3" variant={layout === "board" ? "secondary" : "ghost"} aria-pressed={layout === "board"} onClick={() => setParam({ view: "board" })}>
+                    <Columns3 className="h-4 w-4" /> Board
+                  </Button>
+                </div>
+              </fieldset>
+              <fieldset>
+                <legend className="mb-2 text-sm font-semibold text-foreground">License</legend>
+                <div className="flex flex-wrap gap-1.5">
+                  {LICENSE_FILTERS.map((f) => (
+                    <Button
+                      key={f.value}
+                      className="h-11 px-3"
+                      variant={license === f.value ? "secondary" : "ghost"}
+                      aria-pressed={license === f.value}
+                      onClick={() => setParam({ license: f.value === "all" ? null : f.value })}
+                    >
+                      {f.label}
+                    </Button>
+                  ))}
+                </div>
+              </fieldset>
+              <Link to="/dashboard/recruiting?view=classic" className="inline-flex min-h-11 items-center text-sm font-medium text-primary underline-offset-2 hover:underline">
+                Classic applicants view
+              </Link>
+            </PopoverContent>
+          </Popover>
         </div>
-        {layout === "table" && <WorklistColumnChooser columns={tableColumns} onChange={setTableColumns} />}
-        {/* Same name as the Pipeline and New hires pages: "Filters" holds the view and the license filter. */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" className="h-12 shrink-0 border-border bg-card px-4 text-base" aria-label="Filters">
-              <SlidersHorizontal className="h-5 w-5" /> Filters
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent align="end" className="w-80 space-y-5 p-4">
-            <fieldset>
-              <legend className="mb-2 text-sm font-semibold text-foreground">Show as</legend>
-              <div className="flex flex-wrap gap-1.5">
-                <Button className="h-11 px-3" variant={worklistOn ? "secondary" : "ghost"} aria-pressed={worklistOn} onClick={() => setParam({ view: null })}>
-                  <List className="h-4 w-4" /> List
-                </Button>
-                {/* The table needs 1024px, so its toggle exists only where it can render. It is a
-                    full-width view with the person in a sheet, so the selection is cleared on the
-                    way in; otherwise the sheet would open over the table on the first render. */}
-                {isWide && (
-                  <Button className="h-11 px-3" variant={layout === "table" ? "secondary" : "ghost"} aria-pressed={layout === "table"} onClick={() => setParam({ view: "table", person: null })}>
-                    <Table2 className="h-4 w-4" /> Table
-                  </Button>
-                )}
-                <Button className="h-11 px-3" variant={layout === "board" ? "secondary" : "ghost"} aria-pressed={layout === "board"} onClick={() => setParam({ view: "board" })}>
-                  <Columns3 className="h-4 w-4" /> Board
-                </Button>
-              </div>
-            </fieldset>
-            <fieldset>
-              <legend className="mb-2 text-sm font-semibold text-foreground">License</legend>
-              <div className="flex flex-wrap gap-1.5">
-                {LICENSE_FILTERS.map((f) => (
-                  <Button
-                    key={f.value}
-                    className="h-11 px-3"
-                    variant={license === f.value ? "secondary" : "ghost"}
-                    aria-pressed={license === f.value}
-                    onClick={() => setParam({ license: f.value === "all" ? null : f.value })}
-                  >
-                    {f.label}
-                  </Button>
-                ))}
-              </div>
-            </fieldset>
-            <Link to="/dashboard/recruiting?view=classic" className="inline-flex min-h-11 items-center text-sm font-medium text-primary underline-offset-2 hover:underline">
-              Classic applicants view
-            </Link>
-          </PopoverContent>
-        </Popover>
-      </div>
-
-      {/* One quiet line: whose records, which list, how many. Active filters show as chips. */}
-      <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-        <span className="font-medium text-foreground" title={activeDef?.scope === "personal" ? undefined : scopeDetail}>{scopeText}</span>
-        <span aria-hidden="true">·</span>
-        <span>
-          {activeDef?.label}: {filtered.length.toLocaleString()} {filtered.length === 1 ? "person" : "people"}
-          {filtersOn ? " with these filters" : ""}.
-        </span>
-        {license !== "all" && (
-          <FilterChip label={`License: ${licenseLabel}`} onRemove={() => setParam({ license: null })} />
-        )}
-        {layout === "board" && <FilterChip label="Board view" onRemove={() => setParam({ view: null })} />}
-        {layout === "table" && <FilterChip label="Table view" onRemove={() => setParam({ view: null })} />}
       </div>
 
       {/* items-start: the list sizes to its rows. Stretched to the panel's height, a one-person
           queue drew a tall empty card beside the panel. */}
       <div className={cn("grid items-start gap-5", panelInline && "lg:grid-cols-[minmax(0,1fr)_440px]")}>
-        <div
-          ref={listRef}
-          onScroll={onScroll}
-          className="max-h-[calc(100vh-14rem)] supports-[height:100dvh]:max-h-[calc(100dvh-14rem)] overflow-auto rounded-xl border border-border bg-card"
-        >
-          {filtered.length === 0 ? (
-            <p className="p-10 text-center text-base text-muted-foreground">
-              Nobody in “{activeDef?.label}”{search || license !== "all" ? " with these filters" : ""}.
+        {/* The list says what it is at its top: its name and size, whose records, and its rule in
+            one plain sentence, so nobody has to hover a button to learn what "Best leads" means.
+            Active filters show as removable chips on the same card. */}
+        <section aria-labelledby="call-list-count" className="min-w-0 overflow-hidden rounded-xl border border-border bg-card">
+          <header className="border-b border-border px-4 py-3">
+            <p id="call-list-count" className="text-base font-semibold leading-6 text-foreground">
+              {activeDef?.label}: {filtered.length.toLocaleString()} {filtered.length === 1 ? "person" : "people"}
+              {filtersOn ? " with these filters" : ""}.
             </p>
-          ) : layout === "board" ? (
-            <WorklistBoard
-              rows={filtered}
-              selectedId={selectedId}
-              onSelect={selectPerson}
-              staff={staff}
-              staffAvailable={staffAvailable}
-              stages={stages}
-              now={now}
-            />
-          ) : layout === "table" ? (
-            <WorklistTable
-              rows={filtered}
-              selectedId={selectedId}
-              onSelect={selectPerson}
-              staff={staff}
-              staffAvailable={staffAvailable}
-              stagesByKey={stagesByKey}
-              now={now}
-              columns={tableColumns}
-            />
-          ) : (
-            <WorklistQueueList
-              rows={filtered}
-              selectedId={selectedId}
-              onSelect={selectPerson}
-              staff={staff}
-              staffAvailable={staffAvailable}
-              stagesByKey={stagesByKey}
-              now={now}
-            />
-          )}
-        </div>
+            <p className="mt-0.5 text-sm leading-5 text-muted-foreground">
+              <span className="font-medium text-foreground" title={activeDef?.scope === "personal" ? undefined : scopeDetail}>{scopeText}</span>
+              {activeDef && activeDef.scope !== "personal" && (
+                <>
+                  <span aria-hidden="true"> · </span>
+                  <span>{activeDef.hint}</span>
+                </>
+              )}
+            </p>
+            {(license !== "all" || layout === "board" || layout === "table") && (
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                {license !== "all" && (
+                  <FilterChip label={`License: ${licenseLabel}`} onRemove={() => setParam({ license: null })} />
+                )}
+                {layout === "board" && <FilterChip label="Board view" onRemove={() => setParam({ view: null })} />}
+                {layout === "table" && <FilterChip label="Table view" onRemove={() => setParam({ view: null })} />}
+              </div>
+            )}
+          </header>
+          <div
+            ref={listRef}
+            onScroll={onScroll}
+            className="max-h-[calc(100vh-14rem)] supports-[height:100dvh]:max-h-[calc(100dvh-14rem)] overflow-auto overscroll-contain"
+          >
+            {filtered.length === 0 ? (
+              <div className="space-y-3 p-8 text-center">
+                <p className="text-base text-muted-foreground">
+                  Nobody in “{activeDef?.label}”{filtersOn ? " with these filters" : ""}.
+                </p>
+                {/* An empty list teaches where the people are: the whole open list, with its count, one tap away. */}
+                {!filtersOn && queue !== "all_open" && allOpenCount > 0 && (
+                  <Button variant="outline" className="h-11 border-border bg-background" onClick={() => pickQueue("all_open")}>
+                    See everyone ({allOpenCount.toLocaleString()})
+                  </Button>
+                )}
+              </div>
+            ) : layout === "board" ? (
+              <WorklistBoard
+                rows={filtered}
+                selectedId={selectedId}
+                onSelect={selectPerson}
+                staff={staff}
+                staffAvailable={staffAvailable}
+                stages={stages}
+                now={now}
+              />
+            ) : layout === "table" ? (
+              <WorklistTable
+                rows={filtered}
+                selectedId={selectedId}
+                onSelect={selectPerson}
+                staff={staff}
+                staffAvailable={staffAvailable}
+                stagesByKey={stagesByKey}
+                now={now}
+                columns={tableColumns}
+              />
+            ) : (
+              <WorklistQueueList
+                rows={filtered}
+                selectedId={selectedId}
+                onSelect={selectPerson}
+                staff={staff}
+                staffAvailable={staffAvailable}
+                stagesByKey={stagesByKey}
+                now={now}
+              />
+            )}
+          </div>
+        </section>
 
         {panelInline ? (
           // No bottom padding: the panel's sticky save row sits flush with the container's edge
           // (the panel pads its own bottom).
-          <aside aria-label="Selected person" className="sticky top-20 max-h-[calc(100dvh-6rem)] overflow-y-auto rounded-xl border border-border bg-card px-5 pt-5">
-            {panel}
+          <aside ref={asideRef} aria-label="Selected person" className="sticky top-20 max-h-[calc(100dvh-6rem)] overflow-y-auto overscroll-contain rounded-xl border border-border bg-card px-5 pt-3">
+            {position && (
+              <div className="-mr-2 mb-3 flex items-center justify-between gap-3">
+                <PositionText {...position} />
+                <SkipButton disabled={!skipTo} onSkip={skip} />
+              </div>
+            )}
+            <div className={cn(!position && "pt-2")}>{panel}</div>
           </aside>
         ) : (
           <Sheet open={Boolean(selectedId)} onOpenChange={(open) => { if (!open) setParam({ person: null }); }}>
@@ -604,15 +668,26 @@ export function RecruitingWorklist() {
                 bottom padding, for the same reason as the aside. */}
             {/* apex-page-slot: the sheet is portalled outside the page slot, so without it the 13px
                 and 15px operating type (src/styles/delight.css) would not reach the person panel. */}
-            <SheetContent side="right" className="apex-page-slot w-full overflow-y-auto bg-card px-5 pt-5 pb-0 sm:max-w-lg">
+            <SheetContent ref={sheetRef} side="right" className="apex-page-slot w-full overflow-y-auto overscroll-contain bg-card px-5 pt-5 pb-0 sm:max-w-lg">
               <SheetHeader className="sr-only">
                 <SheetTitle>{selected ? fullName(selected) : "Person"}</SheetTitle>
                 <SheetDescription>Contact, record the outcome and set the next step.</SheetDescription>
               </SheetHeader>
-              {/* The sheet fills a phone screen, so the way back is a real button with words, not only the corner X. */}
-              <Button type="button" variant="ghost" className="-ml-2 mb-4 h-11 px-2 text-base" onClick={() => setParam({ person: null })}>
-                <ChevronLeft className="h-5 w-5" /> Back to list
-              </Button>
+              {/* The sheet fills a phone screen, so the way back is a real button with words, not only the
+                  corner X. Skip sits on the same row, clear of the X (pr-10). */}
+              <div className="-ml-2 mb-4 flex items-center gap-2 pr-10">
+                <Button type="button" variant="ghost" className="h-11 shrink-0 px-2 text-base" onClick={() => setParam({ person: null })}>
+                  <ChevronLeft className="h-5 w-5" /> Back to list
+                </Button>
+                {position && (
+                  <>
+                    <span className="ml-auto min-w-0 truncate text-sm tabular-nums text-muted-foreground">
+                      {(position.index + 1).toLocaleString()} of {position.total.toLocaleString()}
+                    </span>
+                    <SkipButton disabled={!skipTo} onSkip={skip} />
+                  </>
+                )}
+              </div>
               {panel}
             </SheetContent>
           </Sheet>
@@ -621,12 +696,16 @@ export function RecruitingWorklist() {
       <details className="group rounded-lg border border-border bg-card text-sm text-muted-foreground">
         <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-3 py-2 [&::-webkit-details-marker]:hidden">
           <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 transition-transform group-open:rotate-90" />
-          <span className="font-semibold text-foreground">Data status</span>
-          <span>· {coverageSummary(coverage)}</span>
+          {/* One sentence that wraps as text: as two flex items, a phone squeezed "Data status" onto two lines. */}
+          <span className="min-w-0">
+            <span className="font-semibold text-foreground">Data status</span>
+            <span> · {coverageSummary(coverage)}</span>
+          </span>
         </summary>
         <div className="space-y-2 border-t border-border px-3 py-2">
           <p>Who is counted: {scopeDetail}.</p>
           <p>List rule: {activeDef?.description}.</p>
+          <p>Order: {queueOrderText(queue)}</p>
           <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
             {coverageFacts(rows.length, worklist.data?.coverage).map((fact) => (
               <Fragment key={fact.label}>
@@ -644,6 +723,32 @@ export function RecruitingWorklist() {
         </div>
       </details>
     </div>
+  );
+}
+
+/** "Up next · 1 of 19 in Best leads", or "4 of 19 in Best leads" once the caller has moved on. */
+function PositionText({ index, total, label }: { index: number; total: number; label: string }) {
+  return (
+    <p className="min-w-0 truncate text-sm text-muted-foreground">
+      {index === 0 && <span className="font-semibold text-foreground">Up next · </span>}
+      <span className="tabular-nums">{(index + 1).toLocaleString()} of {total.toLocaleString()}</span> in {label}
+    </p>
+  );
+}
+
+/** Moves to the next person in the list without recording anything. */
+function SkipButton({ disabled, onSkip }: { disabled: boolean; onSkip: () => void }) {
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      className="h-11 shrink-0 px-3 text-base"
+      disabled={disabled}
+      title={disabled ? "This is the last person in the list" : "Go to the next person without saving anything"}
+      onClick={onSkip}
+    >
+      Skip <ChevronRight className="h-5 w-5" />
+    </Button>
   );
 }
 

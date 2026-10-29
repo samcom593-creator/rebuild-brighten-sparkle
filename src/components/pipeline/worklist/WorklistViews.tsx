@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { ChevronLeft, ChevronRight, Columns3, User } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { TONE_CLASS } from "@/lib/tones";
 import {
   blockersOf,
   fullName,
+  isOpen,
   outcomeLabel,
   planCheck,
   type WorklistRow,
@@ -26,7 +27,8 @@ import {
 } from "@/lib/worklistColumns";
 import { STATUS_TONE, StatusPill } from "@/components/recruiting/StatusPill";
 import type { StaffMember, StageDefinition } from "./useRecruitingWorklist";
-import { formatAgo, formatNextAction, formatSince, formatWhen, humanizeKey, initialsOf, ownerName } from "./worklistFormat";
+import { formatAgo, formatSince, formatWhen, humanizeKey, initialsOf, ownerName } from "./worklistFormat";
+import { nextStepFor, nextStepLine } from "./worklistNextStep";
 import { dueStatus, licenseWord, rowStatus, type RowStatus, type StatusTone } from "./worklistStatus";
 
 interface ViewProps {
@@ -72,6 +74,27 @@ export function PersonBubble({ row, status, size = "md", className }: {
   );
 }
 
+/**
+ * A line of facts ("Unlicensed · MI · Last contact 3 days ago") that wraps between facts, never
+ * inside one: each fact is an inline block, so on a phone "Last contact 3 days ago" moves to the
+ * next line whole instead of leaving "days ago" on a line of its own. A fact wider than the line
+ * still wraps inside itself (max-w-full), so nothing scrolls sideways. The no-break space keeps
+ * each dot on the line it ends.
+ */
+export function FactLine({ facts }: { facts: ReadonlyArray<string | null | undefined | false> }) {
+  const shown = facts.filter((f): f is string => Boolean(f));
+  return (
+    <>
+      {shown.map((fact, i) => (
+        <Fragment key={`${i}:${fact}`}>
+          {i > 0 && "\u00a0· "}
+          <span className="inline-block max-w-full">{fact}</span>
+        </Fragment>
+      ))}
+    </>
+  );
+}
+
 /** Text colour for a status in a table cell. The words carry the meaning; the colour only helps. */
 const STATUS_TEXT: Record<StatusTone, string> = {
   danger: "font-semibold text-destructive",
@@ -94,13 +117,20 @@ function DueCell({ row, now }: { row: WorklistRow; now: number }) {
   );
 }
 
-function NextActionText({ row }: { row: WorklistRow }) {
-  if (row.next_action) {
-    const text = formatNextAction(row.next_action, Boolean(row.next_action_set_at));
-    return <span title={text} className={row.next_action_set_at ? undefined : "text-muted-foreground"}>{text}</span>;
+/**
+ * The same next step as the list row (worklistNextStep.ts), so switching views never changes
+ * what a person needs: a step someone set in their own words, otherwise the suggestion worked out
+ * from the record in muted type ("First call", "Follow up"). The automation stamp
+ * MANAGER_CALL_72H_ESCALATION is a timer, not a step, and stays in the person's Details.
+ */
+function NextActionText({ row, now }: { row: WorklistRow; now: number }) {
+  const step = nextStepFor(row, now);
+  if (step.planned && row.next_action?.trim()) {
+    const text = row.next_action.trim();
+    return <span title={text}>{text}</span>;
   }
-  if (row.waiting_reason) return <span className="text-muted-foreground">Waiting: {row.waiting_reason}</span>;
-  return <span className="text-muted-foreground">None</span>;
+  if (step.planned && row.waiting_reason?.trim()) return <span className="text-muted-foreground">Waiting: {row.waiting_reason.trim()}</span>;
+  return <span title={step.detail} className="text-muted-foreground">{step.title}</span>;
 }
 
 function stageLabel(row: WorklistRow, stagesByKey: Map<string, StageDefinition>): string {
@@ -222,7 +252,7 @@ export function WorklistTable({
                   <td className="whitespace-nowrap px-2 py-3 text-foreground"><LastContact row={row} now={now} /></td>
                 )}
                 {show.has("next_action") && (
-                  <td className="max-w-[220px] truncate px-2 py-3 text-foreground"><NextActionText row={row} /></td>
+                  <td className="max-w-[220px] truncate px-2 py-3 text-foreground"><NextActionText row={row} now={now} /></td>
                 )}
                 {show.has("due") && <td className="whitespace-nowrap px-2 py-3"><DueCell row={row} now={now} /></td>}
                 {show.has("blocker") && <td className="px-2 py-3"><BlockerWords row={row} /></td>}
@@ -288,13 +318,6 @@ export function WorklistColumnChooser({
   );
 }
 
-/** "Next: Call back" in plain words, or nothing when no step is set. */
-function nextLine(row: WorklistRow): string | null {
-  if (row.next_action) return `Next: ${formatNextAction(row.next_action, Boolean(row.next_action_set_at))}`;
-  if (row.waiting_reason) return `Waiting for: ${row.waiting_reason}`;
-  return null;
-}
-
 /**
  * The queue list, redesigned for people who don't live in software (2026-10-28): the
  * name large, one line of plain facts (license, state, when they were last contacted),
@@ -307,6 +330,14 @@ function nextLine(row: WorklistRow): string | null {
  * Colour layer (2026-10-28): a 40px initials bubble in the status tone at the left, the
  * rows rise in once on first paint, and a row lifts a hair on hover because it opens the
  * person. The words are unchanged; the status pill still says the state.
+ *
+ * OVERHAUL-calllist (2026-10-29): the third line is what to do next (worklistNextStep.ts): a
+ * step someone set keeps "Next: Call back", and everyone else gets the step worked out from
+ * the record ("First call · applied 9 days ago") instead of the automation stamp printed as
+ * "Next: Suggested: manager call 72h escalation". The name no longer shares its line with a
+ * fixed-width status column: on a 390px phone that column cut names to "Caleb Boo…" and folded
+ * the facts onto four lines; the pill now sits beside the name and drops under it when the two
+ * do not fit.
  */
 export function WorklistQueueList({ rows, selectedId, onSelect, now }: ViewProps) {
   const [visible, setVisible] = useState(TABLE_WINDOW);
@@ -318,13 +349,15 @@ export function WorklistQueueList({ rows, selectedId, onSelect, now }: ViewProps
           const selected = row.id === selectedId;
           const blocker = blockersOf(row).find((b) => b.hard || b.key === "no_phone");
           const status = rowStatus(row, now);
+          const step = nextStepFor(row, now);
           const contacted = row.last_contact_outcome_at ?? row.last_contacted_at;
           const facts = [
             licenseWord(row.license_status),
             row.state,
             contacted ? `Last contact ${formatSince(contacted, now)}` : "Never contacted",
-          ].filter(Boolean).join(" · ");
-          const next = nextLine(row);
+          ];
+          // A closed person (only the Worked today log shows them) says how it ended instead.
+          const next = isOpen(row) ? nextStepLine(row, step, now) : step.title;
           return (
             <li key={row.id} data-row-id={row.id}>
               <button
@@ -338,14 +371,21 @@ export function WorklistQueueList({ rows, selectedId, onSelect, now }: ViewProps
               >
                 <PersonBubble row={row} status={status} className="mt-0.5" />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-base font-semibold leading-6 text-foreground">{fullName(row)}</span>
-                  <span className="mt-0.5 block text-sm leading-5 text-muted-foreground">{facts}</span>
-                  {next && <span className="mt-0.5 block truncate text-sm leading-5 text-muted-foreground">{next}</span>}
-                </span>
-                <span className="flex shrink-0 flex-col items-end gap-1.5 pt-0.5">
-                  <StatusPill status={status} />
-                  {blocker && (
-                    <span className={cn("text-[13px] font-medium", blocker.hard ? "text-destructive" : "text-muted-foreground")}>{blocker.label}</span>
+                  {/* The name wraps (two lines at most) rather than being cut: it is how the caller knows who this is. */}
+                  <span className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
+                    <span className="line-clamp-2 min-w-0 text-base font-semibold leading-6 text-foreground [overflow-wrap:anywhere]">{fullName(row)}</span>
+                    <StatusPill status={status} className="mt-0.5" />
+                  </span>
+                  <span className="mt-0.5 block text-sm leading-5 text-muted-foreground"><FactLine facts={facts} /></span>
+                  {(next || blocker) && (
+                    <span className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-sm leading-5">
+                      {next && (
+                        <span className={cn("line-clamp-2 min-w-0 [overflow-wrap:anywhere]", isOpen(row) ? "font-medium text-foreground" : "text-muted-foreground")}>{next}</span>
+                      )}
+                      {blocker && (
+                        <span className={cn("font-medium", blocker.hard ? "text-destructive" : "text-muted-foreground")}>{blocker.label}</span>
+                      )}
+                    </span>
                   )}
                 </span>
               </button>
